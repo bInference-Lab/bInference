@@ -241,6 +241,8 @@ export type {
   OrderState,
   OrderView,
 } from "./views/order-view.schema.js";
+export { pnlCardViewSchema } from "./views/pnl-card-view.schema.js";
+export type { PnlCardView } from "./views/pnl-card-view.schema.js";
 export { balanceViewSchema, portfolioViewSchema } from "./views/portfolio-view.schema.js";
 export type { BalanceView, PortfolioView, PositionView } from "./views/portfolio-view.schema.js";
 export { quoteViewSchema, tradePlaceSchema } from "./views/quote-view.schema.js";

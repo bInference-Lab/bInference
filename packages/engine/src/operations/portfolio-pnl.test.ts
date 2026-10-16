@@ -105,6 +105,22 @@ async function pnl({ test }: Traded, from: number, to: number) {
   return test.engine.handlers["portfolio/pnl"](testCall({ agent: testAgent, from, to }));
 }
 
+async function cards({ test }: Traded, from: number, to: number) {
+  const args = { agent: testAgent, from, to, cards: true };
+  return test.engine.handlers["portfolio/pnl"](testCall(args));
+}
+
+// The live wallet sells its last 150 tokens at $1.50, a day on: the token position closes.
+async function closeToken(subject: Traded): Promise<void> {
+  const sale = trade(5, {
+    atMs: testNowMs + 3 * dayMs,
+    sold: { asset: testToken, base: tokens(150n) },
+    bought: { asset: testCoin, base: whole / 4n },
+    soldPrice: perToken(1_500_000n),
+  });
+  expectOk(await subject.positions.record(sale, live));
+}
+
 describe("the P&L read", () => {
   it("sums what the range's executions realized, live and paper apart, with today's unrealized", async () => {
     const view = expectOk(await pnl(await traded(pricesNow), testNowMs, testNowMs + dayMs));
@@ -184,5 +200,129 @@ describe("the P&L read", () => {
       await handler(testCall({ agent: stranger, from: 0, to: 1 })),
       await pnl(subject, 2, 1),
     ]).toStrictEqual([err("agent.not_found"), err("protocol.bad_args")]);
+  });
+
+  it("draws no cards unless asked", async () => {
+    const view = expectOk(await pnl(await traded(pricesNow), testNowMs, testNowMs));
+    expect(view).not.toHaveProperty("cards");
+  });
+
+  it("draws a card per open position, live before paper, each mode's by value", async () => {
+    const view = expectOk(await cards(await traded(pricesNow), testNowMs, testNowMs));
+    expect(view.cards?.map(({ asset, paper, closed }) => [asset, paper, closed])).toStrictEqual([
+      [testCoin, false, false],
+      [testToken, false, false],
+      [testToken, true, false],
+      [testCoin, true, false],
+    ]);
+    // 150 live tokens cost $150 and are worth $300; 100 sold for $120 realized $20.
+    expect(view.cards?.[1]?.lines).toStrictEqual([
+      {
+        key: "pnl.header",
+        values: {
+          token: { type: "asset", asset: testToken },
+          agent: { type: "text", text: "main" },
+          mode: { type: "choice", choice: "live" },
+        },
+      },
+      {
+        key: "pnl.holding",
+        values: {
+          amount: { type: "amount", amount: { asset: testToken, base: tokens(150n) } },
+          value: { type: "usd", usdMicros: 300_000_000n },
+        },
+      },
+      {
+        key: "pnl.cost",
+        values: {
+          average: { type: "usd", usdMicros: 1_000_000n },
+          cost: { type: "usd", usdMicros: 150_000_000n },
+        },
+      },
+      {
+        key: "pnl.open",
+        values: {
+          unrealized: { type: "usdChange", usdMicros: 150_000_000n },
+          percent: { type: "percentChange", bps: 10_000n },
+          realized: { type: "usdChange", usdMicros: 20_000_000n },
+        },
+      },
+      {
+        key: "pnl.fees",
+        values: { venue: { type: "usd", usdMicros: 0n }, network: { type: "usd", usdMicros: 0n } },
+      },
+      { key: "pnl.since", values: { openedAt: { type: "dateTime", atMs: testNowMs } } },
+    ]);
+  });
+
+  it("draws a closed position's card only when it closed in the range", async () => {
+    const subject = await traded(pricesNow);
+    await closeToken(subject);
+    const inRange = expectOk(await cards(subject, testNowMs, testNowMs + 3 * dayMs));
+    const before = expectOk(await cards(subject, testNowMs, testNowMs + 2 * dayMs));
+    const shown = (view: typeof inRange) =>
+      view.cards?.map(({ asset, paper, closed }) => [asset, paper, closed]);
+    expect([shown(inRange), shown(before)]).toStrictEqual([
+      [
+        [testCoin, false, false],
+        [testToken, false, true],
+        [testToken, true, false],
+        [testCoin, true, false],
+      ],
+      [
+        [testCoin, false, false],
+        [testToken, true, false],
+        [testCoin, true, false],
+      ],
+    ]);
+    // Bought 250 tokens for $250, sold 100 for $120 and 150 for $225: $95 realized.
+    expect(inRange.cards?.[1]?.lines.slice(1, 3)).toStrictEqual([
+      {
+        key: "pnl.trades",
+        values: {
+          bought: { type: "usd", usdMicros: 250_000_000n },
+          sold: { type: "usd", usdMicros: 345_000_000n },
+        },
+      },
+      {
+        key: "pnl.closed",
+        values: {
+          realized: { type: "usdChange", usdMicros: 95_000_000n },
+          percent: { type: "percentChange", bps: 3_800n },
+        },
+      },
+    ]);
+  });
+
+  it("sums a position over the agent's wallets, an archived one too", async () => {
+    const subject = await traded(pricesNow);
+    const received = { asset: testCoin, base: whole };
+    const arrival = { walletId: archived, isPaper: false, atMs: 1, received };
+    await subject.positions.receive(arrival, live);
+    const view = expectOk(await cards(subject, testNowMs, testNowMs));
+    // 0.7 coin in the live wallet and 1 in the archived one, at $600.
+    expect(view.cards?.[0]?.lines[1]).toStrictEqual({
+      key: "pnl.holding",
+      values: {
+        amount: { type: "amount", amount: { asset: testCoin, base: (17n * whole) / 10n } },
+        value: { type: "usd", usdMicros: 1_020_000_000n },
+      },
+    });
+  });
+
+  it("starts a paper position's span at the last paper reset, and shows none it emptied", async () => {
+    const subject = await traded(pricesNow);
+    const balances = [{ asset: testCoin, base: whole }];
+    const resetArgs = { agent: testAgent, balances };
+    expectOk(await subject.test.engine.handlers["portfolio/resetPaper"](testCall(resetArgs)));
+    const view = expectOk(await cards(subject, testNowMs, testNowMs + 2 * dayMs));
+    const paperCards = view.cards?.filter(({ paper }) => paper);
+    expect(paperCards?.map(({ asset, closed }) => [asset, closed])).toStrictEqual([
+      [testCoin, false],
+    ]);
+    expect(paperCards?.[0]?.lines.at(-1)).toStrictEqual({
+      key: "pnl.since",
+      values: { openedAt: { type: "dateTime", atMs: subject.test.clock.now() } },
+    });
   });
 });

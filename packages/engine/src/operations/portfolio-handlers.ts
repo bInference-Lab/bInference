@@ -9,6 +9,7 @@ import {
 } from "../market/market-handlers.js";
 import { assetInfoOf, knownAssetInfos } from "../money-path/asset-infos.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
+import { pnlCardsOf } from "../pnl/pnl-cards.js";
 import type { AgentStore, InstallStore, IntentStore } from "../ports.js";
 import { activeAgent } from "./active-agent.js";
 import { type AssetSearchHandlers, createAssetSearchHandlers } from "./asset-search-handlers.js";
@@ -107,13 +108,19 @@ async function pnlOf(
   if (args.from > args.to) {
     return err("protocol.bad_args");
   }
-  if ((await options.agents.get(args.agent, { signal })) === undefined) {
+  const settings = await options.agents.get(args.agent, { signal });
+  if (settings === undefined) {
     return err("agent.not_found");
   }
   const { wallets } = await options.install.read({ signal });
   const owned = wallets.filter((wallet) => wallet.agentId === args.agent).map(({ id }) => id);
   const query = { wallets: owned, fromMs: args.from, toMs: args.to };
-  return ok(await pnlViewOf(options, query, { signal }));
+  const view = await pnlViewOf(options, query, { signal });
+  if (args.cards !== true) {
+    return ok(view);
+  }
+  const drawn = await pnlCardsOf(options, { ...query, agentName: settings.agent.name }, { signal });
+  return ok({ ...view, cards: drawn.cards, assets: { ...view.assets, ...drawn.assets } });
 }
 
 /**
@@ -124,7 +131,8 @@ async function pnlOf(
  * token the registry does not list (decision 0199). An unknown agent is `agent.not_found`, a wallet that is not one of its live
  * wallets `wallet.not_found`. `portfolio/pnl` answers the agent's P&L over the range, live and
  * paper apart (see {@link pnlViewOf}), from every wallet the agent had, archived ones too, as
- * their trades happened; a range that ends before it starts is `protocol.bad_args`.
+ * their trades happened; a range that ends before it starts is `protocol.bad_args`. With `cards`, it
+ * also answers the agent's P&L cards (see {@link pnlCardsOf}).
  * `portfolio/resetPaper` starts the agent's paper portfolio again from the balances it names, or
  * from the starting balances, and answers the new paper portfolio with its values now. It never
  * changes the agent's mode or a live position. `asset/search` finds a token's id in the registry

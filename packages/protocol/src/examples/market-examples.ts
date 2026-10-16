@@ -91,7 +91,7 @@ const scheduleView = {
 export const marketExamples: { readonly [N in keyof MarketOperationShapes]: WireExample } = {
   "portfolio/get": { args: { agent: ids.agent }, result: portfolioView },
   "portfolio/pnl": {
-    args: { agent: ids.agent, from: at, to: at + 86_400_000 },
+    args: { agent: ids.agent, from: at, to: at + 86_400_000, cards: true },
     result: {
       positions: [{ asset: refs.token, realizedUsdMicros: "-3000000" }],
       realizedUsdMicros: "-3000000",
@@ -101,6 +101,22 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
       ],
       paperRealizedUsdMicros: "4500000",
       paperUnrealizedUsdMicros: "-500000",
+      cards: [
+        {
+          asset: refs.token,
+          paper: false,
+          closed: true,
+          lines: [
+            {
+              key: "pnl.closed",
+              values: {
+                realized: { type: "usdChange", usdMicros: "-3000000" },
+                percent: { type: "percentChange", bps: "-2000" },
+              },
+            },
+          ],
+        },
+      ],
       assets,
     },
   },

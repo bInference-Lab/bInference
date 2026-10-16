@@ -6,7 +6,9 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208) and [0220](../DECISIONS.md#d0220); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220) and [0243](../DECISIONS.md#d0243); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+||||||| parent of 55bfc7fa (feat(engine): answer an agent's P&L cards from portfolio/pnl)
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207) and [0208](../DECISIONS.md#d0208); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -344,7 +346,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | Operation              | Scope            | Args → result                                                                                                                       |
 | ---------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
 | `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag; live before paper, each with its own total, never summed  |
-| `portfolio/pnl`        | `read`           | `{ agent, from, to }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137))                              |
+| `portfolio/pnl`        | `read`           | `{ agent, from, to, cards? }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137)); P&L cards (below)   |
 | `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                       |
 | `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                      |
 | `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)         |
@@ -368,6 +370,11 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   asset it sold. The unrealized P&L is today's, of what the positions hold now, whatever the range.
   Live and paper stay apart (`PnlView`, section 8.3), and every wallet the agent had counts,
   archived ones too ([decision 0137](../DECISIONS.md#d0137)).
+  With `cards: true` it also answers `cards`, `PnlCardView` items the engine draws as card lines
+  (spec 4, section 3.7): one per position of the agent open now, and per position a sale emptied
+  from `from` to `to`; live before paper, each mode's open positions first by value, then its
+  closed ones, the latest first. Each card covers its position's whole span, whatever the range
+  ([decision 0243](../DECISIONS.md#d0243)).
 - `market/scan` with `source: launches` reads the engine's own launch records (`launch/list`),
   newest first, from the last 24 hours; while the engine runs no launch feed it fails
   `market.no_launch_feed`. With `trending`, it reads the market data source's trending tokens on
@@ -836,12 +843,12 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   price, never a paper one; `paperTotalUsdMicros` sums the paper balances beside it, absent when
   the view holds none. The two are never added together.
 - `PnlView`:
-  `{ positions: [{ asset, realizedUsdMicros, unrealizedUsdMicros?, quantity?, costUsdMicros?, boughtUsdMicros?, soldUsdMicros?, feesUsdMicros?, gasUsdMicros?, openedAt?, closedAt? }], realizedUsdMicros, unrealizedUsdMicros?, paperPositions?, paperRealizedUsdMicros?, paperUnrealizedUsdMicros?, assets }`.
+  `{ positions: [{ asset, realizedUsdMicros, unrealizedUsdMicros? }], realizedUsdMicros, unrealizedUsdMicros?, paperPositions?, paperRealizedUsdMicros?, paperUnrealizedUsdMicros?, cards?: [PnlCardView], assets }`.
   The first three are live, the `paper` ones paper, never added together; an unrealized figure is
-  absent where no price is known. The optional fields of a position feed the P&L card
-  ([spec 4, section 3.7](cards-and-messages.md#section-3-7)): what it holds now and its cost at
-  average cost; what the range's executions paid and received in USD; the venue fees and network
-  fees they paid; its first buy; and, when it holds nothing now, the execution that emptied it.
+  absent where no price is known. `PnlCardView` is `{ asset, paper, closed, lines: [CardLineView] }`:
+  a position's P&L card ([spec 4, section 3.7](cards-and-messages.md#section-3-7)) drawn by the
+  engine, so every surface shows the same card with `cardLineText`
+  ([decision 0243](../DECISIONS.md#d0243)).
 - `LaunchView`:
   `{ chain, token: AssetRef, launchpad, creator: AccountRef, quoteToken: AssetRef, taxBps?, snipeTaxBps?, curveProgressBps?, graduated, insiders: [AccountRef], creatorLaunches30d, block, tx, launchedAt, assets }`:
   one token a launchpad created, from its create event; `curveProgressBps` and `graduated` as last

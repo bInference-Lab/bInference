@@ -31,6 +31,7 @@ import {
   scanItemSchema,
   sourceIdSchema,
 } from "../views/market-view.schema.js";
+import { type PnlCardView, pnlCardViewSchema } from "../views/pnl-card-view.schema.js";
 import { type PortfolioView, portfolioViewSchema } from "../views/portfolio-view.schema.js";
 import { type QuoteView, quoteViewSchema } from "../views/quote-view.schema.js";
 import { type RiskView, riskViewSchema } from "../views/risk-view.schema.js";
@@ -42,11 +43,13 @@ interface PortfolioArgs {
   readonly wallet?: ProtocolId<"wallet">;
 }
 
-/** The args of `portfolio/pnl`: one agent over a time range. */
+/** The args of `portfolio/pnl`: one agent over a time range, and whether to draw its P&L cards. */
 interface PnlArgs {
   readonly agent: ProtocolId<"agent">;
   readonly from: number;
   readonly to: number;
+  /** Also answer `cards`: the open positions and those closed from `from` to `to`. */
+  readonly cards?: boolean;
 }
 
 /** One position's profit or loss in a range, at average cost; below zero is a loss. */
@@ -70,6 +73,11 @@ interface PnlView {
   readonly paperPositions?: readonly PositionPnl[];
   readonly paperRealizedUsdMicros?: bigint;
   readonly paperUnrealizedUsdMicros?: bigint;
+  /**
+   * With `cards`: a P&L card per position open now or closed in the range (decision 0243), live
+   * before paper, each mode's open ones first.
+   */
+  readonly cards?: readonly PnlCardView[];
   readonly assets: AssetInfos;
 }
 
@@ -205,6 +213,7 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
       agent: protocolIdSchema("agent"),
       from: epochMsSchema,
       to: epochMsSchema,
+      cards: z.boolean().exactOptional(),
     }),
     result: z.object({
       positions: z.array(positionPnl),
@@ -213,6 +222,7 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
       paperPositions: z.array(positionPnl).exactOptional(),
       paperRealizedUsdMicros: pnl.exactOptional(),
       paperUnrealizedUsdMicros: pnl.exactOptional(),
+      cards: z.array(pnlCardViewSchema).exactOptional(),
       assets: assetInfosSchema,
     }),
   },
