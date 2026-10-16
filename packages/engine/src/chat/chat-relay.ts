@@ -2,11 +2,13 @@ import type { Id } from "@binference/core";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
+import { createImageHandlers, type ImageHandlers } from "./image-handlers.js";
+import { createImageHold } from "./image-hold.js";
 import { createOwnerChatHandlers, type OwnerChatHandlers } from "./owner-chat-handlers.js";
 import { createRuntimeChatHandlers, type RuntimeChatHandlers } from "./runtime-chat-handlers.js";
 
 /** The chat operations the engine answers itself; the routed ones reach the runtime. */
-export interface ChatHandlers extends OwnerChatHandlers, RuntimeChatHandlers {}
+export interface ChatHandlers extends OwnerChatHandlers, RuntimeChatHandlers, ImageHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -44,6 +46,13 @@ async function stopOne(options: ChatRelayOptions, agent: Id<"agt">, signal: Abor
   }
 }
 
+// `inbox/readImage` over a hold of the owner's images, when the options name their source.
+function imageHandlersOf(options: ChatRelayOptions): ImageHandlers {
+  const { agentInbox, turns, images, clock } = options;
+  const hold = images === undefined ? {} : { hold: createImageHold({ source: images, clock }) };
+  return createImageHandlers({ agentInbox, turns, ...hold });
+}
+
 /** Creates the {@link ChatRelay} over the agent inbox, the agents and the running turns. */
 export function createChatRelay(options: ChatRelayOptions): ChatRelay {
   const stopFrozen = async (agent: Id<"agt"> | undefined, signal: AbortSignal) => {
@@ -55,7 +64,11 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
     }
   };
   return {
-    handlers: { ...createOwnerChatHandlers(options), ...createRuntimeChatHandlers(options) },
+    handlers: {
+      ...createOwnerChatHandlers(options),
+      ...createRuntimeChatHandlers(options),
+      ...imageHandlersOf(options),
+    },
     settled(message) {
       void pushInbox(options, message, new AbortController().signal).catch(() => undefined);
     },

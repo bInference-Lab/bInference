@@ -5,7 +5,7 @@ import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { inboxPushData, inboxViewOf, type IntentViewOf } from "./inbox-views.js";
-import type { AgentInboxStore, QuestionStore } from "./ports.js";
+import type { AgentInboxStore, OwnerImageSource, QuestionStore } from "./ports.js";
 import type { RunningTurns } from "./running-turns.js";
 
 /** What the chat relay reads, writes and pushes through. */
@@ -24,6 +24,8 @@ export interface ChatRelayOptions {
   readonly random: Random;
   readonly clock: Clock;
   readonly publish: PublishPush;
+  /** The owner's images by the names messages give them; without it none can be read. */
+  readonly images?: OwnerImageSource;
 }
 
 /** The topic of one agent's chat. */

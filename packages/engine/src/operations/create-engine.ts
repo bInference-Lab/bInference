@@ -12,6 +12,7 @@ import {
 } from "../audit/config-history-handlers.js";
 import type { ModelBudgetParts } from "../billing/model-budget.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import type { OwnerImageSource } from "../chat/ports.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { type CapGate, createCapGate } from "../confirmations/cap-gate.js";
 import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
@@ -204,6 +205,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts {
    * that starts the runtime keeps; an engine with no runtime has none started.
    */
   readonly turns?: RunningTurns;
+  /**
+   * The owner's images by the names messages give them, which the runtime reads with
+   * `inbox/readImage`: uploads and the bot's photos. Without it, every image is unreadable.
+   */
+  readonly ownerImages?: OwnerImageSource;
   /**
    * Whether a live auto order may fill. Off when absent, and no config sets it: live fills wait
    * for the crash suite on fills (decision 0195), so a live order skips with `live_fills_off`.

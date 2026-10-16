@@ -60,6 +60,7 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     random: options.random,
     clock: options.clock,
     publish: options.publish,
+    ...(options.ownerImages === undefined ? {} : { images: options.ownerImages }),
   });
   return {
     relay,
