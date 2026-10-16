@@ -77,14 +77,17 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   }
 }
 
+type SecretParts = Pick<
+  Opened,
+  "tracers" | "headSockets" | "chains" | "reads" | "venues" | "bot" | "runtime" | "secrets"
+>;
+
 // The parts that read config's secret sources: the owner's own RPCs, the venues and the bot.
 async function readSecretParts(
   opening: Opening,
   config: BinferenceConfig,
   log: OpenedLog,
-): Promise<
-  Pick<Opened, "tracers" | "headSockets" | "chains" | "reads" | "venues" | "bot" | "runtime">
-> {
+): Promise<SecretParts> {
   const { host, platform, signal } = opening;
   const secrets = createSecretReader({
     env: host.env,
@@ -125,7 +128,7 @@ async function readSecretParts(
     logger: log.logger.child("runtime"),
     signal,
   });
-  return { tracers, headSockets, chains, reads, venues, bot, runtime };
+  return { tracers, headSockets, chains, reads, venues, bot, runtime, secrets };
 }
 
 async function openStoresAndServe(

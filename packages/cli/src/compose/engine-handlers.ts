@@ -32,6 +32,8 @@ interface EngineWiring {
   readonly runtime: () => RuntimeHealth;
   /** Puts an agent's picked models in force in the runtime. */
   readonly pick: ComposedRuntime["pick"];
+  /** The models the runtime runs with now. */
+  readonly models: ComposedRuntime["models"];
   /** The price watchers' signal, with their lag in blocks while one reads. */
   readonly watcher: () => HealthSignal;
 }
@@ -82,7 +84,7 @@ export function engineHandlers(
       reload: opened.configReload,
     }),
     ...createModelOperations({
-      models: () => opened.runtime.models,
+      models: wiring.models,
       agents: opened.stores.agents,
       clock,
       picked: async (agent, picks) => wiring.pick(agent, picks),

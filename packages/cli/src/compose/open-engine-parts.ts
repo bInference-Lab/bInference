@@ -24,6 +24,7 @@ import {
   openDatabase,
 } from "@binference/store";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
+import type { SecretReader } from "../config/secrets/secret-reader.js";
 import type { ConfigOutcome } from "../config/validate-config.js";
 import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
 import type { CliHost } from "../program/cli-host.js";
@@ -79,6 +80,8 @@ export interface Opened {
   readonly bot: OpenedBot | undefined;
   /** What the agent runtime starts with, its keys read from their secret sources. */
   readonly runtime: RuntimeSettings;
+  /** Reads config's secret sources, again at a reload for the parts that follow it. */
+  readonly secrets: SecretReader;
   /** The console's built files, or `undefined` when the engine serves no console. */
   readonly consoleFiles: ConsoleFiles | undefined;
   /** The VAPID key of browser push, or `undefined` when `keys/` holds one it cannot read. */

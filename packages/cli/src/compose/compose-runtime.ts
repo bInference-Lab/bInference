@@ -1,9 +1,10 @@
 import { BinferenceError, type Id, idSchema } from "@binference/core";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
-import type { AgentModelPicks, RuntimeSettings } from "@binference/runtime";
+import type { AgentModelPicks, RuntimeModels, RuntimeSettings } from "@binference/runtime";
 import type { ProtocolServer } from "@binference/server";
 import { createRoutedHandlers } from "../agent-runtime/routed-handlers.js";
+import { runtimeKeys, runtimeSettingsOf } from "../agent-runtime/runtime-settings-of.js";
 import {
   createRuntimeSupervisor,
   type RuntimeHealth,
@@ -46,6 +47,14 @@ export interface ComposedRuntime {
    * agent's next turn, and every later start begins with them (decision 0204).
    */
   pick(agent: Id<"agt">, picks: AgentPicks): Promise<void>;
+  /** The models the runtime runs with now: the config's, keys resolved. */
+  models(): RuntimeModels;
+  /**
+   * Follows a reload of `config.json5` (decision 0230): when a changed key is one the runtime's
+   * settings hold, reads them again from the config cell, provider and search keys from their
+   * secret sources, and sends them to the runtime, which applies them from its next model call.
+   */
+  followReload(changed: readonly string[], signal: AbortSignal): Promise<void>;
   /**
    * Starts the runtime once the server serves, and adds its closer: the shutdown, which closes the
    * parts last opened first, stops it before every other part.
@@ -53,23 +62,32 @@ export interface ComposedRuntime {
   begin(server: Pick<ProtocolServer, "endSessions">): void;
 }
 
-/** Each agent's picked models as the runtime holds them. */
-interface RuntimePicks {
+/** The runtime's settings as the engine holds them: the config's, with each agent's picks. */
+interface HeldSettings {
   readonly pick: ComposedRuntime["pick"];
+  readonly models: ComposedRuntime["models"];
+  /** Puts settings read again from the config in force, with the picks kept. */
+  readonly follow: (settings: RuntimeSettings) => Promise<void>;
   /** Reads the picks the store kept from before this start and puts them in force; logs a fault. */
   readonly load: () => Promise<void>;
 }
 
-function runtimePicksOf(
+function heldSettingsOf(
   opened: Opened,
   supervisor: Pick<RuntimeSupervisor, "apply">,
-): RuntimePicks {
+): HeldSettings {
   const picks = new Map<string, AgentModelPicks>();
-  const apply = async (): Promise<void> => supervisor.apply(settingsWith(opened.runtime, picks));
+  const state = { config: opened.runtime };
+  const apply = async (): Promise<void> => supervisor.apply(settingsWith(state.config, picks));
   const logger = opened.log.logger.child("runtime");
   return {
     async pick(agent, picked) {
       picks.set(agent, runtimePicks(picked));
+      await apply();
+    },
+    models: () => state.config.models,
+    async follow(settings) {
+      state.config = settings;
       await apply();
     },
     async load() {
@@ -89,6 +107,20 @@ function runtimePicksOf(
         logger.warn("runtime.picks_unread", { errorCode });
       }
     },
+  };
+}
+
+const isRuntimeKey = (path: string): boolean =>
+  runtimeKeys.some((key) => path === key || path.startsWith(`${key}.`));
+
+function followReloadOf(opened: Opened, held: HeldSettings): ComposedRuntime["followReload"] {
+  return async (changed, signal) => {
+    if (!changed.some(isRuntimeKey)) {
+      return;
+    }
+    const logger = opened.log.logger.child("runtime");
+    const call = { secrets: opened.secrets, logger, signal };
+    await held.follow(await runtimeSettingsOf(opened.settings.current(), call));
   };
 }
 
@@ -121,7 +153,7 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
     clock: host.clock,
     logger: opened.log.logger.child("runtime"),
   });
-  const picks = runtimePicksOf(opened, supervisor);
+  const held = heldSettingsOf(opened, supervisor);
   return {
     turns,
     handlers: createRoutedHandlers(
@@ -131,11 +163,13 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
         opened.stores.agentInbox.openSession(idSchema("agt").parse(agent), { signal }),
     ),
     health: () => supervisor.health(),
-    pick: picks.pick,
+    pick: held.pick,
+    models: held.models,
+    followReload: followReloadOf(opened, held),
     begin(server) {
       ended.endSessions = (credential) => server.endSessions(credential, "auth.revoked");
       supervisor.begin();
-      void picks.load();
+      void held.load();
       closers.add("runtime", async (signal) => supervisor.stop(signal));
     },
   };

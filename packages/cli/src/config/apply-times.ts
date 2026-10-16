@@ -44,6 +44,10 @@ const keysReadOnUse: readonly string[] = [
   "logging.level",
   "backups",
   "telegram.topicsPerAgent",
+  // The runtime gets them again in its settings, applied from its next model call.
+  "models",
+  "search",
+  "chats.newMessageMode",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the
@@ -65,15 +69,12 @@ const keysNoPartReads: readonly string[] = [
 // until its part reads the config cell on each use.
 const keysCopiedAtStart: readonly string[] = [
   "engine.extraOrigins",
-  "models",
   "chains.rpc.*.urls",
   "chains.relays",
   "chains.maxFeePerGasGwei",
   "venues.keys.okx",
   "venues.kyberClientId",
   "risk",
-  "search",
-  "chats.newMessageMode",
   "logging.keepDays",
   "logging.maxFileMb",
 ];

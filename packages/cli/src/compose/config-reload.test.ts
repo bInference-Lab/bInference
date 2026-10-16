@@ -1,3 +1,4 @@
+import { BinferenceError } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import type { EnginePush } from "@binference/engine";
 import { createMemoryConfigJournal } from "@binference/engine/testing";
@@ -26,7 +27,10 @@ function valid(config: BinferenceConfig): ConfigOutcome {
 }
 
 // A reload over a watch the test fires, reading whatever the test puts on disk.
-function reloadOver(start: BinferenceConfig) {
+function reloadOver(
+  start: BinferenceConfig,
+  follow: (keys: readonly string[]) => void = () => undefined,
+) {
   const clock = createManualClock(0);
   const closers = createClosers();
   const journal = createMemoryConfigJournal();
@@ -43,6 +47,10 @@ function reloadOver(start: BinferenceConfig) {
     },
     settings,
     journal: { journal, publish: (push) => pushes.push(push) },
+    follow: async (keys) => {
+      follow(keys);
+      return Promise.resolve();
+    },
     watch: (_path, options: WatchFileOptions) => {
       watched.onChange = options.onChange;
       return { close: () => undefined };
@@ -89,6 +97,32 @@ describe("the settings reload", () => {
         values: { changed: "engine.port, logging.level", afterRestart: "engine.port" },
       },
     ]);
+    await reload.closers.closeAll(live().signal);
+  });
+
+  it("hands the changed keys to the parts that follow, after the cell holds them, before the notice", async () => {
+    const seen: (readonly [readonly string[], string, number])[] = [];
+    const reload = reloadOver(configWith({}), (keys) => {
+      seen.push([keys, reload.settings.current().logging.level, reload.pushes.length]);
+    });
+    reload.save(valid(configWith({ logging: { level: "debug" } })));
+    await reload.clock.advance(500);
+    expect(seen).toStrictEqual([[["logging.level"], "debug", 1]]);
+    expect(notices(reload.pushes)).toHaveLength(1);
+    await reload.closers.closeAll(live().signal);
+  });
+
+  it("logs a part that fails to follow, and still names the changes", async () => {
+    const reload = reloadOver(configWith({}), () => {
+      throw new BinferenceError({ code: "runtime.unavailable", message: "Down." });
+    });
+    reload.save(valid(configWith({ logging: { level: "debug" } })));
+    await reload.clock.advance(500);
+    expect(reload.logger.records().map(({ event, fields }) => [event, fields])).toStrictEqual([
+      ["config.follow_failed", { errorCode: "runtime.unavailable" }],
+      ["config.reloaded", {}],
+    ]);
+    expect(notices(reload.pushes)).toHaveLength(1);
     await reload.closers.closeAll(live().signal);
   });
 

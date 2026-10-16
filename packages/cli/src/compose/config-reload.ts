@@ -25,6 +25,11 @@ export interface ConfigReloadOptions {
   readonly settings: ConfigCell;
   /** The config journal, and where its entries and the notices are pushed. */
   readonly journal: ConfigChangeParts;
+  /**
+   * Hands the changed keys to the parts that read secrets again or send settings on, once the cell
+   * holds the new config and before the notice names the changes as applied.
+   */
+  readonly follow: (changed: readonly string[], signal: AbortSignal) => Promise<void>;
   /** Watches the file: the platform's watcher, or a test's. */
   readonly watch: (path: string, options: WatchFileOptions) => FileWatch;
   readonly clock: Clock;
@@ -45,6 +50,21 @@ function refuse(options: ConfigReloadOptions, issues: readonly ConfigIssue[]): v
   options.logger.warn("config.reload_refused", { errorCode: `config.${problem.kind}` });
   const line = problem.kind === "unreadable" ? String(problem.line) : "";
   options.journal.publish(configInvalidNotice({ problem: problem.kind, key: issue.path, line }));
+}
+
+// A part that fails to follow keeps what it held and logs it; the other parts and the notice go on.
+async function follow(
+  options: ConfigReloadOptions,
+  keys: readonly string[],
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    await options.follow(keys, signal);
+  } catch (error) {
+    signal.throwIfAborted();
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    options.logger.warn("config.follow_failed", { errorCode });
+  }
 }
 
 // Each changed key is journaled before the new config is put in place.
@@ -72,6 +92,7 @@ async function apply(
   }, Promise.resolve());
   options.settings.replace(read.config);
   const keys = changes.map((change) => change.path);
+  await follow(options, keys, signal);
   const afterRestart = changes.filter((change) => !change.appliesNow).map((change) => change.path);
   options.journal.publish(configChangedNotice({ keys, afterRestart }));
   options.logger.info("config.reloaded");

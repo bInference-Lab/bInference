@@ -76,6 +76,7 @@ function startTimers(
     readConfig: opened.readConfig,
     settings: opened.settings,
     journal: { journal: opened.stores.configJournal, publish: composed.publish },
+    follow: async (keys, reading) => composed.runtime.followReload(keys, reading),
     watch: watchFile,
     clock: host.clock,
     closers,

@@ -6,6 +6,9 @@ import type { SecretReader } from "../config/secrets/secret-reader.js";
 
 type RuntimeConfig = Pick<BinferenceConfig, "models" | "chats" | "search" | "owner">;
 
+/** The config keys the runtime's settings hold: a change to one sends the runtime new settings. */
+export const runtimeKeys: readonly string[] = ["models", "chats.newMessageMode", "search", "owner"];
+
 interface ReadCall {
   readonly secrets: SecretReader;
   readonly logger: Logger;

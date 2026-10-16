@@ -79,6 +79,7 @@ async function machine() {
     readConfig,
     settings,
     journal: { journal, publish: (push) => pushes.push(push) },
+    follow: async () => Promise.resolve(),
     watch: (_path, options: WatchFileOptions) => {
       watched.onChange = options.onChange;
       return { close: () => undefined };
