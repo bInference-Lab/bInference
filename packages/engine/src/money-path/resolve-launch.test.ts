@@ -1,0 +1,135 @@
+import { accountRefSchema, type LaunchOption } from "@binference/chain";
+import {
+  createFakeLauncher,
+  createFakeLaunchpad,
+  createFakeSigner,
+} from "@binference/chain/testing";
+import { createManualClock } from "@binference/core/testing";
+import type { LaunchTokenRequest } from "@binference/protocol";
+import { describe, expect, it } from "vitest";
+import type { AgentSettings } from "../agents/agent-record.js";
+import { fixtureId } from "../contracts/store-fixtures.js";
+import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
+import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
+import {
+  testAgent,
+  testAgentDraft,
+  testCoin,
+  testNowMs,
+  testWallet,
+} from "../intents/test-intents.js";
+import { testAccount, testChains, testFacts } from "../operations/test-engine.js";
+import { createLaunchHost } from "../venues/launch-host.js";
+import { type ResolveLaunchOptions, resolveLaunch } from "./resolve-launch.js";
+
+const pad = "fake-curve";
+const launchWallet = fixtureId("wal", 271);
+const launchAccount = accountRefSchema.parse("fake:1:0x000000d9");
+const settings: readonly LaunchOption[] = [{ name: "taxBps", type: "bps", max: 1000, default: 0 }];
+const signal = AbortSignal.timeout(5_000);
+
+const launch: LaunchTokenRequest = {
+  kind: "launchToken",
+  agent: testAgent,
+  reason: "Launch it",
+  venue: pad,
+  name: "Moon Cat",
+  symbol: "MCAT",
+  image: "upl_moon",
+  pairWith: testCoin,
+  venueOptions: { taxBps: 100 },
+};
+
+// The resolve's ports over the fake chain: a launchpad that launches, the test agent's two
+// wallets, and, when asked, the second one stored as its launch wallet.
+async function optionsOf(agent: { readonly hasLaunchWallet: boolean }) {
+  const chains = testChains([pad]);
+  const clock = createManualClock(testNowMs);
+  const launcher = createFakeLauncher({ launchOptions: settings });
+  const venues = [createFakeLaunchpad({ onCurve: [], launcher })];
+  const stores = createMemoryEngineStores();
+  await stores.agents.create(testAgentDraft({ mode: "live" }), { signal });
+  if (agent.hasLaunchWallet) {
+    const record = {
+      id: launchWallet,
+      agentId: testAgent,
+      label: "launches",
+      createdAtMs: testNowMs,
+    };
+    stores.install.addWallet(testWalletRecord({ ...record, role: "launch" }));
+  }
+  const options: ResolveLaunchOptions = {
+    chains,
+    wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet, launchWallet]]]), testFacts),
+    install: stores.install,
+    custody: createFakeSigner(
+      new Map([
+        [testWallet, testAccount],
+        [launchWallet, launchAccount],
+      ]),
+    ),
+    launch: { host: createLaunchHost({ venues, chains, clock, callTimeoutMs: 1_000 }) },
+  };
+  const found = await stores.agents.get(testAgent, { signal });
+  return { options, settings: settingsOf(found) };
+}
+
+function settingsOf(found: AgentSettings | undefined): AgentSettings {
+  if (found === undefined) {
+    throw new Error("The test agent is missing.");
+  }
+  return found;
+}
+
+async function resolved(
+  request: LaunchTokenRequest,
+  options: { readonly isPaper?: boolean; readonly hasLaunchWallet?: boolean } = {},
+) {
+  const parts = await optionsOf({ hasLaunchWallet: options.hasLaunchWallet ?? true });
+  const isPaper = options.isPaper ?? false;
+  return resolveLaunch(parts.options, { request, settings: parts.settings, isPaper, signal });
+}
+
+describe("a token launch as the engine resolves it", () => {
+  it("runs a live launch from the agent's launch wallet, its settings filled", async () => {
+    await expect(resolved(launch)).resolves.toMatchObject({
+      ok: true,
+      value: {
+        wallet: launchWallet,
+        account: launchAccount,
+        isLaunchWallet: true,
+        launchSettings: [{ name: "taxBps", type: "bps", value: 100 }],
+      },
+    });
+  });
+
+  it.each<
+    [string, LaunchTokenRequest, { readonly isPaper?: boolean; readonly hasLaunchWallet?: boolean }]
+  >([
+    ["a paper launch", launch, { isPaper: true }],
+    ["a launch that names another wallet", { ...launch, wallet: testWallet }, {}],
+    ["an agent with no launch wallet", launch, { hasLaunchWallet: false }],
+  ])("holds %s on another wallet, not as a launch wallet's", async (_case, request, options) => {
+    await expect(resolved(request, options)).resolves.toMatchObject({
+      ok: true,
+      value: { wallet: testWallet, isLaunchWallet: false },
+    });
+  });
+
+  it.each<[string, LaunchTokenRequest, string]>([
+    ["a venue that launches nothing", { ...launch, venue: "fake-swap" }, "quote.no_route"],
+    [
+      "settings the launchpad does not take",
+      { ...launch, venueOptions: { tax: 1 } },
+      "protocol.bad_args",
+    ],
+    [
+      "a wallet that is not the agent's",
+      { ...launch, wallet: fixtureId("wal", 9) },
+      "wallet.not_found",
+    ],
+  ])("refuses %s before anything is stored", async (_case, request, error) => {
+    await expect(resolved(request)).resolves.toStrictEqual({ ok: false, error });
+  });
+});
