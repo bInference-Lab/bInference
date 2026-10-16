@@ -73,7 +73,7 @@ export const remoteSchema: z.ZodType<RemoteConfig> = z
     publicUrl: formatted("https_origin")
       .exactOptional()
       .describe(
-        "The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may open the engine's socket and console, never pairing; it must serve nothing else.",
+        "The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may open the engine's socket, the console and the Mini App's image uploads, never pairing; it must serve nothing else.",
       ),
   })
   .prefault({})

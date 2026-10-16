@@ -10,7 +10,8 @@ import type { LockoutAlerts } from "./lockout-alerts.js";
 import type { OriginRules, RequestNames } from "./origin-check.js";
 import { answerPair } from "./pair-route.js";
 import { resourceHeaders } from "./security-headers.js";
-import { answerUpload, uploadPath } from "./upload-route.js";
+import { isTelegramCredential } from "./sign-in.js";
+import { answerUpload, type UploadRouteContext, uploadPath } from "./upload-route.js";
 
 /** The path of a request, `/` when it has none. */
 export function pathOf(request: IncomingMessage): string {
@@ -68,6 +69,8 @@ export interface HttpRoutesContext {
   readonly consoleFiles?: ConsoleFiles;
   /** Takes the owner's images at `POST /upload/:ticket`; without it the path is 404. */
   readonly uploads?: Pick<UploadShelf, "receive">;
+  /** Whether a connection signed in with this credential is open now. */
+  readonly isSignedIn: (credential: string) => boolean;
   /** Aborts when the server stops. */
   readonly signal: AbortSignal;
 }
@@ -87,16 +90,39 @@ function answerHealth(
     .end(JSON.stringify({ state: current }));
 }
 
+interface WriteContext extends HttpRoutesContext {
+  readonly path: string;
+  readonly rules: OriginRules;
+  /** The request came through the public address. */
+  readonly isPublished: boolean;
+}
+
+// Who may upload. On this machine: no browser, or one from an origin that may pair. Through the
+// public address (decision 0229): only the Mini App's page, on a ticket a Mini App connection
+// asked for while that connection stays signed in.
+function uploadRules(
+  context: WriteContext,
+): Pick<UploadRouteContext, "isAllowedOrigin" | "admits"> {
+  const { rules, isSignedIn } = context;
+  if (!context.isPublished) {
+    return { isAllowedOrigin: (origin) => origin === undefined || rules.isPairingOrigin(origin) };
+  }
+  return {
+    isAllowedOrigin: rules.isPublicOrigin,
+    admits: (holder) => isTelegramCredential(holder) && isSignedIn(holder),
+  };
+}
+
 // The routes that write, `POST /upload/:ticket` and `POST /pair`, when the server serves them:
 // answers whether one took the request.
 function answerWrite(
   request: IncomingMessage,
   response: ServerResponse,
-  context: HttpRoutesContext & { readonly path: string; readonly rules: OriginRules },
+  context: WriteContext,
 ): boolean {
   const { pairing, uploads, signal, path, rules: origins } = context;
   if (path.startsWith(uploadPath) && uploads !== undefined) {
-    answerUpload(request, response, { uploads, isAllowedOrigin: origins.isPairingOrigin, path });
+    answerUpload(request, response, { uploads, path, ...uploadRules(context) });
     return true;
   }
   if (path !== "/pair" || pairing === undefined) {
@@ -119,7 +145,8 @@ function answerWrite(
  * `503 {"state":"starting"}`. `POST /pair` pairs a console device, `POST /upload/:ticket` takes
  * the owner's image (`answerUpload`), and every other `GET` the console's files serve
  * (`answerConsole`). A wrong method on `/health` or `/pair` is 405, and
- * anything else 404. Through the public address, `/health`, `/pair` and uploads are 404.
+ * anything else 404. Through the public address, `/health` and `/pair` are 404, and an upload
+ * needs the public origin and a Mini App's ticket (decision 0229).
  */
 export function answerRequest(
   request: IncomingMessage,
@@ -128,10 +155,9 @@ export function answerRequest(
 ): void {
   const path = pathOf(request);
   const origins = context.origins();
-  // Pairing, uploads and health stay on this machine: through the public address they do not
-  // exist.
-  const isLocalOnly = path === "/health" || path === "/pair" || path.startsWith(uploadPath);
-  if (isLocalOnly && origins.isPublished(namesOf(request))) {
+  const isPublished = origins.isPublished(namesOf(request));
+  // Pairing and health stay on this machine: through the public address they do not exist.
+  if ((path === "/health" || path === "/pair") && isPublished) {
     response.writeHead(404, plain).end();
     return;
   }
@@ -139,7 +165,7 @@ export function answerRequest(
     answerHealth(request, response, context.state);
     return;
   }
-  if (answerWrite(request, response, { ...context, path, rules: origins })) {
+  if (answerWrite(request, response, { ...context, path, rules: origins, isPublished })) {
     return;
   }
   const { consoleFiles } = context;

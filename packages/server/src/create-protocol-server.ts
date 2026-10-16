@@ -41,7 +41,8 @@ export interface HttpListenOptions {
   readonly extraOrigins?: readonly string[];
   /**
    * The HTTPS origin a tunnel publishes the listener at (config `remote.publicUrl`): it opens
-   * `/ws` and the console's files; `POST /pair` and `GET /health` answer 404 through it.
+   * `/ws`, the console's files and a Mini App's uploads; `POST /pair` and `GET /health` answer 404
+   * through it.
    */
   readonly publicOrigin?: string;
 }
@@ -283,6 +284,7 @@ function createListener(state: ServerState, options: ListenerOptions): Server {
       failures: state.context.failures,
       alerts: state.context.alerts,
       logger: state.context.logger,
+      isSignedIn: (id) => [...state.connections].some((each) => each.signedInAs() === id),
       signal: state.lifetime.signal,
     }),
   );

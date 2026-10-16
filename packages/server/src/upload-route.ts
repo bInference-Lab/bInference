@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { UploadRefusal, UploadShelf } from "@binference/engine/chat";
+import type { UploadHolder, UploadRefusal, UploadShelf } from "@binference/engine/chat";
 import { maxImageBytes, type ProtocolErrorCode } from "@binference/protocol";
 import { resourceHeaders } from "./security-headers.js";
 
@@ -10,8 +10,10 @@ export const uploadPath = "/upload/";
 /** What `POST /upload/:ticket` checks and keeps through. */
 export interface UploadRouteContext {
   readonly uploads: Pick<UploadShelf, "receive">;
-  /** Whether a browser's `Origin` may upload; a request with none is not a browser's. */
+  /** Whether a request with this `Origin`, or none, may upload. */
   readonly isAllowedOrigin: (origin: string | undefined) => boolean;
+  /** Whether the credential that asked for the ticket may use it here; any may when absent. */
+  readonly admits?: (holder: UploadHolder) => boolean;
 }
 
 const jsonHeaders = {
@@ -68,8 +70,7 @@ async function upload(
   response: ServerResponse,
   context: UploadRouteContext & { readonly ticket: string },
 ): Promise<void> {
-  const { origin } = request.headers;
-  if (origin !== undefined && !context.isAllowedOrigin(origin)) {
+  if (!context.isAllowedOrigin(request.headers.origin)) {
     refuse(response, "origin");
     return;
   }
@@ -79,7 +80,7 @@ async function upload(
     refuse(response, "too_large");
     return;
   }
-  const kept = context.uploads.receive(context.ticket, body);
+  const kept = context.uploads.receive(context.ticket, body, context.admits);
   if (!kept.ok) {
     refuse(response, kept.error);
     return;
@@ -88,8 +89,9 @@ async function upload(
 }
 
 /**
- * Answers `POST /upload/:ticket` (protocol spec, section 3; decision 0227): one image of at most
- * 5 MiB, as the ticket of `upload/start` planned it, from no browser or an allowed one. It answers
+ * Answers `POST /upload/:ticket` (protocol spec, section 2.1; decisions 0227 and 0229): one image
+ * of at most 5 MiB, as the ticket of `upload/start` planned it, from an origin the context allows
+ * and, with `admits`, on a ticket a credential it admits asked for. It answers
  * 201 `{ upload }`, or a refusal `{ error: { code, message } }`: 404 `image.not_found` for a
  * ticket that is unknown, used or expired, 413 `image.too_large`, 400 `protocol.bad_args` for a
  * body of another size than planned, 415 `image.format`, 403 `auth.origin`. Another method is 405.

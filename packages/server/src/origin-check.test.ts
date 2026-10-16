@@ -21,12 +21,16 @@ describe("createOriginRules", () => {
     ]);
   });
 
-  it("lets the public origin connect, but never pair", () => {
+  it("lets the public origin connect and upload, but never pair", () => {
     const origin = "https://owner.example.ts.net";
+    const answers = [origin, "http://127.0.0.1:7456", undefined].map((each) =>
+      rules.isPublicOrigin(each),
+    );
     expect([rules.isSocketOrigin(origin), rules.isPairingOrigin(origin)]).toStrictEqual([
       true,
       false,
     ]);
+    expect(answers).toStrictEqual([true, false, false]);
   });
 
   it.each([

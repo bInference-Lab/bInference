@@ -37,6 +37,8 @@ export interface Connection {
    * `undefined` before `open` and after the close.
    */
   credential(): string | undefined;
+  /** The id of the credential the connection signed in with, once it is ready and until it closes. */
+  signedInAs(): string | undefined;
   /** Resolves once the socket closed. */
   readonly closed: Promise<void>;
 }
@@ -328,6 +330,10 @@ export function serveConnection(
     end: (code, message) => sayBye(link, code, message),
     terminate: () => socket.terminate(),
     credential: () => credentialOf(link.phase.get()),
+    signedInAs: () => {
+      const phase = link.phase.get();
+      return phase.name === "ready" ? phase.session.caller.credential : undefined;
+    },
     closed,
   };
 }

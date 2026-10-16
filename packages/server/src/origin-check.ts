@@ -5,8 +5,8 @@ export interface OriginCheckOptions {
   /** Origins allowed besides the two loopback ones, such as the Tailscale serve origin. */
   readonly extraOrigins: readonly string[];
   /**
-   * The HTTPS origin a tunnel publishes the listener at (`remote.publicUrl`): it may open `/ws`
-   * and the console's files, never `POST /pair` or `GET /health`.
+   * The HTTPS origin a tunnel publishes the listener at (`remote.publicUrl`): it may open `/ws`,
+   * the console's files and a Mini App's uploads, never `POST /pair` or `GET /health`.
    */
   readonly publicOrigin?: string;
 }
@@ -17,6 +17,8 @@ export interface OriginRules {
   readonly isSocketOrigin: (origin: string | undefined) => boolean;
   /** Whether a `POST /pair` from this origin may pair a device. */
   readonly isPairingOrigin: (origin: string | undefined) => boolean;
+  /** Whether this is the public origin, the only one a request through the public address may send. */
+  readonly isPublicOrigin: (origin: string | undefined) => boolean;
   /**
    * Whether a request came through the public address: its `Host`, `X-Forwarded-Host` or
    * `Origin` names the public origin's host.
@@ -28,6 +30,7 @@ export interface OriginRules {
 export const closedOriginRules: OriginRules = {
   isSocketOrigin: () => false,
   isPairingOrigin: () => false,
+  isPublicOrigin: () => false,
   isPublished: () => false,
 };
 
@@ -66,7 +69,8 @@ function originSet(origins: readonly string[]): (origin: string | undefined) => 
 /**
  * Builds the origin rules of the HTTP listener. `http://127.0.0.1:<port>`,
  * `http://localhost:<port>` and the extra origins open WebSockets and pair devices; the public
- * origin opens WebSockets only, and a request that names its host is kept from pairing and health.
+ * origin opens WebSockets and uploads only, and a request that names its host is kept from pairing
+ * and health.
  * A missing, opaque or other origin fails. Origins compare after URL normalization, so case and a
  * default port do not matter.
  */
@@ -78,6 +82,7 @@ export function createOriginRules(options: OriginCheckOptions): OriginRules {
   return {
     isSocketOrigin: originSet(publicOrigin === undefined ? local : [...local, publicOrigin]),
     isPairingOrigin: originSet(local),
+    isPublicOrigin: originSet(publicOrigin === undefined ? [] : [publicOrigin]),
     isPublished: (names) =>
       published !== undefined &&
       [names.host, names.forwardedHost, names.origin].some(

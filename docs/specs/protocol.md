@@ -92,22 +92,26 @@ The engine listens on two transports. Both carry the same frames (section 3) ove
 
 ### 2.1 HTTP endpoints
 
-| Method and path        | What it does                                                                                                                                                                                                                               |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `GET /`                | The console (static files)                                                                                                                                                                                                                 |
-| `GET /mini`            | The same console build in Mini App mode                                                                                                                                                                                                    |
-| `GET /ws`              | WebSocket upgrade                                                                                                                                                                                                                          |
-| `POST /pair`           | Device pairing (section 4.2)                                                                                                                                                                                                               |
-| `GET /file/:ticket`    | A single-use download (exports, reports, backups), valid 5 minutes                                                                                                                                                                         |
-| `POST /upload/:ticket` | A single-use upload of one image (raw body, at most 5 MiB, the size and type `upload/start` named), valid 2 minutes; answers `201 { upload }`, an upload id the engine keeps in memory for 1 hour ([decision 0227](../DECISIONS.md#d0227)) |
-| `GET /health`          | `200 {"state":"ready"}`, `200 {"state":"locked"}` or `503 {"state":"starting"}`                                                                                                                                                            |
+| Method and path        | What it does                                                                                                                                                                                                                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /`                | The console (static files)                                                                                                                                                                                                                                                                                               |
+| `GET /mini`            | The same console build in Mini App mode                                                                                                                                                                                                                                                                                  |
+| `GET /ws`              | WebSocket upgrade                                                                                                                                                                                                                                                                                                        |
+| `POST /pair`           | Device pairing (section 4.2)                                                                                                                                                                                                                                                                                             |
+| `GET /file/:ticket`    | A single-use download (exports, reports, backups), valid 5 minutes                                                                                                                                                                                                                                                       |
+| `POST /upload/:ticket` | A single-use upload of one image (raw body, at most 5 MiB, the size and type `upload/start` named), valid 2 minutes, held for the credential that asked for it; answers `201 { upload }`, an upload id the engine keeps in memory for 1 hour ([decisions 0227](../DECISIONS.md#d0227) and [0229](../DECISIONS.md#d0229)) |
+| `GET /health`          | `200 {"state":"ready"}`, `200 {"state":"locked"}` or `503 {"state":"starting"}`                                                                                                                                                                                                                                          |
 
 Browser requests to `/ws` and `/pair` must carry an `Origin` from the allowed list:
 `http://127.0.0.1:<port>`, `http://localhost:<port>` and the Tailscale `serve` origin from config
-(`engine.extraOrigins`). The origin of `remote.publicUrl` opens `/ws` and the console's files only:
-pairing links always name `127.0.0.1`, so a request through the public address (its `Host`,
-`X-Forwarded-Host` or `Origin` names that host) gets 404 at `/pair` and `/health`. Any other origin
-fails with `auth.origin`.
+(`engine.extraOrigins`). The origin of `remote.publicUrl` opens `/ws`, the console's files and
+`POST /upload/:ticket` only: pairing links always name `127.0.0.1`, so a request through the public
+address (its `Host`, `X-Forwarded-Host` or `Origin` names that host) gets 404 at `/pair` and
+`/health`. Through the public address an upload must carry the public origin (else 403
+`auth.origin`), and its ticket must be one a Mini App connection asked for while a connection signed
+in with that Mini App's credential is still open (else 404 `image.not_found`, as for an unknown
+ticket) ([decision 0229](../DECISIONS.md#d0229)). On this machine an upload comes from no browser or
+an origin of the allowed list. Any other origin fails with `auth.origin`.
 
 <a id="section-2-2"></a>
 

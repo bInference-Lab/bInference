@@ -145,6 +145,11 @@ export function telegramCredentialOf(userId: number): string {
   return `tg:${String(userId)}`;
 }
 
+/** Whether a credential id is a Mini App connection's, as {@link telegramCredentialOf} makes it. */
+export function isTelegramCredential(credential: string): boolean {
+  return /^tg:[1-9][0-9]*$/.test(credential);
+}
+
 // A launch signs in when Telegram signed it with the owner's bot token, its `auth_date` is fresh,
 // the owner opened it, it never signed in before, and it brings a live launch ticket `/console`
 // made for the owner. The hash is claimed last, after the owner check, in one write to

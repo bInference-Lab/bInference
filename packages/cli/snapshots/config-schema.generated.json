@@ -854,7 +854,7 @@
             "type": "boolean"
           },
           "publicUrl": {
-            "description": "The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may open the engine's socket and console, never pairing; it must serve nothing else.",
+            "description": "The HTTPS address where the owner's own proxy publishes the engine's port: /console opens its /mini in Telegram, and its origin may open the engine's socket, the console and the Mini App's image uploads, never pairing; it must serve nothing else.",
             "type": "string",
             "pattern": "^https:\\/\\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\\d{1,5})?\\/?$",
             "valueFormat": "https_origin"
