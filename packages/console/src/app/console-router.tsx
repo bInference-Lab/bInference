@@ -1,5 +1,6 @@
 import { createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { useState } from "react";
+import { ChatScreen } from "../screens/chat-screen";
 import { ConfirmationsScreen } from "../screens/confirmations-screen";
 import { ConsoleShell } from "../screens/console-shell";
 import { LedgerScreen } from "../screens/ledger-screen";
@@ -10,6 +11,7 @@ function buildRouter(basepath: string) {
   const parent = { getParentRoute: () => root };
   const routeTree = root.addChildren([
     createRoute({ ...parent, path: "/", component: ConfirmationsScreen }),
+    createRoute({ ...parent, path: "/chat", component: ChatScreen }),
     createRoute({ ...parent, path: "/ledger", component: LedgerScreen }),
     createRoute({ ...parent, path: "/limits", component: LimitsScreen }),
   ]);

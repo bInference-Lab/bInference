@@ -69,5 +69,13 @@
   "notices.title": "通知",
   "notices.dismiss": "关闭此通知",
   "cards.timeLeft": "{seconds, plural, other {还剩 # 秒}}",
-  "cards.expired": "已过期"
+  "cards.expired": "已过期",
+  "nav.chat": "对话",
+  "chat.title": "对话",
+  "chat.agent": "Agent",
+  "chat.log": "与 {agent} 的对话",
+  "chat.empty": "还没有消息。可以问 Agent 某个代币，或让它交易。",
+  "chat.fromOwner": "你",
+  "chat.historyFailed": "无法加载此前的对话。{reason}你的消息仍会发送给 Agent。",
+  "chat.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。"
 }

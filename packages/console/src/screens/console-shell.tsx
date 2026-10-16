@@ -13,6 +13,7 @@ import { SignInEnded } from "./sign-in-ended";
 // The console's sections, in the order the header shows them.
 const sections = [
   { to: "/", key: "console.nav.confirmations" },
+  { to: "/chat", key: "console.nav.chat" },
   { to: "/ledger", key: "console.nav.ledger" },
   { to: "/limits", key: "console.nav.limits" },
 ] as const;

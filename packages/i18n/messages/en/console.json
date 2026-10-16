@@ -69,5 +69,13 @@
   "notices.title": "Notices",
   "notices.dismiss": "Dismiss this notice",
   "cards.timeLeft": "{seconds, plural, one {# second left} other {# seconds left}}",
-  "cards.expired": "Expired"
+  "cards.expired": "Expired",
+  "nav.chat": "Chat",
+  "chat.title": "Chat",
+  "chat.agent": "Agent",
+  "chat.log": "Chat with {agent}",
+  "chat.empty": "Nothing is said yet. Ask the agent about a token, or ask it to trade.",
+  "chat.fromOwner": "You",
+  "chat.historyFailed": "The chat so far could not load. {reason} Your messages still reach the agent.",
+  "chat.noAgents": "There is no agent yet. Run `binference init` to make one."
 }
