@@ -23,6 +23,9 @@ export interface ChatLive {
 }
 
 type Step = (lines: readonly LiveLine[]) => readonly LiveLine[];
+
+// The most lines the page keeps; the oldest leave first, as the transcript holds what they said.
+const mostLines = 500;
 type Move = (running: RunningTurn | undefined) => RunningTurn | undefined;
 
 /** What one push changes: the running turn, and the lines it adds. */
@@ -95,8 +98,9 @@ export function useChatLive(agent: ProtocolId<"agent">): ChatLive {
       if (step.running !== undefined) {
         setRunning(step.running);
       }
-      if (step.lines !== undefined) {
-        setLines(step.lines);
+      const { lines: add } = step;
+      if (add !== undefined) {
+        setLines((shown) => add(shown).slice(-mostLines));
       }
       if (push.kind === "chat/turnStarted" || push.kind === "chat/turnEnded") {
         void stale();
@@ -105,7 +109,7 @@ export function useChatLive(agent: ProtocolId<"agent">): ChatLive {
     refetch: stale,
   });
   const sent = useCallback((line: Extract<LiveLine, { readonly kind: "owner" }>) => {
-    setLines((shown) => [...shown, line]);
+    setLines((shown) => [...shown, line].slice(-mostLines));
   }, []);
   const reset = useCallback(() => {
     setLines([]);
