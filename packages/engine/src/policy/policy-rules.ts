@@ -116,13 +116,15 @@ interface PolicyRule {
   readonly refuses: (input: PolicyInput) => boolean;
 }
 
-// A send, a bridge, a CEX order and an identity act outside the paper portfolio. A rescue is never
-// a paper intent: it moves the real funds in either mode (decision 0100).
+// A send, a bridge, a CEX order, an identity and a token launch act outside the paper portfolio:
+// a launch publishes its words and picture for good, and a paper token has no address. A rescue
+// is never a paper intent: it moves the real funds in either mode (decision 0100).
 const liveOnlyKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
   "send",
   "bridge",
   "cexOrder",
   "registerIdentity",
+  "launchToken",
 ]);
 
 // A bridge is a cross-chain send (decision 0067): the send level and the address book apply.

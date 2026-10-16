@@ -106,6 +106,7 @@ describe("the policy check", () => {
   it.each([
     ["frozen", buy, { isFrozen: true }],
     ["paper_only", { ...send, isPaper: true }, {}],
+    ["paper_only", { ...buy, kind: "launchToken", isPaper: true }, {}],
     [
       "per_trade_cap",
       { ...buy, outflows: [{ asset: coin, base: oneCoin / 5n }] },

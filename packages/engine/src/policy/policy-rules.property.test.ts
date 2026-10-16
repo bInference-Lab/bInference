@@ -113,7 +113,13 @@ const inputs: fc.Arbitrary<PolicyInput> = fc
 
 type Earned = Readonly<Partial<Record<PolicyReason, boolean>>>;
 
-const liveOnly: ReadonlySet<string> = new Set(["send", "bridge", "cexOrder", "registerIdentity"]);
+const liveOnly: ReadonlySet<string> = new Set([
+  "send",
+  "bridge",
+  "cexOrder",
+  "registerIdentity",
+  "launchToken",
+]);
 
 function nativeOut(outflows: readonly Amount[]): bigint {
   return outflows.reduce((sum, item) => sum + (item.asset === coin ? item.base : 0n), 0n);
