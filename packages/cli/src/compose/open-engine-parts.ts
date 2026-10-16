@@ -109,11 +109,10 @@ const mebibyte = 1024 * 1024;
 const dayMs = 86_400_000;
 
 /**
- * Opens `logs/engine.log` with the config's size and age limits, and the logger on it, writing
- * from the level the config cell holds at each record.
+ * Opens `logs/engine.log` with the size and age limits and the logger on it writing from the level
+ * the config cell holds at each write (decision 0230).
  */
 export async function openEngineLog(opening: Opening, settings: ConfigCell): Promise<OpenedLog> {
-  const config = settings.current();
   const { platform, host } = opening;
   await ensurePrivateFolder(platform.stateFolder.logs, {
     permissions: platform.permissions,
@@ -123,8 +122,8 @@ export async function openEngineLog(opening: Opening, settings: ConfigCell): Pro
   const file = engineLogFile(platform);
   const logFile = openLogFile({
     file,
-    maxBytes: config.logging.maxFileMb * mebibyte,
-    keepMs: config.logging.keepDays * dayMs,
+    maxBytes: () => settings.current().logging.maxFileMb * mebibyte,
+    keepMs: () => settings.current().logging.keepDays * dayMs,
     clock: host.clock,
     onError: () => {
       state.failed = true;

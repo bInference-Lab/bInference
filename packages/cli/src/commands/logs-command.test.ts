@@ -42,8 +42,8 @@ async function machineWithLog(lines: readonly string[]) {
   await ensurePrivateFolder(join(folder.path, "logs"), { permissions, signal });
   const file = openLogFile({
     file: join(folder.path, "logs", "engine.log"),
-    maxBytes: 1_000_000,
-    keepMs: 1,
+    maxBytes: () => 1_000_000,
+    keepMs: () => 1,
     clock: machine.clock,
   });
   lines.forEach((text) => file.append(text));

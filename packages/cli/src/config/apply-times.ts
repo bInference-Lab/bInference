@@ -43,7 +43,8 @@ const restartOnlyKeys: readonly string[] = [
 // The keys whose parts read them from the config cell on each use: a change reaches the next use.
 const keysReadOnUse: readonly string[] = [
   "owner",
-  "logging.level",
+  // The log file reads its level, size and age limits at each write.
+  "logging",
   "backups",
   "telegram.topicsPerAgent",
   // The runtime gets them again in its settings, applied from its next model call.
@@ -77,11 +78,7 @@ const keysNoPartReads: readonly string[] = [
 
 // The keys spec 2 marks live whose parts still copy them at start: a change waits for a restart
 // until its part reads the config cell on each use.
-const keysCopiedAtStart: readonly string[] = [
-  "engine.extraOrigins",
-  "logging.keepDays",
-  "logging.maxFileMb",
-];
+const keysCopiedAtStart: readonly string[] = ["engine.extraOrigins"];
 
 type Judge = (change: KeyChange, started: BinferenceConfig) => ApplyTime;
 

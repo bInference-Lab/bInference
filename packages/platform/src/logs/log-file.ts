@@ -7,10 +7,16 @@ import { BinferenceError, type Clock } from "@binference/core";
 export interface LogFileOptions {
   /** The file lines go to, such as `logs/engine.log`. Its folder must exist and be owner-only. */
   readonly file: string;
-  /** Once the file would pass this many bytes it is set aside and a new one starts. */
-  readonly maxBytes: number;
-  /** Set-aside files older than this are removed when a file is set aside or first written. */
-  readonly keepMs: number;
+  /**
+   * Once the file would pass this many bytes it is set aside and a new one starts. Read at each
+   * write, so a changed size applies to the next one.
+   */
+  readonly maxBytes: () => number;
+  /**
+   * Set-aside files older than this are removed when a file is set aside or first written. Read
+   * each time old files are looked for.
+   */
+  readonly keepMs: () => number;
   readonly clock: Clock;
   /** The most lines waiting to be written; past it the oldest is dropped. 4,096 by default. */
   readonly maxQueuedLines?: number;
@@ -64,7 +70,7 @@ function setAsidePattern(file: string): RegExp {
 async function removeOld(options: LogFileOptions): Promise<void> {
   const pattern = setAsidePattern(options.file);
   const folder = dirname(options.file);
-  const oldest = options.clock.now() - options.keepMs;
+  const oldest = options.clock.now() - options.keepMs();
   const names = await readdir(folder);
   const old = names.filter((name) => Number(pattern.exec(name)?.[1] ?? oldest) < oldest);
   await Promise.all(old.map(async (name) => rm(join(folder, name), { force: true })));
@@ -108,7 +114,7 @@ async function writeBatch(
   if (size === 0) {
     await removeOld(options).catch(() => undefined);
   }
-  const room = size > 0 && size + bytes > options.maxBytes ? await makeRoom(options, size) : size;
+  const room = size > 0 && size + bytes > options.maxBytes() ? await makeRoom(options, size) : size;
   try {
     await appendFile(options.file, batch, { encoding: "utf8", mode: 0o600 });
     return room + bytes;

@@ -31,7 +31,12 @@ async function linesOf(file: string): Promise<readonly string[]> {
 describe("the log file", () => {
   it("appends lines in the order they came and creates the file on the first line", async () => {
     const file = join(await scratchFolder(), "engine.log");
-    const log = openLogFile({ file, maxBytes: 1_000, keepMs: dayMs, clock: createManualClock() });
+    const log = openLogFile({
+      file,
+      maxBytes: () => 1_000,
+      keepMs: () => dayMs,
+      clock: createManualClock(),
+    });
     log.append("one");
     log.append("two");
     await log.flush();
@@ -42,7 +47,12 @@ describe("the log file", () => {
 
   it("ignores lines once closed", async () => {
     const file = join(await scratchFolder(), "engine.log");
-    const log = openLogFile({ file, maxBytes: 1_000, keepMs: dayMs, clock: createManualClock() });
+    const log = openLogFile({
+      file,
+      maxBytes: () => 1_000,
+      keepMs: () => dayMs,
+      clock: createManualClock(),
+    });
     log.append("kept");
     await log.close();
     log.append("dropped");
@@ -54,7 +64,7 @@ describe("the log file", () => {
     const folder = await scratchFolder();
     const file = join(folder, "engine.log");
     const clock = createManualClock(startMs);
-    const log = openLogFile({ file, maxBytes: 12, keepMs: dayMs, clock });
+    const log = openLogFile({ file, maxBytes: () => 12, keepMs: () => dayMs, clock });
     log.append("12345");
     await log.flush();
     log.append("abcdefgh");
@@ -63,6 +73,20 @@ describe("the log file", () => {
     await expect(linesOf(join(folder, `engine.${String(startMs)}.log`))).resolves.toStrictEqual([
       "12345",
     ]);
+  });
+
+  it("sets a file aside at the size its limit holds at each write", async () => {
+    const folder = await scratchFolder();
+    const file = join(folder, "engine.log");
+    const clock = createManualClock(startMs);
+    const held = { maxBytes: 1_000 };
+    const log = openLogFile({ file, maxBytes: () => held.maxBytes, keepMs: () => dayMs, clock });
+    log.append("12345");
+    await log.flush();
+    held.maxBytes = 12;
+    log.append("abcdefgh");
+    await log.close();
+    await expect(linesOf(file)).resolves.toStrictEqual(["abcdefgh"]);
   });
 
   it("removes set-aside files older than the days kept and keeps the rest", async () => {
@@ -74,7 +98,7 @@ describe("the log file", () => {
       [old, recent, "other.1.log"].map(async (name) => writeFile(join(folder, name), "x\n")),
     );
     const clock = createManualClock(startMs);
-    const log = openLogFile({ file, maxBytes: 1_000, keepMs: 14 * dayMs, clock });
+    const log = openLogFile({ file, maxBytes: () => 1_000, keepMs: () => 14 * dayMs, clock });
     log.append("first");
     await log.close();
     await expect(readdir(folder).then((names) => names.toSorted())).resolves.toStrictEqual(
@@ -85,7 +109,13 @@ describe("the log file", () => {
   it("drops the oldest waiting lines beyond its bound", async () => {
     const file = join(await scratchFolder(), "engine.log");
     const clock = createManualClock();
-    const log = openLogFile({ file, maxBytes: 10_000, keepMs: dayMs, clock, maxQueuedLines: 2 });
+    const log = openLogFile({
+      file,
+      maxBytes: () => 10_000,
+      keepMs: () => dayMs,
+      clock,
+      maxQueuedLines: 2,
+    });
     // The first line starts the writer; the next three wait, and the bound keeps the last two.
     ["a", "b", "c", "d"].forEach((line) => log.append(line));
     await log.close();
@@ -101,8 +131,8 @@ describe("the log file", () => {
     const errors: BinferenceError[] = [];
     const log = openLogFile({
       file,
-      maxBytes: 1,
-      keepMs: dayMs,
+      maxBytes: () => 1,
+      keepMs: () => dayMs,
       clock: createManualClock(),
       onError: (error) => errors.push(error),
     });
