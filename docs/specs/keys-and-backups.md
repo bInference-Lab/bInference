@@ -163,9 +163,12 @@ an `approve` with no native coin naming any spender, under each capped token's 2
 agent wallet's ceiling holds a launch rule, and no ceiling lists a launch wallet as a recipient:
 saving a launch wallet's address, or making it the rescue address, is refused as
 `address.launch_wallet`, and a saved address that names one never reaches a ceiling
-([decision 0218](../DECISIONS.md#d0218)). The owner funds it from outside. A thief with this machine's keys can take what the launch wallet
-holds, within the 24-hour caps for the coin, WBNB, USDT and USDC, and nothing more from the
-agent's other wallets than the promise below allows.
+([decision 0218](../DECISIONS.md#d0218)). The owner funds it from outside. A thief with this
+machine's keys can take what the launch wallet holds, within the 24-hour caps for the coin, WBNB,
+USDT and USDC, and nothing more from the agent's other wallets than the promise below allows. Curve
+sales and sales through the pools pay the launch wallet, so its proceeds stay there until a rescue
+takes them back; an allowance a stolen key grants from it outlives a rescue, so after a theft the
+owner funds that launch wallet no more.
 
 **What it promises** ([decision 0149](../DECISIONS.md#d0149)). A machine whose keys are stolen
 cannot send BNB or a token to an address the owner did not save, cannot call a contract or a
@@ -257,9 +260,13 @@ says without checking it:
 2. `to` is in `allowed`: the venue's declared contracts, a token for an exact approval to a registry
    spender, or the confirmed recipient of a send, bridge or rescue. From a launch wallet
    (`wallet.role` is `launch`), a call may also go to, and an approval name, a contract of the
-   launch the step trades on (`allowed.launch`), which the engine reads again from the launchpad
-   right before signing; from any other wallet such a call or approval breaks this rule
-   ([decision 0217](../DECISIONS.md#d0217)).
+   launch the step trades on (`allowed.launch`), which the engine reads from the launchpad as the
+   wallet queue takes the intent and again before each later step and speed-up, and an approval
+   may also name a registry contract of the route's venues; from any other wallet such a call or
+   approval breaks this rule ([decision 0217](../DECISIONS.md#d0217)). The engine asks the signer
+   only with the launch read in hand ([decision 0218](../DECISIONS.md#d0218)). The wallet's role
+   and its launch contracts both come from the engine, so against a compromised engine process
+   this rule adds no wall for a launch wallet, as for any wallet's `allowed`.
 3. Value and amounts equal the plan's amounts for that step; an approval is never above the step's
    amount, and never unlimited.
 4. The method is `eth_signTransaction`; no EIP-7702 authorization, no `personal_sign`, and typed
