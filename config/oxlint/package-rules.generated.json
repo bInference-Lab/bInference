@@ -9188,6 +9188,7 @@
         "packages/engine/src/wallet-queue.ts",
         "packages/i18n/src/check.ts",
         "packages/i18n/src/index.ts",
+        "packages/i18n/src/testing.ts",
         "packages/mcp/src/index.ts",
         "packages/platform/src/index.ts",
         "packages/platform/src/testing.ts",

@@ -18,10 +18,15 @@
       "@binference/source": "./src/check.ts",
       "types": "./dist/check.d.mts",
       "default": "./dist/check.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/check.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/check.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

@@ -1,27 +1,37 @@
-import type { Amount } from "@binference/chain";
-import { testAgent, testCoin } from "../intents/test-intents.js";
-import type { Notice, NoticePart } from "../pushes/notice-push.js";
+import { type Amount, type AssetRef, assetRefSchema } from "@binference/chain";
+import { type NoticePartView, type ProtocolId, protocolIdSchema } from "@binference/protocol";
+import type { WrittenNotice } from "./write-notice.js";
+
+/** A notice of {@link noticeTable}: what a surface writes, and the agent it names. */
+export interface TableNotice extends WrittenNotice {
+  readonly agent?: ProtocolId<"agent">;
+}
+
+/** The coin of the fake chain the tests run on, `FAKE` with 18 decimals. */
+export const noticeTableCoin: AssetRef = assetRefSchema.parse("fake:1/slip44:1");
+// The agent the table's notices name.
+const tableAgent = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 
 /** 2026-10-11 09:30 UTC, the moment every notice of {@link noticeTable} names. */
 export const noticeTableAtMs: number = Date.UTC(2026, 9, 11, 9, 30, 0);
 
 // Thousandths of the test chain's coin, which has 18 decimals.
 const coinAmount = (thousandths: bigint): Amount => ({
-  asset: testCoin,
+  asset: noticeTableCoin,
   base: thousandths * 10n ** 15n,
 });
 const at = { when: noticeTableAtMs };
 const agent = { agent: "main" };
 
-const orderKind = (kind: string): NoticePart => ({ key: "order.kind", values: { kind } });
+const orderKind = (kind: string): NoticePartView => ({ key: "order.kind", values: { kind } });
 
-const sale: NoticePart = {
+const sale: NoticePartView = {
   key: "fill.sell",
   values: { received: "$12.40", price: "$0.0000075" },
   amounts: { amount: coinAmount(1_650n) },
 };
 
-const launch: NoticePart = {
+const launch: NoticePartView = {
   key: "launch.line",
   values: {
     token: "PEPE 0x6982…1933",
@@ -39,7 +49,7 @@ const launch: NoticePart = {
  * publishes it: the agent it names where its words name one, its values, times, amounts and
  * parts. A surface proves it writes every notice by sending each one (Y12).
  */
-export const noticeTable: Readonly<Record<string, Notice>> = {
+export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.fill": {
     key: "notice.fill",
     values: { mode: "paper" },
@@ -66,12 +76,12 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
   },
   "notice.frozen": {
     key: "notice.frozen",
-    agent: testAgent,
+    agent: tableAgent,
     values: { ...agent, surface: "telegram" },
   },
   "notice.unfrozen": {
     key: "notice.unfrozen",
-    agent: testAgent,
+    agent: tableAgent,
     values: { ...agent, scope: "agent", surface: "console" },
   },
   "notice.rescue": { key: "notice.rescue", values: { address: "0x9F3c…41aB" } },
@@ -92,7 +102,7 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
   },
   "notice.ceilingChange": {
     key: "notice.ceilingChange",
-    agent: testAgent,
+    agent: tableAgent,
     values: { ...agent, surface: "cli", change: "cap" },
   },
   "notice.signerRevoked": {
@@ -122,11 +132,11 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
   "notice.plainSecret": { key: "notice.plainSecret", values: {} },
   "notice.budget": {
     key: "notice.budget",
-    agent: testAgent,
+    agent: tableAgent,
     values: { ...agent, budget: "$3.00" },
     times: at,
   },
-  "notice.loop": { key: "notice.loop", agent: testAgent, values: agent },
+  "notice.loop": { key: "notice.loop", agent: tableAgent, values: agent },
   "notice.watcherLag": {
     key: "notice.watcherLag",
     values: { chain: "BNB Smart Chain", blocks: "14" },
@@ -198,17 +208,17 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
   "notice.approvalReset": { key: "notice.approvalReset", values: { token: "PEPE" } },
   "notice.binanceRefused": {
     key: "notice.binanceRefused",
-    agent: testAgent,
+    agent: tableAgent,
     values: { ...agent, trade: "buy $500 of CAKE" },
   },
   "notice.binancePaused": {
     key: "notice.binancePaused",
-    agent: testAgent,
+    agent: tableAgent,
     values: { ...agent, surface: "mini" },
   },
   "notice.approvalMode": {
     key: "notice.approvalMode",
-    agent: testAgent,
+    agent: tableAgent,
     values: { ...agent, mode: "auto", surface: "cli" },
   },
   "notice.alertPrice": {

@@ -1,5 +1,5 @@
-import { noticeTable } from "@binference/engine/testing";
 import { messages } from "@binference/i18n";
+import { noticeTable } from "@binference/i18n/testing";
 import { describe, expect, it } from "vitest";
 import { ownerId } from "../testing/update-fixtures.js";
 import { sentNoticeTable } from "./notice-table-fixtures.js";

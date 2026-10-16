@@ -184,4 +184,3 @@ export { createFakeRiskCheck } from "./fakes/fake-risk-check.js";
 export type { FakeRiskCheckOptions } from "./fakes/fake-risk-check.js";
 export { createMemoryBackupStore } from "./fakes/memory-backup-store.js";
 export { createMemoryRiskCacheStore } from "./fakes/memory-risk-cache-store.js";
-export { noticeTable, noticeTableAtMs } from "./surfaces/test-notices.js";

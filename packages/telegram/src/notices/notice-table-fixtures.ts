@@ -5,11 +5,10 @@ import {
   createMemoryAgentStore,
   createMemoryNoticeStore,
   createMemoryOwnerStore,
-  noticeTable,
-  noticeTableAtMs,
   testAgentDraft,
 } from "@binference/engine/testing";
 import type { MessageLocale } from "@binference/i18n";
+import { noticeTable, noticeTableAtMs } from "@binference/i18n/testing";
 import { Api } from "grammy";
 import { testChains } from "../commands/test-command-bot.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
