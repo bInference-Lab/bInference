@@ -40,6 +40,7 @@ describe("the console's files", () => {
     });
     expect(answer.headers["content-security-policy"]).toContain("script-src 'self'");
     expect(answer.headers["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(answer.headers["content-security-policy"]).toContain("img-src 'self' data: blob:;");
   });
 
   it("turns off every browser feature the console does not use", async () => {

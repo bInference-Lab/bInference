@@ -68,7 +68,8 @@ export function pageHeaders(path: string): Record<string, string> {
       "default-src 'self'",
       "script-src 'self'",
       "style-src 'self'",
-      "img-src 'self' data:",
+      // `blob:` shows the previews of the images the owner picks before they upload.
+      "img-src 'self' data: blob:",
       "font-src 'self'",
       "connect-src 'self'",
       "object-src 'none'",
