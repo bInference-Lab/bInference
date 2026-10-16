@@ -78,4 +78,12 @@ describe("the upload shelf", () => {
     await clock.advance(3_600_000);
     expect(await shelf.read(second, live())).toStrictEqual({ ok: false, error: "unreadable" });
   });
+
+  it("holds at most 64 open tickets, the oldest dropped first", () => {
+    const { shelf } = shelfAt();
+    const [oldest, next, ...rest] = Array.from({ length: 65 }, () => shelf.ticket(png).ticket);
+    const kept = [oldest, next].map((ticket) => shelf.receive(String(ticket), testPng));
+    expect(kept).toMatchObject([{ ok: false, error: "ticket" }, { ok: true }]);
+    expect(rest).toHaveLength(63);
+  });
 });

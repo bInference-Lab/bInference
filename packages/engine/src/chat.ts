@@ -26,7 +26,6 @@ export type {
   UploadPlan,
   UploadRefusal,
   UploadShelf,
-  UploadShelfOptions,
   UploadTicket,
 } from "./uploads/upload-shelf.js";
 export { questionViewOf } from "./chat/question-flow.js";

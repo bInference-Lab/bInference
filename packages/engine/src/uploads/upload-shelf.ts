@@ -24,8 +24,8 @@ export type UploadRefusal = "ticket" | "too_large" | "length" | "format";
 
 /**
  * The owner's uploads, in engine memory only (decision 0227): a ticket for each, single-use and
- * valid 2 minutes; each upload kept 1 hour, at most 16 at once, the oldest dropped first. It
- * reads uploads as the owner's images by their upload ids.
+ * valid 2 minutes, at most 64 open at once; each upload kept 1 hour, at most 16 at once. Past
+ * either limit the oldest is dropped first. It reads uploads as the owner's images by their ids.
  */
 export interface UploadShelf extends OwnerImageSource {
   /** A ticket for one upload of this plan. */
@@ -34,13 +34,14 @@ export interface UploadShelf extends OwnerImageSource {
   receive(ticket: string, body: Readonly<Uint8Array>): Result<string, UploadRefusal>;
 }
 
-/** How long tickets and uploads last, and how many uploads the shelf holds. */
+/** How long tickets and uploads last, and how many of each the shelf holds. */
 export interface UploadShelfOptions {
   readonly clock: Clock;
   readonly random: Random;
   readonly ticketMs?: number;
   readonly keepMs?: number;
   readonly most?: number;
+  readonly mostTickets?: number;
 }
 
 interface Kept<T> {
@@ -82,13 +83,14 @@ export function createUploadShelf(options: UploadShelfOptions): UploadShelf {
   const ticketMs = options.ticketMs ?? 120_000;
   const keepMs = options.keepMs ?? 3_600_000;
   const most = options.most ?? 16;
+  const mostTickets = options.mostTickets ?? 64;
   const token = (length: number): string => Buffer.from(random.bytes(length)).toString("base64url");
   return {
     ticket(plan) {
-      prune(tickets, clock.now());
       const ticket = token(32);
       const expiresAt = clock.now() + ticketMs;
       tickets.set(ticket, { value: plan, untilMs: expiresAt });
+      prune(tickets, clock.now(), mostTickets);
       return { ticket, expiresAt };
     },
     receive(ticket, body) {
