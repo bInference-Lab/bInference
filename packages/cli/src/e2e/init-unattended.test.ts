@@ -1,5 +1,7 @@
+import { join } from "node:path";
 import { disclaimerVersion, messages } from "@binference/i18n";
-import type { TempFolder } from "@binference/platform/testing";
+import { createPlatform, writePrivateFile } from "@binference/platform";
+import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { fakeBotToken } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { answerNames } from "../init/answer-names.js";
@@ -19,6 +21,7 @@ import { testModelId, testModelKey } from "./model-fixtures.js";
 
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
+const writing = { permissions: createPlatform().permissions, signal: new AbortController().signal };
 
 afterEach(async () => {
   await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
@@ -42,6 +45,15 @@ function serverAnswers(machine: InitMachine): Readonly<Record<string, unknown>> 
     botToken: { fromEnv: secretVariables.botToken },
     unlock: "file",
   };
+}
+
+/** Writes an answers file outside the state folder, as an owner keeps it, and answers its path. */
+async function answersFile(answers: Readonly<Record<string, unknown>>): Promise<string> {
+  const folder = await createTempFolder("bnf-answers-");
+  folders.push(folder);
+  const file = join(folder.path, "answers.json5");
+  await writePrivateFile(file, JSON.stringify(answers, undefined, 2), writing);
+  return file;
 }
 
 /** The answers as `BINFERENCE_INIT_*` variables: text as it is, a source or a switch as JSON. */
@@ -125,5 +137,44 @@ describe("binference init from BINFERENCE_INIT_ variables", () => {
     expect(
       secrets.filter((secret) => `${config}${run.stdout}${run.stderr}`.includes(secret)),
     ).toStrictEqual([]);
+  });
+});
+
+describe("binference init from an answers file", () => {
+  it("sets up against the fake Privy from a file, with no prompt", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const answers = { ...serverAnswers(machine), set: { "defaults.limits.perTradeUsd": "50" } };
+    const file = await answersFile(answers);
+    const prompter = createScriptedPrompter({});
+
+    const argv = ["init", "--yes", "--json", "--answers", file];
+    const run = await runOn(machine, argv, { env: serverEnv(machine), parts: { prompter } });
+
+    expect(run.code).toBe(0);
+    expect(JSON.parse(run.stdout)).toMatchObject({
+      state: "set_up",
+      model: { provider: "openai", model: testModelId },
+      disclaimer: "accepted",
+    });
+    expect(prompter.transcript.asked).toStrictEqual([]);
+    expect(machine.privy.sent.length).toBeGreaterThan(0);
+    const config = await configText(machine);
+    expect(config).toContain('perTradeUsd: "50",');
+    expect(config).toContain(`fromEnv: "${modelKeyVariable}"`);
+  });
+
+  it("takes a BINFERENCE_INIT_ variable over the file the variables name", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const file = await answersFile({ ...serverAnswers(machine), privyAppId: "app-of-another" });
+    const env = {
+      ...serverEnv(machine),
+      BINFERENCE_INIT_ANSWERS: file,
+      BINFERENCE_INIT_PRIVY_APP_ID: machine.privy.appId,
+    };
+
+    const run = await runOn(machine, ["init", "--yes", "--json"], { env });
+
+    expect(run.code).toBe(0);
+    expect(JSON.parse(run.stdout)).toMatchObject({ state: "set_up" });
   });
 });

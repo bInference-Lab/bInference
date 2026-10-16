@@ -94,8 +94,8 @@ rescue address, the first agent (paper mode, manual approval) and its wallet in 
 issues the bot's pairing link, and writes `config.json5` last, owner-only, with secrets only as
 secret sources. A person answers its questions through a prompter over `@clack/prompts`
 (`src/term/`); with `--yes`, `--json` or no terminal, every answer comes from a flag, a
-`BINFERENCE_INIT_*` variable, in that order (decision 0224, `src/init/answer-layers.ts`); the
-config layer skips those variables. Such a run
+`BINFERENCE_INIT_*` variable or the answers file `--answers` names, in that order (decision 0224,
+`src/init/answer-layers.ts`); the config layer skips those variables. Such a run
 never makes an owner key: it takes the public half `--owner-key-public` gives, which
 `binference owner-key create` made on a machine with a terminal, and is refused without it, so no
 owner key code reaches a log (decision 0148). It accepts the disclaimer only with

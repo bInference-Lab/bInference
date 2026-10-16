@@ -125,6 +125,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     .option("--model <id>", message("option.model"))
     .option("--model-key <source>", message("option.modelKey"))
     .option("--accept-disclaimer", message("option.acceptDisclaimer"))
+    .option("--answers <file>", message("option.answers"))
     .option("--set <key=value>", message("option.setInit"), addSet, [])
     .option("--start-over", message("option.startOver"))
     .option("--attach", message("option.attach"))

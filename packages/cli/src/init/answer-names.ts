@@ -32,10 +32,14 @@ export interface AnswerName {
   readonly kind: AnswerKind;
 }
 
-/** Where an answer came from: a flag or a `BINFERENCE_INIT_*` variable. */
+/** Where an answer came from: a flag, a `BINFERENCE_INIT_*` variable or the answers file. */
 export type AnswerOrigin =
   | { readonly layer: "flag" }
-  | { readonly layer: "variable"; readonly name: string };
+  | { readonly layer: "variable"; readonly name: string }
+  | { readonly layer: "file"; readonly file: string };
+
+/** The variable that names the answers file, as `--answers` does. */
+export const answersFileVariable: string = `${initVariablePrefix}ANSWERS`;
 
 function named(key: AnswerKey, kind: AnswerKind): AnswerName {
   const words = key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();

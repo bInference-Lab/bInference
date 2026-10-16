@@ -273,8 +273,8 @@ async function refusingFaults(
  * once the lock is let go. With `--attach` it makes this machine the signer of the folder's
  * install instead (keys spec, section 6; decision 0140), after restoring a backup into the folder
  * with `--restore` (keys spec, section 7.4). A person at a terminal answers its questions; with
- * `--yes`, `--json` or no terminal, every answer comes from a flag or its `BINFERENCE_INIT_*`
- * variable (decision 0224). Exits 0 once the install is set up or attached, 1 when it refused or
+ * `--yes`, `--json` or no terminal, every answer comes from a flag, its `BINFERENCE_INIT_*`
+ * variable or the answers file (decision 0224). Exits 0 once the install is set up or attached, 1 when it refused or
  * failed.
  */
 export async function runInitCommand(
@@ -285,7 +285,8 @@ export async function runInitCommand(
   const { formatter } = options;
   const bare = initContextOf(host, output, options);
   const firstReport: Report = { output, formatter, isJson: options.flags.json };
-  const layered = layeredAnswers(options.flags, host.env);
+  const run = { signal: bare.signal, words: bare.words };
+  const layered = await layeredAnswers(options.flags, host.env, run);
   if (!layered.ok) {
     return refuse(bare, firstReport, layered.refusal);
   }

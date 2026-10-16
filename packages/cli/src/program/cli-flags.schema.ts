@@ -91,6 +91,12 @@ export interface InitFlags extends CommonOptions {
    * prints in full first (decision 0223). A person at the terminal types the phrase instead.
    */
   readonly acceptDisclaimer: boolean;
+  /**
+   * The answers file: a JSON5 object of answers by flag name in camel case, secrets only as
+   * secret sources (decision 0224). A flag wins over its `BINFERENCE_INIT_*` variable, which
+   * wins over the file.
+   */
+  readonly answers?: string;
   /** Each `--set key=value` for the config file, in the order given. */
   readonly sets: readonly string[];
   /** Sets up a folder that was set up before, with a new owner key and a new wallet. */
@@ -195,6 +201,7 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     model: z.string().min(1).exactOptional(),
     modelKey: z.string().min(1).exactOptional(),
     acceptDisclaimer: z.boolean().default(false),
+    answers: z.string().min(1).exactOptional(),
     set: z.array(z.string()).default([]),
     startOver: z.boolean().default(false),
     attach: z.boolean().default(false),

@@ -326,6 +326,8 @@ new name here first, in the change that uses it.
 - **revoke (a signer)**: `binference signer revoke`, which removes a machine's agent key from every
   live wallet with the owner key, never this machine's own key or a wallet's last signer.
 - **signer ID**: Privy's id of the key quorum that holds a machine's agent key; attach prints it.
+- **answers file**: the JSON5 file `binference init --answers` reads, one key per flag in camel
+  case, secrets only as secret sources; a flag, then a `BINFERENCE_INIT_*` variable, wins over it.
 - **start over**: `binference init --start-over`, which sets up a folder set up before with a new
   owner key and a new wallet, keeps the stored agent key, and archives the earlier wallets.
 - **passphrase store**: secrets in owner-only files in `~/.binference/keys/`, each sealed with the
@@ -465,6 +467,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | config key                                  | 配置项                 |                              |
 | value (of a config key)                     | 值                     |                              |
 | secret source                               | 密钥来源               |                              |
+| answers file (of `binference init`)         | 应答文件               |                              |
 | keychain                                    | 钥匙串                 |                              |
 | unlock mode                                 | 解锁方式               | `engine.unlock.mode`         |
 | passphrase                                  | 密码短语               | Seals the agent key          |
