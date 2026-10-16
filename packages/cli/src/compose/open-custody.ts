@@ -28,10 +28,10 @@ import type {
   WalletMaker,
 } from "@binference/engine/install";
 import type { SignerRefusalNotice, SignerSettings } from "@binference/signer";
+import { gweiToWei } from "../config/gwei-to-wei.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { capAssetsOn, capPlanOf, initialDayCapUsd } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
-import { gweiToWei } from "./chain-reads.js";
 import { checkAttached } from "./check-attached.js";
 import { launchPlansOf } from "./launch-plans.js";
 import { installOwnerKey } from "./owner-authorize.js";

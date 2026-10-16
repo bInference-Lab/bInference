@@ -6,13 +6,7 @@ import { createManualClock, createScriptedHttp } from "@binference/core/testing"
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
-import {
-  chainReadsOf,
-  composeChainReads,
-  gweiToWei,
-  rpcEndpointsOf,
-  rpcHealthOf,
-} from "./chain-reads.js";
+import { chainReadsOf, composeChainReads, rpcEndpointsOf, rpcHealthOf } from "./chain-reads.js";
 import { selfHostedChains } from "./open-engine-parts.js";
 
 const bscRef = chainRefSchema.parse(bsc.id);
@@ -41,21 +35,6 @@ function nodes(isDown: (url: string) => boolean): Http {
 }
 
 describe("the chains' reads", () => {
-  it.each([
-    ["1", 1_000_000_000n],
-    ["0.05", 50_000_000n],
-    ["2.5", 2_500_000_000n],
-    ["0.000000001", 1n],
-  ])("reads a fee cap of %s gwei as %d wei", (gwei, wei) => {
-    expect(gweiToWei(gwei, bscRef)).toBe(wei);
-  });
-
-  it.each(["0.0000000001", "1e9", "-1", ""])("refuses %j as a fee cap in gwei", (gwei) => {
-    expect(() => gweiToWei(gwei, bscRef)).toThrow(
-      expect.objectContaining({ code: "cli.bad_fee_cap" }),
-    );
-  });
-
   it("asks config's RPCs before the chain's public ones", () => {
     const endpoints = rpcEndpointsOf(bsc, { urls: ["https://node.example.org"] });
     expect(endpoints.map(({ name }) => name)).toStrictEqual([

@@ -9,6 +9,7 @@ import {
   type RpcFailover,
 } from "@binference/chain-evm";
 import { BinferenceError, type Clock, type Http } from "@binference/core";
+import { gweiToWei } from "../config/gwei-to-wei.js";
 import type { ChainsConfig, RpcConfig } from "../config/schema/chains-venues.schema.js";
 import type { HealthSignal } from "./health-signals.js";
 
@@ -38,20 +39,9 @@ export interface ChainReadsOptions {
 // A node gets 5 s to answer a read and rests 30 s after a failure.
 const rpcTimeoutMs = 5_000;
 const rpcRestMs = 30_000;
-const gweiText = /^(\d+)(?:\.(\d{1,9}))?$/;
-const weiPerGwei = 1_000_000_000n;
 
 function refuse(code: `cli.${string}`, message: string, chain: ChainRef): BinferenceError {
   return new BinferenceError({ code, message, details: { chain } });
-}
-
-/** A fee cap in gwei, as config writes it, in wei: at most nine decimals. */
-export function gweiToWei(text: string, chain: ChainRef): bigint {
-  const [, whole, fraction = ""] = gweiText.exec(text) ?? [];
-  if (whole === undefined) {
-    throw refuse("cli.bad_fee_cap", `The network fee cap of ${chain} is not gwei.`, chain);
-  }
-  return BigInt(whole) * weiPerGwei + BigInt(fraction.padEnd(9, "0"));
 }
 
 /** The chain's RPCs: those config names first, then the chain's public ones. */
