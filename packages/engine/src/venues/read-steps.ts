@@ -2,13 +2,14 @@ import {
   type ChainFamily,
   type DecodedEffect,
   decodedEffectSchema,
+  type DraftCall,
   type TxDecoder,
   type TxDraft,
   txDraftSchema,
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
-import type { PlanStep } from "./build-checks.js";
+import type { ApprovalStep, PlanStep } from "./build-checks.js";
 import { ownCopy } from "./call-venue.js";
 
 const draftsSchema = z.array(txDraftSchema).readonly();
@@ -29,17 +30,38 @@ function decodeSafely(decoder: TxDecoder, draft: TxDraft): DecodedEffect | undef
   }
 }
 
-function readStep(draft: TxDraft, readers: StepReaders): PlanStep | undefined {
-  const call = readers.family.readDraft(draft);
+/**
+ * Reads one draft a venue built: what the chain family reads from it, a token approval as an
+ * approval step, and any other call as `readCall` reads it. A draft the family cannot read, or a
+ * call `readCall` cannot, is `undefined`.
+ */
+function readCallStep<S>(
+  draft: TxDraft,
+  family: ChainFamily,
+  readCall: (draft: TxDraft, call: DraftCall) => S | undefined,
+): ApprovalStep | S | undefined {
+  const call = family.readDraft(draft);
   if (!call.ok) {
     return undefined;
   }
   const { approval } = call.value;
-  if (approval !== undefined) {
-    return { kind: "approval", draft, call: call.value, approval };
-  }
-  const effect = decodeSafely(readers.decoder, draft);
-  return effect === undefined ? undefined : { kind: "trade", draft, call: call.value, effect };
+  return approval === undefined
+    ? readCall(draft, call.value)
+    : { kind: "approval", draft, call: call.value, approval };
+}
+
+/**
+ * Reads every draft a venue built with `read`, each from the host's own copy of the draft. No
+ * draft, or one draft `read` cannot read, refuses the whole plan.
+ */
+function readEachDraft<S>(
+  drafts: readonly TxDraft[],
+  read: (draft: TxDraft) => S | undefined,
+): Result<readonly S[], "unreadable_step"> {
+  const copies = ownCopy(draftsSchema, drafts) ?? [];
+  const steps = copies.map(read);
+  const found = steps.filter((step) => step !== undefined);
+  return found.length === steps.length && found.length > 0 ? ok(found) : err("unreadable_step");
 }
 
 /**
@@ -51,8 +73,10 @@ export function readSteps(
   drafts: readonly TxDraft[],
   readers: StepReaders,
 ): Result<readonly PlanStep[], "unreadable_step"> {
-  const copies = ownCopy(draftsSchema, drafts) ?? [];
-  const steps = copies.map((draft) => readStep(draft, readers));
-  const read = steps.filter((step) => step !== undefined);
-  return read.length === steps.length && read.length > 0 ? ok(read) : err("unreadable_step");
+  return readEachDraft(drafts, (draft) =>
+    readCallStep(draft, readers.family, (read, call): PlanStep | undefined => {
+      const effect = decodeSafely(readers.decoder, read);
+      return effect === undefined ? undefined : { kind: "trade", draft: read, call, effect };
+    }),
+  );
 }
