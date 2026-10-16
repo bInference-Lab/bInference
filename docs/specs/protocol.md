@@ -458,6 +458,34 @@ pauses them. An agent has at most 50 active alerts; one more fails `alert.too_ma
 conditions, how often each fires, and the wake-ups are in section 8.4. `alert/delete` of an alert
 that is not active fails `alert.not_found`.
 
+Schedules follow decisions [0231](../DECISIONS.md#d0231) to [0233](../DECISIONS.md#d0233):
+
+- `when.cron` is five fields, `minute hour day month weekday`: numbers, `*`, lists, ranges and
+  steps, with three-letter English month and weekday names; weekday 7 is Sunday. When both day
+  fields name days, a day matches either. It runs on the wall clock of `when.timezone`, else of
+  `owner.timezone` as it is now; `when.at` runs once at that instant. A wall time the clocks skip
+  runs when they jump past it; one they show twice runs once, at its first occurrence.
+- `schedule/create` stores an active schedule at once, with no card, and answers it with its
+  `nextAt`. It refuses, storing nothing: an unknown agent (`agent.not_found`), an archived one
+  (`agent.archived`), a `when` binference cannot read, an `at` that is not ahead or an expression
+  with no run in eight years (`schedule.bad_when`), a prompt over 2,000 characters
+  (`protocol.bad_args`), and a 51st active schedule of the agent (`schedule.too_many`). A schedule
+  set in a turn that read outside content, or by a client with `propose` alone, is marked, and its
+  turns start marked.
+- `schedule/list` answers the active schedules, of the agent or every agent, oldest first, with no
+  `next`. `schedule/cancel` ends an active schedule at once; one that is not active is
+  `schedule.not_found`, and a client with `propose` alone cancels only the schedules it set
+  (`auth.scope`).
+- Each set and cancel is journaled under `agents.<name>.schedules`, pushed as `config/changed` and
+  announced as `notice.scheduleSet` or `notice.scheduleCancelled` (spec 4, section 4).
+- The engine runs each schedule whose time came while it is unlocked, once however many runs it
+  missed, and stores an `inbox/scheduleDue` message with the run
+  ([spec 8, section 3.3](runtime.md#section-3-3)). A run whose agent is gone, archived or frozen,
+  whose model budget of the day is spent, whose last wake-up is still untaken, or whose agent
+  holds 200 untaken messages starts no turn and is recorded as skipped with that reason
+  (`archived`, `frozen`, `budget`, `waiting`, `busy`). `ScheduleView.lastRun` shows the last run.
+  A one-time schedule is `ended` after its run.
+
 An order that ends because another exit order emptied its position (spec 6, section 5) moves to
 `ended` with `endReason: "position_closed"`, and pushes `order/changed`.
 
@@ -877,6 +905,11 @@ every field given must hold, and an empty filter passes every launch. `launch/li
     to show.
   - `alert/list` may hold `wallet` and `launch` conditions beside `price` (section 8.4). A client
     that does not know a condition's kind shows the alert by its id and state.
+  - `ScheduleView.state` has a new value, `ended`, beside `active` and `cancelled`: a one-time
+    schedule after its run, or a cron schedule with no run in eight years. `ScheduleView.lastRun`
+    is a new optional field: the last run's due time, time, `sent` or `skipped` and its reason
+    (section 7.5). A client that meets a state it does not know treats the schedule as no longer
+    active.
   - `AlertView.state` has a new value, `ended`, beside `active`, `fired` and `deleted`: an alert
     whose `expiresAt` passed (section 8.4). It is a new value of an existing field, which this
     version allows as an addition. An alert in `ended` fires no more, like `fired` and `deleted`; a
@@ -908,6 +941,7 @@ later unchanged.
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                                       |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                                          |
 | `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                          |
+| `schedule` | `not_found`, `bad_when`, `too_many`                                                                         |
 | `note`     | `not_found`                                                                                                 |
 | `asset`    | `not_found`, `bad_address`, `unreadable`                                                                    |
 | `name`     | `not_found`, `resolver_down`                                                                                |

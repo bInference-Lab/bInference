@@ -158,7 +158,7 @@ its reserved `turn`.
 | `inbox/message`       | The owner writes on a surface, or presses a button of the agent's question                                 | `text`, `images?`, `surface`, `answer?` (`{ question, choice }`) | Starts a turn, or joins the running one (section 3.4)                                                |
 | `inbox/intentSettled` | An intent the agent runtime proposed reaches a terminal state ([spec 6](intent-states.md#section-2))       | `intent` (an `IntentView`)                                       | Starts a turn: the agent reports, and may propose its next step                                      |
 | `inbox/orderSettled`  | An auto order the agent runtime created leaves `awaiting_confirmation`: `active`, `cancelled` or `expired` | `order` (an `OrderView`)                                         | Starts a turn                                                                                        |
-| `inbox/scheduleDue`   | A schedule's time comes ([ARCHITECTURE.md section 26](../ARCHITECTURE.md#section-26))                      | `schedule`, `prompt`, `outsideContent`                           | Starts a turn; skipped while the budget is spent or the agent is frozen                              |
+| `inbox/scheduleDue`   | A schedule's time comes ([ARCHITECTURE.md section 26](../ARCHITECTURE.md#section-26))                      | `schedule`, `prompt`, `due`, `outsideContent`                    | Starts a turn; skipped while the budget is spent or the agent is frozen                              |
 | `inbox/alertFired`    | An alert with `wake` fires (spec 1 gains it with alert wake-ups)                                           | `alert`, what fired it, `outsideContent`                         | Starts a turn; skipped while the budget is spent or the agent is frozen                              |
 | `inbox/resumeReport`  | The engine was off and checked the orders at its start                                                     | the counts of `notice.resumed`                                   | Starts no turn; the next turn sees it                                                                |
 | `inbox/stop`          | `chat/stop`, a freeze of the agent or the install                                                          | `reason` (`owner`, `freeze`)                                     | Ends the running turn and drops the messages that waited before it (section 4.4)                     |
@@ -166,6 +166,11 @@ its reserved `turn`.
 
 - A skipped message is marked dropped in the chat queue with its reason; nothing tells the owner
   twice, because the engine already sent the notice that explains it.
+- A schedule's run stores no `inbox/scheduleDue` while its agent is archived or frozen, while its
+  budget of the day is spent, or while the schedule's last wake-up is untaken; the run is recorded
+  as skipped ([decision 0232](../DECISIONS.md#d0232)). `due` is when the run was due, earlier than
+  `at` for a run missed while the engine was off or locked. The model reads the prompt with the
+  schedule's id and `due`.
 - In a settle message, an asset the registry does not list shows by its address with the words
   "unlisted token", never by the name or symbol its deployer chose (section 5.4).
 - A question's answer arrives as `inbox/message` once: the engine passes on the first press of a
@@ -561,7 +566,7 @@ The engine holds each agent's daily model budget ([ARCHITECTURE.md section 26](.
   and the runtime sends the paused status line, `turn.budget` with `{ when }`, the resume time.
   Owner messages, settle messages and the resume report wait, and the runtime starts their turn at
   `resumesAt`; each owner message that comes meanwhile tries a start and gets the line again.
-  Scheduled and alert turns are skipped.
+  Scheduled and alert turns are skipped: the runtime drops their messages with the reason `budget`.
 - **After each call.** `usage/record` `{ agent, turn, model, inputTokens, outputTokens,
 cachedTokens, usdMicros }` is sent after each attempt of a model call of every role, answered or
   failed, before the runtime acts on it or tries again, under the key `<turn>.usage.<n>` (`n`

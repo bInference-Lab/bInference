@@ -430,6 +430,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | session, turn                           | 会话, 轮                |                             |
 | chat (with your agent)                  | 对话                    |                             |
 | notes                                   | 笔记                    |                             |
+| schedule (a timed turn)                 | 定时任务                |                             |
+| schedule (of a DCA order)               | 计划                    |                             |
 | scheduled turn, wake                    | 定时轮, 唤醒            |                             |
 | tool calling, function calling          | 工具调用, 函数调用      |                             |
 | web search, web fetch                   | 联网搜索, 网页抓取      |                             |
