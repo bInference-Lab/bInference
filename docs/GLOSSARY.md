@@ -200,6 +200,15 @@ new name here first, in the change that uses it.
 - **launch wallet**: a small wallet of its own, funded by the owner, whose ceiling may allow a
   launch's contracts. Live trades on a launch's own curve need one; the agent wallets' ceilings
   list only registry contracts, so until it exists only a paper agent uses such a venue.
+- **launcher**: the part of a launchpad's plugin that launches tokens: it quotes a launch from the
+  launchpad's contracts, uploads its words and picture, reports their pin, and builds and decodes
+  the create call. It never signs.
+- **pin**: a launchpad's report that it keeps a launch's picture and words on its storage. A token
+  launch waits in `quoted` for it, at most 5 minutes, before its card opens.
+- **launch setting**: a setting a launchpad declares for its launches, such as a tax on every
+  trade, with its type, bounds and default. Its card line is the message `launch.option.<name>`.
+- **launch fee**: what a launchpad charges for a launch, in the chain's coin, paid with the create
+  call.
 - **extra launch wallet**: a live launch wallet beyond the agent's launch wallet, which only a
   rebuild adopts. Nothing trades from it; `wallet list` and `binference check` name it so the
   owner rescues what it holds.
@@ -590,6 +599,9 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | agent wallet                             | Agent 钱包             |                                  |
 | launch wallet                            | 发射钱包               | Trades on a launch's own curve   |
 | extra launch wallet                      | 额外的发射钱包         | Nothing trades from it           |
+| pin (a launch's picture and words)       | 固定                   | The launchpad's storage keeps it |
+| launch fee                               | 发射手续费             | Paid with the create call        |
+| first buy                                | 首笔买入               | The launch wallet's own buy      |
 | owner key                                | 所有者密钥             | Shown once as a `bnok1` code     |
 | balance                                  | 余额                   |                                  |
 | withdraw, fund (a wallet)                | 提取, 充值             | Lending's withdraw is 取出       |
