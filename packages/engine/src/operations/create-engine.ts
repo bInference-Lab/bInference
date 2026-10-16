@@ -29,6 +29,7 @@ import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handler
 import type { MarketParts } from "../market/market-handlers.js";
 import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { LaunchRouting } from "../money-path/launch-routing.js";
+import type { LaunchImageSource } from "../money-path/ports.js";
 import {
   createVenueQuoteSource,
   type VenueQuoteSourceOptions,
@@ -56,6 +57,7 @@ import {
 } from "../send-levels/send-level-handlers.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { ImageOptions } from "../uploads/image-options.js";
+import type { LaunchHost } from "../venues/launch-host.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import { moneyPathOf } from "./engine-money-path.js";
@@ -215,6 +217,10 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
    * for the crash suite on fills (decision 0195), so a live order skips with `live_fills_off`.
    */
   readonly liveOrderFills?: boolean;
+  /** The launch side of the venue host; without it no token launch is proposed (decision 0234). */
+  readonly launchHost?: LaunchHost;
+  /** The owner's uploads, which a token launch's picture comes from; none are readable without. */
+  readonly launchImages?: LaunchImageSource;
 }
 
 // A re-quote at a tap weighs every venue as the money path does, on the paper balances.

@@ -47,6 +47,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { MarketReads } from "../market/ports.js";
+import type { LaunchImageSource } from "../money-path/ports.js";
 import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type { OrderFills } from "../orders/fill-orders.js";
@@ -148,6 +149,8 @@ export interface TestEngineOptions {
   readonly custodyWallets?: ReadonlyMap<Id<"wal">, AccountRef>;
   /** The owner's uploads, shared with the test that fills them. */
   readonly uploads?: UploadShelf;
+  /** The owner's uploads a token launch's picture comes from; none when absent. */
+  readonly launchImages?: LaunchImageSource;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -302,7 +305,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     walletMaker,
     ...readsOf(options, clock),
     wallets: walletsOf(options),
-    ...hostsOf({ venues, chains, clock }),
+    ...hostsOf(options, { venues, chains, clock }),
     ...stepsOf(options, { chains, clock }),
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,

@@ -425,6 +425,11 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   its cards, receipts and views show the token by them. A token that answers no symbol or no
   decimals fails with `asset.unreadable` and stores nothing
   ([decision 0199](../DECISIONS.md#d0199)).
+- A `launchToken` answers once it waits in `quoted` for its launchpad's pin, or has passed it to
+  its card, or ended; its card reaches the owner with `card/opened`. A `venue` that launches no
+  token on the pair's chain fails with `quote.no_route`, and `venueOptions` its launchpad does not
+  declare, or values that do not fit them, with `protocol.bad_args`; neither stores anything. Its
+  `image` is an upload id from `upload/start` ([decision 0234](../DECISIONS.md#d0234)).
 - `intent/confirm` must name the card's current `cardVersion`. A re-quote that changes the terms
   opens a new card version ([rule 4](../ARCHITECTURE.md#rule-4)), and confirming an old version
   fails with `intent.card_changed`. A Confirm that would take the agent past its rolling 24-hour

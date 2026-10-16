@@ -14,6 +14,7 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { AgentStore, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import type { HostedLaunch } from "../venues/launch-calls.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import type { LaunchSetting } from "../venues/launch-settings.schema.js";
 import type { LaunchImageSource } from "./ports.js";
@@ -33,7 +34,7 @@ interface TokenLaunchParts {
 }
 
 /** The ports a token launch runs on: the money path's, and its own. */
-interface LaunchPathOptions {
+export interface LaunchPathOptions {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   readonly wallets: WalletFactsSource;
@@ -61,6 +62,14 @@ export interface ResolvedLaunch {
   readonly isLaunchWallet: boolean;
   readonly isPaper: boolean;
   readonly facts: WalletFacts;
+}
+
+/** The launch as the launch host takes it, from the wallet it was resolved for. */
+export function hostedLaunchOf(resolved: ResolvedLaunch): HostedLaunch {
+  const { request, account, launchSettings } = resolved;
+  const { venue, name, symbol, pairWith, firstBuy } = request;
+  const base = { venue, wallet: account, name, symbol, pair: pairWith, settings: launchSettings };
+  return firstBuy === undefined ? base : { ...base, firstBuy };
 }
 
 /** What a launch is resolved with: the registry, its launchpad's host, the wallets and custody. */

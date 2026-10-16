@@ -8,6 +8,7 @@ import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import { testCoin } from "../intents/test-intents.js";
 import { createSourceMarketReads } from "../market/source-market-reads.js";
 import type { RiskCheck, Simulator } from "../ports.js";
+import { createLaunchHost } from "../venues/launch-host.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import type { EngineOptions } from "./create-engine.js";
 import type { TestEngineOptions } from "./test-engine.js";
@@ -28,13 +29,22 @@ export function stepsOf(
   };
 }
 
-/** The venue host over the test's venues. */
-export function hostsOf(parts: {
-  readonly venues: readonly Venue[];
-  readonly chains: ChainRegistry;
-  readonly clock: ManualClock;
-}): Pick<EngineOptions, "host"> {
-  return { host: createVenueHost({ ...parts, callTimeoutMs: 5_000 }) };
+/** The venue host and its launch side over the test's venues, and the owner's uploads it gives. */
+export function hostsOf(
+  options: TestEngineOptions,
+  parts: {
+    readonly venues: readonly Venue[];
+    readonly chains: ChainRegistry;
+    readonly clock: ManualClock;
+  },
+): Pick<EngineOptions, "host" | "launchHost" | "launchImages"> {
+  const hosted = { ...parts, callTimeoutMs: 5_000 };
+  const { launchImages } = options;
+  return {
+    host: createVenueHost(hosted),
+    launchHost: createLaunchHost(hosted),
+    ...(launchImages === undefined ? {} : { launchImages }),
+  };
 }
 
 /**
