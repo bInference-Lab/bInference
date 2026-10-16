@@ -1,0 +1,174 @@
+import {
+  accountRefSchema,
+  assetRefSchema,
+  chainRefSchema,
+  type Launcher,
+  type LaunchOption,
+} from "@binference/chain";
+import {
+  createFakeLauncher,
+  createFakeLaunchpad,
+  type FakeLauncherOptions,
+  fakeDraft,
+  fakeLaunchData,
+} from "@binference/chain/testing";
+import { createManualClock } from "@binference/core/testing";
+import { describe, expect, it } from "vitest";
+import { testNowMs } from "../intents/test-intents.js";
+import { testChains } from "../operations/test-engine.js";
+import type { HostedLaunch } from "./launch-calls.js";
+import { createLaunchHost, type LaunchHost } from "./launch-host.js";
+
+const pad = "fake-curve";
+const chain = chainRefSchema.parse("fake:1");
+const wallet = accountRefSchema.parse("fake:1:0x0000000c");
+const coin = assetRefSchema.parse("fake:1/slip44:1");
+const usd = assetRefSchema.parse("fake:1/token:0x0000000a");
+const token = assetRefSchema.parse("fake:1/token:0x000000e1");
+const live = { signal: new AbortController().signal };
+
+const settings: readonly LaunchOption[] = [
+  { name: "taxBps", type: "bps", max: 1000, default: 0 },
+  { name: "taxRecipient", type: "account" },
+  { name: "buyback", type: "flag", default: false },
+];
+
+function hostOf(launcher: Launcher): LaunchHost {
+  return createLaunchHost({
+    venues: [createFakeLaunchpad({ onCurve: [], launcher })],
+    chains: testChains([pad]),
+    clock: createManualClock(testNowMs),
+    callTimeoutMs: 1_000,
+  });
+}
+
+const fake = (options: FakeLauncherOptions = {}) => hostOf(createFakeLauncher(options));
+
+const launch: HostedLaunch = {
+  venue: pad,
+  wallet,
+  name: "Moon Cat",
+  symbol: "MCAT",
+  pair: coin,
+  firstBuy: { asset: coin, base: 50n },
+  settings: [],
+};
+
+const words = { image: { contentType: "image/png", bytes: new Uint8Array([137, 80]) } };
+const fee = { asset: coin, base: 2_000n };
+const upload = {
+  quote: { fee, firstBuyOut: 50_000n, tokenDecimals: 18 },
+  metadataUri: "ipfs://fake-1",
+  minOutBase: 49_500n,
+};
+
+describe("a launchpad's settings in the launch host", () => {
+  it("fills the declared settings of a launchpad it hosts", () => {
+    const host = fake({ launchOptions: settings });
+    const given = { taxRecipient: "0x0000000c" };
+    expect(host.settingsOf(pad, chain, given)).toMatchObject({ ok: true, value: { length: 3 } });
+  });
+
+  it("answers a venue that launches nothing, or another chain, as no launchpad", () => {
+    const host = fake();
+    const other = chainRefSchema.parse("fake:2");
+    expect(host.settingsOf("fake-swap", chain, {})).toMatchObject({ error: "no_launchpad" });
+    expect(host.settingsOf(pad, other, {})).toMatchObject({ error: "no_launchpad" });
+  });
+
+  it("refuses to host a launchpad with a setting that has no card line", () => {
+    expect(() => fake({ launchOptions: [{ name: "mystery", type: "flag" }] })).toThrow(
+      expect.objectContaining({ code: "venue.bad_declaration" }),
+    );
+  });
+});
+
+describe("the launch host's quote, pin and pin status", () => {
+  it("quotes the fee in the coin and the first buy's output", async () => {
+    await expect(fake().quote(launch, live)).resolves.toStrictEqual({
+      ok: true,
+      value: { fee, firstBuyOut: 50_000n, tokenDecimals: 18 },
+    });
+  });
+
+  it("answers a pair the launchpad does not launch against as no route", async () => {
+    await expect(fake().quote({ ...launch, pair: usd }, live)).resolves.toMatchObject({
+      error: "no_route",
+    });
+  });
+
+  it("refuses a fee in another asset than the coin", async () => {
+    const base = createFakeLauncher();
+    const host = hostOf({
+      ...base,
+      quoteLaunch: async () => ({
+        ok: true,
+        value: { fee: { asset: usd, base: 1n }, firstBuyOut: 1n, tokenDecimals: 18 },
+      }),
+    });
+    await expect(host.quote(launch, live)).resolves.toMatchObject({ error: "decode_mismatch" });
+  });
+
+  it("counts a launchpad that throws as down, and its pin read as no report yet", async () => {
+    const base = createFakeLauncher();
+    const host = hostOf({
+      ...base,
+      pin: async () => Promise.reject(new Error("upload failed")),
+      pinStatus: async () => Promise.reject(new Error("gateway timeout")),
+    });
+    await expect(host.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
+    await expect(host.pinStatus(pad, null, live)).resolves.toBe("pending");
+  });
+
+  it("reports a pin as the launchpad does", async () => {
+    const host = fake({ pin: { failsAfterReads: 1 } });
+    await expect(host.pin(launch, words, live)).resolves.toMatchObject({
+      ok: true,
+      value: { metadataUri: "ipfs://fake-1" },
+    });
+    await expect(host.pinStatus(pad, null, live)).resolves.toBe("failed");
+  });
+});
+
+describe("the launch host's build", () => {
+  it("checks and keeps the create call of a coin first buy", async () => {
+    const built = await fake().build(launch, upload, live);
+    expect(built).toMatchObject({
+      ok: true,
+      value: { launch: { token, metadataUri: upload.metadataUri, feeBase: fee.base } },
+    });
+  });
+
+  it("checks an exact approval before a token first buy", async () => {
+    const host = fake({ pair: usd });
+    const bought = { ...launch, pair: usd, firstBuy: { asset: usd, base: 7n } };
+    const built = await host.build(bought, { ...upload, minOutBase: 7_000n }, live);
+    expect(built).toMatchObject({ ok: true, value: { steps: [{ kind: "approval" }, {}] } });
+  });
+
+  it("names the failed check of a step it refuses", async () => {
+    const base = createFakeLauncher();
+    const data = fakeLaunchData({
+      token,
+      name: launch.name,
+      symbol: launch.symbol,
+      metadataUri: upload.metadataUri,
+      pair: coin,
+      feeBase: fee.base,
+      firstBuy: { spend: { asset: coin, base: 50n }, minOut: 1n, recipient: wallet },
+    });
+    const steps = [fakeDraft(wallet, { to: "0x0000000d", value: 2_050n, data })];
+    const host = hostOf({ ...base, buildLaunch: async () => ({ token, steps }) });
+    await expect(host.build(launch, upload, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "low_min_out",
+    });
+  });
+
+  it("counts a build that throws as a launchpad that is down", async () => {
+    const base = createFakeLauncher();
+    const host = hostOf({ ...base, buildLaunch: async () => Promise.reject(new Error("down")) });
+    await expect(host.build(launch, upload, live)).resolves.toMatchObject({ error: "venue_down" });
+  });
+});
