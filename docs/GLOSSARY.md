@@ -458,32 +458,34 @@ it. Write Chinese the way Binance's own Chinese docs do:
 
 ### Running binference
 
-| English                               | 中文                   | Notes                        |
-| ------------------------------------- | ---------------------- | ---------------------------- |
-| state folder                          | 状态文件夹             | `~/.binference`              |
-| usage (of a command)                  | 用法                   | Help's heading               |
-| config key                            | 配置项                 |                              |
-| value (of a config key)               | 值                     |                              |
-| secret source                         | 密钥来源               |                              |
-| keychain                              | 钥匙串                 |                              |
-| unlock mode                           | 解锁方式               | `engine.unlock.mode`         |
-| passphrase                            | 密码短语               | Seals the agent key          |
-| Privy app                             | Privy 应用             |                              |
-| app ID (of a Privy app)               | 应用 ID                |                              |
-| app secret (of a Privy app)           | 应用密钥               |                              |
-| custody (who holds the agent wallets) | 托管                   |                              |
-| signer (the process)                  | 签名进程               | Holds the agent key          |
-| agent runtime (the process)           | Agent 运行时           | Runs the model loop          |
-| signer (of a wallet)                  | 签名方                 | The agent key's key quorum   |
-| wallet facts                          | 钱包信息               |                              |
-| health signal                         | 健康信号               | Shown by `binference status` |
-| log (the engine's log file)           | 日志                   |                              |
-| background service                    | 后台服务               | `binference start`           |
-| telemetry, usage counts               | 使用统计, 使用次数统计 | `telemetry.enabled`, opt-in  |
-| log in (to the computer)              | 登录                   |                              |
-| client token                          | 访问令牌               | A `bnt_` sign-in token       |
-| release notes                         | 更新说明               |                              |
-| roll back (an update)                 | 回退                   | Not 回滚, which is a revert  |
+| English                                     | 中文                   | Notes                        |
+| ------------------------------------------- | ---------------------- | ---------------------------- |
+| state folder                                | 状态文件夹             | `~/.binference`              |
+| usage (of a command)                        | 用法                   | Help's heading               |
+| config key                                  | 配置项                 |                              |
+| value (of a config key)                     | 值                     |                              |
+| secret source                               | 密钥来源               |                              |
+| keychain                                    | 钥匙串                 |                              |
+| unlock mode                                 | 解锁方式               | `engine.unlock.mode`         |
+| passphrase                                  | 密码短语               | Seals the agent key          |
+| Privy app                                   | Privy 应用             |                              |
+| app ID (of a Privy app)                     | 应用 ID                |                              |
+| app secret (of a Privy app)                 | 应用密钥               |                              |
+| custody (who holds the agent wallets)       | 托管                   |                              |
+| signer (the process)                        | 签名进程               | Holds the agent key          |
+| agent runtime (the process)                 | Agent 运行时           | Runs the model loop          |
+| signer (of a wallet)                        | 签名方                 | The agent key's key quorum   |
+| wallet facts                                | 钱包信息               |                              |
+| health signal                               | 健康信号               | Shown by `binference status` |
+| log (the engine's log file)                 | 日志                   |                              |
+| background service                          | 后台服务               | `binference start`           |
+| telemetry, usage counts                     | 使用统计, 使用次数统计 | `telemetry.enabled`, opt-in  |
+| API address, base URL (of a model provider) | 接口地址               | Where its API answers        |
+| compatible (provider of an API)             | 兼容                   | Speaks that API              |
+| log in (to the computer)                    | 登录                   |                              |
+| client token                                | 访问令牌               | A `bnt_` sign-in token       |
+| release notes                               | 更新说明               |                              |
+| roll back (an update)                       | 回退                   | Not 回滚, which is a revert  |
 
 ### Trading
 

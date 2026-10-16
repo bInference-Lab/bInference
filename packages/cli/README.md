@@ -82,8 +82,9 @@ as `telegram.bot_skipped`, and the engine runs without the bot.
 `binference init` sets up a new install (keys spec, section 2) under the engine lock, in the
 order of ARCHITECTURE section 27: the language, which every later step speaks; the disclaimer and
 privacy statement, accepted by typing the phrase and stored in `engine.sqlite` (decision 0220);
-telemetry consent, kept in `telemetry.enabled`; the Privy app's id and secret, checked with one
-read; the owner key, shown once as its `bnok1` code, whose
+telemetry consent, kept in `telemetry.enabled`; the model, a provider, model and key checked with
+one small live call before anything is kept, the key in the keychain or `keys/` (decision 0221);
+the Privy app's id and secret, checked with one read; the owner key, shown once as its `bnok1` code, whose
 last 6 characters the owner types back; the rescue address; the bot token, checked with `getMe`;
 the default limits. Then it stores this machine's agent key where the unlock mode keeps it
 (the keychain with a desktop session, an owner-only file without one, a file sealed with a
@@ -96,8 +97,9 @@ secret sources. A person answers its questions through a prompter over `@clack/p
 never makes an owner key: it takes the public half `--owner-key-public` gives, which
 `binference owner-key create` made on a machine with a terminal, and is refused without it, so no
 owner key code reaches a log (decision 0148). A folder set up before is refused unless the owner
-passes `--start-over`, which offers the earlier language and telemetry choice first, and a
-stored agent key is never replaced (decision 0222).
+passes `--start-over`, which offers the earlier language, telemetry choice and model first and
+keeps the stored model key on Enter, never shown, and a stored agent key is never replaced
+(decision 0222).
 
 `binference mcp` is the MCP server an MCP client starts (protocol spec, section 11). It signs in
 over IPC with the client's token, `auth/mcp-<client>.token` for `--client <client>` or else

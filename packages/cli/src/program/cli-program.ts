@@ -117,6 +117,10 @@ function addInit(program: Command, options: ProgramOptions): void {
       ]),
     )
     .option("--unlock-command <source>", message("option.unlockCommand"))
+    .option("--model-provider <provider>", message("option.modelProvider"))
+    .option("--model-base-url <url>", message("option.modelBaseUrl"))
+    .option("--model <id>", message("option.model"))
+    .option("--model-key <source>", message("option.modelKey"))
     .option("--set <key=value>", message("option.setInit"), addSet, [])
     .option("--start-over", message("option.startOver"))
     .option("--attach", message("option.attach"))

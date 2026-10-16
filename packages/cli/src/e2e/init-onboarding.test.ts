@@ -21,10 +21,13 @@ describe("the onboarding steps of binference init", () => {
     const run = await interactiveInit(machine, initScript(machine));
 
     expect([run.code, run.stderr]).toStrictEqual([0, ""]);
-    expect(run.transcript.asked.slice(0, 4)).toStrictEqual([
+    expect(run.transcript.asked.slice(0, 7)).toStrictEqual([
       "language",
       "disclaimer",
       "telemetry",
+      "modelProvider",
+      "modelName",
+      "modelKey",
       "privyAppId",
     ]);
     expect(run.transcript.notes.slice(0, 2)).toStrictEqual([

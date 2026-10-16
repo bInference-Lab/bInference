@@ -18,14 +18,30 @@ import {
 } from "./ceiling-request.js";
 import type { DisclaimerAnswer } from "./disclaimer-step.js";
 import { firstAgentDraft } from "./first-agent.js";
-import { type FirstAnswers, type InitStart, takeFirstAnswers } from "./first-answers.js";
+import {
+  type FirstAnswers,
+  type InitStart,
+  modelKeyEntry,
+  modelSettingsOf,
+  takeFirstAnswers,
+} from "./first-answers.js";
 import { type Answers, takeAnswers } from "./init-answers.js";
 import { type InitConfig, initConfig } from "./init-config.js";
 import type { InitContext, InitStep } from "./init-context.js";
 import { ensureFirstAgent, type InitStores, issuePairing, recordInstall } from "./install-step.js";
 import { takeLimits } from "./limits-step.js";
+import type { ModelLink } from "./model-link.js";
 import { appSecretEntry, botTokenEntry } from "./secret-places.js";
 import { type FirstWallet, makeFirstWallet } from "./wallet-step.js";
+
+/** The model a finished init linked, for its summary: its provider and where its key is kept. */
+interface LinkedModel {
+  /** The provider's option, such as `openrouter`. */
+  readonly preset: string;
+  readonly model: string;
+  /** `source` for a key a flag or the earlier set-up named, `none` for a provider without one. */
+  readonly keyPlace: "keychain" | "file" | "source" | "none";
+}
 
 /** What a finished init set up, for its summary. */
 export interface InitOutcome {
@@ -38,12 +54,14 @@ export interface InitOutcome {
   readonly botUsername: string;
   readonly configFile: string;
   readonly disclaimer: DisclaimerAnswer;
+  /** None when a run nobody answers named no model. */
+  readonly model?: LinkedModel;
   readonly telemetry: boolean;
 }
 
 /**
- * The config init writes from its answers, with the first answers of a new set-up (the language
- * and telemetry) and the limits a person sets, built and loaded.
+ * The config init writes from its answers, with the first answers of a new set-up (the language,
+ * telemetry and the model) and the limits a person sets, built and loaded.
  */
 export async function configOf(
   context: InitContext,
@@ -51,6 +69,7 @@ export async function configOf(
   first?: FirstAnswers,
 ): Promise<InitStep<InitConfig>> {
   const { app, bot, place, unlock } = answers;
+  const model = first?.model;
   const settings = {
     unlockMode: unlock.mode,
     ...(unlock.command === undefined ? {} : { unlockCommand: unlock.command }),
@@ -58,6 +77,7 @@ export async function configOf(
     appSecret: app.secret.source ?? place.sourceOf(appSecretEntry),
     ownerKeyPublic: answers.ownerKey.publicKey,
     botToken: bot.token.source ?? place.sourceOf(botTokenEntry),
+    ...(model === undefined ? {} : { model: modelSettingsOf(model, place) }),
     asked: [...(first?.telemetry ?? []), ...(await takeLimits(context))],
   };
   const system = systemDefaults(context.host.env, context.platform);
@@ -66,10 +86,18 @@ export async function configOf(
 }
 
 /** Stores each secret a person typed where the unlock mode keeps it; a flag's source stays put. */
-export async function storeTyped(context: InitContext, answers: Answers): Promise<void> {
+export async function storeTyped(
+  context: InitContext,
+  answers: Answers,
+  first?: FirstAnswers,
+): Promise<void> {
+  const model = first?.model;
+  const modelKey =
+    model?.key === undefined ? [] : ([[modelKeyEntry(model.preset.name), model.key]] as const);
   const typed = [
     [appSecretEntry, answers.app.secret],
     [botTokenEntry, answers.bot.token],
+    ...modelKey,
   ] as const;
   const writes = typed.filter(([, secret]) => secret.source === undefined);
   await Promise.all(
@@ -170,7 +198,7 @@ async function makeWallet(
   if (!agentKey.ok) {
     return agentKey;
   }
-  await storeTyped(context, prepared.answers);
+  await storeTyped(context, prepared.answers, prepared.first);
   await openStateWebPushKey(context.platform, context.signal);
   const first = await makeFirstWallet(context, {
     appId: app.appId,
@@ -180,6 +208,15 @@ async function makeWallet(
     draft: prepared.draft,
   });
   return first.ok ? ok({ first: first.value, agentKey: agentKey.value }) : first;
+}
+
+function linkedModel(link: ModelLink, answers: Answers): LinkedModel {
+  const { key } = link;
+  const named = { preset: link.preset.id, model: link.model };
+  if (key === undefined) {
+    return { ...named, keyPlace: "none" };
+  }
+  return { ...named, keyPlace: key.source === undefined ? answers.place.kind : "source" };
 }
 
 async function record(
@@ -218,6 +255,7 @@ async function record(
     botUsername: bot.account.username,
     configFile: await writeConfig(context, prepared.built.text),
     disclaimer: first.disclaimer,
+    ...(first.model === undefined ? {} : { model: linkedModel(first.model, prepared.answers) }),
     telemetry: prepared.built.config.telemetry.enabled,
   });
 }
@@ -228,7 +266,8 @@ type Start = InitStart & { readonly accepted?: DisclaimerAcceptance };
 /**
  * Runs `binference init` once its database is open (keys spec, section 2): every question and
  * check first, in the order of ARCHITECTURE section 27 after the language (the disclaimer,
- * telemetry, the Privy app, the owner key, the rescue address, the bot and the limits), then the config built and loaded, then this machine's agent key, the typed
+ * telemetry, the model and its live check, the Privy app, the owner key, the rescue address, the
+ * bot and the limits), then the config built and loaded, then this machine's agent key, the typed
  * secrets and the VAPID key of browser push stored, the first wallet made on Privy and read back,
  * the setup and an accepted disclaimer recorded, the bot's pairing link issued, and the config
  * file written last, once, owner-only. A refusal before the wallet leaves nothing on Privy.

@@ -10,8 +10,19 @@ import { currentConfigVersion } from "../config/migrations/config-migrations.js"
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { UnlockMode } from "../config/schema/engine.schema.js";
 import type { CommandSource, SecretSource } from "../config/schema/secret-source.schema.js";
+import type { ProviderKind } from "../config/schema/telegram-models.schema.js";
 import { configFileText } from "./config-file-text.js";
 import { type InitContext, type InitStep, type Refused, refused } from "./init-context.js";
+
+/** The model init linked (decision 0221): its provider, the model, and its key's source. */
+export interface ModelSettings {
+  /** The provider's name in `models.providers`. */
+  readonly name: string;
+  readonly kind: ProviderKind;
+  readonly baseUrl?: string;
+  readonly apiKey?: SecretSource;
+  readonly model: string;
+}
 
 /** What init writes into the config itself; `--set` flags add the rest. */
 export interface InitSettings {
@@ -21,6 +32,8 @@ export interface InitSettings {
   readonly appSecret: SecretSource;
   readonly ownerKeyPublic: string;
   readonly botToken: SecretSource;
+  /** The model, when one was linked; it then sets `models.main` and `models.fast`. */
+  readonly model?: ModelSettings;
   /** What a person answered at init besides these, such as the limits, as entries. */
   readonly asked: readonly LayerEntry[];
 }
@@ -33,10 +46,22 @@ export interface InitConfig {
 
 // Keys init sets from its own steps; a `--set` flag cannot replace them.
 const ownedPaths = ["version", "engine.unlock", "custody", "telegram.botToken"];
+const modelPaths = ["models.providers", "models.main", "models.fast"];
 
-function ownedBy(set: string): string | undefined {
+function ownedBy(set: string, settings: InitSettings): string | undefined {
   const path = set.split("=")[0] ?? "";
-  return ownedPaths.find((owned) => path === owned || path.startsWith(`${owned}.`));
+  const owned = settings.model === undefined ? ownedPaths : [...ownedPaths, ...modelPaths];
+  return owned.find((item) => path === item || path.startsWith(`${item}.`));
+}
+
+function modelsValue(model: ModelSettings): JsonObject {
+  const provider = {
+    kind: model.kind,
+    ...(model.baseUrl === undefined ? {} : { baseUrl: model.baseUrl }),
+    ...(model.apiKey === undefined ? {} : { apiKey: { ...model.apiKey } }),
+  };
+  const named = `${model.name}/${model.model}`;
+  return { providers: { [model.name]: provider }, main: named, fast: named };
 }
 
 function settingsValue(settings: InitSettings): JsonObject {
@@ -53,6 +78,7 @@ function settingsValue(settings: InitSettings): JsonObject {
       },
     },
     telegram: { botToken: { ...settings.botToken } },
+    ...(settings.model === undefined ? {} : { models: modelsValue(settings.model) }),
   };
 }
 
@@ -95,8 +121,8 @@ function fileValue(
 /**
  * Builds the config file init writes (config spec, section 2): the owner's language and zone,
  * the unlock mode, the Privy app with its secret's source and the owner key's public half, the
- * bot token's source, the limits and telemetry choice a person set and every `--set` flag, each
- * key with its comment.
+ * bot token's source, the model with its key's source, the limits and telemetry choice a person
+ * set and every `--set` flag, each key with its comment.
  * The text must load as `binference start` loads it; a flag that does not fit, or one on a key
  * init sets itself, stops init before anything is made.
  */
@@ -105,7 +131,9 @@ export async function initConfig(
   settings: InitSettings,
   system: SystemDefaults,
 ): Promise<InitStep<InitConfig>> {
-  const owned = context.flags.sets.map(ownedBy).find((path) => path !== undefined);
+  const owned = context.flags.sets
+    .map((set) => ownedBy(set, settings))
+    .find((path) => path !== undefined);
   if (owned !== undefined) {
     return refused("init.set_owned", "refused.setOwned", { path: owned });
   }

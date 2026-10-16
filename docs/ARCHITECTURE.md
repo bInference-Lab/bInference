@@ -847,7 +847,9 @@ Decided in [decision 0007](DECISIONS.md#d0007).
 
 - **Default: the binference AI gateway,** in the OpenAI Chat Completions or Anthropic Messages
   format. `binference init` gets a `binf_` key through the device-code link, with a spending limit
-  the owner picks.
+  the owner picks. Until the gateway's link serves a self-hosted agent, init takes a pasted key for
+  any provider and checks it with one small live call before it keeps it
+  ([decision 0221](DECISIONS.md#d0221)).
 - **Any provider allowed.** Any OpenAI- or Anthropic-compatible provider works instead, local models
   included.
 - **Roles:**

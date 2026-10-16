@@ -8,6 +8,7 @@ import {
   type Transcript,
 } from "../term/scripted-prompter.js";
 import { type CliRun, type InitMachine, rescueAddress, runOn, secretEnv } from "./init-fixtures.js";
+import { testModelId, testModelKey } from "./model-fixtures.js";
 import type { HostParts } from "./test-host.js";
 
 /** A script of answers by question id, in the order each question takes them. */
@@ -40,14 +41,18 @@ export async function fileText(
 
 /**
  * The answers of a person who sets up in English with the defaults: accepts the disclaimer,
- * shares no usage counts, and answers the Privy app, the owner key's check-back, the rescue
- * address, the bot and the limits; `changes` replace the answers of the questions they name.
+ * shares no usage counts, links the fake provider's model at OpenAI's API, and answers the Privy
+ * app, the owner key's check-back, the rescue address, the bot and the limits; `changes` replace
+ * the answers of the questions they name.
  */
 export function initScript(machine: InitMachine, changes: InitScript = {}): InitScript {
   return {
     language: [""],
     disclaimer: ["I understand"],
     telemetry: [""],
+    modelProvider: ["openai"],
+    modelName: [testModelId],
+    modelKey: [testModelKey],
     privyAppId: [machine.privy.appId],
     privyAppSecret: [machine.privy.appSecret.reveal()],
     ownerKeyCheck: [lastSix],

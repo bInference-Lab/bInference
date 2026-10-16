@@ -56,6 +56,7 @@ const answerSchema = z.strictObject({
   agentKey: z.enum(["made", "kept"]),
   pairing: z.strictObject({ link: z.string(), expiresAtMs: z.number() }),
   configFile: z.string(),
+  model: z.strictObject({ provider: z.string(), model: z.string() }).nullable(),
   disclaimer: z.enum(["accepted", "accepted_before", "not_accepted"]),
   telemetry: z.boolean(),
 });

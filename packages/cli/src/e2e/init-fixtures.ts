@@ -16,6 +16,7 @@ import {
 } from "@binference/store";
 import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { runCli } from "../program/run-cli.js";
+import { createFakeModelProvider, type FakeModelProvider, isModelCall } from "./model-fixtures.js";
 import { type HostParts, hostOn, hostWith, type TestMachine } from "./test-host.js";
 
 /** An address only the tests own: the rescue address of every test install. */
@@ -37,11 +38,15 @@ export interface TestOwnerKey {
   readonly publicKey: string;
 }
 
-/** A test machine with the outside world init reaches: Privy and the Bot API, both fakes. */
+/** A test machine with the outside world init reaches: Privy, the Bot API and a model provider. */
 export interface InitMachine extends TestMachine {
   readonly privy: RecordedPrivy;
   readonly bot: FakeBotApi;
-  /** The outside world as the machine's commands reach it: Telegram's Bot API, then Privy. */
+  readonly models: FakeModelProvider;
+  /**
+   * The outside world as the machine's commands reach it: Telegram's Bot API, every model call,
+   * then Privy.
+   */
   readonly world: Http;
   /** The owner key whose public half `initFlags` passes, made apart from init as an owner would. */
   readonly ownerKey: TestOwnerKey;
@@ -56,21 +61,29 @@ export function newOwnerKey(): TestOwnerKey {
 const telegramOrigin = "https://api.telegram.org";
 
 /**
- * A test machine on the given folder, clock and fake Privy, with a fake Bot API of its own and a
- * world in which Telegram's origin reaches the fake bot and every other request the fake Privy.
- * It keeps the owner key it is given, else makes one.
+ * A test machine on the given folder, clock and fake Privy, with a fake Bot API and a fake model
+ * provider of its own and a world in which Telegram's origin reaches the fake bot, a Chat
+ * Completions or Messages call the fake provider, and every other request the fake Privy. It
+ * keeps the owner key it is given, else makes one.
  */
 export function machineOf(
-  machine: Omit<InitMachine, "bot" | "world" | "ownerKey"> & { readonly ownerKey?: TestOwnerKey },
+  machine: Omit<InitMachine, "bot" | "models" | "world" | "ownerKey"> & {
+    readonly ownerKey?: TestOwnerKey;
+  },
 ): InitMachine {
   const bot = createFakeBotApi();
+  const models = createFakeModelProvider();
   const world: Http = {
-    request: async (request) =>
-      new URL(request.url).origin === telegramOrigin
-        ? bot.http.request(request)
-        : machine.privy.http.request(request),
+    request: async (request) => {
+      if (new URL(request.url).origin === telegramOrigin) {
+        return bot.http.request(request);
+      }
+      return isModelCall(request)
+        ? models.http.request(request)
+        : machine.privy.http.request(request);
+    },
   };
-  return { ...machine, ownerKey: machine.ownerKey ?? newOwnerKey(), bot, world };
+  return { ...machine, ownerKey: machine.ownerKey ?? newOwnerKey(), bot, models, world };
 }
 
 /** What one `binference` run gave. */

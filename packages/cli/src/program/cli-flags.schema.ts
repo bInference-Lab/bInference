@@ -78,6 +78,14 @@ export interface InitFlags extends CommonOptions {
   readonly unlock?: UnlockMode;
   /** The `{ fromCommand: [...] }` that prints the agent key, for the `command` unlock mode. */
   readonly unlockCommand?: string;
+  /** The model provider init offers, by its option, such as `openrouter` (decision 0221). */
+  readonly modelProvider?: string;
+  /** The provider's address, for a compatible provider init does not know. */
+  readonly modelBaseUrl?: string;
+  /** The model's id at the provider. */
+  readonly model?: string;
+  /** The provider key's source, such as `{ fromEnv: "OPENROUTER_API_KEY" }`. */
+  readonly modelKey?: string;
   /** Each `--set key=value` for the config file, in the order given. */
   readonly sets: readonly string[];
   /** Sets up a folder that was set up before, with a new owner key and a new wallet. */
@@ -177,6 +185,10 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     ownerKeyPublic: z.string().min(1).max(512).exactOptional(),
     unlock: z.enum(["keychain", "file", "manual", "command"]).exactOptional(),
     unlockCommand: z.string().min(1).exactOptional(),
+    modelProvider: z.string().min(1).exactOptional(),
+    modelBaseUrl: z.string().min(1).exactOptional(),
+    model: z.string().min(1).exactOptional(),
+    modelKey: z.string().min(1).exactOptional(),
     set: z.array(z.string()).default([]),
     startOver: z.boolean().default(false),
     attach: z.boolean().default(false),
