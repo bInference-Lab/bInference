@@ -12,6 +12,7 @@ import type { IntentEventRecord } from "../intents/intent-change.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { isTerminalState } from "../intents/intent-state.js";
 import type { AgentStore } from "../ports.js";
+import type { ScheduleWake } from "../schedules/schedule-record.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 
 /** An in-memory agent inbox that the in-memory intent store also writes settle messages to. */
@@ -30,6 +31,19 @@ export interface MemoryAgentInboxStore extends AgentInboxStore {
    * the caller knows: `busy` while the agent holds 200 untaken messages.
    */
   addNow(draft: AgentInboxDraft): Result<AgentInboxMessage, "busy" | "not_found">;
+  /**
+   * Stores a schedule's wake-up at once, inside the in-memory schedule store's own write: `waiting`
+   * while `waitingFor` is still untaken, and `busy` while the agent holds 200 untaken messages.
+   */
+  wakeNow(wake: MemoryWake): Result<AgentInboxMessage, "waiting" | "busy">;
+}
+
+/** A schedule's wake-up as the in-memory schedule store hands it over. */
+interface MemoryWake {
+  readonly agentId: Id<"agt">;
+  readonly wake: ScheduleWake;
+  readonly atMs: number;
+  readonly waitingFor?: Id<"msg">;
 }
 
 /** The agents an in-memory agent inbox knows. */
@@ -139,6 +153,21 @@ function add(
   );
 }
 
+function wake(rows: InboxRows, waking: MemoryWake): Result<AgentInboxMessage, "waiting" | "busy"> {
+  const { agentId, wake: draft, atMs, waitingFor } = waking;
+  if (rows.all().some((stored) => stored.id === waitingFor && !isTaken(stored))) {
+    return err("waiting");
+  }
+  if (untakenOf(rows, agentId) >= maxUntakenMessages) {
+    return err("busy");
+  }
+  const sessionId = rows.sessionOf(agentId) ?? draft.opens;
+  rows.open(agentId, sessionId);
+  const { id, turnId, payload } = draft;
+  const message = { id, agentId, sessionId, kind: "inbox/scheduleDue", turnId, payload } as const;
+  return ok(store(rows, { ...message, createdAtMs: atMs }));
+}
+
 function isAfter(message: AgentInboxMessage, after: UntakenQuery["after"]): boolean {
   return (
     after === undefined ||
@@ -171,6 +200,7 @@ export function createMemoryAgentInboxStore(
   return {
     settleNow: (intent, firstEvent) => settle(rows, intent, firstEvent),
     addNow: (draft) => add(rows, structuredClone(draft)),
+    wakeNow: (waking) => wake(rows, structuredClone(waking)),
     async add(draft, call) {
       call.signal.throwIfAborted();
       const agent = await options.agents.get(draft.agentId, call);

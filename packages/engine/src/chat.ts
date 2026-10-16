@@ -83,3 +83,4 @@ export type {
   ScheduleWake,
 } from "./schedules/schedule-record.js";
 export type { ScheduleStore } from "./schedules/ports.js";
+export { scheduleAfterRun } from "./schedules/schedule-after-run.js";
