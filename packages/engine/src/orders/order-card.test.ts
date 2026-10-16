@@ -1,9 +1,11 @@
-import { assetRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
-import { expectOk, testNowMs } from "../intents/test-intents.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
+import { expectOk, testAgent, testNowMs, testWallet } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
 import { createdOrder, startOrderEngine, tapCard, testStopLoss } from "./test-orders.js";
 
@@ -112,5 +114,32 @@ describe("an auto order's card in English", () => {
     expect(expectOk(await test.engine.handlers["order/list"](testCall({}))).items).toStrictEqual(
       [],
     );
+  });
+});
+
+describe("an auto order held by the agent's launch wallet", () => {
+  it("names the launch wallet on its card, as every card of such an intent does", async () => {
+    const launch = fixtureId("wal", 217);
+    const test = await startOrderEngine({
+      wallets: [testWallet, launch],
+      custodyWallets: new Map([[launch, accountRefSchema.parse("fake:1:0x000000d9")]]),
+    });
+    test.stores.install.addWallet(
+      testWalletRecord({
+        id: launch,
+        agentId: testAgent,
+        label: "curves",
+        createdAtMs: testNowMs,
+        role: "launch",
+      }),
+    );
+
+    const { intent } = await createdOrder(test, testStopLoss({ wallet: launch }));
+    const card = expectOk(await test.engine.handlers["intent/card"](testCall({ intent })));
+
+    expect(card.lines[2]).toStrictEqual({
+      key: "card.launchWallet",
+      values: { wallet: { type: "text", text: "curves" } },
+    });
   });
 });

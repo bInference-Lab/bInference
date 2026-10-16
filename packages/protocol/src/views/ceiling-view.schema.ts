@@ -45,6 +45,12 @@ export interface CeilingView {
   readonly recipients: readonly AccountRef[];
   /** Each 24-hour cap the ceiling names, the native coin's first on each chain. */
   readonly dayCaps?: readonly DayCapView[];
+  /**
+   * A launch wallet's widest grant (decision 0218): the functions its ceiling lets a call reach on
+   * any contract, `approve` among them when it allows approvals of any spender. Absent for an
+   * agent wallet.
+   */
+  readonly launchCalls?: readonly string[];
   readonly readAt: number;
 }
 
@@ -83,5 +89,6 @@ export const ceilingViewSchema: z.ZodType<CeilingView> = z.object({
   perTxNative: decimalStringSchema,
   recipients: z.array(accountRefSchema),
   dayCaps: z.array(dayCapViewSchema).exactOptional(),
+  launchCalls: z.array(z.string().min(1)).exactOptional(),
   readAt: epochMsSchema,
 });

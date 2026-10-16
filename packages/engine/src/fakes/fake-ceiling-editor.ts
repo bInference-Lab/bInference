@@ -31,6 +31,8 @@ export interface FakeCalls {
   readonly contracts: readonly AccountRef[];
   readonly perTxNativeBase: bigint;
   readonly dayCaps?: readonly DayCapView[];
+  /** The functions a launch wallet's ceiling lets a call reach on any contract; none if absent. */
+  readonly launchCalls?: readonly string[];
 }
 
 /** A ceiling editor in memory, whose ceilings a test sets up and reads. */
@@ -135,7 +137,9 @@ function readOf(recipients: readonly AccountRef[], calls: FakeCalls): CeilingRea
     recipients: [...recipients],
   });
   const dayCaps = calls.dayCaps ?? [];
-  return { chains: chainsOf(recipients), contracts, perTxNativeBase, recipients, dayCaps, policy };
+  const launchCalls = calls.launchCalls ?? [];
+  const chains = chainsOf(recipients);
+  return { chains, contracts, perTxNativeBase, recipients, dayCaps, launchCalls, policy };
 }
 
 /** The ceilings and calls the fake holds, and the registry its venues' contracts come from. */

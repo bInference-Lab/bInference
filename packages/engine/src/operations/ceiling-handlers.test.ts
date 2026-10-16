@@ -53,6 +53,18 @@ describe("reading a wallet's ceiling", () => {
     expect(await read(test)).toMatchObject({ ok: true, value: { venues: [] } });
   });
 
+  it("names a launch wallet's launch calls, its widest grant", async () => {
+    const test = await startTestEngine();
+    test.stores.install.addWallet({ ...wallet, role: "launch" });
+    const calls = { contracts: [router], perTxNativeBase: 5n, launchCalls: ["buy", "approve"] };
+    test.ceilings.put(wallet.policyId, [owner], calls);
+
+    expect(await read(test)).toMatchObject({
+      ok: true,
+      value: { venues: ["fake-swap"], launchCalls: ["buy", "approve"] },
+    });
+  });
+
   it("refuses a wallet the install or custody does not hold", async () => {
     const test = await startTestEngine();
     test.stores.install.addWallet(wallet);

@@ -200,6 +200,7 @@
   "ceiling.dayCapSent": "{amount} {symbol} sent per {hours, number} hours, {usd} at the floor price",
   "ceiling.dayCapApproved": "{amount} {symbol} approved per {hours, number} hours, {usd} at the floor price",
   "ceiling.dayCapBase": "{amount} base units of {asset} per {hours, number} hours, {usd} at the floor price",
+  "ceiling.launchCalls": "As a launch wallet, it may also call {calls} on any contract, under the cap and the 24-hour caps above: a stolen key can take what it holds.",
   "ceiling.nothingToSet": "Name what to change: --venues for the venues, --per-tx for the most one contract call may carry, or both; or --day-cap-usd for the 24-hour caps.",
   "ceiling.badCap": "--per-tx takes an amount of the native coin, such as 0.5, with no more decimals than the coin has. {amount} is not one.",
   "ceiling.badDayCap": "--day-cap-usd takes a dollar amount above 0, such as 2000, with at most 6 decimals. {amount} is not one.",

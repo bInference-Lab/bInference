@@ -200,6 +200,7 @@
   "ceiling.dayCapSent": "每 {hours, number} 小时最多转出 {amount} {symbol}，按底价计 {usd}",
   "ceiling.dayCapApproved": "每 {hours, number} 小时最多授权 {amount} {symbol}，按底价计 {usd}",
   "ceiling.dayCapBase": "每 {hours, number} 小时最多 {amount} 个 {asset} 最小单位，按底价计 {usd}",
+  "ceiling.launchCalls": "作为发射钱包，它还可以在任何合约上调用 {calls}，但受上述单笔上限和 24 小时上限约束：被盗的密钥可以拿走其中的全部资产。",
   "ceiling.nothingToSet": "请指定要修改的内容：--venues 修改平台，--per-tx 修改一次合约调用最多可携带的金额，或两者都改；--day-cap-usd 修改 24 小时上限。",
   "ceiling.badCap": "--per-tx 需要原生币数量，例如 0.5，小数位数不能超过该币的位数。{amount} 不符合要求。",
   "ceiling.badDayCap": "--day-cap-usd 需要大于 0 的美元金额，例如 2000，最多 6 位小数。{amount} 不符合要求。",

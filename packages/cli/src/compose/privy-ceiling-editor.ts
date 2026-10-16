@@ -150,6 +150,7 @@ async function read(
     perTxNativeBase: rules.perTxNativeCapBase,
     recipients: accountsOn(chains, rules.recipients),
     dayCaps: dayCapViewsOf(rules.caps, options.capAssetsOn),
+    launchCalls: rules.launchCalls,
     policy: jsonValueSchema.parse(policy),
   });
 }

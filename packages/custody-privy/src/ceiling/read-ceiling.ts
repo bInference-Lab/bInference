@@ -37,11 +37,24 @@ export interface CeilingHeld {
   readonly caps: readonly HeldCaps[];
   /** Whether it is a launch wallet's ceiling: one of its rules is a launch rule (decision 0217). */
   readonly isLaunch: boolean;
+  /**
+   * The functions its launch rules let a call reach on any contract, each once: each launch call,
+   * and `approve` when it allows approvals of any spender (decision 0218). None for an agent wallet.
+   */
+  readonly launchCalls: readonly string[];
 }
 
 const onChain = /, chain (\d{1,10})$/;
 const callPrefix = "Call ";
 const launchCallPrefix = "Launch call ";
+
+// The function a launch rule lets a call reach on any contract: a launch call's, or `approve`.
+function launchFunctionOf(rule: HeldRule): readonly string[] {
+  if (isCallRule(rule, undefined, launchCallPrefix)) {
+    return [rule.name.slice(launchCallPrefix.length).replace(onChain, "")];
+  }
+  return rule.name.startsWith("Launch approvals, ") ? ["approve"] : [];
+}
 
 function isCallRule(rule: HeldRule, chainId?: string, prefix = callPrefix): boolean {
   const suffix =
@@ -187,6 +200,7 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
     recipients: [...new Set(sends.flatMap((rule) => valuesOf(rule, "to", "in")))],
     caps,
     isLaunch: read.some(isLaunchRule),
+    launchCalls: [...new Set(read.flatMap(launchFunctionOf))],
   };
 }
 

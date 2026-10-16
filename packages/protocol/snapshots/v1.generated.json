@@ -7034,6 +7034,13 @@
                 ]
               }
             },
+            "launchCalls": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
             "readAt": {
               "type": "integer",
               "minimum": 0,
@@ -7210,6 +7217,13 @@
                   "windowSeconds",
                   "floorUsdMicros"
                 ]
+              }
+            },
+            "launchCalls": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
               }
             },
             "readAt": {

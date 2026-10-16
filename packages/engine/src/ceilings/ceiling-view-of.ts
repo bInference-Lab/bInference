@@ -47,6 +47,7 @@ export function ceilingViewOf(
     perTxNative: read.perTxNativeBase,
     recipients: read.recipients,
     dayCaps: read.dayCaps,
+    ...(read.launchCalls.length === 0 ? {} : { launchCalls: read.launchCalls }),
     readAt,
   };
 }

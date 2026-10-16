@@ -58,6 +58,7 @@ describe("readCeiling", () => {
       recipients: [testAddresses.rescue, testAddresses.saved],
       caps: [{ chainId: "56", caps: testCaps }],
       isLaunch: false,
+      launchCalls: [],
     });
   });
 
@@ -73,10 +74,12 @@ describe("readCeiling", () => {
       recipients: [testAddresses.rescue, testAddresses.saved],
       caps: [{ chainId: "56", caps: testCaps }],
       isLaunch: true,
+      launchCalls: ["buy", "sell", "approve"],
     });
     expect(readCeiling(rulesOf(testLaunchCeilingRequest()))).toMatchObject({
       contracts: [testAddresses.router],
       isLaunch: true,
+      launchCalls: ["buy", "sell", "approve"],
     });
   });
 

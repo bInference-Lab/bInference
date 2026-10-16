@@ -74,6 +74,10 @@ function printCeiling(
   printCap(run, ceiling);
   printRecipients(run, ceiling);
   printDayCaps(run, ceiling);
+  // A launch wallet's widest grant comes last, in its own words (decision 0218).
+  if (ceiling.launchCalls !== undefined) {
+    output.say("ceiling.launchCalls", { calls: ceiling.launchCalls.join(", ") });
+  }
 }
 
 /**

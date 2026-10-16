@@ -253,11 +253,11 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
   };
 }
 
-// An auto order's card: its terms with every default filled, the agent's reason, and the line on
-// linked exits when its position holds another active exit order (decision 0189). DCA and copy
-// orders are refused before any card.
+// An auto order's card: its terms with every default filled, the agent's reason, the launch
+// wallet that holds it (decision 0217), and the line on linked exits when its position holds
+// another active exit order (decision 0189). DCA and copy orders are refused before any card.
 function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | undefined {
-  const { record, card, settings } = source;
+  const { record, card, settings, launchWallet } = source;
   const { request, hasLinkedExits, maxFills, expiresAtMs } = quote;
   if (request.kind === "dca" || request.kind === "copy") {
     return undefined;
@@ -281,6 +281,7 @@ function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | 
       ...(request.worstPrice === undefined ? {} : { worstPrice: request.worstPrice }),
     },
     ...(reason === undefined ? {} : { reason }),
+    ...(launchWallet === undefined ? {} : { launchWallet }),
   };
 }
 

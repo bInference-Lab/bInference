@@ -87,6 +87,11 @@ export interface CeilingRead {
    * then each capped token's. Every ceiling of the install names the same sums (decision 0149).
    */
   readonly dayCaps: readonly DayCapView[];
+  /**
+   * The functions a launch wallet's ceiling lets a call reach on any contract, such as a launch's
+   * `buy` and `approve` (decision 0218); none for an agent wallet.
+   */
+  readonly launchCalls: readonly string[];
   /** The ceiling as custody reports it, which a wallet's stored copy of its ceiling mirrors. */
   readonly policy: JsonValue;
 }
