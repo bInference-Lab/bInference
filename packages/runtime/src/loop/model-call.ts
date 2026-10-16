@@ -27,11 +27,21 @@ const stopped = (fault: ModelFault): ModelFault => ({
   message: "The model call was stopped.",
 });
 
-// The first model from `from` on whose provider does not rest. When every one rests, the turn's
-// current model is tried anyway: a rest skips a provider, it never leaves a turn with none.
-function firstAwake(chain: ModelChain, from: number): number | undefined {
-  const index = chain.models.findIndex((model, at) => at >= from && !chain.resting(model.name));
+// The first model from `from` on whose provider does not rest and that takes the request: one
+// that holds the owner's images goes only to a model that reads images (decision 0227). When none
+// does, the turn's current model is tried anyway: a rest skips a provider, it never leaves a turn
+// with none.
+function firstAwake(chain: ModelChain, from: number, request: ModelRequest): number | undefined {
+  const needsImages = holdsImages(request);
+  const index = chain.models.findIndex(
+    (model, at) =>
+      at >= from && !chain.resting(model.name) && (!needsImages || model.readsImages === true),
+  );
   return index === -1 ? undefined : index;
+}
+
+function holdsImages(request: ModelRequest): boolean {
+  return request.messages.some((entry) => entry.role === "owner" && entry.images !== undefined);
 }
 
 /** A timer that runs out after a quiet spell, started again by each event. */
@@ -138,7 +148,7 @@ async function attemptFrom(
       ? attemptFrom(run, call, { ...state, attempts, retries: state.retries + 1 })
       : stopped(response);
   }
-  const next = step.kind === "next" ? firstAwake(line.chain, state.at + 1) : undefined;
+  const next = step.kind === "next" ? firstAwake(line.chain, state.at + 1, request) : undefined;
   if (next === undefined) {
     return response;
   }
@@ -160,7 +170,7 @@ export async function callModel(
   request: ModelRequest,
   line: ModelLine = { chain: run.parts.models, route: run.route },
 ): Promise<ModelResponse> {
-  const at = firstAwake(line.chain, line.route.at()) ?? line.route.at();
+  const at = firstAwake(line.chain, line.route.at(), request) ?? line.route.at();
   line.route.moveTo(at);
   return attemptFrom(run, { line, request }, { at, attempts: 0, retries: 0 });
 }

@@ -1,7 +1,8 @@
+import type { Result } from "@binference/core";
 import type { TurnOutcome } from "@binference/store";
 import type { ModelPrice } from "../usage/model-price.js";
 import type { ModelFailure, ResponseReplay } from "./model-event.js";
-import type { ModelMessage, ToolCall, ToolDeclaration } from "./model-message.js";
+import type { ModelImage, ModelMessage, ToolCall, ToolDeclaration } from "./model-message.js";
 import type { ModelTransport } from "./ports.js";
 
 // The values the turn loop's ports take and give (see ports.ts).
@@ -137,6 +138,16 @@ export interface ImageDescriptionRecord {
 
 /** Why an image of the owner's message cannot be read (decision 0227). */
 export type ImageReadRefusal = "not_found" | "too_large" | "format" | "unreadable";
+
+/**
+ * Reads one image of a message the turn took, whole, from the engine: the message's id
+ * (`msg_…`) and the name the message gives the image. Rejects when the engine cannot answer, and
+ * with the signal's reason once it aborts.
+ */
+export type ReadImage = (
+  place: { readonly message: string; readonly image: string },
+  signal: AbortSignal,
+) => Promise<Result<ModelImage, ImageReadRefusal>>;
 
 /** Which limit or step kept a turn from reading the owner's images (decision 0227). */
 export type ImageProblem = "tooMany" | "tooLarge" | "format" | "unreadable" | "noVision";

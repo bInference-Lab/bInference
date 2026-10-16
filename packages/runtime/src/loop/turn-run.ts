@@ -12,6 +12,7 @@ import type {
   TurnJournal,
 } from "./ports.js";
 import type { TurnHalt } from "./turn-halt.js";
+import type { ReadImage } from "./turn-records.js";
 import type { TurnTail } from "./turn-tail.js";
 import type { TurnTally } from "./turn-tally.js";
 
@@ -26,6 +27,10 @@ export interface TurnParts {
   /** The agent's live facts, which each model call sends after the history. */
   readonly facts: LiveFactsReader;
   readonly clock: Clock;
+  /** Reads the images of the messages the turn takes; without it, none can be read. */
+  readonly readImage?: ReadImage;
+  /** The vision model, which describes images when the turn's model takes none (decision 0227). */
+  readonly vision?: ModelChain;
 }
 
 /** The limits of one turn (runtime spec, sections 4.4, 5.2 and 9). */

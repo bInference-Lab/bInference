@@ -1,6 +1,7 @@
 import { err } from "@binference/core";
 import type { TurnOutcome } from "@binference/store";
 import { createTurnHistory, type TurnCompaction } from "../compaction/turn-history.js";
+import { takeImages } from "../images/take-images.js";
 import type { StoredHistory } from "../sessions/conversation.js";
 import { answerOpenCalls, endTurn, portFailure } from "./end-turn.js";
 import { createLoopGuard } from "./loop-guard.js";
@@ -108,6 +109,17 @@ async function startTurn(run: TurnRun, taken: readonly OwnerMessage[]) {
   }
 }
 
+// The images of the taken messages, read before the first model call; a port that throws ends
+// the turn failed, as it does in the loop.
+async function imagesOrFail(run: TurnRun, taken: readonly OwnerMessage[], firstTaken: number) {
+  try {
+    return await takeImages(run, taken, firstTaken);
+  } catch {
+    run.halt("engine");
+    return portFailure;
+  }
+}
+
 // A port that throws in the loop ends the turn failed: the calls it wrote keep a result each.
 async function loopOrFail(run: TurnRun): Promise<LoopEnd> {
   try {
@@ -119,7 +131,11 @@ async function loopOrFail(run: TurnRun): Promise<LoopEnd> {
   }
 }
 
-async function runTurn(run: TurnRun, taken: readonly OwnerMessage[]): Promise<TurnReport> {
+async function runTurn(
+  run: TurnRun,
+  taken: readonly OwnerMessage[],
+  firstTaken: number,
+): Promise<TurnReport> {
   const started = await startTurn(run, taken);
   if (!started.ok) {
     run.tally.enter("refused");
@@ -128,7 +144,8 @@ async function runTurn(run: TurnRun, taken: readonly OwnerMessage[]): Promise<Tu
   run.tail.budget(started.value.budgetLeftMicros);
   const clearTimeLimit = startTimeLimit(run);
   try {
-    return await endTurn(run, await loopOrFail(run));
+    const unread = await imagesOrFail(run, taken, firstTaken);
+    return await endTurn(run, unread ?? (await loopOrFail(run)));
   } finally {
     clearTimeLimit();
   }
@@ -178,7 +195,7 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
       return tally.now().state;
     },
     run: async () => {
-      running ??= runTurn(run, options.taken);
+      running ??= runTurn(run, options.taken, options.history.length);
       return running;
     },
     stop: (reason) => halt.abort(reason),

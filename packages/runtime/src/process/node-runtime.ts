@@ -36,9 +36,10 @@ async function writeLine(line: string): Promise<void> {
 // compaction on the fast model, or on the main model when no fast model is set (decision 0202).
 function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
   return (agent, settings, client) => {
-    const { main, summarizer } = turnModelsOf(agent, settings, parts);
+    const { main, summarizer, vision } = turnModelsOf(agent, settings, parts);
     return {
       models: main,
+      ...(vision === undefined ? {} : { vision }),
       compaction: {
         summarizer,
         contextTokens: defaultContextTokens,

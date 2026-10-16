@@ -10,6 +10,8 @@ import type { NewMessageMode } from "./queue-merge.js";
 /** What an agent's next turn runs with: its models, its tools, its instructions and its limits. */
 export interface TurnSetup {
   readonly models: ModelChain;
+  /** The vision model, which describes the owner's images when `models` takes none. */
+  readonly vision?: ModelChain;
   readonly tools: ToolBox;
   /** binference's instructions, which open the turn's stable prefix (runtime spec, 7.1). */
   readonly instructions: string;

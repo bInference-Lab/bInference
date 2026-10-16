@@ -21,9 +21,11 @@ export type StepEnd = LoopEnd | "next";
 
 const ok: LoopEnd = { outcome: "ok" };
 
-// The budget ran out on a usage record: no model call follows, and the status line says when chat
-// resumes, when the engine said (runtime spec, section 8.3).
-function budgetEnd(run: TurnRun): LoopEnd {
+/**
+ * How a turn ends when the budget ran out on a usage record: no model call follows, and the
+ * status line says when chat resumes, when the engine said (runtime spec, section 8.3).
+ */
+export function budgetEnd(run: TurnRun): LoopEnd {
   const { resumesAt } = run.tally.now();
   return resumesAt === undefined
     ? { outcome: "budget" }
@@ -68,16 +70,22 @@ async function keepResponse(run: TurnRun, response: ModelAnswer | ModelFault): P
   run.tally.keepText(response.text);
 }
 
-// A halted turn ends as its halt says; a stop after the engine took the turn's proposal says its
-// card is still open (decision 0173).
-function haltedEnd(run: TurnRun): LoopEnd {
+/**
+ * How a halted turn ends: as its halt says, and a stop after the engine took the turn's proposal
+ * says its card is still open (decision 0173).
+ */
+export function haltedEnd(run: TurnRun): LoopEnd {
   const end = endOfHalt(haltOf(run.halted));
   const { committed, proposal } = run.tally.now();
   const cardOpen = end.outcome === "stopped" && committed && proposal === "waits";
   return cardOpen ? { outcome: "stopped", status: { line: "stoppedCardOpen" } } : end;
 }
 
-function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
+/**
+ * How a model call's fault ends the turn: as its halt says, with what the model wrote after a
+ * provider's own refusal, at a spent budget, or failed with the fault's class.
+ */
+export function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
   if (run.halted.aborted) {
     return haltedEnd(run);
   }

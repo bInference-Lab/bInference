@@ -25,7 +25,7 @@ export interface OwnerMessage {
  * An image the owner sent, as a model that takes images reads it (decision 0227). It lives only
  * in the memory of the turn that took it: the transcript never holds its bytes.
  */
-interface ModelImage {
+export interface ModelImage {
   readonly contentType: ImageContentType;
   /** The image's bytes in base64. */
   readonly data: string;

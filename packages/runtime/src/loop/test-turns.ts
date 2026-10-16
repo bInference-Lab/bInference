@@ -21,7 +21,7 @@ import type { ModelPrice } from "../usage/model-price.js";
 import { type ChatTurn, type ChatTurnOptions, createChatTurn } from "./chat-turn.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
 import type { LiveFactsReader, ModelChain, ToolBox, TurnEngine } from "./ports.js";
-import type { ToolKind, ToolOutcome, ToolRunContext } from "./turn-records.js";
+import type { ReadImage, ToolKind, ToolOutcome, ToolRunContext } from "./turn-records.js";
 import { type TurnLimits, turnLimits, type TurnParts } from "./turn-run.js";
 
 /** The turn id every test turn runs under. */
@@ -106,6 +106,10 @@ export interface TestTurnOptions {
   readonly clock?: ManualClock;
   /** The agent's live facts; a paper agent's, read at the turn's clock, when absent. */
   readonly facts?: LiveFactsReader;
+  /** Reads the images of the taken messages; none can be read when absent. */
+  readonly readImage?: ReadImage;
+  /** The vision model, made on the turn's clock; none when absent. */
+  readonly vision?: (clock: ManualClock) => ModelChain;
   /** The stable prefix; one line naming a test agent when absent. */
   readonly prefix?: string;
   /**
@@ -156,6 +160,18 @@ function testParts(
       options.facts ??
       createRelayLiveFacts(createMemoryContextSource({ now: () => clock.now() }), testAgent),
     clock,
+    ...imagePartsOf(options, clock),
+  };
+}
+
+// How the turn reads the owner's images, and the vision model, when the test gives them.
+function imagePartsOf(
+  options: TestTurnOptions,
+  clock: ManualClock,
+): Pick<TurnParts, "readImage" | "vision"> {
+  return {
+    ...(options.readImage === undefined ? {} : { readImage: options.readImage }),
+    ...(options.vision === undefined ? {} : { vision: options.vision(clock) }),
   };
 }
 

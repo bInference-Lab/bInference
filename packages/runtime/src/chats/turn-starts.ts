@@ -1,14 +1,17 @@
-import type { Id } from "@binference/core";
+import { err, type Id } from "@binference/core";
 import type { QueuedMessage } from "@binference/store";
 import { readTurnPrefix } from "../context/turn-prefix.js";
 import { createChatTurn, type TurnReport } from "../loop/chat-turn.js";
+import type { OwnerMessage } from "../loop/model-message.js";
+import type { ReadImage } from "../loop/turn-records.js";
+import type { TurnParts } from "../loop/turn-run.js";
 import type { TurnStartAnswer } from "../relay/engine-chat-records.js";
 import { createRelayLiveFacts } from "../relay/relay-live-facts.js";
 import { createRelayTurnEngine } from "../relay/relay-turn-engine.js";
 import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
-import type { ChatContext } from "./chat-context.js";
+import type { ChatContext, TurnSetup } from "./chat-context.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
 import { ownerMessageOf, type TurnMessage, turnMessageOf } from "./queued-view.js";
 
@@ -180,20 +183,45 @@ function mergeOf(
   return createQueueMerge({ stores, session: place.session, turn: place.turn, mode, serial });
 }
 
-async function runTurn(
+// How the turn reads the owner's images: from the engine, for the messages it took, and the vision
+// model that describes them when the turn's model takes none.
+function imagePartsOf(
   context: ChatContext,
-  place: { readonly agent: Id<"agt">; readonly session: Id<"ses">; readonly turn: Id<"trn"> },
-  taken: readonly Waiting[],
-): Promise<void> {
-  const { stores, clock, lifetime } = context;
-  const setup = context.setup(place.agent);
-  const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
-  if (prefix === undefined) {
-    return;
+  turn: {
+    readonly agent: Id<"agt">;
+    readonly setup: TurnSetup;
+    readonly taken: readonly Waiting[];
+  },
+): Pick<TurnParts, "readImage" | "vision"> {
+  const { images } = context;
+  const { agent, setup, taken } = turn;
+  const vision = setup.vision === undefined ? {} : { vision: setup.vision };
+  if (images === undefined) {
+    return vision;
   }
-  const owners = taken.map(({ view }) => ownerMessageOf(view));
-  const history = await loadConversation(stores.transcript, place.session, lifetime);
-  const refusals: Refused[] = [];
+  const readImage: ReadImage = async (wanted, signal) => {
+    const message = taken.find(({ queued }) => queued.message === wanted.message)?.queued.message;
+    return message === undefined
+      ? err("not_found")
+      : images.read({ agent, message, image: wanted.image }, signal);
+  };
+  return { ...vision, readImage };
+}
+
+// What one turn works with: its models and tools, the session's journal, the engine's side of the
+// turn, the chat queue's merge, the agent's live facts and how it reads the owner's images.
+function turnPartsOf(
+  context: ChatContext,
+  turn: {
+    readonly place: TurnPlace;
+    readonly setup: TurnSetup;
+    readonly taken: readonly Waiting[];
+    readonly owners: readonly OwnerMessage[];
+    readonly refusals: Refused[];
+  },
+): TurnParts {
+  const { stores, clock } = context;
+  const { place, setup, taken, owners, refusals } = turn;
   const engine = createRelayTurnEngine({
     chat: context.engine,
     stores,
@@ -202,12 +230,42 @@ async function runTurn(
     clock,
     onRefused: (refused) => refusals.push(refused),
   });
-  const merge = mergeOf(context, place);
-  const journal = createSessionJournal(stores, place, clock);
-  const facts = createRelayLiveFacts(context.turnContext, place.agent);
+  return {
+    models: setup.models,
+    tools: setup.tools,
+    journal: createSessionJournal(stores, place, clock),
+    engine,
+    merge: mergeOf(context, place),
+    facts: createRelayLiveFacts(context.turnContext, place.agent),
+    clock,
+    ...imagePartsOf(context, { agent: place.agent, setup, taken }),
+  };
+}
+
+/** Where a turn runs: its agent, its session and the turn the engine reserved. */
+interface TurnPlace {
+  readonly agent: Id<"agt">;
+  readonly session: Id<"ses">;
+  readonly turn: Id<"trn">;
+}
+
+async function runTurn(
+  context: ChatContext,
+  place: TurnPlace,
+  taken: readonly Waiting[],
+): Promise<void> {
+  const { stores, lifetime } = context;
+  const setup = context.setup(place.agent);
+  const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
+  if (prefix === undefined) {
+    return;
+  }
+  const owners = taken.map(({ view }) => ownerMessageOf(view));
+  const history = await loadConversation(stores.transcript, place.session, lifetime);
+  const refusals: Refused[] = [];
   const turn = createChatTurn({
     turnId: place.turn,
-    parts: { models: setup.models, tools: setup.tools, journal, engine, merge, facts, clock },
+    parts: turnPartsOf(context, { place, setup, taken, owners, refusals }),
     prefix,
     history: history.messages,
     taken: owners,
