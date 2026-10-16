@@ -67,5 +67,7 @@
   "icon.on": "已开启",
   "icon.auto": "自动",
   "notices.title": "通知",
-  "notices.dismiss": "关闭此通知"
+  "notices.dismiss": "关闭此通知",
+  "cards.timeLeft": "{seconds, plural, other {还剩 # 秒}}",
+  "cards.expired": "已过期"
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConsoleRoutes } from "../app/console-router";
 import type { BrowserPush } from "../push/browser-push";
@@ -11,6 +11,12 @@ import { LedgerScreen } from "./ledger-screen";
 import { LimitsScreen } from "./limits-screen";
 
 afterEach(cleanup);
+
+// A test that moves the clock puts it back, so the cards of the next one have not expired.
+const startedAt = Date.now();
+afterEach(() => {
+  vi.setSystemTime(startedAt);
+});
 
 const waiting = String.fromCodePoint(0x1f7e1);
 const paperIcon = String.fromCodePoint(0x1f9ea);
@@ -72,6 +78,20 @@ describe("the confirmations screen", () => {
     expect(screen.getByText("Expires at 08:01:00")).toBeDefined();
     // Only the Paper label: the console's header leaves the mode out.
     expect(screen.getAllByText("Paper")).toHaveLength(1);
+  });
+
+  it("counts down the card's time left, then disables Confirm once it expired", async () => {
+    vi.setSystemTime(lines.expiresAt - 42_000);
+    const { client } = fakeClient(answers);
+    renderSignedIn(<ConfirmationsScreen />, { client });
+    await settle();
+    expect(screen.getByRole("timer").textContent).toBe("42 seconds left");
+    await act(async () => vi.advanceTimersByTimeAsync(41_000));
+    expect(screen.getByRole("timer").textContent).toBe("1 second left");
+    await act(async () => vi.advanceTimersByTimeAsync(1_000));
+    expect(screen.getByRole("timer").textContent).toBe("Expired");
+    expect(screen.getByRole("button", { name: "Confirm" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByRole("button", { name: "Cancel" }).hasAttribute("disabled")).toBe(false);
   });
 
   it("says a trade has no time limit, its warning icon drawn as a line icon", async () => {

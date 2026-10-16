@@ -67,5 +67,7 @@
   "icon.on": "On",
   "icon.auto": "Auto",
   "notices.title": "Notices",
-  "notices.dismiss": "Dismiss this notice"
+  "notices.dismiss": "Dismiss this notice",
+  "cards.timeLeft": "{seconds, plural, one {# second left} other {# seconds left}}",
+  "cards.expired": "Expired"
 }

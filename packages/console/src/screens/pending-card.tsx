@@ -3,6 +3,7 @@ import type { CardLinesView, IntentView } from "@binference/protocol";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckIcon, XIcon } from "lucide-react";
 import { CardLine } from "../cards/card-line";
+import { CardTimer, useSecondsLeft } from "../cards/card-timer";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
@@ -36,8 +37,9 @@ function useAnswer(intent: IntentView["intent"]) {
 function AnswerButtons(props: {
   readonly answer: ReturnType<typeof useAnswer>;
   readonly shown: CardLinesView | undefined;
+  readonly seconds: number | undefined;
 }): React.JSX.Element {
-  const { answer, shown } = props;
+  const { answer, shown, seconds } = props;
   const { ready } = useEngine();
   const text = useText();
   if (!ready.scopes.includes("confirm")) {
@@ -46,7 +48,10 @@ function AnswerButtons(props: {
   const isIdle = shown !== undefined && !answer.isPending;
   return (
     <>
-      <Button disabled={!isIdle} onClick={() => shown && answer.mutate({ verb: "confirm", shown })}>
+      <Button
+        disabled={!isIdle || seconds === 0}
+        onClick={() => shown && answer.mutate({ verb: "confirm", shown })}
+      >
         <CheckIcon data-icon="inline-start" strokeWidth={1.5} aria-hidden />
         {text("console.confirmations.confirm")}
       </Button>
@@ -58,6 +63,7 @@ function AnswerButtons(props: {
         <XIcon data-icon="inline-start" strokeWidth={1.5} aria-hidden />
         {text("console.confirmations.cancel")}
       </Button>
+      {seconds === undefined ? null : <CardTimer seconds={seconds} />}
     </>
   );
 }
@@ -93,6 +99,7 @@ export function PendingCard(props: { readonly intent: IntentView }): React.JSX.E
   const lines = consoleLines(card.data, formatter);
   const [header, ...rest] = lines;
   const shown = card.data;
+  const seconds = useSecondsLeft(shown?.expiresAt ?? intent.card?.expiresAt);
   return (
     <Card
       ref={showIn}
@@ -120,7 +127,7 @@ export function PendingCard(props: { readonly intent: IntentView }): React.JSX.E
         )}
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
-        <AnswerButtons answer={answer} shown={shown} />
+        <AnswerButtons answer={answer} shown={shown} seconds={seconds} />
       </CardFooter>
     </Card>
   );

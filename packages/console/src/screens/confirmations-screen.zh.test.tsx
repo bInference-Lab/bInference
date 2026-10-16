@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { ProtocolClient } from "@binference/client";
 import { cleanup, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderSignedIn, settle } from "../testing/render-signed-in";
 import { ConfirmationsScreen } from "./confirmations-screen";
 
@@ -46,9 +46,11 @@ const client = {
 } as unknown as ProtocolClient;
 
 describe("the confirmations screen, in Chinese", () => {
-  it("says why auto mode asks, in the words of its reason", async () => {
+  it("says why auto mode asks, in the words of its reason, and the card's time left", async () => {
+    vi.setSystemTime(1_800_000_000_000);
     renderSignedIn(<ConfirmationsScreen />, { client, scopes: ["read", "confirm"], locale: "zh" });
     await settle();
     expect(screen.getByText("自动模式在此需要你确认：卖出的是你禁止列表中的代币")).toBeDefined();
+    expect(screen.getByRole("timer").textContent).toBe("还剩 60 秒");
   });
 });
