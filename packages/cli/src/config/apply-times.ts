@@ -54,6 +54,8 @@ const keysReadOnUse: readonly string[] = [
   "chains.rpc.*.urls",
   // An intent run reads its chain's relays when it starts and keeps them to its end.
   "chains.relays",
+  // Each KyberSwap call names the id config holds when it starts.
+  "venues.kyberClientId",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the
@@ -76,7 +78,6 @@ const keysNoPartReads: readonly string[] = [
 const keysCopiedAtStart: readonly string[] = [
   "engine.extraOrigins",
   "venues.keys.okx",
-  "venues.kyberClientId",
   "risk",
   "logging.keepDays",
   "logging.maxFileMb",

@@ -88,7 +88,7 @@ export function scriptedApi(answers: Readonly<Record<string, HttpResponse>>): Sc
 export function venueOver(http: ScriptedHttp, allowedHooks: readonly KyberswapHook[] = []): Venue {
   return createKyberswapVenue({
     http,
-    clientId: "binference",
+    clientId: () => "binference",
     chains: [{ chain: bscChain, nativeAsset: bnb, allowedHooks }],
   });
 }

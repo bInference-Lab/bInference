@@ -44,7 +44,7 @@ function benchOf(fork: Fork) {
   const allowedHooks = [{ address: hook, feeBps: bpsSchema.parse(200), maker: "Genius.fun" }];
   const venue = createKyberswapVenue({
     http: kyberswapHttp,
-    clientId: "binference",
+    clientId: () => "binference",
     chains: [{ chain: fork.chain.ref, nativeAsset: fork.chain.nativeAsset, allowedHooks }],
   });
   const host = createVenueHost({ venues: [venue], chains, clock, callTimeoutMs: 20_000 });

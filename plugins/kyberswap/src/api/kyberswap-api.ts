@@ -47,7 +47,28 @@ export interface KyberswapApi {
 /** What the API client is made from. */
 export interface KyberswapApiOptions {
   readonly http: Http;
-  readonly clientId: string;
+  /** The client id, read as each call starts. */
+  readonly clientId: () => string;
+}
+
+// A header value: letters, digits, dots, dashes and underscores.
+const clientIdPattern = /^[\w.-]{1,64}$/;
+
+/** Whether KyberSwap takes the text as a client id: 1 to 64 letters, digits, dots, dashes or underscores. */
+export function isKyberswapClientId(text: string): boolean {
+  return clientIdPattern.test(text);
+}
+
+/** The client id as it stands now; one no header can carry is a `kyberswap.bad_options` fault. */
+export function checkedClientId(clientId: () => string): string {
+  const text = clientId();
+  if (!isKyberswapClientId(text)) {
+    throw new BinferenceError({
+      code: "kyberswap.bad_options",
+      message: "KyberSwap's client id is 1 to 64 letters, digits, dots, dashes or underscores.",
+    });
+  }
+  return text;
 }
 
 const origin = "https://aggregator-api.kyberswap.com";
@@ -90,16 +111,16 @@ function buildBody(order: BuildOrder, source: string): string {
 
 /**
  * Creates the client of KyberSwap's aggregator API. Every call names binference with the client
- * id and carries the caller's signal; the host's Http adapter names binference as the user agent,
+ * id as it stands when the call starts, and carries the caller's signal; the host's Http adapter names binference as the user agent,
  * without which KyberSwap's edge answers with a 403 challenge page (seen on the live API, not in
  * its docs, 2026-10-10). Each answer is checked by its schema and read into the venue's own types;
  * an answer that breaks it, or an error other than "no route", throws `kyberswap.unavailable`.
  */
 export function createKyberswapApi(options: KyberswapApiOptions): KyberswapApi {
-  const { http, clientId } = options;
-  const headers = { "x-client-id": clientId };
+  const { http } = options;
   return {
     async findRoute(query, signal) {
+      const headers = { "x-client-id": checkedClientId(options.clientId) };
       const response = await http.request({
         method: "GET",
         url: routesUrl(query),
@@ -116,10 +137,11 @@ export function createKyberswapApi(options: KyberswapApiOptions): KyberswapApi {
       throw failed("a route request", response);
     },
     async buildRoute(order, signal) {
+      const clientId = checkedClientId(options.clientId);
       const response = await http.request({
         method: "POST",
         url: `${origin}/${order.slug}/api/v1/route/build`,
-        headers: { ...headers, "content-type": "application/json" },
+        headers: { "x-client-id": clientId, "content-type": "application/json" },
         body: buildBody(order, clientId),
         signal,
       });

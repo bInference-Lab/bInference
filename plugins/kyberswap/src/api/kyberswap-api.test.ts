@@ -24,7 +24,7 @@ const order = {
 
 function apiAnswering(url: string, response: HttpResponse) {
   const http = scriptedApi({ [url]: response });
-  return { http, api: createKyberswapApi({ http, clientId: "binference" }) };
+  return { http, api: createKyberswapApi({ http, clientId: () => "binference" }) };
 }
 
 function errorAnswer(code: number): string {
@@ -40,6 +40,23 @@ describe("kyberswap's aggregator api", () => {
     expect(successOf(found).amountOut).toBe(76_705_221_475_414_064_061n);
     expect(http.requests().map((request) => request.headers)).toStrictEqual([
       { "x-client-id": "binference" },
+    ]);
+  });
+
+  it("names each call with the client id as it stands when the call starts", async () => {
+    const http = scriptedApi({ [buyRoutesUrl]: answer(buyRoute) });
+    const held = { clientId: "binference" };
+    const api = createKyberswapApi({ http, clientId: () => held.clientId });
+    await api.findRoute(query, live());
+    held.clientId = "binference-two";
+    await api.findRoute(query, live());
+    held.clientId = "bin ference";
+    await expect(api.findRoute(query, live())).rejects.toMatchObject({
+      code: "kyberswap.bad_options",
+    });
+    expect(http.requests().map((request) => request.headers)).toStrictEqual([
+      { "x-client-id": "binference" },
+      { "x-client-id": "binference-two" },
     ]);
   });
 

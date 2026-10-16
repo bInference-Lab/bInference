@@ -94,7 +94,7 @@ async function tradingOn(
   const asked: string[] = [];
   const venue = createKyberswapVenue({
     http: kyberswapHttp(asked),
-    clientId: "binference",
+    clientId: () => "binference",
     chains: [{ chain: fork.chain.ref, nativeAsset: fork.chain.nativeAsset, allowedHooks }],
   });
   const contracts = {

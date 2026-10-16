@@ -1,5 +1,12 @@
+import { assetRefSchema } from "@binference/chain";
 import type { ProtocolClient } from "@binference/client";
-import { type Http, type HttpRequest, type JsonValue, jsonValueSchema } from "@binference/core";
+import {
+  type Http,
+  type HttpRequest,
+  type HttpResponse,
+  type JsonValue,
+  jsonValueSchema,
+} from "@binference/core";
 import { startInProcessRuntime } from "@binference/runtime/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -164,6 +171,25 @@ const runtimeRows: readonly Row[] = [
   },
 ];
 
+// The node `nodeUrl` names: the fees of the next block, and an error for every other method.
+const nodeUrl = "https://rpc-node.example.org/";
+const nodeResults: Readonly<Record<string, JsonValue>> = {
+  eth_maxPriorityFeePerGas: "0x1",
+  eth_getBlockByNumber: { baseFeePerGas: "0x1" },
+};
+
+function nodeAnswer(request: HttpRequest): HttpResponse {
+  const { id, method } = z
+    .object({ id: z.number(), method: z.string() })
+    .parse(JSON.parse(request.body ?? "{}"));
+  const result = nodeResults[method];
+  const answer =
+    result === undefined
+      ? { jsonrpc: "2.0", id, error: { code: -32601, message: "Not served here." } }
+      : { jsonrpc: "2.0", id, result };
+  return { status: 200, headers: {}, body: JSON.stringify(answer) };
+}
+
 /** Every request the engine sent to the outside world, which the machine's fakes answer. */
 function recordedWorld() {
   const sent: HttpRequest[] = [];
@@ -171,6 +197,9 @@ function recordedWorld() {
   const http: Http = {
     request: async (request) => {
       sent.push(request);
+      if (request.url === nodeUrl) {
+        return Promise.resolve(nodeAnswer(request));
+      }
       if (held.world === undefined) {
         throw new Error("The machine is not set up yet.");
       }
@@ -207,6 +236,26 @@ describe("live settings in a running engine", () => {
         changed: values["changed"] ?? "",
         afterRestart: values["afterRestart"] ?? "",
       }));
+  };
+  // Proposes a paper swap of the coin for USDT on the first wallet, so the venues are asked for
+  // quotes, and answers the requests the engine sent while it ran, whatever the swap's outcome.
+  const requestsOfASwap = async (): Promise<readonly HttpRequest[]> => {
+    const [wallet] = (await running.client.call("wallet/list", {}, live())).items;
+    if (wallet === undefined) {
+      throw new Error("binference init made no wallet.");
+    }
+    const from = world.sent.length;
+    const swap = {
+      kind: "swap",
+      agent: wallet.agent,
+      wallet: wallet.wallet,
+      reason: "Check the venues",
+      from: assetRefSchema.parse(`${bsc}/slip44:714`),
+      to: assetRefSchema.parse(`${bsc}/erc20:0x55d398326f99059fF775485246999027B3197955`),
+      amount: { base: 10_000_000_000_000_000n },
+    } as const;
+    await running.client.call("intent/propose", swap, live()).catch(() => undefined);
+    return world.sent.slice(from);
   };
   const change = async (patch: Readonly<Record<string, JsonValue>>): Promise<boolean> =>
     (await running.client.call("config/change", { patch }, live())).restartNeeded;
@@ -253,6 +302,18 @@ describe("live settings in a running engine", () => {
     await expect(
       change({ chains: { relays: { [bsc]: ["no-such-relay"] } } }),
     ).rejects.toMatchObject({ code: "config.invalid" });
+  });
+
+  it("names the next kyberswap call with a changed client id", async () => {
+    await expect(change(rpcUrls(nodeUrl))).resolves.toBe(false);
+    await expect(change({ venues: { kyberClientId: "binference-two" } })).resolves.toBe(false);
+    const ids = (await requestsOfASwap())
+      .filter((request) => new URL(request.url).host === "aggregator-api.kyberswap.com")
+      .map((request) => request.headers?.["x-client-id"]);
+    expect(new Set(ids)).toStrictEqual(new Set(["binference-two"]));
+    await expect(change({ venues: { kyberClientId: "bin ference" } })).rejects.toMatchObject({
+      code: "config.invalid",
+    });
   });
 
   it("reads the chain through changed rpc urls at the next request", async () => {

@@ -68,6 +68,8 @@ function chainWith(change: Partial<KyberswapChain>): KyberswapChain {
   return { chain: bscChain, nativeAsset: bnb, allowedHooks: [], ...change };
 }
 
+const named = (): string => "binference";
+
 describe("the kyberswap venue", () => {
   it.each([
     ...quoterContract({
@@ -153,7 +155,7 @@ describe("the kyberswap venue", () => {
       },
     ],
   ])("refuses to trade on %s", (_case, change) => {
-    const options = { http: scriptedApi({}), clientId: "binference", chains: [chainWith(change)] };
+    const options = { http: scriptedApi({}), clientId: named, chains: [chainWith(change)] };
     expect(() => createKyberswapVenue(options)).toThrow(
       expect.objectContaining({ code: "kyberswap.bad_options" }),
     );
@@ -164,7 +166,8 @@ describe("the kyberswap venue", () => {
     ["one chain twice", [chainWith({}), chainWith({})], "binference"],
     ["a client id no header carries", [chainWith({})], "bin ference\n"],
   ])("refuses options with %s", (_case, chains, clientId) => {
-    expect(() => createKyberswapVenue({ http: scriptedApi({}), clientId, chains })).toThrow(
+    const options = { http: scriptedApi({}), clientId: () => clientId, chains };
+    expect(() => createKyberswapVenue(options)).toThrow(
       expect.objectContaining({ code: "kyberswap.bad_options" }),
     );
   });

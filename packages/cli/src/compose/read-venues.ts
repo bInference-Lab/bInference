@@ -25,7 +25,10 @@ import type { ChainReads } from "./chain-reads.js";
 
 /** What the venues are read with. */
 export interface ReadVenuesOptions {
+  /** The venues' config the engine started with. */
   readonly venues: VenuesConfig;
+  /** The venues' config as reloaded, which each venue call reads its settings from. */
+  readonly current?: () => VenuesConfig;
   readonly chains: Pick<ChainsConfig, "enabled">;
   readonly registry: ChainRegistry;
   /** The pool hooks routes may pass on each chain, as registry contracts with their fees. */
@@ -142,7 +145,7 @@ export async function readVenues(options: ReadVenuesOptions): Promise<readonly V
   const { http, clock } = options;
   const kyberswap = createKyberswapVenue({
     http,
-    clientId: options.venues.kyberClientId,
+    clientId: () => (options.current?.() ?? options.venues).kyberClientId,
     chains: enabled.map((chain) => ({
       chain: chain.ref,
       nativeAsset: evmChainOf(chain.definition).nativeAsset,

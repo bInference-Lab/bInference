@@ -1,5 +1,6 @@
 import type { ChainRef } from "@binference/chain";
 import { bsc } from "@binference/chains";
+import { isKyberswapClientId } from "@binference/kyberswap";
 import { z } from "zod";
 import { type SecretSource, secretSourceSchema } from "./secret-source.schema.js";
 import { chainSchema, decimalSchema } from "./value-formats.schema.js";
@@ -158,6 +159,9 @@ export const venuesSchema: z.ZodType<VenuesConfig> = z
     kyberClientId: z
       .string()
       .min(1)
+      .refine(isKyberswapClientId, {
+        message: "Use 1 to 64 letters, digits, dots, dashes or underscores.",
+      })
       .prefault("binference")
       .describe("The client id sent to KyberSwap."),
   })

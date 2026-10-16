@@ -29,8 +29,9 @@ export interface KyberswapOptions {
   readonly http: Http;
   /**
    * Names binference to KyberSwap: the `x-client-id` header of every call and the `source` of
-   * every build. KyberSwap gives a named client a higher rate limit, with no key.
+   * every build, read as each call starts, so a changed id names the next call. KyberSwap gives a
+   * named client a higher rate limit, with no key.
    */
-  readonly clientId: string;
+  readonly clientId: () => string;
   readonly chains: readonly KyberswapChain[];
 }

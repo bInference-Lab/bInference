@@ -31,7 +31,7 @@ export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDecl
   const chain = evmChainOf(bsc);
   const kyberswap = createKyberswapVenue({
     http,
-    clientId: venues.kyberClientId,
+    clientId: () => venues.kyberClientId,
     chains: [{ chain: chain.ref, nativeAsset: chain.nativeAsset, allowedHooks: [] }],
   });
   const keyless = [

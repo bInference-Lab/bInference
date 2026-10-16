@@ -105,6 +105,7 @@ async function readSecretParts(
   const venues = await readVenues({
     ...call,
     venues: config.venues,
+    current: () => settings.current().venues,
     chains: config.chains,
     registry: chains,
     poolHooks: selfHostedPoolHooks(),
