@@ -57,6 +57,8 @@ export interface CardSource {
   readonly client: string;
   /** The label of the launch wallet the intent runs from; absent for any other wallet. */
   readonly launchWallet?: string;
+  /** Whether the engine is locked now; a `locked` auto mode line shows only while it is. */
+  readonly isLocked?: boolean;
 }
 
 /** A request the money path quotes: a swap, a buy or a sell. */
@@ -161,9 +163,11 @@ function routeWarnings(
 }
 
 // Why auto mode opened the card, as the card version keeps it; an MCP proposal names its client.
+// A reason that no longer holds shows no line: the agent is manual now, or the engine was unlocked.
 function autoAskOf(source: CardSource): Pick<CardWarnings, "autoAsk"> {
   const code = source.card.autoAsk;
-  if (code === undefined) {
+  const isManual = source.settings.approvalMode.mode === "manual";
+  if (code === undefined || isManual || (code === "locked" && source.isLocked === false)) {
     return {};
   }
   const autoAsk: AutoAsk = code === "mcp" ? { code, client: source.client } : { code };

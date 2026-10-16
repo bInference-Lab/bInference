@@ -79,6 +79,8 @@ export interface TelegramWiring {
   /** Makes the Mini App's launch tickets. */
   readonly random: Random;
   readonly logger: Logger;
+  /** Whether the engine is locked now, which a card's `locked` auto mode line reads. */
+  readonly isLocked?: () => boolean;
 }
 
 /** The owner's bot joined to the engine: its cards, where its updates come in, and the relay. */
@@ -255,7 +257,8 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     chains,
   });
   const cards = createTelegramCards({ ...parts, answers, clock: wiring.clock, logger, display });
-  const showings = createCardShowings({ ...stores, chains, venues: wiring.venues });
+  const locked = wiring.isLocked === undefined ? {} : { isLocked: wiring.isLocked };
+  const showings = createCardShowings({ ...stores, chains, venues: wiring.venues, ...locked });
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
   const commands = commandsOf(parts, wiring, { calls, cards, showings, display });
   const { questions, questionAnswers } = questionsOf(parts, wiring, { calls, display });

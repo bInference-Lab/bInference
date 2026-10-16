@@ -303,7 +303,7 @@ function intentParts(
   const execute = executeOf(options, { stored, paper, orders });
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
-  const showings = createCardShowings({ ...stores, chains, venues: host });
+  const showings = createCardShowings({ ...stores, chains, venues: host, isLocked });
   const moneyPath = createMoneyPath({
     stored,
     agents: stores.agents,

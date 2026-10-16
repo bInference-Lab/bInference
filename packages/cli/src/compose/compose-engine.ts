@@ -181,6 +181,7 @@ function joinTelegram(
         clock,
         random,
         logger: logger.child("telegram"),
+        ...(options.isLocked === undefined ? {} : { isLocked: options.isLocked }),
       });
 }
 

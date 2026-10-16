@@ -104,6 +104,8 @@ export interface CardShowingsOptions {
   readonly chains: ChainRegistry;
   /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
+  /** Whether the engine is locked now, which a card's `locked` auto mode line reads. */
+  readonly isLocked?: () => boolean;
 }
 
 interface Call {
@@ -185,7 +187,18 @@ async function drawOpen(
   const client = card.autoAsk === "mcp" ? await clientOf(options, record, call) : "";
   const launch = await launchWalletOf(options.install, record.agentId, call);
   const named = launch?.id === record.walletId ? { launchWallet: launch.label } : {};
-  const source = { record, card, settings, isFirstLive, chains, venues, client, ...named };
+  const locked = options.isLocked === undefined ? {} : { isLocked: options.isLocked() };
+  const source = {
+    record,
+    card,
+    settings,
+    isFirstLive,
+    chains,
+    venues,
+    client,
+    ...named,
+    ...locked,
+  };
   const facts = cardFactsOf(previous === undefined ? source : { ...source, previous });
   if (facts === undefined) {
     return undefined;

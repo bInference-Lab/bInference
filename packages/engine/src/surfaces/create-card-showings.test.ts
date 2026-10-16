@@ -50,6 +50,7 @@ interface StoresSeen {
   readonly intents?: IntentStore;
   readonly agents?: AgentStore;
   readonly venues?: readonly Venue[];
+  readonly isLocked?: () => boolean;
 }
 
 function showingsOf(test: TestEngine, stores: StoresSeen = {}) {
@@ -62,6 +63,7 @@ function showingsOf(test: TestEngine, stores: StoresSeen = {}) {
     install: test.stores.install,
     chains,
     venues: createVenueHost({ venues, chains, clock: test.clock, callTimeoutMs: 5_000 }),
+    ...(stores.isLocked === undefined ? {} : { isLocked: stores.isLocked }),
   });
 }
 
@@ -224,6 +226,39 @@ describe("the card showings", () => {
       expect.objectContaining({ key: "card.reason" }),
       expect.objectContaining({ key: "card.expiry" }),
     ]);
+  });
+
+  it("show no auto mode line once the agent is in manual mode", async () => {
+    const shown = await proposed({ agent: { approvalMode: "auto" } });
+    const manual = { agent: testAgent, mode: "manual" } as const;
+    expectOk(await shown.test.engine.handlers["approval/set"](testCall(manual)));
+
+    const ref = { intent: shown.intent, card: shown.card.id };
+    const showing = present(await showingsOf(shown.test).opened(ref, live));
+
+    expect(shown.card.autoAsk).toBe("mcp");
+    expect(showing.card.lines.map((line) => line.key)).not.toContain("card.warn.autoAsks");
+  });
+
+  it("say binference is locked only while it is", async () => {
+    const test = await startTestEngine({
+      agent: { mode: "live", approvalMode: "auto" },
+      isLocked: () => true,
+    });
+    const caller = testCallers.runtime;
+    const view = expectOk(
+      await test.engine.handlers["intent/propose"](testCall(testSwap(), caller)),
+    );
+    const [card] = await test.stores.intents.cards(view.intent, live);
+    const ref = { intent: view.intent, card: present(card).id };
+
+    const locked = await showingsOf(test, { isLocked: () => true }).opened(ref, live);
+    const unlocked = await showingsOf(test, { isLocked: () => false }).opened(ref, live);
+
+    expect(present(card).autoAsk).toBe("locked");
+    const keysOf = (shown: typeof locked) => present(shown).card.lines.map((line) => line.key);
+    expect(keysOf(locked)).toContain("card.warn.autoAsks");
+    expect(keysOf(unlocked)).not.toContain("card.warn.autoAsks");
   });
 
   it("say why auto mode asks the agent's own proposal after outside content", async () => {

@@ -205,7 +205,8 @@ paper fill uses the quote. A live trade always needs its simulation.
 ([decision 0103](../DECISIONS.md#d0103)). The codes are those of the auto test in spec 6, section 5.
 Every card auto mode opens instead of filling its intent shows the line, last among the warnings:
 the card version keeps the code (`cards.auto_ask`), each later version of the card keeps it too,
-and the `{client}` of `autoAsks.mcp` is the label of the client token or console device that
+the line shows only while its reason holds (none once the agent is in manual mode, and
+`autoAsks.locked` only while binference is locked), and the `{client}` of `autoAsks.mcp` is the label of the client token or console device that
 proposed, or Telegram. A card of an agent in manual mode shows no such line.
 
 <a id="section-3-5"></a>
