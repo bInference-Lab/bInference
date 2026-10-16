@@ -1,6 +1,12 @@
 import type { Readable, Writable } from "node:stream";
-import { intro, isCancel, log, note, outro, password, text } from "@clack/prompts";
-import { type Prompter, promptCancelled, type TextQuestion, withInitial } from "./prompter.js";
+import { intro, isCancel, log, note, outro, password, select, text } from "@clack/prompts";
+import {
+  type ChoiceQuestion,
+  type Prompter,
+  promptCancelled,
+  type TextQuestion,
+  withInitial,
+} from "./prompter.js";
 
 /** The terminal the prompter talks to: standard input and output in the entry file. */
 export interface TerminalStreams {
@@ -35,9 +41,26 @@ async function askText(streams: TerminalStreams, question: TextQuestion): Promis
   return withInitial(answered(typed, question.id), initial);
 }
 
+async function askChoice(streams: TerminalStreams, question: ChoiceQuestion): Promise<string> {
+  const options = question.options.map((option) => ({
+    value: option.value,
+    label: option.label,
+    ...(option.hint === undefined ? {} : { hint: option.hint }),
+  }));
+  const picked = await select({
+    message: question.message,
+    options,
+    ...(question.initial === undefined ? {} : { initialValue: question.initial }),
+    input: streams.input,
+    output: streams.output,
+  });
+  return answered(picked, question.id);
+}
+
 /**
  * The prompter for a person at a terminal, over `@clack/prompts`: questions with their checks,
- * hidden input for secrets, notes and log lines on the given streams. Ctrl+C on a question
+ * hidden input for secrets, choices picked with the arrow keys, notes and log lines on the given
+ * streams. Ctrl+C on a question
  * throws `cli.prompt_cancelled`.
  */
 export function createTerminalPrompter(streams: TerminalStreams): Prompter {
@@ -53,6 +76,7 @@ export function createTerminalPrompter(streams: TerminalStreams): Prompter {
       log.message(line, { output });
     },
     ask: async (question) => askText(streams, question),
+    choose: async (question) => askChoice(streams, question),
     outro: (line) => {
       outro(line, { output });
     },

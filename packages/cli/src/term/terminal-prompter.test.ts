@@ -78,6 +78,32 @@ describe("the terminal prompter", () => {
     });
   });
 
+  const languages = {
+    id: "language",
+    message: "Language",
+    options: [
+      { value: "en", label: "English" },
+      { value: "zh", label: "Chinese", hint: "Simplified" },
+    ],
+  };
+
+  it("picks the option the arrow keys move to, and the initial one on Enter", async () => {
+    const moved = terminal();
+    await expect(answer(moved, moved.prompter.choose(languages), "\u001b[B\r")).resolves.toBe("zh");
+    expect(moved.screen()).toContain("Chinese");
+    const initial = terminal();
+    const asking = initial.prompter.choose({ ...languages, initial: "zh" });
+    await expect(answer(initial, asking, "\r")).resolves.toBe("zh");
+  });
+
+  it("throws the cancel fault on Ctrl+C in a choice", async () => {
+    const term = terminal();
+    await expect(answer(term, term.prompter.choose(languages), "\u0003")).rejects.toMatchObject({
+      code: "cli.prompt_cancelled",
+      details: { question: "language" },
+    });
+  });
+
   it("writes the intro, notes, lines and outro to the terminal", () => {
     const term = terminal();
     term.prompter.intro("Set up binference");

@@ -15,6 +15,25 @@ export interface TextQuestion {
   readonly check?: (answer: string) => string | undefined;
 }
 
+/** One option of a choice: the value it answers and the words the person reads. */
+interface ChoiceOption {
+  readonly value: string;
+  readonly label: string;
+  /** A short line beside the option, such as what it costs or where it calls. */
+  readonly hint?: string;
+}
+
+/** A question answered by picking one of its options. */
+export interface ChoiceQuestion {
+  /** Names the question, so a scripted run can answer it. */
+  readonly id: string;
+  /** The question in the owner's language. */
+  readonly message: string;
+  readonly options: readonly ChoiceOption[];
+  /** The value picked when the person only presses Enter; the first option without one. */
+  readonly initial?: string;
+}
+
 /**
  * Asks the person at the terminal, and shows them what happens. Every text it takes is already
  * in the owner's language. A question the person cancels, or one nobody can answer, throws
@@ -28,6 +47,8 @@ export interface Prompter {
   /** Shows one line: a step done, or what went wrong. */
   say(text: string): void;
   ask(question: TextQuestion): Promise<string>;
+  /** Answers the value of the option the person picked. */
+  choose(question: ChoiceQuestion): Promise<string>;
   /** Closes the session with its last line. */
   outro(text: string): void;
 }

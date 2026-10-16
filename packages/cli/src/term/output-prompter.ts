@@ -15,6 +15,7 @@ export function createOutputPrompter(output: CliOutput): Prompter {
     },
     say: (line) => output.line(line),
     ask: async (question) => Promise.reject(promptCancelled(question.id)),
+    choose: async (question) => Promise.reject(promptCancelled(question.id)),
     outro: (line) => output.line(line),
   };
 }

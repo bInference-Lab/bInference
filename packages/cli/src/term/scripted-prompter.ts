@@ -21,7 +21,8 @@ export interface ScriptedPrompter extends Prompter {
 /**
  * Creates a prompter that answers each question from the script, in order per question id. An
  * answer the question's check refuses shows the problem and takes the next answer, as a person
- * types again. A question with no answer left is cancelled.
+ * types again. A choice takes an option's value, or an empty answer for its initial one. A
+ * question with no answer left is cancelled.
  */
 export function createScriptedPrompter(
   script: Readonly<Record<string, readonly ScriptedAnswer[]>>,
@@ -53,6 +54,14 @@ export function createScriptedPrompter(
         }
         lines.push(problem);
       }
+    },
+    // A scripted answer is an option's value; Enter alone picks the initial one.
+    choose: async (question) => {
+      const answer = withInitial(next(question.id), question.initial ?? question.options[0]?.value);
+      if (!question.options.some((option) => option.value === answer)) {
+        throw new Error(`The script answers ${question.id} with ${answer}, which is no option.`);
+      }
+      return Promise.resolve(answer);
     },
     outro: (line) => lines.push(line),
   };
