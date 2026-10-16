@@ -200,6 +200,9 @@ new name here first, in the change that uses it.
 - **launch wallet**: a small wallet of its own, funded by the owner, whose ceiling may allow a
   launch's contracts. Live trades on a launch's own curve need one; the agent wallets' ceilings
   list only registry contracts, so until it exists only a paper agent uses such a venue.
+- **extra launch wallet**: a live launch wallet beyond the agent's launch wallet, which only a
+  rebuild adopts. Nothing trades from it; `wallet list` and `binference check` name it so the
+  owner rescues what it holds.
 - **hook allowlist**: per chain, the pool hooks a route may pass through, each with the fee it
   keeps and who made its pools. A route through a PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped,
   aggregator routes too.
@@ -576,6 +579,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | ---------------------------------------- | ---------------------- | -------------------------------- |
 | agent wallet                             | Agent 钱包             |                                  |
 | launch wallet                            | 发射钱包               | Trades on a launch's own curve   |
+| extra launch wallet                      | 额外的发射钱包         | Nothing trades from it           |
 | owner key                                | 所有者密钥             | Shown once as a `bnok1` code     |
 | balance                                  | 余额                   |                                  |
 | withdraw, fund (a wallet)                | 提取, 充值             | Lending's withdraw is 取出       |

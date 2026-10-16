@@ -1,5 +1,8 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
-import { err, ok } from "@binference/core";
+import { err, ok, type Result } from "@binference/core";
+import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
+import type { WalletRecord } from "../install/install-record.js";
+import { launchWalletIn } from "../install/launch-wallet.js";
 import { type AgentListHandlers, createAgentListHandlers } from "./agent-list-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
@@ -25,21 +28,44 @@ export interface WalletHandlersOptions
   readonly chains: ChainRegistry;
 }
 
+// A wallet's view, an extra launch wallet marked: nothing trades from it, and the owner rescues it.
+async function listedView(
+  options: WalletHandlersOptions,
+  listed: { readonly wallet: WalletRecord; readonly wallets: readonly WalletRecord[] },
+  signal: AbortSignal,
+): Promise<WalletView | undefined> {
+  const { wallet, wallets } = listed;
+  const view = await walletViewOf(options, wallet, signal);
+  const isLive = wallet.role === "launch" && wallet.archivedAtMs === undefined;
+  const isExtra = isLive && launchWalletIn(wallets, wallet.agentId)?.id !== wallet.id;
+  return view === undefined || !isExtra ? view : { ...view, extra: true };
+}
+
 /**
  * Creates the wallet list. `wallet/list` answers the agent's wallets, or every agent's when the
  * call names none, oldest first, so an agent's default wallet comes first; archived wallets are
  * listed with the time they were archived. Each wallet's address comes from
- * {@link walletViewOf}. An unknown agent is `agent.not_found`; a stored wallet custody holds on no
- * chain fails the call with `wallet.custody_down`. `wallet/create` makes a wallet with the
- * owner key (see {@link makeWallet}), and `wallet/exportSealed` exports one's key sealed to the
+ * {@link walletViewOf}; a live launch wallet that is not its agent's launch wallet, as a rebuild
+ * may adopt, is marked `extra` (decision 0218). An unknown agent is `agent.not_found`; a stored
+ * wallet custody holds on no chain fails the call with `wallet.custody_down`. `wallet/create`
+ * makes a wallet with the owner key (see {@link makeWallet}), one call at a time, so a second
+ * launch wallet of an agent is refused before custody makes it; and `wallet/exportSealed` exports one's key sealed to the
  * caller's recipient key (see {@link exportWallet}); `signer/revoke` removes a machine's agent key
  * from every live wallet with the owner key (see {@link revokeSigner}). `agent/list` lists the
  * agents with their default wallets (see {@link createAgentListHandlers}).
  */
 export function createWalletHandlers(options: WalletHandlersOptions): WalletHandlers {
+  let queue: Promise<void> = Promise.resolve();
   return {
     ...createAgentListHandlers(options),
-    "wallet/create": async (call) => makeWallet(options, call),
+    async "wallet/create"(call): Promise<Result<WalletView, ProtocolErrorCode>> {
+      const turn = queue.then(async () => makeWallet(options, call));
+      queue = turn.then(
+        () => undefined,
+        () => undefined,
+      );
+      return turn;
+    },
     "wallet/exportSealed": async (call) => exportWallet(options, call),
     "signer/revoke": async (call) => revokeSigner(options, call),
     async "wallet/list"({ args, signal }) {
@@ -54,7 +80,7 @@ export function createWalletHandlers(options: WalletHandlersOptions): WalletHand
         (wallet) => args.agent === undefined || wallet.agentId === args.agent,
       );
       const views = await Promise.all(
-        records.map(async (wallet) => walletViewOf(options, wallet, signal)),
+        records.map(async (wallet) => listedView(options, { wallet, wallets }, signal)),
       );
       const items = views.filter((view) => view !== undefined);
       return items.length === records.length ? ok({ items }) : err("wallet.custody_down");

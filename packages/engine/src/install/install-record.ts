@@ -129,8 +129,8 @@ export interface WalletDraft {
   readonly ceiling: CeilingMirror;
   /**
    * `launch` for the agent's launch wallet, whose ceiling also allows the calls launchpads declare
-   * on the contracts each launch makes (decision 0217); absent for an agent wallet. An agent holds
-   * one live launch wallet at most.
+   * on the contracts each launch makes (decision 0217); absent for an agent wallet. Only a rebuild
+   * leaves an agent more than one live launch wallet (decision 0218).
    */
   readonly role?: WalletRole;
 }

@@ -4,8 +4,9 @@ import type { InstallStore } from "../ports.js";
 import type { WalletRecord } from "./install-record.js";
 
 /**
- * The agent's live launch wallet among the install's wallets (decision 0217); `undefined` when it
- * has none. An agent holds one at most.
+ * The agent's live launch wallet among the install's wallets (decision 0217): the first the store
+ * lists; `undefined` when it has none. Only a rebuild leaves an agent more than one, and nothing
+ * trades from the others (decision 0218).
  */
 export function launchWalletIn(
   wallets: readonly WalletRecord[],

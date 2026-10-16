@@ -145,15 +145,23 @@ async function storesANewWallet(subject: InstallStoreSubject): Promise<void> {
   assert.deepEqual((await store.read(live())).wallets, [made, first.wallet]);
 }
 
-async function storesOneLaunchWallet(subject: InstallStoreSubject): Promise<void> {
+async function storesLaunchWallets(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   const first = setup(subject, 2);
   await store.setUp(first, live());
   const launch = { ...wallet(subject, 1), role: "launch" } as const;
+  const extra = { ...wallet(subject, 3), role: "launch" } as const;
   await store.createWallet(launch, live());
-  assert.deepEqual((await store.read(live())).wallets, [launch, first.wallet]);
-  await assert.rejects(store.createWallet({ ...wallet(subject, 3), role: "launch" }, live()));
-  assert.deepEqual((await store.read(live())).wallets, [launch, first.wallet]);
+  await store.createWallet(extra, live());
+  const { wallets } = await store.read(live());
+  assert.deepEqual(
+    wallets.map((item) => [item.id, item.role]),
+    [
+      [launch.id, "launch"],
+      [first.wallet.id, undefined],
+      [extra.id, "launch"],
+    ],
+  );
 }
 
 async function replacesKeptCeilingChanges(subject: InstallStoreSubject): Promise<void> {
@@ -215,9 +223,9 @@ function walletChecks(create: () => Promise<InstallStoreSubject>): readonly Cont
   return [
     checkOn("stores a new wallet beside the ones it holds", create, storesANewWallet),
     checkOn(
-      "stores an agent's launch wallet with its role, and refuses a second live one",
+      "stores an agent's launch wallets with their role, as a rebuild adopts each",
       create,
-      storesOneLaunchWallet,
+      storesLaunchWallets,
     ),
     checkOn(
       "replaces the ceiling changes kept while a new rescue address waits",

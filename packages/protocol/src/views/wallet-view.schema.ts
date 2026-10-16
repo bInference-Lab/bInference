@@ -19,6 +19,12 @@ export interface WalletView {
    * (decision 0217); absent for an agent wallet.
    */
   readonly role?: "launch";
+  /**
+   * `true` for a live launch wallet beyond the agent's launch wallet, as a rebuild may adopt
+   * (decision 0218): nothing trades from it, and the owner rescues what it holds. Only
+   * `wallet/list` sets it.
+   */
+  readonly extra?: boolean;
 }
 
 /** Parses a wallet view. */
@@ -30,4 +36,5 @@ export const walletViewSchema: z.ZodType<WalletView> = z.object({
   createdAt: epochMsSchema,
   archivedAt: epochMsSchema.exactOptional(),
   role: z.literal("launch").exactOptional(),
+  extra: z.boolean().exactOptional(),
 });

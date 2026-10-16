@@ -2432,6 +2432,9 @@
                       "role": {
                         "type": "string",
                         "const": "launch"
+                      },
+                      "extra": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -2472,6 +2475,9 @@
                       "role": {
                         "type": "string",
                         "const": "launch"
+                      },
+                      "extra": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -2644,6 +2650,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -2684,6 +2693,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -2855,6 +2867,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -2895,6 +2910,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3064,6 +3082,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3104,6 +3125,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3340,6 +3364,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3380,6 +3407,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3543,6 +3573,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -3583,6 +3616,9 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "extra": {
+                  "type": "boolean"
                 }
               },
               "required": [
@@ -6408,6 +6444,9 @@
                   "role": {
                     "type": "string",
                     "const": "launch"
+                  },
+                  "extra": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -6542,6 +6581,9 @@
             "role": {
               "type": "string",
               "const": "launch"
+            },
+            "extra": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -6657,6 +6699,9 @@
             "role": {
               "type": "string",
               "const": "launch"
+            },
+            "extra": {
+              "type": "boolean"
             }
           },
           "required": [

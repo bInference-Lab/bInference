@@ -41,6 +41,7 @@
     "engine/0035_questions.ts": "35162e16d100cc045c9985400fb5c73f73f334ca18338b8973db0b1accd0f9cd",
     "engine/0036_owner_agent.ts": "e74549c79b3f1d8be3346cf3453a19c8bd7b07dd18f8843cf40620fbb0ba29e9",
     "engine/0037_card_auto_asks.ts": "e3320a9bf83fd8325b68f5a102dba904289d039c74a5dad571c9fc0da3134bcd",
-    "engine/0038_wallet_roles.ts": "7b1c342947b53edb110790b086810c7119cf9bbc50e9363560b5e7e72b7fbdec"
+    "engine/0038_wallet_roles.ts": "7b1c342947b53edb110790b086810c7119cf9bbc50e9363560b5e7e72b7fbdec",
+    "engine/0039_extra_launch_wallets.ts": "c0b29c269ed75b5dead917636251faf85dd0539bc6901071a2f636e27c317e94"
   }
 }

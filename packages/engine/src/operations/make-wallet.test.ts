@@ -161,6 +161,53 @@ describe("making a wallet with the owner key", () => {
     ).toStrictEqual([["main", "spare"]]);
   });
 
+  it("makes one launch wallet when two calls race, and custody makes no second", async () => {
+    const test = await withRescue();
+
+    const raced = await Promise.all([
+      create(test, { launch: true }),
+      create(test, { launch: true }),
+    ]);
+
+    expect(raced[0]).toMatchObject({ ok: true, value: { role: "launch" } });
+    expect(raced[1]).toStrictEqual(err("wallet.launch_exists"));
+    expect(test.walletMaker.count()).toBe(1);
+  });
+
+  it("marks a launch wallet beyond the agent's first as extra in the wallet list", async () => {
+    const launches = (
+      [
+        [3, "first launch"],
+        [4, "second launch"],
+      ] as const
+    ).map(([n, label]) =>
+      testWalletRecord({
+        id: idSchema("wal").parse(`wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c${String(n)}`),
+        agentId: testAgent,
+        label,
+        createdAtMs: testNowMs + n,
+        role: "launch",
+      }),
+    );
+    const accounts = [main, ...launches].map(
+      (wallet) => [wallet.id, accountRefSchema.parse(`fake:1:${wallet.address}`)] as const,
+    );
+    const test = await startTestEngine({ custodyWallets: new Map(accounts) });
+    for (const wallet of [main, ...launches]) {
+      test.stores.install.addWallet(wallet);
+    }
+
+    const listed = expectOk(
+      await test.engine.handlers["wallet/list"](testCall({ agent: testAgent })),
+    );
+
+    expect(listed.items.map((item) => [item.label, item.role, item.extra])).toStrictEqual([
+      ["main", undefined, undefined],
+      ["first launch", "launch", undefined],
+      ["second launch", "launch", true],
+    ]);
+  });
+
   it("takes the new wallet into a rescue address change that waits", async () => {
     const test = await withRescue();
     const set = { address: next, ownerKey: fakeOwnerKeyCode };

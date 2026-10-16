@@ -260,8 +260,8 @@ export const keepRescueCeilingTask: StoreTask<RescueCeiling, null> = defineTask(
 });
 
 /**
- * Stores a new live wallet with its ceiling; a held id, Privy id or address, or a second live
- * launch wallet of one agent, rolls it back.
+ * Stores a new live wallet with its ceiling; a held id, Privy id or address rolls it back. An
+ * agent may hold more than one live launch wallet, as a rebuild adopts them (decision 0218).
  */
 export const createWalletTask: StoreTask<WalletDraft, null> = defineTask({
   name: "install.create_wallet",
