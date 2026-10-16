@@ -79,5 +79,13 @@
   "chat.historyFailed": "The chat so far could not load. {reason} Your messages still reach the agent.",
   "chat.noAgents": "There is no agent yet. Run `binference init` to make one.",
   "chat.images": "{count, plural, one {# image} other {# images}}",
-  "chat.working": "Working on it · {seconds} s"
+  "chat.working": "Working on it · {seconds} s",
+  "chat.message": "Message to the agent",
+  "chat.placeholder": "Write to {agent}",
+  "chat.post": "Send",
+  "chat.stop": "Stop",
+  "chat.clear": "New chat",
+  "chat.cleared": "A new chat has started. The agent forgets this conversation; its notes and files stay.",
+  "chat.failed": "Not sent: {reason}",
+  "chat.noScope": "This connection can read the chat but not write in it."
 }

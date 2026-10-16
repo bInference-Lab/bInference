@@ -79,5 +79,13 @@
   "chat.historyFailed": "无法加载此前的对话。{reason}你的消息仍会发送给 Agent。",
   "chat.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。",
   "chat.images": "{count, plural, other {# 张图片}}",
-  "chat.working": "处理中 · {seconds} 秒"
+  "chat.working": "处理中 · {seconds} 秒",
+  "chat.message": "发给 Agent 的消息",
+  "chat.placeholder": "给 {agent} 发消息",
+  "chat.post": "发送",
+  "chat.stop": "停止",
+  "chat.clear": "新对话",
+  "chat.cleared": "新的对话已开始。Agent 会忘记这段对话，它的笔记和文件仍然保留。",
+  "chat.failed": "未发送：{reason}",
+  "chat.noScope": "此连接可以查看对话，但不能发送消息。"
 }

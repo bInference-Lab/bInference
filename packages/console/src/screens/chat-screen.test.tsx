@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConsoleRoutes } from "../app/console-router";
 import { type FakeAnswers, fakeClient } from "../testing/fake-client";
@@ -28,8 +28,19 @@ function chatAnswers(extra: FakeAnswers = {}): FakeAnswers {
     "agent/list": () => ({ items: [mainAgent] }),
     "chat/messages": () => ({ items: [] }),
     "intent/list": () => ({ items: [] }),
+    "chat/post": () => ({ session, turn }),
+    "chat/stop": () => ({}),
+    "chat/clear": () => ({ session }),
     ...extra,
   };
+}
+
+// The owner writes a message and sends it with the Send button.
+async function write(text: string): Promise<void> {
+  const box = screen.getByRole("textbox", { name: "Message to the agent" });
+  fireEvent.change(box, { target: { value: text } });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  await settle();
 }
 
 describe("the chat screen", () => {
@@ -89,6 +100,60 @@ describe("the chat screen", () => {
     expect(engine.calls.filter((call) => call.op === "chat/messages").length).toBeGreaterThan(1);
   });
 
+  it("sends the owner's message and shows it until the transcript holds it", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    await write("Buy CAKE with 0.1 BNB");
+    expect(engine.calls.filter((call) => call.op === "chat/post")).toStrictEqual([
+      { op: "chat/post", args: { agent, text: "Buy CAKE with 0.1 BNB" } },
+    ]);
+    const log = screen.getByRole("log", { name: "Chat with main" });
+    expect(log.textContent).toContain("Buy CAKE with 0.1 BNB");
+    expect(screen.getByRole("textbox", { name: "Message to the agent" })).toHaveProperty(
+      "value",
+      "",
+    );
+  });
+
+  it("stops the running turn and starts a new chat", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    act(() => engine.push(`chat:${agent}`, "chat/turnStarted", { agent, session, turn }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop" }));
+    fireEvent.click(screen.getByRole("button", { name: "New chat" }));
+    await settle();
+    const brakes = new Set(["chat/stop", "chat/clear"]);
+    expect(engine.calls.filter((call) => brakes.has(call.op))).toStrictEqual([
+      { op: "chat/stop", args: { agent } },
+      { op: "chat/clear", args: { agent } },
+    ]);
+    expect(screen.getByRole("status").textContent).toContain("A new chat has started.");
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+  });
+
+  it("says why a message was not sent, and keeps what the owner wrote", async () => {
+    const refused = Object.assign(new Error("frozen"), { code: "agent.frozen" });
+    const engine = fakeClient(chatAnswers({ "chat/post": async () => Promise.reject(refused) }));
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    await write("Hello");
+    expect(screen.getByRole("alert").textContent).toMatch(/^Not sent: /u);
+    const box = screen.getByRole("textbox", { name: "Message to the agent" });
+    expect(box).toHaveProperty("value", "Hello");
+  });
+
+  it("lets a connection without the chat scope read the chat only", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client, scopes: ["read"] });
+    await settle();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(
+      screen.getByText("This connection can read the chat but not write in it."),
+    ).toBeDefined();
+  });
+
   it("says the chat so far could not load while the agent runtime is down", async () => {
     const down = Object.assign(new Error("down"), { code: "runtime.unavailable" });
     const engine = fakeClient(chatAnswers({ "chat/messages": async () => Promise.reject(down) }));
@@ -105,7 +170,7 @@ describe("the chat screen", () => {
     renderSignedIn(<ConsoleRoutes basepath="/mini" />, { client: engine.client, scopes });
     await settle();
     expect(screen.getByRole("heading", { name: "Chat" })).toBeDefined();
-    expect(screen.getByRole("log", { name: "Chat with main" })).toBeDefined();
+    expect(screen.getByRole("textbox", { name: "Message to the agent" })).toBeDefined();
     globalThis.history.replaceState(null, "", "/");
     scroll.mockRestore();
   });
