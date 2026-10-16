@@ -27,7 +27,6 @@ import type {
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import type { MarketParts } from "../market/market-handlers.js";
-import { createMoneyPath } from "../money-path/create-money-path.js";
 import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { LaunchRouting } from "../money-path/launch-routing.js";
 import {
@@ -41,7 +40,6 @@ import { createOrderTriggers, type OrderTriggers } from "../orders/order-trigger
 import { tickOrders } from "../orders/tick-orders.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
-import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
@@ -59,6 +57,7 @@ import {
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
+import { moneyPathOf } from "./engine-money-path.js";
 import {
   cardTimerOf,
   fillEndOf,
@@ -289,7 +288,7 @@ function intentParts(
   paper: PaperParts,
   settled: (message: AgentInboxMessage) => void,
 ): IntentParts {
-  const { stores, custody, host, chains, clock, ids, isLocked } = options;
+  const { stores, host, chains, clock, isLocked } = options;
   const gate = createCapGate({ intents: stores.intents, clock });
   const stored = storedIntentsOf(options, { settled, gate });
   const confirmations = createConfirmations({
@@ -304,27 +303,7 @@ function intentParts(
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
   const showings = createCardShowings({ ...stores, chains, venues: host, isLocked });
-  const moneyPath = createMoneyPath({
-    stored,
-    agents: stores.agents,
-    custody,
-    wallets: paper.wallets,
-    holdings: paper.holdings,
-    launches,
-    policy: createPolicyCheck({ prices: options.prices, clock }),
-    prices: options.prices,
-    host,
-    risk: options.risk,
-    simulator: paper.simulator,
-    chains,
-    readTokenFacts: options.readTokenFacts,
-    execute,
-    isLocked,
-    lowGas,
-    gate,
-    clock,
-    ids,
-  });
+  const moneyPath = moneyPathOf(options, { stored, paper, launches, execute, lowGas, gate });
   const handlers = {
     ...createIntentHandlers({ stored, moneyPath, answer, chains, showings }),
     ...createOrderHandlers(orders),
