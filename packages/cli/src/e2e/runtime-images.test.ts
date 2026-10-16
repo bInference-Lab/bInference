@@ -5,8 +5,10 @@ import { maxImageBytes } from "@binference/protocol";
 import { callsReply, type InProcessRuntime, textReply } from "@binference/runtime/testing";
 import type { FakeBotApi } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import type { ComposedTelegram } from "../compose/compose-telegram.js";
 import { type Skeleton, skeletonCompositions, startSkeleton } from "../compose/test-skeleton.js";
+import { createSystemHttp } from "../runtime/system-http.js";
 import {
   type ChatWatch,
   ownerBot,
@@ -49,7 +51,9 @@ async function startMachine(script: RuntimeScript, photo: Uint8Array = testPng):
   const { botApi, telegram } = await ownerBot();
   botApi.addFile("AgACchart", { bytes: photo, reportedSize: null });
   const turns = createRunningTurns();
-  const skeleton = await startSkeleton(selfHosted.parts(), { telegram, turns });
+  // The HTTP listener on a free port, as the console uploads through it.
+  const browser = { http: { host: "127.0.0.1", port: 0 } };
+  const skeleton = await startSkeleton(selfHosted.parts(), { telegram, turns, browser });
   stops.push(async () => skeleton.close());
   await skeleton.client.call("approval/set", { agent: testAgent, mode: "manual" }, live());
   await skeleton.client.call("portfolio/resetPaper", { agent: testAgent }, live());
@@ -84,7 +88,39 @@ const swap = callsReply([
   { name: "swap", args: { from: testCoin, to: testToken, amount: { base: "1000000" }, reason } },
 ]);
 
+// The console's way: `upload/start`, the body to its ticket's path, then `chat/post` naming it.
+async function uploadAndPost(machine: Machine, text: string): Promise<void> {
+  const { skeleton, chat } = machine;
+  const address = await skeleton.composed.server.start(AbortSignal.timeout(5_000));
+  const plan = { contentType: "image/png", bytes: testPng.byteLength } as const;
+  const { url } = await skeleton.client.call("upload/start", plan, live());
+  const http = createSystemHttp({ version: "test" });
+  stops.push(async () => http.close());
+  const posted = await http.request({
+    method: "POST",
+    url: `http://127.0.0.1:${String(address?.port)}${url}`,
+    bodyBytes: testPng,
+    signal: AbortSignal.timeout(5_000),
+  });
+  const { upload } = uploadAnswerSchema.parse(JSON.parse(posted.body));
+  await skeleton.client.call("chat/post", { agent: testAgent, text, images: [upload] }, live());
+  await chat.turnsEnded(1);
+}
+
+const uploadAnswerSchema = z.object({ upload: z.string() });
+
 describe("the owner's images in chat", () => {
+  it("reach the model from the console's upload too", slow, async () => {
+    const machine = await startMachine({ replies: [textReply("A chart.")], readsImages: true });
+    await uploadAndPost(machine, "This chart");
+    const asked = machine.runtimes[0]?.transports.main.requests[0]?.messages.at(-1);
+    expect(asked).toStrictEqual({
+      role: "owner",
+      text: "This chart",
+      images: [{ contentType: "image/png", data: pngBase64 }],
+    });
+  });
+
   it(
     "reach a model that reads images, and the card after them carries the warning",
     slow,

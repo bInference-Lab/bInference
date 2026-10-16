@@ -20,7 +20,13 @@ import {
   type VenueHost,
   type WalletFactsSource,
 } from "@binference/engine";
-import { createRunningTurns, markRuntimeTurns, type RunningTurns } from "@binference/engine/chat";
+import {
+  createRunningTurns,
+  createUploadShelf,
+  markRuntimeTurns,
+  type RunningTurns,
+  type UploadShelf,
+} from "@binference/engine/chat";
 import { isNoticeMutedFor } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
@@ -232,6 +238,7 @@ function engineOf(
     readonly publish: (push: EnginePush) => void;
     readonly turns: RunningTurns;
     readonly trading: { readonly host: VenueHost; readonly risk: RiskCheck };
+    readonly uploads: UploadShelf;
   },
 ): Engine {
   const { host, risk } = given.trading;
@@ -260,6 +267,7 @@ function engineOf(
     publish: given.publish,
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,
+    uploads: given.uploads,
     ...(options.telegram?.images === undefined ? {} : { botImages: options.telegram.images }),
   });
 }
@@ -306,7 +314,9 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   // One record of running turns: the relay starts and ends them, and proposals take their marks.
   const turns = options.turns ?? createRunningTurns();
   const trading = tradingOf(parts, options);
-  const engine = engineOf(parts, options, { ids, publish, turns, trading });
+  // One shelf of uploads: the server fills it, and the engine reads the owner's images from it.
+  const uploads = createUploadShelf({ clock, random });
+  const engine = engineOf(parts, options, { ids, publish, turns, trading, uploads });
   const origin = consoleOriginCell();
   const table: EngineHandlerTable = {
     ...engine.handlers,
@@ -322,7 +332,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
     notices,
     server: () => server,
   });
-  const server = origin.watch(composeServer(parts, options, { handlers, publish, ids }));
+  const server = origin.watch(composeServer(parts, options, { handlers, publish, ids, uploads }));
   return {
     engine,
     server,

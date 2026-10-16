@@ -1,6 +1,7 @@
 import type { IdSource } from "@binference/core";
 import type { EnginePush } from "@binference/engine";
 import { createDevicePairing, createLockoutNotices } from "@binference/engine/access";
+import type { UploadShelf } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { createProtocolServer, type MiniAppAuth, type ProtocolServer } from "@binference/server";
 import type { ComposeEngineOptions, EngineParts } from "./compose-engine.js";
@@ -11,6 +12,8 @@ export interface ServerParts {
   readonly handlers: EngineHandlerTable;
   readonly publish: (push: EnginePush) => void;
   readonly ids: IdSource;
+  /** The owner's uploads: the server fills the shelf the engine reads them from. */
+  readonly uploads: UploadShelf;
 }
 
 // The owner's bot as the Mini App's sign-in reads it: its token checks each launch's signature,
@@ -42,6 +45,7 @@ export function composeServer(
     pairing,
     ...(consoleFiles === undefined ? {} : { consoleFiles }),
     idempotency: parts.stores.idempotency,
+    uploads: given.uploads,
     handlers: given.handlers,
     engine: {
       version: options.version,
