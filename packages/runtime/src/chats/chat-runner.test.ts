@@ -234,6 +234,49 @@ describe("createChatRunner", () => {
     expect(turnsStarted(rig)).toStrictEqual([posted.turn]);
   });
 
+  it("starts a turn from a schedule's wake-up, marked when its schedule was", async () => {
+    const rig = await startChatRig({ replies: [textReply("Reviewed.")] });
+    const due = Date.parse("2027-01-15T14:00:00Z");
+    const woke = rig.engine.due(rig.agent, {
+      prompt: "Review my portfolio.",
+      due,
+      outsideContent: true,
+    });
+    await rig.received();
+    await rig.runner.rested();
+    expect(turnsStarted(rig)).toStrictEqual([woke.turn]);
+    const [request] = rig.transport.requests;
+    const text = `Schedule ${woke.schedule}, due at 2027-01-15T14:00:00.000Z, runs now: Review my portfolio.`;
+    expect(request?.messages).toStrictEqual([{ role: "owner", text }]);
+    const events = await rig.stores.transcript.events(
+      { sessionId: woke.session, limit: 10 },
+      live(),
+    );
+    expect(events.map(({ role, outside }) => [role, outside])).toStrictEqual([
+      ["owner", true],
+      ["agent", false],
+    ]);
+  });
+
+  it("skips a schedule's wake-up refused for a spent budget, and keeps the owner's message", async () => {
+    const rig = await startChatRig({ replies: [textReply("Back.")] });
+    rig.engine.refuse(rig.agent, {
+      started: false,
+      refusal: "budget",
+      resumesAt: rig.clock.now() + 60_000,
+    });
+    const woke = rig.engine.due(rig.agent, { prompt: "Review.", due: 1, outsideContent: false });
+    await rig.received();
+    await rig.runner.rested();
+    const posted = await rig.post("hi");
+    await rig.runner.rested();
+    expect(dropReasons(rig)).toStrictEqual({ [woke.message]: "budget" });
+    rig.engine.refuse(rig.agent, undefined);
+    await rig.clock.advance(60_000);
+    await rig.runner.rested();
+    expect(turnsStarted(rig)).toStrictEqual([posted.turn]);
+  });
+
   it("takes a message pushed twice once", async () => {
     const rig = await startChatRig({ replies: [textReply("Once."), textReply("Twice.")] });
     const seen: InboxMessageView[] = [];

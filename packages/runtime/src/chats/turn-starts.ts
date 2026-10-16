@@ -13,7 +13,7 @@ import { loadConversation } from "../sessions/conversation.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
-import { ownerMessageOf, type TurnMessage, turnMessageOf } from "./queued-view.js";
+import { isWakeUp, ownerMessageOf, type TurnMessage, turnMessageOf } from "./queued-view.js";
 
 /** A waiting message with the view it holds. */
 interface Waiting {
@@ -81,11 +81,18 @@ function pause(context: ChatContext, agent: Id<"agt">, until: number): void {
   }
 }
 
-// How a refused turn leaves its messages (decision 0174).
+// How a refused turn leaves its messages (decision 0174). A spent budget skips the schedules'
+// wake-ups and keeps the rest for the resume (runtime spec, section 8.3).
 async function afterRefusal(context: ChatContext, agent: Id<"agt">, ended: TurnEnded) {
   const { refused, taken } = ended;
   const refusal = refused?.refusal ?? "unavailable";
   if (refusal === "budget") {
+    const wakeUps = taken.filter(({ queued }) => isWakeUp(queued.kind));
+    await dropMessages(
+      context,
+      wakeUps.map(({ queued }) => queued.message),
+      refusal,
+    );
     pause(context, agent, refused?.resumesAt ?? Number.POSITIVE_INFINITY);
     return;
   }

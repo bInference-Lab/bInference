@@ -54,10 +54,29 @@ interface InboxClear extends InboxMessageBase {
 }
 
 /**
+ * A schedule's time came: it starts a turn with the schedule's prompt, marked when the schedule
+ * was set in a turn that held outside content (decision 0232).
+ */
+interface InboxScheduleDue extends InboxMessageBase {
+  readonly kind: "inbox/scheduleDue";
+  readonly turn: ProtocolId<"chatTurn">;
+  readonly schedule: ProtocolId<"schedule">;
+  readonly prompt: string;
+  /** When the run was due; earlier than `at` for a run missed while the engine was off. */
+  readonly due: number;
+  readonly outsideContent: boolean;
+}
+
+/**
  * One stored message of the agent inbox, as `inbox/list` and the `inbox` topic carry it. Kinds
  * the runtime spec adds later arrive as further members; a runtime skips a kind it does not know.
  */
-export type InboxMessageView = InboxOwnerMessage | InboxIntentSettled | InboxStop | InboxClear;
+export type InboxMessageView =
+  | InboxOwnerMessage
+  | InboxIntentSettled
+  | InboxStop
+  | InboxClear
+  | InboxScheduleDue;
 
 const base = {
   message: protocolIdSchema("inboxMessage"),
@@ -92,4 +111,13 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
   z.object({ ...base, kind: z.literal("inbox/intentSettled"), turn, intent: intentViewSchema }),
   z.object({ ...base, kind: z.literal("inbox/stop"), reason: z.enum(["owner", "freeze"]) }),
   z.object({ ...base, kind: z.literal("inbox/clear"), next: protocolIdSchema("chatSession") }),
+  z.object({
+    ...base,
+    kind: z.literal("inbox/scheduleDue"),
+    turn,
+    schedule: protocolIdSchema("schedule"),
+    prompt: z.string(),
+    due: epochMsSchema,
+    outsideContent: z.boolean(),
+  }),
 ]);

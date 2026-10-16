@@ -31,6 +31,14 @@ interface Running {
   readonly marked: boolean;
 }
 
+/** A schedule's wake-up the fake engine stored: its message, session, turn and schedule. */
+interface Woken {
+  readonly message: Id<"msg">;
+  readonly session: Id<"ses">;
+  readonly turn: Id<"trn">;
+  readonly schedule: Id<"sch">;
+}
+
 /**
  * An engine's side of chat held in memory, with the owner's side beside it: its inbox, each
  * agent's open session and running turn, and what it pushed on the chat topics.
@@ -42,6 +50,11 @@ export interface MemoryEngineChat extends EngineChat {
     text: string,
     images?: readonly string[],
   ): { readonly message: Id<"msg">; readonly session: Id<"ses">; readonly turn: Id<"trn"> };
+  /** A schedule's wake-up, due at `due`: the message, its session and the turn reserved for it. */
+  due(
+    agent: Id<"agt">,
+    wake: { readonly prompt: string; readonly due: number; readonly outsideContent: boolean },
+  ): Woken;
   /** `chat/stop` from the owner, or a freeze. */
   stop(agent: Id<"agt">, reason?: "owner" | "freeze"): Id<"msg">;
   /** `chat/clear`: answers the session that follows. */
@@ -236,7 +249,7 @@ function turnCalls(
   };
 }
 
-function ownerSide(state: FakeState): Pick<MemoryEngineChat, "post" | "stop" | "clear"> {
+function ownerSide(state: FakeState): Pick<MemoryEngineChat, "post" | "due" | "stop" | "clear"> {
   return {
     post(agent, text, images) {
       const view = {
@@ -246,6 +259,18 @@ function ownerSide(state: FakeState): Pick<MemoryEngineChat, "post" | "stop" | "
       };
       store(state, { ...view, text, surface: "cli", ...(images === undefined ? {} : { images }) });
       return { message: view.message, session: view.session, turn: view.turn };
+    },
+    due(agent, wake) {
+      const view = {
+        ...base(state, agent),
+        kind: "inbox/scheduleDue" as const,
+        turn: nextId(state, "trn"),
+        schedule: nextId(state, "sch"),
+        ...wake,
+      };
+      store(state, view);
+      const { message, session, turn, schedule } = view;
+      return { message, session, turn, schedule };
     },
     stop(agent, reason = "owner") {
       const view = { ...base(state, agent), kind: "inbox/stop" as const, reason };

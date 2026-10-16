@@ -96,7 +96,7 @@ async function queued(context: ChatContext, view: InboxMessageView): Promise<boo
 }
 
 async function receiveOne(context: ChatContext, view: InboxMessageView): Promise<void> {
-  const turnMessage = view.kind === "inbox/message" || view.kind === "inbox/intentSettled";
+  const turnMessage = startsTurns(view.kind);
   if (turnMessage) {
     await openSession(context, view);
     if ((await waitingIn(context, view.session)).length >= maxWaiting) {
@@ -105,7 +105,7 @@ async function receiveOne(context: ChatContext, view: InboxMessageView): Promise
     }
   }
   const waits = await queued(context, view);
-  if (waits && !turnMessage) {
+  if (waits && (view.kind === "inbox/stop" || view.kind === "inbox/clear")) {
     await applyControl(context, view);
   }
   await context.engine.takeInbox([view.message], context.lifetime);
