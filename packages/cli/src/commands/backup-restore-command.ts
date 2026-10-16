@@ -304,7 +304,13 @@ export async function runBackupRestore(
   request: BackupRestoreRequest,
 ): Promise<ExitCode> {
   const { options, file } = request;
-  const flags = { ...options, isStartOver: false, isAttach: false, restore: file };
+  const flags = {
+    ...options,
+    isStartOver: false,
+    isAttach: false,
+    acceptDisclaimer: false,
+    restore: file,
+  };
   const context = initContextOf(run.host, run.output, { flags, formatter: run.formatter });
   const report: Report = { output: run.output, formatter: run.formatter, isJson: options.json };
   const prepared = await prepareRestore(context, file);

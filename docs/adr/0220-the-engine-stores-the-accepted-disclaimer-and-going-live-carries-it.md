@@ -1,6 +1,6 @@
 # 0220. The engine stores the accepted disclaimer, and going live carries it
 
-Status: Accepted
+Status: Amended by 0223
 
 Accepted by the owner on 2026-10-16.
 

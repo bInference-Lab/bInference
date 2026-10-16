@@ -248,6 +248,7 @@
   "option.modelBaseUrl": "使用兼容的服务商时：它的接口地址",
   "option.model": "模型在服务商处的 ID",
   "option.modelKey": "服务商 API 密钥的密钥来源，按 config.json5 的写法",
+  "option.acceptDisclaimer": "终端前无人时：完整显示免责声明和隐私声明，并接受它们",
   "option.setInit": "在 init 写入的文件中设置一个配置项，写作 `key=value`",
   "option.startOver": "用新的所有者密钥和新钱包重新设置一个已设置过的文件夹",
   "option.attach": "用新的 Agent 密钥和所有者密钥让此机器成为该安装各钱包的签名方；被替换的密钥不再能签名",

@@ -121,6 +121,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     .option("--model-base-url <url>", message("option.modelBaseUrl"))
     .option("--model <id>", message("option.model"))
     .option("--model-key <source>", message("option.modelKey"))
+    .option("--accept-disclaimer", message("option.acceptDisclaimer"))
     .option("--set <key=value>", message("option.setInit"), addSet, [])
     .option("--start-over", message("option.startOver"))
     .option("--attach", message("option.attach"))

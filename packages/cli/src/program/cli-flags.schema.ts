@@ -86,6 +86,11 @@ export interface InitFlags extends CommonOptions {
   readonly model?: string;
   /** The provider key's source, such as `{ fromEnv: "OPENROUTER_API_KEY" }`. */
   readonly modelKey?: string;
+  /**
+   * With nobody at the terminal: accept the disclaimer and the privacy statement, which init
+   * prints in full first (decision 0223). A person at the terminal types the phrase instead.
+   */
+  readonly acceptDisclaimer: boolean;
   /** Each `--set key=value` for the config file, in the order given. */
   readonly sets: readonly string[];
   /** Sets up a folder that was set up before, with a new owner key and a new wallet. */
@@ -189,6 +194,7 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     modelBaseUrl: z.string().min(1).exactOptional(),
     model: z.string().min(1).exactOptional(),
     modelKey: z.string().min(1).exactOptional(),
+    acceptDisclaimer: z.boolean().default(false),
     set: z.array(z.string()).default([]),
     startOver: z.boolean().default(false),
     attach: z.boolean().default(false),

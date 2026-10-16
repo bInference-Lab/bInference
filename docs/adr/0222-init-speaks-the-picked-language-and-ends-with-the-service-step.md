@@ -1,6 +1,6 @@
 # 0222. Init speaks the picked language and ends with the service step
 
-Status: Accepted
+Status: Amended by 0223
 
 Accepted by the owner on 2026-10-16.
 

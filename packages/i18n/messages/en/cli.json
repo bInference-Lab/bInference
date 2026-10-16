@@ -248,6 +248,7 @@
   "option.modelBaseUrl": "With a compatible provider: its API address",
   "option.model": "The model's ID at the provider",
   "option.modelKey": "The provider key's source, written as in config.json5",
+  "option.acceptDisclaimer": "With nobody at the terminal: print the disclaimer and the privacy statement in full, and accept them",
   "option.setInit": "Set a config key in the file init writes, written as `key=value`",
   "option.startOver": "Set up a folder set up before again, with a new owner key and a new wallet",
   "option.attach": "Make this machine the signer of the install's wallets with a new agent key and the owner key; the key it replaces signs nothing more",

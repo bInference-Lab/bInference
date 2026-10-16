@@ -825,8 +825,9 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 
 Shown before an agent can go live ([decision 0060](../DECISIONS.md#d0060)): in `binference init`
 after the language step, and by `binference live` when the owner has not accepted the current
-text. The owner types the phrase in either language, in any letter case; `binference init --yes`
-prints the text and needs its explicit flag. `safety.disclaimer_version` records the version
+text. The owner types the phrase in either language, in any letter case; with nobody at the
+terminal, `binference init --accept-disclaimer` prints both texts in full before it accepts them
+([decision 0223](../DECISIONS.md#d0223)). `safety.disclaimer_version` records the version
 accepted, and a change of meaning in either text raises the version, so going live asks again.
 
 The text below is **version 2**, accepted by the owner on 2026-10-12: its privacy statement names
