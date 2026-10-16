@@ -5,6 +5,7 @@ import type {
   IntentOutcome,
   IntentRequest,
   IntentView,
+  LaunchTokenRequest,
   RescueRequest,
   UnfreezeRequest,
 } from "@binference/protocol";
@@ -18,6 +19,7 @@ import {
 import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
+import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import { autoOrderQuoteDocument, autoOrderRequestDocument } from "../orders/auto-order-quote.js";
@@ -39,6 +41,14 @@ function tradeAssetsOf(request: AnyRequest): readonly AssetRef[] {
   return request.receive === undefined ? [request.token] : [request.token, request.receive];
 }
 
+// A launch names what it pairs with and, once built, the token its create call makes.
+function launchAssetsOf(record: IntentRecord, request: LaunchTokenRequest): readonly AssetRef[] {
+  const { quote } = record;
+  return quote === undefined
+    ? [request.pairWith]
+    : [request.pairWith, tokenLaunchQuoteDocument.decode(quote).token];
+}
+
 // The money path routes trades, whose quote names what it spends and buys; a rescue lists what it
 // moves; other kinds list their assets once it runs them, and an unfreeze moves none.
 function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] {
@@ -50,6 +60,9 @@ function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[
     return record.quote === undefined
       ? []
       : [autoOrderQuoteDocument.decode(record.quote).request.token];
+  }
+  if (request.kind === "launchToken") {
+    return launchAssetsOf(record, request);
   }
   const asked = tradeAssetsOf(request);
   if (asked.length === 0 || record.quote === undefined) {
@@ -71,7 +84,12 @@ function requestOf(record: IntentRecord): AnyRequest {
 }
 
 // Only a trade's quote is a `QuoteView`.
-const ownQuoteKinds: ReadonlySet<string> = new Set(["rescue", "unfreeze", "autoOrder"]);
+const ownQuoteKinds: ReadonlySet<string> = new Set([
+  "rescue",
+  "unfreeze",
+  "autoOrder",
+  "launchToken",
+]);
 
 function cardViewOf(snapshot: IntentSnapshot): CardView | undefined {
   const card = snapshot.history.cards.at(-1);

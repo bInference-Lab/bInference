@@ -13,6 +13,7 @@ import { authorizationDocument, quoteDocument } from "./intent-documents.schema.
 import type { IntentRecord } from "./intent-record.js";
 import type { CardTerms, IntentStatus, QuoteTerms } from "./intent-status.js";
 import { rescueQuoteDocument } from "./rescue-quote.js";
+import { tokenLaunchQuoteDocument } from "./token-launch-quote.js";
 import { unfreezeQuoteDocument } from "./unfreeze-quote.js";
 
 /** An intent's events and card versions as its store keeps them, oldest first. */
@@ -39,6 +40,10 @@ function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
   }
   if (record.kind === "autoOrder") {
     return { quotedAtMs: autoOrderQuoteDocument.decode(record.quote).quotedAtMs };
+  }
+  // A launch's first buy is the first trade of its token, so a tap never quotes it again.
+  if (record.kind === "launchToken") {
+    return { quotedAtMs: tokenLaunchQuoteDocument.decode(record.quote).quotedAtMs };
   }
   const quote = quoteDocument.decode(record.quote);
   const terms = { quotedAtMs: quote.quotedAt, minOutBase: quote.minOut.base };

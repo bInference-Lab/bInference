@@ -1,8 +1,9 @@
 import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import type { AssetInfo, AssetInfos } from "@binference/protocol";
-import { assetsDocument } from "../intents/intent-documents.schema.js";
+import { assetsDocument, requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import type { IntentStore } from "../ports.js";
 
 /**
@@ -61,17 +62,36 @@ export async function knownAssetInfos(
   return { ...(await sources.intents.storedAssets(unlisted, call)), ...listed };
 }
 
+// A token launch names the token its create call makes, which no registry lists and no proposal
+// stored: its name and symbol are the launch's own, and its decimals its launchpad's quote.
+function launchedInfos(
+  record: Partial<Pick<IntentRecord, "kind" | "request" | "quote">>,
+): AssetInfos {
+  const { kind, request: stored } = record;
+  const request =
+    kind === "launchToken" && stored !== undefined ? requestDocument.decode(stored) : undefined;
+  if (request?.kind !== "launchToken" || record.quote === undefined) {
+    return {};
+  }
+  const { token, tokenDecimals } = tokenLaunchQuoteDocument.decode(record.quote);
+  const info = { symbol: request.symbol, name: request.name, decimals: tokenDecimals };
+  return { [token]: { ...info, verified: false, onCurve: true } };
+}
+
 /**
  * The info of each asset an intent names: the registry's, else what the intent stored of a token
- * the registry does not list when it was proposed, marked unverified. An asset neither knows is
- * left out.
+ * the registry does not list when it was proposed, marked unverified, or, for a token launch, the
+ * launched token's own words. An asset none knows is left out.
  */
 export function intentAssetInfos(
   chains: ChainRegistry,
-  record: Pick<IntentRecord, "assets">,
+  record: Pick<IntentRecord, "assets"> & Partial<Pick<IntentRecord, "kind" | "request" | "quote">>,
   assets: readonly AssetRef[],
 ): AssetInfos {
-  const stored = record.assets === undefined ? {} : assetsDocument.decode(record.assets);
+  const stored = {
+    ...launchedInfos(record),
+    ...(record.assets === undefined ? {} : assetsDocument.decode(record.assets)),
+  };
   return Object.fromEntries(
     [...new Set(assets)].flatMap((asset) => {
       const info = assetInfoOf(chains, asset) ?? stored[asset];
