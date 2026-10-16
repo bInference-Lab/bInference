@@ -16,7 +16,6 @@ import {
   createFakeFamily,
   createFakeSigner,
   createFakeSigningScheme,
-  createFakeTxSimulator,
   createFakeVenue,
   type FakeSigner,
 } from "@binference/chain/testing";
@@ -31,9 +30,6 @@ import type { AgentDraft, AgentRecord } from "../agents/agent-record.js";
 import { createRunningTurns, type RunningTurns } from "../chat/running-turns.js";
 import { createFakeCeilingEditor, type FakeCeilingEditor } from "../fakes/fake-ceiling-editor.js";
 import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
-import { createFakePriceSource } from "../fakes/fake-price-source.js";
-import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
-import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
 import { createFakeWalletMaker, type FakeWalletMaker } from "../fakes/fake-wallet-maker.js";
 import {
@@ -41,7 +37,6 @@ import {
   type MemoryEngineStores,
 } from "../fakes/memory-engine-stores.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
-import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import type { CeilingEditor, SignerRevoker, WalletExporter } from "../install/ports.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 import {
@@ -52,7 +47,6 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { MarketReads } from "../market/ports.js";
-import { createSourceMarketReads } from "../market/source-market-reads.js";
 import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type { OrderFills } from "../orders/fill-orders.js";
@@ -69,9 +63,9 @@ import type {
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { UploadShelf } from "../uploads/upload-shelf.js";
-import { createVenueHost } from "../venues/venue-host.js";
 import { createEngineWithFills, type Engine, type EngineOptions } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
+import { hostsOf, readsOf, stepsOf } from "./test-engine-parts.js";
 
 /**
  * The owner's CLI and an MCP client, as the server signs them in, and the agent runtime the engine
@@ -233,22 +227,6 @@ async function openPaper(engine: Engine, balances: readonly Amount[]): Promise<v
   }
 }
 
-// The steps a test may replace: the risk check and the simulators, fakes when it gives none.
-function stepsOf(
-  options: TestEngineOptions,
-  fakes: { readonly chains: ChainRegistry; readonly clock: ManualClock },
-): {
-  readonly risk: RiskCheck;
-  readonly simulator: Simulator;
-  readonly chainSimulator: TxSimulator;
-} {
-  return {
-    risk: options.risk ?? createFakeRiskCheck(fakes),
-    simulator: options.simulator ?? createQuoteSimulator(() => options.refusal),
-    chainSimulator: options.chainSimulator ?? createFakeTxSimulator(new Map()),
-  };
-}
-
 // The wallet facts of the test agent's wallets, and what each account holds live.
 function walletsOf(options: TestEngineOptions) {
   const source = createFakeWalletFacts(
@@ -277,25 +255,6 @@ function testTurns(): RunningTurns {
   const turns = createRunningTurns();
   turns.startRuntime(idSchema("tok").parse(testCallers.runtime.credential));
   return turns;
-}
-
-// What the engine reads of prices and markets: the coin at $600 and no market data, unless the
-// test gives its own, a watcher that prices every token but those the test names, and the facts
-// of every unlisted token.
-function readsOf(
-  options: TestEngineOptions,
-  clock: ManualClock,
-): Pick<EngineOptions, "prices" | "marketReads" | "canPrice" | "readTokenFacts"> {
-  const prices =
-    options.prices ?? new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]);
-  const source = createFakePriceSource(prices);
-  return {
-    prices: options.priceSource?.(source) ?? source,
-    marketReads:
-      options.marketReads ?? createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
-    canPrice: async (token) => await Promise.resolve(!(options.unpriceable ?? []).includes(token)),
-    readTokenFacts: options.tokenFacts ?? createFakeTokenFacts().read,
-  };
 }
 
 // A new engine on the same stores, with ids of its own, as a restart starts one.
@@ -343,7 +302,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     walletMaker,
     ...readsOf(options, clock),
     wallets: walletsOf(options),
-    host: createVenueHost({ venues, chains, clock, callTimeoutMs: 5_000 }),
+    ...hostsOf({ venues, chains, clock }),
     ...stepsOf(options, { chains, clock }),
     executor: options.executor ?? executor,
     paperBalances: testPaperBalances,
