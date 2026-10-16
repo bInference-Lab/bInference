@@ -88,5 +88,11 @@
   "chat.cleared": "新的对话已开始。Agent 会忘记这段对话，它的笔记和文件仍然保留。",
   "chat.failed": "未发送：{reason}",
   "chat.noScope": "此连接可以查看对话，但不能发送消息。",
-  "chat.cards": "等待你回复"
+  "chat.cards": "等待你回复",
+  "chat.addImage": "添加图片",
+  "chat.removeImage": "移除第 {number} 张图片",
+  "chat.imageAlt": "待发送的第 {number} 张图片",
+  "chat.image.tooMany": "每条消息最多 {count} 张图片。请在另一条消息中发送其余图片。",
+  "chat.image.tooLarge": "{name} 超过 {mib} MiB 的上限。请选择更小的图片。",
+  "chat.image.format": "{name} 不是 PNG、JPEG 或 WebP 图片。"
 }

@@ -10,24 +10,43 @@ import { ChatCards } from "./chat-cards";
 import { ChatComposer } from "./chat-composer";
 import { chatEntries } from "./chat-entries";
 import { ChatThread, WorkingLine } from "./chat-thread";
+import type { PickedImage } from "./composer-images";
+import { uploadImage } from "./upload-image";
 import { useChatLive } from "./use-chat-live";
 import { transcriptKey, useTranscript } from "./use-transcript";
 
-// Writes wait at most this long for the engine; it stores a message in a few milliseconds.
-const writeTimeoutMs = 30_000;
+// Writes wait at most this long for the engine; a message's images upload within the same time.
+const writeTimeoutMs = 60_000;
 
 function writeCall(): { readonly signal: AbortSignal } {
   return { signal: AbortSignal.timeout(writeTimeoutMs) };
 }
 
+/** A message the owner sends: its text and the images to upload with it. */
+interface Message {
+  readonly text: string;
+  readonly images: readonly PickedImage[];
+}
+
 function useChatActions(agent: ProtocolId<"agent">, live: ReturnType<typeof useChatLive>) {
-  const { client } = useEngine();
+  const { client, fetch } = useEngine();
   const queries = useQueryClient();
   const send = useMutation({
-    mutationFn: async (text: string) => {
+    mutationFn: async ({ text, images }: Message) => {
       const at = Date.now();
-      const { turn } = await client.call("chat/post", { agent, text }, writeCall());
-      live.sent({ kind: "owner", id: `owner ${turn}`, turn, text, images: 0, at });
+      const { signal } = writeCall();
+      const uploads = await Promise.all(
+        images.map(async (image) =>
+          uploadImage(
+            { client, fetch },
+            { body: image.file, contentType: image.contentType },
+            signal,
+          ),
+        ),
+      );
+      const args = { agent, text, ...(uploads.length === 0 ? {} : { images: uploads }) };
+      const { turn } = await client.call("chat/post", args, { signal });
+      live.sent({ kind: "owner", id: `owner ${turn}`, turn, text, images: uploads.length, at });
     },
   });
   const stop = useMutation({
@@ -119,8 +138,8 @@ function ChatBottom(props: {
       <Failure error={failed} />
       <ChatComposer
         actions={{
-          send: async (said) => {
-            await actions.send.mutateAsync(said);
+          send: async (said, images) => {
+            await actions.send.mutateAsync({ text: said, images });
           },
           stop: () => actions.stop.mutate(),
         }}

@@ -88,5 +88,11 @@
   "chat.cleared": "A new chat has started. The agent forgets this conversation; its notes and files stay.",
   "chat.failed": "Not sent: {reason}",
   "chat.noScope": "This connection can read the chat but not write in it.",
-  "chat.cards": "Waiting for your answer"
+  "chat.cards": "Waiting for your answer",
+  "chat.addImage": "Add image",
+  "chat.removeImage": "Remove image {number}",
+  "chat.imageAlt": "Image {number} to send",
+  "chat.image.tooMany": "A message takes at most {count} images. Send the rest in another message.",
+  "chat.image.tooLarge": "{name} is over the {mib} MiB limit. Pick a smaller image.",
+  "chat.image.format": "{name} is not a PNG, JPEG or WebP image."
 }

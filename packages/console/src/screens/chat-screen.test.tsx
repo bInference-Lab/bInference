@@ -8,6 +8,9 @@ import { ChatScreen } from "./chat-screen";
 
 afterEach(cleanup);
 
+// jsdom makes no object URLs; a preview's address only has to exist.
+Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: () => undefined });
+
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const session = "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const turn = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001";
@@ -193,6 +196,68 @@ describe("the chat screen", () => {
     expect(confirmed).toStrictEqual([
       { op: "intent/confirm", args: { intent, card, cardVersion: 1 } },
     ]);
+  });
+
+  it("uploads the owner's images by their tickets, then names them in the message", async () => {
+    const sent: { readonly path: string; readonly init: RequestInit }[] = [];
+    const engine = fakeClient(
+      chatAnswers({
+        "upload/start": () => ({ url: "/upload/ticket-1", expiresAt: 1 }),
+        "chat/post": () => ({ session, turn }),
+      }),
+    );
+    const fetch = async (path: string, init: RequestInit): Promise<Response> => {
+      sent.push({ path, init });
+      return new Response(JSON.stringify({ upload: "upl_1" }), { status: 201 });
+    };
+    const { container } = renderSignedIn(<ChatScreen />, { client: engine.client, fetch });
+    await settle();
+    const chart = new File([new Uint8Array(68)], "chart.png", { type: "image/png" });
+    const gif = new File([new Uint8Array(6)], "cat.gif", { type: "image/gif" });
+    fireEvent.change(container.querySelector("input[type=file]") as HTMLInputElement, {
+      target: { files: [chart] },
+    });
+    fireEvent.paste(screen.getByRole("textbox", { name: "Message to the agent" }), {
+      clipboardData: { files: [gif] },
+    });
+    expect(screen.getByRole("img", { name: "Image 1 to send" })).toBeDefined();
+    expect(screen.getByRole("alert").textContent).toBe("cat.gif is not a PNG, JPEG or WebP image.");
+    await write("This chart");
+    expect(engine.calls.find((call) => call.op === "upload/start")?.args).toStrictEqual({
+      contentType: "image/png",
+      bytes: 68,
+    });
+    expect(sent.map(({ path, init }) => [path, init.method, init.body])).toStrictEqual([
+      ["/upload/ticket-1", "POST", chart],
+    ]);
+    expect(engine.calls.find((call) => call.op === "chat/post")?.args).toStrictEqual({
+      agent,
+      text: "This chart",
+      images: ["upl_1"],
+    });
+    expect(screen.getByRole("log").textContent).toContain("1 image");
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("says why the engine refused an image, and keeps the message to send again", async () => {
+    const engine = fakeClient(
+      chatAnswers({ "upload/start": () => ({ url: "/upload/t", expiresAt: 1 }) }),
+    );
+    const refused = {
+      error: { code: "image.format", message: "The body is not the image type planned." },
+    };
+    const fetch = async (): Promise<Response> =>
+      new Response(JSON.stringify(refused), { status: 415 });
+    const { container } = renderSignedIn(<ChatScreen />, { client: engine.client, fetch });
+    await settle();
+    const fake = new File([new Uint8Array(6)], "fake.png", { type: "image/png" });
+    fireEvent.change(container.querySelector("input[type=file]") as HTMLInputElement, {
+      target: { files: [fake] },
+    });
+    await write("");
+    expect(screen.getByRole("alert").textContent).toMatch(/^Not sent: /u);
+    expect(engine.calls.some((call) => call.op === "chat/post")).toBe(false);
+    expect(screen.getByRole("img", { name: "Image 1 to send" })).toBeDefined();
   });
 
   it("says the chat so far could not load while the agent runtime is down", async () => {

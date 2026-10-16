@@ -2,11 +2,21 @@ import { SendHorizontalIcon, SquareIcon } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, useId, useState } from "react";
 import { Button } from "../components/ui/button";
 import { useText } from "../i18n/console-text";
+import {
+  AddImageButton,
+  ImagePreviews,
+  pastedImages,
+  type PickedImage,
+  useImagePicks,
+} from "./composer-images";
 
-/** What the composer hands the chat: the owner's text, and the actions it offers. */
+/** What the composer hands the chat: the owner's message, and the actions it offers. */
 export interface ComposerActions {
-  /** Sends the text; resolves once the engine stored it, rejects with why it did not. */
-  readonly send: (text: string) => Promise<void>;
+  /**
+   * Sends the text and the images; resolves once the engine stored the message, rejects with why
+   * it did not.
+   */
+  readonly send: (text: string, images: readonly PickedImage[]) => Promise<void>;
   readonly stop: () => void;
 }
 
@@ -19,17 +29,20 @@ export interface ComposerState {
 
 function ComposerButtons(props: {
   readonly canSend: boolean;
-  readonly isRunning: boolean;
+  readonly state: ComposerState;
   readonly stop: () => void;
+  readonly add: (files: readonly File[]) => void;
 }): React.JSX.Element {
   const text = useText();
+  const { state } = props;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button type="submit" disabled={!props.canSend}>
+      <Button type="submit" disabled={!props.canSend} aria-busy={state.isSending}>
         <SendHorizontalIcon data-icon="inline-start" strokeWidth={1.5} aria-hidden />
         {text("console.chat.post")}
       </Button>
-      {props.isRunning ? (
+      <AddImageButton add={props.add} isDisabled={state.isSending} />
+      {state.isRunning ? (
         <Button type="button" variant="outline" onClick={props.stop}>
           <SquareIcon data-icon="inline-start" strokeWidth={1.5} aria-hidden />
           {text("console.chat.stop")}
@@ -39,9 +52,38 @@ function ComposerButtons(props: {
   );
 }
 
+// The message being written, and how the owner sends it.
+function useComposer(actions: ComposerActions, state: ComposerState) {
+  const [draft, setDraft] = useState("");
+  const picks = useImagePicks();
+  const canSend = (draft.trim() !== "" || picks.images.length > 0) && !state.isSending;
+  const submit = (): void => {
+    if (!canSend) {
+      return;
+    }
+    actions.send(draft.trim(), picks.images).then(
+      () => {
+        setDraft("");
+        picks.clear();
+        return undefined;
+      },
+      // The chat shows why the message was not sent; the box keeps it to send again.
+      () => undefined,
+    );
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      submit();
+    }
+  };
+  return { draft, setDraft, picks, canSend, submit, onKeyDown };
+}
+
 /**
- * The box the owner writes to the agent in. Enter sends and Shift+Enter starts a new line, except
- * while an input method composes; Stop ends the agent's running turn.
+ * The box the owner writes to the agent in, with the images to send. Enter sends and Shift+Enter
+ * starts a new line, except while an input method composes; an image pasted into the box joins the
+ * message; Stop ends the agent's running turn.
  */
 export function ChatComposer(props: {
   readonly actions: ComposerActions;
@@ -49,26 +91,12 @@ export function ChatComposer(props: {
 }): React.JSX.Element {
   const text = useText();
   const id = useId();
-  const [draft, setDraft] = useState("");
   const { actions, state } = props;
-  const canSend = draft.trim() !== "" && !state.isSending;
-  const submit = (): void => {
-    if (canSend) {
-      actions.send(draft.trim()).then(
-        () => setDraft(""),
-        () => undefined,
-      );
-    }
-  };
+  const composer = useComposer(actions, state);
+  const { picks } = composer;
   const onSubmit = (event: FormEvent): void => {
     event.preventDefault();
-    submit();
-  };
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>): void => {
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
-      event.preventDefault();
-      submit();
-    }
+    composer.submit();
   };
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-2">
@@ -77,14 +105,21 @@ export function ChatComposer(props: {
       </label>
       <textarea
         id={id}
-        value={draft}
+        value={composer.draft}
         rows={3}
         placeholder={text("console.chat.placeholder", { agent: state.agentName })}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={onKeyDown}
+        onChange={(event) => composer.setDraft(event.target.value)}
+        onKeyDown={composer.onKeyDown}
+        onPaste={(event) => picks.add(pastedImages(event.clipboardData))}
         className="min-h-16 w-full resize-y rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       />
-      <ComposerButtons canSend={canSend} isRunning={state.isRunning} stop={actions.stop} />
+      <ImagePreviews picks={picks} />
+      <ComposerButtons
+        canSend={composer.canSend}
+        state={state}
+        stop={actions.stop}
+        add={picks.add}
+      />
     </form>
   );
 }
