@@ -98,8 +98,8 @@ never makes an owner key: it takes the public half `--owner-key-public` gives, w
 `binference owner-key create` made on a machine with a terminal, and is refused without it, so no
 owner key code reaches a log (decision 0148). A folder set up before is refused unless the owner
 passes `--start-over`, which offers the earlier language, telemetry choice and model first and
-keeps the stored model key on Enter, never shown, and a stored agent key is never replaced
-(decision 0222).
+keeps the stored model key on Enter, never shown, and a stored agent key is never replaced. A new
+set-up ends with the service step once the engine lock is let go (decision 0222).
 
 `binference mcp` is the MCP server an MCP client starts (protocol spec, section 11). It signs in
 over IPC with the client's token, `auth/mcp-<client>.token` for `--client <client>` or else

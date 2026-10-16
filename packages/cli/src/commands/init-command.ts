@@ -31,7 +31,7 @@ import { systemDefaults } from "../program/system-defaults.js";
 import { createOutputPrompter } from "../term/output-prompter.js";
 import { attachSummary } from "./attach-summary.js";
 import { configIssueMessages } from "./config-issue-messages.js";
-import { type Report, setupSummary } from "./init-summary.js";
+import { finishSetUp, type Report, setupSummary } from "./init-summary.js";
 import { rebuildSummary } from "./rebuild-summary.js";
 import { restoreAndAttach } from "./restore-attach.js";
 
@@ -304,11 +304,12 @@ async function refusingFaults(
  * `binference init`: sets up a new install (keys spec, section 2) under the engine lock, so no
  * engine runs on the folder meanwhile, its questions in the language the person picks first. It
  * refuses a folder set up before unless the owner asks to start over, which offers the earlier
- * answers first, and never replaces a stored agent key. With `--attach` it makes this machine the
- * signer of the folder's install instead (keys spec, section 6; decision 0140), after restoring a
- * backup into the folder with `--restore` (keys spec, section 7.4). A person at a terminal answers
- * its questions; with `--yes`, `--json` or no terminal, every answer comes from a flag. Exits 0
- * once the install is set up or attached, 1 when it refused or failed.
+ * answers first, and never replaces a stored agent key. A new set-up ends with the service step
+ * once the lock is let go. With `--attach` it makes this machine the signer of the folder's
+ * install instead (keys spec, section 6; decision 0140), after restoring a backup into the folder
+ * with `--restore` (keys spec, section 7.4). A person at a terminal answers its questions; with
+ * `--yes`, `--json` or no terminal, every answer comes from a flag. Exits 0 once the install is
+ * set up or attached, 1 when it refused or failed.
  */
 export async function runInitCommand(
   host: CliHost,
@@ -326,6 +327,10 @@ export async function runInitCommand(
   return refusingFaults(first, firstReport, async () => {
     const start = await startOf(first);
     const { context, report } = inLanguage(first, firstReport, start.locale);
-    return refusingFaults(context, report, async () => underLock(context, report, start));
+    const code = await refusingFaults(context, report, async () =>
+      underLock(context, report, start),
+    );
+    const isNewSetUp = !flags.isAttach && flags.restore === undefined;
+    return code === 0 && isNewSetUp ? finishSetUp(context, report) : code;
   });
 }

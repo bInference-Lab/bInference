@@ -82,7 +82,8 @@ Rules for this package:
   status, never an endpoint, which works as a capability.
 - `binference init` lives in `src/init/`, one step per file, each answering an `InitStep`: its
   value or a refusal with a code and an `init` message. The language step runs first, and the
-  context is made again in the language picked (decision 0222). The model step checks the key with
+  context is made again in the language picked; the service step runs last, in
+  `src/commands/init-summary.ts`, once the engine lock is let go (decision 0222). The model step checks the key with
   `checkModel` of `@binference/runtime` over `host.http`; tests answer it with
   `src/e2e/model-fixtures.ts`, never a real provider. Every question and check runs before
   anything is stored or made on Privy; the config file is written last. Questions go through the

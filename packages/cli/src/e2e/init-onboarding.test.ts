@@ -2,7 +2,7 @@ import { disclaimerVersion, messages } from "@binference/i18n";
 import type { TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { configText, initFlags, newInitMachine, runOn, storedInstall } from "./init-fixtures.js";
-import { initScript, interactiveInit } from "./init-script.js";
+import { fileText, initScript, interactiveInit } from "./init-script.js";
 
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
@@ -63,7 +63,7 @@ describe("the onboarding steps of binference init", () => {
     const wrong = zh("init.disclaimer.wrongPhrase").replace("{phrase}", zh("disclaimer.phrase"));
     expect(run.transcript.lines).toContain(wrong);
     expect(run.transcript.lines).toContain(zh("init.telemetry.none"));
-    expect(run.transcript.lines.at(-1)).toBe(zh("init.done.next"));
+    expect(run.transcript.lines.at(-1)).toBe(zh("init.service.homeMoved"));
     const config = await configText(machine);
     expect(config).toContain('locale: "zh",');
     expect(config).toContain("enabled: true,");
@@ -102,4 +102,20 @@ describe("the onboarding steps of binference init", () => {
       expect(config).toContain("enabled: true,");
     },
   );
+
+  it("offers the background service once the state folder is the home folder's", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const script = initScript(machine, { service: ["yes"] });
+
+    const run = await interactiveInit(machine, script, {
+      env: { BINFERENCE_HOME: "" },
+      parts: { homeDir: machine.folder },
+    });
+
+    expect(run.code).toBe(1);
+    expect(run.transcript.asked.at(-1)).toBe("service");
+    expect(run.stderr).toContain("service.log");
+    expect(run.transcript.lines.at(-1)).toBe(en("init.done.next"));
+    await expect(fileText(machine, ".binference", "config.json5")).resolves.toContain("version:");
+  });
 });
