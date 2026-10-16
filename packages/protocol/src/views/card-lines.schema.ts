@@ -13,7 +13,7 @@ import { z } from "zod";
 import { protocolIdSchema, type ProtocolId } from "../ids/id-prefixes.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { venueIdSchema } from "../values/plain-id.schema.js";
-import { signedUsdMicrosSchema } from "../values/signed-usd-micros.schema.js";
+import { signedIntegerSchema, signedUsdMicrosSchema } from "../values/signed-usd-micros.schema.js";
 import { type AssetInfos, assetInfosSchema } from "./asset-info.schema.js";
 import type { RouteLeg } from "./quote-view.schema.js";
 
@@ -21,7 +21,8 @@ import type { RouteLeg } from "./quote-view.schema.js";
  * One argument of a card line, typed so every surface formats it with the one formatter (spec 4,
  * section 3): an amount with its symbol, USD, a time or a day and time in the owner's timezone. `text` is set by
  * someone else (the agent, a token's deployer, a venue), so a surface escapes it and cuts it.
- * `choice` is the value of an ICU `select`, `count` of an ICU `plural`.
+ * `choice` is the value of an ICU `select`, `count` of an ICU `plural`. `usdChange` and
+ * `percentChange` are a gain or a loss, shown with their sign (spec 4, section 3.7).
  */
 export type CardValueView =
   | { readonly type: "amount"; readonly amount: Amount }
@@ -38,7 +39,11 @@ export type CardValueView =
   | { readonly type: "route"; readonly venue: string; readonly legs: readonly RouteLeg[] }
   | { readonly type: "line"; readonly line: CardLineView }
   /** A day and a time of day in the owner's timezone, such as an auto order's expiry. */
-  | { readonly type: "dateTime"; readonly atMs: number };
+  | { readonly type: "dateTime"; readonly atMs: number }
+  /** A gain or a loss in micro-dollars, below zero for a loss: `+$2.40`, `-$0.85`. */
+  | { readonly type: "usdChange"; readonly usdMicros: bigint }
+  /** A gain or a loss in basis points of its base, any size, below zero for a loss: `+20.34%`. */
+  | { readonly type: "percentChange"; readonly bps: bigint };
 
 /** One line of a card as data: a message key of the `card` areas and its arguments. */
 export interface CardLineView {
@@ -91,6 +96,8 @@ export const cardValueViewSchema: z.ZodType<CardValueView> = z.discriminatedUnio
   }),
   z.object({ ...tag("line"), line: cardLineViewSchema }),
   z.object({ ...tag("dateTime"), atMs: epochMsSchema }),
+  z.object({ ...tag("usdChange"), usdMicros: signedUsdMicrosSchema }),
+  z.object({ ...tag("percentChange"), bps: signedIntegerSchema }),
 ]);
 
 /** Parses a card version as the engine draws it. */

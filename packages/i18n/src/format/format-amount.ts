@@ -27,6 +27,14 @@ const percentFormat = new Intl.NumberFormat(numberTag, {
   maximumFractionDigits: 2,
 });
 
+// A change shows its sign, `+` for a gain and `-` for a loss; zero has none.
+const percentChangeFormat = new Intl.NumberFormat(numberTag, {
+  style: "percent",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+  signDisplay: "exceptZero",
+});
+
 const usdDecimals = 6;
 const bpsDecimals = 4;
 const microsPerCent = 10_000n;
@@ -51,4 +59,17 @@ export function formatUsd(usdMicros: bigint): string {
 /** Formats a rate in basis points as a percentage with 2 decimals: 50 is `0.50%`. */
 export function formatPercent(rate: Bps): string {
   return percentFormat.format(decimalText(BigInt(rate), bpsDecimals));
+}
+
+/** Formats a gain or a loss in micro-dollars with its sign: `+$2.40`, `-$0.85`, `$0.00`. */
+export function formatUsdChange(usdMicros: bigint): string {
+  return usdMicros > 0n ? `+${formatUsd(usdMicros)}` : formatUsd(usdMicros);
+}
+
+/**
+ * Formats a gain or a loss in basis points, of any size, as a percentage with 2 decimals and its
+ * sign: 2034 is `+20.34%`, -500 is `-5.00%`.
+ */
+export function formatPercentChange(bps: bigint): string {
+  return percentChangeFormat.format(decimalText(bps, bpsDecimals));
 }

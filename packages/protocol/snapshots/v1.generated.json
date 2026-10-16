@@ -13619,6 +13619,40 @@
                       "type",
                       "atMs"
                     ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
                   }
                 ]
               }

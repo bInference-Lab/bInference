@@ -70,6 +70,8 @@ const formats: Formats = {
     return `${value.venue}: ${legs.join(", ")}`;
   },
   line: (value) => value.line.key,
+  usdChange: (value) => String(value.usdMicros),
+  percentChange: (value) => String(value.bps),
 };
 
 function valueText(value: CardValue): string {

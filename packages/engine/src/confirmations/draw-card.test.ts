@@ -106,6 +106,8 @@ const formats: Formats = {
   text: (_display, value) => value.text,
   route: (_display, value) => shares(value),
   line: (display, value) => render(display, value.line),
+  usdChange: (_display, value) => String(value.usdMicros),
+  percentChange: (_display, value) => String(value.bps),
 };
 
 function valueText(display: Formatter, value: CardValue): string | number {

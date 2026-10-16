@@ -1,7 +1,13 @@
 import { bpsSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { decimalText } from "./decimal-text.js";
-import { formatPercent, formatTokenAmount, formatUsd } from "./format-amount.js";
+import {
+  formatPercent,
+  formatPercentChange,
+  formatTokenAmount,
+  formatUsd,
+  formatUsdChange,
+} from "./format-amount.js";
 
 const ether = 10n ** 18n;
 
@@ -72,5 +78,30 @@ describe("formatPercent", () => {
     [0, "0.00%"],
   ])("shows %s basis points as %s", (rate, text) => {
     expect(formatPercent(bpsSchema.parse(rate))).toBe(text);
+  });
+});
+
+describe("formatUsdChange", () => {
+  it.each([
+    [2_400_000n, "+$2.40"],
+    [-850_000n, "-$0.85"],
+    [0n, "$0.00"],
+    [4_000n, "+<$0.01"],
+    [-4_000n, "-<$0.01"],
+    [1_234_567_005_000n, "+$1,234,567.01"],
+  ])("shows a change of %s micro-dollars as %s", (usdMicros, text) => {
+    expect(formatUsdChange(usdMicros)).toBe(text);
+  });
+});
+
+describe("formatPercentChange", () => {
+  it.each([
+    [2034n, "+20.34%"],
+    [-500n, "-5.00%"],
+    [0n, "0.00%"],
+    [-1n, "-0.01%"],
+    [123_456_789_012_345_678_901n, "+1,234,567,890,123,456,789.01%"],
+  ])("shows a change of %s basis points as %s", (bps, text) => {
+    expect(formatPercentChange(bps)).toBe(text);
   });
 });

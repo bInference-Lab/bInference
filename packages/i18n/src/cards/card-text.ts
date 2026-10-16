@@ -2,6 +2,7 @@ import { BinferenceError } from "@binference/core";
 import type { AssetInfo, AssetInfos, CardLineView, CardValueView } from "@binference/protocol";
 import type { Formatter } from "../format/create-formatter.js";
 import { decimalText } from "../format/decimal-text.js";
+import { formatPercentChange, formatUsdChange } from "../format/format-amount.js";
 import type { MessageValues } from "../format/format-message.js";
 import { displayOutsideText } from "../format/outside-text.js";
 import { addressPartOf, shortAddress } from "./short-address.js";
@@ -106,6 +107,8 @@ const formats: ValueFormats = {
   text: ({ text }, { argument }) => displayOutsideText(text, textLengths[argument] ?? nameLength),
   route: (value, { display }) => routeText(value, display),
   line: ({ line }, { display }) => cardLineText(line, display),
+  usdChange: ({ usdMicros }) => formatUsdChange(usdMicros),
+  percentChange: ({ bps }) => formatPercentChange(bps),
 };
 
 function valueText<T extends ValueType>(value: ValueOf<T>, context: ValueContext): string | number {
