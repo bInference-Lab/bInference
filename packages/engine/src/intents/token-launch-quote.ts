@@ -14,7 +14,7 @@ import type { LaunchSetting } from "../venues/launch-settings.schema.js";
 import { type DocumentCodec, documentCodec } from "./intent-documents.schema.js";
 
 /** The picture a launch uploaded: its type, its size in bytes and the SHA-256 of its bytes. */
-interface LaunchImage {
+export interface LaunchImage {
   readonly contentType: "image/png" | "image/jpeg" | "image/webp";
   readonly bytes: number;
   readonly sha256: Sha256Hex;

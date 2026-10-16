@@ -24,3 +24,8 @@ export const sha256HexSchema: z.ZodType<Sha256Hex, string> = z
 export function sha256Hex(text: string): Sha256Hex {
   return sha256HexSchema.parse(createHash("sha256").update(text, "utf8").digest("hex"));
 }
+
+/** The SHA-256 digest of bytes, such as an uploaded image's. */
+export function sha256HexOfBytes(bytes: Readonly<Uint8Array>): Sha256Hex {
+  return sha256HexSchema.parse(createHash("sha256").update(bytes).digest("hex"));
+}
