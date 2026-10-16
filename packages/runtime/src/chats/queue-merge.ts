@@ -30,10 +30,13 @@ async function takeWaiting(
     { sessionId: session, limit: messagesPerTurn },
     { signal },
   );
-  const joining = waiting.flatMap((message) => {
+  const readable = waiting.flatMap((message) => {
     const view = turnMessageOf(message);
     return view === undefined ? [] : [{ id: message.message, owner: ownerMessageOf(view) }];
   });
+  // A message with images starts a turn of its own, and every message after it waits with it.
+  const firstWithImages = readable.findIndex(({ owner }) => owner.images !== undefined);
+  const joining = firstWithImages === -1 ? readable : readable.slice(0, firstWithImages);
   if (joining.length === 0) {
     return [];
   }
@@ -44,8 +47,9 @@ async function takeWaiting(
 
 /**
  * The chat queue's side of one running turn (runtime spec, section 3.4): in `merge` mode, the
- * session's waiting messages, oldest first and at most 20, taken by the turn as they join it; in
- * `after` mode none, so they start the next turn.
+ * session's waiting messages, oldest first and at most 20, taken by the turn as they join it, up
+ * to the first that holds images, which starts the next turn (decision 0227); in `after` mode
+ * none, so they start the next turn.
  */
 export function createQueueMerge(options: QueueMergeOptions): MergeSource {
   return {

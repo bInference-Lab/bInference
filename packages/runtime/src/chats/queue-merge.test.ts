@@ -63,4 +63,48 @@ describe("createQueueMerge", () => {
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
   });
+
+  it("takes the waiting messages up to the first with images, which waits for a turn of its own", async () => {
+    const { stores } = await createMemoryAgentStores();
+    const merge = createQueueMerge({
+      stores,
+      session,
+      turn: nthTestId("trn", 1),
+      mode: () => "merge",
+      serial: async (work) => work(),
+    });
+    const sent = [
+      { text: "and BNB" },
+      { text: "this chart", images: ["tg:chart"] },
+      { text: "and this" },
+    ];
+    for (const [index, said] of sent.entries()) {
+      const message = nthTestId("msg", index + 1);
+      const view = {
+        kind: "inbox/message" as const,
+        message,
+        agent,
+        session,
+        at: 1,
+        turn: nthTestId("trn", 100 + index),
+        surface: "telegram" as const,
+        ...said,
+      };
+      const draft = { message, agentId: agent, sessionId: session, kind: view.kind };
+      // oxlint-disable-next-line eslint/no-await-in-loop -- they arrive in order
+      await stores.queue.add(
+        { ...draft, payload: payloadOf(view), receivedAtMs: index, fence: stores.fence },
+        { signal: live() },
+      );
+    }
+    expect((await merge.take(live())).map((message) => message.text)).toStrictEqual(["and BNB"]);
+    const waiting = await stores.queue.waiting(
+      { sessionId: session, limit: 10 },
+      { signal: live() },
+    );
+    expect(waiting.map((message) => message.message)).toStrictEqual([
+      nthTestId("msg", 2),
+      nthTestId("msg", 3),
+    ]);
+  });
 });
