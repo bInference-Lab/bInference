@@ -82,7 +82,6 @@
   "done.wallet": "Agent 钱包：{address}。转为实盘时，请在 BNB Chain 上为它充值 BNB。",
   "done.paper": "你的 Agent 从模拟模式开始，每笔交易前都会先询问你：批准模式为手动。",
   "done.model": "模型：{provider} 上的 {model}。{place, select, keychain {它的 API 密钥保存在系统钥匙串中。} file {它的 API 密钥保存在 keys 文件夹中仅所有者可读的文件里。} source {binference 从你提供的密钥来源读取它的 API 密钥。} other {它不需要 API 密钥。}}",
-  "done.noModel": "还没有关联模型，因此 Agent 无法对话。请在终端中运行 `binference init --start-over` 关联一个模型。",
   "done.goLive": "要用真金白银交易，请先为钱包充值，然后在本机运行 `binference live`。{disclaimer, select, accepted {它不会再次询问免责声明。} other {它会先显示免责声明。}}",
   "done.nextService": "下一步：binference 运行后，在 Telegram 中打开上面的链接。",
   "done.unlockMade": "binference 已为此机器创建 Agent 密钥，并保存在{mode, select, keychain {系统钥匙串中} file {密钥文件夹（keys）中仅所有者可读的文件里} manual {密钥文件夹（keys）中，并用你的密码短语加密；每次启动后请运行 `binference unlock`} other {你的密钥管理器中}}。",

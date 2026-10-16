@@ -82,7 +82,6 @@
   "done.wallet": "Agent wallet: {address}. Fund it with BNB on BNB Chain when you go live.",
   "done.paper": "Your agent starts in paper mode and asks you before every trade: manual approval mode.",
   "done.model": "Model: {model} at {provider}. {place, select, keychain {Its API key is in the OS keychain.} file {Its API key is in an owner-only file in the keys folder.} source {binference reads its API key from the secret source you gave.} other {It takes no API key.}}",
-  "done.noModel": "No model is linked yet, so the agent cannot chat. Run `binference init --start-over` in a terminal to link one.",
   "done.goLive": "To trade with real money, fund the wallet, then run `binference live` on this machine.{disclaimer, select, accepted { It does not ask for the disclaimer again.} other { It shows the disclaimer first.}}",
   "done.nextService": "Next: open the link above in Telegram once binference runs.",
   "done.unlockMade": "binference made this machine's agent key and keeps it {mode, select, keychain {in the OS keychain} file {in an owner-only file in the keys folder} manual {in the keys folder, sealed with your passphrase; run `binference unlock` after each start} other {in your secret manager}}.",

@@ -54,8 +54,7 @@ export interface InitOutcome {
   readonly botUsername: string;
   readonly configFile: string;
   readonly disclaimer: DisclaimerAnswer;
-  /** None when a run nobody answers named no model. */
-  readonly model?: LinkedModel;
+  readonly model: LinkedModel;
   readonly telemetry: boolean;
 }
 
@@ -255,7 +254,7 @@ async function record(
     botUsername: bot.account.username,
     configFile: await writeConfig(context, prepared.built.text),
     disclaimer: first.disclaimer,
-    ...(first.model === undefined ? {} : { model: linkedModel(first.model, prepared.answers) }),
+    model: linkedModel(first.model, prepared.answers),
     telemetry: prepared.built.config.telemetry.enabled,
   });
 }

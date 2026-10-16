@@ -22,16 +22,30 @@ describe("a set-up nobody answers", () => {
   });
 
   it("names the first answer missing, in the order of the onboarding", () => {
-    const { privyAppId: _appId, rescue: _rescue, ...rest } = complete;
+    const { model: _model, rescue: _rescue, ...rest } = complete;
 
     expect(unattendedRefusal(rest, named)).toStrictEqual({
       code: "init.needs_flag",
       key: "refused.needsAnswer",
-      values: {
-        flag: "--privy-app-id",
-        variable: "BINFERENCE_INIT_PRIVY_APP_ID",
-        key: "privyAppId",
-      },
+      values: { flag: "--model", variable: "BINFERENCE_INIT_MODEL", key: "model" },
+    });
+  });
+
+  it("needs an address and no key for a compatible provider", () => {
+    const { modelKey: _key, ...rest } = complete;
+    const compatible = { ...rest, modelProvider: "openai-compatible" };
+
+    expect(unattendedRefusal(compatible, named)).toMatchObject({
+      values: { flag: "--model-base-url" },
+    });
+    expect(
+      unattendedRefusal({ ...compatible, modelBaseUrl: "http://127.0.0.1:8080/v1" }, named),
+    ).toBeUndefined();
+  });
+
+  it("refuses a provider init does not offer", () => {
+    expect(unattendedRefusal({ ...complete, modelProvider: "vault" }, named)).toMatchObject({
+      code: "init.bad_model_provider",
     });
   });
 

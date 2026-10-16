@@ -27,8 +27,7 @@ export interface FirstAnswers {
   readonly disclaimer: DisclaimerAnswer;
   /** The telemetry choice as a config entry, when a person made one. */
   readonly telemetry: readonly LayerEntry[];
-  /** None when a run nobody answers names no model. */
-  readonly model?: ModelLink;
+  readonly model: ModelLink;
 }
 
 /**
@@ -50,7 +49,7 @@ export async function takeFirstAnswers(
     ...(start.locale === undefined ? {} : { locale: start.locale }),
     disclaimer,
     telemetry,
-    ...(model.value === undefined ? {} : { model: model.value }),
+    model: model.value,
   });
 }
 

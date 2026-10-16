@@ -19,9 +19,6 @@ import {
 } from "./init-fixtures.js";
 import { testModelId, testModelKey } from "./model-fixtures.js";
 
-// The model key's variable; the fixtures' runs link no model.
-const modelKeyVariable = "TEST_MODEL_KEY";
-
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
 const writing = { permissions: createPlatform().permissions, signal: new AbortController().signal };
@@ -38,7 +35,7 @@ function serverAnswers(machine: InitMachine): Readonly<Record<string, unknown>> 
     acceptDisclaimer: true,
     modelProvider: "openai",
     model: testModelId,
-    modelKey: { fromEnv: modelKeyVariable },
+    modelKey: { fromEnv: secretVariables.modelKey },
     privyAppId: machine.privy.appId,
     privyAppSecret: { fromEnv: secretVariables.appSecret },
     ownerKeyPublic: machine.ownerKey.publicKey,
@@ -55,11 +52,6 @@ async function answersFile(answers: Readonly<Record<string, unknown>>): Promise<
   const file = join(folder.path, "answers.json5");
   await writePrivateFile(file, JSON.stringify(answers, undefined, 2), writing);
   return file;
-}
-
-/** The variables the sources name: the Privy app secret, the bot token and the model key. */
-function serverEnv(machine: InitMachine): Readonly<Record<string, string>> {
-  return { ...secretEnv(machine), [modelKeyVariable]: testModelKey };
 }
 
 /** The answers as `BINFERENCE_INIT_*` variables: text as it is, a source or a switch as JSON. */
@@ -121,7 +113,7 @@ describe("binference init --accept-disclaimer", () => {
 describe("binference init from BINFERENCE_INIT_ variables", () => {
   it("sets up against the fake Privy from variables alone, as a container does", slow, async () => {
     const machine = await newInitMachine(folders);
-    const env = { ...serverEnv(machine), ...variablesOf(serverAnswers(machine)) };
+    const env = { ...secretEnv(machine), ...variablesOf(serverAnswers(machine)) };
     const prompter = createScriptedPrompter({});
 
     const run = await runOn(machine, ["init", "--yes", "--json"], { env, parts: { prompter } });
@@ -149,7 +141,7 @@ describe("binference init from an answers file", () => {
     const prompter = createScriptedPrompter({});
 
     const argv = ["init", "--yes", "--json", "--answers", file];
-    const run = await runOn(machine, argv, { env: serverEnv(machine), parts: { prompter } });
+    const run = await runOn(machine, argv, { env: secretEnv(machine), parts: { prompter } });
 
     expect(run.code).toBe(0);
     expect(JSON.parse(run.stdout)).toMatchObject({
@@ -161,14 +153,14 @@ describe("binference init from an answers file", () => {
     expect(machine.privy.sent.length).toBeGreaterThan(0);
     const config = await configText(machine);
     expect(config).toContain('perTradeUsd: "50",');
-    expect(config).toContain(`fromEnv: "${modelKeyVariable}"`);
+    expect(config).toContain(`fromEnv: "${secretVariables.modelKey}"`);
   });
 
   it("takes a BINFERENCE_INIT_ variable over the file the variables name", slow, async () => {
     const machine = await newInitMachine(folders);
     const file = await answersFile({ ...serverAnswers(machine), privyAppId: "app-of-another" });
     const env = {
-      ...serverEnv(machine),
+      ...secretEnv(machine),
       BINFERENCE_INIT_ANSWERS: file,
       BINFERENCE_INIT_PRIVY_APP_ID: machine.privy.appId,
     };
@@ -208,6 +200,18 @@ describe("binference init refusals before anything is written", () => {
     await expect(leftBehind(machine)).resolves.toStrictEqual([[], 0]);
   });
 
+  it("needs a model with nobody at the terminal", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const { modelProvider: _p, model: _m, modelKey: _k, ...answers } = serverAnswers(machine);
+    const file = await answersFile(answers);
+
+    const run = await runOn(machine, ["init", "--yes", "--json", "--answers", file]);
+
+    expect(run.code).toBe(1);
+    expect(JSON.parse(run.stdout)).toStrictEqual({ error: { code: "init.needs_flag" } });
+    await expect(leftBehind(machine)).resolves.toStrictEqual([[], 0]);
+  });
+
   it("refuses a secret written inline in the file, and never shows it", slow, async () => {
     const machine = await newInitMachine(folders);
     const secret = machine.privy.appSecret.reveal();
@@ -235,7 +239,7 @@ describe("binference init refusals before anything is written", () => {
     const machine = await newInitMachine(folders);
     const env = { ...secretEnv(machine), BINFERENCE_INIT_BOT_TOKEN: fakeBotToken };
     const noBot = without(initFlags(machine), "--bot-token");
-    const inlineKey = [...initFlags(machine), "--model-key", testModelKey];
+    const inlineKey = [...without(initFlags(machine), "--model-key"), "--model-key", testModelKey];
 
     const fromVariable = await runOn(machine, ["init", "--yes", ...noBot], { env });
     const fromFlag = await runOn(machine, ["init", "--yes", ...inlineKey]);
@@ -257,8 +261,7 @@ describe("binference init refusals before anything is written", () => {
     const set = { "telegram.webhookSecret": "a-webhook-secret-in-plain-text" };
     const file = await answersFile({ ...serverAnswers(machine), set });
 
-    const argv = ["init", "--yes", "--json", "--answers", file];
-    const run = await runOn(machine, argv, { env: serverEnv(machine) });
+    const run = await runOn(machine, ["init", "--yes", "--json", "--answers", file]);
 
     expect([run.code, JSON.parse(run.stdout)]).toMatchObject([
       1,

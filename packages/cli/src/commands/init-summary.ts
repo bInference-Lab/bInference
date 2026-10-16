@@ -15,9 +15,6 @@ export interface Report {
 
 function modelLine(context: InitContext, outcome: InitOutcome): string {
   const { model } = outcome;
-  if (model === undefined) {
-    return context.words("done.noModel");
-  }
   const provider = context.words(`model.provider.${model.preset}`);
   return context.words("done.model", { model: model.model, provider, place: model.keyPlace });
 }
@@ -47,7 +44,7 @@ export function setupSummary(context: InitContext, report: Report, outcome: Init
     agentKey: outcome.isAgentKeyNew ? "made" : "kept",
     pairing: { link: outcome.pairingLink.reveal(), expiresAtMs: outcome.pairingExpiresAtMs },
     configFile: outcome.configFile,
-    model: model === undefined ? null : { provider: model.preset, model: model.model },
+    model: { provider: model.preset, model: model.model },
     disclaimer: outcome.disclaimer,
     telemetry: outcome.telemetry,
   };

@@ -156,17 +156,17 @@ async function askChecked(
  * and the questions come again with the last answers first, three tries in all; then init stops.
  * A start over offers the earlier set-up's answers first and keeps its key on Enter. The
  * `--model-*` flags answer it instead, and their failed check stops init at once; a run nobody
- * answers without them links no model.
+ * answers needs them (decision 0225).
  */
 export async function takeModel(
   context: InitContext,
   earlier: EarlierModel | undefined,
-): Promise<InitStep<ModelLink | undefined>> {
+): Promise<InitStep<ModelLink>> {
   const { flags } = context;
   const fromFlags = flags.modelProvider !== undefined || flags.model !== undefined;
   if (!context.isInteractive || fromFlags) {
     const link = await linkOfFlags(context);
-    if (!link.ok || link.value === undefined) {
+    if (!link.ok) {
       return link;
     }
     const problem = await checkLink(context, link.value);

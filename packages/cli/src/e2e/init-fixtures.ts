@@ -16,14 +16,24 @@ import {
 } from "@binference/store";
 import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { runCli } from "../program/run-cli.js";
-import { createFakeModelProvider, type FakeModelProvider, isModelCall } from "./model-fixtures.js";
+import {
+  createFakeModelProvider,
+  type FakeModelProvider,
+  isModelCall,
+  testModelId,
+  testModelKey,
+} from "./model-fixtures.js";
 import { type HostParts, hostOn, hostWith, type TestMachine } from "./test-host.js";
 
 /** An address only the tests own: the rescue address of every test install. */
 export const rescueAddress = "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
 
 /** The environment variables the tests' secret sources name. */
-export const secretVariables = { appSecret: "TEST_PRIVY_APP_SECRET", botToken: "TEST_BOT_TOKEN" };
+export const secretVariables = {
+  appSecret: "TEST_PRIVY_APP_SECRET",
+  botToken: "TEST_BOT_TOKEN",
+  modelKey: "TEST_MODEL_KEY",
+};
 
 const nowMs = 1_800_000_000_000;
 
@@ -118,9 +128,18 @@ export async function newInitMachine(
   return machineOf({ folder: folder.path, clock, signals: new EventEmitter(), privy });
 }
 
-/** The flags of a run with no person: every answer from a flag, secrets from variables. */
+/**
+ * The flags of a run with no person: every answer from a flag, secrets from variables, and the
+ * fake provider's model at OpenAI's API.
+ */
 export function initFlags(machine: InitMachine): readonly string[] {
   return [
+    "--model-provider",
+    "openai",
+    "--model",
+    testModelId,
+    "--model-key",
+    `{ fromEnv: "${secretVariables.modelKey}" }`,
     "--privy-app-id",
     machine.privy.appId,
     "--privy-app-secret",
@@ -144,6 +163,7 @@ export function secretEnv(
   return Object.fromEntries([
     [secretVariables.appSecret, appSecret.reveal()],
     [secretVariables.botToken, fakeBotToken],
+    [secretVariables.modelKey, testModelKey],
   ]);
 }
 

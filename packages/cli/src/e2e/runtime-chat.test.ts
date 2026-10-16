@@ -7,6 +7,7 @@ import { type StandInModelServer, startStandInModelServer } from "@binference/ru
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
+import { editJson5Text } from "../config/json5-edit.js";
 import { skillText, writeFiles } from "../skills/skill-fixtures.js";
 import { configText, type InitMachine, secretEnv } from "./init-fixtures.js";
 import { connectClient, noPermissions } from "./test-host.js";
@@ -134,20 +135,26 @@ function firstCall(server: StandInModelServer) {
   };
 }
 
-// Points the machine's main model at the stand-in, its key read from the engine's environment,
-// with a second configured model as its fallback.
+// Points the machine's main model at the stand-in in place of the one init linked, its key read
+// from the engine's environment, with a second configured model as its fallback.
 async function useProvider(machine: InitMachine, server: StandInModelServer): Promise<void> {
-  const text = (await configText(machine)) ?? "";
-  const open = text.indexOf("{");
-  const models =
-    `\n  models: { providers: { local: { kind: "openai", baseUrl: "${server.origin}/v1", ` +
-    `apiKey: { fromEnv: "LOCAL_MODEL_KEY" } } }, main: "local/stand-in-model", ` +
-    `fallbacks: { main: ["local/picked-model"] } },`;
-  await writePrivateFile(
-    join(machine.folder, "config.json5"),
-    `${text.slice(0, open + 1)}${models}${text.slice(open + 1)}`,
-    { permissions: noPermissions, signal: AbortSignal.timeout(5_000) },
-  );
+  const local = {
+    kind: "openai",
+    baseUrl: `${server.origin}/v1`,
+    apiKey: { fromEnv: "LOCAL_MODEL_KEY" },
+  };
+  const models = {
+    providers: { local },
+    main: "local/stand-in-model",
+    fallbacks: { main: ["local/picked-model"] },
+  };
+  const text = editJson5Text((await configText(machine)) ?? "", [
+    { kind: "set", path: ["models"], value: models },
+  ]);
+  await writePrivateFile(join(machine.folder, "config.json5"), text ?? "", {
+    permissions: noPermissions,
+    signal: AbortSignal.timeout(5_000),
+  });
 }
 
 describe("the chat relay to the agent runtime process", () => {

@@ -90,13 +90,13 @@ async function keyOfFlags(
 
 /**
  * The model link the `--model-provider`, `--model`, `--model-base-url` and `--model-key` flags
- * give, the key only as a secret source; nothing when neither of the first two is given. A flag
- * that is missing or does not fit stops init and names it.
+ * give, the key only as a secret source. A flag that is missing or does not fit stops init and
+ * names it: a run nobody answers needs a model (decision 0225).
  */
-export async function linkOfFlags(context: InitContext): Promise<InitStep<ModelLink | undefined>> {
+export async function linkOfFlags(context: InitContext): Promise<InitStep<ModelLink>> {
   const { flags } = context;
-  if (flags.modelProvider === undefined && flags.model === undefined) {
-    return ok(undefined);
+  if (flags.modelProvider === undefined) {
+    return missingAnswer("--model-provider");
   }
   const preset = presetOfFlag(context);
   if (!preset.ok) {

@@ -98,7 +98,7 @@ secret sources. A person answers its questions through a prompter over `@clack/p
 `src/init/answer-layers.ts`); the config layer skips those variables. Before it writes anything,
 such a run refuses a secret answer written as plain text (`config.secret_inline`) and names the
 first missing answer by its flag, variable and file key (decision 0225,
-`src/init/unattended-refusal.ts`). Such a run
+`src/init/unattended-refusal.ts`); the model is one of them (decision 0226). Such a run
 never makes an owner key: it takes the public half `--owner-key-public` gives, which
 `binference owner-key create` made on a machine with a terminal, and is refused without it, so no
 owner key code reaches a log (decision 0148). It accepts the disclaimer only with
