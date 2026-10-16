@@ -497,8 +497,13 @@ interface Signer {
 - **Honest limit.** A compromised machine can sign whatever the policy allows, up to the ceiling,
   until the owner removes the agent key: it cannot pay an address the owner did not save, but it
   can trade at a bad price, into a pool it owns, up to the 24-hour caps, and sell any other token
-  the wallet holds ([decision 0149](DECISIONS.md#d0149)). The ceiling is the real bound: keep it
-  tight ([decision 0002](DECISIONS.md#d0002)).
+  the wallet holds ([decision 0149](DECISIONS.md#d0149)). An agent's launch wallet is the one
+  exception: its ceiling allows the calls launchpads declare on any contract and approvals naming
+  any spender, so a compromised machine can take all the launch wallet holds, though nothing more
+  from the agent's other wallets, which can never pay it
+  ([decisions 0217 and 0218](DECISIONS.md#d0218)). The ceiling is the real bound: keep it tight,
+  and keep in a launch wallet only what curve trades need
+  ([decision 0002](DECISIONS.md#d0002)).
 
 <a id="section-9"></a>
 

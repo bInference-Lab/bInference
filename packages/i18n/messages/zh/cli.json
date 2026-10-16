@@ -215,7 +215,7 @@
   "walletExport.after": "请离线保存，然后清除此终端的滚动记录。",
   "walletExport.mismatch": "托管方发来的密钥不属于 {address}，因此 binference 不显示任何内容。请运行 `binference wallet list` 核对钱包后重试。",
   "check.summary": "已运行 {checks, plural, other {# 项检查}}：{problems, plural, =0 {没有问题} other {# 个问题}}，{warnings, plural, =0 {没有警告} other {# 个警告}}。",
-  "check.ceilingPromise": "上限的保证：即使拿到这台机器的密钥，也无法转账到你没有保存的地址，无法调用已启用平台未声明的合约，也无法授权给它们未声明的合约；通过交易造成的损失不会超过 24 小时上限。在这些上限之内，交易仍可能以不利的价格成交。",
+  "check.ceilingPromise": "上限的保证：即使拿到这台机器的密钥，也无法转账到你没有保存的地址，无法调用已启用平台未声明的合约，也无法授权给它们未声明的合约；通过交易造成的损失不会超过 24 小时上限。在这些上限之内，交易仍可能以不利的价格成交。发射钱包（如果你创建了）是例外：它的上限允许在任何合约上进行发射调用并授权给任何地址，因此被盗的密钥可以拿走其中的全部资产。其中只存放联合曲线交易所需的资金。",
   "check.problems": "问题：",
   "check.warnings": "警告：",
   "check.fixes": "已修复：",

@@ -60,7 +60,8 @@ function printFindings(output: CliOutput, findings: readonly CheckFinding[]): vo
  * while live auto orders watch prices over public RPCs only) and `wallets.extra_launch` (a
  * warning naming each extra launch wallet a rebuild adopted, decision 0218). `--fix` makes owner-only every
  * path others can open, the one fix the config spec names for it. It then says what the wallets'
- * ceiling promises against a machine whose keys are stolen (decision 0149). Exits 1 while a
+ * ceiling promises against a machine whose keys are stolen (decision 0149), and that a launch
+ * wallet is the one exception (decisions 0217 and 0218). Exits 1 while a
  * problem remains, else 0; warnings do not fail it. With `--json` it prints every finding.
  */
 export async function runCheck(

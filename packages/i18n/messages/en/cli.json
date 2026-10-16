@@ -215,7 +215,7 @@
   "walletExport.after": "Store it offline, then clear this terminal's scrollback.",
   "walletExport.mismatch": "The key custody sent does not belong to {address}, so binference shows nothing. Run `binference wallet list` to check the wallet, then try again.",
   "check.summary": "{checks, plural, one {# check} other {# checks}} ran: {problems, plural, =0 {no problem} one {# problem} other {# problems}} and {warnings, plural, =0 {no warning} one {# warning} other {# warnings}}.",
-  "check.ceilingPromise": "What the ceiling promises: even with this machine's keys, no one can send to an address you did not save, call a contract or approve a spender no enabled venue declares, or lose more through trades than its 24-hour caps. Inside those caps, a trade can still fill at a bad price.",
+  "check.ceilingPromise": "What the ceiling promises: even with this machine's keys, no one can send to an address you did not save, call a contract or approve a spender no enabled venue declares, or lose more through trades than its 24-hour caps. Inside those caps, a trade can still fill at a bad price. A launch wallet, if you made one, is the exception: its ceiling allows launch calls on any contract and approvals of any spender, so a stolen key can take what it holds. Keep in it only what curve trades need.",
   "check.problems": "Problems:",
   "check.warnings": "Warnings:",
   "check.fixes": "Fixed:",

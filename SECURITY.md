@@ -31,7 +31,8 @@ Use test values. Never send a real private key, owner key, recovery phrase or bo
 - An agent's launch wallet, which trades on launch curves, is the one exception: its ceiling allows
   the calls launchpads declare on any launch's own contracts and approvals naming any spender, so a
   hacked machine can take all it holds. Keep in it only what curve trades need; the agent's other
-  wallets cannot pay it ([decision 0217](docs/DECISIONS.md#d0217)).
+  wallets cannot send to it, and you fund it from outside
+  ([decisions 0217 and 0218](docs/DECISIONS.md#d0218)).
 - Whoever controls the owner's Telegram account can confirm cards, so the Telegram account is a
   key.
 
