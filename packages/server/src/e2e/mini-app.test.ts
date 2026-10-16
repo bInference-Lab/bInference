@@ -1,54 +1,12 @@
-import { createSecret, ok } from "@binference/core";
-import { createSeededRandom } from "@binference/core/testing";
-import { issueLaunchTicket } from "@binference/engine/access";
-import type { OpenFrame } from "@binference/protocol";
+import { ok } from "@binference/core";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Caller } from "../operation-handlers.js";
 import type { ServerLimits } from "../server-limits.js";
-import { telegramLaunchHash } from "../telegram-launch.js";
+import { botToken, fieldsOf, initDataOf, miniOpen, ownerId, ticketFor } from "./mini-app-launch.js";
 import { openRawSocket, type RawSocket } from "./raw-socket.js";
 import { startTestServer, type TestServer } from "./test-server.js";
 
-const botToken = createSecret("7012345678:AAE_fakeTokenForTestsOnly_0123456789ab");
-const ownerId = 279_058_397;
 const tailnetOrigin = "https://engine.tail1234.ts.net";
-
-interface Launch {
-  readonly userId: number;
-  readonly atMs: number;
-  readonly query?: string;
-}
-
-// The fields of a launch as Telegram sends them to the Mini App, before it signs them.
-function fieldsOf(launch: Launch): Map<string, string> {
-  return new Map([
-    ["query_id", launch.query ?? "AAHdF6IQAAAAAN0XohDhrOrc"],
-    ["user", JSON.stringify({ id: launch.userId, first_name: "Ada", language_code: "en" })],
-    ["auth_date", String(Math.floor(launch.atMs / 1_000))],
-  ]);
-}
-
-// A launch's `initData`, signed as Telegram signs it with the owner's bot token.
-function initDataOf(fields: ReadonlyMap<string, string>): string {
-  return new URLSearchParams([
-    ...fields,
-    ["hash", telegramLaunchHash(fields, botToken)],
-  ]).toString();
-}
-
-function miniOpen(initData: string, ticket?: string): OpenFrame {
-  const telegram = ticket === undefined ? { initData } : { initData, ticket };
-  return { t: "open", v: 1, client: { kind: "mini", version: "console" }, auth: { telegram } };
-}
-
-let ticketSeed = 0;
-
-// A launch ticket `/console` made for the owner now.
-async function ticketFor(server: TestServer): Promise<string> {
-  ticketSeed += 1;
-  const options = { ...server, random: createSeededRandom(ticketSeed) };
-  return issueLaunchTicket(options, { userId: ownerId, signal: AbortSignal.timeout(1_000) });
-}
 
 // Opens a socket from the Mini App's origin and sends its `open`, with a new launch ticket.
 async function openAs(server: TestServer, initData: string): Promise<RawSocket> {
