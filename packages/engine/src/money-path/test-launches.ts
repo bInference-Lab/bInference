@@ -1,4 +1,5 @@
 import {
+  type AccountRef,
   accountRefSchema,
   type LaunchOption,
   type SimulatedStep,
@@ -35,16 +36,19 @@ import {
 export const testPad = "fake-curve";
 /** The test agent's launch wallet and its account. */
 export const testLaunchWallet: Id<"wal"> = fixtureId("wal", 270);
-const launchAccount = accountRefSchema.parse("fake:1:0x000000d9");
+/** The launch wallet's account on the fake chain. */
+export const testLaunchAccount: AccountRef = accountRefSchema.parse("fake:1:0x000000d9");
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
 const settings: readonly LaunchOption[] = [
   { name: "taxBps", type: "bps", max: 1000, default: 0 },
   { name: "buyback", type: "flag", default: false },
 ];
 
-// What a launch's steps do on the fake chain: the create call's value leaves the wallet for the
-// launchpad, and the first buy's minimum of the token arrives.
-function launchSimulator(launcher: FakeLauncher): Pick<TxSimulator, "simulate"> {
+/**
+ * What a launch's steps do on the fake chain, for a test's simulator: the create call's value
+ * leaves the wallet for the launchpad, and the first buy's minimum of the token arrives.
+ */
+export function testLaunchSimulator(launcher: FakeLauncher): Pick<TxSimulator, "simulate"> {
   const family = createFakeFamily();
   const reverted: SimulatedStep = { status: "reverted", gasUsed: 0n, transfers: [], approvals: [] };
   return {
@@ -100,10 +104,10 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
   const test = await startTestEngine({
     chains: testChains([testPad]),
     venues,
-    chainSimulator: launchSimulator(launcher),
+    chainSimulator: testLaunchSimulator(launcher),
     launchImages: createMemoryLaunchImages(new Map([["upl_moon", png]])),
     wallets: [testWallet, testLaunchWallet],
-    custodyWallets: new Map([[testLaunchWallet, launchAccount]]),
+    custodyWallets: new Map([[testLaunchWallet, testLaunchAccount]]),
     ...options,
     agent: {
       mode: "live",

@@ -1,4 +1,4 @@
-import type { Amount, LaunchQuote, TxDraft } from "@binference/chain";
+import type { LaunchQuote, TxDraft } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
@@ -15,6 +15,7 @@ import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
 import { launchImageOf } from "./launch-image.js";
+import { launchSubjectOf } from "./launch-policy.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import {
   hostedLaunchOf,
@@ -44,8 +45,7 @@ async function failQuote(
   return advanceIntent(run.parts, snapshot, { trigger: { type: "quote_failed", reason } });
 }
 
-// The policy judges what leaves the wallet: the first buy, and the launch fee once the launchpad
-// quoted it. The token is not made yet, so nothing it receives is judged.
+// The policy judges the launch with its fee once the launchpad quoted it (decision 0234).
 async function policyVerdict(
   run: LaunchRun,
   status: IntentSnapshot["stored"]["status"],
@@ -53,26 +53,16 @@ async function policyVerdict(
 ): Promise<PolicyVerdict> {
   const { resolved, options, signal } = run;
   const { request, chain, settings, facts } = resolved;
-  const fee: readonly Amount[] =
-    quote?.ok === true && quote.value.fee.base > 0n ? [quote.value.fee] : [];
-  const subject = {
-    kind: status.kind,
-    isPaper: status.isPaper,
-    hasOutsideContent: status.hasOutsideContent,
-    outflows: [...(request.firstBuy === undefined ? [] : [request.firstBuy]), ...fee],
-    inflowAssets: [],
-    venue: request.venue,
-  };
-  const nativeAsset = nativeAssetOf(chain);
+  const fee = quote?.ok === true ? quote.value.fee : undefined;
   const policyFacts = policyFactsOf({
     settings,
     wallet: facts,
     chain: chain.ref,
     chains: options.chains,
-    nativeAsset,
+    nativeAsset: nativeAssetOf(chain),
     nowMs: options.clock.now(),
   });
-  return options.policy.check(subject, policyFacts, { signal });
+  return options.policy.check(launchSubjectOf(request, fee, status), policyFacts, { signal });
 }
 
 /** What the upload stage reads: the checked intent, its launchpad's quote and the policy's pass. */

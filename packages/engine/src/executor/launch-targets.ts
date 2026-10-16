@@ -31,9 +31,10 @@ const none: LaunchTargets = { kind: "none" };
 // trade in the pools or any other request.
 function curveTradeOf(record: IntentRecord) {
   const request = requestDocument.decode(record.request);
-  const quote = record.quote === undefined ? undefined : quoteDocument.decode(record.quote);
-  const place = quote?.place;
   const isTrade = request.kind === "buy" || request.kind === "sell";
+  const quote =
+    !isTrade || record.quote === undefined ? undefined : quoteDocument.decode(record.quote);
+  const place = quote?.place;
   return isTrade && place?.kind === "curve"
     ? { token: request.token, launchpad: place.launchpad }
     : undefined;

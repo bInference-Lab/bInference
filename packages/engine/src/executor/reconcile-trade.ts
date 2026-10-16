@@ -12,6 +12,8 @@ import { inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { countUnsettledFill } from "./count-unsettled-fill.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
+import { launchQuoteOf } from "./launch-queue-check.js";
+import { bookingOf, launchTradeQuote } from "./launch-settlement.js";
 import { differsFromSimulation, type SettledStep, settledTradeOf } from "./settled-trade-of.js";
 
 // The owner's alarm when a trade settles more than 1% away from its simulation.
@@ -33,7 +35,8 @@ function confirmedQuote(snapshot: IntentSnapshot): QuoteView {
       details: { intent: id },
     });
   }
-  return quoteDocument.decode(quote);
+  const launch = launchQuoteOf(snapshot.record);
+  return launch === undefined ? quoteDocument.decode(quote) : launchTradeQuote(launch);
 }
 
 // What each final step moved, or `undefined` while a read fails or a node no longer holds one.
@@ -95,7 +98,12 @@ function warnUnknown(run: ExecutionRun, snapshot: IntentSnapshot): "stopped" {
 async function pricedTrade(
   run: ExecutionRun,
   snapshot: IntentSnapshot,
-  settled: { readonly trade: SettledTrade; readonly quote: QuoteView; readonly txHash: TxHash },
+  settled: {
+    readonly trade: SettledTrade;
+    readonly quote: QuoteView;
+    readonly txHash: TxHash;
+    readonly feeBase?: bigint;
+  },
 ): Promise<ExecutedTrade | undefined> {
   const { trade, quote, txHash } = settled;
   const { signal } = run;
@@ -117,7 +125,7 @@ async function pricedTrade(
     isPaper: false,
     atMs: trade.atMs,
     sold: trade.amountIn,
-    feeBase: 0n,
+    feeBase: settled.feeBase ?? 0n,
     bought: trade.amountOut,
     gas: trade.gas,
     txHash,
@@ -238,8 +246,12 @@ export async function bookTrade(
   }
   const holder = { wallet: run.plan.steps[0].from, family: run.plan.chain.family };
   const trade = settledTradeOf(steps, { quote, holder, nativeReceivedBase: received, atMs });
+  const booking = bookingOf(snapshot.record, trade);
+  if (booking === undefined) {
+    return { trade, steps };
+  }
   const txHash = last.transaction.hash;
-  const priced = await pricedTrade(run, snapshot, { trade, quote, txHash });
+  const priced = await pricedTrade(run, snapshot, { ...booking, quote, txHash });
   if (priced === undefined || !(await recordOnce(run, priced))) {
     parts.log.warn("executor.settle_waits", { intentId: snapshot.record.id });
     return "waiting";
