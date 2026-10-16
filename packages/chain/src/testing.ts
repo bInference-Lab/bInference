@@ -23,6 +23,8 @@ export type {
   SigningSchemeSubject,
 } from "./contracts/signing-scheme-contract.js";
 export { curveReaderContract } from "./contracts/curve-reader-contract.js";
+export { launcherContract } from "./contracts/launcher-contract.js";
+export type { LauncherHarness, LauncherSubject } from "./contracts/launcher-contract.js";
 export { insiderReaderContract } from "./contracts/insider-reader-contract.js";
 export { priceReaderContract } from "./contracts/price-reader-contract.js";
 export type { PriceReaderHarness, PriceReaderSubject } from "./contracts/price-reader-contract.js";

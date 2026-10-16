@@ -5,6 +5,7 @@ import { kebabCaseSchema } from "../registry/chain-definition.js";
 import type {
   CurveReader,
   InsiderReader,
+  Launcher,
   PriceReader,
   Quoter,
   TxBuilder,
@@ -158,5 +159,10 @@ export interface Venue
     Partial<PriceReader>,
     Partial<InsiderReader> {}
 
-/** A launchpad: a venue that trades the tokens on its bonding curve, and says which those are. */
-export interface LaunchpadVenue extends Omit<Venue, "curve">, CurveReader {}
+/**
+ * A launchpad: a venue that trades the tokens on its bonding curve, and says which those are. A
+ * launchpad that launches tokens for the agent holds its {@link Launcher}.
+ */
+export interface LaunchpadVenue extends Omit<Venue, "curve">, CurveReader {
+  readonly launcher?: Launcher;
+}

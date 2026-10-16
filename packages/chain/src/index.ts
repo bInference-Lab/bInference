@@ -133,9 +133,28 @@ export {
   launchOptionTypes,
 } from "./venues/launch-option.js";
 export type { LaunchOption, LaunchOptionType, LaunchOptionValue } from "./venues/launch-option.js";
+export {
+  decodedLaunchSchema,
+  launchPinSchema,
+  launchQuoteSchema,
+  pinStatusSchema,
+} from "./venues/launch-terms.js";
+export type {
+  DecodedLaunch,
+  DecodedLaunchWire,
+  LaunchBuild,
+  LaunchBuildRequest,
+  LaunchPin,
+  LaunchPinRequest,
+  LaunchQuote,
+  LaunchQuoteWire,
+  LaunchTerms,
+  PinStatus,
+} from "./venues/launch-terms.js";
 export type {
   CurveReader,
   InsiderReader,
+  Launcher,
   PriceReader,
   Quoter,
   TxBuilder,

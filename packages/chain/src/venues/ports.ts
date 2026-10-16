@@ -1,9 +1,20 @@
-import type { Result } from "@binference/core";
+import type { JsonValue, Result } from "@binference/core";
 import type { AccountRef } from "../caip/account-ref.js";
 import type { TxDraft } from "../transaction.js";
 import type { BuildRequest } from "./build-request.js";
 import type { CurveHolding, CurveRequest } from "./curve-holding.js";
 import type { DecodedEffect } from "./decoded-effect.js";
+import type { LaunchOption } from "./launch-option.js";
+import type {
+  DecodedLaunch,
+  LaunchBuild,
+  LaunchBuildRequest,
+  LaunchPin,
+  LaunchPinRequest,
+  LaunchQuote,
+  LaunchTerms,
+  PinStatus,
+} from "./launch-terms.js";
 import type { PriceRead, PriceReadRequest } from "./price-read.js";
 import type { QuoteRequest, VenueQuote } from "./venue-quote.js";
 
@@ -78,4 +89,51 @@ export interface PriceReader {
     request: PriceReadRequest,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<PriceRead, "no_price_read">>;
+}
+
+/**
+ * Launches a token on a launchpad: quotes it from the launchpad's contracts, uploads and pins its
+ * words and picture through the launchpad's own API, builds its create call with the first buy,
+ * and decodes that call back. It never signs or sends, and never reads the picture's gateway
+ * address: a gateway read before the pin can break the picture for good.
+ */
+export interface Launcher {
+  /** The settings the launchpad takes beyond those every launch has, such as a tax. */
+  readonly launchOptions: readonly LaunchOption[];
+  /**
+   * The launch fee and the first buy's output, read from the launchpad's contracts at the latest
+   * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`; a
+   * launchpad that cannot answer throws. Rejects with the signal's reason once it aborts.
+   */
+  quoteLaunch(
+    terms: LaunchTerms,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<LaunchQuote, "no_route">>;
+  /**
+   * Uploads the launch's words and picture and asks the launchpad to pin them, without waiting
+   * for the pin. A launchpad that cannot take them throws. Rejects with the signal's reason once
+   * it aborts.
+   */
+  pin(request: LaunchPinRequest, options: { readonly signal: AbortSignal }): Promise<LaunchPin>;
+  /**
+   * Where the pin of an upload stands, as the launchpad reports it, from the handle `pin` gave. A
+   * launchpad that cannot answer throws. Rejects with the signal's reason once it aborts.
+   */
+  pinStatus(pin: JsonValue, options: { readonly signal: AbortSignal }): Promise<PinStatus>;
+  /**
+   * Builds the launch's steps from the launch wallet: an exact approval of the first buy's spend
+   * when the launchpad needs one, then one create call that pays the quoted fee, names the
+   * metadata address and, with a first buy, buys for the wallet no less than its minimum. Every
+   * step calls the launchpad's registry contracts. A launchpad that cannot build throws. Rejects
+   * with the signal's reason once it aborts.
+   */
+  buildLaunch(
+    request: LaunchBuildRequest,
+    options: { readonly signal: AbortSignal },
+  ): Promise<LaunchBuild>;
+  /**
+   * Decodes a create call the launchpad builds into what it does, from the draft's bytes alone. A
+   * draft that is not one of its create calls is `unknown_call`, never a guess.
+   */
+  decodeLaunch(draft: TxDraft): Result<DecodedLaunch, "unknown_call">;
 }
