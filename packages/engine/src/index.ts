@@ -19,6 +19,8 @@ export type {
   ExpiryResult,
 } from "./confirmations/create-confirmations.js";
 export { drawCard } from "./confirmations/draw-card.js";
+export { drawPnlCard, type PnlCardFacts } from "./pnl/draw-pnl-card.js";
+export type { PositionFigures } from "./pnl/position-figures.js";
 export type {
   AutoAsk,
   Card,

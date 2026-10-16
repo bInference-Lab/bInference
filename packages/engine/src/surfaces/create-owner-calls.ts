@@ -28,6 +28,7 @@ export const ownerChatOperations = [
   "limit/get",
   "limit/set",
   "portfolio/get",
+  "portfolio/pnl",
   "order/list",
   "wallet/list",
   "usage/get",

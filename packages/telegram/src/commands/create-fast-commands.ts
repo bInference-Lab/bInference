@@ -18,7 +18,8 @@ import { commandArgs, commandOf, type FastCommandName, fastCommandNames } from "
 import { runConsole } from "./console-command.js";
 import { runLang, runLanguage } from "./lang-command.js";
 import { runOrders } from "./orders-command.js";
-import { runBalance, runPositions } from "./portfolio-commands.js";
+import { runBalance } from "./portfolio-commands.js";
+import { runPositions } from "./positions-command.js";
 import { registerCommands } from "./register-commands.js";
 import { runCancel, runFreeze, runRescue } from "./safety-commands.js";
 import { runSpend } from "./spend-command.js";

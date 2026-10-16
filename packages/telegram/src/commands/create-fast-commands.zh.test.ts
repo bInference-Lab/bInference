@@ -26,11 +26,9 @@ describe("the fast commands in Chinese", () => {
   it("name an unlisted token by its stored symbol and short address, as its card did", async () => {
     const bot = await startCommandBot(unlistedHandlers, { locale: "zh" });
     await bot.send("/orders");
-    await bot.send("/positions");
     await bot.send("/balance");
     expect(bot.texts()).toStrictEqual([
       "止损 · 卖出 PEPE（0x6982…1933） · 价格为 $550.00 · 成交 0 次 · 2026年10月10日 09:30:00 到期",
-      `main · ${alarm} 实盘\n  2 PEPE（0x6982…1933） · 暂无价格 · 平均成本 $2.50 · 已实现盈亏 $0.00`,
       [
         `main · ${alarm} 实盘 · $0.00`,
         "  2 PEPE（0x6982…1933） · 暂无价格",

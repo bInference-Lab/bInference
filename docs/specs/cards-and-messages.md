@@ -600,7 +600,11 @@ is never verified, so its short address always follows its symbol.
 Command descriptions are registered with `setMyCommands` in both languages (`language_code`).
 
 `/positions` shows each position as its P&L card ([section 3.7](#section-3-7)), open ones first,
-then the positions closed in the last 7 days.
+then the positions closed in the last 7 days, for every agent not archived. Live positions come
+first under `cmd.positions.section`, "🔴 Live positions" / 「🔴 实盘持仓」, paper ones after them under
+"🧪 Paper positions" / 「🧪 模拟持仓」, never added together ([decision 0134](../DECISIONS.md#d0134)).
+Cards are separated by a blank line, and a message holds as many whole cards as fit in 4,096 characters,
+so no card is split. With none: "No positions yet." / 「还没有持仓。」
 
 A `/limits` button halves the per-trade cap, the 24-hour cap, or the slippage limit on verified or
 other tokens, rounding down: "Halve the per-trade cap" / 「单笔上限减半」. Half is always stricter,

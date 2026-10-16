@@ -1,12 +1,6 @@
 import { type CardDisplay, cardLineText } from "@binference/i18n";
-import type {
-  BalanceView,
-  CardValueView,
-  PortfolioView,
-  PositionView,
-  ProtocolId,
-} from "@binference/protocol";
-import { amountValue, assetValue } from "./asset-values.js";
+import type { BalanceView, CardValueView, PortfolioView, ProtocolId } from "@binference/protocol";
+import { amountValue } from "./asset-values.js";
 import { callOrSay, type CommandContext } from "./command-context.js";
 
 type Values = Readonly<Record<string, CardValueView>>;
@@ -18,7 +12,7 @@ interface WalletPart<T> {
   readonly items: readonly T[];
 }
 
-// `/balance` names a wallet's top holdings by value; `/positions` lists every one.
+// `/balance` names a wallet's top holdings by value.
 const topHoldings = 5;
 const indent = "  ";
 
@@ -132,62 +126,4 @@ export async function runBalance(context: CommandContext): Promise<void> {
   };
   const lines = partsOf(view.balances).flatMap((part) => balancePartLines(on, part));
   await context.say([...lines, ...totalLines(on.display, view)].join("\n"));
-}
-
-function positionValues(position: PositionView, display: CardDisplay): Values {
-  const unrealized = position.unrealizedUsdMicros ?? 0n;
-  const decimals = display.assets[position.asset]?.decimals;
-  const each =
-    decimals === undefined || position.quantity === 0n
-      ? position.costUsdMicros
-      : (position.costUsdMicros * 10n ** BigInt(decimals)) / position.quantity;
-  return {
-    asset: assetValue(position.asset, display.assets),
-    amount: amountValue({ asset: position.asset, base: position.quantity }, display.assets),
-    value: { type: "usd", usdMicros: position.costUsdMicros + unrealized },
-    cost: { type: "usd", usdMicros: each },
-    pnl: { type: "usd", usdMicros: position.realizedUsdMicros + unrealized },
-  };
-}
-
-// A closed position shows what it realized; an open one its value now when a price is known, and
-// its average cost each, or what it paid in all when the token's decimals are not known.
-function positionKey(position: PositionView, display: CardDisplay): string {
-  if (position.quantity === 0n) {
-    return "cmd.positions.closed";
-  }
-  if (display.assets[position.asset] === undefined) {
-    return "cmd.positions.openUnknown";
-  }
-  return position.unrealizedUsdMicros === undefined
-    ? "cmd.positions.openNoPrice"
-    : "cmd.positions.open";
-}
-
-function positionPartLines(on: PartDisplay, part: WalletPart<PositionView>): readonly string[] {
-  const { display } = on;
-  const heading = line(display, "cmd.positions.wallet", walletValues(part, on.labels));
-  const positions = part.items.map((position) =>
-    line(display, positionKey(position, display), positionValues(position, display)),
-  );
-  return [heading, ...positions.map((text) => `${indent}${text}`)];
-}
-
-/** `/positions`: each position's amount, value, average cost and P&L, wallet by wallet. */
-export async function runPositions(context: CommandContext): Promise<void> {
-  const view = await callOrSay(context, "portfolio/get", {});
-  if (view === undefined) {
-    return;
-  }
-  if (view.positions.length === 0) {
-    await context.say(context.words("cmd.positions.empty"));
-    return;
-  }
-  const on = {
-    context,
-    display: { formatter: context.formatter, assets: view.assets },
-    labels: await labelsOf(context),
-  };
-  const lines = partsOf(view.positions).flatMap((part) => positionPartLines(on, part));
-  await context.say(lines.join("\n"));
 }

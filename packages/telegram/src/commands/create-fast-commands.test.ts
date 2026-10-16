@@ -11,6 +11,7 @@ import {
 } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { cardIntent, refs } from "../testing/card-fixtures.js";
+import { ownerCards, pnlHandlers } from "../testing/pnl-card-fixtures.js";
 import { unlistedHandlers } from "../testing/unlisted-fixtures.js";
 import { ownerId } from "../testing/update-fixtures.js";
 import { fastCommandNames } from "./command-of.js";
@@ -120,8 +121,11 @@ function orderOf(request: Partial<OrderView["request"]>): OrderView {
   return { ...stopLoss, request: { ...stopLoss.request, ...request } } as OrderView;
 }
 
+const { asked: _asked, ...pnlServed } = pnlHandlers(ownerCards);
+
 /** Every operation the fast commands run, answered from the fixtures above. */
 const served: OwnerChatHandlers = {
+  ...pnlServed,
   "engine/status": async () => Promise.resolve(ok(status)),
   "safety/status": async () => Promise.resolve(ok({ frozen: false, rescueAddress })),
   "safety/freeze": async () => Promise.resolve(ok({ frozenAt: nowMs })),
@@ -280,39 +284,17 @@ describe("the fast commands' replies", () => {
     ]);
   });
 
-  it("lists each position with its value, average cost and P&L, and a closed one's P&L", async () => {
-    const bot = await startCommandBot(served);
-    await bot.send("/positions");
-    expect(bot.texts()).toStrictEqual([
-      [
-        `main · ${icons.live} Live`,
-        "  0.5 BNB · value $300.00 · average cost $500.00 · P&L $60.00",
-        "  USDT · closed · realized P&L -$2.00",
-      ].join("\n"),
-    ]);
-  });
-
   it("names a token without its info by its short address, in base units", async () => {
-    const unknown = {
-      wallet,
-      asset: refs.pepe,
-      quantity: 1_000n,
-      costUsdMicros: 5_000_000n,
-      realizedUsdMicros: 0n,
-      paper: false,
-    };
-    const balance = { wallet, amount: { asset: refs.pepe, base: 1_000n }, paper: false };
+    const unknown = { wallet, amount: { asset: refs.pepe, base: 1_000n }, paper: false };
     const bot = await startCommandBot({
       ...served,
       "portfolio/get": async () =>
         Promise.resolve(
-          ok({ ...liveOnly, balances: [balance], positions: [unknown], totalUsdMicros: 0n }),
+          ok({ ...liveOnly, balances: [unknown], positions: [], totalUsdMicros: 0n }),
         ),
     });
-    await bot.send("/positions");
     await bot.send("/balance");
     expect(bot.texts()).toStrictEqual([
-      `main · ${icons.live} Live\n  1000 base units of 0x6982…1933 · paid $5.00 in all · realized P&L $0.00`,
       [
         `main · ${icons.live} Live · $0.00`,
         "  1000 base units of 0x6982…1933 · no price now",
@@ -324,32 +306,15 @@ describe("the fast commands' replies", () => {
   it("names an unlisted token by its stored symbol and short address, as its card did", async () => {
     const bot = await startCommandBot({ ...served, ...unlistedHandlers });
     await bot.send("/orders");
-    await bot.send("/positions");
     await bot.send("/balance");
     expect(bot.texts()).toStrictEqual([
       "Stop-loss · sell PEPE (0x6982…1933) · at $550.00 · 0 fills · ends Oct 10, 2026, 09:30:00",
-      `main · ${icons.live} Live\n  2 PEPE (0x6982…1933) · no price now · average cost $2.50 · realized P&L $0.00`,
       [
         `main · ${icons.live} Live · $0.00`,
         "  2 PEPE (0x6982…1933) · no price now",
         `${icons.live} Live total: $0.00`,
       ].join("\n"),
     ]);
-  });
-
-  it("splits a reply longer than one Telegram message at line breaks", async () => {
-    const positions = Array.from({ length: 120 }, () => portfolio.positions[0]).filter(
-      (position) => position !== undefined,
-    );
-    const bot = await startCommandBot({
-      ...served,
-      "portfolio/get": async () => Promise.resolve(ok({ ...portfolio, positions })),
-    });
-    await bot.send("/positions");
-    const sent = bot.texts();
-    expect(sent.length).toBeGreaterThan(1);
-    expect(sent.every((text) => text.length <= 4096)).toBe(true);
-    expect(sent.join("\n").split("\n")).toHaveLength(121);
   });
 
   it("lists the active auto orders with their triggers and fills", async () => {
