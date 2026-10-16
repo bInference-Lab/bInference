@@ -67,6 +67,27 @@ const exhausted: readonly ModelEvent[] = [
   { type: "error", failure: "request", message: "The script has no response left." },
 ];
 
+/**
+ * Replies that every transport playing them shares: each call, from whichever transport, answers
+ * with the script's next response, as the one model a restarted runtime calls again does. The
+ * requests they answered, in order, across every transport.
+ */
+export interface SharedScript {
+  readonly replies: readonly ScriptedReply[];
+  readonly requests: readonly ModelRequest[];
+}
+
+/** Creates a {@link SharedScript} that answers the responses given, in order, then fails. */
+export function createSharedScript(responses: readonly (readonly ModelEvent[])[]): SharedScript {
+  const requests: ModelRequest[] = [];
+  const reply: ScriptedReply = (signal, request) => {
+    const events = responses[requests.length] ?? exhausted;
+    requests.push({ ...request, messages: [...request.messages] });
+    return play(events, signal);
+  };
+  return { requests, replies: responses.map(() => reply) };
+}
+
 /** Creates a transport that answers model calls from a script, in order, and keeps each request. */
 export function createScriptedTransport(replies: readonly ScriptedReply[]): ScriptedTransport {
   const requests: ModelRequest[] = [];

@@ -5,6 +5,7 @@ export type { InProcessRuntime, InProcessRuntimeOptions } from "./testing/in-pro
 export {
   callsReply,
   createScriptedTransport,
+  createSharedScript,
   createTestChain,
   oneModelChain,
   textReply,
@@ -13,6 +14,7 @@ export type {
   ScriptedCall,
   ScriptedReply,
   ScriptedTransport,
+  SharedScript,
   TestChainOptions,
 } from "./testing/scripted-transport.js";
 export { fixtureSettings, fixtureStartLine } from "./testing/start-line-fixture.js";
@@ -48,6 +50,7 @@ export type {
   TurnJournal,
 } from "./loop/ports.js";
 export type {
+  ModelRequest,
   ToolOutcome,
   ToolRunContext,
   TurnRefusal,

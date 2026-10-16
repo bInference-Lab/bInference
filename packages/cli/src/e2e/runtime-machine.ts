@@ -12,6 +12,7 @@ import {
   type ScriptedReply,
   startInProcessRuntime,
 } from "@binference/runtime/testing";
+import type { MemoryAgentDatabase } from "@binference/store/testing";
 import { createTelegramImages } from "@binference/telegram";
 import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { Api } from "grammy";
@@ -139,7 +140,13 @@ export interface RuntimeScript {
   readonly readsImages?: boolean;
   /** The vision model's answers; no vision model when absent. */
   readonly visionReplies?: readonly ScriptedReply[];
+  /** The agent database each start opens, as `agent.sqlite` outlasts a restart; new when absent. */
+  readonly database?: MemoryAgentDatabase;
 }
+
+// One source for every runtime token the tests make, so a restart, or a second supervisor on the
+// same engine, never makes a token the access store already holds.
+const tokenRandom = createSeededRandom(21);
 
 /**
  * Starts the agent runtime as the engine starts the real one, with a token of its own, in this
@@ -155,7 +162,7 @@ export function superviseRuntime(
   },
 ): RuntimeSupervisor {
   const { access } = engine.stores;
-  const { replies, price, readsImages, visionReplies } = parts.script;
+  const { replies, price, readsImages, visionReplies, database } = parts.script;
   const supervisor = createRuntimeSupervisor({
     start: async () => {
       const runtime = startInProcessRuntime({
@@ -163,13 +170,14 @@ export function superviseRuntime(
         ...(price === undefined ? {} : { price }),
         ...(readsImages === undefined ? {} : { readsImages }),
         ...(visionReplies === undefined ? {} : { visionReplies }),
+        ...(database === undefined ? {} : { database }),
         signIn: async (start) => engine.connect(start.token, "runtime"),
       });
       parts.started?.push(runtime);
       return Promise.resolve(runtime);
     },
     makeToken: async (signal) =>
-      makeRuntimeToken({ access, clock: engine.clock, random: createSeededRandom(21) }, signal),
+      makeRuntimeToken({ access, clock: engine.clock, random: tokenRandom }, signal),
     startLine: {
       endpoint: "skeleton",
       paths: { agentDb: "agent.sqlite", workspace: "workspace" },
