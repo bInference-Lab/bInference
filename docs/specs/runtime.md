@@ -192,13 +192,12 @@ runs:
 
   A batch that runs in parallel is never cut; its merge point comes after it. A message that
   arrives in a committed turn waits, and starts a new turn after it. A message with images never
-  joins: it waits, with every message after it, and starts the next turn
-  ([decision 0227](../DECISIONS.md#d0227)).
+  joins: it waits for the next turn ([decision 0227](../DECISIONS.md#d0227)).
 
 - **`after`**: the message waits for the running turn to end and starts the next one.
 
-When a turn ends, the next one takes every waiting message, oldest first, up to 20; the rest wait
-for the turn after. No message is ever sent into a model response while it streams, and no tool
+When a turn ends, the next one takes every waiting message, oldest first, up to 20 and through
+the first that holds images; the rest wait for the turn after. No message is ever sent into a model response while it streams, and no tool
 runs before the response that called it has ended.
 
 The runtime holds at most 200 waiting messages per agent, and stops taking from the agent inbox

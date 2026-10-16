@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createGate, type TestTool } from "../loop/test-turns.js";
 import { startChatRig, type ChatRig } from "../testing/chat-rig.js";
 import { createMemoryAgentStores, nthTestId } from "../testing/memory-agent-stores.js";
-import { callsReply, textReply } from "../testing/scripted-transport.js";
+import { callsReply, type ScriptedReply, textReply } from "../testing/scripted-transport.js";
 import { payloadOf } from "./queued-view.js";
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
@@ -303,5 +303,21 @@ describe("createChatRunner", () => {
       [posted.message]: "stopped",
       [stop.message]: "applied",
     });
+  });
+
+  it("takes the waiting messages into a turn through the first that holds images", async () => {
+    const gate = createGate<undefined>();
+    const held: ScriptedReply = async function* held() {
+      await gate.promise;
+      yield* textReply("one");
+    };
+    const rig = await startChatRig({ mode: "after", replies: [held, textReply("three")] });
+    const first = await rig.post("hi");
+    const second = await rig.post("look");
+    await rig.post("this", ["tg:chart"]);
+    const fourth = await rig.post("and BNB");
+    gate.open(undefined);
+    await rig.runner.rested();
+    expect(turnsStarted(rig)).toStrictEqual([first.turn, second.turn, fourth.turn]);
   });
 });

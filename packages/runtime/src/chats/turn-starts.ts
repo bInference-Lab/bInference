@@ -125,13 +125,17 @@ async function afterTurn(context: ChatContext, agent: Id<"agt">, ended: TurnEnde
   kickAll(context);
 }
 
+// The messages a turn takes: oldest first and at most 20, through the first that holds images, so
+// a turn holds at most one message's images in memory and in each model request (decision 0227).
 async function waitingOf(context: ChatContext, session: Id<"ses">): Promise<readonly Waiting[]> {
   const query = { sessionId: session, limit: messagesPerTurn };
   const waiting = await context.stores.queue.waiting(query, { signal: context.lifetime });
-  return waiting.flatMap((queued) => {
+  const readable = waiting.flatMap((queued) => {
     const view = turnMessageOf(queued);
     return view === undefined ? [] : [{ queued, view }];
   });
+  const withImages = readable.findIndex(({ view }) => ownerMessageOf(view).images !== undefined);
+  return withImages === -1 ? readable : readable.slice(0, withImages + 1);
 }
 
 // Starts the agent's next turn when one may start and messages wait: it takes them, oldest first

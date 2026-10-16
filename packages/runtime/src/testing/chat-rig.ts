@@ -31,7 +31,10 @@ export interface ChatRig {
   readonly transport: ScriptedTransport;
   readonly clock: ManualClock;
   /** The owner posts; settles once the runner took the message, not once its turn ended. */
-  post(text: string): Promise<{
+  post(
+    text: string,
+    images?: readonly string[],
+  ): Promise<{
     readonly message: Id<"msg">;
     readonly session: Id<"ses">;
     readonly turn: Id<"trn">;
@@ -106,8 +109,8 @@ export async function startChatRig(options: ChatRigOptions): Promise<ChatRig> {
     runner,
     transport,
     clock,
-    async post(text) {
-      const posted = engine.post(agent, text);
+    async post(text, images) {
+      const posted = engine.post(agent, text, images);
       await last.taking;
       return posted;
     },

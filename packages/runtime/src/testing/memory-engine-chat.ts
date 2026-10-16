@@ -36,10 +36,11 @@ interface Running {
  * agent's open session and running turn, and what it pushed on the chat topics.
  */
 export interface MemoryEngineChat extends EngineChat {
-  /** `chat/post` from the owner's surface: the session and the turn reserved for it. */
+  /** `chat/post` from the owner's surface, with images or not: the session and the turn reserved for it. */
   post(
     agent: Id<"agt">,
     text: string,
+    images?: readonly string[],
   ): { readonly message: Id<"msg">; readonly session: Id<"ses">; readonly turn: Id<"trn"> };
   /** `chat/stop` from the owner, or a freeze. */
   stop(agent: Id<"agt">, reason?: "owner" | "freeze"): Id<"msg">;
@@ -237,13 +238,13 @@ function turnCalls(
 
 function ownerSide(state: FakeState): Pick<MemoryEngineChat, "post" | "stop" | "clear"> {
   return {
-    post(agent, text) {
+    post(agent, text, images) {
       const view = {
         ...base(state, agent),
         kind: "inbox/message" as const,
         turn: nextId(state, "trn"),
       };
-      store(state, { ...view, text, surface: "cli" });
+      store(state, { ...view, text, surface: "cli", ...(images === undefined ? {} : { images }) });
       return { message: view.message, session: view.session, turn: view.turn };
     },
     stop(agent, reason = "owner") {
