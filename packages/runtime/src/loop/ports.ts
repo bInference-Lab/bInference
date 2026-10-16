@@ -5,6 +5,7 @@ import type { ModelEvent } from "./model-event.js";
 import type { ModelMessage, OwnerMessage, ToolCall, ToolDeclaration } from "./model-message.js";
 import type {
   ChainModel,
+  ImageDescriptionRecord,
   ModelRequest,
   PreparedCall,
   ProposalRecord,
@@ -72,6 +73,8 @@ export interface TurnJournal {
   joined(messages: readonly OwnerMessage[], signal: AbortSignal): Promise<void>;
   /** A summary of the session's history, which the model sees from now on in place of its range. */
   summary(summary: SummaryRecord, signal: AbortSignal): Promise<void>;
+  /** The vision model's description of an image of the owner's, kept as outside content. */
+  described(description: ImageDescriptionRecord, signal: AbortSignal): Promise<void>;
   /** The turn holds outside content from now on. */
   markOutside(signal: AbortSignal): Promise<void>;
   end(end: TurnEndRecord, signal: AbortSignal): Promise<void>;

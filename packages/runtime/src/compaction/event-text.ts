@@ -1,6 +1,7 @@
 import type { TranscriptEvent } from "@binference/store";
 import {
   agentTextContentSchema,
+  imageContentSchema,
   ownerTextContentSchema,
   toolCallContentSchema,
   summaryContentSchema,
@@ -45,12 +46,22 @@ function resultLine(event: TranscriptEvent): EventLine | undefined {
     : undefined;
 }
 
+function imageLine(event: TranscriptEvent): EventLine | undefined {
+  const parsed = imageContentSchema.safeParse(event.content);
+  return parsed.success
+    ? {
+        label: `image ${String(parsed.data.place)} the vision model described`,
+        text: parsed.data.text,
+      }
+    : undefined;
+}
+
 function summaryLine(event: TranscriptEvent): EventLine | undefined {
   const parsed = summaryContentSchema.safeParse(event.content);
   return parsed.success ? { label: "earlier summary", text: parsed.data.text } : undefined;
 }
 
-// How each kind of event reads; an image is not read as text.
+// How each kind of event reads; an image reads as the vision model's description of it.
 const readers: Readonly<
   Record<TranscriptEvent["kind"], (event: TranscriptEvent) => EventLine | undefined>
 > = {
@@ -58,7 +69,7 @@ const readers: Readonly<
   tool_call: callLine,
   tool_result: resultLine,
   summary: summaryLine,
-  image: () => undefined,
+  image: imageLine,
 };
 
 /** What an event says, or `undefined` for an event the model does not read. */

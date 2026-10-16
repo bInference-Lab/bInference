@@ -10,6 +10,17 @@ export interface OwnerTextContent {
   /** The chat queue's id for it (`msg_…`). */
   readonly message: string;
   readonly text: string;
+  /** How many images the owner sent with it; their bytes are never stored (decision 0227). */
+  readonly images?: number;
+}
+
+/** The vision model's description of one image of an owner's message: outside content. */
+export interface ImageContent {
+  /** The chat queue's id of the message (`msg_…`). */
+  readonly message: string;
+  /** The image's place in the message, from 1. */
+  readonly place: number;
+  readonly text: string;
 }
 
 /** One model response's text and reasoning; its calls follow as events of their own. */
@@ -54,6 +65,14 @@ export interface SummaryContent {
 /** Parses an owner's text. */
 export const ownerTextContentSchema: z.ZodType<OwnerTextContent> = z.object({
   message: z.string(),
+  text: z.string(),
+  images: z.int().positive().exactOptional(),
+});
+
+/** Parses an image's description. */
+export const imageContentSchema: z.ZodType<ImageContent> = z.object({
+  message: z.string(),
+  place: z.int().positive(),
   text: z.string(),
 });
 

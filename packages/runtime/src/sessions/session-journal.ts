@@ -5,6 +5,7 @@ import type { TurnJournal } from "../loop/ports.js";
 import { type AgentStores, written } from "./agent-stores.js";
 import type {
   AgentTextContent,
+  ImageContent,
   OwnerTextContent,
   SummaryContent,
   ToolCallContent,
@@ -22,7 +23,12 @@ export function ownerEvents(
   context: { readonly turn: Id<"trn">; readonly atMs: number },
 ): readonly EventDraft[] {
   return messages.map((message) => {
-    const content: OwnerTextContent = { message: message.id, text: message.text };
+    const count = message.images?.length ?? 0;
+    const content: OwnerTextContent = {
+      message: message.id,
+      text: message.text,
+      ...(count === 0 ? {} : { images: count }),
+    };
     return {
       turnId: context.turn,
       role: "owner",
@@ -134,6 +140,16 @@ export function createSessionJournal(
     async summary({ text, fromSeq, throughSeq, outside }, signal) {
       const content: SummaryContent = { text, fromSeq, throughSeq };
       const event = { role: "system", kind: "summary", content: { ...content }, outside } as const;
+      await append({ stores, place, clock }, [eventOf({ stores, place, clock }, event)], signal);
+    },
+    async described({ message, place: at, text }, signal) {
+      const content: ImageContent = { message, place: at, text };
+      const event = {
+        role: "system",
+        kind: "image",
+        content: { ...content },
+        outside: true,
+      } as const;
       await append({ stores, place, clock }, [eventOf({ stores, place, clock }, event)], signal);
     },
     async markOutside(signal) {

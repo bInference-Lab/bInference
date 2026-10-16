@@ -2,7 +2,12 @@ import { err, ok } from "@binference/core";
 import type { TurnOutcome } from "@binference/store";
 import type { OwnerMessage } from "../loop/model-message.js";
 import type { MergeSource, TurnEngine, TurnJournal } from "../loop/ports.js";
-import type { SummaryRecord, TurnRefusal, TurnStatusLine } from "../loop/turn-records.js";
+import type {
+  ImageDescriptionRecord,
+  SummaryRecord,
+  TurnRefusal,
+  TurnStatusLine,
+} from "../loop/turn-records.js";
 
 /** One thing a turn wrote to its journal or told the engine, in the order it happened. */
 export type RecordedStep =
@@ -19,6 +24,7 @@ export type RecordedStep =
     }
   | { readonly kind: "joined"; readonly ids: readonly string[] }
   | ({ readonly kind: "summary" } & SummaryRecord)
+  | ({ readonly kind: "described" } & ImageDescriptionRecord)
   | { readonly kind: "journalMark" }
   | { readonly kind: "engineMark" }
   | { readonly kind: "say"; readonly text: string }
@@ -79,6 +85,7 @@ function createJournal(note: Write): TurnJournal {
       note({ kind: "joined", ids: messages.map((message) => message.id) }, signal),
     summary: async ({ text, fromSeq, throughSeq, outside }, signal) =>
       note({ kind: "summary", text, fromSeq, throughSeq, outside }, signal),
+    described: async (description, signal) => note({ kind: "described", ...description }, signal),
     markOutside: async (signal) => note({ kind: "journalMark" }, signal),
     end: async ({ outcome, heldBack }, signal) =>
       note({ kind: "journalEnd", outcome, heldBack }, signal),

@@ -1,10 +1,12 @@
+import { describedImageOpening } from "../images/image-notes.js";
 import type { ModelMessage } from "../loop/model-message.js";
 import { summaryOpening } from "../sessions/conversation.js";
 
 // Rule 10 for the agent's memory (decision 0206): a proposal never takes an address that only a
 // note holds. Each address the conversation holds is sorted by where it came from: a source (the
 // owner's own messages, the engine's messages to the turn, and the engine's reads, less the
-// addresses each read was given), a note, or neither (a summary, any other tool's result).
+// addresses each read was given), a note, or neither (a summary, an image's description, any
+// other tool's result).
 
 /** The tools whose results hold addresses a proposal may take, and the ones that hold notes. */
 export interface AddressTools {
@@ -39,11 +41,17 @@ function callArguments(seen: readonly ModelMessage[]): ReadonlyMap<string, strin
   );
 }
 
+// binference's own records on the owner's side, a summary or an image's description: never the
+// owner's words, so never a source.
+function isRecord(text: string): boolean {
+  return text.startsWith(summaryOpening) || text.startsWith(describedImageOpening);
+}
+
 function sortAddresses(seen: readonly ModelMessage[], tools: AddressTools): Sorted {
   const sorted = { sources: new Set<string>(), notes: new Set<string>() };
   const given = callArguments(seen);
   for (const entry of seen) {
-    if (entry.role === "owner" && !entry.text.startsWith(summaryOpening)) {
+    if (entry.role === "owner" && !isRecord(entry.text)) {
       addAll(sorted.sources, addressesIn(entry.text));
     } else if (entry.role === "tool" && tools.notes.has(entry.name)) {
       addAll(sorted.notes, addressesIn(entry.text));

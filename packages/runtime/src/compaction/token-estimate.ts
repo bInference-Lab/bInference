@@ -89,10 +89,14 @@ export function messageTexts(message: ModelMessage): readonly string[] {
   return message.role === "tool" ? [message.name, message.text] : [message.text];
 }
 
+// An image counts as this many tokens, whatever its size (runtime spec, section 7.3).
+const tokensPerImage = 1_500;
+
 /** The estimated tokens of one message of the conversation, with its own overhead. */
 export function estimateMessageTokens(message: ModelMessage): number {
   const texts = messageTexts(message).reduce((sum, text) => sum + estimateTextTokens(text), 0);
-  return tokensPerMessage + texts;
+  const images = message.role === "owner" ? (message.images?.length ?? 0) : 0;
+  return tokensPerMessage + texts + images * tokensPerImage;
 }
 
 /** The estimated tokens of a run of messages. */

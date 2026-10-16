@@ -9,6 +9,7 @@ import type { AgentStores } from "./agent-stores.js";
 import { conversationOf } from "./conversation.js";
 import {
   agentTextContentSchema,
+  imageContentSchema,
   ownerTextContentSchema,
   summaryContentSchema,
   toolCallContentSchema,
@@ -36,6 +37,9 @@ function entryOf(event: TranscriptEvent): readonly JournalEntry[] {
   if (event.kind === "tool_result") {
     const { callId: id, ran } = toolResultContentSchema.parse(event.content);
     return [{ kind: "result", id, ran, outside: event.outside }];
+  }
+  if (event.kind === "image") {
+    return [{ kind: "described", ...imageContentSchema.parse(event.content) }];
   }
   if (event.kind === "summary") {
     const content = summaryContentSchema.parse(event.content);

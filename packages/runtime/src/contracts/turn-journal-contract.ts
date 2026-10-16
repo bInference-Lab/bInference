@@ -3,7 +3,7 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { TurnOutcome } from "@binference/store";
 import type { ToolCall } from "../loop/model-message.js";
 import type { TurnJournal } from "../loop/ports.js";
-import type { SummaryRecord } from "../loop/turn-records.js";
+import type { ImageDescriptionRecord, SummaryRecord } from "../loop/turn-records.js";
 
 /** One write of a turn's journal, as the subject reads it back. */
 export type JournalEntry =
@@ -17,7 +17,8 @@ export type JournalEntry =
       readonly outside: boolean;
     }
   | { readonly kind: "joined"; readonly ids: readonly string[] }
-  | ({ readonly kind: "summary" } & SummaryRecord);
+  | ({ readonly kind: "summary" } & SummaryRecord)
+  | ({ readonly kind: "described" } & ImageDescriptionRecord);
 
 /** What a turn's journal holds: its writes in order, its marks and its end. */
 export interface JournalView {
@@ -92,6 +93,15 @@ async function keepsSummary(harness: TurnJournalHarness): Promise<void> {
   assert.equal((await read()).entries.length, 2);
 }
 
+async function keepsDescription(harness: TurnJournalHarness): Promise<void> {
+  const { journal, read } = await harness.create();
+  const description = { message: joining.id, place: 2, text: "A price chart, rising." };
+  await journal.described(description, live());
+  assert.deepEqual((await read()).entries, [{ kind: "described", ...description }]);
+  await assert.rejects(journal.described(description, AbortSignal.abort(new Error("stopped"))));
+  assert.equal((await read()).entries.length, 1);
+}
+
 async function refusesAborted(harness: TurnJournalHarness): Promise<void> {
   const { journal, read } = await harness.create();
   const stopped = AbortSignal.abort(new Error("the turn stopped"));
@@ -121,6 +131,10 @@ export function turnJournalContract(harness: TurnJournalHarness): readonly Contr
     {
       name: "keeps a summary with the range it covers and its outside mark",
       run: async () => keepsSummary(harness),
+    },
+    {
+      name: "keeps an image's description with its message and its place",
+      run: async () => keepsDescription(harness),
     },
     {
       name: "rejects a write on an aborted signal and keeps nothing of it",

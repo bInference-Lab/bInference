@@ -17,6 +17,8 @@ export interface OwnerMessage {
   readonly text: string;
   /** It is outside content: it has images, or a wake-up says so (runtime spec, section 5.4). */
   readonly outside: boolean;
+  /** The upload ids or `tg:<file_id>` of the images the owner sent with it, at most 4. */
+  readonly images?: readonly string[];
 }
 
 /**

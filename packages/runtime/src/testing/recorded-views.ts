@@ -20,6 +20,10 @@ function entryOf(step: RecordedStep): readonly JournalEntry[] {
     const { text, fromSeq, throughSeq, outside } = step;
     return [{ kind: "summary", text, fromSeq, throughSeq, outside }];
   }
+  if (step.kind === "described") {
+    const { message, place, text } = step;
+    return [{ kind: "described", message, place, text }];
+  }
   return step.kind === "joined" ? [{ kind: "joined", ids: step.ids }] : [];
 }
 

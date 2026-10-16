@@ -43,5 +43,11 @@ export function ownerMessageOf(view: TurnMessage): OwnerMessage {
   if (view.kind === "inbox/intentSettled") {
     return { id: view.message, text: settleText(view), outside: false };
   }
-  return { id: view.message, text: view.text, outside: view.images !== undefined };
+  const { images } = view;
+  return {
+    id: view.message,
+    text: view.text,
+    outside: images !== undefined,
+    ...(images === undefined ? {} : { images }),
+  };
 }

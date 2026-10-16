@@ -123,6 +123,18 @@ export interface SummaryRecord {
   readonly outside: boolean;
 }
 
+/**
+ * The vision model's description of one image of an owner's message (decision 0227), which the
+ * transcript keeps as outside content in place of the image's bytes.
+ */
+export interface ImageDescriptionRecord {
+  /** The chat queue's id of the message (`msg_…`). */
+  readonly message: string;
+  /** The image's place in the message, from 1. */
+  readonly place: number;
+  readonly text: string;
+}
+
 /** How a turn ended, as the transcript keeps it. */
 export interface TurnEndRecord {
   readonly outcome: TurnOutcome;

@@ -1,9 +1,11 @@
 import { type Id, type JsonValue, jsonValueSchema } from "@binference/core";
 import type { TranscriptEvent, TranscriptStore } from "@binference/store";
+import { describedImageNote, sentImagesNote } from "../images/image-notes.js";
 import type { ResponseReplay } from "../loop/model-event.js";
 import type { ModelMessage, ToolCall } from "../loop/model-message.js";
 import {
   agentTextContentSchema,
+  imageContentSchema,
   ownerTextContentSchema,
   summaryContentSchema,
   toolCallContentSchema,
@@ -74,7 +76,29 @@ interface Builder {
   finish(): readonly ModelMessage[];
 }
 
-function createBuilder(): Builder {
+/** The vision model's descriptions of each message's images, by the message's id, in place order. */
+type Descriptions = ReadonlyMap<string, readonly string[]>;
+
+function descriptionsOf(events: readonly TranscriptEvent[]): Descriptions {
+  const described = new Map<string, { readonly place: number; readonly text: string }[]>();
+  for (const event of events) {
+    const parsed = event.kind === "image" ? imageContentSchema.safeParse(event.content) : undefined;
+    if (parsed?.success === true) {
+      const { message, place, text } = parsed.data;
+      described.set(message, [...(described.get(message) ?? []), { place, text }]);
+    }
+  }
+  return new Map(
+    [...described].map(([message, images]) => [
+      message,
+      images
+        .toSorted((a, b) => a.place - b.place)
+        .map(({ place, text }) => describedImageNote(place, text)),
+    ]),
+  );
+}
+
+function createBuilder(descriptions: Descriptions): Builder {
   const messages: ModelMessage[] = [];
   const state: { open: OpenResponse | undefined } = { open: undefined };
   const close = (): void => {
@@ -101,10 +125,10 @@ function createBuilder(): Builder {
       }
     },
     owner: (content: JsonValue) => {
-      const entry = ownerEntryOf(content);
-      if (entry !== undefined && !holds(state.open, entry)) {
+      const entries = ownerEntriesOf(content, descriptions);
+      if (entries.length > 0 && !holds(state.open, entries)) {
         close();
-        messages.push(entry);
+        messages.push(...entries);
       }
     },
   };
@@ -138,18 +162,34 @@ function addResult(response: OpenResponse, content: JsonValue): void {
   }
 }
 
-function ownerEntryOf(content: JsonValue): OwnerEntry | undefined {
+// An owner's message as a later turn reads it: its text with the line that says it held images,
+// then the vision model's description of each one it described, each an entry of its own, so an
+// address in an image is never the owner's word.
+function ownerEntriesOf(content: JsonValue, descriptions: Descriptions): readonly OwnerEntry[] {
   const parsed = ownerTextContentSchema.safeParse(content);
-  return parsed.success ? { role: "owner", text: parsed.data.text } : undefined;
+  if (!parsed.success) {
+    return [];
+  }
+  const { message, text, images } = parsed.data;
+  const note = images === undefined ? [] : [sentImagesNote(images)];
+  const owner: OwnerEntry = {
+    role: "owner",
+    text: [text, ...note].filter((part) => part !== "").join("\n\n"),
+  };
+  const described = (descriptions.get(message) ?? []).map((said): OwnerEntry => ({
+    role: "owner",
+    text: said,
+  }));
+  return [owner, ...described];
 }
 
 // An owner message stored while a call of the open response waits for its result is held, to
 // follow the results.
-function holds(response: OpenResponse | undefined, entry: OwnerEntry): boolean {
+function holds(response: OpenResponse | undefined, entries: readonly OwnerEntry[]): boolean {
   if (response === undefined || response.results.size >= response.calls.length) {
     return false;
   }
-  response.held.push(entry);
+  response.held.push(...entries);
   return true;
 }
 
@@ -178,10 +218,12 @@ function handlerOf(event: TranscriptEvent, handlers: Handlers) {
  * 0174): each call's one result follows the response that made it, a second result or one with no
  * call is left out, a call with no result gets {@link notRunAfterRestart}, an owner message stored
  * between a call and its result follows the results, and arguments that are not a JSON object go
- * back as `{}`. Events of a kind the model does not read yet are left out.
+ * back as `{}`. An owner's message that held images says how many, with the vision model's
+ * description of each one it described (decision 0227). Events of a kind the model does not read
+ * yet are left out.
  */
 export function conversationOf(events: readonly TranscriptEvent[]): readonly ModelMessage[] {
-  const builder = createBuilder();
+  const builder = createBuilder(descriptionsOf(events));
   for (const event of events) {
     builder.add(event);
   }
