@@ -26,6 +26,7 @@ describe("protocolErrorCodes", () => {
       "signer",
       "intent",
       "order",
+      "schedule",
       "note",
       "asset",
       "name",

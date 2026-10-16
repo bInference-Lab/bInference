@@ -84,6 +84,7 @@ const scheduleView = {
   state: "active",
   nextAt: at,
   createdAt: at,
+  lastRun: { due: at - 604_800_000, at: at - 604_800_000, outcome: "skipped", reason: "budget" },
 } as const;
 
 /** An example call of every market read operation. */
@@ -258,6 +259,9 @@ export const orderExamples: { readonly [N in keyof OrderOperationShapes]: WireEx
     args: { agent: ids.agent, when: scheduleView.when, prompt: scheduleView.prompt },
     result: scheduleView,
   },
-  "schedule/list": { args: empty, result: pageOf({ ...scheduleView, when: { at } }) },
+  "schedule/list": {
+    args: empty,
+    result: pageOf({ ...scheduleView, when: { at }, state: "ended" }),
+  },
   "schedule/cancel": { args: { schedule: ids.schedule }, result: empty },
 };

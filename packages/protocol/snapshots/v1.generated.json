@@ -479,6 +479,9 @@
         "order.kind_unavailable",
         "order.unpriced_token",
         "order.live_fills_off",
+        "schedule.not_found",
+        "schedule.bad_when",
+        "schedule.too_many",
         "note.not_found",
         "asset.not_found",
         "asset.bad_address",
@@ -24461,7 +24464,8 @@
               "type": "string",
               "enum": [
                 "active",
-                "cancelled"
+                "cancelled",
+                "ended"
               ]
             },
             "nextAt": {
@@ -24478,6 +24482,43 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "lastRun": {
+              "type": "object",
+              "properties": {
+                "due": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "at": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "sent",
+                    "skipped"
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "frozen",
+                    "archived",
+                    "budget",
+                    "waiting",
+                    "busy"
+                  ]
+                }
+              },
+              "required": [
+                "due",
+                "at",
+                "outcome"
+              ]
             }
           },
           "required": [
@@ -24612,7 +24653,8 @@
                     "type": "string",
                     "enum": [
                       "active",
-                      "cancelled"
+                      "cancelled",
+                      "ended"
                     ]
                   },
                   "nextAt": {
@@ -24629,6 +24671,43 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "lastRun": {
+                    "type": "object",
+                    "properties": {
+                      "due": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "outcome": {
+                        "type": "string",
+                        "enum": [
+                          "sent",
+                          "skipped"
+                        ]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "enum": [
+                          "frozen",
+                          "archived",
+                          "budget",
+                          "waiting",
+                          "busy"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "due",
+                      "at",
+                      "outcome"
+                    ]
                   }
                 },
                 "required": [

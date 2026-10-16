@@ -243,8 +243,20 @@ export { quoteViewSchema, tradePlaceSchema } from "./views/quote-view.schema.js"
 export type { PoolFee, QuoteView, RouteLeg, TradePlace } from "./views/quote-view.schema.js";
 export { maxInsiders, riskViewSchema } from "./views/risk-view.schema.js";
 export type { RiskFlag, RiskView } from "./views/risk-view.schema.js";
-export { scheduleViewSchema, scheduleWhenSchema } from "./views/schedule-view.schema.js";
-export type { ScheduleView, ScheduleWhen } from "./views/schedule-view.schema.js";
+export {
+  scheduleRunSchema,
+  scheduleSkips,
+  scheduleStates,
+  scheduleViewSchema,
+  scheduleWhenSchema,
+} from "./views/schedule-view.schema.js";
+export type {
+  ScheduleRun,
+  ScheduleSkip,
+  ScheduleState,
+  ScheduleView,
+  ScheduleWhen,
+} from "./views/schedule-view.schema.js";
 export { walletViewSchema } from "./views/wallet-view.schema.js";
 export type { WalletView } from "./views/wallet-view.schema.js";
 export { webhookRuleViewSchema } from "./views/webhook-rule-view.schema.js";
