@@ -180,6 +180,22 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
   "notice.stepDroppedPartWay": { key: "notice.stepDroppedPartWay", values: {} },
   "notice.droppedLanded": { key: "notice.droppedLanded", values: {} },
   "notice.walletHeld": { key: "notice.walletHeld", values: { wallet: "Main" } },
+  "notice.orderOverfilled": {
+    key: "notice.orderOverfilled",
+    values: { fills: "2", maxFills: "1" },
+    parts: { orderKind: orderKind("stopLoss") },
+  },
+  "notice.fillUnvalued": {
+    key: "notice.fillUnvalued",
+    values: {},
+    parts: { orderKind: orderKind("limit") },
+  },
+  "notice.fillsFailing": {
+    key: "notice.fillsFailing",
+    values: { count: "5" },
+    parts: { orderKind: orderKind("takeProfit") },
+  },
+  "notice.approvalReset": { key: "notice.approvalReset", values: { token: "PEPE" } },
   "notice.binanceRefused": {
     key: "notice.binanceRefused",
     agent: testAgent,
