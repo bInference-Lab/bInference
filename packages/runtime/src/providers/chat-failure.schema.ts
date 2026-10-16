@@ -60,7 +60,8 @@ function failureOfMetadata(body: ErrorBody | undefined): ModelFailure | undefine
   return metadata?.limit_source === "openrouter_in_flight_budget" ? "transient" : undefined;
 }
 
-function factsOf(error: unknown): FailureFacts {
+/** What a Chat Completions error answer says: its status, documented code and words. */
+export function chatFailureFacts(error: unknown): FailureFacts {
   const { status, headers, body } = apiErrorOf(error, errorBodySchema);
   const code = body?.code;
   return {
@@ -84,7 +85,7 @@ export function chatFailureOf(error: unknown, context: FailureContext): Provider
     timeout: APIConnectionTimeoutError,
     unreachable: APIConnectionError,
     answer: APIError,
-    factsOf,
+    factsOf: chatFailureFacts,
     failureOfCode,
   });
 }

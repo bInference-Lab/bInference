@@ -3,7 +3,8 @@
 Status: accepted by the owner on 2026-10-11, with the recommendations of its open questions. Its
 proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10. Amended by
 [decision 0191](../DECISIONS.md#d0191) (usage records and the loop notice) and
-[decision 0207](../DECISIONS.md#d0207) (where skills live, how they are read and installed).
+[decision 0207](../DECISIONS.md#d0207) (where skills live, how they are read and installed) and
+[decision 0221](../DECISIONS.md#d0221) (the model check).
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -513,6 +514,9 @@ nothing after the history carries one.
 - Images go to `main` when it reads images; otherwise `models.vision` describes them, and `main`
   gets the description, which is outside content.
 - A model the owner picked for the agent (`/ai`, `model/set`) is never swapped for another.
+- The model check (`checkModel`, [decision 0221](../DECISIONS.md#d0221)) builds the same clients
+  for one small call that `binference init` and `binference check` make in the CLI's process: it
+  proves a key, its credit, its model and its address, and names what went wrong.
 
 <a id="section-8-2"></a>
 

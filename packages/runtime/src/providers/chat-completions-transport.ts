@@ -34,11 +34,14 @@ const silentLogger = {
   debug: () => undefined,
 };
 
-// The one place a Chat Completions client is built (check:model-clients). Every option is set, so
-// no environment variable the client reads (OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_ORG_ID,
-// OPENAI_PROJECT_ID, OPENAI_ADMIN_KEY, OPENAI_WEBHOOK_SECRET, OPENAI_LOG) changes a call; the
-// headers OPENAI_CUSTOM_HEADERS would add never pass the fetch, which sets the key itself.
-function clientOf(options: ChatCompletionsOptions): OpenAI {
+/**
+ * The one place a Chat Completions client is built (check:model-clients), for the transport and
+ * the model check. Every option is set, so no environment variable the client reads
+ * (OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_ORG_ID, OPENAI_PROJECT_ID, OPENAI_ADMIN_KEY,
+ * OPENAI_WEBHOOK_SECRET, OPENAI_LOG) changes a call; the headers OPENAI_CUSTOM_HEADERS would add
+ * never pass the fetch, which sets the key itself.
+ */
+export function createChatClient(options: ChatCompletionsOptions): OpenAI {
   return new OpenAI({
     apiKey: options.apiKey ?? noKey,
     adminAPIKey: null,
@@ -88,7 +91,7 @@ async function* streamOf(
  * `error`; it never throws.
  */
 export function createChatCompletionsTransport(options: ChatCompletionsOptions): ModelTransport {
-  const client = clientOf(options);
+  const client = createChatClient(options);
   return {
     stream: (request, signal) =>
       streamOf(client, { request, model: options.model, clock: options.clock }, signal),

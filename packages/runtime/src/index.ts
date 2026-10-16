@@ -28,6 +28,12 @@ export type {
   RuntimeSettings,
   RuntimeSettingsWire,
 } from "./control/runtime-settings.schema.js";
+export { checkModel } from "./providers/model-check.js";
+export type {
+  ModelCheckParts,
+  ModelCheckProblem,
+  ModelCheckTarget,
+} from "./providers/model-check.js";
 export { runtimeNodeArguments } from "./process/runtime-node-arguments.js";
 export { isModelPriced } from "./usage/model-price.js";
 export type { RuntimeFiles } from "./process/runtime-node-arguments.js";

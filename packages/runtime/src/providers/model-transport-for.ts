@@ -43,7 +43,8 @@ function splitModel(
     : { provider: ref.slice(0, slash), model: ref.slice(slash + 1) };
 }
 
-function baseUrlOf(provider: RuntimeProvider): string {
+/** The provider's base URL, or the API its kind calls when it names none. */
+export function baseUrlOf(provider: Pick<RuntimeProvider, "kind" | "baseUrl">): string {
   return provider.baseUrl ?? defaultBaseUrls[provider.kind];
 }
 

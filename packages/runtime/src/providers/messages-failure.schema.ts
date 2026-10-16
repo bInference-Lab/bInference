@@ -34,7 +34,8 @@ const failureOfType: ReadonlyMap<string, ModelFailure> = new Map([
   ["overloaded_error", "transient"],
 ]);
 
-function factsOf(error: unknown): FailureFacts {
+/** What a Messages error answer says: its status, Anthropic's error type and its words. */
+export function messagesFailureFacts(error: unknown): FailureFacts {
   const { status, headers, body } = apiErrorOf(error, errorBodySchema);
   return {
     status,
@@ -57,7 +58,7 @@ export function messagesFailureOf(error: unknown, context: FailureContext): Prov
     timeout: APIConnectionTimeoutError,
     unreachable: APIConnectionError,
     answer: APIError,
-    factsOf,
+    factsOf: messagesFailureFacts,
     failureOfCode: (type) => failureOfType.get(type),
   });
 }

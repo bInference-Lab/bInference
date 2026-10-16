@@ -37,12 +37,15 @@ const silentLogger = {
   debug: () => undefined,
 };
 
-// The one place a Messages client is built (check:model-clients). Every option is set, so no
-// variable the client reads (ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL,
-// ANTHROPIC_PROFILE, ANTHROPIC_CONFIG_DIR, ANTHROPIC_WEBHOOK_SIGNING_KEY, ANTHROPIC_LOG, nor the
-// workload identity ones) and no credential file changes a call, and the headers
-// ANTHROPIC_CUSTOM_HEADERS would add never pass the fetch, which sets the key and version itself.
-function clientOf(options: MessagesOptions): Anthropic {
+/**
+ * The one place a Messages client is built (check:model-clients), for the transport and the model
+ * check. Every option is set, so no variable the client reads (ANTHROPIC_API_KEY,
+ * ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL, ANTHROPIC_PROFILE, ANTHROPIC_CONFIG_DIR,
+ * ANTHROPIC_WEBHOOK_SIGNING_KEY, ANTHROPIC_LOG, nor the workload identity ones) and no credential
+ * file changes a call, and the headers ANTHROPIC_CUSTOM_HEADERS would add never pass the fetch,
+ * which sets the key and version itself.
+ */
+export function createMessagesClient(options: MessagesOptions): Anthropic {
   return new Anthropic({
     apiKey: options.apiKey ?? noKey,
     authToken: null,
@@ -95,7 +98,7 @@ async function* streamOf(
  * classified `error`; it never throws.
  */
 export function createMessagesTransport(options: MessagesOptions): ModelTransport {
-  const client = clientOf(options);
+  const client = createMessagesClient(options);
   return {
     stream: (request, signal) =>
       streamOf(client, { request, model: options.model, clock: options.clock }, signal),
