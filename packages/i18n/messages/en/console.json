@@ -65,5 +65,7 @@
   "icon.paper": "Paper",
   "icon.live": "Live",
   "icon.on": "On",
-  "icon.auto": "Auto"
+  "icon.auto": "Auto",
+  "notices.title": "Notices",
+  "notices.dismiss": "Dismiss this notice"
 }

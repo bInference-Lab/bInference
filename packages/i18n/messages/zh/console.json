@@ -65,5 +65,7 @@
   "icon.paper": "模拟",
   "icon.live": "实盘",
   "icon.on": "已开启",
-  "icon.auto": "自动"
+  "icon.auto": "自动",
+  "notices.title": "通知",
+  "notices.dismiss": "关闭此通知"
 }

@@ -7,6 +7,7 @@ import { useEngine } from "../connection/engine-context";
 import { useClientStatus } from "../connection/use-client-status";
 import { useLiveTopics } from "../connection/use-live-topics";
 import { MessageText, useText } from "../i18n/console-text";
+import { NoticeArea } from "../notices/notice-area";
 import { SignInEnded } from "./sign-in-ended";
 
 // The console's sections, in the order the header shows them.
@@ -75,6 +76,7 @@ export function ConsoleShell(): React.JSX.Element {
           </Alert>
         )}
         <SignInEnded />
+        <NoticeArea />
         <Outlet />
       </main>
     </div>

@@ -44,6 +44,8 @@ export interface FakeClient {
   readonly calls: readonly SeenCall[];
   /** Delivers a push to the topic's subscriber, as the engine's `push` frame would. */
   push(topic: PushTopic, kind: string, data: object): void;
+  /** Makes the topic's subscriber load it again, as after a gap in its pushes. */
+  resync(topic: PushTopic): Promise<void>;
 }
 
 /** A client that answers each call from `answers` and keeps every call it was given. */
@@ -78,6 +80,9 @@ export function fakeClient(answers: FakeAnswers): FakeClient {
       const seq = (seqs.get(topic) ?? 0) + 1;
       seqs.set(topic, seq);
       subscribers.get(topic)?.onPush({ t: "push", topic, seq, kind, data });
+    },
+    async resync(topic) {
+      await subscribers.get(topic)?.refetch(new AbortController().signal);
     },
   };
 }

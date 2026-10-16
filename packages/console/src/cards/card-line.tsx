@@ -8,7 +8,7 @@ import {
   TriangleAlertIcon,
   ZapIcon,
 } from "lucide-react";
-import { useText } from "../i18n/console-text";
+import { MessageText, useText } from "../i18n/console-text";
 
 /** One status icon of spec 4: the line icon the console draws for it, its name and its color. */
 interface LineIcon {
@@ -56,17 +56,23 @@ function linePieces(text: string): readonly LinePiece[] {
   }));
 }
 
-/**
- * One card line as the console draws it: the text Telegram shows, with each status icon of spec 4
- * drawn as a thin line icon, its name read to screen readers only. Telegram keeps its emoji.
- */
-export function CardLine(props: { readonly text: string }): React.JSX.Element {
+/** How a line's plain pieces are drawn: as they are, or with their `code` spans as code. */
+type PieceStyle = "plain" | "message";
+
+function LinePieces(props: {
+  readonly text: string;
+  readonly drawn: PieceStyle;
+}): React.JSX.Element {
   const text = useText();
   return (
     <>
       {linePieces(props.text).map(({ start, piece }) => {
         if (typeof piece === "string") {
-          return <span key={start}>{piece}</span>;
+          return (
+            <span key={start}>
+              {props.drawn === "message" ? <MessageText text={piece} /> : piece}
+            </span>
+          );
         }
         const { Icon, label, tone } = piece;
         return (
@@ -82,4 +88,20 @@ export function CardLine(props: { readonly text: string }): React.JSX.Element {
       })}
     </>
   );
+}
+
+/**
+ * One card line as the console draws it: the text Telegram shows, with each status icon of spec 4
+ * drawn as a thin line icon, its name read to screen readers only. Telegram keeps its emoji.
+ */
+export function CardLine(props: { readonly text: string }): React.JSX.Element {
+  return <LinePieces text={props.text} drawn="plain" />;
+}
+
+/**
+ * One line of a message of binference's own, such as a notice or a status line, drawn as a card
+ * line is, with each `code` span, such as `binference unlock`, shown as code.
+ */
+export function MessageLine(props: { readonly text: string }): React.JSX.Element {
+  return <LinePieces text={props.text} drawn="message" />;
 }
