@@ -5,7 +5,7 @@ import type { SigningTerms } from "./queue-check.js";
 import { sendOnce, signAndStore } from "./run-step.js";
 import type { StuckAt, StuckMove, StuckRules } from "./send-and-watch.js";
 import { finalFate, readFate } from "./step-fate.js";
-import { termsNow } from "./terms-now.js";
+import { launchTermsNow, termsNow } from "./terms-now.js";
 
 /** What signs a stuck step's replacement: the slot that holds its wallet, and the intent's terms. */
 interface StuckSigning {
@@ -57,6 +57,31 @@ async function moveOf(
   return at.transaction.replaces?.kind === "cancel" ? "cancel" : "speedUp";
 }
 
+// The terms a replacement signs with, read again right before it: what authorizes it now and, for
+// a launch wallet's speed-up, its launch's contracts, while the read fails a wait, and once the
+// launch moved a cancel instead (decision 0218).
+async function replacementTerms(
+  run: ExecutionRun,
+  signing: StuckSigning,
+  move: StuckStep & { readonly kind: StepReplacement["kind"] },
+): Promise<SigningTerms | StuckMove> {
+  const { intent } = move.at;
+  const authorized = await termsNow(run, signing.terms, { record: intent, kind: move.kind });
+  if (authorized === undefined) {
+    return stopped("authorization_lapsed");
+  }
+  if (move.kind !== "speedUp") {
+    return authorized;
+  }
+  const launched = await launchTermsNow(run, authorized, intent);
+  if (launched.ok) {
+    return launched.value;
+  }
+  return launched.error === "launch_moved"
+    ? replace(run, signing, { ...move, kind: "cancel" })
+    : waiting;
+}
+
 // A replacement made, signed and stored at the stuck transaction's nonce, then sent once. A
 // speed-up whose call fails by now becomes a cancel; a fee above the network fee cap, which no
 // tap showed the owner, is never paid (decision 0102).
@@ -84,9 +109,9 @@ async function replace(
   if (prepared.value.isAboveFeeCap) {
     return stopped("over_fee_cap");
   }
-  const terms = await termsNow(run, signing.terms, { record: intent, kind });
-  if (terms === undefined) {
-    return stopped("authorization_lapsed");
+  const terms = await replacementTerms(run, signing, move);
+  if (!("allowed" in terms)) {
+    return terms;
   }
   // Once the engine begins to stop, no replacement is signed; the watch's next wait ends it.
   if (run.stopping.aborted) {
@@ -145,7 +170,9 @@ async function moveStuck(
  * gets the same bytes again at the first rule and a speed-up at the second, the same call at its
  * nonce for at least 10% more; no longer valid, it gets a cancel, a 0-value transfer to the
  * wallet itself at its nonce for at least 10% more. Each replacement is a new signature for the
- * same authorization, read again before it (`termsNow`), which the signer checks again; the
+ * same authorization, read again before it (`termsNow`), which the signer checks again; a
+ * launch wallet's speed-up reads its launch's contracts again too, waits while they cannot be
+ * read and becomes a cancel once the launch moved (decision 0218); the
  * transaction it replaces becomes `superseded`. A replacement custody refuses, the store cannot
  * keep, that would fail, whose fee passes the network fee cap, or that nothing authorizes any more
  * (a speed-up after the confirmation expired, an auto grant after a switch to manual) stops them,

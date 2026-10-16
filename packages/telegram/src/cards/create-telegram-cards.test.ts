@@ -1,6 +1,12 @@
 import type { JsonValue } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
-import { type CardFacts, checkReasons, drawCard } from "@binference/engine";
+import {
+  type CardFacts,
+  checkReasons,
+  drawCard,
+  type QuoteFailure,
+  type SimulationFailure,
+} from "@binference/engine";
 import type { PaperReceipt } from "@binference/engine/surfaces";
 import {
   createMemoryAccessStore,
@@ -29,6 +35,10 @@ import { type ButtonPress, chatUpdateSchema } from "../updates/chat-update.schem
 import { createTelegramCards } from "./create-telegram-cards.js";
 
 const live = { signal: new AbortController().signal };
+// A re-quote fails for every check reason but the queue's own read of a launch (decision 0218).
+const requoteReasons = checkReasons.filter(
+  (reason): reason is QuoteFailure | SimulationFailure => reason !== "launch_moved",
+);
 const display = () => ({ locale: "en", timeZone: "UTC" }) as const;
 const ref = "q3Zr_x9-AbCdEfGh";
 const nextRef = "Zz9_Yy8-XxWwVvUu";
@@ -297,7 +307,7 @@ describe("the Telegram cards", () => {
     expect(context.botApi.messages()).toMatchObject([{ buttons }]);
   });
 
-  it.each(checkReasons)("say why a card stays open after a %s re-quote", async (reason) => {
+  it.each(requoteReasons)("say why a card stays open after a %s re-quote", async (reason) => {
     const context = await setUp();
     context.engine.open(ref);
     context.engine.refuseNext(ref, reason);

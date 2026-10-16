@@ -15,6 +15,7 @@ import { autoModeGrantOf } from "../approval/auto-mode-grant-of.js";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
+import type { LaunchReadFailure } from "../intents/intent-reason.js";
 import type { QueueFacts } from "../intents/intent-trigger.js";
 import { quotedTradeOf } from "../money-path/place-trade.js";
 import { policyFactsOf } from "../money-path/policy-facts-of.js";
@@ -39,6 +40,11 @@ export interface QueueCheck {
   readonly terms?: SigningTerms;
   /** The auto mode authorized the intent, so a fee above the network fee cap never runs. */
   readonly isAuto: boolean;
+  /**
+   * Why a launch wallet's curve trade cannot sign: its launch's contracts could not be read now
+   * (decision 0218). The intent ends with this reason, and nothing is signed.
+   */
+  readonly launchFailure?: LaunchReadFailure;
 }
 
 /** The ports and steps the check reads. */
@@ -196,7 +202,8 @@ async function termsOf(
  * Reads what the wallet queue checks as it takes a confirmed intent (spec 6, `queue_took`): the
  * agent is live, the policy still passes, and the owner's confirmation or the auto grant still
  * holds; with it, what the signer checks for every step, a launch wallet's launch contracts read
- * again among them (decision 0217).
+ * again among them (decision 0217), and why a launch wallet's curve trade cannot sign when its
+ * launch cannot be read now (decision 0218).
  */
 export async function checkForQueue(
   snapshot: IntentSnapshot,
@@ -216,7 +223,9 @@ export async function checkForQueue(
   };
   const isAuto = authorizedBy !== undefined && !isFillAuthorization(authorizedBy);
   const registry = allowedTargetsOf(snapshot, { chain, venues: parts.venues });
-  const launch = await launchTargetsOf(snapshot, parts, signal);
-  const allowed = launch.length === 0 ? registry : { ...registry, launch };
-  return { facts, isAuto, ...(terms === undefined ? {} : { terms: { ...terms, allowed } }) };
+  const launch = await launchTargetsOf(snapshot.record, parts, signal);
+  const failure = launch.kind === "failed" ? { launchFailure: launch.reason } : {};
+  const allowed = launch.kind === "read" ? { ...registry, launch: launch.launch } : registry;
+  const signing = terms === undefined ? {} : { terms: { ...terms, allowed } };
+  return { facts, isAuto, ...failure, ...signing };
 }

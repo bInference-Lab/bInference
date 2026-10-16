@@ -52,7 +52,9 @@ export type RiskReason = (typeof riskReasons)[number];
  * to nothing, or a paper sale or swap whose paper portfolio holds less of its input at the fill
  * than its confirmed quote spends. `needs_launch_wallet` is a live trade on a launch's own curve
  * from a wallet that is not the agent's launch wallet, and `launch_unread` one whose curve read
- * failed as it picked the wallet (decision 0218).
+ * failed as it picked the wallet or as the wallet queue took it; `launch_moved` is a launch
+ * wallet's curve trade whose launchpad no longer holds the token on that curve when the queue
+ * takes it, as after a graduation (decision 0218).
  */
 export const checkReasons = [
   "no_route",
@@ -65,13 +67,20 @@ export const checkReasons = [
   "balance_unread",
   "needs_launch_wallet",
   "launch_unread",
+  "launch_moved",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */
 export type CheckReason = (typeof checkReasons)[number];
 
 /** A check reason of the quote and build step. */
-export type QuoteFailure = Exclude<CheckReason, "simulation_reverted" | "effects_differ">;
+export type QuoteFailure = Exclude<
+  CheckReason,
+  "simulation_reverted" | "effects_differ" | "launch_moved"
+>;
+
+/** Why the wallet queue could not read the contracts of a curve trade's launch (decision 0218). */
+export type LaunchReadFailure = Extract<CheckReason, "launch_unread" | "launch_moved">;
 
 /** A check reason of the simulation step. */
 export type SimulationFailure = Extract<CheckReason, "simulation_reverted" | "effects_differ">;

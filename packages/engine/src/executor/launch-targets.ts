@@ -1,7 +1,8 @@
 import type { AccountRef } from "@binference/chain";
 import { launchWalletOf } from "../install/launch-wallet.js";
-import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
+import type { LaunchReadFailure } from "../intents/intent-reason.js";
+import type { IntentRecord } from "../intents/intent-record.js";
 import type { InstallStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 
@@ -13,10 +14,22 @@ export interface LaunchTargetParts {
   readonly curves?: Pick<VenueHost, "curves">;
 }
 
+/**
+ * What the launch read gave for an intent's steps: `none` for an intent that runs on no launch's
+ * own contracts, the contracts read, or why they could not be (decision 0218): `launch_unread`
+ * when the launchpad's read failed, `launch_moved` when the launch no longer names the curve its
+ * quote named, as after a graduation.
+ */
+export type LaunchTargets =
+  | { readonly kind: "none" }
+  | { readonly kind: "read"; readonly launch: readonly AccountRef[] }
+  | { readonly kind: "failed"; readonly reason: LaunchReadFailure };
+
+const none: LaunchTargets = { kind: "none" };
+
 // The token a buy or a sale trades, and the launchpad whose curve its quote names; none for a
 // trade in the pools or any other request.
-function curveTradeOf(snapshot: IntentSnapshot) {
-  const { record } = snapshot;
+function curveTradeOf(record: IntentRecord) {
   const request = requestDocument.decode(record.request);
   const quote = record.quote === undefined ? undefined : quoteDocument.decode(record.quote);
   const place = quote?.place;
@@ -28,29 +41,33 @@ function curveTradeOf(snapshot: IntentSnapshot) {
 
 /**
  * The contracts of the launch a launch wallet's buy or sale runs on, read again from the
- * launchpad its quote names right before the queue signs (decision 0217): what the signer lets
- * the steps call and approve besides the registry's set. None for another wallet, for a trade in
- * the pools, or when the launchpad's read fails or no longer names the launch, so such a step
- * reaches no launch contract.
+ * launchpad its quote names (decision 0217): what the signer lets the steps call and approve
+ * besides the registry's set. `none` for another wallet, for a trade in the pools and for a
+ * launch with no contracts of its own; a read that fails, or a launchpad that no longer holds the
+ * token on its curve, is the reason the intent's next signature cannot be made (decision 0218).
  */
 export async function launchTargetsOf(
-  snapshot: IntentSnapshot,
+  record: IntentRecord,
   parts: LaunchTargetParts,
   signal: AbortSignal,
-): Promise<readonly AccountRef[]> {
+): Promise<LaunchTargets> {
   const { curves, stores } = parts;
-  const trade = curveTradeOf(snapshot);
+  const trade = curveTradeOf(record);
   if (curves === undefined || stores === undefined || trade === undefined) {
-    return [];
+    return none;
   }
-  const { record } = snapshot;
   const launch = await launchWalletOf(stores.install, record.agentId, { signal });
   if (launch?.id !== record.walletId) {
-    return [];
+    return none;
   }
   const claims = await curves.curves(trade.token, { signal });
-  const claim = claims.ok
-    ? claims.value.find((item) => item.launchpad === trade.launchpad)
-    : undefined;
-  return Object.values(claim?.launch ?? {});
+  if (!claims.ok) {
+    return { kind: "failed", reason: "launch_unread" };
+  }
+  const claim = claims.value.find((item) => item.launchpad === trade.launchpad);
+  if (claim === undefined) {
+    return { kind: "failed", reason: "launch_moved" };
+  }
+  const contracts = Object.values(claim.launch ?? {});
+  return contracts.length === 0 ? none : { kind: "read", launch: contracts };
 }

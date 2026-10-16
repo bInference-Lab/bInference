@@ -60,6 +60,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.notSigned": `${warning} 一笔交易在第一笔链上交易签名前已取消，未发送任何内容。`,
   "notice.confirmationLapsed": `${warning} 一笔交易未发送：它的确认在发出之前已过期。未签名任何内容。`,
   "notice.feeAboveCap": `${warning} 网络费高于你设定的上限，一笔交易一直在等待，它的确认已过期。请在新卡片上再次确认，或取消它。`,
+  "notice.launchUnsent": `${warning} 一笔在发射项目联合曲线上的交易未发送：发射台已不在该联合曲线上持有此代币，例如代币已毕业。未签名任何内容。`,
   "notice.stepUnsent": `${warning} 一笔交易中途停止：前面的步骤已上链，但后面的步骤从未签名。请检查钱包。`,
   "notice.stepDropped": `${warning} 一笔交易长时间未上链，没有完成。没有任何资产变动，钱包已可再次使用。`,
   "notice.stepDroppedPartWay": `${warning} 一笔交易中途停止：前面的步骤已上链，但后面的步骤长时间未上链，没有完成。钱包已可再次使用。请检查钱包。`,

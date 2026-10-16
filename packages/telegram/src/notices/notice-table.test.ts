@@ -61,6 +61,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.notSigned": `${warning} A trade was cancelled before its first transaction was signed. Nothing was sent.`,
   "notice.confirmationLapsed": `${warning} A trade was not sent: its confirmation ran out before it could go out. Nothing was signed.`,
   "notice.feeAboveCap": `${warning} A trade waited because the network fee was above your cap, and its confirmation ran out. Confirm it again on its new card, or cancel it.`,
+  "notice.launchUnsent": `${warning} A trade on a launch's curve was not sent: the launchpad no longer holds the token on that curve, as after its graduation. Nothing was signed.`,
   "notice.stepUnsent": `${warning} A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.`,
   "notice.stepDropped": `${warning} A trade was stuck and did not go through. Nothing moved, and the wallet is free again.`,
   "notice.stepDroppedPartWay": `${warning} A trade stopped part way: an earlier step landed on chain, but a later one was stuck and did not go through. The wallet is free again. Check the wallet.`,

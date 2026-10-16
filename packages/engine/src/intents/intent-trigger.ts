@@ -2,6 +2,7 @@ import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type {
   FillBreach,
+  LaunchReadFailure,
   PolicyRejection,
   QuoteFailure,
   RiskReason,
@@ -32,6 +33,7 @@ export const triggerTypes = [
   "cancel_requested",
   "paper_fill_recorded",
   "paper_holding_short",
+  "launch_read_failed",
   "queue_took",
   "steps_included",
   "step_reverted",
@@ -149,6 +151,11 @@ export interface TriggerFacts {
    * input than its confirmed quote spends.
    */
   readonly paper_holding_short: NoFacts;
+  /**
+   * The wallet queue, taking a launch wallet's curve trade, could not read its launch's contracts:
+   * the read failed, or the launchpad no longer holds the token on that curve (decision 0218).
+   */
+  readonly launch_read_failed: { readonly reason: LaunchReadFailure };
   readonly queue_took: QueueFacts;
   /** Every step's receipt has status 1; for a rescue, every step has its last outcome. */
   readonly steps_included: NoFacts;

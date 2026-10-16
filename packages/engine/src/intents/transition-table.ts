@@ -11,6 +11,7 @@ import {
 import {
   cancelIntent,
   cancelUnsent,
+  failLaunchRead,
   failOnchain,
   failUnsent,
   fillOnPaper,
@@ -105,6 +106,7 @@ export const transitionTable: TransitionTable = {
   cancel_requested: [{ from: statesBeforeSigning, to: "cancelled", guard: cancelIntent }],
   paper_fill_recorded: [{ from: ["confirmed"], to: "paper_filled", guard: fillOnPaper }],
   paper_holding_short: [{ from: ["confirmed"], to: "failed_check", guard: shortOnPaper }],
+  launch_read_failed: [{ from: ["confirmed"], to: "failed_check", guard: failLaunchRead }],
   queue_took: [{ from: ["confirmed"], to: "executing", guard: takeIntoQueue }],
   steps_included: [{ from: ["executing"], to: "included", guard: pass }],
   step_reverted: [{ from: ["executing"], to: "failed_onchain", guard: failOnchain("reverted") }],

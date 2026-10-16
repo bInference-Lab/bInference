@@ -51,6 +51,17 @@ export function shortOnPaper({
   return status.isPaper ? ok({ reason: "nothing_to_sell" }) : err("live_intent");
 }
 
+/**
+ * `confirmed` to `failed_check` when the wallet queue could not read a live curve trade's launch
+ * as it took it (decision 0218): nothing was signed, and the reason is stored.
+ */
+export function failLaunchRead({
+  status,
+  trigger,
+}: GuardInput<"launch_read_failed">): Result<IntentChange, TransitionProblem> {
+  return status.isPaper ? err("paper_intent") : ok({ reason: trigger.reason });
+}
+
 // A tapped intent needs the confirmation of its current card version, unexpired; a fill or an
 // auto-mode intent needs its authorization to still hold.
 function approvalProblem(

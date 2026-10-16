@@ -1,16 +1,18 @@
 import type { TxDraft } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
+import type { LaunchReadFailure } from "../intents/intent-reason.js";
+import { noticePush } from "../pushes/notice-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import { endDropped } from "./end-dropped.js";
 import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
-import { checkForQueue, type SigningTerms } from "./queue-check.js";
-import { type PreparedStep, prepareStep, signAndStore } from "./run-step.js";
+import { checkForQueue, type QueueCheck, type SigningTerms } from "./queue-check.js";
+import { type PreparedStep, prepareStep, type SignStop, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
 import { stuckRulesOf } from "./stuck-rules.js";
-import { termsNow } from "./terms-now.js";
+import { launchTermsNow, termsNow } from "./terms-now.js";
 import type { DroppedStep } from "./watch-dropped.js";
 
 /** Every step of an intent in a block, with the intent moved to `included`. */
@@ -43,6 +45,42 @@ function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefi
   return undefined;
 }
 
+/** The owner's notice of a curve trade whose launch the queue could not read (decision 0218). */
+const launchUnsentNoticeKey = "notice.launchUnsent";
+
+// A launch wallet's curve trade whose launch cannot be read ends before anything signs, with its
+// own reason and notice: the signer is asked only with the launch's contracts in hand.
+async function endUnread(
+  run: ExecutionRun,
+  snapshot: IntentSnapshot,
+  reason: LaunchReadFailure,
+): Promise<undefined> {
+  const ended = await moveIntent(run, snapshot, { type: "launch_read_failed", reason });
+  if (ended === undefined) {
+    return undefined;
+  }
+  const { id, agentId } = ended.record;
+  run.parts.log.warn("executor.launch_unread", { intentId: id, errorCode: reason });
+  const notice = { key: launchUnsentNoticeKey, agent: agentId, intent: id, values: { reason } };
+  run.parts.publish(noticePush(notice));
+  return undefined;
+}
+
+// What signs the intent's steps, once the check found its authorization and, for a launch wallet's
+// curve trade, its launch's contracts; an intent whose launch cannot be read ends here.
+async function termsTaken(
+  run: ExecutionRun,
+  snapshot: IntentSnapshot,
+  check: QueueCheck,
+): Promise<SigningTerms | undefined> {
+  if (check.terms === undefined) {
+    return notTaken(run, snapshot.record.id, "no_authorization");
+  }
+  return check.launchFailure === undefined
+    ? check.terms
+    : endUnread(run, snapshot, check.launchFailure);
+}
+
 // Everything that can refuse runs before the move to `executing`: an intent that stays
 // `confirmed` signed nothing, and its owner can still cancel it. No card shows a fee per gas, so
 // no step pays one above the network fee cap, tapped or not (decision 0102).
@@ -58,8 +96,9 @@ async function takeIn(
   }
   const check = await checkForQueue(snapshot, { parts, chain: plan.chain }, signal);
   const first = await prepareStep(run, slot, { index: 0, draft: plan.steps[0] });
-  if (check.terms === undefined) {
-    return notTaken(run, intent, "no_authorization");
+  const terms = await termsTaken(run, snapshot, check);
+  if (terms === undefined) {
+    return undefined;
   }
   if (!first.ok || first.value.prepared.isAboveFeeCap) {
     const problem = first.ok ? "over_fee_cap" : first.error;
@@ -75,7 +114,7 @@ async function takeIn(
     return undefined;
   }
   parts.log.info("executor.took", { intentId: intent });
-  return { snapshot: executing, terms: check.terms, first: first.value };
+  return { snapshot: executing, terms, first: first.value };
 }
 
 // A step no stuck rule can move leaves the intent `executing`, handed over at this seam.
@@ -127,6 +166,23 @@ async function readyStep(
   return step.index === 0 ? ok(step.taken.first) : prepareStep(run, slot, step);
 }
 
+// The terms read again right before a step signs: what authorizes it now and, past the first
+// step, a launch wallet's launch contracts read again (decision 0218); then the signature, stored.
+async function signStep(
+  run: ExecutionRun,
+  slot: WalletSlot,
+  step: { readonly taken: Taken; readonly index: number; readonly ready: PreparedStep },
+): Promise<Result<TransactionRecord, SignStop | LaunchReadFailure | "authorization_lapsed">> {
+  const { taken, index, ready } = step;
+  const { record } = taken.snapshot;
+  const terms = await termsNow(run, taken.terms, { record, kind: "step" });
+  if (terms === undefined) {
+    return err("authorization_lapsed");
+  }
+  const launched = index === 0 ? ok(terms) : await launchTermsNow(run, terms, record);
+  return launched.ok ? signAndStore(run, slot, { record, terms: launched.value, ready }) : launched;
+}
+
 // Each step in turn: prepare, sign, store, send, watch until a block holds it. A later step is
 // prepared on the state the step before it left, and never sent after a revert.
 async function runFrom(
@@ -149,15 +205,7 @@ async function runFrom(
   if (!ready.ok || ready.value.prepared.isAboveFeeCap) {
     return endStep(run, taken, { index, problem: ready.ok ? "over_fee_cap" : ready.error });
   }
-  const terms = await termsNow(run, taken.terms, { record: snapshot.record, kind: "step" });
-  if (terms === undefined) {
-    return endStep(run, taken, { index, problem: "authorization_lapsed" });
-  }
-  const stored = await signAndStore(run, slot, {
-    record: snapshot.record,
-    terms,
-    ready: ready.value,
-  });
+  const stored = await signStep(run, slot, { taken, index, ready: ready.value });
   if (!stored.ok) {
     return endStep(run, taken, { index, problem: stored.error });
   }
@@ -175,7 +223,8 @@ async function runFrom(
 
 /**
  * The work of one confirmed intent on its wallet's queue (ARCHITECTURE.md section 7, step 8): the
- * `queue_took` check, then each step signed, stored before any send, sent to the relays and
+ * `queue_took` check, which ends a launch wallet's curve trade whose launch it cannot read with
+ * `launch_unread` or `launch_moved` and `notice.launchUnsent` (decision 0218), then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
  * so the slot frees the wallet before finality, a retry when the first step's fee per gas is
  * above the network fee cap or no node answered as it was prepared, which leaves the intent

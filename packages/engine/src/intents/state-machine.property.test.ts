@@ -140,6 +140,7 @@ const builders: Builders = {
   }),
   paper_fill_recorded: () => ({ type: "paper_fill_recorded" }),
   paper_holding_short: () => ({ type: "paper_holding_short" }),
+  launch_read_failed: () => ({ type: "launch_read_failed", reason: "launch_unread" }),
   queue_took: (facts, at) => ({ type: "queue_took", ...queueFacts(facts, at) }),
   steps_included: () => ({ type: "steps_included" }),
   step_reverted: () => ({ type: "step_reverted" }),
@@ -151,10 +152,7 @@ const builders: Builders = {
   sent_step_found: () => ({ type: "sent_step_found" }),
   nonce_taken: () => ({ type: "nonce_taken" }),
   step_unsent: (facts) => ({ type: "step_unsent", hasSignedStep: facts.hasSignedStep }),
-  fills_reconciled: (facts) => ({
-    type: "fills_reconciled",
-    isDeliveryReported: facts.isDeliveryReported,
-  }),
+  fills_reconciled: ({ isDeliveryReported }) => ({ type: "fills_reconciled", isDeliveryReported }),
   unfreeze_written: () => ({ type: "unfreeze_written" }),
   order_written: () => ({ type: "order_written" }),
 };

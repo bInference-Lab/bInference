@@ -174,6 +174,7 @@ export const noticeTable: Readonly<Record<string, Notice>> = {
   "notice.notSigned": { key: "notice.notSigned", values: {} },
   "notice.confirmationLapsed": { key: "notice.confirmationLapsed", values: {} },
   "notice.feeAboveCap": { key: "notice.feeAboveCap", values: {} },
+  "notice.launchUnsent": { key: "notice.launchUnsent", values: { reason: "launch_moved" } },
   "notice.stepUnsent": { key: "notice.stepUnsent", values: {} },
   "notice.stepDropped": { key: "notice.stepDropped", values: {} },
   "notice.stepDroppedPartWay": { key: "notice.stepDroppedPartWay", values: {} },

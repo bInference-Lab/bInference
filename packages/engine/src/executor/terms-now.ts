@@ -1,6 +1,9 @@
 import { checkAutoModeGrant } from "@binference/chain";
+import { err, ok, type Result } from "@binference/core";
+import type { LaunchReadFailure } from "../intents/intent-reason.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { ExecutionRun } from "./executor-run.js";
+import { launchTargetsOf } from "./launch-targets.js";
 import type { SigningTerms } from "./queue-check.js";
 import { isRescueAddressInEffect } from "./rescue-queue-check.js";
 
@@ -65,4 +68,28 @@ export async function termsNow(
     return run.parts.clock.now() < authorization.expiresAtMs ? terms : undefined;
   }
   return autoTermsNow(run, terms, signing.record);
+}
+
+/**
+ * The terms of a launch wallet's curve trade with its launch's contracts read again, right before
+ * a later step or a speed-up signs (decision 0218): the signer then checks the contracts the
+ * launchpad names now. Terms that name no launch contract come back as they are. A read that
+ * fails is `launch_unread`, and a launchpad that no longer holds the token on the curve, or names
+ * no contract of its launch any more, `launch_moved`; nothing signs then.
+ */
+export async function launchTermsNow(
+  run: ExecutionRun,
+  terms: SigningTerms,
+  record: IntentRecord,
+): Promise<Result<SigningTerms, LaunchReadFailure>> {
+  if (terms.allowed.launch === undefined) {
+    return ok(terms);
+  }
+  const read = await launchTargetsOf(record, run.parts, run.signal);
+  if (read.kind === "failed") {
+    return err(read.reason);
+  }
+  return read.kind === "read"
+    ? ok({ ...terms, allowed: { ...terms.allowed, launch: read.launch } })
+    : err("launch_moved");
 }

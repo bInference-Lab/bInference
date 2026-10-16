@@ -1,4 +1,4 @@
-import { accountRefSchema, assetRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, type Venue } from "@binference/chain";
 import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
 import { createIdSource, type Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
@@ -28,6 +28,8 @@ const launchCurve = accountRefSchema.parse("fake:1:0x000000c1");
 const token = assetRefSchema.parse("fake:1/token:0x0000000f");
 const launchWallet = fixtureId("wal", 218);
 const venues = [createFakeVenue(), createFakeLaunchpad({ onCurve: [token], launchCurve })];
+// The same launchpad once the token graduated: it holds nothing on its curve.
+const graduated = [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })];
 
 // A live agent with its launch wallet, whose launchpad holds the token on a curve of its own.
 async function engine(): Promise<TestEngine> {
@@ -54,9 +56,13 @@ async function engine(): Promise<TestEngine> {
 // with the launchpads' curve reads unless they are left out.
 async function targetsOf(
   test: TestEngine,
-  options: { readonly wallet?: Id<"wal">; readonly withoutCurves?: true } = {},
+  options: {
+    readonly wallet?: Id<"wal">;
+    readonly withoutCurves?: true;
+    readonly readWith?: readonly Venue[];
+  } = {},
 ) {
-  const { wallet, withoutCurves } = options;
+  const { wallet, withoutCurves, readWith = venues } = options;
   const buy = {
     kind: "buy",
     agent: testAgent,
@@ -70,22 +76,37 @@ async function targetsOf(
   const stored = createStoredIntents({ ...test.stores, ids, publish: () => undefined });
   const snapshot = await stored.snapshot(view.intent, live);
   const curves = createVenueHost({
-    venues,
+    venues: readWith,
     chains: testChains(["fake-curve"]),
     clock: test.clock,
     callTimeoutMs: 5_000,
   });
   const parts = withoutCurves === true ? { stores: test.stores } : { stores: test.stores, curves };
-  return snapshot === undefined ? "no intent" : launchTargetsOf(snapshot, parts, live.signal);
+  return snapshot === undefined
+    ? "no intent"
+    : launchTargetsOf(snapshot.record, parts, live.signal);
 }
+
+const none = { kind: "none" };
 
 describe("the launch contracts a step may reach", () => {
   it("names the launch's curve for the launch wallet's buy on it, read again", async () => {
-    await expect(targetsOf(await engine())).resolves.toStrictEqual([launchCurve]);
+    await expect(targetsOf(await engine())).resolves.toStrictEqual({
+      kind: "read",
+      launch: [launchCurve],
+    });
   });
 
   it("names none for another wallet's buy on the curve, or without the launchpads' reads", async () => {
-    await expect(targetsOf(await engine(), { wallet: testWallet })).resolves.toStrictEqual([]);
-    await expect(targetsOf(await engine(), { withoutCurves: true })).resolves.toStrictEqual([]);
+    await expect(targetsOf(await engine(), { wallet: testWallet })).resolves.toStrictEqual(none);
+    await expect(targetsOf(await engine(), { withoutCurves: true })).resolves.toStrictEqual(none);
+  });
+
+  it("is launch_moved once the token left the curve, as after a graduation", async () => {
+    const test = await engine();
+
+    const read = await targetsOf(test, { readWith: graduated });
+
+    expect(read).toStrictEqual({ kind: "failed", reason: "launch_moved" });
   });
 });
