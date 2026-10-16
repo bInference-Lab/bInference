@@ -19,7 +19,12 @@ function cachedOf(options: { readonly isDown?: boolean } = {}) {
     reports: new Map([[unknownToken, report]]),
     ...options,
   });
-  return { clock, store, source, cached: cachedRiskSource(source, { store, clock, ttlMs }) };
+  return {
+    clock,
+    store,
+    source,
+    cached: cachedRiskSource(source, { store, clock, ttlMs: () => ttlMs }),
+  };
 }
 
 describe("cached risk source", () => {
@@ -49,6 +54,23 @@ describe("cached risk source", () => {
     });
     expect(source.checks()).toBe(1);
     await clock.advance(1);
+    await cached.check(unknownToken, live);
+    expect(source.checks()).toBe(2);
+  });
+
+  it("judges each check by the time to live as it stands then", async () => {
+    const clock = createManualClock(1_800_000_000_000);
+    const store = createMemoryRiskCacheStore(["first"]);
+    const source = createFakeRiskSource({
+      id: "first",
+      reports: new Map([[unknownToken, report]]),
+    });
+    const held = { ttlMs };
+    const cached = cachedRiskSource(source, { store, clock, ttlMs: () => held.ttlMs });
+    await cached.check(unknownToken, live);
+    await clock.advance(60_000);
+    await cached.check(unknownToken, live);
+    held.ttlMs = 60_000;
     await cached.check(unknownToken, live);
     expect(source.checks()).toBe(2);
   });

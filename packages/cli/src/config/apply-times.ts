@@ -56,6 +56,8 @@ const keysReadOnUse: readonly string[] = [
   "chains.relays",
   // Each KyberSwap call names the id config holds when it starts.
   "venues.kyberClientId",
+  // Each risk check judges a cached report by the time to live as it stands then.
+  "risk",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the
@@ -77,7 +79,6 @@ const keysNoPartReads: readonly string[] = [
 // until its part reads the config cell on each use.
 const keysCopiedAtStart: readonly string[] = [
   "engine.extraOrigins",
-  "risk",
   "logging.keepDays",
   "logging.maxFileMb",
 ];

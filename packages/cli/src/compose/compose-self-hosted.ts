@@ -271,7 +271,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       simulator: parts.simulators.simulator,
       risk: {
         cache: stores.riskCache,
-        cacheTtlMs: config.risk.cacheTtlSec * 1_000,
+        cacheTtlMs: () => opened.settings.current().risk.cacheTtlSec * 1_000,
         simulator: parts.simulators.txSimulator,
       },
       wallets: parts.wallets,

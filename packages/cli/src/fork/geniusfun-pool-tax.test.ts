@@ -55,7 +55,7 @@ function benchOf(fork: Fork) {
   const check = createRiskCheck({
     sources: [{ source, isRequired: true }],
     cache: createMemoryRiskCacheStore(["goplus"]),
-    cacheTtlMs: 600_000,
+    cacheTtlMs: () => 600_000,
     sourceTimeoutMs: 15_000,
     host,
     simulator,

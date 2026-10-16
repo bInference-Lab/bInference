@@ -6,8 +6,11 @@ import type { RiskCacheStore } from "../ports.js";
 export interface RiskSourceCache {
   readonly store: RiskCacheStore;
   readonly clock: Clock;
-  /** How long a report holds: config's `risk.cacheTtlSec`, in milliseconds. */
-  readonly ttlMs: number;
+  /**
+   * How long a report holds: config's `risk.cacheTtlSec`, in milliseconds, read at each check so a
+   * changed value judges the next one (decision 0230).
+   */
+  readonly ttlMs: () => number;
 }
 
 // A report stamped in the future, after the clock stepped back, is never fresh.
@@ -29,7 +32,7 @@ export function cachedRiskSource(source: TokenRiskSource, cache: RiskSourceCache
     async check(asset, options) {
       const key = { asset, source: source.id };
       const cached = await store.read(key, options);
-      if (cached !== undefined && isFresh(clock.now() - cached.fetchedAtMs, ttlMs)) {
+      if (cached !== undefined && isFresh(clock.now() - cached.fetchedAtMs, ttlMs())) {
         return ok(cached.report);
       }
       const answer = await source.check(asset, options);

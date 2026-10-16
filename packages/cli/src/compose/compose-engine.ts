@@ -67,7 +67,7 @@ export type EngineParts = Pick<
 interface RiskParts {
   readonly cache: RiskCacheStore;
   /** How long a source's report holds: config's `risk.cacheTtlSec`, in milliseconds. */
-  readonly cacheTtlMs: number;
+  readonly cacheTtlMs: () => number;
   /** Runs the round trip's legs, and a rescue's sends, unsent on the chain's latest state. */
   readonly simulator: TxSimulator;
 }

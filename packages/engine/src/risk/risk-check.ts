@@ -24,9 +24,9 @@ export interface RiskSourceUse {
 /** What the risk check runs on. */
 export interface RiskCheckOptions {
   readonly sources: readonly RiskSourceUse[];
-  /** Keeps each source's report for `cacheTtlMs`. */
+  /** Keeps each source's report for `cacheTtlMs`, read at each check. */
   readonly cache: RiskCacheStore;
-  readonly cacheTtlMs: number;
+  readonly cacheTtlMs: () => number;
   /** How long one source may take to answer before it counts as down. */
   readonly sourceTimeoutMs: number;
   /** Builds the round trip's legs on the trade's own venue. */

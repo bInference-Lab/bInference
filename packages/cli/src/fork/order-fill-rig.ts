@@ -103,7 +103,7 @@ function riskOf(
       },
     ],
     cache: createMemoryRiskCacheStore(["goplus"]),
-    cacheTtlMs: 600_000,
+    cacheTtlMs: () => 600_000,
     sourceTimeoutMs: 15_000,
     host: parts.host,
     simulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),

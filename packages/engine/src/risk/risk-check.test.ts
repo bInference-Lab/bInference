@@ -51,7 +51,7 @@ function benchOf(bench: Bench = {}) {
   const check = createRiskCheck({
     sources: bench.sources ?? [{ source: required, isRequired: true }],
     cache: createMemoryRiskCacheStore(["first", "second"]),
-    cacheTtlMs: 600_000,
+    cacheTtlMs: () => 600_000,
     sourceTimeoutMs: 5_000,
     host,
     simulator,
@@ -216,7 +216,7 @@ describe("risk check", () => {
     const failing = createRiskCheck({
       sources: [{ source: bench.required, isRequired: true }],
       cache: createMemoryRiskCacheStore(["first"]),
-      cacheTtlMs: 600_000,
+      cacheTtlMs: () => 600_000,
       sourceTimeoutMs: 5_000,
       host: createVenueHost({
         venues: [createFakeVenue()],

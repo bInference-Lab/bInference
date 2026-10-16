@@ -206,7 +206,7 @@ export interface Skeleton extends ComposedSkeleton, LoopbackServing {}
 // closed.
 const skeletonRisk: ComposeEngineOptions["risk"] = {
   cache: createMemoryRiskCacheStore(["goplus", "honeypot"]),
-  cacheTtlMs: 600_000,
+  cacheTtlMs: () => 600_000,
   simulator: createFakeTxSimulator(new Map()),
 };
 

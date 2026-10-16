@@ -66,7 +66,7 @@ function riskOver(venues: readonly Venue[]) {
   return createRiskCheck({
     sources: [{ source, isRequired: true }],
     cache: createMemoryRiskCacheStore(["first"]),
-    cacheTtlMs: 600_000,
+    cacheTtlMs: () => 600_000,
     sourceTimeoutMs: 5_000,
     host,
     simulator: createTokenModelSimulator({ buyTaxBps: 300 }),

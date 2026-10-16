@@ -60,7 +60,7 @@ function benchOf(fork: Fork, sources: readonly TokenRiskSource[]): Bench {
   const check = createRiskCheck({
     sources: sources.map((source, index) => ({ source, isRequired: index === 0 })),
     cache: createMemoryRiskCacheStore(["goplus", "honeypot"]),
-    cacheTtlMs: 600_000,
+    cacheTtlMs: () => 600_000,
     sourceTimeoutMs: 15_000,
     host,
     simulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),

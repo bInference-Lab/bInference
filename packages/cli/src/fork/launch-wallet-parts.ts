@@ -227,7 +227,7 @@ function riskOn(parts: RigParts) {
   return createRiskCheck({
     sources: [{ source, isRequired: true }],
     cache: createMemoryRiskCacheStore(["goplus"]),
-    cacheTtlMs: 600_000,
+    cacheTtlMs: () => 600_000,
     sourceTimeoutMs: 15_000,
     host,
     simulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),

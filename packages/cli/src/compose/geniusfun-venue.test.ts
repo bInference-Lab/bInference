@@ -103,7 +103,7 @@ describe("the geniusfun launchpad in the self-hosted venue host", () => {
         },
       ],
       cache: createMemoryRiskCacheStore(["goplus"]),
-      cacheTtlMs: 600_000,
+      cacheTtlMs: () => 600_000,
       sourceTimeoutMs: 5_000,
       host,
       simulator: unreachable,

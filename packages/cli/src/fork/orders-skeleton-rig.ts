@@ -145,7 +145,7 @@ export async function startOrdersMachine(
     chains,
     venues: [venue],
     simulator: createSimulationCheck({ simulator, chains, clock }),
-    risk: { cache: createMemoryRiskCacheStore(["goplus"]), cacheTtlMs: 600_000, simulator },
+    risk: { cache: createMemoryRiskCacheStore(["goplus"]), cacheTtlMs: () => 600_000, simulator },
     wallets: createFakeWalletFacts(new Map([[skeletonAgent, [skeletonWallet]]]), walletFacts),
     executor: createFakeExecutor(),
     positions: createMemoryPositionStore(),
