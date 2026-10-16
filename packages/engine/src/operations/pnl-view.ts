@@ -2,6 +2,7 @@ import type { AssetRef, ChainRegistry } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { ResultOf } from "@binference/protocol";
 import { assetInfosOf } from "../money-path/asset-infos.js";
+import { readAllRows } from "../pnl/read-all-rows.js";
 import type { PositionStore } from "../ports.js";
 import type { Positions, ValuedPosition } from "../positions/create-positions.js";
 import type { ExecutionRecord } from "../positions/execution-record.js";
@@ -34,23 +35,13 @@ interface ModePnl {
   readonly unrealizedUsdMicros?: bigint;
 }
 
-const pageLimit = 1_000;
-
-// Every execution of one wallet in one mode in the range, page after page.
+// Every execution of one wallet in one mode in the range.
 async function executionsOf(
   store: PositionStore,
   query: { readonly walletId: Id<"wal">; readonly isPaper: boolean } & Omit<PnlQuery, "wallets">,
-  page: { readonly after: number; readonly signal: AbortSignal },
+  call: Read,
 ): Promise<readonly ExecutionRecord[]> {
-  const { walletId, isPaper, fromMs, toMs } = query;
-  const rows = await store.executions(
-    { walletId, isPaper, fromMs, toMs, after: page.after, limit: pageLimit },
-    { signal: page.signal },
-  );
-  const last = rows.at(-1);
-  return rows.length < pageLimit || last === undefined
-    ? rows
-    : [...rows, ...(await executionsOf(store, query, { ...page, after: last.id }))];
+  return readAllRows(async (after, limit) => store.executions({ ...query, after, limit }, call));
 }
 
 const add = (total: bigint | undefined, part: bigint | undefined): bigint | undefined =>
@@ -100,7 +91,7 @@ async function modePnlOf(
   const [executions, valued] = await Promise.all([
     Promise.all(
       query.wallets.map(async (walletId) =>
-        executionsOf(parts.store, { walletId, isPaper, fromMs, toMs }, { after: 0, ...call }),
+        executionsOf(parts.store, { walletId, isPaper, fromMs, toMs }, call),
       ),
     ),
     Promise.all(
