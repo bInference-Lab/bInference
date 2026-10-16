@@ -8,9 +8,11 @@ import type { ClientKind, PushFrame } from "@binference/protocol";
 import type { RuntimeModelPrice } from "@binference/runtime";
 import {
   fixtureSettings,
+  type InProcessRuntime,
   type ScriptedReply,
   startInProcessRuntime,
 } from "@binference/runtime/testing";
+import { createTelegramImages } from "@binference/telegram";
 import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { Api } from "grammy";
 import {
@@ -66,11 +68,13 @@ export async function ownerBot(): Promise<{
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live());
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
+  const botToken = createSecret(fakeBotToken);
   const telegram = {
     api,
     owners,
     copies: createMemoryCardCopyStore(),
-    botToken: createSecret(fakeBotToken),
+    botToken,
+    images: createTelegramImages({ api, download: botApi.download, token: botToken }),
   };
   return { botApi, telegram };
 }
@@ -85,6 +89,25 @@ export function ownerText(text: string, updateId = 1): JsonValue {
       chat: { id: ownerId, type: "private" },
       from: { id: ownerId, is_bot: false, first_name: "Owner" },
       text,
+    },
+  };
+}
+
+/** A photo the owner sends in their private chat, with a caption, as Telegram delivers it. */
+export function ownerPhoto(
+  photo: { readonly fileId: string; readonly caption: string; readonly sizeBytes?: number },
+  updateId = 1,
+): JsonValue {
+  const size = photo.sizeBytes === undefined ? {} : { file_size: photo.sizeBytes };
+  return {
+    update_id: updateId,
+    message: {
+      message_id: 6 + updateId,
+      date: 1_760_000_000,
+      chat: { id: ownerId, type: "private" },
+      from: { id: ownerId, is_bot: false, first_name: "Owner" },
+      caption: photo.caption,
+      photo: [{ file_id: photo.fileId, file_unique_id: "u1", width: 800, height: 600, ...size }],
     },
   };
 }
@@ -112,6 +135,10 @@ export interface RuntimeEngine {
 export interface RuntimeScript {
   readonly replies: readonly ScriptedReply[];
   readonly price?: RuntimeModelPrice;
+  /** The model takes images as input. */
+  readonly readsImages?: boolean;
+  /** The vision model's answers; no vision model when absent. */
+  readonly visionReplies?: readonly ScriptedReply[];
 }
 
 /**
@@ -120,17 +147,27 @@ export interface RuntimeScript {
  */
 export function superviseRuntime(
   engine: RuntimeEngine,
-  parts: { readonly turns: RunningTurns; readonly script: RuntimeScript },
+  parts: {
+    readonly turns: RunningTurns;
+    readonly script: RuntimeScript;
+    /** Each runtime the supervisor started, so a test reads what its models were asked. */
+    readonly started?: InProcessRuntime[];
+  },
 ): RuntimeSupervisor {
   const { access } = engine.stores;
-  const { replies, price } = parts.script;
+  const { replies, price, readsImages, visionReplies } = parts.script;
   const supervisor = createRuntimeSupervisor({
-    start: async () =>
-      startInProcessRuntime({
+    start: async () => {
+      const runtime = startInProcessRuntime({
         replies,
         ...(price === undefined ? {} : { price }),
+        ...(readsImages === undefined ? {} : { readsImages }),
+        ...(visionReplies === undefined ? {} : { visionReplies }),
         signIn: async (start) => engine.connect(start.token, "runtime"),
-      }),
+      });
+      parts.started?.push(runtime);
+      return Promise.resolve(runtime);
+    },
     makeToken: async (signal) =>
       makeRuntimeToken({ access, clock: engine.clock, random: createSeededRandom(21) }, signal),
     startLine: {

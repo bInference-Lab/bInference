@@ -31,6 +31,7 @@ import {
   createScriptedTransport,
   createTestChain,
   type ScriptedReply,
+  type ScriptedTransport,
 } from "./scripted-transport.js";
 
 /**
@@ -53,6 +54,8 @@ export interface InProcessRuntime {
   /** The engine's side of chat it signed in to, and the agent database it keeps. */
   readonly engine: MemoryEngineChat;
   readonly database: MemoryAgentDatabase;
+  /** The model's transport and the vision model's, with every request they got. */
+  readonly transports: { readonly main: ScriptedTransport; readonly vision?: ScriptedTransport };
 }
 
 /** How an in-process runtime differs from one that signs in at once. */
@@ -78,6 +81,10 @@ export interface InProcessRuntimeOptions {
   readonly replies?: readonly ScriptedReply[];
   /** What each of the model's calls costs, by its tokens; $0 when absent. */
   readonly price?: RuntimeModelPrice;
+  /** The model, `test/model`, takes images as input (decision 0227). */
+  readonly readsImages?: boolean;
+  /** The vision model's answers, `test/eyes`; no vision model when absent. */
+  readonly visionReplies?: readonly ScriptedReply[];
   readonly tools?: readonly TestTool[];
   /** A manual clock by default. */
   readonly clock?: Clock;
@@ -150,24 +157,44 @@ function exitOf(): {
   return { exited, exit: (code) => holder.exit(code) };
 }
 
+// The model, `test/model`, that answers the options' replies, and the vision model, `test/eyes`,
+// when the options give its answers.
+function testModels(options: InProcessRuntimeOptions, clock: Clock) {
+  const transport = createScriptedTransport(options.replies ?? []);
+  const price = options.price === undefined ? {} : { price: options.price };
+  const reads = options.readsImages === true ? { readsImages: true as const } : {};
+  const models = createTestChain([{ name: "test/model", transport, ...price, ...reads }], {
+    clock,
+  });
+  if (options.visionReplies === undefined) {
+    return { models, transports: { main: transport } };
+  }
+  const eyes = createScriptedTransport(options.visionReplies);
+  const model = { name: "test/eyes", transport: eyes, readsImages: true as const };
+  const vision = createTestChain([model], { clock });
+  return { models, vision, transports: { main: transport, vision: eyes } };
+}
+
 // The agent database, the model and the tools of the runtime's chat, and its clock.
 function chatHost(
   options: InProcessRuntimeOptions,
   database: MemoryAgentDatabase,
   setups: { readonly agent: string; readonly settings: RuntimeSettings }[],
-): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "clock"> {
-  const transport = createScriptedTransport(options.replies ?? []);
+): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "clock"> & {
+  readonly transports: InProcessRuntime["transports"];
+} {
   const tools = testToolBox(options.tools ?? []);
   const isLinked = options.signIn !== undefined;
   const clock = options.clock ?? createManualClock(10_000);
-  const price = options.price === undefined ? {} : { price: options.price };
-  const models = createTestChain([{ name: "test/model", transport, ...price }], { clock });
+  const { models, vision, transports } = testModels(options, clock);
   return {
+    transports,
     openAgentDatabase: async () => memoryDatabase(database),
     turnSetup: (agent, settings, client) => {
       setups.push({ agent, settings });
       return {
         models,
+        ...(vision === undefined ? {} : { vision }),
         tools: isLinked ? agentToolBox({ agent, client }) : tools,
         instructions: "You are a test agent.",
         limits: turnLimits,
@@ -175,6 +202,19 @@ function chatHost(
     },
     clock,
   };
+}
+
+// The exit code once the runtime's loop ends, 0 after a stop; its output ends with it.
+function settleExit(
+  running: ReturnType<typeof runRuntime>,
+  killed: ReturnType<typeof exitOf>,
+  output: { readonly end: () => void },
+): void {
+  void running.then(
+    (exit) => killed.exit(exit === "stopped" ? 0 : 1),
+    () => killed.exit(1),
+  );
+  void killed.exited.then(() => output.end());
 }
 
 /** Starts the runtime's main loop in this process, on channels in place of pipes. */
@@ -186,6 +226,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
   const [starts, setups]: [StartLine[], { agent: string; settings: RuntimeSettings }[]] = [[], []];
   const state = { hasStarted: false };
   const killed = exitOf();
+  const { transports, ...host } = chatHost(options, database, setups);
   const running = runRuntime({
     input,
     write: async (line) => output.push(`${line}\n`),
@@ -193,7 +234,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
       starts.push(start);
       return signIn({ ...options, engine }, start, signal);
     },
-    ...chatHost(options, database, setups),
+    ...host,
     everyTenSeconds: (onTick, signal) => {
       timer.onTick = onTick;
       signal.addEventListener("abort", () => (timer.onTick = async () => Promise.resolve()), {
@@ -202,11 +243,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
     },
     version: "test",
   });
-  void running.then(
-    (exit) => killed.exit(exit === "stopped" ? 0 : 1),
-    () => killed.exit(1),
-  );
-  void killed.exited.then(() => output.end());
+  settleExit(running, killed, output);
   return {
     write: async (text) => {
       if (options.isStuck !== true || !state.hasStarted) {
@@ -226,5 +263,6 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
     database,
     starts,
     setups,
+    transports,
   };
 }
