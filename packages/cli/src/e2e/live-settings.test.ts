@@ -10,6 +10,7 @@ import {
 import type { TempFolder } from "@binference/platform/testing";
 import { startInProcessRuntime } from "@binference/runtime/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { WebSocket } from "ws";
 import { z } from "zod";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import { isObject } from "../config/shown-config.js";
@@ -65,6 +66,22 @@ async function setUpWithOkx(): Promise<InitMachine> {
     throw new Error(`binference init failed: ${init.stderr}`);
   }
   return machine;
+}
+
+// The code of the first frame the engine answers a socket from `origin` with: `auth.origin` when
+// it turns the origin away, another refusal once it reads the empty frame the socket sends.
+async function firstAnswerCode(port: number, origin: string): Promise<string> {
+  const socket = new WebSocket(`ws://127.0.0.1:${String(port)}/ws`, { origin });
+  const first = new Promise<string>((resolve, reject) => {
+    socket.once("message", (data: Buffer) => resolve(data.toString("utf8")));
+    socket.once("error", reject);
+  });
+  socket.once("open", () => socket.send("{}"));
+  try {
+    return z.object({ code: z.string() }).parse(JSON.parse(await first)).code;
+  } finally {
+    socket.terminate();
+  }
 }
 
 /** Every line the engine wrote to the agent runtime, which runs in this process. */
@@ -254,7 +271,7 @@ const bsc = "eip155:56";
 const rpcUrls = (url: string) => ({ chains: { rpc: { [bsc]: { urls: [url] } } } });
 
 describe("live settings in a running engine", () => {
-  const running = {} as { machine: InitMachine; client: ProtocolClient };
+  const running = {} as { machine: InitMachine; client: ProtocolClient; port: number };
   const runtime = recordedRuntime();
   const world = recordedWorld();
   // Calls an operation, then answers the hosts the engine asked while it ran.
@@ -301,11 +318,12 @@ describe("live settings in a running engine", () => {
   beforeAll(async () => {
     const machine = await setUpWithOkx();
     world.held.world = machine.world;
-    await engines.start(machine, {
+    const started = await engines.start(machine, {
       env: { ...secretEnv(machine), ...env },
       parts: { startRuntime: runtime.startRuntime, http: world.http },
     });
     running.machine = machine;
+    running.port = z.object({ http: z.object({ port: z.number() }) }).parse(started).http.port;
     running.client = await connectClient(machine);
   }, 60_000);
 
@@ -366,6 +384,15 @@ describe("live settings in a running engine", () => {
     const hosts = (await requestsOfASwap()).map((request) => new URL(request.url).host);
     expect(hosts).not.toContain("web3.okx.com");
     expect(hosts).toContain("aggregator-api.kyberswap.com");
+  });
+
+  it("lets the next socket from a changed extra origin in, and turns a removed one away", async () => {
+    const origin = "https://console.example.org";
+    await expect(firstAnswerCode(running.port, origin)).resolves.toBe("auth.origin");
+    await expect(change({ engine: { extraOrigins: [origin] } })).resolves.toBe(false);
+    await expect(firstAnswerCode(running.port, origin)).resolves.not.toBe("auth.origin");
+    await expect(change({ engine: { extraOrigins: [] } })).resolves.toBe(false);
+    await expect(firstAnswerCode(running.port, origin)).resolves.toBe("auth.origin");
   });
 
   it("reads the chain through changed rpc urls at the next request", async () => {

@@ -59,6 +59,8 @@ const keysReadOnUse: readonly string[] = [
   "venues.kyberClientId",
   // Each risk check judges a cached report by the time to live as it stands then.
   "risk",
+  // Each new WebSocket and pairing meets the origins as they stand; an open socket stays.
+  "engine.extraOrigins",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the
@@ -75,10 +77,6 @@ const keysNoPartReads: readonly string[] = [
   "chats.keepDays",
   "plugins",
 ];
-
-// The keys spec 2 marks live whose parts still copy them at start: a change waits for a restart
-// until its part reads the config cell on each use.
-const keysCopiedAtStart: readonly string[] = ["engine.extraOrigins"];
 
 type Judge = (change: KeyChange, started: BinferenceConfig) => ApplyTime;
 
@@ -113,7 +111,6 @@ const keysBoundByStart: readonly (readonly [string, Judge])[] = [
 // The table, every entry with its judge; the longest entry that covers a key decides.
 const entries: readonly (readonly [string, Judge])[] = [
   ...restartOnlyKeys.map((key) => [key, restart] as const),
-  ...keysCopiedAtStart.map((key) => [key, restart] as const),
   ...keysReadOnUse.map((key) => [key, now] as const),
   ...keysNoPartReads.map((key) => [key, now] as const),
   ...keysBoundByStart,

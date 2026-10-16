@@ -37,8 +37,11 @@ export interface HttpListenOptions {
   readonly host: string;
   /** The port; 0 picks a free one, as tests do. */
   readonly port: number;
-  /** Browser origins allowed besides the two loopback ones (config `engine.extraOrigins`). */
-  readonly extraOrigins?: readonly string[];
+  /**
+   * Browser origins allowed besides the two loopback ones (config `engine.extraOrigins`), read at
+   * each WebSocket and each pairing, so a changed list judges the next one.
+   */
+  readonly extraOrigins?: () => readonly string[];
   /**
    * The HTTPS origin a tunnel publishes the listener at (config `remote.publicUrl`): it opens
    * `/ws`, the console's files and a Mini App's uploads; `POST /pair` and `GET /health` answer 404
@@ -340,7 +343,7 @@ export function createProtocolServer(options: ProtocolServerOptions): ProtocolSe
       }
       checkBind({ host: http.host, hasAuth: options.auth !== undefined });
       const address = await listen(listeners.http, http, signal);
-      const extraOrigins = http.extraOrigins ?? [];
+      const extraOrigins = http.extraOrigins ?? (() => []);
       const publicOrigin =
         http.publicOrigin === undefined ? {} : { publicOrigin: http.publicOrigin };
       state.origins.set(createOriginRules({ port: address.port, extraOrigins, ...publicOrigin }));

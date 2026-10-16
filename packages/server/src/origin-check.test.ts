@@ -4,7 +4,7 @@ import { createOriginRules } from "./origin-check.js";
 describe("createOriginRules", () => {
   const rules = createOriginRules({
     port: 7456,
-    extraOrigins: ["https://box.tail1234.ts.net", "not a url"],
+    extraOrigins: () => ["https://box.tail1234.ts.net", "not a url"],
     publicOrigin: "https://owner.example.ts.net",
   });
 
@@ -56,8 +56,20 @@ describe("createOriginRules", () => {
     expect(rules.isPublished(names)).toBe(true);
   });
 
+  it("meets each check with the extra origins as they stand then", () => {
+    const held = { extra: ["https://box.tail1234.ts.net"] };
+    const changing = createOriginRules({ port: 7456, extraOrigins: () => held.extra });
+    const before = changing.isPairingOrigin("https://box.tail1234.ts.net");
+    held.extra = ["https://other.tail1234.ts.net"];
+    expect([
+      before,
+      changing.isPairingOrigin("https://box.tail1234.ts.net"),
+      changing.isSocketOrigin("https://other.tail1234.ts.net"),
+    ]).toStrictEqual([true, false, true]);
+  });
+
   it("takes a loopback request as local, and nothing as published without a public origin", () => {
-    const local = createOriginRules({ port: 7456, extraOrigins: [] });
+    const local = createOriginRules({ port: 7456, extraOrigins: () => [] });
     expect([
       rules.isPublished({ host: "127.0.0.1:7456", origin: "http://127.0.0.1:7456" }),
       local.isPublished({ host: "owner.example.ts.net" }),

@@ -252,7 +252,7 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
 // The engine and its protocol server over the wired parts.
 function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { host } = opening;
-  const { config, log, stores } = opened;
+  const { log, stores } = opened;
   const { parts, custody, sending, locked } = wiring;
   // `telegram.topicsPerAgent` is read for each notice, so a change in config.json5 applies to the next.
   const topicsOn = () => opened.settings.current().telegram.topicsPerAgent;
@@ -277,7 +277,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       wallets: parts.wallets,
       version: host.version,
       owner: () => opened.settings.current().owner,
-      ...publishedParts(config, bot),
+      ...publishedParts(opened.settings, bot),
       ...(opened.consoleFiles === undefined ? {} : { consoleFiles: opened.consoleFiles }),
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),

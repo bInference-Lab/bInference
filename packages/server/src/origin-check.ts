@@ -2,8 +2,11 @@
 export interface OriginCheckOptions {
   /** The port the listener bound. */
   readonly port: number;
-  /** Origins allowed besides the two loopback ones, such as the Tailscale serve origin. */
-  readonly extraOrigins: readonly string[];
+  /**
+   * Origins allowed besides the two loopback ones, such as the Tailscale serve origin, read at each
+   * check.
+   */
+  readonly extraOrigins: () => readonly string[];
   /**
    * The HTTPS origin a tunnel publishes the listener at (`remote.publicUrl`): it may open `/ws`,
    * the console's files and a Mini App's uploads, never `POST /pair` or `GET /health`.
@@ -58,9 +61,9 @@ function hostNameOf(text: string | undefined): string | undefined {
   return URL.canParse(withScheme) ? new URL(withScheme).hostname : undefined;
 }
 
-function originSet(origins: readonly string[]): (origin: string | undefined) => boolean {
-  const allowed = new Set(origins.flatMap((text) => originOf(text) ?? []));
+function originSet(origins: () => readonly string[]): (origin: string | undefined) => boolean {
   return (origin) => {
+    const allowed = new Set(origins().flatMap((text) => originOf(text) ?? []));
     const normalized = origin === undefined ? undefined : originOf(origin);
     return normalized !== undefined && allowed.has(normalized);
   };
@@ -72,17 +75,20 @@ function originSet(origins: readonly string[]): (origin: string | undefined) => 
  * origin opens WebSockets and uploads only, and a request that names its host is kept from pairing
  * and health.
  * A missing, opaque or other origin fails. Origins compare after URL normalization, so case and a
- * default port do not matter.
+ * default port do not matter. The extra origins are read at each check, so a connection or a
+ * pairing after a change meets the new list; a socket already open stays.
  */
 export function createOriginRules(options: OriginCheckOptions): OriginRules {
   const port = String(options.port);
-  const local = [`http://127.0.0.1:${port}`, `http://localhost:${port}`, ...options.extraOrigins];
+  const loopback = [`http://127.0.0.1:${port}`, `http://localhost:${port}`];
+  const local = (): readonly string[] => [...loopback, ...options.extraOrigins()];
   const { publicOrigin } = options;
   const published = publicOrigin === undefined ? undefined : hostNameOf(originOf(publicOrigin));
+  const socketOrigins = publicOrigin === undefined ? local : () => [...local(), publicOrigin];
   return {
-    isSocketOrigin: originSet(publicOrigin === undefined ? local : [...local, publicOrigin]),
+    isSocketOrigin: originSet(socketOrigins),
     isPairingOrigin: originSet(local),
-    isPublicOrigin: originSet(publicOrigin === undefined ? [] : [publicOrigin]),
+    isPublicOrigin: originSet(() => (publicOrigin === undefined ? [] : [publicOrigin])),
     isPublished: (names) =>
       published !== undefined &&
       [names.host, names.forwardedHost, names.origin].some(

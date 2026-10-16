@@ -156,7 +156,7 @@ function pairingOn(parts: {
 function httpOf(options: TestServerOptions) {
   const { extraOrigins = [], publicOrigin } = options;
   const published = publicOrigin === undefined ? {} : { publicOrigin };
-  return { host: "127.0.0.1", port: 0, extraOrigins, ...published };
+  return { host: "127.0.0.1", port: 0, extraOrigins: () => extraOrigins, ...published };
 }
 
 // The parts a test may change: the console's files, the limits and the clock the server reads.
