@@ -39,6 +39,7 @@
   "wallet.custody_down": "The wallet service is not responding, so nothing was signed. Try again in a minute.",
   "wallet.launch_exists": "This agent has a launch wallet already, and an agent holds one at most. See it with `binference wallet list`.",
   "address.not_found": "This address book entry does not exist or was removed. Check the address book in the console.",
+  "address.launch_wallet": "This address is a launch wallet of this binference, and no wallet may pay one: fund a launch wallet from outside, such as from the rescue address's wallet.",
   "rescue.no_address": "Set a rescue address first: run `binference rescue set` with your own wallet's address.",
   "rescue.nothing_to_move": "No agent wallet holds anything to rescue.",
   "signer.not_found": "No wallet lists this signer. Check the signer ID that `binference init --attach` printed, or the key quorums on Privy's dashboard.",

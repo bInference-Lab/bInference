@@ -11,7 +11,7 @@ import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { WalletDraft } from "../install/install-record.js";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { isLaunchWalletAccount, launchWalletOf } from "../install/launch-wallet.js";
 import type { WalletMaker } from "../install/ports.js";
 import type { WalletRefusal } from "../install/wallet-request.js";
 import { rescueAt } from "../policy/rescue-change.js";
@@ -36,7 +36,8 @@ const refusalCodes: Readonly<Record<WalletRefusal, ProtocolErrorCode>> = {
   bad_recipients: "protocol.bad_args",
 };
 
-// The rescue address in effect, a new one that waits, and the agent's saved addresses.
+// The rescue address in effect, a new one that waits, and the agent's saved addresses, none of them
+// a launch wallet's (decision 0218).
 async function recipientsOf(
   options: MakeWalletOptions,
   settings: AgentSettings,
@@ -49,7 +50,8 @@ async function recipientsOf(
   }
   const saved = settings.addressBook
     .filter((entry) => entry.inCeilingAtMs !== undefined)
-    .map((entry) => entry.account);
+    .map((entry) => entry.account)
+    .filter((account) => !isLaunchWalletAccount(facts.wallets, account, options.chains));
   const waiting = pendingRescue === undefined ? [] : [pendingRescue.address];
   return ok([...new Set([rescueAddress, ...waiting, ...saved])]);
 }

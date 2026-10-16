@@ -67,6 +67,15 @@ async function withRescue(): Promise<TestEngine> {
   return test;
 }
 
+// Another wallet of the agent, its launch wallet, which no ceiling may list (decision 0218).
+const launchWallet = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c3"),
+  agentId: testAgent,
+  label: "launch",
+  createdAtMs: testNowMs - 2 * looseningWaitMs,
+  role: "launch",
+});
+
 async function rescueNow(test: TestEngine) {
   return rescueAt(await test.stores.install.read(live), test.clock.now());
 }
@@ -236,6 +245,19 @@ describe("a change of the rescue address", () => {
     expect(await setRescue(test, accountRefSchema.parse("fake:1:nowhere"))).toStrictEqual(
       err("protocol.bad_args"),
     );
+    expect(test.pushes).toStrictEqual([]);
+  });
+
+  it("refuses a launch wallet of the install, and changes nothing", async () => {
+    const test = await withRescue();
+    test.stores.install.addWallet(launchWallet);
+    test.ceilings.put(launchWallet.policyId, [owner]);
+
+    const launch = accountRefSchema.parse("fake:1:0x000000C3");
+
+    expect(await setRescue(test, launch)).toStrictEqual(err("address.launch_wallet"));
+    expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
     expect(test.pushes).toStrictEqual([]);
   });
 

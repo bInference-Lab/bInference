@@ -336,9 +336,16 @@ function intentParts(
 
 // What the rescue address, the address book and the settings operations each read and push.
 function sharedParts(options: EngineOptions) {
-  const { stores, ceilings, clock, publish } = options;
+  const { stores, ceilings, chains, clock, publish } = options;
   return {
-    rescueParts: { install: stores.install, agents: stores.agents, ceilings, clock, publish },
+    rescueParts: {
+      install: stores.install,
+      agents: stores.agents,
+      ceilings,
+      chains,
+      clock,
+      publish,
+    },
     settingsParts: { agents: stores.agents, journal: stores.configJournal, clock, publish },
   };
 }
@@ -386,14 +393,9 @@ export function createEngineWithFills(given: EngineOptions): {
       ...createAddressBookHandlers({
         ...rescueParts,
         journal: settingsParts.journal,
-        chains: options.chains,
         ids: options.ids,
       }),
-      ...createRescueAddressHandlers({
-        ...rescueParts,
-        journal: settingsParts.journal,
-        chains: options.chains,
-      }),
+      ...createRescueAddressHandlers({ ...rescueParts, journal: settingsParts.journal }),
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
       ...chat.handlers,
     },

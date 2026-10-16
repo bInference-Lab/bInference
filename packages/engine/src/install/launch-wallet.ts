@@ -1,3 +1,4 @@
+import { type AccountRef, accountRefParts, type ChainRegistry } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { InstallStore } from "../ports.js";
 import type { WalletRecord } from "./install-record.js";
@@ -24,4 +25,30 @@ export async function launchWalletOf(
 ): Promise<WalletRecord | undefined> {
   const { wallets } = await install.read(options);
   return launchWalletIn(wallets, agent);
+}
+
+/**
+ * Whether the account is the address of a live launch wallet of any agent of the install, on a
+ * chain of the wallet's family (decision 0218): no ceiling may list one, so the agent's other
+ * wallets can never pay it. An account on a chain the registry lacks is none.
+ */
+export function isLaunchWalletAccount(
+  wallets: readonly WalletRecord[],
+  account: AccountRef,
+  chains: ChainRegistry,
+): boolean {
+  const { chain, address } = accountRefParts(account);
+  const registered = chains.get(chain);
+  if (!registered.ok) {
+    return false;
+  }
+  const { family, definition } = registered.value;
+  const typed = family.parseAddress(address);
+  return wallets.some((wallet) => {
+    const own = family.parseAddress(wallet.address);
+    const isLive = wallet.role === "launch" && wallet.archivedAtMs === undefined;
+    return isLive && wallet.family === definition.family && own.ok && typed.ok
+      ? own.value === typed.value
+      : false;
+  });
 }

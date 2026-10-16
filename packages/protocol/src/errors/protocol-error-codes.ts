@@ -43,6 +43,7 @@ export const protocolErrorCodes = [
   "wallet.custody_down",
   "wallet.launch_exists",
   "address.not_found",
+  "address.launch_wallet",
   "rescue.no_address",
   "rescue.nothing_to_move",
   "signer.not_found",

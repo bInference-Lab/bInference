@@ -1,7 +1,7 @@
-import type { ChainRegistry } from "@binference/chain";
 import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import { isLaunchWalletAccount } from "../install/launch-wallet.js";
 import type { RescueMove } from "../install/rescue-record.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
@@ -23,7 +23,6 @@ export interface RescueAddressHandlers {
 
 /** What the rescue address handlers read, write and announce through. */
 export interface RescueAddressHandlersOptions extends RescueCeilingsOptions {
-  readonly chains: ChainRegistry;
   readonly journal: ConfigJournal;
 }
 
@@ -92,6 +91,10 @@ async function setRescue(
     return address;
   }
   const { signal } = call;
+  const { wallets } = await options.install.read({ signal });
+  if (isLaunchWalletAccount(wallets, address.value, options.chains)) {
+    return err("address.launch_wallet");
+  }
   await settleRescueCeilings(options, signal);
   const facts = await options.install.read({ signal });
   const atMs = options.clock.now();
@@ -147,8 +150,9 @@ async function cancelChange(
  * one takes effect 24 hours later, and the one that leaves the new address out if it is
  * cancelled. The new address is announced with its time; asking for the address in effect drops
  * one that waits and answers now. An address on a chain the registry lacks, or one its family
- * cannot read, is `protocol.bad_args`; a missing or wrong owner key `wallet.bad_owner_key`; a call
- * over WS `auth.local_only`. `safety/cancelRescueChange` drops the address that waits and sends
+ * cannot read, is `protocol.bad_args`; a launch wallet of the install, which no ceiling may list,
+ * `address.launch_wallet` (decision 0218); a missing or wrong owner key `wallet.bad_owner_key`; a
+ * call over WS `auth.local_only`. `safety/cancelRescueChange` drops the address that waits and sends
  * the change that leaves it out of the ceilings. Each change is journaled, pushed as
  * `config/changed` and announced. Both first send a change whose time has come.
  */

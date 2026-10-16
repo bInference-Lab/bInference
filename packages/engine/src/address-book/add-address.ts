@@ -11,6 +11,7 @@ import {
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import { isLaunchWalletAccount } from "../install/launch-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall } from "../operations/engine-call.js";
@@ -26,7 +27,6 @@ import {
 /** What saving an address reads, writes and journals through. */
 export interface AddAddressOptions extends RescueCeilingsOptions {
   readonly journal: ConfigJournal;
-  readonly chains: ChainRegistry;
   readonly ids: IdSource;
 }
 
@@ -118,7 +118,8 @@ async function storeEntry(
  * again over the ceilings as they list now. Send level 2 lets a send pay it from 24 hours after it
  * was saved (decision 0111). An address the book holds already is answered as it is, and nothing
  * changes. The owner key reaches this call over IPC only, as the protocol server keeps it; a wrong
- * one is `wallet.bad_owner_key`, an address its chain cannot read `protocol.bad_args`, and a
+ * one is `wallet.bad_owner_key`, an address its chain cannot read `protocol.bad_args`, a launch
+ * wallet of the install `address.launch_wallet`, which no ceiling may list (decision 0218), and a
  * ceiling custody does not hold `wallet.not_found`.
  */
 export async function addAddress(
@@ -133,6 +134,10 @@ export async function addAddress(
   const account = accountOf(options.chains, call);
   if (!account.ok) {
     return account;
+  }
+  const { wallets } = await options.install.read({ signal });
+  if (isLaunchWalletAccount(wallets, account.value, options.chains)) {
+    return err("address.launch_wallet");
   }
   const saved = found.value.addressBook.find((entry) => entry.account === account.value);
   if (saved !== undefined) {

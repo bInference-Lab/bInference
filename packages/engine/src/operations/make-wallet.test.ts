@@ -95,6 +95,26 @@ describe("making a wallet with the owner key", () => {
     expect(listed.items.map((item) => item.label)).toStrictEqual(["main", "spare"]);
   });
 
+  it("leaves a launch wallet a restored book holds out of its ceiling", async () => {
+    const test = await withRescue();
+    const launch = testWalletRecord({
+      id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c3"),
+      agentId: testAgent,
+      label: "launch",
+      createdAtMs: testNowMs - 2 * looseningWaitMs,
+      role: "launch",
+    });
+    test.stores.install.addWallet(launch);
+    await saveTestAddress(test, {
+      ...testSaved,
+      account: accountRefSchema.parse(`fake:1:${launch.address}`),
+    });
+
+    expectOk(await create(test));
+
+    expect(test.walletMaker.recipients((await newWallet(test)).policyId)).toStrictEqual([owner]);
+  });
+
   it("journals the wallet it made and pushes the change", async () => {
     const test = await withRescue();
 

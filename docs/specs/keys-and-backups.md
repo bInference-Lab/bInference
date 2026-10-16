@@ -161,7 +161,9 @@ equal to `{{wallet.address}}`, at most the per-transaction cap and under the cha
 cap; and, when a launchpad names a launch contract as its spender, `Launch approvals, chain <id>`:
 an `approve` with no native coin naming any spender, under each capped token's 24-hour cap. No
 agent wallet's ceiling holds a launch rule, and no ceiling lists a launch wallet as a recipient:
-the owner funds it from outside. A thief with this machine's keys can take what the launch wallet
+saving a launch wallet's address, or making it the rescue address, is refused as
+`address.launch_wallet`, and a saved address that names one never reaches a ceiling
+([decision 0218](../DECISIONS.md#d0218)). The owner funds it from outside. A thief with this machine's keys can take what the launch wallet
 holds, within the 24-hour caps for the coin, WBNB, USDT and USDC, and nothing more from the
 agent's other wallets than the promise below allows.
 

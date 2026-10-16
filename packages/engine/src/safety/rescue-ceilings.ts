@@ -1,8 +1,9 @@
-import type { AccountRef } from "@binference/chain";
+import type { AccountRef, ChainRegistry } from "@binference/chain";
 import { type Clock, err, type Id, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CeilingRefusal } from "../install/ceiling-change.js";
 import type { InstallFacts } from "../install/install-record.js";
+import { isLaunchWalletAccount } from "../install/launch-wallet.js";
 import type { CeilingEditor } from "../install/ports.js";
 import type { RescueCeiling } from "../install/rescue-record.js";
 import { type RescueState, rescueAt } from "../policy/rescue-change.js";
@@ -15,6 +16,8 @@ export interface RescueCeilingsOptions {
   readonly install: InstallStore;
   readonly agents: AgentStore;
   readonly ceilings: CeilingEditor;
+  /** The registry, which reads each saved address against the install's launch wallets. */
+  readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly publish: PublishPush;
 }
@@ -58,10 +61,14 @@ async function walletCeilings(
   const books = new Map(
     await Promise.all(agents.map(async (agent) => savedOf(options.agents, agent, signal))),
   );
+  // A launch wallet's address never reaches a ceiling, though a book restored from a backup may
+  // hold it (decision 0218).
+  const payable = (account: AccountRef) =>
+    !isLaunchWalletAccount(facts.wallets, account, options.chains);
   return live.map((wallet) => ({
     agent: wallet.agentId,
     ceiling: wallet.policyId,
-    saved: books.get(wallet.agentId) ?? [],
+    saved: (books.get(wallet.agentId) ?? []).filter(payable),
   }));
 }
 

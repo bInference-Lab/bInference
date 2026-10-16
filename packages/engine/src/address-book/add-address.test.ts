@@ -22,6 +22,15 @@ const wallet = testWalletRecord({
   label: "main",
   createdAtMs: testNowMs - 3 * looseningWaitMs,
 });
+// Another agent's launch wallet: no ceiling of the install may list its address (decision 0218).
+const launchWallet = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c3"),
+  agentId: secondAgent,
+  label: "launch",
+  createdAtMs: testNowMs - 3 * looseningWaitMs,
+  role: "launch",
+});
+const launchAccount: AccountRef = accountRefSchema.parse(`fake:1:${launchWallet.address}`);
 // Another agent's wallet: an address saved for the test agent never reaches its ceiling.
 const otherWallet = testWalletRecord({
   id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c2"),
@@ -186,6 +195,28 @@ describe("saving an address with the owner key", () => {
     const test = await withCeilingsOver(refusingUnheld);
 
     await expect(add(test)).rejects.toMatchObject({ code: "engine.address_unsaved" });
+  });
+
+  it("refuses a launch wallet of the install, and changes no ceiling and no book", async () => {
+    const test = await withCeilings();
+    test.stores.install.addWallet(launchWallet);
+
+    expect(await add(test, { address: "0x000000C3" })).toStrictEqual(err("address.launch_wallet"));
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
+    const listed = expectOk(
+      await test.engine.handlers["address/list"](testCall({ agent: testAgent })),
+    );
+    expect(listed.items).toStrictEqual([]);
+  });
+
+  it("leaves a launch wallet a restored book holds out of every ceiling", async () => {
+    const test = await withCeilings();
+    test.stores.install.addWallet(launchWallet);
+    await saveTestAddress(test, { ...testSaved, account: launchAccount });
+
+    expectOk(await add(test));
+
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner, cold]);
   });
 
   it("refuses an empty address", async () => {
