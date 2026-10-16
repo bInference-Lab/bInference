@@ -113,3 +113,20 @@ export interface QuestionStore {
     options: { readonly signal: AbortSignal },
   ): Promise<readonly QuestionCopy[]>;
 }
+
+/** Why the source of an owner's image cannot give it: over 5 MiB, or gone from the source. */
+export type ImageRefusal = "too_large" | "unreadable";
+
+/**
+ * Reads the owner's images by the name a message gives them: an upload id, or `tg:<file_id>` for
+ * a photo the owner's bot received (protocol spec, section 7.7). It never reads more than 5 MiB of
+ * one: a larger image is `too_large`. An image the source no longer has, or never had, is
+ * `unreadable`. A source that does not answer throws, `telegram.unreachable` for the bot. Rejects
+ * with the signal's reason once it aborts. The bytes are never logged.
+ */
+export interface OwnerImageSource {
+  read(
+    image: string,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<Uint8Array, ImageRefusal>>;
+}

@@ -113,6 +113,13 @@ export type {
 } from "./contracts/position-store-contract.js";
 export { createMemoryAccessStore } from "./fakes/memory-access-store.js";
 export { createMemoryAgentInboxStore } from "./fakes/memory-agent-inbox-store.js";
+export { createMemoryOwnerImages } from "./fakes/memory-owner-images.js";
+export { testImageHeads, testPng } from "./chat/test-images.js";
+export { ownerImageSourceContract } from "./contracts/owner-image-source-contract.js";
+export type {
+  OwnerImageSourceHarness,
+  OwnerImageSourceSubject,
+} from "./contracts/owner-image-source-contract.js";
 export { createMemoryAgentStore } from "./fakes/memory-agent-store.js";
 export { createMemoryCardCopyStore } from "./fakes/memory-card-copy-store.js";
 export { createMemoryConfigJournal } from "./fakes/memory-config-journal.js";

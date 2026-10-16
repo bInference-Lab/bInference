@@ -14,7 +14,13 @@ export type {
   InboxTake,
   UntakenQuery,
 } from "./chat/agent-inbox-record.js";
-export type { AgentInboxStore, QuestionStore } from "./chat/ports.js";
+export type {
+  AgentInboxStore,
+  ImageRefusal,
+  OwnerImageSource,
+  QuestionStore,
+} from "./chat/ports.js";
+export { imageTypeOf } from "./chat/image-type.js";
 export { questionViewOf } from "./chat/question-flow.js";
 export { agentModelsChangeSchema, type AgentModelsChange } from "./agents/agent-record.js";
 export {
