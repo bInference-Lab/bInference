@@ -1,4 +1,5 @@
 import type { ChatOperationShapes } from "../operations/chat-operations.schema.js";
+import type { ImageOperationShapes } from "../operations/image-operations.schema.js";
 import type { LimitOperationShapes } from "../operations/limit-operations.schema.js";
 import type { NoteOperationShapes } from "../operations/note-operations.schema.js";
 import type { QuestionOperationShapes } from "../operations/question-operations.schema.js";
@@ -169,6 +170,14 @@ export const chatExamples: { readonly [N in keyof ChatOperationShapes]: WireExam
     ),
   },
   "inbox/take": { args: { messages: [ids.message] }, result: empty },
+};
+
+/** An example call of the operation the runtime reads the owner's images with. */
+export const imageExamples: { readonly [N in keyof ImageOperationShapes]: WireExample } = {
+  "inbox/readImage": {
+    args: { agent: ids.agent, message: ids.message, image: "tg:AgACAgIAAxkBAAIB" },
+    result: { contentType: "image/png", bytes: 8, offset: 0, data: "iVBORw0KGgo=" },
+  },
 };
 
 /** Example calls of the agent's questions. */

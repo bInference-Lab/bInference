@@ -74,6 +74,12 @@ export { isOperationName, operationNames, operations } from "./operations/operat
 export type { ArgsOf, OperationName, OperationShapes, ResultOf } from "./operations/operations.js";
 export { ownerKeyOperations, takesOwnerKey } from "./operations/owner-key-operations.js";
 export { deviceOnlyOperations, isDeviceOnly } from "./operations/device-only-operations.js";
+export {
+  imageContentTypeSchema,
+  imagePartBytes,
+  maxImageBytes,
+} from "./operations/image-operations.schema.js";
+export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";
 export type { WebPushSubscription } from "./operations/web-push-operations.schema.js";
 export { storableArgs } from "./operations/storable-args.js";

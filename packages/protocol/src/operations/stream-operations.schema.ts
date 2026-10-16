@@ -3,13 +3,16 @@ import { z } from "zod";
 import { type PushTopic, pushTopicSchema } from "../frames/push-frame.schema.js";
 import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.schema.js";
 import { type FileTicket, fileTicketSchema } from "../views/file-ticket.schema.js";
+import {
+  type ImageContentType,
+  imageContentTypeSchema,
+  maxImageBytes,
+} from "./image-operations.schema.js";
 import { readFlags, subscribeFlags, type OperationTable } from "./operation.schema.js";
-
-const maxUploadBytes = 5 * 1024 * 1024;
 
 /** The args of `upload/start`: one image of at most 5 MiB. */
 interface UploadArgs {
-  readonly contentType: "image/png" | "image/jpeg" | "image/webp";
+  readonly contentType: ImageContentType;
   readonly bytes: number;
 }
 
@@ -52,8 +55,8 @@ export const streamOperations: OperationTable<StreamOperationShapes> = {
     name: "upload/start",
     scope: "chat",
     args: z.strictObject({
-      contentType: z.enum(["image/png", "image/jpeg", "image/webp"]),
-      bytes: z.int().min(1).max(maxUploadBytes),
+      contentType: imageContentTypeSchema,
+      bytes: z.int().min(1).max(maxImageBytes),
     }),
     result: fileTicketSchema,
   },

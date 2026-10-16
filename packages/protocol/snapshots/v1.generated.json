@@ -448,6 +448,10 @@
         "agent.file_missing",
         "question.not_found",
         "question.closed",
+        "image.not_found",
+        "image.too_large",
+        "image.format",
+        "image.unreadable",
         "market.no_data",
         "market.source_down",
         "market.no_launch_feed",
@@ -29119,6 +29123,130 @@
         "result": {
           "type": "object",
           "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/inbox/readImage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "inbox/readImage"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "message": {
+              "type": "string",
+              "pattern": "^msg_"
+            },
+            "image": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            }
+          },
+          "required": [
+            "agent",
+            "message",
+            "image"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/inbox/readImage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "enum": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            },
+            "data": {
+              "type": "string",
+              "maxLength": 699052,
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            },
+            "next": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            }
+          },
+          "required": [
+            "contentType",
+            "bytes",
+            "offset",
+            "data"
+          ]
         }
       },
       "required": [

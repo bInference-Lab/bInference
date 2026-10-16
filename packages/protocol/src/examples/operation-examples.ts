@@ -1,5 +1,11 @@
 import type { OperationName } from "../operations/operations.js";
-import { chatExamples, limitExamples, noteExamples, questionExamples } from "./chat-examples.js";
+import {
+  chatExamples,
+  imageExamples,
+  limitExamples,
+  noteExamples,
+  questionExamples,
+} from "./chat-examples.js";
 import { agentExamples, engineExamples, walletExamples } from "./engine-examples.js";
 import { intentExamples, marketExamples, orderExamples } from "./market-examples.js";
 import {
@@ -22,6 +28,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...orderExamples,
   ...limitExamples,
   ...chatExamples,
+  ...imageExamples,
   ...questionExamples,
   ...noteExamples,
   ...pluginExamples,

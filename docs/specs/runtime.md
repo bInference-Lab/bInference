@@ -191,7 +191,9 @@ runs:
      call with the message.
 
   A batch that runs in parallel is never cut; its merge point comes after it. A message that
-  arrives in a committed turn waits, and starts a new turn after it.
+  arrives in a committed turn waits, and starts a new turn after it. A message with images never
+  joins: it waits, with every message after it, and starts the next turn
+  ([decision 0227](../DECISIONS.md#d0227)).
 
 - **`after`**: the message waits for the running turn to end and starts the next one.
 
@@ -512,7 +514,14 @@ nothing after the history carries one.
 - Each call asks for at most 4,096 output tokens, because the gateway reserves them.
 - A call with no event for `models.idleTimeoutMs` (120 seconds) is aborted.
 - Images go to `main` when it reads images; otherwise `models.vision` describes them, and `main`
-  gets the description, which is outside content.
+  gets the description, which is outside content. A model reads images when `models.imageInput`
+  names it, or when it is the vision model; never by its name
+  ([decision 0227](../DECISIONS.md#d0227)). A turn reads its messages' images with
+  `inbox/readImage` and checks them (section 7.2) before its first model call; a refusal ends the
+  turn `failed` with a `turn.image.*` status line, and with no model that reads images and no
+  vision model the line is `turn.image.noVision`. Each image goes before the text of its message.
+  The bytes live in the runtime's memory for the turn that takes them; the transcript keeps the
+  number of images and each description, never the bytes.
 - A model the owner picked for the agent (`/ai`, `model/set`) is never swapped for another.
 - The model check (`checkModel`, [decision 0221](../DECISIONS.md#d0221)) builds the same clients
   for one small call that `binference init` and `binference check` make in the CLI's process: it
