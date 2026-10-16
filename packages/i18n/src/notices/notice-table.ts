@@ -136,6 +136,17 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     values: { ...agent, budget: "$3.00" },
     times: at,
   },
+  "notice.scheduleSet": {
+    key: "notice.scheduleSet",
+    agent: tableAgent,
+    values: { ...agent, by: "telegram", prompt: "Review my portfolio." },
+    times: { next: noticeTableAtMs },
+  },
+  "notice.scheduleCancelled": {
+    key: "notice.scheduleCancelled",
+    agent: tableAgent,
+    values: { ...agent, by: "agent", prompt: "Review my portfolio." },
+  },
   "notice.loop": { key: "notice.loop", agent: tableAgent, values: agent },
   "notice.watcherLag": {
     key: "notice.watcherLag",

@@ -8,14 +8,19 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { ModelBilling } from "../ports.js";
 import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
+import { createScheduleHandlers, type ScheduleHandlers } from "../schedules/schedule-handlers.js";
 import { ownerImagesOf } from "../uploads/owner-images.js";
 import { createUploadHandlers, type UploadHandlers } from "../uploads/upload-handlers.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import type { EngineOptions } from "./create-engine.js";
 import { intentViewOf } from "./intent-view-of.js";
 
-/** The chat operations the engine answers itself, `usage/get` and `upload/start`. */
-export interface EngineChatHandlers extends ChatHandlers, UsageHandlers, UploadHandlers {}
+/**
+ * The chat operations the engine answers itself, `usage/get`, `upload/start` and the schedule
+ * operations.
+ */
+export interface EngineChatHandlers
+  extends ChatHandlers, UsageHandlers, UploadHandlers, ScheduleHandlers {}
 
 /**
  * The engine's chat relay, whose settle pushes carry each intent's view as `intent/get` gives it,
@@ -80,6 +85,7 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       ...relay.handlers,
       ...usageHandlersOf(options, billing),
       ...createUploadHandlers(uploads),
+      ...scheduleHandlersOf(options),
     },
     settled: (message) => {
       relay.settled(message);
@@ -119,4 +125,11 @@ export function safetyHandlersOf(
     policy: createPolicyCheck({ prices: options.prices, clock }),
   });
   return { ...handlers, "safety/freeze": relay.freezing(handlers["safety/freeze"]) };
+}
+
+// The schedule operations, journaled and announced as settings changes are.
+function scheduleHandlersOf(options: EngineOptions): ScheduleHandlers {
+  const { stores, ids, clock, publish, ownerTimeZone } = options;
+  const { schedules, agents, configJournal: journal } = stores;
+  return createScheduleHandlers({ schedules, agents, journal, ownerTimeZone, ids, clock, publish });
 }

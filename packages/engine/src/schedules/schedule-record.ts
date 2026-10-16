@@ -17,7 +17,7 @@ import { epochMsSchema, shortTextSchema } from "../records/record-fields.js";
 export const maxActiveSchedules = 50;
 
 /** The longest prompt a schedule keeps, in characters (decision 0233). */
-const maxSchedulePrompt = 2_000;
+export const maxSchedulePrompt = 2_000;
 
 /** One schedule as the store keeps it (database spec, `schedules`). */
 export interface ScheduleRecord {

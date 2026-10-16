@@ -41,6 +41,8 @@
   "orderExpiring": "{orderKind}将于 {when} 到期",
   "plainSecret": "⚠️ 配置文件中有明文密钥。请运行 `binference check --fix`。",
   "budget": "{agent} 已用完今日模型预算（{budget}）。对话将于 {when} 恢复；自动订单继续运行。",
+  "scheduleSet": "{agent} 有新的定时任务，{by, select, agent {由 Agent 自己设置} telegram {来自 Telegram} console {来自控制台} mini {来自 Mini App} cli {来自命令行} other {来自 binference}}，下次运行时间 {next}：{prompt}",
+  "scheduleCancelled": "{agent} 的定时任务已{by, select, agent {由 Agent 自己} telegram {从 Telegram} console {从控制台} mini {从 Mini App} cli {从命令行} other {在 binference 中}}取消：{prompt}",
   "loop": "{agent} 重复执行同一步骤，已停止",
   "watcherLag": "⚠️ {chain} 的价格读取落后链上 {blocks} 个区块，自动订单可能延迟成交。请在 config.json5 的 `chains.rpc` 中添加付费 RPC，或检查本机网络。",
   "watcherUnpriced": "⚠️ {chain} 的价格监控无法获取 {count, plural, other {# 个}}监控中代币的价格（首个为 {token}），在价格恢复之前，这些代币的自动订单无法触发。价格来自发射台联合曲线，或可交易至少 $1,000 WBNB 或稳定币的 PancakeSwap 交易池。",

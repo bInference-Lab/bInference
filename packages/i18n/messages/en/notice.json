@@ -41,6 +41,8 @@
   "orderExpiring": "{orderKind} ends {when}",
   "plainSecret": "⚠️ A secret is written as plain text in config. Run `binference check --fix`.",
   "budget": "{agent} used today's model budget ({budget}). Chat resumes {when}; orders keep running.",
+  "scheduleSet": "New schedule for {agent}, set {by, select, agent {by the agent} telegram {from Telegram} console {from the console} mini {from the Mini App} cli {from the CLI} other {in binference}}, next run {next}: {prompt}",
+  "scheduleCancelled": "Schedule of {agent} cancelled {by, select, agent {by the agent} telegram {from Telegram} console {from the console} mini {from the Mini App} cli {from the CLI} other {in binference}}: {prompt}",
   "loop": "{agent} repeated the same step and was stopped",
   "watcherLag": "⚠️ Prices on {chain} are read {blocks} blocks behind the chain, so auto orders may fill late. Add a paid RPC under `chains.rpc` in config.json5, or check this machine's network.",
   "watcherUnpriced": "⚠️ Price watching on {chain} has no price for {count, plural, one {# watched token} other {# watched tokens}}, {token} first, so their auto orders cannot trigger until a price returns. A price comes from a launchpad curve, or a PancakeSwap pool that trades at least $1,000 of WBNB or a stablecoin.",
