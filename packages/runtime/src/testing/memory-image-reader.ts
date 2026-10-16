@@ -1,6 +1,6 @@
 import { err, ok } from "@binference/core";
 import type { ImageContentType } from "@binference/protocol";
-import type { ImageReadRefusal } from "../relay/engine-chat-records.js";
+import type { ImageReadRefusal } from "../loop/turn-records.js";
 import type { OwnerImageReader } from "../relay/ports.js";
 
 /** An image a test's engine holds, by the name the owner's message gives it. */

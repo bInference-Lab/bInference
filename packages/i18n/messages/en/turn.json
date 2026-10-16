@@ -17,5 +17,10 @@
   "failed.timeLimit": "Stopped: this answer ran for 10 minutes. Ask again to go on.",
   "failed.proposalUnknown": "⚠️ binference did not hear back about a proposal, so it was not sent again. Check your open cards.",
   "failed.engine": "Stopped: the agent lost its link to the engine. It starts again by itself.",
+  "image.tooMany": "Not read: a message takes at most {count} images. Send the rest in another message.",
+  "image.tooLarge": "Not read: an image is over the {mib} MiB limit. Send a smaller one.",
+  "image.format": "Not read: only PNG, JPEG and WebP images can be read. Send the image in one of these formats.",
+  "image.unreadable": "Not read: binference could not fetch an image. Send it again.",
+  "image.noVision": "Not read: the agent's model cannot read images and no vision model is set. Set `models.vision` in config.json5, or list the model in `models.imageInput`, then send the image again.",
   "firstChatDone": "Saved your answers to STRATEGY.md and PERSONA.md. Ask the agent to change them any time."
 }

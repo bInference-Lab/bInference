@@ -85,9 +85,6 @@ export interface WorkspacePlace {
   readonly file: WorkspaceFile;
 }
 
-/** Why an image of the owner's message cannot be read (decision 0227). */
-export type ImageReadRefusal = "not_found" | "too_large" | "format" | "unreadable";
-
 /** One image the owner sent, whole, as the runtime holds it for the turn that takes it. */
 export interface HeldOwnerImage {
   readonly contentType: ImageContentType;

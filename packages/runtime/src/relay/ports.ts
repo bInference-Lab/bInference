@@ -1,5 +1,6 @@
 import type { Id, Result } from "@binference/core";
 import type { LiveFactsView } from "@binference/protocol";
+import type { ImageReadRefusal } from "../loop/turn-records.js";
 import type {
   EngineSay,
   EngineStatus,
@@ -9,7 +10,6 @@ import type {
   EngineUsage,
   HeldOwnerImage,
   ImagePlace,
-  ImageReadRefusal,
   InboxPage,
   InboxWatch,
   RecordedUsage,

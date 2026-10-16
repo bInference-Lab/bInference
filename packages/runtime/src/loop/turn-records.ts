@@ -135,6 +135,12 @@ export interface ImageDescriptionRecord {
   readonly text: string;
 }
 
+/** Why an image of the owner's message cannot be read (decision 0227). */
+export type ImageReadRefusal = "not_found" | "too_large" | "format" | "unreadable";
+
+/** Which limit or step kept a turn from reading the owner's images (decision 0227). */
+export type ImageProblem = "tooMany" | "tooLarge" | "format" | "unreadable" | "noVision";
+
 /** How a turn ended, as the transcript keeps it. */
 export interface TurnEndRecord {
   readonly outcome: TurnOutcome;
@@ -173,7 +179,9 @@ export type TurnStatusLine =
   /** The loop guard found the same call with the same result three times. */
   | { readonly line: "loop" }
   /** The agent's model budget of the day is spent: chat resumes at the owner's next midnight. */
-  | { readonly line: "budget"; readonly resumesAt: number };
+  | { readonly line: "budget"; readonly resumesAt: number }
+  /** The owner's images could not be read, and no model was called. */
+  | { readonly line: "image"; readonly problem: ImageProblem };
 
 /**
  * One attempt of a model call as `usage/record` takes it (runtime spec, section 8.3): the model

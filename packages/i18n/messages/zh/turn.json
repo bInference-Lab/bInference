@@ -17,5 +17,10 @@
   "failed.timeLimit": "已停止：本次回答已运行 10 分钟。请再次提问以继续。",
   "failed.proposalUnknown": "⚠️ binference 未收到某个提议的结果，因此没有再次发送。请查看你未处理的卡片。",
   "failed.engine": "已停止：Agent 与引擎的连接中断。它会自动重新启动。",
+  "image.tooMany": "未读取：每条消息最多 {count} 张图片。请在另一条消息中发送其余图片。",
+  "image.tooLarge": "未读取：有图片超过 {mib} MiB 的上限。请发送更小的图片。",
+  "image.format": "未读取：只能读取 PNG、JPEG 和 WebP 图片。请以其中一种格式发送图片。",
+  "image.unreadable": "未读取：binference 无法获取图片。请重新发送。",
+  "image.noVision": "未读取：Agent 的模型无法读取图片，且未设置视觉模型。请在 config.json5 中设置 `models.vision`，或将该模型列入 `models.imageInput`，然后重新发送图片。",
   "firstChatDone": "你的回答已保存到 STRATEGY.md 和 PERSONA.md。你可以随时让 Agent 修改。"
 }

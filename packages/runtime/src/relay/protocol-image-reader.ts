@@ -1,7 +1,8 @@
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import { type ImageContentType, imagePartBytes, maxImageBytes } from "@binference/protocol";
-import type { HeldOwnerImage, ImagePlace, ImageReadRefusal } from "./engine-chat-records.js";
+import type { ImageReadRefusal } from "../loop/turn-records.js";
+import type { HeldOwnerImage, ImagePlace } from "./engine-chat-records.js";
 import type { OwnerImageReader } from "./ports.js";
 
 /** The protocol client call the image reader makes. */
