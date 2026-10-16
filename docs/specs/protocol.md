@@ -92,15 +92,15 @@ The engine listens on two transports. Both carry the same frames (section 3) ove
 
 ### 2.1 HTTP endpoints
 
-| Method and path        | What it does                                                                                      |
-| ---------------------- | ------------------------------------------------------------------------------------------------- |
-| `GET /`                | The console (static files)                                                                        |
-| `GET /mini`            | The same console build in Mini App mode                                                           |
-| `GET /ws`              | WebSocket upgrade                                                                                 |
-| `POST /pair`           | Device pairing (section 4.2)                                                                      |
-| `GET /file/:ticket`    | A single-use download (exports, reports, backups), valid 5 minutes                                |
-| `POST /upload/:ticket` | A single-use upload of one image (raw body, at most 5 MiB), valid 2 minutes; answers `{ upload }` |
-| `GET /health`          | `200 {"state":"ready"}`, `200 {"state":"locked"}` or `503 {"state":"starting"}`                   |
+| Method and path        | What it does                                                                                                                                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /`                | The console (static files)                                                                                                                                                                                                                 |
+| `GET /mini`            | The same console build in Mini App mode                                                                                                                                                                                                    |
+| `GET /ws`              | WebSocket upgrade                                                                                                                                                                                                                          |
+| `POST /pair`           | Device pairing (section 4.2)                                                                                                                                                                                                               |
+| `GET /file/:ticket`    | A single-use download (exports, reports, backups), valid 5 minutes                                                                                                                                                                         |
+| `POST /upload/:ticket` | A single-use upload of one image (raw body, at most 5 MiB, the size and type `upload/start` named), valid 2 minutes; answers `201 { upload }`, an upload id the engine keeps in memory for 1 hour ([decision 0227](../DECISIONS.md#d0227)) |
+| `GET /health`          | `200 {"state":"ready"}`, `200 {"state":"locked"}` or `503 {"state":"starting"}`                                                                                                                                                            |
 
 Browser requests to `/ws` and `/pair` must carry an `Origin` from the allowed list:
 `http://127.0.0.1:<port>`, `http://localhost:<port>` and the Tailscale `serve` origin from config

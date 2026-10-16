@@ -11,6 +11,7 @@ import {
 } from "@binference/core";
 import type { IdempotencyStore } from "@binference/engine";
 import type { AuthLockoutReport, DevicePairing } from "@binference/engine/access";
+import type { UploadShelf } from "@binference/engine/chat";
 import type { PushFrame } from "@binference/protocol";
 import { WebSocketServer } from "ws";
 import { createAuthFailures } from "./auth-failures.js";
@@ -55,6 +56,8 @@ export interface ProtocolServerOptions {
   readonly pairing?: DevicePairing;
   /** The console's built files, served on the HTTP listener at `/` and `/mini`. */
   readonly consoleFiles?: ConsoleFiles;
+  /** Takes the owner's images at `POST /upload/:ticket`; without it the path is 404. */
+  readonly uploads?: Pick<UploadShelf, "receive">;
   /** Where each write's result is kept under its idempotency key. */
   readonly idempotency: IdempotencyStore;
   readonly handlers: OperationHandlers;
@@ -266,8 +269,8 @@ function upgrade(state: ServerState, upgrading: Upgrade): void {
 
 interface ListenerOptions {
   readonly transport: Transport;
-  /** The browser routes of the HTTP listener: pairing and the console's files. */
-  readonly browser?: Pick<ProtocolServerOptions, "pairing" | "consoleFiles">;
+  /** The browser routes of the HTTP listener: pairing, uploads and the console's files. */
+  readonly browser?: Pick<ProtocolServerOptions, "pairing" | "consoleFiles" | "uploads">;
 }
 
 function createListener(state: ServerState, options: ListenerOptions): Server {
@@ -315,10 +318,11 @@ async function shutdown(state: ServerState, listeners: Listeners): Promise<void>
  */
 export function createProtocolServer(options: ProtocolServerOptions): ProtocolServer {
   const state = createState(options);
-  const { pairing, consoleFiles } = options;
+  const { pairing, consoleFiles, uploads } = options;
   const browser = {
     ...(pairing === undefined ? {} : { pairing }),
     ...(consoleFiles === undefined ? {} : { consoleFiles }),
+    ...(uploads === undefined ? {} : { uploads }),
   };
   const listeners: Listeners = {
     http: createListener(state, { transport: "ws", browser }),

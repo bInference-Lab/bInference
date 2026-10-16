@@ -22,6 +22,7 @@ import {
   type TokenKind,
 } from "@binference/engine";
 import { type AuthLockoutReport, createDevicePairing } from "@binference/engine/access";
+import type { UploadShelf } from "@binference/engine/chat";
 import { createMemoryAccessStore, createMemoryIdempotencyStore } from "@binference/engine/testing";
 import {
   type ClientKind,
@@ -94,6 +95,8 @@ export interface TestServerOptions {
   readonly wrapAccess?: (access: AccessStore) => AccessStore;
   /** Wraps the clock the server reads, such as to hold its timers back. */
   readonly wrapClock?: (clock: ManualClock) => Clock;
+  /** Takes the owner's images at `POST /upload/:ticket`. */
+  readonly uploads?: Pick<UploadShelf, "receive">;
 }
 
 const cliScopes: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
@@ -161,6 +164,7 @@ function optionalPartsOf(options: TestServerOptions, clock: ManualClock) {
   return {
     ...(options.consoleFiles === undefined ? {} : { consoleFiles: options.consoleFiles }),
     ...(options.limits === undefined ? {} : { limits: options.limits }),
+    ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
     clock: options.wrapClock?.(clock) ?? clock,
   };
 }

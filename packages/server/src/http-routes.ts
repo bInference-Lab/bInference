@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
 import type { Logger } from "@binference/core";
 import type { DevicePairing } from "@binference/engine/access";
+import type { UploadShelf } from "@binference/engine/chat";
 import type { EngineState } from "@binference/protocol";
 import type { AuthFailures } from "./auth-failures.js";
 import { answerConsole, type ConsoleFiles } from "./console-route.js";
@@ -9,6 +10,7 @@ import type { LockoutAlerts } from "./lockout-alerts.js";
 import type { OriginRules, RequestNames } from "./origin-check.js";
 import { answerPair } from "./pair-route.js";
 import { resourceHeaders } from "./security-headers.js";
+import { answerUpload, uploadPath } from "./upload-route.js";
 
 /** The path of a request, `/` when it has none. */
 export function pathOf(request: IncomingMessage): string {
@@ -64,6 +66,8 @@ export interface HttpRoutesContext {
   readonly pairing?: DevicePairing;
   /** The console's built files; without them `/` and `/mini` are 404. */
   readonly consoleFiles?: ConsoleFiles;
+  /** Takes the owner's images at `POST /upload/:ticket`; without it the path is 404. */
+  readonly uploads?: Pick<UploadShelf, "receive">;
   /** Aborts when the server stops. */
   readonly signal: AbortSignal;
 }
@@ -83,12 +87,39 @@ function answerHealth(
     .end(JSON.stringify({ state: current }));
 }
 
+// The routes that write, `POST /upload/:ticket` and `POST /pair`, when the server serves them:
+// answers whether one took the request.
+function answerWrite(
+  request: IncomingMessage,
+  response: ServerResponse,
+  context: HttpRoutesContext & { readonly path: string; readonly rules: OriginRules },
+): boolean {
+  const { pairing, uploads, signal, path, rules: origins } = context;
+  if (path.startsWith(uploadPath) && uploads !== undefined) {
+    answerUpload(request, response, { uploads, isAllowedOrigin: origins.isPairingOrigin, path });
+    return true;
+  }
+  if (path !== "/pair" || pairing === undefined) {
+    return false;
+  }
+  const { failures, alerts, logger } = context;
+  const guard = { failures, alerts, logger, source: sourceOf(request) };
+  answerPair(request, response, {
+    pairing,
+    isAllowedOrigin: origins.isPairingOrigin,
+    signal,
+    guard,
+  });
+  return true;
+}
+
 /**
  * Answers a plain HTTP request. `GET /health` answers `200 {"state":"ready"}`, `200
  * {"state":"locked"}` for an engine that serves calls but signs nothing yet, or
- * `503 {"state":"starting"}`. `POST /pair` pairs a console device, and every other `GET` the
- * console's files serve (`answerConsole`). A wrong method on `/health` or `/pair` is 405, and
- * anything else 404. Through the public address, `/health` and `/pair` are 404.
+ * `503 {"state":"starting"}`. `POST /pair` pairs a console device, `POST /upload/:ticket` takes
+ * the owner's image (`answerUpload`), and every other `GET` the console's files serve
+ * (`answerConsole`). A wrong method on `/health` or `/pair` is 405, and
+ * anything else 404. Through the public address, `/health`, `/pair` and uploads are 404.
  */
 export function answerRequest(
   request: IncomingMessage,
@@ -97,8 +128,9 @@ export function answerRequest(
 ): void {
   const path = pathOf(request);
   const origins = context.origins();
-  // Pairing and health stay on this machine: through the public address they do not exist.
-  const isLocalOnly = path === "/health" || path === "/pair";
+  // Pairing, uploads and health stay on this machine: through the public address they do not
+  // exist.
+  const isLocalOnly = path === "/health" || path === "/pair" || path.startsWith(uploadPath);
   if (isLocalOnly && origins.isPublished(namesOf(request))) {
     response.writeHead(404, plain).end();
     return;
@@ -107,18 +139,10 @@ export function answerRequest(
     answerHealth(request, response, context.state);
     return;
   }
-  const { pairing, consoleFiles, signal } = context;
-  if (path === "/pair" && pairing !== undefined) {
-    const { failures, alerts, logger } = context;
-    const guard = { failures, alerts, logger, source: sourceOf(request) };
-    answerPair(request, response, {
-      pairing,
-      isAllowedOrigin: origins.isPairingOrigin,
-      signal,
-      guard,
-    });
+  if (answerWrite(request, response, { ...context, path, rules: origins })) {
     return;
   }
+  const { consoleFiles } = context;
   const isConsole =
     consoleFiles !== undefined &&
     path !== "/ws" &&

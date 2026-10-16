@@ -6,7 +6,7 @@ export interface LocalRequest {
   readonly path: string;
   readonly method?: string;
   readonly headers?: Readonly<Record<string, string>>;
-  readonly body?: string;
+  readonly body?: string | Uint8Array;
 }
 
 /** The test server's answer: its status, headers and body as text and as bytes. */
