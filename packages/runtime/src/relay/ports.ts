@@ -1,4 +1,4 @@
-import type { Id } from "@binference/core";
+import type { Id, Result } from "@binference/core";
 import type { LiveFactsView } from "@binference/protocol";
 import type {
   EngineSay,
@@ -7,6 +7,9 @@ import type {
   EngineTurnEnd,
   EngineTurnStart,
   EngineUsage,
+  HeldOwnerImage,
+  ImagePlace,
+  ImageReadRefusal,
   InboxPage,
   InboxWatch,
   RecordedUsage,
@@ -56,4 +59,14 @@ export interface ContextSource {
   skills(agent: Id<"agt">, signal: AbortSignal): Promise<readonly SkillIndexEntry[]>;
   /** `facts/get`: what the agent stands on now. */
   liveFacts(agent: Id<"agt">, signal: AbortSignal): Promise<LiveFactsView>;
+}
+
+/**
+ * Reads one image of an owner's message from the engine with `inbox/readImage`, part by part, and
+ * answers it whole, never past 5 MiB (decision 0227). An image the engine refuses answers the
+ * refusal; Telegram out of reach answers `unreadable`. Rejects when the engine cannot answer, and
+ * with the signal's reason once it aborts. The bytes are never logged.
+ */
+export interface OwnerImageReader {
+  read(place: ImagePlace, signal: AbortSignal): Promise<Result<HeldOwnerImage, ImageReadRefusal>>;
 }

@@ -1,5 +1,5 @@
 import type { Id } from "@binference/core";
-import type { InboxMessageView, WorkspaceFile } from "@binference/protocol";
+import type { InboxMessageView, WorkspaceFile, ImageContentType } from "@binference/protocol";
 import type { TurnOutcome } from "@binference/store";
 import type { TurnRefusal } from "../loop/turn-records.js";
 
@@ -83,4 +83,23 @@ export interface EngineTurnEnd extends EngineTurn {
 export interface WorkspacePlace {
   readonly agent: Id<"agt">;
   readonly file: WorkspaceFile;
+}
+
+/** Why an image of the owner's message cannot be read (decision 0227). */
+export type ImageReadRefusal = "not_found" | "too_large" | "format" | "unreadable";
+
+/** One image the owner sent, whole, as the runtime holds it for the turn that takes it. */
+export interface HeldOwnerImage {
+  readonly contentType: ImageContentType;
+  /** Its bytes in base64. */
+  readonly data: string;
+  /** Its size in bytes. */
+  readonly bytes: number;
+}
+
+/** An image of one of an agent's messages: the upload id or `tg:<file_id>` the message names. */
+export interface ImagePlace {
+  readonly agent: Id<"agt">;
+  readonly message: Id<"msg">;
+  readonly image: string;
 }

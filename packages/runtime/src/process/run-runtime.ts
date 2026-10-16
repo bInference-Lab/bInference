@@ -15,7 +15,7 @@ import {
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import { answerNoteRoute, isNoteRoute, type NoteRouteParts } from "../notes/note-routes.js";
-import type { ContextSource, EngineChat } from "../relay/ports.js";
+import type { ContextSource, EngineChat, OwnerImageReader } from "../relay/ports.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
 import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
@@ -26,6 +26,8 @@ export interface EngineLink {
   readonly chat: EngineChat;
   /** The workspace files and live facts each turn's context reads over this connection. */
   readonly context: ContextSource;
+  /** The images of the owner's messages, which a turn reads over this connection. */
+  readonly images: OwnerImageReader;
   /** The operations the agents' tools call over this connection. */
   readonly client: ToolClient;
   /** Closes the connection; the runtime holds no other. */
@@ -227,6 +229,7 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     prepared: connected.prepared,
     engine: connected.link.chat,
     turnContext: connected.link.context,
+    images: connected.link.images,
     settings: () => settings.current,
     setup: (agent, current) => host.turnSetup(agent, current, connected.link.client),
     clock: host.clock,

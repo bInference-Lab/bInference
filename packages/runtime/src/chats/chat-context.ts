@@ -2,7 +2,7 @@ import type { Clock, Id } from "@binference/core";
 import type { TurnCompaction } from "../compaction/turn-history.js";
 import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
-import type { ContextSource, EngineChat } from "../relay/ports.js";
+import type { ContextSource, EngineChat, OwnerImageReader } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import type { AgentChats } from "./agent-chats.js";
 import type { NewMessageMode } from "./queue-merge.js";
@@ -24,6 +24,8 @@ export interface ChatRunnerOptions {
   readonly engine: EngineChat;
   /** The workspace files and live facts each turn's context reads (decisions 0200 and 0201). */
   readonly turnContext: ContextSource;
+  /** The images of the owner's messages; without it, a message with images ends its turn unread. */
+  readonly images?: OwnerImageReader;
   /** The setup of an agent's next turn, read as the turn starts. */
   readonly setup: (agent: Id<"agt">) => TurnSetup;
   /** `chats.newMessageMode` now. */

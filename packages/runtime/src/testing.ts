@@ -59,6 +59,13 @@ export type {
   ContextSourceSubject,
 } from "./contracts/context-source-contract.js";
 export { engineChatContract } from "./contracts/engine-chat-contract.js";
+export { ownerImageReaderContract } from "./contracts/owner-image-reader-contract.js";
+export type {
+  OwnerImageReaderHarness,
+  OwnerImageReaderSubject,
+} from "./contracts/owner-image-reader-contract.js";
+export { createMemoryImageReader } from "./testing/memory-image-reader.js";
+export type { MemoryImage } from "./testing/memory-image-reader.js";
 export type { EngineChatHarness, EngineChatSubject } from "./contracts/engine-chat-contract.js";
 export { liveFactsReaderContract } from "./contracts/live-facts-reader-contract.js";
 export type {

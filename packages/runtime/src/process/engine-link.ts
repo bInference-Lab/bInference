@@ -5,6 +5,7 @@ import { WebSocket } from "ws";
 import type { StartLine } from "../control/control-line.schema.js";
 import { createProtocolContextSource } from "../relay/protocol-context-source.js";
 import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
+import { createProtocolImageReader } from "../relay/protocol-image-reader.js";
 import type { EngineLink } from "./run-runtime.js";
 
 type ClientPorts = Pick<ProtocolClientOptions, "clock" | "random" | "logger">;
@@ -43,6 +44,7 @@ export async function connectEngine(
   return {
     chat: createProtocolEngineChat(client),
     context: createProtocolContextSource(client),
+    images: createProtocolImageReader(client),
     client,
     close: () => client.close(),
   };

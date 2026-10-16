@@ -19,12 +19,14 @@ import { type EngineLink, type RuntimeHost, runRuntime } from "../process/run-ru
 import type { ContextSource } from "../relay/ports.js";
 import { createProtocolContextSource } from "../relay/protocol-context-source.js";
 import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
+import { createProtocolImageReader } from "../relay/protocol-image-reader.js";
 import { agentToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
 import { nthTestId } from "./memory-agent-stores.js";
 import { createMemoryContextSource } from "./memory-context-source.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
+import { createMemoryImageReader } from "./memory-image-reader.js";
 import {
   createScriptedTransport,
   createTestChain,
@@ -116,6 +118,7 @@ async function signIn(
     return {
       chat: createProtocolEngineChat(client),
       context: createProtocolContextSource(client),
+      images: createProtocolImageReader(client),
       client,
       close: () => client.close(),
     };
@@ -129,6 +132,7 @@ async function signIn(
   return {
     chat: options.engine,
     context: options.context ?? createMemoryContextSource(),
+    images: createMemoryImageReader(new Map()),
     client: unservedClient,
     close: () => undefined,
   };
