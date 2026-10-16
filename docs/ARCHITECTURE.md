@@ -347,6 +347,8 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `token_launch`                           | A token on Flap, four.meme, Genius.fun or Brew; every launch setting is on its card ([decision 0082](DECISIONS.md#d0082))        |
 
 **Control tools:** `order_cancel` (braking, so no confirmation), `notes_write` (labelled memory),
+`workspace_write` and `first_chat_end` (the owner's strategy and persona, and the first chat's end;
+[decision 0242](DECISIONS.md#d0242)),
 `alert_create` (price and wallet alerts, no transaction), `schedule_create`, `schedule_list` and `schedule_cancel` (model turns on a
 schedule, counted against the model budget; [section 26](#section-26)) and `ask_owner` (a question
 with buttons).

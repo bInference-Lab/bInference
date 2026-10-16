@@ -315,7 +315,7 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `read`    | `token_search`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `lending_markets`, `lending_position`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill` |
 | `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `lend`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`, `token_launch`                                                                                                                                                                |
-| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`                                                                                                                                                                                                  |
+| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242))                                                                                                                    |
 
 <a id="section-5-2"></a>
 
@@ -440,7 +440,8 @@ The context of a model call is data with three parts, never one string with a ma
 1. **The stable prefix**, the same bytes from call to call while nothing in it changes:
    1. binference's instructions for the agent, fixed per version, with the owner's language;
    2. the workspace files in this order: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`,
-      `NOTES.md`, and `FIRST-CHAT.md` while it exists;
+      `NOTES.md`, and `FIRST-CHAT.md` while it exists and the agent is in paper mode
+      ([decision 0242](../DECISIONS.md#d0242));
    3. the skills index: each installed skill's name, description and location, by name, read
       from the engine with `skill/list` ([decision 0207](../DECISIONS.md#d0207));
    4. the tool declarations, by name.

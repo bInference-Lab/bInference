@@ -798,7 +798,9 @@ New agents start in paper mode, and the first chat learns how the owner trades
   and asks the questions after. It asks one question at a time, with `ask_owner` buttons where the
   answer is a choice. "Skip" or 「跳过」 ends the questions, and the agent writes what it has.
 - **The end.** The agent writes `STRATEGY.md` and `PERSONA.md` from the answers and removes
-  `FIRST-CHAT.md`; the turn that removes it ends with `turn.firstChatDone`.
+  `FIRST-CHAT.md`; the turn that removes it ends with `turn.firstChatDone`. It writes only from a
+  turn whose context holds no outside content, and a live agent never runs the first chat
+  ([decision 0242](../DECISIONS.md#d0242)).
 - **Limits stay out of chat.** No answer sets a limit: the budget answer guides the strategy only,
   and limits change in the CLI or the console.
 

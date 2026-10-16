@@ -385,7 +385,7 @@ new name here first, in the change that uses it.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
-  `notes_write`.
+  `notes_write`, `workspace_write` (the owner's strategy and persona), `first_chat_end`.
 - **MCP tools**: the MCP server's read and propose tools, one per operation and named
   `binference_`, such as `binference_propose` for `intent/propose`.
 - **request id**: the optional `requestId` an MCP client gives a propose tool, sent as the call's
