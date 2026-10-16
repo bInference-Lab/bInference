@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { disclaimerVersion, messages } from "@binference/i18n";
-import { createPlatform, writePrivateFile } from "@binference/platform";
+import { createPlatform, listFolderFiles, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { fakeBotToken } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -19,6 +19,9 @@ import {
 } from "./init-fixtures.js";
 import { testModelId, testModelKey } from "./model-fixtures.js";
 
+// The model key's variable; the fixtures' runs link no model.
+const modelKeyVariable = "TEST_MODEL_KEY";
+
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
 const writing = { permissions: createPlatform().permissions, signal: new AbortController().signal };
@@ -28,8 +31,6 @@ afterEach(async () => {
 });
 
 const en = (key: string): string => messages.en[key] ?? `missing ${key}`;
-
-const modelKeyVariable = "TEST_MODEL_KEY";
 
 /** The answers of a server install, every secret as a source that names a variable. */
 function serverAnswers(machine: InitMachine): Readonly<Record<string, unknown>> {
@@ -56,6 +57,11 @@ async function answersFile(answers: Readonly<Record<string, unknown>>): Promise<
   return file;
 }
 
+/** The variables the sources name: the Privy app secret, the bot token and the model key. */
+function serverEnv(machine: InitMachine): Readonly<Record<string, string>> {
+  return { ...secretEnv(machine), [modelKeyVariable]: testModelKey };
+}
+
 /** The answers as `BINFERENCE_INIT_*` variables: text as it is, a source or a switch as JSON. */
 function variablesOf(answers: Readonly<Record<string, unknown>>): Readonly<Record<string, string>> {
   return Object.fromEntries(
@@ -65,11 +71,6 @@ function variablesOf(answers: Readonly<Record<string, unknown>>): Readonly<Recor
       return value === undefined ? [] : [[answer.variable, text]];
     }),
   );
-}
-
-/** The variables the sources name: the Privy app secret, the bot token and the model key. */
-function serverEnv(machine: InitMachine): Readonly<Record<string, string>> {
-  return { ...secretEnv(machine), [modelKeyVariable]: testModelKey };
 }
 
 describe("binference init --accept-disclaimer", () => {
@@ -176,5 +177,95 @@ describe("binference init from an answers file", () => {
 
     expect(run.code).toBe(0);
     expect(JSON.parse(run.stdout)).toMatchObject({ state: "set_up" });
+  });
+});
+
+/** The flags without one flag and its value. */
+function without(flags: readonly string[], name: string): readonly string[] {
+  const at = flags.indexOf(name);
+  return [...flags.slice(0, at), ...flags.slice(at + 2)];
+}
+
+/** What a refused run left: the state folder's files, and how often Privy was called. */
+async function leftBehind(machine: InitMachine): Promise<readonly unknown[]> {
+  const files = await listFolderFiles(machine.folder, new AbortController().signal);
+  return [files, machine.privy.sent.length];
+}
+
+describe("binference init refusals before anything is written", () => {
+  it("names a missing answer's flag, variable and file key, and fails", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const { rescue: _left, ...answers } = serverAnswers(machine);
+    const file = await answersFile(answers);
+
+    const run = await runOn(machine, ["init", "--yes", "--answers", file]);
+
+    const words = en("init.refused.needsAnswer")
+      .replace("{flag}", "--rescue")
+      .replace("{variable}", "BINFERENCE_INIT_RESCUE")
+      .replace("{key}", "rescue");
+    expect([run.code, run.stderr]).toStrictEqual([1, `${words}\n`]);
+    await expect(leftBehind(machine)).resolves.toStrictEqual([[], 0]);
+  });
+
+  it("refuses a secret written inline in the file, and never shows it", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const secret = machine.privy.appSecret.reveal();
+    const file = await answersFile({ ...serverAnswers(machine), privyAppSecret: secret });
+
+    const json = await runOn(machine, ["init", "--yes", "--json", "--answers", file]);
+    const plain = await runOn(machine, ["init", "--yes", "--answers", file]);
+
+    expect([json.code, JSON.parse(json.stdout)]).toStrictEqual([
+      1,
+      { error: { code: "config.secret_inline" } },
+    ]);
+    const name = en("init.answers.inFile")
+      .replace("{key}", "privyAppSecret")
+      .replace("{file}", file);
+    const words = en("init.refused.secretInline")
+      .replace("{name}", name)
+      .replace("{example}", '{ fromEnv: "PRIVY_APP_SECRET" }');
+    expect([plain.code, plain.stderr]).toStrictEqual([1, `${words}\n`]);
+    expect(`${json.stdout}${json.stderr}${plain.stdout}${plain.stderr}`).not.toContain(secret);
+    await expect(leftBehind(machine)).resolves.toStrictEqual([[], 0]);
+  });
+
+  it("refuses a secret written inline in a variable or a flag", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const env = { ...secretEnv(machine), BINFERENCE_INIT_BOT_TOKEN: fakeBotToken };
+    const noBot = without(initFlags(machine), "--bot-token");
+    const inlineKey = [...initFlags(machine), "--model-key", testModelKey];
+
+    const fromVariable = await runOn(machine, ["init", "--yes", ...noBot], { env });
+    const fromFlag = await runOn(machine, ["init", "--yes", ...inlineKey]);
+
+    expect(fromVariable.code).toBe(1);
+    expect(fromVariable.stderr).toContain("BINFERENCE_INIT_BOT_TOKEN");
+    expect(fromFlag.code).toBe(1);
+    expect(fromFlag.stderr).toContain('{ fromEnv: "MODEL_KEY" }');
+    const shown = `${fromVariable.stdout}${fromVariable.stderr}${fromFlag.stdout}${fromFlag.stderr}`;
+    expect([shown.includes(fakeBotToken), shown.includes(testModelKey)]).toStrictEqual([
+      false,
+      false,
+    ]);
+    await expect(leftBehind(machine)).resolves.toStrictEqual([[], 0]);
+  });
+
+  it("refuses a secret config key written inline in the file's set", slow, async () => {
+    const machine = await newInitMachine(folders);
+    const set = { "telegram.webhookSecret": "a-webhook-secret-in-plain-text" };
+    const file = await answersFile({ ...serverAnswers(machine), set });
+
+    const argv = ["init", "--yes", "--json", "--answers", file];
+    const run = await runOn(machine, argv, { env: serverEnv(machine) });
+
+    expect([run.code, JSON.parse(run.stdout)]).toMatchObject([
+      1,
+      { error: { code: "config.secret_inline" } },
+    ]);
+    expect(`${run.stdout}${run.stderr}`).not.toContain("a-webhook-secret-in-plain-text");
+    expect(machine.privy.sent.map((request) => request.method)).not.toContain("POST");
+    await expect(configText(machine)).resolves.toBeUndefined();
   });
 });

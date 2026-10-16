@@ -82,10 +82,13 @@ function settingsValue(settings: InitSettings): JsonObject {
   };
 }
 
+// A secret written as text is `config.secret_inline`, as config spec section 4 says; the issue
+// names its key, never the text.
 function configRefused(issues: readonly ConfigIssue[]): Refused {
   const count = issues.length;
+  const isInline = issues.some((issue) => issue.problem.kind === "secret_inline");
   const refusal = {
-    code: "config.invalid",
+    code: isInline ? "config.secret_inline" : "config.invalid",
     key: "refused.configInvalid",
     values: { count },
     issues,

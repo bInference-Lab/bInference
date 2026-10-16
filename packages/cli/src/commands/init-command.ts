@@ -13,6 +13,7 @@ import {
 } from "@binference/store";
 import { type AttachAfterRestore, runAttach } from "../attach/run-attach.js";
 import { runRebuild } from "../attach/run-rebuild.js";
+import { flagLabel } from "../init/answer-label.js";
 import { layeredAnswers } from "../init/answer-layers.js";
 import { earlierAnswersOf } from "../init/earlier-answers.js";
 import type { InitStart } from "../init/first-answers.js";
@@ -21,6 +22,7 @@ import { initFaultOf } from "../init/init-faults.js";
 import type { InitStores } from "../init/install-step.js";
 import { takeLanguage } from "../init/language-step.js";
 import { runInit } from "../init/run-init.js";
+import { unattendedRefusal } from "../init/unattended-refusal.js";
 import type { InitFlags } from "../program/cli-flags.schema.js";
 import type { CliHost } from "../program/cli-host.js";
 import { type CliOutput, createCliOutput, type ExitCode } from "../program/cli-output.js";
@@ -186,6 +188,16 @@ function flagConflictOf(flags: InitFlags): InitRefusal | undefined {
     : undefined;
 }
 
+// A new set-up nobody answers is checked before anything is written (decision 0225); attach and
+// restore take the install's own answers.
+function unattendedOf(context: InitContext): InitRefusal | undefined {
+  const { flags } = context;
+  const isNewSetUp = !flags.isAttach && flags.restore === undefined;
+  return context.isInteractive || !isNewSetUp
+    ? undefined
+    : unattendedRefusal(flags, (flag) => flagLabel(context, flag));
+}
+
 // The language step and an earlier set-up's answers come first, for a new set-up only: attach
 // and restore take the install's own config.
 async function startOf(context: InitContext): Promise<InitStart> {
@@ -292,7 +304,7 @@ export async function runInitCommand(
   }
   const { flags, origins } = layered.value;
   const first = initContextOf(host, output, { flags, formatter, origins });
-  const conflict = flagConflictOf(flags);
+  const conflict = flagConflictOf(flags) ?? unattendedOf(first);
   if (conflict !== undefined) {
     return refuse(first, firstReport, conflict);
   }

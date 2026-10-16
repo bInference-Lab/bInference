@@ -7,6 +7,7 @@ import { flagLabel } from "./answer-label.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import { secretPlaceOf } from "./secret-places.js";
 import { readFlagSecret, sourceOf } from "./take-secret.js";
+import { missingAnswer } from "./unattended-refusal.js";
 
 /** This machine's agent key as init leaves it: its public half, and whether init made it. */
 export interface AgentKey {
@@ -79,7 +80,7 @@ export function unlockCommandOf(
     return ok(undefined);
   }
   if (text === undefined) {
-    return refused("init.needs_flag", "refused.needsFlag", { flag: commandFlag });
+    return missingAnswer(commandFlag);
   }
   const source = sourceOf(text, commandSourceSchema);
   return source === undefined
@@ -131,9 +132,7 @@ export async function takeAgentKey(
 ): Promise<InitStep<AgentKey>> {
   const { mode, command } = unlock;
   if (mode === "command") {
-    return command === undefined
-      ? refused("init.needs_flag", "refused.needsFlag", { flag: commandFlag })
-      : commandKey(context, command);
+    return command === undefined ? missingAnswer(commandFlag) : commandKey(context, command);
   }
   if (mode === "manual") {
     const store = await manualStore(context, installId);

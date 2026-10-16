@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { createSecret, type Http } from "@binference/core";
 import { messages } from "@binference/i18n";
-import { acquireFileLock } from "@binference/platform";
+import { acquireFileLock, listFolderFiles } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
 import { createP256KeyPair, formatAgentKey } from "@binference/signer";
 import { afterEach, describe, expect, it } from "vitest";
@@ -172,7 +172,11 @@ describe("binference init refusals before anything is made", () => {
     const flags = withoutFlag(initFlags(machine), "--rescue");
     const run = await runOn(machine, ["init", "--yes", ...flags]);
     expect(run.code).toBe(1);
-    expect(run.stderr).toBe(`${en("refused.needsFlag").replace("{flag}", "--rescue")}\n`);
+    const words = en("refused.needsAnswer")
+      .replace("{flag}", "--rescue")
+      .replace("{variable}", "BINFERENCE_INIT_RESCUE")
+      .replace("{key}", "rescue");
+    expect(run.stderr).toBe(`${words}\n`);
     expect(posts(machine)).toBe(0);
   });
 
@@ -204,8 +208,7 @@ describe("binference init refusals before anything is made", () => {
       },
     ],
     [["--rescue", "0x0000000000000000000000000000000000000000"], { code: "init.bad_rescue" }],
-    [["--privy-app-secret", "PRIVY_SECRET"], { code: "init.bad_source" }],
-    [["--unlock", "command"], { code: "init.needs_flag" }],
+    [["--privy-app-secret", '{ fromVault: "privy" }'], { code: "init.bad_source" }],
     [["--unlock", "command", "--unlock-command", "op read"], { code: "init.bad_source" }],
     [["--privy-app-id", "not an id!"], { code: "init.bad_app_id" }],
     [["--bot-token", '{ fromEnv: "NOT_SET_ANYWHERE" }'], { code: "init.source_unavailable" }],
@@ -225,6 +228,19 @@ describe("binference init refusals before anything is made", () => {
     expect(posts(machine)).toBe(0);
     await expect(configText(machine)).resolves.toBeUndefined();
     await expect(storedInstall(machine)).resolves.toMatchObject({ agents: [] });
+  });
+
+  it.each([
+    [["--privy-app-secret", "PRIVY_SECRET"], { code: "config.secret_inline" }],
+    [["--unlock", "command"], { code: "init.needs_flag" }],
+  ])("refuses %j before it writes anything", slow, async (extra, error) => {
+    const machine = await newInitMachine(folders);
+    const run = await init(machine, [...initFlags(machine), ...extra]);
+    expect([run.code, errorCode(run.stdout)]).toStrictEqual([1, error]);
+    expect(machine.privy.sent).toHaveLength(0);
+    await expect(
+      listFolderFiles(machine.folder, new AbortController().signal),
+    ).resolves.toStrictEqual([]);
   });
 
   it(

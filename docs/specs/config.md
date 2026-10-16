@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208) and [0224](../DECISIONS.md#d0224);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224) and [0225](../DECISIONS.md#d0225);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -72,6 +72,9 @@ shown by kind only.
   `engine.port: must be a number from 1024 to 65535 (got "abc"). Set it in config.json5 or remove it.`
 - A secret written as plain text fails with `config.secret_inline`; `binference check --fix` offers
   to move it to the keychain ([ENGINEERING.md section 11](../ENGINEERING.md#section-11)).
+  `binference init` refuses a secret answer written as plain text in a flag, a `BINFERENCE_INIT_*`
+  variable or the answers file the same way, before it writes anything
+  ([decision 0225](../DECISIONS.md#d0225)).
 - `version` names the file's shape. A newer binference migrates an older file with
   `binference check --fix` after a backup; an older binference refuses a newer file.
 

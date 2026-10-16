@@ -4,6 +4,7 @@ import { bsc } from "@binference/chains";
 import { ok } from "@binference/core";
 import { flagLabel } from "./answer-label.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
+import { missingAnswer } from "./unattended-refusal.js";
 
 /** The owner's rescue address: as the ceiling names it, and as the engine keeps it. */
 export interface RescueAddress {
@@ -38,7 +39,7 @@ export async function takeRescueAddress(context: InitContext): Promise<InitStep<
       : ok(rescue);
   }
   if (!context.isInteractive) {
-    return refused("init.needs_flag", "refused.needsFlag", { flag: "--rescue" });
+    return missingAnswer("--rescue");
   }
   context.prompter.note(context.words("rescue.explain"), context.words("rescue.title"));
   const typed = await context.prompter.ask({

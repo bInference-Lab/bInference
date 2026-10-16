@@ -3,7 +3,10 @@ import JSON5 from "json5";
 import type { z } from "zod";
 import { type SecretSource, secretSourceSchema } from "../config/schema/secret-source.schema.js";
 import { flagLabel } from "./answer-label.js";
+import { answerOfFlag } from "./answer-names.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
+import { inlineSecretRefusal } from "./inline-secret.js";
+import { missingAnswer } from "./unattended-refusal.js";
 
 /** A secret init took: its value for the checks, and the source the config names it by. */
 export interface TakenSecret {
@@ -65,6 +68,13 @@ export async function takeSecret(
   spec: SecretSpec,
 ): Promise<InitStep<TakenSecret>> {
   if (spec.flagText !== undefined) {
+    const answer = answerOfFlag(spec.flag);
+    const name = flagLabel(context, spec.flag);
+    const inline =
+      answer === undefined ? undefined : inlineSecretRefusal(name, answer, spec.flagText);
+    if (inline !== undefined) {
+      return inline;
+    }
     const source = sourceOf(spec.flagText, secretSourceSchema);
     if (source === undefined) {
       return refused("init.bad_source", "refused.badSource", {
@@ -75,7 +85,7 @@ export async function takeSecret(
     return value.ok ? ok({ value: value.value, source }) : value;
   }
   if (!context.isInteractive) {
-    return refused("init.needs_flag", "refused.needsFlag", { flag: spec.flag });
+    return missingAnswer(spec.flag);
   }
   const typed = await context.prompter.ask({
     ...spec.question,

@@ -3,6 +3,7 @@ import { checkPrivyApp } from "@binference/custody-privy";
 import { flagLabel } from "./answer-label.js";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import { type TakenSecret, takeSecret } from "./take-secret.js";
+import { missingAnswer } from "./unattended-refusal.js";
 
 /** The owner's Privy app, checked: its id and its secret. */
 export interface PrivyApp {
@@ -27,7 +28,7 @@ async function appIdOf(context: InitContext): Promise<InitStep<string>> {
         });
   }
   if (!context.isInteractive) {
-    return refused("init.needs_flag", "refused.needsFlag", { flag: "--privy-app-id" });
+    return missingAnswer("--privy-app-id");
   }
   const typed = await context.prompter.ask({
     id: "privyAppId",

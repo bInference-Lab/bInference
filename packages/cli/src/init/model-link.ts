@@ -3,6 +3,7 @@ import { checkModel, type ModelCheckProblem } from "@binference/runtime";
 import { type InitContext, type InitStep, refused } from "./init-context.js";
 import { isModelAddress, type ModelPreset, modelIdPattern, modelPresets } from "./model-presets.js";
 import { type TakenSecret, takeSecret } from "./take-secret.js";
+import { missingAnswer } from "./unattended-refusal.js";
 
 /** The model init links: its provider, the model's id there, and its key. */
 export interface ModelLink {
@@ -64,7 +65,7 @@ function baseUrlOfFlags(context: InitContext, preset: ModelPreset): InitStep<str
     return ok(preset.baseUrl);
   }
   if (typed === undefined) {
-    return refused("init.needs_flag", "refused.needsFlag", { flag: "--model-base-url" });
+    return missingAnswer("--model-base-url");
   }
   return isModelAddress(typed)
     ? ok(typed)
@@ -102,7 +103,7 @@ export async function linkOfFlags(context: InitContext): Promise<InitStep<ModelL
     return preset;
   }
   if (flags.model === undefined || !modelIdPattern.test(flags.model)) {
-    return refused("init.needs_flag", "refused.needsFlag", { flag: "--model" });
+    return missingAnswer("--model");
   }
   const baseUrl = baseUrlOfFlags(context, preset.value);
   if (!baseUrl.ok) {
