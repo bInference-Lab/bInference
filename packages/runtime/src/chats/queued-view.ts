@@ -79,7 +79,7 @@ function alertText(view: Extract<TurnMessage, { readonly kind: "inbox/alertFired
 
 /**
  * A message as a turn's conversation holds it: one with images is outside content, and so is a
- * schedule's or an alert's wake-up whose `outsideContent` is set.
+ * schedule's wake-up whose `outsideContent` is set, and every alert's wake-up.
  */
 export function ownerMessageOf(view: TurnMessage): OwnerMessage {
   if (view.kind === "inbox/intentSettled") {
@@ -88,8 +88,10 @@ export function ownerMessageOf(view: TurnMessage): OwnerMessage {
   if (view.kind === "inbox/scheduleDue") {
     return { id: view.message, text: scheduleText(view), outside: view.outsideContent };
   }
+  // What fires an alert is a market's or another wallet's doing: every alert wake-up is outside
+  // content, whatever the message says (decision 0245).
   if (view.kind === "inbox/alertFired") {
-    return { id: view.message, text: alertText(view), outside: view.outsideContent };
+    return { id: view.message, text: alertText(view), outside: true };
   }
   const { images } = view;
   return {

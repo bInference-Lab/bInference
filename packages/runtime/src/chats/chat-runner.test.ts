@@ -302,6 +302,24 @@ describe("createChatRunner", () => {
     ]);
   });
 
+  it("marks an alert's wake-up whatever the message says", async () => {
+    const rig = await startChatRig({ replies: [textReply("Looked.")] });
+    const woke = rig.engine.alerted(rig.agent, {
+      ...priceAlert(rig.agent, 1),
+      outsideContent: false,
+    });
+    await rig.received();
+    await rig.runner.rested();
+    const events = await rig.stores.transcript.events(
+      { sessionId: woke.session, limit: 10 },
+      live(),
+    );
+    expect(events.map(({ role, outside }) => [role, outside])).toStrictEqual([
+      ["owner", true],
+      ["agent", false],
+    ]);
+  });
+
   it("skips an alert's wake-up refused for a spent budget", async () => {
     const rig = await startChatRig({ replies: [] });
     rig.engine.refuse(rig.agent, { started: false, refusal: "budget" });
