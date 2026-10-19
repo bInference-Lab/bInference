@@ -174,3 +174,29 @@ describe("the agent's questions", () => {
     expect(inboxPushes(test)).toStrictEqual([]);
   });
 });
+
+async function read(test: TestEngine) {
+  return test.engine.handlers["chat/openQuestion"](testCall({ agent: testAgent }));
+}
+
+describe("chat/openQuestion", () => {
+  it("answers the agent's open question, and none once it is answered", async () => {
+    const test = await startTestEngine();
+    expect(expectOk(await read(test))).toStrictEqual({});
+    const view = await asked(test);
+    expect(expectOk(await read(test))).toStrictEqual({ question: view });
+    const answer = { agent: testAgent, question: view.question, choice: 0 };
+    expectOk(await test.engine.handlers["chat/answer"](testCall(answer)));
+    expect(expectOk(await read(test))).toStrictEqual({});
+  });
+
+  it("closes a question 24 hours old as it meets it, and tells every surface", async () => {
+    const test = await startTestEngine();
+    const view = await asked(test);
+    await test.clock.advance(questionOpenMs);
+    expect(expectOk(await read(test))).toStrictEqual({});
+    expect(chatPushes(test, "chat/questionClosed")).toStrictEqual([
+      { agent: testAgent, question: view.question, state: "closed", closeReason: "expired" },
+    ]);
+  });
+});

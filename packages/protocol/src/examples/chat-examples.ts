@@ -231,6 +231,7 @@ export const questionExamples: {
     args: { agent: ids.agent, question: ids.question, choice: 1 },
     result: { session: ids.session, turn: ids.turn },
   },
+  "chat/openQuestion": { args: { agent: ids.agent }, result: {} },
 };
 
 /** An example call of every notes operation. */

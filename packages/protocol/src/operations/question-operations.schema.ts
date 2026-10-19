@@ -8,7 +8,7 @@ import {
   questionViewSchema,
 } from "../views/question-view.schema.js";
 import type { TurnRef } from "./chat-operations.schema.js";
-import { writeFlags, type OperationTable } from "./operation.schema.js";
+import { readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /**
  * The args of `turn/ask`: the agent's question in its running turn, with 2 to 4 answer buttons
@@ -25,10 +25,16 @@ interface AnswerArgs extends AgentArgs {
   readonly choice: number;
 }
 
+/** What `chat/openQuestion` answers: the agent's open question, or none. */
+interface OpenQuestion {
+  readonly question?: QuestionView;
+}
+
 /** The operations of the agent's questions to the owner. */
 export interface QuestionOperationShapes {
   readonly "turn/ask": { readonly args: AskArgs; readonly result: QuestionView };
   readonly "chat/answer": { readonly args: AnswerArgs; readonly result: TurnRef };
+  readonly "chat/openQuestion": { readonly args: AgentArgs; readonly result: OpenQuestion };
 }
 
 const agent = protocolIdSchema("agent");
@@ -82,5 +88,12 @@ export const questionOperations: OperationTable<QuestionOperationShapes> = {
       session: protocolIdSchema("chatSession"),
       turn: protocolIdSchema("chatTurn"),
     }),
+  },
+  "chat/openQuestion": {
+    ...readFlags,
+    name: "chat/openQuestion",
+    scope: "read",
+    args: z.strictObject({ agent }),
+    result: z.object({ question: questionViewSchema.exactOptional() }),
   },
 };

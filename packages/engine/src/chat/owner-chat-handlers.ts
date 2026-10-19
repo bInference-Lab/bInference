@@ -4,7 +4,8 @@ import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
 import type { AgentInboxDraft, AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
-import { answerQuestion, closeQuestion } from "./question-flow.js";
+import { answerQuestion, closeQuestion, questionViewOf } from "./question-flow.js";
+import { isAnswerable } from "./question-record.js";
 
 /** The owner's side of chat (protocol spec, section 7.7). */
 export interface OwnerChatHandlers {
@@ -12,6 +13,7 @@ export interface OwnerChatHandlers {
   readonly "chat/stop": EngineHandler<"chat/stop">;
   readonly "chat/clear": EngineHandler<"chat/clear">;
   readonly "chat/answer": EngineHandler<"chat/answer">;
+  readonly "chat/openQuestion": EngineHandler<"chat/openQuestion">;
 }
 
 type Draft = Omit<AgentInboxDraft, "id" | "agentId" | "atMs" | "opens">;
@@ -119,12 +121,29 @@ function answerHandler(options: ChatRelayOptions): EngineHandler<"chat/answer"> 
   };
 }
 
+// `chat/openQuestion`: the agent's open question for a page that opened after it was asked. This
+// call meets the question, so one 24 hours old closes as expired (decision 0248).
+function openQuestionHandler(options: ChatRelayOptions): EngineHandler<"chat/openQuestion"> {
+  return async (call) => {
+    const open = await options.questions.openOf(call.args.agent, call);
+    if (open === undefined) {
+      return ok({});
+    }
+    if (!isAnswerable(open, options.clock.now())) {
+      await closeQuestion(options, open, { reason: "expired", signal: call.signal });
+      return ok({});
+    }
+    return ok({ question: questionViewOf(open) });
+  };
+}
+
 /**
  * Creates the owner's chat handlers. Each stores its `inbox` message before it replies, so a
  * message reaches the runtime once even while the runtime is down: `chat/post` an owner's message
  * with the turn the engine reserves for it, which answers the agent's open question as typed text,
  * `chat/stop` a stop, `chat/clear` a clear that names the session that follows and closes the open
- * question, and `chat/answer` the owner's choice of an open question.
+ * question, `chat/answer` the owner's choice of an open question, and `chat/openQuestion` the open
+ * question itself.
  */
 export function createOwnerChatHandlers(options: ChatRelayOptions): OwnerChatHandlers {
   return {
@@ -149,5 +168,6 @@ export function createOwnerChatHandlers(options: ChatRelayOptions): OwnerChatHan
       return ok({ session: next });
     },
     "chat/answer": answerHandler(options),
+    "chat/openQuestion": openQuestionHandler(options),
   };
 }

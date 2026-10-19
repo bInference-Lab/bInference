@@ -30991,6 +30991,177 @@
         "result"
       ]
     },
+    "call/chat/openQuestion": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "chat/openQuestion"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
+          "required": [
+            "agent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/chat/openQuestion": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string",
+                  "pattern": "^qst_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "turn": {
+                  "type": "string",
+                  "pattern": "^trn_"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "choices": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "answered",
+                    "closed"
+                  ]
+                },
+                "answer": {
+                  "type": "object",
+                  "properties": {
+                    "choice": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 3
+                    },
+                    "typed": {
+                      "type": "string"
+                    },
+                    "surface": {
+                      "type": "string",
+                      "enum": [
+                        "telegram",
+                        "console",
+                        "cli",
+                        "mini"
+                      ]
+                    },
+                    "at": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "surface",
+                    "at"
+                  ]
+                },
+                "closeReason": {
+                  "type": "string",
+                  "enum": [
+                    "replaced",
+                    "cleared",
+                    "expired"
+                  ]
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "closesAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "question",
+                "agent",
+                "session",
+                "turn",
+                "text",
+                "choices",
+                "state",
+                "createdAt",
+                "closesAt"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
     "call/notes/search": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
