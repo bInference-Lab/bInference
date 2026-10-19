@@ -94,6 +94,8 @@ export interface CardActionFacts {
     readonly request: CardOrderRequest;
     readonly maxFills?: number;
     readonly expiresAtMs: number;
+    /** A DCA order's first two runs after its card was drawn, in epoch milliseconds. */
+    readonly firstRunsAtMs?: readonly [number, number];
   };
 }
 
@@ -232,7 +234,7 @@ const actionLines: ActionLines = {
           values: { kind: { type: "choice", choice: action.request.kind } },
         },
       },
-      summary: { type: "line", line: orderSummaryLine(action.request) },
+      summary: { type: "line", line: orderSummaryLine(action.request, action.firstRunsAtMs) },
       maxFills: count(action.maxFills ?? 0),
       expiry: { type: "dateTime", atMs: action.expiresAtMs },
     },

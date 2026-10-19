@@ -58,3 +58,18 @@ export function runAfter(
   const next = nextRunOf({ cron, timezone }, afterMs, timezone);
   return next.ok ? ok(next.value?.nextAtMs) : err("unreadable");
 }
+
+/**
+ * The order's first two runs after `afterMs`, which its card shows beside the cron so the owner
+ * reads how often it buys; `undefined` when its period does not read or runs fewer than twice.
+ */
+export function firstRunsOf(
+  request: DcaOrderRequest,
+  afterMs: number,
+): readonly [number, number] | undefined {
+  const first = runAfter(request, afterMs);
+  const second = first.ok && first.value !== undefined ? runAfter(request, first.value) : undefined;
+  return first.ok && first.value !== undefined && second?.ok === true && second.value !== undefined
+    ? [first.value, second.value]
+    : undefined;
+}

@@ -75,30 +75,26 @@ describe("an auto order's card in English", () => {
     );
   });
 
-  it("words a DCA order's period, its zone and its count of buys", async () => {
-    const [dca, open] = await cardOf([
-      {
-        ...testStopLoss(),
-        kind: "dca",
-        side: "buy",
-        size: { usdMicros: 10_000_000n },
-        trigger: { cron: "0 9 * * 1-5", timezone: "Asia/Shanghai", count: 20 },
-      },
-      {
-        ...testStopLoss(),
-        kind: "dca",
-        side: "buy",
-        size: { usdMicros: 10_000_000n },
-        trigger: { cron: "0 9 * * *" },
-      },
+  it("words a DCA order's period, its zone, its first runs and its count of buys", async () => {
+    const dca = {
+      ...testStopLoss(),
+      kind: "dca",
+      side: "buy",
+      size: { usdMicros: 10_000_000n },
+    } as const;
+    const [weekdays, capped, open] = await cardOf([
+      { ...dca, trigger: { cron: "0 9 * * 1-5", timezone: "Asia/Shanghai", count: 20 } },
+      { ...dca, trigger: { cron: "0 9 * * *" }, maxFills: 5 },
+      { ...dca, trigger: { cron: "0 9 * * *" } },
     ]);
 
-    expect(dca?.[1]).toMatch(
-      /^Approve DCA: buy TKN with \$10\.00 of FAKE on the schedule 0 9 \* \* 1-5 \(Asia\/Shanghai\), 20 times · up to 20 fills until /,
+    expect(weekdays?.[1]).toBe(
+      `Approve DCA: buy TKN with $10.00 of FAKE on the schedule 0 9 * * 1-5 (Asia/Shanghai), first at Jan 18, 2027, 01:00:00, then at Jan 19, 2027, 01:00:00, 20 times · up to 20 fills until ${formatter.dateTime(testNowMs + 2_592_000_000)}`,
     );
-    expect(open?.[1]).toMatch(
-      /^Approve DCA: buy TKN with \$10\.00 of FAKE on the schedule 0 9 \* \* \* \(UTC\), until the order ends · no fill limit until /,
+    expect(capped?.[1]).toMatch(
+      /\(UTC\), first at Jan 15, 2027, 09:00:00, then at Jan 16, 2027, 09:00:00, 5 times · up to 5 fills until /,
     );
+    expect(open?.[1]).toMatch(/, until the order ends · no fill limit until /);
   });
 
   it("words a buy by share of what the wallet may spend, and by an amount", async () => {

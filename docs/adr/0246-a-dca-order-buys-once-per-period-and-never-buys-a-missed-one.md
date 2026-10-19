@@ -63,7 +63,8 @@ The specs leave open:
 - **Live waits.** While live fills are off, `order/create` refuses a live DCA order with
   `order.live_fills_off`, as a live price order; one stored before skips with `live_fills_off`.
 - **The card.** `card.order.summary.dca` with `card.order.schedule`, "on the schedule {cron}
-  ({zone})", and the count of buys.
+  ({zone}), first at {first}, then at {second}", so an owner who does not read cron sees how often
+  it buys, and the count of buys: `count`, else `maxFills`, else "until the order ends".
 
 ## Consequences
 

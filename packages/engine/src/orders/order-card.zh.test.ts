@@ -63,7 +63,7 @@ describe("an auto order's card in Chinese", () => {
     );
 
     expect(summary?.split(" · ")[0]).toBe(
-      "批准定投：按计划 0 9 * * 1-5（Asia/Shanghai）用价值 $10.00 的 FAKE 买入 TKN，共 20 次",
+      "批准定投：按计划 0 9 * * 1-5（Asia/Shanghai），首次 2027年1月18日 01:00:00，第二次 2027年1月19日 01:00:00，用价值 $10.00 的 FAKE 买入 TKN，共 20 次",
     );
   });
 

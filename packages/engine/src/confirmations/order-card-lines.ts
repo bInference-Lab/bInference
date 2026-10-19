@@ -118,13 +118,22 @@ function limitLine(request: LimitOrderRequest): CardLine {
 
 // Spec 4, section 3.8: a DCA order buys with its spend on its period, in its zone, its count of
 // times or until it ends (decision 0246).
-function dcaLine(request: DcaOrderRequest): CardLine {
+function dcaLine(request: DcaOrderRequest, firstRuns?: readonly [number, number]): CardLine {
   const { cron, timezone, count } = request.trigger;
+  if (firstRuns === undefined) {
+    throw new BinferenceError({
+      code: "engine.bad_document",
+      message: "A DCA order's card needs its first runs.",
+    });
+  }
+  const [first, second] = firstRuns;
   const schedule: CardLine = {
     key: "card.order.schedule",
     values: {
       cron: { type: "text", text: cron },
       zone: { type: "text", text: timezone ?? "UTC" },
+      first: { type: "dateTime", atMs: first },
+      second: { type: "dateTime", atMs: second },
     },
   };
   return {
@@ -133,18 +142,24 @@ function dcaLine(request: DcaOrderRequest): CardLine {
       token: asset(request.token),
       spend: { type: "line", line: spendOf(request) },
       schedule: { type: "line", line: schedule },
-      count: { type: "count", count: count ?? 0 },
+      count: { type: "count", count: count ?? request.maxFills ?? 0 },
     },
   };
 }
 
-/** The summary of an auto order's card (spec 4, section 3.8): what it trades, and when. */
-export function orderSummaryLine(request: CardOrderRequest): CardLine {
+/**
+ * The summary of an auto order's card (spec 4, section 3.8): what it trades, and when; a DCA
+ * order's with its first two runs, which `firstRuns` must give.
+ */
+export function orderSummaryLine(
+  request: CardOrderRequest,
+  firstRuns?: readonly [number, number],
+): CardLine {
   if (request.kind === "limit") {
     return limitLine(request);
   }
   if (request.kind === "dca") {
-    return dcaLine(request);
+    return dcaLine(request, firstRuns);
   }
   const sell: CardValue = { type: "line", line: sellLine(request.token, request.size) };
   if (request.kind === "trailing") {

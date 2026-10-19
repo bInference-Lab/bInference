@@ -34,6 +34,7 @@ import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { tradeSlippageBps } from "../money-path/swap-trade.js";
 import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
+import { firstRunsOf } from "../orders/dca-period.js";
 import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { launchCardFacts } from "./launch-card-facts.js";
@@ -255,13 +256,31 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
   };
 }
 
-// An auto order's card: its terms with every default filled, the agent's reason, the launch
-// wallet that holds it (decision 0217), and the line on linked exits when its position holds
-// another active exit order (decision 0189). Copy orders are refused before any card.
+// An auto order's action line: its terms with every default filled, and a DCA order's first two
+// runs (decision 0246). Copy orders are refused before any card.
+function orderActionOf(quote: AutoOrderQuote): CardFacts["action"] | undefined {
+  const { request, maxFills, expiresAtMs } = quote;
+  const firstRuns = request.kind === "dca" ? firstRunsOf(request, quote.quotedAtMs) : undefined;
+  if (request.kind === "copy" || (request.kind === "dca" && firstRuns === undefined)) {
+    return undefined;
+  }
+  return {
+    kind: "autoOrder",
+    request,
+    ...(maxFills === undefined ? {} : { maxFills }),
+    expiresAtMs,
+    ...(firstRuns === undefined ? {} : { firstRunsAtMs: firstRuns }),
+  };
+}
+
+// An auto order's card: its action line, the agent's reason, the launch wallet that holds it
+// (decision 0217), and the line on linked exits when its position holds another active exit order
+// (decision 0189).
 function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | undefined {
   const { record, card, settings, launchWallet } = source;
-  const { request, hasLinkedExits, maxFills, expiresAtMs } = quote;
-  if (request.kind === "copy") {
+  const { request, hasLinkedExits } = quote;
+  const action = orderActionOf(quote);
+  if (action === undefined || request.kind === "copy") {
     return undefined;
   }
   const { reason } = request;
@@ -271,12 +290,7 @@ function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | 
     isPaper: record.isPaper,
     hasOutsideContent: record.hasOutsideContent,
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
-    action: {
-      kind: "autoOrder",
-      request,
-      ...(maxFills === undefined ? {} : { maxFills }),
-      expiresAtMs,
-    },
+    action,
     warnings: {
       ...baseWarnings(source),
       ...(isLinked ? { exitsLinkedToken: request.token } : {}),

@@ -40,7 +40,7 @@
   "order.summary.stopLoss": "当价格跌至 {price} 时，{sell}",
   "order.summary.trailing": "当价格从下单以来的最高点回落 {distance} 时，{sell}",
   "order.summary.dca": "{schedule}{spend} 买入 {token}，{count, plural, =0 {直到订单结束} other {共 # 次}}",
-  "order.schedule": "按计划 {cron}（{zone}）",
+  "order.schedule": "按计划 {cron}（{zone}），首次 {first}，第二次 {second}，",
   "order.exitsLinked": "当一个平仓订单卖出你持有的全部 {token} 时，该持仓的其他平仓订单随之结束",
   "order.worstPrice": "每次成交都以不差于 {price} 的价格交易",
   "place.curve": "{launchpad} 联合曲线",
