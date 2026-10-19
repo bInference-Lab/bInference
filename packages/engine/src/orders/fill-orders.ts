@@ -8,22 +8,11 @@ import type { PublishPush } from "../pushes/engine-push.js";
 import { isPeriodLate } from "./dca-period.js";
 import { endEmptyExit, endLateExits, wasEmptiedSince } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
-import {
-  announceOrder,
-  type CancelFillParts,
-  cancelFill,
-  proposalSkipOf,
-  skipRowOf,
-} from "./fill-ends.js";
+import { announceOrder, cancelFill, proposalSkipOf } from "./fill-ends.js";
 import { canFire, isLineHeld, unfinishedFills, withinDeadline } from "./fill-faults.js";
-import {
-  agentWideReasons,
-  chainFailuresInRow,
-  isWaiting,
-  paceRows,
-  stopAfterFailures,
-} from "./fill-pacing.js";
+import { chainFailuresInRow, isWaiting, paceRows, stopAfterFailures } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
+import { type FillState, rowParts, skipFill } from "./fill-skips.js";
 import { proposedTermsHash } from "./fill-terms-hash.js";
 import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
@@ -106,58 +95,6 @@ export interface OrderFillsParts extends FillSizeParts {
   readonly publish: PublishPush;
 }
 
-interface FillState {
-  readonly running: Set<Id<"ord">>;
-  readonly lines: Map<Id<"agt">, Promise<void>>;
-  /** The agent-wide reasons each agent heard since its last fill or the engine's start. */
-  readonly told: Map<Id<"agt">, Set<OrderFillReason>>;
-}
-
-/** One skip before any intent: its order, its reason, and the signal of its run. */
-interface Skip {
-  readonly order: OrderRecord;
-  readonly reason: OrderFillReason;
-  readonly signal: AbortSignal;
-}
-
-// The parts a skip's row and a fill's cancel are written with.
-function rowParts(parts: OrderFillsParts): CancelFillParts {
-  const { orders, ids, stored, clock, gate } = parts;
-  const spent: CapGate["spent"] = async (snapshot, call) => gate.spent(snapshot, call);
-  return { orders, ids, stored, clock, spent };
-}
-
-// An agent-wide reason is heard once per agent until one of its orders fills (decision 0197);
-// `undefined` for a reason of the order's own, heard once in a row.
-function agentWideTells(state: FillState, skipped: Skip): boolean | undefined {
-  const { order, reason } = skipped;
-  if (!agentWideReasons.has(reason)) {
-    return undefined;
-  }
-  const heard = state.told.get(order.agentId) ?? new Set<OrderFillReason>();
-  const isNew = !heard.has(reason);
-  state.told.set(order.agentId, heard.add(reason));
-  return isNew;
-}
-
-// Stores a skip before any intent, with its notice in the same write, and tells the owner; the
-// order stays as it is.
-async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Promise<FillOutcome> {
-  const { order, reason, signal } = skipped;
-  const tells = agentWideTells(state, skipped);
-  const atMs = parts.clock.now();
-  const told = tells === undefined ? {} : { tells };
-  // A copy order's skip names its leader as the agent's address book does.
-  const settings =
-    order.kind === "copy" ? await parts.agents.get(order.agentId, { signal }) : undefined;
-  const book = settings === undefined ? {} : { book: settings.addressBook };
-  const call = { order, reason, atMs, signal, ...told, ...book };
-  const row = await skipRowOf(rowParts(parts), call);
-  await parts.orders.recordFill(row, { signal });
-  await announceOrder(parts, order.id, signal);
-  return "skipped";
-}
-
 // What the fill's intent came to. Its row and notices were written with its end; they are told
 // now. A paper fill still `confirmed`, which no paper fill took, is cancelled unsigned. A live
 // fill the executor took is never cancelled here: it may be signing already, and the executor
@@ -238,7 +175,7 @@ async function fillNow(
   const { order, price, signal } = request;
   const gated = gateOf(parts, order);
   if (gated !== undefined) {
-    return skip(parts, state, { order, reason: gated, signal });
+    return skipFill(parts, state, { order, reason: gated, signal });
   }
   const settings = await parts.agents.get(order.agentId, { signal });
   if (settings === undefined) {
@@ -251,7 +188,7 @@ async function fillNow(
     return emptyExit(parts, state, { order, signal });
   }
   if (sized.kind === "skip") {
-    return skip(parts, state, { order, reason: sized.reason, signal });
+    return skipFill(parts, state, { order, reason: sized.reason, signal });
   }
   const first = await proposeFill(parts, { order, sized, price, signal });
   // A sale in dollars that its quote valued above its size is sized again at that quote's price.
@@ -263,7 +200,7 @@ async function fillNow(
       ? first
       : await proposeFill(parts, { order, sized: resized, price, signal });
   if (!proposed.ok) {
-    return skip(parts, state, { order, reason: proposalSkipOf(proposed.error), signal });
+    return skipFill(parts, state, { order, reason: proposalSkipOf(proposed.error), signal });
   }
   return settle(parts, state, { order, snapshot: proposed.value, signal });
 }
@@ -286,7 +223,7 @@ async function failed(
     await cancelFill(rowParts(parts), { snapshot, signal });
   }, Promise.resolve());
   if (newest === undefined) {
-    return skip(parts, state, { order, reason: "fill_failed", signal });
+    return skipFill(parts, state, { order, reason: "fill_failed", signal });
   }
   const skipped = { order, reason: "fill_failed" as const };
   await cancelFill(rowParts(parts), { snapshot: newest, skip: skipped, signal });
@@ -324,7 +261,7 @@ async function emptyExit(
 ): Promise<FillOutcome> {
   const { order, signal } = run;
   if (!(await wasEmptiedSince(parts.positions, run))) {
-    return skip(parts, state, { order, reason: "nothing_to_sell", signal });
+    return skipFill(parts, state, { order, reason: "nothing_to_sell", signal });
   }
   await endEmptyExit(parts, { order, nowMs: parts.clock.now(), signal });
   return "ended";
@@ -343,7 +280,7 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
     async skip({ order: id, reason }, { signal }) {
       const order = await parts.orders.get(id, { signal });
       if (order !== undefined) {
-        await skip(parts, state, { order, reason, signal });
+        await skipFill(parts, state, { order, reason, signal });
       }
     },
     async run({ order: id, price, period }, { signal }) {
@@ -371,7 +308,7 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
             return "waiting";
           }
           return period !== undefined && isPeriodLate(period.dueAtMs, parts.clock.now())
-            ? skip(parts, state, { order, reason: "late", signal })
+            ? skipFill(parts, state, { order, reason: "late", signal })
             : fillOrFail(parts, state, { order, price, signal });
         });
       } finally {
