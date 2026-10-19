@@ -4,10 +4,11 @@ import type { AssetInfos } from "@binference/protocol";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
-import { assetsDocument } from "../intents/intent-documents.schema.js";
+import { assetsDocument, quoteDocument } from "../intents/intent-documents.schema.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
+import { copyTradedOf } from "./copy-fills.js";
 import { exitEndMovesOf, fillRowNotices } from "./end-exit-orders.js";
 import { cancelFill } from "./fill-ends.js";
 import type { OrderFillWrite } from "./order-fill.js";
@@ -60,7 +61,13 @@ async function fillWriteOf(
 ): Promise<OrderFillWrite | undefined> {
   const { order, fill, signal } = call;
   const emptiesPosition = await empties(parts, order, { fill, signal });
-  const recorded = moveOrder(order, { type: "fill_recorded", emptiesPosition }, fill.atMs);
+  const traded = copyTradedOf(order, { ...fill, snapshot });
+  const trigger = {
+    type: "fill_recorded",
+    emptiesPosition,
+    ...(traded === undefined ? {} : { traded }),
+  } as const;
+  const recorded = moveOrder(order, trigger, fill.atMs);
   if (!recorded.ok) {
     return undefined;
   }
@@ -78,6 +85,26 @@ async function fillWriteOf(
     ...(notices.length === 0 ? {} : { notices }),
   };
   return { moves: [recorded.value, ...ended], fill: row };
+}
+
+// Whether the order can record the fill now: a copy order's with the trade its quote expects.
+function canRecord(order: OrderRecord, snapshot: IntentSnapshot, nowMs: number): boolean {
+  const { quote } = snapshot.record;
+  const view = quote === undefined ? undefined : quoteDocument.decode(quote);
+  const expected =
+    view === undefined
+      ? undefined
+      : copyTradedOf(order, {
+          snapshot,
+          amountIn: view.amountIn,
+          amountOut: view.expectedOut,
+          atMs: nowMs,
+        });
+  const trigger = {
+    type: "fill_recorded",
+    ...(expected === undefined ? {} : { traded: expected }),
+  } as const;
+  return moveOrder(order, trigger, nowMs).ok;
 }
 
 // One try at the paper fill with its order's write; answers the intent after it, and whether the
@@ -153,7 +180,7 @@ export function createFillOnPaper(parts: FillOnPaperParts): ExecuteConfirmed {
     if (order === undefined || snapshot.record.state !== "confirmed") {
       return snapshot;
     }
-    if (!moveOrder(order, { type: "fill_recorded" }, parts.clock.now()).ok) {
+    if (!canRecord(order, snapshot, parts.clock.now())) {
       return cancelFill(parts, { snapshot, signal });
     }
     // After the last try, only the check above runs, and a fill still waiting is cancelled: one

@@ -67,6 +67,17 @@ function holdsShape(
   return isOrders && isTokens && view.expectedOut.asset === view.minOut.asset;
 }
 
+// A copy buy the policy valued above its dollars per buy, or did not value, breaks its size
+// (decision 0260).
+function isOverCopyBuy(order: OrderRecord, simulated: IntentSnapshot): boolean {
+  const { request } = order;
+  if (request.kind !== "copy" || request.side !== "buy" || !("usdMicros" in request.size)) {
+    return false;
+  }
+  const value = simulated.record.valueUsdMicros;
+  return value === undefined || value > request.size.usdMicros;
+}
+
 // The order as it stands now, while it has the fills the fill was sized for: a fill it recorded
 // since leaves the fill nothing to fill.
 async function sameFillOf(
@@ -76,6 +87,12 @@ async function sameFillOf(
 ): Promise<OrderRecord | undefined> {
   const current = await parts.orders.get(order.id, { signal });
   return current?.fills === order.fills ? current : undefined;
+}
+
+// The dollars a sale sized in dollars may receive at most; none for any other fill.
+function dollarSaleOf(order: OrderRecord): bigint | undefined {
+  const { side, size } = order.request;
+  return side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
 }
 
 // The check in the agent's line, on the other side's price read before it.
@@ -97,14 +114,13 @@ async function checkInLine(
     return "order_inactive";
   }
   const view = quoteDocument.decode(quote);
-  if (!holdsShape(fill, simulated, view)) {
+  if (!holdsShape(fill, simulated, view) || isOverCopyBuy(fill.order, simulated)) {
     return "fill_bounds";
   }
   // The agent's maximum for the quote's pair, which holds when the order names none (decision 0197).
   const pair = [view.amountIn.asset, view.minOut.asset];
   const agentSlippageBps = tradeSlippageBps({ pair }, simulated.settings.limits, parts.chains);
-  const { size } = order.request;
-  const saleUsd = order.request.side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
+  const saleUsd = dollarSaleOf(order);
   const checked = checkFill(
     current,
     {

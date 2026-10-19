@@ -276,6 +276,17 @@ and `step_unsent` (a step never signed after an earlier one landed,
   `late`; a buy that cannot run behind a fill still settling is skipped with `fill_waiting`. A
   period a stop cut off between its keep and its buy is recorded as `missed` at the next start; an
   order whose period no longer reads records `period_unreadable` and is cancelled.
+- **Copy order fills** ([decision 0260](../DECISIONS.md#d0260)) run the same path, one for each
+  leader trade the order copies. The order reads its leader's trades in the order the leader
+  watcher stored them, from the moment it became active, and keeps the last one it took in its
+  trigger state before the trade's fill, so a trade is copied once per order; a stop between the
+  two records the trade as `missed` at the next start. It copies a buy of a token other than the
+  chain's coin and what it spends, at its `perBuyUsdMicros`, or the agent's `copy.perBuyUsd` when
+  lower, and a sale of a token it bought, at the leader's share of what it holds from its own
+  buys, never more than the wallet holds, rounded down. A buy whose dollars would pass its
+  `dailyUsdMicros` over the last 24 hours, or the agent's `copy.perLeaderDayUsd` for the leader, is
+  skipped with `copy_daily_cap`; each buy that filled counts at the value the policy judged it at.
+  A copy order waits after skips only once its fills failed on chain, as a DCA order does.
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when

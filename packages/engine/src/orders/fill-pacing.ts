@@ -42,8 +42,9 @@ function skipsInRow(rows: readonly OrderFillRecord[]): number {
  * newest first, so a restart keeps the wait. An exit order tries again at the next price, until
  * its second fill since its last fill failed on chain: then it waits 15 seconds, doubling with each
  * failure up to 5 minutes (decision 0211); so does a DCA order, whose period paces its buys
- * (decision 0246). Another buy waits 15 seconds after its last skip, the wait doubling with each
- * skip in a row up to 5 minutes; a fill starts it over.
+ * (decision 0246), and a copy order, whose leader paces its trades (decision 0260). Another buy
+ * waits 15 seconds after its last skip, the wait doubling with each skip in a row up to 5 minutes;
+ * a fill starts it over.
  */
 export function isWaiting(
   order: Pick<OrderRecord, "request">,
@@ -52,8 +53,10 @@ export function isWaiting(
 ): boolean {
   const [last] = rows;
   const failures = chainFailuresInRow(rows);
-  // A DCA order's period paces its buys, so it waits only after fills failed on chain, as an exit.
-  const byFailures = isExitOrder(order.request) || order.request.kind === "dca";
+  // A DCA order's period paces its buys, and a copy order's leader its trades, so each waits only
+  // after fills failed on chain, as an exit order does (decisions 0246 and 0260).
+  const { kind } = order.request;
+  const byFailures = isExitOrder(order.request) || kind === "dca" || kind === "copy";
   const skips = byFailures ? failures - backOffAfterFailures + 1 : skipsInRow(rows);
   return last !== undefined && skips > 0 && nowMs < last.atMs + waitAfter(skips);
 }

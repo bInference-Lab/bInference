@@ -13,6 +13,7 @@ import type { OrderSkipReason, QuoteFailure } from "../intents/intent-reason.js"
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import type { Holdings } from "../money-path/wallet-facts.js";
 import { isUsablePrice } from "../positions/value-execution.js";
+import { copiedHeldOf, copyStateOf } from "./copy-state.js";
 import { fillLimitBase, type SizeFacts } from "./fill-bounds.js";
 import type { OrderRecord } from "./order-record.js";
 
@@ -101,6 +102,15 @@ function coinOf(parts: FillSizeParts, order: OrderRecord): AssetRef {
   return nativeAssetOf(chain.value);
 }
 
+// What a copy order's sale may take its share of: what the order bought of the token, less what it
+// sold; none for any other fill.
+function copiedOf(order: OrderRecord, asset: AssetRef): bigint | undefined {
+  const state = order.request.kind === "copy" ? copyStateOf(order.triggerState) : undefined;
+  return state === undefined || order.request.side !== "sell"
+    ? undefined
+    : copiedHeldOf(state, asset);
+}
+
 // What the wallet holds of what the fill spends, the coin a buy of the coin keeps for network
 // fees, and the price a size in dollars is counted at: a buy's asset's, a sale's trigger price.
 // `undefined` when the balance read had no entry for what the fill spends, which is no data.
@@ -113,10 +123,13 @@ async function sizeFacts(
   const { asset, coin, account } = spent;
   const { side, size } = order.request;
   const query = { wallet: order.walletId, account, isPaper: order.isPaper, asset };
-  const heldBase = await parts.holdings.held(query, { signal });
-  if (heldBase === undefined) {
+  const walletBase = await parts.holdings.held(query, { signal });
+  if (walletBase === undefined) {
     return undefined;
   }
+  // A copy order sells its share of what it bought, never more than the wallet holds (0260).
+  const copied = copiedOf(order, asset);
+  const heldBase = copied !== undefined && copied < walletBase ? copied : walletBase;
   const chain = assetRefParts(coin).chain;
   const reserve = settings.limits.gasReserve.find((entry) => entry.chain === chain);
   const keptBase = side === "buy" && asset === coin ? (reserve?.reserveBase ?? 0n) : 0n;
@@ -144,12 +157,14 @@ function requestOf(
     ...(request.maxSlippageBps === undefined ? {} : { maxSlippageBps: request.maxSlippageBps }),
   };
   const { size } = request;
+  // A copy sale sells the amount its share came to here, of what the order bought.
+  const byShare = "percentBps" in size && request.kind !== "copy";
   return request.side === "buy"
     ? { ...base, kind: "buy" as const, spend: { asset: terms.spend, base: terms.limitBase } }
     : {
         ...base,
         kind: "sell" as const,
-        amount: "percentBps" in size ? { percentBps: size.percentBps } : { base: terms.limitBase },
+        amount: byShare ? { percentBps: size.percentBps } : { base: terms.limitBase },
       };
 }
 

@@ -1,5 +1,6 @@
 import type { Id } from "@binference/core";
 import type { CapGate } from "../confirmations/cap-gate.js";
+import type { CapUse } from "./copy-fills.js";
 import { announceOrder, type CancelFillParts, skipRowOf } from "./fill-ends.js";
 import type { OrderFillsParts } from "./fill-orders.js";
 import { agentWideReasons } from "./fill-pacing.js";
@@ -18,6 +19,8 @@ export interface FillState {
 export interface Skip {
   readonly order: OrderRecord;
   readonly reason: OrderFillReason;
+  /** What a copy order's buys used of the daily cap it would pass, and the cap (decision 0260). */
+  readonly cap?: CapUse;
   readonly signal: AbortSignal;
 }
 
@@ -51,14 +54,22 @@ export async function skipFill(
   state: FillState,
   skipped: Skip,
 ): Promise<"skipped"> {
-  const { order, reason, signal } = skipped;
+  const { order, reason, signal, cap } = skipped;
   const tells = agentWideTells(state, skipped);
   const atMs = parts.clock.now();
   const told = tells === undefined ? {} : { tells };
   const settings =
     order.kind === "copy" ? await parts.agents.get(order.agentId, { signal }) : undefined;
   const book = settings === undefined ? {} : { book: settings.addressBook };
-  const call = { order, reason, atMs, signal, ...told, ...book };
+  const call = {
+    order,
+    reason,
+    atMs,
+    signal,
+    ...told,
+    ...book,
+    ...(cap === undefined ? {} : { cap }),
+  };
   const row = await skipRowOf(rowParts(parts), call);
   await parts.orders.recordFill(row, { signal });
   await announceOrder(parts, order.id, signal);

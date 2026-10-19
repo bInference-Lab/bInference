@@ -1,10 +1,12 @@
 import type { Clock, Id, IdSource, Ratio } from "@binference/core";
+import type { AgentSettings } from "../agents/agent-record.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { isTerminalState } from "../intents/intent-state.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { AgentStore, IntentStore, PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import { asCopyOrder, planCopyFill } from "./copy-fills.js";
 import { isPeriodLate } from "./dca-period.js";
 import { endEmptyExit, endLateExits, wasEmptiedSince } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
@@ -12,10 +14,10 @@ import { announceOrder, cancelFill, proposalSkipOf } from "./fill-ends.js";
 import { canFire, isLineHeld, unfinishedFills, withinDeadline } from "./fill-faults.js";
 import { chainFailuresInRow, isWaiting, paceRows, stopAfterFailures } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
-import { type FillState, rowParts, skipFill } from "./fill-skips.js";
+import { type FillState, rowParts, type Skip, skipFill } from "./fill-skips.js";
 import { proposedTermsHash } from "./fill-terms-hash.js";
 import type { OrderFillReason } from "./order-fill.js";
-import type { OrderRecord } from "./order-record.js";
+import { isExitOrder, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
 import { runInLine } from "./run-in-line.js";
@@ -163,35 +165,59 @@ async function proposeFill(
   return parts.moneyPath.propose(sized.request, proposer, { signal, fill: proposal });
 }
 
-async function fillNow(
+// The order and price a fill runs with: the order's own, or a copy order's taken trade as an
+// order of that trade's token and side (decision 0260); else a skip, or nothing to fill.
+async function fillingOf(
   parts: OrderFillsParts,
-  state: FillState,
   request: {
     readonly order: OrderRecord;
     readonly price: FillPrice;
+    readonly settings: AgentSettings;
+    readonly signal: AbortSignal;
+  },
+): Promise<
+  | { readonly kind: "fill"; readonly order: OrderRecord; readonly price: FillPrice }
+  | { readonly kind: "skip"; readonly skip: Omit<Skip, "signal"> }
+  | { readonly kind: "none" }
+> {
+  const { order, price, settings, signal } = request;
+  const copy = asCopyOrder(order);
+  if (copy === undefined) {
+    return { kind: "fill", order, price };
+  }
+  const plan = await planCopyFill(parts, { order: copy, settings, signal });
+  if (plan.kind !== "skip") {
+    return plan;
+  }
+  const { reason, cap } = plan;
+  return { kind: "skip", skip: { order, reason, ...(cap === undefined ? {} : { cap }) } };
+}
+
+// Sizes the fill and proposes it, and a sale in dollars again at its own quote's price when that
+// quote valued it above its size.
+async function sizeAndPropose(
+  parts: OrderFillsParts,
+  state: FillState,
+  run: {
+    readonly order: OrderRecord;
+    readonly price: FillPrice;
+    readonly settings: AgentSettings;
     readonly signal: AbortSignal;
   },
 ): Promise<FillOutcome> {
-  const { order, price, signal } = request;
-  const gated = gateOf(parts, order);
-  if (gated !== undefined) {
-    return skipFill(parts, state, { order, reason: gated, signal });
-  }
-  const settings = await parts.agents.get(order.agentId, { signal });
-  if (settings === undefined) {
-    return "inactive";
-  }
+  const { order, price, settings, signal } = run;
   const tokenUsd = price.usdPerBaseUnit === undefined ? {} : { tokenUsd: price.usdPerBaseUnit };
-  const sizing = { order, settings, ...tokenUsd, signal };
-  const sized = await sizeFill(parts, sizing);
+  const sized = await sizeFill(parts, { order, settings, ...tokenUsd, signal });
   if (sized.kind === "empty") {
-    return emptyExit(parts, state, { order, signal });
+    // Only an exit order ends with its position; a copy sale of nothing is a skip.
+    return isExitOrder(order.request)
+      ? emptyExit(parts, state, { order, signal })
+      : skipFill(parts, state, { order, reason: "nothing_to_sell", signal });
   }
   if (sized.kind === "skip") {
     return skipFill(parts, state, { order, reason: sized.reason, signal });
   }
   const first = await proposeFill(parts, { order, sized, price, signal });
-  // A sale in dollars that its quote valued above its size is sized again at that quote's price.
   const resized = first.ok
     ? await resizedSaleOf(parts, { order, sized, snapshot: first.value, signal })
     : undefined;
@@ -203,6 +229,33 @@ async function fillNow(
     return skipFill(parts, state, { order, reason: proposalSkipOf(proposed.error), signal });
   }
   return settle(parts, state, { order, snapshot: proposed.value, signal });
+}
+
+async function fillNow(
+  parts: OrderFillsParts,
+  state: FillState,
+  request: {
+    readonly order: OrderRecord;
+    readonly price: FillPrice;
+    readonly signal: AbortSignal;
+  },
+): Promise<FillOutcome> {
+  const { order, signal } = request;
+  const gated = gateOf(parts, order);
+  if (gated !== undefined) {
+    return skipFill(parts, state, { order, reason: gated, signal });
+  }
+  const settings = await parts.agents.get(order.agentId, { signal });
+  if (settings === undefined) {
+    return "inactive";
+  }
+  const filling = await fillingOf(parts, { ...request, settings });
+  if (filling.kind === "skip") {
+    return skipFill(parts, state, { ...filling.skip, signal });
+  }
+  return filling.kind === "none"
+    ? "inactive"
+    : sizeAndPropose(parts, state, { ...filling, settings, signal });
 }
 
 // A fill that threw is a skip, `fill_failed`, paced as any skip: the newest intent it left

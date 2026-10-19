@@ -1,10 +1,17 @@
-import type { ChainRegistry } from "@binference/chain";
+import type { Amount, ChainRegistry } from "@binference/chain";
 import type { Clock } from "@binference/core";
 import type { CopyOrderRequest } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
+import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { OrderSkipReason } from "../intents/intent-reason.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
-import { type CopyState, copyStateOf, type CopyTaking, usedInDayOf } from "./copy-state.js";
+import {
+  type CopyState,
+  copyStateOf,
+  type CopyTaking,
+  type CopyTraded,
+  usedInDayOf,
+} from "./copy-state.js";
 import type { FillPrice } from "./fill-orders.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
@@ -19,7 +26,7 @@ export const copyGraceMs = 60_000;
 export type CopyOrder = OrderRecord & { readonly request: CopyOrderRequest };
 
 /** What a copy order's buys used of a daily cap, and the cap, in micro-dollars. */
-interface CapUse {
+export interface CapUse {
   readonly usedUsdMicros: bigint;
   readonly capUsdMicros: bigint;
 }
@@ -41,7 +48,7 @@ export interface CopyFillParts {
 }
 
 /** The order as a copy order, or none for another kind. */
-function asCopyOrder(order: OrderRecord): CopyOrder | undefined {
+export function asCopyOrder(order: OrderRecord): CopyOrder | undefined {
   const { request } = order;
   return request.kind === "copy" ? { ...order, request } : undefined;
 }
@@ -158,4 +165,28 @@ export async function planCopyFill(
   return cap === undefined
     ? { kind: "fill", order: filling, price: { decimals } }
     : { kind: "skip", reason: "copy_daily_cap", cap };
+}
+
+/**
+ * What a copy order's fill traded, which its state counts (decision 0260): its side, its amounts,
+ * and for a buy the value the policy judged it at, which the rolling cap counts too, else the
+ * order's dollars per buy. `undefined` for any other order.
+ */
+export function copyTradedOf(
+  order: OrderRecord,
+  fill: {
+    readonly snapshot: IntentSnapshot;
+    readonly amountIn: Amount;
+    readonly amountOut: Amount;
+    readonly atMs: number;
+  },
+): CopyTraded | undefined {
+  const copy = asCopyOrder(order);
+  if (copy === undefined) {
+    return undefined;
+  }
+  const { record } = fill.snapshot;
+  const usdMicros = record.valueUsdMicros ?? copy.request.trigger.perBuyUsdMicros;
+  const side = record.kind === "sell" ? "sell" : "buy";
+  return { side, amountIn: fill.amountIn, amountOut: fill.amountOut, usdMicros, atMs: fill.atMs };
 }

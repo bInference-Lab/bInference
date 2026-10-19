@@ -8,6 +8,7 @@ import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { IntentStore, PositionStore } from "../ports.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { copyTradedOf } from "./copy-fills.js";
 import { copyStateOf } from "./copy-state.js";
 import { exitEndMovesOf, fillRowNotices } from "./end-exit-orders.js";
 import type { OrderFillWrite } from "./order-fill.js";
@@ -181,7 +182,13 @@ export async function landedFillWrite(
 ): Promise<OrderFillWrite | undefined> {
   const { order, snapshot, settled, isBooked, atMs, signal } = call;
   const empties = await emptiesPosition(parts, { order, settled, isBooked, signal });
-  const landed = moveOrder(order, { type: "fill_landed", emptiesPosition: empties }, atMs);
+  const traded = copyTradedOf(order, { ...settled, snapshot, atMs });
+  const trigger = {
+    type: "fill_landed",
+    emptiesPosition: empties,
+    ...(traded === undefined ? {} : { traded }),
+  } as const;
+  const landed = moveOrder(order, trigger, atMs);
   if (!landed.ok) {
     return undefined;
   }

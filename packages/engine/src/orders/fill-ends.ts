@@ -33,6 +33,8 @@ export interface SkipOf {
   readonly atMs: number;
   /** Whether the owner hears it; once per reason in a row for the order when absent. */
   readonly tells?: boolean;
+  /** What a copy order's buys used of the daily cap it would pass, and the cap (decision 0260). */
+  readonly cap?: { readonly usedUsdMicros: bigint; readonly capUsdMicros: bigint };
   /** The agent's address book, which names a copy order's leader; the intent's when it has one. */
   readonly book?: readonly AddressEntryRecord[];
   readonly signal: AbortSignal;
@@ -41,6 +43,9 @@ export interface SkipOf {
 // What the owner reads of a skip for the rolling cap: what the agent used of it, and the cap.
 async function capOf(parts: SkipRowParts, skip: SkipOf) {
   const { intent, reason, signal } = skip;
+  if (skip.cap !== undefined) {
+    return skip.cap;
+  }
   if (intent === undefined || reason !== "daily_cap" || parts.spent === undefined) {
     return undefined;
   }
