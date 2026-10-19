@@ -1,5 +1,6 @@
 import type { ToolBox } from "../loop/ports.js";
 import { alertCreateTool } from "./alert-create-tool.js";
+import { askOwnerTool } from "./ask-owner-tool.js";
 import { createToolBox } from "./create-tool-box.js";
 import type { AgentTool } from "./define-tool.js";
 import { noteTools } from "./note-tools.js";
@@ -20,7 +21,8 @@ import { workspaceTools } from "./workspace-tools.js";
  * engine's operations and names the given agent; no tool takes an agent or a wallet from the
  * model. With web parts, the web tools come after the reads; `notes_search` and `open_skill`
  * follow them, then `notes_write`, and last `workspace_write` and `first_chat_end`, which write
- * the owner's strategy and persona and end the first chat (decision 0242).
+ * the owner's strategy and persona and end the first chat (decision 0242), then `ask_owner`,
+ * which asks the owner in the turn the tools serve and ends it after its batch.
  */
 export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
   const web = parts.web === undefined ? [] : webTools(parts.web);
@@ -39,6 +41,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     schedules.cancel,
     notes.write,
     ...workspaceTools(parts),
+    askOwnerTool(parts),
   ];
 }
 

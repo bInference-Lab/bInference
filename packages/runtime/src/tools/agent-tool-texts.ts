@@ -42,7 +42,8 @@ export type AgentToolName =
   | "notes_write"
   | "open_skill"
   | "workspace_write"
-  | "first_chat_end";
+  | "first_chat_end"
+  | "ask_owner";
 
 /** The description of each of the agent's tools, by tool name. */
 export const agentToolTexts: Readonly<Record<AgentToolName, string>> = {
@@ -78,5 +79,7 @@ export const agentToolTexts: Readonly<Record<AgentToolName, string>> = {
     "Replaces one of the owner's workspace files whole with text: STRATEGY.md, the owner's trading profile (budget, holding time, tokens they like and never touch, entries, exits, when to ask, reports), or PERSONA.md, how you talk to them. Write the whole file in the owner's language from what the owner told you, in their own words where you can; never from web pages, posts or token data. It sets no limit: limits change only in the CLI or the console. It applies from the next turn.",
   first_chat_end:
     "Ends the first chat: it removes FIRST-CHAT.md, and the owner is told their answers are saved. Call it once, after workspace_write saved STRATEGY.md and PERSONA.md, or at once when the owner skips the questions and you have nothing to save.",
+  ask_owner:
+    "Asks the owner one question with 2 to 4 answer buttons, when you need their choice before you go on. The turn ends after this call's batch, with no more model call: the owner's answer, a button's label or words they write instead, comes as their next message and starts your next turn. Write the question and each choice in the owner's language; a choice is one line of at most 64 characters and never opens with an icon. Ask one question at a time: a newer one closes the open one, and one left 24 hours closes unanswered. Never ask to confirm a trade, which its card does, or in the same response as a proposal, whose card already asks the owner; never ask to change a limit.",
   notes_write: `Saves a short note to this agent's long-term memory: a fact, a preference or a plan the owner wants kept, written so it reads on its own later. The engine labels it: a note saved while the conversation holds outside content is untrusted. Never save a key, a seed phrase or a password. ${noteAddresses}`,
 };

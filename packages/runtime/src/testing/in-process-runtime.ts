@@ -190,12 +190,13 @@ function chatHost(
   return {
     transports,
     openAgentDatabase: async () => memoryDatabase(database),
-    turnSetup: ({ agent }, settings, client) => {
+    turnSetup: (place, settings, client) => {
+      const { agent } = place;
       setups.push({ agent, settings });
       return {
         models,
         ...(vision === undefined ? {} : { vision }),
-        tools: isLinked ? agentToolBox({ agent, client }) : tools,
+        tools: isLinked ? agentToolBox({ agent, client, turn: place }) : tools,
         instructions: "You are a test agent.",
         limits: turnLimits,
       };

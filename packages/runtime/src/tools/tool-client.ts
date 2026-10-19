@@ -1,5 +1,6 @@
 import type { ProtocolClient } from "@binference/client";
 import type { Id } from "@binference/core";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import type { WebToolParts } from "./web-tools.js";
 
 /** The protocol client calls an agent's tools make, over the runtime's connection to the engine. */
@@ -14,6 +15,8 @@ export interface AgentToolParts {
    */
   readonly agent: Id<"agt">;
   readonly client: ToolClient;
+  /** The turn the tools serve: its session and the turn id, where `ask_owner` asks. */
+  readonly turn: Pick<TurnPlace, "session" | "turn">;
   /** How the web tools reach the internet; without it, the agent has no web tools. */
   readonly web?: WebToolParts;
 }

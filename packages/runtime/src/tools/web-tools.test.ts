@@ -2,7 +2,7 @@ import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { RuntimeSearch } from "../control/runtime-settings.schema.js";
 import type { ReadyCall } from "../loop/turn-records.js";
-import { agent, context } from "../testing/agent-tool-fixtures.js";
+import { agent, context, toolTurn } from "../testing/agent-tool-fixtures.js";
 import { createFakeToolClient } from "../testing/fake-tool-client.js";
 import { createRecordedHttp, type RecordedAnswer } from "../testing/recorded-http.js";
 import { braveAnswer, htmlAnswer, testLookup, xRecentAnswer } from "../testing/recorded-web.js";
@@ -14,7 +14,10 @@ const search: RuntimeSearch = { keys: { brave: "brave-key" }, xApiKey: "x-key" }
 function boxOn(answers: readonly RecordedAnswer[], settings: RuntimeSearch = search) {
   const http = createRecordedHttp(answers);
   const web = { http, lookup: testLookup, clock: createManualClock(), search: settings };
-  return { http, box: agentToolBox({ agent, client: createFakeToolClient({}), web }) };
+  return {
+    http,
+    box: agentToolBox({ agent, client: createFakeToolClient({}), turn: toolTurn, web }),
+  };
 }
 
 function ready(answers: readonly RecordedAnswer[], name: string, args: object): ReadyCall {

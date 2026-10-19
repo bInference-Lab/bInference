@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ModelMessage } from "../loop/model-message.js";
 import { createTestTurn, ownerMessage } from "../loop/test-turns.js";
 import { summaryMessage } from "../sessions/conversation.js";
-import { agent, coin, coinInfo, intentWire } from "../testing/agent-tool-fixtures.js";
+import { agent, coin, coinInfo, intentWire, toolTurn } from "../testing/agent-tool-fixtures.js";
 import { createFakeToolClient } from "../testing/fake-tool-client.js";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import { agentToolBox } from "./agent-tools.js";
@@ -96,7 +96,7 @@ describe("a proposal with an address from a note", () => {
     const client = createFakeToolClient(answers);
     const swapArgs = { from: coin, to: usdt, amount: { base: "1000" }, reason: "As noted." };
     const { turn, recorder } = createTestTurn({
-      box: agentToolBox({ agent, client }),
+      box: agentToolBox({ agent, client, turn: toolTurn }),
       replies: [
         callsReply([{ id: "a", name: "notes_search", args: { query: "usdt" } }]),
         callsReply([{ id: "b", name: "swap", args: swapArgs }]),
@@ -116,7 +116,7 @@ describe("a proposal with an address from a note", () => {
     const client = createFakeToolClient(answers);
     const swapArgs = { from: coin, to: usdt, amount: { base: "1000" }, reason: "You asked." };
     const { turn } = createTestTurn({
-      box: agentToolBox({ agent, client }),
+      box: agentToolBox({ agent, client, turn: toolTurn }),
       taken: [ownerMessage(1, `Swap into ${address}, the one in your notes`)],
       replies: [
         callsReply([{ id: "a", name: "notes_search", args: { query: "usdt" } }]),

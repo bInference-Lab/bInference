@@ -202,8 +202,12 @@ async function chatTurn(relay: Relay, calls: readonly (readonly string[])[]) {
 }
 
 // The agent's own tools over the runtime's client, with the web tools when the test gives them.
-function toolParts(runtime: ProtocolClient, web: WebToolParts | undefined): AgentToolParts {
-  const parts = { agent: testAgent, client: runtime };
+function toolParts(
+  runtime: ProtocolClient,
+  turn: AgentToolParts["turn"],
+  web: WebToolParts | undefined,
+): AgentToolParts {
+  const parts = { agent: testAgent, client: runtime, turn };
   return web === undefined ? parts : { ...parts, web };
 }
 
@@ -236,7 +240,7 @@ async function runChatTurn(
     })),
     replies: setup.replies,
     ...(setup.tools === undefined
-      ? { box: agentToolBox(toolParts(runtime, setup.web)) }
+      ? { box: agentToolBox(toolParts(runtime, posted, setup.web)) }
       : { tools: setup.tools }),
   });
   const report = await turn.run();

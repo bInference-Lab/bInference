@@ -1,6 +1,7 @@
 import { type Id, idSchema, type JsonValue } from "@binference/core";
 import type { ToolOutcome, ToolRunContext } from "../loop/turn-records.js";
 import { agentToolBox } from "../tools/agent-tools.js";
+import type { AgentToolParts } from "../tools/tool-client.js";
 import { createFakeToolClient, type FakeAnswer, type FakeToolClient } from "./fake-tool-client.js";
 
 // Wire values and calls for the tools' tests, on the fake chain of the chain package's fakes.
@@ -62,6 +63,12 @@ export const stopLoss: WireObject = {
   size: { percentBps: 10_000 },
   trigger: { price: "500000" },
   reason: "Cut the loss if the price falls through the last low.",
+};
+
+/** The turn the tools under test serve. */
+export const toolTurn: AgentToolParts["turn"] = {
+  session: idSchema("ses").parse(`ses_${uuid}`),
+  turn: idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
 };
 
 /** A call's context, its key as the loop names a turn's first call. */
@@ -157,7 +164,11 @@ export function callToolWith(
   argumentsText: string,
 ): CallRun {
   const client = createFakeToolClient(answers);
-  const prepared = agentToolBox({ agent, client }).prepare({ id: "c1", name, argumentsText });
+  const prepared = agentToolBox({ agent, client, turn: toolTurn }).prepare({
+    id: "c1",
+    name,
+    argumentsText,
+  });
   return prepared.ready
     ? { client, outcome: prepared.run(context) }
     : { client, refused: prepared.text };

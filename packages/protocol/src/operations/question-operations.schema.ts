@@ -42,7 +42,11 @@ const choiceLabel = z
   .max(questionLimits.choice)
   .regex(/^[^\r\n]+$/)
   .refine((label) => !statusIcons.test(label), { message: "A choice may not open with an icon." });
-const choices = z
+/**
+ * Parses a question's choices: 2 to 4 distinct labels, each one line of 1 to 64 characters that
+ * never opens with a status icon, so a question never looks like a card.
+ */
+export const questionChoicesSchema: z.ZodType<readonly string[]> = z
   .array(choiceLabel)
   .min(questionLimits.minChoices)
   .max(questionLimits.maxChoices)
@@ -61,7 +65,7 @@ export const questionOperations: OperationTable<QuestionOperationShapes> = {
       session: protocolIdSchema("chatSession"),
       turn: protocolIdSchema("chatTurn"),
       text: z.string().min(1).max(questionLimits.text),
-      choices,
+      choices: questionChoicesSchema,
     }),
     result: questionViewSchema,
   },

@@ -213,6 +213,7 @@ export {
   questionLimits,
   questionViewSchema,
 } from "./views/question-view.schema.js";
+export { questionChoicesSchema } from "./operations/question-operations.schema.js";
 export type {
   QuestionAnswerView,
   QuestionCloseReason,

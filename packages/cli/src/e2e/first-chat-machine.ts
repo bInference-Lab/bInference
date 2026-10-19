@@ -34,8 +34,11 @@ export interface Interview {
 export interface FirstChat {
   readonly skeleton: Skeleton;
   readonly chat: ChatWatch;
-  /** Stops the runtime and starts it again on the same agent database. */
-  restart(): Promise<void>;
+  /**
+   * Stops the runtime and starts it again on the same agent database, after `between` ran while
+   * it was down.
+   */
+  restart(between?: () => Promise<void>): Promise<void>;
   /** A workspace file's text, or none once it is gone. */
   textOf(file: string): Promise<string | undefined>;
   /** Stops the runtime, then the engine. */
@@ -100,8 +103,9 @@ export async function startFirstChat(locale: Locale, script: SharedScript): Prom
   return {
     skeleton,
     chat,
-    restart: async () => {
+    restart: async (between) => {
       await supervised.current.stop(AbortSignal.timeout(10_000));
+      await between?.();
       supervised.current = superviseRuntime(engine, { turns, script: runtimeScript });
     },
     textOf: async (file) => {

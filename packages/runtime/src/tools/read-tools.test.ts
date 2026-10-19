@@ -12,6 +12,7 @@ import {
   outcomeOf,
   token,
   tokenInfo,
+  toolTurn,
   wallet,
 } from "../testing/agent-tool-fixtures.js";
 import { createFakeToolClient } from "../testing/fake-tool-client.js";
@@ -107,7 +108,7 @@ describe("the read tools", () => {
   });
 
   it("all run beside each other", () => {
-    const box = agentToolBox({ agent, client: createFakeToolClient({}) });
+    const box = agentToolBox({ agent, client: createFakeToolClient({}), turn: toolTurn });
     const reads = [
       ["portfolio", {}],
       ["token_info", { asset: token }],

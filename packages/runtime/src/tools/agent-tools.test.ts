@@ -20,6 +20,7 @@ import {
   stopLoss,
   swapTerms,
   token,
+  toolTurn,
   wallet,
 } from "../testing/agent-tool-fixtures.js";
 import { createFakeToolClient, type FakeAnswer } from "../testing/fake-tool-client.js";
@@ -54,6 +55,16 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "schedule/cancel": {},
   "agent/editFile": { updatedAt: 1 },
   "agent/endFirstChat": {},
+  "turn/ask": {
+    question: "qst_0190f1c2-3a4b-7c5d-8e6f-0123456789ab",
+    agent,
+    ...toolTurn,
+    text: "Hold for hours or days?",
+    choices: ["Hours", "Days"],
+    state: "open",
+    createdAt: 1,
+    closesAt: 86_400_001,
+  },
   "skill/read": {
     skill: "safe-swap",
     place: "bundled",
@@ -160,6 +171,17 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     [{ op: "agent/editFile", args: { agent, file: "STRATEGY.md", text: "Hold for days." }, key }],
   ],
   ["first_chat_end", {}, [{ op: "agent/endFirstChat", args: { agent }, key }]],
+  [
+    "ask_owner",
+    { text: "Hold for hours or days?", choices: ["Hours", "Days"] },
+    [
+      {
+        op: "turn/ask",
+        args: { agent, ...toolTurn, text: "Hold for hours or days?", choices: ["Hours", "Days"] },
+        key,
+      },
+    ],
+  ],
 ];
 
 const names = mappings.map(([name]) => name);
@@ -180,7 +202,7 @@ describe("the agent's tools", () => {
   it.each(
     toolBoxContract({
       create: async () => ({
-        box: agentToolBox({ agent, client: createFakeToolClient({}) }),
+        box: agentToolBox({ agent, client: createFakeToolClient({}), turn: toolTurn }),
         call: { id: "c1", name: "token_risk", argumentsText: JSON.stringify({ asset: token }) },
       }),
     }),
@@ -188,8 +210,8 @@ describe("the agent's tools", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("are the reads, then the proposals, the brake, the control writes and the workspace writes", () => {
-    const tools = agentTools({ agent, client: createFakeToolClient({}) });
+  it("are the reads, the proposals, the brake, the control writes, the workspace writes and the question", () => {
+    const tools = agentTools({ agent, client: createFakeToolClient({}), turn: toolTurn });
     expect(tools.map((tool) => tool.name)).toStrictEqual(names);
   });
 
@@ -200,7 +222,7 @@ describe("the agent's tools", () => {
   });
 
   it.each(names)("show the model no agent or wallet field in %s", (name) => {
-    const box = agentToolBox({ agent, client: createFakeToolClient({}) });
+    const box = agentToolBox({ agent, client: createFakeToolClient({}), turn: toolTurn });
     const declaration = box.declarations.find((tool) => tool.name === name);
     expect(JSON.stringify(declaration?.parameters)).not.toMatch(/"(agent|wallet)":/);
   });
@@ -238,7 +260,7 @@ describe("the agent's tools", () => {
 
   it.each(controls)("let the turn go on after %s, which never commits it", async (name, args) => {
     const { turn } = createTestTurn({
-      box: agentToolBox({ agent, client: createFakeToolClient(answers) }),
+      box: agentToolBox({ agent, client: createFakeToolClient(answers), turn: toolTurn }),
       replies: [callsReply([{ id: "a", name, args }]), textReply("Done.")],
     });
     await expect(turn.run()).resolves.toMatchObject({
@@ -252,7 +274,7 @@ describe("the agent's tools", () => {
   it("run order_cancel in the batch of the turn's proposal, after it commits", async () => {
     const client = createFakeToolClient(answers);
     const { turn, recorder } = createTestTurn({
-      box: agentToolBox({ agent, client }),
+      box: agentToolBox({ agent, client, turn: toolTurn }),
       replies: [
         callsReply([
           { id: "a", name: "swap", args: swapTerms },

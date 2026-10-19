@@ -290,6 +290,7 @@ describe("the chat relay to the agent runtime process", () => {
         "notes_write",
         "workspace_write",
         "first_chat_end",
+        "ask_owner",
       ]);
     },
   );
