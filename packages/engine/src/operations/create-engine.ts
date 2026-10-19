@@ -5,6 +5,7 @@ import {
   createAddressBookHandlers,
 } from "../address-book/address-book-handlers.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
+import type { AlertHandlers } from "../alerts/alert-handlers.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import {
   type ConfigHistoryHandlers,
@@ -72,7 +73,12 @@ import {
   orderFillsOf,
   orderPartsOf,
 } from "./engine-orders.js";
-import { type EngineChatHandlers, engineChatOf, safetyHandlersOf } from "./engine-parts.js";
+import {
+  alertHandlersOf,
+  type EngineChatHandlers,
+  engineChatOf,
+  safetyHandlersOf,
+} from "./engine-parts.js";
 import { orderRepairOf, paperRepairOf } from "./engine-repairs.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
@@ -92,7 +98,8 @@ export interface EngineHandlers
     SendLevelHandlers,
     AddressBookHandlers,
     RescueAddressHandlers,
-    SafetyHandlers {}
+    SafetyHandlers,
+    AlertHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
@@ -408,6 +415,7 @@ export function createEngineWithFills(given: EngineOptions): {
       }),
       ...createRescueAddressHandlers({ ...rescueParts, journal: settingsParts.journal }),
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
+      ...alertHandlersOf(options),
       ...chat.handlers,
     },
     answer: intents.answer,

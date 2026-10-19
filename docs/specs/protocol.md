@@ -6,9 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220) and [0243](../DECISIONS.md#d0243); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
-||||||| parent of 55bfc7fa (feat(engine): answer an agent's P&L cards from portfolio/pnl)
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207) and [0208](../DECISIONS.md#d0208); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243) and [0244](../DECISIONS.md#d0244); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -479,6 +477,14 @@ Alerts are code: the watchers judge them, as they judge auto orders, and the mod
 pauses them. An agent has at most 50 active alerts; one more fails `alert.too_many`. Their
 conditions, how often each fires, and the wake-ups are in section 8.4. `alert/delete` of an alert
 that is not active fails `alert.not_found`.
+
+Alerts follow [decision 0244](../DECISIONS.md#d0244): `alert/create` stores an active alert at
+once, with no card, journal entry or notice, marked when a client with `propose` alone or a marked
+turn set it. It refuses with `protocol.bad_args`, storing nothing, an asset on no chain of the
+registry, an account its chain family cannot read, a price or least dollar value of zero, a launch
+filter naming a launchpad the engine does not run, and an `expiresAt` not ahead. `wake` is off by
+default. `alert/list` pages oldest first, in every state unless one is named. A client with
+`propose` alone deletes only the alerts it set (`auth.scope`).
 
 Schedules follow decisions [0231](../DECISIONS.md#d0231) to [0233](../DECISIONS.md#d0233):
 

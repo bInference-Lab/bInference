@@ -1,3 +1,4 @@
+import { type AlertHandlers, createAlertHandlers } from "../alerts/alert-handlers.js";
 import { createDailyModelBudget } from "../billing/daily-model-budget.js";
 import { createModelBudget, type ModelBudget } from "../billing/model-budget.js";
 import { createUsageHandlers, type UsageHandlers } from "../billing/usage-handlers.js";
@@ -162,4 +163,17 @@ function schedulesOf(
       clock,
     }),
   };
+}
+
+/** The alert operations, over the alert store, with the launchpads the venue host runs. */
+export function alertHandlersOf(options: EngineOptions): AlertHandlers {
+  const { stores, chains, ids, clock, host } = options;
+  return createAlertHandlers({
+    alerts: stores.alerts,
+    agents: stores.agents,
+    chains,
+    isLaunchpad: (venue) => host.isLaunchpad(venue),
+    ids,
+    clock,
+  });
 }
