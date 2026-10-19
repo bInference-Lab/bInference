@@ -24,9 +24,9 @@ import { type ComposedLock, composeLock } from "./compose-lock.js";
 import type { ComposedPriceWatchers } from "./compose-price-watchers.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
-import { composeWatching } from "./compose-watching.js";
+import { type ComposedWatching, composeWatching } from "./compose-watching.js";
 import { engineHandlers } from "./engine-handlers.js";
-import { type SelfHostedSources, selfHostedMarketReads } from "./market-reads.js";
+import { selfHostedMarketReads } from "./market-reads.js";
 import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
@@ -67,8 +67,9 @@ export interface ComposedSelfHosted extends Pick<
   readonly telegram?: ComposedTelegram;
   /** The agent runtime, which starts once the engine serves. */
   readonly runtime: ComposedRuntime;
-  /** The price watchers, whose timers start once the engine serves. */
+  /** The price and leader watchers, whose timers start once the engine serves. */
   readonly priceWatchers: ComposedPriceWatchers;
+  readonly leaderWatchers: ComposedWatching["leaderWatchers"];
 }
 
 /** What the self-hosted engine trades on, each part over the chains' one set of reads. */
@@ -150,8 +151,8 @@ function resumeOf(opened: Opened, executor: RunningExecutor) {
   };
 }
 
-/** The parts the server is built over, before it exists. */
-interface Wiring {
+/** The parts the server is built over, before it exists, the watchers among them. */
+interface Wiring extends ComposedWatching {
   readonly state: { current: EngineState };
   readonly parts: TradingParts;
   readonly chains: ChainRegistry;
@@ -170,11 +171,6 @@ interface Wiring {
   readonly sealKey: SealKeyKeeper;
   /** The agent runtime, its routed operations and its health signal. */
   readonly runtime: ComposedRuntime;
-  /** The market data sources, one of each, which the market reads and the watchers share. */
-  readonly sources: SelfHostedSources;
-  /** The price watchers; their notices reach the engine's publish once it exists. */
-  readonly priceWatchers: ComposedPriceWatchers;
-  readonly watcherPushes: { publish: (push: EnginePush) => void };
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -328,6 +324,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   wiring.jobs.publish = publish;
   wiring.watcherPushes.publish = publish;
   wiring.priceWatchers.attach(engine);
+  wiring.leaderWatchers.attach(engine);
   wiring.signerRefused.run = ({ intent, refused }) => {
     publish(signerRefusedNotice({ intent, refused }));
   };
@@ -356,6 +353,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     locked,
     runtime: wiring.runtime,
     priceWatchers: wiring.priceWatchers,
+    leaderWatchers: wiring.leaderWatchers,
     ...bot,
   };
 }

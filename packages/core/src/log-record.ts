@@ -10,6 +10,8 @@ export interface LogFields {
   readonly chain?: string;
   /** An asset's CAIP-19 id, such as the token a price watcher flags. */
   readonly assetId?: string;
+  /** An account's CAIP-10 id, such as a tracked wallet the leader watcher cut a block of. */
+  readonly accountId?: string;
   /** A data source's or venue's id, such as `dexscreener`. */
   readonly sourceId?: string;
   readonly errorCode?: string;

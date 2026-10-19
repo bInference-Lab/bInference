@@ -19,7 +19,7 @@ export interface WatcherRunner {
 /** What a runner runs, and how it hears whether a token is still watched. */
 export interface WatcherRunnerOptions {
   readonly chain: RegisteredChain;
-  readonly watcher: PriceWatcher;
+  readonly watcher: Pick<PriceWatcher, "run">;
   readonly clock: Clock;
   readonly logger: Logger;
   /** Whether a token is watched, so the watcher should run. */

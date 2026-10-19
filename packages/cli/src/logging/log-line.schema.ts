@@ -22,6 +22,7 @@ export const logFieldsSchema: z.ZodType<LogFields> = z.strictObject({
   traceId: z.string().exactOptional(),
   chain: z.string().exactOptional(),
   assetId: z.string().exactOptional(),
+  accountId: z.string().exactOptional(),
   sourceId: z.string().exactOptional(),
   errorCode: z.string().exactOptional(),
   durationMs: z.number().exactOptional(),
