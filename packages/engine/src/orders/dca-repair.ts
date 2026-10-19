@@ -6,6 +6,7 @@ import { isLineHeld } from "./fill-faults.js";
 import type { OrderFills } from "./fill-orders.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
+import { recordMissed } from "./record-missed.js";
 
 /** What the start's repair of DCA periods reads and records through. */
 export interface DcaRepairParts {
@@ -61,16 +62,10 @@ export async function repairDcaPeriods(
   options: { readonly signal: AbortSignal },
 ): Promise<number> {
   const { signal } = options;
-  const lost: OrderRecord[] = [];
-  for (const order of await runningDca(parts, signal)) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one order at a time, in order
-    if (await wasLost(parts, order, signal)) {
-      lost.push(order);
-    }
-  }
-  for (const order of lost) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one write at a time, in order
-    await parts.fills.skip({ order: order.id, reason: "missed" }, { signal });
-  }
-  return lost.length;
+  const orders = await runningDca(parts, signal);
+  return recordMissed(parts.fills, {
+    orders,
+    wasLost: async (order) => wasLost(parts, order, signal),
+    signal,
+  });
 }
