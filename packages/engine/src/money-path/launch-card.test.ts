@@ -18,7 +18,9 @@ describe("a token launch's card in English", () => {
       "Description: A cat on the moon",
       "Website: https://moon.example",
       "X: https://x.com/mooncat",
-      expect.stringMatching(/^Picture: PNG, 1 KB, SHA-256 [0-9a-f]{16} · ipfs:\/\/fake-1$/),
+      expect.stringMatching(
+        /^Picture sent: PNG, 1 KB, SHA-256 [0-9a-f]{16} · metadata at ipfs:\/\/fake-1$/,
+      ),
       "Tax on every trade: 3.00%",
       "Buyback and burn: on",
       "⚠️ The picture and words are already public on fake-curve's storage, and stay public if you cancel",

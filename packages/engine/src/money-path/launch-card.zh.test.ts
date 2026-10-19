@@ -18,7 +18,9 @@ describe("a token launch's card in Chinese", () => {
       "简介：A cat on the moon",
       "网站：https://moon.example",
       "X：https://x.com/mooncat",
-      expect.stringMatching(/^图片：PNG，1 KB，SHA-256 [0-9a-f]{16} · ipfs:\/\/fake-1$/),
+      expect.stringMatching(
+        /^已发送图片：PNG，1 KB，SHA-256 [0-9a-f]{16} · 元数据位于 ipfs:\/\/fake-1$/,
+      ),
       "每笔交易的交易税：3.00%",
       "回购并销毁：开启",
       "⚠️ 图片和文字已在 fake-curve 的存储中公开，即使取消也会保持公开",

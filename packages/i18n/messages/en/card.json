@@ -24,7 +24,7 @@
   "launch.fee": "Launch fee {fee}",
   "launch.description": "Description: {description}",
   "launch.link": "{site, select, website {Website} x {X} telegram {Telegram} other {Link}}: {url}",
-  "launch.picture": "Picture: {format, select, png {PNG} jpeg {JPEG} other {WebP}}, {kib} KB, SHA-256 {digest} · {uri}",
+  "launch.picture": "Picture sent: {format, select, png {PNG} jpeg {JPEG} other {WebP}}, {kib} KB, SHA-256 {digest} · metadata at {uri}",
   "launch.upload": "Picture: upload {upload}",
   "launch.pinned": "⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel",
   "rescue.action": "Move everything to your rescue address {address}: {count, plural, one {# token} other {# tokens}} from {wallets, plural, one {# wallet} other {# wallets}}, about {usd}",
