@@ -155,6 +155,7 @@ export type {
   CurveReader,
   InsiderReader,
   Launcher,
+  LaunchReader,
   PriceReader,
   Quoter,
   TxBuilder,
@@ -167,6 +168,15 @@ export type {
   ReadAnswer,
   ReadCall,
 } from "./venues/price-read.js";
+export type {
+  FoundLaunch,
+  LaunchChange,
+  LaunchCompletion,
+  LaunchesFound,
+  LaunchFacts,
+  LaunchLog,
+  LaunchLogsRequest,
+} from "./venues/launch-logs.js";
 export { curveHoldingSchema } from "./venues/curve-holding.js";
 export type { CurveHolding, CurveHoldingWire, CurveRequest } from "./venues/curve-holding.js";
 export { declaredAddress, declaredContracts } from "./venues/declared-contracts.js";

@@ -6,6 +6,7 @@ import type {
   CurveReader,
   InsiderReader,
   Launcher,
+  LaunchReader,
   PriceReader,
   Quoter,
   TxBuilder,
@@ -148,7 +149,8 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
  * the state a token's price comes from, such as a launchpad's curve, declares the reads that price
  * it, which the price watcher asks every block. A launchpad whose contracts favor some wallets on
  * a token it launched names them, for the risk step. A launchpad that launches tokens for the
- * agent holds its `launcher`.
+ * agent holds its `launcher`, and one whose launches the launch feed records declares its
+ * `launchEvents` and reads them.
  */
 export interface Venue
   extends
@@ -158,7 +160,8 @@ export interface Venue
     TxDecoder,
     Partial<CurveReader>,
     Partial<PriceReader>,
-    Partial<InsiderReader> {
+    Partial<InsiderReader>,
+    Partial<LaunchReader> {
   readonly launcher?: Launcher;
 }
 

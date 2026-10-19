@@ -27,6 +27,7 @@ import {
 } from "./testing.js";
 
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
+const readNoLaunch = () => ({ launches: [], changes: [] });
 const router = accountRefSchema.parse("fake:1:0x0000000b");
 const coin = assetRefSchema.parse("fake:1/slip44:1");
 const token = assetRefSchema.parse("fake:1/token:0x0000000a");
@@ -133,6 +134,34 @@ describe("defineVenue", () => {
       ),
     ).resolves.toStrictEqual([insider]);
     expect(defineVenue(createFakeVenue()).insiders).toBeUndefined();
+  });
+
+  it("keeps a launchpad's launch events in lowercase, and its reading, called on the definition", () => {
+    const launchEvent = "0xAB";
+    const found = { launches: [], changes: [] };
+    const launchpad = defineLaunchpad({
+      ...createFakeLaunchpad({ onCurve: [token] }),
+      launchEvents: [launchEvent],
+      readLaunches: () => found,
+    });
+    expect(launchpad.launchEvents).toStrictEqual(["0xab"]);
+    expect(Object.isFrozen(launchpad.launchEvents)).toBe(true);
+    expect(launchpad.readLaunches?.({ chain: "fake:1" as ChainRef, contracts: {}, logs: [] })).toBe(
+      found,
+    );
+    expect(defineVenue(createFakeVenue()).readLaunches).toBeUndefined();
+  });
+
+  it("refuses launch events without their reading, none, or one twice", () => {
+    const fake = createFakeLaunchpad({ onCurve: [token] });
+    expect(() => defineLaunchpad({ ...fake, launchEvents: ["0xab"] })).toThrow(/does neither/);
+    expect(() => defineLaunchpad({ ...fake, readLaunches: readNoLaunch })).toThrow(/does neither/);
+    expect(() =>
+      defineLaunchpad({ ...fake, launchEvents: [], readLaunches: readNoLaunch }),
+    ).toThrow(/none, or one repeats/);
+    expect(() =>
+      defineLaunchpad({ ...fake, launchEvents: ["0xab", "0xAB"], readLaunches: readNoLaunch }),
+    ).toThrow(/none, or one repeats/);
   });
 
   it("keeps the contracts a chain declares each launch has, frozen", () => {

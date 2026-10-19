@@ -4,6 +4,7 @@ import type { TxDraft } from "../transaction.js";
 import type { BuildRequest } from "./build-request.js";
 import type { CurveHolding, CurveRequest } from "./curve-holding.js";
 import type { DecodedEffect } from "./decoded-effect.js";
+import type { LaunchesFound, LaunchLogsRequest } from "./launch-logs.js";
 import type { LaunchOption } from "./launch-option.js";
 import type {
   DecodedLaunch,
@@ -75,6 +76,26 @@ export interface InsiderReader {
     request: CurveRequest,
     options: { readonly signal: AbortSignal },
   ): Promise<readonly AccountRef[]>;
+}
+
+/**
+ * Tells the launch feed which tokens a launchpad created: the events its launches write, and how
+ * to read a launch from them. The feed reads the declared events of every launchpad in one log
+ * query a read, from any contract, so the launchpad checks who wrote each log.
+ */
+export interface LaunchReader {
+  /**
+   * The events the feed reads for the launchpad, each once, as its chain family names an event: an
+   * EVM event's topic0, as lowercase hex.
+   */
+  readonly launchEvents: readonly string[];
+  /**
+   * The launches and curve changes one transaction's logs tell, from those logs alone: a create
+   * event only from one of the launchpad's own contracts, and what each launch's other logs add,
+   * only from the contracts that launch made or the launchpad's own. A transaction with none
+   * answers none. Logs outside their shape are passed over, never a throw.
+   */
+  readLaunches(request: LaunchLogsRequest): LaunchesFound;
 }
 
 /** Tells the price watcher how to price a token from the venue's own contracts or pools. */

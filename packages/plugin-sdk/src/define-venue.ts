@@ -1,6 +1,7 @@
 import {
   type InsiderReader,
   type Launcher,
+  type LaunchReader,
   launchOptionsSchema,
   type LaunchpadVenue,
   type PriceReader,
@@ -56,6 +57,35 @@ function insidersOf(definition: Venue): Pick<Venue, "insiders"> {
     : {};
 }
 
+function hasLaunchReader(venue: Venue): venue is Venue & LaunchReader {
+  return venue.launchEvents !== undefined && venue.readLaunches !== undefined;
+}
+
+// A launchpad whose launches the feed records keeps its events, each once in lowercase, and its
+// reading, called on the definition. Events with no reading, or a reading with none, are a fault.
+function launchReaderOf(definition: Venue): Partial<LaunchReader> {
+  if (!hasLaunchReader(definition)) {
+    if (definition.launchEvents !== undefined || definition.readLaunches !== undefined) {
+      throw new BinferenceError({
+        code: "plugin.bad_venue",
+        message: "A launchpad declares its launch events and reads them, or does neither.",
+      });
+    }
+    return {};
+  }
+  const events = definition.launchEvents.map((event) => event.toLowerCase());
+  if (events.length === 0 || new Set(events).size !== events.length) {
+    throw new BinferenceError({
+      code: "plugin.bad_venue",
+      message: "A launchpad's launch events are none, or one repeats.",
+    });
+  }
+  return {
+    launchEvents: Object.freeze(events),
+    readLaunches: (request) => definition.readLaunches(request),
+  };
+}
+
 /**
  * Defines a venue plugin: a protocol the agent trades on. The definition declares the venue's id
  * and, for each chain it serves, the names of its contracts in that chain's registry entry; the
@@ -74,7 +104,9 @@ function insidersOf(definition: Venue): Pick<Venue, "insiders"> {
  * token's price comes from, such as a launchpad's curve, may declare `priceRead`: the calls that
  * read that state and the pure step that prices their answers, which the price watcher asks every
  * block. A launchpad whose contracts favor some wallets on a token it launched may declare
- * `insiders`, which names them for the risk step. The engine decodes every transaction
+ * `insiders`, which names them for the risk step. A launchpad whose launches the launch feed
+ * records declares `launchEvents`, the events its launches write, and `readLaunches`, which reads
+ * launches and curve changes from one transaction's logs. The engine decodes every transaction
  * the venue builds and refuses one whose terms differ.
  *
  * The declaration is checked at once: a bad one is a fault (`plugin.bad_venue`), so the plugin
@@ -97,6 +129,7 @@ export function defineVenue(definition: Venue): Venue {
     decode: (draft) => definition.decode(draft),
     ...priceReadOf(definition),
     ...insidersOf(definition),
+    ...launchReaderOf(definition),
   };
   return Object.freeze(venue);
 }
