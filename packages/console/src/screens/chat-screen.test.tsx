@@ -34,6 +34,7 @@ function chatAnswers(extra: FakeAnswers = {}): FakeAnswers {
     "chat/post": () => ({ session, turn }),
     "chat/stop": () => ({}),
     "chat/clear": () => ({ session }),
+    "chat/openQuestion": () => ({}),
     ...extra,
   };
 }

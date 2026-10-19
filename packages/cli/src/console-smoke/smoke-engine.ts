@@ -28,7 +28,7 @@ const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.time
 const [selfHosted] = skeletonCompositions;
 
 // The scripted model: asked once, it proposes a swap of the coin for the token; told the card is
-// open, it says so.
+// open, it says so; asked again, it asks the owner a question with buttons, and takes the answer.
 const script = {
   replies: [
     callsReply([
@@ -38,6 +38,13 @@ const script = {
       },
     ]),
     textReply("The card is open: confirm it if the trade looks right."),
+    callsReply([
+      {
+        name: "ask_owner",
+        args: { text: "How long do you like to hold a token?", choices: ["Hours", "Days"] },
+      },
+    ]),
+    textReply("Hours it is."),
   ],
   readsImages: true,
 };
