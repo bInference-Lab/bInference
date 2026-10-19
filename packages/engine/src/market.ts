@@ -33,3 +33,19 @@ export type {
 } from "./market/watcher-unpriced.js";
 export { tellOverflows, walletOverflowNoticeKey } from "./leaders/overflow-notices.js";
 export type { OverflowNoticeParts } from "./leaders/overflow-notices.js";
+export {
+  creatorWindowMs,
+  launchKeepMs,
+  launchQuerySchema,
+  launchReadRecordSchema,
+  storedLaunchSchema,
+} from "./launches/launch-record.js";
+export type {
+  LaunchCurveChange,
+  LaunchPlace,
+  LaunchQuery,
+  LaunchReadRecord,
+  NewLaunch,
+  StoredLaunch,
+} from "./launches/launch-record.js";
+export type { LaunchStore } from "./launches/ports.js";

@@ -84,6 +84,9 @@ export type { QuestionStoreHarness, QuestionSubject } from "./contracts/question
 export { alertStoreContract } from "./contracts/alert-store-contract.js";
 export type { AlertStoreHarness, AlertSubject } from "./contracts/alert-store-contract.js";
 export { trackedWalletStoreContract } from "./contracts/tracked-wallet-store-contract.js";
+export { launchStoreContract } from "./contracts/launch-store-contract.js";
+export type { LaunchStoreHarness } from "./contracts/launch-store-contract.js";
+export { createMemoryLaunchStore } from "./fakes/memory-launch-store.js";
 export type {
   TrackedWalletStoreHarness,
   TrackedWalletSubject,
