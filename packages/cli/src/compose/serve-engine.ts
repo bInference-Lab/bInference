@@ -8,6 +8,7 @@ import { startCardTimer } from "./card-timer.js";
 import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { startConfigReload } from "./config-reload.js";
+import { startCopyTimer } from "./copy-timer.js";
 import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startTestOrders } from "./order-pricing.js";
@@ -47,7 +48,7 @@ function isUnreachable(unlocked: Result<void, LockReason>): boolean {
 }
 
 // What runs while the engine serves: the settle timer, the gas check, the order and card timers,
-// the schedule queue, the price watchers, the nightly backup, the reload of
+// the schedule queue, the copy orders, the price watchers, the nightly backup, the reload of
 // `config.json5` when it changes (decision 0118), and the retries of the signer step after a start
 // that found Privy out of reach (decision 0119).
 function startTimers(
@@ -65,6 +66,7 @@ function startTimers(
   startOrderTimer({ tickOrders: composed.tickOrders, clock: host.clock, closers, logger });
   startCardTimer({ expireCards: composed.expireCards, clock: host.clock, closers, logger });
   startScheduleTimer({ runSchedules: composed.runSchedules, ...timers });
+  startCopyTimer({ runCopies: composed.runCopies, clock: host.clock, closers, logger });
   startPinTimer({ checkPins: composed.checkPins, clock: host.clock, closers, logger });
   composed.priceWatchers.start(closers, logger.child("watcher"));
   composed.leaderWatchers.start(closers, logger.child("watcher"));
