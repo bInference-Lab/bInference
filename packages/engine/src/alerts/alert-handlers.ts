@@ -10,6 +10,7 @@ import type { Proposer } from "../money-path/create-money-path.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { type EngineCall, type EngineHandler, proposerOf } from "../operations/engine-call.js";
 import { nextCursorOf, pageAfterOf } from "../operations/page-cursor.js";
+import type { CanPrice } from "../orders/create-order.js";
 import type { AgentStore } from "../ports.js";
 import type { AlertQuery, AlertRecord } from "./alert-record.js";
 import { checkAlertRequest } from "./alert-rules.js";
@@ -30,6 +31,8 @@ export interface AlertHandlersOptions {
   readonly chains: ChainRegistry;
   /** Whether a venue this engine runs is a launchpad, which a launch alert's filters may name. */
   readonly isLaunchpad: (venue: string) => boolean;
+  /** Whether the price watcher can price a token now, which a price alert needs. */
+  readonly canPrice: CanPrice;
   readonly ids: IdSource;
   readonly clock: Clock;
 }
@@ -65,6 +68,11 @@ async function create(
   const settings = await activeAgent(options.agents, agent, call);
   if (!settings.ok) {
     return settings;
+  }
+  const { condition } = checked.value;
+  // A price alert on a token the watcher cannot price would never fire (decision 0244).
+  if (condition.kind === "price" && !(await options.canPrice(condition.asset, call))) {
+    return err("market.no_data");
   }
   const record: AlertRecord = {
     id: options.ids.next("alr"),
@@ -133,7 +141,8 @@ async function remove(
 /**
  * Creates the alert handlers (protocol spec, sections 7.5 and 8.4). `alert/create` stores an
  * active alert at once, with no card: an alert sends no transaction. It is marked when an outside
- * client or a marked turn set it, and refused with `alert.too_many` past 50 active alerts of the
+ * client or a marked turn set it, and refused with `market.no_data` for a price alert on a token
+ * the price watcher cannot price now, `alert.too_many` past 50 active alerts of the
  * agent and `wallet.track_limit` past 50 tracked wallets. `alert/list` pages through the alerts,
  * oldest first, of one agent or all, in one state or any. `alert/delete` ends an active alert.
  */

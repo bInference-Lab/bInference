@@ -28,7 +28,10 @@ cap and the default ends. An alert sends no transaction and opens no card. The s
   an account whose chain family cannot read its address; a price or least dollar value of zero; a
   launch filter naming a launchpad this engine does not run, or a quote token on no chain of the
   registry; an `expiresAt` not ahead. An unknown or archived agent is `agent.not_found` or
-  `agent.archived`; a frozen agent may still set one, as with schedules.
+  `agent.archived`; a frozen agent may still set one, as with schedules. A price alert on a token
+  the price watcher cannot price now, such as the chain's coin, is `market.no_data`: it would
+  never fire, as `order/create` refuses such an order
+  ([decision 0194](0194-the-price-watcher-proves-its-pools-and-is-never-silent.md)).
 - **Defaults.** `wake` is off. A wallet or launch alert ends 30 days on; a price alert never.
 - **Delete.** The owner's surfaces and the agent runtime delete any alert; a client with `propose`
   alone, only the alerts it set (`auth.scope`), as with orders and schedules. An alert that is not

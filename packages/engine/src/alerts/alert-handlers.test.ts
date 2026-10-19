@@ -115,6 +115,12 @@ describe("alert/create", () => {
     expect(active).toStrictEqual([]);
   });
 
+  it("refuses a price alert on a token the price watcher cannot price", async () => {
+    const test = await startTestEngine({ unpriceable: [testToken] });
+
+    expect(await setAlert(test, { condition: price })).toStrictEqual(refusal("market.no_data"));
+  });
+
   it("holds 50 active alerts per agent", async () => {
     const test = await startTestEngine();
     const fifty: readonly AlertArgs[] = Array.from({ length: 50 }, () => ({ condition: price }));

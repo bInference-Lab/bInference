@@ -178,6 +178,7 @@ export function alertHandlersOf(options: EngineOptions): AlertHandlers {
     agents: stores.agents,
     chains,
     isLaunchpad: (venue) => host.isLaunchpad(venue),
+    canPrice: options.canPrice,
     ids,
     clock,
   });

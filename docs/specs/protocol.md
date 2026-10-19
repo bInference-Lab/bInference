@@ -482,7 +482,8 @@ Alerts follow [decision 0244](../DECISIONS.md#d0244): `alert/create` stores an a
 once, with no card, journal entry or notice, marked when a client with `propose` alone or a marked
 turn set it. It refuses with `protocol.bad_args`, storing nothing, an asset on no chain of the
 registry, an account its chain family cannot read, a price or least dollar value of zero, a launch
-filter naming a launchpad the engine does not run, and an `expiresAt` not ahead. `wake` is off by
+filter naming a launchpad the engine does not run, and an `expiresAt` not ahead; and with
+`market.no_data` a price alert on a token the price watcher cannot price now. `wake` is off by
 default. `alert/list` pages oldest first, in every state unless one is named. A client with
 `propose` alone deletes only the alerts it set (`auth.scope`).
 
