@@ -22,10 +22,14 @@ import { type ChatWatch, superviseRuntime, watchChat } from "./runtime-machine.j
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 
-/** One language's first chat: the owner's answers, and the files the agent writes from them. */
+/**
+ * One language's first chat: the owner's answers, the answer buttons of questions 2 and 3 in the
+ * owner's language, and the files the agent writes from the answers.
+ */
 export interface Interview {
   readonly locale: Locale;
   readonly answers: readonly string[];
+  readonly buttons: readonly [readonly string[], readonly string[]];
   readonly strategy: string;
   readonly persona: string;
 }
@@ -52,6 +56,9 @@ export interface InterviewOutcome {
   readonly persona: string | undefined;
   readonly firstChat: string | undefined;
   readonly statusKeys: readonly string[];
+  /** The questions asked with answer buttons, and how each ended. */
+  readonly asked: readonly string[];
+  readonly closed: readonly string[];
 }
 
 // The engine's parts in the self-hosted composition.
@@ -68,12 +75,28 @@ function writeCall(id: string, file: string, text: string) {
   return { id, name: "workspace_write", args: { file, text } };
 }
 
+// The reply that asks question `n`: questions 2 and 3 with `ask_owner` and their buttons, as
+// FIRST-CHAT.md says, the others as text.
+function askReply(interview: Interview, n: number) {
+  const [holding, sectors] = interview.buttons;
+  const choices = new Map([
+    [2, holding],
+    [3, sectors],
+  ]).get(n);
+  if (choices === undefined) {
+    return textReply(`Q${String(n)}`);
+  }
+  const args = { text: `Q${String(n)}`, choices: [...choices] };
+  return callsReply([{ id: `q${String(n)}`, name: "ask_owner", args }]);
+}
+
 /**
- * The model's answers in a first chat: the agent asks each question in its own turn, then saves
- * both files with `workspace_write`, ends the first chat, and says so.
+ * The model's answers in a first chat: the agent asks each question in its own turn, questions 2
+ * and 3 with answer buttons, then saves both files with `workspace_write`, ends the first chat,
+ * and says so.
  */
 export function interviewReplies(interview: Interview): SharedScript {
-  const questions = interview.answers.map((_answer, index) => textReply(`Q${String(index + 1)}`));
+  const questions = interview.answers.map((_answer, index) => askReply(interview, index + 1));
   return createSharedScript([
     ...questions,
     callsReply([
@@ -160,5 +183,7 @@ export async function runInterview(
     persona: await machine.textOf("PERSONA.md"),
     firstChat: await machine.textOf("FIRST-CHAT.md"),
     statusKeys: pushed(machine.chat, "chat/status", "statusKey"),
+    asked: pushed(machine.chat, "chat/question", "text"),
+    closed: pushed(machine.chat, "chat/questionClosed", "state"),
   };
 }

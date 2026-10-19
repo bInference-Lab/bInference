@@ -32,6 +32,10 @@ const english: Interview = {
     "Ask me before every buy",
     "Once a day, two lines at most",
   ],
+  buttons: [
+    ["Minutes", "Hours", "Days", "Weeks"],
+    ["New launches", "Memes", "AI tokens", "Large caps"],
+  ],
   strategy:
     "# Strategy\n\n- Budget: 0.5 BNB, at most 0.05 BNB a trade.\n- Holding time: hours, sometimes a day.\n- Exits: take profit at +50%, cut at -20%.\n",
   persona: "# Persona\n\n- Report once a day, in two lines at most.\n",
@@ -49,7 +53,12 @@ describe("the first chat", () => {
       persona: english.persona,
       firstChat: undefined,
       statusKeys: ["turn.firstChatDone"],
+      asked: ["Q2", "Q3"],
+      closed: ["answered", "answered"],
     });
+    expect(prefix).toContain(
+      "Ask question 2 with the answer buttons Minutes, Hours, Days and Weeks, and question 3 with New launches, Memes, AI tokens and Large caps, through ask_owner",
+    );
   });
 
   it("goes on where it was after the runtime restarts in the middle", slow, async () => {

@@ -26,6 +26,10 @@ const chinese: Interview = {
     "每次买入前先问我",
     "每天一次，最多两行",
   ],
+  buttons: [
+    ["几分钟", "几小时", "几天", "几周"],
+    ["新发射代币", "Meme 币", "AI 代币", "大市值代币"],
+  ],
   strategy:
     "# 策略\n\n- 预算：0.5 BNB，单笔最多 0.05 BNB。\n- 持有时间：几小时，有时一天。\n- 平仓：涨 50% 止盈，跌 20% 止损。\n",
   persona: "# 人设\n\n- 每天汇报一次，最多两行。\n",
@@ -48,7 +52,12 @@ describe("the first chat in Chinese", () => {
         persona: chinese.persona,
         firstChat: undefined,
         statusKeys: ["turn.firstChatDone"],
+        asked: ["Q2", "Q3"],
+        closed: ["answered", "answered"],
       });
+      expect(prefix).toContain(
+        "第 2 题通过 ask_owner 使用回答按钮「几分钟」「几小时」「几天」「几周」",
+      );
     },
   );
 });
