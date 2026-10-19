@@ -932,6 +932,18 @@ importers:
 
   packages/tui:
     dependencies:
+      '@binference/client':
+        specifier: workspace:*
+        version: link:../client
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+      '@binference/i18n':
+        specifier: workspace:*
+        version: link:../i18n
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       string-width:
         specifier: 'catalog:'
         version: 8.3.0

@@ -6,7 +6,7 @@ import { fitWidth } from "./fit-width.js";
 type Tone = "dim" | "bold" | "yellow";
 
 /** One line of the screen: its text, and how it stands out. */
-interface ScreenLine {
+export interface ScreenLine {
   readonly text: string;
   readonly tone?: Tone;
 }

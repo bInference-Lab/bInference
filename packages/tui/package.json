@@ -19,6 +19,10 @@
     "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
+    "@binference/client": "workspace:*",
+    "@binference/core": "workspace:*",
+    "@binference/i18n": "workspace:*",
+    "@binference/protocol": "workspace:*",
     "string-width": "catalog:"
   }
 }
