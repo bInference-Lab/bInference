@@ -1,4 +1,5 @@
-import { type ChatPush, chatPushOf, type PushFrame } from "@binference/protocol";
+import { type ChatPush, chatPushOf, type PushFrame, questionPushOf } from "@binference/protocol";
+import type { AgentQuestion } from "./agent-question.js";
 import type { ChatContext } from "./chat-context.js";
 import { saidLines, statusLine } from "./chat-lines.js";
 import { type ChatState, withoutRunning } from "./chat-state.js";
@@ -7,6 +8,7 @@ import type { ChatTranscript } from "./chat-transcript.js";
 /** The parts the agent's chat topic feeds. */
 export interface ChatFeedParts {
   readonly transcript: ChatTranscript;
+  readonly question: AgentQuestion;
   /** Runs a job after the jobs before it, so the chat prints in the order the pushes came. */
   readonly queue: (job: () => Promise<void>) => void;
 }
@@ -67,7 +69,7 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
 
 /**
  * Follows the agent's chat topic: the running turn and its answer so far in the live area, each
- * final answer and status line printed as it comes. A turn that starts,
+ * final answer and status line printed as it comes, and the agent's question. A turn that starts,
  * and a gap in the topic, read the transcript on, so the owner's messages from other surfaces
  * show too. Answers how to stop following.
  */
@@ -77,10 +79,19 @@ export function followChat(context: ChatContext, parts: ChatFeedParts): () => vo
       const chat = chatPushOf(push);
       if (chat !== undefined) {
         onChatPush(context, parts, chat);
+        return;
+      }
+      const question = questionPushOf(push);
+      if (question?.kind === "chat/questionClosed") {
+        parts.question.closed(question);
+      }
+      if (question !== undefined) {
+        parts.queue(async () => parts.question.reload());
       }
     },
     refetch: async () => {
       parts.queue(async () => parts.transcript.catchUp());
+      parts.queue(async () => parts.question.reload());
       return Promise.resolve();
     },
   });

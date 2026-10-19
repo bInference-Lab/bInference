@@ -1,5 +1,5 @@
 import { displayOutsideText, type Formatter, type MessageValues } from "@binference/i18n";
-import { protocolErrorCodes } from "@binference/protocol";
+import { protocolErrorCodes, questionLimits, type QuestionView } from "@binference/protocol";
 import type { ScreenLine } from "./chat-screen.js";
 
 // The most characters of the agent's name a line shows (spec 4, section 1).
@@ -46,6 +46,26 @@ export function statusLine(
   const { when } = values;
   const shown = typeof when === "number" ? { ...values, when: formatter.dateTime(when) } : values;
   return { text: wordsOf(formatter)(statusKey, shown), tone: "dim" };
+}
+
+/** The agent's question as the chat prints it: its header, its words and its numbered choices. */
+export function questionLines(
+  formatter: Formatter,
+  question: QuestionView,
+  agentName: string,
+): readonly ScreenLine[] {
+  const words = wordsOf(formatter);
+  const choices = question.choices.map((choice, place) => ({
+    text: words("tui.question.choice", {
+      number: place + 1,
+      choice: displayOutsideText(choice, questionLimits.choice),
+    }),
+  }));
+  return [
+    { text: words("question.header", { agent: agentName }), tone: "bold" },
+    ...outsideLines(question.text, questionLimits.text).map((line) => ({ text: line })),
+    ...choices,
+  ];
 }
 
 function codeOf(error: ErrorOptions["cause"]): string | undefined {

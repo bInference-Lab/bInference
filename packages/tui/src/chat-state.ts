@@ -65,6 +65,12 @@ export function withoutRunning(state: ChatState): ChatState {
   return rest;
 }
 
+/** The state without its question. */
+export function withoutQuestion(state: ChatState): ChatState {
+  const { question: _closed, ...rest } = state;
+  return rest;
+}
+
 /** The whole seconds a card has left at `now`, never more than it lasts; 0 once it expired. */
 export function secondsLeft(card: OpenCard, now: number): number {
   const byEngine = card.shown.expiresAt - now;

@@ -3,9 +3,11 @@ import {
   type ChatAnswers,
   type ChatHarness,
   harnessAgent,
+  harnessNowMs,
   startChat,
 } from "./testing/chat-harness.js";
 
+const question = "qst_0190f1c2-3a4b-7c5d-8e6f-000000000003";
 const session = "ses_0190f1c2-3a4b-7c5d-8e6f-000000000002";
 const turn = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000004";
 const ctrlC = "\u0003";
@@ -136,6 +138,46 @@ describe("terminal chat", () => {
     });
     await chat.settle();
     expect(chat.rows()).toContain("main: Red \\u{1B}[31mtext\\u{7}");
+  });
+
+  it("prints the agent's question and answers it with a number key", async () => {
+    const view = {
+      question,
+      agent: harnessAgent,
+      session,
+      turn,
+      text: "How long do you hold a token?",
+      choices: ["Minutes", "Hours"],
+      state: "open",
+      createdAt: harnessNowMs,
+      closesAt: harnessNowMs + 86_400_000,
+    };
+    const open = { answer: (): object => ({}) };
+    const chat = await opened({
+      "chat/openQuestion": () => open.answer(),
+      "chat/answer": () => ({ session, turn }),
+    });
+    open.answer = () => ({ question: view });
+    chat.push(`chat:${harnessAgent}`, "chat/question", view);
+    await chat.settle();
+    expect(chat.rows().slice(-6)).toStrictEqual([
+      "main asks",
+      "How long do you hold a token?",
+      "1. Minutes",
+      "2. Hours",
+      "Press 1 to 2 to answer, or write your own answer.",
+      "› ",
+    ]);
+    chat.press("2");
+    await chat.settle();
+    expect(opsOf(chat, "chat/answer")).toStrictEqual([
+      { agent: harnessAgent, question, choice: 1 },
+    ]);
+    open.answer = () => ({});
+    const closed = { question, state: "answered", answer: { choice: 1, surface: "cli", at: 1 } };
+    chat.push(`chat:${harnessAgent}`, "chat/questionClosed", closed);
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual(["Answered: Hours", "› "]);
   });
 
   it("starts a new chat on /clear, stops the answer on /stop, and lists the keys on /help", async () => {

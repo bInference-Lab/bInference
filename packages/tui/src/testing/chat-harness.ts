@@ -45,7 +45,7 @@ export interface ChatHarness {
 /** The agent the harness chats with. */
 export const harnessAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 /** 2026-10-19 09:30 UTC, when the harness starts. */
-const harnessNowMs: number = Date.UTC(2026, 9, 19, 9, 30, 0);
+export const harnessNowMs: number = Date.UTC(2026, 9, 19, 9, 30, 0);
 
 // Session reads answer an empty session unless the test answers them.
 const quiet: ChatAnswers = {
