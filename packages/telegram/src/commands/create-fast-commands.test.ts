@@ -340,7 +340,7 @@ describe("the fast commands' replies", () => {
       orderOf({
         kind: "copy",
         side: "buy",
-        trigger: { leader, perBuyUsdMicros: 1n, dailyUsdMicros: 1n },
+        trigger: { leader, perBuyUsdMicros: 20_000_000n, dailyUsdMicros: 200_000_000n },
       } as Partial<OrderView["request"]>),
     ];
     const bot = await startCommandBot({
@@ -353,7 +353,7 @@ describe("the fast commands' replies", () => {
       `Limit order · buy FAKE · at or below $500.00 · ${ends}`,
       `Trailing stop · sell FAKE · 5.00% from the best price · ${ends}`,
       `DCA · buy FAKE · on the schedule 0 9 * * 1 · ${ends}`,
-      `Copy trade · buy FAKE · copying 0x0000…00d1 · ${ends}`,
+      `Copy trade · copying 0x0000…00d1 at up to $20.00 a buy · ${ends}`,
     ]);
   });
 

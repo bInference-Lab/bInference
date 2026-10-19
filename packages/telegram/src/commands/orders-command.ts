@@ -32,12 +32,28 @@ function triggerLine(request: Request): CardLineView {
     return { key: "cmd.orders.schedule", values: { cron } };
   }
   const leader = { type: "account", account: request.trigger.leader } as const;
-  return { key: "cmd.orders.copy", values: { leader } };
+  const perBuy = { type: "usd", usdMicros: request.trigger.perBuyUsdMicros } as const;
+  return { key: "cmd.orders.copy", values: { leader, perBuy } };
+}
+
+// A copy order trades every token its leader trades, so its line names the leader and its dollars
+// per buy instead of a side and a token.
+function copyLine(context: CommandContext, order: OrderView, assets: AssetInfos): string {
+  const values = {
+    trigger: { type: "line", line: triggerLine(order.request) },
+    fills: { type: "count", count: order.fills },
+    expiry: choice(context.formatter.dateTime(order.expiresAt)),
+  } as const;
+  const line = { key: "cmd.orders.copyItem", values };
+  return cardLineText(line, { formatter: context.formatter, assets });
 }
 
 // The token's info comes with the page, so a token outside the registry has its name too.
 function orderLine(context: CommandContext, order: OrderView, assets: AssetInfos): string {
   const { request } = order;
+  if (request.kind === "copy") {
+    return copyLine(context, order, assets);
+  }
   const values = {
     kind: choice(request.kind),
     side: choice(request.side),

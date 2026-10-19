@@ -1,4 +1,5 @@
 import { ok } from "@binference/core";
+import type { OrderView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { unlistedHandlers } from "../testing/unlisted-fixtures.js";
 import { menuOf } from "./register-commands.js";
@@ -34,6 +35,31 @@ describe("the fast commands in Chinese", () => {
         "  2 PEPE（0x6982…1933） · 暂无价格",
         `${alarm} 实盘 总计：$0.00`,
       ].join("\n"),
+    ]);
+  });
+
+  it("name a copy order's leader and its dollars per buy", async () => {
+    const leader = "fake:1:0x00000000000000000000000000000000000000d1";
+    const trigger = { leader, perBuyUsdMicros: 20_000_000n, dailyUsdMicros: 200_000_000n };
+    const copy = {
+      order: "ord_0190f1c2-3a4b-7c5d-8e6f-0000000000c1",
+      agent: "agt_0190f1c2-3a4b-7c5d-8e6f-0000000000a1",
+      wallet: "wal_0190f1c2-3a4b-7c5d-8e6f-0000000000b1",
+      kind: "copy",
+      state: "active",
+      request: { kind: "copy", side: "buy", size: { usdMicros: 20_000_000n }, trigger },
+      fills: 0,
+      expiresAt: nowMs,
+      createdAt: nowMs,
+      changedAt: nowMs,
+    } as unknown as OrderView;
+    const bot = await startCommandBot(
+      { "order/list": async () => Promise.resolve(ok({ items: [copy], assets: {} })) },
+      { locale: "zh" },
+    );
+    await bot.send("/orders");
+    expect(bot.texts()).toStrictEqual([
+      "跟单 · 跟单 0x0000…00d1，每笔买入最多 $20.00 · 成交 0 次 · 2026年10月10日 09:30:00 到期",
     ]);
   });
 

@@ -622,6 +622,11 @@ is never verified, so its short address always follows its symbol.
 
 Command descriptions are registered with `setMyCommands` in both languages (`language_code`).
 
+`/orders` writes a copy order, which trades every token its leader trades, as its leader and its
+dollars per buy, `cmd.orders.copyItem` with `cmd.orders.copy`: "Copy trade · copying {leader} at up
+to {perBuy} a buy · {fills} · ends {expiry}", instead of a side and a token
+([decision 0261](../DECISIONS.md#d0261)).
+
 `/positions` shows each position as its P&L card ([section 3.7](#section-3-7)), open ones first,
 then the positions closed in the last 7 days, for every agent not archived. Live positions come
 first under `cmd.positions.section`, "🔴 Live positions" / 「🔴 实盘持仓」, paper ones after them under
