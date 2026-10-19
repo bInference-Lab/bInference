@@ -1,5 +1,6 @@
 import {
   type AccountRef,
+  accountRefSchema,
   type Amount,
   type AssetRef,
   assetRefParts,
@@ -9,6 +10,7 @@ import {
   type DraftCall,
   isSameAccount,
   type Launcher,
+  type LaunchOptionValue,
   type TxDraft,
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
@@ -42,6 +44,8 @@ export interface LaunchBounds {
   /** The launch fee the quote read, which the create call pays in the chain's coin. */
   readonly fee: Amount;
   readonly firstBuy?: Amount;
+  /** Each launchpad setting the card shows, by name: an `account` as its account id. */
+  readonly options: Readonly<Record<string, LaunchOptionValue>>;
   /** The least of the new token the first buy may accept; with a first buy alone. */
   readonly minOutBase?: bigint;
   /** The token the build says its create call makes. */
@@ -116,6 +120,37 @@ function isTheLaunch(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
   );
 }
 
+function accountOf(value: LaunchOptionValue | undefined): AccountRef | undefined {
+  const parsed = accountRefSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+// One setting's value as the call writes it: the card's, an account as the same account.
+function isSameValue(
+  written: LaunchOptionValue | undefined,
+  shown: LaunchOptionValue,
+  family: ChainFamily,
+): boolean {
+  const one = accountOf(written);
+  const two = accountOf(shown);
+  return one === undefined || two === undefined
+    ? written === shown
+    : isSameAccount(one, two, family);
+}
+
+// The call writes every setting the card shows, at its value, and no other (decision 0235).
+function isTheSettings(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
+  const { options, family } = bounds;
+  const names = Object.keys(options);
+  return (
+    Object.keys(launch.options).length === names.length &&
+    names.every(
+      (name) =>
+        options[name] !== undefined && isSameValue(launch.options[name], options[name], family),
+    )
+  );
+}
+
 // The first buy spends exactly the request's, in the asset it names.
 function isTheSpend(spent: Amount | undefined, bounds: LaunchBounds): boolean {
   const { firstBuy } = bounds;
@@ -149,7 +184,10 @@ function createMismatch(step: CreateStep, bounds: LaunchBounds): BuildMismatch |
   if (!isDeclared(step.call.target, bounds)) {
     return "undeclared_contract";
   }
-  return isTheLaunch(step.launch, bounds) ? buyMismatch(step, bounds) : "other_launch";
+  if (!isTheLaunch(step.launch, bounds)) {
+    return "other_launch";
+  }
+  return isTheSettings(step.launch, bounds) ? buyMismatch(step, bounds) : "other_settings";
 }
 
 // A launch's plan is one create call, or one token approval and then one create call.
@@ -171,8 +209,8 @@ function orderOf(steps: readonly LaunchStep[]) {
  * its chain; the plan is at most one token approval, then one create call; the approval is exact
  * on the first buy's spend, to a registry contract of the launchpad; the create call goes to one
  * of its registry contracts, makes the build's token with the launch's name, symbol, pair and
- * metadata, pays exactly the quoted fee, and buys exactly the first buy for the wallet at no less
- * than its minimum. Gives the create call's launch, or the first check that fails.
+ * metadata, writes every launchpad setting at the card's value (decision 0235), pays exactly the
+ * quoted fee, and buys exactly the first buy for the wallet at no less than its minimum. Gives the create call's launch, or the first check that fails.
  */
 export function checkLaunchSteps(
   steps: readonly LaunchStep[],

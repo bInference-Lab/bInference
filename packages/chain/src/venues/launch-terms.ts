@@ -4,7 +4,7 @@ import { type Amount, type AmountWire, amountSchema } from "../amount.js";
 import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
 import type { TxDraft } from "../transaction.js";
-import type { LaunchOptionValue } from "./launch-option.js";
+import { type LaunchOptionValue, launchOptionValuesSchema } from "./launch-option.js";
 
 /**
  * What every launch request the venue host makes of a launchpad holds: the token's name and
@@ -99,6 +99,12 @@ export interface DecodedLaunch {
     readonly minOut: bigint;
     readonly recipient: AccountRef;
   };
+  /**
+   * Every setting the launchpad declares, by name, as the call writes it: an `account` as its
+   * account id on the launch's chain. The host refuses a call whose settings differ from those the
+   * card shows (decision 0235).
+   */
+  readonly options: Readonly<Record<string, LaunchOptionValue>>;
 }
 
 /** A {@link LaunchQuote} as JSON carries it. */
@@ -137,6 +143,7 @@ export interface DecodedLaunchWire {
     readonly minOut: string;
     readonly recipient: string;
   };
+  readonly options: Readonly<Record<string, LaunchOptionValue>>;
 }
 
 /** Decodes a decoded launch from JSON, and encodes it back with `z.encode`. */
@@ -154,4 +161,5 @@ export const decodedLaunchSchema: z.ZodType<DecodedLaunch, DecodedLaunchWire> = 
       recipient: accountRefSchema,
     })
     .exactOptional(),
+  options: launchOptionValuesSchema,
 });

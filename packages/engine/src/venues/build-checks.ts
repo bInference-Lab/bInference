@@ -15,7 +15,9 @@ import { type Bps, bpsPerWhole, err, mulDiv, ok, type Result } from "@binference
 /**
  * Why the venue host refused what a venue quoted or built (ARCHITECTURE.md section 7, step 3).
  * The intent stores `decode_mismatch`; the mismatch names the check that failed. `other_launch` is
- * a launch's create call that makes another token, or names other words, metadata, pair or fee.
+ * a launch's create call that makes another token, or names other words, metadata, pair or fee;
+ * `other_settings` one that writes a launchpad setting other than the card shows, or leaves one
+ * out (decision 0235).
  */
 export const buildMismatches = [
   "quote_mismatch",
@@ -29,6 +31,7 @@ export const buildMismatches = [
   "low_min_out",
   "late_deadline",
   "other_launch",
+  "other_settings",
 ] as const;
 
 /** A check of the venue host that what a venue built failed. */

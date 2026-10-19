@@ -3,7 +3,11 @@ import type { Amount } from "../amount.js";
 import { type AccountRef, accountRefParts, printAccountRef } from "../caip/account-ref.js";
 import { type AssetRef, assetRefParts, assetRefSchema, parseAssetRef } from "../caip/asset-ref.js";
 import type { TxDraft } from "../transaction.js";
-import type { LaunchOption } from "../venues/launch-option.js";
+import {
+  type LaunchOption,
+  type LaunchOptionValue,
+  launchOptionValuesSchema,
+} from "../venues/launch-option.js";
 import type {
   DecodedLaunch,
   LaunchBuildRequest,
@@ -34,6 +38,11 @@ export interface FakeLauncherOptions {
   readonly pin?: FakePinScript;
   /** The settings it declares; none when absent. */
   readonly launchOptions?: readonly LaunchOption[];
+  /**
+   * Settings its create call writes in place of the request's, as a launchpad that lies about
+   * them would; the request's when absent.
+   */
+  readonly writesOptions?: Readonly<Record<string, LaunchOptionValue>>;
 }
 
 /** A fake launcher, which tells a test what it uploaded and how often its pins were read. */
@@ -79,7 +88,18 @@ export function fakeLaunchData(launch: DecodedLaunch): string {
     firstBuy?.spend.base.toString() ?? "",
     firstBuy?.minOut.toString() ?? "",
     firstBuy === undefined ? "" : accountRefParts(firstBuy.recipient).address,
+    word(JSON.stringify(launch.options)),
   ].join(",");
+}
+
+// The settings' word: JSON of each setting by name, which a launch that fails to parse leaves out.
+function optionsOf(text: string): Readonly<Record<string, LaunchOptionValue>> | undefined {
+  try {
+    const parsed = launchOptionValuesSchema.safeParse(JSON.parse(decodeURIComponent(text)));
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // The first buy's words: its spend, its minimum out and its recipient, all empty for none.
@@ -102,17 +122,18 @@ function firstBuyOf(from: AccountRef, pair: AssetRef, words: readonly string[]) 
 
 const wordAt = (words: readonly string[], index: number): string => words[index] ?? "";
 
-// The words of a create call after `launch`: token, name, symbol, metadata, pair, fee and the
-// first buy's three words.
+// The words of a create call after `launch`: token, name, symbol, metadata, pair, fee, the first
+// buy's three words and the settings.
 function launchOf(draft: TxDraft, words: readonly string[]): DecodedLaunch | undefined {
   const token = parseAssetRef(wordAt(words, 0));
   const pair = parseAssetRef(wordAt(words, 4));
   const fee = wordAt(words, 5);
-  if (words.length !== 9 || !token.ok || !pair.ok || !isFakeUnsigned(fee)) {
+  if (words.length !== 10 || !token.ok || !pair.ok || !isFakeUnsigned(fee)) {
     return undefined;
   }
-  const bought = firstBuyOf(draft.from, pair.value, words.slice(6));
-  return bought === undefined
+  const bought = firstBuyOf(draft.from, pair.value, words.slice(6, 9));
+  const options = optionsOf(wordAt(words, 9));
+  return bought === undefined || options === undefined
     ? undefined
     : {
         token: token.value,
@@ -122,6 +143,7 @@ function launchOf(draft: TxDraft, words: readonly string[]): DecodedLaunch | und
         pair: pair.value,
         feeBase: BigInt(fee),
         ...bought,
+        options,
       };
 }
 
@@ -131,9 +153,15 @@ function decodeLaunch(draft: TxDraft): Result<DecodedLaunch, "unknown_call"> {
   return launch === undefined ? err("unknown_call") : ok(launch);
 }
 
+/** What the fake launchpad writes into a create call beyond its request. */
+interface Written {
+  readonly token: AssetRef;
+  readonly options: Readonly<Record<string, LaunchOptionValue>>;
+}
+
 // An exact approval of an ERC-20 first buy's spend, then the create call, which pays the fee and
 // a coin first buy as its value.
-function buildSteps(request: LaunchBuildRequest, token: AssetRef): readonly TxDraft[] {
+function buildSteps(request: LaunchBuildRequest, written: Written): readonly TxDraft[] {
   const router = accountRefParts(routerOf(request)).address;
   const { firstBuy, wallet } = request;
   const bought =
@@ -147,13 +175,14 @@ function buildSteps(request: LaunchBuildRequest, token: AssetRef): readonly TxDr
           },
         };
   const data = fakeLaunchData({
-    token,
+    token: written.token,
     name: request.name,
     symbol: request.symbol,
     metadataUri: request.metadataUri,
     pair: request.pair,
     feeBase: request.fee.base,
     ...bought,
+    options: written.options,
   });
   const coinSpend = firstBuy !== undefined && isCoin(firstBuy.asset) ? firstBuy.base : 0n;
   const create = fakeDraft(wallet, { to: router, value: request.fee.base + coinSpend, data });
@@ -219,7 +248,8 @@ export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLaunc
     },
     async buildLaunch(request, { signal }) {
       signal.throwIfAborted();
-      return await Promise.resolve({ token, steps: buildSteps(request, token) });
+      const written = { token, options: options.writesOptions ?? request.options };
+      return await Promise.resolve({ token, steps: buildSteps(request, written) });
     },
     decodeLaunch,
     uploads: () => [...uploads],

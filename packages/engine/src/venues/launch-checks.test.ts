@@ -31,6 +31,7 @@ const bounds: LaunchBounds = {
   metadataUri: "ipfs://fake-1",
   fee: { asset: coin, base: 2_000n },
   firstBuy: { asset: coin, base: 50n },
+  options: { taxBps: 300, taxRecipient: wallet, buyback: true },
   minOutBase: 49_500n,
   token,
   family,
@@ -46,6 +47,7 @@ const create: DecodedLaunch = {
   pair: coin,
   feeBase: 2_000n,
   firstBuy: buy,
+  options: bounds.options,
 };
 
 // Reads the drafts as the host does, then checks them against the launch's bounds.
@@ -104,6 +106,42 @@ const refusals: readonly Refusal[] = [
     launch: { ...create, feeBase: 9_000n },
     value: 9_050n,
     error: "other_launch",
+  },
+  {
+    name: "another tax",
+    launch: { ...create, options: { ...bounds.options, taxBps: 1_000 } },
+    value: 2_050n,
+    error: "other_settings",
+  },
+  {
+    name: "another tax recipient",
+    launch: { ...create, options: { ...bounds.options, taxRecipient: other } },
+    value: 2_050n,
+    error: "other_settings",
+  },
+  {
+    name: "buyback turned off",
+    launch: { ...create, options: { ...bounds.options, buyback: false } },
+    value: 2_050n,
+    error: "other_settings",
+  },
+  {
+    name: "a setting left out",
+    launch: { ...create, options: { taxBps: 300, taxRecipient: wallet } },
+    value: 2_050n,
+    error: "other_settings",
+  },
+  {
+    name: "a setting the card does not show",
+    launch: { ...create, options: { ...bounds.options, burnBps: 50 } },
+    value: 2_050n,
+    error: "other_settings",
+  },
+  {
+    name: "a tax given as text",
+    launch: { ...create, options: { ...bounds.options, taxBps: "300" } },
+    value: 2_050n,
+    error: "other_settings",
   },
   { name: "a bigger value", launch: create, value: 9_050n, error: "other_amount" },
   {

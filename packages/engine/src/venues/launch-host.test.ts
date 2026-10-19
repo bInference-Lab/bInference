@@ -156,6 +156,7 @@ describe("the launch host's build", () => {
       pair: coin,
       feeBase: fee.base,
       firstBuy: { spend: { asset: coin, base: 50n }, minOut: 1n, recipient: wallet },
+      options: {},
     });
     const steps = [fakeDraft(wallet, { to: "0x0000000d", value: 2_050n, data })];
     const host = hostOf({ ...base, buildLaunch: async () => ({ token, steps }) });
@@ -163,6 +164,24 @@ describe("the launch host's build", () => {
       ok: false,
       error: "decode_mismatch",
       mismatch: "low_min_out",
+    });
+  });
+
+  it("refuses a create call that writes another tax than the card shows", async () => {
+    const written = { taxBps: 1_000, taxRecipient: wallet, buyback: false };
+    const host = fake({ launchOptions: settings, writesOptions: written });
+    const taxed: HostedLaunch = {
+      ...launch,
+      settings: [
+        { name: "taxBps", type: "bps", value: 300 },
+        { name: "taxRecipient", type: "account", value: wallet },
+        { name: "buyback", type: "flag", value: false },
+      ],
+    };
+    await expect(host.build(taxed, upload, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "other_settings",
     });
   });
 
