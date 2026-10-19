@@ -7,6 +7,9 @@ import { ChatScreen } from "./chat-screen";
 
 afterEach(cleanup);
 
+// jsdom makes no object URLs; a preview's address only has to exist.
+Object.assign(URL, { createObjectURL: () => "blob:preview", revokeObjectURL: () => undefined });
+
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 
 describe("the chat screen, in Chinese", () => {
