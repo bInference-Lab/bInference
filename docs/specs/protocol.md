@@ -433,7 +433,9 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   owner starts a launch: one the agent runtime or an MCP client proposes fails with
   `intent.owner_only` before anything is read, stored or uploaded, and a launch whose `image` the
   proposer's own credential did not upload ends `failed_check` with `image_unreadable`
-  ([decision 0236](../DECISIONS.md#d0236)).
+  ([decision 0236](../DECISIONS.md#d0236)). A `firstBuy` in any asset but `pairWith`, a
+  `description` longer than 1,000 characters or a link longer than 200 fails with
+  `protocol.bad_args` and stores nothing ([decision 0239](../DECISIONS.md#d0239)).
 - `intent/confirm` must name the card's current `cardVersion`. A re-quote that changes the terms
   opens a new card version ([rule 4](../ARCHITECTURE.md#rule-4)), and confirming an old version
   fails with `intent.card_changed`. A Confirm that would take the agent past its rolling 24-hour

@@ -108,17 +108,41 @@ async function walletOf(
     : { wallet: picked, isLaunchWallet: picked === launch?.id };
 }
 
+// What a launch card shows in full: a description of at most 1,000 characters and links of at
+// most 200 (decision 0235), so the owner never confirms words the card cut.
+const descriptionMost = 1_000;
+const linkMost = 200;
+
+const characters = (text: string | undefined): number => Array.from(text ?? "").length;
+
+// The first buy spends the pair the token launches against, so the card's pair and first buy say
+// one thing (decision 0239); the words fit the card whole.
+function isWhole(request: LaunchTokenRequest): boolean {
+  const { firstBuy, pairWith, description, links } = request;
+  const linkTexts = [links?.website, links?.x, links?.telegram];
+  return (
+    (firstBuy === undefined || firstBuy.asset === pairWith) &&
+    characters(description) <= descriptionMost &&
+    linkTexts.every((link) => characters(link) <= linkMost)
+  );
+}
+
 /**
- * Resolves a token launch before anything is stored: its chain is the pair's, its launchpad one
- * the engine hosts that launches tokens there (else `quote.no_route`), its launchpad settings
- * pass their declaration (else `protocol.bad_args`), and its wallet is one of the agent's with an
- * account on the chain (else `wallet.not_found`), with that wallet's facts in the intent's mode.
+ * Resolves a token launch before anything is stored: its first buy spends its pair, and its
+ * description and links fit the card whole (else `protocol.bad_args`, decision 0239); its chain
+ * is the pair's, its launchpad one the engine hosts that launches tokens there (else
+ * `quote.no_route`), its launchpad settings pass their declaration (else `protocol.bad_args`),
+ * and its wallet is one of the agent's with an account on the chain (else `wallet.not_found`),
+ * with that wallet's facts in the intent's mode.
  */
 export async function resolveLaunch(
   options: ResolveLaunchOptions,
   resolving: Resolving,
 ): Promise<Result<ResolvedLaunch, ProtocolErrorCode>> {
   const { request, settings, isPaper, signal } = resolving;
+  if (!isWhole(request)) {
+    return err("protocol.bad_args");
+  }
   const chain = options.chains.get(assetRefParts(request.pairWith).chain);
   if (!chain.ok) {
     return err("quote.no_route");

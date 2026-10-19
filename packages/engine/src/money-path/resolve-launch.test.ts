@@ -1,4 +1,4 @@
-import { accountRefSchema, type LaunchOption } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, type LaunchOption } from "@binference/chain";
 import {
   createFakeLauncher,
   createFakeLaunchpad,
@@ -17,6 +17,7 @@ import {
   testAgentDraft,
   testCoin,
   testNowMs,
+  testToken,
   testWallet,
 } from "../intents/test-intents.js";
 import { testAccount, testChains, testFacts } from "../operations/test-engine.js";
@@ -117,6 +118,12 @@ describe("a token launch as the engine resolves it", () => {
     });
   });
 
+  it("takes a description of 1,000 characters outside the basic plane, as the card shows them", async () => {
+    // Each character is one code point and two UTF-16 units.
+    const description = String.fromCodePoint(0x1_d400).repeat(1_000);
+    await expect(resolved({ ...launch, description })).resolves.toMatchObject({ ok: true });
+  });
+
   it.each<[string, LaunchTokenRequest, string]>([
     ["a venue that launches nothing", { ...launch, venue: "fake-swap" }, "quote.no_route"],
     [
@@ -128,6 +135,26 @@ describe("a token launch as the engine resolves it", () => {
       "a wallet that is not the agent's",
       { ...launch, wallet: fixtureId("wal", 9) },
       "wallet.not_found",
+    ],
+    [
+      "a first buy in another asset than the pair",
+      { ...launch, firstBuy: { asset: testToken, base: 10n } },
+      "protocol.bad_args",
+    ],
+    [
+      "a first buy on another chain",
+      { ...launch, firstBuy: { asset: assetRefSchema.parse("fake:2/slip44:1"), base: 10n } },
+      "protocol.bad_args",
+    ],
+    [
+      "a description longer than the card shows",
+      { ...launch, description: "a".repeat(1_001) },
+      "protocol.bad_args",
+    ],
+    [
+      "a link longer than the card shows",
+      { ...launch, links: { website: `https://moon.example/${"a".repeat(180)}` } },
+      "protocol.bad_args",
     ],
   ])("refuses %s before anything is stored", async (_case, request, error) => {
     await expect(resolved(request)).resolves.toStrictEqual({ ok: false, error });
