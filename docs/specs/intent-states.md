@@ -197,7 +197,11 @@ a live fill whose grant ran out before its wallet's queue took it
 was signed, which ends its order ([decision 0211](../DECISIONS.md#d0211)); `missed`, a DCA order's period that came while the
 order could not buy, `late`, a DCA buy that reached the head of its agent's line past its period's
 minute, and `fill_waiting`, a DCA buy that could not run behind a fill still settling, none ever
-bought later ([decision 0246](../DECISIONS.md#d0246)); and `no_price`,
+bought later ([decision 0246](../DECISIONS.md#d0246)); `late` too for a copy order's leader trade
+whose block time is more than 60 seconds old at the head of its agent's line, `share_unread`, a
+copy order's sale whose leader's share the leader watcher could not read, and `token_unreadable`,
+a copy order's trade of a token whose decimals neither the registry nor its contract gives
+([decision 0260](../DECISIONS.md#d0260)); and `no_price`,
 a size in dollars whose asset has no USD price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
 refused.

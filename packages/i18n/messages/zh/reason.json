@@ -49,6 +49,8 @@
   "worst_price": "价格差于订单的最差价格",
   "trigger_unconfirmed": "该交易自身的价格未达到订单的触发价格",
   "copy_daily_cap": "将超过该带单钱包的每日上限（已用 {used}，上限 {cap}）",
+  "share_unread": "无法读取带单钱包卖出的持仓比例",
+  "token_unreadable": "该代币合约未返回其符号和小数位数",
   "engine_locked": "binference 已锁定，运行 `binference unlock` 之前不会成交任何订单",
   "live_fills_off": "实盘自动订单暂时不会成交，目前只有模拟订单会成交",
   "nothing_to_spend": "钱包中订单要花费的资产不足",
@@ -56,7 +58,7 @@
   "fill_lapsed": "成交的授权在发送之前已过期，未进行任何交易；系统会再次尝试",
   "owner_cancelled": "你在发送之前撤回了这次成交，因此订单已取消；未进行任何交易",
   "missed": "这次买入到期时 binference 未运行或已锁定，或 Agent 已冻结；之后不会补买，下一次按时进行",
-  "late": "这次买入未能在到期后一分钟内开始，因为该 Agent 的其他成交先行；之后不会补买",
+  "late": "它未能在应执行时间后一分钟内开始，之后不会补做",
   "fill_waiting": "该 Agent 的另一笔成交仍在结算，或此前的成交在链上失败，这次买入未能进行；之后不会补买",
   "period_unreadable": "binference 已无法读取此订单的计划或时区，因此订单已结束；未买入任何代币"
 }
