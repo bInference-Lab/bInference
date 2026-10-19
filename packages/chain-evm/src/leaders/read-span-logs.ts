@@ -1,18 +1,7 @@
-import { BinferenceError } from "@binference/core";
-import { type Address, type Hex, pad, toHex } from "viem";
-import { z } from "zod";
-import { isQueryTooLarge } from "../rpc/node-fault.js";
-import type { RpcFailover } from "../rpc/rpc-call.js";
-import { type ChainLog, chainLogSchema } from "./chain-block.schema.js";
+import { type Address, type Hex, pad } from "viem";
+import { askLogs, type LogReader } from "../watching/ask-logs.js";
+import type { ChainLog } from "./chain-block.schema.js";
 import { type SpanLogs, transferTopic, type WalletOverflow } from "./wallet-transfers.js";
-
-/** What a span's logs are read with. */
-export interface LogReader {
-  readonly rpc: RpcFailover;
-  /** How long one endpoint may take; the failover's own timeout when absent. */
-  readonly timeoutMs?: number;
-  readonly signal: AbortSignal;
-}
 
 /** Blocks to read the tracked wallets' transfers in. */
 export interface LogSpan {
@@ -29,8 +18,6 @@ export interface SpanRead {
   readonly refused: readonly WalletOverflow[];
 }
 
-const logsSchema = z.array(chainLogSchema);
-
 // One log query: every Transfer from the addresses, or every one to them. A filter ANDs its
 // topic positions, so the two need two queries.
 async function queryLogs(
@@ -40,30 +27,7 @@ async function queryLogs(
 ): Promise<readonly ChainLog[] | "too_large"> {
   const accounts = span.addresses.map((address) => pad(address, { size: 32 }).toLowerCase());
   const topics = side === "sent" ? [transferTopic, accounts] : [transferTopic, null, accounts];
-  const blocks =
-    span.blockHash === undefined
-      ? { fromBlock: toHex(span.from), toBlock: toHex(span.to) }
-      : { blockHash: span.blockHash };
-  const method = "eth_getLogs";
-  const reply = await reader.rpc.request({
-    method,
-    params: [{ ...blocks, topics }],
-    result: logsSchema,
-    signal: reader.signal,
-    ...(span.blockHash === undefined ? {} : { atHead: true }),
-    ...(reader.timeoutMs === undefined ? {} : { timeoutMs: reader.timeoutMs }),
-  });
-  if (reply.kind === "result") {
-    return reply.value;
-  }
-  if (isQueryTooLarge(reply)) {
-    return "too_large";
-  }
-  throw new BinferenceError({
-    code: "chain.rpc_error",
-    message: `${method} failed on ${reply.endpoint}: ${reply.message}`,
-    details: { method, endpoint: reply.endpoint, rpcCode: reply.code },
-  });
+  return askLogs(reader, { ...span, topics });
 }
 
 function halvesOf(span: LogSpan): readonly LogSpan[] {

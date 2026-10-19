@@ -2,11 +2,13 @@ import {
   type Address,
   decodeFunctionData,
   encodeFunctionResult,
+  getAbiItem,
   getAddress,
   type Hex,
   multicall3Abi,
   pad,
   parseAbi,
+  toFunctionSelector,
   toHex,
 } from "viem";
 import { z } from "zod";
@@ -32,7 +34,19 @@ export interface FakeTx {
   /** Native coin a contract sends from inside the call, which no log shows. */
   readonly pays?: readonly { readonly to: Address; readonly value: bigint }[];
   readonly fee?: bigint;
+  /** Other logs it writes after its transfers, such as a launchpad's events. */
+  readonly logs?: readonly FakeLog[];
 }
+
+/** A log a fake transaction writes besides its transfers. */
+interface FakeLog {
+  readonly address: Address;
+  readonly topics: readonly Hex[];
+  readonly data: Hex;
+}
+
+/** A fake chain's answer to a read call of a contract, or `undefined` for a revert. */
+export type FakeRead = (target: Address, callData: Hex) => Hex | undefined;
 
 /** A mined transaction of a fake chain, every field filled. */
 export interface MinedTx {
@@ -43,6 +57,7 @@ export interface MinedTx {
   readonly transfers: readonly FakeTransfer[];
   readonly pays: readonly { readonly to: Address; readonly value: bigint }[];
   readonly fee: bigint;
+  readonly logs: readonly FakeLog[];
 }
 
 /** A mined block of a fake chain. */
@@ -64,6 +79,8 @@ export interface FakeChainState {
     readonly value: bigint;
   }[];
   readonly maxLogs: number;
+  /** Answers the read calls of a Multicall3 batch other than an ERC-20 `balanceOf`. */
+  readonly reads?: FakeRead;
   generation: number;
   prunedBelow: bigint;
 }
@@ -121,17 +138,25 @@ function coinBalance(state: FakeChainState, account: Address, at: bigint): bigin
     }, startingCoin);
 }
 
+// A transaction's transfer logs, then its other logs.
+function txLogs(tx: MinedTx): readonly FakeLog[] {
+  const transfers = tx.transfers.map((transfer): FakeLog => ({
+    address: transfer.token,
+    topics: [transferTopic, pad(transfer.from, { size: 32 }), pad(transfer.to, { size: 32 })].map(
+      (topic) => hexSchema.parse(topic.toLowerCase()),
+    ),
+    data: pad(toHex(transfer.value), { size: 32 }),
+  }));
+  return [...transfers, ...tx.logs];
+}
+
 function logsOf(block: FakeBlock): readonly { readonly [key: string]: JsonValue }[] {
   let logIndex = 0;
   return block.txs.flatMap((tx) =>
-    tx.transfers.map((transfer) => ({
-      address: transfer.token,
-      topics: [
-        transferTopic,
-        pad(transfer.from, { size: 32 }).toLowerCase(),
-        pad(transfer.to, { size: 32 }).toLowerCase(),
-      ],
-      data: pad(toHex(transfer.value), { size: 32 }),
+    txLogs(tx).map((log) => ({
+      address: log.address,
+      topics: [...log.topics],
+      data: log.data,
       blockNumber: toHex(block.number),
       blockHash: block.hash,
       transactionHash: tx.hash,
@@ -157,8 +182,15 @@ function blockOfTag(state: FakeChainState, tag: JsonValue | undefined): FakeBloc
     : state.blocks.find((block) => block.number === BigInt(hexSchema.parse(tag)));
 }
 
+// The block a tag names: `latest` is the head.
+function blockAt(state: FakeChainState, tag: JsonValue | undefined): bigint {
+  return tag === "latest"
+    ? (state.blocks.at(-1)?.number ?? state.start)
+    : BigInt(hexSchema.parse(tag));
+}
+
 function isPruned(state: FakeChainState, tag: JsonValue | undefined): boolean {
-  return BigInt(hexSchema.parse(tag)) < state.prunedBelow;
+  return blockAt(state, tag) < state.prunedBelow;
 }
 
 function blockAnswer(state: FakeChainState): Answer {
@@ -203,8 +235,14 @@ function logsAnswer(state: FakeChainState): Answer {
   };
 }
 
+const balanceOfSelector = toFunctionSelector(getAbiItem({ abi: balanceOfAbi, name: "balanceOf" }));
+
 function balanceRead(state: FakeChainState, at: bigint) {
   return ({ target, callData }: { readonly target: Address; readonly callData: Hex }) => {
+    if (!callData.startsWith(balanceOfSelector)) {
+      const answer = state.reads?.(getAddress(target), callData);
+      return { success: answer !== undefined, returnData: answer ?? "0x" };
+    }
     const read = decodeFunctionData({ abi: balanceOfAbi, data: callData });
     const [account] = read.args;
     const holding = { account: getAddress(account), token: getAddress(target) };
@@ -222,7 +260,7 @@ function callAnswer(state: FakeChainState): Answer {
       return { error: { code: 3, message: "execution reverted" } };
     }
     const decoded = decodeFunctionData({ abi: aggregateAbi, data: call.data });
-    const result = decoded.args[0].map(balanceRead(state, BigInt(hexSchema.parse(tag))));
+    const result = decoded.args[0].map(balanceRead(state, blockAt(state, tag)));
     return {
       result: encodeFunctionResult({ abi: multicall3Abi, functionName: "aggregate3", result }),
     };

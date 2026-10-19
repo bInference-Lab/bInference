@@ -4,6 +4,7 @@ import type { JsonValue } from "../rpc/json-value.schema.js";
 import {
   type FakeBlock,
   type FakeChainState,
+  type FakeRead,
   type FakeTx,
   fakeLeaderAnswers,
   type MinedTx,
@@ -12,7 +13,7 @@ import { type FakeRpcAnswer, fakeRpcNode } from "./fake-rpc-http.js";
 
 export type { FakeTx } from "./fake-leader-answers.js";
 
-/** A fake chain for the leader watcher's tests, with no network. */
+/** A fake chain for the log watchers' tests, with no network. */
 export interface FakeLeaderChain {
   readonly endpoint: (request: HttpRequest) => HttpResponse;
   /** Mines a block of these transactions on the head and answers its number. */
@@ -49,6 +50,8 @@ export interface FakeLeaderChainOptions {
   }[];
   /** An answer with more logs than this is refused, as providers refuse one. */
   readonly maxLogs?: number;
+  /** Answers the read calls of a Multicall3 batch other than an ERC-20 `balanceOf`. */
+  readonly reads?: FakeRead;
 }
 
 // More logs than any test's block holds.
@@ -61,6 +64,7 @@ function stateOf(options: FakeLeaderChainOptions): FakeChainState {
     multicall: options.multicall,
     holdings: options.holdings ?? [],
     maxLogs: options.maxLogs ?? unlimitedLogs,
+    ...(options.reads === undefined ? {} : { reads: options.reads }),
     generation: 0,
     prunedBelow: 0n,
   };
@@ -79,6 +83,7 @@ function mineOn(state: FakeChainState, txs: readonly FakeTx[]): bigint {
     transfers: tx.transfers ?? [],
     pays: tx.pays ?? [],
     fee: tx.fee ?? 0n,
+    logs: tx.logs ?? [],
   }));
   const parentHash = parent?.hash ?? hashFor(number - 1n, "parent");
   const block: FakeBlock = { number, hash: hashFor(number, "block"), parentHash, txs: mined };
