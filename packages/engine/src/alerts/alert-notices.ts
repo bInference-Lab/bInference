@@ -84,15 +84,19 @@ function walletNotice(
   };
 }
 
-// How long ago a launch was made: minutes within the hour, hours within two days, else days.
-function ageText(launchedAtMs: number, nowMs: number): string {
+// How long ago a launch was made, as a count and its unit: minutes within the hour, hours within
+// two days, else days; each language words the unit.
+const ageOf = (count: number, unit: string): NoticePart => ({
+  key: "launch.age",
+  values: { unit, count: String(Math.floor(count)) },
+});
+
+function agePart(launchedAtMs: number, nowMs: number): NoticePart {
   const age = Math.max(0, nowMs - launchedAtMs);
   if (age < hourMs) {
-    return `${String(Math.floor(age / minuteMs))} min`;
+    return ageOf(age / minuteMs, "minute");
   }
-  return age < 2 * dayMs
-    ? `${String(Math.floor(age / hourMs))} h`
-    : `${String(Math.floor(age / dayMs))} d`;
+  return age < 2 * dayMs ? ageOf(age / hourMs, "hour") : ageOf(age / dayMs, "day");
 }
 
 /**
@@ -114,12 +118,11 @@ function launchLine(launch: LaunchView, context: NoticeContext): NoticePart {
     values: {
       token: alertTokenText(context.chains, context.assets, launch.token),
       launchpad: launch.launchpad,
-      age: ageText(launch.launchedAt, context.nowMs),
       tax: launch.taxBps === undefined ? "?" : plain.percent(launch.taxBps),
       insiders: String(launch.insiders.length),
       creatorLaunches: String(launch.creatorLaunches30d),
     },
-    parts: { curve },
+    parts: { curve, age: agePart(launch.launchedAt, context.nowMs) },
   };
 }
 

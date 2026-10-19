@@ -83,6 +83,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.alertWallet": "Whale sold 2M PEPE, 40% of its holding, for $22.10",
   "notice.alertLaunch":
     "New launch passed your filters: PEPE 0x6982…1933 · Pad · 3 min ago · curve 42% · tax 1% · 2 insider wallets · creator's other launches in 30 days: 0",
+  "notice.alertHeld": "main · 12 more matches this hour, see the console",
   "notice.ordersEnded": "Take-profit sold all your PEPE, so your 2 other exit orders on it ended",
   "notice.exitEnded": "Trailing stop on PEPE ended: the wallet holds none of it any more",
 };

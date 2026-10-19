@@ -16,6 +16,7 @@ export const mutableNoticeKinds = [
   "alertPrice",
   "alertWallet",
   "alertLaunch",
+  "alertHeld",
   "ordersEnded",
   "exitEnded",
   "update",

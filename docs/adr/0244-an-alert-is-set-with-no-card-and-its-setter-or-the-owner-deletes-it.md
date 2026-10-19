@@ -39,8 +39,9 @@ cap and the default ends. An alert sends no transaction and opens no card. The s
 - **List.** `alert/list` pages oldest first, in every state unless one is named, of one agent or
   all, as `order/list` does.
 - **The wallet cap.** Until the leader watcher keeps `tracked_wallets`, the store counts the
-  distinct accounts of the install's active wallet alerts, in the write that stores the alert; an
-  account already tracked passes.
+  distinct accounts of the install's active wallet alerts of agents not archived, in the write
+  that stores the alert; an account already tracked passes. An archived agent's alerts end
+  ([decision 0245](0245-an-alert-fires-once-per-match-tells-the-owner-and-wakes-the-agent-marked.md)).
 - **Storage.** Migration 0041 makes `alerts` again with the condition's kind and account, `wake`,
   `fires`, `outside_content`, `created_by`, `changed_at`, `expires_at`, `last_message_id` and the
   `ended` state.

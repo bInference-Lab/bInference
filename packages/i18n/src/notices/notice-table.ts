@@ -36,12 +36,14 @@ const launch: NoticePartView = {
   values: {
     token: "PEPE 0x6982…1933",
     launchpad: "Pad",
-    age: "3 min",
     tax: "1%",
     insiders: "2",
     creatorLaunches: "0",
   },
-  parts: { curve: { key: "launch.curve", values: { graduated: "no", progress: "42%" } } },
+  parts: {
+    curve: { key: "launch.curve", values: { graduated: "no", progress: "42%" } },
+    age: { key: "launch.age", values: { unit: "minute", count: "3" } },
+  },
 };
 
 /**
@@ -249,6 +251,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     values: { wallet: "Whale", side: "sell", amount: "2M PEPE", share: "40%", value: "$22.10" },
   },
   "notice.alertLaunch": { key: "notice.alertLaunch", values: {}, parts: { launch } },
+  "notice.alertHeld": { key: "notice.alertHeld", agent: tableAgent, values: { count: "12" } },
   "notice.ordersEnded": {
     key: "notice.ordersEnded",
     values: { token: "PEPE", count: "2" },

@@ -486,7 +486,7 @@ the set, and each kind can be turned off per agent.
 
 **Muting** ([decision 0185](../DECISIONS.md#d0185)). An agent may mute `fill`, `skipped`,
 `lowGas`, `orderExpiring`, `daily`, the alert notices (`alertPrice`, `alertWallet`,
-`alertLaunch`), the exit order notices (`ordersEnded`, `exitEnded`) and the update notices
+`alertLaunch`, `alertHeld`), the exit order notices (`ordersEnded`, `exitEnded`) and the update notices
 (`update`, `updateBare`, `updated`, `updatedBare`) with `notice/setSettings`. Every other notice
 always goes: it tells of a security event, of a trade or money that needs a look, of the engine
 or the agent stopping, or of a schedule that wakes the agent set or cancelled
@@ -557,10 +557,12 @@ is never verified, so its short address always follows its symbol.
 | Price alert               | `notice.alertPrice`      | {token} is {direction, select, above {at or above} other {at or below}} {price}: now {now}                                                                                                                      | {token} 价格{direction, select, above {达到或高于} other {达到或低于}} {price}：现价 {now}                                                                      |
 | Wallet alert              | `notice.alertWallet`     | {wallet} {side, select, buy {bought {amount} for {value}} other {sold {amount}, {share} of its holding, for {value}}}                                                                                           | {wallet} {side, select, buy {用 {value} 买入 {amount}} other {卖出 {amount}（占其持仓的 {share}），收到 {value}}}                                               |
 | Launch alert              | `notice.alertLaunch`     | New launch passed your filters: {launch}                                                                                                                                                                        | 有新发射的代币通过了你的筛选条件：{launch}                                                                                                                      |
+| Matches held back         | `notice.alertHeld`       | {count, plural, one {# more match} other {# more matches}} this hour, see the console                                                                                                                           | 本小时另有 {count, plural, other {# 次匹配}}，请在控制台查看                                                                                                    |
 | Woke the agent            | `alert.woke`             | {agent} is looking into it.                                                                                                                                                                                     | {agent} 正在查看。                                                                                                                                              |
 | Wake-ups held back        | `alert.wakeSkipped`      | {count, plural, one {# more match} other {# more matches}} did not wake {agent}: at most 10 wake-ups an hour.                                                                                                   | 另有 {count} 个匹配未唤醒 {agent}：每小时最多唤醒 10 次。                                                                                                       |
 | Launch feed line          | `launch.line`            | {token} · {launchpad} · {age} ago · {curve} · tax {tax} · {insiders, plural, =0 {no insider wallets} one {# insider wallet} other {# insider wallets}} · creator's other launches in 30 days: {creatorLaunches} | {token} · {launchpad} · {age}前 · {curve} · 交易税 {tax} · {insiders, plural, =0 {无内部钱包} other {# 个内部钱包}} · 创建者 30 天内其他发射：{creatorLaunches} |
 | Curve state               | `launch.curve`           | {graduated, select, yes {graduated} other {curve {progress}}}                                                                                                                                                   | {graduated, select, yes {已毕业} other {曲线进度 {progress}}}                                                                                                   |
+| Launch age                | `launch.age`             | {unit, select, minute {{count} min} hour {{count} h} other {{count} d}}                                                                                                                                         | {unit, select, minute {{count} 分钟} hour {{count} 小时} other {{count} 天}}                                                                                    |
 | Buy fill                  | `fill.buy`               | bought {amount} for {spent} at {price}                                                                                                                                                                          | 以 {price} 用 {spent} 买入 {amount}                                                                                                                             |
 | Sell fill                 | `fill.sell`              | sold {amount} for {received} at {price}                                                                                                                                                                         | 以 {price} 卖出 {amount}，收到 {received}                                                                                                                       |
 | Copied buy                | `fill.copyBuy`           | copied {leader}: bought {amount} for {spent}                                                                                                                                                                    | 跟单 {leader}：用 {spent} 买入 {amount}                                                                                                                         |
@@ -574,8 +576,12 @@ is never verified, so its short address always follows its symbol.
   `reason.*`. A paper fill's notice starts with 🧪, as its receipt does: its `mode` is `paper`.
 - An alert's notice is followed by `alert.woke` when it started a turn, and by `alert.wakeSkipped`
   when wake-ups were held back since the last one (spec 1, section 8.4).
-- `{wallet}` and `{leader}` are the address book label, else the short address. `{age}` is the
-  time since the launch block, in minutes, hours or days. `{creatorLaunches}` is a number.
+- One alert sends at most five notices an hour, from its first; its later matches in that hour
+  are counted and told once, in `notice.alertHeld`, when the hour ends or with the first notice
+  of its next hour ([decision 0245](../DECISIONS.md#d0245)). `{age}` of `launch.line` is
+  `launch.age`, the launch's age in minutes within the hour, hours within two days, else days.
+- `{wallet}` and `{leader}` are the address book label, else the short address.
+  `{creatorLaunches}` is a number.
 - The console's launch list shows each launch with the launch feed line.
 
 <a id="section-5"></a>

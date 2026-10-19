@@ -59,6 +59,7 @@
   "alertPrice": "{token} is {direction, select, above {at or above} other {at or below}} {price}: now {now}",
   "alertWallet": "{wallet} {side, select, buy {bought {amount} for {value}} other {sold {amount}, {share} of its holding, for {value}}}",
   "alertLaunch": "New launch passed your filters: {launch}",
+  "alertHeld": "{count, plural, one {# more match} other {# more matches}} this hour, see the console",
   "ordersEnded": "{orderKind} sold all your {token}, so {count, plural, one {your other exit order on it ended} other {your # other exit orders on it ended}}",
   "exitEnded": "{orderKind} on {token} ended: the wallet holds none of it any more",
   "orderOverfilled": "🔴 {orderKind} filled more often than it allows: {fills} fills of {maxFills}. Check the wallet and the order.",

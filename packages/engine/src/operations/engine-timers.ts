@@ -27,11 +27,15 @@ export async function runQueue(
   }
 }
 
-/** The work that waits for no price: the orders' tick, then the alerts whose expiry came. */
+/**
+ * The work that waits for no price: the orders' tick, then the alerts whose expiry came, then the
+ * matches the alerts' ended notice hours held back.
+ */
 export async function tickAll(
   parts: { readonly orders: OrderParts; readonly alerts: AlertFiring },
   signal: AbortSignal,
 ): Promise<void> {
   await tickOrders(parts.orders, signal);
   await parts.alerts.expire({ signal });
+  await parts.alerts.tellHeld({ signal });
 }

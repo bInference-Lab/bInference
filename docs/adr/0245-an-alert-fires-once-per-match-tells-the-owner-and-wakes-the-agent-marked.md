@@ -51,8 +51,24 @@ the budget is spent or the agent is frozen. The specs leave open:
   per agent
   ([decision 0185](0185-an-agent-mutes-notices-by-kind-and-never-a-security-notice.md)). A wallet
   is named by its address book label, else its short address; a trade with no dollar value shows
-  what it traded for.
-- **Expiry.** The orders' 10-second tick also ends each active alert whose expiry came.
+  what it traded for. `alert/fired` goes out for every fire.
+- **Five notices an hour per alert** (the owner's choice, 2026-10-19). An alert's hour begins at
+  its first notice; its first five fires in it notify, the rest are counted. When the hour ends,
+  one line tells the count, "12 more matches this hour, see the console" (`notice.alertHeld`), and
+  the alert notifies again from its next fire, which begins a new hour; a fire that begins it
+  before the line went tells the count first. A price alert fires once, so the bound never holds
+  it back. Wake-ups keep their own limit. An agent keeps its newest 1,000 fire records at most,
+  beside the 7 days.
+- **What the watchers hand is read in canonical form.** A trade's account and assets and a
+  launch's tokens are put in their chain families' canonical forms before they are matched, as
+  `alert/create` stores conditions, so an address in another case still matches.
+- **An archived agent's alerts end.** A fire for an agent gone or archived ends the alert, with no
+  notice, and the caps do not count an archived agent's alerts. The operation that archives an
+  agent ends its alerts in its own write once it exists.
+- **Every alert is read.** The firing and the price watchers read the active alerts page by page,
+  and a price alert's asset is stored apart, so each price reads only the alerts on its token.
+- **Expiry.** The orders' 10-second tick also ends each active alert whose expiry came, and tells
+  the held matches of each notice hour that ended.
 
 ## Consequences
 

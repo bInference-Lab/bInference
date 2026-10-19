@@ -259,7 +259,8 @@ describe("wallet and launch alerts", () => {
       parts: {
         launch: {
           key: "launch.line",
-          values: { token: "PEPE 0x0000cafe", launchpad: "fake", age: "3 min", insiders: "1" },
+          values: { token: "PEPE 0x0000cafe", launchpad: "fake", insiders: "1" },
+          parts: { age: { key: "launch.age", values: { unit: "minute", count: "3" } } },
         },
       },
     });

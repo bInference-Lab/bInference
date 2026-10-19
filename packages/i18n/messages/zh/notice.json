@@ -59,6 +59,7 @@
   "alertPrice": "{token} 价格{direction, select, above {达到或高于} other {达到或低于}} {price}：现价 {now}",
   "alertWallet": "{wallet} {side, select, buy {用 {value} 买入 {amount}} other {卖出 {amount}（占其持仓的 {share}），收到 {value}}}",
   "alertLaunch": "有新发射的代币通过了你的筛选条件：{launch}",
+  "alertHeld": "本小时另有 {count, plural, other {# 次匹配}}，请在控制台查看",
   "ordersEnded": "{orderKind}已卖出你持有的全部 {token}，该持仓的其他 {count, plural, other {# 个平仓订单}}已结束",
   "exitEnded": "{token} 的{orderKind}已结束：钱包中已没有这种代币",
   "orderOverfilled": "🔴 {orderKind}的成交次数超过了上限：已成交 {fills} 次，上限 {maxFills} 次。请检查钱包和订单。",

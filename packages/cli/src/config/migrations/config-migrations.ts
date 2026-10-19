@@ -55,6 +55,13 @@ export const configMigrations: readonly ConfigMigration[] = [
       "models.vision until a model is listed.",
     edits: () => [],
   },
+  {
+    from: 9,
+    summary:
+      "Lets defaults.notifications mute alertHeld, the line that tells an alert's matches its " +
+      "notice hour held back; no file names it yet.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

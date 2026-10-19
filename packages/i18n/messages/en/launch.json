@@ -3,5 +3,6 @@
   "curve": "{graduated, select, yes {graduated} other {curve {progress}}}",
   "option.taxBps": "Tax on every trade: {value}",
   "option.taxRecipient": "Tax paid to {value}",
-  "option.buyback": "Buyback and burn: {value, select, yes {on} other {off}}"
+  "option.buyback": "Buyback and burn: {value, select, yes {on} other {off}}",
+  "age": "{unit, select, minute {{count} min} hour {{count} h} other {{count} d}}"
 }

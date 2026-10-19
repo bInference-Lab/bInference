@@ -921,7 +921,9 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   `seeTrade`, `seeLaunch`); a launch filter's bound on a value the feed did not read never passes.
   Before a wake-up is stored the engine skips it for an archived or frozen agent or a spent budget,
   and each fire is kept in `alert_fires` with what it did about its wake-up. An active alert whose
-  expiry came ends within 10 seconds.
+  expiry came ends within 10 seconds. Each alert sends at most five notices an hour; its later
+  matches that hour are counted and told in one line (`notice.alertHeld`) when the hour ends, and
+  `alert/fired` goes out for every fire. A fire for an archived agent ends its alert, unheard.
 - **Limits on wake-ups.** At most 10 wake-ups an hour per agent, counted over the last 60 minutes.
   Past that, the alert still fires and notifies, but stores no inbox message; the count goes into
   `wakeSkipped` of the next fire that wakes the agent. While a wake-up from one alert waits in the

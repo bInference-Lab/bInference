@@ -145,10 +145,19 @@ describe("migrate config", () => {
 
   it("moves a version 8 file to version 9 without a change, so the image input list starts empty", () => {
     const eighth: JsonObject = { version: 8, models: { vision: "router/eyes" } };
-    expect(migrateConfig(eighth, configMigrations)).toMatchObject({
+    expect(migrateConfig(eighth, configMigrations.slice(0, 8))).toMatchObject({
       ok: true,
       file: { ...eighth, version: 9 },
       steps: [{ from: 8, to: 9, edits: [] }],
+    });
+  });
+
+  it("moves a version 9 file to version 10 without a change, so alertHeld may be muted", () => {
+    const ninth: JsonObject = { version: 9, defaults: { notifications: { muted: ["fill"] } } };
+    expect(migrateConfig(ninth, configMigrations)).toMatchObject({
+      ok: true,
+      file: { ...ninth, version: 10 },
+      steps: [{ from: 9, to: 10, edits: [] }],
     });
   });
 

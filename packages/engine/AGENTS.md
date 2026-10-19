@@ -186,8 +186,11 @@ Rules for this package:
   a wallet alert on each matching trade, a launch alert on each launch its filter passes. Each
   fire is one store write under the alert's count of fires, with its row in `alert_fires` and its
   wake-up, which the engine skips first for an archived or frozen agent or a spent budget and
-  which always starts its turn marked. The firing holds no intent store, executor or venue, and
-  `alerts-move-no-money.property.test.ts` holds that no alert reaches the money path.
+  which always starts its turn marked. An alert sends at most five notices an hour; the rest are
+  counted in its notice hour and told once (`tell-fire.ts`). What a watcher hands is put in
+  canonical form first, and an archived agent's alert ends at its next match. The firing holds no
+  intent store, executor or venue, and `alerts-move-no-money.property.test.ts` holds that no alert
+  reaches the money path.
 - Schedules (`src/schedules/`, decisions 0231 to 0233) are set and cancelled with no card,
   journaled under `agents.<name>.schedules` and announced as `notice.scheduleSet` and
   `notice.scheduleCancelled`. `nextCronRun` works out each next run on the wall clock of the

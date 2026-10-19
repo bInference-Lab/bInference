@@ -4,7 +4,6 @@ import {
   type ActivityItem,
   type AlertFire,
   type AlertFired,
-  alertFiredSchema,
   type AssetInfos,
   type LaunchView,
 } from "@binference/protocol";
@@ -18,13 +17,13 @@ import type { WatchedOrderPrice } from "../orders/order-triggers.js";
 import { wholeTokenPrice } from "../orders/price-level.js";
 import type { AgentStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { noticePush } from "../pushes/notice-push.js";
+import { activeAlerts, canonicalLaunch, canonicalTrade } from "./alert-events.js";
 import { type AlertFireDraft, alertAfterFire } from "./alert-fire.js";
 import { launchPasses, priceMeets, tradeMatches } from "./alert-matches.js";
-import { alertNotice } from "./alert-notices.js";
-import type { AlertKind, AlertRecord } from "./alert-record.js";
+import type { AlertRecord } from "./alert-record.js";
 import { alertViewOf } from "./alert-view-of.js";
 import type { AlertStore } from "./ports.js";
+import { isRetired, tellFire, tellHeld } from "./tell-fire.js";
 
 /** One trade of a watched wallet, as the leader watcher reads it, with its tokens' info. */
 export interface WatchedTrade {
@@ -64,6 +63,11 @@ export interface AlertFiring {
   ): Promise<readonly AlertFired[]>;
   /** Ends each active alert whose expiry came, and answers how many ended. */
   expire(call: { readonly signal: AbortSignal }): Promise<number>;
+  /**
+   * Tells each alert's matches that its notice hour held back, once the hour ended, in one line,
+   * and answers how many alerts it told (decision 0245).
+   */
+  tellHeld(call: { readonly signal: AbortSignal }): Promise<number>;
 }
 
 /** What the firing reads, writes and tells through: no intent store, executor or venue. */
@@ -82,18 +86,8 @@ export interface AlertFiringParts {
   readonly publish: PublishPush;
 }
 
-// The most alerts one read of the store hands over; an install holds at most 50 per agent.
-const pageSize = 1_000;
 // The most alerts one expiry call ends; the rest wait for the next call.
 const expiriesPerCall = 100;
-
-async function activeOf(
-  parts: AlertFiringParts,
-  kind: AlertKind,
-  signal: AbortSignal,
-): Promise<readonly AlertRecord[]> {
-  return parts.alerts.list({ states: ["active"], kind, limit: pageSize }, { signal });
-}
 
 // The wake-up of an alert with `wake`, unless the agent cannot start a turn now. An alert reads
 // outside data, so every wake-up starts its turn marked.
@@ -124,7 +118,8 @@ async function wakeOf(
 }
 
 // Fires one alert: one write records the fire and its wake-up; then the push and the notice. A
-// fire another fire of the same alert beat writes nothing and answers nothing.
+// fire another fire of the same alert beat writes nothing and answers nothing. An alert whose
+// agent is gone or archived ends, unheard.
 async function fireOne(
   parts: AlertFiringParts,
   fire: { readonly alert: AlertRecord; readonly fired: AlertFire; readonly assets: AssetInfos },
@@ -133,36 +128,20 @@ async function fireOne(
   const { alert, fired, assets } = fire;
   const atMs = parts.clock.now();
   const settings = await parts.agents.get(alert.agentId, { signal });
+  if (isRetired(settings)) {
+    await parts.alerts.end({ id: alert.id, atMs }, { signal });
+    return undefined;
+  }
   const wake = await wakeOf(parts, { alert, fired, atMs }, { settings, signal });
   const draft = { id: alert.id, expectedFires: alert.fires, atMs, ...wake };
   const written = await parts.alerts.fire(draft, { signal });
   if (!written.ok) {
     return undefined;
   }
-  const { woke, wakeSkipped, message } = written.value;
-  if (message !== undefined) {
-    parts.woke(message);
+  if (written.value.message !== undefined) {
+    parts.woke(written.value.message);
   }
-  const skipped = wakeSkipped === undefined ? {} : { wakeSkipped };
-  const data: AlertFired = {
-    alert: alert.id,
-    agent: alert.agentId,
-    at: atMs,
-    fired,
-    woke,
-    ...skipped,
-    assets,
-  };
-  parts.publish({
-    topic: "alert",
-    kind: "alert/fired",
-    data: jsonValueSchema.parse(alertFiredSchema.encode(data)),
-  });
-  const agentName = settings?.agent.name ?? alert.agentId;
-  const addressBook = settings?.addressBook ?? [];
-  const context = { chains: parts.chains, addressBook, assets, nowMs: atMs };
-  parts.publish(noticePush(alertNotice({ alert, fired, agentName, woke, ...skipped }, context)));
-  return data;
+  return tellFire(parts, { alert, fired, written: written.value, settings, assets, atMs });
 }
 
 // Fires the matched alerts one after the other, so one agent's fires land in order.
@@ -188,7 +167,11 @@ async function seePrice(
   signal: AbortSignal,
 ): Promise<readonly AlertFired[]> {
   const whole = wholeTokenPrice(price.usdPerBaseUnit, price.decimals);
-  const active = await activeOf(parts, "price", signal);
+  const active = await activeAlerts(
+    parts.alerts,
+    { kind: "price", asset: price.token },
+    { signal },
+  );
   const fired: AlertFire = {
     kind: "price",
     asset: price.token,
@@ -213,16 +196,18 @@ async function seePrice(
 export function createAlertFiring(parts: AlertFiringParts): AlertFiring {
   return {
     seePrice: async (price, { signal }) => seePrice(parts, price, signal),
-    async seeTrade(trade, { signal }) {
-      const active = await activeOf(parts, "wallet", signal);
+    async seeTrade(given, { signal }) {
+      const trade = canonicalTrade(parts.chains, given);
+      const active = await activeAlerts(parts.alerts, { kind: "wallet" }, { signal });
       const fired: AlertFire = { kind: "wallet", activity: trade.activity };
       const matched = active
         .filter(({ condition }) => condition.kind === "wallet" && tradeMatches(condition, trade))
         .map((alert) => ({ alert, fired }));
       return fireAll(parts, matched, { assets: trade.assets, signal });
     },
-    async seeLaunch(launch, { signal }) {
-      const active = await activeOf(parts, "launch", signal);
+    async seeLaunch(given, { signal }) {
+      const launch = canonicalLaunch(parts.chains, given);
+      const active = await activeAlerts(parts.alerts, { kind: "launch" }, { signal });
       const fired: AlertFire = { kind: "launch", launch: launch.launch };
       const matched = active
         .filter(
@@ -236,5 +221,6 @@ export function createAlertFiring(parts: AlertFiringParts): AlertFiring {
       const ended = await parts.alerts.expire({ atMs, limit: expiriesPerCall }, { signal });
       return ended.length;
     },
+    tellHeld: async ({ signal }) => tellHeld(parts, signal),
   };
 }
