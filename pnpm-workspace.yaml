@@ -46,6 +46,7 @@ catalog:
   kysely: 0.29.6
   lucide-react: 1.51.0
   markdownlint-cli2: 0.23.3
+  node-pty: 1.2.0-beta.15
   openai: 7.28.0
   oxfmt: 0.71.0
   oxlint: 1.86.0
@@ -93,3 +94,6 @@ strictDepBuilds: true
 allowBuilds:
   # Ships prebuilt binaries; its postinstall only checks them.
   esbuild: false
+  # Microsoft's pseudo-terminal for the terminal chat test: its install script picks the prebuilt
+  # binary for macOS, Linux or Windows, and builds from source only when none fits.
+  node-pty: true

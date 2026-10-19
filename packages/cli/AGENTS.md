@@ -77,7 +77,9 @@ Rules for this package:
 - `binference chat` (`src/commands/chat-command.ts`) runs terminal chat from `@binference/tui`
   (decision 0253): it signs in with the CLI's token as `tui`, which keeps its connection, picks the
   agent, and hands the client and `host.chatTerminal` to `runTerminalChat`. Only `src/main.ts`
-  fills `chatTerminal`, when standard input and output are both a terminal.
+  fills `chatTerminal`, when standard input and output are both a terminal. Its round trip runs
+  `src/main.ts` in a pseudo-terminal through `node-pty` (`src/e2e/terminal-chat.test.ts`), the
+  same test on macOS, Linux and Windows.
 - Browser push lives in `src/web-push/` (decision 0158): the VAPID key in `keys/web-push-vapid`,
   made by init and at start when missing; the message encryption of RFC 8291 and the token of
   RFC 8292 on `node:crypto`, checked against the RFCs' worked examples; the sender through the

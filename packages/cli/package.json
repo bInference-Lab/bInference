@@ -67,6 +67,7 @@
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@types/ws": "catalog:",
+    "node-pty": "catalog:",
     "viem": "catalog:"
   }
 }
