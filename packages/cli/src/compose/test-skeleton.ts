@@ -242,6 +242,8 @@ export interface SkeletonOptions {
   readonly tokenFacts?: ComposeEngineOptions["readTokenFacts"];
   /** The agents' workspace files; in memory when left out. */
   readonly workspace?: ComposeEngineOptions["workspace"];
+  /** Whether a launch feed runs, whose stored launches `market/scan` reads; none when left out. */
+  readonly launchFeed?: boolean;
 }
 
 // The owner's bot and the handlers it alone runs, the HTTP listener with the console's files,
@@ -260,6 +262,11 @@ function surfacesOf(
     ...(webPush === undefined ? {} : { webPush }),
     ...options.browser,
   };
+}
+
+// A launch feed, when the options ask for one.
+function launchFeedOf(options: SkeletonOptions): Pick<ComposeEngineOptions, "launchFeed"> {
+  return options.launchFeed === true ? { launchFeed: true } : {};
 }
 
 // The skeleton wallet's facts: 1 coin, a ceiling of 1 coin a transaction, a 1 gwei fee.
@@ -320,6 +327,7 @@ export async function composeSkeleton(
     executor,
     positions,
     canPrice: async () => await Promise.resolve(true),
+    ...launchFeedOf(options),
     readTokenFacts: options.tokenFacts ?? createFakeTokenFacts().read,
     workspace: options.workspace ?? createMemoryWorkspaceFiles(clock),
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
