@@ -9,6 +9,7 @@ import { createSqliteIdempotencyStore } from "../ingress/sqlite-idempotency-stor
 import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
 import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
+import { createSqliteTrackedWalletStore } from "../leaders/sqlite-tracked-wallet-store.js";
 import { createSqliteLedgerStore } from "../ledger/sqlite-ledger-store.js";
 import { createSqliteModelUsageStore } from "../model-usage/sqlite-model-usage-store.js";
 import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
@@ -45,5 +46,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     modelUsage: createSqliteModelUsageStore(host),
     schedules: createSqliteScheduleStore(host),
     alerts: createSqliteAlertStore(host),
+    trackedWallets: createSqliteTrackedWalletStore(host),
   };
 }

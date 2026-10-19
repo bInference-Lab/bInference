@@ -11,7 +11,7 @@ import { toOrderRecord } from "../orders/order-rows.js";
  * The accounts the install tracks now: those of the active wallet alerts, and the leaders of the
  * copy orders awaiting their card, active or paused, of agents not archived.
  */
-function namedAccounts(database: DatabaseSync): ReadonlySet<AccountRef> {
+export function namedAccounts(database: DatabaseSync): ReadonlySet<AccountRef> {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const inUse = kysely.selectFrom("agents").select("id").where("archived_at", "is", null);
   const alerts = execute(

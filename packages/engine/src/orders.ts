@@ -79,3 +79,21 @@ export { endedOrderStates, isOrderEnded, openOrderStates } from "./orders/order-
 export type { OrderStore } from "./orders/ports.js";
 export type { WatchedOrderPrice } from "./orders/order-triggers.js";
 export { copyLeaderOf, trackingOrderStates } from "./orders/copy-leader.js";
+export {
+  activityKeyOf,
+  activityQuerySchema,
+  leaderReadRecordSchema,
+  storedActivitySchema,
+  trackedWalletRecordSchema,
+  watchCursorRecordSchema,
+} from "./leaders/tracked-wallet-record.js";
+export type {
+  ActivityQuery,
+  LeaderReadRecord,
+  ReadWallet,
+  StoredActivity,
+  TrackedWalletRecord,
+  WalletActivity,
+  WatchCursorRecord,
+} from "./leaders/tracked-wallet-record.js";
+export type { TrackedWalletStore } from "./leaders/ports.js";

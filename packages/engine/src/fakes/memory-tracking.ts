@@ -5,7 +5,7 @@ import { maxTrackedWallets } from "../alerts/alert-record.js";
 type TrackingSource = (call: { readonly signal: AbortSignal }) => Promise<ReadonlySet<AccountRef>>;
 
 /** A `tracked_wallets` row in memory. */
-interface TrackedRow {
+export interface TrackedRow {
   readonly account: AccountRef;
   readonly sinceBlock?: bigint;
   readonly lastBlock?: bigint;
