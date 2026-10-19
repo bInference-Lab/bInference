@@ -9,7 +9,9 @@ import { readCurvePrice } from "./curve/read-curve-price.js";
 import { readCurve } from "./curve/read-curve.js";
 import { portalName } from "./flap-assets.js";
 import type { FlapOptions } from "./flap-options.js";
+import { readFlapLaunches } from "./launches/read-launches.js";
 import { swapFunctionJson } from "./portal/portal-calls.js";
+import { portalEventIds } from "./portal/portal-events.js";
 import { quoteTrade } from "./quote/quote-trade.js";
 import { buildSwap } from "./router/build-swap.js";
 import { decodeSwap } from "./router/decode-swap.js";
@@ -40,7 +42,8 @@ export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
  * calling wallet and takes no deadline, so the chain declares `noDeadline`, and an approval names
  * only the Portal. Its curve read says which tokens Flap holds, and its quotes name the tax the
  * Portal takes on the curve. Its price read gives the price watcher the Portal's own curve price
- * of a token each block. Bad options are a fault (`flap.bad_options`).
+ * of a token each block. Its launch reading gives the launch feed each token the Portal creates,
+ * from the Portal's own events (decision 0254). Bad options are a fault (`flap.bad_options`).
  */
 export function createFlapVenue(options: FlapOptions): LaunchpadVenue {
   const parts = { setups: curveChainSetupsOf(options.chains, { id: "flap", name: "Flap" }) };
@@ -51,5 +54,7 @@ export function createFlapVenue(options: FlapOptions): LaunchpadVenue {
     decode: (draft) => decodeSwap(draft, parts),
     curve: async (request, { signal }) => readCurve(request, parts, signal),
     priceRead: async (request, { signal }) => readCurvePrice(request, parts, signal),
+    launchEvents: portalEventIds,
+    readLaunches: (request) => readFlapLaunches(request, parts),
   });
 }

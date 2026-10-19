@@ -1,6 +1,7 @@
 import {
   assetRefSchema,
   type LaunchpadVenue,
+  type LaunchReader,
   type PriceRead,
   type PriceReader,
   type Result,
@@ -9,6 +10,7 @@ import {
 import {
   curveReaderContract,
   hostBuildRequest,
+  launchReaderContract,
   priceReaderContract,
   quoterContract,
   txBuilderContract,
@@ -32,6 +34,7 @@ import {
   usdtToken,
   venueOver,
 } from "./testing/portal-fixtures.js";
+import { flapBuyLogs, flapLaunchLogs, recordedLaunch } from "./testing/recorded-launches.js";
 import { graduatedState, taxTokenState, usdtTokenState } from "./testing/recorded-portal.js";
 
 const live = (): AbortSignal => new AbortController().signal;
@@ -58,6 +61,14 @@ function priceReaderOf(venue: LaunchpadVenue): PriceReader {
     throw new Error("The venue declares no price read.");
   }
   return { priceRead: read };
+}
+
+function launchReaderOf(venue: LaunchpadVenue): LaunchReader {
+  const { launchEvents, readLaunches } = venue;
+  if (launchEvents === undefined || readLaunches === undefined) {
+    throw new Error("The venue reads no launch.");
+  }
+  return { launchEvents, readLaunches };
 }
 
 function readValue(result: Result<PriceRead, "no_price_read">): PriceRead {
@@ -111,6 +122,16 @@ describe("the flap venue", () => {
         priced: { token: taxToken, contracts: portalContracts },
         answers: [taxTokenState],
         unpriced: { token: graduatedToken, contracts: portalContracts },
+      }),
+    }),
+    ...launchReaderContract({
+      create: () => ({
+        reader: launchReaderOf(venueOver(scriptedPortal())),
+        chain: bscChain,
+        contracts: portalContracts,
+        launch: { logs: flapLaunchLogs, token: recordedLaunch.token },
+        other: flapBuyLogs,
+        stranger: recordedWallet,
       }),
     }),
   ])("follows the contract: $name", async ({ run }) => {

@@ -23,5 +23,10 @@ apply here. Rules for this plugin:
   no longer tradable or names another quote token is `replan`.
 - The trade call is `swapExactInput` alone. It pays the calling wallet and takes no deadline, so
   each chain declares `noDeadline` (decision 0180). A call with permit data is never built or read.
+- The launch reading (decision 0254) reads the Portal's events alone, never a call: a
+  `TokenCreated` the registry's Portal wrote is a launch, enriched by the same transaction's
+  `TokenQuoteSet` (none means the coin), `FlapTokenTaxSet` (none means no tax), `TokenBought`
+  (insiders) and `FlapTokenProgressChanged` and `LaunchedToDEX` (its curve); in a later
+  transaction those two are a curve change. `src/portal/portal-events.ts` holds the events' ABI.
 - Unit tests use the Portal's answers recorded in `src/testing/`, never the network. The fork tests
   in `src/fork/` trade live curve tokens and run in the fork suite.
