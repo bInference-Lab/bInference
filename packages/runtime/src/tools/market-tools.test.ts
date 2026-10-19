@@ -1,9 +1,9 @@
 import { BinferenceError } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { callTool, outcomeOf, token, tokenInfo } from "../testing/agent-tool-fixtures.js";
+import { callTool, candle, outcomeOf, token, tokenInfo } from "../testing/agent-tool-fixtures.js";
 import { maxResultChars } from "./define-tool.js";
 import { maxWordChars, wordOf } from "./market-answers.js";
-import { scanItems } from "./market-tools.js";
+import { chartCandles, scanItems } from "./market-tools.js";
 
 const at = 1_760_000_000_000;
 const launch = {
@@ -137,6 +137,59 @@ describe("market_scan", () => {
     const assets = Object.fromEntries(items.map((item) => [item.asset, longWords]));
     const args = { chain: "fake:1", source: "launches", limit: scanItems.most };
     const text = await textOf({ "market/scan": { items, assets } }, { name: "market_scan", args });
+    expect(text.length).toBeLessThanOrEqual(maxResultChars);
+    expect(text).not.toContain("[cut:");
+  });
+});
+
+describe("chart", () => {
+  const chartCall = { name: "chart", args: { asset: token, interval: "1h" } };
+
+  it("answers a row per candle, its price scale named, and marks the turn", async () => {
+    const chart = {
+      asset: token,
+      interval: "1h",
+      candles: [candle],
+      priceScale: 6,
+      source: "geckoterminal",
+    };
+    const outcome = await outcomeOf(callTool({ "market/chart": chart }, chartCall));
+    expect(outcome).toMatchObject({ isError: false, outside: true });
+    expect(outcome.text.split("\n").slice(1)).toStrictEqual([
+      `Candles of 1h for ${token} from geckoterminal, oldest first: 1. Prices are micro-dollars for 10^6 whole tokens; volume is micro-dollars.`,
+      "at,open,high,low,close,volume",
+      "2025-10-09T08:53:20Z,1000000,1200000,900000,1100000,5000000000",
+    ]);
+  });
+
+  it("points a token with no candles to token_info and quote", async () => {
+    const outcome = await outcomeOf(
+      callTool({ "market/chart": engineError("market.no_data") }, chartCall),
+    );
+    expect(outcome).toMatchObject({ isError: true });
+    expect(outcome.text).toMatch(/^chart failed with market\.no_data: .*token_info or quote/);
+  });
+
+  it("fits its largest page in a result uncut", async () => {
+    const price = digits(13);
+    const wide = {
+      at,
+      openUsdMicros: price,
+      highUsdMicros: price,
+      lowUsdMicros: price,
+      closeUsdMicros: price,
+      volumeUsdMicros: digits(18),
+    };
+    const candles = Array.from({ length: chartCandles.most }, () => wide);
+    const chart = {
+      asset: tokenNo(1),
+      interval: "1d",
+      candles,
+      priceScale: 18,
+      source: "geckoterminal",
+    };
+    const args = { asset: tokenNo(1), interval: "1d", limit: chartCandles.most };
+    const text = await textOf({ "market/chart": chart }, { name: "chart", args });
     expect(text.length).toBeLessThanOrEqual(maxResultChars);
     expect(text).not.toContain("[cut:");
   });

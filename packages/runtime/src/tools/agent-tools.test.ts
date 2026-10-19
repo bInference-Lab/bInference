@@ -5,6 +5,7 @@ import { createTestTurn } from "../loop/test-turns.js";
 import {
   agent,
   alertWire,
+  candle,
   callTool,
   callToolWith,
   coin,
@@ -47,6 +48,12 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "market/scan": {
     items: [{ asset: token, launchpad: "fake-curve", graduated: false }],
     assets: {},
+  },
+  "market/chart": {
+    asset: token,
+    interval: "1h",
+    candles: [candle],
+    source: "geckoterminal",
   },
   "intent/propose": intentWire("awaiting_confirmation"),
   "order/create": orderWire("awaiting_confirmation"),
@@ -115,6 +122,16 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
       {
         op: "market/scan",
         args: { chain: "fake:1", source: "launches", filters: scanFilters, limit: 10 },
+      },
+    ],
+  ],
+  [
+    "chart",
+    { asset: token, interval: "1h", to: "2026-10-20T09:00:00+08:00" },
+    [
+      {
+        op: "market/chart",
+        args: { asset: token, interval: "1h", to: 1_792_458_000_000, limit: 60 },
       },
     ],
   ],

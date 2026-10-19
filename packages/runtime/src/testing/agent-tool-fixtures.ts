@@ -186,3 +186,13 @@ export async function outcomeOf(run: CallRun): Promise<ToolOutcome> {
   }
   return run.outcome;
 }
+
+/** One hourly candle as `market/chart` answers it, prices for one whole token. */
+export const candle: WireObject = {
+  at,
+  openUsdMicros: "1000000",
+  highUsdMicros: "1200000",
+  lowUsdMicros: "900000",
+  closeUsdMicros: "1100000",
+  volumeUsdMicros: "5000000000",
+};

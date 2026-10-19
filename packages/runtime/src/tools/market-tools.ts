@@ -2,7 +2,8 @@ import { type ArgsOf, marketTermFields, type ScanFilter } from "@binference/prot
 import { z } from "zod";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
-import { scanAnswer } from "./market-answers.js";
+import { isoTimeSchema } from "./iso-time.schema.js";
+import { chartAnswer, scanAnswer } from "./market-answers.js";
 import { answerOrRefusal } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 
@@ -64,11 +65,54 @@ function marketScanTool({ client }: AgentToolParts): AgentTool {
   });
 }
 
+/** The candles `chart` answers unless the model asks for others, and the most it may. */
+export const chartCandles = { usual: 60, most: 100 } as const;
+
+/** What `chart` takes: the token, the candle width, the time the candles end by, how many. */
+interface ChartArgs {
+  readonly asset: ArgsOf<"market/chart">["asset"];
+  readonly interval: ArgsOf<"market/chart">["interval"];
+  readonly to?: number;
+  readonly limit?: number;
+}
+
+const chartArgs: z.ZodType<ChartArgs> = z.strictObject({
+  asset: fields.asset,
+  interval: fields.interval,
+  to: isoTimeSchema.exactOptional(),
+  limit: z.int().min(1).max(chartCandles.most).exactOptional(),
+});
+
+const chartRefusals: Readonly<Record<string, string>> = {
+  "protocol.bad_args":
+    "chart failed with protocol.bad_args: the engine refused the terms, a token on a chain binference does not hold.",
+  "market.no_data":
+    "chart failed with market.no_data: no market data source has candles for this token. A token still on a launchpad's curve has none until it moves to a pool; read it with token_info or quote instead.",
+  "market.source_down": `chart failed with market.source_down: ${sourceDown}`,
+};
+
+function chartTool({ client }: AgentToolParts): AgentTool {
+  return defineTool<ChartArgs>({
+    name: "chart",
+    kind: "read",
+    parallel: true,
+    addressSource: "engine",
+    description: agentToolTexts.chart,
+    args: chartArgs,
+    run: async (args, { signal }) =>
+      answerOrRefusal({ tool: "chart", refusals: chartRefusals }, async () => {
+        const chart = { ...args, limit: args.limit ?? chartCandles.usual };
+        return chartAnswer(await client.call("market/chart", chart, { signal }));
+      }),
+  });
+}
+
 /**
- * The agent's market reads (decisions 0257 and 0258): `market_scan` over `market/scan`, the
- * agent filled from the turn. It answers compact lines; one that holds data marks the turn as
- * outside content, and an engine refusal reads as what to do next.
+ * The agent's market reads (decisions 0257 and 0258): `market_scan` over `market/scan` and
+ * `chart` over `market/chart`, the agent filled from the turn. Each answers compact lines; one
+ * that holds data marks the turn as outside content, and an engine refusal reads as what to do
+ * next.
  */
 export function marketTools(parts: AgentToolParts): readonly AgentTool[] {
-  return [marketScanTool(parts)];
+  return [marketScanTool(parts), chartTool(parts)];
 }

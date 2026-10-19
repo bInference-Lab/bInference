@@ -1,4 +1,4 @@
-import type { AssetInfo, ResultOf, RiskView, ScanItem } from "@binference/protocol";
+import type { AssetInfo, CandleView, ResultOf, RiskView, ScanItem } from "@binference/protocol";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import { outsideAnswer, plainAnswer } from "../web/web-answers.js";
 
@@ -96,4 +96,24 @@ export function scanAnswer(
   const lines = view.items.map((item) => scanLine(item, view.assets[item.asset]));
   const opening = `${scanOpenings[source]}: ${String(lines.length)}. ${priceUnits}`;
   return outsideAnswer(marketData, [opening, ...lines]);
+}
+
+function candleRow(candle: CandleView): string {
+  const { openUsdMicros, highUsdMicros, lowUsdMicros, closeUsdMicros, volumeUsdMicros } = candle;
+  const figures = [openUsdMicros, highUsdMicros, lowUsdMicros, closeUsdMicros, volumeUsdMicros];
+  return [secondOf(candle.at), ...figures.map(String)].join(",");
+}
+
+/** What `chart` answers: a line naming the chart and its units, then a row per candle. */
+export function chartAnswer(view: ResultOf<"market/chart">): ToolOutcome {
+  if (view.candles.length === 0) {
+    return plainAnswer(`No candles of ${view.asset} came from ${view.source}.`);
+  }
+  const per =
+    view.priceScale === undefined
+      ? "per whole token"
+      : `for 10^${String(view.priceScale)} whole tokens`;
+  const opening = `Candles of ${view.interval} for ${view.asset} from ${view.source}, oldest first: ${String(view.candles.length)}. Prices are micro-dollars ${per}; volume is micro-dollars.`;
+  const rows = view.candles.map(candleRow);
+  return outsideAnswer("market data", [opening, "at,open,high,low,close,volume", ...rows]);
 }
