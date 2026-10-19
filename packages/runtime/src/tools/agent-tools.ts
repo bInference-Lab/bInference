@@ -1,4 +1,5 @@
 import type { ToolBox } from "../loop/ports.js";
+import { alertCreateTool } from "./alert-create-tool.js";
 import { createToolBox } from "./create-tool-box.js";
 import type { AgentTool } from "./define-tool.js";
 import { noteTools } from "./note-tools.js";
@@ -15,7 +16,7 @@ import { workspaceTools } from "./workspace-tools.js";
  * The agent's tools for one agent (runtime spec, section 5.1): the reads `portfolio`,
  * `token_info`, `token_risk`, `quote`, `orders`, `tx_status` and `schedule_list`; the proposals
  * `swap`, `buy`, `sell` and `order_create`; `order_cancel`, which brakes; and the control tools
- * `schedule_create` and `schedule_cancel` (decision 0247). Each maps onto the
+ * `alert_create`, `schedule_create` and `schedule_cancel` (decision 0247). Each maps onto the
  * engine's operations and names the given agent; no tool takes an agent or a wallet from the
  * model. With web parts, the web tools come after the reads; `notes_search` and `open_skill`
  * follow them, then `notes_write`, and last `workspace_write` and `first_chat_end`, which write
@@ -33,6 +34,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     openSkillTool(parts),
     ...tradeTools(parts),
     orderCancelTool(parts),
+    alertCreateTool(parts),
     schedules.create,
     schedules.cancel,
     notes.write,

@@ -4,6 +4,7 @@ import { toolBoxContract } from "../contracts/tool-box-contract.js";
 import { createTestTurn } from "../loop/test-turns.js";
 import {
   agent,
+  alertWire,
   callTool,
   callToolWith,
   coin,
@@ -13,6 +14,7 @@ import {
   intentWire,
   order,
   orderWire,
+  priceCondition,
   schedule,
   scheduleWire,
   stopLoss,
@@ -46,6 +48,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "order/get": orderWire("active"),
   "order/cancel": orderWire("cancelled"),
   "notes/search": { items: [] },
+  "alert/create": alertWire(),
   "schedule/list": { items: [scheduleWire()] },
   "schedule/create": scheduleWire(),
   "schedule/cancel": {},
@@ -117,6 +120,17 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     ],
   ],
   [
+    "alert_create",
+    { condition: priceCondition, wake: true, expiresAt: "2026-10-20T09:00:00+08:00" },
+    [
+      {
+        op: "alert/create",
+        args: { condition: priceCondition, wake: true, expiresAt: 1_792_458_000_000, agent },
+        key,
+      },
+    ],
+  ],
+  [
     "schedule_create",
     { when: { cron: "0 9 * * 1" }, prompt: "Report the portfolio." },
     [
@@ -153,6 +167,7 @@ const names = mappings.map(([name]) => name);
 // The control tools that write, each with the arguments its row above gives.
 const controlWrites = new Set([
   "order_cancel",
+  "alert_create",
   "schedule_create",
   "schedule_cancel",
   "notes_write",

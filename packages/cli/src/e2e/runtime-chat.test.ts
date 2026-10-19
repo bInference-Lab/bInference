@@ -284,6 +284,7 @@ describe("the chat relay to the agent runtime process", () => {
         "sell",
         "order_create",
         "order_cancel",
+        "alert_create",
         "schedule_create",
         "schedule_cancel",
         "notes_write",

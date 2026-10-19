@@ -103,8 +103,25 @@ export function orderWire(state: string, owner: string = agent): WireObject {
   };
 }
 
-/** The id of a schedule the answers name. */
+/** The ids of an alert and a schedule the answers name. */
+export const alert: string = `alr_${uuid}`;
 export const schedule: string = `sch_${uuid}`;
+
+/** A price alert's condition as a model writes it. */
+export const priceCondition: WireObject = {
+  kind: "price",
+  asset: token,
+  direction: "above",
+  price: "1500000",
+};
+
+/** An alert of `owner` with `condition`, as the engine answers it. */
+export function alertWire(
+  condition: WireObject = priceCondition,
+  owner: string = agent,
+): WireObject {
+  return { alert, agent: owner, condition, state: "active", wake: false, fires: 0, createdAt: at };
+}
 
 /** A schedule of `owner`, as the engine answers it; `marked` when set from outside content. */
 export function scheduleWire(owner: string = agent, marked = false): WireObject {
