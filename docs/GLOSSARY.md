@@ -254,7 +254,8 @@ new name here first, in the change that uses it.
   into a shell, sends a secret store over the network, or writes a secret out; the install refuses
   such a skill.
 - **question**: the agent's question to the owner with two to four answer buttons (`ask_owner`).
-  The answer comes back as the owner's next message.
+  The answer comes back as the owner's next message. A chat surface reads the open one with
+  `chat/openQuestion`.
 - **status line**: the one line a turn ends with when the owner should know why: a proposal waits,
   chat is paused, the turn was stopped, or it failed.
 - **read, propose and control tools**: tools that read data, tools that create an intent or an auto
@@ -385,7 +386,8 @@ new name here first, in the change that uses it.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
-  `notes_write`, `workspace_write` (the owner's strategy and persona), `first_chat_end`.
+  `notes_write`, `workspace_write` (the owner's strategy and persona), `first_chat_end`,
+  `alert_create`, `schedule_list`, `schedule_create`, `schedule_cancel`.
 - **MCP tools**: the MCP server's read and propose tools, one per operation and named
   `binference_`, such as `binference_propose` for `intent/propose`.
 - **request id**: the optional `requestId` an MCP client gives a propose tool, sent as the call's
