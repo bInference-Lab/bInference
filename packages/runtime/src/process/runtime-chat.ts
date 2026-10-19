@@ -1,10 +1,11 @@
-import type { Clock, Id } from "@binference/core";
+import type { Clock } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import { type RepairedTurn, repairUnfinishedTurns } from "../sessions/repair-turns.js";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import type { AgentDatabase } from "./agent-database.js";
 
 /** The runtime's chat before it connects: its stores under the fence it raised, and repaired turns. */
@@ -37,7 +38,7 @@ export interface ChatStart {
   readonly images: OwnerImageReader;
   /** The settings in force: a reload applies from the next turn and merge point. */
   readonly settings: () => RuntimeSettings;
-  readonly setup: (agent: Id<"agt">, settings: RuntimeSettings) => TurnSetup;
+  readonly setup: (place: TurnPlace, settings: RuntimeSettings) => TurnSetup;
   readonly clock: Clock;
   readonly lifetime: AbortSignal;
 }
@@ -91,7 +92,7 @@ export async function startChat(start: ChatStart): Promise<RuntimeChat> {
     engine,
     turnContext: start.turnContext,
     images: start.images,
-    setup: (agent) => start.setup(agent, start.settings()),
+    setup: (place) => start.setup(place, start.settings()),
     mode: () => start.settings().chats.newMessageMode,
     clock: start.clock,
     lifetime,

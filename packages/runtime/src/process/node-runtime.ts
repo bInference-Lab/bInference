@@ -35,7 +35,7 @@ async function writeLine(line: string): Promise<void> {
 // runtime's connection to the engine and its web tools on the settings' search keys, and
 // compaction on the fast model, or on the main model when no fast model is set (decision 0202).
 function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
-  return (agent, settings, client) => {
+  return ({ agent }, settings, client) => {
     const { main, summarizer, vision } = turnModelsOf(agent, settings, parts);
     return {
       models: main,

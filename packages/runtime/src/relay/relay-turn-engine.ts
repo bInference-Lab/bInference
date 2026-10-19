@@ -1,19 +1,13 @@
-import { type Clock, err, type Id, idSchema, ok } from "@binference/core";
+import { type Clock, err, idSchema, ok } from "@binference/core";
 import type { OwnerMessage } from "../loop/model-message.js";
 import type { TurnEngine } from "../loop/ports.js";
 import type { TurnStartRequest } from "../loop/turn-records.js";
 import { type AgentStores, written } from "../sessions/agent-stores.js";
 import { ownerEvents } from "../sessions/session-journal.js";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import type { TurnStartAnswer } from "./engine-chat-records.js";
 import type { EngineChat } from "./ports.js";
 import { statusKeysOf } from "./status-keys.js";
-
-/** One turn of an agent in one session, under the id the engine reserved. */
-interface TurnPlace {
-  readonly agent: Id<"agt">;
-  readonly session: Id<"ses">;
-  readonly turn: Id<"trn">;
-}
 
 /** What the engine's side of one turn works with. */
 export interface RelayTurnOptions {

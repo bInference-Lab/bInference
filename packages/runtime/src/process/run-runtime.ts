@@ -1,4 +1,4 @@
-import { BinferenceError, type Clock, type Id } from "@binference/core";
+import { BinferenceError, type Clock } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import {
   answerMessagesRoute,
@@ -16,6 +16,7 @@ import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import { answerNoteRoute, isNoteRoute, type NoteRouteParts } from "../notes/note-routes.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../relay/ports.js";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
 import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
@@ -46,10 +47,10 @@ export interface RuntimeHost {
   readonly openAgentDatabase: (path: string, signal: AbortSignal) => Promise<AgentDatabase>;
   /**
    * What an agent's next turn runs with under the settings in force, its tools calling the engine
-   * through the given client.
+   * through the given client for the place the turn runs in.
    */
   readonly turnSetup: (
-    agent: Id<"agt">,
+    place: TurnPlace,
     settings: RuntimeSettings,
     client: ToolClient,
   ) => TurnSetup;
@@ -231,7 +232,7 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     turnContext: connected.link.context,
     images: connected.link.images,
     settings: () => settings.current,
-    setup: (agent, current) => host.turnSetup(agent, current, connected.link.client),
+    setup: (place, current) => host.turnSetup(place, current, connected.link.client),
     clock: host.clock,
     lifetime,
   });

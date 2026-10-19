@@ -11,6 +11,7 @@ import { createRelayTurnEngine } from "../relay/relay-turn-engine.js";
 import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
 import { isWakeUp, ownerMessageOf, type TurnMessage, turnMessageOf } from "./queued-view.js";
@@ -256,20 +257,13 @@ function turnPartsOf(
   };
 }
 
-/** Where a turn runs: its agent, its session and the turn the engine reserved. */
-interface TurnPlace {
-  readonly agent: Id<"agt">;
-  readonly session: Id<"ses">;
-  readonly turn: Id<"trn">;
-}
-
 async function runTurn(
   context: ChatContext,
   place: TurnPlace,
   taken: readonly Waiting[],
 ): Promise<void> {
   const { stores, lifetime } = context;
-  const setup = context.setup(place.agent);
+  const setup = context.setup(place);
   const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
   if (prefix === undefined) {
     return;

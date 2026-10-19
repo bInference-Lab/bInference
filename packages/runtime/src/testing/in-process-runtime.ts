@@ -190,7 +190,7 @@ function chatHost(
   return {
     transports,
     openAgentDatabase: async () => memoryDatabase(database),
-    turnSetup: (agent, settings, client) => {
+    turnSetup: ({ agent }, settings, client) => {
       setups.push({ agent, settings });
       return {
         models,
