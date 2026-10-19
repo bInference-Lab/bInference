@@ -43,6 +43,7 @@
     "engine/0037_card_auto_asks.ts": "e3320a9bf83fd8325b68f5a102dba904289d039c74a5dad571c9fc0da3134bcd",
     "engine/0038_wallet_roles.ts": "7b1c342947b53edb110790b086810c7119cf9bbc50e9363560b5e7e72b7fbdec",
     "engine/0039_extra_launch_wallets.ts": "c0b29c269ed75b5dead917636251faf85dd0539bc6901071a2f636e27c317e94",
-    "engine/0040_schedule_runs.ts": "4290d51d6378b05b57f044a4cfd90be42876f6bfa012fc667a600c662f396928"
+    "engine/0040_schedule_runs.ts": "4290d51d6378b05b57f044a4cfd90be42876f6bfa012fc667a600c662f396928",
+    "engine/0041_alert_fires.ts": "05ead8d29265cd840bd53eee172ce1cc28b0502e7cb148aead45db3dfcc5959c"
   }
 }

@@ -3,6 +3,7 @@ import { createSqliteAccessStore } from "../access/sqlite-access-store.js";
 import { createSqliteAgentInboxStore } from "../agent-inbox/sqlite-agent-inbox-store.js";
 import { createSqliteQuestionStore } from "../agent-inbox/sqlite-question-store.js";
 import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
+import { createSqliteAlertStore } from "../alerts/sqlite-alert-store.js";
 import { createSqliteConfigJournal } from "../audit/sqlite-config-journal.js";
 import { createSqliteIdempotencyStore } from "../ingress/sqlite-idempotency-store.js";
 import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
@@ -43,5 +44,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     agentTopics: createSqliteAgentTopicStore(host),
     modelUsage: createSqliteModelUsageStore(host),
     schedules: createSqliteScheduleStore(host),
+    alerts: createSqliteAlertStore(host),
   };
 }

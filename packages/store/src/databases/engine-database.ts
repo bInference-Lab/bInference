@@ -2,6 +2,7 @@ import { accessTasks } from "../access/sqlite-access-store.js";
 import { agentInboxTasks } from "../agent-inbox/sqlite-agent-inbox-store.js";
 import { questionTasks } from "../agent-inbox/sqlite-question-store.js";
 import { agentTasks } from "../agents/sqlite-agent-store.js";
+import { alertTasks } from "../alerts/sqlite-alert-store.js";
 import { configJournalTasks } from "../audit/config-journal-tasks.js";
 import { backupTasks } from "../backups/backup-tasks.js";
 import { installGuardsTasks } from "../backups/install-guards-tasks.js";
@@ -51,6 +52,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...agentTopicTasks,
     ...modelUsageTasks,
     ...scheduleTasks,
+    ...alertTasks,
   ],
 };
 

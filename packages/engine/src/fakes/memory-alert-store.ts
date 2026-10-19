@@ -6,9 +6,10 @@ import {
   type AlertFireWritten,
   type AlertWake,
   alertWakeWindowMs,
-  type AlertWakeSkip,
+  type AlertWakeOutcome,
   canFire,
   maxAlertWakesPerHour,
+  wakeAnswerOf,
 } from "../alerts/alert-fire.js";
 import {
   type AlertQuery,
@@ -17,7 +18,6 @@ import {
   maxTrackedWallets,
 } from "../alerts/alert-record.js";
 import type { AlertStore } from "../alerts/ports.js";
-import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { AgentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
@@ -28,17 +28,11 @@ export interface MemoryAlertStoreOptions {
   readonly agentInbox: Pick<MemoryAgentInboxStore, "wakeNow" | "replaceNow">;
 }
 
-/** What one fire did about its wake-up, as `alert_fires` keeps it. */
-type WakeOutcome =
-  | { readonly outcome: "quiet" }
-  | { readonly outcome: "skipped"; readonly reason: AlertWakeSkip }
-  | { readonly outcome: "woke" | "replaced"; readonly message: AgentInboxMessage };
-
 /** One fire as `alert_fires` keeps it. */
 interface FireRow {
   readonly agentId: Id<"agt">;
   readonly atMs: number;
-  readonly wake: WakeOutcome;
+  readonly wake: AlertWakeOutcome;
 }
 
 interface Rows {
@@ -123,7 +117,7 @@ function newWake(
   rows: Rows,
   inbox: MemoryAlertStoreOptions["agentInbox"],
   call: { readonly alert: AlertRecord; readonly wake: AlertWake; readonly atMs: number },
-): WakeOutcome {
+): AlertWakeOutcome {
   const { alert, wake, atMs } = call;
   const recent = firesOf(rows, alert.agentId).filter(
     (row) => row.wake.outcome === "woke" && row.atMs > atMs - alertWakeWindowMs,
@@ -141,7 +135,7 @@ function wakeOf(
   rows: Rows,
   inbox: MemoryAlertStoreOptions["agentInbox"],
   call: { readonly alert: AlertRecord; readonly draft: AlertFireDraft },
-): WakeOutcome {
+): AlertWakeOutcome {
   const { alert, draft } = call;
   const { wake, skip, atMs } = draft;
   if (skip !== undefined) {
@@ -169,17 +163,6 @@ function keep(rows: Rows, draft: AlertFireDraft, row: FireRow): void {
   rows.fires.set(`${draft.id}:${String(draft.expectedFires)}`, row);
 }
 
-// What the fire answers of its wake-up: whether it woke the agent, why not, and its message.
-function wakeAnswer(wake: WakeOutcome, wakeSkipped: number) {
-  if (wake.outcome === "quiet") {
-    return { woke: false };
-  }
-  if (wake.outcome === "skipped") {
-    return { woke: false, skip: wake.reason };
-  }
-  return { woke: true, message: wake.message, ...(wakeSkipped > 0 ? { wakeSkipped } : {}) };
-}
-
 function fire(
   rows: Rows,
   inbox: MemoryAlertStoreOptions["agentInbox"],
@@ -194,7 +177,7 @@ function fire(
   keep(rows, draft, { agentId: alert.agentId, atMs: draft.atMs, wake });
   const after = alertAfterFire(alert, draft.atMs);
   const lastMessage = "message" in wake ? { lastMessageId: wake.message.id } : {};
-  return ok({ alert: put(rows, { ...after, ...lastMessage }), ...wakeAnswer(wake, wakeSkipped) });
+  return ok({ alert: put(rows, { ...after, ...lastMessage }), ...wakeAnswerOf(wake, wakeSkipped) });
 }
 
 function end(rows: Rows, atMs: number, limit: number): readonly AlertRecord[] {

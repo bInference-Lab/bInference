@@ -103,3 +103,30 @@ export function canFire(alert: AlertRecord | undefined, draft: AlertFireDraft): 
     (alert.expiresAtMs === undefined || draft.atMs < alert.expiresAtMs)
   );
 }
+
+/**
+ * What one fire did about its wake-up, as `alert_fires` keeps it: nothing, for an alert without
+ * `wake`; skipped with its reason; or woke the agent with a new message, or by replacing the one
+ * still waiting.
+ */
+export type AlertWakeOutcome =
+  | { readonly outcome: "quiet" }
+  | { readonly outcome: "skipped"; readonly reason: AlertWakeSkip }
+  | { readonly outcome: "woke" | "replaced"; readonly message: AgentInboxMessage };
+
+/**
+ * The part of {@link AlertFireWritten} a fire's wake-up gives, which every store adapter answers:
+ * whether it woke the agent, why not, its message, and the wake-ups held back before a new one.
+ */
+export function wakeAnswerOf(
+  wake: AlertWakeOutcome,
+  wakeSkipped: number,
+): Omit<AlertFireWritten, "alert"> {
+  if (wake.outcome === "quiet") {
+    return { woke: false };
+  }
+  if (wake.outcome === "skipped") {
+    return { woke: false, skip: wake.reason };
+  }
+  return { woke: true, message: wake.message, ...(wakeSkipped > 0 ? { wakeSkipped } : {}) };
+}

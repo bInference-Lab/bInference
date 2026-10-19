@@ -6,14 +6,17 @@ export {
   alertWakeWindowMs,
   canFire,
   maxAlertWakesPerHour,
+  wakeAnswerOf,
 } from "./alerts/alert-fire.js";
 export type {
   AlertFireDraft,
   AlertFireWritten,
   AlertWake,
+  AlertWakeOutcome,
   AlertWakeSkip,
 } from "./alerts/alert-fire.js";
 export {
+  alertConditionDocument,
   alertDeleteSchema,
   alertExpirySchema,
   alertQuerySchema,

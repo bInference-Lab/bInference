@@ -133,7 +133,11 @@ const columns: Readonly<Record<string, readonly string[]>> = {
       "card_id paper outside_content end_reason expiry_noticed_at created_at changed_at version",
   ),
   order_fills: names("id order_id intent_id outcome reason at notices announced_at"),
-  alerts: names("id agent_id condition state created_at fired_at"),
+  alerts: names(
+    "id agent_id condition kind account state wake fires outside_content created_by created_at " +
+      "changed_at fired_at expires_at last_message_id",
+  ),
+  alert_fires: names("alert_id fires agent_id at outcome reason message_id"),
   webhook_rules: names(
     "id agent_id name secret_hash action state rate_per_min fills max_fills expires_at card_id " +
       "created_at changed_at version",
@@ -195,6 +199,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   telegram_topics: ["agent_id", "chat_id"],
   budget_notices: ["agent_id", "day_at"],
   schedule_runs: ["schedule_id", "due_at"],
+  alert_fires: ["alert_id", "fires"],
   question_messages: ["question_id", "surface", "chat_id"],
   positions: ["wallet_id", "asset", "paper"],
   ledger: ["seq"],
@@ -225,7 +230,8 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   departures: ["index|intent_id", "index|wallet_id,at"],
   orders: ["index|state,agent_id", "index|wallet_id,paper,state", "unique|intent_id"],
   order_fills: ["index|at|partial", "index|order_id,at"],
-  alerts: ["index|state"],
+  alerts: ["index|state,account", "index|state,agent_id", "index|state,expires_at"],
+  alert_fires: ["index|agent_id,at"],
   webhook_rules: ["index|state"],
   webhook_events: ["index|rule_id,alert_id", "index|rule_id,received_at"],
   schedules: ["index|agent_id,state", "index|state,next_at"],

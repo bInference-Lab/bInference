@@ -15,7 +15,7 @@ export const priceCondition: AlertCondition = {
   kind: "price",
   asset: assetRefSchema.parse("eip155:56/erc20:0x55d398326f99059ff775485246999027b3197955"),
   direction: "above",
-  price: 1_000_000n,
+  price: 2n ** 64n + 1n,
 };
 
 /** A wallet condition on the fixture account `n`. */

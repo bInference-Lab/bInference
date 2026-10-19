@@ -1,3 +1,4 @@
+import type { AlertStore } from "../alerts/ports.js";
 import type { ModelUsageStore } from "../billing/ports.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -49,4 +50,6 @@ export interface EngineStores {
   readonly modelUsage: ModelUsageStore;
   /** The owner's schedules and their runs, which store their wake-ups in the agent inbox. */
   readonly schedules: ScheduleStore;
+  /** The agents' alerts and their fires, which store their wake-ups in the agent inbox. */
+  readonly alerts: AlertStore;
 }

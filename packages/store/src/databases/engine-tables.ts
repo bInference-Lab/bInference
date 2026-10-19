@@ -1,6 +1,7 @@
 import type { Generated } from "kysely";
 import type { AccessTables } from "./access-tables.js";
 import type { AgentInboxTables } from "./agent-inbox-tables.js";
+import type { AlertTables } from "./alert-tables.js";
 import type { BackupTables } from "./backup-tables.js";
 import type { ModelUsageTables } from "./model-usage-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
@@ -311,6 +312,7 @@ export interface EngineTables
     AgentInboxTables,
     ModelUsageTables,
     ScheduleTables,
+    AlertTables,
     WalletTables {
   meta: MetaTable;
   safety: SafetyTable;

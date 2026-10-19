@@ -6,6 +6,7 @@ import {
   alertStates,
 } from "@binference/protocol";
 import { z } from "zod";
+import { type DocumentCodec, documentCodec } from "../intents/intent-documents.schema.js";
 import { epochMsSchema, pageLimitSchema, shortTextSchema } from "../records/record-fields.js";
 
 /** The most active alerts one agent holds; one more is `alert.too_many` (protocol spec, 8.4). */
@@ -57,6 +58,12 @@ export const alertRecordSchema: z.ZodType<AlertRecord> = z.strictObject({
   expiresAtMs: epochMsSchema.exactOptional(),
   lastMessageId: idSchema("msg").exactOptional(),
 });
+
+/** An alert's condition as JSON keeps it: prices and dollar values as decimal strings. */
+export const alertConditionDocument: DocumentCodec<AlertCondition> = documentCodec(
+  "alert condition",
+  alertConditionSchema,
+);
 
 /** The kind of what an alert watches. */
 export type AlertKind = AlertCondition["kind"];
