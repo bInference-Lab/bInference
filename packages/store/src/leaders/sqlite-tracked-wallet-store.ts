@@ -5,6 +5,7 @@ import {
   overflowsToTellTask,
   recordLeaderReadTask,
   trackedWalletsTask,
+  walletActivitySinceTask,
   walletActivityTask,
   watchCursorTask,
 } from "./leader-tasks.js";
@@ -16,6 +17,7 @@ export const leaderTasks: readonly TaskRunner[] = [
   recordLeaderReadTask,
   overflowsToTellTask,
   walletActivityTask,
+  walletActivitySinceTask,
 ];
 
 /** The {@link TrackedWalletStore} on `engine.sqlite`: each call runs one store task. */
@@ -26,5 +28,6 @@ export function createSqliteTrackedWalletStore(host: StoreHost): TrackedWalletSt
     record: bindTask(host, recordLeaderReadTask),
     overflowsToTell: bindTask(host, overflowsToTellTask),
     activity: bindTask(host, walletActivityTask),
+    since: bindTask(host, walletActivitySinceTask),
   };
 }

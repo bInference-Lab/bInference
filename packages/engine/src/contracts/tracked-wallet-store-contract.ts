@@ -210,6 +210,30 @@ async function pagesActivity(subject: TrackedWalletSubject): Promise<void> {
   );
 }
 
+async function listsTradesSince(subject: TrackedWalletSubject): Promise<void> {
+  await track(subject, 1);
+  await track(subject, 2, 2);
+  const trades = [saleOf(1, 11), saleOf(2, 11, 1), saleOf(1, 12), saleOf(1, 13)];
+  const stored = await subject.tracked.record(readOf([10, 13], { trades }), live());
+  const account = accountOf(1);
+  const [first, , second, third] = stored.map(({ id }) => id);
+  const all = await subject.tracked.since({ account, afterId: 0, limit: 5 }, live());
+  assert.deepEqual(
+    all.map(({ id }) => id),
+    [first, second, third],
+  );
+  const after = await subject.tracked.since({ account, afterId: first ?? 0, limit: 1 }, live());
+  assert.deepEqual(
+    after.map(({ id }) => id),
+    [second],
+  );
+  const recent = { account, afterId: 0, fromMs: 13_000, limit: 5 };
+  assert.deepEqual(
+    (await subject.tracked.since(recent, live())).map(({ id }) => id),
+    [third],
+  );
+}
+
 async function refusesAborted(subject: TrackedWalletSubject): Promise<void> {
   await track(subject, 1);
   const read = readOf([10, 12], { trades: [saleOf(1, 11)] });
@@ -235,6 +259,7 @@ export function trackedWalletStoreContract(
     checkOn("starts a new span when a wallet is tracked again", create, startsANewSpan),
     checkOn("tracks no wallet only an archived agent names", create, leavesArchivedAgents),
     checkOn("pages a wallet's trades newest first, by time", create, pagesActivity),
+    checkOn("lists a wallet's trades stored after a given one, in order", create, listsTradesSince),
     checkOn("refuses a call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

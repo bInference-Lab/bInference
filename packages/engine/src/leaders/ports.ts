@@ -1,6 +1,7 @@
 import type { ChainRef } from "@binference/chain";
 import type {
   ActivityQuery,
+  ActivitySinceQuery,
   LeaderReadRecord,
   OverflowQuery,
   OverflowToTell,
@@ -43,4 +44,9 @@ export interface TrackedWalletStore {
   overflowsToTell(query: OverflowQuery, call: StoreCall): Promise<readonly OverflowToTell[]>;
   /** One account's stored trades, newest first by time, then by number. */
   activity(query: ActivityQuery, call: StoreCall): Promise<readonly StoredActivity[]>;
+  /**
+   * One account's trades stored after a given one, in the order they were stored, which is block
+   * and log order: the trades a copy order has not read yet.
+   */
+  since(query: ActivitySinceQuery, call: StoreCall): Promise<readonly StoredActivity[]>;
 }

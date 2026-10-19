@@ -82,6 +82,7 @@ export { copyLeaderOf, trackingOrderStates } from "./orders/copy-leader.js";
 export {
   activityKeyOf,
   activityQuerySchema,
+  activitySinceQuerySchema,
   leaderReadRecordSchema,
   overflowQuerySchema,
   overflowToTellSchema,
@@ -91,6 +92,7 @@ export {
 } from "./leaders/tracked-wallet-record.js";
 export type {
   ActivityQuery,
+  ActivitySinceQuery,
   LeaderReadRecord,
   OverflowQuery,
   OverflowToTell,

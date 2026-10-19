@@ -1,6 +1,7 @@
 import { type AccountRef, accountRefParts } from "@binference/chain";
 import type { TrackedWalletStore } from "../leaders/ports.js";
 import {
+  type ActivitySinceQuery,
   activityKeyOf,
   type LeaderReadRecord,
   type OverflowQuery,
@@ -83,6 +84,17 @@ function record(
   return stored;
 }
 
+// One account's trades stored after `afterId`, in the order they were stored.
+function tradesSince(rows: Rows, query: ActivitySinceQuery): readonly StoredActivity[] {
+  const listed = [...rows.activity.values()].filter(
+    (trade) =>
+      trade.account === query.account &&
+      trade.id > query.afterId &&
+      (query.fromMs === undefined || trade.atMs >= query.fromMs),
+  );
+  return structuredClone(listed.slice(0, query.limit));
+}
+
 /** Creates an in-memory {@link TrackedWalletStore} over the tracking the alert and order fakes keep. */
 export function createMemoryTrackedWalletStore(tracking: MemoryTracking): TrackedWalletStore {
   const rows: Rows = { activity: new Map(), cursors: new Map() };
@@ -123,5 +135,6 @@ export function createMemoryTrackedWalletStore(tracking: MemoryTracking): Tracke
             .slice(0, query.limit),
         ),
       ),
+    since: async (query, call) => memoryCall(call, () => tradesSince(rows, query)),
   };
 }

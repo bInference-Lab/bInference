@@ -3,6 +3,8 @@ import { type ChainRef, chainRefSchema } from "@binference/chain";
 import {
   type ActivityQuery,
   activityQuerySchema,
+  type ActivitySinceQuery,
+  activitySinceQuerySchema,
   type LeaderReadRecord,
   leaderReadRecordSchema,
   type OverflowQuery,
@@ -217,3 +219,23 @@ export const walletActivityTask: StoreTask<ActivityQuery, readonly StoredActivit
     return execute(ordered).rows.map(toStoredActivity);
   },
 });
+
+/** One account's trades stored after a given one, in the order they were stored. */
+export const walletActivitySinceTask: StoreTask<ActivitySinceQuery, readonly StoredActivity[]> =
+  defineTask({
+    name: "leaders.activitySince",
+    access: "read",
+    input: activitySinceQuerySchema,
+    output: z.array(storedActivitySchema),
+    run(database, query) {
+      const { kysely, execute } = createSyncKysely<EngineTables>(database);
+      const { account, afterId, fromMs } = query;
+      const own = kysely
+        .selectFrom("wallet_activity")
+        .selectAll()
+        .where("account", "=", account)
+        .where("id", ">", afterId);
+      const recent = fromMs === undefined ? own : own.where("at", ">=", fromMs);
+      return execute(recent.orderBy("id").limit(query.limit)).rows.map(toStoredActivity);
+    },
+  });

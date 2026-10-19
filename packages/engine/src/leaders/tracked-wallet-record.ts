@@ -105,6 +105,18 @@ export interface ActivityQuery {
   readonly limit: number;
 }
 
+/**
+ * Which trades of one account to list in the order they were stored: those numbered after
+ * `afterId`, and at or after `fromMs` when given, at most `limit`.
+ */
+export interface ActivitySinceQuery {
+  readonly account: AccountRef;
+  /** The last trade already read; 0 reads from the first. */
+  readonly afterId: number;
+  readonly fromMs?: number;
+  readonly limit: number;
+}
+
 const blockSchema = decimalStringSchema;
 const hashSchema = z.string().min(1).max(128);
 
@@ -184,6 +196,14 @@ export const activityQuerySchema: z.ZodType<ActivityQuery> = z.strictObject({
   fromMs: epochMsSchema.exactOptional(),
   toMs: epochMsSchema.exactOptional(),
   before: z.strictObject({ atMs: epochMsSchema, id: rowNumberSchema }).exactOptional(),
+  limit: pageLimitSchema,
+});
+
+/** Parses an activity since query. */
+export const activitySinceQuerySchema: z.ZodType<ActivitySinceQuery> = z.strictObject({
+  account: accountRefSchema,
+  afterId: z.int().nonnegative(),
+  fromMs: epochMsSchema.exactOptional(),
   limit: pageLimitSchema,
 });
 
