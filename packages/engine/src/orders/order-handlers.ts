@@ -1,10 +1,9 @@
-import { err, type Id, idSchema, ok, type Result } from "@binference/core";
+import { err, type Id, ok, type Result } from "@binference/core";
 import type { OrderView, ProtocolErrorCode } from "@binference/protocol";
 import { orderStates } from "@binference/protocol";
-import { z } from "zod";
 import { knownAssetInfos } from "../money-path/asset-infos.js";
 import { type EngineCall, type EngineHandler, proposerOf } from "../operations/engine-call.js";
-import { epochMsSchema } from "../records/record-fields.js";
+import { nextCursorOf, pageAfterOf } from "../operations/page-cursor.js";
 import { cancelOrder } from "./cancel-order.js";
 import { createOrder, type OrderParts } from "./create-order.js";
 import type { OrderQuery, OrderRecord } from "./order-record.js";
@@ -20,21 +19,8 @@ export interface OrderHandlers {
 
 const defaultPageSize = 50;
 
-// A cursor is the last order of the page before: its creation time and its id, `<ms>:<id>`.
-const cursorPattern = /^(0|[1-9]\d{0,14}):(.+)$/;
-const createdAtSchema = z.coerce.number<string>().pipe(epochMsSchema);
-
-function cursorOf(text: string): OrderQuery["after"] | undefined {
-  const [, createdAt, id] = cursorPattern.exec(text) ?? [];
-  const createdAtMs = createdAtSchema.safeParse(createdAt);
-  const order = idSchema("ord").safeParse(id);
-  return createdAtMs.success && order.success
-    ? { createdAtMs: createdAtMs.data, id: order.data }
-    : undefined;
-}
-
 function queryOf(args: EngineCall<"order/list">["args"]): Result<OrderQuery, ProtocolErrorCode> {
-  const after = args.cursor === undefined ? undefined : cursorOf(args.cursor);
+  const after = args.cursor === undefined ? undefined : pageAfterOf("ord", args.cursor);
   if (args.cursor !== undefined && after === undefined) {
     return err("protocol.bad_args");
   }
@@ -73,7 +59,7 @@ async function listed(parts: OrderParts, call: EngineCall<"order/list">) {
   };
   return ok(
     records.length === query.value.limit && last !== undefined
-      ? { ...page, next: `${String(last.createdAtMs)}:${last.id}` }
+      ? { ...page, next: nextCursorOf(last) }
       : page,
   );
 }
