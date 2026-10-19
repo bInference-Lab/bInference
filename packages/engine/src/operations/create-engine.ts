@@ -6,6 +6,7 @@ import {
 } from "../address-book/address-book-handlers.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
 import type { AlertHandlers } from "../alerts/alert-handlers.js";
+import type { AlertFiring } from "../alerts/fire-alerts.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import {
   type ConfigHistoryHandlers,
@@ -129,10 +130,10 @@ export interface Engine {
    */
   readonly repairOrderFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
   /**
-   * The auto order work that waits for no price (decision 0189): each order waiting for its card
-   * moves as the card says, each order whose expiry came expires, and each order that ends within
-   * 24 hours gets its one `notice.orderExpiring`. A timer of the composition root calls it every 10
-   * seconds; an answer moves its own order at once.
+   * The auto order and alert work that waits for no price (decision 0189): each order waiting for
+   * its card moves as the card says, each order whose expiry came expires, each order that ends
+   * within 24 hours gets its one `notice.orderExpiring`, and each alert whose expiry came ends. A
+   * timer of the composition root calls it every 10 seconds; an answer moves its own order at once.
    */
   readonly tickOrders: (options: { readonly signal: AbortSignal }) => Promise<void>;
   /**
@@ -163,6 +164,12 @@ export interface Engine {
    * it moved.
    */
   readonly checkPins: (options: PinFollow) => Promise<number>;
+  /**
+   * The alert firing (protocol spec, section 8.4): the price watchers hand it each confirmed
+   * price, as they hand `seePrice`; the leader watcher each trade of a tracked wallet; the launch
+   * feed each new launch. It notifies and may wake the agent, and never reaches the money path.
+   */
+  readonly alerts: AlertFiring;
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -301,6 +308,15 @@ function sharedParts(options: EngineOptions) {
   };
 }
 
+// The work that waits for no price: the orders' tick, then the alerts whose expiry came.
+async function tickAll(
+  parts: { readonly orders: OrderParts; readonly alerts: AlertFiring },
+  signal: AbortSignal,
+): Promise<void> {
+  await tickOrders(parts.orders, signal);
+  await parts.alerts.expire({ signal });
+}
+
 /**
  * Creates the {@link Engine}. Every write of an intent goes through one writer, which pushes
  * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
@@ -356,11 +372,13 @@ export function createEngineWithFills(given: EngineOptions): {
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
     repairOrderFills: orderRepairOf(options, intents.stored),
-    tickOrders: async ({ signal }) => tickOrders(intents.orders, signal),
+    tickOrders: async ({ signal }) =>
+      tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
     runSchedules: async ({ signal }) => chat.schedules.run({ signal }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
+    alerts: chat.alerts,
   };
   return { engine, fillOrder: async (request, call) => intents.fills.run(request, call) };
 }

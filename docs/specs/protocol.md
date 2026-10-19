@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243) and [0244](../DECISIONS.md#d0244); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244) and [0245](../DECISIONS.md#d0245); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -901,9 +901,17 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   by the hourly limit since its last wake-up.
 - **Wake-ups.** A fired alert with `wake` stores an `inbox/alertFired` message
   `{ alert: AlertView, fired, outsideContent }` in the write that records the fire
-  ([spec 8, section 3.3](runtime.md#section-3-3)). `outsideContent` is set when the alert was
-  created in a marked turn, when `fired` is a launch, and when it names a token the registry does
-  not list, so the turn it starts is marked.
+  ([spec 8, section 3.3](runtime.md#section-3-3)). `outsideContent` is always set: what fires an
+  alert is a market's or another wallet's doing, so the turn it starts is marked
+  ([decision 0245](../DECISIONS.md#d0245)).
+- **Firing** ([decision 0245](../DECISIONS.md#d0245)). A price alert is judged at its level on each
+  confirmed watcher price, never as a crossing, and its token is watched while it is active. Each
+  fire is written under the alert's count of fires, so it fires once. The price watchers, the
+  leader watcher and the launch feed hand the engine's alert firing what they read (`seePrice`,
+  `seeTrade`, `seeLaunch`); a launch filter's bound on a value the feed did not read never passes.
+  Before a wake-up is stored the engine skips it for an archived or frozen agent or a spent budget,
+  and each fire is kept in `alert_fires` with what it did about its wake-up. An active alert whose
+  expiry came ends within 10 seconds.
 - **Limits on wake-ups.** At most 10 wake-ups an hour per agent, counted over the last 60 minutes.
   Past that, the alert still fires and notifies, but stores no inbox message; the count goes into
   `wakeSkipped` of the next fire that wakes the agent. While a wake-up from one alert waits in the

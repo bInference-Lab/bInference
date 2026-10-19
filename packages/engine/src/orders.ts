@@ -32,6 +32,7 @@ export type {
   AlertRecord,
 } from "./alerts/alert-record.js";
 export type { AlertStore } from "./alerts/ports.js";
+export type { AlertFiring, WatchedLaunch, WatchedTrade } from "./alerts/fire-alerts.js";
 export {
   fillAnnouncementSchema,
   orderFillQuerySchema,

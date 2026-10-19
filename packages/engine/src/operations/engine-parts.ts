@@ -1,4 +1,5 @@
 import { type AlertHandlers, createAlertHandlers } from "../alerts/alert-handlers.js";
+import { type AlertFiring, createAlertFiring } from "../alerts/fire-alerts.js";
 import { createDailyModelBudget } from "../billing/daily-model-budget.js";
 import { createModelBudget, type ModelBudget } from "../billing/model-budget.js";
 import { createUsageHandlers, type UsageHandlers } from "../billing/usage-handlers.js";
@@ -32,8 +33,10 @@ export interface EngineChat {
   readonly relay: ChatRelay;
   /** The schedule queue, whose wake-ups ask the chat's model budget and push as chat does. */
   readonly schedules: ScheduleQueue;
+  /** The alert firing, whose wake-ups ask the chat's model budget and push as chat does. */
+  readonly alerts: AlertFiring;
   readonly handlers: EngineChatHandlers;
-  /** Hears each settle message the stored intents wrote, and each schedule's wake-up. */
+  /** Hears each settle message the stored intents wrote, and each schedule's or alert's wake-up. */
   readonly settled: (message: AgentInboxMessage) => void;
   readonly attach: (stored: StoredIntents) => void;
 }
@@ -88,9 +91,11 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     relay.settled(message);
   };
   const schedules = schedulesOf(options, { budget, settled });
+  const alerts = alertFiringOf(options, { budget, settled });
   return {
     relay,
     schedules: schedules.queue,
+    alerts,
     handlers: {
       ...relay.handlers,
       ...usageHandlersOf(options, billing),
@@ -175,5 +180,25 @@ export function alertHandlersOf(options: EngineOptions): AlertHandlers {
     isLaunchpad: (venue) => host.isLaunchpad(venue),
     ids,
     clock,
+  });
+}
+
+// The alert firing, whose wake-ups ask the chat's model budget and reach the runtime as the
+// chat's pushes do.
+function alertFiringOf(
+  options: EngineOptions,
+  chat: { readonly budget: ModelBudget; readonly settled: (message: AgentInboxMessage) => void },
+): AlertFiring {
+  const { stores, chains, ids, clock, publish } = options;
+  return createAlertFiring({
+    alerts: stores.alerts,
+    agents: stores.agents,
+    budget: chat.budget,
+    chains,
+    intents: stores.intents,
+    woke: chat.settled,
+    ids,
+    clock,
+    publish,
   });
 }
