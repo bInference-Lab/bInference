@@ -59,8 +59,8 @@ function txOf(n: bigint): TxHash {
 }
 
 /**
- * The test leader's trade `n` in block `n`, at `atMs`: a buy of the token for a tenth of a coin, or
- * a sale of it taking `shareSoldBps` of its holding, unknown when absent.
+ * The test leader's trade `n` in block `n`, at `atMs`: a buy of the token for `coinBase` of the
+ * coin, or a sale of it taking `shareSoldBps` of its holding, unknown when absent.
  */
 export function leaderTrade(
   n: number,
@@ -69,9 +69,11 @@ export function leaderTrade(
     readonly atMs: number;
     readonly asset?: AssetRef;
     readonly shareSoldBps?: Bps;
+    /** What a buy paid, or a sale received, of the coin; a tenth of a coin when absent. */
+    readonly coinBase?: bigint;
   },
 ): WalletActivity {
-  const { side, atMs, asset = testToken, shareSoldBps } = call;
+  const { side, atMs, asset = testToken, shareSoldBps, coinBase = 10n ** 17n } = call;
   return {
     account: testLeader,
     block: BigInt(n),
@@ -81,7 +83,7 @@ export function leaderTrade(
     asset,
     amount: 1_000_000n,
     counterAsset: testCoin,
-    counterAmount: 10n ** 17n,
+    counterAmount: coinBase,
     ...(shareSoldBps === undefined ? {} : { shareSoldBps }),
     atMs,
   };

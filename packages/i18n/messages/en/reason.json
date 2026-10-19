@@ -51,6 +51,7 @@
   "copy_daily_cap": "it would pass this leader's daily cap ({used} of {cap} used)",
   "share_unread": "the share of its holding the leader sold could not be read",
   "token_unreadable": "the token's contract did not give its symbol and decimals",
+  "leader_unpriced": "the leader's buy could not be valued in dollars",
   "engine_locked": "binference is locked, so nothing fills until you run `binference unlock`",
   "live_fills_off": "live auto orders do not fill yet; only paper ones do",
   "nothing_to_spend": "the wallet holds too little of what the order spends",

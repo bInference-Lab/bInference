@@ -40,7 +40,7 @@
   "order.summary.stopLoss": "{sell} when the price falls to {price}",
   "order.summary.trailing": "{sell} when the price falls {distance} below its highest since the order started",
   "order.summary.dca": "buy {token} with {spend} {schedule}, {count, plural, =0 {until the order ends} one {once} other {# times}}",
-  "order.summary.copy": "copy {leader}'s buys at {perBuy} each, at most {daily} a day, and sell the share {leader} sells",
+  "order.summary.copy": "copy {leader}'s buys at up to {perBuy} each, never more than {leader} spent, at most {daily} a day, and sell the share {leader} sells",
   "order.schedule": "on the schedule {cron} ({zone}), first at {first}, then at {second}",
   "order.exitsLinked": "When an exit order sells all your {token}, your other exit orders on it end",
   "order.worstPrice": "Every fill trades at {price} or better",

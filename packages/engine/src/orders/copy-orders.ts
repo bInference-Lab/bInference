@@ -130,6 +130,15 @@ interface Reading {
   readonly passedTo?: number;
 }
 
+// What the leader paid for a buy, in its canonical form; none for a sale, or an asset no chain of
+// the registry holds, which leaves the buy unvalued.
+function paidOf(chains: ChainRegistry, trade: StoredActivity): Pick<CopyTaking, "paid"> {
+  const asset = canonicalAsset(chains, trade.counterAsset);
+  return trade.side === "buy" && asset.ok
+    ? { paid: { asset: asset.value, base: trade.counterAmount } }
+    : {};
+}
+
 // Keeps the trade as taken and fills it; answers whether the order may go on to the next. A fill
 // that could not run, behind a fill still settling, records `fill_waiting`, so no taken trade is
 // lost in silence.
@@ -173,6 +182,7 @@ async function copyOne(
     atMs: trade.atMs,
     takenAtMs: parts.clock.now(),
     ...share,
+    ...paidOf(parts.chains, trade),
     ...(facts === undefined ? {} : { facts }),
   };
   return fillTaken(parts, reading, { taking, signal });

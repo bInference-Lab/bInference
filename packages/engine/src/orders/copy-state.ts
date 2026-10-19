@@ -1,4 +1,4 @@
-import { type Amount, type AssetRef, assetRefSchema } from "@binference/chain";
+import { type Amount, amountSchema, type AssetRef, assetRefSchema } from "@binference/chain";
 import { type Bps, bpsSchema, decimalStringSchema, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import { type DocumentCodec, documentCodec } from "../intents/intent-documents.schema.js";
@@ -31,6 +31,8 @@ export interface CopyTaking {
   readonly shareSoldBps?: Bps;
   /** The trade's block time. */
   readonly atMs: number;
+  /** For a buy: what the leader paid for it, which caps the copy's dollars (decision 0260). */
+  readonly paid?: Amount;
   /** When the order took it: the start's repair reads whether a fill row came since. */
   readonly takenAtMs: number;
   /**
@@ -78,6 +80,7 @@ const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
       asset: assetRefSchema,
       shareSoldBps: bpsSchema.exactOptional(),
       atMs: epochMsSchema,
+      paid: amountSchema.exactOptional(),
       takenAtMs: epochMsSchema,
       facts: z
         .strictObject({

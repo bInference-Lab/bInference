@@ -121,10 +121,10 @@ describe("an auto order's card in English", () => {
     const byLabel = card.lines.map((line) => cardLineText(line, { formatter, assets: {} }));
 
     expect(byAddress?.[1]).toMatch(
-      /^Approve Copy trade: copy 0x00000009's buys at \$20\.00 each, at most \$200\.00 a day, and sell the share 0x00000009 sells · no fill limit until /,
+      /^Approve Copy trade: copy 0x00000009's buys at up to \$20\.00 each, never more than 0x00000009 spent, at most \$200\.00 a day, and sell the share 0x00000009 sells · no fill limit until /,
     );
     expect(byLabel[1]).toMatch(
-      /^Approve Copy trade: copy Whale's buys at \$20\.00 each, at most \$200\.00 a day, and sell the share Whale sells · up to 4 fills until /,
+      /^Approve Copy trade: copy Whale's buys at up to \$20\.00 each, never more than Whale spent, at most \$200\.00 a day, and sell the share Whale sells · up to 4 fills until /,
     );
   });
 

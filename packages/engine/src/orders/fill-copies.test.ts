@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { testLimits, testNowMs, testToken } from "../intents/test-intents.js";
+import { testCoin, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import { copiedHeldOf } from "./copy-state.js";
 import { copyStateNow, copyTrade } from "./test-copies.js";
@@ -33,7 +33,16 @@ const tokenFacts = { symbol: "TKN", name: "Test token", decimals: 6, verified: t
 
 // A leader's buy of the test token, stored as trade `id`, made now.
 function buyOf(id: number, atMs: number) {
-  return { id, side: "buy" as const, asset: testToken, atMs, takenAtMs: atMs, facts: tokenFacts };
+  const paid = { asset: testCoin, base: 10n ** 17n };
+  return {
+    id,
+    side: "buy" as const,
+    asset: testToken,
+    atMs,
+    takenAtMs: atMs,
+    paid,
+    facts: tokenFacts,
+  };
 }
 
 // A leader's sale of the test token, stored as trade `id`, taking `shareBps` of its holding.
@@ -141,7 +150,16 @@ describe("a copy order's fills", () => {
     const order = await activeOrder(test, testCopy());
     const facts = { symbol: "HONEY", name: "Honey", decimals: 18, verified: false };
     const atMs = test.clock.now();
-    const honey = { id: 1, side: "buy" as const, asset: unlisted, atMs, takenAtMs: atMs, facts };
+    const paid = { asset: testCoin, base: 10n ** 17n };
+    const honey = {
+      id: 1,
+      side: "buy" as const,
+      asset: unlisted,
+      atMs,
+      takenAtMs: atMs,
+      paid,
+      facts,
+    };
 
     expect(await copyTrade(test, order.id, honey)).toBe("skipped");
 

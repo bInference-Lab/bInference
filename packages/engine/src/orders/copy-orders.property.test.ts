@@ -24,14 +24,22 @@ const prices = new Map(fillPrices).set(testToken, { numerator: 1n, denominator: 
 
 /** What happens between two looks at the order: a leader trade, time, a run, a restart. */
 type Step =
-  | { readonly kind: "buy" }
+  | { readonly kind: "buy"; readonly paidMilli: number; readonly runsNow: boolean }
   | { readonly kind: "sell"; readonly shareBps?: number }
   | { readonly kind: "wait"; readonly ms: number }
   | { readonly kind: "run" }
   | { readonly kind: "restart" };
 
 const steps: fc.Arbitrary<Step> = fc.oneof(
-  { arbitrary: fc.constant({ kind: "buy" as const }), weight: 4 },
+  {
+    // The leader pays thousandths of the coin, $0.60 each, and the copy may run at once.
+    arbitrary: fc.record({
+      kind: fc.constant("buy" as const),
+      paidMilli: fc.integer({ min: 1, max: 200 }),
+      runsNow: fc.boolean(),
+    }),
+    weight: 4,
+  },
   {
     arbitrary: fc
       .option(fc.integer({ min: 1, max: 10_000 }), { nil: undefined })
@@ -58,30 +66,70 @@ const terms = fc.record({
   agentDay: fc.integer({ min: 5, max: 120 }),
 });
 
-/** Drives one test's engine through steps; a restart swaps in a new one on the same stores. */
-function driverOf(test: TestEngine): (step: Step) => Promise<void> {
+/** What a run right after a leader's buy filled: the buy's value and the leader's own buy's. */
+interface BuyAtOnce {
+  readonly valueUsdMicros: bigint | undefined;
+  readonly leaderUsdMicros: bigint;
+}
+
+// The value of thousandths of the coin, at the coin's $600, rounded up as the policy rounds.
+const coinMilliUsd = (milli: number): bigint => BigInt(milli) * 600_000n;
+
+/**
+ * Drives one test's engine through steps; a restart swaps in a new one on the same stores. A buy
+ * run at once, with no other trade waiting, records what it filled beside the leader's own buy.
+ */
+function driverOf(test: TestEngine): {
+  readonly take: (step: Step) => Promise<void>;
+  readonly atOnce: readonly BuyAtOnce[];
+} {
+  const atOnce: BuyAtOnce[] = [];
   let engine = test.engine;
   let block = 0;
-  return async (step) => {
+  // The leader trades stored since the last run.
+  let waiting = 0;
+  const buysNow = async () => (await fillIntentsOf(test)).filter(isFilledBuy);
+  const take = async (step: Step): Promise<void> => {
     block += 1;
+    const atMs = test.clock.now();
     if (step.kind === "buy") {
-      await storeTrades(test, [leaderTrade(block, { side: "buy", atMs: test.clock.now() })]);
+      const coinBase = BigInt(step.paidMilli) * 10n ** 15n;
+      await storeTrades(test, [leaderTrade(block, { side: "buy", atMs, coinBase })]);
+      waiting += 1;
+      if (step.runsNow) {
+        const isAlone = waiting === 1;
+        waiting = 0;
+        const before = new Set((await buysNow()).map(({ id }) => id));
+        await engine.runCopies(live);
+        const added = (await buysNow()).filter(({ id }) => !before.has(id));
+        const leaderUsdMicros = coinMilliUsd(step.paidMilli);
+        const filled = isAlone ? added : [];
+        atOnce.push(...filled.map(({ valueUsdMicros }) => ({ valueUsdMicros, leaderUsdMicros })));
+      }
     } else if (step.kind === "sell") {
       const share =
         step.shareBps === undefined ? {} : { shareSoldBps: bpsSchema.parse(step.shareBps) };
-      await storeTrades(test, [
-        leaderTrade(block, { side: "sell", atMs: test.clock.now(), ...share }),
-      ]);
+      await storeTrades(test, [leaderTrade(block, { side: "sell", atMs, ...share })]);
+      waiting += 1;
     } else if (step.kind === "wait") {
       await test.clock.advance(step.ms);
     } else if (step.kind === "run") {
+      waiting = 0;
       await engine.runCopies(live);
     } else {
       engine = test.restart();
       await engine.repairOrderFills(live);
     }
   };
+  return { take, atOnce };
 }
+
+// A buy valued above the leader's own buy, or not valued at all.
+const isOverLeader = (buy: BuyAtOnce): boolean =>
+  buy.valueUsdMicros === undefined || buy.valueUsdMicros > buy.leaderUsdMicros;
+
+const isFilledBuy = (intent: IntentRecord): boolean =>
+  intent.kind === "buy" && intent.state === "paper_filled";
 
 /** What a copy fill moved of the token: bought out of a buy, sold into a sale. */
 function tokenMoved(intent: IntentRecord): bigint {
@@ -146,9 +194,9 @@ const isOver = (buy: IntentRecord, most: bigint): boolean =>
   buy.valueUsdMicros === undefined || buy.valueUsdMicros > most;
 
 describe("a copy order, for every history of leader trades, waits, runs and restarts", () => {
-  it("never buys over its caps, never sells more than it bought, never skips a sale as late, and copies each trade once", async () => {
+  it("never buys over its caps or the leader's own buy, never sells more than it bought, never skips a sale as late, and copies each trade once", async () => {
     const histories = fc.tuple(terms, fc.array(steps, { minLength: 4, maxLength: 24 }));
-    const seen = { buys: 0, sales: 0, skips: 0 };
+    const seen = { buys: 0, sales: 0, skips: 0, atOnce: 0 };
     await fc.assert(
       fc.asyncProperty(histories, async (drawn: readonly [Terms, readonly Step[]]) => {
         const [given, history] = drawn;
@@ -165,7 +213,8 @@ describe("a copy order, for every history of leader trades, waits, runs and rest
           dailyUsdMicros: perBuy * BigInt(given.days),
         };
         const order = await activeOrder(test, testCopy({ size: { usdMicros: perBuy }, trigger }));
-        await inOrder(history, driverOf(test));
+        const driver = driverOf(test);
+        await inOrder(history, driver.take);
 
         const fills = (await fillIntentsOf(test)).filter(({ state }) => state === "paper_filled");
         const buys = fills.filter(({ kind }) => kind === "buy");
@@ -175,8 +224,12 @@ describe("a copy order, for every history of leader trades, waits, runs and rest
         seen.buys += buys.length;
         seen.sales += fills.length - buys.length;
         seen.skips += rows.length - fills.length;
+        seen.atOnce += driver.atOnce.length;
 
         expect(buys.filter((buy) => isOver(buy, most))).toStrictEqual([]);
+        // A buy never spends more than the leader's own (the owner's choice, decision 0260).
+        const overLeader = driver.atOnce.filter(isOverLeader);
+        expect(overLeader).toStrictEqual([]);
         expect(isWithinDays(buys, trigger.dailyUsdMicros)).toBe(true);
         expect(isWithinDays(buys, limits.copyPerLeaderDayUsdMicros)).toBe(true);
         expect(isWithinHeld(inFillOrder(test, fills))).toBe(true);
@@ -188,6 +241,7 @@ describe("a copy order, for every history of leader trades, waits, runs and rest
       { numRuns: 40 },
     );
     // The histories bought, sold and skipped, so the property held over fills, not over nothing.
-    expect([seen.buys > 0, seen.sales > 0, seen.skips > 0]).toStrictEqual([true, true, true]);
+    const held = [seen.buys, seen.sales, seen.skips, seen.atOnce].map((count) => count > 0);
+    expect(held).toStrictEqual([true, true, true, true]);
   });
 });

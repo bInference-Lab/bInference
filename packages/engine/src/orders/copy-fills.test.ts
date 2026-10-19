@@ -3,6 +3,7 @@ import { bpsSchema, idSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { agentSettingsOf } from "../agents/agent-record.js";
+import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import {
   testAgent,
   testAgentDraft,
@@ -34,6 +35,8 @@ const buy: CopyTaking = {
   side: "buy",
   asset: testToken,
   atMs: testNowMs,
+  // A tenth of the coin, $60 at the coin's $600.
+  paid: { asset: testCoin, base: 10n ** 17n },
   takenAtMs: 0,
   facts: listedFacts,
 };
@@ -79,7 +82,13 @@ async function plan(
   const limits = { ...testLimits, copyPerBuyUsdMicros: call.copyPerBuy ?? 20_000_000n };
   const settings = agentSettingsOf(testAgentDraft({ limits }));
   const orders = { list: async () => Promise.resolve([order, ...(call.others ?? [])]) };
-  return planCopyFill({ orders, chains: testChains(), clock }, { order, settings, ...live });
+  const prices = createFakePriceSource(
+    new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
+  );
+  return planCopyFill(
+    { orders, chains: testChains(), prices, clock },
+    { order, settings, ...live },
+  );
 }
 
 describe("a copy order's fill plan", () => {
@@ -93,6 +102,24 @@ describe("a copy order's fill plan", () => {
     });
     expect(await plan(order, { copyPerBuy: 5_000_000n })).toMatchObject({
       order: { request: { size: { usdMicros: 5_000_000n } } },
+    });
+  });
+
+  it("buys no more than the leader's own buy, and skips one nothing values", async () => {
+    const small = { ...buy, paid: { asset: testCoin, base: 10n ** 16n } };
+    const unpriced = { ...buy, paid: { asset: unlisted, base: 10n ** 16n } };
+    const { paid: _paid, ...unpaid } = buy;
+
+    expect(await plan(copyOrder(takenState(copyStartOf(0), small)))).toMatchObject({
+      order: { request: { size: { usdMicros: 6_000_000n } } },
+    });
+    expect(await plan(copyOrder(takenState(copyStartOf(0), unpriced)))).toStrictEqual({
+      kind: "skip",
+      reason: "leader_unpriced",
+    });
+    expect(await plan(copyOrder(takenState(copyStartOf(0), unpaid)))).toStrictEqual({
+      kind: "skip",
+      reason: "leader_unpriced",
     });
   });
 

@@ -1,10 +1,11 @@
-import type { Amount, ChainRegistry } from "@binference/chain";
-import type { Clock } from "@binference/core";
+import type { Amount, ChainRegistry, PriceSource } from "@binference/chain";
+import { type Clock, mulDiv } from "@binference/core";
 import type { CopyOrderRequest } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { OrderSkipReason } from "../intents/intent-reason.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
+import { isUsablePrice } from "../positions/value-execution.js";
 import {
   isTakenLate,
   type CopyState,
@@ -35,10 +36,14 @@ export type CopyFillPlan =
   | { readonly kind: "skip"; readonly reason: OrderSkipReason; readonly cap?: CapUse }
   | { readonly kind: "fill"; readonly order: CopyOrder; readonly price: FillPrice };
 
-/** What a copy fill's plan reads: the agent's other copy orders, the registry and the time. */
+/**
+ * What a copy fill's plan reads: the agent's other copy orders, the registry, the USD prices that
+ * value the leader's buy, and the time.
+ */
 export interface CopyFillParts {
   readonly orders: Pick<OrderStore, "list">;
   readonly chains: ChainRegistry;
+  readonly prices: PriceSource;
   readonly clock: Clock;
 }
 
@@ -102,30 +107,67 @@ function decimalsOf(chains: ChainRegistry, taking: CopyTaking): number | undefin
   return assetInfoOf(chains, taking.asset)?.decimals ?? taking.facts?.decimals;
 }
 
-// The order as the fill of its trade: a buy of the trade's token at its dollars per buy, or a sale
-// of the leader's share, which the sizing takes of what the order bought (decision 0260); none for
-// a sale whose share the watcher did not read.
-function fillOrderOf(order: CopyOrder, taking: CopyTaking, perBuy: bigint): CopyOrder | undefined {
-  const { side, asset, shareSoldBps } = taking;
-  if (side === "buy") {
-    return {
-      ...order,
-      request: { ...order.request, token: asset, side, size: { usdMicros: perBuy } },
-    };
+// The sale of the leader's share, which the sizing takes of what the order bought (decision 0260);
+// a skip when the watcher did not read the share, or nothing knows the token's decimals.
+function planSale(
+  order: CopyOrder,
+  call: { readonly taking: CopyTaking; readonly decimals: number | undefined },
+): CopyFillPlan {
+  const { taking, decimals } = call;
+  const { shareSoldBps } = taking;
+  if (shareSoldBps === undefined) {
+    return { kind: "skip", reason: "share_unread" };
   }
-  return shareSoldBps === undefined
-    ? undefined
-    : {
-        ...order,
-        request: { ...order.request, token: asset, side, size: { percentBps: shareSoldBps } },
-      };
+  if (decimals === undefined) {
+    return { kind: "skip", reason: "token_unreadable" };
+  }
+  const size = { percentBps: shareSoldBps };
+  const request = { ...order.request, token: taking.asset, side: "sell" as const, size };
+  return { kind: "fill", order: { ...order, request }, price: { decimals } };
+}
+
+// What the leader's buy is worth, as the policy values an outflow: what it paid at its USD price,
+// rounded up; none when nothing prices it.
+async function leaderValueOf(
+  parts: CopyFillParts,
+  taking: CopyTaking,
+  signal: AbortSignal,
+): Promise<bigint | undefined> {
+  const { paid } = taking;
+  if (paid === undefined) {
+    return undefined;
+  }
+  const price = await parts.prices.usdPrice(paid.asset, { signal });
+  return price.ok && isUsablePrice(price.value) ? mulDiv(paid.base, price.value, "up") : undefined;
+}
+
+// A buy's dollars: the least of the order's, the agent's and the leader's own buy (the owner's
+// choice, decision 0260); none when the leader's buy has no value.
+async function buyDollarsOf(
+  parts: CopyFillParts,
+  call: {
+    readonly order: CopyOrder;
+    readonly settings: AgentSettings;
+    readonly taking: CopyTaking;
+    readonly signal: AbortSignal;
+  },
+): Promise<bigint | undefined> {
+  const capped = perBuyOf(call.order, call.settings);
+  const leader = await leaderValueOf(parts, call.taking, call.signal);
+  if (leader === undefined) {
+    return undefined;
+  }
+  return leader < capped ? leader : capped;
 }
 
 /**
  * Plans the fill of the trade a copy order took (decision 0260), at the head of its agent's line:
- * none when it took none; a skip as `late` for a buy past its minute, as `share_unread` for a sale whose
- * share the watcher did not read, as `token_unreadable` for a token whose decimals nothing knows, and as `copy_daily_cap` for a buy that would pass the order's daily dollars or the agent's
- * for the leader; else the fill, as an order of the trade's token and side.
+ * none when it took none; a skip as `late` for a buy past its minute, as `share_unread` for a sale
+ * whose share the watcher did not read, as `token_unreadable` for a token whose decimals nothing
+ * knows, as `leader_unpriced` for a buy whose leader's spend nothing values, and as
+ * `copy_daily_cap` for a buy that would pass the order's daily dollars or the agent's for the
+ * leader; else the fill, as an order of the trade's token and side: a buy of the least of its
+ * dollars per buy and the leader's own buy, or a sale of the leader's share.
  */
 export async function planCopyFill(
   parts: CopyFillParts,
@@ -145,22 +187,40 @@ export async function planCopyFill(
   if (taking.side === "buy" && isTakenLate(taking, parts.clock.now())) {
     return { kind: "skip", reason: "late" };
   }
-  const perBuy = perBuyOf(order, settings);
-  const filling = fillOrderOf(order, taking, perBuy);
   const decimals = decimalsOf(parts.chains, taking);
-  if (filling === undefined) {
-    return { kind: "skip", reason: "share_unread" };
+  if (taking.side === "sell") {
+    return planSale(order, { taking, decimals });
   }
   if (decimals === undefined) {
     return { kind: "skip", reason: "token_unreadable" };
   }
-  if (taking.side === "sell") {
-    return { kind: "fill", order: filling, price: { decimals } };
+  return planBuy(parts, { order, state, settings, taking, decimals, signal });
+}
+
+// A buy of the least of its dollars per buy and the leader's own buy, within the daily caps.
+async function planBuy(
+  parts: CopyFillParts,
+  call: {
+    readonly order: CopyOrder;
+    readonly state: CopyState;
+    readonly settings: AgentSettings;
+    readonly taking: CopyTaking;
+    readonly decimals: number;
+    readonly signal: AbortSignal;
+  },
+): Promise<CopyFillPlan> {
+  const { order, state, settings, taking, decimals, signal } = call;
+  const dollars = await buyDollarsOf(parts, { order, settings, taking, signal });
+  if (dollars === undefined) {
+    return { kind: "skip", reason: "leader_unpriced" };
   }
-  const cap = await passedCapOf(parts, { order, state, settings, perBuy, signal });
-  return cap === undefined
-    ? { kind: "fill", order: filling, price: { decimals } }
-    : { kind: "skip", reason: "copy_daily_cap", cap };
+  const cap = await passedCapOf(parts, { order, state, settings, perBuy: dollars, signal });
+  if (cap !== undefined) {
+    return { kind: "skip", reason: "copy_daily_cap", cap };
+  }
+  const size = { usdMicros: dollars };
+  const request = { ...order.request, token: taking.asset, side: "buy" as const, size };
+  return { kind: "fill", order: { ...order, request }, price: { decimals } };
 }
 
 /**

@@ -43,10 +43,12 @@ Every order fill runs the money path with no card, held to its order's bounds
   sold. It stays fail-closed: its share must be known, it never sells more than the order bought or
   the wallet holds, and it sells once per leader trade across restarts. A trade read while the
   engine is locked skips with `engine_locked`.
-- **A buy's size.** The order's `perBuyUsdMicros`, or the agent's `copy.perBuyUsd` when that is
-  lower, of what the order spends, priced at the fill. The fill bounds hold its quote to that
-  amount, and the value the policy judged it at must not pass it (`fill_bounds`). The leader's own
-  amount does not size it.
+- **A buy's size** (the owner's choice, 2026-10-20). The least of the order's `perBuyUsdMicros`, the
+  agent's `copy.perBuyUsd` and the leader's own buy, the leader's spend valued as the policy values
+  an outflow, at its USD price, rounded up; of what the order spends, priced at the fill. A leader's
+  buy that nothing values is skipped with the new reason `leader_unpriced` and reported: nothing
+  guesses it. The fill bounds hold the quote to that amount, and the value the policy judged it at
+  must not pass it (`fill_bounds`).
 - **The daily cap.** Each buy that filled counts at the value the policy judged it at, the value
   the rolling cap counts ([decision 0136](0136-the-24-hour-cap-counts-each-confirmation-at-its-judged-value.md)),
   kept in the order's state with its fill, for 24 hours. A buy whose dollars would take the
@@ -70,14 +72,16 @@ Every order fill runs the money path with no card, held to its order's bounds
 - `TrackedWalletStore.since` lists a wallet's trades after a stored number.
 - A copy order's trigger state holds its last trade, the trade under way, its buys of the day and
   its holdings by token; a fill that cannot count its trade in it is not recorded.
-- Spec 6 sections 4 and 5 and spec 4 section 4.3 say so; `share_unread` and `fill.copyTrade`
-  have English and Chinese messages.
+- Spec 6 sections 4 and 5 and spec 4 section 4.3 say so; `share_unread`, `leader_unpriced` and
+  `fill.copyTrade` have English and Chinese messages.
 
 ## Alternatives
 
 - **Copy late buys after an outage.** Rejected: a buy at a price the leader never paid, chasing a
   move already made.
 - **Skip late sales too.** Rejected by the owner: the agent would keep a position its leader left.
+- **Copy every buy at the full dollars per buy.** Rejected by the owner: a leader's $5 test buy
+  would become a $20 one.
 - **Count a buy when it is taken.** Rejected: a honeypot or a refused buy would use up the day.
 - **Sell the share of everything the wallet holds.** Rejected: it would sell tokens the agent bought
   for itself.

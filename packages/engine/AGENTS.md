@@ -111,8 +111,9 @@ Rules for this package:
   copied once; the start records a buy a stop cut off as `missed` (`copy-repair.ts`), and the
   runner sells a sale so cut off late (`copy-taken.ts`). At the head of its agent's line,
   `copy-fills.ts` plans the fill: a late buy, an unread share or token and the daily caps skip
-  before any intent, and a late sale still sells; a buy at its dollars per buy, a sale of the leader's share of
-  what the order bought. A change to a cap or a sale's size changes
+  before any intent, a leader's buy nothing values skips as `leader_unpriced`, and a late sale
+  still sells; a buy at the least of its dollars per buy and the leader's own buy, a sale of the leader's
+  share of what the order bought. A change to a cap or a sale's size changes
   `copy-orders.property.test.ts`.
 - The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of
   a watched token against its active price orders in `price-triggers.ts`, a pure judgment of

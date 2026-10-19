@@ -200,7 +200,8 @@ minute, and `fill_waiting`, a DCA buy that could not run behind a fill still set
 bought later ([decision 0246](../DECISIONS.md#d0246)); `late` too for a copy order's leader buy
 whose block time is more than 60 seconds old at the head of its agent's line, `share_unread`, a
 copy order's sale whose leader's share the leader watcher could not read, and `token_unreadable`,
-a copy order's trade of a token whose decimals neither the registry nor its contract gives
+a copy order's trade of a token whose decimals neither the registry nor its contract gives, and
+`leader_unpriced`, a copy order's buy whose leader's spend nothing values in dollars
 ([decision 0260](../DECISIONS.md#d0260)); and `no_price`,
 a size in dollars whose asset has no USD price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
@@ -283,8 +284,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
   two records a buy as `missed` at the next start, and leaves a sale to be sold late. A buy more
   than 60 seconds late is never made; a late sale is still made, at the price then, and told with
   `fill.copySellLate`. It copies a buy of a token other than the
-  chain's coin and what it spends, at its `perBuyUsdMicros`, or the agent's `copy.perBuyUsd` when
-  lower, and a sale of a token it bought, at the leader's share of what it holds from its own
+  chain's coin and what it spends, at the least of its `perBuyUsdMicros`, the agent's
+  `copy.perBuyUsd` and the leader's own buy, valued as the policy values it (`leader_unpriced` when
+  nothing values it), and a sale of a token it bought, at the leader's share of what it holds from its own
   buys, never more than the wallet holds, rounded down. A buy whose dollars would pass its
   `dailyUsdMicros` over the last 24 hours, or the agent's `copy.perLeaderDayUsd` for the leader, is
   skipped with `copy_daily_cap`; each buy that filled counts at the value the policy judged it at.

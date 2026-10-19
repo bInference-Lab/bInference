@@ -822,8 +822,8 @@ sends one; another client may leave it out.
 leader trades on the leader's chain: its `token` is that chain's coin, its `side` is `buy`, its
 `size` is `{ usdMicros }` equal to `perBuyUsdMicros`, above zero, and `dailyUsdMicros` is at least
 that; it names no `worstPrice`. Its fills are one per leader trade it copies, with no limit unless
-it names `maxFills`. Each buy spends `perBuyUsdMicros`, or the agent's `copy.perBuyUsd` when lower,
-of what it spends; a sale sells the leader's share of what the order bought of the token, never more
+it names `maxFills`. Each buy spends the least of `perBuyUsdMicros`, the agent's `copy.perBuyUsd`
+and the leader's own buy, valued as the policy values it, of what it spends; a sale sells the leader's share of what the order bought of the token, never more
 than the wallet holds ([decision 0260](../DECISIONS.md#d0260)).
 
 `size` is `{ base }`, `{ usdMicros }` or `{ percentBps }`. Defaults come from the agent's limits
