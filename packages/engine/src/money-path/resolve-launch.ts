@@ -18,6 +18,7 @@ import type { HostedLaunch } from "../venues/launch-calls.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import type { LaunchSetting } from "../venues/launch-settings.schema.js";
 import type { LaunchImageSource } from "./ports.js";
+import type { ReadTokenCode } from "./token-code.js";
 import type { WalletFacts } from "./wallet-facts.js";
 
 /** What only a token launch needs beyond the money path's ports (decision 0234). */
@@ -27,6 +28,8 @@ interface TokenLaunchParts {
   readonly images?: LaunchImageSource;
   /** Runs a launch's steps unsent on its chain, on the launch wallet's live balances. */
   readonly simulator: TxSimulator;
+  /** Reads whether the token a launch names holds code yet: it must not (decision 0238). */
+  readonly readCode: ReadTokenCode;
   /** Where the owner's notice of a launch that stopped goes. */
   readonly publish: PublishPush;
   /** How long a launch waits for its pin after the upload: 5 minutes when absent. */

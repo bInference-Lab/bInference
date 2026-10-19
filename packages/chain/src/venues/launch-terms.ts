@@ -78,7 +78,10 @@ export interface LaunchBuildRequest extends LaunchTerms {
 
 /** The launch's steps, and the token its create call makes. */
 export interface LaunchBuild {
-  /** The token the create call makes, at the address the launchpad's contracts give it. */
+  /**
+   * The token the create call makes, at the address the launchpad's contracts give it before the
+   * call runs. The engine refuses a launch whose token address already holds code (decision 0238).
+   */
   readonly token: AssetRef;
   /** In order: at most one exact approval of the first buy's spend, then the create call. */
   readonly steps: readonly TxDraft[];
@@ -102,7 +105,7 @@ export interface DecodedLaunch {
   /**
    * Every setting the launchpad declares, by name, as the call writes it: an `account` as its
    * account id on the launch's chain. The host refuses a call whose settings differ from those the
-   * card shows (decision 0235).
+   * card shows (decision 0238).
    */
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
 }

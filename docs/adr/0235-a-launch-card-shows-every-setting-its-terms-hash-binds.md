@@ -1,6 +1,6 @@
 # 0235. A launch card shows every setting its terms hash binds
 
-Status: Accepted
+Status: Amended by 0238
 
 Accepted by the owner on 2026-10-16.
 

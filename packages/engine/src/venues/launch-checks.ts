@@ -138,7 +138,7 @@ function isSameValue(
     : isSameAccount(one, two, family);
 }
 
-// The call writes every setting the card shows, at its value, and no other (decision 0235).
+// The call writes every setting the card shows, at its value, and no other (decision 0238).
 function isTheSettings(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
   const { options, family } = bounds;
   const names = Object.keys(options);
@@ -209,7 +209,7 @@ function orderOf(steps: readonly LaunchStep[]) {
  * its chain; the plan is at most one token approval, then one create call; the approval is exact
  * on the first buy's spend, to a registry contract of the launchpad; the create call goes to one
  * of its registry contracts, makes the build's token with the launch's name, symbol, pair and
- * metadata, writes every launchpad setting at the card's value (decision 0235), pays exactly the
+ * metadata, writes every launchpad setting at the card's value (decision 0238), pays exactly the
  * quoted fee, and buys exactly the first buy for the wallet at no less than its minimum. Gives the create call's launch, or the first check that fails.
  */
 export function checkLaunchSteps(

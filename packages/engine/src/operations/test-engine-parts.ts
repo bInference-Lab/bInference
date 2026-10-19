@@ -29,7 +29,10 @@ export function stepsOf(
   };
 }
 
-/** The venue host and its launch side over the test's venues, and the owner's uploads it gives. */
+/**
+ * The venue host and its launch side over the test's venues, the tokens that hold code, and the
+ * owner's uploads it gives.
+ */
 export function hostsOf(
   options: TestEngineOptions,
   parts: {
@@ -37,12 +40,17 @@ export function hostsOf(
     readonly chains: ChainRegistry;
     readonly clock: ManualClock;
   },
-): Pick<EngineOptions, "host" | "launchHost" | "launchImages"> {
+): Pick<EngineOptions, "host" | "launchHost" | "launchTokenCode" | "launchImages"> {
   const hosted = { ...parts, callTimeoutMs: 5_000 };
   const { launchImages } = options;
+  const withCode = new Set(options.tokensWithCode);
   return {
     host: createVenueHost(hosted),
     launchHost: createLaunchHost(hosted),
+    launchTokenCode: async (token, { signal }) => {
+      signal.throwIfAborted();
+      return Promise.resolve(withCode.has(token));
+    },
     ...(launchImages === undefined ? {} : { launchImages }),
   };
 }

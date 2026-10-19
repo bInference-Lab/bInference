@@ -17,7 +17,7 @@ import { type Bps, bpsPerWhole, err, mulDiv, ok, type Result } from "@binference
  * The intent stores `decode_mismatch`; the mismatch names the check that failed. `other_launch` is
  * a launch's create call that makes another token, or names other words, metadata, pair or fee;
  * `other_settings` one that writes a launchpad setting other than the card shows, or leaves one
- * out (decision 0235).
+ * out (decision 0238).
  */
 export const buildMismatches = [
   "quote_mismatch",

@@ -16,12 +16,13 @@ function launchPathOf(
   options: EngineOptions,
   path: MoneyPathOptions,
 ): LaunchPathOptions | undefined {
-  const { launchHost, launchImages, chainSimulator, publish, stores } = options;
-  if (launchHost === undefined) {
+  const { launchHost, launchTokenCode, launchImages, chainSimulator, publish, stores } = options;
+  if (launchHost === undefined || launchTokenCode === undefined) {
     return undefined;
   }
   const images = launchImages === undefined ? {} : { images: launchImages };
-  const launch = { host: launchHost, simulator: chainSimulator, publish, ...images };
+  const simulator = chainSimulator;
+  const launch = { host: launchHost, readCode: launchTokenCode, simulator, publish, ...images };
   return { ...path, install: stores.install, launch };
 }
 

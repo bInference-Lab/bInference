@@ -32,6 +32,7 @@ import type { PinFollow } from "../money-path/follow-launch-pin.js";
 import type { LaunchRouting } from "../money-path/launch-routing.js";
 import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
+import type { ReadTokenCode } from "../money-path/token-code.js";
 import {
   createVenueQuoteSource,
   type VenueQuoteSourceOptions,
@@ -231,6 +232,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
   readonly liveOrderFills?: boolean;
   /** The launch side of the venue host; without it no token launch is proposed (decision 0234). */
   readonly launchHost?: LaunchHost;
+  /**
+   * Reads whether a launch's token holds code yet; without it no token launch is proposed, since
+   * none could prove its token new (decision 0238).
+   */
+  readonly launchTokenCode?: ReadTokenCode;
   /** The owner's uploads, which a token launch's picture comes from; none are readable without. */
   readonly launchImages?: LaunchImageSource;
 }

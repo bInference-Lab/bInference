@@ -105,6 +105,13 @@ async function simulate(
       trigger: { type: "simulation_failed", reason: "effects_differ" },
     });
   }
+  // A launch makes a new token: an address that holds code already is another token, whatever
+  // the launchpad named (decision 0238).
+  if (await options.launch.readCode(quote.token, { signal })) {
+    return advance(run, snapshot, {
+      trigger: { type: "simulation_failed", reason: "effects_differ" },
+    });
+  }
   const simulated = await options.launch.simulator.simulate(steps, { signal });
   const { firstBuy } = quote;
   const effects = checkLaunchEffects(simulated, {

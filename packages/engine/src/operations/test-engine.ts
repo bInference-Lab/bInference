@@ -151,6 +151,8 @@ export interface TestEngineOptions {
   readonly uploads?: UploadShelf;
   /** The owner's uploads a token launch's picture comes from; none when absent. */
   readonly launchImages?: LaunchImageSource;
+  /** The tokens whose address holds code, as a token that exists does; none when absent. */
+  readonly tokensWithCode?: readonly AssetRef[];
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */

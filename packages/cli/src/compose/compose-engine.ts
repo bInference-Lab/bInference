@@ -109,6 +109,8 @@ export interface ComposeEngineOptions {
   readonly liveOrderFills?: boolean;
   /** Reads what a token the registry does not list answers on chain, for its cards. */
   readonly readTokenFacts: EngineOptions["readTokenFacts"];
+  /** Whether a launch's token holds code yet; without it no token launch is proposed. */
+  readonly readTokenCode?: EngineOptions["launchTokenCode"];
   /** Each agent's workspace files. */
   readonly workspace: EngineOptions["workspace"];
   /** Handlers of operations the composition root answers, such as `engine/status`. */
@@ -262,6 +264,7 @@ function engineOf(
     canPrice: options.canPrice,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     readTokenFacts: options.readTokenFacts,
+    ...(options.readTokenCode === undefined ? {} : { launchTokenCode: options.readTokenCode }),
     workspace: options.workspace,
     chains: options.chains,
     clock: options.clock,

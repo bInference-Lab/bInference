@@ -1,3 +1,4 @@
+import { assetRefSchema } from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -185,6 +186,22 @@ describe("a token launch a fault or a stop cut short once its upload began", () 
       expect.objectContaining({
         key: "notice.launchStopped",
         values: { symbol: "MCAT", venue: pad, reason: "upload_lost" },
+      }),
+    );
+  });
+});
+
+describe("a token launch's new token", () => {
+  it("ends effects_differ with a notice when the token's address already holds code", async () => {
+    const token = assetRefSchema.parse("fake:1/token:0x000000e1");
+    const { test } = await engineOver({ options: { tokensWithCode: [token] } });
+    const view = await propose(test);
+    expect(view).toMatchObject({ state: "failed_check", outcome: { reason: "effects_differ" } });
+    expect(cardsOpened(test)).toStrictEqual([]);
+    expect(notices(test)).toContainEqual(
+      expect.objectContaining({
+        key: "notice.launchStopped",
+        values: { symbol: "MCAT", venue: pad, reason: "effects_differ" },
       }),
     );
   });
