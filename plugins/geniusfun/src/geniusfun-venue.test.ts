@@ -3,6 +3,7 @@ import {
   defineLaunchpad,
   type InsiderReader,
   type LaunchpadVenue,
+  type LaunchReader,
   type PriceReader,
   type TxDraft,
 } from "@binference/plugin-sdk";
@@ -10,6 +11,7 @@ import {
   curveReaderContract,
   hostBuildRequest,
   insiderReaderContract,
+  launchReaderContract,
   priceReaderContract,
   quoterContract,
   txBuilderContract,
@@ -21,6 +23,7 @@ import { tradeFunctionsJson } from "./contracts/genius-calls.js";
 import { createGeniusfunVenue, geniusfunDeclaration } from "./geniusfun-venue.js";
 import { recordedCalls } from "./testing/recorded-answers.js";
 import { scriptedChain } from "./testing/recorded-chain.js";
+import { geniusLaunchLogs, recordedLaunch } from "./testing/recorded-launch.js";
 import {
   bnb,
   bscChain,
@@ -77,6 +80,14 @@ function insiderReaderOf(venue: LaunchpadVenue): InsiderReader {
     throw new Error("The venue reads no insiders.");
   }
   return { insiders: read };
+}
+
+function launchReaderOf(venue: LaunchpadVenue): LaunchReader {
+  const { launchEvents, readLaunches } = venue;
+  if (launchEvents === undefined || readLaunches === undefined) {
+    throw new Error("The venue reads no launch.");
+  }
+  return { launchEvents, readLaunches };
 }
 
 // The answers of the curve's two price reads at the recorded block, in their order.
@@ -138,6 +149,16 @@ describe("the geniusfun venue", () => {
         reader: insiderReaderOf(venueOver(scriptedChain())),
         launched: { token: stackToken, contracts: registryContracts },
         other: { token: usdt, contracts: registryContracts },
+      }),
+    }),
+    ...launchReaderContract({
+      create: () => ({
+        reader: launchReaderOf(venueOver(scriptedChain())),
+        chain: bscChain,
+        contracts: registryContracts,
+        launch: { logs: geniusLaunchLogs, token: recordedLaunch.token },
+        other: geniusLaunchLogs.filter((log) => log.index !== 6),
+        stranger: recordedWallet,
       }),
     }),
   ])("follows the contract: $name", async ({ run }) => {

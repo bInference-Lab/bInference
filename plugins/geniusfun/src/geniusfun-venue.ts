@@ -6,12 +6,14 @@ import {
 } from "@binference/plugin-sdk";
 import { curveChainSetupsOf } from "@binference/plugin-sdk/evm";
 import { tradeFunctionsJson } from "./contracts/genius-calls.js";
+import { launchEventIds } from "./contracts/genius-launch-events.js";
 import { readCurvePrice } from "./curve/read-curve-price.js";
 import { readCurve } from "./curve/read-curve.js";
 import { curveName, stackFactoryNames } from "./geniusfun-contracts.js";
 import type { GeniusfunOptions } from "./geniusfun-options.js";
 import { readInsiders } from "./insiders/read-insiders.js";
 import { createBoundedMemo } from "./launch/bounded-memo.js";
+import { readGeniusLaunches } from "./launch/read-launches.js";
 import { quoteTrade } from "./quote/quote-trade.js";
 import { buildTrade } from "./router/build-trade.js";
 import { decodeTrade } from "./router/decode-trade.js";
@@ -53,7 +55,9 @@ export function geniusfunDeclaration(chains: readonly ChainRef[]): VenueDeclarat
  * quotes are the curve's own arithmetic to the wei, naming the creator tax and the launch-window
  * snipe tax the wallet would pay (decision 0213); its price read gives the price watcher each
  * curve's reserves every block; and it reads the wallets each launch exempted from its snipe tax
- * as the token's insiders. Bad options are a fault (`geniusfun.bad_options`).
+ * as the token's insiders. Its launch reading gives the launch feed each token a listed stack
+ * launches, from the stack's and the curve's events, completed by the curve's reads (decision
+ * 0254). Bad options are a fault (`geniusfun.bad_options`).
  */
 export function createGeniusfunVenue(options: GeniusfunOptions): LaunchpadVenue {
   const parts: VenueParts = {
@@ -69,5 +73,7 @@ export function createGeniusfunVenue(options: GeniusfunOptions): LaunchpadVenue 
     curve: async (request, { signal }) => readCurve(request, parts, signal),
     priceRead: async (request, { signal }) => readCurvePrice(request, parts, signal),
     insiders: async (request, { signal }) => readInsiders(request, parts, signal),
+    launchEvents: launchEventIds,
+    readLaunches: (request) => readGeniusLaunches(request, parts),
   });
 }

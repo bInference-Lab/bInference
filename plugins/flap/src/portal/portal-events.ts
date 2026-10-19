@@ -1,5 +1,6 @@
 import type { LaunchLog } from "@binference/plugin-sdk";
-import { type Address, decodeEventLog, type Hex, isHex, parseAbi, toEventSelector } from "viem";
+import { decodeLog } from "@binference/plugin-sdk/evm";
+import { type Address, type DecodeEventLogReturnType, parseAbi, toEventSelector } from "viem";
 
 // The Portal's events a launch and its curve write, as Flap's docs list them for indexers ("Index
 // Token Created Events") and its verified implementation declares them. None is indexed.
@@ -39,29 +40,7 @@ export type PortalEvent = { readonly index: number } & (
   | { readonly kind: "graduated"; readonly token: Address }
 );
 
-// The log's topics and data as viem decodes them; a part that is no hex reads as no event.
-function wireOf(log: LaunchLog): { topics: [Hex, ...Hex[]]; data: Hex } | undefined {
-  const [first, ...rest] = log.topics;
-  const topics = rest.filter((topic) => isHex(topic));
-  if (first === undefined || !isHex(first) || !isHex(log.data) || topics.length !== rest.length) {
-    return undefined;
-  }
-  return { topics: [first, ...topics], data: log.data };
-}
-
-function decoded(log: LaunchLog) {
-  const wire = wireOf(log);
-  if (wire === undefined) {
-    return undefined;
-  }
-  try {
-    return decodeEventLog({ abi: portalEvents, ...wire, strict: true });
-  } catch {
-    return undefined;
-  }
-}
-
-type Decoded = NonNullable<ReturnType<typeof decoded>>;
+type Decoded = DecodeEventLogReturnType<typeof portalEvents>;
 
 function eventOf(event: Decoded, index: number): PortalEvent {
   if (event.eventName === "TokenCreated") {
@@ -85,6 +64,6 @@ function eventOf(event: Decoded, index: number): PortalEvent {
 
 /** A log the Portal wrote, as one of its events the venue reads; any other is undefined. */
 export function portalEventOf(log: LaunchLog): PortalEvent | undefined {
-  const event = decoded(log);
+  const event = decodeLog(portalEvents, log);
   return event === undefined ? undefined : eventOf(event, log.index);
 }

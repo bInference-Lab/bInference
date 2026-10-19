@@ -40,5 +40,10 @@ apply here. Rules for this plugin:
   `SnipeTaxExempted` logs in the receipts of the blocks of its launch second, since public nodes
   serve no log queries. What a launch read never changes, so the venue keeps it, 512 launches at
   most, the oldest dropped first.
+- The launch reading (decision 0254) reads a listed factory's `TokenLaunched` as a launch, the
+  `SnipeTaxExempted` logs of the curve it names in the same transaction as insiders, and a listed
+  factory's `LaunchSwept` or `PoolGraduated` as a graduation. The curve's creator tax, starting
+  snipe tax, progress and `graduated()` and the token's words complete it through read calls the
+  feed asks at the latest block; a read that fails leaves its fact out.
 - Unit tests use the answers recorded in `src/testing/`, never the network. The fork tests in
   `src/fork/` trade live curve tokens, launch tokens of their own, and run in the fork suite.
