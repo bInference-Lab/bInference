@@ -360,6 +360,7 @@
                 "portfolio",
                 "ledger",
                 "alert",
+                "launch",
                 "notice",
                 "inbox",
                 "config",
@@ -10387,6 +10388,257 @@
             "interval",
             "candles",
             "source"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/launch/list": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "launch/list"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "cursor": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            },
+            "chain": {
+              "type": "string"
+            },
+            "from": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "filters": {
+              "type": "object",
+              "properties": {
+                "launchpads": {
+                  "minItems": 1,
+                  "maxItems": 16,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                  }
+                },
+                "quoteTokens": {
+                  "minItems": 1,
+                  "maxItems": 20,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "maxTaxBps": {
+                  "type": "number"
+                },
+                "maxSnipeTaxBps": {
+                  "type": "number"
+                },
+                "minCurveProgressBps": {
+                  "type": "number"
+                },
+                "minLiquidityUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "maxInsiders": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "maxCreatorLaunches30d": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "chain"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/launch/list": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chain": {
+                    "type": "string"
+                  },
+                  "token": {
+                    "type": "string"
+                  },
+                  "launchpad": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                  },
+                  "creator": {
+                    "type": "string"
+                  },
+                  "quoteToken": {
+                    "type": "string"
+                  },
+                  "taxBps": {
+                    "type": "number"
+                  },
+                  "snipeTaxBps": {
+                    "type": "number"
+                  },
+                  "curveProgressBps": {
+                    "type": "number"
+                  },
+                  "graduated": {
+                    "type": "boolean"
+                  },
+                  "insiders": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "creatorLaunches30d": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "block": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "tx": {
+                    "type": "string"
+                  },
+                  "launchedAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "assets": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "object",
+                      "properties": {
+                        "symbol": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "decimals": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 255
+                        },
+                        "verified": {
+                          "type": "boolean"
+                        },
+                        "onCurve": {
+                          "type": "boolean"
+                        },
+                        "logo": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "symbol",
+                        "name",
+                        "decimals",
+                        "verified"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "chain",
+                  "token",
+                  "launchpad",
+                  "creator",
+                  "quoteToken",
+                  "graduated",
+                  "insiders",
+                  "creatorLaunches30d",
+                  "block",
+                  "tx",
+                  "launchedAt"
+                ]
+              }
+            },
+            "next": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "items"
           ]
         }
       },
@@ -30644,6 +30896,43 @@
                                     "type": "integer",
                                     "minimum": 0,
                                     "maximum": 9007199254740991
+                                  },
+                                  "assets": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {
+                                      "type": "object",
+                                      "properties": {
+                                        "symbol": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "decimals": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 255
+                                        },
+                                        "verified": {
+                                          "type": "boolean"
+                                        },
+                                        "onCurve": {
+                                          "type": "boolean"
+                                        },
+                                        "logo": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "symbol",
+                                        "name",
+                                        "decimals",
+                                        "verified"
+                                      ]
+                                    }
                                   }
                                 },
                                 "required": [
@@ -35770,6 +36059,7 @@
                       "portfolio",
                       "ledger",
                       "alert",
+                      "launch",
                       "notice",
                       "inbox",
                       "config",
@@ -35848,6 +36138,7 @@
                       "portfolio",
                       "ledger",
                       "alert",
+                      "launch",
                       "notice",
                       "inbox",
                       "config",
@@ -35880,6 +36171,7 @@
                       "portfolio",
                       "ledger",
                       "alert",
+                      "launch",
                       "notice",
                       "inbox",
                       "config",
@@ -35940,6 +36232,7 @@
                       "portfolio",
                       "ledger",
                       "alert",
+                      "launch",
                       "notice",
                       "inbox",
                       "config",

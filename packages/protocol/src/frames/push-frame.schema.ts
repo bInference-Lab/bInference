@@ -9,6 +9,7 @@ const fixedTopics = [
   "portfolio",
   "ledger",
   "alert",
+  "launch",
   "notice",
   "inbox",
   "config",

@@ -7,6 +7,7 @@ import {
   at,
   ids,
   intentView,
+  launchView,
   nativeAmount,
   pageOf,
   portfolioView,
@@ -168,6 +169,10 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
       ],
       source: "candle-source",
     },
+  },
+  "launch/list": {
+    args: { chain: refs.chain, from: at - 86_400_000, filters: { maxTaxBps: 300 }, limit: 1 },
+    result: { items: [launchView], next: "1800000000000:128622596:278" },
   },
 };
 

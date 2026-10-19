@@ -216,6 +216,24 @@ export function pageOf(...items: readonly WireValue[]): WireValue {
   return { items, next: "cursor-2" };
 }
 
+/** A token a launchpad created on the example chain, with a first buyer and a 1% tax. */
+export const launchView: WireObject = {
+  chain: refs.chain,
+  token: refs.token,
+  launchpad: "fake-curve",
+  creator: refs.account,
+  quoteToken: refs.native,
+  taxBps: 100,
+  curveProgressBps: 12,
+  graduated: false,
+  insiders: [refs.account],
+  creatorLaunches30d: 2,
+  block: 128_622_596,
+  tx: `0x${"ab".repeat(32)}`,
+  launchedAt: at,
+  assets,
+};
+
 /** A price alert that fired once and woke the agent, as `alert/*` and `inbox/alertFired` show it. */
 export const alertView: WireObject = {
   alert: ids.alert,

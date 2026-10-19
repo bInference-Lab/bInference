@@ -14,7 +14,7 @@ import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type SwapRequest, swapRequestSchema } from "../requests/intent-request.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
-import type { Page } from "../values/page.schema.js";
+import { type Page, type PageArgs, pageArgsShape, pageSchema } from "../values/page.schema.js";
 import { signedUsdMicrosSchema } from "../values/signed-usd-micros.schema.js";
 import {
   type AssetInfos,
@@ -23,6 +23,7 @@ import {
   assetViewSchema,
 } from "../views/asset-info.schema.js";
 import { type LaunchFilter, launchFilterSchema } from "../views/launch-filter.schema.js";
+import { type LaunchView, launchViewSchema } from "../views/launch-view.schema.js";
 import {
   candleViewSchema,
   type ChartView,
@@ -158,6 +159,13 @@ interface ChartArgs {
   readonly limit?: number;
 }
 
+/** The args of `launch/list`: a chain's launches at or after `from`, through the filters. */
+interface LaunchListArgs extends PageArgs {
+  readonly chain: ChainRef;
+  readonly from?: number;
+  readonly filters?: LaunchFilter;
+}
+
 /** The market read operations of protocol spec section 7.3. */
 export interface MarketOperationShapes {
   readonly "portfolio/get": { readonly args: PortfolioArgs; readonly result: PortfolioView };
@@ -176,6 +184,7 @@ export interface MarketOperationShapes {
   readonly "risk/check": { readonly args: AssetArgs; readonly result: RiskView };
   readonly "market/scan": { readonly args: ScanArgs; readonly result: ScanView };
   readonly "market/chart": { readonly args: ChartArgs; readonly result: ChartView };
+  readonly "launch/list": { readonly args: LaunchListArgs; readonly result: Page<LaunchView> };
 }
 
 const assetArgs = z.strictObject({ asset: assetRefSchema });
@@ -305,5 +314,17 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
       priceScale: priceScaleSchema.exactOptional(),
       source: sourceIdSchema,
     }),
+  },
+  "launch/list": {
+    ...readFlags,
+    name: "launch/list",
+    scope: "read",
+    args: z.strictObject({
+      ...pageArgsShape,
+      chain: chainRefSchema,
+      from: epochMsSchema.exactOptional(),
+      filters: launchFilterSchema.exactOptional(),
+    }),
+    result: pageSchema(launchViewSchema),
   },
 };
