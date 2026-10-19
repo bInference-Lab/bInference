@@ -95,7 +95,10 @@ export interface TestLaunchEngine {
   readonly launcher: FakeLauncher;
 }
 
-/** A live test engine with a fake launchpad, the owner's picture and, by default, a launch wallet. */
+/**
+ * A live test engine with a fake launchpad, the picture the owner uploaded from the CLI and, by
+ * default, a launch wallet.
+ */
 export async function testLaunchEngine(launching: Launching = {}): Promise<TestLaunchEngine> {
   const launcher = createFakeLauncher({
     launchOptions: settings,
@@ -107,7 +110,10 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
     chains: testChains([testPad]),
     venues,
     chainSimulator: (launching.simulator ?? ((real) => real))(testLaunchSimulator(launcher)),
-    launchImages: createMemoryLaunchImages(new Map([["upl_moon", png]])),
+    launchImages: createMemoryLaunchImages(
+      new Map([["upl_moon", png]]),
+      testCallers.cli.credential,
+    ),
     wallets: [testWallet, testLaunchWallet],
     custodyWallets: new Map([[testLaunchWallet, testLaunchAccount]]),
     ...options,
@@ -147,11 +153,14 @@ export const testLaunch: LaunchTokenRequest = {
   venueOptions: { taxBps: 300 },
 };
 
-/** Proposes a request and answers its intent; a refusal fails the test. */
+/**
+ * Proposes a request, by default as the owner on the CLI, who uploaded the test picture, and
+ * answers its intent; a refusal fails the test.
+ */
 export async function proposeIntent(
   test: TestEngine,
   request: IntentRequest = testLaunch,
-  caller: EngineCaller = testCallers.runtime,
+  caller: EngineCaller = testCallers.cli,
 ): Promise<IntentView> {
   const proposed = await test.engine.handlers["intent/propose"](testCall(request, caller));
   if (!proposed.ok) {

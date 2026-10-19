@@ -109,7 +109,8 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
       if (proposer === undefined) {
         return err("auth.scope");
       }
-      const proposed = await options.moneyPath.propose(args, proposer, { signal });
+      const proposing = { signal, credential: caller.credential };
+      const proposed = await options.moneyPath.propose(args, proposer, proposing);
       return proposed.ok ? viewOf(options, proposed.value) : proposed;
     },
     "intent/get": async ({ args, signal }) =>

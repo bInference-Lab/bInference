@@ -429,7 +429,11 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   its card, or ended; its card reaches the owner with `card/opened`. A `venue` that launches no
   token on the pair's chain fails with `quote.no_route`, and `venueOptions` its launchpad does not
   declare, or values that do not fit them, with `protocol.bad_args`; neither stores anything. Its
-  `image` is an upload id from `upload/start` ([decision 0234](../DECISIONS.md#d0234)).
+  `image` is an upload id from `upload/start` ([decision 0234](../DECISIONS.md#d0234)). Only the
+  owner starts a launch: one the agent runtime or an MCP client proposes fails with
+  `intent.owner_only` before anything is read, stored or uploaded, and a launch whose `image` the
+  proposer's own credential did not upload ends `failed_check` with `image_unreadable`
+  ([decision 0236](../DECISIONS.md#d0236)).
 - `intent/confirm` must name the card's current `cardVersion`. A re-quote that changes the terms
   opens a new card version ([rule 4](../ARCHITECTURE.md#rule-4)), and confirming an old version
   fails with `intent.card_changed`. A Confirm that would take the agent past its rolling 24-hour
@@ -944,7 +948,7 @@ later unchanged.
 | `address`  | `not_found`, `launch_wallet`                                                                                |
 | `rescue`   | `no_address`, `nothing_to_move`                                                                             |
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                                       |
-| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`                                          |
+| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`                            |
 | `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                          |
 | `schedule` | `not_found`, `bad_when`, `too_many`                                                                         |
 | `note`     | `not_found`                                                                                                 |

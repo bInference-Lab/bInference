@@ -158,7 +158,7 @@ describe("a token launch refused before any upload", () => {
   it("refuses settings its launchpad does not take, and a venue that launches nothing", async () => {
     const { test } = await engineOver();
     const call = (request: IntentRequest) =>
-      test.engine.handlers["intent/propose"](testCall(request, testCallers.runtime));
+      test.engine.handlers["intent/propose"](testCall(request, testCallers.cli));
     await expect(call({ ...launch, venueOptions: { taxBps: 5_000 } })).resolves.toStrictEqual({
       ok: false,
       error: "protocol.bad_args",
@@ -170,22 +170,53 @@ describe("a token launch refused before any upload", () => {
   });
 });
 
+describe("who starts a token launch", () => {
+  it.each([
+    ["the agent runtime", testCallers.runtime],
+    ["an MCP client", testCallers.mcp],
+  ])("refuses %s before anything is read, stored or uploaded", async (_name, caller) => {
+    const { test, launcher } = await engineOver();
+    await expect(
+      test.engine.handlers["intent/propose"](testCall(launch, caller)),
+    ).resolves.toStrictEqual({ ok: false, error: "intent.owner_only" });
+    const listed = await test.engine.handlers["intent/list"](
+      testCall({ agent: launch.agent }, testCallers.cli),
+    );
+    expect(listed).toMatchObject({ ok: true, value: { items: [] } });
+    expect([launcher.uploads(), launcher.statusReads()]).toStrictEqual([[], 0]);
+  });
+});
+
 // A PNG as the owner uploads it.
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7]);
 
+// An upload shelf holding the PNG, uploaded with a ticket the credential held.
+function shelfWith(holder: string) {
+  const shelf = createUploadShelf({
+    clock: createManualClock(testNowMs),
+    random: createSeededRandom(234),
+  });
+  const { ticket } = shelf.ticket({ contentType: "image/png", bytes: png.byteLength }, holder);
+  return { shelf, upload: expectOk(shelf.receive(ticket, png)) };
+}
+
 describe("a token launch's picture", () => {
   it("is read from the owner's upload store, as the server filled it", async () => {
-    const shelf = createUploadShelf({
-      clock: createManualClock(testNowMs),
-      random: createSeededRandom(234),
-    });
-    const { ticket } = shelf.ticket({ contentType: "image/png", bytes: png.byteLength }, "cli");
-    const upload = expectOk(shelf.receive(ticket, png));
+    const { shelf, upload } = shelfWith(testCallers.cli.credential);
     const { test, launcher } = await engineOver({ options: { launchImages: shelf } });
 
     const view = await propose(test, { ...launch, image: upload });
     expect(view.state).toBe("awaiting_confirmation");
     expect(launcher.uploads().map((made) => made.image.bytes)).toStrictEqual([png]);
+  });
+
+  it("must be the proposer's own upload: another credential's ends image_unreadable", async () => {
+    const { shelf, upload } = shelfWith("tg:279058397");
+    const { test, launcher } = await engineOver({ options: { launchImages: shelf } });
+
+    const view = await propose(test, { ...launch, image: upload });
+    expect(view).toMatchObject({ state: "failed_check", outcome: { reason: "image_unreadable" } });
+    expect(launcher.uploads()).toStrictEqual([]);
   });
 });
 

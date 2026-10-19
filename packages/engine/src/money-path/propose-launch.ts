@@ -31,7 +31,17 @@ interface LaunchRun {
   readonly options: LaunchPathOptions;
   readonly parts: AdvanceParts;
   readonly resolved: ResolvedLaunch;
+  /** The credential the owner proposed with, whose upload the picture must be. */
+  readonly credential: string | undefined;
   readonly signal: AbortSignal;
+}
+
+/** The owner's launch proposal, and the credential the owner proposed with. */
+export interface LaunchProposal {
+  readonly request: LaunchTokenRequest;
+  readonly proposer: Proposer;
+  /** Absent, no upload is the proposer's and the launch reads no picture. */
+  readonly credential: string | undefined;
 }
 
 // The pin wait of decision 0234: 5 minutes after the upload.
@@ -84,15 +94,18 @@ function firstBuyOf(run: LaunchRun, quote: LaunchQuote) {
   return { spend: firstBuy, expectedOut, minOut: minOutFloor(expectedOut, slippage) };
 }
 
-// The picture, read once: its bytes and what the quote keeps of it, else `undefined`.
+// The picture, read once: its bytes and what the quote keeps of it, else `undefined`. An upload
+// another credential made is read as none (decision 0236).
 async function readImage(
   run: LaunchRun,
 ): Promise<{ readonly bytes: Readonly<Uint8Array>; readonly image: LaunchImage } | undefined> {
   const { images } = run.options.launch;
+  const uploaded = run.resolved.request.image;
+  const isOwn = run.credential !== undefined && images?.holderOf(uploaded) === run.credential;
   const read =
-    images === undefined
+    images === undefined || !isOwn
       ? undefined
-      : await images.read(run.resolved.request.image, { signal: run.signal });
+      : await images.read(uploaded, { signal: run.signal });
   const image = read?.ok === true ? launchImageOf(read.value) : undefined;
   return read?.ok === true && image !== undefined ? { bytes: read.value, image } : undefined;
 }
@@ -209,17 +222,18 @@ async function runLaunch(run: LaunchRun, proposed: IntentSnapshot): Promise<Inte
 }
 
 /**
- * Proposes a token launch (decision 0234): it is resolved and stored, refused by the policy in
- * paper mode, and else quoted by its launchpad, judged by the policy, checked to run from the
- * agent's launch wallet, its picture read, uploaded and pinned, and built. It answers once the
+ * Proposes the owner's token launch (decision 0234): it is resolved and stored, refused by the
+ * policy in paper mode, and else quoted by its launchpad, judged by the policy, checked to run
+ * from the agent's launch wallet, its picture read from an upload the proposer made (decision
+ * 0236), uploaded and pinned, and built. It answers once the
  * launch waits in `quoted` for its pin, or has passed it to its card, or ended.
  */
 export async function proposeLaunch(
   options: LaunchPathOptions,
-  call: { readonly request: LaunchTokenRequest; readonly proposer: Proposer },
+  call: LaunchProposal,
   signal: AbortSignal,
 ): Promise<Result<IntentSnapshot, ProtocolErrorCode>> {
-  const { request, proposer } = call;
+  const { request, proposer, credential } = call;
   const started = await startProposal(options, call, signal);
   if (!started.ok) {
     return started;
@@ -233,5 +247,6 @@ export async function proposeLaunch(
   const intent = { request, proposer, step, wallet: resolved.value.wallet, assets: {} };
   const created = await storeProposed(options, intent, signal);
   const parts = { stored: options.stored, machine, signal };
-  return ok(await runLaunch({ options, parts, resolved: resolved.value, signal }, created));
+  const run = { options, parts, resolved: resolved.value, credential, signal };
+  return ok(await runLaunch(run, created));
 }

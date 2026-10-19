@@ -1,6 +1,6 @@
 # 0234. A token launch waits in quoted for its pin and signs from the launch wallet
 
-Status: Accepted
+Status: Amended by 0236
 
 Accepted by the owner on 2026-10-16.
 

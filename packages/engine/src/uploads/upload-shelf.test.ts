@@ -43,6 +43,15 @@ describe("the upload shelf", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
+  it("names the credential that held an upload's ticket, while it keeps the upload", async () => {
+    const { shelf, clock } = shelfAt();
+    const upload = expectOk(shelf.receive(shelf.ticket(png, holder).ticket, testPng));
+    expect(shelf.holderOf(upload)).toBe(holder);
+    expect(shelf.holderOf("upl_gone")).toBeUndefined();
+    await clock.advance(3_600_000);
+    expect(shelf.holderOf(upload)).toBeUndefined();
+  });
+
   it("takes one body per ticket, within 2 minutes", async () => {
     const { shelf, clock } = shelfAt();
     const first = shelf.ticket(png, holder);

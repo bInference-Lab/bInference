@@ -9,12 +9,20 @@ describe("the memory launch images", () => {
     ownerImageSourceContract({
       create: async () =>
         await Promise.resolve({
-          source: createMemoryLaunchImages(new Map([["upl_a", bytes]])),
+          source: createMemoryLaunchImages(new Map([["upl_a", bytes]]), "tok_a"),
           held: { image: "upl_a", bytes },
           gone: "upl_b",
         }),
     }),
   )("follow the owner image source contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
+  });
+
+  it("name one holder for every upload they hold, and none for another", () => {
+    const images = createMemoryLaunchImages(new Map([["upl_a", bytes]]), "tok_a");
+    expect([images.holderOf("upl_a"), images.holderOf("upl_b")]).toStrictEqual([
+      "tok_a",
+      undefined,
+    ]);
   });
 });

@@ -23,7 +23,7 @@ import {
   testLaunchWallet,
   testPad,
 } from "../money-path/test-launches.js";
-import { testChains } from "../operations/test-engine.js";
+import { testCallers, testChains } from "../operations/test-engine.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { driveUntil, type ExecutorBench, startExecutorBench, tapped } from "./test-executor.js";
 
@@ -80,7 +80,10 @@ async function benchOf(): Promise<ExecutorBench> {
         [testLaunchWallet, testLaunchAccount],
       ]),
       chainSimulator: testLaunchSimulator(launcher),
-      launchImages: createMemoryLaunchImages(new Map([["upl_moon", png]])),
+      launchImages: createMemoryLaunchImages(
+        new Map([["upl_moon", png]]),
+        testCallers.cli.credential,
+      ),
     },
     launch: { venues, chains, wallets, curves },
   });

@@ -37,6 +37,18 @@ export interface Proposer {
   readonly hasOutsideContent: boolean;
 }
 
+/** How a proposal reaches the money path. */
+interface ProposeOptions {
+  readonly signal: AbortSignal;
+  /** The engine's fill of an auto order; never set for a caller's proposal. */
+  readonly fill?: FillProposal;
+  /**
+   * The credential the caller signed in with, whose uploads a token launch may read (decision
+   * 0236); absent, a launch reads no picture.
+   */
+  readonly credential?: string;
+}
+
 /**
  * Steps 1 to 6 of the money path (ARCHITECTURE.md section 7): resolve, policy, quote and build,
  * risk, simulation, and the card or the auto mode's authorization. Every allowed venue quotes
@@ -55,7 +67,7 @@ export interface MoneyPath {
   propose(
     request: IntentRequest,
     proposer: Proposer,
-    options: { readonly signal: AbortSignal; readonly fill?: FillProposal },
+    options: ProposeOptions,
   ): Promise<Result<IntentSnapshot, ProtocolErrorCode>>;
 }
 

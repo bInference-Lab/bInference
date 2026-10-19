@@ -43,6 +43,11 @@ export interface UploadShelf extends OwnerImageSource {
     body: Readonly<Uint8Array>,
     admits?: (holder: UploadHolder) => boolean,
   ): Result<string, UploadRefusal>;
+  /**
+   * The credential that held the ticket of an upload the shelf still keeps, else `undefined`. A
+   * launch reads only a picture its proposer uploaded (decision 0236).
+   */
+  holderOf(upload: string): UploadHolder | undefined;
 }
 
 /** How long tickets and uploads last, and how many of each the shelf holds. */
@@ -57,6 +62,11 @@ export interface UploadShelfOptions {
 
 interface Planned {
   readonly plan: UploadPlan;
+  readonly holder: UploadHolder;
+}
+
+interface Received {
+  readonly bytes: Readonly<Uint8Array>;
   readonly holder: UploadHolder;
 }
 
@@ -78,24 +88,23 @@ function prune<T>(held: Map<string, Kept<T>>, now: number, most?: number): void 
   }
 }
 
-function checked(
-  plan: UploadPlan,
-  body: Readonly<Uint8Array>,
-): Result<Readonly<Uint8Array>, UploadRefusal> {
+// The body as the shelf keeps it, with the ticket's holder, once it fits the ticket's plan.
+function checked(planned: Planned, body: Readonly<Uint8Array>): Result<Received, UploadRefusal> {
+  const { plan, holder } = planned;
   if (body.byteLength > maxImageBytes || body.byteLength > plan.bytes) {
     return err("too_large");
   }
   if (body.byteLength !== plan.bytes) {
     return err("length");
   }
-  return imageTypeOf(body) === plan.contentType ? ok(body) : err("format");
+  return imageTypeOf(body) === plan.contentType ? ok({ bytes: body, holder }) : err("format");
 }
 
 /** Creates an empty {@link UploadShelf}. */
 export function createUploadShelf(options: UploadShelfOptions): UploadShelf {
   const { clock, random } = options;
   const tickets = new Map<string, Kept<Planned>>();
-  const uploads = new Map<string, Kept<Readonly<Uint8Array>>>();
+  const uploads = new Map<string, Kept<Received>>();
   const ticketMs = options.ticketMs ?? 120_000;
   const keepMs = options.keepMs ?? 3_600_000;
   const most = options.most ?? 16;
@@ -114,7 +123,7 @@ export function createUploadShelf(options: UploadShelfOptions): UploadShelf {
       const planned = tickets.get(ticket)?.value;
       tickets.delete(ticket);
       const isAdmitted = planned !== undefined && (admits?.(planned.holder) ?? true);
-      const kept = isAdmitted ? checked(planned.plan, body) : err("ticket" as const);
+      const kept = isAdmitted ? checked(planned, body) : err("ticket" as const);
       if (!kept.ok) {
         return kept;
       }
@@ -126,11 +135,15 @@ export function createUploadShelf(options: UploadShelfOptions): UploadShelf {
     async read(image, call) {
       call.signal.throwIfAborted();
       prune(uploads, clock.now(), most);
-      const bytes = uploads.get(image)?.value;
+      const bytes = uploads.get(image)?.value.bytes;
       if (bytes === undefined) {
         return Promise.resolve(err("unreadable"));
       }
       return Promise.resolve(bytes.byteLength > maxImageBytes ? err("too_large") : ok(bytes));
+    },
+    holderOf(upload) {
+      prune(uploads, clock.now(), most);
+      return uploads.get(upload)?.value.holder;
     },
   };
 }
