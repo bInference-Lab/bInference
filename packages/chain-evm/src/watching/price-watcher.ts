@@ -7,7 +7,7 @@ import type { BlockSource, BlockSourceState, SeenHead } from "./block-source.js"
 import { pricesOf, type ReadQuarantine, type WatchedPrice } from "./price-batch.js";
 import { type BlockOutcome, type BlockReader, readBlocks } from "./read-blocks.js";
 import { createReadProgress, type ReadProgress } from "./read-progress.js";
-import { repeatSteps } from "./repeat-steps.js";
+import { runWithHeads } from "./run-with-heads.js";
 import { createWakeUp, type WakeUp } from "./wake-up.js";
 import {
   createWatchList,
@@ -185,36 +185,24 @@ type RunParts = Pick<WatcherRun, "options" | "list" | "progress" | "emit">;
 
 // The block source and the reads end together: a fault in either stops both.
 async function runWatcher(parts: RunParts, signal: AbortSignal): Promise<void> {
-  signal.throwIfAborted();
   const { options, progress } = parts;
-  const both = new AbortController();
-  const stopBoth = (): void => both.abort(signal.reason);
-  signal.addEventListener("abort", stopBoth, { once: true });
-  const wake = createWakeUp(options.clock);
   const feeds = new Map(options.feeds.map((feed) => [feed.asset, feed]));
-  const run: WatcherRun = { ...parts, feeds, wake, signal: both.signal };
-  const onHead = (number: bigint, seen?: SeenHead): void => {
-    progress.seeHead(number, seen?.endpoint);
-    if (seen?.isReorg === true) {
-      progress.rewind(number);
-    }
-    wake.wake();
-  };
-  const endingBoth = async (work: Promise<void>): Promise<void> => {
-    try {
-      await work;
-    } finally {
-      both.abort();
-    }
-  };
-  try {
-    await Promise.all([
-      endingBoth(options.blocks.run(onHead, both.signal)),
-      endingBoth(repeatSteps(async () => readStep(run))),
-    ]);
-  } finally {
-    signal.removeEventListener("abort", stopBoth);
-  }
+  await runWithHeads(
+    options.blocks,
+    (shared) => {
+      const wake = createWakeUp(options.clock);
+      const run: WatcherRun = { ...parts, feeds, wake, signal: shared };
+      const onHead = (number: bigint, seen?: SeenHead): void => {
+        progress.seeHead(number, seen?.endpoint);
+        if (seen?.isReorg === true) {
+          progress.rewind(number);
+        }
+        wake.wake();
+      };
+      return { onHead, step: async () => readStep(run) };
+    },
+    signal,
+  );
 }
 
 /**
