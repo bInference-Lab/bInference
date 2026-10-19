@@ -21,8 +21,8 @@ function launchedTokenInfo(launch: StoredLaunch): AssetInfo | undefined {
       };
 }
 
-// The info of a launch's token and quote token: the registry's first, then the feed's words.
-function launchAssetsOf(chains: ChainRegistry, launch: StoredLaunch): AssetInfos {
+/** The info of a launch's token and quote token: the registry's first, then the feed's words. */
+export function launchAssetsOf(chains: ChainRegistry, launch: StoredLaunch): AssetInfos {
   const token = assetInfoOf(chains, launch.token) ?? launchedTokenInfo(launch);
   const quote = assetInfoOf(chains, launch.quoteToken);
   return {

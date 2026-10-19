@@ -5,6 +5,7 @@ import type { WalletRecord } from "../install/install-record.js";
 import {
   createMarketHandlers,
   type MarketHandlers,
+  type MarketHandlersOptions,
   type MarketParts,
 } from "../market/market-handlers.js";
 import { assetInfoOf, knownAssetInfos } from "../money-path/asset-infos.js";
@@ -35,6 +36,8 @@ export interface PortfolioHandlersOptions extends LiveHoldingsOptions, MarketPar
   readonly portfolio: PaperPortfolio;
   /** What intents stored of tokens the registry does not list, which the portfolio shows. */
   readonly intents: Pick<IntentStore, "storedAssets">;
+  /** The launch feed's records `market/scan` reads, when the engine runs a launch feed. */
+  readonly launchScan?: MarketHandlersOptions["launches"];
 }
 
 // A missing price is a feed the engine could not read now, such as the native coin's.
@@ -142,7 +145,11 @@ async function pnlOf(
 export function createPortfolioHandlers(options: PortfolioHandlersOptions): PortfolioHandlers {
   return {
     ...createAssetSearchHandlers(options),
-    ...createMarketHandlers({ reads: options.marketReads, chains: options.chains }),
+    ...createMarketHandlers({
+      reads: options.marketReads,
+      chains: options.chains,
+      ...(options.launchScan === undefined ? {} : { launches: options.launchScan }),
+    }),
     async "portfolio/get"({ args, signal }) {
       const wallets = await walletsOf(options, args, signal);
       if (!wallets.ok) {

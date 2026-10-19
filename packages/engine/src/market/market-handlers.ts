@@ -6,7 +6,7 @@ import {
   type MarketPool,
   type TrendingToken,
 } from "@binference/chain";
-import { err, ok, type Result } from "@binference/core";
+import { type Clock, err, ok, type Result } from "@binference/core";
 import type {
   ArgsOf,
   CandleView,
@@ -14,6 +14,8 @@ import type {
   ResultOf,
   ScanItem,
 } from "@binference/protocol";
+import type { LaunchReadOptions } from "../launches/launch-query.js";
+import { scanLaunches } from "../launches/scan-launches.js";
 import { assetInfosOf } from "../money-path/asset-infos.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { MarketReadFailure } from "./market-answer.js";
@@ -30,12 +32,19 @@ export interface MarketHandlers {
 export interface MarketParts {
   /** What `market/scan` and `market/chart` read; they never price a trade. */
   readonly marketReads: MarketReads;
+  /**
+   * Whether the engine runs a launch feed, whose records `market/scan` reads with
+   * `source: launches` (decision 0256); without one that scan fails `market.no_launch_feed`.
+   */
+  readonly launchFeed?: boolean;
 }
 
-/** What the market handlers read: the market reads and the chain registry. */
+/** What the market handlers read: the market reads, the chain registry and the launches. */
 export interface MarketHandlersOptions {
   readonly reads: MarketReads;
   readonly chains: ChainRegistry;
+  /** The launch feed's records, when the engine runs one. */
+  readonly launches?: LaunchReadOptions & { readonly clock: Clock };
 }
 
 /** The items a scan answers unless the call asks for fewer or more. */
@@ -92,7 +101,7 @@ function candleViewOf(candle: MarketCandle, scale: number): CandleView {
 const failed = <T>(failure: MarketReadFailure): Result<T, ProtocolErrorCode> =>
   err(failureCodes[failure]);
 
-// `market/scan`: the chain's trending tokens; launches wait for the launch feed.
+// `market/scan`: the chain's trending tokens, or the launch feed's launches while it runs.
 async function scanOf(
   options: MarketHandlersOptions,
   args: ArgsOf<"market/scan">,
@@ -103,7 +112,9 @@ async function scanOf(
     return err("protocol.bad_args");
   }
   if (args.source === "launches") {
-    return err("market.no_launch_feed");
+    return options.launches === undefined
+      ? err("market.no_launch_feed")
+      : scanLaunches(options.launches, args, signal);
   }
   const trending = await reads.trending(args.chain, { signal });
   if (!trending.ok) {
@@ -153,7 +164,8 @@ async function chartOf(
  * reads, in their source's order, at most `limit` (20 unless given), each with its pool's figures
  * and its active boosts, and the registry's info of the tokens it lists; prices are scaled per
  * item (decision 0184). A chain the registry does not hold, or `filters` with `trending`, is
- * `protocol.bad_args`; `launches` is `market.no_launch_feed` while no launch feed runs.
+ * `protocol.bad_args`; `launches` reads the launch feed's records (see {@link scanLaunches}), and is
+ * `market.no_launch_feed` while no launch feed runs.
  * `market/chart` answers a token's `limit` (100 unless given) newest candles before `to`, oldest
  * first, with one price scale for the chart and the source's name. A read with no answer is
  * `market.no_data`, one whose source was down `market.source_down`.

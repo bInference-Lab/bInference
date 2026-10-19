@@ -72,14 +72,21 @@ function contextHandlersOf(
   };
 }
 
-/**
- * Creates the settings handlers on the engine's options and its paper parts: the portfolio, the
- * agent's mode, its wallets and ceilings, its notice settings (decision 0185) and its workspace
- * files.
- */
-export function settingsHandlers(options: EngineOptions, paper: PaperParts): SettingsHandlers {
+// The launch feed's records, which `market/scan` reads with `source: launches`.
+function launchScanOf(options: EngineOptions) {
+  const { stores, chains, host, clock } = options;
+  return {
+    launches: stores.launches,
+    chains,
+    isLaunchpad: (venue: string) => host.isLaunchpad(venue),
+    clock,
+  };
+}
+
+// The portfolio and market reads, over the paper parts and the launch feed's records.
+function portfolioOf(options: EngineOptions, paper: PaperParts): PortfolioHandlers {
   const { stores, chains } = options;
-  const portfolio = createPortfolioHandlers({
+  return createPortfolioHandlers({
     marketReads: options.marketReads,
     agents: stores.agents,
     install: stores.install,
@@ -90,7 +97,18 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     wallets: options.wallets,
     prices: options.prices,
     chains,
+    ...(options.launchFeed === true ? { launchScan: launchScanOf(options) } : {}),
   });
+}
+
+/**
+ * Creates the settings handlers on the engine's options and its paper parts: the portfolio, the
+ * agent's mode, its wallets and ceilings, its notice settings (decision 0185) and its workspace
+ * files.
+ */
+export function settingsHandlers(options: EngineOptions, paper: PaperParts): SettingsHandlers {
+  const { stores, chains } = options;
+  const portfolio = portfolioOf(options, paper);
   const modes = createAgentModeHandlers({
     agents: stores.agents,
     journal: stores.configJournal,

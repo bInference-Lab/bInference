@@ -95,6 +95,8 @@ export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCalle
 /** How a test engine differs from the default: a paper agent in manual mode on the fake venue. */
 export interface TestEngineOptions {
   readonly agent?: Partial<AgentDraft>;
+  /** Whether the engine runs a launch feed, whose records `market/scan` reads. */
+  readonly launchFeed?: boolean;
   /** The owner's timezone, whose days the model budget runs over; UTC when absent. */
   readonly timeZone?: string;
   /** The tokens the price watcher cannot price; it prices every other. */
@@ -255,6 +257,17 @@ function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter
   };
 }
 
+// Whether live orders fill and a launch feed runs, and the uploads, as the test asks.
+function switchesOf(
+  options: TestEngineOptions,
+): Pick<EngineOptions, "liveOrderFills" | "launchFeed" | "uploads"> {
+  return {
+    liveOrderFills: options.liveOrderFills === true,
+    ...(options.launchFeed === true ? { launchFeed: true } : {}),
+    ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
+  };
+}
+
 // The runtime's running turns, started with the test runtime's token.
 function testTurns(): RunningTurns {
   const turns = createRunningTurns();
@@ -313,8 +326,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     paperBalances: testPaperBalances,
     workspace: createMemoryWorkspaceFiles(clock),
     isLocked: options.isLocked ?? (() => false),
-    liveOrderFills: options.liveOrderFills === true,
-    ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
+    ...switchesOf(options),
     chains,
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),

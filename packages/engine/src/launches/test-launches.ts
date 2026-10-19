@@ -68,10 +68,13 @@ function launchOf(test: TestEngine, n: number, hoursAgo: number): NewLaunch {
 
 /**
  * A test engine whose venue host runs the fake curve, with the fake curve's launches 1 to 3 made
- * 30, 10 and 1 hours ago stored.
+ * 30, 10 and 1 hours ago stored, and a launch feed when `launchFeed` says so.
  */
-export async function withLaunches(): Promise<TestEngine> {
+export async function withLaunches(
+  options: { readonly launchFeed?: boolean } = {},
+): Promise<TestEngine> {
   const test = await startTestEngine({
+    ...options,
     chains: testChains(["fake-curve"]),
     venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [] })],
   });
