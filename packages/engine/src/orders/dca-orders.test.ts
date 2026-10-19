@@ -6,6 +6,9 @@ import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import { expectOk, testAgent, testNowMs, testToken } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
 import type { Simulator } from "../ports.js";
+import { dcaPeriodDocument } from "./dca-period.js";
+import { moveOrder } from "./order-machine.js";
+import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import { activeOrder, fillIntentsOf, fillRowsOf, startFillEngine } from "./test-fills.js";
 import { storedOrder } from "./test-orders.js";
@@ -34,6 +37,19 @@ function failingMoves(store: OrderStore, broken: { readonly id?: string }): Orde
         ? Promise.reject(new BinferenceError({ code: "store.down", message: "down" }))
         : store.move(moves, call),
   };
+}
+
+// A DCA order as if its zone no longer read.
+function zoneGone(order: OrderRecord): OrderRecord {
+  const trigger = { cron: "*/5 * * * *", timezone: "Mars/Base" };
+  return order.request.kind === "dca"
+    ? { ...order, request: { ...order.request, trigger } }
+    : order;
+}
+
+// The order store, answering every DCA order as if its zone no longer read.
+function zonesGone(store: OrderStore): OrderStore {
+  return { ...store, list: async (query, call) => (await store.list(query, call)).map(zoneGone) };
 }
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
@@ -148,5 +164,34 @@ describe("a DCA order", () => {
     await expect(test.engine.runSchedules(live)).rejects.toMatchObject({ code: "store.down" });
 
     expect(outcomes(await fillRowsOf(test, working.id))).toStrictEqual(["filled", "filled"]);
+  });
+
+  it("ends an order whose zone no longer reads, and tells the owner why", async () => {
+    const test = await startFillEngine({ orders: zonesGone });
+    const order = await activeOrder(test, dca);
+
+    await test.engine.runSchedules(live);
+
+    expect((await storedOrder(test, order.id)).state).toBe("cancelled");
+    expect(await fillRowsOf(test, order.id)).toMatchObject([
+      { reason: "period_unreadable", notices: [{ key: "notice.skipped" }] },
+    ]);
+  });
+
+  it("records a period a stop cut off between keeping it and its buy as missed, once", async () => {
+    const test = await startFillEngine();
+    const order = await activeOrder(test, dca);
+    const kept = dcaPeriodDocument.encode({ nextAtMs: firstAt + 5 * minuteMs, buying: firstAt });
+    const move = moveOrder(order, { type: "trigger_kept", triggerState: kept }, firstAt);
+    await test.clock.advance(5 * minuteMs);
+    await test.stores.orders.move([expectOk(move)], live);
+
+    const restarted = test.restart();
+    const repaired = await restarted.repairOrderFills(live);
+    const again = await test.restart().repairOrderFills(live);
+
+    expect([repaired, again]).toStrictEqual([1, 0]);
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:missed"]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
   });
 });

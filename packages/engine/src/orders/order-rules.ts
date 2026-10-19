@@ -185,20 +185,21 @@ function filledOrder(
  * Checks an `order/create` request against the rules of decisions 0189, 0190 and 0246 and fills
  * its defaults: an expiry 30 days after `nowMs`, one fill for a price order that names no more, a
  * limit or take-profit order's trigger price as its worst price (decision 0197), the chain's coin
- * as what a buy spends, and a DCA order's zone, `ownerZone` (UTC when absent) unless it names one.
+ * as what a buy spends, and a DCA order's zone, `ownerZone` (`owner.timezone` now), unless it
+ * names one.
  * A copy order is `order.kind_unavailable`; a DCA period binference cannot read, or with no run
  * ahead, `schedule.bad_when`; any other broken rule `protocol.bad_args`, a DCA sale among them.
  */
 export function checkOrderRequest(
   given: OrderRequest,
-  context: { readonly nowMs: number; readonly chains: ChainRegistry; readonly ownerZone?: string },
+  context: { readonly nowMs: number; readonly chains: ChainRegistry; readonly ownerZone: string },
 ): Checked<CheckedOrder> {
   if (!fillingKinds.has(given.kind)) {
     return err("order.kind_unavailable");
   }
   const dca =
     given.kind === "dca"
-      ? dcaOf(given, { nowMs: context.nowMs, ownerZone: context.ownerZone ?? "UTC" })
+      ? dcaOf(given, { nowMs: context.nowMs, ownerZone: context.ownerZone })
       : ok(given);
   if (!dca.ok) {
     return dca;

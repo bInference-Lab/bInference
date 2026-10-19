@@ -1,4 +1,6 @@
 import type { StoredIntents } from "../intents/create-stored-intents.js";
+import { repairDcaPeriods } from "../orders/dca-repair.js";
+import type { OrderFills } from "../orders/fill-orders.js";
 import { repairOrderFills } from "../orders/repair-order-fills.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
@@ -19,12 +21,22 @@ export function paperRepairOf(
   return async (call) => repairPaperFills(repair, call);
 }
 
-/** The startup's repair of the order fills a stop left (decision 0197). */
+/**
+ * The startup's repair of the order fills a stop left (decision 0197), then of the DCA periods a
+ * stop cut off between keeping them and their buy (decision 0246).
+ */
 export function orderRepairOf(
   options: EngineOptions,
-  stored: StoredIntents,
+  parts: { readonly stored: StoredIntents; readonly fills: OrderFills },
 ): Engine["repairOrderFills"] {
-  const { stores, clock, ids, publish } = options;
-  return async (call) =>
-    repairOrderFills({ stored, orders: stores.orders, clock, ids, publish }, call);
+  const { stores, clock, ids, publish, chains } = options;
+  const { stored, fills } = parts;
+  return async (call) => {
+    const repaired = await repairOrderFills(
+      { stored, orders: stores.orders, clock, ids, publish },
+      call,
+    );
+    const dca = { orders: stores.orders, fills, intents: stores.intents, chains, clock };
+    return repaired + (await repairDcaPeriods(dca, call));
+  };
 }

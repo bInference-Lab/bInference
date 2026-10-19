@@ -269,7 +269,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
   the buy, a fill keeps it, and the order waits after a skip only once fills failed on chain, as an
   exit order does. A period more than 60 seconds late when the queue sees it is skipped with
   `missed`, and one past its minute when its buy reaches the head of the agent's line with
-  `late`; a buy that cannot run behind a fill still settling is skipped with `fill_waiting`.
+  `late`; a buy that cannot run behind a fill still settling is skipped with `fill_waiting`. A
+  period a stop cut off between its keep and its buy is recorded as `missed` at the next start; an
+  order whose period no longer reads records `period_unreadable` and is cancelled.
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when

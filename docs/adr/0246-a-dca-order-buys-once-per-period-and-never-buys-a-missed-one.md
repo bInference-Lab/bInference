@@ -31,7 +31,7 @@ The specs leave open:
   wall clock of `timezone`, which `order/create` fills with `owner.timezone` when the request names
   none, so the card shows it and its terms hash binds it. A later change of `owner.timezone` moves
   no DCA order. An expression or zone binference cannot read, or with no run in eight years, is
-  `schedule.bad_when`.
+  `schedule.bad_when`. The order rules take `owner.timezone` from every caller.
 - **`count` counts buys.** It is the order's `maxFills`; a request naming both must agree. Without
   one, the order buys every period until it expires, 30 days by default.
 - **Each period buys once.** The schedule queue's timer runs the active DCA orders beside the
@@ -55,6 +55,11 @@ The specs leave open:
   `late`, never bought. A buy that cannot run behind a live fill still settling, after fills
   failed on chain, or behind a fill of the same order, is skipped as `fill_waiting`. Every period
   of an order still active leaves a row and a notice; none is lost in silence.
+- **A stop between the keep and the buy.** The keep also names the period whose buy it hands on.
+  At the start, such a period with no row since its due time, and no live fill of the agent still
+  settling, is recorded as `missed`, once.
+- **A period that no longer reads ends its order.** A zone a later time zone database drops, or a
+  cron that no longer reads, records `period_unreadable` with its notice and cancels the order.
 - **Live waits.** While live fills are off, `order/create` refuses a live DCA order with
   `order.live_fills_off`, as a live price order; one stored before skips with `live_fills_off`.
 - **The card.** `card.order.summary.dca` with `card.order.schedule`, "on the schedule {cron}

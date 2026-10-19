@@ -82,7 +82,7 @@ describe("the rules of a new auto order, for every request", () => {
   it("accepts exactly the requests every rule allows, and never a size, price or expiry of zero", () => {
     fc.assert(
       fc.property(requests, (request) => {
-        const checked = checkOrderRequest(request, { nowMs: testNowMs, chains });
+        const checked = checkOrderRequest(request, { nowMs: testNowMs, chains, ownerZone: "UTC" });
         expect(checked.ok).toBe(isAllowed(request));
       }),
       { numRuns: 2_000 },
@@ -93,7 +93,7 @@ describe("the rules of a new auto order, for every request", () => {
     fc.assert(
       fc.property(requests.filter(isAllowed), (request) => {
         const { expiresAt: _expiresAt, ...open } = request;
-        const checked = checkOrderRequest(open, { nowMs: testNowMs, chains });
+        const checked = checkOrderRequest(open, { nowMs: testNowMs, chains, ownerZone: "UTC" });
         expect(checked).toMatchObject({
           ok: true,
           value: { expiresAtMs: testNowMs + defaultOrderLifetimeMs, maxFills: 1 },

@@ -367,7 +367,7 @@ export function createEngineWithFills(given: EngineOptions): {
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
-    repairOrderFills: orderRepairOf(options, intents.stored),
+    repairOrderFills: orderRepairOf(options, { stored: intents.stored, fills: intents.fills }),
     tickOrders: async ({ signal }) =>
       tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),

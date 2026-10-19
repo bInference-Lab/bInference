@@ -46,7 +46,11 @@ function limitBuy(changes: Partial<OrderRequest>): OrderRequest {
 }
 
 function check(request: OrderRequest) {
-  return checkOrderRequest(request, { nowMs: testNowMs, chains: chainsWithStable() });
+  return checkOrderRequest(request, {
+    nowMs: testNowMs,
+    chains: chainsWithStable(),
+    ownerZone: "UTC",
+  });
 }
 
 describe("a buy order's size and what it spends", () => {
