@@ -1,6 +1,7 @@
 import { assetRefParts, type AssetRef, type ChainRegistry } from "@binference/chain";
 import type { Id, JsonValue } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
+import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { PositionStore } from "../ports.js";
@@ -197,14 +198,16 @@ export function fillRowNotices(
     readonly decimals?: number;
     readonly assets: AssetInfos;
     readonly ended: number;
+    /** The agent's address book, which names a copy order's leader. */
+    readonly book: readonly AddressEntryRecord[];
   },
 ): readonly JsonValue[] {
-  const { order, fill, decimals, assets, ended } = call;
+  const { order, fill, decimals, assets, ended, book } = call;
   const { soldPrice } = fill;
   const filled =
     soldPrice === undefined || decimals === undefined
       ? undefined
-      : fillNotice(order, { ...fill, soldPrice }, { decimals, assets });
+      : fillNotice(order, { ...fill, soldPrice }, { decimals, assets, book });
   const exits = endedExitsNotice(parts, { emptiedBy: order, count: ended });
   return [filled, exits]
     .filter((notice) => notice !== undefined)

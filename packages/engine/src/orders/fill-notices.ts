@@ -1,8 +1,10 @@
 import { mulDiv, type Ratio } from "@binference/core";
-import { createFormatter } from "@binference/i18n";
+import { addressPartOf, createFormatter, displayOutsideText, shortAddress } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
+import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import type { Notice, NoticePart } from "../pushes/notice-push.js";
+import { copyStateOf, type CopyTaking } from "./copy-state.js";
 import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 import { wholeTokenPrice } from "./price-level.js";
@@ -46,45 +48,145 @@ const orderKindOf = (order: Pick<OrderRecord, "kind">): NoticePart => ({
   values: { kind: order.kind },
 });
 
-/**
- * `notice.fill` for an order's paper fill (spec 4, section 4): what it bought or sold, its value in
- * dollars at the fill and its price per whole token, marked as paper for a paper order. A token the
- * registry does not list is named by `assets`, what the order's card stored of it.
- */
-export function fillNotice(
-  order: Pick<OrderRecord, "agentId" | "kind" | "isPaper" | "request">,
-  fill: PaperFill & { readonly soldPrice: Ratio },
-  traded: { readonly decimals: number; readonly assets: AssetInfos },
-): Notice {
-  const isBuy = order.request.side === "buy";
-  const valueMicros = mulDiv(fill.amountIn.base, fill.soldPrice, "down");
-  const token = isBuy ? fill.amountOut : fill.amountIn;
-  const perBaseUnit = { numerator: valueMicros, denominator: token.base === 0n ? 1n : token.base };
-  const price = priceText(wholeTokenPrice(perBaseUnit, traded.decimals));
-  const value = dollars.usd(valueMicros);
-  const result: NoticePart = {
+/** The agent's address book, which names a copy order's leader in its notices. */
+type AddressBook = readonly Pick<AddressEntryRecord, "account" | "label">[];
+
+/** A copy order's leader as its notices name it, and the leader's trade it copies now. */
+interface CopyNoticeFacts {
+  readonly leader: string;
+  readonly taking: CopyTaking;
+}
+
+// A copy order's leader by its label in the agent's address book, else its short address, and
+// the trade it took (spec 4, section 4.3); none for another order or one with no trade taken.
+function copyFactsOf(
+  order: Pick<OrderRecord, "request" | "triggerState">,
+  book: AddressBook,
+): CopyNoticeFacts | undefined {
+  const { request } = order;
+  const taking = request.kind === "copy" ? copyStateOf(order.triggerState)?.taking : undefined;
+  if (request.kind !== "copy" || taking === undefined) {
+    return undefined;
+  }
+  const { leader } = request.trigger;
+  const label = book.find(({ account }) => account === leader)?.label;
+  return { leader: label ?? shortAddress(addressPartOf(leader)), taking };
+}
+
+// Spec 4, section 1: a symbol is cut past 16 characters.
+const symbolLength = 16;
+
+// A token as a copy notice names it: the registry's symbol; else the symbol its contract answered,
+// which its deployer chose, shown as outside text, then its short address; else its short address.
+function copyTokenText(taking: CopyTaking): string {
+  const { facts } = taking;
+  const address = shortAddress(addressPartOf(taking.asset));
+  if (facts === undefined) {
+    return address;
+  }
+  const symbol = displayOutsideText(facts.symbol, symbolLength);
+  return facts.verified ? facts.symbol : `${symbol} ${address}`;
+}
+
+// What names a skipped fill's order: the leader's trade a copy order took, else the order's kind.
+function skipOrderPart(
+  order: Pick<OrderRecord, "kind" | "request" | "triggerState">,
+  book: AddressBook,
+): NoticePart {
+  const copy = copyFactsOf(order, book);
+  if (copy === undefined) {
+    return orderKindOf(order);
+  }
+  const { side } = copy.taking;
+  return {
+    key: "fill.copyTrade",
+    values: { leader: copy.leader, side, token: copyTokenText(copy.taking) },
+  };
+}
+
+// A copied fill's result: what it bought or sold for the leader's trade, and the share sold.
+function copyResultOf(
+  copy: CopyNoticeFacts,
+  fill: { readonly token: PaperFill["amountIn"]; readonly value: string },
+): NoticePart {
+  const { leader, taking } = copy;
+  const amounts = { amount: fill.token };
+  if (taking.side === "buy") {
+    return { key: "fill.copyBuy", values: { leader, spent: fill.value }, amounts };
+  }
+  const share = taking.shareSoldBps === undefined ? "?" : dollars.percent(taking.shareSoldBps);
+  return { key: "fill.copySell", values: { leader, share, received: fill.value }, amounts };
+}
+
+// A fill's result: what it bought or sold, for how many dollars, at its price per whole token.
+function plainResultOf(fill: {
+  readonly isBuy: boolean;
+  readonly token: PaperFill["amountIn"];
+  readonly value: string;
+  readonly valueMicros: bigint;
+  readonly decimals: number;
+}): NoticePart {
+  const { isBuy, token, value } = fill;
+  const perBaseUnit = {
+    numerator: fill.valueMicros,
+    denominator: token.base === 0n ? 1n : token.base,
+  };
+  const price = priceText(wholeTokenPrice(perBaseUnit, fill.decimals));
+  return {
     key: isBuy ? "fill.buy" : "fill.sell",
     values: isBuy ? { spent: value, price } : { received: value, price },
     amounts: { amount: token },
   };
+}
+
+// The notice's assets with what an unlisted token a copy order traded answered on chain.
+function withCopiedToken(assets: AssetInfos, taking: CopyTaking): AssetInfos {
+  const { facts } = taking;
+  return facts === undefined || facts.verified ? assets : { ...assets, [taking.asset]: facts };
+}
+
+/**
+ * `notice.fill` for an order's paper fill (spec 4, section 4): what it bought or sold, its value in
+ * dollars at the fill and its price per whole token, marked as paper for a paper order; a copy
+ * order's names its leader's trade instead of the price (decision 0260). A token the registry does
+ * not list is named by `assets`, what the order's card stored of it or what it answered as a copy
+ * order took its trade.
+ */
+export function fillNotice(
+  order: Pick<OrderRecord, "agentId" | "kind" | "isPaper" | "request" | "triggerState">,
+  fill: PaperFill & { readonly soldPrice: Ratio },
+  traded: { readonly decimals: number; readonly assets: AssetInfos; readonly book?: AddressBook },
+): Notice {
+  const copy = copyFactsOf(order, traded.book ?? []);
+  const isBuy = (copy?.taking.side ?? order.request.side) === "buy";
+  const valueMicros = mulDiv(fill.amountIn.base, fill.soldPrice, "down");
+  const token = isBuy ? fill.amountOut : fill.amountIn;
+  const value = dollars.usd(valueMicros);
+  const result =
+    copy === undefined
+      ? plainResultOf({ isBuy, token, value, valueMicros, decimals: traded.decimals })
+      : copyResultOf(copy, { token, value });
+  const assets = copy === undefined ? traded.assets : withCopiedToken(traded.assets, copy.taking);
   return {
     key: "notice.fill",
     agent: order.agentId,
     values: { mode: order.isPaper ? "paper" : "live" },
     parts: { orderKind: orderKindOf(order), result },
-    ...(Object.keys(traded.assets).length === 0 ? {} : { assets: traded.assets }),
+    ...(Object.keys(assets).length === 0 ? {} : { assets }),
   };
 }
 
 /**
  * `notice.skipped` for a fill an order skipped (spec 4, section 4), with its reason's message; a
- * reason that names the 24-hour cap carries what was used of it and the cap, in dollars.
+ * reason that names a cap carries what was used of it and the cap, in dollars. A copy order's
+ * names the leader's trade and its token (decision 0260).
  */
 export function skippedNotice(
-  order: Pick<OrderRecord, "agentId" | "kind">,
+  order: Pick<OrderRecord, "agentId" | "kind" | "request" | "triggerState">,
   skip: {
     readonly reason: OrderFillReason;
     readonly cap?: { readonly usedUsdMicros: bigint; readonly capUsdMicros: bigint };
+    readonly book?: AddressBook;
   },
 ): Notice {
   const { reason, cap } = skip;
@@ -96,6 +198,9 @@ export function skippedNotice(
     key: "notice.skipped",
     agent: order.agentId,
     values: {},
-    parts: { orderKind: orderKindOf(order), reason: { key: `reason.${reason}`, values } },
+    parts: {
+      orderKind: skipOrderPart(order, skip.book ?? []),
+      reason: { key: `reason.${reason}`, values },
+    },
   };
 }

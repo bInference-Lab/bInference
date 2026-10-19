@@ -1,5 +1,6 @@
 import type { Clock, Id, IdSource, JsonValue } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
+import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -32,6 +33,8 @@ export interface SkipOf {
   readonly atMs: number;
   /** Whether the owner hears it; once per reason in a row for the order when absent. */
   readonly tells?: boolean;
+  /** The agent's address book, which names a copy order's leader; the intent's when it has one. */
+  readonly book?: readonly AddressEntryRecord[];
   readonly signal: AbortSignal;
 }
 
@@ -73,7 +76,8 @@ export async function skipRowOf(parts: SkipRowParts, skip: SkipOf): Promise<Orde
     return row;
   }
   const cap = await capOf(parts, skip);
-  const notice = skippedNotice(order, cap === undefined ? { reason } : { reason, cap });
+  const book = intent?.settings.addressBook ?? skip.book ?? [];
+  const notice = skippedNotice(order, { reason, book, ...(cap === undefined ? {} : { cap }) });
   return { ...row, notices: [noticePush(notice).data] };
 }
 

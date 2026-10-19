@@ -146,7 +146,12 @@ async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Pr
   const { order, reason, signal } = skipped;
   const tells = agentWideTells(state, skipped);
   const atMs = parts.clock.now();
-  const call = { order, reason, atMs, signal, ...(tells === undefined ? {} : { tells }) };
+  const told = tells === undefined ? {} : { tells };
+  // A copy order's skip names its leader as the agent's address book does.
+  const settings =
+    order.kind === "copy" ? await parts.agents.get(order.agentId, { signal }) : undefined;
+  const book = settings === undefined ? {} : { book: settings.addressBook };
+  const call = { order, reason, atMs, signal, ...told, ...book };
   const row = await skipRowOf(rowParts(parts), call);
   await parts.orders.recordFill(row, { signal });
   await announceOrder(parts, order.id, signal);

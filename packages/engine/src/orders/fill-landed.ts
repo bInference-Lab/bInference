@@ -8,6 +8,7 @@ import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { IntentStore, PositionStore } from "../ports.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { copyStateOf } from "./copy-state.js";
 import { exitEndMovesOf, fillRowNotices } from "./end-exit-orders.js";
 import type { OrderFillWrite } from "./order-fill.js";
 import { moveOrder } from "./order-machine.js";
@@ -75,12 +76,31 @@ function overCountNotice(order: OrderRecord): JsonValue {
   return noticePush(notice).data;
 }
 
-// The decimals of the order's token: the registry's, else what the order's card stored of it.
+// The decimals of the token a copy order's taken trade trades: the registry's, else what it
+// answered as the order took the trade; none for another order.
+function copiedTokenOf(
+  parts: Pick<LandedFillParts, "chains">,
+  order: OrderRecord,
+): { readonly decimals?: number; readonly assets: AssetInfos } | undefined {
+  const taking = order.kind === "copy" ? copyStateOf(order.triggerState)?.taking : undefined;
+  if (taking === undefined) {
+    return undefined;
+  }
+  const decimals = assetInfoOf(parts.chains, taking.asset)?.decimals ?? taking.facts?.decimals;
+  return decimals === undefined ? { assets: {} } : { decimals, assets: {} };
+}
+
+// The decimals of the order's token, or of the trade a copy order took: the registry's, else what
+// the order's card stored of it, or what the token answered as the copy order took its trade.
 async function tokenOf(
   parts: LandedFillParts,
   order: OrderRecord,
   signal: AbortSignal,
 ): Promise<{ readonly decimals?: number; readonly assets: AssetInfos }> {
+  const copied = copiedTokenOf(parts, order);
+  if (copied !== undefined) {
+    return copied;
+  }
   const listed = assetInfoOf(parts.chains, order.request.token);
   if (listed !== undefined) {
     return { decimals: listed.decimals, assets: {} };
@@ -128,7 +148,15 @@ async function noticesOf(
   const traded = { amountIn: settled.amountIn, amountOut: settled.amountOut, atMs: 0 };
   const fill = soldPrice === undefined ? traded : { ...traded, soldPrice };
   const decimals = token.decimals === undefined ? {} : { decimals: token.decimals };
-  const notices = fillRowNotices(parts, { order, fill, ...decimals, assets: token.assets, ended });
+  const book = call.snapshot.settings.addressBook;
+  const notices = fillRowNotices(parts, {
+    order,
+    fill,
+    ...decimals,
+    assets: token.assets,
+    ended,
+    book,
+  });
   return isOverCount(order) ? [...notices, overCountNotice(order)] : notices;
 }
 

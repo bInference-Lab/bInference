@@ -2,6 +2,7 @@ import { type Amount, type AssetRef, assetRefSchema } from "@binference/chain";
 import { type Bps, bpsSchema, decimalStringSchema, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import { type DocumentCodec, documentCodec } from "../intents/intent-documents.schema.js";
+import type { TokenFacts } from "../money-path/token-facts.js";
 import { epochMsSchema } from "../records/record-fields.js";
 
 /** The window a copy order's daily cap counts its buys in: the last 24 hours (decision 0260). */
@@ -18,6 +19,12 @@ export interface CopyTaking {
   readonly shareSoldBps?: Bps;
   /** The trade's block time. */
   readonly atMs: number;
+  /**
+   * The token's symbol, name and decimals as the order took the trade: the registry's, marked
+   * verified, else what its contract answered on chain. Its notices name it by them, and its fill
+   * needs the decimals; absent for a token that answered none.
+   */
+  readonly facts?: TokenFacts & { readonly verified: boolean };
 }
 
 /** One copied buy the daily cap counts: when it filled and its value in micro-dollars. */
@@ -57,6 +64,14 @@ const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
       asset: assetRefSchema,
       shareSoldBps: bpsSchema.exactOptional(),
       atMs: epochMsSchema,
+      facts: z
+        .strictObject({
+          symbol: z.string().max(200),
+          name: z.string().max(200),
+          decimals: z.int().min(0).max(255),
+          verified: z.boolean(),
+        })
+        .exactOptional(),
     })
     .exactOptional(),
   buys: z.array(z.strictObject({ atMs: epochMsSchema, usdMicros: decimalStringSchema })),

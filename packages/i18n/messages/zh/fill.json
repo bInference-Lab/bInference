@@ -2,5 +2,6 @@
   "buy": "以 {price} 用 {spent} 买入 {amount}",
   "sell": "以 {price} 卖出 {amount}，收到 {received}",
   "copyBuy": "跟单 {leader}：用 {spent} 买入 {amount}",
-  "copySell": "跟单 {leader} 卖出 {share}：卖出 {amount}，收到 {received}"
+  "copySell": "跟单 {leader} 卖出 {share}：卖出 {amount}，收到 {received}",
+  "copyTrade": "跟单 {leader} {side, select, buy {买入} other {卖出}} {token} 的交易"
 }

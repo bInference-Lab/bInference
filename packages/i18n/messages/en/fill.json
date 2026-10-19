@@ -2,5 +2,6 @@
   "buy": "bought {amount} for {spent} at {price}",
   "sell": "sold {amount} for {received} at {price}",
   "copyBuy": "copied {leader}: bought {amount} for {spent}",
-  "copySell": "copied {leader} selling {share}: sold {amount} for {received}"
+  "copySell": "copied {leader} selling {share}: sold {amount} for {received}",
+  "copyTrade": "Copy trade of {leader}'s {side, select, buy {buy} other {sale}} of {token}"
 }
