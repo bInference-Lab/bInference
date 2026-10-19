@@ -13,6 +13,8 @@ import {
   intentWire,
   order,
   orderWire,
+  schedule,
+  scheduleWire,
   stopLoss,
   swapTerms,
   token,
@@ -44,6 +46,9 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "order/get": orderWire("active"),
   "order/cancel": orderWire("cancelled"),
   "notes/search": { items: [] },
+  "schedule/list": { items: [scheduleWire()] },
+  "schedule/create": scheduleWire(),
+  "schedule/cancel": {},
   "agent/editFile": { updatedAt: 1 },
   "agent/endFirstChat": {},
   "skill/read": {
@@ -84,6 +89,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     [{ op: "order/list", args: { state: "active", cursor: "c1", agent } }],
   ],
   ["tx_status", { intent }, [{ op: "intent/get", args: { intent } }]],
+  ["schedule_list", {}, [{ op: "schedule/list", args: { agent } }]],
   [
     "notes_search",
     { query: "stable" },
@@ -111,6 +117,25 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     ],
   ],
   [
+    "schedule_create",
+    { when: { cron: "0 9 * * 1" }, prompt: "Report the portfolio." },
+    [
+      {
+        op: "schedule/create",
+        args: { when: { cron: "0 9 * * 1" }, prompt: "Report the portfolio.", agent },
+        key,
+      },
+    ],
+  ],
+  [
+    "schedule_cancel",
+    { schedule },
+    [
+      { op: "schedule/list", args: { agent } },
+      { op: "schedule/cancel", args: { schedule }, key },
+    ],
+  ],
+  [
     "notes_write",
     { text: "Likes stablecoins" },
     [{ op: "notes/write", args: { agent, text: "Likes stablecoins" }, key }],
@@ -125,6 +150,17 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
 
 const names = mappings.map(([name]) => name);
 
+// The control tools that write, each with the arguments its row above gives.
+const controlWrites = new Set([
+  "order_cancel",
+  "schedule_create",
+  "schedule_cancel",
+  "notes_write",
+  "workspace_write",
+  "first_chat_end",
+]);
+const controls = mappings.filter(([name]) => controlWrites.has(name));
+
 describe("the agent's tools", () => {
   it.each(
     toolBoxContract({
@@ -137,7 +173,7 @@ describe("the agent's tools", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("are the reads, then the proposals, the brake, the note it writes and the workspace writes", () => {
+  it("are the reads, then the proposals, the brake, the control writes and the workspace writes", () => {
     const tools = agentTools({ agent, client: createFakeToolClient({}) });
     expect(tools.map((tool) => tool.name)).toStrictEqual(names);
   });
@@ -151,7 +187,7 @@ describe("the agent's tools", () => {
   it.each(names)("show the model no agent or wallet field in %s", (name) => {
     const box = agentToolBox({ agent, client: createFakeToolClient({}) });
     const declaration = box.declarations.find((tool) => tool.name === name);
-    expect(JSON.stringify(declaration?.parameters)).not.toMatch(/"(agent|wallet)"/);
+    expect(JSON.stringify(declaration?.parameters)).not.toMatch(/"(agent|wallet)":/);
   });
 
   it.each([
@@ -183,6 +219,19 @@ describe("the agent's tools", () => {
     expect(run.client.calls()).toMatchObject([
       { args: { amount: { base: "123456789012345678901" } } },
     ]);
+  });
+
+  it.each(controls)("let the turn go on after %s, which never commits it", async (name, args) => {
+    const { turn } = createTestTurn({
+      box: agentToolBox({ agent, client: createFakeToolClient(answers) }),
+      replies: [callsReply([{ id: "a", name, args }]), textReply("Done.")],
+    });
+    await expect(turn.run()).resolves.toMatchObject({
+      state: "ended",
+      outcome: "ok",
+      committed: false,
+      modelCalls: 2,
+    });
   });
 
   it("run order_cancel in the batch of the turn's proposal, after it commits", async () => {

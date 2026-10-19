@@ -4,6 +4,7 @@ import type { AgentTool } from "./define-tool.js";
 import { noteTools } from "./note-tools.js";
 import { orderCancelTool } from "./order-cancel-tool.js";
 import { readTools } from "./read-tools.js";
+import { scheduleTools } from "./schedule-tools.js";
 import { openSkillTool } from "./skill-tools.js";
 import type { AgentToolParts } from "./tool-client.js";
 import { tradeTools } from "./trade-tools.js";
@@ -12,23 +13,28 @@ import { workspaceTools } from "./workspace-tools.js";
 
 /**
  * The agent's tools for one agent (runtime spec, section 5.1): the reads `portfolio`,
- * `token_info`, `token_risk`, `quote`, `orders` and `tx_status`; the proposals `swap`, `buy`,
- * `sell` and `order_create`; and `order_cancel`, which brakes. Each maps onto one operation of
- * the engine and names the given agent; no tool takes an agent or a wallet from the model. With
- * web parts, the web tools come after the reads; `notes_search` and `open_skill` follow them,
- * then `notes_write`, and last `workspace_write` and `first_chat_end`, which write the owner's
- * strategy and persona and end the first chat (decision 0242).
+ * `token_info`, `token_risk`, `quote`, `orders`, `tx_status` and `schedule_list`; the proposals
+ * `swap`, `buy`, `sell` and `order_create`; `order_cancel`, which brakes; and the control tools
+ * `schedule_create` and `schedule_cancel` (decision 0247). Each maps onto the
+ * engine's operations and names the given agent; no tool takes an agent or a wallet from the
+ * model. With web parts, the web tools come after the reads; `notes_search` and `open_skill`
+ * follow them, then `notes_write`, and last `workspace_write` and `first_chat_end`, which write
+ * the owner's strategy and persona and end the first chat (decision 0242).
  */
 export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
   const web = parts.web === undefined ? [] : webTools(parts.web);
   const notes = noteTools(parts);
+  const schedules = scheduleTools(parts);
   return [
     ...readTools(parts),
+    schedules.list,
     ...web,
     notes.search,
     openSkillTool(parts),
     ...tradeTools(parts),
     orderCancelTool(parts),
+    schedules.create,
+    schedules.cancel,
     notes.write,
     ...workspaceTools(parts),
   ];

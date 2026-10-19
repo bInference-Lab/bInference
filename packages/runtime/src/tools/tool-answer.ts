@@ -70,6 +70,26 @@ export async function answerOrFailure(
 }
 
 /**
+ * Runs a control call's engine work: an engine error whose code `refusals` names reads as its
+ * sentence, any other error with a code as the tool's failure, and any other error stays a fault
+ * of the call.
+ */
+export async function answerOrRefusal(
+  call: { readonly tool: string; readonly refusals: Readonly<Record<string, string>> },
+  work: () => Promise<ToolOutcome>,
+): Promise<ToolOutcome> {
+  try {
+    return await work();
+  } catch (error) {
+    if (!(error instanceof BinferenceError)) {
+      throw error;
+    }
+    const text = call.refusals[error.code];
+    return text === undefined ? failedAnswer(call.tool, error) : { text, isError: true };
+  }
+}
+
+/**
  * A result as the model reads it: the engine's JSON for it, with amounts as decimal strings of
  * base units, as the protocol encodes them.
  */

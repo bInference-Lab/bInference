@@ -103,6 +103,23 @@ export function orderWire(state: string, owner: string = agent): WireObject {
   };
 }
 
+/** The id of a schedule the answers name. */
+export const schedule: string = `sch_${uuid}`;
+
+/** A schedule of `owner`, as the engine answers it; `marked` when set from outside content. */
+export function scheduleWire(owner: string = agent, marked = false): WireObject {
+  return {
+    schedule,
+    agent: owner,
+    when: { cron: "0 9 * * 1" },
+    prompt: "Report the portfolio in two lines.",
+    state: "active",
+    nextAt: at,
+    createdAt: at,
+    outsideContent: marked,
+  };
+}
+
 /** One call of an agent's tool, as a model writes it. */
 export interface ModelCall {
   readonly name: string;
