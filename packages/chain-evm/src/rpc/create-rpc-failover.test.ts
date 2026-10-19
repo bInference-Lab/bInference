@@ -193,6 +193,36 @@ describe("rpc failover", () => {
     });
   });
 
+  it.each([
+    [-32_005, "query returned more than 10000 results"],
+    [
+      -32_602,
+      "Log response size exceeded. You can make eth_getLogs requests with up to a 2K block range",
+    ],
+    [-32_000, "block range is too large"],
+  ])(
+    "returns a query too large (%i) as the call's own answer, without asking another",
+    async (code, message) => {
+      const tooLarge = fakeRpcNode(() => ({ error: { code, message } }));
+      const { chainId, asked, rpc } = setup({ [primary]: tooLarge, [secondary]: chainIdNode });
+      await expect(chainId()).resolves.toStrictEqual({
+        kind: "error",
+        endpoint: "primary",
+        code,
+        message,
+      });
+      expect(asked()).toStrictEqual([primary]);
+      expect(rpc.health()[0]).toStrictEqual({ name: "primary" });
+    },
+  );
+
+  it("asks the next endpoint when one refuses a method with limit exceeded", async () => {
+    const refusing = fakeRpcNode(() => ({ error: { code: -32_005, message: "limit exceeded" } }));
+    const { chainId, asked } = setup({ [primary]: refusing, [secondary]: chainIdNode });
+    await expect(chainId()).resolves.toStrictEqual(fromSecondary);
+    expect(asked()).toStrictEqual([primary, secondary]);
+  });
+
   it("rejects with a retryable rpc_down once every endpoint failed", async () => {
     const { chainId } = setup({ [primary]: "refuse", [secondary]: raw(500, "") });
     const failure = await chainId().catch((error: unknown) => error);

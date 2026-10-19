@@ -22,12 +22,28 @@ export function isMissingState(error: JsonRpcError): boolean {
   return missingStateMessage.test(error.message);
 }
 
+// Providers refuse a log query whose answer or range passes their documented limit with these
+// messages, some under -32005, which otherwise says the node is throttled: "query returned more
+// than 10000 results", "Log response size exceeded", "block range is too large".
+const tooLargeMessage =
+  /more than \d+ results|response size (exceeded|is too large)|block range|range (is )?too (large|wide|big)|too many (results|logs)/i;
+
+/**
+ * Whether a JSON-RPC error says the query asked for more than the endpoint answers at once, such as
+ * a log query over too many blocks or results. Every endpoint would refuse it alike, so it is the
+ * call's own answer: the caller asks again for less.
+ */
+function isQueryTooLarge(error: JsonRpcError): boolean {
+  return tooLargeMessage.test(error.message);
+}
+
 /**
  * Whether a JSON-RPC error says the node failed, so another endpoint may answer the same call. A
- * revert, bad params or a nonce problem is the call's own answer and stays with the caller.
+ * revert, bad params, a nonce problem or a query too large is the call's own answer and stays with
+ * the caller.
  */
 export function isNodeFault(error: JsonRpcError): boolean {
-  if (revertMessage.test(error.message)) {
+  if (revertMessage.test(error.message) || isQueryTooLarge(error)) {
     return false;
   }
   return nodeFaultCodes.has(error.code) || nodeFaultMessage.test(error.message);
