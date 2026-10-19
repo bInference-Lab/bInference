@@ -83,6 +83,8 @@ export {
   activityKeyOf,
   activityQuerySchema,
   leaderReadRecordSchema,
+  overflowQuerySchema,
+  overflowToTellSchema,
   storedActivitySchema,
   trackedWalletRecordSchema,
   watchCursorRecordSchema,
@@ -90,6 +92,8 @@ export {
 export type {
   ActivityQuery,
   LeaderReadRecord,
+  OverflowQuery,
+  OverflowToTell,
   ReadWallet,
   StoredActivity,
   TrackedWalletRecord,

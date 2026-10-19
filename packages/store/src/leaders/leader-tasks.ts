@@ -5,6 +5,10 @@ import {
   activityQuerySchema,
   type LeaderReadRecord,
   leaderReadRecordSchema,
+  type OverflowQuery,
+  overflowQuerySchema,
+  type OverflowToTell,
+  overflowToTellSchema,
   type StoredActivity,
   storedActivitySchema,
   type TrackedWalletRecord,
@@ -180,6 +184,38 @@ export const recordLeaderReadTask: StoreTask<LeaderReadRecord, readonly StoredAc
       return stored;
     },
   });
+
+/** The tracked wallets whose cut blocks are due to be told, marked told in the same write. */
+export const overflowsToTellTask: StoreTask<OverflowQuery, readonly OverflowToTell[]> = defineTask({
+  name: "leaders.overflowsToTell",
+  access: "write",
+  input: overflowQuerySchema,
+  output: z.array(overflowToTellSchema),
+  run(database, { atMs, everyMs, limit }) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const due = execute(
+      kysely
+        .selectFrom("tracked_wallets")
+        .selectAll()
+        .where("untracked_at", "is", null)
+        .whereRef("overflow_blocks", ">", "overflow_told_blocks")
+        .where((where) =>
+          where.or([
+            where("overflow_told_at", "is", null),
+            where("overflow_told_at", "<=", atMs - everyMs),
+          ]),
+        )
+        .orderBy("account")
+        .limit(limit),
+    ).rows;
+    return due.map((row) => {
+      const told = { overflow_told_blocks: row.overflow_blocks, overflow_told_at: atMs };
+      execute(kysely.updateTable("tracked_wallets").set(told).where("account", "=", row.account));
+      const blocks = row.overflow_blocks - row.overflow_told_blocks;
+      return overflowToTellSchema.parse({ account: row.account, blocks });
+    });
+  },
+});
 
 /** One account's stored trades, newest first. */
 export const walletActivityTask: StoreTask<ActivityQuery, readonly StoredActivity[]> = defineTask({

@@ -53,6 +53,8 @@ export function syncTrackedWallets(database: DatabaseSync, atMs: number): void {
         overflow_blocks: 0,
         added_at: atMs,
         untracked_at: null,
+        overflow_told_blocks: 0,
+        overflow_told_at: null,
       };
       execute(kysely.insertInto("tracked_wallets").values(fresh));
     } else if (row.untracked_at !== null) {

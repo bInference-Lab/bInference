@@ -2,6 +2,8 @@ import type { ChainRef } from "@binference/chain";
 import type {
   ActivityQuery,
   LeaderReadRecord,
+  OverflowQuery,
+  OverflowToTell,
   StoredActivity,
   TrackedWalletRecord,
   WatchCursorRecord,
@@ -33,6 +35,12 @@ export interface TrackedWalletStore {
    * `last_block`; and the cursor at `to`. Answers the trades stored new, in the read's order.
    */
   record(read: LeaderReadRecord, call: StoreCall): Promise<readonly StoredActivity[]>;
+  /**
+   * The tracked wallets with blocks cut since the owner was last told of them, each told at most
+   * once in `everyMs` (decision 0250), with how many; each is marked told at `atMs` in the same
+   * write, so it is told once. At most `limit`, in account order.
+   */
+  overflowsToTell(query: OverflowQuery, call: StoreCall): Promise<readonly OverflowToTell[]>;
   /** One account's stored trades, newest first by time, then by number. */
   activity(query: ActivityQuery, call: StoreCall): Promise<readonly StoredActivity[]>;
 }

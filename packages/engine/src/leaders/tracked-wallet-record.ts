@@ -82,6 +82,19 @@ export interface LeaderReadRecord {
   readonly overflows: readonly { readonly account: AccountRef; readonly block: bigint }[];
 }
 
+/** Which tracked wallets' cut blocks to tell now, at most once in `everyMs` each. */
+export interface OverflowQuery {
+  readonly atMs: number;
+  readonly everyMs: number;
+  readonly limit: number;
+}
+
+/** A tracked wallet with blocks cut since the owner was last told, and how many. */
+export interface OverflowToTell {
+  readonly account: AccountRef;
+  readonly blocks: number;
+}
+
 /** Which trades of one account to list: newest first, from `fromMs` to `toMs`, after `before`. */
 export interface ActivityQuery {
   readonly account: AccountRef;
@@ -150,6 +163,19 @@ export const leaderReadRecordSchema: z.ZodType<LeaderReadRecord> = z.strictObjec
   ),
   trades: z.array(walletActivitySchema),
   overflows: z.array(z.strictObject({ account: accountRefSchema, block: blockSchema })),
+});
+
+/** Parses an overflow query. */
+export const overflowQuerySchema: z.ZodType<OverflowQuery> = z.strictObject({
+  atMs: epochMsSchema,
+  everyMs: z.int().positive(),
+  limit: pageLimitSchema,
+});
+
+/** Parses a wallet's cut blocks to tell. */
+export const overflowToTellSchema: z.ZodType<OverflowToTell> = z.strictObject({
+  account: accountRefSchema,
+  blocks: z.int().positive(),
 });
 
 /** Parses an activity query. */

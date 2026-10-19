@@ -12,6 +12,9 @@ export interface TrackedRow {
   readonly overflowBlocks: number;
   readonly addedAtMs: number;
   readonly untrackedAtMs?: number;
+  /** The cut blocks the owner was told of, and when. */
+  readonly overflowToldBlocks?: number;
+  readonly overflowToldAtMs?: number;
 }
 
 /**
@@ -33,10 +36,25 @@ export interface MemoryTracking {
   hasRoom(account: AccountRef): boolean;
 }
 
+// What a row keeps of the notices of its cut blocks when it is tracked again.
+function toldOf(row: TrackedRow): Pick<TrackedRow, "overflowToldBlocks" | "overflowToldAtMs"> {
+  const { overflowToldBlocks, overflowToldAtMs } = row;
+  return {
+    ...(overflowToldBlocks === undefined ? {} : { overflowToldBlocks }),
+    ...(overflowToldAtMs === undefined ? {} : { overflowToldAtMs }),
+  };
+}
+
 function track(rows: Map<AccountRef, TrackedRow>, account: AccountRef, atMs: number): void {
   const row = rows.get(account);
   if (row === undefined || row.untrackedAtMs !== undefined) {
-    rows.set(account, { account, overflowBlocks: row?.overflowBlocks ?? 0, addedAtMs: atMs });
+    const told = row === undefined ? {} : toldOf(row);
+    rows.set(account, {
+      account,
+      overflowBlocks: row?.overflowBlocks ?? 0,
+      addedAtMs: atMs,
+      ...told,
+    });
   }
 }
 

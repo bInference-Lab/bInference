@@ -38,6 +38,12 @@ watcher catches up. The facts:
   records `watcher.wallet_overflow` with the chain and the account. The other wallets
   of the block are read in full. A cut block is never read again for that wallet: the same
   transfers would meet the same budget.
+- **The owner hears of it** (the owner's choice, 2026-10-19). A tracked wallet with cut blocks
+  sends `notice.walletOverflow` at most once a day, naming the wallet by an address book label of
+  an agent that tracks it, else by its short address, and how many of its blocks were cut since
+  its last notice: "Whale's trades in 3 blocks were too many to read; copy orders and alerts
+  missed them." Blocks cut within the day are told with the next notice. `tracked_wallets` keeps
+  the blocks told and when (migration 0043).
 - **A query too large for the endpoint** is asked again over half its range, down to one block,
   then with the tracked addresses in halves; a single wallet whose one block an endpoint still
   refuses is cut in the same way.
@@ -55,7 +61,8 @@ watcher catches up. The facts:
 - Log records gain `accountId`, an account's CAIP-10 id.
 - A trade a reorganization moved to another position in its block may be stored twice; one it
   removed stays stored. BNB Smart Chain's fast finality makes both rare.
-- How the owner hears of a cut block, beyond the log and the stored count, is not decided here.
+- Spec 4 gains `notice.walletOverflow`, in English and Chinese; it names no agent, and no agent
+  mutes it.
 
 ## Alternatives
 

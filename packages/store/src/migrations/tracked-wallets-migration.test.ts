@@ -67,6 +67,8 @@ describe("the tracked wallets migration", () => {
         overflow_blocks: 0,
         added_at: 5,
         untracked_at: null,
+        overflow_told_blocks: 0,
+        overflow_told_at: null,
       },
     ]);
   });

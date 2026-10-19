@@ -9,6 +9,9 @@ interface TrackedWalletsTable {
   overflow_blocks: number;
   added_at: number;
   untracked_at: number | null;
+  /** The cut blocks the owner was told of, and when (migration 0043). */
+  overflow_told_blocks: number;
+  overflow_told_at: number | null;
 }
 
 /** `wallet_activity`: one trade of a tracked wallet, its amounts as decimal text. */

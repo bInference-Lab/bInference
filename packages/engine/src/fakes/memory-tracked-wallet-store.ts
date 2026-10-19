@@ -3,6 +3,8 @@ import type { TrackedWalletStore } from "../leaders/ports.js";
 import {
   activityKeyOf,
   type LeaderReadRecord,
+  type OverflowQuery,
+  type OverflowToTell,
   type StoredActivity,
   type WatchCursorRecord,
 } from "../leaders/tracked-wallet-record.js";
@@ -41,6 +43,24 @@ function moveWallets(tracking: MemoryTracking, read: LeaderReadRecord): void {
   }
 }
 
+function tellOverflows(tracking: MemoryTracking, query: OverflowQuery): readonly OverflowToTell[] {
+  const due = [...tracking.rows.values()]
+    .filter(
+      (row) =>
+        row.untrackedAtMs === undefined &&
+        row.overflowBlocks > (row.overflowToldBlocks ?? 0) &&
+        (row.overflowToldAtMs === undefined || row.overflowToldAtMs <= query.atMs - query.everyMs),
+    )
+    .toSorted((left, right) => (left.account < right.account ? -1 : 1))
+    .slice(0, query.limit);
+  return due.map((row) => {
+    const blocks = row.overflowBlocks - (row.overflowToldBlocks ?? 0);
+    const told = { overflowToldBlocks: row.overflowBlocks, overflowToldAtMs: query.atMs };
+    tracking.rows.set(row.account, { ...row, ...told });
+    return { account: row.account, blocks };
+  });
+}
+
 function record(
   rows: Rows,
   tracking: MemoryTracking,
@@ -72,8 +92,17 @@ export function createMemoryTrackedWalletStore(tracking: MemoryTracking): Tracke
       const named = await tracking.named(call);
       return [...tracking.rows.values()]
         .filter((row) => isTracked(row, named) && accountRefParts(row.account).chain === chain)
-        .map(({ untrackedAtMs: _untracked, ...row }) => structuredClone(row));
+        .map(({ account, sinceBlock, lastBlock, overflowBlocks, addedAtMs }) =>
+          structuredClone({
+            account,
+            ...(sinceBlock === undefined ? {} : { sinceBlock }),
+            ...(lastBlock === undefined ? {} : { lastBlock }),
+            overflowBlocks,
+            addedAtMs,
+          }),
+        );
     },
+    overflowsToTell: async (query, call) => memoryCall(call, () => tellOverflows(tracking, query)),
     cursor: async (chain, call) => memoryCall(call, () => structuredClone(rows.cursors.get(chain))),
     record: async (read, call) =>
       memoryCall(call, () => record(rows, tracking, structuredClone(read))),

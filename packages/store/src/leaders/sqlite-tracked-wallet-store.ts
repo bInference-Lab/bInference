@@ -2,6 +2,7 @@ import type { TrackedWalletStore } from "@binference/engine/orders";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import type { TaskRunner } from "../tasks/store-task.js";
 import {
+  overflowsToTellTask,
   recordLeaderReadTask,
   trackedWalletsTask,
   walletActivityTask,
@@ -13,6 +14,7 @@ export const leaderTasks: readonly TaskRunner[] = [
   trackedWalletsTask,
   watchCursorTask,
   recordLeaderReadTask,
+  overflowsToTellTask,
   walletActivityTask,
 ];
 
@@ -22,6 +24,7 @@ export function createSqliteTrackedWalletStore(host: StoreHost): TrackedWalletSt
     tracked: bindTask(host, trackedWalletsTask),
     cursor: bindTask(host, watchCursorTask),
     record: bindTask(host, recordLeaderReadTask),
+    overflowsToTell: bindTask(host, overflowsToTellTask),
     activity: bindTask(host, walletActivityTask),
   };
 }

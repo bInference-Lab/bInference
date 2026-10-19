@@ -143,6 +143,27 @@ async function movesOnlyWhatTheReadReached(subject: TrackedWalletSubject): Promi
   assert.deepEqual(await subject.tracked.activity({ account: accountOf(9), limit: 5 }, live()), []);
 }
 
+async function tellsCutBlocksOnceADay(subject: TrackedWalletSubject): Promise<void> {
+  await track(subject, 1);
+  await track(subject, 2, 2);
+  const cut = (block: number) => [
+    { account: accountOf(1), block: BigInt(block) },
+    { account: accountOf(1), block: BigInt(block + 1) },
+  ];
+  await subject.tracked.record(readOf([10, 12], { overflows: cut(10) }), live());
+  const day = { everyMs: 86_400_000, limit: 10 };
+  const first = await subject.tracked.overflowsToTell({ ...day, atMs: 1_000 }, live());
+  assert.deepEqual(first, [{ account: accountOf(1), blocks: 2 }]);
+  assert.deepEqual(await subject.tracked.overflowsToTell({ ...day, atMs: 2_000 }, live()), []);
+  await subject.tracked.record(readOf([13, 15], { overflows: cut(13).slice(1) }), live());
+  assert.deepEqual(await subject.tracked.overflowsToTell({ ...day, atMs: 2_000 }, live()), []);
+  const later = { ...day, atMs: 1_000 + day.everyMs };
+  assert.deepEqual(await subject.tracked.overflowsToTell(later, live()), [
+    { account: accountOf(1), blocks: 1 },
+  ]);
+  assert.deepEqual(await subject.tracked.overflowsToTell(later, live()), []);
+}
+
 async function startsANewSpan(subject: TrackedWalletSubject): Promise<void> {
   await track(subject, 1);
   await subject.tracked.record(readOf([10, 12], { trades: [saleOf(1, 11)] }), live());
@@ -210,6 +231,7 @@ export function trackedWalletStoreContract(
       create,
       movesOnlyWhatTheReadReached,
     ),
+    checkOn("tells each wallet's cut blocks at most once a day", create, tellsCutBlocksOnceADay),
     checkOn("starts a new span when a wallet is tracked again", create, startsANewSpan),
     checkOn("tracks no wallet only an archived agent names", create, leavesArchivedAgents),
     checkOn("pages a wallet's trades newest first, by time", create, pagesActivity),

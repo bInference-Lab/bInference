@@ -139,7 +139,10 @@ const columns: Readonly<Record<string, readonly string[]>> = {
       "notices_held",
   ),
   alert_fires: names("alert_id fires agent_id at outcome reason message_id"),
-  tracked_wallets: names("account since_block last_block overflow_blocks added_at untracked_at"),
+  tracked_wallets: names(
+    "account since_block last_block overflow_blocks added_at untracked_at overflow_told_blocks " +
+      "overflow_told_at",
+  ),
   wallet_activity: names(
     "id account block tx_hash log_index side asset amount counter_asset counter_amount " +
       "value_usd_micros share_sold_bps venue at",
