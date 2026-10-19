@@ -34,7 +34,7 @@ export async function tellLaunches(
     const data = jsonValueSchema.parse(launchViewSchema.encode(view));
     parts.publish({ topic: "launch", kind: "launch/new", data });
     try {
-      await parts.alerts.seeLaunch({ launch: view, assets: view.assets ?? {} }, call);
+      await parts.alerts.seeLaunch({ launch: view, assets: view.assets }, call);
     } catch {
       call.signal.throwIfAborted();
       parts.onAlertFailed?.(launch);

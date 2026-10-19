@@ -32,7 +32,10 @@ export function launchAssetsOf(chains: ChainRegistry, launch: StoredLaunch): Ass
 }
 
 /** A stored launch as the protocol shows it (spec 1, section 8.3), with its tokens' info. */
-export function launchViewOf(chains: ChainRegistry, launch: StoredLaunch): LaunchView {
+export function launchViewOf(
+  chains: ChainRegistry,
+  launch: StoredLaunch,
+): LaunchView & { readonly assets: AssetInfos } {
   const { taxBps, snipeTaxBps, curveProgressBps } = launch;
   return {
     chain: launch.chain,
