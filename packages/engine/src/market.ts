@@ -49,3 +49,5 @@ export type {
   StoredLaunch,
 } from "./launches/launch-record.js";
 export type { LaunchStore } from "./launches/ports.js";
+export { tellLaunches } from "./launches/tell-launches.js";
+export type { LaunchTellParts } from "./launches/tell-launches.js";
