@@ -9,6 +9,7 @@ const agentInboxKinds = [
   "inbox/stop",
   "inbox/clear",
   "inbox/scheduleDue",
+  "inbox/alertFired",
 ] as const;
 
 /** One kind of agent inbox message, named as its `inbox` push. */
@@ -16,13 +17,16 @@ export type AgentInboxKind = (typeof agentInboxKinds)[number];
 
 /**
  * The kinds an owner's chat writes; a settle message is written only with its intent's move, and
- * a wake-up only with its schedule's run.
+ * a wake-up only with its schedule's run or its alert's fire.
  */
-type OwnerInboxKind = Exclude<AgentInboxKind, "inbox/intentSettled" | "inbox/scheduleDue">;
+type OwnerInboxKind = Exclude<
+  AgentInboxKind,
+  "inbox/intentSettled" | "inbox/scheduleDue" | "inbox/alertFired"
+>;
 
 /** Whether a message only wakes the agent: a turn of these alone waits while it is frozen. */
 export function isWakeUp(kind: AgentInboxKind): boolean {
-  return kind === "inbox/scheduleDue";
+  return kind === "inbox/scheduleDue" || kind === "inbox/alertFired";
 }
 
 /**

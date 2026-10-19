@@ -1,5 +1,13 @@
 import { type Id, idSchema } from "@binference/core";
-import { chatSurfaceSchema, type ChatSurface, choicePlaceSchema } from "@binference/protocol";
+import {
+  type AlertFire,
+  alertFireSchema,
+  type AlertView,
+  alertViewSchema,
+  chatSurfaceSchema,
+  type ChatSurface,
+  choicePlaceSchema,
+} from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 
@@ -68,5 +76,19 @@ export const scheduleDuePayloadSchema: z.ZodType<ScheduleDuePayload> = z.strictO
   schedule: idSchema("sch"),
   prompt: z.string(),
   due: epochMsSchema,
+  outsideContent: z.boolean(),
+});
+
+/** An alert's wake-up: the alert as its fire left it, what fired it, and its mark. */
+export interface AlertFiredPayload {
+  readonly alert: AlertView;
+  readonly fired: AlertFire;
+  readonly outsideContent: boolean;
+}
+
+/** Parses an alert wake-up's payload, as the protocol's JSON writes it. */
+export const alertFiredPayloadSchema: z.ZodType<AlertFiredPayload> = z.strictObject({
+  alert: alertViewSchema,
+  fired: alertFireSchema,
   outsideContent: z.boolean(),
 });

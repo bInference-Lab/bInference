@@ -1,4 +1,35 @@
 export {
+  alertAfterFire,
+  alertFireDraftSchema,
+  alertFireKeepMs,
+  alertFireWrittenSchema,
+  alertWakeWindowMs,
+  canFire,
+  maxAlertWakesPerHour,
+} from "./alerts/alert-fire.js";
+export type {
+  AlertFireDraft,
+  AlertFireWritten,
+  AlertWake,
+  AlertWakeSkip,
+} from "./alerts/alert-fire.js";
+export {
+  alertDeleteSchema,
+  alertExpirySchema,
+  alertQuerySchema,
+  alertRecordSchema,
+  maxActiveAlerts,
+  maxTrackedWallets,
+} from "./alerts/alert-record.js";
+export type {
+  AlertDelete,
+  AlertExpiry,
+  AlertKind,
+  AlertQuery,
+  AlertRecord,
+} from "./alerts/alert-record.js";
+export type { AlertStore } from "./alerts/ports.js";
+export {
   fillAnnouncementSchema,
   orderFillQuerySchema,
   orderFillRecordSchema,

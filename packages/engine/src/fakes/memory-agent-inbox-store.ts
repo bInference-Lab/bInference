@@ -1,4 +1,4 @@
-import { err, type Id, ok, type Result } from "@binference/core";
+import { err, type Id, type JsonValue, ok, type Result } from "@binference/core";
 import {
   type AgentInboxDraft,
   type AgentInboxMessage,
@@ -32,15 +32,19 @@ export interface MemoryAgentInboxStore extends AgentInboxStore {
    */
   addNow(draft: AgentInboxDraft): Result<AgentInboxMessage, "busy" | "not_found">;
   /**
-   * Stores a schedule's wake-up at once, inside the in-memory schedule store's own write: `waiting`
-   * while `waitingFor` is still untaken, and `busy` while the agent holds 200 untaken messages.
+   * Stores a schedule's or an alert's wake-up at once, inside the in-memory store's own write:
+   * `waiting` while `waitingFor` is still untaken, and `busy` while the agent holds 200 untaken
+   * messages.
    */
   wakeNow(wake: MemoryWake): Result<AgentInboxMessage, "waiting" | "busy">;
+  /** Replaces the payload of a message still untaken, and answers it; `undefined` otherwise. */
+  replaceNow(id: Id<"msg">, payload: JsonValue): AgentInboxMessage | undefined;
 }
 
-/** A schedule's wake-up as the in-memory schedule store hands it over. */
+/** A wake-up as an in-memory store hands it over; a schedule's unless it names its kind. */
 interface MemoryWake {
   readonly agentId: Id<"agt">;
+  readonly kind?: "inbox/scheduleDue" | "inbox/alertFired";
   readonly wake: ScheduleWake;
   readonly atMs: number;
   readonly waitingFor?: Id<"msg">;
@@ -56,6 +60,7 @@ interface InboxRows {
   readonly all: () => readonly AgentInboxMessage[];
   readonly add: (message: AgentInboxMessage) => void;
   readonly markTaken: (ids: ReadonlySet<string>, atMs: number) => number;
+  readonly replace: (id: Id<"msg">, payload: JsonValue) => AgentInboxMessage | undefined;
   readonly sessionOf: (agent: Id<"agt">) => Id<"ses"> | undefined;
   readonly open: (agent: Id<"agt">, session: Id<"ses">) => void;
 }
@@ -79,6 +84,18 @@ function createRows(): InboxRows {
         }
       }
       return marked.length;
+    },
+    replace(id, payload) {
+      const index = messages.findIndex(
+        (stored) => stored.id === id && stored.takenAtMs === undefined,
+      );
+      const stored = messages[index];
+      if (stored === undefined) {
+        return undefined;
+      }
+      const replaced = { ...stored, payload: structuredClone(payload) };
+      messages.splice(index, 1, replaced);
+      return structuredClone(replaced);
     },
     sessionOf: (agent) => sessions.get(agent),
     open(agent, session) {
@@ -154,7 +171,7 @@ function add(
 }
 
 function wake(rows: InboxRows, waking: MemoryWake): Result<AgentInboxMessage, "waiting" | "busy"> {
-  const { agentId, wake: draft, atMs, waitingFor } = waking;
+  const { agentId, wake: draft, atMs, waitingFor, kind = "inbox/scheduleDue" } = waking;
   if (rows.all().some((stored) => stored.id === waitingFor && !isTaken(stored))) {
     return err("waiting");
   }
@@ -164,7 +181,7 @@ function wake(rows: InboxRows, waking: MemoryWake): Result<AgentInboxMessage, "w
   const sessionId = rows.sessionOf(agentId) ?? draft.opens;
   rows.open(agentId, sessionId);
   const { id, turnId, payload } = draft;
-  const message = { id, agentId, sessionId, kind: "inbox/scheduleDue", turnId, payload } as const;
+  const message = { id, agentId, sessionId, kind, turnId, payload } as const;
   return ok(store(rows, { ...message, createdAtMs: atMs }));
 }
 
@@ -201,6 +218,7 @@ export function createMemoryAgentInboxStore(
     settleNow: (intent, firstEvent) => settle(rows, intent, firstEvent),
     addNow: (draft) => add(rows, structuredClone(draft)),
     wakeNow: (waking) => wake(rows, structuredClone(waking)),
+    replaceNow: (id, payload) => rows.replace(id, payload),
     async add(draft, call) {
       call.signal.throwIfAborted();
       const agent = await options.agents.get(draft.agentId, call);

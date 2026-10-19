@@ -6,6 +6,7 @@ import {
 } from "@binference/protocol";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import {
+  alertFiredPayloadSchema,
   clearPayloadSchema,
   ownerMessagePayloadSchema,
   scheduleDuePayloadSchema,
@@ -32,8 +33,8 @@ function turnOf(message: AgentInboxMessage): Id<"trn"> {
 
 /**
  * A stored inbox message as `inbox/list` and the `inbox` topic carry it (runtime spec, section
- * 3.3): a settle message with its intent's view as it stands now, and a schedule's wake-up with
- * its prompt and mark.
+ * 3.3): a settle message with its intent's view as it stands now, a schedule's wake-up with its
+ * prompt and mark, and an alert's with the alert, what fired it and its mark.
  */
 export async function inboxViewOf(
   message: AgentInboxMessage,
@@ -58,6 +59,10 @@ export async function inboxViewOf(
   }
   if (message.kind === "inbox/scheduleDue") {
     const payload = scheduleDuePayloadSchema.parse(message.payload);
+    return { ...base, kind: message.kind, turn: turnOf(message), ...payload };
+  }
+  if (message.kind === "inbox/alertFired") {
+    const payload = alertFiredPayloadSchema.parse(message.payload);
     return { ...base, kind: message.kind, turn: turnOf(message), ...payload };
   }
   const { intent } = settlePayloadSchema.parse(message.payload);

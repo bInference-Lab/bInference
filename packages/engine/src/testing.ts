@@ -81,6 +81,8 @@ export type {
 export { agentStoreContract } from "./contracts/agent-store-contract.js";
 export { questionStoreContract } from "./contracts/question-store-contract.js";
 export type { QuestionStoreHarness, QuestionSubject } from "./contracts/question-store-contract.js";
+export { alertStoreContract } from "./contracts/alert-store-contract.js";
+export type { AlertStoreHarness, AlertSubject } from "./contracts/alert-store-contract.js";
 export { scheduleStoreContract } from "./contracts/schedule-store-contract.js";
 export type { ScheduleStoreHarness, ScheduleSubject } from "./contracts/schedule-store-contract.js";
 export { installStoreContract } from "./contracts/install-store-contract.js";
