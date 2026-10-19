@@ -215,3 +215,15 @@ export const portfolioView: WireObject = {
 export function pageOf(...items: readonly WireValue[]): WireValue {
   return { items, next: "cursor-2" };
 }
+
+/** A price alert that fired once and woke the agent, as `alert/*` and `inbox/alertFired` show it. */
+export const alertView: WireObject = {
+  alert: ids.alert,
+  agent: ids.agent,
+  condition: { kind: "price", asset: refs.token, direction: "below", price: "900000" },
+  state: "fired",
+  wake: true,
+  fires: 1,
+  createdAt: at,
+  firedAt: at + 1_000,
+};

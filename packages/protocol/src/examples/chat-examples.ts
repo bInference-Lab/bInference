@@ -3,7 +3,7 @@ import type { ImageOperationShapes } from "../operations/image-operations.schema
 import type { LimitOperationShapes } from "../operations/limit-operations.schema.js";
 import type { NoteOperationShapes } from "../operations/note-operations.schema.js";
 import type { QuestionOperationShapes } from "../operations/question-operations.schema.js";
-import { at, ids, pageOf, refs, type WireExample } from "./wire-values.js";
+import { alertView, at, ids, pageOf, refs, type WireExample } from "./wire-values.js";
 
 const empty = {};
 
@@ -178,6 +178,17 @@ export const chatExamples: { readonly [N in keyof ChatOperationShapes]: WireExam
         prompt: "Review my portfolio.",
         due: at,
         outsideContent: false,
+      },
+      {
+        message: ids.message,
+        kind: "inbox/alertFired",
+        agent: ids.agent,
+        session: ids.session,
+        at,
+        turn: ids.turn,
+        alert: alertView,
+        fired: { kind: "price", asset: refs.token, priceUsdMicros: "899000" },
+        outsideContent: true,
       },
     ),
   },

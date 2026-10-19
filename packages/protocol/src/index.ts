@@ -162,8 +162,27 @@ export type { ToolSentences } from "./tools/tool-sentences.js";
 export { checkProtocolVersion, protocolVersion } from "./versions/protocol-version.js";
 export { agentModeSchema, agentViewSchema } from "./views/agent-view.schema.js";
 export type { AgentMode, AgentView } from "./views/agent-view.schema.js";
-export { alertConditionSchema, alertViewSchema } from "./views/alert-view.schema.js";
-export type { AlertCondition, AlertView, PriceCondition } from "./views/alert-view.schema.js";
+export { activityItemSchema } from "./views/activity-item.schema.js";
+export type { ActivityItem } from "./views/activity-item.schema.js";
+export {
+  alertConditionSchema,
+  alertFiredSchema,
+  alertFireSchema,
+  alertStates,
+  alertViewSchema,
+} from "./views/alert-view.schema.js";
+export type {
+  AlertCondition,
+  AlertFire,
+  AlertFired,
+  AlertState,
+  AlertView,
+  LaunchCondition,
+  PriceCondition,
+  WalletCondition,
+} from "./views/alert-view.schema.js";
+export { launchViewSchema } from "./views/launch-view.schema.js";
+export type { LaunchView } from "./views/launch-view.schema.js";
 export { assetInfosSchema, assetViewSchema } from "./views/asset-info.schema.js";
 export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema.js";
 export { launchFilterSchema, launchpadIdSchema } from "./views/launch-filter.schema.js";

@@ -453,6 +453,8 @@
         "image.too_large",
         "image.format",
         "image.unreadable",
+        "alert.not_found",
+        "alert.too_many",
         "market.no_data",
         "market.source_down",
         "market.no_launch_feed",
@@ -460,6 +462,7 @@
         "wallet.unfunded",
         "wallet.bad_owner_key",
         "wallet.custody_down",
+        "wallet.track_limit",
         "wallet.launch_exists",
         "wallet.no_launch_calls",
         "address.not_found",
@@ -24000,8 +24003,107 @@
                     "price"
                   ],
                   "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "wallet"
+                    },
+                    "account": {
+                      "type": "string"
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "buy",
+                        "sell"
+                      ]
+                    },
+                    "asset": {
+                      "type": "string"
+                    },
+                    "minUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "account"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "launch"
+                    },
+                    "filters": {
+                      "type": "object",
+                      "properties": {
+                        "launchpads": {
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                          }
+                        },
+                        "quoteTokens": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "maxTaxBps": {
+                          "type": "number"
+                        },
+                        "maxSnipeTaxBps": {
+                          "type": "number"
+                        },
+                        "minCurveProgressBps": {
+                          "type": "number"
+                        },
+                        "minLiquidityUsdMicros": {
+                          "type": "string",
+                          "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                        },
+                        "maxInsiders": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "maxCreatorLaunches30d": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "filters"
+                  ],
+                  "additionalProperties": false
                 }
               ]
+            },
+            "wake": {
+              "type": "boolean"
+            },
+            "expiresAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -24083,6 +24185,95 @@
                     "direction",
                     "price"
                   ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "wallet"
+                    },
+                    "account": {
+                      "type": "string"
+                    },
+                    "side": {
+                      "type": "string",
+                      "enum": [
+                        "buy",
+                        "sell"
+                      ]
+                    },
+                    "asset": {
+                      "type": "string"
+                    },
+                    "minUsdMicros": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "account"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "launch"
+                    },
+                    "filters": {
+                      "type": "object",
+                      "properties": {
+                        "launchpads": {
+                          "minItems": 1,
+                          "maxItems": 16,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                          }
+                        },
+                        "quoteTokens": {
+                          "minItems": 1,
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "maxTaxBps": {
+                          "type": "number"
+                        },
+                        "maxSnipeTaxBps": {
+                          "type": "number"
+                        },
+                        "minCurveProgressBps": {
+                          "type": "number"
+                        },
+                        "minLiquidityUsdMicros": {
+                          "type": "string",
+                          "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                        },
+                        "maxInsiders": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "maxCreatorLaunches30d": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "filters"
+                  ]
                 }
               ]
             },
@@ -24091,8 +24282,17 @@
               "enum": [
                 "active",
                 "fired",
-                "deleted"
+                "deleted",
+                "ended"
               ]
+            },
+            "wake": {
+              "type": "boolean"
+            },
+            "fires": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             },
             "createdAt": {
               "type": "integer",
@@ -24100,6 +24300,11 @@
               "maximum": 9007199254740991
             },
             "firedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "expiresAt": {
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
@@ -24149,6 +24354,19 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 200
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "active",
+                "fired",
+                "deleted",
+                "ended"
+              ]
             }
           },
           "additionalProperties": false
@@ -24230,6 +24448,95 @@
                           "direction",
                           "price"
                         ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "wallet"
+                          },
+                          "account": {
+                            "type": "string"
+                          },
+                          "side": {
+                            "type": "string",
+                            "enum": [
+                              "buy",
+                              "sell"
+                            ]
+                          },
+                          "asset": {
+                            "type": "string"
+                          },
+                          "minUsdMicros": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "account"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "launch"
+                          },
+                          "filters": {
+                            "type": "object",
+                            "properties": {
+                              "launchpads": {
+                                "minItems": 1,
+                                "maxItems": 16,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                                }
+                              },
+                              "quoteTokens": {
+                                "minItems": 1,
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "maxTaxBps": {
+                                "type": "number"
+                              },
+                              "maxSnipeTaxBps": {
+                                "type": "number"
+                              },
+                              "minCurveProgressBps": {
+                                "type": "number"
+                              },
+                              "minLiquidityUsdMicros": {
+                                "type": "string",
+                                "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                              },
+                              "maxInsiders": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "maxCreatorLaunches30d": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "filters"
+                        ]
                       }
                     ]
                   },
@@ -24238,8 +24545,17 @@
                     "enum": [
                       "active",
                       "fired",
-                      "deleted"
+                      "deleted",
+                      "ended"
                     ]
+                  },
+                  "wake": {
+                    "type": "boolean"
+                  },
+                  "fires": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   },
                   "createdAt": {
                     "type": "integer",
@@ -24247,6 +24563,11 @@
                     "maximum": 9007199254740991
                   },
                   "firedAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "expiresAt": {
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
@@ -29747,6 +30068,407 @@
                       "schedule",
                       "prompt",
                       "due",
+                      "outsideContent"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string",
+                        "pattern": "^msg_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "session": {
+                        "type": "string",
+                        "pattern": "^ses_"
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "type": "string",
+                        "const": "inbox/alertFired"
+                      },
+                      "turn": {
+                        "type": "string",
+                        "pattern": "^trn_"
+                      },
+                      "alert": {
+                        "type": "object",
+                        "properties": {
+                          "alert": {
+                            "type": "string",
+                            "pattern": "^alr_"
+                          },
+                          "agent": {
+                            "type": "string",
+                            "pattern": "^agt_"
+                          },
+                          "condition": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "price"
+                                  },
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "direction": {
+                                    "type": "string",
+                                    "enum": [
+                                      "above",
+                                      "below"
+                                    ]
+                                  },
+                                  "price": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "asset",
+                                  "direction",
+                                  "price"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "wallet"
+                                  },
+                                  "account": {
+                                    "type": "string"
+                                  },
+                                  "side": {
+                                    "type": "string",
+                                    "enum": [
+                                      "buy",
+                                      "sell"
+                                    ]
+                                  },
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "minUsdMicros": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "account"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "launch"
+                                  },
+                                  "filters": {
+                                    "type": "object",
+                                    "properties": {
+                                      "launchpads": {
+                                        "minItems": 1,
+                                        "maxItems": 16,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                                        }
+                                      },
+                                      "quoteTokens": {
+                                        "minItems": 1,
+                                        "maxItems": 20,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "maxTaxBps": {
+                                        "type": "number"
+                                      },
+                                      "maxSnipeTaxBps": {
+                                        "type": "number"
+                                      },
+                                      "minCurveProgressBps": {
+                                        "type": "number"
+                                      },
+                                      "minLiquidityUsdMicros": {
+                                        "type": "string",
+                                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                      },
+                                      "maxInsiders": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "maxCreatorLaunches30d": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "filters"
+                                ]
+                              }
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "fired",
+                              "deleted",
+                              "ended"
+                            ]
+                          },
+                          "wake": {
+                            "type": "boolean"
+                          },
+                          "fires": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "createdAt": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "firedAt": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "expiresAt": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "alert",
+                          "agent",
+                          "condition",
+                          "state",
+                          "createdAt"
+                        ]
+                      },
+                      "fired": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "price"
+                              },
+                              "asset": {
+                                "type": "string"
+                              },
+                              "priceUsdMicros": {
+                                "type": "string",
+                                "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "asset",
+                              "priceUsdMicros"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "wallet"
+                              },
+                              "activity": {
+                                "type": "object",
+                                "properties": {
+                                  "at": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "block": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tx": {
+                                    "type": "string"
+                                  },
+                                  "side": {
+                                    "type": "string",
+                                    "enum": [
+                                      "buy",
+                                      "sell"
+                                    ]
+                                  },
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "amount": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  },
+                                  "counterAsset": {
+                                    "type": "string"
+                                  },
+                                  "counterAmount": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  },
+                                  "valueUsdMicros": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  },
+                                  "shareSoldBps": {
+                                    "type": "number"
+                                  },
+                                  "venue": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  }
+                                },
+                                "required": [
+                                  "at",
+                                  "block",
+                                  "tx",
+                                  "side",
+                                  "asset",
+                                  "amount",
+                                  "counterAsset",
+                                  "counterAmount"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "activity"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "const": "launch"
+                              },
+                              "launch": {
+                                "type": "object",
+                                "properties": {
+                                  "chain": {
+                                    "type": "string"
+                                  },
+                                  "token": {
+                                    "type": "string"
+                                  },
+                                  "launchpad": {
+                                    "type": "string",
+                                    "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                                  },
+                                  "creator": {
+                                    "type": "string"
+                                  },
+                                  "quoteToken": {
+                                    "type": "string"
+                                  },
+                                  "taxBps": {
+                                    "type": "number"
+                                  },
+                                  "snipeTaxBps": {
+                                    "type": "number"
+                                  },
+                                  "curveProgressBps": {
+                                    "type": "number"
+                                  },
+                                  "graduated": {
+                                    "type": "boolean"
+                                  },
+                                  "insiders": {
+                                    "maxItems": 100,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "creatorLaunches30d": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "block": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tx": {
+                                    "type": "string"
+                                  },
+                                  "launchedAt": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "chain",
+                                  "token",
+                                  "launchpad",
+                                  "creator",
+                                  "quoteToken",
+                                  "graduated",
+                                  "insiders",
+                                  "creatorLaunches30d",
+                                  "block",
+                                  "tx",
+                                  "launchedAt"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "launch"
+                            ]
+                          }
+                        ]
+                      },
+                      "outsideContent": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "message",
+                      "agent",
+                      "session",
+                      "at",
+                      "kind",
+                      "turn",
+                      "alert",
+                      "fired",
                       "outsideContent"
                     ]
                   }

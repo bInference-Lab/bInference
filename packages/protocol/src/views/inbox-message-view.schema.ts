@@ -2,6 +2,12 @@ import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
+import {
+  type AlertFire,
+  alertFireSchema,
+  type AlertView,
+  alertViewSchema,
+} from "./alert-view.schema.js";
 import { type IntentView, intentViewSchema } from "./intent-view.schema.js";
 
 /** The chat surface an owner's message came from. */
@@ -68,6 +74,18 @@ interface InboxScheduleDue extends InboxMessageBase {
 }
 
 /**
+ * An alert with `wake` fired: it starts a turn with the alert and what fired it, marked when
+ * `outsideContent` is set (protocol spec, section 8.4).
+ */
+interface InboxAlertFired extends InboxMessageBase {
+  readonly kind: "inbox/alertFired";
+  readonly turn: ProtocolId<"chatTurn">;
+  readonly alert: AlertView;
+  readonly fired: AlertFire;
+  readonly outsideContent: boolean;
+}
+
+/**
  * One stored message of the agent inbox, as `inbox/list` and the `inbox` topic carry it. Kinds
  * the runtime spec adds later arrive as further members; a runtime skips a kind it does not know.
  */
@@ -76,7 +94,8 @@ export type InboxMessageView =
   | InboxIntentSettled
   | InboxStop
   | InboxClear
-  | InboxScheduleDue;
+  | InboxScheduleDue
+  | InboxAlertFired;
 
 const base = {
   message: protocolIdSchema("inboxMessage"),
@@ -118,6 +137,14 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
     schedule: protocolIdSchema("schedule"),
     prompt: z.string(),
     due: epochMsSchema,
+    outsideContent: z.boolean(),
+  }),
+  z.object({
+    ...base,
+    kind: z.literal("inbox/alertFired"),
+    turn,
+    alert: alertViewSchema,
+    fired: alertFireSchema,
     outsideContent: z.boolean(),
   }),
 ]);

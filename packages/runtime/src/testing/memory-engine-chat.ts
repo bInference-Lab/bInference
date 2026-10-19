@@ -32,6 +32,9 @@ interface Running {
 }
 
 /** A schedule's wake-up the fake engine stored: its message, session, turn and schedule. */
+type AlertWake = Pick<AlertFired, "alert" | "fired" | "outsideContent">;
+type AlertFired = Extract<InboxMessageView, { readonly kind: "inbox/alertFired" }>;
+
 interface Woken {
   readonly message: Id<"msg">;
   readonly session: Id<"ses">;
@@ -55,6 +58,8 @@ export interface MemoryEngineChat extends EngineChat {
     agent: Id<"agt">,
     wake: { readonly prompt: string; readonly due: number; readonly outsideContent: boolean },
   ): Woken;
+  /** An alert's wake-up: the message, its session and the turn reserved for it. */
+  alerted(agent: Id<"agt">, wake: AlertWake): Omit<Woken, "schedule">;
   /** `chat/stop` from the owner, or a freeze. */
   stop(agent: Id<"agt">, reason?: "owner" | "freeze"): Id<"msg">;
   /** `chat/clear`: answers the session that follows. */
@@ -249,7 +254,9 @@ function turnCalls(
   };
 }
 
-function ownerSide(state: FakeState): Pick<MemoryEngineChat, "post" | "due" | "stop" | "clear"> {
+function ownerSide(
+  state: FakeState,
+): Pick<MemoryEngineChat, "post" | "due" | "alerted" | "stop" | "clear"> {
   return {
     post(agent, text, images) {
       const view = {
@@ -271,6 +278,17 @@ function ownerSide(state: FakeState): Pick<MemoryEngineChat, "post" | "due" | "s
       store(state, view);
       const { message, session, turn, schedule } = view;
       return { message, session, turn, schedule };
+    },
+    alerted(agent, wake) {
+      const view = {
+        ...base(state, agent),
+        kind: "inbox/alertFired" as const,
+        turn: nextId(state, "trn"),
+        ...wake,
+      };
+      store(state, view);
+      const { message, session, turn } = view;
+      return { message, session, turn };
     },
     stop(agent, reason = "owner") {
       const view = { ...base(state, agent), kind: "inbox/stop" as const, reason };

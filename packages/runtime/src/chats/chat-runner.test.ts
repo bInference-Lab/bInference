@@ -1,5 +1,5 @@
 import type { Id } from "@binference/core";
-import type { InboxMessageView } from "@binference/protocol";
+import { alertFireSchema, alertViewSchema, type InboxMessageView } from "@binference/protocol";
 import type { QueuedMessage } from "@binference/store";
 import { describe, expect, it } from "vitest";
 import { createGate, type TestTool } from "../loop/test-turns.js";
@@ -43,6 +43,28 @@ function waiter(started: () => void): TestTool {
       return { text: "stopped early", isError: true };
     },
   };
+}
+
+const alertAsset = "eip155:56/erc20:0x55d398326f99059ff775485246999027b3197955";
+
+// A fired price alert of the agent, at `at`, and the price that fired it.
+function priceAlert(agent: Id<"agt">, at: number) {
+  const alert = alertViewSchema.parse({
+    alert: "alr_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+    agent,
+    condition: { kind: "price", asset: alertAsset, direction: "below", price: "900000" },
+    state: "fired",
+    wake: true,
+    fires: 1,
+    createdAt: at,
+    firedAt: at,
+  });
+  const fired = alertFireSchema.parse({
+    kind: "price",
+    asset: alertAsset,
+    priceUsdMicros: "899000",
+  });
+  return { alert, fired };
 }
 
 function turnsStarted(rig: ChatRig): readonly Id<"trn">[] {
@@ -256,6 +278,40 @@ describe("createChatRunner", () => {
       ["owner", true],
       ["agent", false],
     ]);
+  });
+
+  it("starts one marked turn from an alert's wake-up, with what fired it", async () => {
+    const rig = await startChatRig({ replies: [textReply("Looked.")] });
+    const { alert, fired } = priceAlert(rig.agent, Date.parse("2027-01-15T14:00:00Z"));
+    const woke = rig.engine.alerted(rig.agent, { alert, fired, outsideContent: true });
+    await rig.received();
+    await rig.runner.rested();
+    expect(turnsStarted(rig)).toStrictEqual([woke.turn]);
+    const [request] = rig.transport.requests;
+    const watched = `{"kind":"price","asset":"${alertAsset}","direction":"below","price":"900000"}`;
+    const what = `{"kind":"price","asset":"${alertAsset}","priceUsdMicros":"899000"}`;
+    const text = `Alert ${alert.alert} on ${watched} fired at 2027-01-15T14:00:00.000Z: ${what}`;
+    expect(request?.messages).toStrictEqual([{ role: "owner", text }]);
+    const events = await rig.stores.transcript.events(
+      { sessionId: woke.session, limit: 10 },
+      live(),
+    );
+    expect(events.map(({ role, outside }) => [role, outside])).toStrictEqual([
+      ["owner", true],
+      ["agent", false],
+    ]);
+  });
+
+  it("skips an alert's wake-up refused for a spent budget", async () => {
+    const rig = await startChatRig({ replies: [] });
+    rig.engine.refuse(rig.agent, { started: false, refusal: "budget" });
+    const woke = rig.engine.alerted(rig.agent, {
+      ...priceAlert(rig.agent, 1),
+      outsideContent: true,
+    });
+    await rig.received();
+    await rig.runner.rested();
+    expect(dropReasons(rig)).toStrictEqual({ [woke.message]: "budget" });
   });
 
   it("skips a schedule's wake-up refused for a spent budget, and keeps the owner's message", async () => {

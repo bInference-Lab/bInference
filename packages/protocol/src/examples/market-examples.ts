@@ -2,6 +2,7 @@ import type { IntentOperationShapes } from "../operations/intent-operations.sche
 import type { MarketOperationShapes } from "../operations/market-operations.schema.js";
 import type { OrderOperationShapes } from "../operations/order-operations.schema.js";
 import {
+  alertView,
   assets,
   at,
   ids,
@@ -17,6 +18,7 @@ import {
 } from "./wire-values.js";
 
 const empty = {};
+const alertCondition = { kind: "price", asset: refs.token, direction: "below", price: "900000" };
 const asset = {
   asset: refs.token,
   symbol: "TKN",
@@ -56,15 +58,6 @@ const orderView = {
     { fill: ids.fill, intent: ids.intent, outcome: "filled", at },
     { fill: ids.fill, outcome: "skipped", reason: "daily_cap", at },
   ],
-} as const;
-
-const alertView = {
-  alert: ids.alert,
-  agent: ids.agent,
-  condition: { kind: "price", asset: refs.token, direction: "below", price: "900000" },
-  state: "fired",
-  createdAt: at,
-  firedAt: at + 1_000,
 } as const;
 
 const ruleRequest = {
@@ -245,10 +238,10 @@ export const orderExamples: { readonly [N in keyof OrderOperationShapes]: WireEx
   },
   "order/cancel": { args: { order: ids.order }, result: { ...orderView, state: "cancelled" } },
   "alert/create": {
-    args: { agent: ids.agent, condition: alertView.condition },
+    args: { agent: ids.agent, condition: alertCondition, wake: true },
     result: alertView,
   },
-  "alert/list": { args: empty, result: pageOf(alertView) },
+  "alert/list": { args: { agent: ids.agent, state: "fired" }, result: pageOf(alertView) },
   "alert/delete": { args: { alert: ids.alert }, result: empty },
   "webhookRule/create": {
     args: ruleRequest,

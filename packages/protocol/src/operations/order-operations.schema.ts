@@ -7,16 +7,13 @@ import {
   webhookRuleRequestSchema,
 } from "../requests/fill-rule-request.schema.js";
 import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.schema.js";
-import {
-  type Page,
-  type PageArgs,
-  pageArgsSchema,
-  pageArgsShape,
-  pageSchema,
-} from "../values/page.schema.js";
+import { epochMsSchema } from "../values/epoch-ms.schema.js";
+import { type Page, type PageArgs, pageArgsShape, pageSchema } from "../values/page.schema.js";
 import {
   type AlertCondition,
   alertConditionSchema,
+  type AlertState,
+  alertStates,
   type AlertView,
   alertViewSchema,
 } from "../views/alert-view.schema.js";
@@ -55,10 +52,22 @@ interface OrderPage extends Page<OrderView> {
   readonly assets?: AssetInfos;
 }
 
-/** The args of `alert/create`. */
+/**
+ * The args of `alert/create` (protocol spec, section 8.4): `wake` starts a turn of the agent at
+ * each fire; `expiresAt` ends the alert, by default 30 days on for a wallet or launch alert and
+ * never for a price alert.
+ */
 interface CreateAlertArgs {
   readonly agent: ProtocolId<"agent">;
   readonly condition: AlertCondition;
+  readonly wake?: boolean;
+  readonly expiresAt?: number;
+}
+
+/** The args of `alert/list`: one agent's alerts or every agent's, in one state or any. */
+interface ListAlertsArgs extends PageArgs {
+  readonly agent?: ProtocolId<"agent">;
+  readonly state?: AlertState;
 }
 
 /** The args of an operation on one webhook rule. */
@@ -80,7 +89,7 @@ export interface OrderOperationShapes {
   readonly "order/list": { readonly args: ListOrdersArgs; readonly result: OrderPage };
   readonly "order/cancel": { readonly args: OrderArgs; readonly result: OrderView };
   readonly "alert/create": { readonly args: CreateAlertArgs; readonly result: AlertView };
-  readonly "alert/list": { readonly args: PageArgs; readonly result: Page<AlertView> };
+  readonly "alert/list": { readonly args: ListAlertsArgs; readonly result: Page<AlertView> };
   readonly "alert/delete": {
     readonly args: { readonly alert: ProtocolId<"alert"> };
     readonly result: Empty;
@@ -154,14 +163,23 @@ export const orderOperations: OperationTable<OrderOperationShapes> = {
     ...writeFlags,
     name: "alert/create",
     scope: "propose",
-    args: z.strictObject({ agent, condition: alertConditionSchema }),
+    args: z.strictObject({
+      agent,
+      condition: alertConditionSchema,
+      wake: z.boolean().exactOptional(),
+      expiresAt: epochMsSchema.exactOptional(),
+    }),
     result: alertViewSchema,
   },
   "alert/list": {
     ...readFlags,
     name: "alert/list",
     scope: "read",
-    args: pageArgsSchema,
+    args: z.strictObject({
+      ...pageArgsShape,
+      agent: agent.exactOptional(),
+      state: z.enum(alertStates).exactOptional(),
+    }),
     result: pageSchema(alertViewSchema),
   },
   "alert/delete": {
