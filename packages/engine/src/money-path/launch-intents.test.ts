@@ -1,7 +1,9 @@
+import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { testWallet } from "../intents/test-intents.js";
+import { expectOk, testNowMs, testWallet } from "../intents/test-intents.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
+import { createUploadShelf } from "../uploads/upload-shelf.js";
 import {
   proposeIntent as propose,
   testLaunch as launch,
@@ -165,6 +167,25 @@ describe("a token launch refused before any upload", () => {
       ok: false,
       error: "quote.no_route",
     });
+  });
+});
+
+// A PNG as the owner uploads it.
+const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 7, 7]);
+
+describe("a token launch's picture", () => {
+  it("is read from the owner's upload store, as the server filled it", async () => {
+    const shelf = createUploadShelf({
+      clock: createManualClock(testNowMs),
+      random: createSeededRandom(234),
+    });
+    const { ticket } = shelf.ticket({ contentType: "image/png", bytes: png.byteLength }, "cli");
+    const upload = expectOk(shelf.receive(ticket, png));
+    const { test, launcher } = await engineOver({ options: { launchImages: shelf } });
+
+    const view = await propose(test, { ...launch, image: upload });
+    expect(view.state).toBe("awaiting_confirmation");
+    expect(launcher.uploads().map((made) => made.image.bytes)).toStrictEqual([png]);
   });
 });
 

@@ -271,6 +271,8 @@ function engineOf(
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,
     uploads: given.uploads,
+    // A launch reads its picture from the shelf the server fills (decision 0234).
+    launchImages: given.uploads,
     ...(options.telegram?.images === undefined ? {} : { botImages: options.telegram.images }),
   });
 }
