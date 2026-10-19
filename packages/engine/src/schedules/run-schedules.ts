@@ -1,8 +1,7 @@
-import { BinferenceError, type Clock, type IdSource } from "@binference/core";
-import type { ScheduleSkip } from "@binference/protocol";
-import type { AgentSettings } from "../agents/agent-record.js";
+import type { Clock, IdSource } from "@binference/core";
 import type { ModelBudget } from "../billing/model-budget.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import { wakeSkipOf } from "../chat/wake-skip.js";
 import type { AgentStore } from "../ports.js";
 import type { ScheduleStore } from "./ports.js";
 import type { ScheduleRecord } from "./schedule-record.js";
@@ -30,30 +29,6 @@ export interface ScheduleQueue {
 // The most runs one call makes; the rest wait for the next call.
 const runsPerCall = 100;
 
-// Whether a turn can start for the agent now, else why not: an agent that is gone or archived,
-// frozen, or whose model budget of the day is spent. The budget tells the owner once that day.
-async function skipOf(
-  options: ScheduleQueueOptions,
-  settings: AgentSettings | undefined,
-  signal: AbortSignal,
-): Promise<ScheduleSkip | undefined> {
-  if (settings === undefined || settings.agent.archivedAtMs !== undefined) {
-    return "archived";
-  }
-  if (settings.agent.frozenAtMs !== undefined) {
-    return "frozen";
-  }
-  try {
-    await options.budget.open(settings, { signal });
-    return undefined;
-  } catch (error) {
-    if (error instanceof BinferenceError && error.code === "agent.budget") {
-      return "budget";
-    }
-    throw error;
-  }
-}
-
 async function runOne(
   options: ScheduleQueueOptions,
   schedule: ScheduleRecord,
@@ -65,7 +40,7 @@ async function runOne(
     return;
   }
   const settings = await options.agents.get(agentId, { signal });
-  const skip = await skipOf(options, settings, signal);
+  const skip = await wakeSkipOf(options.budget, settings, signal);
   const atMs = clock.now();
   // Runs missed while the engine was off or locked collapse into this one: the next run is the
   // first after now, never one already past (decision 0232).
