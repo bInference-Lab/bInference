@@ -359,8 +359,10 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 - **What is outside content:** text a third party controls. Web pages and search results, X
   posts, images, launch data, a note labelled `untrusted`, the text of an installed third-party
   skill, and the name, symbol or description of a token the registry does not list.
-- **Which results hold it:** `search_web`, `search_x`, `read_page`, `market_scan` and `token_info`
-  for an unlisted token always do; `notes_search` does when it returns an `untrusted` note,
+- **Which results hold it:** `search_web`, `search_x` and `read_page` always do; `market_scan`,
+  `chart` and `wallet_activity` do when they answer data, since prices and trades are what markets
+  and other wallets did ([decision 0257](../DECISIONS.md#d0257)); `token_info` does for an unlisted
+  token; `notes_search` does when it returns an `untrusted` note,
   `schedule_list` when it lists a marked schedule ([decision 0247](../DECISIONS.md#d0247)), and
   `open_skill` when it reads an installed skill. Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result

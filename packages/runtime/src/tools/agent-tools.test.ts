@@ -44,6 +44,10 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   },
   "order/list": { items: [] },
   "intent/get": intentWire("awaiting_confirmation"),
+  "market/scan": {
+    items: [{ asset: token, launchpad: "fake-curve", graduated: false }],
+    assets: {},
+  },
   "intent/propose": intentWire("awaiting_confirmation"),
   "order/create": orderWire("awaiting_confirmation"),
   "order/get": orderWire("active"),
@@ -83,6 +87,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
 };
 
 const key = context.idempotencyKey;
+const scanFilters = { launchpads: ["fake-curve"], maxTaxBps: 500 };
 const buyTerms = { token, spend: { asset: coin, base: "1000" }, reason: "Buy the dip." };
 const sellTerms = { token, amount: { percentBps: 5_000 }, reason: "Take half off." };
 
@@ -103,6 +108,16 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     [{ op: "order/list", args: { state: "active", cursor: "c1", agent } }],
   ],
   ["tx_status", { intent }, [{ op: "intent/get", args: { intent } }]],
+  [
+    "market_scan",
+    { chain: "fake:1", source: "launches", filters: scanFilters },
+    [
+      {
+        op: "market/scan",
+        args: { chain: "fake:1", source: "launches", filters: scanFilters, limit: 10 },
+      },
+    ],
+  ],
   ["schedule_list", {}, [{ op: "schedule/list", args: { agent } }]],
   [
     "notes_search",

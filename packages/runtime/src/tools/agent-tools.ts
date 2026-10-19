@@ -3,6 +3,7 @@ import { alertCreateTool } from "./alert-create-tool.js";
 import { askOwnerTool } from "./ask-owner-tool.js";
 import { createToolBox } from "./create-tool-box.js";
 import type { AgentTool } from "./define-tool.js";
+import { marketTools } from "./market-tools.js";
 import { noteTools } from "./note-tools.js";
 import { orderCancelTool } from "./order-cancel-tool.js";
 import { readTools } from "./read-tools.js";
@@ -15,7 +16,8 @@ import { workspaceTools } from "./workspace-tools.js";
 
 /**
  * The agent's tools for one agent (runtime spec, section 5.1): the reads `portfolio`,
- * `token_info`, `token_risk`, `quote`, `orders`, `tx_status` and `schedule_list`; the proposals
+ * `token_info`, `token_risk`, `quote`, `orders`, `tx_status`, the market read `market_scan`
+ * (decision 0257), and `schedule_list`; the proposals
  * `swap`, `buy`, `sell` and `order_create`; `order_cancel`, which brakes; and the control tools
  * `alert_create`, `schedule_create` and `schedule_cancel` (decision 0247). Each maps onto the
  * engine's operations and names the given agent; no tool takes an agent or a wallet from the
@@ -30,6 +32,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
   const schedules = scheduleTools(parts);
   return [
     ...readTools(parts),
+    ...marketTools(parts),
     schedules.list,
     ...web,
     notes.search,
