@@ -4,7 +4,7 @@ import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { testAgent, testToken, testWallet } from "../intents/test-intents.js";
 import { countsLandedFill, moveOrder, type OrderTrigger } from "./order-machine.js";
-import type { OrderMove, OrderRecord } from "./order-record.js";
+import { hasPriceTrigger, type OrderMove, type OrderRecord } from "./order-record.js";
 import { isOrderEnded } from "./order-states.js";
 
 const intentId = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000001");
@@ -85,6 +85,12 @@ const requests: fc.Arbitrary<OrderRequest> = fc.oneof(
     kind: fc.constant("trailing" as const),
     side: fc.constant("sell" as const),
     trigger: fc.constant({ distanceBps: 500 as Bps }),
+  }),
+  fc.record({
+    ...terms,
+    kind: fc.constant("dca" as const),
+    side: fc.constant("buy" as const),
+    trigger: fc.constant({ cron: "*/5 * * * *", timezone: "UTC" }),
   }),
 );
 
@@ -294,6 +300,23 @@ function stepped(world: World, step: Step): World {
   return { ...next, violations: [...next.violations, ...broken] };
 }
 
+// What a fill leaves in an active order's trigger state that kept a DCA period, and what it must:
+// the period untouched, unless the order is a price order that goes on, which its fill disarms.
+function afterFillOf(order: OrderRecord, type: "fill_recorded" | "fill_landed") {
+  const active: OrderRecord = {
+    ...order,
+    state: "active",
+    cardId,
+    triggerState: { nextAtMs: startMs + 300_000 },
+  };
+  const moved = moveOrder(active, { type }, startMs);
+  const goesOn = moved.ok && moved.value.state === "active";
+  return {
+    kept: moved.ok ? moved.value.triggerState : undefined,
+    expected: goesOn && hasPriceTrigger(order.kind) ? { disarmed: true } : undefined,
+  };
+}
+
 const start = (order: OrderRecord): World => ({
   order,
   nowMs: startMs,
@@ -318,6 +341,16 @@ describe("the order state machine, for every history of taps, freezes, expiries,
         const active: OrderRecord = { ...order, state: "active", cardId };
         const filled = moveOrder(active, { type: "fill_recorded" }, active.expiresAtMs + lateMs);
         expect(filled).toStrictEqual({ ok: false, error: "expired" });
+      }),
+    );
+  });
+
+  it("keeps a DCA order's period through its fills, and disarms a price order with fills left", () => {
+    const fills = fc.constantFrom("fill_recorded" as const, "fill_landed" as const);
+    fc.assert(
+      fc.property(orders, fills, (order, type) => {
+        const { kept, expected } = afterFillOf(order, type);
+        expect(kept).toStrictEqual(expected);
       }),
     );
   });
