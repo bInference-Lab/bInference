@@ -1,6 +1,7 @@
 import { accountRefSchema } from "@binference/chain";
 import { activityItemSchema, type AlertCondition, launchViewSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import { inOrder } from "../contracts/store-fixtures.js";
 import { expectOk, testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { assetInfosOf } from "../money-path/asset-infos.js";
@@ -8,6 +9,7 @@ import {
   startTestEngine,
   type TestEngine,
   testCall,
+  testCallers,
   testChains,
 } from "../operations/test-engine.js";
 import type { WatchedOrderPrice } from "../orders/order-triggers.js";
@@ -86,6 +88,15 @@ async function untaken(test: TestEngine) {
 
 const tokenInfo = assetInfosOf(testChains(), [testToken]);
 
+// The one wake-up waiting in the agent inbox, with the session and the turn it reserved.
+function wakeUpOf(messages: readonly AgentInboxMessage[]) {
+  const [message, ...more] = messages;
+  if (message?.turnId === undefined || more.length > 0) {
+    throw new Error("Expected one wake-up with its turn.");
+  }
+  return { id: message.id, session: message.sessionId, turn: message.turnId };
+}
+
 const below = (price: bigint, asset = testToken): AlertCondition => ({
   kind: "price",
   asset,
@@ -155,6 +166,27 @@ describe("wake-ups", () => {
     expect(pushed(test, "notice/new")).toMatchObject([
       { key: "notice.alertPrice", after: [{ key: "alert.woke", values: { agent: "main" } }] },
     ]);
+  });
+
+  it("start the turn the wake-up reserved, and none of a frozen agent", async () => {
+    const test = await startTestEngine();
+    const { handlers } = test.engine;
+    await setAlert(test, below(900_000n), { wake: true });
+    await test.engine.alerts.seePrice(at(800_000n), live);
+    const woke = wakeUpOf(await untaken(test));
+    const turn = { agent: testAgent, session: woke.session, turn: woke.turn };
+    const start = async () =>
+      handlers["turn/start"](
+        testCall({ ...turn, messages: [woke.id], outsideContent: true }, testCallers.runtime),
+      );
+
+    expect(await start()).toMatchObject({ ok: true });
+    const ended = await handlers["turn/end"](
+      testCall({ agent: testAgent, turn: woke.turn, outcome: "ok" }, testCallers.runtime),
+    );
+    expect(ended).toMatchObject({ ok: true });
+    expectOk(await handlers["safety/freeze"](testCall({ agent: testAgent })));
+    expect(await start()).toStrictEqual({ ok: false, error: "agent.frozen" });
   });
 
   it("are skipped while the agent is frozen, and the owner still hears the fire", async () => {
