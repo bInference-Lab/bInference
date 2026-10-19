@@ -63,7 +63,7 @@ export interface FillFixture {
 }
 
 /** The owner's CLI, as the server signs it in. */
-const cliCaller: EngineCaller = {
+export const cliCaller: EngineCaller = {
   credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000052",
   client: { kind: "cli", version: "test" },
   scopes: ["read", "propose", "chat", "confirm", "loosen", "admin"],
