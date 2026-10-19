@@ -25420,6 +25420,9 @@
                 "at",
                 "outcome"
               ]
+            },
+            "outsideContent": {
+              "type": "boolean"
             }
           },
           "required": [
@@ -25609,6 +25612,9 @@
                       "at",
                       "outcome"
                     ]
+                  },
+                  "outsideContent": {
+                    "type": "boolean"
                   }
                 },
                 "required": [

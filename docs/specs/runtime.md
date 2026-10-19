@@ -4,7 +4,8 @@ Status: accepted by the owner on 2026-10-11, with the recommendations of its ope
 proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10. Amended by
 [decision 0191](../DECISIONS.md#d0191) (usage records and the loop notice) and
 [decision 0207](../DECISIONS.md#d0207) (where skills live, how they are read and installed) and
-[decision 0221](../DECISIONS.md#d0221) (the model check).
+[decision 0221](../DECISIONS.md#d0221) (the model check) and
+[decision 0247](../DECISIONS.md#d0247) (the alert and schedule tools).
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -359,7 +360,8 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
   posts, images, launch data, a note labelled `untrusted`, the text of an installed third-party
   skill, and the name, symbol or description of a token the registry does not list.
 - **Which results hold it:** `search_web`, `search_x`, `read_page`, `market_scan` and `token_info`
-  for an unlisted token always do; `notes_search` does when it returns an `untrusted` note, and
+  for an unlisted token always do; `notes_search` does when it returns an `untrusted` note,
+  `schedule_list` when it lists a marked schedule ([decision 0247](../DECISIONS.md#d0247)), and
   `open_skill` when it reads an installed skill. Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
   stays clean.

@@ -5,7 +5,8 @@ import type { ScheduleRecord } from "./schedule-record.js";
 
 /** A stored schedule as `schedule/list` and `schedule/create` answer it. */
 export function scheduleViewOf(schedule: ScheduleRecord): ScheduleView {
-  const { id, agentId, when, prompt, state, nextAtMs, lastRun, createdAtMs } = schedule;
+  const { id, agentId, when, prompt, state, nextAtMs, lastRun, createdAtMs, outsideContent } =
+    schedule;
   return {
     schedule: id,
     agent: agentId,
@@ -15,6 +16,7 @@ export function scheduleViewOf(schedule: ScheduleRecord): ScheduleView {
     ...(nextAtMs === undefined ? {} : { nextAt: nextAtMs }),
     ...(lastRun === undefined ? {} : { lastAt: lastRun.at, lastRun }),
     createdAt: createdAtMs,
+    outsideContent,
   };
 }
 

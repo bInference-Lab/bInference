@@ -45,6 +45,11 @@ export interface ScheduleView {
   readonly lastAt?: number;
   readonly createdAt: number;
   readonly lastRun?: ScheduleRun;
+  /**
+   * Set in a turn that read outside content or by an outside client, so its prompt may hold outside
+   * content and its turns start marked (decision 0247); the engine always sends it.
+   */
+  readonly outsideContent?: boolean;
 }
 
 const cronShape = {
@@ -77,4 +82,5 @@ export const scheduleViewSchema: z.ZodType<ScheduleView> = z.object({
   lastAt: epochMsSchema.exactOptional(),
   createdAt: epochMsSchema,
   lastRun: scheduleRunSchema.exactOptional(),
+  outsideContent: z.boolean().exactOptional(),
 });

@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245) and [0246](../DECISIONS.md#d0246); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0246](../DECISIONS.md#d0246) and [0247](../DECISIONS.md#d0247); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -500,7 +500,7 @@ Schedules follow decisions [0231](../DECISIONS.md#d0231) to [0233](../DECISIONS.
   with no run in eight years (`schedule.bad_when`), a prompt over 2,000 characters
   (`protocol.bad_args`), and a 51st active schedule of the agent (`schedule.too_many`). A schedule
   set in a turn that read outside content, or by a client with `propose` alone, is marked, and its
-  turns start marked.
+  turns start marked. `ScheduleView.outsideContent` says so ([decision 0247](../DECISIONS.md#d0247)).
 - `schedule/list` answers the active schedules, of the agent or every agent, oldest first, with no
   `next`. `schedule/cancel` ends an active schedule at once; one that is not active is
   `schedule.not_found`, and a client with `propose` alone cancels only the schedules it set
@@ -957,7 +957,8 @@ every field given must hold, and an empty filter passes every launch. `launch/li
     schedule after its run, or a cron schedule with no run in eight years. `ScheduleView.lastRun`
     is a new optional field: the last run's due time, time, `sent` or `skipped` and its reason
     (section 7.5). A client that meets a state it does not know treats the schedule as no longer
-    active.
+    active. `ScheduleView.outsideContent` is a new optional field, which the engine always sends:
+    the schedule is marked, so its prompt may hold outside content.
   - `AlertView.state` has a new value, `ended`, beside `active`, `fired` and `deleted`: an alert
     whose `expiresAt` passed (section 8.4). It is a new value of an existing field, which this
     version allows as an addition. An alert in `ended` fires no more, like `fired` and `deleted`; a

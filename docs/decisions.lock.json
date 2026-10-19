@@ -983,6 +983,10 @@
     "0246": {
       "status": "Accepted",
       "sha256": "4ffb1e5346bfb2014d9f89cc4141cdde79ea5ce8a32010d99aa79876720d2d61"
+    },
+    "0247": {
+      "status": "Accepted",
+      "sha256": "672478b45fde38468f8bbb47398429e2f06e43d72031873008e834149bc5b31b"
     }
   }
 }

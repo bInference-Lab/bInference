@@ -37,6 +37,7 @@ describe("schedule/create", () => {
       state: "active",
       nextAt: shanghaiNineTomorrow,
       createdAt: test.clock.now(),
+      outsideContent: false,
     });
     expect(pushed(test, "config/changed")).toMatchObject([
       { path: "agents.main.schedules", surface: "cli", after: { schedule: view.schedule } },
@@ -64,6 +65,7 @@ describe("schedule/create", () => {
     );
 
     expect(stored.map((record) => record?.outsideContent)).toStrictEqual([false, true, true]);
+    expect(views.map((view) => view.outsideContent)).toStrictEqual([false, true, true]);
     expect(pushed(test, "notice/new")).toMatchObject([
       { values: { by: "agent" } },
       { values: { by: "agent" } },
