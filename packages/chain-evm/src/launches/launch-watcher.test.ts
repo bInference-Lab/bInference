@@ -18,6 +18,7 @@ import {
   pad,
   parseAbi,
   toEventSelector,
+  toHex,
 } from "viem";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -105,6 +106,36 @@ function readLaunches(request: LaunchLogsRequest): LaunchesFound {
 }
 
 const launchpad: LaunchReader = { launchEvents: [madeTopic, movedTopic], readLaunches };
+
+// A launchpad that names, for one launch log, a token of another chain, a launch at no log, one
+// with a long name and no completing read, and one whose read is no hex.
+function oddLaunches(request: LaunchLogsRequest): LaunchesFound {
+  const [log] = request.logs;
+  if (log === undefined) {
+    return { launches: [], changes: [] };
+  }
+  const base = {
+    creator: evmAccountRef(chain, creator),
+    quoteAsset: chain.nativeAsset,
+    graduated: false,
+    insiders: [],
+    index: log.index,
+  };
+  const elsewhere = assetRefSchema.parse(`eip155:1/erc20:${tokenOf(2)}`);
+  const unread = {
+    calls: [{ target: evmAccountRef(chain, tokenOf(4)), input: "zz" }],
+    facts: () => ({}),
+  };
+  return {
+    launches: [
+      { ...base, token: elsewhere },
+      { ...base, token: tokenRef(2), index: 999 },
+      { ...base, token: tokenRef(3), name: "N".repeat(300) },
+      { ...base, token: tokenRef(4), complete: unread },
+    ],
+    changes: [],
+  };
+}
 const padAccount: AccountRef = evmAccountRef(chain, pad0);
 
 function madeLog(token: Address, by: Address = pad0): FakeLog {
@@ -157,6 +188,12 @@ afterEach(() => {
   running.splice(0).forEach((stop) => stop());
 });
 
+/** What a feed reads besides the test launchpad: another reader, and a call timeout. */
+interface FeedExtras {
+  readonly reader?: LaunchReader;
+  readonly callTimeoutMs?: number;
+}
+
 /** The chain, book and clock a feed runs on. */
 interface FeedParts {
   readonly fake: FakeLeaderChain;
@@ -164,7 +201,7 @@ interface FeedParts {
   readonly clock: ManualClock;
 }
 
-function feedOn(parts: FeedParts): Feed {
+function feedOn(parts: FeedParts, extras: FeedExtras = {}): Feed {
   const { fake, book, clock } = parts;
   const http = createFakeRpcHttp({ [nodeUrl]: fake.endpoint, [logsUrl]: fake.endpoint });
   const endpoint = (url: string) =>
@@ -185,9 +222,12 @@ function feedOn(parts: FeedParts): Feed {
     clock,
     multicall,
     blockTimeMs,
-    launchpads: [{ id: "test-pad", reader: launchpad, contracts: { pad: padAccount } }],
+    launchpads: [
+      { id: "test-pad", reader: extras.reader ?? launchpad, contracts: { pad: padAccount } },
+    ],
     book,
     onReadFailed: (code) => failures.push(code),
+    ...(extras.callTimeoutMs === undefined ? {} : { callTimeoutMs: extras.callTimeoutMs }),
   });
   const controller = new AbortController();
   watcher.run(controller.signal).catch(() => undefined);
@@ -207,7 +247,7 @@ const reads = (target: Address, callData: Hex): Hex | undefined =>
     ? encodeFunctionResult({ abi: tokenAbi, functionName: "symbol", result: "LAUNCHED" })
     : undefined;
 
-function newFeed(maxLogs?: number): Feed {
+function newFeed(maxLogs?: number, extras: FeedExtras = {}): Feed {
   // The fake chain reads block numbers in whole bytes of hex: 0x1000 on.
   const fake = createFakeLeaderChain({
     start: 4_096n,
@@ -215,7 +255,7 @@ function newFeed(maxLogs?: number): Feed {
     reads,
     ...(maxLogs === undefined ? {} : { maxLogs }),
   });
-  return feedOn({ fake, book: memoryBook(), clock: createManualClock(1_000_000) });
+  return feedOn({ fake, book: memoryBook(), clock: createManualClock(1_000_000) }, extras);
 }
 
 // Lets the feed poll and read until it read the chain's head.
@@ -334,6 +374,50 @@ describe("launch watcher", () => {
     const last = lastReadOf(third, moved);
     expect(last?.launches.map(({ token }) => token)).toStrictEqual([tokenRef(2)]);
     expect(last?.from).toBeLessThanOrEqual(missed);
+  });
+
+  it("asks again over half the blocks when an endpoint refuses a catch-up as too large", async () => {
+    const feed = newFeed(2);
+    await caughtUp(feed);
+    feed.fake.goDown();
+    const mined = [feed.fake.mine([launchTx(1)]), feed.fake.mine([launchTx(2)])];
+    feed.fake.mine([launchTx(3)]);
+    feed.fake.comeBack();
+    await caughtUp(feed);
+    expect(toldTokens(feed)).toStrictEqual([tokenRef(1), tokenRef(2), tokenRef(3)]);
+    expect(feed.methods(logsUrl).length).toBeGreaterThan(feed.book.reads.length);
+    expect(mined).toHaveLength(2);
+  });
+
+  it("reads a span again when a launch's block answers no header, and keeps failing a block refused even alone", async () => {
+    const feed = newFeed();
+    await caughtUp(feed);
+    feed.fake.goDown();
+    feed.fake.mine();
+    const launched = feed.fake.mine([launchTx(1)]);
+    feed.fake.mine();
+    feed.fake.answerOnce("eth_getBlockByNumber", { result: null }, toHex(launched));
+    feed.fake.comeBack();
+    await caughtUp(feed);
+    expect(feed.failures).toStrictEqual(["chain.block_missing"]);
+    expect(toldLaunch(feed, 1).block).toBe(launched);
+    const refusing = newFeed(0);
+    await caughtUp(refusing);
+    const refused = refusing.fake.mine([launchTx(2)]);
+    await refusing.clock.advance(blockTimeMs * 3);
+    expect(refusing.failures).toContain("chain.rpc_error");
+    expect(refusing.book.stored?.block).toBe(refused - 1n);
+  });
+
+  it("passes over a launch a launchpad names off its chain or at no log, and keeps a launch's words short", async () => {
+    const odd: LaunchReader = { launchEvents: [madeTopic], readLaunches: oddLaunches };
+    const feed = newFeed(undefined, { reader: odd, callTimeoutMs: 300 });
+    await caughtUp(feed);
+    feed.fake.mine([launchTx(1)]);
+    await caughtUp(feed);
+    expect(toldTokens(feed)).toStrictEqual([tokenRef(3), tokenRef(4)]);
+    expect(toldLaunch(feed, 3).name).toBe("N".repeat(200));
+    expect(toldLaunch(feed, 4).symbol).toBeUndefined();
   });
 
   it("completes at most 50 launches a read, keeps a fact whose read reverted out, and hands on curve changes", async () => {
