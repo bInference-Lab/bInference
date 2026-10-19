@@ -5,7 +5,7 @@ import {
   type MarketDataSource,
 } from "@binference/chain";
 import { type Clock, createDeadline, type Logger } from "@binference/core";
-import type { EnginePush } from "@binference/engine";
+import type { Engine, EnginePush } from "@binference/engine";
 import {
   createPriceCrossCheck,
   createWatcherLagAlerts,
@@ -14,13 +14,13 @@ import {
   type PriceCrossCheck,
   type PriceSample,
 } from "@binference/engine/market";
-import type { OrderStore } from "@binference/engine/orders";
+import type { AlertStore, OrderStore } from "@binference/engine/orders";
 import type { ChainWatch, LatestPrice } from "./chain-watch.js";
 import type { Closers } from "./closers.js";
 import { type DecimalsBook, decimalsBookOf } from "./decimals-book.js";
 import type { HealthSignal } from "./health-signals.js";
 import { isConfirmed, isUrgent } from "./price-confirmation.js";
-import { type PriceTriggerLink, startPriceTriggers } from "./price-triggers.js";
+import { type PriceTriggerLink, seeOrdersAndAlerts, startPriceTriggers } from "./price-triggers.js";
 import { startRepeatingTimer } from "./repeating-timer.js";
 import type { ReadDecimals } from "./token-decimals.js";
 import { createWatchedOrders, type WatchedOrders } from "./watched-orders.js";
@@ -47,6 +47,8 @@ export interface ComposedPriceWatchers {
    * (decision 0196). Until it is set, prices go nowhere.
    */
   readonly triggers: PriceTriggerLink;
+  /** Hands each confirmed price from now on to the engine's order triggers and price alerts. */
+  readonly attach: (engine: Pick<Engine, "seePrice" | "alerts">) => void;
   /** Starts following the active orders, the lag checks and the cross-check. */
   readonly start: (closers: Closers, logger: Logger) => void;
 }
@@ -57,6 +59,8 @@ export interface PriceWatchersOptions {
   /** Reads the watched tokens' decimals, which the cross-check needs to compare whole tokens. */
   readonly decimals: ReadDecimals;
   readonly orders: Pick<OrderStore, "list">;
+  /** The alerts, whose active price alerts' tokens the watchers read as well. */
+  readonly alerts: Pick<AlertStore, "list">;
   /**
    * The data sources the cross-check samples (decision 0193): DEX Screener each minute, and the
    * GeckoTerminal source the charts read through, every five minutes for at most 30 tokens, so the
@@ -161,6 +165,9 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
       (await options.watches.get(assetRefParts(token).chain)?.canPrice(token, signal)) ?? false,
     activeOrders: () => orders.activeOrders(),
     triggers,
+    attach(engine) {
+      triggers.see = seeOrdersAndAlerts(engine);
+    },
     start(closers, logger) {
       const check = crossCheckOf(options, decimals, logger);
       parts.check = check;

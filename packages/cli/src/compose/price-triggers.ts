@@ -14,6 +14,29 @@ export interface PriceTriggerLink {
 }
 
 /**
+ * The hand-off of one confirmed price to the engine's order triggers and its price alerts, each
+ * on its own, so a failing one never keeps the price from the other; the first failure is thrown
+ * once both ended.
+ */
+export function seeOrdersAndAlerts(
+  engine: Pick<Engine, "seePrice" | "alerts">,
+): NonNullable<PriceTriggerLink["see"]> {
+  return async (price, call) => {
+    const [orders, alerts] = await Promise.allSettled([
+      engine.seePrice(price, call),
+      engine.alerts.seePrice(price, call),
+    ]);
+    if (orders.status === "rejected") {
+      throw orders.reason;
+    }
+    if (alerts.status === "rejected") {
+      throw alerts.reason;
+    }
+    return orders.value;
+  };
+}
+
+/**
  * A watched price as the price triggers judge it (decision 0196): only a confirmed price with a
  * USD value, of a token whose decimals are known, with whether a thin pool priced it.
  */

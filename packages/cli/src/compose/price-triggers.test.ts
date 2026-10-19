@@ -6,7 +6,7 @@ import type { WatchedOrderPrice } from "@binference/engine/orders";
 import { describe, expect, it } from "vitest";
 import type { ChainWatch, LatestPrice } from "./chain-watch.js";
 import { createClosers } from "./closers.js";
-import { startPriceTriggers, triggerPriceOf } from "./price-triggers.js";
+import { seeOrdersAndAlerts, startPriceTriggers, triggerPriceOf } from "./price-triggers.js";
 
 const chain = "eip155:56" as ChainRef;
 const bsc = assetRefSchema.parse("eip155:56/slip44:714");
@@ -97,5 +97,51 @@ describe("the hand-off of watched prices to the price triggers", () => {
       }),
     );
     expect(fake.listeners.size).toBe(0);
+  });
+});
+
+const failing = async () =>
+  Promise.reject(new BinferenceError({ code: "store.down", message: "down" }));
+
+describe("seeOrdersAndAlerts", () => {
+  const price: WatchedOrderPrice = {
+    token,
+    usdPerBaseUnit: { numerator: 1n, denominator: 1n },
+    decimals: 18,
+    isThin: false,
+  };
+  const call = { signal: new AbortController().signal };
+
+  it("hands each price to the order triggers and the alerts, and answers the orders' outcomes", async () => {
+    const seen: string[] = [];
+    const see = seeOrdersAndAlerts({
+      seePrice: async () => {
+        seen.push("orders");
+        return Promise.resolve([]);
+      },
+      alerts: {
+        seePrice: async () => {
+          seen.push("alerts");
+          return Promise.resolve([]);
+        },
+      } as never,
+    });
+
+    await expect(see(price, call)).resolves.toStrictEqual([]);
+    expect(seen.toSorted()).toStrictEqual(["alerts", "orders"]);
+  });
+
+  it("lets the order triggers run when the alerts fail, then throws the failure", async () => {
+    const seen: string[] = [];
+    const see = seeOrdersAndAlerts({
+      seePrice: async () => {
+        seen.push("orders");
+        return Promise.resolve([]);
+      },
+      alerts: { seePrice: failing } as never,
+    });
+
+    await expect(see(price, call)).rejects.toMatchObject({ code: "store.down" });
+    expect(seen).toStrictEqual(["orders"]);
   });
 });

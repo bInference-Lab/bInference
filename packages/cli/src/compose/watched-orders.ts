@@ -1,14 +1,22 @@
 import { type AssetRef, assetRefParts, type ChainRef } from "@binference/chain";
-import { hasPriceTrigger, type OrderRecord, type OrderStore } from "@binference/engine/orders";
+import {
+  type AlertStore,
+  hasPriceTrigger,
+  type OrderRecord,
+  type OrderStore,
+} from "@binference/engine/orders";
 import type { ChainWatch } from "./chain-watch.js";
 
-/** The tokens the price watchers read for the active auto orders, kept in step with the store. */
+/**
+ * The tokens the price watchers read for the active auto orders and price alerts, kept in step
+ * with the stores.
+ */
 export interface WatchedOrders {
   /**
    * Reads the active orders whose trigger is a price (limit, take-profit, stop-loss and trailing)
-   * and watches each of their tokens once, however many orders name it;
-   * a token no active order names any more is released. A token of a chain with no watcher is not
-   * watched. Rejects when the store cannot answer, and with the signal's reason once it aborts.
+   * and the active price alerts, and watches each of their tokens once, however many name it; a
+   * token none names any more is released. A token of a chain with no watcher is not watched.
+   * Rejects when a store cannot answer, and with the signal's reason once it aborts.
    */
   sync(options: { readonly signal: AbortSignal }): Promise<void>;
   /** How many active orders with a price trigger the last sync read. */
@@ -38,9 +46,20 @@ async function activeOrders(
     : [...page, ...(await activeOrders(orders, signal, last))];
 }
 
-/** Creates the {@link WatchedOrders} over the order store and each chain's watcher. */
+// The tokens of the active price alerts; an install holds at most 50 alerts per agent.
+async function alertTokens(
+  alerts: Pick<AlertStore, "list">,
+  signal: AbortSignal,
+): Promise<readonly AssetRef[]> {
+  const query = { states: ["active"], kind: "price", limit: pageSize } as const;
+  const active = await alerts.list(query, { signal });
+  return active.flatMap(({ condition }) => (condition.kind === "price" ? [condition.asset] : []));
+}
+
+/** Creates the {@link WatchedOrders} over the order and alert stores and each chain's watcher. */
 export function createWatchedOrders(options: {
   readonly orders: Pick<OrderStore, "list">;
+  readonly alerts: Pick<AlertStore, "list">;
   readonly watches: ReadonlyMap<ChainRef, ChainWatch>;
 }): WatchedOrders {
   const releases = new Map<AssetRef, () => void>();
@@ -51,7 +70,8 @@ export function createWatchedOrders(options: {
         hasPriceTrigger(kind),
       );
       count = read.length;
-      const tokens = new Set(read.map(({ request }) => request.token));
+      const alerted = await alertTokens(options.alerts, signal);
+      const tokens = new Set([...read.map(({ request }) => request.token), ...alerted]);
       for (const [token, release] of releases) {
         if (!tokens.has(token)) {
           release();

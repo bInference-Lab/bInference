@@ -106,6 +106,7 @@ function rig(
               },
             ] as unknown as readonly OrderRecord[]),
     },
+    alerts: { list: async () => Promise.resolve([]) },
     sources: {
       dexscreener: createFakeMarketSource({ id: "dexscreener", chains: [bsc], prices }),
       geckoterminal: createFakeMarketSource({ id: "geckoterminal", chains: [bsc] }),

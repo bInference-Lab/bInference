@@ -327,7 +327,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   locked.announce.publish = publish;
   wiring.jobs.publish = publish;
   wiring.watcherPushes.publish = publish;
-  wiring.priceWatchers.triggers.see = async (price, call) => engine.seePrice(price, call);
+  wiring.priceWatchers.attach(engine);
   wiring.signerRefused.run = ({ intent, refused }) => {
     publish(signerRefusedNotice({ intent, refused }));
   };

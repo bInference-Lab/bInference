@@ -51,6 +51,7 @@ export function composeWatching(
     watches,
     decimals: chainTokenDecimals(reads),
     orders: opened.stores.orders,
+    alerts: opened.stores.alerts,
     sources,
     clock,
     publish: (push) => watcherPushes.publish(push),

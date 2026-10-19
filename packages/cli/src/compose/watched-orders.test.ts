@@ -1,5 +1,5 @@
 import { assetRefSchema, type AssetRef } from "@binference/chain";
-import type { OrderQuery, OrderRecord } from "@binference/engine/orders";
+import type { AlertQuery, AlertRecord, OrderQuery, OrderRecord } from "@binference/engine/orders";
 import { describe, expect, it } from "vitest";
 import type { ChainWatch } from "./chain-watch.js";
 import { createWatchedOrders } from "./watched-orders.js";
@@ -36,6 +36,25 @@ function storeOf(orders: { current: readonly OrderRecord[] }) {
   };
 }
 
+const noAlerts = { list: async () => Promise.resolve([]) };
+
+// A store of active price alerts, each on its token.
+function alertsOn(tokens: readonly AssetRef[]) {
+  const queries: AlertQuery[] = [];
+  const alerts = tokens.map(
+    (asset) => ({ condition: { kind: "price", asset } }) as unknown as AlertRecord,
+  );
+  return {
+    queries,
+    store: {
+      async list(query: AlertQuery) {
+        queries.push(query);
+        return await Promise.resolve(alerts);
+      },
+    },
+  };
+}
+
 function watchOf() {
   const watched = new Map<AssetRef, number>();
   const watch = {
@@ -63,6 +82,7 @@ describe("the watched orders", () => {
     const bsc = watchOf();
     const watched = createWatchedOrders({
       orders: store,
+      alerts: noAlerts,
       watches: new Map([["eip155:56" as never, bsc.watch]]),
     });
     await watched.sync({ signal });
@@ -85,10 +105,30 @@ describe("the watched orders", () => {
   it("reads every page of active orders", async () => {
     const orders = { current: Array.from({ length: 1_001 }, () => order("limit", tokenOf("07"))) };
     const { store, queries } = storeOf(orders);
-    const watched = createWatchedOrders({ orders: store, watches: new Map() });
+    const watched = createWatchedOrders({ orders: store, alerts: noAlerts, watches: new Map() });
     await watched.sync({ signal });
     expect(watched.activeOrders()).toBe(1_001);
     expect(queries).toHaveLength(2);
     expect(queries[1]?.after?.createdAtMs).toBe(orders.current[999]?.createdAtMs);
+  });
+
+  it("watches the token of each active price alert beside the orders' tokens", async () => {
+    const orders = { current: [order("stopLoss", tokenOf("01"))] };
+    const { store } = storeOf(orders);
+    const alerts = alertsOn([tokenOf("01"), tokenOf("09")]);
+    const bsc = watchOf();
+    const watched = createWatchedOrders({
+      orders: store,
+      alerts: alerts.store,
+      watches: new Map([["eip155:56" as never, bsc.watch]]),
+    });
+    await watched.sync({ signal });
+    expect(bsc.watched).toStrictEqual(
+      new Map([
+        [tokenOf("01"), 1],
+        [tokenOf("09"), 1],
+      ]),
+    );
+    expect(alerts.queries).toStrictEqual([{ states: ["active"], kind: "price", limit: 1_000 }]);
   });
 });
