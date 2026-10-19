@@ -99,18 +99,23 @@ export function walletTransfersOf(
     ...transfersOf(logs.sent, "sent", tracked),
     ...transfersOf(logs.received, "received", tracked),
   ];
-  const counts = new Map<string, number>();
+  const byWalletBlock = new Map<string, WalletTransfer[]>();
   for (const transfer of all) {
-    counts.set(keyOf(transfer), (counts.get(keyOf(transfer)) ?? 0) + 1);
-  }
-  const kept = all.filter((transfer) => (counts.get(keyOf(transfer)) ?? 0) <= maxPerBlock);
-  const cut = new Map<string, WalletOverflow>();
-  for (const { account, block } of all) {
-    const transfers = counts.get(keyOf({ account, block })) ?? 0;
-    if (transfers > maxPerBlock) {
-      cut.set(keyOf({ account, block }), { account, block, transfers });
+    const group = byWalletBlock.get(keyOf(transfer));
+    if (group === undefined) {
+      byWalletBlock.set(keyOf(transfer), [transfer]);
+    } else {
+      group.push(transfer);
     }
   }
+  const groups = [...byWalletBlock.values()];
+  const kept = groups.filter((group) => group.length <= maxPerBlock).flat();
+  const overflows = groups.flatMap((group) => {
+    const [first] = group;
+    return group.length > maxPerBlock && first !== undefined
+      ? [{ account: first.account, block: first.block, transfers: group.length }]
+      : [];
+  });
   const ordered = kept.toSorted(byPlace);
-  return { transfers: ordered, overflows: [...cut.values()] };
+  return { transfers: ordered, overflows };
 }

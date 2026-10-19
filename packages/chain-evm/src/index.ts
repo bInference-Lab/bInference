@@ -113,3 +113,15 @@ export type { PlanFailure, PlanPrices, PricePlan, WatchedToken } from "./watchin
 export { readTokenDecimals } from "./tokens/read-token-decimals.js";
 export { readHasCode } from "./tokens/read-has-code.js";
 export { readTokenFacts, type TokenFactsAnswer } from "./tokens/read-token-facts.js";
+export { createLeaderWatcher } from "./leaders/leader-watcher.js";
+export type {
+  LeaderBook,
+  LeaderWatcher,
+  LeaderWatcherOptions,
+  LeaderWatcherState,
+  TrackedLeader,
+  WatchCursor,
+} from "./leaders/leader-watcher.js";
+export type { LeaderOverflow, LeaderRead, SpanWallet } from "./leaders/read-leader-span.js";
+export type { WalletTrade } from "./leaders/finish-trades.js";
+export type { TradeContext } from "./leaders/match-trades.js";

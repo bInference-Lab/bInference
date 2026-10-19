@@ -33,7 +33,7 @@ const tooLargeMessage =
  * a log query over too many blocks or results. Every endpoint would refuse it alike, so it is the
  * call's own answer: the caller asks again for less.
  */
-function isQueryTooLarge(error: JsonRpcError): boolean {
+export function isQueryTooLarge(error: JsonRpcError): boolean {
   return tooLargeMessage.test(error.message);
 }
 

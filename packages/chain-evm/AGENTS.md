@@ -31,6 +31,12 @@ Rules for this package:
   never split, with the block's number as the call's block. It never stops for the chain: a dead
   socket gives way to polling, a failed batch is read again, and its lag is reported, not thrown.
   Its loops run through `repeatSteps`, so a run of hours never chains promises up.
+- The leader watcher (`src/leaders/`, decisions 0249 and 0250) reads the tracked wallets' ERC-20
+  transfers in two `eth_getLogs` queries per read, one block at the head and up to 10 behind it,
+  every block in order with no skip, and reads one trade per transaction and wallet. Its budget is
+  fixed: a wallet with more than 100 transfers in a block is cut there and reported, and a query an
+  endpoint refuses as too large is asked again for half the blocks, then half the wallets. Each
+  read reaches its book in one write with the cursor, so a restart reads on with no gap.
 - Prices come from the Chainlink feeds the composition root names. A feed that cannot be read, a
   broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw.
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.
