@@ -191,6 +191,11 @@ Rules for this package:
   canonical form first, and an archived agent's alert ends at its next match. The firing holds no
   intent store, executor or venue, and `alerts-move-no-money.property.test.ts` holds that no alert
   reaches the money path.
+- Launches (`src/launches/`, decisions 0254 to 0256) are what the launch feed stored behind the
+  `LaunchStore` port: `launch/list` and `market/scan` with `source: launches` read them, their
+  filters naming only launchpads the venue host runs, and `tellLaunches` pushes each launch stored
+  new as `launch/new` and hands it to the launch alerts, in block order. Nothing here reaches the
+  money path.
 - Schedules (`src/schedules/`, decisions 0231 to 0233) are set and cancelled with no card,
   journaled under `agents.<name>.schedules` and announced as `notice.scheduleSet` and
   `notice.scheduleCancelled`. `nextCronRun` works out each next run on the wall clock of the
