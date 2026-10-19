@@ -40,6 +40,7 @@ export type ChosenCommand =
       readonly intent: ProtocolId<"intent">;
     }
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
+  | { readonly name: "chat"; readonly options: AgentFlags }
   | {
       readonly name: "walletAddress" | "walletExport" | "ceiling";
       readonly options: WalletAddressFlags;

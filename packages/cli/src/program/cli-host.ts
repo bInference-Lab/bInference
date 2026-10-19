@@ -2,6 +2,7 @@ import type { AssetRef } from "@binference/chain";
 import type { Clock, Http, HttpDownload, Random } from "@binference/core";
 import type { Engine } from "@binference/engine";
 import type { ServiceManager, SignalEvents } from "@binference/platform";
+import type { ChatTerminal } from "@binference/tui";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
 import type { StartSigner } from "../compose/start-signer.js";
@@ -76,6 +77,11 @@ export interface CliHost {
    * console is built, the engine serves no console.
    */
   readonly consoleFolder?: string;
+  /**
+   * The terminal `binference chat` runs in: standard input and output when both are a terminal,
+   * else absent, and the chat is refused.
+   */
+  readonly chatTerminal?: ChatTerminal;
   /** The streams `binference mcp` serves over: the process's stdin and stdout. */
   readonly mcpStdio?: McpStdio;
   /**

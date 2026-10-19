@@ -104,7 +104,14 @@ const noServices: ServiceManager = {
 export type HostParts = Partial<
   Pick<
     CliHost,
-    "http" | "prompter" | "startSigner" | "startRuntime" | "serviceManager" | "homeDir" | "mcpStdio"
+    | "http"
+    | "prompter"
+    | "startSigner"
+    | "startRuntime"
+    | "serviceManager"
+    | "homeDir"
+    | "mcpStdio"
+    | "chatTerminal"
   >
 >;
 

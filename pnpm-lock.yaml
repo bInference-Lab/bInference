@@ -551,6 +551,9 @@ importers:
       '@binference/telegram':
         specifier: workspace:*
         version: link:../telegram
+      '@binference/tui':
+        specifier: workspace:*
+        version: link:../tui
       '@clack/prompts':
         specifier: 'catalog:'
         version: 1.8.1

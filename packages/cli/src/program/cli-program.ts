@@ -48,6 +48,11 @@ function addAgentCommands(program: Command, options: ProgramOptions): void {
         ...(mode === undefined ? {} : { mode }),
       }),
     );
+  withCommon(program.command("chat").description(message("command.chat")), message)
+    .addOption(agentOption(message))
+    .action((flags: OptionValues) =>
+      choose({ name: "chat", options: agentFlagsSchema.parse(flags) }),
+    );
   for (const name of ["live", "paper"] as const) {
     withCommon(program.command(name).description(message(`command.${name}`)), message)
       .addOption(agentOption(message))

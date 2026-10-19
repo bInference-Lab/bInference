@@ -74,6 +74,10 @@ Rules for this package:
   Telegram, is logged and never stops the money path. The skeleton tests run on every composition
   with `describe.each` through `src/compose/test-skeleton.ts`; a new profile part joins both
   compositions there.
+- `binference chat` (`src/commands/chat-command.ts`) runs terminal chat from `@binference/tui`
+  (decision 0253): it signs in with the CLI's token as `tui`, which keeps its connection, picks the
+  agent, and hands the client and `host.chatTerminal` to `runTerminalChat`. Only `src/main.ts`
+  fills `chatTerminal`, when standard input and output are both a terminal.
 - Browser push lives in `src/web-push/` (decision 0158): the VAPID key in `keys/web-push-vapid`,
   made by init and at start when missing; the message encryption of RFC 8291 and the token of
   RFC 8292 on `node:crypto`, checked against the RFCs' worked examples; the sender through the

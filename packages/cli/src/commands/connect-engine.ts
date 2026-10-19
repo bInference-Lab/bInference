@@ -42,11 +42,15 @@ function failureOf(error: ErrorOptions["cause"]): CallFailure {
 }
 
 /**
- * Connects the CLI to the engine of the host's state folder over its IPC endpoint and signs in
- * with the token in `auth/cli.token`. Answers `not_running` when nothing listens there, and
+ * Connects the CLI, or terminal chat as `kind` `tui`, to the engine of the host's state folder over
+ * its IPC endpoint and signs in with the token in `auth/cli.token`. Answers `not_running` when nothing listens there, and
  * `no_sign_in` when the token file is missing. The caller closes the client.
  */
-export async function connectEngine(host: CliHost, signal: AbortSignal): Promise<EngineConnection> {
+export async function connectEngine(
+  host: CliHost,
+  signal: AbortSignal,
+  kind: "cli" | "tui" = "cli",
+): Promise<EngineConnection> {
   const platform = platformOf(host);
   const endpoint = engineEndpoint(platform);
   const probe = await endpoint.connect(signal);
@@ -59,13 +63,17 @@ export async function connectEngine(host: CliHost, signal: AbortSignal): Promise
   if (token === undefined) {
     return { ok: false, reason: "no_sign_in", file };
   }
-  return signIn(host, { token, kind: "cli" }, signal);
+  return signIn(host, { token, kind }, signal);
 }
 
-/** Who signs in: a client token and the kind of client it is for. */
+/**
+ * Who signs in: a client token and the kind of client it is for. Terminal chat signs in with the
+ * CLI's token as `tui` and keeps its connection, so it reconnects as long as the client's limits
+ * allow; a one-shot command tries a lost connection once more.
+ */
 export interface SignInAs {
   readonly token: string;
-  readonly kind: "cli" | "mcp";
+  readonly kind: "cli" | "mcp" | "tui";
 }
 
 /**
@@ -92,7 +100,7 @@ export async function signIn(
       clock: host.clock,
       subsystem: "cli",
     }),
-    limits: { reconnect: oneShotReconnect },
+    ...(as.kind === "tui" ? {} : { limits: { reconnect: oneShotReconnect } }),
   });
   try {
     await client.connect(signal);
@@ -104,7 +112,7 @@ export async function signIn(
 }
 
 /** Prints why the CLI could not reach the engine, and answers the exit code 1. */
-function reportUnreachable(
+export function reportUnreachable(
   output: CliOutput,
   failure: Exclude<EngineConnection, { readonly ok: true }>,
 ): ExitCode {

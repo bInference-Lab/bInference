@@ -29,6 +29,20 @@ const consoleFolder = fileURLToPath(new URL(".", consoleIndex));
 const http = createSystemHttp({ version });
 // A person answers questions only when both ends of the terminal are one.
 const hasTerminal = process.stdin.isTTY && process.stdout.isTTY;
+// The terminal `binference chat` runs in: raw keys from standard input, its size from the output.
+const chatTerminal = {
+  input: process.stdin,
+  output: process.stdout,
+  enterRawMode: () => process.stdin.setRawMode(true),
+  leaveRawMode: () => process.stdin.setRawMode(false),
+  size: () => ({ columns: process.stdout.columns, rows: process.stdout.rows }),
+  onResize: (listener: () => void) => {
+    process.stdout.on("resize", listener);
+    return () => {
+      process.stdout.off("resize", listener);
+    };
+  },
+};
 process.exitCode = await runCli({
   argv: process.argv.slice(2),
   env: process.env,
@@ -39,7 +53,10 @@ process.exitCode = await runCli({
   http,
   download: http,
   ...(hasTerminal
-    ? { prompter: createTerminalPrompter({ input: process.stdin, output: process.stdout }) }
+    ? {
+        prompter: createTerminalPrompter({ input: process.stdin, output: process.stdout }),
+        chatTerminal,
+      }
     : {}),
   signals: process,
   version,

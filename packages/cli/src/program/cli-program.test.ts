@@ -52,6 +52,7 @@ describe("the binference command tree", () => {
       "unlock",
       "logs",
       "approval",
+      "chat",
       "live",
       "paper",
       "confirm",
