@@ -68,6 +68,7 @@ function startTimers(
   startPinTimer({ checkPins: composed.checkPins, clock: host.clock, closers, logger });
   composed.priceWatchers.start(closers, logger.child("watcher"));
   composed.leaderWatchers.start(closers, logger.child("watcher"));
+  composed.launchFeeds.start(closers, logger.child("watcher"));
   startTestOrders(opening, composed.priceWatchers.triggers);
   const backups = backupPartsOf(opening, opened.stores.backups, logger);
   startNightlyBackups(opening, {

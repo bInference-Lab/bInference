@@ -24,7 +24,7 @@ import { type ComposedLock, composeLock } from "./compose-lock.js";
 import type { ComposedPriceWatchers } from "./compose-price-watchers.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
-import { type ComposedWatching, composeWatching } from "./compose-watching.js";
+import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
 import { engineHandlers } from "./engine-handlers.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { botParts } from "./open-bot.js";
@@ -70,6 +70,7 @@ export interface ComposedSelfHosted extends Pick<
   /** The price and leader watchers, whose timers start once the engine serves. */
   readonly priceWatchers: ComposedPriceWatchers;
   readonly leaderWatchers: ComposedWatching["leaderWatchers"];
+  readonly launchFeeds: ComposedWatching["launchFeeds"];
 }
 
 /** What the self-hosted engine trades on, each part over the chains' one set of reads. */
@@ -292,6 +293,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       executor: sending.executor,
       positions: parts.positions,
       paperBalances: parts.paperBalances,
+      launchFeed: wiring.launchFeeds.isRunning,
     },
   );
 }
@@ -301,8 +303,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
  * lock opens it; one RPC failover per chain, which the prices, the wallet facts, the simulators and
  * the executor's reads share; the executor over it and the chains' relays; the lock over the
  * install's keys; the engine over the venues, those parts and the stored positions; and its
- * protocol server, which answers `engine.starting`
- * until the startup order ends. A signer that stops by itself locks the engine again, and every
+ * protocol server, which answers `engine.starting` until the startup order ends. A signer that stops by itself locks the engine again, and every
  * surface hears it. Each part adds its closer, so the shutdown sequence closes the server first,
  * then lets the executor finish what it signs and sends, then stops the signer.
  */
@@ -323,8 +324,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   locked.announce.publish = publish;
   wiring.jobs.publish = publish;
   wiring.watcherPushes.publish = publish;
-  wiring.priceWatchers.attach(engine);
-  wiring.leaderWatchers.attach(engine);
+  const watching = serveWatching(wiring, engine);
   wiring.signerRefused.run = ({ intent, refused }) => {
     publish(signerRefusedNotice({ intent, refused }));
   };
@@ -352,8 +352,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     state,
     locked,
     runtime: wiring.runtime,
-    priceWatchers: wiring.priceWatchers,
-    leaderWatchers: wiring.leaderWatchers,
+    ...watching,
     ...bot,
   };
 }

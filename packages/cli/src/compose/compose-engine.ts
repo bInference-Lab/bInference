@@ -107,6 +107,8 @@ export interface ComposeEngineOptions {
   readonly canPrice: EngineOptions["canPrice"];
   /** Whether live auto orders fill; off when absent (decision 0195). */
   readonly liveOrderFills?: boolean;
+  /** Whether a launch feed runs, whose records `market/scan` reads (decision 0256). */
+  readonly launchFeed?: boolean;
   /** Reads what a token the registry does not list answers on chain, for its cards. */
   readonly readTokenFacts: EngineOptions["readTokenFacts"];
   /** Whether a launch's token holds code yet; without it no token launch is proposed. */
@@ -263,6 +265,7 @@ function engineOf(
     isLocked: options.isLocked ?? (() => false),
     canPrice: options.canPrice,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
+    ...(options.launchFeed === true ? { launchFeed: true } : {}),
     readTokenFacts: options.readTokenFacts,
     ...(options.readTokenCode === undefined ? {} : { launchTokenCode: options.readTokenCode }),
     workspace: options.workspace,
