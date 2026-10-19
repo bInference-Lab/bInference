@@ -41,12 +41,12 @@ import { checkOrderMoves, createOrder, readOrder, writeOrderMoves } from "./orde
 /** Stores a new order awaiting its card. */
 export const createOrderTask: StoreTask<
   OrderDraft,
-  Result<OrderRecord, "exists" | "frozen">
+  Result<OrderRecord, "exists" | "frozen" | "track_limit">
 > = defineTask({
   name: "orders.create",
   access: "write",
   input: orderDraftSchema,
-  output: resultSchema(orderRecordSchema, ["exists", "frozen"]),
+  output: resultSchema(orderRecordSchema, ["exists", "frozen", "track_limit"]),
   run: (database, draft) => createOrder(database, draft),
 });
 

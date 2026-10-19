@@ -23,8 +23,10 @@ export interface AlertStore {
   /**
    * Stores a new active alert. An unknown agent is `not_found`; an agent that holds 50 active
    * alerts `too_many`; a wallet alert whose account would be the 51st tracked across the install,
-   * counting the active wallet alerts of agents not archived, `track_limit`. Each stores nothing.
-   * An id in use throws `store.constraint`.
+   * counting the accounts of active wallet alerts and the leaders of live copy orders of agents not
+   * archived, `track_limit` (decision 0251). Each stores nothing. A wallet alert's account is
+   * tracked in the same write, and each write that ends one moves the tracked wallets with it. An
+   * id in use throws `store.constraint`.
    */
   create(
     alert: AlertRecord,

@@ -17,6 +17,7 @@ import { createMemoryOrderStore, type MemoryOrderStore } from "./memory-order-st
 import { createMemoryOwnerStore } from "./memory-owner-store.js";
 import { createMemoryQuestionStore } from "./memory-question-store.js";
 import { createMemoryScheduleStore } from "./memory-schedule-store.js";
+import { createMemoryTracking } from "./memory-tracking.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 
 /**
@@ -41,12 +42,14 @@ export function createMemoryEngineStores(): MemoryEngineStores {
   const install = createMemoryInstallStore();
   const agents = createMemoryAgentStore({ install });
   const agentInbox = createMemoryAgentInboxStore({ agents });
+  const tracking = createMemoryTracking();
   // A freeze of the intent store moves orders, and a move into `active` reads a confirmation.
   const orders = createMemoryOrderStore({
     agents,
     install,
     confirmation: (id) => intents.confirmationNow(id),
     hasIntent: (id) => intents.intentNow(id) !== undefined,
+    tracking,
   });
   const intents = createMemoryIntentStore({ ledger, agents, install, agentInbox, orders });
   return {
@@ -68,6 +71,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     agentTopics: createMemoryAgentTopicStore(),
     modelUsage: createMemoryModelUsageStore({ agents }),
     schedules: createMemoryScheduleStore({ agents, agentInbox }),
-    alerts: createMemoryAlertStore({ agents, agentInbox }),
+    alerts: createMemoryAlertStore({ agents, agentInbox, tracking }),
   };
 }

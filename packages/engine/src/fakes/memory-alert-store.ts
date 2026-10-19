@@ -1,3 +1,4 @@
+import type { AccountRef } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import {
   type AlertFireDraft,
@@ -18,18 +19,24 @@ import {
   type AlertQuery,
   type AlertRecord,
   maxActiveAlerts,
-  maxTrackedWallets,
   watchedAssetOf,
 } from "../alerts/alert-record.js";
 import type { AlertStore } from "../alerts/ports.js";
 import type { AgentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
+import { createMemoryTracking, type MemoryTracking } from "./memory-tracking.js";
+
+interface StoreCall {
+  readonly signal: AbortSignal;
+}
 
 /** The agents an in-memory alert store knows, and the inbox its fires store wake-ups in. */
 export interface MemoryAlertStoreOptions {
   readonly agents: Pick<AgentStore, "get">;
   readonly agentInbox: Pick<MemoryAgentInboxStore, "wakeNow" | "replaceNow">;
+  /** The tracked wallets it shares with the order fake; its own when absent. */
+  readonly tracking?: MemoryTracking;
 }
 
 /** One fire as `alert_fires` keeps it. */
@@ -76,7 +83,7 @@ function activeOf(rows: Rows): readonly AlertRecord[] {
 
 // The accounts the install tracks for wallet alerts: those of the active wallet alerts of agents
 // not archived.
-function trackedAccounts(rows: Rows, archived: ReadonlySet<Id<"agt">>): ReadonlySet<string> {
+function trackedAccounts(rows: Rows, archived: ReadonlySet<Id<"agt">>): ReadonlySet<AccountRef> {
   return new Set(
     activeOf(rows).flatMap(({ condition, agentId }) =>
       condition.kind === "wallet" && !archived.has(agentId) ? [condition.account] : [],
@@ -102,7 +109,7 @@ async function archivedAgents(
 function create(
   rows: Rows,
   alert: AlertRecord,
-  archived: ReadonlySet<Id<"agt">>,
+  tracking: MemoryTracking,
 ): Result<AlertRecord, "too_many" | "track_limit"> {
   if (rows.alerts.has(alert.id)) {
     throw constraintFault(`the alert id ${alert.id} is in use`);
@@ -111,13 +118,8 @@ function create(
   if (held.length >= maxActiveAlerts) {
     return err("too_many");
   }
-  const tracked = trackedAccounts(rows, archived);
   const { condition } = alert;
-  if (
-    condition.kind === "wallet" &&
-    !tracked.has(condition.account) &&
-    tracked.size >= maxTrackedWallets
-  ) {
+  if (condition.kind === "wallet" && !tracking.hasRoom(condition.account)) {
     return err("track_limit");
   }
   rows.alerts.set(alert.id, structuredClone(alert));
@@ -255,20 +257,44 @@ function closeOne(
 /** Creates an empty in-memory {@link AlertStore} for tests. */
 export function createMemoryAlertStore(options: MemoryAlertStoreOptions): AlertStore {
   const rows: Rows = { alerts: new Map(), fires: new Map() };
+  const tracking = options.tracking ?? createMemoryTracking();
+  tracking.addSource(async (call) =>
+    trackedAccounts(rows, await archivedAgents(rows, options.agents, call)),
+  );
+  // Each write that can end a wallet alert moves the tracked wallets in the same call.
+  const reconciled = async <T>(atMs: number, call: StoreCall, written: T): Promise<T> => {
+    await tracking.reconcile(atMs, call);
+    return written;
+  };
   return {
     async create(alert, call) {
       call.signal.throwIfAborted();
       const agent = await options.agents.get(alert.agentId, call);
-      const archived = await archivedAgents(rows, options.agents, call);
-      return agent === undefined ? err("not_found") : create(rows, alert, archived);
+      if (agent === undefined) {
+        return err("not_found");
+      }
+      await tracking.reconcile(alert.createdAtMs, call);
+      return reconciled(alert.createdAtMs, call, create(rows, alert, tracking));
     },
     get: async (id, call) => memoryCall(call, () => structuredClone(rows.alerts.get(id))),
     list: async (query, call) => memoryCall(call, () => structuredClone(listed(rows, query))),
-    delete: async (change, call) => memoryCall(call, () => closeOne(rows, change, "deleted")),
-    end: async (change, call) => memoryCall(call, () => closeOne(rows, change, "ended")),
+    delete: async (change, call) =>
+      reconciled(
+        change.atMs,
+        call,
+        await memoryCall(call, () => closeOne(rows, change, "deleted")),
+      ),
+    end: async (change, call) =>
+      reconciled(change.atMs, call, await memoryCall(call, () => closeOne(rows, change, "ended"))),
     heldNotices: async ({ atMs, limit }, call) =>
       memoryCall(call, () => heldNotices(rows, atMs, limit)),
-    expire: async ({ atMs, limit }, call) => memoryCall(call, () => end(rows, atMs, limit)),
-    fire: async (draft, call) => memoryCall(call, () => fire(rows, options.agentInbox, draft)),
+    expire: async ({ atMs, limit }, call) =>
+      reconciled(atMs, call, await memoryCall(call, () => end(rows, atMs, limit))),
+    fire: async (draft, call) =>
+      reconciled(
+        draft.atMs,
+        call,
+        await memoryCall(call, () => fire(rows, options.agentInbox, draft)),
+      ),
   };
 }

@@ -2,23 +2,10 @@ import { describe, expect, it } from "vitest";
 import { type AlertSubject, alertStoreContract } from "../contracts/alert-store-contract.js";
 import { fixtureId, live } from "../contracts/store-fixtures.js";
 import { testAgentDraft } from "../intents/test-intents.js";
-import type { AgentStore } from "../ports.js";
+import { archivingAgents } from "./archiving-agents.js";
 import { createMemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import { createMemoryAlertStore } from "./memory-alert-store.js";
 import { createMemoryEngineStores } from "./memory-engine-stores.js";
-
-// The agent store, answering the agents in `archived` as archived.
-function archivingAgents(agents: AgentStore, archived: ReadonlySet<string>): AgentStore {
-  return {
-    ...agents,
-    get: async (id, call) => {
-      const settings = await agents.get(id, call);
-      return settings === undefined || !archived.has(id)
-        ? settings
-        : { ...settings, agent: { ...settings.agent, archivedAtMs: 1 } };
-    },
-  };
-}
 
 describe("memory alert store", () => {
   it.each(

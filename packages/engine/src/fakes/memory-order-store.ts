@@ -1,5 +1,7 @@
+import type { AccountRef } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
+import { copyLeaderOf, trackingOrderStates } from "../orders/copy-leader.js";
 import { type OrderFillWrite, recordsOwnFill } from "../orders/order-fill.js";
 import { countsLandedFill } from "../orders/order-machine.js";
 import type {
@@ -15,6 +17,7 @@ import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryOrderFills, type MemoryOrderFills } from "./memory-order-fills.js";
+import { createMemoryTracking, type MemoryTracking } from "./memory-tracking.js";
 
 /** An in-memory order store, whose moves another in-memory store's write can make. */
 export interface MemoryOrderStore extends OrderStore, MemoryOrderFills {
@@ -44,6 +47,8 @@ export interface MemoryOrderStoreOptions {
   readonly confirmation: (intent: Id<"int">) => StoredConfirmation | undefined;
   /** Whether the intent store beside it holds the intent. */
   readonly hasIntent: (intent: Id<"int">) => boolean;
+  /** The tracked wallets it shares with the alert fake; its own when absent. */
+  readonly tracking?: MemoryTracking;
 }
 
 type Orders = Map<Id<"ord">, OrderRecord>;
@@ -227,12 +232,58 @@ function matches(order: OrderRecord, query: OrderQuery): boolean {
   ].every(Boolean);
 }
 
+// The leaders of the live copy orders of agents not archived.
+function leadersOf(orders: Orders, options: MemoryOrderStoreOptions): ReadonlySet<AccountRef> {
+  return new Set(
+    [...orders.values()].flatMap((order) => {
+      const leader = copyLeaderOf(order.request);
+      const agent = options.agents.agentNow(order.agentId);
+      const isLive = trackingOrderStates.includes(order.state);
+      return leader !== undefined && isLive && agent?.archivedAtMs === undefined ? [leader] : [];
+    }),
+  );
+}
+
+// The creates and moves, which move the tracked wallets of copy orders in the same call.
+function trackedCalls(
+  orders: Orders,
+  options: MemoryOrderStoreOptions,
+): Pick<OrderStore, "create" | "move"> {
+  const tracking = options.tracking ?? createMemoryTracking();
+  tracking.addSource(async () => Promise.resolve(leadersOf(orders, options)));
+  return {
+    async create(draft, call) {
+      const leader = copyLeaderOf(draft.request);
+      if (leader === undefined) {
+        return memoryCall(call, () => create(orders, options, structuredClone(draft)));
+      }
+      await tracking.reconcile(draft.atMs, call);
+      const made = await memoryCall(call, () =>
+        tracking.hasRoom(leader)
+          ? create(orders, options, structuredClone(draft))
+          : err("track_limit" as const),
+      );
+      await tracking.reconcile(draft.atMs, call);
+      return made;
+    },
+    async move(moves, call) {
+      const moved = await memoryCall(call, () => moveAll(orders, options, structuredClone(moves)));
+      const [first] = moves;
+      if (moved.ok && first !== undefined && moved.value.some(({ kind }) => kind === "copy")) {
+        await tracking.reconcile(first.atMs, call);
+      }
+      return moved;
+    },
+  };
+}
+
 /**
  * Creates an empty in-memory {@link MemoryOrderStore} for tests. Each write checks everything
  * first and changes nothing when a check fails, as the SQLite store's transaction does.
  */
 export function createMemoryOrderStore(options: MemoryOrderStoreOptions): MemoryOrderStore {
   const orders: Orders = new Map();
+  const tracked = trackedCalls(orders, options);
   const fills = createMemoryOrderFills({
     hasOrder: (id) => orders.has(id),
     hasIntent: options.hasIntent,
@@ -255,8 +306,7 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
     saveNow: (moved) => {
       saveNow(orders, moved);
     },
-    create: async (draft, call) =>
-      memoryCall(call, () => create(orders, options, structuredClone(draft))),
+    create: tracked.create,
     get: async (id, call) => memoryCall(call, () => structuredClone(orders.get(id))),
     byIntent: async (intent, call) =>
       memoryCall(call, () =>
@@ -271,8 +321,7 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
             .slice(0, query.limit),
         ),
       ),
-    move: async (moves, call) =>
-      memoryCall(call, () => moveAll(orders, options, structuredClone(moves))),
+    move: tracked.move,
     recordLandedFill: async (write, call) =>
       memoryCall(call, () => landFill({ orders, options, fills }, structuredClone(write))),
   };

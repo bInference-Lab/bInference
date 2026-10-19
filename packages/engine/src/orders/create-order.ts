@@ -264,6 +264,25 @@ function rulesContextOf(parts: Pick<OrderParts, "clock" | "chains" | "ownerTimeZ
   return { nowMs: parts.clock.now(), chains: parts.chains, ownerZone: parts.ownerTimeZone() };
 }
 
+// A stored order, or why the store refused it: a frozen agent, or a 51st tracked wallet. An id in
+// use is a fault.
+function storedOrder(
+  created: Result<OrderRecord, "exists" | "frozen" | "track_limit">,
+  draft: OrderDraft,
+): Result<OrderRecord, "agent.frozen" | "wallet.track_limit"> {
+  if (created.ok) {
+    return created;
+  }
+  if (created.error === "exists") {
+    throw new BinferenceError({
+      code: "engine.order_not_stored",
+      message: `A new auto order's id ${draft.id} is taken.`,
+      details: { order: draft.id },
+    });
+  }
+  return err(created.error === "frozen" ? "agent.frozen" : "wallet.track_limit");
+}
+
 /**
  * Creates an auto order (decision 0189): checks the request and fills its defaults, stores the
  * order `awaiting_confirmation` in its agent's mode with the proposal's outside-content mark, then
@@ -273,7 +292,8 @@ function rulesContextOf(parts: Pick<OrderParts, "clock" | "chains" | "ownerTimeZ
  * the wallet (`quote.venue_down`), a kind that does not run yet, a broken rule, or
  * a price order for a token the price watcher cannot price now (decision 0194), or a token the
  * registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
- * decision 0199). The card shows such a token by what it answered, marked unverified.
+ * decision 0199), or a copy order whose leader would be the 51st tracked wallet
+ * (`wallet.track_limit`). The card shows such a token by what it answered, marked unverified.
  */
 export async function createOrder(
   parts: OrderParts,
@@ -305,16 +325,9 @@ export async function createOrder(
   const { wallet, assets } = held.value;
   const draft = draftOf(parts, checked.value, { wallet, settings, proposer });
   const isLinked = await hasLinkedExits(parts, draft, signal);
-  const created = await parts.orders.create(draft, { signal });
-  if (!created.ok && created.error === "frozen") {
-    return err("agent.frozen");
-  }
+  const created = storedOrder(await parts.orders.create(draft, { signal }), draft);
   if (!created.ok) {
-    throw new BinferenceError({
-      code: "engine.order_not_stored",
-      message: `A new auto order's id ${draft.id} is taken.`,
-      details: { order: draft.id },
-    });
+    return created;
   }
   parts.publish(orderPush(created.value, "order/created"));
   const order = { order: created.value, proposer, hasLinkedExits: isLinked, assets };

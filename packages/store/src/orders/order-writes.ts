@@ -4,6 +4,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError, err, type Id, ok, type Result } from "@binference/core";
 import {
+  copyLeaderOf,
   countsLandedFill,
   isOrderEnded,
   type OrderDraft,
@@ -11,10 +12,11 @@ import {
   type OrderMoveRefusal,
   type OrderRecord,
 } from "@binference/engine/orders";
-import type { Selectable, Updateable } from "kysely";
+import type { Insertable, Selectable, Updateable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { OrdersTable } from "../databases/order-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { hasTrackRoom, syncTrackedWallets } from "../leaders/tracked-sync.js";
 import { optionalJsonText, orNull } from "../rows/column-values.js";
 import { requestText, toOrderRecord } from "./order-rows.js";
 
@@ -41,14 +43,41 @@ function isAgentFrozen(database: DatabaseSync, agentId: string): boolean | undef
   return agent === undefined ? undefined : agent.frozen_at !== null;
 }
 
+// The row of a new order awaiting its card.
+function orderRowOf(draft: OrderDraft): Insertable<OrdersTable> {
+  return {
+    id: draft.id,
+    agent_id: draft.agentId,
+    wallet_id: draft.walletId,
+    kind: draft.request.kind,
+    state: "awaiting_confirmation",
+    request: requestText(draft.request),
+    trigger_state: null,
+    fills: 0,
+    max_fills: orNull(draft.maxFills),
+    expires_at: draft.expiresAtMs,
+    intent_id: draft.intentId,
+    card_id: null,
+    paper: draft.isPaper ? 1 : 0,
+    outside_content: draft.hasOutsideContent ? 1 : 0,
+    end_reason: null,
+    expiry_noticed_at: null,
+    created_at: draft.atMs,
+    changed_at: draft.atMs,
+    version: 0,
+  };
+}
+
 /**
- * Stores a new order `awaiting_confirmation`. An id in use is `exists`, a frozen agent `frozen`;
- * an unknown agent or a wallet that is not the agent's throws.
+ * Stores a new order `awaiting_confirmation`. An id in use is `exists`, a frozen agent `frozen`,
+ * a copy order whose leader would be the 51st tracked wallet `track_limit` (decision 0251); a copy
+ * order's leader is tracked in the same write. An unknown agent or a wallet that is not the
+ * agent's throws.
  */
 export function createOrder(
   database: DatabaseSync,
   draft: OrderDraft,
-): Result<OrderRecord, "exists" | "frozen"> {
+): Result<OrderRecord, "exists" | "frozen" | "track_limit"> {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const isFrozen = isAgentFrozen(database, draft.agentId);
   const wallet = takeFirst(
@@ -65,29 +94,14 @@ export function createOrder(
   if (isFrozen) {
     return err("frozen");
   }
-  execute(
-    kysely.insertInto("orders").values({
-      id: draft.id,
-      agent_id: draft.agentId,
-      wallet_id: draft.walletId,
-      kind: draft.request.kind,
-      state: "awaiting_confirmation",
-      request: requestText(draft.request),
-      trigger_state: null,
-      fills: 0,
-      max_fills: orNull(draft.maxFills),
-      expires_at: draft.expiresAtMs,
-      intent_id: draft.intentId,
-      card_id: null,
-      paper: draft.isPaper ? 1 : 0,
-      outside_content: draft.hasOutsideContent ? 1 : 0,
-      end_reason: null,
-      expiry_noticed_at: null,
-      created_at: draft.atMs,
-      changed_at: draft.atMs,
-      version: 0,
-    }),
-  );
+  const leader = copyLeaderOf(draft.request);
+  if (leader !== undefined && !hasTrackRoom(database, leader)) {
+    return err("track_limit");
+  }
+  execute(kysely.insertInto("orders").values(orderRowOf(draft)));
+  if (leader !== undefined) {
+    syncTrackedWallets(database, draft.atMs);
+  }
   return ok(toOrderRecord(requireRow(database, draft.id)));
 }
 
@@ -190,17 +204,23 @@ export function writeOrderMoves(
   moves: readonly OrderMove[],
 ): readonly OrderRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
-  return moves.map((move) => {
-    const written = execute(
+  const written = moves.map((move) => {
+    const changed = execute(
       kysely
         .updateTable("orders")
         .set((row) => ({ ...changeOf(move), version: row("version", "+", 1) }))
         .where("id", "=", move.id)
         .where("version", "=", move.expectedVersion),
     );
-    if (written.numAffectedRows !== 1n) {
+    if (changed.numAffectedRows !== 1n) {
       throw refused("An order changed inside the write that read it.", { order: move.id });
     }
     return toOrderRecord(requireRow(database, move.id));
   });
+  const [first] = moves;
+  // A copy order that ends frees its leader's slot in the same write (decision 0251).
+  if (first !== undefined && written.some(({ kind }) => kind === "copy")) {
+    syncTrackedWallets(database, first.atMs);
+  }
+  return written;
 }

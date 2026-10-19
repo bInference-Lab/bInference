@@ -78,3 +78,4 @@ export { countsLandedFill } from "./orders/order-machine.js";
 export { endedOrderStates, isOrderEnded, openOrderStates } from "./orders/order-states.js";
 export type { OrderStore } from "./orders/ports.js";
 export type { WatchedOrderPrice } from "./orders/order-triggers.js";
+export { copyLeaderOf, trackingOrderStates } from "./orders/copy-leader.js";

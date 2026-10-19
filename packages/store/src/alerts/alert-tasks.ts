@@ -14,11 +14,11 @@ import {
   type AlertRecord,
   alertRecordSchema,
   maxActiveAlerts,
-  maxTrackedWallets,
 } from "@binference/engine/orders";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { hasTrackRoom, syncTrackedWallets } from "../leaders/tracked-sync.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { alertRowOf, readAlert, toAlertRecord, writeAlert } from "./alert-rows.js";
@@ -48,21 +48,7 @@ function refusalOf(database: DatabaseSync, alert: AlertRecord): CreateRefusal | 
   if (condition.kind !== "wallet") {
     return undefined;
   }
-  // An archived agent's wallet alerts hold no slot.
-  const tracked = active
-    .where("account", "is not", null)
-    .where(
-      "agent_id",
-      "in",
-      kysely.selectFrom("agents").select("id").where("archived_at", "is", null),
-    );
-  const same = takeFirst(tracked.select("id").where("account", "=", condition.account));
-  const accounts = takeFirst(
-    tracked.select((builder) => builder.fn.count<number>("account").distinct().as("count")),
-  );
-  return same === undefined && (accounts?.count ?? 0) >= maxTrackedWallets
-    ? "track_limit"
-    : undefined;
+  return hasTrackRoom(database, condition.account) ? undefined : "track_limit";
 }
 
 /** Stores a new active alert within the agent's and the install's limits. */
@@ -81,6 +67,7 @@ export const createAlertTask: StoreTask<
     }
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
     execute(kysely.insertInto("alerts").values(alertRowOf(alert)));
+    syncTrackedWallets(database, alert.createdAtMs);
     return ok(alert);
   },
 });
@@ -124,9 +111,12 @@ export const listAlertsTask: StoreTask<AlertQuery, readonly AlertRecord[]> = def
 // Moves an active alert to `state`.
 function closeOne(database: DatabaseSync, change: AlertDelete, state: "deleted" | "ended") {
   const stored = readAlert(database, change.id);
-  return stored?.state === "active"
-    ? writeAlert(database, { ...stored, state, changedAtMs: change.atMs })
-    : undefined;
+  if (stored?.state !== "active") {
+    return undefined;
+  }
+  const closed = writeAlert(database, { ...stored, state, changedAtMs: change.atMs });
+  syncTrackedWallets(database, change.atMs);
+  return closed;
 }
 
 /** Deletes an active alert. */
@@ -190,8 +180,12 @@ export const expireAlertsTask: StoreTask<AlertExpiry, readonly AlertRecord[]> = 
       .orderBy("expires_at")
       .orderBy("id")
       .limit(limit);
-    return execute(due).rows.map((row) =>
+    const ended = execute(due).rows.map((row) =>
       writeAlert(database, { ...toAlertRecord(row), state: "ended", changedAtMs: atMs }),
     );
+    if (ended.length > 0) {
+      syncTrackedWallets(database, atMs);
+    }
+    return ended;
   },
 });
