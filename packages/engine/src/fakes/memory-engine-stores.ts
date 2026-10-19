@@ -10,6 +10,7 @@ import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
 import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryInstallStore, type MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentStore, type MemoryIntentStore } from "./memory-intent-store.js";
+import { createMemoryLaunchStore } from "./memory-launch-store.js";
 import { createMemoryLedgerStore, type MemoryLedgerStore } from "./memory-ledger-store.js";
 import { createMemoryModelUsageStore } from "./memory-model-usage-store.js";
 import { createMemoryNoticeStore } from "./memory-notice-store.js";
@@ -74,5 +75,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     schedules: createMemoryScheduleStore({ agents, agentInbox }),
     alerts: createMemoryAlertStore({ agents, agentInbox, tracking }),
     trackedWallets: createMemoryTrackedWalletStore(tracking),
+    launches: createMemoryLaunchStore(),
   };
 }

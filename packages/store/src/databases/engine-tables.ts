@@ -3,6 +3,7 @@ import type { AccessTables } from "./access-tables.js";
 import type { AgentInboxTables } from "./agent-inbox-tables.js";
 import type { AlertTables } from "./alert-tables.js";
 import type { BackupTables } from "./backup-tables.js";
+import type { LaunchTables } from "./launch-tables.js";
 import type { LeaderTables } from "./leader-tables.js";
 import type { ModelUsageTables } from "./model-usage-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
@@ -315,6 +316,7 @@ export interface EngineTables
     ScheduleTables,
     AlertTables,
     LeaderTables,
+    LaunchTables,
     WalletTables {
   meta: MetaTable;
   safety: SafetyTable;

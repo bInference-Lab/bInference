@@ -14,18 +14,22 @@ import {
   type TrackedWalletRecord,
   trackedWalletRecordSchema,
   type WatchCursorRecord,
-  watchCursorRecordSchema,
 } from "@binference/engine/orders";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText } from "../rows/column-values.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
+import {
+  type CursorWatcher,
+  watchCursorTaskOf,
+  writeWatchCursor,
+} from "../watching/watch-cursor-rows.js";
 import { activityRowOf, toStoredActivity, toTrackedWallet } from "./leader-rows.js";
 import { namedAccounts } from "./tracked-sync.js";
 
 // The leader watcher's row in `watch_cursors`.
-const watcher = "wallets";
+const watcher: CursorWatcher = "wallets";
 
 /** The wallets tracked on a chain now, whose account something still names. */
 export const trackedWalletsTask: StoreTask<ChainRef, readonly TrackedWalletRecord[]> = defineTask({
@@ -49,30 +53,8 @@ export const trackedWalletsTask: StoreTask<ChainRef, readonly TrackedWalletRecor
 });
 
 /** The leader watcher's cursor on a chain. */
-export const watchCursorTask: StoreTask<ChainRef, WatchCursorRecord | undefined> = defineTask({
-  name: "leaders.cursor",
-  access: "read",
-  input: chainRefSchema,
-  output: watchCursorRecordSchema.optional(),
-  run(database, chain) {
-    const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
-    const row = takeFirst(
-      kysely
-        .selectFrom("watch_cursors")
-        .selectAll()
-        .where("watcher", "=", watcher)
-        .where("chain", "=", chain),
-    );
-    return row === undefined
-      ? undefined
-      : watchCursorRecordSchema.parse({
-          chain: row.chain,
-          block: row.block,
-          blockHash: row.block_hash,
-          atMs: row.at,
-        });
-  },
-});
+export const watchCursorTask: StoreTask<ChainRef, WatchCursorRecord | undefined> =
+  watchCursorTaskOf("leaders.cursor", watcher);
 
 // The accounts of `read` tracked now, by the rows themselves.
 function liveAccounts(database: DatabaseSync, read: LeaderReadRecord): ReadonlySet<string> {
@@ -170,17 +152,10 @@ export const recordLeaderReadTask: StoreTask<LeaderReadRecord, readonly StoredAc
     input: leaderReadRecordSchema,
     output: z.array(storedActivitySchema),
     run(database, read) {
-      const { kysely, execute } = createSyncKysely<EngineTables>(database);
       const live = liveAccounts(database, read);
       const stored = storeTrades(database, read, live);
       moveWallets(database, read, live);
-      const cursor = { block: decimalText(read.to), block_hash: read.toHash, at: read.atMs };
-      execute(
-        kysely
-          .insertInto("watch_cursors")
-          .values({ watcher, chain: read.chain, ...cursor })
-          .onConflict((conflict) => conflict.columns(["watcher", "chain"]).doUpdateSet(cursor)),
-      );
+      writeWatchCursor(database, watcher, read);
       return stored;
     },
   });

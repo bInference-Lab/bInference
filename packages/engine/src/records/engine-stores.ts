@@ -1,6 +1,7 @@
 import type { AlertStore } from "../alerts/ports.js";
 import type { ModelUsageStore } from "../billing/ports.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
+import type { LaunchStore } from "../launches/ports.js";
 import type { TrackedWalletStore } from "../leaders/ports.js";
 import type { OrderStore } from "../orders/ports.js";
 import type {
@@ -55,4 +56,6 @@ export interface EngineStores {
   readonly alerts: AlertStore;
   /** The tracked wallets, their trades and the leader watcher's cursors. */
   readonly trackedWallets: TrackedWalletStore;
+  /** The launches the launch feed read and its cursors. */
+  readonly launches: LaunchStore;
 }

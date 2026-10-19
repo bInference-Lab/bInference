@@ -148,6 +148,11 @@ const columns: Readonly<Record<string, readonly string[]>> = {
       "value_usd_micros share_sold_bps venue at",
   ),
   watch_cursors: names("watcher chain block block_hash at"),
+  launches: names(
+    "chain token launchpad creator quote_token symbol name decimals tax_bps snipe_tax_bps " +
+      "curve_progress_bps graduated insiders block block_hash tx_hash log_index launched_at " +
+      "changed_at",
+  ),
   webhook_rules: names(
     "id agent_id name secret_hash action state rate_per_min fills max_fills expires_at card_id " +
       "created_at changed_at version",
@@ -213,6 +218,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   tracked_wallets: ["account"],
   wallet_activity: ["id"],
   watch_cursors: ["watcher", "chain"],
+  launches: ["chain", "token"],
   question_messages: ["question_id", "surface", "chat_id"],
   positions: ["wallet_id", "asset", "paper"],
   ledger: ["seq"],
@@ -251,6 +257,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   ],
   alert_fires: ["index|agent_id,at"],
   wallet_activity: ["index|account,at", "unique|account,tx_hash,log_index"],
+  launches: ["index|chain,block", "index|chain,launched_at", "index|creator,launched_at"],
   webhook_rules: ["index|state"],
   webhook_events: ["index|rule_id,alert_id", "index|rule_id,received_at"],
   schedules: ["index|agent_id,state", "index|state,next_at"],
