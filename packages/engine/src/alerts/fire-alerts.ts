@@ -13,7 +13,7 @@ import type { ModelBudget } from "../billing/model-budget.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import { alertFiredPayloadSchema } from "../chat/inbox-payload.schema.js";
 import { wakeSkipOf } from "../chat/wake-skip.js";
-import { type AssetSources, knownAssetInfos } from "../money-path/asset-infos.js";
+import { knownAssetInfos } from "../money-path/asset-infos.js";
 import type { WatchedOrderPrice } from "../orders/order-triggers.js";
 import { wholeTokenPrice } from "../orders/price-level.js";
 import type { AgentStore, IntentStore } from "../ports.js";
@@ -195,13 +195,17 @@ async function seePrice(
     priceUsdMicros: mulDiv(1n, whole, "down"),
   };
   const matched = active
-    .filter(({ condition }) => condition.kind === "price" && condition.asset === price.token)
-    .filter(({ condition }) => condition.kind === "price" && priceMeets(condition, whole))
+    .filter(
+      ({ condition }) =>
+        condition.kind === "price" &&
+        condition.asset === price.token &&
+        priceMeets(condition, whole),
+    )
     .map((alert) => ({ alert, fired }));
   if (matched.length === 0) {
     return [];
   }
-  const assets = await knownAssetInfos(parts satisfies AssetSources, [price.token], { signal });
+  const assets = await knownAssetInfos(parts, [price.token], { signal });
   return fireAll(parts, matched, { assets, signal });
 }
 
