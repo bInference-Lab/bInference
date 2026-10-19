@@ -25,7 +25,8 @@ import {
 } from "./build-checks.js";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { frozenAmount, frozenQuote, nativeAssetOf } from "./host-terms.js";
-import { type HostedVenue, hostVenues, launchCallsOf } from "./hosted-venue.js";
+import type { HostedLaunchReader, HostedVenue } from "./hosted-venue.js";
+import { hostVenues, launchCallsOf, launchReadersOf } from "./hosted-venue.js";
 import { contractsWithLaunch, type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
 import { readInsiders } from "./read-insiders.js";
@@ -161,6 +162,8 @@ export interface VenueHost {
    * each (decision 0218). None for a venue the host does not hold.
    */
   launchCalls(venue?: string): HostedVenue["launchCalls"];
+  /** The launchpads that read their launches on the chain, with their contracts (decision 0256). */
+  launchReaders(chain: ChainRef): readonly HostedLaunchReader[];
 }
 
 /** What the host is made from. */
@@ -402,6 +405,7 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
       return names.some((declared) => declared.size > 0);
     },
     launchCalls: (venue) => launchCallsOf(venues, venue),
+    launchReaders: (chain) => launchReadersOf(venues, chain),
   };
   return host;
 }

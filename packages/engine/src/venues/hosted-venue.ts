@@ -3,6 +3,7 @@ import {
   type ChainRef,
   type ChainRegistry,
   accountRefSchema,
+  type LaunchReader,
   type Venue,
   type VenueContracts,
   venueDeclarationSchema,
@@ -121,4 +122,29 @@ export function launchCallsOf(
 ): readonly JsonValue[] {
   const hosted = venue === undefined ? [...venues.values()] : [venues.get(venue)];
   return hosted.flatMap((item) => item?.launchCalls ?? []);
+}
+
+/** A launchpad that reads its launches on one chain, with its contracts there. */
+export interface HostedLaunchReader {
+  /** The launchpad venue's id. */
+  readonly id: string;
+  readonly reader: LaunchReader;
+  readonly contracts: Readonly<Record<string, AccountRef>>;
+}
+
+/**
+ * The hosted launchpads that read their launches on the chain (decision 0256), each with its
+ * registry contracts there, in the order the host holds them.
+ */
+export function launchReadersOf(
+  venues: ReadonlyMap<string, HostedVenue>,
+  chain: ChainRef,
+): readonly HostedLaunchReader[] {
+  return [...venues.values()].flatMap(({ venue, contracts }) => {
+    const { launchEvents, readLaunches } = venue;
+    const own = contracts.get(chain);
+    return launchEvents === undefined || readLaunches === undefined || own === undefined
+      ? []
+      : [{ id: venue.id, reader: { launchEvents, readLaunches }, contracts: own }];
+  });
 }

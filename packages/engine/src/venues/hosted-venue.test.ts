@@ -13,7 +13,7 @@ import {
   createFakeVenue,
 } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
-import { hostVenues } from "./hosted-venue.js";
+import { hostVenues, launchReadersOf } from "./hosted-venue.js";
 
 const fakeChain: ChainDefinition = createFakeChainDefinition();
 const chains = createChainRegistry({
@@ -27,6 +27,7 @@ const verification = {
   checkedOn: "2026-01-01",
   control: "read",
 } as const;
+const readLaunches = () => ({ launches: [], changes: [] });
 
 describe("hosted venues", () => {
   it("reads each declared contract's address from the chain registry", () => {
@@ -78,6 +79,20 @@ describe("hosted venues", () => {
     expect(() => hostVenues([{ ...createFakeVenue(), ...change }], chains)).toThrow(
       expect.objectContaining({ code: "venue.bad_declaration" }),
     );
+  });
+
+  it("names the venues that read their launches on a chain, with their contracts there", () => {
+    const reading: Venue = { ...createFakeVenue(), launchEvents: ["0x01"], readLaunches };
+    const hosted = hostVenues([reading], chains);
+    const readers = launchReadersOf(hosted, fakeOne);
+    expect(readers.map(({ id, contracts }) => [id, contracts])).toStrictEqual([
+      ["fake-swap", { router: "fake:1:0x0000000b" }],
+    ]);
+    expect(
+      readers[0]?.reader.readLaunches({ chain: fakeOne, contracts: {}, logs: [] }),
+    ).toStrictEqual({ launches: [], changes: [] });
+    expect(launchReadersOf(hosted, chainRefSchema.parse("fake:2"))).toStrictEqual([]);
+    expect(launchReadersOf(hostVenues([createFakeVenue()], chains), fakeOne)).toStrictEqual([]);
   });
 
   it("refuses two venues with one id", () => {
