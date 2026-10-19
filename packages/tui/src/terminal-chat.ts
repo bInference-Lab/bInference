@@ -3,6 +3,7 @@ import type { Clock } from "@binference/core";
 import type { Formatter } from "@binference/i18n";
 import type { ProtocolId } from "@binference/protocol";
 import { createAgentQuestion } from "./agent-question.js";
+import { createChatCards } from "./chat-cards.js";
 import { type ChatClient, type ChatContext, createJobQueue } from "./chat-context.js";
 import { followChat } from "./chat-feed.js";
 import { type ChatInputParts, onAction } from "./chat-input.js";
@@ -70,16 +71,29 @@ function openSession(options: TerminalChatOptions, signal: AbortSignal): Session
   };
 }
 
-// Subscribes the agent's chat; answers the parts the keys reach and how to unsubscribe.
+// Subscribes the agent's chat and the cards; answers the parts the keys reach and how to
+// unsubscribe.
 function follow(session: Session, report: (error: ErrorOptions["cause"]) => void) {
   const { context } = session;
   const feed = createJobQueue(report);
   const transcript = createChatTranscript(context, context.words("tui.you"));
   const question = createAgentQuestion(context);
-  const unsubscribe = [followChat(context, { transcript, question, queue: feed })];
+  const cards = createChatCards(context);
+  const later = (job: () => Promise<void>) => async (): Promise<void> => {
+    feed(job);
+    return Promise.resolve();
+  };
+  const unsubscribe = [
+    followChat(context, { transcript, question, queue: feed }),
+    context.client.subscribe("intent", {
+      onPush: () => feed(async () => cards.reload()),
+      refetch: later(async () => cards.reload()),
+    }),
+  ];
   const parts: ChatInputParts = {
     transcript,
     question,
+    cards,
     queue: createJobQueue(report),
     leave: () => session.end("left"),
   };
@@ -130,8 +144,9 @@ async function tick(options: TerminalChatOptions, session: Session): Promise<voi
 /**
  * Runs terminal chat with one agent until the owner leaves (Ctrl+C, or Ctrl+D on an empty line),
  * a stop signal arrives, or the engine stops answering for good. It prints the newest messages of
- * the agent's session, then each answer, status line and question as it comes, and keeps a live
- * area at the bottom: the running turn, the open question's keys and the line the owner types. On the way out it unsubscribes every topic,
+ * the agent's session, then each answer, status line, question and card as it comes, and
+ * keeps a live area at the bottom: the running turn, the open question's keys, the first card's
+ * time left and keys, and the line the owner types. On the way out it unsubscribes every topic,
  * gives the terminal back as it found it and stops reading keys; the caller closes the client.
  */
 export async function runTerminalChat(options: TerminalChatOptions): Promise<ChatEnd> {

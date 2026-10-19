@@ -1,4 +1,5 @@
 import type { AgentQuestion } from "./agent-question.js";
+import type { ChatCards } from "./chat-cards.js";
 import { callOptions, type ChatContext } from "./chat-context.js";
 import type { ChatAction } from "./chat-keys.js";
 import { failureText, saidLines } from "./chat-lines.js";
@@ -9,6 +10,7 @@ import type { ChatTranscript } from "./chat-transcript.js";
 export interface ChatInputParts {
   readonly transcript: ChatTranscript;
   readonly question: AgentQuestion;
+  readonly cards: ChatCards;
   /** Runs one of the owner's actions after the actions before it. */
   readonly queue: (job: () => Promise<void>) => void;
   /** Ends the chat, as Ctrl+C does. */
@@ -98,6 +100,13 @@ function send(context: ChatContext, parts: ChatInputParts): void {
   }
 }
 
+function answerCard(context: ChatContext, parts: ChatInputParts, action: ChatAction): void {
+  if (action.kind === "confirm" || action.kind === "cancel") {
+    const verb = action.kind;
+    parts.queue(async () => parts.cards.answer(verb));
+  }
+}
+
 function choose(context: ChatContext, parts: ChatInputParts, action: ChatAction): void {
   if (action.kind === "choose") {
     parts.queue(async () => parts.question.answer(action.place));
@@ -112,8 +121,8 @@ const handlers: Readonly<Record<ChatAction["kind"], ActionHandler>> = {
   pasteEnd: paste,
   send,
   stop: (context, parts) => parts.queue(async () => stop(context)),
-  confirm: () => undefined,
-  cancel: () => undefined,
+  confirm: answerCard,
+  cancel: answerCard,
   choose,
   leave: (context, parts) => parts.leave(),
   ignore: () => undefined,
@@ -121,8 +130,8 @@ const handlers: Readonly<Record<ChatAction["kind"], ActionHandler>> = {
 
 /**
  * Acts on one key: edits the typed line, sends it (a line of its own, `/clear`, `/stop`, `/help`
- * or an image command, is the chat's own), stops the agent's answer, answers the question, follows a
- * paste, or leaves.
+ * or an image command, is the chat's own), stops the agent's answer, answers the first card or the
+ * question, follows a paste, or leaves.
  */
 export function onAction(context: ChatContext, parts: ChatInputParts, action: ChatAction): void {
   handlers[action.kind](context, parts, action);

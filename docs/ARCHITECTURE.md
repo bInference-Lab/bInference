@@ -1120,9 +1120,10 @@ Decided in decisions [0050](DECISIONS.md#d0050) to [0053](DECISIONS.md#d0053).
   rule's bounds with no model involved, then notifies. Repeated alert ids and alerts above the
   rule's rate are dropped.
 - **Terminal chat ([decision 0050](DECISIONS.md#d0050)).** `binference chat` runs terminal chat from
-  the `tui` package, with the CLI's rights.
+  the `tui` package, with the CLI's rights. Ctrl+Y and Ctrl+N answer a card, a number key the
+  agent's question ([decision 0253](DECISIONS.md#d0253)).
 - **Images ([decision 0050](DECISIONS.md#d0050)).** The owner may send a picture in Telegram, the
-  console, the Mini App or the TUI. It reaches the model (or the vision model), and the turn is
+  console or the Mini App; terminal chat says to send it there. It reaches the model (or the vision model), and the turn is
   marked as outside content ([rule 13](#rule-13)). Size and count limits apply. The Mini App uploads
   through the public address, on a one-time ticket its own signed-in connection asked for
   ([decision 0229](DECISIONS.md#d0229)).

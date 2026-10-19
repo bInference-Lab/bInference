@@ -1,5 +1,15 @@
-import { displayOutsideText, type Formatter, type MessageValues } from "@binference/i18n";
-import { protocolErrorCodes, questionLimits, type QuestionView } from "@binference/protocol";
+import {
+  cardLineText,
+  displayOutsideText,
+  type Formatter,
+  type MessageValues,
+} from "@binference/i18n";
+import {
+  type CardLinesView,
+  protocolErrorCodes,
+  questionLimits,
+  type QuestionView,
+} from "@binference/protocol";
 import type { ScreenLine } from "./chat-screen.js";
 
 // The most characters of the agent's name a line shows (spec 4, section 1).
@@ -66,6 +76,15 @@ export function questionLines(
     ...outsideLines(question.text, questionLimits.text).map((line) => ({ text: line })),
     ...choices,
   ];
+}
+
+/** A card version's lines as the engine draws them, in the owner's language, its header first. */
+export function cardLines(formatter: Formatter, card: CardLinesView): readonly ScreenLine[] {
+  const display = { formatter, assets: card.assets };
+  return card.lines.map((line, at) => ({
+    text: cardLineText(line, display),
+    ...(at === 0 ? { tone: "yellow" as const } : {}),
+  }));
 }
 
 function codeOf(error: ErrorOptions["cause"]): string | undefined {

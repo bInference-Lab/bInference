@@ -7,10 +7,16 @@ import {
   startChat,
 } from "./testing/chat-harness.js";
 
+const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000009";
+const card = "crd_0190f1c2-3a4b-7c5d-8e6f-000000000009";
 const question = "qst_0190f1c2-3a4b-7c5d-8e6f-000000000003";
 const session = "ses_0190f1c2-3a4b-7c5d-8e6f-000000000002";
 const turn = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000004";
 const ctrlC = "\u0003";
+const ctrlY = "\u0019";
+const ctrlN = "\u000e";
+const paper = String.fromCodePoint(0x1f9ea);
+const waiting = String.fromCodePoint(0x1f7e1);
 const chats: ChatHarness[] = [];
 
 afterEach(async () => {
@@ -37,9 +43,61 @@ function lastRow(chat: ChatHarness): string {
   return chat.rows().at(-1) ?? "";
 }
 
+const waitingIntent = {
+  intent,
+  agent: harnessAgent,
+  state: "awaiting_confirmation",
+  paper: true,
+  card: { card, version: 1, opensAt: harnessNowMs, expiresAt: harnessNowMs + 60_000 },
+};
+const drawnCard = {
+  card,
+  version: 1,
+  expiresAt: harnessNowMs + 60_000,
+  assets: {},
+  lines: [
+    {
+      key: "card.header",
+      values: {
+        action: { type: "choice", choice: "swap" },
+        agent: { type: "text", text: "main" },
+        mode: { type: "choice", choice: "paper" },
+      },
+    },
+    { key: "card.reason", values: { reason: { type: "text", text: "You asked for it." } } },
+  ],
+};
+
 // What a session read answers while the agent runtime is down.
 function runtimeDown(): object {
   throw Object.assign(new Error("down"), { code: "runtime.unavailable" });
+}
+
+/** An engine with one card that waits, and how the test ends the card from elsewhere. */
+interface CardEngine {
+  readonly answers: ChatAnswers;
+  readonly close: () => void;
+}
+
+// An engine with one card that waits: it lists the card until it is answered or closed.
+function cardEngine(): CardEngine {
+  const listed = { items: [waitingIntent] };
+  const close = (): void => {
+    listed.items = [];
+  };
+  const answered = (state: string) => (): object => {
+    close();
+    return { ...waitingIntent, state };
+  };
+  return {
+    answers: {
+      "intent/list": () => ({ items: listed.items }),
+      "intent/card": () => drawnCard,
+      "intent/confirm": answered("paper_filled"),
+      "intent/deny": answered("denied"),
+    },
+    close,
+  };
 }
 
 describe("terminal chat", () => {
@@ -138,6 +196,56 @@ describe("terminal chat", () => {
     });
     await chat.settle();
     expect(chat.rows()).toContain("main: Red \\u{1B}[31mtext\\u{7}");
+  });
+
+  it("prints a card inline and confirms the version it shows with Ctrl+Y", async () => {
+    const chat = await opened(cardEngine().answers);
+    expect(chat.rows().slice(-5)).toStrictEqual([
+      "",
+      `${waiting} Confirm swap · main · ${paper} Paper`,
+      'Agent says  "You asked for it."',
+      `${waiting} Confirm swap · main · ${paper} Paper · 60 seconds left · Ctrl+Y Confirm · Ctrl+N Cancel`,
+      "› ",
+    ]);
+    await chat.clock.advance(15_000);
+    expect(chat.rows().at(-2)).toContain("45 seconds left");
+    chat.press(ctrlY);
+    await chat.settle();
+    chat.push("intent", "intent/changed", { intent });
+    await chat.settle();
+    expect(opsOf(chat, "intent/confirm")).toStrictEqual([{ intent, card, cardVersion: 1 }]);
+    expect(chat.rows().slice(-2)).toStrictEqual(["Confirmed. It fills on paper.", "› "]);
+  });
+
+  it("cancels the card with Ctrl+N, and a second key on it does nothing", async () => {
+    const chat = await opened(cardEngine().answers);
+    chat.press(ctrlN);
+    chat.press(ctrlY);
+    await chat.settle();
+    expect(opsOf(chat, "intent/deny")).toStrictEqual([{ intent, card }]);
+    expect(opsOf(chat, "intent/confirm")).toStrictEqual([]);
+    expect(chat.rows()).toContain("Cancelled. Nothing was sent.");
+  });
+
+  it("never confirms a card whose 60 seconds ran out", async () => {
+    const chat = await opened(cardEngine().answers);
+    await chat.clock.advance(60_000);
+    chat.press(ctrlY);
+    await chat.settle();
+    expect(opsOf(chat, "intent/confirm")).toStrictEqual([]);
+    expect(chat.rows().at(-2)).toBe(`${waiting} Confirm swap · main · ${paper} Paper · Expired`);
+  });
+
+  it("says how a card answered elsewhere ended", async () => {
+    const engine = cardEngine();
+    const chat = await opened({
+      ...engine.answers,
+      "intent/get": () => ({ ...waitingIntent, state: "expired" }),
+    });
+    engine.close();
+    chat.push("intent", "intent/changed", { intent });
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual(["The card expired. Nothing was sent.", "› "]);
   });
 
   it("prints the agent's question and answers it with a number key", async () => {
