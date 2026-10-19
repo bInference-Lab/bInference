@@ -240,6 +240,13 @@ function callerOf(c: Case): EngineCaller {
   return turns[c.turn];
 }
 
+// The refusal a request the money path does not route meets: a launch the agent or an MCP client
+// proposes is the owner's alone (decision 0236), and every other has no route.
+function refusalOf(c: Case): string {
+  const isOwnerOnly = requestOf(c).kind === "launchToken" && c.caller !== "cli";
+  return isOwnerOnly ? "intent.owner_only" : "quote.no_route";
+}
+
 async function outcomeOf(c: Case): Promise<Outcome> {
   const test = await startTestEngine(optionsOf(c));
   const call = testCall(requestOf(c), callerOf(c));
@@ -247,7 +254,7 @@ async function outcomeOf(c: Case): Promise<Outcome> {
   if (c.other === undefined) {
     return swapOutcome(test, c, expectOk(proposed));
   }
-  const isRefused = !proposed.ok && proposed.error === "quote.no_route";
+  const isRefused = !proposed.ok && proposed.error === refusalOf(c);
   return { isAuto: false, problems: isRefused ? [] : [`a ${requestOf(c).kind} was not refused`] };
 }
 
