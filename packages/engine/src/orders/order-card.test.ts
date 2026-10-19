@@ -7,7 +7,14 @@ import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testNowMs, testWallet } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
-import { createdOrder, startOrderEngine, tapCard, testStopLoss } from "./test-orders.js";
+import {
+  createdOrder,
+  startOrderEngine,
+  tapCard,
+  testCopy,
+  testLeader,
+  testStopLoss,
+} from "./test-orders.js";
 
 const formatter = createFormatter({ locale: "en", timeZone: "UTC" });
 // A token the registry does not list.
@@ -95,6 +102,30 @@ describe("an auto order's card in English", () => {
       /\(UTC\), first at Jan 15, 2027, 09:00:00, then at Jan 16, 2027, 09:00:00, 5 times · up to 5 fills until /,
     );
     expect(open?.[1]).toMatch(/, until the order ends · no fill limit until /);
+  });
+
+  it("words a copy order's leader, its dollars per buy and a day, and its sales", async () => {
+    const [byAddress] = await cardOf([testCopy()]);
+    const test = await startOrderEngine();
+    const entry = {
+      id: fixtureId("adr", 1),
+      agentId: testAgent,
+      account: testLeader,
+      label: "Whale",
+      usableAtMs: 0,
+      createdAtMs: 0,
+    };
+    expectOk(await test.stores.agents.addAddress(entry, { signal: AbortSignal.timeout(1_000) }));
+    const { intent } = await createdOrder(test, testCopy({ maxFills: 4 }));
+    const card = expectOk(await test.engine.handlers["intent/card"](testCall({ intent })));
+    const byLabel = card.lines.map((line) => cardLineText(line, { formatter, assets: {} }));
+
+    expect(byAddress?.[1]).toMatch(
+      /^Approve Copy trade: copy 0x00000009's buys at \$20\.00 each, at most \$200\.00 a day, and sell the share 0x00000009 sells · no fill limit until /,
+    );
+    expect(byLabel[1]).toMatch(
+      /^Approve Copy trade: copy Whale's buys at \$20\.00 each, at most \$200\.00 a day, and sell the share Whale sells · up to 4 fills until /,
+    );
   });
 
   it("words a buy by share of what the wallet may spend, and by an amount", async () => {

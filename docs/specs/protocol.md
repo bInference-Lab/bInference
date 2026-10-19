@@ -543,19 +543,21 @@ Auto orders follow [decision 0189](../DECISIONS.md#d0189):
   `order/changed`.
 - It refuses, storing nothing: an agent that is unknown (`agent.not_found`), archived
   (`agent.archived`) or frozen (`agent.frozen`); a wallet that is not the agent's
-  (`wallet.not_found`); `copy`, until the leader watcher runs (`order.kind_unavailable`); a
+  (`wallet.not_found`); a
   `limit`, `takeProfit`, `stopLoss` or `trailing` order for a token the price watcher cannot price
   now, with no venue read and no pool deep enough (`order.unpriced_token`,
-  [decision 0194](../DECISIONS.md#d0194)); such an order, or a `dca` order, of a live agent while
-  live fills are off (`order.live_fills_off`, decisions [0197](../DECISIONS.md#d0197) and
-  [0246](../DECISIONS.md#d0246)); a `dca` period binference cannot read or with no run in eight
+  [decision 0194](../DECISIONS.md#d0194)); such an order, a `dca` or a `copy` order, of a live
+  agent while live fills are off (`order.live_fills_off`, decisions [0197](../DECISIONS.md#d0197),
+  [0246](../DECISIONS.md#d0246) and [0261](../DECISIONS.md#d0261)); a `dca` period binference cannot read or with no run in eight
   years (`schedule.bad_when`); a token the registry does not
   list that answers no symbol or no decimals on chain (`asset.unreadable`,
   [decision 0199](../DECISIONS.md#d0199)); and
   with `protocol.bad_args` a token on no chain of the registry or the chain's coin, an expiry not in
   the future, a price, worst price or size of zero, a trailing distance of 0 or `10000`, a share above
   `10000`, a `takeProfit`, `stopLoss` or `trailing` order that does not sell, a `dca` order that
-  does not buy or whose `count` and `maxFills` disagree, and a buy whose size is not `{ usdMicros }`.
+  does not buy or whose `count` and `maxFills` disagree, a buy whose size is not `{ usdMicros }`,
+  and a `copy` order that breaks section 8.2's rules for it or follows an account of one of the
+  agent's own wallets.
 - An order keeps its agent's mode when it was created (`paper`), and the outside-content mark of the
   turn that proposed it (`outsideContent`), which its card shows.
 - A freeze moves the agent's `active` orders to `paused` and cancels those awaiting their card; an
@@ -807,14 +809,22 @@ the engine for an auto order or webhook rule.
 as what the agent says, escaped ([decision 0177](../DECISIONS.md#d0177)). The agent runtime always
 sends one; another client may leave it out.
 
-| `kind`       | `trigger`                                                                                                                                                |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `limit`      | `{ price: usdMicros, direction: above \| below }`                                                                                                        |
-| `takeProfit` | `{ price: usdMicros }`                                                                                                                                   |
-| `stopLoss`   | `{ price: usdMicros }`                                                                                                                                   |
-| `trailing`   | `{ distanceBps }`                                                                                                                                        |
-| `dca`        | `{ cron, timezone?, count? }`: buys only, `count` times ([decision 0246](../DECISIONS.md#d0246))                                                         |
-| `copy`       | `{ leader: AccountRef, perBuyUsdMicros, dailyUsdMicros }`; sells mirror the leader's share ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28)) |
+| `kind`       | `trigger`                                                                                                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `limit`      | `{ price: usdMicros, direction: above \| below }`                                                                                                                                                |
+| `takeProfit` | `{ price: usdMicros }`                                                                                                                                                                           |
+| `stopLoss`   | `{ price: usdMicros }`                                                                                                                                                                           |
+| `trailing`   | `{ distanceBps }`                                                                                                                                                                                |
+| `dca`        | `{ cron, timezone?, count? }`: buys only, `count` times ([decision 0246](../DECISIONS.md#d0246))                                                                                                 |
+| `copy`       | `{ leader: AccountRef, perBuyUsdMicros, dailyUsdMicros }`; sells mirror the leader's share ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28), [decision 0260](../DECISIONS.md#d0260)) |
+
+**Copy orders** ([decision 0261](../DECISIONS.md#d0261)). A `copy` order copies every token its
+leader trades on the leader's chain: its `token` is that chain's coin, its `side` is `buy`, its
+`size` is `{ usdMicros }` equal to `perBuyUsdMicros`, above zero, and `dailyUsdMicros` is at least
+that; it names no `worstPrice`. Its fills are one per leader trade it copies, with no limit unless
+it names `maxFills`. Each buy spends `perBuyUsdMicros`, or the agent's `copy.perBuyUsd` when lower,
+of what it spends; a sale sells the leader's share of what the order bought of the token, never more
+than the wallet holds ([decision 0260](../DECISIONS.md#d0260)).
 
 `size` is `{ base }`, `{ usdMicros }` or `{ percentBps }`. Defaults come from the agent's limits
 ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28)): 30-day expiry, one fill for limit,

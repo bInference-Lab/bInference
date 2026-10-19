@@ -96,6 +96,8 @@ export interface CardActionFacts {
     readonly expiresAtMs: number;
     /** A DCA order's first two runs after its card was drawn, in epoch milliseconds. */
     readonly firstRunsAtMs?: readonly [number, number];
+    /** A copy order's leader's label in the agent's address book (decision 0261). */
+    readonly leaderLabel?: string;
   };
 }
 
@@ -234,7 +236,13 @@ const actionLines: ActionLines = {
           values: { kind: { type: "choice", choice: action.request.kind } },
         },
       },
-      summary: { type: "line", line: orderSummaryLine(action.request, action.firstRunsAtMs) },
+      summary: {
+        type: "line",
+        line: orderSummaryLine(action.request, {
+          ...(action.firstRunsAtMs === undefined ? {} : { firstRuns: action.firstRunsAtMs }),
+          ...(action.leaderLabel === undefined ? {} : { leaderLabel: action.leaderLabel }),
+        }),
+      },
       maxFills: count(action.maxFills ?? 0),
       expiry: { type: "dateTime", atMs: action.expiresAtMs },
     },

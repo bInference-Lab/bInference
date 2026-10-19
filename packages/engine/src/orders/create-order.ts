@@ -91,7 +91,7 @@ function agentRefusal(settings: AgentSettings | undefined): ProtocolErrorCode | 
 }
 
 // A live order would never fill while live fills are off, so none is taken: a price order
-// (decision 0197) or a DCA order (decision 0246), the kinds that fill today.
+// (decision 0197), a DCA order (decision 0246) or a copy order (decision 0261).
 function liveRefusal(
   parts: Pick<OrderParts, "liveFills">,
   call: { readonly settings: AgentSettings },
@@ -163,6 +163,24 @@ async function holderOf(
   const named = spend === undefined ? [token] : [token, spend];
   const assets = await unlistedAssetInfos(parts, named, signal);
   return assets.ok ? ok({ wallet, assets: assets.value }) : assets;
+}
+
+// Whether a copy order's leader is an account of one of the agent's own wallets: its copies would
+// be leader trades in turn (decision 0261).
+async function followsItself(
+  parts: Pick<OrderParts, "wallets" | "custody">,
+  checked: CheckedOrder,
+  signal: AbortSignal,
+): Promise<boolean> {
+  const { request, chain } = checked;
+  if (request.kind !== "copy") {
+    return false;
+  }
+  const owned = await parts.wallets.wallets(request.agent, { signal });
+  const accounts = await Promise.all(
+    owned.map(async (wallet) => parts.custody.account(wallet, chain.ref, { signal })),
+  );
+  return accounts.some((account) => account.ok && account.value === request.trigger.leader);
 }
 
 // Whether the position of a new exit order holds another exit order that has not ended.
@@ -289,7 +307,7 @@ function storedOrder(
  * its `autoOrder` intent, which always opens one card, whatever the mode or the mark. The order
  * becomes `active` only on that card's Confirm. A refusal stores nothing: an unknown, archived or
  * frozen agent, a wallet that is not the agent's, a launchpad whose curve read failed as it picks
- * the wallet (`quote.venue_down`), a kind that does not run yet, a broken rule, or
+ * the wallet (`quote.venue_down`), a broken rule, a copy order of one of the agent's own wallets, or
  * a price order for a token the price watcher cannot price now (decision 0194), or a token the
  * registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
  * decision 0199), or a copy order whose leader would be the 51st tracked wallet
@@ -316,6 +334,9 @@ export async function createOrder(
   const offLive = liveRefusal(parts, { settings });
   if (offLive !== undefined) {
     return err(offLive);
+  }
+  if (await followsItself(parts, checked.value, signal)) {
+    return err("protocol.bad_args");
   }
   const isPaper = settings.agent.mode === "paper";
   const held = await holderOf(parts, { ...checked.value, isPaper }, signal);

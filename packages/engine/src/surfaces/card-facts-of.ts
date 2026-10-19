@@ -256,20 +256,26 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
   };
 }
 
-// An auto order's action line: its terms with every default filled, and a DCA order's first two
-// runs (decision 0246). Copy orders are refused before any card.
-function orderActionOf(quote: AutoOrderQuote): CardFacts["action"] | undefined {
+// An auto order's action line: its terms with every default filled, a DCA order's first two runs
+// (decision 0246), and a copy order's leader's label in the agent's address book (decision 0261).
+function orderActionOf(
+  quote: AutoOrderQuote,
+  source: Pick<CardSource, "settings">,
+): CardFacts["action"] | undefined {
   const { request, maxFills, expiresAtMs } = quote;
   const firstRuns = request.kind === "dca" ? firstRunsOf(request, quote.quotedAtMs) : undefined;
-  if (request.kind === "copy" || (request.kind === "dca" && firstRuns === undefined)) {
+  if (request.kind === "dca" && firstRuns === undefined) {
     return undefined;
   }
+  const leader = request.kind === "copy" ? request.trigger.leader : undefined;
+  const entry = source.settings.addressBook.find(({ account }) => account === leader);
   return {
     kind: "autoOrder",
     request,
     ...(maxFills === undefined ? {} : { maxFills }),
     expiresAtMs,
     ...(firstRuns === undefined ? {} : { firstRunsAtMs: firstRuns }),
+    ...(entry === undefined ? {} : { leaderLabel: entry.label }),
   };
 }
 
@@ -279,8 +285,8 @@ function orderActionOf(quote: AutoOrderQuote): CardFacts["action"] | undefined {
 function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | undefined {
   const { record, card, settings, launchWallet } = source;
   const { request, hasLinkedExits } = quote;
-  const action = orderActionOf(quote);
-  if (action === undefined || request.kind === "copy") {
+  const action = orderActionOf(quote, source);
+  if (action === undefined) {
     return undefined;
   }
   const { reason } = request;

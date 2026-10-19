@@ -1,7 +1,20 @@
+import { type AccountRef, accountRefSchema } from "@binference/chain";
 import { bpsSchema, type Id } from "@binference/core";
-import type { OrderRequest, OrderView, StopLossOrderRequest } from "@binference/protocol";
+import type {
+  CopyOrderRequest,
+  OrderRequest,
+  OrderView,
+  StopLossOrderRequest,
+} from "@binference/protocol";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { expectOk, testAgent, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testNowMs,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
@@ -24,6 +37,26 @@ export function testStopLoss(
     size: { percentBps: bpsSchema.parse(10_000) },
     trigger: { price: 800_000n },
     reason: "Protect the position as you asked",
+    ...changes,
+  };
+}
+
+/** The wallet the test copy order follows, on the fake chain. */
+export const testLeader: AccountRef = accountRefSchema.parse("fake:1:0x00000009");
+
+/**
+ * A copy order of the test agent: copy the test leader's buys on the fake chain at $20 each, at
+ * most $200 a day, spending the chain's coin, and sell the share the leader sells.
+ */
+export function testCopy(changes: Partial<Omit<CopyOrderRequest, "kind">> = {}): CopyOrderRequest {
+  return {
+    kind: "copy",
+    agent: testAgent,
+    token: testCoin,
+    side: "buy",
+    size: { usdMicros: 20_000_000n },
+    trigger: { leader: testLeader, perBuyUsdMicros: 20_000_000n, dailyUsdMicros: 200_000_000n },
+    reason: "Follow the wallet you named",
     ...changes,
   };
 }

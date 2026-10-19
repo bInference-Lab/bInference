@@ -1,7 +1,7 @@
 import { type Bps, bpsSchema, err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
-import { testAccount, testCall, testCallers } from "../operations/test-engine.js";
+import { testCall, testCallers } from "../operations/test-engine.js";
 import { defaultOrderLifetimeMs } from "./order-rules.js";
 import {
   createdOrder,
@@ -156,16 +156,8 @@ describe("the rules of a new auto order", () => {
     const test = await startOrderEngine();
     const create = async (request: Parameters<typeof testStopLoss>[0] = {}) =>
       test.engine.handlers["order/create"](testCall(testStopLoss(request)));
-    const copy = {
-      ...testStopLoss(),
-      kind: "copy",
-      trigger: { leader: testAccount, perBuyUsdMicros: 1n, dailyUsdMicros: 2n },
-    } as const;
     const dcaSale = { ...testStopLoss(), kind: "dca", trigger: { cron: "0 9 * * *" } } as const;
 
-    expect(await test.engine.handlers["order/create"](testCall(copy))).toStrictEqual(
-      err("order.kind_unavailable"),
-    );
     expect(await test.engine.handlers["order/create"](testCall(dcaSale))).toStrictEqual(
       err("protocol.bad_args"),
     );

@@ -1,6 +1,7 @@
 import type { AssetRef } from "@binference/chain";
 import { BinferenceError, bpsPerWhole } from "@binference/core";
 import type {
+  CopyOrderRequest,
   DcaOrderRequest,
   LimitOrderRequest,
   StopLossOrderRequest,
@@ -10,17 +11,26 @@ import type {
 import type { CardLine, CardValue } from "./card-line.js";
 
 /**
- * An auto order `order/create` takes today: one a price triggers (decision 0189), or a DCA order,
- * which its periods fill (decision 0246).
+ * An auto order `order/create` takes: one a price triggers (decision 0189), a DCA order, which its
+ * periods fill (decision 0246), or a copy order, which its leader's trades fill (decision 0261).
  */
 export type CardOrderRequest =
   | LimitOrderRequest
   | TakeProfitOrderRequest
   | StopLossOrderRequest
   | TrailingOrderRequest
-  | DcaOrderRequest;
+  | DcaOrderRequest
+  | CopyOrderRequest;
 
 type FillSize = CardOrderRequest["size"];
+
+/** What an order's summary line reads besides its request. */
+export interface OrderLineFacts {
+  /** A DCA order's first two runs after its card was drawn. */
+  readonly firstRuns?: readonly [number, number];
+  /** A copy order's leader's label in the agent's address book, which names it before its address. */
+  readonly leaderLabel?: string;
+}
 
 const asset = (token: AssetRef): CardValue => ({ type: "asset", asset: token });
 const usd = (usdMicros: bigint): CardValue => ({ type: "usd", usdMicros });
@@ -147,19 +157,34 @@ function dcaLine(request: DcaOrderRequest, firstRuns?: readonly [number, number]
   };
 }
 
+// Spec 4, section 3.8: a copy order copies its leader's buys at its dollars each, at most its
+// daily dollars, and sells the share its leader sells; its leader by label, else short address.
+function copyLine(request: CopyOrderRequest, leaderLabel: string | undefined): CardLine {
+  const { leader, perBuyUsdMicros, dailyUsdMicros } = request.trigger;
+  const named: CardValue =
+    leaderLabel === undefined
+      ? { type: "account", account: leader }
+      : { type: "text", text: leaderLabel };
+  return {
+    key: "card.order.summary.copy",
+    values: { leader: named, perBuy: usd(perBuyUsdMicros), daily: usd(dailyUsdMicros) },
+  };
+}
+
 /**
  * The summary of an auto order's card (spec 4, section 3.8): what it trades, and when; a DCA
- * order's with its first two runs, which `firstRuns` must give.
+ * order's with its first two runs, which `facts.firstRuns` must give; a copy order's with its
+ * leader.
  */
-export function orderSummaryLine(
-  request: CardOrderRequest,
-  firstRuns?: readonly [number, number],
-): CardLine {
+export function orderSummaryLine(request: CardOrderRequest, facts: OrderLineFacts = {}): CardLine {
   if (request.kind === "limit") {
     return limitLine(request);
   }
   if (request.kind === "dca") {
-    return dcaLine(request, firstRuns);
+    return dcaLine(request, facts.firstRuns);
+  }
+  if (request.kind === "copy") {
+    return copyLine(request, facts.leaderLabel);
   }
   const sell: CardValue = { type: "line", line: sellLine(request.token, request.size) };
   if (request.kind === "trailing") {
