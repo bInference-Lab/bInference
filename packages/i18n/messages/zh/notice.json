@@ -16,7 +16,7 @@
   "confirmationLapsed": "⚠️ 一笔交易未发送：它的确认在发出之前已过期。未签名任何内容。",
   "feeAboveCap": "⚠️ 网络费高于你设定的上限，一笔交易一直在等待，它的确认已过期。请在新卡片上再次确认，或取消它。",
   "launchUnsent": "⚠️ 一笔在发射项目联合曲线上的交易未发送：{reason, select, launch_unread {binference 无法从发射台读取该发射项目} other {发射台已不在该联合曲线上持有此代币，例如代币已毕业}}。未签名任何内容。",
-  "launchStopped": "⚠️ {symbol} 在 {venue} 的发射已停止：{reason, select, pin_failed {发射台无法固定其图片和文字} other {发射台未在 5 分钟内固定其图片和文字}}。未签名任何内容；请重新发起发射。",
+  "launchStopped": "⚠️ {symbol} 在 {venue} 的发射已停止：{reason, select, pin_failed {发射台无法固定其图片和文字} pin_timeout {发射台未在 5 分钟内固定其图片和文字} upload_lost {发射台接收其图片和文字时发射停止了} engine_stopping {确认卡片打开之前 binference 停止了，其方案已过旧，无法显示} other {发射台给出的步骤未通过检查}}。未签名任何内容，但其图片和文字可能已在发射台公开。如仍需要，请重新发起发射。",
   "stepUnsent": "⚠️ 一笔交易中途停止：前面的步骤已上链，但后面的步骤从未签名。请检查钱包。",
   "stepDropped": "⚠️ 一笔交易长时间未上链，没有完成。没有任何资产变动，钱包已可再次使用。",
   "stepDroppedPartWay": "⚠️ 一笔交易中途停止：前面的步骤已上链，但后面的步骤长时间未上链，没有完成。钱包已可再次使用。请检查钱包。",

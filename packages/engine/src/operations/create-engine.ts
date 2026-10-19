@@ -28,6 +28,7 @@ import { createStoredIntents, type StoredIntents } from "../intents/create-store
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import type { MarketParts } from "../market/market-handlers.js";
 import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
+import type { PinFollow } from "../money-path/follow-launch-pin.js";
 import type { LaunchRouting } from "../money-path/launch-routing.js";
 import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
@@ -155,10 +156,13 @@ export interface Engine {
   /**
    * Asks the launchpad of each live token launch waiting in `quoted` whether it pinned the
    * launch's words and picture (decision 0234): a pinned launch goes on to its card, a failed pin
-   * or the end of the pin wait ends it with a notice. A timer of the composition root calls it
-   * every 3 seconds, locked or not: it signs nothing. Answers how many launches it moved.
+   * or the end of the pin wait ends it with a notice. It also ends, with a notice, each launch a
+   * fault or a stop cut short after its upload (decision 0237). A timer of the composition root
+   * calls it every 3 seconds, locked or not: it signs nothing. The startup calls it once first
+   * with `isRepair`, which ends every launch left in `checked` at once. Answers how many launches
+   * it moved.
    */
-  readonly checkPins: (options: { readonly signal: AbortSignal }) => Promise<number>;
+  readonly checkPins: (options: PinFollow) => Promise<number>;
 }
 
 /** The ports and adapters the composition root builds the engine from. */

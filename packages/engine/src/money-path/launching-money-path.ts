@@ -1,16 +1,17 @@
 import { err } from "@binference/core";
 import type { MoneyPath } from "./create-money-path.js";
-import { followLaunchPins } from "./follow-launch-pin.js";
+import type { PinFollow } from "./follow-launch-pin.js";
+import { followLaunchPins } from "./follow-launch-pins.js";
 import { proposeLaunch } from "./propose-launch.js";
 import type { LaunchPathOptions } from "./resolve-launch.js";
 
 /** The money path with token launches (decision 0234), and the pin follow that moves them. */
 export interface LaunchingMoneyPath extends MoneyPath {
   /**
-   * Follows the pin of every live token launch waiting in `quoted`, and answers how many it moved
-   * on or ended.
+   * Follows every live token launch on its way from its upload to its card (decisions 0234,
+   * 0237), and answers how many it moved on or ended.
    */
-  followPins(options: { readonly signal: AbortSignal }): Promise<number>;
+  followPins(follow: PinFollow): Promise<number>;
 }
 
 /**

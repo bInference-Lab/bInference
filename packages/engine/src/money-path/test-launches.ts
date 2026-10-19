@@ -80,9 +80,19 @@ export function testLaunchSimulator(launcher: FakeLauncher): Pick<TxSimulator, "
   };
 }
 
+/**
+ * How the fake launchpad's build goes, when not as the fake builds it: it throws; it stops the
+ * proposal, as an engine stop does, and never answers; or it never answers, as in a crash.
+ */
+type BuildScript =
+  | { readonly failsBuild: true }
+  | { readonly onBuild: "stop"; readonly stop: AbortController }
+  | { readonly onBuild: "hang" };
+
 /** How a test launch engine runs: its pins, its options, and whether it has a launch wallet. */
 export interface Launching {
   readonly pin?: FakePinScript;
+  readonly launcher?: BuildScript;
   /** Wraps the simulator a launch's steps run on. */
   readonly simulator?: (real: Pick<TxSimulator, "simulate">) => Pick<TxSimulator, "simulate">;
   readonly options?: TestEngineOptions;
@@ -93,6 +103,41 @@ export interface Launching {
 export interface TestLaunchEngine {
   readonly test: TestEngine;
   readonly launcher: FakeLauncher;
+  /** Settles once the launchpad was asked to build. */
+  readonly built: Promise<void>;
+}
+
+const never = async (): Promise<never> => new Promise<never>(() => undefined);
+
+// The fake launchpad's build as the script says.
+function buildOf(script: BuildScript): FakeLauncher["buildLaunch"] {
+  if ("failsBuild" in script) {
+    return async () => Promise.reject(new Error("The launchpad is down."));
+  }
+  if (script.onBuild === "hang") {
+    return never;
+  }
+  return async () => {
+    script.stop.abort(new Error("The engine stopped."));
+    return never();
+  };
+}
+
+// The fake launcher with its build as the script says, and a promise that settles once it is asked.
+function scripted(launcher: FakeLauncher, script: BuildScript | undefined) {
+  const reached = { resolve: (): void => undefined };
+  const asked = new Promise<void>((resolve) => {
+    reached.resolve = resolve;
+  });
+  const build: FakeLauncher["buildLaunch"] =
+    script === undefined
+      ? async (request, call) => launcher.buildLaunch(request, call)
+      : buildOf(script);
+  const buildLaunch: FakeLauncher["buildLaunch"] = async (request, call) => {
+    reached.resolve();
+    return build(request, call);
+  };
+  return { launcher: { ...launcher, buildLaunch }, built: asked };
 }
 
 /**
@@ -100,10 +145,13 @@ export interface TestLaunchEngine {
  * default, a launch wallet.
  */
 export async function testLaunchEngine(launching: Launching = {}): Promise<TestLaunchEngine> {
-  const launcher = createFakeLauncher({
-    launchOptions: settings,
-    ...(launching.pin === undefined ? {} : { pin: launching.pin }),
-  });
+  const { launcher, built } = scripted(
+    createFakeLauncher({
+      launchOptions: settings,
+      ...(launching.pin === undefined ? {} : { pin: launching.pin }),
+    }),
+    launching.launcher,
+  );
   const venues = [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launcher })];
   const { options = {}, hasLaunchWallet = true } = launching;
   const test = await startTestEngine({
@@ -134,7 +182,7 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
       }),
     );
   }
-  return { test, launcher };
+  return { test, launcher, built };
 }
 
 /** A live launch with a first buy, a description, a link and a tax setting. */

@@ -14,6 +14,7 @@ import { minOutFloor } from "../venues/build-checks.js";
 import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
+import { pinWaitOf, toldIfEnded } from "./launch-ending.js";
 import { launchImageOf } from "./launch-image.js";
 import { launchSubjectOf } from "./launch-policy.js";
 import { policyFactsOf } from "./policy-facts-of.js";
@@ -43,9 +44,6 @@ export interface LaunchProposal {
   /** Absent, no upload is the proposer's and the launch reads no picture. */
   readonly credential: string | undefined;
 }
-
-// The pin wait of decision 0234: 5 minutes after the upload.
-const pinWaitMs = 300_000;
 
 async function failQuote(
   run: LaunchRun,
@@ -155,19 +153,18 @@ async function pinAndBuild(
     image,
     metadataUri,
     pin: pin.value.pin,
-    pinWaitUntilMs: nowMs + (options.launch.pinWaitMs ?? pinWaitMs),
+    pinWaitUntilMs: nowMs + pinWaitOf(options),
     quotedAtMs: nowMs,
   };
   return ok({ quote, drafts: plan.value.steps.map((step) => step.draft) });
 }
 
-// The picture is read once, uploaded with the words, pinned and built on; the launch then waits
-// in `quoted` for its pin.
-async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
-  const picture = await readImage(run);
-  if (picture === undefined) {
-    return failQuote(run, quoted.checked, "image_unreadable");
-  }
+// The launch is uploaded with its words, pinned and built on, and waits in `quoted` for its pin.
+async function uploadAndBuild(
+  run: LaunchRun,
+  quoted: Quoted,
+  picture: { readonly bytes: Readonly<Uint8Array>; readonly image: LaunchImage },
+): Promise<IntentSnapshot> {
   const built = await pinAndBuild(run, quoted, picture);
   if (!built.ok) {
     return failQuote(run, quoted.checked, built.error);
@@ -181,6 +178,37 @@ async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
   };
   const trigger = { type: "quote_built", quote: { quotedAtMs: quote.quotedAtMs } } as const;
   return advanceIntent(run.parts, quoted.checked, { trigger, fields });
+}
+
+// How long the end of a launch whose upload a fault or a stop cut short may take.
+const loseTimeoutMs = 5_000;
+
+// A fault or a stop once the upload began ends the launch `upload_lost` at once, with the
+// owner's notice (decision 0237), on a signal of its own: the proposal's may be the one that
+// stopped. If this fails too, the startup's repair or the pin follow ends it.
+async function loseUpload(run: LaunchRun, checked: IntentSnapshot): Promise<void> {
+  const signal = AbortSignal.timeout(loseTimeoutMs);
+  const now = await run.options.stored.snapshot(checked.record.id, { signal });
+  if (now?.record.state !== "checked") {
+    return;
+  }
+  const trigger = { type: "quote_failed", reason: "upload_lost" } as const;
+  toldIfEnded(run.options, await advanceIntent({ ...run.parts, signal }, now, { trigger }));
+}
+
+// The picture is read once; once its upload begins, the owner hears of any end before the pin
+// wait (decision 0237).
+async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
+  const picture = await readImage(run);
+  if (picture === undefined) {
+    return failQuote(run, quoted.checked, "image_unreadable");
+  }
+  try {
+    return toldIfEnded(run.options, await uploadAndBuild(run, quoted, picture));
+  } catch (fault) {
+    await loseUpload(run, quoted.checked).catch(() => undefined);
+    throw fault;
+  }
 }
 
 function wordsOf(
@@ -218,7 +246,14 @@ async function runLaunch(run: LaunchRun, proposed: IntentSnapshot): Promise<Inte
     return failQuote(run, checked, quote.error);
   }
   const quoted = await upload(run, { checked, quote: quote.value, pass: verdict.value });
-  return quoted.record.state === "quoted" ? followLaunchPin(options, quoted, signal) : quoted;
+  if (quoted.record.state !== "quoted") {
+    return quoted;
+  }
+  // A first follow that fails leaves the launch where it got to, and the timer follows it on.
+  return followLaunchPin(options, quoted, { signal }).catch(async () => {
+    const now = await options.stored.snapshot(quoted.record.id, { signal }).catch(() => undefined);
+    return now ?? quoted;
+  });
 }
 
 /**

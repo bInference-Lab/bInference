@@ -114,7 +114,7 @@ const failingOnce: NonNullable<Launching["simulator"]> = (real) => {
 describe("a token launch a stop left between its pin and its card", () => {
   it("goes on to its card at the next pin check", async () => {
     const { test } = await engineOver({ simulator: failingOnce });
-    await expect(propose(test)).rejects.toThrow("The node went away.");
+    await expect(propose(test)).resolves.toMatchObject({ state: "assessed" });
     const left = await test.stores.intents.list({ states: ["assessed"], limit: 5 }, signal);
     expect(left.map((record) => record.kind)).toStrictEqual(["launchToken"]);
 
@@ -122,6 +122,71 @@ describe("a token launch a stop left between its pin and its card", () => {
     const waiting = { states: ["awaiting_confirmation" as const], limit: 5 };
     const carded = await test.stores.intents.list(waiting, signal);
     expect(carded.map((record) => record.id)).toStrictEqual(left.map((record) => record.id));
+  });
+
+  it("is cancelled with a notice once its pin wait and a card's life have passed", async () => {
+    const { test } = await engineOver({ simulator: failingOnce });
+    const view = await propose(test);
+    await test.clock.advance(300_000 + 600_000);
+    await expect(test.engine.checkPins(signal)).resolves.toBe(1);
+    expect(await stateOf(test, view)).toMatchObject({ state: "cancelled" });
+    expect(notices(test)).toContainEqual(
+      expect.objectContaining({
+        key: "notice.launchStopped",
+        values: { symbol: "MCAT", venue: pad, reason: "engine_stopping" },
+      }),
+    );
+    expect(cardsOpened(test)).toStrictEqual([]);
+  });
+});
+
+describe("a token launch a fault or a stop cut short once its upload began", () => {
+  it("tells the owner when its build fails after the upload", async () => {
+    const { test, launcher } = await engineOver({ launcher: { failsBuild: true } });
+    const view = await propose(test);
+    expect(view).toMatchObject({ state: "failed_check", outcome: { reason: "venue_down" } });
+    expect(launcher.uploads()).toHaveLength(1);
+    expect(notices(test)).toContainEqual(
+      expect.objectContaining({
+        key: "notice.launchStopped",
+        values: { symbol: "MCAT", venue: pad, reason: "venue_down" },
+      }),
+    );
+  });
+
+  it("ends upload_lost with a notice at once when the proposal stops during its build", async () => {
+    const stop = new AbortController();
+    const { test } = await engineOver({ launcher: { onBuild: "stop", stop } });
+    const call = { ...testCall(launch, testCallers.cli), signal: stop.signal };
+    await expect(test.engine.handlers["intent/propose"](call)).rejects.toThrow(
+      "The engine stopped.",
+    );
+    const ended = await test.stores.intents.list({ states: ["failed_check"], limit: 5 }, signal);
+    expect(ended.map((record) => record.reason)).toStrictEqual(["upload_lost"]);
+    expect(notices(test)).toContainEqual(
+      expect.objectContaining({
+        key: "notice.launchStopped",
+        values: { symbol: "MCAT", venue: pad, reason: "upload_lost" },
+      }),
+    );
+  });
+
+  it("ends upload_lost with a notice at the startup's repair after a crash in its build", async () => {
+    const { test, launcher, built } = await engineOver({ launcher: { onBuild: "hang" } });
+    void test.engine.handlers["intent/propose"](testCall(launch, testCallers.cli));
+    await built;
+    expect(launcher.uploads()).toHaveLength(1);
+    await expect(test.engine.checkPins(signal)).resolves.toBe(0);
+
+    await expect(test.restart().checkPins({ ...signal, isRepair: true })).resolves.toBe(1);
+    const ended = await test.stores.intents.list({ states: ["failed_check"], limit: 5 }, signal);
+    expect(ended.map((record) => record.reason)).toStrictEqual(["upload_lost"]);
+    expect(notices(test)).toContainEqual(
+      expect.objectContaining({
+        key: "notice.launchStopped",
+        values: { symbol: "MCAT", venue: pad, reason: "upload_lost" },
+      }),
+    );
   });
 });
 

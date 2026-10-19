@@ -38,6 +38,7 @@
   "image_unreadable": "binference could not read the picture as a PNG, JPEG or WebP of at most 5 MiB, so nothing was uploaded; upload it again",
   "pin_failed": "the launchpad could not pin the token's picture and words, so nothing was signed; propose the launch again",
   "pin_timeout": "the launchpad did not pin the token's picture and words within 5 minutes, so nothing was signed; propose the launch again",
+  "upload_lost": "the launch stopped after it began sending the token's picture and words to the launchpad, before its pin wait; nothing was signed, but they may be public on the launchpad; propose the launch again",
   "reverted": "the transaction reverted; only the network fee was spent",
   "stuck_cancelled": "the transaction was stuck and was cancelled; only the network fee was spent",
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",

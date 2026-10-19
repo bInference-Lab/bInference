@@ -57,7 +57,8 @@ export type RiskReason = (typeof riskReasons)[number];
  * takes it, as after a graduation (decision 0218). `image_unreadable` is a token launch whose
  * picture the engine cannot read as an image of at most 5 MiB, `pin_failed` one whose launchpad
  * reported that the pin of its words and picture failed, and `pin_timeout` one whose launchpad
- * reported no pin within the pin wait (decision 0234).
+ * reported no pin within the pin wait (decision 0234); `upload_lost` is one a fault or a stop cut
+ * short once its upload began, before it waited for its pin (decision 0237).
  */
 export const checkReasons = [
   "no_route",
@@ -74,6 +75,7 @@ export const checkReasons = [
   "image_unreadable",
   "pin_failed",
   "pin_timeout",
+  "upload_lost",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

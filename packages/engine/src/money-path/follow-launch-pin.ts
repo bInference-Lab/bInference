@@ -1,29 +1,33 @@
 import { accountRefParts, type TokenApproval } from "@binference/chain";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
-import {
-  planDocument,
-  requestDocument,
-  simulationDocument,
-} from "../intents/intent-documents.schema.js";
+import { planDocument, simulationDocument } from "../intents/intent-documents.schema.js";
 import type { PinFailure } from "../intents/intent-reason.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
-import { noticePush } from "../pushes/notice-push.js";
 import { simulationFailureOf } from "../simulation/check-effects.js";
 import { checkLaunchEffects } from "../simulation/check-launch-effects.js";
 import { advanceIntent } from "./advance-intent.js";
+import { isLaunchStale, pinWaitOf, toldIfEnded } from "./launch-ending.js";
 import { cardOnlyAuthorization } from "./open-card-unchecked.js";
 import type { LaunchPathOptions } from "./resolve-launch.js";
 
-// The owner's notice of a launch that stopped on its pin (decision 0234).
-const launchStoppedNoticeKey = "notice.launchStopped";
-
-/** One launch the pin follow moves: its ports, the run's signal and the stored launch. */
+/** One launch the pin follow moves: its ports, the run's signal and whether it is the repair. */
 interface PinRun {
   readonly options: LaunchPathOptions;
   readonly signal: AbortSignal;
+  readonly isRepair?: boolean;
+}
+
+/** How a launch is followed: by the timer, or by the startup's repair. */
+export interface PinFollow {
+  readonly signal: AbortSignal;
+  /**
+   * The startup's repair, which no proposal runs alongside: a launch in `checked` ends at once,
+   * since the stop cut its upload or build short (decision 0237).
+   */
+  readonly isRepair?: boolean;
 }
 
 async function advance(
@@ -42,17 +46,36 @@ async function endOnPin(
   reason: PinFailure,
 ): Promise<IntentSnapshot> {
   const ended = await advance(run, snapshot, { trigger: { type: "pin_failed", reason } });
-  if (ended.record.state === "failed_check") {
-    const request = requestDocument.decode(ended.record.request);
-    const symbol = request.kind === "launchToken" ? request.symbol : "";
-    const venue = request.kind === "launchToken" ? request.venue : "";
-    const { id, agentId } = ended.record;
-    const values = { symbol, venue, reason };
-    run.options.launch.publish(
-      noticePush({ key: launchStoppedNoticeKey, agent: agentId, intent: id, values }),
-    );
+  return toldIfEnded(run.options, ended);
+}
+
+// A launch a stop left in `checked` ends `upload_lost` with a notice: at the startup's repair at
+// once, and else once its pin wait has passed since its check, long after any proposal ended.
+async function followChecked(run: PinRun, snapshot: IntentSnapshot): Promise<IntentSnapshot> {
+  const lostAtMs = snapshot.record.changedAtMs + pinWaitOf(run.options);
+  if (run.isRepair !== true && run.options.clock.now() < lostAtMs) {
+    return snapshot;
   }
-  return ended;
+  const trigger = { type: "quote_failed", reason: "upload_lost" } as const;
+  return toldIfEnded(run.options, await advance(run, snapshot, { trigger }));
+}
+
+// A launch a stop left between its pin and its card goes on to its card, unless it is too old to
+// show: then it is cancelled, and the owner hears why (decision 0237).
+async function followPinned(
+  run: PinRun,
+  snapshot: IntentSnapshot,
+  quote: TokenLaunchQuote,
+): Promise<IntentSnapshot> {
+  if (!isLaunchStale(snapshot, quote, run.options.clock.now())) {
+    return toldIfEnded(run.options, await toCard(run, snapshot, quote));
+  }
+  const trigger = {
+    type: "cancel_requested",
+    cause: "engine_stopping",
+    hasSignedStep: false,
+  } as const;
+  return toldIfEnded(run.options, await advance(run, snapshot, { trigger }));
 }
 
 // The approvals the plan's steps grant, as the chain's family reads them.
@@ -118,36 +141,44 @@ async function toCard(
   return advance(run, simulated, { trigger });
 }
 
-// The states a launch is followed in: waiting for its pin, and the two a stop can leave it in on
-// its way from the pin to its card.
-const followedStates = ["quoted", "assessed", "simulated"] as const;
+/** The states a launch is followed in: its upload, its pin wait, and on from its pin to its card. */
+export const followedStates = ["checked", "quoted", "assessed", "simulated"] as const;
 
 /**
  * Asks a launch waiting in `quoted` whether its launchpad reported the pin (decision 0234): a
  * reported pin moves it on to its simulation and its card; a failed one, or the end of the pin
- * wait, ends it with `pin_failed` or `pin_timeout` and a notice to the owner; no report yet leaves
- * it waiting. A launch a stop left in `assessed` or `simulated` goes on to its card. Any other
- * intent is answered as it is.
+ * wait, ends it with `pin_failed` or `pin_timeout`; no report yet leaves it waiting. A launch a
+ * stop left in `checked` ends `upload_lost`, and one it left in `assessed` or `simulated` goes on
+ * to its card unless it is too old to show (decision 0237). The owner hears of every launch that
+ * ends once its upload began. Any other intent is answered as it is.
  */
 export async function followLaunchPin(
   options: LaunchPathOptions,
   snapshot: IntentSnapshot,
-  signal: AbortSignal,
+  follow: PinFollow,
 ): Promise<IntentSnapshot> {
   const { record } = snapshot;
   const isFollowed = followedStates.some((state) => state === record.state);
-  if (record.kind !== "launchToken" || !isFollowed || record.quote === undefined) {
+  if (record.kind !== "launchToken" || !isFollowed) {
     return snapshot;
   }
-  const run = { options, signal };
+  const run = { options, ...follow };
+  if (record.state === "checked") {
+    return followChecked(run, snapshot);
+  }
+  if (record.quote === undefined) {
+    return snapshot;
+  }
   const quote = tokenLaunchQuoteDocument.decode(record.quote);
   if (record.state !== "quoted") {
-    return toCard(run, snapshot, quote);
+    return followPinned(run, snapshot, quote);
   }
   if (options.clock.now() >= quote.pinWaitUntilMs) {
     return endOnPin(run, snapshot, "pin_timeout");
   }
-  const status = await options.launch.host.pinStatus(quote.venue, quote.pin, { signal });
+  const status = await options.launch.host.pinStatus(quote.venue, quote.pin, {
+    signal: follow.signal,
+  });
   if (status === "failed") {
     return endOnPin(run, snapshot, "pin_failed");
   }
@@ -155,32 +186,5 @@ export async function followLaunchPin(
     return snapshot;
   }
   const pinned = await advance(run, snapshot, { trigger: { type: "pin_reported" } });
-  return pinned.record.state === "assessed" ? toCard(run, pinned, quote) : pinned;
-}
-
-// The launches a page reads at a time.
-const pageSize = 50;
-
-/**
- * Follows the pin of every live launch waiting in `quoted` (decision 0234), and moves on each
- * launch a stop left between its pin and its card: a timer of the composition root calls it every
- * 3 seconds. Answers how many it moved.
- */
-export async function followLaunchPins(
-  options: LaunchPathOptions,
-  call: { readonly signal: AbortSignal },
-): Promise<number> {
-  const { signal } = call;
-  const waiting = await options.stored.list(
-    { states: [...followedStates], isPaper: false, limit: pageSize },
-    { signal },
-  );
-  const launches = waiting.filter((record) => record.kind === "launchToken");
-  return launches.reduce<Promise<number>>(async (counted, record) => {
-    const count = await counted;
-    const snapshot = await options.stored.snapshot(record.id, { signal });
-    const moved =
-      snapshot === undefined ? snapshot : await followLaunchPin(options, snapshot, signal);
-    return moved !== undefined && moved.record.state !== record.state ? count + 1 : count;
-  }, Promise.resolve(0));
+  return pinned.record.state === "assessed" ? followPinned(run, pinned, quote) : pinned;
 }

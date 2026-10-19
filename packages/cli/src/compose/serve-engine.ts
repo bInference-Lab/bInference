@@ -147,6 +147,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   await executor.recover({ signal });
   await composed.repairPaperFills({ signal });
   await composed.repairOrderFills({ signal });
+  await composed.checkPins({ signal, isRepair: true });
   if (unlocked.ok) {
     await composed.resume(signal);
   }
