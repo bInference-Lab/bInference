@@ -108,7 +108,7 @@ describe("the copy orders' runner", () => {
     );
   });
 
-  it("never copies a trade read after an outage, and tells the owner it came late", async () => {
+  it("never copies a buy read after an outage, and tells the owner it came late", async () => {
     const test = await startFillEngine({ prices });
     const order = await activeOrder(test, testCopy());
     await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
@@ -149,5 +149,51 @@ describe("the copy orders' runner", () => {
 
     expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:missed"]);
     expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
+  it("still sells the leader's share after an outage, telling the owner the sale was late", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+    const share = bpsSchema.parse(4_000);
+    const soldAtMs = test.clock.now();
+    await storeTrades(test, [
+      leaderTrade(2, { side: "sell", atMs: soldAtMs, shareSoldBps: share }),
+    ]);
+    await test.clock.advance(3_600_000);
+
+    await test.engine.runCopies(live);
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled", "filled"]);
+    const told = noticesOf(test).map((data) => JSON.stringify(data));
+    expect(told.find((text) => text.includes('"fill.copySellLate"'))).toContain(
+      `"when":${String(soldAtMs)}`,
+    );
+  });
+
+  it("sells, once and late, a leader sale a stop cut off between its take and its fill", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+    const share = bpsSchema.parse(5_000);
+    const [sale] = await storeTrades(test, [
+      leaderTrade(2, { side: "sell", atMs: test.clock.now(), shareSoldBps: share }),
+    ]);
+    await test.clock.advance(1_000);
+    const taking = { ...takingOf(sale), side: "sell" as const, shareSoldBps: share };
+    await takeTrade(test, order.id, { ...taking, takenAtMs: test.clock.now() });
+    await test.clock.advance(120_000);
+
+    const again = test.restart();
+    await again.repairOrderFills(live);
+    await again.runCopies(live);
+    await again.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled", "filled"]);
+    const sales = (await fillIntentsOf(test)).filter(({ kind }) => kind === "sell");
+    expect(sales).toHaveLength(1);
   });
 });

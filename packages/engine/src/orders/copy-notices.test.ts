@@ -5,7 +5,13 @@ import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import { noticeText } from "../surfaces/notice-text.js";
-import { copyStartOf, copyStateDocument, type CopyTaking, takenState } from "./copy-state.js";
+import {
+  copyGraceMs,
+  copyStartOf,
+  copyStateDocument,
+  type CopyTaking,
+  takenState,
+} from "./copy-state.js";
 import { fillNotice, skippedNotice } from "./fill-notices.js";
 import { testCopy, testLeader } from "./test-orders.js";
 
@@ -73,6 +79,16 @@ describe("a copy order's notices in English", () => {
 
     expect(noticeText(notice, english)).toBe(
       `${paper} ${done} Copy trade filled: copied Whale selling 40.00%: sold 2 TKN for $1.60`,
+    );
+  });
+
+  it("tell a copied sale made past its minute as late, with when the leader sold", () => {
+    const late = { ...sold, atMs: copyGraceMs + 1 };
+    const notice = fillNotice(tokenSale, late, { decimals: 6, assets: {}, book });
+    const when = english.formatter.dateTime(0);
+
+    expect(noticeText(notice, english)).toBe(
+      `${paper} ${done} Copy trade filled: copied Whale selling 40.00% at ${when}, late, at the price now: sold 2 TKN for $1.60`,
     );
   });
 });

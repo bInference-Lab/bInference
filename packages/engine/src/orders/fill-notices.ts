@@ -4,7 +4,7 @@ import type { AssetInfos } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import type { Notice, NoticePart } from "../pushes/notice-push.js";
-import { copyStateOf, type CopyTaking } from "./copy-state.js";
+import { copyStateOf, type CopyTaking, isTakenLate } from "./copy-state.js";
 import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 import { wholeTokenPrice } from "./price-level.js";
@@ -104,10 +104,11 @@ function skipOrderPart(
   };
 }
 
-// A copied fill's result: what it bought or sold for the leader's trade, and the share sold.
+// A copied fill's result: what it bought or sold for the leader's trade, the share sold, and for
+// a sale past its minute, when the leader sold (decision 0260).
 function copyResultOf(
   copy: CopyNoticeFacts,
-  fill: { readonly token: PaperFill["amountIn"]; readonly value: string },
+  fill: { readonly token: PaperFill["amountIn"]; readonly value: string; readonly atMs: number },
 ): NoticePart {
   const { leader, taking } = copy;
   const amounts = { amount: fill.token };
@@ -115,7 +116,10 @@ function copyResultOf(
     return { key: "fill.copyBuy", values: { leader, spent: fill.value }, amounts };
   }
   const share = taking.shareSoldBps === undefined ? "?" : dollars.percent(taking.shareSoldBps);
-  return { key: "fill.copySell", values: { leader, share, received: fill.value }, amounts };
+  const values = { leader, share, received: fill.value };
+  return isTakenLate(taking, fill.atMs)
+    ? { key: "fill.copySellLate", values, times: { when: taking.atMs }, amounts }
+    : { key: "fill.copySell", values, amounts };
 }
 
 // A fill's result: what it bought or sold, for how many dollars, at its price per whole token.
@@ -165,7 +169,7 @@ export function fillNotice(
   const result =
     copy === undefined
       ? plainResultOf({ isBuy, token, value, valueMicros, decimals: traded.decimals })
-      : copyResultOf(copy, { token, value });
+      : copyResultOf(copy, { token, value, atMs: fill.atMs });
   const assets = copy === undefined ? traded.assets : withCopiedToken(traded.assets, copy.taking);
   return {
     key: "notice.fill",

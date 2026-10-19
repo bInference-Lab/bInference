@@ -6,6 +6,7 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { OrderSkipReason } from "../intents/intent-reason.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import {
+  isTakenLate,
   type CopyState,
   copyStateOf,
   type CopyTaking,
@@ -15,12 +16,6 @@ import {
 import type { FillPrice } from "./fill-orders.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
-
-/**
- * How late a leader's trade may still be copied (decision 0260): its block time at most this long
- * before its copy reaches the head of its agent's line of fills.
- */
-export const copyGraceMs = 60_000;
 
 /** A copy order: an order whose request is a copy order's. */
 export type CopyOrder = OrderRecord & { readonly request: CopyOrderRequest };
@@ -128,7 +123,7 @@ function fillOrderOf(order: CopyOrder, taking: CopyTaking, perBuy: bigint): Copy
 
 /**
  * Plans the fill of the trade a copy order took (decision 0260), at the head of its agent's line:
- * none when it took none; a skip as `late` past its minute, as `share_unread` for a sale whose
+ * none when it took none; a skip as `late` for a buy past its minute, as `share_unread` for a sale whose
  * share the watcher did not read, as `token_unreadable` for a token whose decimals nothing knows, and as `copy_daily_cap` for a buy that would pass the order's daily dollars or the agent's
  * for the leader; else the fill, as an order of the trade's token and side.
  */
@@ -146,7 +141,8 @@ export async function planCopyFill(
   if (state === undefined || taking === undefined) {
     return { kind: "none" };
   }
-  if (parts.clock.now() - taking.atMs > copyGraceMs) {
+  // A late buy is never made; a late sale is still made, at the price now (decision 0260).
+  if (taking.side === "buy" && isTakenLate(taking, parts.clock.now())) {
     return { kind: "skip", reason: "late" };
   }
   const perBuy = perBuyOf(order, settings);

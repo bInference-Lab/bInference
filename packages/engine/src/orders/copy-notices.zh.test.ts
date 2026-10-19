@@ -5,7 +5,13 @@ import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import { noticeText } from "../surfaces/notice-text.js";
-import { copyStartOf, copyStateDocument, type CopyTaking, takenState } from "./copy-state.js";
+import {
+  copyGraceMs,
+  copyStartOf,
+  copyStateDocument,
+  type CopyTaking,
+  takenState,
+} from "./copy-state.js";
 import { fillNotice, skippedNotice } from "./fill-notices.js";
 import { testCopy, testLeader } from "./test-orders.js";
 
@@ -69,6 +75,16 @@ describe("a copy order's notices in Chinese", () => {
 
     expect(noticeText(notice, chinese)).toBe(
       `${paper} ${done} 跟单已成交：跟单 Whale 卖出 40.00%：卖出 2 TKN，收到 $1.60`,
+    );
+  });
+
+  it("tell a copied sale made past its minute as late, with when the leader sold", () => {
+    const late = { ...sold, atMs: copyGraceMs + 1 };
+    const notice = fillNotice(tokenSale, late, { decimals: 6, assets: {}, book });
+    const when = chinese.formatter.dateTime(0);
+
+    expect(noticeText(notice, chinese)).toBe(
+      `${paper} ${done} 跟单已成交：跟单 Whale 于 ${when} 卖出的 40.00%，延后以当前价格执行：卖出 2 TKN，收到 $1.60`,
     );
   });
 });

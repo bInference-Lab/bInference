@@ -146,7 +146,7 @@ const isOver = (buy: IntentRecord, most: bigint): boolean =>
   buy.valueUsdMicros === undefined || buy.valueUsdMicros > most;
 
 describe("a copy order, for every history of leader trades, waits, runs and restarts", () => {
-  it("never buys over its caps, never sells more than it bought, and copies each trade once", async () => {
+  it("never buys over its caps, never sells more than it bought, never skips a sale as late, and copies each trade once", async () => {
     const histories = fc.tuple(terms, fc.array(steps, { minLength: 4, maxLength: 24 }));
     const seen = { buys: 0, sales: 0, skips: 0 };
     await fc.assert(
@@ -181,6 +181,9 @@ describe("a copy order, for every history of leader trades, waits, runs and rest
         expect(isWithinDays(buys, limits.copyPerLeaderDayUsdMicros)).toBe(true);
         expect(isWithinHeld(inFillOrder(test, fills))).toBe(true);
         expect(rows.length).toBeLessThanOrEqual(trades);
+        // Only a buy is ever skipped as late: a late sale still sells (decision 0260).
+        const lateRows = rows.filter(({ reason }) => reason === "late").length;
+        expect(lateRows).toBeLessThanOrEqual(history.filter(({ kind }) => kind === "buy").length);
       }),
       { numRuns: 40 },
     );

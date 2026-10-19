@@ -22,6 +22,7 @@ import {
   passedState,
   takenState,
 } from "./copy-state.js";
+import { lostTakeOf } from "./copy-taken.js";
 import { isLineHeld } from "./fill-faults.js";
 import type { OrderFills } from "./fill-orders.js";
 import { moveOrder } from "./order-machine.js";
@@ -129,17 +130,38 @@ interface Reading {
   readonly passedTo?: number;
 }
 
-// Takes one trade the order copies and fills it; answers whether the order may go on to the next.
-// A fill that could not run, behind a fill still settling, records `fill_waiting`, so no taken
-// trade is lost in silence.
+// Keeps the trade as taken and fills it; answers whether the order may go on to the next. A fill
+// that could not run, behind a fill still settling, records `fill_waiting`, so no taken trade is
+// lost in silence.
+async function fillTaken(
+  parts: CopyOrdersParts,
+  reading: Reading,
+  call: { readonly taking: CopyTaking; readonly signal: AbortSignal },
+): Promise<boolean> {
+  const { order, state } = reading;
+  const { taking, signal } = call;
+  const taken = await keep(parts, order, { state: takenState(state, taking), signal });
+  if (taken === undefined) {
+    return false;
+  }
+  const outcome = await parts.fills.run({ order: order.id, price: { decimals: 0 } }, { signal });
+  if (outcome === "waiting" || outcome === "inactive") {
+    const after = await parts.orders.get(order.id, { signal });
+    if (after?.state === "active") {
+      await parts.fills.skip({ order: order.id, reason: "fill_waiting" }, { signal });
+    }
+  }
+  return outcome !== "sent";
+}
+
+// Takes one trade the order copies and fills it; answers whether the order may go on.
 async function copyOne(
   parts: CopyOrdersParts,
   reading: Reading,
   call: { readonly trade: StoredActivity; readonly asset: AssetRef; readonly signal: AbortSignal },
 ): Promise<boolean> {
-  const { order, state } = reading;
   const { trade, asset, signal } = call;
-  if (await isLineHeld(parts, order, signal)) {
+  if (await isLineHeld(parts, reading.order, signal)) {
     return false;
   }
   const facts = await factsOf(parts, asset, signal);
@@ -153,18 +175,18 @@ async function copyOne(
     ...share,
     ...(facts === undefined ? {} : { facts }),
   };
-  const taken = await keep(parts, order, { state: takenState(state, taking), signal });
-  if (taken === undefined) {
-    return false;
+  return fillTaken(parts, reading, { taking, signal });
+}
+
+// A leader sale a stop cut off between its take and its fill is still sold, late, once: taken
+// again now, as no row and no live fill shows it ran (decision 0260).
+async function sellLost(parts: CopyOrdersParts, reading: Reading, signal: AbortSignal) {
+  const lost = await lostTakeOf(parts, reading.order, signal);
+  if (lost?.side !== "sell") {
+    return true;
   }
-  const outcome = await parts.fills.run({ order: order.id, price: { decimals: 0 } }, { signal });
-  if (outcome === "waiting" || outcome === "inactive") {
-    const after = await parts.orders.get(order.id, { signal });
-    if (after?.state === "active") {
-      await parts.fills.skip({ order: order.id, reason: "fill_waiting" }, { signal });
-    }
-  }
-  return outcome !== "sent";
+  const taking = { ...lost, takenAtMs: parts.clock.now() };
+  return fillTaken(parts, reading, { taking, signal });
 }
 
 // The order as it stands now, with its state; none once it stopped being an active copy order.
@@ -226,9 +248,12 @@ async function copyRead(
   return passed !== undefined && trades.length === tradesPerRead;
 }
 
-// Copies one order's trades, read after read, until none is left or it cannot go on.
+// Copies one order's trades, read after read, until none is left or it cannot go on; a sale a
+// stop cut off goes first.
 async function copyOrder(parts: CopyOrdersParts, id: Id<"ord">, signal: AbortSignal) {
-  const reading = await readingOf(parts, id, signal);
+  const first = await readingOf(parts, id, signal);
+  const isSold = first !== undefined && (await sellLost(parts, first, signal));
+  const reading = isSold ? await readingOf(parts, id, signal) : undefined;
   if (reading !== undefined && (await copyRead(parts, reading, signal))) {
     await copyOrder(parts, id, signal);
   }

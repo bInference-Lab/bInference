@@ -3,8 +3,7 @@ import type { Clock } from "@binference/core";
 import type { IntentStore } from "../ports.js";
 import type { CopyOrder } from "./copy-fills.js";
 import { copyOrdersIn } from "./copy-orders.js";
-import { copyStateOf } from "./copy-state.js";
-import { isLineHeld } from "./fill-faults.js";
+import { lostTakeOf } from "./copy-taken.js";
 import type { OrderFills } from "./fill-orders.js";
 import type { OrderStore } from "./ports.js";
 import { recordMissed } from "./record-missed.js";
@@ -19,24 +18,17 @@ export interface CopyRepairParts {
   readonly clock: Clock;
 }
 
-// Whether a stop came between taking a trade and any row of its fill: no row since it was taken,
-// and no live fill of the agent still on its way to one.
+// A buy a stop cut off between its take and its fill; a sale so cut off is the runner's to fill
+// late (decision 0260).
 async function wasLost(parts: CopyRepairParts, order: CopyOrder, signal: AbortSignal) {
-  const taking = copyStateOf(order.triggerState)?.taking;
-  if (taking === undefined) {
-    return false;
-  }
-  const [newest] = await parts.orders.fills({ orderId: order.id, limit: 1 }, { signal });
-  if (newest !== undefined && newest.atMs >= taking.takenAtMs) {
-    return false;
-  }
-  return !(await isLineHeld(parts, order, signal));
+  return (await lostTakeOf(parts, order, signal))?.side === "buy";
 }
 
 /**
- * The start's repair of copy orders (decision 0260): a leader trade a stop cut off between its
- * take and its fill is never copied, so no trade is copied twice; it is recorded now as `missed`,
- * once, and the owner hears of it. Answers how many trades it recorded.
+ * The start's repair of copy orders (decision 0260): a leader buy a stop cut off between its take
+ * and its fill is never bought, so no trade is copied twice; it is recorded now as `missed`, once,
+ * and the owner hears of it. A sale so cut off is left to the runner, which sells it late, once.
+ * Answers how many buys it recorded.
  */
 export async function repairCopyTrades(
   parts: CopyRepairParts,

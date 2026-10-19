@@ -108,9 +108,10 @@ Rules for this package:
 - Copy orders (`src/orders/copy-*.ts`, decisions 0260 and 0261) copy their leader's trades the
   leader watcher stored, which `copy-orders.ts` reads after the last one each order took: the take
   is kept in the order's trigger state (`copy-state.ts`) before the trade's fill, so a trade is
-  copied once, and the start records a take a stop cut off as `missed` (`copy-repair.ts`). At the
-  head of its agent's line, `copy-fills.ts` plans the fill: late, unread share, unread token and
-  daily caps skip before any intent; a buy at its dollars per buy, a sale of the leader's share of
+  copied once; the start records a buy a stop cut off as `missed` (`copy-repair.ts`), and the
+  runner sells a sale so cut off late (`copy-taken.ts`). At the head of its agent's line,
+  `copy-fills.ts` plans the fill: a late buy, an unread share or token and the daily caps skip
+  before any intent, and a late sale still sells; a buy at its dollars per buy, a sale of the leader's share of
   what the order bought. A change to a cap or a sale's size changes
   `copy-orders.property.test.ts`.
 - The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of

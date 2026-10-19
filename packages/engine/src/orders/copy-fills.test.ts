@@ -13,8 +13,9 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
-import { type CopyOrder, copyGraceMs, planCopyFill } from "./copy-fills.js";
+import { type CopyOrder, planCopyFill } from "./copy-fills.js";
 import {
+  copyGraceMs,
   copyStartOf,
   copyStateAfterFill,
   copyStateDocument,
@@ -95,7 +96,7 @@ describe("a copy order's fill plan", () => {
     });
   });
 
-  it("sells the leader's share, and skips a sale whose share is unknown", async () => {
+  it("sells the leader's share however late, and skips a sale whose share is unknown", async () => {
     const sale = { ...buy, side: "sell" as const, shareSoldBps: bpsSchema.parse(4_000) };
     const { shareSoldBps: _share, ...unshared } = sale;
 
@@ -103,13 +104,17 @@ describe("a copy order's fill plan", () => {
       kind: "fill",
       order: { request: { side: "sell", size: { percentBps: 4_000 } } },
     });
+    const late = { ...sale, atMs: testNowMs - copyGraceMs - 1 };
+    expect(await plan(copyOrder(takenState(copyStartOf(0), late)))).toMatchObject({
+      kind: "fill",
+    });
     expect(await plan(copyOrder(takenState(copyStartOf(0), unshared)))).toStrictEqual({
       kind: "skip",
       reason: "share_unread",
     });
   });
 
-  it("skips a trade past its minute, and one whose token has no decimals", async () => {
+  it("skips a buy past its minute, and a trade whose token has no decimals", async () => {
     const late = { ...buy, atMs: testNowMs - copyGraceMs - 1 };
     const { facts: _facts, ...unread } = { ...buy, asset: unlisted };
 

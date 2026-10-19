@@ -138,6 +138,7 @@ async function noticesOf(
     readonly snapshot: IntentSnapshot;
     readonly settled: LandedTrade;
     readonly ended: number;
+    readonly atMs: number;
     readonly signal: AbortSignal;
   },
 ): Promise<readonly JsonValue[]> {
@@ -146,7 +147,7 @@ async function noticesOf(
     tokenOf(parts, order, signal),
     soldPriceOf(parts, call),
   ]);
-  const traded = { amountIn: settled.amountIn, amountOut: settled.amountOut, atMs: 0 };
+  const traded = { amountIn: settled.amountIn, amountOut: settled.amountOut, atMs: call.atMs };
   const fill = soldPrice === undefined ? traded : { ...traded, soldPrice };
   const decimals = token.decimals === undefined ? {} : { decimals: token.decimals };
   const book = call.snapshot.settings.addressBook;

@@ -197,7 +197,7 @@ a live fill whose grant ran out before its wallet's queue took it
 was signed, which ends its order ([decision 0211](../DECISIONS.md#d0211)); `missed`, a DCA order's period that came while the
 order could not buy, `late`, a DCA buy that reached the head of its agent's line past its period's
 minute, and `fill_waiting`, a DCA buy that could not run behind a fill still settling, none ever
-bought later ([decision 0246](../DECISIONS.md#d0246)); `late` too for a copy order's leader trade
+bought later ([decision 0246](../DECISIONS.md#d0246)); `late` too for a copy order's leader buy
 whose block time is more than 60 seconds old at the head of its agent's line, `share_unread`, a
 copy order's sale whose leader's share the leader watcher could not read, and `token_unreadable`,
 a copy order's trade of a token whose decimals neither the registry nor its contract gives
@@ -280,7 +280,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
   leader trade the order copies. The order reads its leader's trades in the order the leader
   watcher stored them, from the moment it became active, and keeps the last one it took in its
   trigger state before the trade's fill, so a trade is copied once per order; a stop between the
-  two records the trade as `missed` at the next start. It copies a buy of a token other than the
+  two records a buy as `missed` at the next start, and leaves a sale to be sold late. A buy more
+  than 60 seconds late is never made; a late sale is still made, at the price then, and told with
+  `fill.copySellLate`. It copies a buy of a token other than the
   chain's coin and what it spends, at its `perBuyUsdMicros`, or the agent's `copy.perBuyUsd` when
   lower, and a sale of a token it bought, at the leader's share of what it holds from its own
   buys, never more than the wallet holds, rounded down. A buy whose dollars would pass its

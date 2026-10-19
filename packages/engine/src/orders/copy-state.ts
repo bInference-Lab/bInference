@@ -8,6 +8,18 @@ import { epochMsSchema } from "../records/record-fields.js";
 /** The window a copy order's daily cap counts its buys in: the last 24 hours (decision 0260). */
 export const copyDayMs = 86_400_000;
 
+/**
+ * How late a leader's trade may still be copied as it came (decision 0260): its block time at most
+ * this long before its copy reaches the head of its agent's line of fills. A later buy is never
+ * made; a later sale is still made, at the price then, and told as late.
+ */
+export const copyGraceMs = 60_000;
+
+/** Whether a taken trade's copy at `atMs` comes past its minute. */
+export function isTakenLate(taking: Pick<CopyTaking, "atMs">, atMs: number): boolean {
+  return atMs - taking.atMs > copyGraceMs;
+}
+
 /** The leader's trade a copy order took and copies now (decision 0260). */
 export interface CopyTaking {
   /** The trade's number in the store, which orders the leader's trades. */
