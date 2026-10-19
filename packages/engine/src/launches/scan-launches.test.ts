@@ -45,5 +45,10 @@ describe("market/scan of launches", () => {
       ok: false,
       error: "protocol.bad_args",
     });
+    const deep = { ...args, filters: { minLiquidityUsdMicros: 1n } };
+    expect(expectOk(await on.engine.handlers["market/scan"](testCall(deep)))).toStrictEqual({
+      items: [],
+      assets: {},
+    });
   });
 });

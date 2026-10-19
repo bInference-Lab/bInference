@@ -62,6 +62,8 @@ describe("launch/list", () => {
       await listOf(test, { filters: { maxTaxBps: 100, launchpads: ["fake-curve"] } }),
     );
     expect(cheap.items.map(({ token }) => token)).toStrictEqual([tokenOf(1)]);
+    const quoted = expectOk(await listOf(test, { filters: { quoteTokens: [testCoin] } }));
+    expect(quoted.items).toHaveLength(3);
     const deep = expectOk(await listOf(test, { filters: { minLiquidityUsdMicros: 1n } }));
     expect(deep.items).toStrictEqual([]);
   });
