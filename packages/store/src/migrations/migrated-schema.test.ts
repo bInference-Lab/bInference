@@ -139,6 +139,12 @@ const columns: Readonly<Record<string, readonly string[]>> = {
       "notices_held",
   ),
   alert_fires: names("alert_id fires agent_id at outcome reason message_id"),
+  tracked_wallets: names("account since_block last_block overflow_blocks added_at untracked_at"),
+  wallet_activity: names(
+    "id account block tx_hash log_index side asset amount counter_asset counter_amount " +
+      "value_usd_micros share_sold_bps venue at",
+  ),
+  watch_cursors: names("watcher chain block block_hash at"),
   webhook_rules: names(
     "id agent_id name secret_hash action state rate_per_min fills max_fills expires_at card_id " +
       "created_at changed_at version",
@@ -201,6 +207,9 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   budget_notices: ["agent_id", "day_at"],
   schedule_runs: ["schedule_id", "due_at"],
   alert_fires: ["alert_id", "fires"],
+  tracked_wallets: ["account"],
+  wallet_activity: ["id"],
+  watch_cursors: ["watcher", "chain"],
   question_messages: ["question_id", "surface", "chat_id"],
   positions: ["wallet_id", "asset", "paper"],
   ledger: ["seq"],
@@ -238,6 +247,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
     "index|state,expires_at",
   ],
   alert_fires: ["index|agent_id,at"],
+  wallet_activity: ["index|account,at", "unique|account,tx_hash,log_index"],
   webhook_rules: ["index|state"],
   webhook_events: ["index|rule_id,alert_id", "index|rule_id,received_at"],
   schedules: ["index|agent_id,state", "index|state,next_at"],

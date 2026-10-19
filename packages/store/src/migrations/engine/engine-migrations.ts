@@ -40,6 +40,7 @@ import { migration as walletRoles } from "./0038_wallet_roles.js";
 import { migration as extraLaunchWallets } from "./0039_extra_launch_wallets.js";
 import { migration as scheduleRuns } from "./0040_schedule_runs.js";
 import { migration as alertFires } from "./0041_alert_fires.js";
+import { migration as trackedWallets } from "./0042_tracked_wallets.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -84,4 +85,5 @@ export const engineMigrations: readonly Migration[] = [
   extraLaunchWallets,
   scheduleRuns,
   alertFires,
+  trackedWallets,
 ];

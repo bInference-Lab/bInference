@@ -1,6 +1,6 @@
 # 0244. An alert is set with no card, and its setter or the owner deletes it
 
-Status: Accepted
+Status: Amended by 0251
 
 Accepted by the owner on 2026-10-19.
 
