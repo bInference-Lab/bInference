@@ -42,6 +42,11 @@ export interface LeaderBook {
 /** What the leader watcher of one chain reads with. */
 export interface LeaderWatcherOptions {
   readonly rpc: RpcFailover;
+  /**
+   * The failover the log queries go through, such as one over endpoints that answer
+   * `eth_getLogs` (decision 0252); `rpc` when absent.
+   */
+  readonly logsRpc?: RpcFailover;
   readonly blocks: BlockSource;
   readonly clock: Clock;
   /** Multicall3 on the chain. */
@@ -246,6 +251,7 @@ function readerOf(options: LeaderWatcherOptions, signal: AbortSignal): LeaderRea
   );
   return {
     rpc: options.rpc,
+    logsRpc: options.logsRpc ?? options.rpc,
     multicall: options.multicall,
     feeds,
     context: options.context,

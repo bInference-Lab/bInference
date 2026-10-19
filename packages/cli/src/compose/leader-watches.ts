@@ -159,6 +159,7 @@ function watchOf(
   const failures = { last: "" };
   const watcher = createLeaderWatcher({
     rpc,
+    logsRpc: reads.logsRpc,
     blocks: createBlockSource({ rpc, clock, blockTimeMs, callTimeoutMs }),
     clock,
     multicall,

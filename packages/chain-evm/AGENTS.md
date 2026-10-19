@@ -36,7 +36,8 @@ Rules for this package:
   every block in order with no skip, and reads one trade per transaction and wallet. Its budget is
   fixed: a wallet with more than 100 transfers in a block is cut there and reported, and a query an
   endpoint refuses as too large is asked again for half the blocks, then half the wallets. Each
-  read reaches its book in one write with the cursor, so a restart reads on with no gap.
+  read reaches its book in one write with the cursor, so a restart reads on with no gap. Its log
+  queries go through a failover of their own (decision 0252).
 - Prices come from the Chainlink feeds the composition root names. A feed that cannot be read, a
   broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw.
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.

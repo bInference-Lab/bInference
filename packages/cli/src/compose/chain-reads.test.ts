@@ -6,7 +6,13 @@ import { createManualClock, createScriptedHttp } from "@binference/core/testing"
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
-import { chainReadsOf, composeChainReads, rpcEndpointsOf, rpcHealthOf } from "./chain-reads.js";
+import {
+  chainReadsOf,
+  composeChainReads,
+  logEndpointsOf,
+  rpcEndpointsOf,
+  rpcHealthOf,
+} from "./chain-reads.js";
 import { selfHostedChains } from "./open-engine-parts.js";
 
 const bscRef = chainRefSchema.parse(bsc.id);
@@ -64,6 +70,18 @@ describe("the chains' reads", () => {
       "bnbchain-dataseed-public",
     ]);
     expect(rpcEndpointsOf(bsc, undefined)).toHaveLength(2);
+  });
+
+  it("asks the registry's log RPCs for logs, until config names an RPC, which always wins", () => {
+    expect(logEndpointsOf(bsc, undefined)).toStrictEqual([
+      { name: "club48-public", url: "https://rpc-bsc.48.club" },
+    ]);
+    const keyed = { urls: ["https://logs.example.org"] };
+    expect(logEndpointsOf(bsc, keyed)).toStrictEqual([
+      { name: "config-1", url: "https://logs.example.org" },
+    ]);
+    const { logRpcs: _logs, ...unlisted } = bsc;
+    expect(logEndpointsOf(unlisted, undefined)).toHaveLength(bsc.rpcs.length);
   });
 
   it("reads each enabled chain with its fee cap and the registry's Multicall3", () => {

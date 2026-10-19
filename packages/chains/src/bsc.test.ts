@@ -73,6 +73,14 @@ describe("bsc", () => {
     },
   );
 
+  it("reads logs from 48 Club's public node, apart from the RPCs that refuse them", () => {
+    expect(bsc.logRpcs?.map(({ name, url }) => [name, url])).toStrictEqual([
+      ["club48-public", "https://rpc-bsc.48.club"],
+    ]);
+    const urls = new Set(bsc.rpcs.map(({ url }) => url));
+    expect(bsc.logRpcs?.some(({ url }) => urls.has(url))).toBe(false);
+  });
+
   it("keeps each address once across tokens and contracts", () => {
     const addresses = entries.map((entry) => entry.address.toLowerCase());
     expect(new Set(addresses).size).toBe(addresses.length);

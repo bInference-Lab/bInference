@@ -11,7 +11,11 @@ import {
   type FakeLeaderChainOptions,
   type FakeTx,
 } from "../testing/fake-leader-chain.js";
-import { createFakeRpcHttp } from "../testing/fake-rpc-http.js";
+import {
+  createFakeRpcHttp,
+  type FakeRpcHttp,
+  readFakeRpcRequest,
+} from "../testing/fake-rpc-http.js";
 import { createBlockSource } from "../watching/block-source.js";
 import type { WalletTrade } from "./finish-trades.js";
 import {
@@ -25,6 +29,7 @@ import type { LeaderRead } from "./read-leader-span.js";
 
 const blockTimeMs = 450;
 const url = "https://node.test";
+const logsUrl = "https://logs.test";
 const multicall = getAddress("0xcA11bde05977b3631167028862bE2a173976CA11");
 const chain: EvmChain = {
   ref: "eip155:56" as EvmChain["ref"],
@@ -111,6 +116,8 @@ interface Rig {
   readonly book: MemoryBook;
   readonly watcher: LeaderWatcher;
   readonly failures: string[];
+  /** Each request's endpoint and method, oldest first. */
+  readonly asked: () => readonly (readonly [string, string])[];
   stop(): void;
 }
 
@@ -123,19 +130,24 @@ interface WatcherParts {
   readonly clock: ManualClock;
   readonly fake: FakeLeaderChain;
   readonly book: MemoryBook;
-  /** Reads through a tracer and with a call timeout of its own. */
+  /** Reads through a tracer, its logs through a node of their own, with a call timeout. */
   readonly isTraced?: true;
 }
 
-function startWatcher(given: WatcherParts): Rig {
-  const { clock, fake, book } = given;
-  const rpc = createRpcFailover({
-    endpoints: [{ name: "node", url }],
-    http: createFakeRpcHttp({ [url]: fake.endpoint }),
+const failoverOf = (clock: ManualClock, http: FakeRpcHttp, node: string) =>
+  createRpcFailover({
+    endpoints: [{ name: node, url: node }],
+    http,
     clock,
     timeoutMs: 1_000,
     restMs: 1,
   });
+
+function startWatcher(given: WatcherParts): Rig {
+  const { clock, fake, book } = given;
+  const http = createFakeRpcHttp({ [url]: fake.endpoint, [logsUrl]: fake.endpoint });
+  const rpc = failoverOf(clock, http, url);
+  const apart = { tracer: rpc, logsRpc: failoverOf(clock, http, logsUrl), callTimeoutMs: 500 };
   const failures: string[] = [];
   const held: { watcher?: LeaderWatcher } = {};
   const watcher = createLeaderWatcher({
@@ -149,7 +161,7 @@ function startWatcher(given: WatcherParts): Rig {
     book,
     // The watcher's state names each failure as it is told.
     onReadFailed: (code) => failures.push(code === held.watcher?.state().fault ? code : "unnamed"),
-    ...(given.isTraced === true ? { tracer: rpc, callTimeoutMs: 500 } : {}),
+    ...(given.isTraced === true ? apart : {}),
   });
   held.watcher = watcher;
   const controller = new AbortController();
@@ -157,7 +169,11 @@ function startWatcher(given: WatcherParts): Rig {
   done.catch(() => undefined);
   const stop = (): void => controller.abort();
   stops.push(stop);
-  return { done, clock, chain: fake, book, watcher, failures, stop };
+  const asked = () =>
+    http
+      .requests()
+      .map((request) => [request.url, readFakeRpcRequest(request.body).method] as const);
+  return { done, clock, chain: fake, book, watcher, failures, stop, asked };
 }
 
 function rig(options: Partial<FakeLeaderChainOptions> & { readonly isTraced?: true } = {}): Rig {
@@ -485,7 +501,7 @@ describe("leader watcher", () => {
     await expect(subject.done).rejects.toThrow("broken store");
   });
 
-  it("reads the coin a sale got through the tracer once the state before it is pruned", async () => {
+  it("reads the coin a sale got through the tracer once the state before it is pruned, and its logs from a node of their own", async () => {
     const subject = rig({ isTraced: true });
     await settle(subject);
     subject.chain.goDown();
@@ -497,6 +513,11 @@ describe("leader watcher", () => {
     expect(tradesOf(subject)).toMatchObject([
       { block: sold, side: "sell", counterAsset: chain.nativeAsset, counterAmount: coin / 2n },
     ]);
+    const logs = subject.asked().filter(([, method]) => method === "eth_getLogs");
+    const logNodes = new Set(logs.map(([node]) => node));
+    const others = new Set(subject.asked().map(([node, method]) => `${node} ${method}`));
+    expect([...logNodes]).toStrictEqual([logsUrl]);
+    expect(others.has(`${logsUrl} eth_blockNumber`)).toBe(false);
   });
 
   it("goes on from each wallet's last block when its cursor was lost, waiting for a new block", async () => {

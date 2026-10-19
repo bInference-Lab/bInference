@@ -162,7 +162,14 @@ export function walletFactsOn(
     throw new BinferenceError({ code: "fork.no_chain", message: "The registry lacks the fork." });
   }
   const multicall = bscContract("multicall3", "multicall3");
-  const reads = { chain, evm: fork.chain, rpc: fork.rpc, networkFeeCapWeiPerGas: () => feeCapWei };
+  const { rpc } = fork;
+  const reads = {
+    chain,
+    evm: fork.chain,
+    rpc,
+    logsRpc: rpc,
+    networkFeeCapWeiPerGas: () => feeCapWei,
+  };
   return createChainWalletFacts({
     install: stores.install,
     intents: stores.intents,

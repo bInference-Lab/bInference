@@ -74,6 +74,11 @@ export interface ChainDefinition {
   readonly blockTimeMs: number;
   readonly finality: FinalityRule;
   readonly rpcs: readonly EndpointDefinition[];
+  /**
+   * Public RPCs that answer `eth_getLogs`, which log readers ask while config names no RPC of the
+   * chain's own (decision 0252); the chain's `rpcs` when absent.
+   */
+  readonly logRpcs?: readonly EndpointDefinition[];
   readonly relays: readonly EndpointDefinition[];
   readonly explorers: readonly EndpointDefinition[];
   readonly tokens: readonly TokenDefinition[];
@@ -135,6 +140,7 @@ export const chainDefinitionSchema: z.ZodType<ChainDefinition, ChainDefinition> 
       z.strictObject({ kind: z.literal("confirmations"), blocks: z.int().positive() }),
     ]),
     rpcs: z.array(endpointSchema).min(1),
+    logRpcs: z.array(endpointSchema).min(1).exactOptional(),
     relays: z.array(endpointSchema),
     explorers: z.array(endpointSchema).min(1),
     tokens: z.array(tokenSchema),

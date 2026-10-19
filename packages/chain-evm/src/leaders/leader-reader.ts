@@ -6,6 +6,8 @@ import type { LogReader } from "./read-span-logs.js";
 /** What the leader watcher reads one span with. */
 export interface LeaderReader extends PriorReader, LogReader {
   readonly context: TradeContext;
+  /** The failover the log queries go through, apart from the chain's other reads (decision 0252). */
+  readonly logsRpc: RpcFailover;
   /** A node that answers `debug_traceTransaction`, asked once the others pruned the state. */
   readonly tracer?: RpcFailover;
 }

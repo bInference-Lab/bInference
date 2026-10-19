@@ -244,6 +244,7 @@ function watchersOn(fork: Fork, rig: FillRig) {
     chain,
     evm: fork.chain,
     rpc: fork.rpc,
+    logsRpc: fork.rpc,
     networkFeeCapWeiPerGas: () => 10n ** 9n,
     multicall: bscContract("multicall3", "multicall3"),
   };

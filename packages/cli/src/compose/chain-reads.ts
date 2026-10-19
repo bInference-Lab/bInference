@@ -23,6 +23,11 @@ export interface ChainReads {
   readonly evm: EvmChain;
   readonly rpc: RpcFailover;
   /**
+   * The failover that log queries go through (decision 0252): the RPCs config names, which always
+   * win, else the registry's public log RPCs, else the chain's public ones.
+   */
+  readonly logsRpc: RpcFailover;
+  /**
    * The chain's network fee cap now, in wei per gas (decision 0102): config's as reloaded while it
    * is at most the cap the engine started with, which the signer holds, else that one (decision
    * 0230).
@@ -55,16 +60,29 @@ function refuse(code: `cli.${string}`, message: string, chain: ChainRef): Binfer
   return new BinferenceError({ code, message, details: { chain } });
 }
 
+function configuredOf(rpc: RpcConfig | undefined): readonly RpcEndpoint[] {
+  return (rpc?.urls ?? []).map((url, index) => ({ name: `config-${String(index + 1)}`, url }));
+}
+
 /** The chain's RPCs: those config names first, then the chain's public ones. */
 export function rpcEndpointsOf(
   definition: ChainDefinition,
   rpc: RpcConfig | undefined,
 ): readonly RpcEndpoint[] {
-  const configured = (rpc?.urls ?? []).map((url, index): RpcEndpoint => ({
-    name: `config-${String(index + 1)}`,
-    url,
-  }));
-  return [...configured, ...definition.rpcs.map(({ name, url }) => ({ name, url }))];
+  return [...configuredOf(rpc), ...definition.rpcs.map(({ name, url }) => ({ name, url }))];
+}
+
+/**
+ * The RPCs that answer the chain's log queries (decision 0252): those config names, else the
+ * registry's public log RPCs, else the chain's public RPCs.
+ */
+export function logEndpointsOf(
+  definition: ChainDefinition,
+  rpc: RpcConfig | undefined,
+): readonly RpcEndpoint[] {
+  const configured = configuredOf(rpc);
+  const listed = definition.logRpcs ?? definition.rpcs;
+  return configured.length > 0 ? configured : listed.map(({ name, url }) => ({ name, url }));
 }
 
 function multicallOf(chain: RegisteredChain): `0x${string}` {
@@ -98,15 +116,21 @@ function readsOf(chain: RegisteredChain, options: ChainReadsOptions): ChainReads
     throw refuse("cli.no_fee_cap", `No network fee cap is set for ${chain.ref}.`, chain.ref);
   }
   const current = options.current ?? (() => config);
+  const failoverOf = (endpoints: readonly RpcEndpoint[]): RpcFailover =>
+    createRpcFailover({ endpoints, http, clock, timeoutMs: rpcTimeoutMs, restMs: rpcRestMs });
   const rpc = followingRpc(
     () => rpcEndpointsOf(chain.definition, current().rpc[chain.ref]),
-    (endpoints) =>
-      createRpcFailover({ endpoints, http, clock, timeoutMs: rpcTimeoutMs, restMs: rpcRestMs }),
+    failoverOf,
+  );
+  const logsRpc = followingRpc(
+    () => logEndpointsOf(chain.definition, current().rpc[chain.ref]),
+    failoverOf,
   );
   return {
     chain,
     evm: evmChainOf(chain.definition),
     rpc,
+    logsRpc,
     networkFeeCapWeiPerGas: feeCapNow(chain.ref, gweiToWei(capText, chain.ref), current),
     multicall: multicallOf(chain),
   };

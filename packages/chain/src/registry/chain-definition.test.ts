@@ -25,6 +25,7 @@ describe("chain definition schema", () => {
   it.each<[string, ChainDefinition]>([
     ["a non-CAIP id", { ...valid, id: "fake" }],
     ["an http endpoint", { ...valid, rpcs: [{ ...rpc, url: "http://rpc.example.invalid" }] }],
+    ["an empty list of log RPCs", { ...valid, logRpcs: [] }],
     ["no explorer", { ...valid, explorers: [] }],
     ["a token without a date", { ...valid, tokens: [undated] }],
     ["a token address twice", { ...valid, tokens: [token, { ...token, symbol: "TWO" }] }],

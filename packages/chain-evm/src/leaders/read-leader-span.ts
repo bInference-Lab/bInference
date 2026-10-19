@@ -146,7 +146,12 @@ export async function readLeaderSpan(reader: LeaderReader, span: LeaderSpan): Pr
   const readFrom = new Map(
     span.wallets.map((wallet) => [accountAddressOn(chain, wallet.account), wallet.readFrom]),
   );
-  const read = await readSpanLogs(reader, {
+  const logReader = {
+    rpc: reader.logsRpc,
+    signal: reader.signal,
+    ...(reader.timeoutMs === undefined ? {} : { timeoutMs: reader.timeoutMs }),
+  };
+  const read = await readSpanLogs(logReader, {
     from: span.from,
     to: span.to,
     addresses: [...readFrom.keys()],

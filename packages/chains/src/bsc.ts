@@ -266,6 +266,16 @@ export const bsc: ChainDefinition = {
       source: rpcDocs,
     },
   ],
+  // BNB Chain's docs send log readers to the third-party endpoints Chainlist lists. 48 Club's
+  // public node answers `eth_getLogs` under 80 requests in 5 s and 720 a minute (its
+  // X-Ratelimit headers, read 2026-10-19); a 429 is its documented answer past them.
+  logRpcs: [
+    {
+      name: "club48-public",
+      url: "https://rpc-bsc.48.club",
+      source: "https://chainlist.org/chain/56",
+    },
+  ],
   // Keyless relays only: bloXroute's private send needs an account.
   relays: [
     { name: "club48", url: "https://rpc.48.club", source: "https://docs.48.club/privacy-rpc" },
