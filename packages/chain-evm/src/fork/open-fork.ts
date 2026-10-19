@@ -27,6 +27,8 @@ interface ForkTransaction {
   readonly to: Address;
   readonly value?: bigint;
   readonly data?: Hex;
+  /** The gas the transaction may use; 5,000,000 when absent. */
+  readonly gas?: bigint;
 }
 
 /** The suite's BSC fork, as one test sees it. */
@@ -84,9 +86,9 @@ async function sendAndMine(
   fork: Pick<Fork, "call" | "client">,
   transaction: ForkTransaction,
 ): Promise<TransactionReceipt> {
-  const { from, to, value = 0n, data = "0x" } = transaction;
+  const { from, to, value = 0n, data = "0x", gas = gasLimit } = transaction;
   const sent = await fork.call("eth_sendTransaction", [
-    { from, to, value: toHex(value), data, gas: toHex(gasLimit) },
+    { from, to, value: toHex(value), data, gas: toHex(gas) },
   ]);
   // The fork mines only on demand, so the test decides which transactions share a block.
   await fork.call("evm_mine", []);
