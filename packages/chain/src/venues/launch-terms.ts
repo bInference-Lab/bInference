@@ -55,9 +55,12 @@ export interface LaunchPinRequest extends LaunchTerms {
 
 /** What an upload gave: the metadata address the token's create call names, and its pin. */
 export interface LaunchPin {
-  /** The address of the token's metadata, as the create call writes it. */
+  /** The address of the token's metadata, as the create call writes it: at most 200 characters. */
   readonly metadataUri: string;
-  /** The launchpad's own handle of the pin, which the host keeps and gives back to `pinStatus`. */
+  /**
+   * The launchpad's own handle of the pin, which the host keeps and gives back to `pinStatus`: at
+   * most 1 KiB as JSON.
+   */
   readonly pin: JsonValue;
 }
 
@@ -124,10 +127,19 @@ export const launchQuoteSchema: z.ZodType<LaunchQuote, LaunchQuoteWire> = z.stri
   tokenDecimals: z.int().min(0).max(36),
 });
 
-/** Checks a launch pin: a metadata address of at most 512 characters, and any handle. */
+// A pin's handle is stored in the launch's quote and hashed with its terms, so it stays small.
+const pinHandleMostBytes = 1_024;
+
+const isSmallHandle = (pin: JsonValue): boolean =>
+  new TextEncoder().encode(JSON.stringify(pin)).byteLength <= pinHandleMostBytes;
+
+/**
+ * Checks a launch pin: a metadata address of at most 200 characters, which a launch card shows
+ * whole, and a handle of at most 1 KiB as JSON.
+ */
 export const launchPinSchema: z.ZodType<LaunchPin> = z.strictObject({
-  metadataUri: z.string().min(1).max(512),
-  pin: z.json(),
+  metadataUri: z.string().min(1).max(200),
+  pin: z.json().refine(isSmallHandle, { message: "A pin's handle is over 1 KiB as JSON." }),
 });
 
 /** Checks a pin status. */

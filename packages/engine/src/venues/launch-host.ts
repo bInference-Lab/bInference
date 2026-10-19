@@ -3,10 +3,12 @@ import {
   type ChainRef,
   type ChainRegistry,
   type Launcher,
+  launchOptionsSchema,
   type LaunchPin,
   type LaunchQuote,
   type PinStatus,
   pinStatusSchema,
+  type RegisteredChain,
   type Venue,
 } from "@binference/chain";
 import { BinferenceError, type Clock, err, type JsonValue, type Result } from "@binference/core";
@@ -82,8 +84,15 @@ export interface LaunchHostOptions {
   readonly venues: readonly Venue[];
   readonly chains: ChainRegistry;
   readonly clock: Clock;
+  /** How long one quote, build or pin read may take before the launchpad counts as down. */
   readonly callTimeoutMs: number;
+  /** How long one upload of the words and picture may take: 12 s when absent. */
+  readonly uploadTimeoutMs?: number;
 }
+
+// An upload carries a picture of up to 5 MiB, so it gets longer than a read: with a quote, a
+// build and the first pin read at the call timeout, a launch's proposal stays under 30 s.
+const defaultUploadTimeoutMs = 12_000;
 
 /** A launchpad the host holds that launches tokens, with its declared contracts. */
 interface HostedLauncher {
@@ -91,13 +100,19 @@ interface HostedLauncher {
   readonly launcher: Launcher;
 }
 
-// A launchpad's settings must have their card lines and fitting defaults on each chain it serves.
+// A launchpad's settings must pass their schema, however the venue reached the host, and have
+// their card lines and fitting defaults on each chain it serves.
+function problemOf(item: HostedLauncher, chain: RegisteredChain): string | undefined {
+  const { launchOptions } = item.launcher;
+  return launchOptionsSchema.safeParse(launchOptions).success
+    ? launchSettingsProblem(launchOptions, chain)
+    : "its settings break the declaration's rules.";
+}
+
 function checked(item: HostedLauncher, chains: ChainRegistry): HostedLauncher {
   for (const chainRef of item.hosted.contracts.keys()) {
     const chain = chains.get(chainRef);
-    const problem = chain.ok
-      ? launchSettingsProblem(item.launcher.launchOptions, chain.value)
-      : undefined;
+    const problem = chain.ok ? problemOf(item, chain.value) : undefined;
     if (problem !== undefined) {
       throw new BinferenceError({
         code: "venue.bad_declaration",
@@ -202,6 +217,7 @@ function settingsOn(
  */
 export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
   const { chains, clock, callTimeoutMs } = options;
+  const uploadTimeoutMs = options.uploadTimeoutMs ?? defaultUploadTimeoutMs;
   const callOf = (signal: AbortSignal): VenueCallOptions => ({
     clock,
     signal,
@@ -217,7 +233,8 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
     },
     async pin(launch, words, { signal }) {
       signal.throwIfAborted();
-      const run = async (context: LaunchContext) => pinLaunch(context, words, callOf(signal));
+      const upload = { ...callOf(signal), timeoutMs: uploadTimeoutMs };
+      const run = async (context: LaunchContext) => pinLaunch(context, words, upload);
       return onLaunchpad(parts, launch, { run, missing: err("venue_down") });
     },
     async pinStatus(venue, pin, { signal }) {

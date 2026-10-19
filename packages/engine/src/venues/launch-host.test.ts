@@ -33,11 +33,11 @@ const settings: readonly LaunchOption[] = [
   { name: "buyback", type: "flag", default: false },
 ];
 
-function hostOf(launcher: Launcher): LaunchHost {
+function hostOf(launcher: Launcher, clock = createManualClock(testNowMs)): LaunchHost {
   return createLaunchHost({
     venues: [createFakeLaunchpad({ onCurve: [], launcher })],
     chains: testChains([pad]),
-    clock: createManualClock(testNowMs),
+    clock,
     callTimeoutMs: 1_000,
   });
 }
@@ -81,6 +81,20 @@ describe("a launchpad's settings in the launch host", () => {
       expect.objectContaining({ code: "venue.bad_declaration" }),
     );
   });
+
+  it("refuses to host a launchpad whose settings break the declaration's rules", () => {
+    const twice: readonly LaunchOption[] = [
+      { name: "taxBps", type: "bps" },
+      { name: "taxBps", type: "flag" },
+    ];
+    const wide: readonly LaunchOption[] = [{ name: "taxBps", type: "bps", max: 20_000 }];
+    expect(() => fake({ launchOptions: twice })).toThrow(
+      expect.objectContaining({ code: "venue.bad_declaration" }),
+    );
+    expect(() => fake({ launchOptions: wide })).toThrow(
+      expect.objectContaining({ code: "venue.bad_declaration" }),
+    );
+  });
 });
 
 describe("the launch host's quote, pin and pin status", () => {
@@ -118,6 +132,38 @@ describe("the launch host's quote, pin and pin status", () => {
     });
     await expect(host.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
     await expect(host.pinStatus(pad, null, live)).resolves.toBe("pending");
+  });
+
+  it("counts a pin answer it cannot keep as a launchpad that is down", async () => {
+    const base = createFakeLauncher();
+    const big = hostOf({
+      ...base,
+      pin: async () => ({ metadataUri: "ipfs://fake-1", pin: { handle: "a".repeat(1_100) } }),
+    });
+    const long = hostOf({
+      ...base,
+      pin: async () => ({ metadataUri: `ipfs://${"a".repeat(194)}`, pin: null }),
+    });
+    await expect(big.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
+    await expect(long.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
+  });
+
+  it("gives an upload 12 seconds, longer than a read", async () => {
+    const clock = createManualClock(testNowMs);
+    const base = createFakeLauncher();
+    const slow = (ms: number): Launcher => ({
+      ...base,
+      pin: async (request, call) => {
+        await clock.sleep(ms, call.signal);
+        return base.pin(request, call);
+      },
+    });
+    const taken = hostOf(slow(11_000), clock).pin(launch, words, live);
+    await clock.advance(11_000);
+    await expect(taken).resolves.toMatchObject({ ok: true });
+    const lost = hostOf(slow(13_000), clock).pin(launch, words, live);
+    await clock.advance(13_000);
+    await expect(lost).resolves.toMatchObject({ error: "venue_down" });
   });
 
   it("reports a pin as the launchpad does", async () => {
