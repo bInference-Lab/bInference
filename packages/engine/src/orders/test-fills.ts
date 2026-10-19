@@ -1,5 +1,5 @@
 import type { AssetRef, UsdPrice } from "@binference/chain";
-import type { Id, JsonValue } from "@binference/core";
+import type { Id, JsonValue, Ratio } from "@binference/core";
 import type { OrderRequest } from "@binference/protocol";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { testCoin, testToken } from "../intents/test-intents.js";
@@ -14,16 +14,16 @@ const live = { signal: new AbortController().signal };
 /** One whole test token, which has 6 decimals. */
 export const wholeToken = 1_000_000n;
 
-/** The test token at $0.80, 0.8 micro-dollars a base unit, as a trigger reads it. */
-export const eightyCents: FillPrice = {
-  usdPerBaseUnit: { numerator: 4n, denominator: 5n },
-  decimals: 6,
-};
+/** $0.80 a whole test token: 0.8 micro-dollars a base unit. */
+export const eightyCentsUsd: Ratio = { numerator: 4n, denominator: 5n };
+
+/** The test token at $0.80, as a trigger reads it. */
+export const eightyCents: FillPrice = { usdPerBaseUnit: eightyCentsUsd, decimals: 6 };
 
 /** The prices a fill test reads: the coin at $600 and the token at $0.80. */
 export const fillPrices: ReadonlyMap<AssetRef, UsdPrice> = new Map([
   [testCoin, { numerator: 600n, denominator: 10n ** 12n }],
-  [testToken, eightyCents.usdPerBaseUnit],
+  [testToken, eightyCentsUsd],
 ]);
 
 /** A paper engine whose wallet holds one coin and, unless told none, one whole token. */

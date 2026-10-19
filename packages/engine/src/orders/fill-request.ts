@@ -49,8 +49,8 @@ export type FillSizing =
 interface Sizing {
   readonly order: OrderRecord;
   readonly settings: AgentSettings;
-  /** Micro-dollars for one base unit of the order's token at the trigger. */
-  readonly tokenUsd: Ratio;
+  /** Micro-dollars for one base unit of the order's token at the trigger; none for a DCA buy. */
+  readonly tokenUsd?: Ratio;
   readonly signal: AbortSignal;
 }
 

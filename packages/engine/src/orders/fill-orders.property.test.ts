@@ -11,6 +11,7 @@ import type { OrderRecord } from "./order-record.js";
 import {
   activeOrder,
   eightyCents,
+  eightyCentsUsd,
   fillIntentsOf,
   fillPrices,
   startFillEngine,
@@ -97,7 +98,7 @@ function oracleLimit(request: OrderRequest, held: Case["tokens"]): bigint {
   if ("percentBps" in size) {
     return (balance * BigInt(size.percentBps)) / BigInt(bpsPerWhole);
   }
-  const price = isBuy ? coinUsd : eightyCents.usdPerBaseUnit;
+  const price = isBuy ? coinUsd : eightyCentsUsd;
   const asked = "base" in size ? size.base : (size.usdMicros * price.denominator) / price.numerator;
   return isBuy || asked < held ? asked : held;
 }

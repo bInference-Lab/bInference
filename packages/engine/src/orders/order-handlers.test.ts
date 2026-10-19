@@ -1,7 +1,7 @@
 import { type Bps, bpsSchema, err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
-import { testCall, testCallers } from "../operations/test-engine.js";
+import { testAccount, testCall, testCallers } from "../operations/test-engine.js";
 import { defaultOrderLifetimeMs } from "./order-rules.js";
 import {
   createdOrder,
@@ -129,11 +129,21 @@ describe("the rules of a new auto order", () => {
     expect(trailing.request).toMatchObject({ wallet: testWallet, token: testToken });
   });
 
-  it("refuses a live price order while live fills are off, and takes a paper one", async () => {
+  it("refuses a live price or DCA order while live fills are off, and takes a paper one", async () => {
     const liveEngine = await startOrderEngine({ agent: { mode: "live" } });
     const paperEngine = await startOrderEngine();
+    const dca = {
+      ...testStopLoss(),
+      kind: "dca",
+      side: "buy",
+      size: { usdMicros: 1_000_000n },
+      trigger: { cron: "0 9 * * *" },
+    } as const;
 
     const refused = await liveEngine.engine.handlers["order/create"](testCall(testStopLoss()));
+    expect(await liveEngine.engine.handlers["order/create"](testCall(dca))).toStrictEqual(
+      err("order.live_fills_off"),
+    );
     const taken = await paperEngine.engine.handlers["order/create"](testCall(testStopLoss()));
 
     expect(refused).toStrictEqual(err("order.live_fills_off"));
@@ -146,10 +156,18 @@ describe("the rules of a new auto order", () => {
     const test = await startOrderEngine();
     const create = async (request: Parameters<typeof testStopLoss>[0] = {}) =>
       test.engine.handlers["order/create"](testCall(testStopLoss(request)));
-    const dca = { ...testStopLoss(), kind: "dca", trigger: { cron: "0 9 * * *" } } as const;
+    const copy = {
+      ...testStopLoss(),
+      kind: "copy",
+      trigger: { leader: testAccount, perBuyUsdMicros: 1n, dailyUsdMicros: 2n },
+    } as const;
+    const dcaSale = { ...testStopLoss(), kind: "dca", trigger: { cron: "0 9 * * *" } } as const;
 
-    expect(await test.engine.handlers["order/create"](testCall(dca))).toStrictEqual(
+    expect(await test.engine.handlers["order/create"](testCall(copy))).toStrictEqual(
       err("order.kind_unavailable"),
+    );
+    expect(await test.engine.handlers["order/create"](testCall(dcaSale))).toStrictEqual(
+      err("protocol.bad_args"),
     );
     expect(await create({ side: "buy" })).toStrictEqual(err("protocol.bad_args"));
     const tooMuch = { percentBps: 10_001 as Bps };

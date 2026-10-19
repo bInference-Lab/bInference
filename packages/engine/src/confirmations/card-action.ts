@@ -2,7 +2,7 @@ import type { AccountRef, Amount, AssetRef, ChainRef } from "@binference/chain";
 import { type Bps, bpsPerWhole, type Ratio } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
 import type { LaunchDetails } from "./launch-card-lines.js";
-import { type PriceOrderRequest, orderSummaryLine } from "./order-card-lines.js";
+import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
 export type TradePlace = { readonly curve: string } | { readonly pool: string };
@@ -91,7 +91,7 @@ export interface CardActionFacts {
    * many fills it allows, none for no limit, and until when.
    */
   readonly autoOrder: {
-    readonly request: PriceOrderRequest;
+    readonly request: CardOrderRequest;
     readonly maxFills?: number;
     readonly expiresAtMs: number;
   };

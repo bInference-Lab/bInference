@@ -194,8 +194,9 @@ to nothing; `fill_failed`, a fill that threw or ran past its 30-second deadline,
 cancelled unsigned ([decision 0197](../DECISIONS.md#d0197)), or a live fill never signed; `fill_lapsed`,
 a live fill whose grant ran out before its wallet's queue took it
 ([decision 0210](../DECISIONS.md#d0210)); `owner_cancelled`, a fill the owner cancelled before it
-was signed, which ends its order ([decision 0211](../DECISIONS.md#d0211)); and `no_price`, a size in dollars whose asset has no USD
-price. The skip is an
+was signed, which ends its order ([decision 0211](../DECISIONS.md#d0211)); `missed`, a DCA order's period that came while the
+order could not buy, never bought later ([decision 0246](../DECISIONS.md#d0246)); and `no_price`,
+a size in dollars whose asset has no USD price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
 refused.
 
@@ -261,6 +262,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
     after 5 the order is cancelled with `notice.fillsFailing`. A fill the wallet queue refuses
     ends at once, cancelled, its row naming the cause; its terms hash, stored as it is confirmed,
     must hash again for the queue to sign it ([decision 0211](../DECISIONS.md#d0211)).
+- **DCA order fills** ([decision 0246](../DECISIONS.md#d0246)) run the same path, one for each
+  period that comes, with no trigger price: the schedule queue keeps the order's next period before
+  the buy, a fill keeps it, and the order waits after a skip only once fills failed on chain, as an
+  exit order does. A period more than 60 seconds late is skipped with `missed`.
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when

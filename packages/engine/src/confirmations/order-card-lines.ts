@@ -1,6 +1,7 @@
 import type { AssetRef } from "@binference/chain";
 import { BinferenceError, bpsPerWhole } from "@binference/core";
 import type {
+  DcaOrderRequest,
   LimitOrderRequest,
   StopLossOrderRequest,
   TakeProfitOrderRequest,
@@ -8,14 +9,18 @@ import type {
 } from "@binference/protocol";
 import type { CardLine, CardValue } from "./card-line.js";
 
-/** An auto order that a price triggers: the kinds `order/create` takes today (decision 0189). */
-export type PriceOrderRequest =
+/**
+ * An auto order `order/create` takes today: one a price triggers (decision 0189), or a DCA order,
+ * which its periods fill (decision 0246).
+ */
+export type CardOrderRequest =
   | LimitOrderRequest
   | TakeProfitOrderRequest
   | StopLossOrderRequest
-  | TrailingOrderRequest;
+  | TrailingOrderRequest
+  | DcaOrderRequest;
 
-type FillSize = PriceOrderRequest["size"];
+type FillSize = CardOrderRequest["size"];
 
 const asset = (token: AssetRef): CardValue => ({ type: "asset", asset: token });
 const usd = (usdMicros: bigint): CardValue => ({ type: "usd", usdMicros });
@@ -71,7 +76,7 @@ function spendLine(spent: AssetRef, size: FillSize): CardLine {
 // A buy order names what it spends once its rules filled the default (decision 0190). One stored
 // before then took dollars only, and its card says the dollar value alone; any other size without
 // what it spends cannot be drawn, so it is never confirmed.
-function spendOf(request: LimitOrderRequest): CardLine {
+function spendOf(request: LimitOrderRequest | DcaOrderRequest): CardLine {
   const { spend, size } = request;
   if (spend !== undefined) {
     return spendLine(spend, size);
@@ -111,10 +116,35 @@ function limitLine(request: LimitOrderRequest): CardLine {
       };
 }
 
+// Spec 4, section 3.8: a DCA order buys with its spend on its period, in its zone, its count of
+// times or until it ends (decision 0246).
+function dcaLine(request: DcaOrderRequest): CardLine {
+  const { cron, timezone, count } = request.trigger;
+  const schedule: CardLine = {
+    key: "card.order.schedule",
+    values: {
+      cron: { type: "text", text: cron },
+      zone: { type: "text", text: timezone ?? "UTC" },
+    },
+  };
+  return {
+    key: "card.order.summary.dca",
+    values: {
+      token: asset(request.token),
+      spend: { type: "line", line: spendOf(request) },
+      schedule: { type: "line", line: schedule },
+      count: { type: "count", count: count ?? 0 },
+    },
+  };
+}
+
 /** The summary of an auto order's card (spec 4, section 3.8): what it trades, and when. */
-export function orderSummaryLine(request: PriceOrderRequest): CardLine {
+export function orderSummaryLine(request: CardOrderRequest): CardLine {
   if (request.kind === "limit") {
     return limitLine(request);
+  }
+  if (request.kind === "dca") {
+    return dcaLine(request);
   }
   const sell: CardValue = { type: "line", line: sellLine(request.token, request.size) };
   if (request.kind === "trailing") {

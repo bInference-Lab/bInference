@@ -6,9 +6,10 @@ import {
   type RegisteredChain,
 } from "@binference/chain";
 import { bpsPerWhole, err, ok, type Result } from "@binference/core";
-import type { OrderRequest } from "@binference/protocol";
+import type { DcaOrderRequest, OrderRequest } from "@binference/protocol";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
+import { nextRunOf } from "../schedules/schedule-times.js";
 
 /** How long an order lasts when its request names no expiry: 30 days (spec 1, section 8.2). */
 export const defaultOrderLifetimeMs = 2_592_000_000;
@@ -22,19 +23,21 @@ export interface CheckedOrder {
   readonly chain: RegisteredChain;
 }
 
-/** Why an order request was refused before anything was stored (decision 0189). */
-type OrderRuleRefusal = "protocol.bad_args" | "order.kind_unavailable";
+/** Why an order request was refused before anything was stored (decisions 0189 and 0246). */
+type OrderRuleRefusal = "protocol.bad_args" | "order.kind_unavailable" | "schedule.bad_when";
 
 type Checked<T> = Result<T, OrderRuleRefusal>;
 
 const badArgs = err("protocol.bad_args");
 
-// The kinds a price triggers; DCA and copy orders wait for their watchers (decision 0189).
-const priceKinds: ReadonlySet<OrderRequest["kind"]> = new Set([
+// The kinds that fill today: those a price triggers, and DCA orders, which their periods fill
+// (decision 0246). Copy orders wait for the leader watcher (decision 0189).
+const fillingKinds: ReadonlySet<OrderRequest["kind"]> = new Set([
   "limit",
   "takeProfit",
   "stopLoss",
   "trailing",
+  "dca",
 ]);
 
 // Take-profit, stop-loss and trailing orders sell; a limit order may buy or sell.
@@ -93,8 +96,12 @@ function spendOf(
   return isListed ? ok(canonical.value) : badArgs;
 }
 
-// A price above zero; a trailing distance above 0 and below 100%. DCA and copy never get here.
+// A price above zero; a trailing distance above 0 and below 100%. A DCA order's period is checked
+// apart, and copy orders never get here.
 function isTriggerValid(request: OrderRequest): boolean {
+  if (request.kind === "dca") {
+    return true;
+  }
   if (request.kind === "trailing") {
     const { distanceBps } = request.trigger;
     return distanceBps > 0 && distanceBps < bpsPerWhole;
@@ -107,7 +114,8 @@ function areBoundsValid(request: OrderRequest, nowMs: number): boolean {
   return (
     (worstPrice === undefined || worstPrice > 0n) &&
     (expiresAt === undefined || expiresAt > nowMs) &&
-    (request.side === "sell" || !sellingKinds.has(request.kind))
+    (request.side === "sell" || !sellingKinds.has(request.kind)) &&
+    (request.side === "buy" || request.kind !== "dca")
   );
 }
 
@@ -118,9 +126,32 @@ function worstPriceOf(request: OrderRequest): bigint | undefined {
   return request.worstPrice ?? (isLevelOrder ? request.trigger.price : undefined);
 }
 
-// One fill unless the request names more, for every kind (decision 0197).
-function maxFillsOf(request: OrderRequest): number {
-  return request.maxFills ?? 1;
+// One fill unless the request names more, for every kind a price triggers (decision 0197). A DCA
+// order buys `count` times, or until it ends when it names no count (decision 0246).
+function maxFillsOf(request: OrderRequest): number | undefined {
+  return request.kind === "dca"
+    ? (request.trigger.count ?? request.maxFills)
+    : (request.maxFills ?? 1);
+}
+
+/** The time a DCA order's buys run on, and the zone it was not given: the owner's (0246). */
+interface DcaContext {
+  readonly nowMs: number;
+  readonly ownerZone: string;
+}
+
+// A DCA order's period in its own zone, else the owner's, filled in so its card binds it: five
+// cron fields with a run ahead, and a count its `maxFills`, if both are named, agrees with.
+function dcaOf(request: DcaOrderRequest, context: DcaContext): Checked<DcaOrderRequest> {
+  const { trigger, maxFills } = request;
+  if (trigger.count !== undefined && maxFills !== undefined && maxFills !== trigger.count) {
+    return badArgs;
+  }
+  const timezone = trigger.timezone ?? context.ownerZone;
+  const next = nextRunOf({ cron: trigger.cron, timezone }, context.nowMs, context.ownerZone);
+  return next.ok && next.value !== undefined
+    ? ok({ ...request, trigger: { ...trigger, timezone } })
+    : err("schedule.bad_when");
 }
 
 // The order with every default filled, its token and what it spends in their canonical forms.
@@ -134,7 +165,8 @@ function filledOrder(
   nowMs: number,
 ): CheckedOrder {
   const expiresAtMs = request.expiresAt ?? nowMs + defaultOrderLifetimeMs;
-  const limit = { maxFills: maxFillsOf(request) };
+  const most = maxFillsOf(request);
+  const limit = most === undefined ? {} : { maxFills: most };
   const spend = found.spend === undefined ? {} : { spend: found.spend };
   const worst = worstPriceOf(request);
   const worstPrice = worst === undefined ? {} : { worstPrice: worst };
@@ -150,19 +182,28 @@ function filledOrder(
 }
 
 /**
- * Checks an `order/create` request against the rules of decisions 0189 and 0190 and fills its
- * defaults: an expiry 30 days after `nowMs`, one fill for an order that names no more, a limit or
- * take-profit order's trigger price as its worst price (decision 0197),
- * and the chain's coin as what a buy spends. A DCA or copy order is `order.kind_unavailable`; any
- * other broken rule `protocol.bad_args`.
+ * Checks an `order/create` request against the rules of decisions 0189, 0190 and 0246 and fills
+ * its defaults: an expiry 30 days after `nowMs`, one fill for a price order that names no more, a
+ * limit or take-profit order's trigger price as its worst price (decision 0197), the chain's coin
+ * as what a buy spends, and a DCA order's zone, `ownerZone` (UTC when absent) unless it names one.
+ * A copy order is `order.kind_unavailable`; a DCA period binference cannot read, or with no run
+ * ahead, `schedule.bad_when`; any other broken rule `protocol.bad_args`, a DCA sale among them.
  */
 export function checkOrderRequest(
-  request: OrderRequest,
-  context: { readonly nowMs: number; readonly chains: ChainRegistry },
+  given: OrderRequest,
+  context: { readonly nowMs: number; readonly chains: ChainRegistry; readonly ownerZone?: string },
 ): Checked<CheckedOrder> {
-  if (!priceKinds.has(request.kind)) {
+  if (!fillingKinds.has(given.kind)) {
     return err("order.kind_unavailable");
   }
+  const dca =
+    given.kind === "dca"
+      ? dcaOf(given, { nowMs: context.nowMs, ownerZone: context.ownerZone ?? "UTC" })
+      : ok(given);
+  if (!dca.ok) {
+    return dca;
+  }
+  const request: OrderRequest = dca.value;
   const found = tokenOf(request, context.chains);
   const isValid =
     isSizeValid(request) && isTriggerValid(request) && areBoundsValid(request, context.nowMs);

@@ -48,6 +48,25 @@ describe("an auto order's card in Chinese", () => {
     ]);
   });
 
+  it("words a DCA order's period, its zone and its count of buys", async () => {
+    const test = await startOrderEngine();
+    const { intent } = await createdOrder(test, {
+      ...testStopLoss(),
+      kind: "dca",
+      side: "buy",
+      size: { usdMicros: 10_000_000n },
+      trigger: { cron: "0 9 * * 1-5", timezone: "Asia/Shanghai", count: 20 },
+    });
+    const card = expectOk(await test.engine.handlers["intent/card"](testCall({ intent })));
+    const [, summary] = card.lines.map((line) =>
+      cardLineText(line, { formatter: display, assets: card.assets }),
+    );
+
+    expect(summary?.split(" · ")[0]).toBe(
+      "批准定投：按计划 0 9 * * 1-5（Asia/Shanghai）用价值 $10.00 的 FAKE 买入 TKN，共 20 次",
+    );
+  });
+
   it("words a buy by share of what the wallet may spend, and by an amount", async () => {
     const test = await startOrderEngine();
     const byShare = await buySummary(test, { percentBps: bpsSchema.parse(2_500) });

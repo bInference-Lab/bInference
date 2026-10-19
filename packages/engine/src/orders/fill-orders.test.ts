@@ -7,6 +7,7 @@ import type { IntentStore } from "../ports.js";
 import {
   activeOrder,
   eightyCents,
+  eightyCentsUsd,
   fillIntentsOf,
   fillRowsOf,
   noticesOf,
@@ -215,7 +216,7 @@ describe("an auto order's fill", () => {
     const byAmount = await activeOrder(test, buy);
     await test.engine.fillOrder({ order: byAmount.id, price: eightyCents }, live);
     const unpriced = await startFillEngine({
-      prices: new Map([[testToken, eightyCents.usdPerBaseUnit]]),
+      prices: new Map([[testToken, eightyCentsUsd]]),
     });
     const inDollars = await activeOrder(unpriced, { ...buy, size: { usdMicros: 5_000_000n } });
     await unpriced.engine.fillOrder({ order: inDollars.id, price: eightyCents }, live);

@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244) and [0245](../DECISIONS.md#d0245); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245) and [0246](../DECISIONS.md#d0246); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -515,6 +515,12 @@ Schedules follow decisions [0231](../DECISIONS.md#d0231) to [0233](../DECISIONS.
   (`archived`, `frozen`, `budget`, `waiting`, `busy`). `ScheduleView.lastRun` shows the last run.
   A one-time schedule is `ended` after its run.
 
+DCA orders follow [decision 0246](../DECISIONS.md#d0246): `order/create` fills in a `dca`
+order's `timezone` with `owner.timezone`, and its `count` of buys is its `maxFills`, none for no
+limit. The schedule queue's timer buys once for each period that comes, through the order's fill
+with no card, the next period kept first; a period more than 60 seconds late, while the engine was
+off or locked or the agent frozen, is recorded as a `missed` skip and never bought.
+
 An order that ends because another exit order emptied its position (spec 6, section 5) moves to
 `ended` with `endReason: "position_closed"`, and pushes `order/changed`.
 
@@ -527,17 +533,19 @@ Auto orders follow [decision 0189](../DECISIONS.md#d0189):
   `order/changed`.
 - It refuses, storing nothing: an agent that is unknown (`agent.not_found`), archived
   (`agent.archived`) or frozen (`agent.frozen`); a wallet that is not the agent's
-  (`wallet.not_found`); `dca` and `copy`, until their watchers run (`order.kind_unavailable`); a
+  (`wallet.not_found`); `copy`, until the leader watcher runs (`order.kind_unavailable`); a
   `limit`, `takeProfit`, `stopLoss` or `trailing` order for a token the price watcher cannot price
   now, with no venue read and no pool deep enough (`order.unpriced_token`,
-  [decision 0194](../DECISIONS.md#d0194)); such an order of a live agent while live fills are off
-  (`order.live_fills_off`, [decision 0197](../DECISIONS.md#d0197)); a token the registry does not
+  [decision 0194](../DECISIONS.md#d0194)); such an order, or a `dca` order, of a live agent while
+  live fills are off (`order.live_fills_off`, decisions [0197](../DECISIONS.md#d0197) and
+  [0246](../DECISIONS.md#d0246)); a `dca` period binference cannot read or with no run in eight
+  years (`schedule.bad_when`); a token the registry does not
   list that answers no symbol or no decimals on chain (`asset.unreadable`,
   [decision 0199](../DECISIONS.md#d0199)); and
   with `protocol.bad_args` a token on no chain of the registry or the chain's coin, an expiry not in
   the future, a price, worst price or size of zero, a trailing distance of 0 or `10000`, a share above
-  `10000`, a `takeProfit`, `stopLoss` or `trailing` order that does not sell, and a buy whose size is
-  not `{ usdMicros }`.
+  `10000`, a `takeProfit`, `stopLoss` or `trailing` order that does not sell, a `dca` order that
+  does not buy or whose `count` and `maxFills` disagree, and a buy whose size is not `{ usdMicros }`.
 - An order keeps its agent's mode when it was created (`paper`), and the outside-content mark of the
   turn that proposed it (`outsideContent`), which its card shows.
 - A freeze moves the agent's `active` orders to `paused` and cancels those awaiting their card; an
@@ -792,7 +800,7 @@ sends one; another client may leave it out.
 | `takeProfit` | `{ price: usdMicros }`                                                                                                                                   |
 | `stopLoss`   | `{ price: usdMicros }`                                                                                                                                   |
 | `trailing`   | `{ distanceBps }`                                                                                                                                        |
-| `dca`        | `{ cron, timezone?, count? }`                                                                                                                            |
+| `dca`        | `{ cron, timezone?, count? }`: buys only, `count` times ([decision 0246](../DECISIONS.md#d0246))                                                         |
 | `copy`       | `{ leader: AccountRef, perBuyUsdMicros, dailyUsdMicros }`; sells mirror the leader's share ([ARCHITECTURE.md section 28](../ARCHITECTURE.md#section-28)) |
 
 `size` is `{ base }`, `{ usdMicros }` or `{ percentBps }`. Defaults come from the agent's limits

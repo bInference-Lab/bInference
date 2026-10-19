@@ -170,4 +170,28 @@ describe("the order state machine", () => {
       false,
     );
   });
+
+  it("keeps a DCA order's next period through a recorded or a landed fill", () => {
+    const period = { nextAtMs: 7_000 };
+    const dca = orderIn("active", {
+      kind: "dca",
+      maxFills: 3,
+      triggerState: period,
+      request: {
+        kind: "dca",
+        agent: testAgent,
+        token: testToken,
+        side: "buy",
+        size: { usdMicros: 1n },
+        trigger: { cron: "0 9 * * *", timezone: "UTC", count: 3 },
+      },
+    });
+
+    const recorded = moveOrder(dca, { type: "fill_recorded" }, 5);
+    const landed = moveOrder(dca, { type: "fill_landed" }, 5);
+
+    expect(recorded).toMatchObject({ ok: true, value: { state: "active", fills: 1 } });
+    expect(recorded).not.toHaveProperty("value.triggerState");
+    expect(landed).not.toHaveProperty("value.triggerState");
+  });
 });

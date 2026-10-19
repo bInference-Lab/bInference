@@ -5,7 +5,6 @@ import {
   createAddressBookHandlers,
 } from "../address-book/address-book-handlers.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
-import type { AlertHandlers } from "../alerts/alert-handlers.js";
 import type { AlertFiring } from "../alerts/fire-alerts.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
 import {
@@ -35,10 +34,10 @@ import type { LaunchImageSource } from "../money-path/ports.js";
 import type { ReadTokenCode } from "../money-path/token-code.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
+import { createDcaOrders, type DcaOrders } from "../orders/dca-orders.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { createOrderHandlers, type OrderHandlers } from "../orders/order-handlers.js";
 import { createOrderTriggers, type OrderTriggers } from "../orders/order-triggers.js";
-import { tickOrders } from "../orders/tick-orders.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
 import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -66,13 +65,9 @@ import {
 } from "./engine-intent-parts.js";
 import { moneyPathOf } from "./engine-money-path.js";
 import { cardTimerOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
-import {
-  alertHandlersOf,
-  type EngineChatHandlers,
-  engineChatOf,
-  safetyHandlersOf,
-} from "./engine-parts.js";
+import { type EngineChatHandlers, engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { orderRepairOf, paperRepairOf } from "./engine-repairs.js";
+import { runQueue, tickAll } from "./engine-timers.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
 import { type SettingsHandlers, settingsHandlers } from "./settings-handlers.js";
@@ -91,8 +86,7 @@ export interface EngineHandlers
     SendLevelHandlers,
     AddressBookHandlers,
     RescueAddressHandlers,
-    SafetyHandlers,
-    AlertHandlers {}
+    SafetyHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
@@ -144,8 +138,10 @@ export interface Engine {
    */
   readonly expireCards: (options: { readonly signal: AbortSignal }) => Promise<number | undefined>;
   /**
-   * Runs each schedule whose time came, once however many runs it missed (decision 0232). A timer
-   * of the composition root calls it while the engine is unlocked.
+   * Runs each schedule whose time came, once however many runs it missed (decision 0232), then
+   * each DCA order's period that came: one buy for a period on time, a `missed` skip for one that
+   * came while the order could not buy (decision 0246). A timer of the composition root calls it
+   * while the engine is unlocked.
    */
   readonly runSchedules: (options: { readonly signal: AbortSignal }) => Promise<void>;
   /**
@@ -255,6 +251,8 @@ interface IntentParts {
   readonly orders: OrderParts;
   readonly fills: OrderFills;
   readonly triggers: OrderTriggers;
+  /** The DCA orders' periods, which the schedule queue's timer runs (decision 0246). */
+  readonly dca: DcaOrders;
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
   readonly cardTimer: CardTimerParts;
@@ -289,7 +287,14 @@ function intentParts(
   const cardTimer = cardTimerOf(options, { confirmations, orders });
   const fills = orderFillsOf(options, { stored, moneyPath, gate, holdings: paper.holdings });
   const triggers = createOrderTriggers({ orders: stores.orders, fills, clock });
-  return { answer, stored, orders, fills, triggers, handlers, lowGas, cardTimer, moneyPath };
+  const dca = createDcaOrders({
+    orders: stores.orders,
+    fills,
+    chains,
+    intents: stores.intents,
+    clock,
+  });
+  return { answer, stored, orders, fills, triggers, dca, handlers, lowGas, cardTimer, moneyPath };
 }
 
 // What the rescue address, the address book and the settings operations each read and push.
@@ -306,15 +311,6 @@ function sharedParts(options: EngineOptions) {
     },
     settingsParts: { agents: stores.agents, journal: stores.configJournal, clock, publish },
   };
-}
-
-// The work that waits for no price: the orders' tick, then the alerts whose expiry came.
-async function tickAll(
-  parts: { readonly orders: OrderParts; readonly alerts: AlertFiring },
-  signal: AbortSignal,
-): Promise<void> {
-  await tickOrders(parts.orders, signal);
-  await parts.alerts.expire({ signal });
 }
 
 /**
@@ -364,7 +360,6 @@ export function createEngineWithFills(given: EngineOptions): {
       }),
       ...createRescueAddressHandlers({ ...rescueParts, journal: settingsParts.journal }),
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
-      ...alertHandlersOf(options),
       ...chat.handlers,
     },
     answer: intents.answer,
@@ -375,7 +370,8 @@ export function createEngineWithFills(given: EngineOptions): {
     tickOrders: async ({ signal }) =>
       tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
-    runSchedules: async ({ signal }) => chat.schedules.run({ signal }),
+    runSchedules: async ({ signal }) =>
+      runQueue({ schedules: chat.schedules, dca: intents.dca }, signal),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,

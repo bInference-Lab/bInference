@@ -46,6 +46,8 @@ export const cardKeys = [
   "card.order.summary.takeProfit",
   "card.order.summary.stopLoss",
   "card.order.summary.trailing",
+  "card.order.summary.dca",
+  "card.order.schedule",
   "card.order.exitsLinked",
   "card.order.worstPrice",
   "order.kind",

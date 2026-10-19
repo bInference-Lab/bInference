@@ -75,6 +75,32 @@ describe("an auto order's card in English", () => {
     );
   });
 
+  it("words a DCA order's period, its zone and its count of buys", async () => {
+    const [dca, open] = await cardOf([
+      {
+        ...testStopLoss(),
+        kind: "dca",
+        side: "buy",
+        size: { usdMicros: 10_000_000n },
+        trigger: { cron: "0 9 * * 1-5", timezone: "Asia/Shanghai", count: 20 },
+      },
+      {
+        ...testStopLoss(),
+        kind: "dca",
+        side: "buy",
+        size: { usdMicros: 10_000_000n },
+        trigger: { cron: "0 9 * * *" },
+      },
+    ]);
+
+    expect(dca?.[1]).toMatch(
+      /^Approve DCA: buy TKN with \$10\.00 of FAKE on the schedule 0 9 \* \* 1-5 \(Asia\/Shanghai\), 20 times · up to 20 fills until /,
+    );
+    expect(open?.[1]).toMatch(
+      /^Approve DCA: buy TKN with \$10\.00 of FAKE on the schedule 0 9 \* \* \* \(UTC\), until the order ends · no fill limit until /,
+    );
+  });
+
   it("words a buy by share of what the wallet may spend, and by an amount", async () => {
     const buy = { ...testStopLoss(), kind: "limit", side: "buy" } as const;
     const trigger = { price: 500_000n, direction: "below" } as const;

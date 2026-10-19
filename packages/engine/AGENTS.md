@@ -100,6 +100,11 @@ Rules for this package:
   start repairs what a stop left (`repair-order-fills.ts`). A change to a bound changes
   `fill-bounds.property.test.ts`, and a change to the fill path `fill-orders.property.test.ts` and
   `fill-sequences.property.test.ts`.
+- DCA orders (`src/orders/dca-orders.ts`, decision 0246) buy on their period, which the schedule
+  queue's timer runs: the next period is kept in the order's trigger state before each buy, a
+  period on time buys through the order fills with no trigger price, and a period more than 60
+  seconds late is a `missed` skip, never bought. A fill keeps a DCA order's period; only a price
+  order is disarmed by its fill.
 - The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of
   a watched token against its active price orders in `price-triggers.ts`, a pure judgment of
   levels, never of crossings, and hand a triggered order to its fill at once. A trailing stop's

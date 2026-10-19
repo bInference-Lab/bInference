@@ -27,10 +27,13 @@ import { isTriggerDisarmed } from "./price-triggers.js";
 import { runInLine } from "./run-in-line.js";
 import { stopFailing } from "./stop-failing.js";
 
-/** The price a trigger fired an order's fill at, as the price watcher read it. */
+/**
+ * The price a trigger fired an order's fill at, as the price watcher read it, or the token's
+ * decimals alone for a DCA order's buy, which its period fires (decision 0246).
+ */
 export interface FillPrice {
-  /** Micro-dollars for one base unit of the order's token, exact. */
-  readonly usdPerBaseUnit: Ratio;
+  /** Micro-dollars for one base unit of the order's token, exact; absent for a DCA buy. */
+  readonly usdPerBaseUnit?: Ratio;
   readonly decimals: number;
   /** The level the fill's own quote must meet: a thin pool priced the token (decision 0195). */
   readonly confirm?: PriceLevel;
@@ -56,6 +59,14 @@ export interface OrderFills {
     request: { readonly order: Id<"ord">; readonly price: FillPrice },
     options: { readonly signal: AbortSignal },
   ): Promise<FillOutcome>;
+  /**
+   * Records a skip of an order's fill before any intent, with its notice, as a skip of `run`
+   * does: a DCA order's period missed while it could not fill (decision 0246).
+   */
+  skip(
+    request: { readonly order: Id<"ord">; readonly reason: OrderFillReason },
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
 }
 
 /** What the fills read, run and write through, and where their notices go. */
@@ -225,7 +236,8 @@ async function fillNow(
   if (settings === undefined) {
     return "inactive";
   }
-  const sizing = { order, settings, tokenUsd: price.usdPerBaseUnit, signal };
+  const tokenUsd = price.usdPerBaseUnit === undefined ? {} : { tokenUsd: price.usdPerBaseUnit };
+  const sizing = { order, settings, ...tokenUsd, signal };
   const sized = await sizeFill(parts, sizing);
   if (sized.kind === "empty") {
     return emptyExit(parts, state, { order, signal });
@@ -333,6 +345,12 @@ function canFire(
 export function createOrderFills(parts: OrderFillsParts): OrderFills {
   const state: FillState = { running: new Set(), lines: new Map(), told: new Map() };
   return {
+    async skip({ order: id, reason }, { signal }) {
+      const order = await parts.orders.get(id, { signal });
+      if (order !== undefined) {
+        await skip(parts, state, { order, reason, signal });
+      }
+    },
     async run({ order: id, price }, { signal }) {
       const read = await parts.orders.get(id, { signal });
       if (read?.state !== "active" || state.running.has(id)) {

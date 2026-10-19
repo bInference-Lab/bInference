@@ -53,8 +53,13 @@ export interface OrderParts {
   readonly canPrice: CanPrice;
   /** Reads what a token the registry does not list answers on chain, for the order's card. */
   readonly readTokenFacts: ReadTokenFacts;
-  /** Whether a live order may fill; while it may not, no live price order is taken (decision 0197). */
+  /**
+   * Whether a live order may fill; while it may not, no live price or DCA order is taken
+   * (decisions 0197 and 0246).
+   */
   readonly liveFills: boolean;
+  /** `owner.timezone` now: a DCA order that names no zone runs on the owner's (decision 0246). */
+  readonly ownerTimeZone: () => string;
   /** What sends an order on a launch's token to the agent's launch wallet (decision 0217). */
   readonly launches?: LaunchRouting;
 }
@@ -85,15 +90,14 @@ function agentRefusal(settings: AgentSettings | undefined): ProtocolErrorCode | 
   return settings.agent.frozenAtMs === undefined ? undefined : "agent.frozen";
 }
 
-// A live price order would never fill while live fills are off, so none is taken (decision 0197).
+// A live order would never fill while live fills are off, so none is taken: a price order
+// (decision 0197) or a DCA order (decision 0246), the kinds that fill today.
 function liveRefusal(
   parts: Pick<OrderParts, "liveFills">,
-  call: { readonly settings: AgentSettings; readonly request: OrderRequest },
+  call: { readonly settings: AgentSettings },
 ): ProtocolErrorCode | undefined {
   const isLive = call.settings.agent.mode === "live";
-  return isLive && hasPriceTrigger(call.request.kind) && !parts.liveFills
-    ? "order.live_fills_off"
-    : undefined;
+  return isLive && !parts.liveFills ? "order.live_fills_off" : undefined;
 }
 
 // The request's wallet, or the one its trades route to: the agent's launch wallet for a token on
@@ -255,6 +259,11 @@ async function openOrderCard(
   return openCardUnchecked(advance, run);
 }
 
+// What the order rules read: the time, the registry and the owner's zone now.
+function rulesContextOf(parts: Pick<OrderParts, "clock" | "chains" | "ownerTimeZone">) {
+  return { nowMs: parts.clock.now(), chains: parts.chains, ownerZone: parts.ownerTimeZone() };
+}
+
 /**
  * Creates an auto order (decision 0189): checks the request and fills its defaults, stores the
  * order `awaiting_confirmation` in its agent's mode with the proposal's outside-content mark, then
@@ -275,7 +284,7 @@ export async function createOrder(
   },
 ): Promise<Result<CreatedOrder, ProtocolErrorCode>> {
   const { request, proposer, signal } = call;
-  const checked = checkOrderRequest(request, { nowMs: parts.clock.now(), chains: parts.chains });
+  const checked = checkOrderRequest(request, rulesContextOf(parts));
   if (!checked.ok) {
     return checked;
   }
@@ -284,7 +293,7 @@ export async function createOrder(
   if (refusal !== undefined || settings === undefined) {
     return err(refusal ?? "agent.not_found");
   }
-  const offLive = liveRefusal(parts, { settings, request });
+  const offLive = liveRefusal(parts, { settings });
   if (offLive !== undefined) {
     return err(offLive);
   }

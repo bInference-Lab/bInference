@@ -45,6 +45,7 @@ export function orderPartsOf(
     expireCard,
     canPrice,
     readTokenFacts,
+    ownerTimeZone: options.ownerTimeZone,
     liveFills: options.liveOrderFills === true,
     launches: parts.launches,
   };

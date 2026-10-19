@@ -82,3 +82,43 @@ describe("a buy order's size and what it spends", () => {
     expect(check(limitBuy(changes))).toStrictEqual(err("protocol.bad_args"));
   });
 });
+
+function inShanghai(request: OrderRequest) {
+  const context = { nowMs: testNowMs, chains: chainsWithStable(), ownerZone: "Asia/Shanghai" };
+  return checkOrderRequest(request, context);
+}
+
+describe("a DCA order", () => {
+  const dca = {
+    kind: "dca",
+    agent: testAgent,
+    token: testToken,
+    side: "buy",
+    size: { usdMicros: 10_000_000n },
+    trigger: { cron: "0 9 * * 1-5" },
+  } as const;
+  it("runs on the owner's zone unless it names one, and buys its count of times", () => {
+    expect(inShanghai(dca)).toMatchObject({
+      ok: true,
+      value: { request: { spend: testCoin, trigger: { timezone: "Asia/Shanghai" } } },
+    });
+    expect(inShanghai(dca)).not.toHaveProperty("value.maxFills");
+    const counted = { ...dca, trigger: { cron: "0 9 * * *", timezone: "UTC", count: 5 } };
+    expect(inShanghai(counted)).toMatchObject({
+      ok: true,
+      value: { maxFills: 5, request: { maxFills: 5, trigger: { timezone: "UTC", count: 5 } } },
+    });
+  });
+
+  it("refuses a sale, a count its fills disagree with, and a period it cannot read", () => {
+    const counted = { ...dca, trigger: { ...dca.trigger, count: 5 } };
+    expect(inShanghai({ ...dca, side: "sell" })).toStrictEqual(err("protocol.bad_args"));
+    expect(inShanghai({ ...counted, maxFills: 4 })).toStrictEqual(err("protocol.bad_args"));
+    expect(inShanghai({ ...dca, trigger: { cron: "0 9 31 2 *" } })).toStrictEqual(
+      err("schedule.bad_when"),
+    );
+    expect(
+      inShanghai({ ...dca, trigger: { cron: "0 9 * * *", timezone: "Mars/Base" } }),
+    ).toStrictEqual(err("schedule.bad_when"));
+  });
+});

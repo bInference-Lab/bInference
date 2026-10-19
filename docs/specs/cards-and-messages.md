@@ -382,12 +382,16 @@ for a buy's, and `{condition}` is "at or above {price}" or "at or below {price}"
 | Stop-loss      | `card.order.summary.stopLoss`   | {sell} when the price falls to {price}                                                                              | 当价格跌至 {price} 时，{sell}                                                                                                                |
 | Trailing stop  | `card.order.summary.trailing`   | {sell} when the price falls {distance} below its highest since the order started                                    | 当价格从下单以来的最高点回落 {distance} 时，{sell}                                                                                           |
 | DCA            | `card.order.summary.dca`        | buy {token} with {spend} {schedule}, {count, plural, =0 {until the order ends} one {once} other {# times}}          | {schedule}{spend} 买入 {token}，{count, plural, =0 {直到订单结束} other {共 # 次}}                                                           |
+| DCA period     | `card.order.schedule`           | on the schedule {cron} ({zone})                                                                                     | 按计划 {cron}（{zone}）                                                                                                                      |
 | Copy trade     | `card.order.summary.copy`       | copy {leader}'s buys at {perBuy} each, at most {daily} a day, and sell the share {leader} sells                     | 跟单 {leader} 的买入，每笔 {perBuy}，每天最多 {daily}；{leader} 卖出多少比例，你就卖出相同比例                                               |
 | Linked exits   | `card.order.exitsLinked`        | When an exit order sells all your {token}, your other exit orders on it end                                         | 当一个平仓订单卖出你持有的全部 {token} 时，该持仓的其他平仓订单随之结束                                                                      |
 | Worst price    | `card.order.worstPrice`         | Every fill trades at {price} or better                                                                              | 每次成交都以不差于 {price} 的价格交易                                                                                                        |
 
 - `{leader}` is the leader wallet's address book label, else its short address
   (`0x12ab…cd34`).
+- `{schedule}` is `card.order.schedule`: the DCA order's five cron fields and the zone they run
+  in, its own or the owner's at creation, which the order keeps
+  ([decision 0246](../DECISIONS.md#d0246)); `{count}` is its number of buys, 0 for no limit.
 - The card's header confirms an "auto order" / 「自动订单」, and `{maxFills}` counts the fills its
   terms allow: an order with no limit says "no fill limit" / 「不限成交次数」 in place of "up to
   {maxFills} fills" ([decision 0189](../DECISIONS.md#d0189)).

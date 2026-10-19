@@ -1,6 +1,6 @@
 import { err, type Id, type JsonValue, ok, type Result } from "@binference/core";
 import type { OrderState } from "@binference/protocol";
-import { isExitOrder, type OrderMove, type OrderRecord } from "./order-record.js";
+import { hasPriceTrigger, isExitOrder, type OrderMove, type OrderRecord } from "./order-record.js";
 import { endedOrderStates, isOrderEnded } from "./order-states.js";
 import { disarmedAfterFill } from "./price-triggers.js";
 
@@ -103,9 +103,15 @@ function confirmCard({
     : ok({ state: "active", cardId: confirmation.cardId });
 }
 
+// What an order with a fill left keeps after a fill: a price order waits, disarmed, for its
+// condition to stop holding, a trailing stop's peak starting again (decision 0197); a DCA order
+// keeps its next period (decision 0246).
+function afterFill(order: OrderRecord): Pick<Change, "triggerState"> {
+  return hasPriceTrigger(order.kind) ? { triggerState: disarmedAfterFill } : {};
+}
+
 // A fill counts once; the last fill fills the order. An exit order whose fill emptied its position
-// ends with it; any other order with a fill left waits, disarmed, for its condition to stop
-// holding before it fires again, a trailing stop's peak starting again (decision 0197).
+// ends with it; any other order with a fill left goes on as `afterFill` says.
 function recordFill({
   order,
   trigger,
@@ -124,7 +130,7 @@ function recordFill({
   }
   return trigger.emptiesPosition === true && isExitOrder(order.request)
     ? ok({ state: "ended", fills, endReason: "position_closed" })
-    : ok({ state: "active", fills, triggerState: disarmedAfterFill });
+    : ok({ state: "active", fills, ...afterFill(order) });
 }
 
 // A live fill that landed counts whatever its order became while it was under way (decision
@@ -141,7 +147,7 @@ function landFill({ order, trigger }: GuardInput<"fill_landed">): Result<Change,
   }
   return trigger.emptiesPosition === true && isExitOrder(order.request)
     ? ok({ state: "ended", fills, endReason: "position_closed" })
-    : ok({ state: order.state, fills, triggerState: disarmedAfterFill });
+    : ok({ state: order.state, fills, ...afterFill(order) });
 }
 
 function resume({ order, nowMs }: GuardInput<"agent_unfrozen">): Result<Change, OrderProblem> {

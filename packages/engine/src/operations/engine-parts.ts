@@ -19,11 +19,11 @@ import type { EngineOptions } from "./create-engine.js";
 import { intentViewOf } from "./intent-view-of.js";
 
 /**
- * The chat operations the engine answers itself, `usage/get`, `upload/start` and the schedule
- * operations.
+ * The chat operations the engine answers itself, `usage/get`, `upload/start`, and the schedule and
+ * alert operations, whose wake-ups reach the agent through the chat.
  */
 export interface EngineChatHandlers
-  extends ChatHandlers, UsageHandlers, UploadHandlers, ScheduleHandlers {}
+  extends ChatHandlers, UsageHandlers, UploadHandlers, ScheduleHandlers, AlertHandlers {}
 
 /**
  * The engine's chat relay, whose settle pushes carry each intent's view as `intent/get` gives it,
@@ -55,11 +55,14 @@ function budgetOf(options: EngineOptions, billing: ModelBilling): ModelBudget {
   return createModelBudget({ billing, usage: stores.modelUsage, timeZone, clock, publish });
 }
 
-/** Creates the engine's {@link EngineChat}, whose turns spend each agent's model budget. */
-export function engineChatOf(options: EngineOptions): EngineChat {
-  const { stores, chains, clock } = options;
-  // Who pays for model calls: the billing the options give, else the daily model budget over the
-  // stored usage, which reads each agent's limits as they are in effect now.
+// Who pays for model calls: the billing the options give, else the daily model budget over the
+// stored usage, which reads each agent's limits as they are in effect now; and each agent's daily
+// model budget over it.
+function budgetsOf(options: EngineOptions): {
+  readonly billing: ModelBilling;
+  readonly budget: ModelBudget;
+} {
+  const { stores, clock } = options;
   const billing =
     options.billing ??
     createDailyModelBudget({
@@ -68,9 +71,15 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       timeZone: options.ownerTimeZone,
       clock,
     });
+  return { billing, budget: budgetOf(options, billing) };
+}
+
+/** Creates the engine's {@link EngineChat}, whose turns spend each agent's model budget. */
+export function engineChatOf(options: EngineOptions): EngineChat {
+  const { stores, chains } = options;
+  const { billing, budget } = budgetsOf(options);
   const late: { stored?: StoredIntents } = {};
   const { uploads, images } = imagesOf(options);
-  const budget = budgetOf(options, billing);
   const relay = createChatRelay({
     agentInbox: stores.agentInbox,
     questions: stores.questions,
@@ -101,6 +110,7 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       ...usageHandlersOf(options, billing),
       ...createUploadHandlers(uploads),
       ...schedules.handlers,
+      ...alertHandlersOf(options),
     },
     settled,
     attach: (stored) => {
@@ -170,8 +180,8 @@ function schedulesOf(
   };
 }
 
-/** The alert operations, over the alert store, with the launchpads the venue host runs. */
-export function alertHandlersOf(options: EngineOptions): AlertHandlers {
+// The alert operations, over the alert store, with the launchpads the venue host runs.
+function alertHandlersOf(options: EngineOptions): AlertHandlers {
   const { stores, chains, ids, clock, host } = options;
   return createAlertHandlers({
     alerts: stores.alerts,
