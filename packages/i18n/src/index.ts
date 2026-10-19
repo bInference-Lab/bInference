@@ -24,6 +24,7 @@ export type { MessageValues } from "./format/format-message.js";
 export { messageLocales } from "./locales.js";
 export type { MessageLocale } from "./locales.js";
 export { messages } from "./messages.js";
+export { noticeAssetsToRead } from "./notices/notice-assets.js";
 export { writeNotice } from "./notices/write-notice.js";
 export type { NoticeWriting, WrittenNotice } from "./notices/write-notice.js";
 export type { Catalog } from "./messages.js";

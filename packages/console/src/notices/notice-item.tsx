@@ -1,4 +1,4 @@
-import { writeNotice } from "@binference/i18n";
+import { noticeAssetsToRead, writeNotice } from "@binference/i18n";
 import type { AssetInfo, NoticePushView } from "@binference/protocol";
 import { useQueries } from "@tanstack/react-query";
 import { XIcon } from "lucide-react";
@@ -6,7 +6,9 @@ import { MessageLine } from "../cards/card-line";
 import { Button } from "../components/ui/button";
 import { useEngine } from "../connection/engine-context";
 import { useFormatter, useText } from "../i18n/console-text";
-import { assetsToReadOf, type NoticeAsset } from "./notice-assets";
+
+/** An asset a notice's amount names. */
+type NoticeAsset = ReturnType<typeof noticeAssetsToRead>[number];
 
 // The info of each registry token the notice names, once the engine answered; a token it cannot
 // name is written in base units with its short address, as on every surface.
@@ -14,7 +16,7 @@ function useAssetInfos(
   notice: NoticePushView,
 ): ((asset: NoticeAsset) => AssetInfo | undefined) | undefined {
   const { client } = useEngine();
-  const assets = assetsToReadOf(notice);
+  const assets = noticeAssetsToRead(notice);
   const answers = useQueries({
     queries: assets.map((asset) => ({
       queryKey: ["asset", asset],
