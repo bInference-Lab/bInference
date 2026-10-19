@@ -33,13 +33,14 @@ const tokenFacts = { symbol: "TKN", name: "Test token", decimals: 6, verified: t
 
 // A leader's buy of the test token, stored as trade `id`, made now.
 function buyOf(id: number, atMs: number) {
-  return { id, side: "buy" as const, asset: testToken, atMs, facts: tokenFacts };
+  return { id, side: "buy" as const, asset: testToken, atMs, takenAtMs: atMs, facts: tokenFacts };
 }
 
 // A leader's sale of the test token, stored as trade `id`, taking `shareBps` of its holding.
 function saleOf(id: number, atMs: number, shareBps?: number) {
   const share = shareBps === undefined ? {} : { shareSoldBps: bpsSchema.parse(shareBps) };
-  return { id, side: "sell" as const, asset: testToken, atMs, facts: tokenFacts, ...share };
+  const sale = { id, side: "sell" as const, asset: testToken, atMs, takenAtMs: atMs };
+  return { ...sale, facts: tokenFacts, ...share };
 }
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
@@ -139,7 +140,8 @@ describe("a copy order's fills", () => {
     const test = await startFillEngine({ risk });
     const order = await activeOrder(test, testCopy());
     const facts = { symbol: "HONEY", name: "Honey", decimals: 18, verified: false };
-    const honey = { id: 1, side: "buy" as const, asset: unlisted, atMs: test.clock.now(), facts };
+    const atMs = test.clock.now();
+    const honey = { id: 1, side: "buy" as const, asset: unlisted, atMs, takenAtMs: atMs, facts };
 
     expect(await copyTrade(test, order.id, honey)).toBe("skipped");
 

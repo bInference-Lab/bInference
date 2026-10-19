@@ -33,6 +33,7 @@ const buy: CopyTaking = {
   side: "buy",
   asset: testToken,
   atMs: testNowMs,
+  takenAtMs: 0,
   facts: listedFacts,
 };
 
@@ -64,6 +65,7 @@ function boughtFor(state: CopyState, usdMicros: bigint): CopyState {
     amountOut: { asset: testToken, base: 1n },
     usdMicros,
     atMs: testNowMs,
+    takenAtMs: 0,
   };
   return copyStateAfterFill(state, traded);
 }

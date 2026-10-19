@@ -20,6 +20,7 @@ const taking = {
   side: "buy" as const,
   asset: testToken,
   atMs: 1_000,
+  takenAtMs: 0,
 };
 
 function bought(base: bigint, usdMicros: bigint, atMs: number) {

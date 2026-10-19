@@ -33,6 +33,7 @@ import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
 import type { ReadTokenCode } from "../money-path/token-code.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
+import { type CopyOrders, createCopyOrders } from "../orders/copy-orders.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import { createDcaOrders, type DcaOrders } from "../orders/dca-orders.js";
 import type { OrderFills } from "../orders/fill-orders.js";
@@ -65,7 +66,12 @@ import {
 } from "./engine-intent-parts.js";
 import { moneyPathOf } from "./engine-money-path.js";
 import { cardTimerOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
-import { type EngineChatHandlers, engineChatOf, safetyHandlersOf } from "./engine-parts.js";
+import {
+  type EngineChat,
+  type EngineChatHandlers,
+  engineChatOf,
+  safetyHandlersOf,
+} from "./engine-parts.js";
 import { orderRepairOf, paperRepairOf } from "./engine-repairs.js";
 import { runQueue, tickAll } from "./engine-timers.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
@@ -144,6 +150,12 @@ export interface Engine {
    * while the engine is unlocked.
    */
   readonly runSchedules: (options: { readonly signal: AbortSignal }) => Promise<void>;
+  /**
+   * Copies, for each active copy order, its leader's trades the leader watcher stored since the
+   * last one it took, each once, through the order fills (decision 0260). A timer of the
+   * composition root calls it every second, locked or not: a locked engine's fills skip.
+   */
+  readonly runCopies: CopyOrders["run"];
   /**
    * Judges the active limit, take-profit, stop-loss and trailing orders on a confirmed price of
    * their token, and fills those it triggers in the same block's processing (decision 0196). The
@@ -253,6 +265,8 @@ interface IntentParts {
   readonly triggers: OrderTriggers;
   /** The DCA orders' periods, which the schedule queue's timer runs (decision 0246). */
   readonly dca: DcaOrders;
+  /** The copy orders' leader trades, which the copy timer runs (decision 0260). */
+  readonly copies: CopyOrders;
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
   readonly cardTimer: CardTimerParts;
@@ -295,7 +309,34 @@ function intentParts(
     clock,
     publish: options.publish,
   });
-  return { answer, stored, orders, fills, triggers, dca, handlers, lowGas, cardTimer, moneyPath };
+  const copies = createCopyOrders({
+    orders: stores.orders,
+    fills,
+    trackedWallets: stores.trackedWallets,
+    intents: stores.intents,
+    chains,
+    readTokenFacts: options.readTokenFacts,
+    clock,
+  });
+  const timed = { triggers, dca, copies };
+  return { answer, stored, orders, fills, ...timed, handlers, lowGas, cardTimer, moneyPath };
+}
+
+// The engine's work a timer of the composition root runs: the orders and alerts that wait for no
+// price, the cards whose time is up, the schedule queue and the copy orders' leader trades.
+function timedWorkOf(
+  options: EngineOptions,
+  parts: { readonly intents: IntentParts; readonly chat: EngineChat },
+): Pick<Engine, "tickOrders" | "expireCards" | "runSchedules" | "runCopies"> {
+  const { intents, chat } = parts;
+  return {
+    tickOrders: async ({ signal }) =>
+      tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
+    expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
+    runSchedules: async ({ signal }) =>
+      runQueue({ schedules: chat.schedules, dca: intents.dca, clock: options.clock }, signal),
+    runCopies: async (call) => intents.copies.run(call),
+  };
 }
 
 // What the rescue address, the address book and the settings operations each read and push.
@@ -368,11 +409,7 @@ export function createEngineWithFills(given: EngineOptions): {
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
     repairOrderFills: orderRepairOf(options, { stored: intents.stored, fills: intents.fills }),
-    tickOrders: async ({ signal }) =>
-      tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
-    expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
-    runSchedules: async ({ signal }) =>
-      runQueue({ schedules: chat.schedules, dca: intents.dca, clock: options.clock }, signal),
+    ...timedWorkOf(options, { intents, chat }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,

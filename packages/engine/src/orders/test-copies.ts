@@ -1,4 +1,7 @@
-import type { Id } from "@binference/core";
+import { type AssetRef, assetRefParts, isTxHash, type TxHash } from "@binference/chain";
+import { type Bps, type Id } from "@binference/core";
+import { testCoin, testToken } from "../intents/test-intents.js";
+import type { StoredActivity, WalletActivity } from "../leaders/tracked-wallet-record.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import {
   copyStateDocument,
@@ -8,7 +11,7 @@ import {
   takenState,
 } from "./copy-state.js";
 import { moveOrder } from "./order-machine.js";
-import { storedOrder } from "./test-orders.js";
+import { storedOrder, testLeader } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -41,4 +44,62 @@ export async function copyTrade(
 ): Promise<string> {
   await takeTrade(test, order, taking);
   return test.engine.fillOrder({ order, price: { decimals: 0 } }, live);
+}
+
+function txOf(n: bigint): TxHash {
+  const hash = `0x${n.toString(16).padStart(64, "0")}`;
+  if (!isTxHash(hash)) {
+    throw new Error("Expected a transaction hash.");
+  }
+  return hash;
+}
+
+/**
+ * The test leader's trade `n` in block `n`, at `atMs`: a buy of the token for a tenth of a coin, or
+ * a sale of it taking `shareSoldBps` of its holding, unknown when absent.
+ */
+export function leaderTrade(
+  n: number,
+  call: {
+    readonly side: "buy" | "sell";
+    readonly atMs: number;
+    readonly asset?: AssetRef;
+    readonly shareSoldBps?: Bps;
+  },
+): WalletActivity {
+  const { side, atMs, asset = testToken, shareSoldBps } = call;
+  return {
+    account: testLeader,
+    block: BigInt(n),
+    txHash: txOf(BigInt(n)),
+    logIndex: 0,
+    side,
+    asset,
+    amount: 1_000_000n,
+    counterAsset: testCoin,
+    counterAmount: 10n ** 17n,
+    ...(shareSoldBps === undefined ? {} : { shareSoldBps }),
+    atMs,
+  };
+}
+
+/** Stores the leader's trades as one read of the leader watcher does, answering them stored. */
+export async function storeTrades(
+  test: TestEngine,
+  trades: readonly WalletActivity[],
+): Promise<readonly StoredActivity[]> {
+  const blocks = trades.map(({ block }) => block);
+  const from = blocks.reduce((low, block) => (block < low ? block : low), blocks[0] ?? 0n);
+  const to = blocks.reduce((high, block) => (block > high ? block : high), 0n);
+  const read = {
+    chain: assetRefParts(testToken).chain,
+    from,
+    to,
+    toHash: txOf(to),
+    atMs: test.clock.now(),
+    wallets: [{ account: testLeader, sinceBlock: from, readFrom: from }],
+    trades,
+    overflows: [],
+  };
+  return test.stores.trackedWallets.record(read, live);
 }

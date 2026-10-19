@@ -19,6 +19,8 @@ export interface CopyTaking {
   readonly shareSoldBps?: Bps;
   /** The trade's block time. */
   readonly atMs: number;
+  /** When the order took it: the start's repair reads whether a fill row came since. */
+  readonly takenAtMs: number;
   /**
    * The token's symbol, name and decimals as the order took the trade: the registry's, marked
    * verified, else what its contract answered on chain. Its notices name it by them, and its fill
@@ -64,6 +66,7 @@ const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
       asset: assetRefSchema,
       shareSoldBps: bpsSchema.exactOptional(),
       atMs: epochMsSchema,
+      takenAtMs: epochMsSchema,
       facts: z
         .strictObject({
           symbol: z.string().max(200),

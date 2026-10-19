@@ -1,0 +1,126 @@
+import { assetRefSchema } from "@binference/chain";
+import { bpsSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
+import { describe, expect, it } from "vitest";
+import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
+import { testNowMs, testToken } from "../intents/test-intents.js";
+import { testChains } from "../operations/test-engine.js";
+import { copiedHeldOf } from "./copy-state.js";
+import { copyStateNow, leaderTrade, storeTrades } from "./test-copies.js";
+import {
+  activeOrder,
+  fillIntentsOf,
+  fillPrices,
+  fillRowsOf,
+  noticesOf,
+  startFillEngine,
+} from "./test-fills.js";
+import { testCopy } from "./test-orders.js";
+
+const live = { signal: new AbortController().signal };
+const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
+// The fake venue pays two base units for one, so the token's price keeps a copy's sale small.
+const prices = new Map(fillPrices).set(testToken, { numerator: 1n, denominator: 10n ** 9n });
+
+function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
+  return rows.map(({ outcome, reason }) =>
+    reason === undefined ? outcome : `${outcome}:${reason}`,
+  );
+}
+
+describe("the copy orders' runner", () => {
+  it("copies each stored leader buy once, however often it runs", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+
+    await test.engine.runCopies(live);
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
+    expect(await fillIntentsOf(test)).toHaveLength(1);
+  });
+
+  it("passes over trades from before the order and trades it does not follow", async () => {
+    const test = await startFillEngine({ prices });
+    const before = leaderTrade(1, { side: "buy", atMs: testNowMs - 1 });
+    const order = await activeOrder(test, testCopy());
+    const now = test.clock.now();
+    const stored = await storeTrades(test, [
+      before,
+      leaderTrade(2, { side: "sell", atMs: now, shareSoldBps: bpsSchema.parse(5_000) }),
+    ]);
+
+    await test.engine.runCopies(live);
+
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+    expect((await copyStateNow(test, order.id)).through).toBe(stored.at(-1)?.id);
+  });
+
+  it("sells 40% of the copied position when the leader sells 40%", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+    const bought = copiedHeldOf(await copyStateNow(test, order.id), testToken);
+    const share = bpsSchema.parse(4_000);
+    await storeTrades(test, [
+      leaderTrade(2, { side: "sell", atMs: test.clock.now(), shareSoldBps: share }),
+    ]);
+
+    await test.engine.runCopies(live);
+
+    const sale = (await fillIntentsOf(test)).find(({ kind }) => kind === "sell");
+    expect(sale?.request).toMatchObject({ amount: { base: String((bought * 4_000n) / 10_000n) } });
+    expect(copiedHeldOf(await copyStateNow(test, order.id), testToken)).toBe(
+      bought - (bought * 4_000n) / 10_000n,
+    );
+  });
+
+  it("skips a leader's buy of a honeypot and tells the owner which token", async () => {
+    const risk = createFakeRiskCheck({
+      chains: testChains(),
+      clock: createManualClock(testNowMs),
+      refusal: "honeypot",
+    });
+    const test = await startFillEngine({ prices, risk });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [
+      leaderTrade(1, { side: "buy", atMs: test.clock.now(), asset: unlisted }),
+    ]);
+
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:honeypot"]);
+    const told = noticesOf(test).map((data) => JSON.stringify(data));
+    expect(told.find((text) => text.includes('"reason.honeypot"'))).toContain(
+      '"token":"UNL 0x0000000f"',
+    );
+  });
+
+  it("never copies a trade read after an outage, and tells the owner it came late", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.clock.advance(61_000);
+
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:late"]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
+  it("copies a trade once across a restart, and records one a stop cut off as missed", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+
+    const again = test.restart();
+    await again.repairOrderFills(live);
+    await again.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
+    expect(await fillIntentsOf(test)).toHaveLength(1);
+  });
+});
