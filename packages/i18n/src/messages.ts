@@ -18,6 +18,7 @@ import enQuestion from "../messages/en/question.json" with { type: "json" };
 import enReason from "../messages/en/reason.json" with { type: "json" };
 import enReceipt from "../messages/en/receipt.json" with { type: "json" };
 import enTelegram from "../messages/en/telegram.json" with { type: "json" };
+import enTui from "../messages/en/tui.json" with { type: "json" };
 import enTurn from "../messages/en/turn.json" with { type: "json" };
 import enWebPush from "../messages/en/webPush.json" with { type: "json" };
 import enWorkspace from "../messages/en/workspace.json" with { type: "json" };
@@ -41,6 +42,7 @@ import zhQuestion from "../messages/zh/question.json" with { type: "json" };
 import zhReason from "../messages/zh/reason.json" with { type: "json" };
 import zhReceipt from "../messages/zh/receipt.json" with { type: "json" };
 import zhTelegram from "../messages/zh/telegram.json" with { type: "json" };
+import zhTui from "../messages/zh/tui.json" with { type: "json" };
 import zhTurn from "../messages/zh/turn.json" with { type: "json" };
 import zhWebPush from "../messages/zh/webPush.json" with { type: "json" };
 import zhWorkspace from "../messages/zh/workspace.json" with { type: "json" };
@@ -78,6 +80,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("launch", enLaunch),
     ...inArea("telegram", enTelegram),
     ...inArea("turn", enTurn),
+    ...inArea("tui", enTui),
     ...inArea("question", enQuestion),
     ...inArea("cmd", enCmd),
     ...inArea("cli", enCli),
@@ -103,6 +106,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("launch", zhLaunch),
     ...inArea("telegram", zhTelegram),
     ...inArea("turn", zhTurn),
+    ...inArea("tui", zhTui),
     ...inArea("question", zhQuestion),
     ...inArea("cmd", zhCmd),
     ...inArea("cli", zhCli),

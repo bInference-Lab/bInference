@@ -504,6 +504,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | client token                                | 访问令牌               | A `bnt_` sign-in token       |
 | release notes                               | 更新说明               |                              |
 | roll back (an update)                       | 回退                   | Not 回滚, which is a revert  |
+| key (on the keyboard), number key           | 按键, 数字键           | Terminal chat: Ctrl+Y, Esc   |
 
 ### Trading
 
