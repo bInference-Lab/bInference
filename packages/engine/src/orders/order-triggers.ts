@@ -6,6 +6,7 @@ import { hasPriceTrigger, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import { type PriceLevel, wholeTokenPrice } from "./price-level.js";
 import { judgeTrigger, type TriggerState, triggerStateDocument } from "./price-triggers.js";
+import { runInLine } from "./run-in-line.js";
 
 /** One confirmed price of a watched token, as the price watcher read it at a block. */
 export interface WatchedOrderPrice {
@@ -197,25 +198,9 @@ async function judgeAll(
 export function createOrderTriggers(parts: OrderTriggersParts): OrderTriggers {
   const active = createActiveOrders(parts);
   const lines = new Map<AssetRef, Promise<void>>();
-  const inLine = async <T>(token: AssetRef, work: () => Promise<T>): Promise<T> => {
-    const before = lines.get(token) ?? Promise.resolve();
-    const run = before.then(work, work);
-    const tail = run.then(
-      () => undefined,
-      () => undefined,
-    );
-    lines.set(token, tail);
-    try {
-      return await run;
-    } finally {
-      if (lines.get(token) === tail) {
-        lines.delete(token);
-      }
-    }
-  };
   return {
     async see(price, { signal }) {
-      const fired = await inLine(price.token, async () =>
+      const fired = await runInLine(lines, price.token, async () =>
         judgeAll(parts, active, { price, signal }),
       );
       return Promise.all(

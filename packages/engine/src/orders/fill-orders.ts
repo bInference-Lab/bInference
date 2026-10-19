@@ -24,6 +24,7 @@ import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
 import { isTriggerDisarmed } from "./price-triggers.js";
+import { runInLine } from "./run-in-line.js";
 import { stopFailing } from "./stop-failing.js";
 
 /** The price a trigger fired an order's fill at, as the price watcher read it. */
@@ -309,24 +310,6 @@ async function emptyExit(
   return "ended";
 }
 
-// Runs `work` once every earlier fill of the agent has ended.
-async function inLine<T>(state: FillState, agent: Id<"agt">, work: () => Promise<T>): Promise<T> {
-  const before = state.lines.get(agent) ?? Promise.resolve();
-  const run = before.then(work, work);
-  const tail = run.then(
-    () => undefined,
-    () => undefined,
-  );
-  state.lines.set(agent, tail);
-  try {
-    return await run;
-  } finally {
-    if (state.lines.get(agent) === tail) {
-      state.lines.delete(agent);
-    }
-  }
-}
-
 // An order fires a fill while it is active, before its expiry, and armed as stored: a trigger
 // that judged an older copy, before a fill disarmed it, fires nothing (decision 0197).
 function canFire(
@@ -364,7 +347,8 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
       }
       state.running.add(id);
       try {
-        return await inLine(state, read.agentId, async () => {
+        // One agent's fills run one at a time, oldest trigger first.
+        return await runInLine(state.lines, read.agentId, async () => {
           const order = await parts.orders.get(id, { signal });
           if (!canFire(parts, order)) {
             return "inactive";
