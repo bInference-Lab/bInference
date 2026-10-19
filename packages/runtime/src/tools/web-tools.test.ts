@@ -38,7 +38,7 @@ function names(settings: RuntimeSearch): readonly string[] {
 
 describe("the web tools", () => {
   it("come after the reads, with search_x only when the owner set an X key", () => {
-    expect(names(search).slice(10, 13)).toStrictEqual(["search_web", "read_page", "search_x"]);
+    expect(names(search).slice(11, 14)).toStrictEqual(["search_web", "read_page", "search_x"]);
     expect(names({ keys: {} })).not.toContain("search_x");
     expect(names({ keys: {} })).toContain("search_web");
   });

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
 import { isoTimeSchema } from "./iso-time.schema.js";
-import { chartAnswer, scanAnswer } from "./market-answers.js";
+import { activityAnswer, chartAnswer, scanAnswer } from "./market-answers.js";
 import { answerOrRefusal } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 
@@ -107,12 +107,56 @@ function chartTool({ client }: AgentToolParts): AgentTool {
   });
 }
 
+/** The trades `wallet_activity` answers unless the model asks for others, and the most it may. */
+export const activityTrades = { usual: 10, most: 15 } as const;
+
+/** What `wallet_activity` takes: the account, the span, and the page. */
+interface ActivityArgs {
+  readonly account: ArgsOf<"wallet/activity">["account"];
+  readonly from?: number;
+  readonly to?: number;
+  readonly cursor?: string;
+  readonly limit?: number;
+}
+
+const activityArgs: z.ZodType<ActivityArgs> = z.strictObject({
+  account: fields.account,
+  from: isoTimeSchema.exactOptional(),
+  to: isoTimeSchema.exactOptional(),
+  cursor: z.string().min(1).max(512).exactOptional(),
+  limit: z.int().min(1).max(activityTrades.most).exactOptional(),
+});
+
+const activityRefusals: Readonly<Record<string, string>> = {
+  "wallet.not_found":
+    "wallet_activity failed with wallet.not_found: binference reads the trades only of wallets this agent tracks (the leaders of its copy orders and the accounts of its wallet alerts), from when it began watching them, and this account is none of them. For this agent's own wallets, use portfolio, and tx_status for one of its intents.",
+  "protocol.bad_args":
+    "wallet_activity failed with protocol.bad_args: the account is not one binference reads on a chain it holds, or cursor is not one wallet_activity answered.",
+};
+
+function walletActivityTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool<ActivityArgs>({
+    name: "wallet_activity",
+    kind: "read",
+    parallel: true,
+    addressSource: "engine",
+    description: agentToolTexts.wallet_activity,
+    args: activityArgs,
+    run: async (args, { signal }) =>
+      answerOrRefusal({ tool: "wallet_activity", refusals: activityRefusals }, async () => {
+        const read = { ...args, agent, limit: args.limit ?? activityTrades.usual };
+        const page = await client.call("wallet/activity", read, { signal });
+        return activityAnswer(args.account, page);
+      }),
+  });
+}
+
 /**
- * The agent's market reads (decisions 0257 and 0258): `market_scan` over `market/scan` and
- * `chart` over `market/chart`, the agent filled from the turn. Each answers compact lines; one
- * that holds data marks the turn as outside content, and an engine refusal reads as what to do
- * next.
+ * The agent's market reads (decisions 0257 and 0258): `market_scan` over `market/scan`, `chart`
+ * over `market/chart` and `wallet_activity` over `wallet/activity`, the agent filled from the turn.
+ * Each answers compact lines; one that holds data marks the turn as outside content, and an
+ * engine refusal reads as what to do next.
  */
 export function marketTools(parts: AgentToolParts): readonly AgentTool[] {
-  return [marketScanTool(parts), chartTool(parts)];
+  return [marketScanTool(parts), chartTool(parts), walletActivityTool(parts)];
 }

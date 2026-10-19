@@ -1,4 +1,12 @@
-import type { AssetInfo, CandleView, ResultOf, RiskView, ScanItem } from "@binference/protocol";
+import type {
+  ActivityItem,
+  AssetInfo,
+  AssetInfos,
+  CandleView,
+  ResultOf,
+  RiskView,
+  ScanItem,
+} from "@binference/protocol";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import { outsideAnswer, plainAnswer } from "../web/web-answers.js";
 
@@ -116,4 +124,43 @@ export function chartAnswer(view: ResultOf<"market/chart">): ToolOutcome {
   const opening = `Candles of ${view.interval} for ${view.asset} from ${view.source}, oldest first: ${String(view.candles.length)}. Prices are micro-dollars ${per}; volume is micro-dollars.`;
   const rows = view.candles.map(candleRow);
   return outsideAnswer("market data", [opening, "at,open,high,low,close,volume", ...rows]);
+}
+
+function tradeLine(item: ActivityItem): string {
+  const line: Line = {
+    at: secondOf(item.at),
+    side: item.side,
+    asset: item.asset,
+    amount: item.amount.toString(),
+    counterAsset: item.counterAsset,
+    counterAmount: item.counterAmount.toString(),
+    valueUsdMicros: textOf(item.valueUsdMicros),
+    shareSoldBps: item.shareSoldBps,
+    venue: item.venue,
+    tx: item.tx,
+  };
+  return JSON.stringify(line);
+}
+
+// The symbol and decimals of each asset the trades name, so their base units can be read.
+function assetsLine(assets: AssetInfos): string {
+  const entries = Object.entries(assets).map(([asset, info]) => [
+    asset,
+    { symbol: wordOf(info.symbol), decimals: info.decimals, verified: info.verified },
+  ]);
+  return `assets: ${JSON.stringify(Object.fromEntries(entries))}`;
+}
+
+/** What `wallet_activity` answers: a line per trade, newest first, and the next page's cursor. */
+export function activityAnswer(account: string, page: ResultOf<"wallet/activity">): ToolOutcome {
+  if (page.items.length === 0) {
+    return plainAnswer(`No trade of ${account} is recorded in that span.`);
+  }
+  const more =
+    page.next === undefined
+      ? "These are all of them in the span."
+      : `More: call again with cursor ${JSON.stringify(page.next)}.`;
+  const opening = `Trades of ${account}, newest first: ${String(page.items.length)}. Amounts are base units; valueUsdMicros is micro-dollars. ${more}`;
+  const lines = page.items.map(tradeLine);
+  return outsideAnswer("another wallet's trades", [opening, ...lines, assetsLine(page.assets)]);
 }

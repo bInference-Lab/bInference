@@ -188,7 +188,11 @@ the call's key as its idempotency key and answers the intent's or order's id and
 the owner; a refusal the engine answered is an error result, and any other failure leaves the
 outcome unknown, so it is never sent again. `open_skill` (`skill/read`) reads one file of a skill
 the index lists, by the skill's name and a path inside its folder; the engine refuses any other,
-and an installed skill's text is outside content. The built runtime gives every turn these tools.
+and an installed skill's text is outside content. The market reads `market_scan` (`market/scan`),
+`chart` (`market/chart`) and `wallet_activity` (`wallet/activity`) answer compact lines, and a
+result with data in it is outside content
+([decisions 0257 and 0258](../../docs/DECISIONS.md#d0257)). The built runtime gives every turn
+these tools.
 
 ## Example
 

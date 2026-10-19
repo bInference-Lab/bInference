@@ -187,6 +187,9 @@ export async function outcomeOf(run: CallRun): Promise<ToolOutcome> {
   return run.outcome;
 }
 
+/** A wallet the agent tracks, as a copy order's leader. */
+export const leader = "fake:1:0x0000000c";
+
 /** One hourly candle as `market/chart` answers it, prices for one whole token. */
 export const candle: WireObject = {
   at,
@@ -195,4 +198,18 @@ export const candle: WireObject = {
   lowUsdMicros: "900000",
   closeUsdMicros: "1100000",
   volumeUsdMicros: "5000000000",
+};
+
+/** The leader's buy of the token with the coin, as `wallet/activity` answers it. */
+export const trade: WireObject = {
+  at,
+  block: 7,
+  tx: `0x${"ab".repeat(32)}`,
+  side: "buy",
+  asset: token,
+  amount: "500000000",
+  counterAsset: coin,
+  counterAmount: "1000000000000000000",
+  valueUsdMicros: "600000000",
+  venue: "fake-swap",
 };

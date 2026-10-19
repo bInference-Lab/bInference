@@ -13,6 +13,7 @@ import {
   context,
   intent,
   intentWire,
+  leader,
   order,
   orderWire,
   priceCondition,
@@ -22,6 +23,7 @@ import {
   swapTerms,
   token,
   toolTurn,
+  trade,
   wallet,
 } from "../testing/agent-tool-fixtures.js";
 import { createFakeToolClient, type FakeAnswer } from "../testing/fake-tool-client.js";
@@ -55,6 +57,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
     candles: [candle],
     source: "geckoterminal",
   },
+  "wallet/activity": { items: [trade], assets: {} },
   "intent/propose": intentWire("awaiting_confirmation"),
   "order/create": orderWire("awaiting_confirmation"),
   "order/get": orderWire("active"),
@@ -132,6 +135,16 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
       {
         op: "market/chart",
         args: { asset: token, interval: "1h", to: 1_792_458_000_000, limit: 60 },
+      },
+    ],
+  ],
+  [
+    "wallet_activity",
+    { account: leader, from: "2026-10-20T09:00:00+08:00", cursor: "c1", limit: 5 },
+    [
+      {
+        op: "wallet/activity",
+        args: { account: leader, from: 1_792_458_000_000, cursor: "c1", limit: 5, agent },
       },
     ],
   ],

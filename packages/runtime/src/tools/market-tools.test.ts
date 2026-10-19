@@ -1,9 +1,19 @@
 import { BinferenceError } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { callTool, candle, outcomeOf, token, tokenInfo } from "../testing/agent-tool-fixtures.js";
+import {
+  callTool,
+  candle,
+  coin,
+  coinInfo,
+  leader,
+  outcomeOf,
+  token,
+  tokenInfo,
+  trade,
+} from "../testing/agent-tool-fixtures.js";
 import { maxResultChars } from "./define-tool.js";
 import { maxWordChars, wordOf } from "./market-answers.js";
-import { chartCandles, scanItems } from "./market-tools.js";
+import { activityTrades, chartCandles, scanItems } from "./market-tools.js";
 
 const at = 1_760_000_000_000;
 const launch = {
@@ -190,6 +200,63 @@ describe("chart", () => {
     };
     const args = { asset: tokenNo(1), interval: "1d", limit: chartCandles.most };
     const text = await textOf({ "market/chart": chart }, { name: "chart", args });
+    expect(text.length).toBeLessThanOrEqual(maxResultChars);
+    expect(text).not.toContain("[cut:");
+  });
+});
+
+describe("wallet_activity", () => {
+  const activityCall = { name: "wallet_activity", args: { account: leader } };
+
+  it("answers a trade per line with the next page's cursor, and marks the turn", async () => {
+    const page = { items: [trade], next: "7:1", assets: { [coin]: coinInfo } };
+    const outcome = await outcomeOf(callTool({ "wallet/activity": page }, activityCall));
+    expect(outcome).toMatchObject({ isError: false, outside: true });
+    const [mark, opening, line = "", assets] = outcome.text.split("\n");
+    expect(mark).toMatch(/^\[outside content: another wallet's trades/);
+    expect(opening).toContain('More: call again with cursor "7:1".');
+    expect(JSON.parse(line)).toStrictEqual({
+      at: "2025-10-09T08:53:20Z",
+      side: "buy",
+      asset: token,
+      amount: "500000000",
+      counterAsset: coin,
+      counterAmount: "1000000000000000000",
+      valueUsdMicros: "600000000",
+      venue: "fake-swap",
+      tx: trade["tx"],
+    });
+    expect(assets).toBe(`assets: {"${coin}":{"symbol":"FAKE","decimals":18,"verified":true}}`);
+  });
+
+  it("sends the model to portfolio for a wallet it does not track, its own among them", async () => {
+    const answers = { "wallet/activity": engineError("wallet.not_found") };
+    const outcome = await outcomeOf(callTool(answers, activityCall));
+    expect(outcome).toMatchObject({ isError: true });
+    expect(outcome.text).toMatch(/^wallet_activity failed with wallet\.not_found: /);
+    expect(outcome.text).toContain("For this agent's own wallets, use portfolio");
+  });
+
+  it("fits its largest page in a result uncut", async () => {
+    const items = Array.from({ length: activityTrades.most }, (_, n) => ({
+      ...trade,
+      asset: tokenNo(2 * n),
+      counterAsset: tokenNo(2 * n + 1),
+      amount: digits(31),
+      counterAmount: digits(31),
+      valueUsdMicros: digits(17),
+      shareSoldBps: 10_000,
+      venue: "v".repeat(64),
+    }));
+    const assets = Object.fromEntries(
+      items.flatMap((item) => [
+        [item.asset, longWords],
+        [item.counterAsset, longWords],
+      ]),
+    );
+    const page = { items, next: `${String(at)}:123456`, assets };
+    const args = { account: leader, limit: activityTrades.most };
+    const text = await textOf({ "wallet/activity": page }, { name: "wallet_activity", args });
     expect(text.length).toBeLessThanOrEqual(maxResultChars);
     expect(text).not.toContain("[cut:");
   });
