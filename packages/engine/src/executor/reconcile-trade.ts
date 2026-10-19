@@ -13,7 +13,7 @@ import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { countUnsettledFill } from "./count-unsettled-fill.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import { launchQuoteOf } from "./launch-queue-check.js";
-import { bookingOf, launchTradeQuote } from "./launch-settlement.js";
+import { bookingOf, departLaunch, launchTradeQuote } from "./launch-settlement.js";
 import { differsFromSimulation, type SettledStep, settledTradeOf } from "./settled-trade-of.js";
 
 // The owner's alarm when a trade settles more than 1% away from its simulation.
@@ -247,10 +247,12 @@ export async function bookTrade(
   const holder = { wallet: run.plan.steps[0].from, family: run.plan.chain.family };
   const trade = settledTradeOf(steps, { quote, holder, nativeReceivedBase: received, atMs });
   const booking = bookingOf(snapshot.record, trade);
-  if (booking === undefined) {
-    return { trade, steps };
-  }
   const txHash = last.transaction.hash;
+  if (booking === undefined) {
+    return (await departLaunch(run, snapshot.record, { gas: trade.gas, atMs, txHash }))
+      ? { trade, steps }
+      : "waiting";
+  }
   const priced = await pricedTrade(run, snapshot, { ...booking, quote, txHash });
   if (priced === undefined || !(await recordOnce(run, priced))) {
     parts.log.warn("executor.settle_waits", { intentId: snapshot.record.id });

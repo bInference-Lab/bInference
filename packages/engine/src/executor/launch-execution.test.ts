@@ -15,7 +15,14 @@ import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createMemoryLaunchImages } from "../fakes/memory-launch-images.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { testAgent, testCoin, testLimits, testNowMs, testWallet } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testLimits,
+  testNowMs,
+  testWallet,
+} from "../intents/test-intents.js";
 import {
   testLaunch,
   testLaunchAccount,
@@ -25,6 +32,7 @@ import {
 } from "../money-path/test-launches.js";
 import { testCallers, testChains } from "../operations/test-engine.js";
 import { createVenueHost } from "../venues/venue-host.js";
+import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { driveUntil, type ExecutorBench, startExecutorBench, tapped } from "./test-executor.js";
 
 // A token launch in the wallet queue (decision 0234): signed from the launch wallet, to the
@@ -97,6 +105,31 @@ async function benchOf(): Promise<ExecutorBench> {
   return bench;
 }
 
+// What the transactions paid for gas, from their receipts.
+function gasPaid(stored: readonly TransactionRecord[]): bigint {
+  return stored.reduce(
+    (sum, { receipt }) => sum + (receipt?.gasUsed ?? 0n) * (receipt?.feePerGasBase ?? 0n),
+    0n,
+  );
+}
+
+// The launch wallet holds `base` of the coin as a live position, each unit at one micro-dollar.
+async function holdCoin(bench: ExecutorBench, base: bigint): Promise<void> {
+  const walletId = testLaunchWallet;
+  const arrival = { walletId, isPaper: false, atMs: 1, received: { asset: testCoin, base } };
+  const position = {
+    walletId,
+    asset: testCoin,
+    isPaper: false,
+    quantityBase: base,
+    costUsdMicros: base,
+    realizedUsdMicros: 0n,
+    changedAtMs: 1,
+  };
+  const write = { arrival: { ...arrival, valueUsdMicros: base }, positions: [{ position }] };
+  expectOk(await bench.test.positions.recordArrival(write, live));
+}
+
 describe("a token launch in the wallet queue", () => {
   it("signs its create call to the launchpad's router alone, from the launch wallet", async () => {
     const bench = await benchOf();
@@ -126,13 +159,24 @@ describe("a token launch in the wallet queue", () => {
     ]);
   });
 
-  it("opens no position for a launch with no first buy, its fee paid", async () => {
+  it("takes a launch's fee and gas out of the coin it holds when it buys nothing", async () => {
     const bench = await benchOf();
+    await holdCoin(bench, 10n ** 18n);
     const { firstBuy: _buy, ...feeOnly } = launch;
     const intent = await tapped(bench, feeOnly);
 
     await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
     const query = { isPaper: false, walletId: testLaunchWallet, after: 0, limit: 10 };
     await expect(bench.test.positions.executions(query, live)).resolves.toStrictEqual([]);
+    const stored = await bench.test.stores.transactions.ofIntent(intent, live);
+    const gas = gasPaid(stored);
+    expect(gas).toBeGreaterThan(0n);
+    const held = await bench.test.positions.positions(
+      { walletId: testLaunchWallet, isPaper: false },
+      live,
+    );
+    expect(held.map(({ asset, quantityBase }) => [asset, quantityBase])).toStrictEqual([
+      [testCoin, 10n ** 18n - 2_000n - gas],
+    ]);
   });
 });
