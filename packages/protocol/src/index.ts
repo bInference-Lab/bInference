@@ -214,6 +214,8 @@ export {
   questionViewSchema,
 } from "./views/question-view.schema.js";
 export { questionChoicesSchema } from "./operations/question-operations.schema.js";
+export { questionPushOf } from "./views/question-push.schema.js";
+export type { QuestionClosedPush, QuestionPush } from "./views/question-push.schema.js";
 export type {
   QuestionAnswerView,
   QuestionCloseReason,

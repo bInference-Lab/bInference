@@ -45,21 +45,21 @@ export const choicePlaceSchema: z.ZodInt = z
   .max(questionLimits.maxChoices - 1);
 
 /** Parses a question's state. */
-const questionStateSchema: z.ZodType<QuestionState, string> = z.enum([
+export const questionStateSchema: z.ZodType<QuestionState, string> = z.enum([
   "open",
   "answered",
   "closed",
 ]);
 
 /** Parses why a question closed. */
-const questionCloseReasonSchema: z.ZodType<QuestionCloseReason, string> = z.enum([
+export const questionCloseReasonSchema: z.ZodType<QuestionCloseReason, string> = z.enum([
   "replaced",
   "cleared",
   "expired",
 ]);
 
 /** Parses the owner's answer to a question. */
-const questionAnswerViewSchema: z.ZodType<QuestionAnswerView> = z.object({
+export const questionAnswerViewSchema: z.ZodType<QuestionAnswerView> = z.object({
   choice: choicePlaceSchema.exactOptional(),
   typed: z.string().exactOptional(),
   surface: chatSurfaceSchema,
