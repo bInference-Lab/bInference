@@ -1,0 +1,24 @@
+{
+  "name": "@binference/tui",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Terminal chat: binference chat talks with an agent in the terminal, with its cards, questions and notices.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "string-width": "catalog:"
+  }
+}

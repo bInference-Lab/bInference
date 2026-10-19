@@ -305,6 +305,9 @@ catalogs:
     react-dom:
       specifier: 19.3.0
       version: 19.3.0
+    string-width:
+      specifier: 8.3.0
+      version: 8.3.0
     tailwindcss:
       specifier: 4.3.3
       version: 4.3.3
@@ -926,6 +929,12 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.6.5
+
+  packages/tui:
+    dependencies:
+      string-width:
+        specifier: 'catalog:'
+        version: 8.3.0
 
   plugins/dexscreener:
     dependencies:

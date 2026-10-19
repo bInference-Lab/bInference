@@ -113,7 +113,7 @@
       }
     },
     "tui": {
-      "imports": ["client", "protocol", "i18n", "@earendil-works/pi-tui"],
+      "imports": ["core", "client", "protocol", "i18n", "string-width"],
       "userText": true
     },
     "console": {
