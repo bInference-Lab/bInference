@@ -105,6 +105,14 @@ Rules for this package:
   period on time buys through the order fills with no trigger price, and a period more than 60
   seconds late is a `missed` skip, never bought. A fill keeps a DCA order's period; only a price
   order is disarmed by its fill.
+- Copy orders (`src/orders/copy-*.ts`, decisions 0260 and 0261) copy their leader's trades the
+  leader watcher stored, which `copy-orders.ts` reads after the last one each order took: the take
+  is kept in the order's trigger state (`copy-state.ts`) before the trade's fill, so a trade is
+  copied once, and the start records a take a stop cut off as `missed` (`copy-repair.ts`). At the
+  head of its agent's line, `copy-fills.ts` plans the fill: late, unread share, unread token and
+  daily caps skip before any intent; a buy at its dollars per buy, a sale of the leader's share of
+  what the order bought. A change to a cap or a sale's size changes
+  `copy-orders.property.test.ts`.
 - The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of
   a watched token against its active price orders in `price-triggers.ts`, a pure judgment of
   levels, never of crossings, and hand a triggered order to its fill at once. A trailing stop's
