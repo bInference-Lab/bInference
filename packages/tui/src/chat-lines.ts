@@ -37,6 +37,17 @@ export function saidLines(speaker: string, text: string): readonly ScreenLine[] 
   return [{ text: `${speaker}: ${first}` }, ...rest.map((line) => ({ text: `  ${line}` }))];
 }
 
+/** A turn's status line in the owner's language: a time it names reads in the owner's zone. */
+export function statusLine(
+  formatter: Formatter,
+  statusKey: string,
+  values: Readonly<Record<string, string | number>> = {},
+): ScreenLine {
+  const { when } = values;
+  const shown = typeof when === "number" ? { ...values, when: formatter.dateTime(when) } : values;
+  return { text: wordsOf(formatter)(statusKey, shown), tone: "dim" };
+}
+
 function codeOf(error: ErrorOptions["cause"]): string | undefined {
   return typeof error === "object" &&
     error !== null &&

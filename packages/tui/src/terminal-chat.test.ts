@@ -35,7 +35,47 @@ function lastRow(chat: ChatHarness): string {
   return chat.rows().at(-1) ?? "";
 }
 
+// What a session read answers while the agent runtime is down.
+function runtimeDown(): object {
+  throw Object.assign(new Error("down"), { code: "runtime.unavailable" });
+}
+
 describe("terminal chat", () => {
+  it("opens with its keys, the line about images and the newest messages of the session", async () => {
+    const chat = await opened({
+      "chat/messages": () => ({
+        items: [
+          { session, turn, seq: 1, role: "owner", kind: "text", text: "hi", at: 1 },
+          { session, turn, seq: 2, role: "agent", kind: "tool_call", at: 2 },
+          { session, turn, seq: 3, role: "agent", kind: "text", text: "Hello.\nAsk away.", at: 3 },
+        ],
+      }),
+    });
+    expect(chat.rows()).toStrictEqual([
+      "Chat with main. Enter sends, Esc stops the agent's answer, /clear starts a new chat, /help shows the keys, Ctrl+C leaves.",
+      "Images cannot be sent from the terminal. Send them in Telegram or the console.",
+      "You: hi",
+      "main: Hello.",
+      "  Ask away.",
+      "› ",
+    ]);
+  });
+
+  it("says once that the chat so far could not load, and reads it again at the next turn", async () => {
+    const reads = { answer: runtimeDown };
+    const chat = await opened({ "chat/messages": () => reads.answer() });
+    chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });
+    await chat.settle();
+    reads.answer = () => ({
+      items: [{ session, turn, seq: 4, role: "owner", kind: "text", text: "hi", at: 1 }],
+    });
+    chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });
+    await chat.settle();
+    const failed = chat.rows().filter((row) => row.startsWith("The chat so far could not load."));
+    expect(failed).toHaveLength(1);
+    expect(chat.rows().slice(-3)).toStrictEqual(["You: hi", "Working on it · 0 s", "› "]);
+  });
+
   it("sends the typed line and prints it under the owner's name", async () => {
     const chat = await opened({ "chat/post": () => ({ session, turn }) });
     chat.press("Buy some TKN\r");
@@ -54,6 +94,61 @@ describe("terminal chat", () => {
     expect(opsOf(chat, "chat/post")).toStrictEqual([
       { agent: harnessAgent, text: "line one\nline two" },
     ]);
+  });
+
+  it("shows the answer so far in the live area, then prints the final answer and status", async () => {
+    const chat = await opened();
+    chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });
+    await chat.clock.advance(3_000);
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual(["Working on it · 3 s", "› "]);
+    const draft = { agent: harnessAgent, turn, text: "Checking the\nprice now", final: false };
+    chat.push(`chat:${harnessAgent}`, "chat/message", draft);
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual(["main: price now", "› "]);
+    chat.push(`chat:${harnessAgent}`, "chat/message", {
+      ...draft,
+      text: "TKN is $1.",
+      final: true,
+    });
+    chat.push(`chat:${harnessAgent}`, "chat/status", {
+      agent: harnessAgent,
+      turn,
+      statusKey: "turn.stopped",
+    });
+    chat.push(`chat:${harnessAgent}`, "chat/turnEnded", { agent: harnessAgent, turn });
+    await chat.settle();
+    expect(chat.rows().slice(-3)).toStrictEqual([
+      "main: TKN is $1.",
+      "Stopped. Anything you already confirmed still goes through.",
+      "› ",
+    ]);
+  });
+
+  it("writes out the characters of a model's words that would steer the terminal", async () => {
+    const chat = await opened();
+    const text = "Red \u001b[31mtext\u0007";
+    chat.push(`chat:${harnessAgent}`, "chat/message", {
+      agent: harnessAgent,
+      turn,
+      text,
+      final: true,
+    });
+    await chat.settle();
+    expect(chat.rows()).toContain("main: Red \\u{1B}[31mtext\\u{7}");
+  });
+
+  it("starts a new chat on /clear, stops the answer on /stop, and lists the keys on /help", async () => {
+    const chat = await opened({ "chat/clear": () => ({ session }), "chat/stop": () => ({}) });
+    chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });
+    chat.press("/clear\r/stop\r/help\r");
+    await chat.settle();
+    expect(opsOf(chat, "chat/clear")).toStrictEqual([{ agent: harnessAgent }]);
+    expect(opsOf(chat, "chat/stop")).toStrictEqual([{ agent: harnessAgent }]);
+    expect(chat.rows()).toContain(
+      "A new chat has started. The agent forgets this conversation; its notes and files stay.",
+    );
+    expect(chat.rows()).toContain("Ctrl+C, or Ctrl+D on an empty line, leaves the chat.");
   });
 
   it("says images go through Telegram or the console when the owner asks to send one", async () => {
@@ -94,16 +189,5 @@ describe("terminal chat", () => {
     expect(lost.rows()).toContain(
       "binference stopped answering, so the chat closed. Run `binference status`, then `binference chat` again.",
     );
-  });
-
-  it("starts a new chat on /clear and lists the keys on /help", async () => {
-    const chat = await opened({ "chat/clear": () => ({ session }) });
-    chat.press("/clear\r/help\r");
-    await chat.settle();
-    expect(opsOf(chat, "chat/clear")).toStrictEqual([{ agent: harnessAgent }]);
-    expect(chat.rows()).toContain(
-      "A new chat has started. The agent forgets this conversation; its notes and files stay.",
-    );
-    expect(chat.rows()).toContain("Ctrl+C, or Ctrl+D on an empty line, leaves the chat.");
   });
 });

@@ -2,9 +2,11 @@ import { callOptions, type ChatContext } from "./chat-context.js";
 import type { ChatAction } from "./chat-keys.js";
 import { failureText, saidLines } from "./chat-lines.js";
 import type { ScreenLine } from "./chat-screen.js";
+import type { ChatTranscript } from "./chat-transcript.js";
 
 /** What the owner's keys reach. */
 export interface ChatInputParts {
+  readonly transcript: ChatTranscript;
   /** Runs one of the owner's actions after the actions before it. */
   readonly queue: (job: () => Promise<void>) => void;
   /** Ends the chat, as Ctrl+C does. */
@@ -19,11 +21,16 @@ function dim(text: string): ScreenLine {
   return { text, tone: "dim" };
 }
 
-async function post(context: ChatContext, text: string): Promise<void> {
+async function post(context: ChatContext, parts: ChatInputParts, text: string): Promise<void> {
   const you = context.words("tui.you");
   context.print(saidLines(you, text));
   try {
-    await context.client.call("chat/post", { agent: context.agent, text }, callOptions(context));
+    const { turn } = await context.client.call(
+      "chat/post",
+      { agent: context.agent, text },
+      callOptions(context),
+    );
+    parts.transcript.printed("owner", turn);
   } catch (error) {
     context.print([
       dim(context.words("tui.failed", { reason: failureText(context.words, error) })),
@@ -31,8 +38,9 @@ async function post(context: ChatContext, text: string): Promise<void> {
   }
 }
 
-async function clear(context: ChatContext): Promise<void> {
+async function clear(context: ChatContext, parts: ChatInputParts): Promise<void> {
   await context.client.call("chat/clear", { agent: context.agent }, callOptions(context));
+  parts.transcript.reset();
   context.print([dim(context.words("tui.cleared"))]);
 }
 
@@ -47,7 +55,7 @@ function sent(context: ChatContext, parts: ChatInputParts, line: string): void {
   const { words } = context;
   const command = line.toLowerCase();
   if (command === "/clear") {
-    parts.queue(async () => clear(context));
+    parts.queue(async () => clear(context, parts));
   } else if (command === "/stop") {
     parts.queue(async () => stop(context));
   } else if (command === "/help") {
@@ -55,7 +63,7 @@ function sent(context: ChatContext, parts: ChatInputParts, line: string): void {
   } else if (imageCommands.has(command)) {
     context.print([dim(words("tui.images"))]);
   } else {
-    parts.queue(async () => post(context, line));
+    parts.queue(async () => post(context, parts, line));
   }
 }
 

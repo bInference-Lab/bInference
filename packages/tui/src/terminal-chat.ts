@@ -3,12 +3,14 @@ import type { Clock } from "@binference/core";
 import type { Formatter } from "@binference/i18n";
 import type { ProtocolId } from "@binference/protocol";
 import { type ChatClient, type ChatContext, createJobQueue } from "./chat-context.js";
+import { followChat } from "./chat-feed.js";
 import { type ChatInputParts, onAction } from "./chat-input.js";
 import { keyAction, type PressedKey } from "./chat-keys.js";
 import { agentNameText, failureText, wordsOf } from "./chat-lines.js";
 import { type ChatScreen, createChatScreen } from "./chat-screen.js";
 import { createChatStore } from "./chat-state.js";
 import type { ChatTerminal } from "./chat-terminal.js";
+import { createChatTranscript } from "./chat-transcript.js";
 import { liveRows } from "./live-rows.js";
 
 /** What terminal chat runs with. */
@@ -67,9 +69,18 @@ function openSession(options: TerminalChatOptions, signal: AbortSignal): Session
   };
 }
 
-// The parts the owner's keys reach.
-function partsOf(session: Session, report: (error: ErrorOptions["cause"]) => void): ChatInputParts {
-  return { queue: createJobQueue(report), leave: () => session.end("left") };
+// Subscribes the agent's chat; answers the parts the keys reach and how to unsubscribe.
+function follow(session: Session, report: (error: ErrorOptions["cause"]) => void) {
+  const { context } = session;
+  const feed = createJobQueue(report);
+  const transcript = createChatTranscript(context, context.words("tui.you"));
+  const unsubscribe = [followChat(context, { transcript, queue: feed })];
+  const parts: ChatInputParts = {
+    transcript,
+    queue: createJobQueue(report),
+    leave: () => session.end("left"),
+  };
+  return { parts, unsubscribe: () => unsubscribe.forEach((stop) => stop()) };
 }
 
 // Reads the owner's keys in raw mode, with bracketed paste on; answers how to give them back.
@@ -115,22 +126,22 @@ async function tick(options: TerminalChatOptions, session: Session): Promise<voi
 
 /**
  * Runs terminal chat with one agent until the owner leaves (Ctrl+C, or Ctrl+D on an empty line),
- * a stop signal arrives, or the engine stops answering for good. It sends each line the owner
- * types, and keeps a live area at the bottom with the link's state and the line the owner types.
- * On the way out it gives the terminal back as it found it and stops reading keys; the caller
- * closes the client.
+ * a stop signal arrives, or the engine stops answering for good. It prints the newest messages of
+ * the agent's session, then each answer and status line as it comes, and keeps a live area at the
+ * bottom: the running turn and the line the owner types. On the way out it unsubscribes every topic,
+ * gives the terminal back as it found it and stops reading keys; the caller closes the client.
  */
 export async function runTerminalChat(options: TerminalChatOptions): Promise<ChatEnd> {
   const lifetime = new AbortController();
   const session = openSession(options, lifetime.signal);
   const { words } = session.context;
-  const parts = partsOf(session, (error) => {
+  const followed = follow(session, (error) => {
     if (!lifetime.signal.aborted) {
       session.context.print([{ text: failureText(words, error), tone: "dim" }]);
     }
   });
   // Raw mode first: a key pressed once the first line shows never echoes.
-  const giveBack = takeKeys(options.terminal, session, parts);
+  const giveBack = takeKeys(options.terminal, session, followed.parts);
   session.screen.print([
     { text: words("tui.intro", { agent: session.context.agentName }), tone: "bold" },
     { text: words("tui.images"), tone: "dim" },
@@ -142,6 +153,7 @@ export async function runTerminalChat(options: TerminalChatOptions): Promise<Cha
   const how = options.signal.aborted ? "left" : await session.ended;
   lifetime.abort();
   options.signal.removeEventListener("abort", onStop);
+  followed.unsubscribe();
   giveBack();
   await ticking;
   session.screen.close();

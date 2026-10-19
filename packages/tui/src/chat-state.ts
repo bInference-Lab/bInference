@@ -59,6 +59,12 @@ export function createChatStore(changed: () => void): ChatStore {
   };
 }
 
+/** The state without its running turn. */
+export function withoutRunning(state: ChatState): ChatState {
+  const { running: _ended, ...rest } = state;
+  return rest;
+}
+
 /** The whole seconds a card has left at `now`, never more than it lasts; 0 once it expired. */
 export function secondsLeft(card: OpenCard, now: number): number {
   const byEngine = card.shown.expiresAt - now;
