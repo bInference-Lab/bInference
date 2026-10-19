@@ -253,6 +253,7 @@ function watchersOn(fork: Fork, rig: FillRig) {
     reads: new Map([[fork.chain.ref, reads]]),
     feeds: selfHostedFeeds(),
     tracked: rig.stores.trackedWallets,
+    notices: { ...rig.stores, publish: () => undefined },
     clock: createSystemClock(),
   });
   watchers.attach(rig.engine);

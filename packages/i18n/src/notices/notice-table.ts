@@ -155,6 +155,10 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     values: { chain: "BNB Smart Chain", blocks: "14" },
   },
   "notice.watcherStopped": { key: "notice.watcherStopped", values: { chain: "BNB Smart Chain" } },
+  "notice.walletOverflow": {
+    key: "notice.walletOverflow",
+    values: { wallet: "Whale", blocks: "3" },
+  },
   "notice.watcherUnpriced": {
     key: "notice.watcherUnpriced",
     values: { chain: "BNB Smart Chain", count: "2", token: "0x9F3c…41aB" },

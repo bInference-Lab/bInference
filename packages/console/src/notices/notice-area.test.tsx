@@ -44,6 +44,9 @@ describe("the console's notice area", () => {
     expect(trimmed["notice.lowGas"]).toStrictEqual([
       "Main has 0.001 FAKE left for network fees. Add BNB.",
     ]);
+    expect(trimmed["notice.walletOverflow"]).toStrictEqual([
+      "Whale's trades in 3 blocks were too many to read; copy orders and alerts missed them.",
+    ]);
     expect(trimmed["notice.locked"]).toStrictEqual([
       "binference restarted and is locked. Run binference unlock.",
     ]);

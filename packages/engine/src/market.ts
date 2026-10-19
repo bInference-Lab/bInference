@@ -31,3 +31,5 @@ export type {
   UnpricedReading,
   WatcherUnpricedAlerts,
 } from "./market/watcher-unpriced.js";
+export { tellOverflows, walletOverflowNoticeKey } from "./leaders/overflow-notices.js";
+export type { OverflowNoticeParts } from "./leaders/overflow-notices.js";

@@ -47,6 +47,7 @@
   "loop": "{agent} repeated the same step and was stopped",
   "watcherLag": "⚠️ Prices on {chain} are read {blocks} blocks behind the chain, so auto orders may fill late. Add a paid RPC under `chains.rpc` in config.json5, or check this machine's network.",
   "watcherUnpriced": "⚠️ Price watching on {chain} has no price for {count, plural, one {# watched token} other {# watched tokens}}, {token} first, so their auto orders cannot trigger until a price returns. A price comes from a launchpad curve, or a PancakeSwap pool that trades at least $1,000 of WBNB or a stablecoin.",
+  "walletOverflow": "⚠️ {wallet}'s trades in {blocks, plural, one {# block were} other {# blocks were}} too many to read; copy orders and alerts missed them.",
   "watcherStopped": "🔴 Price watching on {chain} stopped on a fault and starts again by itself; auto orders there fill nothing until it does. Run `binference logs` to see why.",
   "resumed": "Engine was off {duration}: {checked, plural, one {# order} other {# orders}} checked, {filled} filled, {skipped} skipped",
   "update": "binference {version} is out: {summary}. Run `binference update`.",

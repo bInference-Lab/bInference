@@ -64,6 +64,12 @@ export function composeWatching(
     reads,
     feeds: selfHostedFeeds(),
     tracked: opened.stores.trackedWallets,
+    notices: {
+      alerts: opened.stores.alerts,
+      orders: opened.stores.orders,
+      agents: opened.stores.agents,
+      publish: (push) => watcherPushes.publish(push),
+    },
     clock,
   });
   return { sources, priceWatchers, leaderWatchers, watcherPushes };

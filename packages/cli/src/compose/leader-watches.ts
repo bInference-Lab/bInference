@@ -17,6 +17,7 @@ import {
 } from "@binference/chain-evm";
 import { type Clock, createDeadline, type Logger } from "@binference/core";
 import type { Engine } from "@binference/engine";
+import { type OverflowNoticeParts, tellOverflows } from "@binference/engine/market";
 import {
   activityItemOf,
   type LeaderReadRecord,
@@ -45,12 +46,16 @@ export interface LeaderWatchersOptions {
   /** The Chainlink feeds of each chain, which mark its quote assets and value the trades. */
   readonly feeds: ReadonlyMap<ChainRef, readonly PriceFeedDefinition[]>;
   readonly tracked: TrackedWalletStore;
+  /** What names a cut wallet in its notice, and where the notice goes (decision 0250). */
+  readonly notices: Omit<OverflowNoticeParts, "trackedWallets" | "clock">;
   readonly clock: Clock;
 }
 
 // A read of every block gives one endpoint this long, about three blocks on BNB Smart Chain,
 // before the next is asked (decision 0250).
 const callTimeoutMs = 1_500;
+// The notices of cut blocks are looked at this often; each wallet is told at most once a day.
+const noticeEveryMs = 60_000;
 // Whether a chain has a tracked wallet is read this often, and given this long.
 const syncEveryMs = 5_000;
 const syncTimeoutMs = 10_000;
@@ -208,8 +213,9 @@ async function syncWatches(
  * the engine reads, run while the install tracks a wallet on it, synced every 5 seconds, over the
  * chain's RPC failover, whose endpoints must answer `eth_getLogs`. Each read lands in the tracked
  * wallet store in one write; each trade stored new goes to the engine's wallet alerts. A cut
- * block is logged as `watcher.wallet_overflow` with the chain and the account, and a read that
- * fails as `watcher.leader_read_failed` once for each new reason.
+ * block is logged as `watcher.wallet_overflow` with the chain and the account, and told to the
+ * owner in `notice.walletOverflow` at most once a day a wallet; a read that fails is logged as
+ * `watcher.leader_read_failed` once for each new reason.
  */
 export function composeLeaderWatchers(options: LeaderWatchersOptions): ComposedLeaderWatchers {
   const links: Links = {};
@@ -225,6 +231,23 @@ export function composeLeaderWatchers(options: LeaderWatchersOptions): ComposedL
       // Added before the timer, so the shutdown stops the timer first, then the watchers.
       closers.add("leader_watchers", async () => {
         await Promise.all(watches.map(async ({ runner }) => runner.stop()));
+      });
+      startRepeatingTimer({
+        name: "leader_notices",
+        everyMs: noticeEveryMs,
+        failedEvent: "engine.leader_notices_failed",
+        isLocked: () => false,
+        clock: options.clock,
+        closers,
+        logger,
+        run: async (call) => {
+          const parts = {
+            ...options.notices,
+            trackedWallets: options.tracked,
+            clock: options.clock,
+          };
+          await tellOverflows(parts, call);
+        },
       });
       startRepeatingTimer({
         name: "leader_sync",
