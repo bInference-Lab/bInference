@@ -11,7 +11,7 @@ import {
 } from "./fake-leader-answers.js";
 import { type FakeRpcAnswer, fakeRpcNode } from "./fake-rpc-http.js";
 
-export type { FakeTx } from "./fake-leader-answers.js";
+export type { FakeLog, FakeTx } from "./fake-leader-answers.js";
 
 /** A fake chain for the log watchers' tests, with no network. */
 export interface FakeLeaderChain {

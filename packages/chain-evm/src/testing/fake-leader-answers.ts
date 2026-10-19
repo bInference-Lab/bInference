@@ -39,7 +39,7 @@ export interface FakeTx {
 }
 
 /** A log a fake transaction writes besides its transfers. */
-interface FakeLog {
+export interface FakeLog {
   readonly address: Address;
   readonly topics: readonly Hex[];
   readonly data: Hex;

@@ -38,6 +38,12 @@ Rules for this package:
   endpoint refuses as too large is asked again for half the blocks, then half the wallets. Each
   read reaches its book in one write with the cursor, so a restart reads on with no gap. Its log
   queries go through a failover of their own (decision 0252).
+- Every log watcher shares one block reader, `createLogWatch` (`src/watching/log-watch.ts`): the
+  cursor checked by its block's hash, spans of at most 10 blocks, the last final block after a
+  reorganization, and retries. A new watcher gives it a plan and a read, never a second loop.
+- The launch feed (`src/launches/`, decision 0256) asks one log query a read for every launchpad's
+  declared events from any contract, hands each transaction's logs to every launchpad, reads one
+  header per block with a launch, and completes at most 50 launches a read in one Multicall3 call.
 - Prices come from the Chainlink feeds the composition root names. A feed that cannot be read, a
   broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw.
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.

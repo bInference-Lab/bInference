@@ -39,10 +39,13 @@ export interface LogWatchSteps<P> {
     signal: AbortSignal,
   ): Promise<SpanPlan<P> | undefined>;
   /**
-   * Reads the span and stores what it found in one write with the cursor at `to`. Resolves once it
-   * is stored; rejects on a fault, so the span is read again.
+   * Reads the span and stores what it found in one write with the cursor at `to`; `head` is the
+   * newest block seen. Resolves once it is stored; rejects on a fault, so the span is read again.
    */
-  read(span: BlockSpan & { readonly plan: P }, signal: AbortSignal): Promise<void>;
+  read(
+    span: BlockSpan & { readonly plan: P; readonly head: bigint },
+    signal: AbortSignal,
+  ): Promise<void>;
 }
 
 /** What a log watcher of one chain reads with. */
@@ -160,7 +163,7 @@ async function readNext<P>(run: WatchRun<P>, head: bigint): Promise<"wait" | "no
     progress.cursor = await finalCursor(run);
     return "read";
   }
-  await options.steps.read({ from, to: to.number, toHash: to.hash, plan }, signal);
+  await options.steps.read({ from, to: to.number, toHash: to.hash, plan, head }, signal);
   progress.cursor = { block: to.number, hash: to.hash };
   return "read";
 }

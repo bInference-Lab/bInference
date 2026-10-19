@@ -123,7 +123,10 @@ export type {
   LeaderWatcherState,
   TrackedLeader,
 } from "./leaders/leader-watcher.js";
-export type { LogWatchState, WatchCursor } from "./watching/log-watch.js";
+export type { LogWatch, LogWatchState, WatchCursor } from "./watching/log-watch.js";
+export { createLaunchWatcher } from "./launches/launch-watcher.js";
+export type { LaunchBook, LaunchWatcherOptions } from "./launches/launch-watcher.js";
+export type { FeedLaunch, FeedLaunchpad, LaunchRead } from "./launches/read-launch-span.js";
 export type { LeaderOverflow, LeaderRead, SpanWallet } from "./leaders/read-leader-span.js";
 export type { WalletTrade } from "./leaders/finish-trades.js";
 export type { TradeContext } from "./leaders/match-trades.js";

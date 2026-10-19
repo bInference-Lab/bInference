@@ -139,18 +139,11 @@ export function createLeaderWatcher(options: LeaderWatcherOptions): LeaderWatche
       const wallets = spanWallets(progress, tracked, at);
       return { from: firstBlockOf(at.cursor, wallets), plan: wallets };
     },
-    async read({ plan: wallets, ...span }, signal) {
-      const read = await readLeaderSpan(readerOf(options, signal), { ...span, wallets });
+    async read({ plan: wallets, from, to, toHash }, signal) {
+      const span = { from, to, toHash, wallets };
+      const read = await readLeaderSpan(readerOf(options, signal), span);
       await options.book.record(read, signal);
     },
   };
-  return createLogWatch({
-    rpc: options.rpc,
-    blocks: options.blocks,
-    clock: options.clock,
-    blockTimeMs: options.blockTimeMs,
-    steps,
-    ...(options.callTimeoutMs === undefined ? {} : { callTimeoutMs: options.callTimeoutMs }),
-    ...(options.onReadFailed === undefined ? {} : { onReadFailed: options.onReadFailed }),
-  });
+  return createLogWatch({ ...options, steps });
 }
