@@ -17,13 +17,13 @@ import {
   readFakeRpcRequest,
 } from "../testing/fake-rpc-http.js";
 import { createBlockSource } from "../watching/block-source.js";
+import type { WatchCursor } from "../watching/log-watch.js";
 import type { WalletTrade } from "./finish-trades.js";
 import {
   createLeaderWatcher,
   type LeaderBook,
   type LeaderWatcher,
   type TrackedLeader,
-  type WatchCursor,
 } from "./leader-watcher.js";
 import type { LeaderRead } from "./read-leader-span.js";
 
