@@ -97,13 +97,17 @@ export async function quoteLaunch(
   return isQuoteShaped(quote.value, context) ? ok(quote.value) : err("decode_mismatch");
 }
 
-/** Asks a launch's launchpad to upload and pin its words and picture. */
+/**
+ * Asks a launch's launchpad to upload and pin its words and picture. The launchpad gets its own
+ * copy of the picture's bytes, so nothing it writes there changes the caller's.
+ */
 export async function pinLaunch(
   context: LaunchContext,
   words: LaunchWords,
   call: VenueCallOptions,
 ): Promise<Result<LaunchPin, "venue_down">> {
-  const request: LaunchPinRequest = Object.freeze({ ...context.terms, ...words });
+  const image = Object.freeze({ ...words.image, bytes: Uint8Array.from(words.image.bytes) });
+  const request: LaunchPinRequest = Object.freeze({ ...context.terms, ...words, image });
   const answer = await callVenue(async (signal) => context.launcher.pin(request, { signal }), call);
   const pin = answer.ok ? ownCopy(launchPinSchema, answer.value) : undefined;
   return pin === undefined ? err("venue_down") : ok(pin);

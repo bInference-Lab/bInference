@@ -148,6 +148,20 @@ describe("the launch host's quote, pin and pin status", () => {
     await expect(long.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
   });
 
+  it("hands the launchpad its own copy of the picture's bytes", async () => {
+    const base = createFakeLauncher();
+    const host = hostOf({
+      ...base,
+      pin: async (request, call) => {
+        (request.image.bytes as Uint8Array).fill(0);
+        return base.pin(request, call);
+      },
+    });
+    const picture = { image: { contentType: "image/png", bytes: new Uint8Array([137, 80]) } };
+    await expect(host.pin(launch, picture, live)).resolves.toMatchObject({ ok: true });
+    expect(picture.image.bytes).toStrictEqual(new Uint8Array([137, 80]));
+  });
+
   it("gives an upload 12 seconds, longer than a read", async () => {
     const clock = createManualClock(testNowMs);
     const base = createFakeLauncher();
