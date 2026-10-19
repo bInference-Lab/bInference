@@ -119,7 +119,7 @@ describe("a P&L card", () => {
       "pnl.since",
     ]);
     expect(lines.slice(0, 1).map((line) => cardLineText(line, display))).toStrictEqual([
-      `0x6982…1933 · main · ${red} Live`,
+      `0xabab…abab · main · ${red} Live`,
     ]);
   });
 

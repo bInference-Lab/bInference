@@ -9,15 +9,11 @@ import type { ExecutedTrade } from "../positions/value-execution.js";
 import { positionFigures, type PositionFigures } from "./position-figures.js";
 
 // The chain's coin, the traded token and a stablecoin; every one has 18 decimals.
-const coin: AssetRef = assetRefSchema.parse("eip155:56/slip44:714");
+const coin: AssetRef = assetRefSchema.parse("fake:1/slip44:1");
 /** The token the hand-worked example trades. */
-export const token: AssetRef = assetRefSchema.parse(
-  "eip155:56/erc20:0x6982508145454Ce325dDbE47a25d4ec3d2311933",
-);
+export const token: AssetRef = assetRefSchema.parse(`fake:1/token:0x${"ab".repeat(20)}`);
 // The stablecoin the token is sold for.
-const stable: AssetRef = assetRefSchema.parse(
-  "eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955",
-);
+const stable: AssetRef = assetRefSchema.parse("fake:1/token:0x0000000b");
 /** The token's info, as the registry lists it. */
 export const tokenInfo: AssetInfo = { symbol: "TKN", name: "Token", decimals: 18, verified: true };
 

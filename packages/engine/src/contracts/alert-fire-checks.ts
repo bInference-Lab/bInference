@@ -11,9 +11,7 @@ const session = fixtureId("ses", 1);
 const hourMs = 3_600_000;
 
 /** The fixture token price alerts watch. */
-export const priceAsset: AssetRef = assetRefSchema.parse(
-  "eip155:56/erc20:0x55d398326f99059ff775485246999027b3197955",
-);
+export const priceAsset: AssetRef = assetRefSchema.parse("fake:1/token:0x0000000a");
 
 /** A price condition on the fixture token. */
 export const priceCondition: AlertCondition = {
@@ -26,7 +24,7 @@ export const priceCondition: AlertCondition = {
 /** A wallet condition on the fixture account `n`. */
 export function walletCondition(n: number): AlertCondition {
   const address = `0x${n.toString(16).padStart(40, "0")}`;
-  return { kind: "wallet", account: accountRefSchema.parse(`eip155:56:${address}`) };
+  return { kind: "wallet", account: accountRefSchema.parse(`fake:1:${address}`) };
 }
 
 /** Alert `n` of the subject's first agent, active and woken on each fire, made at `n`. */
