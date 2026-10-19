@@ -97,3 +97,4 @@ export type {
   WatchCursorRecord,
 } from "./leaders/tracked-wallet-record.js";
 export type { TrackedWalletStore } from "./leaders/ports.js";
+export { activityItemOf } from "./leaders/activity-item-of.js";

@@ -11,8 +11,10 @@ import { type Empty, emptyResultSchema } from "../values/empty.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { labelSchema } from "../values/label.schema.js";
 import { ownerKeyCodeSchema } from "../values/owner-key-code.schema.js";
-import { type Page, pageSchema } from "../values/page.schema.js";
+import { type Page, type PageArgs, pageArgsShape, pageSchema } from "../values/page.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
+import { type ActivityItem, activityItemSchema } from "../views/activity-item.schema.js";
+import { type AssetInfos, assetInfosSchema } from "../views/asset-info.schema.js";
 import {
   type CeilingChanges,
   ceilingChangesSchema,
@@ -21,6 +23,19 @@ import {
 } from "../views/ceiling-view.schema.js";
 import { type WalletView, walletViewSchema } from "../views/wallet-view.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
+
+/** The args of `wallet/activity`: an account the agent tracks, its trades from `from` to `to`. */
+interface ActivityArgs extends PageArgs {
+  readonly agent: ProtocolId<"agent">;
+  readonly account: AccountRef;
+  readonly from?: number;
+  readonly to?: number;
+}
+
+/** A page of an account's trades, newest first, with the info of the assets they name. */
+interface ActivityPage extends Page<ActivityItem> {
+  readonly assets: AssetInfos;
+}
 
 /** The args of an operation on one wallet. */
 interface WalletArgs {
@@ -129,6 +144,7 @@ export interface WalletOperationShapes {
     readonly args: { readonly entry: ProtocolId<"addressBook"> };
     readonly result: Empty;
   };
+  readonly "wallet/activity": { readonly args: ActivityArgs; readonly result: ActivityPage };
 }
 
 const agent = protocolIdSchema("agent");
@@ -242,5 +258,22 @@ export const walletOperations: OperationTable<WalletOperationShapes> = {
     scope: "confirm",
     args: z.strictObject({ entry }),
     result: emptyResultSchema,
+  },
+  "wallet/activity": {
+    ...readFlags,
+    name: "wallet/activity",
+    scope: "read",
+    args: z.strictObject({
+      ...pageArgsShape,
+      agent,
+      account: accountRefSchema,
+      from: epochMsSchema.exactOptional(),
+      to: epochMsSchema.exactOptional(),
+    }),
+    result: z.object({
+      items: z.array(activityItemSchema),
+      next: z.string().min(1).exactOptional(),
+      assets: assetInfosSchema,
+    }),
   },
 };

@@ -7,6 +7,7 @@ import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import { type ChatHandlers, type ChatRelay, createChatRelay } from "../chat/chat-relay.js";
 import { createRunningTurns } from "../chat/running-turns.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
+import { type ActivityHandlers, createActivityHandlers } from "../leaders/activity-handlers.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { ModelBilling } from "../ports.js";
 import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
@@ -19,11 +20,18 @@ import type { EngineOptions } from "./create-engine.js";
 import { intentViewOf } from "./intent-view-of.js";
 
 /**
- * The chat operations the engine answers itself, `usage/get`, `upload/start`, and the schedule and
- * alert operations, whose wake-ups reach the agent through the chat.
+ * The chat operations the engine answers itself, `usage/get`, `upload/start`, the schedule and
+ * alert operations, whose wake-ups reach the agent through the chat, and `wallet/activity`, which
+ * reads the wallets the alerts and copy orders track.
  */
 export interface EngineChatHandlers
-  extends ChatHandlers, UsageHandlers, UploadHandlers, ScheduleHandlers, AlertHandlers {}
+  extends
+    ChatHandlers,
+    UsageHandlers,
+    UploadHandlers,
+    ScheduleHandlers,
+    AlertHandlers,
+    ActivityHandlers {}
 
 /**
  * The engine's chat relay, whose settle pushes carry each intent's view as `intent/get` gives it,
@@ -111,6 +119,13 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       ...createUploadHandlers(uploads),
       ...schedules.handlers,
       ...alertHandlersOf(options),
+      ...createActivityHandlers({
+        trackedWallets: options.stores.trackedWallets,
+        alerts: options.stores.alerts,
+        orders: options.stores.orders,
+        agents: options.stores.agents,
+        chains: options.chains,
+      }),
     },
     settled,
     attach: (stored) => {

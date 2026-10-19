@@ -3,6 +3,7 @@ import type { EngineOperationShapes } from "../operations/engine-operations.sche
 import type { WalletOperationShapes } from "../operations/wallet-operations.schema.js";
 import {
   agentView,
+  assets,
   at,
   ids,
   intentView,
@@ -240,4 +241,26 @@ export const walletExamples: { readonly [N in keyof WalletOperationShapes]: Wire
     result: addressEntry,
   },
   "address/remove": { args: { entry: ids.entry }, result: empty },
+  "wallet/activity": {
+    args: { agent: ids.agent, account: refs.account, from: at - 86_400_000, limit: 1 },
+    result: {
+      items: [
+        {
+          at,
+          block: 51_234_567,
+          tx: "0xabc123",
+          side: "sell",
+          asset: refs.token,
+          amount: "400000000000000000000",
+          counterAsset: refs.native,
+          counterAmount: "500000000000000000",
+          valueUsdMicros: "300000000",
+          shareSoldBps: 4_000,
+          venue: "fake-swap",
+        },
+      ],
+      next: "1",
+      assets,
+    },
+  },
 };
