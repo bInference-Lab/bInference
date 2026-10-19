@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0246](../DECISIONS.md#d0246), [0247](../DECISIONS.md#d0247) and [0248](../DECISIONS.md#d0248); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0246](../DECISIONS.md#d0246), [0247](../DECISIONS.md#d0247), [0248](../DECISIONS.md#d0248), [0255](../DECISIONS.md#d0255) and [0256](../DECISIONS.md#d0256); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -384,6 +384,13 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   fields the source does not give are absent. `activeBoosts` counts the boosts bought for the
   token that are active now. `risk` is present only when the risk cache holds a fresh answer: a
   scan never calls a risk source.
+- `launch/list` reads the engine's own launch records
+  ([decision 0256](../DECISIONS.md#d0256)), newest first by time, block and log index, a page at
+  a time; `next` names the last launch's time, block and log index. Its `filters` name only
+  launchpads the engine runs and quote tokens the registry holds, else `protocol.bad_args`; a
+  `minLiquidityUsdMicros` passes no launch, since the feed reads no liquidity. Each `LaunchView`
+  carries `assets`: its token's info as its creator wrote it, unverified unless the registry lists
+  the token, and its quote token's ([decision 0255](../DECISIONS.md#d0255)).
 - `market/chart` answers OHLCV candles in USD, oldest first: each
   `{ at, openUsdMicros, highUsdMicros, lowUsdMicros, closeUsdMicros, volumeUsdMicros }`, `at` the
   candle's start. They are the `limit` newest candles that start before `to`; `limit` is 100 by

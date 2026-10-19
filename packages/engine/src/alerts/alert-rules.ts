@@ -1,11 +1,7 @@
 import { type AssetRef, canonicalAsset, type ChainRegistry } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
-import type {
-  AlertCondition,
-  LaunchFilter,
-  ProtocolErrorCode,
-  WalletCondition,
-} from "@binference/protocol";
+import type { AlertCondition, ProtocolErrorCode, WalletCondition } from "@binference/protocol";
+import { checkLaunchFilter } from "../launches/check-launch-filter.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 
 /** How long a wallet or launch alert lasts when it names no expiry: 30 days (spec 1, 8.4). */
@@ -47,21 +43,6 @@ function walletOf(chains: ChainRegistry, condition: WalletCondition): Checked<Wa
   });
 }
 
-// Every launchpad a filter names must be one this engine runs, and every quote token one the
-// registry's chains hold.
-function filtersOf(context: AlertRuleContext, filters: LaunchFilter): Checked<LaunchFilter> {
-  const { launchpads, quoteTokens } = filters;
-  if (launchpads?.some((venue) => !context.isLaunchpad(venue)) === true) {
-    return badArgs;
-  }
-  const tokens = quoteTokens?.map((token) => assetOf(context.chains, token));
-  if (tokens?.some((token) => !token.ok) === true) {
-    return badArgs;
-  }
-  const canonical = tokens?.flatMap((token) => (token.ok ? [token.value] : []));
-  return ok({ ...filters, ...(canonical === undefined ? {} : { quoteTokens: canonical }) });
-}
-
 function conditionOf(
   context: AlertRuleContext,
   condition: AlertCondition,
@@ -73,7 +54,7 @@ function conditionOf(
   if (condition.kind === "wallet") {
     return walletOf(context.chains, condition);
   }
-  const filters = filtersOf(context, condition.filters);
+  const filters = checkLaunchFilter(context, condition.filters);
   return filters.ok ? ok({ ...condition, filters: filters.value }) : filters;
 }
 

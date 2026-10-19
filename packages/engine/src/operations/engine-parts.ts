@@ -7,6 +7,7 @@ import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import { type ChatHandlers, type ChatRelay, createChatRelay } from "../chat/chat-relay.js";
 import { createRunningTurns } from "../chat/running-turns.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
+import { createLaunchHandlers, type LaunchHandlers } from "../launches/launch-handlers.js";
 import { type ActivityHandlers, createActivityHandlers } from "../leaders/activity-handlers.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { ModelBilling } from "../ports.js";
@@ -21,8 +22,9 @@ import { intentViewOf } from "./intent-view-of.js";
 
 /**
  * The chat operations the engine answers itself, `usage/get`, `upload/start`, the schedule and
- * alert operations, whose wake-ups reach the agent through the chat, and `wallet/activity`, which
- * reads the wallets the alerts and copy orders track.
+ * alert operations, whose wake-ups reach the agent through the chat, `wallet/activity`, which
+ * reads the wallets the alerts and copy orders track, and `launch/list`, which reads the launch
+ * feed's records.
  */
 export interface EngineChatHandlers
   extends
@@ -31,7 +33,8 @@ export interface EngineChatHandlers
     UploadHandlers,
     ScheduleHandlers,
     AlertHandlers,
-    ActivityHandlers {}
+    ActivityHandlers,
+    LaunchHandlers {}
 
 /**
  * The engine's chat relay, whose settle pushes carry each intent's view as `intent/get` gives it,
@@ -119,18 +122,31 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       ...createUploadHandlers(uploads),
       ...schedules.handlers,
       ...alertHandlersOf(options),
-      ...createActivityHandlers({
-        trackedWallets: options.stores.trackedWallets,
-        alerts: options.stores.alerts,
-        orders: options.stores.orders,
-        agents: options.stores.agents,
-        chains: options.chains,
-      }),
+      ...watchedHandlersOf(options),
     },
     settled,
     attach: (stored) => {
       late.stored = stored;
     },
+  };
+}
+
+// `wallet/activity` and `launch/list`, over what the leader watcher and the launch feed stored.
+function watchedHandlersOf(options: EngineOptions): ActivityHandlers & LaunchHandlers {
+  const { stores, chains, host } = options;
+  return {
+    ...createActivityHandlers({
+      trackedWallets: stores.trackedWallets,
+      alerts: stores.alerts,
+      orders: stores.orders,
+      agents: stores.agents,
+      chains,
+    }),
+    ...createLaunchHandlers({
+      launches: stores.launches,
+      chains,
+      isLaunchpad: (venue) => host.isLaunchpad(venue),
+    }),
   };
 }
 
