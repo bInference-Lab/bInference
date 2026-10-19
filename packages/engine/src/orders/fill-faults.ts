@@ -5,6 +5,7 @@ import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-int
 import type { IntentStore } from "../ports.js";
 import { fillOrderOf } from "./fill-ends.js";
 import type { OrderRecord } from "./order-record.js";
+import { isTriggerDisarmed } from "./price-triggers.js";
 
 // The states a fill passes through before its authorization confirms it.
 const beforeConfirmed: readonly IntentState[] = [
@@ -144,4 +145,19 @@ export async function isLineHeld(
   const watchMs = droppedWatchMs(parts.chains, order.request.token);
   const call = { nowMs: parts.clock.now(), watchMs, signal };
   return hasUnsettledLiveFill(parts.intents, order.agentId, call);
+}
+
+/**
+ * Whether an order may start a fill: active, before its expiry, and armed as stored, so a trigger
+ * that judged an older copy, before a fill disarmed it, fires nothing (decision 0197).
+ */
+export function canFire(
+  parts: { readonly clock: Clock },
+  order: OrderRecord | undefined,
+): order is OrderRecord {
+  return (
+    order?.state === "active" &&
+    parts.clock.now() < order.expiresAtMs &&
+    !isTriggerDisarmed(order.triggerState)
+  );
 }

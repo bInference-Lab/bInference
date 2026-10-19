@@ -1,7 +1,12 @@
+import { BinferenceError } from "@binference/core";
+import type { ManualClock } from "@binference/core/testing";
 import type { DcaOrderRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import { expectOk, testAgent, testNowMs, testToken } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
+import type { Simulator } from "../ports.js";
+import type { OrderStore } from "./ports.js";
 import { activeOrder, fillIntentsOf, fillRowsOf, startFillEngine } from "./test-fills.js";
 import { storedOrder } from "./test-orders.js";
 
@@ -19,6 +24,17 @@ const dca: DcaOrderRequest = {
   trigger: { cron: "*/5 * * * *", count: 3 },
   reason: "Buy a little every five minutes",
 };
+
+// The order store, refusing every move of the order `broken` names as a store fault.
+function failingMoves(store: OrderStore, broken: { readonly id?: string }): OrderStore {
+  return {
+    ...store,
+    move: async (moves, call) =>
+      moves.some(({ id }) => id === broken.id)
+        ? Promise.reject(new BinferenceError({ code: "store.down", message: "down" }))
+        : store.move(moves, call),
+  };
+}
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
   return rows.map(({ outcome, reason }) =>
@@ -85,5 +101,52 @@ describe("a DCA order", () => {
 
     expect((await storedOrder(test, order.id)).state).toBe("paused");
     expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+  });
+
+  it("judges orders due together at the run's instant, and a buy that reaches its line late is late", async () => {
+    // Each buy's simulation takes 25 seconds on the test clock: the fourth buy of the agent
+    // reaches the head of its line past its period's minute.
+    const slow: { clock?: ManualClock } = {};
+    const quick = createQuoteSimulator(() => undefined);
+    const simulator: Simulator = {
+      async simulate(intent, built, options) {
+        await slow.clock?.advance(25_000);
+        return quick.simulate(intent, built, options);
+      },
+    };
+    const test = await startFillEngine({ simulator });
+    const orders = [
+      await activeOrder(test, dca),
+      await activeOrder(test, dca),
+      await activeOrder(test, dca),
+      await activeOrder(test, dca),
+    ];
+    await test.engine.runSchedules(live);
+    await test.clock.advance(5 * minuteMs);
+    slow.clock = test.clock;
+
+    await test.engine.runSchedules(live);
+
+    const rows = await Promise.all(
+      orders.map(async ({ id }) => outcomes(await fillRowsOf(test, id))),
+    );
+    // The buys enter the agent's line in no set order: three in their minute, one late, none missed.
+    expect(rows.flat().toSorted()).toStrictEqual(["filled", "filled", "filled", "skipped:late"]);
+  });
+
+  it("runs every other order when one order's period fails, then reports the failure", async () => {
+    const broken: { id?: string } = {};
+    const orders = (store: OrderStore): OrderStore => failingMoves(store, broken);
+    const test = await startFillEngine({ orders });
+    const failing = await activeOrder(test, dca);
+    const working = await activeOrder(test, dca);
+    broken.id = failing.id;
+    await test.clock.advance(5 * minuteMs);
+
+    await expect(test.engine.runSchedules(live)).rejects.toMatchObject({ code: "store.down" });
+    await test.clock.advance(5 * minuteMs);
+    await expect(test.engine.runSchedules(live)).rejects.toMatchObject({ code: "store.down" });
+
+    expect(outcomes(await fillRowsOf(test, working.id))).toStrictEqual(["filled", "filled"]);
   });
 });

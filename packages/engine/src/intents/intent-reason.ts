@@ -168,7 +168,10 @@ export const intentReasons: readonly IntentReason[] = [
  * threw or ran past its deadline (decision 0197), or a live one never signed; `fill_lapsed`, a live
  * fill whose grant ran out before its wallet's queue took it (decision 0210); `missed`, a DCA
  * order's period that came while the order could not buy: the engine off or locked, or its agent
- * frozen, never bought later (decision 0246). A live order while
+ * frozen, never bought later; `late`, a DCA buy that reached the head of its agent's line of fills
+ * past its period's minute; `fill_waiting`, a DCA period whose buy could not run behind a fill
+ * still settling; `period_unreadable`, a DCA order whose period no longer reads, which ends it
+ * (decision 0246). A live order while
  * live fills are off skips with the fill reason `live_fills_off`, and a size in dollars with no USD
  * price with the policy's `no_price`. The skip is an `order_fills` row with its reason,
  * and its message is `reason.<code>` like an intent's.
@@ -181,6 +184,9 @@ export const orderSkipReasons = [
   "fill_lapsed",
   "owner_cancelled",
   "missed",
+  "late",
+  "fill_waiting",
+  "period_unreadable",
 ] as const;
 
 /** A reason an auto order skipped a fill before any intent was stored. */

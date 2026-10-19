@@ -1,15 +1,21 @@
 import type { Clock, Id, IdSource, Ratio } from "@binference/core";
-import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { isTerminalState } from "../intents/intent-state.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { AgentStore, IntentStore, PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import { isPeriodLate } from "./dca-period.js";
 import { endEmptyExit, endLateExits, wasEmptiedSince } from "./end-exit-orders.js";
 import { checkOf, resizedSaleOf } from "./fill-check.js";
-import { announceOrder, type CancelFillParts, cancelFill, skipRowOf } from "./fill-ends.js";
-import { isLineHeld, unfinishedFills, withinDeadline } from "./fill-faults.js";
+import {
+  announceOrder,
+  type CancelFillParts,
+  cancelFill,
+  proposalSkipOf,
+  skipRowOf,
+} from "./fill-ends.js";
+import { canFire, isLineHeld, unfinishedFills, withinDeadline } from "./fill-faults.js";
 import {
   agentWideReasons,
   chainFailuresInRow,
@@ -23,7 +29,6 @@ import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
-import { isTriggerDisarmed } from "./price-triggers.js";
 import { runInLine } from "./run-in-line.js";
 import { stopFailing } from "./stop-failing.js";
 
@@ -56,7 +61,15 @@ export interface OrderFills {
    * not active, already has a fill under way, or still waits after a skip, fills nothing.
    */
   run(
-    request: { readonly order: Id<"ord">; readonly price: FillPrice },
+    request: {
+      readonly order: Id<"ord">;
+      readonly price: FillPrice;
+      /**
+       * A DCA order's period, judged again at the head of the agent's line: past its minute, the
+       * fill skips as `late` (decision 0246).
+       */
+      readonly period?: { readonly dueAtMs: number };
+    },
     options: { readonly signal: AbortSignal },
   ): Promise<FillOutcome>;
   /**
@@ -138,16 +151,6 @@ async function skip(parts: OrderFillsParts, state: FillState, skipped: Skip): Pr
   await parts.orders.recordFill(row, { signal });
   await announceOrder(parts, order.id, signal);
   return "skipped";
-}
-
-// The skip of a proposal the money path refused before storing an intent: a route or venue it
-// could not find, by its own name; anything else, such as an agent archived meanwhile, a fault of
-// the fill, told once and paced.
-function proposalSkipOf(code: ProtocolErrorCode): OrderFillReason {
-  if (code === "quote.no_route") {
-    return "no_route";
-  }
-  return code === "quote.venue_down" ? "venue_down" : "fill_failed";
 }
 
 // What the fill's intent came to. Its row and notices were written with its end; they are told
@@ -322,19 +325,6 @@ async function emptyExit(
   return "ended";
 }
 
-// An order fires a fill while it is active, before its expiry, and armed as stored: a trigger
-// that judged an older copy, before a fill disarmed it, fires nothing (decision 0197).
-function canFire(
-  parts: Pick<OrderFillsParts, "clock">,
-  order: OrderRecord | undefined,
-): order is OrderRecord {
-  return (
-    order?.state === "active" &&
-    parts.clock.now() < order.expiresAtMs &&
-    !isTriggerDisarmed(order.triggerState)
-  );
-}
-
 /**
  * Creates the {@link OrderFills}. One agent's fills run one at a time, oldest trigger first, so one
  * position's exit fills never run at once; an order has one fill under way at most, and a live
@@ -351,7 +341,7 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
         await skip(parts, state, { order, reason, signal });
       }
     },
-    async run({ order: id, price }, { signal }) {
+    async run({ order: id, price, period }, { signal }) {
       const read = await parts.orders.get(id, { signal });
       if (read?.state !== "active" || state.running.has(id)) {
         return "inactive";
@@ -372,8 +362,11 @@ export function createOrderFills(parts: OrderFillsParts): OrderFills {
             return "inactive";
           }
           // A live order's line holds until the agent's live fill is counted, across a restart too.
-          return (await isLineHeld(parts, order, signal))
-            ? "waiting"
+          if (await isLineHeld(parts, order, signal)) {
+            return "waiting";
+          }
+          return period !== undefined && isPeriodLate(period.dueAtMs, parts.clock.now())
+            ? skip(parts, state, { order, reason: "late", signal })
             : fillOrFail(parts, state, { order, price, signal });
         });
       } finally {

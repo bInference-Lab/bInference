@@ -1,4 +1,5 @@
 import type { Clock, Id, IdSource, JsonValue } from "@binference/core";
+import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -317,4 +318,16 @@ export async function announceOrder(
   const rows = await parts.orders.fills({ orderId: order, limit: paceRows }, { signal });
   await announceRows(parts, rows.toReversed(), signal);
   return rows;
+}
+
+/**
+ * The skip of a proposal the money path refused before storing an intent: a route or venue it
+ * could not find, by its own name; anything else, such as an agent archived meanwhile, a fault of
+ * the fill, told once and paced.
+ */
+export function proposalSkipOf(code: ProtocolErrorCode): OrderFillReason {
+  if (code === "quote.no_route") {
+    return "no_route";
+  }
+  return code === "quote.venue_down" ? "venue_down" : "fill_failed";
 }

@@ -293,6 +293,7 @@ function intentParts(
     chains,
     intents: stores.intents,
     clock,
+    publish: options.publish,
   });
   return { answer, stored, orders, fills, triggers, dca, handlers, lowGas, cardTimer, moneyPath };
 }
@@ -371,7 +372,7 @@ export function createEngineWithFills(given: EngineOptions): {
       tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
     expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
     runSchedules: async ({ signal }) =>
-      runQueue({ schedules: chat.schedules, dca: intents.dca }, signal),
+      runQueue({ schedules: chat.schedules, dca: intents.dca, clock: options.clock }, signal),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,

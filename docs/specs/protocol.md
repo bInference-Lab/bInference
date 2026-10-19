@@ -519,7 +519,8 @@ DCA orders follow [decision 0246](../DECISIONS.md#d0246): `order/create` fills i
 order's `timezone` with `owner.timezone`, and its `count` of buys is its `maxFills`, none for no
 limit. The schedule queue's timer buys once for each period that comes, through the order's fill
 with no card, the next period kept first; a period more than 60 seconds late, while the engine was
-off or locked or the agent frozen, is recorded as a `missed` skip and never bought.
+off or locked or the agent frozen, is recorded as a `missed` skip and never bought, and a buy that
+reaches its agent's line past its minute as `late`.
 
 An order that ends because another exit order emptied its position (spec 6, section 5) moves to
 `ended` with `endReason: "position_closed"`, and pushes `order/changed`.
