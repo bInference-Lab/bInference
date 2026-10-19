@@ -32,7 +32,7 @@
   "effects_differ": "the simulation showed other results than the quote, so nothing was sent",
   "nothing_to_sell": "the wallet holds too little of this token",
   "balance_unread": "the wallet's balance could not be read; it tries again",
-  "needs_launch_wallet": "a live trade on a launch's own curve runs only from the agent's launch wallet: make one with `binference wallet create --launch` and fund it, or leave out the wallet you named",
+  "needs_launch_wallet": "a token launch, or a live trade on a launch's own curve, runs only from the agent's launch wallet: make one with `binference wallet create --launch` and fund it, or leave out the wallet you named",
   "launch_unread": "binference could not read the launch's curve from its launchpad, so nothing was sent; try again",
   "launch_moved": "the launchpad no longer holds the token on the curve its quote named, as after its graduation, so nothing was sent; propose the trade again",
   "image_unreadable": "binference could not read the picture as a PNG, JPEG or WebP of at most 5 MiB, so nothing was uploaded; upload it again",
