@@ -9,6 +9,7 @@ import { followChat } from "./chat-feed.js";
 import { type ChatInputParts, onAction } from "./chat-input.js";
 import { keyAction, type PressedKey } from "./chat-keys.js";
 import { agentNameText, failureText, wordsOf } from "./chat-lines.js";
+import { createChatNotices } from "./chat-notices.js";
 import { type ChatScreen, createChatScreen } from "./chat-screen.js";
 import { createChatStore } from "./chat-state.js";
 import type { ChatTerminal } from "./chat-terminal.js";
@@ -71,14 +72,15 @@ function openSession(options: TerminalChatOptions, signal: AbortSignal): Session
   };
 }
 
-// Subscribes the agent's chat and the cards; answers the parts the keys reach and how to
-// unsubscribe.
+// Subscribes the agent's chat, the cards and the notices; answers the parts the keys reach and how
+// to unsubscribe.
 function follow(session: Session, report: (error: ErrorOptions["cause"]) => void) {
   const { context } = session;
   const feed = createJobQueue(report);
   const transcript = createChatTranscript(context, context.words("tui.you"));
   const question = createAgentQuestion(context);
   const cards = createChatCards(context);
+  const notices = createChatNotices(context);
   const later = (job: () => Promise<void>) => async (): Promise<void> => {
     feed(job);
     return Promise.resolve();
@@ -88,6 +90,10 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
     context.client.subscribe("intent", {
       onPush: () => feed(async () => cards.reload()),
       refetch: later(async () => cards.reload()),
+    }),
+    context.client.subscribe("notice", {
+      onPush: (push) => feed(async () => notices.pushed(push)),
+      refetch: later(async () => notices.readOn()),
     }),
   ];
   const parts: ChatInputParts = {
@@ -144,7 +150,7 @@ async function tick(options: TerminalChatOptions, session: Session): Promise<voi
 /**
  * Runs terminal chat with one agent until the owner leaves (Ctrl+C, or Ctrl+D on an empty line),
  * a stop signal arrives, or the engine stops answering for good. It prints the newest messages of
- * the agent's session, then each answer, status line, question and card as it comes, and
+ * the agent's session, then each answer, status line, question, card and notice as it comes, and
  * keeps a live area at the bottom: the running turn, the open question's keys, the first card's
  * time left and keys, and the line the owner types. On the way out it unsubscribes every topic,
  * gives the terminal back as it found it and stops reading keys; the caller closes the client.
