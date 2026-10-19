@@ -36,6 +36,7 @@ export type {
   AlertRecord,
 } from "./alerts/alert-record.js";
 export type { AlertStore } from "./alerts/ports.js";
+export { activeAlerts } from "./alerts/alert-events.js";
 export { alertNoticeWindowMs, hasHeldToTell } from "./alerts/alert-notice-window.js";
 export type { AlertFiring, WatchedLaunch, WatchedTrade } from "./alerts/fire-alerts.js";
 export {

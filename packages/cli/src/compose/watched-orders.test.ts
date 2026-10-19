@@ -42,14 +42,20 @@ const noAlerts = { list: async () => Promise.resolve([]) };
 function alertsOn(tokens: readonly AssetRef[]) {
   const queries: AlertQuery[] = [];
   const alerts = tokens.map(
-    (asset) => ({ condition: { kind: "price", asset } }) as unknown as AlertRecord,
+    (asset, index) =>
+      ({
+        id: `alr_${String(index)}`,
+        createdAtMs: index + 1,
+        condition: { kind: "price", asset },
+      }) as unknown as AlertRecord,
   );
   return {
     queries,
     store: {
       async list(query: AlertQuery) {
         queries.push(query);
-        return await Promise.resolve(alerts);
+        const from = query.after?.createdAtMs ?? 0;
+        return await Promise.resolve(alerts.filter(({ createdAtMs }) => createdAtMs > from));
       },
     },
   };
@@ -129,6 +135,7 @@ describe("the watched orders", () => {
         [tokenOf("09"), 1],
       ]),
     );
-    expect(alerts.queries).toStrictEqual([{ states: ["active"], kind: "price", limit: 1_000 }]);
+    expect(alerts.queries[0]).toStrictEqual({ states: ["active"], limit: 1_000, kind: "price" });
+    expect(alerts.queries).toHaveLength(2);
   });
 });

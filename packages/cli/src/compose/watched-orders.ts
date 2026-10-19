@@ -1,5 +1,6 @@
 import { type AssetRef, assetRefParts, type ChainRef } from "@binference/chain";
 import {
+  activeAlerts,
   type AlertStore,
   hasPriceTrigger,
   type OrderRecord,
@@ -46,13 +47,12 @@ async function activeOrders(
     : [...page, ...(await activeOrders(orders, signal, last))];
 }
 
-// The tokens of the active price alerts; an install holds at most 50 alerts per agent.
+// The tokens of the active price alerts, page after page.
 async function alertTokens(
   alerts: Pick<AlertStore, "list">,
   signal: AbortSignal,
 ): Promise<readonly AssetRef[]> {
-  const query = { states: ["active"], kind: "price", limit: pageSize } as const;
-  const active = await alerts.list(query, { signal });
+  const active = await activeAlerts(alerts, { kind: "price" }, { signal });
   return active.flatMap(({ condition }) => (condition.kind === "price" ? [condition.asset] : []));
 }
 
