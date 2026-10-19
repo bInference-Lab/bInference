@@ -108,13 +108,14 @@ Rules for this package:
 - Copy orders (`src/orders/copy-*.ts`, decisions 0260 and 0261) copy their leader's trades the
   leader watcher stored, which `copy-orders.ts` reads after the last one each order took: the take
   is kept in the order's trigger state (`copy-state.ts`) before the trade's fill, so a trade is
-  copied once; the start records a buy a stop cut off as `missed` (`copy-repair.ts`), and the
-  runner sells a sale so cut off late (`copy-taken.ts`). At the head of its agent's line,
-  `copy-fills.ts` plans the fill: a late buy, an unread share or token and the daily caps skip
-  before any intent, a leader's buy nothing values skips as `leader_unpriced`, and a late sale
-  still sells; a buy at the least of its dollars per buy and the leader's own buy, a sale of the leader's
-  share of what the order bought. A change to a cap or a sale's size changes
-  `copy-orders.property.test.ts`.
+  copied once; the start records a buy a stop cut off as `missed` (`copy-repair.ts`), and the runner
+  sells a sale so cut off late (`copy-taken.ts`). At the head of its agent's line, `copy-fills.ts`
+  plans the fill: a late buy, an unread share or token and the daily caps skip before any intent, a
+  leader's buy nothing values skips as `leader_unpriced`, and a late sale still sells; a buy at the
+  least of its dollars per buy and the leader's own buy, a sale of the leader's share of what the
+  order bought. Every copy skip is told, five an hour per order with the alerts' notice hour
+  (`notices/notice-hour.ts`), the rest in one `notice.copyHeld` (`copy-notice-hour.ts`,
+  `copy-held.ts`). A change to a cap or a sale's size changes `copy-orders.property.test.ts`.
 - The price triggers (`src/orders/order-triggers.ts`, decision 0196) judge each confirmed price of
   a watched token against its active price orders in `price-triggers.ts`, a pure judgment of
   levels, never of crossings, and hand a triggered order to its fill at once. A trailing stop's

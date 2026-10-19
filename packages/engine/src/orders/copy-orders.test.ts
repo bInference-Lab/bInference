@@ -196,4 +196,25 @@ describe("the copy orders' runner", () => {
     const sales = (await fillIntentsOf(test)).filter(({ kind }) => kind === "sell");
     expect(sales).toHaveLength(1);
   });
+
+  it("tells five skips an hour, then one line for the rest once the hour ends", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    const atMs = test.clock.now();
+    const buys = [1, 2, 3, 4, 5, 6, 7].map((n) => leaderTrade(n, { side: "buy", atMs }));
+    await storeTrades(test, buys);
+    await test.clock.advance(61_000);
+
+    await test.engine.runCopies(live);
+    await test.clock.advance(3_600_000);
+    await test.engine.tickOrders(live);
+    await test.engine.tickOrders(live);
+
+    expect(await fillRowsOf(test, order.id)).toHaveLength(7);
+    const told = noticesOf(test).map((data) => JSON.stringify(data));
+    expect(told.filter((text) => text.includes('"reason.late"'))).toHaveLength(5);
+    const held = told.filter((text) => text.includes('"notice.copyHeld"'));
+    expect(held).toHaveLength(1);
+    expect(held[0]).toContain('"count":"2"');
+  });
 });

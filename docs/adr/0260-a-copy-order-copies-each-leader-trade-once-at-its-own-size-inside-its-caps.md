@@ -62,18 +62,24 @@ Every order fill runs the money path with no card, held to its order's bounds
 - **Risk and caps as any fill.** Each buy runs the policy and the token risk check; a honeypot or a
   blocked token ends `risk_blocked` and is skipped, with a notice that names the leader's trade and
   its token. The per-trade and rolling caps hold as for any trade.
-- **Pace and notices.** A copy order waits after skips only once its fills failed on chain, as a
-  DCA order does: each trade is its own. A fill is told with `fill.copyBuy` or `fill.copySell`; a
-  skip with `notice.skipped`, its order named by the part `fill.copyTrade`, the leader's trade and
-  its token, once per reason in a row as every order's skips.
+- **Pace and notices** (the owner's choice, 2026-10-20). A copy order waits after skips only once
+  its fills failed on chain, as a DCA order does: each trade is its own. A fill is told with
+  `fill.copyBuy` or `fill.copySell`. Every skip is a notice, `notice.skipped`, its order named by
+  the part `fill.copyTrade`, the leader's trade and its token; at most five an hour per copy order,
+  counted with the same notice hour as an alert's
+  ([decision 0245](0245-an-alert-fires-once-per-match-tells-the-owner-and-wakes-the-agent-marked.md)),
+  kept in the order's state. The rest are counted and told in one line, `notice.copyHeld`, "12 more
+  copy trades skipped this hour, see the console", when the hour ends or before the next hour's
+  first; it is muted with the skips.
 
 ## Consequences
 
 - `TrackedWalletStore.since` lists a wallet's trades after a stored number.
 - A copy order's trigger state holds its last trade, the trade under way, its buys of the day and
   its holdings by token; a fill that cannot count its trade in it is not recorded.
-- Spec 6 sections 4 and 5 and spec 4 section 4.3 say so; `share_unread`, `leader_unpriced` and
-  `fill.copyTrade` have English and Chinese messages.
+- Spec 6 sections 4 and 5 and spec 4 sections 4 and 4.3 say so; `share_unread`,
+  `leader_unpriced`, `fill.copyTrade`, `fill.copySellLate` and `notice.copyHeld` have English and
+  Chinese messages.
 
 ## Alternatives
 
@@ -87,5 +93,8 @@ Every order fill runs the money path with no card, held to its order's bounds
   for itself.
 - **Read a missing share from the leader's balance now.** Rejected: later transfers change the
   balance, and a wrong share sells the wrong amount.
+- **Tell a copy order's skips once per reason in a row,** as other orders do. Rejected by the
+  owner: each skip is a leader trade not copied, and the owner hears of each, within the hour's
+  count.
 - **A table of copied trades.** Rejected for the order's own state, which its moves already write
   under its version.

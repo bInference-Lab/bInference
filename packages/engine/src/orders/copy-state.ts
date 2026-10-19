@@ -3,6 +3,7 @@ import { type Bps, bpsSchema, decimalStringSchema, type JsonValue } from "@binfe
 import { z } from "zod";
 import { type DocumentCodec, documentCodec } from "../intents/intent-documents.schema.js";
 import type { TokenFacts } from "../money-path/token-facts.js";
+import { type NoticeHour, noticeHourSchema } from "../notices/notice-hour.js";
 import { epochMsSchema } from "../records/record-fields.js";
 
 /** The window a copy order's daily cap counts its buys in: the last 24 hours (decision 0260). */
@@ -68,6 +69,8 @@ export interface CopyState {
   readonly taking?: CopyTaking;
   readonly buys: readonly CopyBuy[];
   readonly held: readonly CopyHolding[];
+  /** The hour its skips are told in: five, then one line for the rest (decision 0260). */
+  readonly notices?: NoticeHour;
 }
 
 const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
@@ -94,6 +97,7 @@ const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
     .exactOptional(),
   buys: z.array(z.strictObject({ atMs: epochMsSchema, usdMicros: decimalStringSchema })),
   held: z.array(z.strictObject({ asset: assetRefSchema, base: decimalStringSchema })),
+  notices: noticeHourSchema.exactOptional(),
 });
 
 /** A copy order's state as its `trigger_state` holds it: amounts as decimal strings. */

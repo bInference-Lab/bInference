@@ -55,7 +55,8 @@ export async function skipFill(
   skipped: Skip,
 ): Promise<"skipped"> {
   const { order, reason, signal, cap } = skipped;
-  const tells = agentWideTells(state, skipped);
+  // A copy order tells every skip, within its notice hour (decision 0260).
+  const tells = order.kind === "copy" ? undefined : agentWideTells(state, skipped);
   const atMs = parts.clock.now();
   const told = tells === undefined ? {} : { tells };
   const settings =

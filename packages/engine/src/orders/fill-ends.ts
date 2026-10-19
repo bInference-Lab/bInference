@@ -1,4 +1,4 @@
-import type { Clock, Id, IdSource, JsonValue } from "@binference/core";
+import type { Clock, Id, IdSource } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
@@ -9,6 +9,7 @@ import type { IntentMove } from "../intents/intent-change-of.js";
 import { createIntentStateMachine, type IntentStep } from "../intents/state-machine.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { type DueRow, toldOf } from "./copy-notice-hour.js";
 import { type LandedFillParts, landedFillWrite } from "./fill-landed.js";
 import { skippedNotice } from "./fill-notices.js";
 import { isNewReason, paceRows } from "./fill-pacing.js";
@@ -53,10 +54,15 @@ async function capOf(parts: SkipRowParts, skip: SkipOf) {
   return { usedUsdMicros, capUsdMicros: intent.settings.limits.rollingDayUsdMicros };
 }
 
-// Whether the owner hears the skip: as told, or once per reason in a row (decision 0197).
+// Whether the owner hears the skip: as told, a copy order's always, or once per reason in a row
+// (decision 0197).
 async function tells(parts: SkipRowParts, skip: SkipOf): Promise<boolean> {
   if (skip.tells !== undefined) {
     return skip.tells;
+  }
+  // Every copy skip is told, within its order's notice hour as it is announced (decision 0260).
+  if (skip.order.kind === "copy") {
+    return true;
   }
   const query = { orderId: skip.order.id, limit: paceRows };
   return isNewReason(await parts.orders.fills(query, { signal: skip.signal }), skip.reason);
@@ -293,8 +299,9 @@ export interface AnnounceParts {
 }
 
 /**
- * Tells the owner the notices of rows not yet announced, oldest first, then marks them announced
- * (decision 0197). A stop between the two tells them again at the next start.
+ * Tells the owner the notices of rows not yet announced, oldest first, order by order, then marks
+ * them announced (decision 0197); a copy order's skips past five in its hour are counted instead
+ * and told in one line (decision 0260). A stop between the two tells them again at the next start.
  */
 export async function announceRows(
   parts: AnnounceParts,
@@ -302,14 +309,19 @@ export async function announceRows(
   signal: AbortSignal,
 ): Promise<number> {
   const due = rows.filter(
-    (row): row is OrderFillRecord & { readonly notices: readonly JsonValue[] } =>
-      row.notices !== undefined && row.announcedAtMs === undefined,
+    (row): row is DueRow => row.notices !== undefined && row.announcedAtMs === undefined,
   );
   if (due.length === 0) {
     return 0;
   }
-  for (const row of due) {
-    row.notices.forEach((data) => {
+  // Each order's rows together, in the order their first row came; a copy order's skips within its
+  // notice hour (decision 0260).
+  const orders = [...new Set(due.map(({ orderId }) => orderId))];
+  for (const orderId of orders) {
+    const own = due.filter((row) => row.orderId === orderId);
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one order's notices after another's
+    const told = await toldOf(parts, own, signal);
+    told.forEach((data) => {
       parts.publish({ topic: "notice", kind: "notice/new", data });
     });
   }

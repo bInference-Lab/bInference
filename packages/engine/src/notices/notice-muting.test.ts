@@ -29,6 +29,13 @@ describe("a notice the owner muted", () => {
     await expect(isNoticeMutedFor(agents, { ...fill, agent: second }, live)).resolves.toBe(false);
   });
 
+  it("mutes a copy order's line of held skips with the skips", async () => {
+    const agents = await agentsMuting(["skipped"], []);
+    const held = { key: "notice.copyHeld", values: { count: "12" } };
+    await expect(isNoticeMutedFor(agents, { ...held, agent: testAgent }, live)).resolves.toBe(true);
+    await expect(isNoticeMutedFor(agents, { ...held, agent: second }, live)).resolves.toBe(false);
+  });
+
   it("goes when it is a security notice, whatever the stored settings say", async () => {
     const agents = await agentsMuting(["frozen", "rescue"]);
     const frozen = { key: "notice.frozen", agent: testAgent, values: { agent: "main" } };

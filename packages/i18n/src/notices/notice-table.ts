@@ -256,6 +256,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   },
   "notice.alertLaunch": { key: "notice.alertLaunch", values: {}, parts: { launch } },
   "notice.alertHeld": { key: "notice.alertHeld", agent: tableAgent, values: { count: "12" } },
+  "notice.copyHeld": { key: "notice.copyHeld", agent: tableAgent, values: { count: "12" } },
   "notice.ordersEnded": {
     key: "notice.ordersEnded",
     values: { token: "PEPE", count: "2" },
