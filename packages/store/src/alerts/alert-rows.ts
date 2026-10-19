@@ -4,6 +4,7 @@ import {
   alertConditionDocument,
   type AlertRecord,
   alertRecordSchema,
+  watchedAssetOf,
 } from "@binference/engine/orders";
 import type { Selectable } from "kysely";
 import type { AlertsTable } from "../databases/alert-tables.js";
@@ -27,6 +28,15 @@ export function toAlertRecord(row: Selectable<AlertsTable>): AlertRecord {
     ...field("firedAtMs", row.fired_at),
     ...field("expiresAtMs", row.expires_at),
     ...field("lastMessageId", row.last_message_id),
+    ...(row.notice_window_at === null
+      ? {}
+      : {
+          noticeWindow: {
+            startedAtMs: row.notice_window_at,
+            sent: row.notices_sent,
+            held: row.notices_held,
+          },
+        }),
   });
 }
 
@@ -39,6 +49,7 @@ export function alertRowOf(record: AlertRecord): Selectable<AlertsTable> {
     condition: jsonText(alertConditionDocument.encode(condition)),
     kind: condition.kind,
     account: condition.kind === "wallet" ? condition.account : null,
+    asset: orNull(watchedAssetOf(condition)),
     state: record.state,
     wake: record.wake ? 1 : 0,
     fires: record.fires,
@@ -49,6 +60,9 @@ export function alertRowOf(record: AlertRecord): Selectable<AlertsTable> {
     fired_at: orNull(record.firedAtMs),
     expires_at: orNull(record.expiresAtMs),
     last_message_id: orNull(record.lastMessageId),
+    notice_window_at: orNull(record.noticeWindow?.startedAtMs),
+    notices_sent: record.noticeWindow?.sent ?? 0,
+    notices_held: record.noticeWindow?.held ?? 0,
   };
 }
 

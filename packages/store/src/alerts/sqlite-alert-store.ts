@@ -5,8 +5,10 @@ import { fireAlertTask } from "./alert-fire-task.js";
 import {
   createAlertTask,
   deleteAlertTask,
+  endAlertTask,
   expireAlertsTask,
   getAlertTask,
+  heldNoticesTask,
   listAlertsTask,
 } from "./alert-tasks.js";
 
@@ -17,6 +19,8 @@ export const alertTasks: readonly TaskRunner[] = [
   listAlertsTask,
   deleteAlertTask,
   expireAlertsTask,
+  endAlertTask,
+  heldNoticesTask,
   fireAlertTask,
 ];
 
@@ -28,6 +32,8 @@ export function createSqliteAlertStore(host: StoreHost): AlertStore {
     list: bindTask(host, listAlertsTask),
     delete: bindTask(host, deleteAlertTask),
     expire: bindTask(host, expireAlertsTask),
+    end: bindTask(host, endAlertTask),
+    heldNotices: bindTask(host, heldNoticesTask),
     fire: bindTask(host, fireAlertTask),
   };
 }

@@ -2,6 +2,7 @@ import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/
 import { z } from "zod";
 import { type AgentInboxMessage, agentInboxMessageSchema } from "../chat/agent-inbox-record.js";
 import { epochMsSchema } from "../records/record-fields.js";
+import { noticeOfFire } from "./alert-notice-window.js";
 import { type AlertRecord, alertRecordSchema } from "./alert-record.js";
 
 /** The most wake-ups one agent's alerts start in any 60 minutes (protocol spec, 8.4). */
@@ -12,6 +13,9 @@ export const alertWakeWindowMs = 3_600_000;
 
 /** How long the record of each fire is kept: the hourly limit and `wakeSkipped` read it. */
 export const alertFireKeepMs = 604_800_000;
+
+/** The most fire records one agent keeps, its newest; older ones are dropped with each fire. */
+export const alertFireRowsPerAgent = 1_000;
 
 /** Every reason a fire's wake-up starts no turn. */
 const alertWakeSkips = ["frozen", "archived", "budget", "hourly", "busy"] as const;
@@ -71,6 +75,10 @@ export const alertFireDraftSchema: z.ZodType<AlertFireDraft> = z.strictObject({
  */
 export interface AlertFireWritten {
   readonly alert: AlertRecord;
+  /** Whether the fire's notice goes out: at most five an hour per alert (decision 0245). */
+  readonly notify: boolean;
+  /** The matches the alert's previous notice hour held back, which this fire's notice tells. */
+  readonly heldBefore?: number;
   readonly woke: boolean;
   readonly wakeSkipped?: number;
   readonly skip?: AlertWakeSkip;
@@ -80,6 +88,8 @@ export interface AlertFireWritten {
 /** Parses what a fire wrote. */
 export const alertFireWrittenSchema: z.ZodType<AlertFireWritten> = z.strictObject({
   alert: alertRecordSchema,
+  notify: z.boolean(),
+  heldBefore: z.int().positive().exactOptional(),
   woke: z.boolean(),
   wakeSkipped: z.int().positive().exactOptional(),
   skip: z.enum(alertWakeSkips).exactOptional(),
@@ -87,12 +97,27 @@ export const alertFireWrittenSchema: z.ZodType<AlertFireWritten> = z.strictObjec
 });
 
 /**
- * An alert as one fire at `atMs` leaves it, which every store adapter writes: one fire more, fired
- * then, and `fired` for a price alert, which fires once; a wallet or launch alert stays active.
+ * An alert as one fire at `atMs` leaves it: one fire more, fired then, and `fired` for a price
+ * alert, which fires once; a wallet or launch alert stays active. Its notice hour is not moved.
  */
 export function alertAfterFire(alert: AlertRecord, atMs: number): AlertRecord {
   const state = alert.condition.kind === "price" ? "fired" : alert.state;
   return { ...alert, state, fires: alert.fires + 1, firedAtMs: atMs, changedAtMs: atMs };
+}
+
+/**
+ * What one fire writes of its alert, which every store adapter writes and answers: the alert
+ * after it, its notice hour moved, whether its notice goes out, and the matches the previous hour
+ * held back.
+ */
+export function alertFireOf(
+  alert: AlertRecord,
+  atMs: number,
+): Pick<AlertFireWritten, "alert" | "notify" | "heldBefore"> {
+  const notice = noticeOfFire(alert.noticeWindow, atMs);
+  const after = { ...alertAfterFire(alert, atMs), noticeWindow: notice.window };
+  const told = notice.heldBefore > 0 ? { heldBefore: notice.heldBefore } : {};
+  return { alert: after, notify: notice.notify, ...told };
 }
 
 /** Whether an active alert may fire at `atMs` as the fire it expects: before its expiry. */
@@ -121,7 +146,7 @@ export type AlertWakeOutcome =
 export function wakeAnswerOf(
   wake: AlertWakeOutcome,
   wakeSkipped: number,
-): Omit<AlertFireWritten, "alert"> {
+): Omit<AlertFireWritten, "alert" | "notify" | "heldBefore"> {
   if (wake.outcome === "quiet") {
     return { woke: false };
   }

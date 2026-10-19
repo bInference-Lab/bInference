@@ -2,7 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import { type AgentInboxMessage, maxUntakenMessages } from "@binference/engine/chat";
 import {
-  alertAfterFire,
+  alertFireOf,
+  alertFireRowsPerAgent,
   type AlertFireDraft,
   alertFireDraftSchema,
   alertFireKeepMs,
@@ -129,7 +130,7 @@ function heldBack(database: DatabaseSync, alert: AlertRecord): number {
   return row?.count ?? 0;
 }
 
-// Records the fire's row, and forgets the agent's rows older than a week.
+// Records the fire's row, and forgets the agent's rows older than a week or past its newest 1,000.
 function keep(
   database: DatabaseSync,
   alert: AlertRecord,
@@ -139,7 +140,7 @@ function keep(
   },
 ): void {
   const { draft, wake } = run;
-  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   execute(
     kysely
       .deleteFrom("alert_fires")
@@ -157,6 +158,23 @@ function keep(
       message_id: "message" in wake ? wake.message.id : null,
     }),
   );
+  const oldestDropped = takeFirst(
+    kysely
+      .selectFrom("alert_fires")
+      .select("at")
+      .where("agent_id", "=", alert.agentId)
+      .orderBy("at", "desc")
+      .limit(1)
+      .offset(alertFireRowsPerAgent),
+  );
+  if (oldestDropped !== undefined) {
+    execute(
+      kysely
+        .deleteFrom("alert_fires")
+        .where("agent_id", "=", alert.agentId)
+        .where("at", "<=", oldestDropped.at),
+    );
+  }
 }
 
 /**
@@ -179,9 +197,9 @@ export const fireAlertTask: StoreTask<
     const wake = wakeOf(database, alert, draft);
     const wakeSkipped = wake.outcome === "woke" ? heldBack(database, alert) : 0;
     keep(database, alert, { draft, wake });
-    const after = alertAfterFire(alert, draft.atMs);
+    const fired = alertFireOf(alert, draft.atMs);
     const lastMessage = "message" in wake ? { lastMessageId: wake.message.id } : {};
-    const written = writeAlert(database, { ...after, ...lastMessage });
-    return ok({ alert: written, ...wakeAnswerOf(wake, wakeSkipped) });
+    const written = writeAlert(database, { ...fired.alert, ...lastMessage });
+    return ok({ ...fired, alert: written, ...wakeAnswerOf(wake, wakeSkipped) });
   },
 });

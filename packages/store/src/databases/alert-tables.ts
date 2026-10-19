@@ -7,6 +7,7 @@ export interface AlertsTable {
   condition: string;
   kind: string;
   account: string | null;
+  asset: string | null;
   state: string;
   wake: number;
   fires: number;
@@ -17,6 +18,9 @@ export interface AlertsTable {
   fired_at: number | null;
   expires_at: number | null;
   last_message_id: string | null;
+  notice_window_at: number | null;
+  notices_sent: number;
+  notices_held: number;
 }
 
 /** `alert_fires`: one fire of an alert, and what it did about its wake-up. */

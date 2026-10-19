@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { accountRefSchema, assetRefSchema } from "@binference/chain";
+import { accountRefSchema, type AssetRef, assetRefSchema } from "@binference/chain";
 import type { AlertCondition } from "@binference/protocol";
 import type { AlertFireDraft } from "../alerts/alert-fire.js";
 import type { AlertRecord } from "../alerts/alert-record.js";
@@ -10,10 +10,15 @@ import { assertRefusesAborted, fixtureId, inOrder, live } from "./store-fixtures
 const session = fixtureId("ses", 1);
 const hourMs = 3_600_000;
 
-/** A price condition on a fixture token. */
+/** The fixture token price alerts watch. */
+export const priceAsset: AssetRef = assetRefSchema.parse(
+  "eip155:56/erc20:0x55d398326f99059ff775485246999027b3197955",
+);
+
+/** A price condition on the fixture token. */
 export const priceCondition: AlertCondition = {
   kind: "price",
-  asset: assetRefSchema.parse("eip155:56/erc20:0x55d398326f99059ff775485246999027b3197955"),
+  asset: priceAsset,
   direction: "above",
   price: 2n ** 64n + 1n,
 };
@@ -58,6 +63,12 @@ function fireOf(n: number, atMs: number, expectedFires = 0): AlertFireDraft {
       payload: { fired: atMs },
     },
   };
+}
+
+// The fire of alert 1 at `atMs`, after `n` fires, without a wake-up.
+function quietFireOf(n: number, atMs: number): AlertFireDraft {
+  const { wake: _wake, ...draft } = fireOf(1, atMs, n);
+  return draft;
 }
 
 async function created(subject: AlertSubject, alert: AlertRecord): Promise<void> {
@@ -125,6 +136,39 @@ async function recordsSkips(subject: AlertSubject): Promise<void> {
   assert.deepEqual(busy.ok && [busy.value.woke, busy.value.skip], [false, "busy"]);
 }
 
+// Five notices in an alert's hour, the rest counted, told once the hour ended; a fire after it
+// begins a new hour.
+async function holdsNoticesToFiveAnHour(subject: AlertSubject): Promise<void> {
+  const { alerts } = subject;
+  await created(subject, alertOf(subject, 1, { wake: false }));
+  const fired = await inOrder([0, 1, 2, 3, 4, 5, 6], async (n) =>
+    alerts.fire(quietFireOf(n, 1_000 + n * 60_000), live()),
+  );
+  assert.deepEqual(
+    fired.map((each) => each.ok && each.value.notify),
+    [true, true, true, true, true, false, false],
+  );
+  assert.deepEqual(await alerts.heldNotices({ atMs: 1_000 + hourMs - 1, limit: 10 }, live()), []);
+  const told = await alerts.heldNotices({ atMs: 1_000 + hourMs, limit: 10 }, live());
+  assert.deepEqual(
+    told.map(({ alert, held }) => [alert.id, held]),
+    [[fixtureId("alr", 1), 2]],
+  );
+  assert.deepEqual(await alerts.heldNotices({ atMs: 1_000 + hourMs, limit: 10 }, live()), []);
+  const next = await alerts.fire(quietFireOf(7, 1_000 + 2 * hourMs), live());
+  assert.deepEqual(next.ok && [next.value.notify, next.value.heldBefore], [true, undefined]);
+}
+
+// A fire that begins a new hour before any line told the old one's held matches tells them.
+async function tellsHeldMatchesWithTheNextHour(subject: AlertSubject): Promise<void> {
+  const { alerts } = subject;
+  await created(subject, alertOf(subject, 1, { wake: false }));
+  await inOrder([0, 1, 2, 3, 4, 5], async (n) => alerts.fire(quietFireOf(n, 1_000 + n), live()));
+  const next = await alerts.fire(quietFireOf(6, 1_000 + hourMs), live());
+  assert.deepEqual(next.ok && [next.value.notify, next.value.heldBefore], [true, 1]);
+  assert.deepEqual(await alerts.heldNotices({ atMs: 3 * hourMs, limit: 10 }, live()), []);
+}
+
 async function refusesStaleFires(subject: AlertSubject): Promise<void> {
   const { alerts } = subject;
   const stale = { ok: false, error: "stale" };
@@ -146,5 +190,7 @@ export const alertFireChecks: readonly (readonly [
   ["wakes the agent once and replaces the wake-up while it waits", wakesAndReplacesWhileWaiting],
   ["holds the agent's wake-ups to 10 an hour and counts those held back", holdsWakesToTenAnHour],
   ["records a skipped wake-up and skips while the inbox is full", recordsSkips],
+  ["holds an alert's notices to five an hour and tells the rest once", holdsNoticesToFiveAnHour],
+  ["tells the held matches with the next hour's first notice", tellsHeldMatchesWithTheNextHour],
   ["refuses a fire the alert cannot take", refusesStaleFires],
 ];

@@ -1,3 +1,4 @@
+import { type AssetRef, assetRefSchema } from "@binference/chain";
 import { type Id, idSchema } from "@binference/core";
 import {
   type AlertCondition,
@@ -8,6 +9,7 @@ import {
 import { z } from "zod";
 import { type DocumentCodec, documentCodec } from "../intents/intent-documents.schema.js";
 import { epochMsSchema, pageLimitSchema, shortTextSchema } from "../records/record-fields.js";
+import { type AlertNoticeWindow, alertNoticeWindowSchema } from "./alert-notice-window.js";
 
 /** The most active alerts one agent holds; one more is `alert.too_many` (protocol spec, 8.4). */
 export const maxActiveAlerts = 50;
@@ -40,6 +42,8 @@ export interface AlertRecord {
   readonly expiresAtMs?: number;
   /** The wake-up its last fire stored, so a newer fire replaces it while it waits. */
   readonly lastMessageId?: Id<"msg">;
+  /** Its notice hour, once it fired: at most five notices an hour (decision 0245). */
+  readonly noticeWindow?: AlertNoticeWindow;
 }
 
 /** Parses an alert as a store keeps it. */
@@ -57,6 +61,7 @@ export const alertRecordSchema: z.ZodType<AlertRecord> = z.strictObject({
   firedAtMs: epochMsSchema.exactOptional(),
   expiresAtMs: epochMsSchema.exactOptional(),
   lastMessageId: idSchema("msg").exactOptional(),
+  noticeWindow: alertNoticeWindowSchema.exactOptional(),
 });
 
 /** An alert's condition as JSON keeps it: prices and dollar values as decimal strings. */
@@ -69,13 +74,14 @@ export const alertConditionDocument: DocumentCodec<AlertCondition> = documentCod
 export type AlertKind = AlertCondition["kind"];
 
 /**
- * Which alerts to list: in `states`, of one agent or every agent, of one kind or any, the oldest
- * first, then by id, after `after` when given.
+ * Which alerts to list: in `states`, of one agent or every agent, of one kind or any, of price
+ * alerts on one asset or any, the oldest first, then by id, after `after` when given.
  */
 export interface AlertQuery {
   readonly states: readonly AlertState[];
   readonly agentId?: Id<"agt">;
   readonly kind?: AlertKind;
+  readonly asset?: AssetRef;
   readonly after?: { readonly createdAtMs: number; readonly id: Id<"alr"> };
   readonly limit: number;
 }
@@ -85,6 +91,7 @@ export const alertQuerySchema: z.ZodType<AlertQuery> = z.strictObject({
   states: z.array(z.enum(alertStates)).min(1),
   agentId: idSchema("agt").exactOptional(),
   kind: z.enum(["price", "wallet", "launch"]).exactOptional(),
+  asset: assetRefSchema.exactOptional(),
   after: z.strictObject({ createdAtMs: epochMsSchema, id: idSchema("alr") }).exactOptional(),
   limit: pageLimitSchema,
 });
@@ -112,3 +119,20 @@ export const alertExpirySchema: z.ZodType<AlertExpiry> = z.strictObject({
   atMs: epochMsSchema,
   limit: pageLimitSchema,
 });
+
+/** An alert whose notice hour ended with matches held back, and how many. */
+export interface AlertHeld {
+  readonly alert: AlertRecord;
+  readonly held: number;
+}
+
+/** Parses a held-back count. */
+export const alertHeldSchema: z.ZodType<AlertHeld> = z.strictObject({
+  alert: alertRecordSchema,
+  held: z.int().positive(),
+});
+
+/** The asset a price alert watches, which the store keeps beside its condition for its queries. */
+export function watchedAssetOf(condition: AlertCondition): AssetRef | undefined {
+  return condition.kind === "price" ? condition.asset : undefined;
+}

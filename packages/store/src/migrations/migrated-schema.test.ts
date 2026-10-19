@@ -134,8 +134,9 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   order_fills: names("id order_id intent_id outcome reason at notices announced_at"),
   alerts: names(
-    "id agent_id condition kind account state wake fires outside_content created_by created_at " +
-      "changed_at fired_at expires_at last_message_id",
+    "id agent_id condition kind account asset state wake fires outside_content created_by " +
+      "created_at changed_at fired_at expires_at last_message_id notice_window_at notices_sent " +
+      "notices_held",
   ),
   alert_fires: names("alert_id fires agent_id at outcome reason message_id"),
   webhook_rules: names(
@@ -230,7 +231,12 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   departures: ["index|intent_id", "index|wallet_id,at"],
   orders: ["index|state,agent_id", "index|wallet_id,paper,state", "unique|intent_id"],
   order_fills: ["index|at|partial", "index|order_id,at"],
-  alerts: ["index|state,account", "index|state,agent_id", "index|state,expires_at"],
+  alerts: [
+    "index|state,account",
+    "index|state,agent_id",
+    "index|state,asset",
+    "index|state,expires_at",
+  ],
   alert_fires: ["index|agent_id,at"],
   webhook_rules: ["index|state"],
   webhook_events: ["index|rule_id,alert_id", "index|rule_id,received_at"],

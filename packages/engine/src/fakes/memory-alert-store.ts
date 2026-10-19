@@ -1,8 +1,9 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import {
   type AlertFireDraft,
-  alertAfterFire,
   alertFireKeepMs,
+  alertFireOf,
+  alertFireRowsPerAgent,
   type AlertFireWritten,
   type AlertWake,
   alertWakeWindowMs,
@@ -11,11 +12,14 @@ import {
   maxAlertWakesPerHour,
   wakeAnswerOf,
 } from "../alerts/alert-fire.js";
+import { hasHeldToTell } from "../alerts/alert-notice-window.js";
 import {
+  type AlertHeld,
   type AlertQuery,
   type AlertRecord,
   maxActiveAlerts,
   maxTrackedWallets,
+  watchedAssetOf,
 } from "../alerts/alert-record.js";
 import type { AlertStore } from "../alerts/ports.js";
 import type { AgentStore } from "../ports.js";
@@ -41,15 +45,21 @@ interface Rows {
   readonly fires: Map<string, FireRow>;
 }
 
+function isAfter(alert: AlertRecord, after: AlertQuery["after"]): boolean {
+  return (
+    after === undefined ||
+    alert.createdAtMs > after.createdAtMs ||
+    (alert.createdAtMs === after.createdAtMs && alert.id > after.id)
+  );
+}
+
 function matches(alert: AlertRecord, query: AlertQuery): boolean {
-  const { after } = query;
   return (
     query.states.includes(alert.state) &&
     (query.agentId === undefined || alert.agentId === query.agentId) &&
     (query.kind === undefined || alert.condition.kind === query.kind) &&
-    (after === undefined ||
-      alert.createdAtMs > after.createdAtMs ||
-      (alert.createdAtMs === after.createdAtMs && alert.id > after.id))
+    (query.asset === undefined || watchedAssetOf(alert.condition) === query.asset) &&
+    isAfter(alert, query.after)
   );
 }
 
@@ -64,16 +74,36 @@ function activeOf(rows: Rows): readonly AlertRecord[] {
   return [...rows.alerts.values()].filter((alert) => alert.state === "active");
 }
 
-// The accounts the install tracks for wallet alerts: those of its active wallet alerts.
-function trackedAccounts(rows: Rows): ReadonlySet<string> {
+// The accounts the install tracks for wallet alerts: those of the active wallet alerts of agents
+// not archived.
+function trackedAccounts(rows: Rows, archived: ReadonlySet<Id<"agt">>): ReadonlySet<string> {
   return new Set(
-    activeOf(rows).flatMap(({ condition }) =>
-      condition.kind === "wallet" ? [condition.account] : [],
+    activeOf(rows).flatMap(({ condition, agentId }) =>
+      condition.kind === "wallet" && !archived.has(agentId) ? [condition.account] : [],
     ),
   );
 }
 
-function create(rows: Rows, alert: AlertRecord): Result<AlertRecord, "too_many" | "track_limit"> {
+// The agents of the active alerts that are gone or archived.
+async function archivedAgents(
+  rows: Rows,
+  agents: MemoryAlertStoreOptions["agents"],
+  call: { readonly signal: AbortSignal },
+): Promise<ReadonlySet<Id<"agt">>> {
+  const ids = [...new Set(activeOf(rows).map(({ agentId }) => agentId))];
+  const read = await Promise.all(ids.map(async (id) => [id, await agents.get(id, call)] as const));
+  return new Set(
+    read.flatMap(([id, settings]) =>
+      settings === undefined || settings.agent.archivedAtMs !== undefined ? [id] : [],
+    ),
+  );
+}
+
+function create(
+  rows: Rows,
+  alert: AlertRecord,
+  archived: ReadonlySet<Id<"agt">>,
+): Result<AlertRecord, "too_many" | "track_limit"> {
   if (rows.alerts.has(alert.id)) {
     throw constraintFault(`the alert id ${alert.id} is in use`);
   }
@@ -81,7 +111,7 @@ function create(rows: Rows, alert: AlertRecord): Result<AlertRecord, "too_many" 
   if (held.length >= maxActiveAlerts) {
     return err("too_many");
   }
-  const tracked = trackedAccounts(rows);
+  const tracked = trackedAccounts(rows, archived);
   const { condition } = alert;
   if (
     condition.kind === "wallet" &&
@@ -153,14 +183,17 @@ function wakeOf(
     : { outcome: "replaced", message: waiting };
 }
 
-// Keeps the fire's row, and forgets the rows older than a week.
+// Keeps the fire's row, and forgets the agent's rows older than a week or past its newest 1,000.
 function keep(rows: Rows, draft: AlertFireDraft, row: FireRow): void {
-  for (const [key, kept] of rows.fires) {
-    if (kept.atMs < draft.atMs - alertFireKeepMs) {
+  rows.fires.set(`${draft.id}:${String(draft.expectedFires)}`, row);
+  const own = [...rows.fires.keys()].filter((key) => rows.fires.get(key)?.agentId === row.agentId);
+  const tooMany = own.length - alertFireRowsPerAgent;
+  own.forEach((key, index) => {
+    const kept = rows.fires.get(key);
+    if (index < tooMany || (kept !== undefined && kept.atMs < draft.atMs - alertFireKeepMs)) {
       rows.fires.delete(key);
     }
-  }
-  rows.fires.set(`${draft.id}:${String(draft.expectedFires)}`, row);
+  });
 }
 
 function fire(
@@ -175,9 +208,10 @@ function fire(
   const wake = wakeOf(rows, inbox, { alert, draft });
   const wakeSkipped = wake.outcome === "woke" ? heldBack(rows, alert.agentId) : 0;
   keep(rows, draft, { agentId: alert.agentId, atMs: draft.atMs, wake });
-  const after = alertAfterFire(alert, draft.atMs);
+  const fired = alertFireOf(alert, draft.atMs);
   const lastMessage = "message" in wake ? { lastMessageId: wake.message.id } : {};
-  return ok({ alert: put(rows, { ...after, ...lastMessage }), ...wakeAnswerOf(wake, wakeSkipped) });
+  const written = put(rows, { ...fired.alert, ...lastMessage });
+  return ok({ ...fired, alert: written, ...wakeAnswerOf(wake, wakeSkipped) });
 }
 
 function end(rows: Rows, atMs: number, limit: number): readonly AlertRecord[] {
@@ -188,6 +222,36 @@ function end(rows: Rows, atMs: number, limit: number): readonly AlertRecord[] {
   return due.map((alert) => put(rows, { ...alert, state: "ended", changedAtMs: atMs }));
 }
 
+// The alerts whose notice hour ended with matches held back, their counts cleared.
+function heldNotices(rows: Rows, atMs: number, limit: number): readonly AlertHeld[] {
+  const due = [...rows.alerts.values()]
+    .filter(({ noticeWindow }) => hasHeldToTell(noticeWindow, atMs))
+    .toSorted(byCreation)
+    .slice(0, limit);
+  return due.flatMap(({ noticeWindow, ...alert }) =>
+    noticeWindow === undefined
+      ? []
+      : [
+          {
+            alert: put(rows, { ...alert, noticeWindow: { ...noticeWindow, held: 0 } }),
+            held: noticeWindow.held,
+          },
+        ],
+  );
+}
+
+// Moves an active alert to `state`, at `atMs`.
+function closeOne(
+  rows: Rows,
+  change: { readonly id: Id<"alr">; readonly atMs: number },
+  state: "deleted" | "ended",
+): AlertRecord | undefined {
+  const stored = rows.alerts.get(change.id);
+  return stored?.state === "active"
+    ? put(rows, { ...stored, state, changedAtMs: change.atMs })
+    : undefined;
+}
+
 /** Creates an empty in-memory {@link AlertStore} for tests. */
 export function createMemoryAlertStore(options: MemoryAlertStoreOptions): AlertStore {
   const rows: Rows = { alerts: new Map(), fires: new Map() };
@@ -195,17 +259,15 @@ export function createMemoryAlertStore(options: MemoryAlertStoreOptions): AlertS
     async create(alert, call) {
       call.signal.throwIfAborted();
       const agent = await options.agents.get(alert.agentId, call);
-      return agent === undefined ? err("not_found") : create(rows, alert);
+      const archived = await archivedAgents(rows, options.agents, call);
+      return agent === undefined ? err("not_found") : create(rows, alert, archived);
     },
     get: async (id, call) => memoryCall(call, () => structuredClone(rows.alerts.get(id))),
     list: async (query, call) => memoryCall(call, () => structuredClone(listed(rows, query))),
-    delete: async ({ id, atMs }, call) =>
-      memoryCall(call, () => {
-        const stored = rows.alerts.get(id);
-        return stored?.state === "active"
-          ? put(rows, { ...stored, state: "deleted", changedAtMs: atMs })
-          : undefined;
-      }),
+    delete: async (change, call) => memoryCall(call, () => closeOne(rows, change, "deleted")),
+    end: async (change, call) => memoryCall(call, () => closeOne(rows, change, "ended")),
+    heldNotices: async ({ atMs, limit }, call) =>
+      memoryCall(call, () => heldNotices(rows, atMs, limit)),
     expire: async ({ atMs, limit }, call) => memoryCall(call, () => end(rows, atMs, limit)),
     fire: async (draft, call) => memoryCall(call, () => fire(rows, options.agentInbox, draft)),
   };

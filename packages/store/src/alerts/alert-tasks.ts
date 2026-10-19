@@ -5,6 +5,10 @@ import {
   alertDeleteSchema,
   type AlertExpiry,
   alertExpirySchema,
+  type AlertHeld,
+  alertHeldSchema,
+  alertNoticeWindowMs,
+  hasHeldToTell,
   type AlertQuery,
   alertQuerySchema,
   type AlertRecord,
@@ -44,7 +48,14 @@ function refusalOf(database: DatabaseSync, alert: AlertRecord): CreateRefusal | 
   if (condition.kind !== "wallet") {
     return undefined;
   }
-  const tracked = active.where("account", "is not", null);
+  // An archived agent's wallet alerts hold no slot.
+  const tracked = active
+    .where("account", "is not", null)
+    .where(
+      "agent_id",
+      "in",
+      kysely.selectFrom("agents").select("id").where("archived_at", "is", null),
+    );
   const same = takeFirst(tracked.select("id").where("account", "=", condition.account));
   const accounts = takeFirst(
     tracked.select((builder) => builder.fn.count<number>("account").distinct().as("count")),
@@ -95,10 +106,11 @@ export const listAlertsTask: StoreTask<AlertQuery, readonly AlertRecord[]> = def
     const inStates = kysely.selectFrom("alerts").selectAll().where("state", "in", query.states);
     const ofAgent = agentId === undefined ? inStates : inStates.where("agent_id", "=", agentId);
     const ofKind = kind === undefined ? ofAgent : ofAgent.where("kind", "=", kind);
+    const ofAsset = query.asset === undefined ? ofKind : ofKind.where("asset", "=", query.asset);
     const paged =
       after === undefined
-        ? ofKind
-        : ofKind.where((where) =>
+        ? ofAsset
+        : ofAsset.where((where) =>
             where.or([
               where("created_at", ">", after.createdAtMs),
               where.and([where("created_at", "=", after.createdAtMs), where("id", ">", after.id)]),
@@ -109,17 +121,56 @@ export const listAlertsTask: StoreTask<AlertQuery, readonly AlertRecord[]> = def
   },
 });
 
+// Moves an active alert to `state`.
+function closeOne(database: DatabaseSync, change: AlertDelete, state: "deleted" | "ended") {
+  const stored = readAlert(database, change.id);
+  return stored?.state === "active"
+    ? writeAlert(database, { ...stored, state, changedAtMs: change.atMs })
+    : undefined;
+}
+
 /** Deletes an active alert. */
 export const deleteAlertTask: StoreTask<AlertDelete, AlertRecord | undefined> = defineTask({
   name: "alerts.delete",
   access: "write",
   input: alertDeleteSchema,
   output: alertRecordSchema.optional(),
-  run(database, { id, atMs }) {
-    const stored = readAlert(database, id);
-    return stored?.state === "active"
-      ? writeAlert(database, { ...stored, state: "deleted", changedAtMs: atMs })
-      : undefined;
+  run: (database, change) => closeOne(database, change, "deleted"),
+});
+
+/** Ends an active alert. */
+export const endAlertTask: StoreTask<AlertDelete, AlertRecord | undefined> = defineTask({
+  name: "alerts.end",
+  access: "write",
+  input: alertDeleteSchema,
+  output: alertRecordSchema.optional(),
+  run: (database, change) => closeOne(database, change, "ended"),
+});
+
+/** The alerts whose notice hour ended with matches held back, their counts cleared. */
+export const heldNoticesTask: StoreTask<AlertExpiry, readonly AlertHeld[]> = defineTask({
+  name: "alerts.heldNotices",
+  access: "write",
+  input: alertExpirySchema,
+  output: z.array(alertHeldSchema),
+  run(database, { atMs, limit }) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const due = kysely
+      .selectFrom("alerts")
+      .selectAll()
+      .where("notices_held", ">", 0)
+      .where("notice_window_at", "<=", atMs - alertNoticeWindowMs)
+      .orderBy("created_at")
+      .orderBy("id")
+      .limit(limit);
+    return execute(due).rows.flatMap((row) => {
+      const { noticeWindow, ...alert } = toAlertRecord(row);
+      if (noticeWindow === undefined || !hasHeldToTell(noticeWindow, atMs)) {
+        return [];
+      }
+      const cleared = { ...alert, noticeWindow: { ...noticeWindow, held: 0 } };
+      return [{ alert: writeAlert(database, cleared), held: noticeWindow.held }];
+    });
   },
 });
 
