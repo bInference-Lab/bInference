@@ -24,8 +24,12 @@ export async function copyStateNow(test: TestEngine, order: Id<"ord">): Promise<
   return state;
 }
 
-// Writes a copy order's take of a leader's trade, as its runner does before the trade's fill.
-async function takeTrade(test: TestEngine, order: Id<"ord">, taking: CopyTaking): Promise<void> {
+/** Writes a copy order's take of a leader's trade, as its runner does before the trade's fill. */
+export async function takeTrade(
+  test: TestEngine,
+  order: Id<"ord">,
+  taking: CopyTaking,
+): Promise<void> {
   const read = await storedOrder(test, order);
   const state = await copyStateNow(test, order);
   const triggerState = copyStateDocument.encode(takenState(state, taking));

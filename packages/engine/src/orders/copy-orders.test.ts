@@ -4,9 +4,10 @@ import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
 import { testNowMs, testToken } from "../intents/test-intents.js";
+import type { StoredActivity } from "../leaders/tracked-wallet-record.js";
 import { testChains } from "../operations/test-engine.js";
-import { copiedHeldOf } from "./copy-state.js";
-import { copyStateNow, leaderTrade, storeTrades } from "./test-copies.js";
+import { copiedHeldOf, type CopyTaking } from "./copy-state.js";
+import { copyStateNow, leaderTrade, storeTrades, takeTrade } from "./test-copies.js";
 import {
   activeOrder,
   fillIntentsOf,
@@ -21,6 +22,15 @@ const live = { signal: new AbortController().signal };
 const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
 // The fake venue pays two base units for one, so the token's price keeps a copy's sale small.
 const prices = new Map(fillPrices).set(testToken, { numerator: 1n, denominator: 10n ** 9n });
+
+// The take of a stored buy of the test token, the moment it was made.
+function takingOf(stored: StoredActivity | undefined): CopyTaking {
+  if (stored === undefined) {
+    throw new Error("Expected the stored trade.");
+  }
+  const { id, atMs } = stored;
+  return { id, side: "buy", asset: testToken, atMs, takenAtMs: atMs };
+}
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
   return rows.map(({ outcome, reason }) =>
@@ -122,5 +132,22 @@ describe("the copy orders' runner", () => {
 
     expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
     expect(await fillIntentsOf(test)).toHaveLength(1);
+  });
+
+  it("records a trade a stop cut off between its take and its fill as missed, never copied", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    const [stored] = await storeTrades(test, [
+      leaderTrade(1, { side: "buy", atMs: test.clock.now() }),
+    ]);
+    await takeTrade(test, order.id, takingOf(stored));
+
+    const again = test.restart();
+    await again.repairOrderFills(live);
+    await again.repairOrderFills(live);
+    await again.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:missed"]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
   });
 });

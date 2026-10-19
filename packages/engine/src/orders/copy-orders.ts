@@ -53,8 +53,8 @@ const pageSize = 1_000;
 // The leader trades one read of an order takes; the next read goes on from the last.
 const tradesPerRead = 50;
 
-// Every copy order in the given states, page after page.
-async function copyOrdersIn(
+/** Every copy order in the given states, page after page. */
+export async function copyOrdersIn(
   orders: Pick<OrderStore, "list">,
   call: {
     readonly states: readonly ("active" | "paused")[];
