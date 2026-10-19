@@ -13,7 +13,6 @@ import {
   maxAlertWakesPerHour,
   wakeAnswerOf,
 } from "../alerts/alert-fire.js";
-import { hasHeldToTell } from "../alerts/alert-notice-window.js";
 import {
   type AlertHeld,
   type AlertQuery,
@@ -22,6 +21,7 @@ import {
   watchedAssetOf,
 } from "../alerts/alert-record.js";
 import type { AlertStore } from "../alerts/ports.js";
+import { hasHeldToTell } from "../notices/notice-hour.js";
 import type { AgentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";

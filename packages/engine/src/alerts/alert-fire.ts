@@ -1,8 +1,8 @@
 import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { z } from "zod";
 import { type AgentInboxMessage, agentInboxMessageSchema } from "../chat/agent-inbox-record.js";
+import { countNotice } from "../notices/notice-hour.js";
 import { epochMsSchema } from "../records/record-fields.js";
-import { noticeOfFire } from "./alert-notice-window.js";
 import { type AlertRecord, alertRecordSchema } from "./alert-record.js";
 
 /** The most wake-ups one agent's alerts start in any 60 minutes (protocol spec, 8.4). */
@@ -114,7 +114,7 @@ export function alertFireOf(
   alert: AlertRecord,
   atMs: number,
 ): Pick<AlertFireWritten, "alert" | "notify" | "heldBefore"> {
-  const notice = noticeOfFire(alert.noticeWindow, atMs);
+  const notice = countNotice(alert.noticeWindow, atMs);
   const after = { ...alertAfterFire(alert, atMs), noticeWindow: notice.window };
   const told = notice.heldBefore > 0 ? { heldBefore: notice.heldBefore } : {};
   return { alert: after, notify: notice.notify, ...told };

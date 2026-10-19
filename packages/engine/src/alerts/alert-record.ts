@@ -8,8 +8,8 @@ import {
 } from "@binference/protocol";
 import { z } from "zod";
 import { type DocumentCodec, documentCodec } from "../intents/intent-documents.schema.js";
+import { type NoticeHour, noticeHourSchema } from "../notices/notice-hour.js";
 import { epochMsSchema, pageLimitSchema, shortTextSchema } from "../records/record-fields.js";
-import { type AlertNoticeWindow, alertNoticeWindowSchema } from "./alert-notice-window.js";
 
 /** The most active alerts one agent holds; one more is `alert.too_many` (protocol spec, 8.4). */
 export const maxActiveAlerts = 50;
@@ -43,7 +43,7 @@ export interface AlertRecord {
   /** The wake-up its last fire stored, so a newer fire replaces it while it waits. */
   readonly lastMessageId?: Id<"msg">;
   /** Its notice hour, once it fired: at most five notices an hour (decision 0245). */
-  readonly noticeWindow?: AlertNoticeWindow;
+  readonly noticeWindow?: NoticeHour;
 }
 
 /** Parses an alert as a store keeps it. */
@@ -61,7 +61,7 @@ export const alertRecordSchema: z.ZodType<AlertRecord> = z.strictObject({
   firedAtMs: epochMsSchema.exactOptional(),
   expiresAtMs: epochMsSchema.exactOptional(),
   lastMessageId: idSchema("msg").exactOptional(),
-  noticeWindow: alertNoticeWindowSchema.exactOptional(),
+  noticeWindow: noticeHourSchema.exactOptional(),
 });
 
 /** An alert's condition as JSON keeps it: prices and dollar values as decimal strings. */

@@ -7,7 +7,7 @@ import {
   alertExpirySchema,
   type AlertHeld,
   alertHeldSchema,
-  alertNoticeWindowMs,
+  noticeHourMs,
   hasHeldToTell,
   type AlertQuery,
   alertQuerySchema,
@@ -149,7 +149,7 @@ export const heldNoticesTask: StoreTask<AlertExpiry, readonly AlertHeld[]> = def
       .selectFrom("alerts")
       .selectAll()
       .where("notices_held", ">", 0)
-      .where("notice_window_at", "<=", atMs - alertNoticeWindowMs)
+      .where("notice_window_at", "<=", atMs - noticeHourMs)
       .orderBy("created_at")
       .orderBy("id")
       .limit(limit);
