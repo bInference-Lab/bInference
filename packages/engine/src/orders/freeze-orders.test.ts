@@ -1,30 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
-import { testCall, type TestEngine } from "../operations/test-engine.js";
+import type { TestEngine } from "../operations/test-engine.js";
 import {
   createdOrder,
+  freeze,
   startOrderEngine,
   storedOrder,
   tapCard,
   testStopLoss,
+  unfreeze,
 } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
-
-async function freeze(test: TestEngine): Promise<void> {
-  expectOk(await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));
-}
-
-// The owner asks for the agent's unfreeze and taps Confirm on its card.
-async function unfreeze(test: TestEngine): Promise<void> {
-  const { intent } = expectOk(
-    await test.engine.handlers["safety/unfreeze"](testCall({ agent: testAgent })),
-  );
-  if (intent === undefined) {
-    throw new Error("Expected an unfreeze card.");
-  }
-  await tapCard(test, intent, "confirm");
-}
 
 async function activeOrders(test: TestEngine) {
   const query = { states: ["active"] as const, agentId: testAgent, limit: 10 };

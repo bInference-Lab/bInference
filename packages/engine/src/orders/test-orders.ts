@@ -70,3 +70,19 @@ export async function storedOrder(test: TestEngine, order: Id<"ord">): Promise<O
   }
   return found;
 }
+
+/** Freezes the test agent from the CLI. */
+export async function freeze(test: TestEngine): Promise<void> {
+  expectOk(await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));
+}
+
+/** The owner asks for the test agent's unfreeze and taps Confirm on its card. */
+export async function unfreeze(test: TestEngine): Promise<void> {
+  const { intent } = expectOk(
+    await test.engine.handlers["safety/unfreeze"](testCall({ agent: testAgent })),
+  );
+  if (intent === undefined) {
+    throw new Error("Expected an unfreeze card.");
+  }
+  await tapCard(test, intent, "confirm");
+}
