@@ -1,7 +1,9 @@
+import { accountRefSchema } from "@binference/chain";
 import { idSchema } from "@binference/core";
 import type { OrderState } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { testAgent, testToken, testWallet } from "../intents/test-intents.js";
+import { testAgent, testCoin, testToken, testWallet } from "../intents/test-intents.js";
+import { copyStartOf, copyStateDocument } from "./copy-state.js";
 import {
   countsLandedFill,
   moveOrder,
@@ -192,6 +194,51 @@ describe("the order state machine", () => {
 
     expect(recorded).toMatchObject({ ok: true, value: { state: "active", fills: 1 } });
     expect(recorded).not.toHaveProperty("value.triggerState");
+    expect(landed).not.toHaveProperty("value.triggerState");
+  });
+
+  it("starts a copy order's state as it becomes active and counts each fill's trade in it", () => {
+    const leader = accountRefSchema.parse("fake:1:0x0000000000000000000000000000000000000009");
+    const copy = orderIn("awaiting_confirmation", {
+      kind: "copy",
+      maxFills: 9,
+      request: {
+        kind: "copy",
+        agent: testAgent,
+        token: testCoin,
+        side: "buy",
+        size: { usdMicros: 20n },
+        trigger: { leader, perBuyUsdMicros: 20n, dailyUsdMicros: 200n },
+      },
+    });
+    const confirmed = moveOrder(copy, tap, 5);
+    expect(confirmed).toMatchObject({
+      ok: true,
+      value: { triggerState: copyStateDocument.encode(copyStartOf(5)) },
+    });
+
+    const active = orderIn("active", {
+      ...copy,
+      state: "active",
+      cardId,
+      triggerState: copyStateDocument.encode(copyStartOf(5)),
+    });
+    const traded = {
+      side: "buy" as const,
+      amountIn: { asset: testCoin, base: 1n },
+      amountOut: { asset: testToken, base: 9n },
+      usdMicros: 20n,
+      atMs: 6,
+    };
+    const recorded = moveOrder(active, { type: "fill_recorded", traded }, 6);
+    const held = [{ asset: testToken, base: "9" }];
+    expect(recorded).toMatchObject({ ok: true, value: { triggerState: { held } } });
+    expect(moveOrder(active, { type: "fill_recorded" }, 6)).toStrictEqual({
+      ok: false,
+      error: "no_trade",
+    });
+    const landed = moveOrder(active, { type: "fill_landed" }, 6);
+    expect(landed).toMatchObject({ ok: true, value: { state: "active", fills: 1 } });
     expect(landed).not.toHaveProperty("value.triggerState");
   });
 });

@@ -1,5 +1,12 @@
 import { err, type Id, type JsonValue, ok, type Result } from "@binference/core";
 import type { OrderState } from "@binference/protocol";
+import {
+  copyStartOf,
+  copyStateAfterFill,
+  copyStateDocument,
+  copyStateOf,
+  type CopyTraded,
+} from "./copy-state.js";
 import { hasPriceTrigger, isExitOrder, type OrderMove, type OrderRecord } from "./order-record.js";
 import { endedOrderStates, isOrderEnded } from "./order-states.js";
 import { disarmedAfterFill } from "./price-triggers.js";
@@ -36,11 +43,15 @@ export type OrderTrigger =
       readonly type: "fill_recorded";
       /** The fill sold everything its position held (spec 6, section 5). */
       readonly emptiesPosition?: boolean;
+      /** What a copy order's fill traded, which its state counts (decision 0260). */
+      readonly traded?: CopyTraded;
     }
   | {
       readonly type: "fill_landed";
       /** The fill sold everything its position held (spec 6, section 5). */
       readonly emptiesPosition?: boolean;
+      /** What a copy order's fill traded, which its state counts (decision 0260). */
+      readonly traded?: CopyTraded;
     }
   | { readonly type: "position_closed" }
   | { readonly type: "expiry_noticed" }
@@ -65,7 +76,9 @@ export type OrderProblem =
   /** Only an exit order ends with its position. */
   | "not_exit"
   /** The expiry notice went already, or its time has not come. */
-  | "not_due";
+  | "not_due"
+  /** A copy order's fill that names no trade, or an order whose copy state does not read. */
+  | "no_trade";
 
 type TriggerType = OrderTrigger["type"];
 type TriggerOf<T extends TriggerType> = Extract<OrderTrigger, { readonly type: T }>;
@@ -98,16 +111,31 @@ function confirmCard({
   if (trigger.isAgentFrozen) {
     return err("frozen");
   }
-  return isPast(order, nowMs)
-    ? err("expired")
-    : ok({ state: "active", cardId: confirmation.cardId });
+  if (isPast(order, nowMs)) {
+    return err("expired");
+  }
+  // A copy order copies the leader's trades from the moment it becomes active (decision 0260).
+  const copy =
+    order.kind === "copy" ? { triggerState: copyStateDocument.encode(copyStartOf(nowMs)) } : {};
+  return ok({ state: "active", cardId: confirmation.cardId, ...copy });
 }
 
 // What an order with a fill left keeps after a fill: a price order waits, disarmed, for its
 // condition to stop holding, a trailing stop's peak starting again (decision 0197); a DCA order
-// keeps its next period (decision 0246).
-function afterFill(order: OrderRecord): Pick<Change, "triggerState"> {
-  return hasPriceTrigger(order.kind) ? { triggerState: disarmedAfterFill } : {};
+// keeps its next period (decision 0246); a copy order counts what its fill traded (decision 0260),
+// and one whose fill names no trade records nothing.
+function afterFill(
+  order: OrderRecord,
+  traded: CopyTraded | undefined,
+): Result<Pick<Change, "triggerState">, OrderProblem> {
+  if (order.kind !== "copy") {
+    return ok(hasPriceTrigger(order.kind) ? { triggerState: disarmedAfterFill } : {});
+  }
+  const state = copyStateOf(order.triggerState);
+  if (state === undefined || traded === undefined) {
+    return err("no_trade");
+  }
+  return ok({ triggerState: copyStateDocument.encode(copyStateAfterFill(state, traded)) });
 }
 
 // A fill counts once; the last fill fills the order. An exit order whose fill emptied its position
@@ -128,9 +156,11 @@ function recordFill({
   if (fills === maxFills) {
     return ok({ state: "filled", fills });
   }
-  return trigger.emptiesPosition === true && isExitOrder(order.request)
-    ? ok({ state: "ended", fills, endReason: "position_closed" })
-    : ok({ state: "active", fills, ...afterFill(order) });
+  if (trigger.emptiesPosition === true && isExitOrder(order.request)) {
+    return ok({ state: "ended", fills, endReason: "position_closed" });
+  }
+  const kept = afterFill(order, trigger.traded);
+  return kept.ok ? ok({ state: "active", fills, ...kept.value }) : kept;
 }
 
 // A live fill that landed counts whatever its order became while it was under way (decision
@@ -145,9 +175,12 @@ function landFill({ order, trigger }: GuardInput<"fill_landed">): Result<Change,
   if (maxFills !== undefined && fills >= maxFills) {
     return ok({ state: "filled", fills });
   }
-  return trigger.emptiesPosition === true && isExitOrder(order.request)
-    ? ok({ state: "ended", fills, endReason: "position_closed" })
-    : ok({ state: order.state, fills, ...afterFill(order) });
+  if (trigger.emptiesPosition === true && isExitOrder(order.request)) {
+    return ok({ state: "ended", fills, endReason: "position_closed" });
+  }
+  // The funds moved: a copy order whose state cannot count them still counts the fill.
+  const kept = afterFill(order, trigger.traded);
+  return ok({ state: order.state, fills, ...(kept.ok ? kept.value : {}) });
 }
 
 function resume({ order, nowMs }: GuardInput<"agent_unfrozen">): Result<Change, OrderProblem> {
