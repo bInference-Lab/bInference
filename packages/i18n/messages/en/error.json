@@ -57,6 +57,7 @@
   "intent.card_changed": "The price moved and the terms changed. Check the new quote, then confirm again.",
   "intent.not_yours": "Another client started this action, so this one cannot cancel it. Cancel it in the console or the CLI.",
   "intent.owner_only": "Only the owner starts a token launch. Suggest the launch to the owner in chat, with its name, symbol and picture, and let the owner start it.",
+  "intent.launch_waiting": "Another token launch of this agent is under way, waiting for its pin or the owner's confirmation. Let it finish, or deny its card, before starting the next.",
   "order.not_found": "This auto order does not exist. Check your auto orders in the console.",
   "order.wrong_state": "This auto order already ended or changed. Refresh to see where it stands.",
   "order.kind_unavailable": "This kind of auto order is not available yet. Use a limit, take-profit, stop-loss or trailing stop order.",

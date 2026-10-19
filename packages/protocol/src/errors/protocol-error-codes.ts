@@ -61,6 +61,7 @@ export const protocolErrorCodes = [
   "intent.card_changed",
   "intent.not_yours",
   "intent.owner_only",
+  "intent.launch_waiting",
   "order.not_found",
   "order.wrong_state",
   "order.kind_unavailable",

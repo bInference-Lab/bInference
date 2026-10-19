@@ -1,5 +1,5 @@
 import type { LaunchQuote, TxDraft } from "@binference/chain";
-import { err, ok, type Result } from "@binference/core";
+import { err, type Id, ok, type Result } from "@binference/core";
 import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { planDocument } from "../intents/intent-documents.schema.js";
@@ -9,6 +9,7 @@ import {
   type TokenLaunchQuote,
   tokenLaunchQuoteDocument,
 } from "../intents/token-launch-quote.js";
+import { statesBeforeSigning } from "../intents/transition-table.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import { minOutFloor } from "../venues/build-checks.js";
 import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
@@ -17,6 +18,7 @@ import { followLaunchPin } from "./follow-launch-pin.js";
 import { pinWaitOf, toldIfEnded } from "./launch-ending.js";
 import { launchImageOf } from "./launch-image.js";
 import { launchSubjectOf } from "./launch-policy.js";
+import { liveIntentsIn } from "./live-intents.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import {
   hostedLaunchOf,
@@ -256,11 +258,24 @@ async function runLaunch(run: LaunchRun, proposed: IntentSnapshot): Promise<Inte
   });
 }
 
+// One launch of an agent at a time, from its proposal until it is signed or ends, so each
+// proposal's upload waits for the last to settle (decision 0240).
+async function hasLaunchUnderWay(
+  options: LaunchPathOptions,
+  agentId: Id<"agt">,
+  signal: AbortSignal,
+): Promise<boolean> {
+  const query = { states: statesBeforeSigning, agentId };
+  const live = await liveIntentsIn(options.stored, query, signal);
+  return live.some((record) => record.kind === "launchToken");
+}
+
 /**
  * Proposes the owner's token launch (decision 0234): it is resolved and stored, refused by the
  * policy in paper mode, and else quoted by its launchpad, judged by the policy, checked to run
  * from the agent's launch wallet, its picture read from an upload the proposer made (decision
- * 0236), uploaded and pinned, and built. It answers once the
+ * 0236), uploaded and pinned, and built. While another launch of the agent is under way, before
+ * it is signed or ends, it is `intent.launch_waiting` and nothing is stored (decision 0240). It answers once the
  * launch waits in `quoted` for its pin, or has passed it to its card, or ended.
  */
 export async function proposeLaunch(
@@ -274,6 +289,9 @@ export async function proposeLaunch(
     return started;
   }
   const { machine, settings, proposal, step } = started.value;
+  if (await hasLaunchUnderWay(options, settings.agent.id, signal)) {
+    return err("intent.launch_waiting");
+  }
   const resolving = { request, settings, isPaper: proposal.isPaper, signal };
   const resolved = await resolveLaunch(options, resolving);
   if (!resolved.ok) {

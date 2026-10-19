@@ -252,6 +252,22 @@ describe("a token launch refused before any upload", () => {
   });
 });
 
+describe("how many token launches an agent runs at once", () => {
+  it("refuses a second launch while one waits, and takes one once it ended", async () => {
+    const { test, launcher } = await engineOver({ pin: { never: true } });
+    await expect(propose(test)).resolves.toMatchObject({ state: "quoted" });
+    await expect(
+      test.engine.handlers["intent/propose"](testCall(launch, testCallers.cli)),
+    ).resolves.toStrictEqual({ ok: false, error: "intent.launch_waiting" });
+    expect(launcher.uploads()).toHaveLength(1);
+
+    await test.clock.advance(300_000);
+    await test.engine.checkPins(signal);
+    await expect(propose(test)).resolves.toMatchObject({ state: "quoted" });
+    expect(launcher.uploads()).toHaveLength(2);
+  });
+});
+
 describe("who starts a token launch", () => {
   it.each([
     ["the agent runtime", testCallers.runtime],

@@ -955,6 +955,10 @@
     "0239": {
       "status": "Accepted",
       "sha256": "330ccdf047e38acc55b3e36090fcf1508913bce76130c627c796e3d857f42208"
+    },
+    "0240": {
+      "status": "Accepted",
+      "sha256": "7fa0efb9305c135a7c9f4b753a761d8776d674cbe2f124c543ed1e93320f831b"
     }
   }
 }
