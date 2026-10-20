@@ -36,7 +36,7 @@ export interface DowntimeReport {
 function downtimePart(offMs: number): NoticePart {
   const units = wholeUnitsOf(offMs);
   return units === undefined
-    ? { key: "order.underMinute", values: {} }
+    ? { key: "resume.underMinute", values: {} }
     : { key: units.key, values: { count: String(units.count) } };
 }
 
@@ -91,22 +91,19 @@ function reasonCounts(orders: readonly CheckedOrder[]): {
 // reasons, then the rest of the skips in one line.
 function afterLines(orders: readonly CheckedOrder[]): readonly NoticePart[] {
   const sent = orders.filter(({ outcome }) => outcome === "sent").length;
-  const sentLines =
-    sent === 0 ? [] : [{ key: "order.resumedSent", values: { count: String(sent) } }];
+  const sentLines = sent === 0 ? [] : [{ key: "resume.sent", values: { count: String(sent) } }];
   return [...sentLines, ...skipLines(orders, maxSkipLines - sentLines.length)];
 }
 
 function skipLines(orders: readonly CheckedOrder[], maxLines: number): readonly NoticePart[] {
   const { counts, other } = reasonCounts(orders);
   const lines = counts.slice(0, maxLines).map(({ part, count }) => ({
-    key: "order.resumedSkips",
+    key: "resume.skips",
     values: { count: String(count) },
     parts: { reason: part },
   }));
   const rest = other + counts.slice(maxLines).reduce((sum, { count }) => sum + count, 0);
-  return rest === 0
-    ? lines
-    : [...lines, { key: "order.resumedOther", values: { count: String(rest) } }];
+  return rest === 0 ? lines : [...lines, { key: "resume.other", values: { count: String(rest) } }];
 }
 
 /** The counts of a report's orders: checked is filled, sent and skipped together. */

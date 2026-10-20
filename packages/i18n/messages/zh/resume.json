@@ -1,0 +1,6 @@
+{
+  "skips": "跳过 {count} 个：{reason}",
+  "other": "因其他原因跳过 {count} 个",
+  "underMinute": "不到 1 分钟",
+  "sent": "已发送 {count} 笔，尚未结算"
+}

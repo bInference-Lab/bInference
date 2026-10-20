@@ -1,0 +1,6 @@
+{
+  "skips": "{count} skipped: {reason}",
+  "other": "{count} skipped for other reasons",
+  "underMinute": "under a minute",
+  "sent": "{count} sent and not settled yet"
+}

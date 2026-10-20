@@ -45,17 +45,17 @@ describe("the resume report", () => {
       parts: { duration: { key: "pnl.hours", values: { count: "3" } } },
       after: [
         {
-          key: "order.resumedSkips",
+          key: "resume.skips",
           values: { count: "2" },
           parts: { reason: { key: "reason.trigger_not_met", values: {} } },
         },
-        { key: "order.resumedSkips", values: { count: "1" }, parts: { reason: cap } },
+        { key: "resume.skips", values: { count: "1" }, parts: { reason: cap } },
         {
-          key: "order.resumedSkips",
+          key: "resume.skips",
           values: { count: "1" },
           parts: { reason: { key: "reason.no_fresh_price", values: {} } },
         },
-        { key: "order.resumedOther", values: { count: "2" } },
+        { key: "resume.other", values: { count: "2" } },
       ],
     });
   });
@@ -66,7 +66,7 @@ describe("the resume report", () => {
     expect(notice).toStrictEqual({
       key: "notice.resumed",
       values: { cause: "start", checked: "0", filled: "0", skipped: "0" },
-      parts: { duration: { key: "order.underMinute", values: {} } },
+      parts: { duration: { key: "resume.underMinute", values: {} } },
     });
   });
 
@@ -82,8 +82,8 @@ describe("the resume report", () => {
     expect(resumedNotice(report)).toMatchObject({
       values: { cause: "clock", checked: "2", filled: "0", skipped: "1" },
       after: [
-        { key: "order.resumedSent", values: { count: "1" } },
-        { key: "order.resumedSkips", values: { count: "1" } },
+        { key: "resume.sent", values: { count: "1" } },
+        { key: "resume.skips", values: { count: "1" } },
       ],
     });
   });

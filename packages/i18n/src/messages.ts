@@ -18,6 +18,7 @@ import enPnl from "../messages/en/pnl.json" with { type: "json" };
 import enQuestion from "../messages/en/question.json" with { type: "json" };
 import enReason from "../messages/en/reason.json" with { type: "json" };
 import enReceipt from "../messages/en/receipt.json" with { type: "json" };
+import enResume from "../messages/en/resume.json" with { type: "json" };
 import enTelegram from "../messages/en/telegram.json" with { type: "json" };
 import enTui from "../messages/en/tui.json" with { type: "json" };
 import enTurn from "../messages/en/turn.json" with { type: "json" };
@@ -43,6 +44,7 @@ import zhPnl from "../messages/zh/pnl.json" with { type: "json" };
 import zhQuestion from "../messages/zh/question.json" with { type: "json" };
 import zhReason from "../messages/zh/reason.json" with { type: "json" };
 import zhReceipt from "../messages/zh/receipt.json" with { type: "json" };
+import zhResume from "../messages/zh/resume.json" with { type: "json" };
 import zhTelegram from "../messages/zh/telegram.json" with { type: "json" };
 import zhTui from "../messages/zh/tui.json" with { type: "json" };
 import zhTurn from "../messages/zh/turn.json" with { type: "json" };
@@ -71,6 +73,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
   en: {
     ...inArea("error", enError),
     ...inArea("reason", enReason),
+    ...inArea("resume", enResume),
     ...inArea("card", enCard),
     ...inArea("autoAsks", enAutoAsks),
     ...inArea("receipt", enReceipt),
@@ -98,6 +101,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
   zh: {
     ...inArea("error", zhError),
     ...inArea("reason", zhReason),
+    ...inArea("resume", zhResume),
     ...inArea("card", zhCard),
     ...inArea("autoAsks", zhAutoAsks),
     ...inArea("receipt", zhReceipt),
