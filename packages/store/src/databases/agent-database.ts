@@ -27,6 +27,7 @@ import {
   searchNotesTask,
   writeNoteTask,
 } from "../notes/note-tasks.js";
+import { clearAgentStateTask } from "../reset/reset-tasks.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
 /** `agent.sqlite`: sessions, transcripts and notes. `synchronous=NORMAL`. */
@@ -57,6 +58,7 @@ export const agentDatabase: DatabaseDefinition = {
     listNotesTask,
     searchNotesTask,
     pruneChatsTask,
+    clearAgentStateTask,
   ],
 };
 

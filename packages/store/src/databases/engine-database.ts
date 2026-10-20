@@ -18,6 +18,7 @@ import { modelUsageTasks } from "../model-usage/sqlite-model-usage-store.js";
 import { noticeTasks } from "../notices/notice-tasks.js";
 import { orderTasks } from "../orders/order-tasks.js";
 import { positionTasks } from "../positions/sqlite-position-store.js";
+import { clearEngineStateTask } from "../reset/reset-tasks.js";
 import { riskCacheTasks } from "../risk-cache/risk-cache-tasks.js";
 import { scheduleTasks } from "../schedules/sqlite-schedule-store.js";
 import { agentTopicTasks } from "../surfaces/sqlite-agent-topic-store.js";
@@ -57,6 +58,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...alertTasks,
     ...leaderTasks,
     ...launchTasks,
+    clearEngineStateTask,
   ],
 };
 

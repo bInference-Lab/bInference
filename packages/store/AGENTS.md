@@ -38,6 +38,10 @@ Rules for this package:
   `databases/engine-database.ts`, and a `createSqlite…` factory that binds them to a `StoreHost`.
   Its test runs the port's contract suite on a fresh migrated database from
   `testing/test-databases.worker.ts`, which runs tasks in the test's thread.
+- `src/reset/` holds what `binference reset` clears, one task per database, run with the engine
+  stopped: chats, notes, the agent inbox, the agents' questions and the risk cache. The agent
+  task raises the writer fence first, and lets the transcript's trigger allow the removal only
+  inside its own transaction, as the retention task does.
 - The ports of `agent.sqlite` live here, in `src/ports.ts`, with their contract suites in
   `src/contracts/` and in-memory fakes in `src/fakes/`, exported from `src/testing.ts`
   (decision 0170): the agent runtime that uses them builds on this package. Their adapters are in
