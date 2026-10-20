@@ -219,9 +219,13 @@ async function loseUpload(run: LaunchRun, checked: IntentSnapshot): Promise<void
   toldIfEnded(run.options, await advanceIntent({ ...run.parts, signal }, now, { trigger }));
 }
 
+// The widest and tallest picture a launchpad writes into its create call, in pixels (decision
+// 0279): a few bytes can tell a far larger picture than a launch's page shows.
+const writtenPictureMostSide = 1_024;
+
 // The picture a launch reads, once, from the owner's upload: none for a launchpad that takes a link
 // (decision 0276). One a launchpad writes into its create call must fit beside the words and tell
-// its size (decision 0279).
+// its size, at most 1,024 pixels each way (decision 0279).
 async function pictureOf(run: LaunchRun): Promise<Result<ReadPicture | undefined, QuoteFailure>> {
   const { options, resolved, credential, signal } = run;
   const { request } = resolved;
@@ -243,7 +247,9 @@ async function pictureOf(run: LaunchRun): Promise<Result<ReadPicture | undefined
     return err("image_unreadable");
   }
   const mostBytes = host.pictureBytesFor(request.venue, request) ?? 0;
-  return image.bytes > mostBytes ? err("picture_too_large") : ok(picture);
+  const isOver =
+    image.bytes > mostBytes || Math.max(image.width, image.height) > writtenPictureMostSide;
+  return isOver ? err("picture_too_large") : ok(picture);
 }
 
 // Once its upload begins, the owner hears of any end before the pin wait (decision 0237).

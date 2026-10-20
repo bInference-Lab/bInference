@@ -29,6 +29,12 @@ describe("a token launch on a launchpad that writes its picture into its create 
     expect(view).toMatchObject({ state: "failed_check", outcome: { reason: "picture_too_large" } });
   });
 
+  it("ends picture_too_large for a picture wider than 1,024 pixels, however few its bytes", async () => {
+    const { test } = await testLaunchEngine({ writesPicture: { mostBytes: 1_000 } });
+    const view = await proposeIntent(test, { ...written, image: "upl_wide" });
+    expect(view).toMatchObject({ state: "failed_check", outcome: { reason: "picture_too_large" } });
+  });
+
   it("ends image_unreadable for a picture whose header tells no size", async () => {
     const { test } = await testLaunchEngine({ writesPicture: { mostBytes: 1_000 } });
     const view = await proposeIntent(test, { ...written, image: "upl_moon" });

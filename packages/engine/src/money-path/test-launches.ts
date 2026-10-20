@@ -51,6 +51,8 @@ const sizedPng = new Uint8Array([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 64,
   0, 0, 0, 48, 8, 6, 0, 0, 0,
 ]);
+// The same PNG header telling a picture 1,025 pixels wide, one more than a written picture takes.
+const widePng = sizedPng.map((byte, index) => [0, 0, 4, 1][index - 16] ?? byte);
 const settings: readonly LaunchOption[] = [
   { name: "taxBps", type: "bps", max: 1000, default: 0 },
   { name: "buyback", type: "flag", default: false },
@@ -301,6 +303,7 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
       new Map([
         ["upl_moon", png],
         ["upl_sized", sizedPng],
+        ["upl_wide", widePng],
       ]),
       testCallers.cli.credential,
     ),

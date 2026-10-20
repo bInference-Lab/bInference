@@ -181,7 +181,7 @@ launch wallet's curve trade whose launch it cannot read, or that left the curve
 but the agent's live launch wallet, `image_unreadable` (its picture is no PNG, JPEG or WebP of at
 most 5 MiB, on a launchpad that uploads one or writes it into its create call, and for the latter
 one whose header tells its size), `picture_too_large` (its picture is larger than the create call
-of a launchpad that writes it in takes beside its words,
+of a launchpad that writes it in takes beside its words, or wider or taller than 1,024 pixels,
 [decision 0279](../DECISIONS.md#d0279)), each before any upload, and `pin_failed` and
 `pin_timeout` from `quoted`
 ([decision 0234](../DECISIONS.md#d0234)); `upload_lost` from `checked`, for a launch a fault or a

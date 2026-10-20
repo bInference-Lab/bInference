@@ -38,8 +38,9 @@ as a 64 by 64 WebP, which brew.family shows; the card shows its size and dimensi
   proposer's own, a PNG, JPEG or WebP by its first bytes, of at most 5 MiB. It must also tell its
   width and height in its header (PNG's IHDR chunk, JPEG's first frame header, WebP's VP8, VP8L or
   VP8X chunk), else the launch ends `failed_check` with `image_unreadable`, and it must be no
-  larger than `pictureBytesFor` answers for the launch's words, else `failed_check` with the new
-  reason `picture_too_large`. Both come before anything is built, and nothing is sent anywhere.
+  larger than `pictureBytesFor` answers for the launch's words, and at most 1,024 pixels wide and
+  tall, else `failed_check` with the new reason `picture_too_large`: a few bytes of a header can
+  tell a far larger picture than a launch's page shows. Both come before anything is built, and nothing is sent anywhere.
 - **The build.** The launcher's build gets the picture's bytes, its own copy. Its decoder names the
   picture the call writes, by its type and the SHA-256 of its bytes (`DecodedLaunch.picture`), and
   the host's build check refuses a call whose picture is not the one the engine read, or that
