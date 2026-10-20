@@ -1,5 +1,5 @@
-import { type Amount, type AssetRef, assetRefSchema } from "@binference/chain";
-import { type NoticePartView, type ProtocolId, protocolIdSchema } from "@binference/protocol";
+import type { ProtocolId } from "@binference/protocol";
+import { noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
 import type { WrittenNotice } from "./write-notice.js";
 
 /** A notice of {@link noticeTable}: what a surface writes, and the agent it names. */
@@ -7,44 +7,7 @@ export interface TableNotice extends WrittenNotice {
   readonly agent?: ProtocolId<"agent">;
 }
 
-/** The coin of the fake chain the tests run on, `FAKE` with 18 decimals. */
-export const noticeTableCoin: AssetRef = assetRefSchema.parse("fake:1/slip44:1");
-// The agent the table's notices name.
-const tableAgent = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
-
-/** 2026-10-11 09:30 UTC, the moment every notice of {@link noticeTable} names. */
-export const noticeTableAtMs: number = Date.UTC(2026, 9, 11, 9, 30, 0);
-
-// Thousandths of the test chain's coin, which has 18 decimals.
-const coinAmount = (thousandths: bigint): Amount => ({
-  asset: noticeTableCoin,
-  base: thousandths * 10n ** 15n,
-});
-const at = { when: noticeTableAtMs };
-const agent = { agent: "main" };
-
-const orderKind = (kind: string): NoticePartView => ({ key: "order.kind", values: { kind } });
-
-const sale: NoticePartView = {
-  key: "fill.sell",
-  values: { received: "$12.40", price: "$0.0000075" },
-  amounts: { amount: coinAmount(1_650n) },
-};
-
-const launch: NoticePartView = {
-  key: "launch.line",
-  values: {
-    token: "PEPE 0x6982…1933",
-    launchpad: "Pad",
-    tax: "1%",
-    insiders: "2",
-    creatorLaunches: "0",
-  },
-  parts: {
-    curve: { key: "launch.curve", values: { graduated: "no", progress: "42%" } },
-    age: { key: "launch.age", values: { unit: "minute", count: "3" } },
-  },
-};
+const { tableAgent, at, agent, coinAmount, orderKind, sale, launch } = noticeTableParts;
 
 /**
  * One notice of each key of spec 4, section 4, with its sections 4.2 and 4.3, as the engine

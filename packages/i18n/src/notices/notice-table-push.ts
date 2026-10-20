@@ -1,6 +1,7 @@
 import type { Amount } from "@binference/chain";
 import type { NoticePartView } from "@binference/protocol";
-import { noticeTableAtMs, type TableNotice } from "./notice-table.js";
+import { noticeTableAtMs } from "./notice-table-parts.js";
+import type { TableNotice } from "./notice-table.js";
 
 /** A notice part as the `notice/new` push carries it: each amount's base units as decimal text. */
 interface PartWire {

@@ -1,7 +1,7 @@
 import { assetRefSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { noticeAssetsToRead } from "./notice-assets.js";
-import { noticeTableCoin } from "./notice-table.js";
+import { noticeTableCoin } from "./notice-table-parts.js";
 
 const token = assetRefSchema.parse("fake:1/erc20:0x00000000000000000000000000000000000000aa");
 const amount = (asset: typeof token) => ({ asset, base: 1n });
