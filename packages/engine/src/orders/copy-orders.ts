@@ -184,6 +184,20 @@ function endReasonOf(call: {
   return isUnsold && dueAtMs === undefined ? "copy_sale_lapsed" : undefined;
 }
 
+// Records the row a take ended with, and answers the order as read after it: the skip's notice
+// hour moves the order, so the take's end is kept on that version. None once the order stopped
+// being active or its take changed.
+async function skipTake(
+  parts: CopyOrdersParts,
+  reading: Reading,
+  call: { readonly reason: "missed" | "copy_sale_lapsed"; readonly signal: AbortSignal },
+): Promise<Reading | undefined> {
+  const { id } = reading.order;
+  await parts.fills.skip({ order: id, reason: call.reason }, { signal: call.signal });
+  const after = await readingOf(parts, id, call.signal);
+  return after?.state.taking?.take === reading.state.taking?.take ? after : undefined;
+}
+
 // Ends the order's current take as its rows say (decision 0260): a buy a stop cut off is recorded
 // as `missed`; a sale a stop cut off, or skipped for a passing reason, waits to be sold again, else
 // is given up with `copy_sale_lapsed`. Answers where the order stands, or none while its agent's
@@ -205,11 +219,12 @@ async function settleTake(
   const isUnsold = taking.side === "sell" && end.kind !== "done";
   const dueAtMs = isUnsold ? retryAtOf(end, state, parts.clock.now()) : undefined;
   const reason = endReasonOf({ taking, end, isUnsold, dueAtMs });
-  if (reason !== undefined) {
-    await parts.fills.skip({ order: order.id, reason }, { signal });
+  const after = reason === undefined ? reading : await skipTake(parts, reading, { reason, signal });
+  if (after === undefined) {
+    return undefined;
   }
-  const ended = endedState(state, dueAtMs === undefined ? {} : { dueAtMs });
-  const kept = await keep(parts, order, { state: ended, signal });
+  const ended = endedState(after.state, dueAtMs === undefined ? {} : { dueAtMs });
+  const kept = await keep(parts, after.order, { state: ended, signal });
   return kept === undefined ? undefined : { order: kept, state: ended };
 }
 

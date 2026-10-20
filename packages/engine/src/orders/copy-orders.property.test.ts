@@ -411,6 +411,20 @@ async function outcomeOf(drawn: readonly [Terms, readonly Step[]]): Promise<Outc
   return { at, test, most, dailyUsdMicros, agentDayUsdMicros, rowsOf, fillsOf: fills, buysOf };
 }
 
+// A buy a stop cut off, then a sale and two buys each run at once: the run that records the cut
+// buy as missed goes on to copy the trades after it, so the $0.60 buy is never the one filled.
+const cutThenBuys: readonly [Terms, readonly Step[]] = [
+  { perBuy: 5, days: 1, agentPerBuy: 5, agentDay: 5 },
+  [
+    { kind: "buy", paidMilli: 1, runsNow: false },
+    { kind: "cut" },
+    { kind: "sell" },
+    { kind: "buy", paidMilli: 9, runsNow: true },
+    { kind: "buy", paidMilli: 1, runsNow: true },
+    { kind: "second" },
+  ],
+];
+
 describe("copy orders, for every history of leader trades, waits, runs, cut runs and restarts", () => {
   it("never buy over their caps or the leader's own buy, never sell more than they bought, never skip a sale as late, and copy each trade once", async () => {
     const histories = fc.tuple(terms, fc.array(steps, { minLength: 4, maxLength: 20 }));
@@ -441,7 +455,7 @@ describe("copy orders, for every history of leader trades, waits, runs, cut runs
         // Each row names its leader trade: one fill a trade, one row a buy, no late sale.
         expect(rowsOf.flatMap((each) => brokenOnce(at, each))).toStrictEqual([]);
       }),
-      { numRuns: 300 },
+      { numRuns: 300, examples: [[cutThenBuys]] },
     );
     // The histories bought, sold, skipped, cut buys off, ran two orders and stored trades again,
     // so the property held over each of those, not over nothing.

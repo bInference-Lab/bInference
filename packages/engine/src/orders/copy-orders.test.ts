@@ -263,6 +263,25 @@ describe("the copy orders' runner", () => {
     expect(await fillIntentsOf(test)).toStrictEqual([]);
   });
 
+  it("copies the leader's next buy in the same run that records a cut-off one as missed", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    const [stored] = await storeTrades(test, [
+      leaderTrade(1, { side: "buy", atMs: test.clock.now() }),
+    ]);
+    await takeTrade(test, order.id, takingOf(stored));
+    const again = test.restart();
+    await again.repairOrderFills(live);
+    await storeTrades(test, [leaderTrade(2, { side: "buy", atMs: test.clock.now() })]);
+
+    await again.runCopies(live);
+
+    const rows = await fillRowsOf(test, order.id);
+    const byTrade = rows.map((row) => `${String(row.copy?.trade)} ${outcomes([row]).join("")}`);
+    expect(byTrade.toSorted()).toStrictEqual(["1 skipped:missed", "2 filled"]);
+    expect((await copyStateNow(test, order.id)).taking).toBeUndefined();
+  });
+
   it("still sells the leader's share after an outage, telling the owner the sale was late", async () => {
     const test = await startFillEngine({ prices });
     const order = await activeOrder(test, testCopy());
