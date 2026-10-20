@@ -1,10 +1,12 @@
-import { idSchema } from "@binference/core";
-import { describe, expect, it } from "vitest";
+import { err, idSchema, ok, type Result } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
+import { describe, expect, it, vi } from "vitest";
 import { testAgent, testNowMs, testWallet } from "../intents/test-intents.js";
 import { noticeHourMs } from "../notices/notice-hour.js";
 import type { CopyOrder } from "./copy-fills.js";
-import { copyAnnouncementOf, type DueRow } from "./copy-notice-hour.js";
-import { copyStartOf, copyStateDocument } from "./copy-state.js";
+import { copyAnnouncementOf, type DueRow, toldOf } from "./copy-notice-hour.js";
+import { copyStartOf, copyStateDocument, copyStateOf } from "./copy-state.js";
+import type { OrderMove, OrderRecord } from "./order-record.js";
 import { testCopy } from "./test-orders.js";
 
 const order: CopyOrder = {
@@ -51,5 +53,28 @@ describe("a copy order's notice hour", () => {
       { key: "notice.copyHeld", values: { count: "2" } },
       { row: 9 },
     ]);
+  });
+
+  it("counts again on a fresh read when another write of the order came first", async () => {
+    const counted = { startedAtMs: testNowMs, sent: 5, held: 0 };
+    const fresh = {
+      ...order,
+      version: 2,
+      triggerState: copyStateDocument.encode({ ...copyStartOf(0), notices: counted }),
+    };
+    const reads: OrderRecord[] = [order, fresh];
+    const move = vi
+      .fn<(moves: readonly OrderMove[]) => Promise<Result<readonly OrderRecord[], "stale">>>()
+      .mockResolvedValueOnce(err("stale"))
+      .mockResolvedValue(ok([]));
+    const orders = { get: async () => Promise.resolve(reads.shift()), move };
+    const parts = { orders, clock: createManualClock(testNowMs) };
+
+    const told = await toldOf(parts, [rowOf(1, testNowMs + 1)], AbortSignal.timeout(1_000));
+
+    expect(told).toStrictEqual([]);
+    expect(move).toHaveBeenCalledTimes(2);
+    const kept = move.mock.calls[1]?.[0][0]?.triggerState;
+    expect(copyStateOf(kept)?.notices).toStrictEqual({ ...counted, held: 1 });
   });
 });

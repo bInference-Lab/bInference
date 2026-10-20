@@ -107,7 +107,9 @@ Every order fill runs the money path with no card, held to its order's bounds
   ([decision 0245](0245-an-alert-fires-once-per-match-tells-the-owner-and-wakes-the-agent-marked.md)),
   kept in the order's state. The rest are counted and told in one line, `notice.copyHeld`, "12 more
   copy trades skipped this hour, see the console", when the hour ends or before the next hour's
-  first; it is muted with the skips.
+  first; it is muted with the skips. The hour is written under the order's version in the same
+  write that decides what is told; a write that loses to another write of the order counts again
+  on a fresh read, up to three times, so no count is lost and no held line is told twice.
 
 ## Consequences
 

@@ -55,22 +55,47 @@ export interface ToldParts {
   readonly clock: Clock;
 }
 
-// Keeps a copy order's notice hour in its state, under the version it read. A write another beat
-// keeps the hour as it was: a count, never money (decision 0260).
+// Keeps a copy order's notice hour in its state, under the version it read; answers whether the
+// write landed. One that lost to another write of the order lands nothing.
 async function keepHour(
   parts: ToldParts,
   order: CopyOrder,
   call: { readonly hour: NoticeHour | undefined; readonly signal: AbortSignal },
-): Promise<void> {
+): Promise<boolean> {
   const state = copyStateOf(order.triggerState);
   if (state === undefined || call.hour === undefined) {
-    return;
+    return true;
   }
   const triggerState = copyStateDocument.encode({ ...state, notices: call.hour });
   const move = moveOrder(order, { type: "trigger_kept", triggerState }, parts.clock.now());
-  if (move.ok) {
-    await parts.orders.move([move.value], { signal: call.signal });
+  const written = move.ok ? await parts.orders.move([move.value], { signal: call.signal }) : null;
+  return written?.ok === true;
+}
+
+// How often a copy order's notice hour is counted again on a fresh read after its write lost to
+// another write of the order, such as its runner's or the held line's.
+const hourTries = 3;
+
+// The order's notices, counted on the order as read now and kept in the same write as the hour;
+// counted again on a fresh read when another write came first, so no count is lost and no held
+// line is told twice. Past the last try they are told as counted: a count, never money.
+async function toldCounted(
+  parts: ToldParts,
+  rows: readonly DueRow[],
+  call: { readonly tries: number; readonly signal: AbortSignal },
+): Promise<readonly JsonValue[] | undefined> {
+  const { tries, signal } = call;
+  const [first] = rows;
+  const read = first === undefined ? undefined : await parts.orders.get(first.orderId, { signal });
+  const copy = read === undefined ? undefined : asCopyOrder(read);
+  if (copy === undefined) {
+    return undefined;
   }
+  const announcement = copyAnnouncementOf(copy, rows);
+  const isKept = await keepHour(parts, copy, { hour: announcement.hour, signal });
+  return isKept || tries <= 1
+    ? announcement.told
+    : toldCounted(parts, rows, { tries: tries - 1, signal });
 }
 
 /**
@@ -82,13 +107,6 @@ export async function toldOf(
   rows: readonly DueRow[],
   signal: AbortSignal,
 ): Promise<readonly JsonValue[]> {
-  const [first] = rows;
-  const read = first === undefined ? undefined : await parts.orders.get(first.orderId, { signal });
-  const copy = read === undefined ? undefined : asCopyOrder(read);
-  if (copy === undefined) {
-    return rows.flatMap(({ notices }) => notices);
-  }
-  const announcement = copyAnnouncementOf(copy, rows);
-  await keepHour(parts, copy, { hour: announcement.hour, signal });
-  return announcement.told;
+  const told = await toldCounted(parts, rows, { tries: hourTries, signal });
+  return told ?? rows.flatMap(({ notices }) => notices);
 }
