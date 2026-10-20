@@ -8,6 +8,16 @@ import {
   recordedCid,
   uploadAnswer,
 } from "../testing/flap-api-fake.js";
+import {
+  liveCid,
+  liveMetadata,
+  livePinAnswer,
+  livePinFields,
+  livePng,
+  liveUploadAnswer,
+  liveUploadBody,
+  type RecordedAnswer,
+} from "../testing/recorded-upload.js";
 import { readPinStatus, uploadMetadata } from "./flap-api.js";
 
 const signal = new AbortController().signal;
@@ -22,6 +32,12 @@ const upload = {
     creator: "0x000000000000000000000000000000000000bEEF",
   },
 };
+
+const answerOf = (recorded: RecordedAnswer): HttpResponse => ({
+  status: recorded.status,
+  headers: { "content-type": recorded.contentType },
+  body: recorded.body,
+});
 
 // The one request a fake took; a test fails without it.
 function onlyRequest(requests: readonly HttpRequest[]): HttpRequest {
@@ -113,5 +129,19 @@ describe("the Flap upload API", () => {
       ok: false,
       error: "refused",
     });
+  });
+
+  it("writes the live test upload's request byte for byte, and reads its answers", async () => {
+    const live = flapApiFake([answerOf(livePinAnswer)], answerOf(liveUploadAnswer));
+    const image = { bytes: livePng, contentType: "image/png", fileName: "image.png" };
+    const cid = await uploadMetadata(live, { image, metadata: liveMetadata }, signal);
+    expect(cid).toStrictEqual({ ok: true, value: liveCid });
+    const sent = onlyRequest(live.requests());
+    expect(Buffer.from(bytesOf(sent)).toString("base64")).toBe(liveUploadBody);
+    await expect(readPinStatus(live, liveCid, signal)).resolves.toStrictEqual({
+      ok: true,
+      value: "pinned",
+    });
+    expect(JSON.stringify(livePinFields)).toBe(livePinAnswer.body);
   });
 });

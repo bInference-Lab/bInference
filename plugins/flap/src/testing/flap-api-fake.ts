@@ -1,29 +1,37 @@
 import type { HttpRequest, HttpResponse, JsonValue } from "@binference/plugin-sdk";
 import type { ScriptedHttp } from "@binference/plugin-sdk/testing";
+import {
+  liveCid,
+  livePinFields,
+  liveUploadAnswer,
+  type RecordedAnswer,
+} from "./recorded-upload.js";
 
-/** A metadata CID in the shape Flap's upload API answers, as a launch on BSC named it. */
-export const recordedCid = "bafkreibxo4udedy3sxsljj7bmrvs7aodggcj6n4m5xaxb5xtydv3fwruem";
+/** The metadata CID Flap's upload API answered binference's live test upload. */
+export const recordedCid: string = liveCid;
 
 const json = (status: number, body: JsonValue): HttpResponse => ({
   status,
-  headers: { "content-type": "application/json; charset=utf-8" },
+  headers: { "content-type": "application/json" },
   body: JSON.stringify(body),
 });
 
-/** The upload API's answer, as Flap's docs give it: the metadata's CID. */
-export const uploadAnswer: HttpResponse = json(200, { data: { create: recordedCid } });
+const answerOf = (recorded: RecordedAnswer): HttpResponse => ({
+  status: recorded.status,
+  headers: { "content-type": recorded.contentType },
+  body: recorded.body,
+});
 
-/** The pin status API's answer for the recorded CID, as Flap's docs give it. */
+/** The upload API's answer, as it answered the live test upload: the metadata's CID. */
+export const uploadAnswer: HttpResponse = answerOf(liveUploadAnswer);
+
+/**
+ * The pin status API's answer for a CID in the shape it gave the live test read, with the status
+ * given: the live answer itself for the recorded CID and `pinned`.
+ */
 export function pinAnswer(status: string, cid: string = recordedCid): HttpResponse {
-  return json(200, {
-    data: {
-      cid,
-      status,
-      providerStatus: "prechecking",
-      jobId: "00000000-0000-0000-0000-000000000000",
-    },
-    requestId: "00000000-0000-0000-0000-000000000000",
-  });
+  const { data, requestId } = livePinFields;
+  return json(200, { data: { ...data, cid, status, providerStatus: status }, requestId });
 }
 
 /** An answer Flap's API gives with a status and a JSON body, such as a refusal. */
