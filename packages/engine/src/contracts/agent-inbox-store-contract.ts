@@ -113,6 +113,11 @@ async function refusesPastTheCap(subject: AgentInboxSubject): Promise<void> {
   await inOrder(numbers, async (n) => added(subject, message(subject, n)));
   const over = await agentInbox.add(message(subject, 500), live());
   assert.deepEqual(over, { ok: false, error: "busy" });
+  const report = await agentInbox.add(
+    { ...message(subject, 503), kind: "inbox/resumeReport", payload: { checked: 0 } },
+    live(),
+  );
+  assert.deepEqual(report, { ok: false, error: "busy" });
   const stop = await agentInbox.add(
     {
       id: fixtureId("msg", 501),

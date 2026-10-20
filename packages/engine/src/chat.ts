@@ -4,6 +4,7 @@ export {
   inboxTakeSchema,
   isRuntimeProposal,
   maxUntakenMessages,
+  needsRoom,
   settleIdsOf,
   untakenQuerySchema,
 } from "./chat/agent-inbox-record.js";

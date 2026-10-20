@@ -50,8 +50,11 @@ async function onlyWakesUp(
   const stored = await Promise.all(
     messages.map(async (message) => options.agentInbox.get(message, { signal })),
   );
+  // A resume report only joins a turn, so it neither starts one nor counts against a wake-up's.
+  const turnMessages = stored.filter((message) => message?.kind !== "inbox/resumeReport");
   return (
-    stored.length > 0 && stored.every((message) => message !== undefined && isWakeUp(message.kind))
+    turnMessages.length > 0 &&
+    turnMessages.every((message) => message !== undefined && isWakeUp(message.kind))
   );
 }
 

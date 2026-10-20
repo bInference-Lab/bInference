@@ -77,6 +77,38 @@ function alertText(view: Extract<TurnMessage, { readonly kind: "inbox/alertFired
   return `Alert ${alert} on ${watched} fired at ${at}: ${fired}`;
 }
 
+type ResumeReport = Extract<InboxMessageView, { readonly kind: "inbox/resumeReport" }>;
+
+// A resume report reaches the model as one line: the downtime, the counts, then each order's
+// outcome and the reason of a skip (decision 0267).
+function resumeText(view: ResumeReport): string {
+  const what = view.cause === "wake" ? "The machine slept" : "The engine was off";
+  const since = new Date(view.offFrom).toISOString();
+  const minutes = Math.round(view.offMs / 60_000);
+  const orders = view.orders
+    .map(({ order, kind, outcome, reason }) =>
+      reason === undefined
+        ? `${order} (${kind}) ${outcome}`
+        : `${order} (${kind}) ${outcome}: ${reason}`,
+    )
+    .join("; ");
+  const counts = `${String(view.checked)} of your orders checked, ${String(view.filled)} filled, ${String(view.skipped)} skipped`;
+  const head = `${what} for ${String(minutes)} min from ${since}, then re-checked your auto orders: ${counts}.`;
+  return orders.length === 0 ? head : `${head} ${orders}.`;
+}
+
+/**
+ * The note a queued message adds to the agent's next turn without starting one: a resume report,
+ * as one line the model reads (runtime spec, section 3.3); `undefined` for any other message.
+ */
+export function noteOf(message: QueuedMessage): OwnerMessage | undefined {
+  const parsed = inboxMessageViewSchema.safeParse(message.payload);
+  if (!parsed.success || parsed.data.kind !== "inbox/resumeReport") {
+    return undefined;
+  }
+  return { id: parsed.data.message, text: resumeText(parsed.data), outside: false };
+}
+
 /**
  * A message as a turn's conversation holds it: one with images is outside content, and so is a
  * schedule's wake-up whose `outsideContent` is set, and every alert's wake-up.

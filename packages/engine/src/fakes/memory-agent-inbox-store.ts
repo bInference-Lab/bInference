@@ -4,6 +4,7 @@ import {
   type AgentInboxMessage,
   isRuntimeProposal,
   maxUntakenMessages,
+  needsRoom,
   settleIdsOf,
   type UntakenQuery,
 } from "../chat/agent-inbox-record.js";
@@ -151,7 +152,7 @@ function add(
   if (rows.all().some((stored) => stored.id === draft.id)) {
     throw constraintFault(`the message id ${draft.id} is in use`);
   }
-  if (draft.kind === "inbox/message" && untakenOf(rows, draft.agentId) >= maxUntakenMessages) {
+  if (needsRoom(draft.kind) && untakenOf(rows, draft.agentId) >= maxUntakenMessages) {
     return err("busy");
   }
   const sessionId = rows.sessionOf(draft.agentId) ?? draft.opens;

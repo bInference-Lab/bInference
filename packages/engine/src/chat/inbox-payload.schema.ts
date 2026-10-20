@@ -92,3 +92,44 @@ export const alertFiredPayloadSchema: z.ZodType<AlertFiredPayload> = z.strictObj
   fired: alertFireSchema,
   outsideContent: z.boolean(),
 });
+
+/** One order of a resume report: what the downtime re-check found of it. */
+interface ResumeReportOrderPayload {
+  readonly order: Id<"ord">;
+  readonly kind: "limit" | "takeProfit" | "stopLoss" | "trailing" | "dca" | "copy";
+  readonly outcome: "filled" | "skipped";
+  readonly reason?: string;
+}
+
+/** A resume report: the downtime's kind and span, the agent's counts and each order's outcome. */
+export interface ResumeReportPayload {
+  readonly cause: "start" | "wake";
+  readonly offFrom: number;
+  readonly offMs: number;
+  readonly checked: number;
+  readonly filled: number;
+  readonly skipped: number;
+  readonly orders: readonly ResumeReportOrderPayload[];
+}
+
+const countSchema = z.int().nonnegative();
+
+/** Parses a resume report's payload. */
+export const resumeReportPayloadSchema: z.ZodType<ResumeReportPayload> = z.strictObject({
+  cause: z.enum(["start", "wake"]),
+  offFrom: epochMsSchema,
+  offMs: countSchema,
+  checked: countSchema,
+  filled: countSchema,
+  skipped: countSchema,
+  orders: z
+    .array(
+      z.strictObject({
+        order: idSchema("ord"),
+        kind: z.enum(["limit", "takeProfit", "stopLoss", "trailing", "dca", "copy"]),
+        outcome: z.enum(["filled", "skipped"]),
+        reason: z.string().min(1).exactOptional(),
+      }),
+    )
+    .max(50),
+});

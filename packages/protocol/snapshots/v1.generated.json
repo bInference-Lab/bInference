@@ -30972,6 +30972,118 @@
                       "fired",
                       "outsideContent"
                     ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "message": {
+                        "type": "string",
+                        "pattern": "^msg_"
+                      },
+                      "agent": {
+                        "type": "string",
+                        "pattern": "^agt_"
+                      },
+                      "session": {
+                        "type": "string",
+                        "pattern": "^ses_"
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "kind": {
+                        "type": "string",
+                        "const": "inbox/resumeReport"
+                      },
+                      "cause": {
+                        "type": "string",
+                        "enum": [
+                          "start",
+                          "wake"
+                        ]
+                      },
+                      "offFrom": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "offMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "checked": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "filled": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "skipped": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "orders": {
+                        "maxItems": 50,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "order": {
+                              "type": "string",
+                              "pattern": "^ord_"
+                            },
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "limit",
+                                "takeProfit",
+                                "stopLoss",
+                                "trailing",
+                                "dca",
+                                "copy"
+                              ]
+                            },
+                            "outcome": {
+                              "type": "string",
+                              "enum": [
+                                "filled",
+                                "skipped"
+                              ]
+                            },
+                            "reason": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z_]*$"
+                            }
+                          },
+                          "required": [
+                            "order",
+                            "kind",
+                            "outcome"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "message",
+                      "agent",
+                      "session",
+                      "at",
+                      "kind",
+                      "cause",
+                      "offFrom",
+                      "offMs",
+                      "checked",
+                      "filled",
+                      "skipped",
+                      "orders"
+                    ]
                   }
                 ]
               }

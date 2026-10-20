@@ -14,12 +14,16 @@ import { createSessionJournal } from "../sessions/session-journal.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
-import { isWakeUp, ownerMessageOf, type TurnMessage, turnMessageOf } from "./queued-view.js";
+import { isWakeUp, noteOf, ownerMessageOf, turnMessageOf } from "./queued-view.js";
 
-/** A waiting message with the view it holds. */
+/**
+ * A waiting message as the turn takes it: the owner's line it adds, and the turn reserved for it
+ * when it can start one; a note, such as a resume report, has none.
+ */
 interface Waiting {
   readonly queued: QueuedMessage;
-  readonly view: TurnMessage;
+  readonly owner: OwnerMessage;
+  readonly turn?: Id<"trn">;
 }
 
 type Refused = Extract<TurnStartAnswer, { readonly started: false }>;
@@ -133,16 +137,27 @@ async function afterTurn(context: ChatContext, agent: Id<"agt">, ended: TurnEnde
   kickAll(context);
 }
 
+// A waiting message the turn can read: a turn message, or a note it takes along.
+function readableOf(queued: QueuedMessage): Waiting | undefined {
+  const view = turnMessageOf(queued);
+  if (view !== undefined) {
+    return { queued, owner: ownerMessageOf(view), turn: view.turn };
+  }
+  const note = noteOf(queued);
+  return note === undefined ? undefined : { queued, owner: note };
+}
+
 // The messages a turn takes: oldest first and at most 20, through the first that holds images, so
 // a turn holds at most one message's images in memory and in each model request (decision 0227).
+// A note waiting among them joins the turn; alone, it starts none.
 async function waitingOf(context: ChatContext, session: Id<"ses">): Promise<readonly Waiting[]> {
   const query = { sessionId: session, limit: messagesPerTurn };
   const waiting = await context.stores.queue.waiting(query, { signal: context.lifetime });
   const readable = waiting.flatMap((queued) => {
-    const view = turnMessageOf(queued);
-    return view === undefined ? [] : [{ queued, view }];
+    const each = readableOf(queued);
+    return each === undefined ? [] : [each];
   });
-  const withImages = readable.findIndex(({ view }) => ownerMessageOf(view).images !== undefined);
+  const withImages = readable.findIndex(({ owner }) => owner.images !== undefined);
   return withImages === -1 ? readable : readable.slice(0, withImages + 1);
 }
 
@@ -154,11 +169,10 @@ async function startNext(context: ChatContext, agent: Id<"agt">): Promise<void> 
     return;
   }
   const taken = await waitingOf(context, session);
-  const first = taken[0];
-  if (first === undefined) {
+  const turn = taken.find((waiting) => waiting.turn !== undefined)?.turn;
+  if (turn === undefined) {
     return;
   }
-  const turn = first.view.turn;
   const used = await context.stores.sessions.turn(turn, { signal: context.lifetime });
   if (used?.endedAtMs !== undefined) {
     await dropMessages(
@@ -268,7 +282,7 @@ async function runTurn(
   if (prefix === undefined) {
     return;
   }
-  const owners = taken.map(({ view }) => ownerMessageOf(view));
+  const owners = taken.map(({ owner }) => owner);
   const history = await loadConversation(stores.transcript, place.session, lifetime);
   const refusals: Refused[] = [];
   const turn = createChatTurn({

@@ -35,6 +35,7 @@ interface Running {
 /** A schedule's wake-up the fake engine stored: its message, session, turn and schedule. */
 type AlertWake = Pick<AlertFired, "alert" | "fired" | "outsideContent">;
 type AlertFired = Extract<InboxMessageView, { readonly kind: "inbox/alertFired" }>;
+type ResumeReport = Extract<InboxMessageView, { readonly kind: "inbox/resumeReport" }>;
 
 interface Woken {
   readonly message: Id<"msg">;
@@ -61,6 +62,11 @@ export interface MemoryEngineChat extends EngineChat {
   ): Woken;
   /** An alert's wake-up: the message, its session and the turn reserved for it. */
   alerted(agent: Id<"agt">, wake: AlertWake): Omit<Woken, "schedule">;
+  /** The downtime re-check's report for the agent: the message and its session; no turn. */
+  resumed(
+    agent: Id<"agt">,
+    report: Omit<ResumeReport, "message" | "agent" | "session" | "at" | "kind">,
+  ): Omit<Woken, "schedule" | "turn">;
   /** `chat/stop` from the owner, or a freeze. */
   stop(agent: Id<"agt">, reason?: "owner" | "freeze"): Id<"msg">;
   /** `chat/clear`: answers the session that follows. */
@@ -289,6 +295,17 @@ function ownerSide(
   };
 }
 
+// The downtime re-check's side: its reports, which start no turn.
+function reportSide(state: FakeState): Pick<MemoryEngineChat, "resumed"> {
+  return {
+    resumed(agent, report) {
+      const view = { ...base(state, agent), kind: "inbox/resumeReport" as const, ...report };
+      store(state, view);
+      return { message: view.message, session: view.session };
+    },
+  };
+}
+
 /** Creates a fake engine whose agents are those named, each active, with no message yet. */
 export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngineChat {
   const state: FakeState = {
@@ -308,6 +325,7 @@ export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngi
   return {
     ...engineSide(state),
     ...ownerSide(state),
+    ...reportSide(state),
     refuse(agent, refusal) {
       if (refusal === undefined) {
         state.refusals.delete(agent);

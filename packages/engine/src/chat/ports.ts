@@ -21,10 +21,11 @@ import type {
  */
 export interface AgentInboxStore {
   /**
-   * Stores an owner's message in the agent's open session, opening the draft's `opens` when none
-   * is open, and makes `next` the open session when the draft names it, all in one write. An
-   * `inbox/message` while the agent holds 200 untaken messages is `busy`, and an unknown agent
-   * `not_found`; either stores nothing. An id in use throws `store.constraint`.
+   * Stores an owner's message, or a resume report, in the agent's open session, opening the
+   * draft's `opens` when none is open, and makes `next` the open session when the draft names it,
+   * all in one write. An `inbox/message` or `inbox/resumeReport` while the agent holds 200
+   * untaken messages is `busy`, and an unknown agent `not_found`; either stores nothing. An id in
+   * use throws `store.constraint`.
    */
   add(
     draft: AgentInboxDraft,

@@ -97,12 +97,13 @@ async function queued(context: ChatContext, view: InboxMessageView): Promise<boo
 
 async function receiveOne(context: ChatContext, view: InboxMessageView): Promise<void> {
   const turnMessage = startsTurns(view.kind);
-  if (turnMessage) {
+  // A resume report starts no turn, but waits in its session for the next one.
+  if (turnMessage || view.kind === "inbox/resumeReport") {
     await openSession(context, view);
-    if ((await waitingIn(context, view.session)).length >= maxWaiting) {
-      context.chats.full.add(view.agent);
-      return;
-    }
+  }
+  if (turnMessage && (await waitingIn(context, view.session)).length >= maxWaiting) {
+    context.chats.full.add(view.agent);
+    return;
   }
   const waits = await queued(context, view);
   if (waits && (view.kind === "inbox/stop" || view.kind === "inbox/clear")) {

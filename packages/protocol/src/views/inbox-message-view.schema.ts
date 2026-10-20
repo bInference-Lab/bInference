@@ -9,6 +9,7 @@ import {
   alertViewSchema,
 } from "./alert-view.schema.js";
 import { type IntentView, intentViewSchema } from "./intent-view.schema.js";
+import type { OrderView } from "./order-view.schema.js";
 
 /** The chat surface an owner's message came from. */
 export type ChatSurface = "telegram" | "console" | "cli" | "mini";
@@ -85,6 +86,35 @@ interface InboxAlertFired extends InboxMessageBase {
   readonly outsideContent: boolean;
 }
 
+/** One auto order the downtime re-check checked: filled, or skipped and why. */
+interface ResumeReportOrder {
+  readonly order: ProtocolId<"autoOrder">;
+  readonly kind: OrderView["kind"];
+  readonly outcome: "filled" | "skipped";
+  /** The skip's reason code, whose message is `reason.<code>`. */
+  readonly reason?: string;
+}
+
+/**
+ * The engine was off, or its machine asleep, and re-checked the agent's auto orders (decision
+ * 0267): it starts no turn, and the agent's next turn reads it.
+ */
+interface InboxResumeReport extends InboxMessageBase {
+  readonly kind: "inbox/resumeReport";
+  /** `start` when the engine started again, `wake` when the machine woke from sleep. */
+  readonly cause: "start" | "wake";
+  /** When the engine last ran before it. */
+  readonly offFrom: number;
+  /** How long the engine was off or asleep. */
+  readonly offMs: number;
+  /** The agent's own orders: checked is filled plus skipped. */
+  readonly checked: number;
+  readonly filled: number;
+  readonly skipped: number;
+  /** Each checked order, at most 50. */
+  readonly orders: readonly ResumeReportOrder[];
+}
+
 /**
  * One stored message of the agent inbox, as `inbox/list` and the `inbox` topic carry it. Kinds
  * the runtime spec adds later arrive as further members; a runtime skips a kind it does not know.
@@ -95,7 +125,8 @@ export type InboxMessageView =
   | InboxStop
   | InboxClear
   | InboxScheduleDue
-  | InboxAlertFired;
+  | InboxAlertFired
+  | InboxResumeReport;
 
 const base = {
   message: protocolIdSchema("inboxMessage"),
@@ -146,5 +177,28 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
     alert: alertViewSchema,
     fired: alertFireSchema,
     outsideContent: z.boolean(),
+  }),
+  z.object({
+    ...base,
+    kind: z.literal("inbox/resumeReport"),
+    cause: z.enum(["start", "wake"]),
+    offFrom: epochMsSchema,
+    offMs: z.int().nonnegative(),
+    checked: z.int().nonnegative(),
+    filled: z.int().nonnegative(),
+    skipped: z.int().nonnegative(),
+    orders: z
+      .array(
+        z.object({
+          order: protocolIdSchema("autoOrder"),
+          kind: z.enum(["limit", "takeProfit", "stopLoss", "trailing", "dca", "copy"]),
+          outcome: z.enum(["filled", "skipped"]),
+          reason: z
+            .string()
+            .regex(/^[a-z][a-z_]*$/)
+            .exactOptional(),
+        }),
+      )
+      .max(50),
   }),
 ]);

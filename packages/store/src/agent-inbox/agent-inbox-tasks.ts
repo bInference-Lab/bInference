@@ -7,6 +7,7 @@ import {
   type InboxTake,
   inboxTakeSchema,
   maxUntakenMessages,
+  needsRoom,
   type UntakenQuery,
   untakenQuerySchema,
 } from "@binference/engine/chat";
@@ -43,10 +44,7 @@ export const addInboxMessageTask: StoreTask<
     if (agent === undefined) {
       return err("not_found");
     }
-    if (
-      draft.kind === "inbox/message" &&
-      untakenCount(database, draft.agentId) >= maxUntakenMessages
-    ) {
+    if (needsRoom(draft.kind) && untakenCount(database, draft.agentId) >= maxUntakenMessages) {
       return err("busy");
     }
     const sessionId = sessionFor(database, draft.agentId, draft.opens) ?? draft.opens;

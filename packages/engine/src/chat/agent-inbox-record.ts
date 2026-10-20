@@ -10,14 +10,16 @@ const agentInboxKinds = [
   "inbox/clear",
   "inbox/scheduleDue",
   "inbox/alertFired",
+  "inbox/resumeReport",
 ] as const;
 
 /** One kind of agent inbox message, named as its `inbox` push. */
 export type AgentInboxKind = (typeof agentInboxKinds)[number];
 
 /**
- * The kinds an owner's chat writes; a settle message is written only with its intent's move, and
- * a wake-up only with its schedule's run or its alert's fire.
+ * The kinds written on their own: an owner's chat's, and the downtime re-check's report; a settle
+ * message is written only with its intent's move, and a wake-up only with its schedule's run or
+ * its alert's fire.
  */
 type OwnerInboxKind = Exclude<
   AgentInboxKind,
@@ -36,8 +38,17 @@ export function isWakeUp(kind: AgentInboxKind): boolean {
 export const maxUntakenMessages = 200;
 
 /**
- * A message the owner's chat writes for the agent runtime. It lands in the agent's open session,
- * and opens `opens` when none is open; `next`, for a clear, becomes the open session after it.
+ * Whether a message waits for room in the agent's inbox: an owner's message is refused and a
+ * resume report dropped past {@link maxUntakenMessages}; a stop or a clear always lands.
+ */
+export function needsRoom(kind: AgentInboxKind): boolean {
+  return kind === "inbox/message" || kind === "inbox/resumeReport";
+}
+
+/**
+ * A message the owner's chat, or the downtime re-check, writes for the agent runtime. It lands in
+ * the agent's open session, and opens `opens` when none is open; `next`, for a clear, becomes the
+ * open session after it.
  */
 export interface AgentInboxDraft {
   readonly id: Id<"msg">;
@@ -56,7 +67,7 @@ export interface AgentInboxDraft {
 export const agentInboxDraftSchema: z.ZodType<AgentInboxDraft> = z.strictObject({
   id: idSchema("msg"),
   agentId: idSchema("agt"),
-  kind: z.enum(["inbox/message", "inbox/stop", "inbox/clear"]),
+  kind: z.enum(["inbox/message", "inbox/stop", "inbox/clear", "inbox/resumeReport"]),
   turnId: idSchema("trn").exactOptional(),
   payload: jsonValueSchema,
   atMs: epochMsSchema,
