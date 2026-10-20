@@ -43,7 +43,10 @@ const expected: Readonly<Record<string, string>> = {
   "notice.watcherUnpriced": `${warning} BNB Smart Chain 的价格监控无法获取 2 个监控中代币的价格（首个为 0x9F3c…41aB），在价格恢复之前，这些代币的自动订单无法触发。价格来自发射台联合曲线，或可交易至少 $1,000 WBNB 或稳定币的 PancakeSwap 交易池。`,
   "notice.walletOverflow": `${warning} Whale 在 3 个区块中的交易过多，无法读取；跟单和提醒错过了这些交易。`,
   "notice.watcherStopped": `${red} BNB Smart Chain 的价格监控因故障停止，会自动重新启动；在此之前，该链上的自动订单不会成交。请运行 \`binference logs\` 查看原因。`,
-  "notice.resumed": "引擎停止了 2 h：已检查 3 个订单，成交 1 个，跳过 2 个",
+  "notice.resumed":
+    "引擎停止了 2 小时：已检查 3 个订单，成交 1 个，跳过 2 个\n" +
+    "跳过 1 个：当前价格未达到其触发价格；订单继续等待\n" +
+    "因其他原因跳过 1 个",
   "notice.update":
     "binference 2027.1.0 已发布：Stop-loss orders fill faster。请运行 `binference update`。",
   "notice.updateBare": "binference 2027.1.0 已发布。请运行 `binference update`。",

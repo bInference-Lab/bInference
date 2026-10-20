@@ -13,7 +13,7 @@ import type { ResumeFence } from "../orders/resume-fence.js";
 export const downtimeReasons = ["trigger_not_met", "no_fresh_price", "position_closed"] as const;
 
 /** A reason the re-check gives a skipped order: a fill's own reason or one of its own. */
-type CheckedSkipReason = OrderFillReason | (typeof downtimeReasons)[number];
+export type CheckedSkipReason = OrderFillReason | (typeof downtimeReasons)[number];
 
 /** Where one order stands in a re-check: waiting for a fresh price, filling, or done. */
 type Standing =

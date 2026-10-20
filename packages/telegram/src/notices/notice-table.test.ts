@@ -44,7 +44,10 @@ const expected: Readonly<Record<string, string>> = {
   "notice.watcherUnpriced": `${warning} Price watching on BNB Smart Chain has no price for 2 watched tokens, 0x9F3c…41aB first, so their auto orders cannot trigger until a price returns. A price comes from a launchpad curve, or a PancakeSwap pool that trades at least $1,000 of WBNB or a stablecoin.`,
   "notice.walletOverflow": `${warning} Whale's trades in 3 blocks were too many to read; copy orders and alerts missed them.`,
   "notice.watcherStopped": `${red} Price watching on BNB Smart Chain stopped on a fault and starts again by itself; auto orders there fill nothing until it does. Run \`binference logs\` to see why.`,
-  "notice.resumed": "Engine was off 2 h: 3 orders checked, 1 filled, 2 skipped",
+  "notice.resumed":
+    "Engine was off 2 hours: 3 orders checked, 1 filled, 2 skipped\n" +
+    "1 skipped: the price now does not reach its trigger price; the order waits on\n" +
+    "1 skipped for other reasons",
   "notice.update":
     "binference 2027.1.0 is out: Stop-loss orders fill faster. Run `binference update`.",
   "notice.updateBare": "binference 2027.1.0 is out. Run `binference update`.",

@@ -165,7 +165,16 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   },
   "notice.resumed": {
     key: "notice.resumed",
-    values: { duration: "2 h", checked: "3", filled: "1", skipped: "2" },
+    values: { cause: "start", checked: "3", filled: "1", skipped: "2" },
+    parts: { duration: { key: "pnl.hours", values: { count: "2" } } },
+    after: [
+      {
+        key: "order.resumedSkips",
+        values: { count: "1" },
+        parts: { reason: { key: "reason.trigger_not_met", values: {} } },
+      },
+      { key: "order.resumedOther", values: { count: "1" } },
+    ],
   },
   "notice.update": {
     key: "notice.update",
