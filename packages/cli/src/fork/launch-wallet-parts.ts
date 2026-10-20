@@ -1,3 +1,4 @@
+import { createBrewVenue } from "@binference/brew";
 import type { AssetRef, Signer, TokenRiskReport, Venue } from "@binference/chain";
 import {
   createEvmNonceSource,
@@ -154,6 +155,28 @@ export function geniusfunOn(fork: Fork, run: { readonly launches?: boolean } = {
   return createGeniusfunVenue({
     chains: [{ chain, nativeAsset, quoteTokens, rpc: fork.rpc }],
     ...(run.launches === true ? { launches } : {}),
+  });
+}
+
+/**
+ * Brew on the fork as the CLI runs it: its launches read from the fork, and tokens launched against
+ * BNB and the registry's USDT, at the owner's fixed starts.
+ */
+export function brewOn(fork: Fork): Venue {
+  const { ref: chain, nativeAsset } = fork.chain;
+  const wrappedNative = erc20AssetRef(fork.chain, bscToken("WBNB"));
+  const usdt = erc20AssetRef(fork.chain, bscToken("USDT"));
+  const pairs = [
+    { asset: nativeAsset, decimals: 18, startBase: 8n * 10n ** 18n },
+    { asset: usdt, decimals: 18, startBase: 5_000n * 10n ** 18n },
+  ];
+  const simulator = createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain });
+  return createBrewVenue({
+    chains: [{ chain, nativeAsset, wrappedNative }],
+    launches: {
+      random: createSystemRandom(),
+      chains: [{ chain, rpc: fork.rpc, simulator, pairs }],
+    },
   });
 }
 

@@ -111,7 +111,7 @@ describe("the self-hosted venues", () => {
     expect(launcher).not.toHaveProperty("noFirstBuyMin");
   });
 
-  it("read Brew's launches on BSC, against BNB for a WBNB pool, and trade nothing on it", async () => {
+  it("read Brew's launches on BSC, against BNB for a WBNB pool, and launch tokens there", async () => {
     const http = createScriptedHttp([]);
     const clock = createManualClock();
     const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
@@ -130,7 +130,10 @@ describe("the self-hosted venues", () => {
       signal: new AbortController().signal,
     });
     const brew = venues.find((venue) => venue.id === "brew");
-    expect(brew?.contracts).toStrictEqual([{ chain: bsc, names: ["factory"] }]);
+    expect(brew?.contracts).toMatchObject([
+      { chain: bsc, names: ["factory", "distributor-factory"], launchWalletSpenders: ["factory"] },
+    ]);
+    expect(brew?.launcher?.cardWarnings).toStrictEqual(["notForUsCitizens"]);
     const found = brew?.readLaunches?.({
       chain: bsc,
       contracts: brewRegistry,

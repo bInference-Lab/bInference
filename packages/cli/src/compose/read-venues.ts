@@ -1,4 +1,4 @@
-import { type BrewChain, createBrewVenue } from "@binference/brew";
+import { createBrewVenue } from "@binference/brew";
 import type {
   AssetRef,
   ChainRef,
@@ -40,8 +40,8 @@ import type {
   VenuesConfig,
 } from "../config/schema/chains-venues.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
+import { brewOptionsOf } from "./brew-options.js";
 import type { ChainReads } from "./chain-reads.js";
-import { wrappedCoinOf } from "./wrapped-coins.js";
 
 /** What the venues are read with. */
 export interface ReadVenuesOptions {
@@ -60,7 +60,7 @@ export interface ReadVenuesOptions {
   readonly secrets: SecretReader;
   readonly http: Http;
   readonly clock: Clock;
-  /** The random start of each salt search a Flap launch makes. */
+  /** The random start of each salt search a Flap or Brew launch makes. */
   readonly random: Random;
   readonly logger: Logger;
   readonly signal: AbortSignal;
@@ -184,24 +184,6 @@ function geniusfunLaunchChainsOf(
   });
 }
 
-// Brew on each enabled chain whose registry lists its single-pair factory and names its wrapped
-// coin, which a Brew pool against the coin holds (decision 0278).
-function brewChainsOf(
-  chains: readonly RegisteredChain[],
-  feeds: ReadonlyMap<ChainRef, readonly PriceFeedDefinition[]>,
-): readonly BrewChain[] {
-  return chains.flatMap((chain) => {
-    const isListed = chain.definition.contracts.some(
-      (item) => item.venue === "brew" && item.name === "factory",
-    );
-    const wrappedNative = wrappedCoinOf(chain, feeds.get(chain.ref) ?? []);
-    const { nativeAsset } = evmChainOf(chain.definition);
-    return isListed && wrappedNative !== undefined
-      ? [{ chain: chain.ref, nativeAsset, wrappedNative }]
-      : [];
-  });
-}
-
 // The chain's allowed pool hooks, each at its registry address with its fee (decision 0214). A hook
 // the registry does not list is a fault of this build.
 function allowedHooksOf(
@@ -231,7 +213,8 @@ function allowedHooksOf(
  * launches tax tokens through Flap's own API on each chain the registry lists its implementation
  * on (decision 0271), and Genius.fun launches tokens on each chain the registry lists its m4.2
  * launch router on (decision 0277). Brew, on each chain the registry lists its single-pair factory
- * on, reads its launches for the launch feed and trades nothing itself (decision 0278). The
+ * on, reads its launches for the launch feed, trades nothing itself (decision 0278), and launches
+ * tokens against the coin or any registry token (decision 0283). The
  * money path asks every venue an agent allows and keeps the best plan (decision 0107), and sends a
  * token on a launchpad's curve to that launchpad alone (decision 0179). An OKX key that cannot be read is logged and OKX
  * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
@@ -265,7 +248,7 @@ export async function readVenues(options: ReadVenuesOptions): Promise<ReadVenues
     chains: curveChainsOf(enabled, reads, geniusfunQuoteSymbols),
     launches: { random: options.random, chains: geniusfunLaunchChainsOf(enabled, reads) },
   });
-  const brew = createBrewVenue({ chains: brewChainsOf(enabled, options.feeds) });
+  const brew = createBrewVenue(brewOptionsOf(enabled, { ...options, reads }));
   const held = { keys: await okxKeysOf(options.venues.keys.okx, options, options.signal) };
   if (held.keys === undefined) {
     return {
