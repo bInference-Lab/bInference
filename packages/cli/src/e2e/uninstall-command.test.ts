@@ -5,19 +5,11 @@ import { fileSize, readTextFile, writePrivateFile } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
-import {
-  type CliRun,
-  type InitMachine,
-  initFlags,
-  newInitMachine,
-  runOn,
-  secretEnv,
-} from "./init-fixtures.js";
+import { type Home, onHome, setUpHome, startService } from "./home-fixtures.js";
+import { runOn, secretEnv } from "./init-fixtures.js";
 import { seedSendingTrade } from "./state-fixtures.js";
 import type { HostParts } from "./test-host.js";
-import { freePort, hostWith, isUnlocked, noPermissions, testSystem } from "./test-host.js";
-import { createTestServices, type TestServices } from "./test-services.js";
-import { createTestSigner } from "./test-signer.js";
+import { isUnlocked, noPermissions, testSystem } from "./test-host.js";
 
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
@@ -29,47 +21,9 @@ afterEach(async () => {
   await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
 });
 
-/** A machine whose state folder is `.binference` in its home folder, as the service runs it. */
-interface Home {
-  readonly machine: InitMachine;
-  readonly home: string;
-  readonly services: TestServices;
-}
-
-const envOf = (machine: InitMachine) => ({ ...secretEnv(machine), BINFERENCE_HOME: "" });
-
-async function setUpHome(): Promise<Home> {
-  const base = await newInitMachine(folders);
-  const machine = { ...base, folder: join(base.folder, ".binference") };
-  const init = await runOn(machine, ["init", "--yes", ...initFlags(machine)]);
-  if (init.code !== 0) {
-    throw new Error(`binference init failed: ${init.stderr}`);
-  }
-  const services = createTestServices({
-    script: join(machine.folder, "bin", "binference.mjs"),
-    signals: machine.signals,
-    host: (argv) =>
-      hostWith(machine, argv, {
-        env: envOf(machine),
-        parts: { http: machine.world, startSigner: createTestSigner().start, homeDir: base.folder },
-      }),
-  });
-  const home = { machine, home: base.folder, services };
+function track(home: Home): Home {
   homes.push(home);
   return home;
-}
-
-async function cli(home: Home, argv: readonly string[], parts: HostParts = {}): Promise<CliRun> {
-  return runOn(home.machine, argv, {
-    env: envOf(home.machine),
-    parts: { homeDir: home.home, serviceManager: home.services.manager, ...parts },
-  });
-}
-
-async function startService(home: Home): Promise<void> {
-  const port = String(await freePort());
-  const started = await cli(home, ["start", "--json", "--set", `engine.port=${port}`]);
-  expect(started.code).toBe(0);
 }
 
 // The entry script as `npm i -g binference` lays it out under the prefix `<home>/npm`.
@@ -117,11 +71,11 @@ describe("binference uninstall", () => {
     "stops binference, removes the service and the program, and keeps the state folder",
     slow,
     async () => {
-      const home = await setUpHome();
+      const home = track(await setUpHome(folders));
       await startService(home);
       const npm = recorder();
 
-      const removed = await cli(home, ["uninstall", "--yes", "--json"], {
+      const removed = await onHome(home, ["uninstall", "--yes", "--json"], {
         ...npmEntry(home),
         runProgram: npm.runProgram,
       });
@@ -143,13 +97,13 @@ describe("binference uninstall", () => {
   );
 
   it("removes the state folder and the install's keychain entries with --state", slow, async () => {
-    const home = await setUpHome();
+    const home = track(await setUpHome(folders));
     await addToConfig(home, `search: { keys: { brave: { fromKeychain: "brave-search" } } },`);
     const config = join(home.machine.folder, "config.json5");
     const keychain = createMemorySecretStore({ "brave-search": "key", "other-app": "kept" });
     await startService(home);
 
-    const removed = await cli(home, ["uninstall", "--state", "--yes"], { keychain });
+    const removed = await onHome(home, ["uninstall", "--state", "--yes"], { keychain });
 
     expect([removed.code, removed.stderr]).toStrictEqual([0, ""]);
     expect(removed.stdout).toContain("Your wallets and what they hold stay in Privy.");
@@ -165,10 +119,10 @@ describe("binference uninstall", () => {
   });
 
   it("asks for the typed phrase at a terminal and goes on once it is typed", slow, async () => {
-    const home = await setUpHome();
+    const home = track(await setUpHome(folders));
     const prompter = createScriptedPrompter({ uninstallConfirm: ["yes", "uninstall"] });
 
-    const removed = await cli(home, ["uninstall"], { prompter });
+    const removed = await onHome(home, ["uninstall"], { prompter });
 
     expect(removed.code).toBe(0);
     expect(prompter.transcript.asked).toStrictEqual(["uninstallConfirm", "uninstallConfirm"]);
@@ -180,10 +134,10 @@ describe("binference uninstall", () => {
   });
 
   it("refuses with nobody to answer and no --yes, and removes nothing", slow, async () => {
-    const home = await setUpHome();
+    const home = track(await setUpHome(folders));
     await startService(home);
 
-    const refused = await cli(home, ["uninstall", "--state"]);
+    const refused = await onHome(home, ["uninstall", "--state"]);
 
     expect(refused.code).toBe(1);
     expect(refused.stderr).toContain("binference uninstall asks you to type uninstall first.");
@@ -192,10 +146,10 @@ describe("binference uninstall", () => {
   });
 
   it("leaves the program for the owner to remove on Windows", slow, async () => {
-    const home = await setUpHome();
+    const home = track(await setUpHome(folders));
     const npm = recorder();
 
-    const removed = await cli(home, ["uninstall", "--yes"], {
+    const removed = await onHome(home, ["uninstall", "--yes"], {
       ...npmEntry(home),
       runProgram: npm.runProgram,
       system: { ...testSystem, os: "win32" },
@@ -209,8 +163,8 @@ describe("binference uninstall", () => {
   });
 
   it("says how to remove the program when npm fails", slow, async () => {
-    const home = await setUpHome();
-    const removed = await cli(home, ["uninstall", "--yes", "--json"], {
+    const home = track(await setUpHome(folders));
+    const removed = await onHome(home, ["uninstall", "--yes", "--json"], {
       ...npmEntry(home),
       runProgram: npmFails,
     });
@@ -220,10 +174,10 @@ describe("binference uninstall", () => {
   });
 
   it("keeps the state folder while a live trade is being sent", slow, async () => {
-    const home = await setUpHome();
+    const home = track(await setUpHome(folders));
     await seedSendingTrade(home.machine);
 
-    const refused = await cli(home, ["uninstall", "--state", "--yes"]);
+    const refused = await onHome(home, ["uninstall", "--state", "--yes"]);
 
     expect(refused.code).toBe(1);
     expect(refused.stderr).toContain(
@@ -233,7 +187,7 @@ describe("binference uninstall", () => {
   });
 
   it("never removes a folder that holds the home folder", slow, async () => {
-    const home = await setUpHome();
+    const home = track(await setUpHome(folders));
 
     const refused = await runOn(home.machine, ["uninstall", "--state", "--yes"], {
       env: { ...secretEnv(home.machine), BINFERENCE_HOME: home.home },
