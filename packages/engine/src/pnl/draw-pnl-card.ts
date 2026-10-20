@@ -2,6 +2,7 @@ import { mulDiv } from "@binference/core";
 import { addressPartOf, shortAddress } from "@binference/i18n";
 import type { AssetInfo } from "@binference/protocol";
 import type { CardLine, CardValue } from "../confirmations/card-line.js";
+import { wholeUnitsOf } from "../records/whole-units.js";
 import type { PositionFigures } from "./position-figures.js";
 
 /** What a P&L card is drawn from: the position's figures, its agent, and its asset's info. */
@@ -13,9 +14,6 @@ export interface PnlCardFacts {
 }
 
 const bpsPerWhole = 10_000n;
-const minuteMs = 60_000;
-const hourMs = 60 * minuteMs;
-const dayMs = 24 * hourMs;
 
 const usd = (usdMicros: bigint): CardValue => ({ type: "usd", usdMicros });
 const change = (usdMicros: bigint): CardValue => ({ type: "usdChange", usdMicros });
@@ -33,18 +31,10 @@ function percentOf(pnlUsdMicros: bigint, baseUsdMicros: bigint): CardValue {
   return { type: "percentChange", bps };
 }
 
-// The units a held time is counted in, the largest first.
-const durationUnits = [
-  { key: "pnl.days", unitMs: dayMs },
-  { key: "pnl.hours", unitMs: hourMs },
-  { key: "pnl.minutes", unitMs: minuteMs },
-] as const;
-
 // How long a closed position was held, in whole days, else whole hours, else whole minutes.
 function durationOf(heldMs: number): CardValue {
-  const { key, unitMs } = durationUnits.find((unit) => heldMs >= unit.unitMs) ?? durationUnits[2];
-  const count: CardValue = { type: "count", count: Math.floor(heldMs / unitMs) };
-  return { type: "line", line: { key, values: { count } } };
+  const { key, count } = wholeUnitsOf(heldMs) ?? { key: "pnl.minutes", count: 0 };
+  return { type: "line", line: { key, values: { count: { type: "count", count } } } };
 }
 
 function headerLine(
