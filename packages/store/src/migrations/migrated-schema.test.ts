@@ -182,6 +182,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
     "id key agent_id turn_id model input_tokens output_tokens cached_tokens usd_micros at",
   ),
   budget_notices: names("agent_id day_at at"),
+  daily_summaries: names("agent_id date at outcome live_usd_micros paper_usd_micros"),
   questions: names(
     "id agent_id session_id turn_id text choices ref state answer close_reason created_at closes_at closed_at",
   ),
@@ -216,6 +217,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   card_messages: ["card_id", "surface", "message_id"],
   telegram_topics: ["agent_id", "chat_id"],
   budget_notices: ["agent_id", "day_at"],
+  daily_summaries: ["agent_id", "date"],
   schedule_runs: ["schedule_id", "due_at"],
   alert_fires: ["alert_id", "fires"],
   tracked_wallets: ["account"],

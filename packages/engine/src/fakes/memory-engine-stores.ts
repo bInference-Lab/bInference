@@ -7,6 +7,7 @@ import { createMemoryAlertStore } from "./memory-alert-store.js";
 import { createMemoryAliveStore } from "./memory-alive-store.js";
 import { createMemoryCardCopyStore } from "./memory-card-copy-store.js";
 import { createMemoryConfigJournal } from "./memory-config-journal.js";
+import { createMemoryDailySummaryStore } from "./memory-daily-summary-store.js";
 import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
 import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryInstallStore, type MemoryInstallStore } from "./memory-install-store.js";
@@ -79,5 +80,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     trackedWallets: createMemoryTrackedWalletStore(tracking),
     launches: createMemoryLaunchStore(),
     alive: createMemoryAliveStore(),
+    dailySummaries: createMemoryDailySummaryStore({ agents }),
   };
 }

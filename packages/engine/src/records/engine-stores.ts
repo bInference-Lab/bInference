@@ -18,6 +18,7 @@ import type {
   TransactionStore,
 } from "../ports.js";
 import type { ScheduleStore } from "../schedules/ports.js";
+import type { DailySummaryStore } from "../summaries/ports.js";
 import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/ports.js";
 
 /**
@@ -61,4 +62,6 @@ export interface EngineStores {
   readonly launches: LaunchStore;
   /** When the engine last ran, which tells a start how long it was off. */
   readonly alive: AliveStore;
+  /** Each agent's daily summary of each owner's date, with the totals it read. */
+  readonly dailySummaries: DailySummaryStore;
 }

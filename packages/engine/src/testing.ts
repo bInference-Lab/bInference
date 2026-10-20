@@ -33,6 +33,8 @@ export type { MarketReadsHarness, MarketReadsSubject } from "./contracts/market-
 export { modelBillingContract } from "./contracts/model-billing-contract.js";
 export type { ModelBillingHarness } from "./contracts/model-billing-contract.js";
 export { modelUsageStoreContract } from "./contracts/model-usage-store-contract.js";
+export { dailySummaryStoreContract } from "./contracts/daily-summary-store-contract.js";
+export type { DailySummaryStoreHarness } from "./contracts/daily-summary-store-contract.js";
 export type { ModelUsageStoreHarness } from "./contracts/model-usage-store-contract.js";
 export { quoteSourceContract } from "./contracts/quote-source-contract.js";
 export type { QuoteSourceHarness, QuoteSourceSubject } from "./contracts/quote-source-contract.js";
@@ -147,6 +149,7 @@ export { createMemoryOwnerStore } from "./fakes/memory-owner-store.js";
 export { createMemoryAliveStore } from "./fakes/memory-alive-store.js";
 export { createMemoryAgentTopicStore } from "./fakes/memory-agent-topic-store.js";
 export { createMemoryModelUsageStore } from "./fakes/memory-model-usage-store.js";
+export { createMemoryDailySummaryStore } from "./fakes/memory-daily-summary-store.js";
 export type { MemoryModelUsageStoreOptions } from "./fakes/memory-model-usage-store.js";
 export type { MemoryNoticeStoreOptions } from "./fakes/memory-notice-store.js";
 export { createMemoryInstallStore } from "./fakes/memory-install-store.js";

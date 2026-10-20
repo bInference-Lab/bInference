@@ -38,3 +38,6 @@ export type { MutableNoticeKind, NoticeSettings } from "./notices/notice-setting
 export { isNoticeMutedFor } from "./notices/notice-muting.js";
 export { agentNotificationsChangeSchema } from "./agents/agent-record.js";
 export type { AgentNotificationsChange } from "./agents/agent-record.js";
+export { dailySummaryRecordSchema, ownerDateSchema } from "./summaries/daily-summary-record.js";
+export type { DailySummaryRecord } from "./summaries/daily-summary-record.js";
+export type { DailySummaryStore } from "./summaries/ports.js";

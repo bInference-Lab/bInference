@@ -17,6 +17,7 @@ import { createSqliteModelUsageStore } from "../model-usage/sqlite-model-usage-s
 import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
 import { createSqliteOrderStore } from "../orders/sqlite-order-store.js";
 import { createSqliteScheduleStore } from "../schedules/sqlite-schedule-store.js";
+import { createSqliteDailySummaryStore } from "../summaries/sqlite-daily-summary-store.js";
 import { createSqliteAgentTopicStore } from "../surfaces/sqlite-agent-topic-store.js";
 import { createSqliteCardCopyStore } from "../surfaces/sqlite-card-copy-store.js";
 import { createSqliteOwnerStore } from "../surfaces/sqlite-owner-store.js";
@@ -51,5 +52,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     trackedWallets: createSqliteTrackedWalletStore(host),
     launches: createSqliteLaunchStore(host),
     alive: createSqliteAliveStore(host),
+    dailySummaries: createSqliteDailySummaryStore(host),
   };
 }
