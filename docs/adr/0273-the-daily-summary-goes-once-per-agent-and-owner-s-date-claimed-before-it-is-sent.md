@@ -31,9 +31,12 @@ nothing to tell. Live and paper are never added together ([decision 0134](../DEC
   nothing again, so that day may have none.
 - **At most once.** A stop between the claim and the notice loses that day's summary rather than
   sending it twice. A summary is information only: it starts no turn and moves no money.
-- **Idle.** An agent with no trade, live or paper, no fill or skip of an auto order and no model
-  spend in the last 24 hours, no active or paused order, and nothing waiting for the owner gets no
-  summary. Its row is stored all the same, with its totals, for the next day's change.
+- **Idle.** An agent that holds no live funds, with no trade, live or paper, no fill or skip of an
+  auto order and no model spend in the last 24 hours, no active or paused order, and nothing
+  waiting for the owner gets no summary. Its row is stored all the same, with its totals, for the
+  next day's change. An agent that holds live funds always gets one, its value and 24-hour change
+  at least, as the owner ruled on 2026-10-20; when its live balances cannot be read, its last
+  summary's live total decides. A paper agent with nothing else to tell stays quiet.
 - **What it says.** It covers the 24 hours before the run. Live and paper each get a line of their
   own, never added together, with the total of the agent's wallets as `portfolio/get` adds it up.
   The 24-hour change is measured against the totals of the agent's previous row when that row is
@@ -65,4 +68,7 @@ nothing to tell. Live and paper are never added together ([decision 0134](../DEC
 - **Key each summary by the instant its day starts.** A move of `owner.timezone` to the west within
   a day would start a later instant of the same date and send that date twice. Rejected.
 - **Make up a missed summary on the next date.** Its figures would be a day old. Rejected.
-- **Send a summary for an idle agent.** It would tell nothing every day. Rejected.
+- **Send a summary for an idle agent.** A paper agent with nothing else would hear the same lines
+  every day. Rejected; an agent with live funds hears its value, by the owner's ruling.
+- **Count only activity, not live funds.** The owner would not hear a live wallet's value move on
+  a quiet day. Rejected by the owner.

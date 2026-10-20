@@ -94,8 +94,8 @@ describe("the daily summary's lines", () => {
 });
 
 describe("an idle agent", () => {
-  it("is one with no trade, fill, skip, spend, open order or anything waiting", () => {
-    const idle = { ...quiet, live: { ...quiet.live, trades: 0 } };
+  it("is one with no live funds, trade, fill, skip, spend, open order or anything waiting", () => {
+    const idle = { ...quiet, live: { totalUsdMicros: 0n, realizedUsdMicros: 0n, trades: 0 } };
     expect(isIdle(idle)).toBe(true);
     expect(isIdle(quiet)).toBe(false);
     expect(isIdle({ ...idle, spendUsdMicros: 1n })).toBe(false);
@@ -104,5 +104,14 @@ describe("an idle agent", () => {
     expect(isIdle({ ...idle, fills: { filled: 0, skipped: [{ reason: "late", count: 1 }] } })).toBe(
       false,
     );
+  });
+
+  it("holds live funds, or held some at its last summary when they cannot be read now", () => {
+    const holding = { ...quiet, live: { ...quiet.live, trades: 0 } };
+    const unread = { ...quiet, live: { realizedUsdMicros: 0n, trades: 0 } };
+    expect(isIdle(holding)).toBe(false);
+    expect(isIdle(unread)).toBe(true);
+    expect(isIdle(unread, before(24 * hourMs))).toBe(false);
+    expect(isIdle(unread, { ...before(24 * hourMs), liveUsdMicros: 0n })).toBe(true);
   });
 });

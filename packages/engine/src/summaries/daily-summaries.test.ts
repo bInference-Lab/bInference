@@ -133,8 +133,8 @@ describe("the daily summary's time", () => {
 });
 
 describe("the daily summary of an agent with nothing to tell", () => {
-  it("sends nothing for an idle agent, and keeps its totals for the next day", async () => {
-    const rig = await startSummaryRig();
+  it("sends nothing for an idle paper agent, and keeps its totals for the next day", async () => {
+    const rig = await startSummaryRig({ liveHeld: [] });
     await rig.run();
     expect(rig.pushes).toHaveLength(0);
     expect(await rig.test.stores.dailySummaries.latest(testAgent, live())).toStrictEqual({
@@ -142,9 +142,30 @@ describe("the daily summary of an agent with nothing to tell", () => {
       date: "2027-01-16",
       atMs: fixtureDueMs,
       outcome: "idle",
-      liveUsdMicros: 1_200_000_000n,
+      liveUsdMicros: 0n,
       paperUsdMicros: 600_000_000n,
     });
+  });
+
+  it("tells an agent that holds live funds its value and 24-hour change all the same", async () => {
+    const rig = await startSummaryRig();
+    await rig.run();
+    await rig.clock.advance(dayMs);
+    await rig.run();
+    expect(summariesIn(rig, "en")).toStrictEqual([
+      [
+        "Daily summary for main, the last 24 hours",
+        `${liveIcon} Live: $1,200.00; realized P&L $0.00`,
+        `${paperIcon} Paper: $600.00; realized P&L $0.00`,
+        "Model spend: $0.00, against a daily model budget of $5.00",
+      ].join("\n"),
+      [
+        "Daily summary for main, the last 24 hours",
+        `${liveIcon} Live: $1,200.00, $0.00 in 24 hours; realized P&L $0.00`,
+        `${paperIcon} Paper: $600.00, $0.00 in 24 hours; realized P&L $0.00`,
+        "Model spend: $0.00, against a daily model budget of $5.00",
+      ].join("\n"),
+    ]);
   });
 
   it("says when the live balances could not be read, and tells the rest", async () => {

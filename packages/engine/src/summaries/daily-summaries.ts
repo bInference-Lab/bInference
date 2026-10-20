@@ -58,7 +58,7 @@ async function summarize(options: DailySummaryOptions, agent: AgentRecord, run: 
   }
   const { settings, date, before } = due;
   const facts = await summaryFactsOf(options, { settings, fromMs: nowMs - dayMs, nowMs, signal });
-  const idle = isIdle(facts);
+  const idle = isIdle(facts, before);
   const { live, paper } = facts;
   const record: DailySummaryRecord = {
     agentId: agent.id,

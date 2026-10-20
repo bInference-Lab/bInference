@@ -289,7 +289,7 @@ new name here first, in the change that uses it.
 - **daily summary**: the notice `notice.daily` that tells the owner each agent's last 24 hours once
   a day, at 09:00 owner time unless the agent names another time: live and paper value, realized
   P&L, fills and skips, open orders, model spend and what waits for the owner. An agent with
-  nothing to tell gets none.
+  no live funds and nothing else to tell gets none.
 - **outbox**: the store's queue of what the engine sends to a chat surface. A delivery is `queued`,
   `sent`, `unknown_after_send` or `failed`; one whose outcome is unknown is never sent again.
 - **model billing**: what pays for an agent's model calls and says what the agent may still spend:

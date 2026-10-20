@@ -28,11 +28,20 @@ export interface DailyNoticeInput {
   readonly nowMs: number;
 }
 
+// Whether the agent holds live funds now, or, when they cannot be read now, held some at its last
+// summary.
+function holdsLive(live: ModeFigures, before: DailySummaryRecord | undefined): boolean {
+  return (live.totalUsdMicros ?? before?.liveUsdMicros ?? 0n) > 0n;
+}
+
 /**
- * Whether the agent has nothing to tell: no trade, fill, skip or model spend in the last 24 hours,
- * no open order, and nothing waiting for the owner. An idle agent's summary is not sent.
+ * Whether the agent has nothing to tell: it holds no live funds, and had no trade, fill, skip or
+ * model spend in the last 24 hours, no open order, and nothing waiting for the owner (owner's
+ * ruling, 2026-10-20: an agent that holds live funds always hears its value). `before` is its
+ * last summary, whose live total stands in for one that cannot be read now. An idle agent's
+ * summary is not sent.
  */
-export function isIdle(facts: SummaryFacts): boolean {
+export function isIdle(facts: SummaryFacts, before?: DailySummaryRecord): boolean {
   const { live, paper, fills, waits } = facts;
   const counts = [
     live.trades,
@@ -44,7 +53,8 @@ export function isIdle(facts: SummaryFacts): boolean {
     waits.limits,
     waits.heldWallets,
   ];
-  return counts.every((count) => count === 0) && facts.spendUsdMicros === 0n && !waits.question;
+  const isQuiet = counts.every((count) => count === 0) && facts.spendUsdMicros === 0n;
+  return isQuiet && !waits.question && !holdsLive(live, before);
 }
 
 // The value of a message's `select` that shows a line.

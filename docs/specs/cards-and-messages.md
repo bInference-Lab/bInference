@@ -487,7 +487,8 @@ The owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#secti
 or the agent's own time: total value and its 24-hour change, realized P&L, fills, skipped fills,
 open orders, model spend, and anything waiting for the owner, over the 24 hours before it. It goes
 once per agent and owner's date, a summary missed while the engine was off at the first run of the
-same date, and none for an agent with nothing to tell. Live and paper each get a line; a line with
+same date, and none for an agent with nothing to tell: no live funds, no trade, fill, skip or
+model spend in the 24 hours, no open order and nothing waiting. Live and paper each get a line; a line with
 nothing to tell is left out, and each skip reason, the most frequent first, follows on a line of
 its own, at most four.
 
