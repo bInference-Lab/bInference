@@ -180,6 +180,15 @@ describe("a token launch started from a Telegram chat on a BSC fork", () => {
             "Tax on every sell: 5.00%",
           ]),
         );
+        // The owner saw the photo Start publishes right above the draft, which replies to it.
+        const photoMessage = machine.botApi.messages().find(({ file }) => file?.fileId === photoId);
+        const draftSent = machine.botApi
+          .sent()
+          .find(({ text }) => text.startsWith("curves drafted"));
+        expect([photoMessage?.file?.kind, draftSent?.replyTo]).toStrictEqual([
+          "photo",
+          photoMessage?.messageId,
+        ]);
         // Only Flap's API was asked, after the tap: the upload, then the pin until it was pinned.
         expect(api.urls()).toStrictEqual([
           "https://funcs.flap.sh/api/upload",

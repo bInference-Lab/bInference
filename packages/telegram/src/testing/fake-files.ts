@@ -4,9 +4,14 @@ import { z } from "zod";
 /** A file the synthetic Bot API holds for `getFile`. */
 export interface FakeFile {
   readonly bytes: Uint8Array;
+  /** What Telegram holds it as: a compressed photo, or a file sent as a document; photo when absent. */
+  readonly kind?: FakeFileKind;
   /** The size `getFile` reports; the bytes' own length when absent, none when `null`. */
   readonly reportedSize?: number | null;
 }
+
+/** What Telegram holds a file as, which decides whether `sendPhoto` or `sendDocument` sends it. */
+export type FakeFileKind = "photo" | "document";
 
 /** The files of a synthetic Bot API: `getFile` and the downloads of `/file/bot<token>/<path>`. */
 export interface FakeFiles {
@@ -18,6 +23,8 @@ export interface FakeFiles {
   download(path: string): Response;
   /** How many downloads came in. */
   downloads(): number;
+  /** What the file under this id is held as, or `undefined` for an id the fake does not hold. */
+  kindOf(fileId: string): FakeFileKind | undefined;
 }
 
 // The Bot API's download limit: it refuses `getFile` for a larger file.
@@ -58,5 +65,9 @@ export function createFakeFiles(): FakeFiles {
       return bytes === undefined ? new Response("", { status: 404 }) : new Response(bytes);
     },
     downloads: () => downloads,
+    kindOf: (fileId) => {
+      const file = files.get(fileId);
+      return file === undefined ? undefined : (file.kind ?? "photo");
+    },
   };
 }

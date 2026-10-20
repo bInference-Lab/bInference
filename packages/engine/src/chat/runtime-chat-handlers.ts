@@ -85,13 +85,13 @@ function turnHandlers(
   const { turns, publish } = options;
   return {
     async "turn/start"(call) {
-      const { agent, session, turn, outsideContent } = call.args;
+      const { agent, session, turn, outsideContent, messages } = call.args;
       const active = await startable(options, call);
       if (!active.ok) {
         return active;
       }
       const left = await options.budget.open(active.value, call);
-      turns.start({ agent, turn, hasOutsideContent: outsideContent });
+      turns.start({ agent, turn, hasOutsideContent: outsideContent, messages });
       publish({
         topic: chatTopic(agent),
         kind: "chat/turnStarted",

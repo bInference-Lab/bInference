@@ -20,6 +20,11 @@ export interface LaunchDraftShowing {
   readonly lines: readonly CardLine[];
   readonly assets: AssetInfos;
   readonly expiresAtMs: number;
+  /**
+   * The owner's photo the draft holds, by the `tg:<file_id>` its message named, which a surface
+   * shows the owner before the draft (decision 0286); absent for a picture link.
+   */
+  readonly photo?: string;
 }
 
 /**
@@ -158,7 +163,8 @@ export function createLaunchDraftDesk(options: LaunchDraftDeskOptions): LaunchDr
       const place = host.picturePlace(draft.request.venue);
       const { lines, assets } = drawLaunchDraft(draft, { chains, place });
       const { agentId: agent, agentName, ref, expiresAtMs } = draft;
-      return { agent, agentName, ref, lines, assets, expiresAtMs };
+      const photo = draft.picture === undefined ? {} : { photo: draft.request.image };
+      return { agent, agentName, ref, lines, assets, expiresAtMs, ...photo };
     },
     async start(ref, owner, { signal }) {
       signal.throwIfAborted();

@@ -21,7 +21,9 @@ import { createUploadShelf, type UploadShelf } from "../uploads/upload-shelf.js"
 /** The owner's numeric Telegram id. */
 export const draftOwnerId = 7_012_345_678;
 /** The runtime's running turn the drafts come from. */
-const draftSession: Id<"ses"> = idSchema("ses").parse("ses_0190f1c2-3a4b-7c5d-8e6f-000000000285");
+export const draftSession: Id<"ses"> = idSchema("ses").parse(
+  "ses_0190f1c2-3a4b-7c5d-8e6f-000000000285",
+);
 const draftTurn = idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000285");
 /** The owner's Telegram message with the photo. */
 export const photoMessage: Id<"msg"> = idSchema("msg").parse(
@@ -94,7 +96,7 @@ export async function testDraftEngine(
     agent: testAgent,
     session: draftSession,
     turn: draftTurn,
-    messages: [],
+    messages: [photoMessage],
     outsideContent: false,
   };
   const started = await launch.test.engine.handlers["turn/start"](

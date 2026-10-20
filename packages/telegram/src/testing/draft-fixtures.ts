@@ -13,6 +13,7 @@ import {
 } from "../fakes/fake-launch-draft-answers.js";
 import { type ButtonPress, chatUpdateSchema } from "../updates/chat-update.schema.js";
 import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "./fake-bot-api.js";
+import type { FakeFileKind } from "./fake-files.js";
 import { ownerId } from "./update-fixtures.js";
 
 // The agent's launch drafts in the owner's chat on the synthetic Bot API, for tests.
@@ -83,9 +84,29 @@ export interface DraftsContext {
   readonly drafts: TelegramLaunchDrafts;
 }
 
-/** The drafts with the owner paired, one open draft, and the synthetic Bot API. */
-export async function setUpDrafts(locale: "en" | "zh" = "en"): Promise<DraftsContext> {
+/** The photo a draft names, and what the bot holds it as; none when absent from the bot. */
+export interface DraftPhoto {
+  readonly fileId: string;
+  readonly held?: FakeFileKind;
+}
+
+/**
+ * The drafts with the owner paired, one open draft, and the synthetic Bot API; with `photo`, the
+ * draft names that photo, which the bot holds as `held`.
+ */
+export async function setUpDrafts(
+  locale: "en" | "zh" = "en",
+  photo?: DraftPhoto,
+): Promise<DraftsContext> {
   const botApi = createFakeBotApi();
+  if (photo?.held !== undefined) {
+    botApi.addFile(photo.fileId, {
+      bytes: new Uint8Array([0xff, 0xd8, 0xff, 1]),
+      kind: photo.held,
+    });
+  }
+  const showing =
+    photo === undefined ? testDraftShowing : { ...testDraftShowing, photo: `tg:${photo.fileId}` };
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
   const stores = createMemoryEngineStores();
   await stores.owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
@@ -94,7 +115,7 @@ export async function setUpDrafts(locale: "en" | "zh" = "en"): Promise<DraftsCon
   const drafts = createTelegramLaunchDrafts({
     api,
     owners: stores.owners,
-    drafts: { showing: (id) => (id === draftId ? testDraftShowing : undefined) },
+    drafts: { showing: (id) => (id === draftId ? showing : undefined) },
     answers,
     logger: createMemoryLogger({ subsystem: "telegram" }),
     display: () => ({ locale, timeZone: "UTC" }),

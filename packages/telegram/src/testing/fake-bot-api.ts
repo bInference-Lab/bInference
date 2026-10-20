@@ -320,11 +320,11 @@ export interface FakeBotOptions {
   readonly hasTopics?: boolean;
 }
 
-/** Creates an empty in-memory Bot API that accepts {@link fakeBotToken} only. */
-export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
-  const hasTopics = options.hasTopics ?? false;
-  const chats = createFakeChats({ hasTopics });
-  const state: State = {
+// The fake's state before any call: its chats send again only the files the bot holds.
+function emptyState({ hasTopics = false }: FakeBotOptions): State {
+  const files = createFakeFiles();
+  const chats = createFakeChats({ hasTopics, fileKindOf: (id) => files.kindOf(id) });
+  return {
     user: { ...fakeBotUser, has_topics_enabled: hasTopics, allows_users_to_create_topics: false },
     updates: [],
     wakers: new Set(),
@@ -333,8 +333,14 @@ export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
     calls: [],
     chats,
     menus: createFakeMenus(),
-    files: createFakeFiles(),
+    files,
   };
+}
+
+/** Creates an empty in-memory Bot API that accepts {@link fakeBotToken} only. */
+export function createFakeBotApi(options: FakeBotOptions = {}): FakeBotApi {
+  const state = emptyState(options);
+  const { chats } = state;
   let presses = 0;
   const push = (...updates: readonly JsonValue[]): void => {
     const held = updates.map((update) => ({ id: headSchema.parse(update).update_id, update }));

@@ -4,12 +4,14 @@ import type { MessageLocale } from "@binference/i18n";
 import { type LaunchDraftPush, launchDraftPushOf } from "@binference/protocol";
 import type { Api } from "grammy";
 import { answerPress, sendButtonMessage, type TopicButtons } from "../chat/button-message.js";
+import { escapeHtml } from "../format/escape-html.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import type { LaunchDraftAnswers } from "../ports.js";
 import type { ButtonPress } from "../updates/chat-update.schema.js";
 import { launchDraftCallbackSchema } from "./launch-draft-callback.schema.js";
 import { launchDraftButtons, launchDraftHtml, type DraftWords } from "./launch-draft-html.js";
+import { sendDraftPhoto } from "./send-draft-photo.js";
 
 /**
  * The agent's launch drafts in the owner's chat, with Start launch and Drop (decision 0285):
@@ -81,13 +83,23 @@ async function drafted(parts: Parts, draft: string, call: Call): Promise<void> {
     display,
     until: formatter.time(showing.expiresAtMs),
   });
-  const buttons = launchDraftButtons(showing.ref, words);
+  // The owner sees the same picture Start publishes, right above the draft that names it; a draft
+  // whose picture cannot be shown cannot start (decision 0286).
+  const chatId = owner.userId;
+  const shown =
+    showing.photo === undefined
+      ? undefined
+      : await sendDraftPhoto(options.api, { chatId, image: showing.photo }, call.signal);
+  const isUnshown = showing.photo !== undefined && shown === undefined;
+  const buttons = launchDraftButtons(showing.ref, words, { canStart: !isUnshown });
+  const text = isUnshown ? `${html}\n${escapeHtml(words("telegram.draft.noPhoto"))}` : html;
+  const replyTo = shown === undefined ? {} : { replyTo: shown };
   const messageId = await sendButtonMessage(
     options.api,
-    { chatId: owner.userId, html, buttons },
+    { chatId, html: text, buttons, ...replyTo },
     call.signal,
   );
-  parts.sent.set(draft, { chatId: owner.userId, messageId });
+  parts.sent.set(draft, { chatId, messageId });
   // A Map keeps its keys in the order they came: past the most, the oldest message goes first,
   // and keeps its buttons, which still reach the engine.
   for (const oldest of [...parts.sent.keys()].slice(0, Math.max(0, parts.sent.size - mostSent))) {

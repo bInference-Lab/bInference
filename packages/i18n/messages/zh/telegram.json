@@ -25,5 +25,6 @@
   "draft.answer.started": "发射已开始，确认卡片随后发送。",
   "draft.answer.dropped": "草稿已放弃。",
   "draft.answer.expired": "此草稿已失效。请让 Agent 重新起草。",
-  "draft.answer.failed": "发射未开始，原因见草稿消息。"
+  "draft.answer.failed": "发射未开始，原因见草稿消息。",
+  "draft.noPhoto": "⚠️ binference 无法在此显示图片，因此该草稿无法开始。请让 Agent 重新起草。"
 }

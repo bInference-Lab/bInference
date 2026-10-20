@@ -11,6 +11,7 @@ import { ownerId, strangerId } from "../testing/update-fixtures.js";
 
 const done = String.fromCodePoint(0x2705);
 const refused = String.fromCodePoint(0x274c);
+const warning = `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}`;
 
 describe("the agent's launch drafts in Telegram", () => {
   it("sends the draft with every line, its words made visible, and Start launch and Drop", async () => {
@@ -79,5 +80,37 @@ describe("the agent's launch drafts in Telegram", () => {
     await context.drafts.show(openedDraft, live);
     await context.drafts.show(closedDraft(outcome, extra), live);
     expect(context.botApi.messages()).toMatchObject([{ text: line, buttons: [] }]);
+  });
+
+  it("sends the held photo right above the draft, which replies to it", async () => {
+    const context = await setUpDrafts("en", { fileId: "AgACforkcat", held: "photo" });
+    await context.drafts.show(openedDraft, live);
+    const [photo, draft] = context.botApi.sent();
+    const [photoMessage] = context.botApi.messages();
+    expect(photo?.file).toStrictEqual({ kind: "photo", fileId: "AgACforkcat" });
+    expect(draft?.replyTo).toBe(photoMessage?.messageId);
+    expect(context.botApi.messages()[1]?.buttons[0]?.map(({ text }) => text)).toStrictEqual([
+      "Start launch",
+      "Drop",
+    ]);
+  });
+
+  it("sends a photo the owner sent as a file again as a file", async () => {
+    const context = await setUpDrafts("en", { fileId: "BQACforkcat", held: "document" });
+    await context.drafts.show(openedDraft, live);
+    expect(context.botApi.sent()[0]?.file).toStrictEqual({
+      kind: "document",
+      fileId: "BQACforkcat",
+    });
+  });
+
+  it("offers only Drop when the bot cannot show the draft's picture", async () => {
+    const context = await setUpDrafts("en", { fileId: "AgACgone" });
+    await context.drafts.show(openedDraft, live);
+    const [message] = context.botApi.messages();
+    expect(message?.buttons).toStrictEqual([[{ text: "Drop", data: `bnf1:s:n:${draftRef}` }]]);
+    expect(message?.text.split("\n").at(-1)).toBe(
+      `${warning} binference could not show the picture here, so this draft cannot start. Ask your agent to draft it again.`,
+    );
   });
 });

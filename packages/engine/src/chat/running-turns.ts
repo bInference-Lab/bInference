@@ -8,6 +8,8 @@ export interface RunningTurn {
   readonly turn: ProtocolId<"chatTurn">;
   /** Whether the turn's context held outside content when it started. */
   readonly hasOutsideContent: boolean;
+  /** The inbox messages the turn took when it started, which a launch draft's photo comes from. */
+  readonly messages?: readonly ProtocolId<"inboxMessage">[];
 }
 
 /**

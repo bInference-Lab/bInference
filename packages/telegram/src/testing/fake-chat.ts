@@ -1,17 +1,12 @@
 import { err, type JsonValue, ok, type Result } from "@binference/core";
 import { z } from "zod";
+import type { FakeFileKind } from "./fake-files.js";
 import { type FakeEntity, type FormattedText, parseFakeHtml } from "./fake-html.js";
+import { type FakeButton, type Keyboard, keyboardOf, markupSchema } from "./fake-keyboard.js";
+import { type FakeSentFile, type SentFile, sendFile } from "./fake-sent-files.js";
 import { createFakeTopics, type FakeTopic, type FakeTopics } from "./fake-topics.js";
 
 /** An inline keyboard button as the bot drew it. */
-export interface FakeButton {
-  readonly text: string;
-  /** The callback data a press of the button carries. */
-  readonly data?: string;
-  /** The HTTPS URL of the Mini App the button opens. */
-  readonly webApp?: string;
-}
-
 /** A message the bot sent, as it stands after every edit. */
 export interface FakeMessage {
   readonly chatId: number;
@@ -22,6 +17,8 @@ export interface FakeMessage {
   readonly entities: readonly FakeEntity[];
   /** The inline keyboard, row by row; empty once the buttons are removed. */
   readonly buttons: readonly (readonly FakeButton[])[];
+  /** The file a `sendPhoto` or `sendDocument` sent, by its id; its text is the caption, or none. */
+  readonly file?: FakeSentFile;
 }
 
 /** A message as the bot sent it: the text a reader saw then. */
@@ -31,6 +28,8 @@ export interface SentText {
   readonly threadId?: number;
   /** The message it replies to, as its `reply_parameters` named it. */
   readonly replyTo?: number;
+  /** The file it sent, for a `sendPhoto` or `sendDocument`. */
+  readonly file?: FakeSentFile;
 }
 
 /** A message the bot deleted. */
@@ -73,6 +72,8 @@ export interface FakeChats {
 
 interface ChatsState {
   readonly topics: FakeTopics;
+  /** What the bot's files are held as, by id; `undefined` for one it never received. */
+  readonly fileKindOf: (fileId: string) => FakeFileKind | undefined;
   readonly messages: Map<string, FakeMessage>;
   readonly sent: SentText[];
   readonly deleted: DeletedMessage[];
@@ -81,25 +82,15 @@ interface ChatsState {
   readonly nextMessageId: () => number;
 }
 
-type Keyboard = readonly (readonly FakeButton[])[];
-
 /** A message's content: what a reader sees and its buttons. */
 interface Content extends FormattedText {
   readonly buttons: Keyboard;
 }
 
 const maxTextLength = 4096;
-const maxDataBytes = 64;
-const encoder = new TextEncoder();
 const staleQuery =
   "Bad Request: query is too old and response timeout expired or query ID is invalid";
 
-const buttonSchema = z.looseObject({
-  text: z.string().min(1),
-  callback_data: z.string().optional(),
-  web_app: z.looseObject({ url: z.string() }).optional(),
-});
-const markupSchema = z.looseObject({ inline_keyboard: z.array(z.array(buttonSchema)) }).optional();
 const targetShape = { chat_id: z.int(), message_id: z.int() };
 const contentShape = {
   text: z.string(),
@@ -122,7 +113,6 @@ const answerSchema = z.looseObject({
   show_alert: z.boolean().optional(),
 });
 
-type Markup = z.output<typeof markupSchema>;
 type ContentCall = z.output<typeof editTextSchema>;
 
 function parsed<T>(schema: z.ZodType<T>, body: string): Result<T, string> {
@@ -142,36 +132,6 @@ function formatted(text: string, parseMode: string | undefined): Result<Formatte
     return err("Bad Request: message text is empty");
   }
   return shown.value.text.length > maxTextLength ? err("Bad Request: message is too long") : shown;
-}
-
-// A button carries callback data or opens a Mini App, never both; Telegram opens a Mini App only
-// from an HTTPS URL, and only in a private chat, whose id is the user's own positive id.
-function buttonProblem(button: FakeButton, chatId: number): string | undefined {
-  if (button.webApp === undefined) {
-    const bytes = encoder.encode(button.data ?? "x").length;
-    return bytes >= 1 && bytes <= maxDataBytes ? undefined : "Bad Request: BUTTON_DATA_INVALID";
-  }
-  if (button.data !== undefined || chatId <= 0) {
-    return "Bad Request: BUTTON_TYPE_INVALID";
-  }
-  return URL.parse(button.webApp)?.protocol === "https:"
-    ? undefined
-    : `Bad Request: inline keyboard button Web App URL '${button.webApp}' is invalid: Only HTTPS links are allowed`;
-}
-
-function keyboardOf(markup: Markup, chatId: number): Result<Keyboard, string> {
-  const rows = (markup?.inline_keyboard ?? []).map((row) =>
-    row.map((button) => ({
-      text: button.text,
-      ...(button.callback_data === undefined ? {} : { data: button.callback_data }),
-      ...(button.web_app === undefined ? {} : { webApp: button.web_app.url }),
-    })),
-  );
-  const problem = rows
-    .flat()
-    .map((button) => buttonProblem(button, chatId))
-    .find(Boolean);
-  return problem === undefined ? ok(rows) : err(problem);
 }
 
 function contentOf(call: Pick<ContentCall, "chat_id" | "text" | "parse_mode" | "reply_markup">) {
@@ -241,6 +201,16 @@ function sendMessage(state: ChatsState, body: string): Result<JsonValue, string>
   return ok(messageJson(message));
 }
 
+// A file sent again by its id, kept as a message the chat holds, with what a reader saw.
+function keepFile(state: ChatsState, sent: SentFile): JsonValue {
+  const target = { chatId: sent.chatId, messageId: state.nextMessageId() };
+  const message = { ...target, text: "", entities: [], buttons: [], file: sent.file };
+  state.messages.set(keyOf(target.chatId, target.messageId), message);
+  const reply = sent.replyTo === undefined ? {} : { replyTo: sent.replyTo };
+  state.sent.push({ chatId: target.chatId, text: "", file: sent.file, ...reply });
+  return messageJson(message);
+}
+
 function editMessageText(state: ChatsState, body: string): Result<JsonValue, string> {
   const call = parsed(editTextSchema, body);
   if (!call.ok) {
@@ -299,6 +269,10 @@ function answerCallbackQuery(state: ChatsState, body: string): Result<JsonValue,
 
 const chatCalls = {
   sendMessage,
+  sendPhoto: (state: ChatsState, body: string) =>
+    sendFile({ ...state, keep: (sent) => keepFile(state, sent) }, "photo", body),
+  sendDocument: (state: ChatsState, body: string) =>
+    sendFile({ ...state, keep: (sent) => keepFile(state, sent) }, "document", body),
   editMessageText,
   editMessageReplyMarkup,
   deleteMessage,
@@ -309,10 +283,16 @@ const chatCalls = {
  * Creates the in-memory chats of a fake Bot API; message ids start after 1000. With `hasTopics`,
  * the bot may make topics in private chats, and a message goes only to a topic it made.
  */
-export function createFakeChats(options: { readonly hasTopics?: boolean } = {}): FakeChats {
+export function createFakeChats(
+  options: {
+    readonly hasTopics?: boolean;
+    readonly fileKindOf?: (fileId: string) => FakeFileKind | undefined;
+  } = {},
+): FakeChats {
   let lastMessageId = 1000;
   const state: ChatsState = {
     topics: createFakeTopics({ hasTopics: options.hasTopics ?? false }),
+    fileKindOf: options.fileKindOf ?? (() => undefined),
     messages: new Map(),
     sent: [],
     deleted: [],

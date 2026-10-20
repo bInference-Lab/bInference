@@ -59,6 +59,17 @@ function isOwnersPhoto(stored: AgentInboxMessage | undefined, agent: string, ima
   );
 }
 
+// The photo is one of the running turn's own messages from the owner: a photo the owner sent with
+// an earlier request is not this request's picture (decision 0286).
+async function isTurnsPhoto(options: DraftLaunchOptions, call: DraftCall): Promise<boolean> {
+  const { photo, agent } = call.args;
+  const taken = options.turns.runningOf(agent)?.messages ?? [];
+  if (photo === undefined || !taken.includes(photo.message)) {
+    return false;
+  }
+  return isOwnersPhoto(await options.agentInbox.get(photo.message, call), agent, photo.image);
+}
+
 const refusals = { too_large: "image.too_large", unreadable: "image.unreadable" } as const;
 
 // The photo's bytes, read once and held to what a launch takes: a PNG, JPEG or WebP of at most
@@ -69,12 +80,11 @@ async function photoOf(
   asked: { readonly request: LaunchTokenRequest; readonly call: DraftCall },
 ): Promise<Result<ReadPicture | undefined, ProtocolErrorCode>> {
   const { request, call } = asked;
-  const { photo, agent } = call.args;
+  const { photo } = call.args;
   if (photo === undefined) {
     return ok(undefined);
   }
-  const stored = await options.agentInbox.get(photo.message, call);
-  if (!isOwnersPhoto(stored, agent, photo.image)) {
+  if (!(await isTurnsPhoto(options, call))) {
     return err("image.not_found");
   }
   const read = await options.images.read(photo.image, call);

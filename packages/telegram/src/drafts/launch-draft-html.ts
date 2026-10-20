@@ -23,12 +23,22 @@ export function launchDraftHtml(
   return [header, ...lines, footer].join("\n");
 }
 
-/** The draft's buttons on one row: Start launch, then Drop, each carrying `bnf1:s:<y|n>:<ref>`. */
-export function launchDraftButtons(ref: string, words: DraftWords): ButtonRows {
-  return [
-    [
-      { text: words("telegram.draft.start"), data: launchDraftCallbackData({ start: true, ref }) },
-      { text: words("telegram.draft.drop"), data: launchDraftCallbackData({ start: false, ref }) },
-    ],
-  ];
+/**
+ * The draft's buttons on one row: Start launch, then Drop, each carrying `bnf1:s:<y|n>:<ref>`;
+ * Drop alone when the draft cannot start, as when its picture could not be shown.
+ */
+export function launchDraftButtons(
+  ref: string,
+  words: DraftWords,
+  draft: { readonly canStart: boolean },
+): ButtonRows {
+  const start = {
+    text: words("telegram.draft.start"),
+    data: launchDraftCallbackData({ start: true, ref }),
+  };
+  const drop = {
+    text: words("telegram.draft.drop"),
+    data: launchDraftCallbackData({ start: false, ref }),
+  };
+  return [draft.canStart ? [start, drop] : [drop]];
 }

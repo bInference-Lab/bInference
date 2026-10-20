@@ -29,11 +29,11 @@ export type {
 export type {
   CallbackAnswer,
   DeletedMessage,
-  FakeButton,
   FakeEdit,
   FakeMessage,
   SentText,
 } from "./testing/fake-chat.js";
+export type { FakeButton } from "./testing/fake-keyboard.js";
 export type { FakeTopic } from "./testing/fake-topics.js";
 export type { FakeCommand, FakeMenu } from "./testing/fake-commands.js";
 export type { FakeEntity } from "./testing/fake-html.js";

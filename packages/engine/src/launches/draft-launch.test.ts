@@ -8,6 +8,7 @@ import {
   draftArgs,
   draftArgsWithoutPhoto,
   draftOf,
+  draftSession,
   draftTerms,
   draftText,
   photoMessage,
@@ -101,6 +102,21 @@ describe("launch/draft", () => {
       refused("image.not_found"),
       refused("protocol.bad_args"),
     ]);
+  });
+
+  it("refuses a photo the owner sent with an earlier turn, not this one", async () => {
+    const { test } = await testDraftEngine();
+    const next = {
+      agent: testAgent,
+      session: draftSession,
+      turn: idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000286"),
+      messages: [],
+      outsideContent: false,
+    };
+    expectOk(await test.engine.handlers["turn/start"](testCall(next, testCallers.runtime)));
+    expect(await draftOf(test, draftArgs({ turn: next.turn }))).toStrictEqual(
+      refused("image.not_found"),
+    );
   });
 
   it("checks a draft as a proposal: a paper agent, no launch wallet, a launch under way", async () => {

@@ -708,7 +708,8 @@ launch ([spec 8, section 6.5](runtime.md#section-6-5)); a `launchToken` the runt
   is under way, every refusal of section 8.1's launch rules, and `intent.launch_wallet_missing`
   for an agent with no live launch wallet.
 - On a launchpad that uploads or writes the picture, `photo` names one image of one of the
-  agent's own `inbox/message`s from Telegram, `tg:<file_id>`; any other is `image.not_found`, and
+  agent's own `inbox/message`s from Telegram that the running turn took at `turn/start`,
+  `tg:<file_id>`; any other, a photo of an earlier turn among them, is `image.not_found`, and
   a missing one `protocol.bad_args`. The engine reads it once, as a launch reads an upload
   (`image.format`, `image.too_large`, `image.unreadable`, and for a picture the create call writes,
   `intent.launch_picture_too_large`), and keeps its bytes. On a launchpad that takes a picture

@@ -36,15 +36,24 @@ function markupOf(buttons: ButtonRows) {
 }
 
 /**
- * Sends a Telegram HTML message with its buttons and no link preview to a chat, and answers the
- * message's id.
+ * Sends a Telegram HTML message with its buttons and no link preview to a chat, as a reply to
+ * `replyTo` when given, and answers the message's id.
  */
 export async function sendButtonMessage(
   api: Api,
-  message: { readonly chatId: number; readonly html: string; readonly buttons: ButtonRows },
+  message: {
+    readonly chatId: number;
+    readonly html: string;
+    readonly buttons: ButtonRows;
+    readonly replyTo?: number;
+  },
   signal: AbortSignal,
 ): Promise<number> {
-  const { chatId, html, buttons } = message;
+  const { chatId, html, buttons, replyTo } = message;
+  const reply =
+    replyTo === undefined
+      ? {}
+      : { reply_parameters: { message_id: replyTo, allow_sending_without_reply: true } };
   const sent = await callBotApi("sendMessage", signal, async (stop) =>
     api.sendMessage(
       chatId,
@@ -53,6 +62,7 @@ export async function sendButtonMessage(
         parse_mode: "HTML",
         link_preview_options: { is_disabled: true },
         reply_markup: markupOf(buttons),
+        ...reply,
       },
       stop,
     ),
