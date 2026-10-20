@@ -204,7 +204,7 @@ describe("wake-ups", () => {
     );
   });
 
-  it("hold back the 11th in an hour and count it at the next", async () => {
+  it("hold back the 11th in an hour and count it in the next notice", async () => {
     const test = await startTestEngine();
     const trades = Array.from({ length: 11 }, () => trade("buy", 50));
     await setAlert(test, { kind: "wallet", account: leader }, { wake: true });
@@ -221,6 +221,13 @@ describe("wake-ups", () => {
 
     expect(fires).toStrictEqual([...Array.from({ length: 10 }, () => true), false]);
     expect([later?.woke, later?.wakeSkipped]).toStrictEqual([true, 1]);
+    expect(pushed(test, "notice/new").at(-1)).toMatchObject({
+      key: "notice.alertWallet",
+      after: [
+        { key: "alert.woke", values: { agent: "main" } },
+        { key: "alert.wakeSkipped", values: { agent: "main", count: "1" } },
+      ],
+    });
   });
 });
 
