@@ -1,9 +1,9 @@
 import {
   type AccountRef,
   accountRefParts,
-  BinferenceError,
   err,
   type LaunchQuote,
+  type LaunchQuoteFailure,
   type LaunchTerms,
   ok,
   type Result,
@@ -64,7 +64,7 @@ const addressPart = (account: AccountRef): Address | undefined => {
 };
 
 // What of the new token the wallet received in the create call's run; a run that sends the wallet
-// any of what it spent back, as a first buy past the pool's liquidity would, throws.
+// any of what it spent back, as a first buy past the pool's liquidity would, gets none.
 function receivedOf(
   create: SimulatedStep,
   of: { readonly wallet: Address; readonly token: Address; readonly pair: string },
@@ -72,10 +72,7 @@ function receivedOf(
   const { wallet, token, pair } = of;
   const toWallet = create.transfers.filter((item) => addressPart(item.to) === wallet);
   if (toWallet.some((item) => item.amount.asset === pair)) {
-    throw new BinferenceError({
-      code: "brew.dry_run_failed",
-      message: "The first buy would sweep past the pool's liquidity, which refunds part of it.",
-    });
+    return 0n;
   }
   const isToken = (asset: string) => asset.toLowerCase().endsWith(token.toLowerCase());
   return toWallet
@@ -86,7 +83,7 @@ function receivedOf(
 /**
  * What a launch's first buy gets: its steps run unsent on the chain's simulator at the latest
  * block, from a wallet that holds only the fee and the first buy, with a fresh salt. A run that
- * fails, or that gets none of the new token, throws `brew.dry_run_failed`.
+ * fails, that refunds part of the first buy, or that gets none of the new token gets 0.
  */
 async function firstBuyOutOf(
   terms: LaunchTerms,
@@ -108,22 +105,12 @@ async function firstBuyOutOf(
   const run = await placed.chain.simulator.simulate(steps, { signal, balances });
   const create = run.at(-1);
   if (create === undefined || run.some((step) => step.status !== "success")) {
-    throw new BinferenceError({
-      code: "brew.dry_run_failed",
-      message: "BrewFactory refused the launch in a dry run at the latest block.",
-    });
+    return 0n;
   }
   const { name, symbol } = terms;
   const created = { factory: placed.factory, creator: wallet, name, symbol, metadataURI };
   const token = tokenAddressOf({ ...created, totalSupply: tokenSupply }, salt);
-  const received = receivedOf(create, { wallet, token, pair: terms.pair });
-  if (received === 0n) {
-    throw new BinferenceError({
-      code: "brew.dry_run_failed",
-      message: "The first buy got none of the new token in a dry run.",
-    });
-  }
-  return received;
+  return receivedOf(create, { wallet, token, pair: terms.pair });
 }
 
 /** A launch's start: its market cap, the pool's tick for it, and whether the quote worked it out. */
@@ -133,50 +120,62 @@ interface Start {
   readonly isWorkedOut: boolean;
 }
 
-// The owner's start, else the pair's default (decision 0283); one no tick reaches: undefined.
-function startOf(terms: LaunchTerms, placed: PlacedLaunch): Start | undefined {
+// The owner's start, else the pair's default (decision 0283): `start_unpriced` with neither, and
+// `start_unreachable` for one no tick reaches.
+function startOf(
+  terms: LaunchTerms,
+  placed: PlacedLaunch,
+): Result<Start, "start_unpriced" | "start_unreachable"> {
   const given = terms.options["startMarketCap"];
   const marketCap =
     typeof given === "string" ? BigInt(given) : defaultStartOf(placed.pair, terms.pairUsdPrice);
   if (marketCap === undefined) {
-    return undefined;
+    return err("start_unpriced");
   }
   const start = { marketCapBase: marketCap, supplyBase: tokenSupply, spacing: tickSpacing };
   const initialTick = startTickOf(start);
   return initialTick === undefined
-    ? undefined
-    : { marketCap, initialTick, isWorkedOut: typeof given !== "string" };
+    ? err("start_unreachable")
+    : ok({ marketCap, initialTick, isWorkedOut: typeof given !== "string" });
 }
 
 /**
  * Quotes a Brew launch at the latest block, nothing uploaded (decision 0283): it reads the
  * factory's launch fee and pause, works out the starting market cap when the owner set none, and
- * for a first buy runs the launch's own steps unsent to read what it gets. A chain or pair the
- * venue does not launch on, paused launches, a pair with no start, or a start no tick reaches is
- * `no_route`; a dry run that fails throws.
+ * for a first buy runs the launch's own steps unsent to read what it gets. Each refusal names the
+ * owner's next step (decision 0284): a chain or pair the venue does not launch on is `no_route`,
+ * paused launches `launch_paused`, a pair with no start `start_unpriced`, a start no tick reaches
+ * `start_unreachable`, and a dry run that fails, refunds or gets none of the token
+ * `dry_run_failed`.
  */
 export async function quoteLaunch(
   terms: LaunchTerms,
   parts: LaunchParts,
   signal: AbortSignal,
-): Promise<Result<LaunchQuote, "no_route">> {
+): Promise<Result<LaunchQuote, LaunchQuoteFailure>> {
   signal.throwIfAborted();
   const placed = placeOf(terms, parts);
-  const start = placed === undefined ? undefined : startOf(terms, placed);
-  const factory =
-    start === undefined || placed === undefined ? undefined : await readFactory(placed, signal);
-  if (placed === undefined || start === undefined || factory?.isPaused !== false) {
+  if (placed === undefined) {
     return err("no_route");
+  }
+  const start = startOf(terms, placed);
+  if (!start.ok) {
+    return start;
+  }
+  const factory = await readFactory(placed, signal);
+  if (factory.isPaused) {
+    return err("launch_paused");
   }
   checkFirstBuy(terms);
   const fee = { asset: placed.chain.setup.nativeAsset, base: factory.fee };
-  const settings = start.isWorkedOut
-    ? { settings: { startMarketCap: start.marketCap.toString() } }
-    : {};
+  const { marketCap, initialTick, isWorkedOut } = start.value;
+  const settings = isWorkedOut ? { settings: { startMarketCap: marketCap.toString() } } : {};
   if (terms.firstBuy === undefined) {
     return ok({ fee, tokenDecimals, ...settings });
   }
-  const launch = { placed, fee: factory.fee, initialTick: start.initialTick, parts };
+  const launch = { placed, fee: factory.fee, initialTick, parts };
   const firstBuyOut = await firstBuyOutOf(terms, launch, signal);
-  return ok({ fee, tokenDecimals, firstBuyOut, ...settings });
+  return firstBuyOut === 0n
+    ? err("dry_run_failed")
+    : ok({ fee, tokenDecimals, firstBuyOut, ...settings });
 }

@@ -86,22 +86,44 @@ describe("the brew launcher", () => {
     expect(quote.settings).toStrictEqual({ startMarketCap: (5n * 10n ** 16n).toString() });
     await expect(launcherOver().quoteLaunch(terms, live)).resolves.toStrictEqual({
       ok: false,
-      error: "no_route",
+      error: "start_unpriced",
     });
   });
 
-  it("answers paused launches as no route", async () => {
+  it("names paused launches, and a start no tick reaches", async () => {
     const paused = launcherOver(launchSimulator(), { isPaused: true });
     await expect(paused.quoteLaunch(testLaunch, live)).resolves.toStrictEqual({
       ok: false,
-      error: "no_route",
+      error: "launch_paused",
+    });
+    const huge = {
+      ...testLaunch,
+      options: { ...testLaunch.options, startMarketCap: `1${"0".repeat(70)}` },
+    };
+    await expect(launcherOver().quoteLaunch(huge, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "start_unreachable",
     });
   });
 
-  it.each(["reverts", "refunds"] as const)("throws when its dry run %s", async (run) => {
-    await expect(launcherOver(launchSimulator(run)).quoteLaunch(testLaunch, live)).rejects.toThrow(
-      expect.objectContaining({ code: "brew.dry_run_failed" }),
-    );
+  it.each(["reverts", "refunds"] as const)("names a dry run that %s", async (run) => {
+    await expect(
+      launcherOver(launchSimulator(run)).quoteLaunch(testLaunch, live),
+    ).resolves.toStrictEqual({
+      ok: false,
+      error: "dry_run_failed",
+    });
+  });
+
+  it("names the step a fee recipient and holder rewards that do not go together need", () => {
+    const { checkOptions } = launcherOver();
+    const { poolFeeRecipient: _recipient, ...unnamed } = testLaunch.options;
+    expect([
+      checkOptions?.(testLaunch.options),
+      checkOptions?.(unnamed),
+      checkOptions?.({ ...testLaunch.options, holderRewards: true }),
+      checkOptions?.({ ...unnamed, holderRewards: true }),
+    ]).toStrictEqual([true, "recipient_needed", "recipient_unused", true]);
   });
 });
 

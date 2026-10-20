@@ -58,7 +58,8 @@ U.S. citizens (decision
   the pair; `poolFee` (`onePercent`) and `liquidity` (`oneRange`), one word each; and, with holder
   rewards on, `holderDistributor`, an outside-only account only the build works out (decision
   0280). The launcher checks that the fee recipient, holder rewards and the distributor go
-  together. The card shows each, the distributor whole; the decoder reads each back from the
+  together, and names the step a launch needs (decision 0284): a fee recipient with holder
+  rewards off (`recipient_needed`), none with them on (`recipient_unused`). The card shows each, the distributor whole; the decoder reads each back from the
   call's bytes, the start through the tick the build that made the call wrote, takes a call sent
   to that build's factory alone, and refuses any other fee tier, supply, range or tick.
 - **The holder distributor.** Its address is worked out off line: CREATE2 from the registry's
@@ -71,7 +72,9 @@ U.S. citizens (decision
 - **The start.** The owner's starting market cap, else the pair's fixed start, else $5,000 at
   the pair's price, rounded down. The pool's starting tick is the highest on the 1% tier's
   spacing of 200 whose price is at most that market cap over the supply, worked out in integer
-  arithmetic; a start no tick reaches is `no_route`.
+  arithmetic. A pair with no start is `start_unpriced`, and a start no tick reaches
+  `start_unreachable` (decision
+  [0284](0284-a-launchpad-names-why-it-refuses-a-launch.md)).
 - **The words and the picture.** The metadata address is the document Brew's own launches write:
   `v` 1, the description, website, X and Telegram links the launch gives, and the picture as a
   `data:image/...;base64,` address, 2,048 bytes in all; the launcher tells the engine how many
@@ -79,8 +82,8 @@ U.S. citizens (decision
   does, a description 600 and each link 100, so the words alone always fit.
 - **The quote.** It reads the launch fee and the pause, works out the start, and for a first buy
   runs the steps unsent from a wallet that holds only the fee and the first buy: the wallet's new
-  tokens are the first buy's output, and a run that refunds part of the first buy throws. Paused
-  launches are `no_route`.
+  tokens are the first buy's output; a run that fails, refunds part of the first buy or gets none
+  of the token is `dry_run_failed`. Paused launches are `launch_paused`.
 - **The first buy keeps its minimum.** The factory holds the first buy to it, so the launcher
   refuses a minimum of 0 and does not declare `noFirstBuyMin`.
 - **Launch wallets alone.** `launch` is a launch wallet's call alone (`isLaunchWalletOnly`), and

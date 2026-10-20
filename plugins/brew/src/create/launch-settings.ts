@@ -4,6 +4,7 @@ import {
   BinferenceError,
   type LaunchOption,
   type LaunchOptionValue,
+  type LaunchSettingsRefusal,
   type LaunchWordLimits,
 } from "@binference/plugin-sdk";
 import { parseEvmAddress } from "@binference/plugin-sdk/evm";
@@ -46,17 +47,19 @@ export const brewWordLimits: LaunchWordLimits = {
 };
 
 /**
- * Whether a launch names a fee recipient exactly when its holder rewards are off, and a holder
- * distributor only while they are on.
+ * Whether a launch's settings go together (decision 0284): with holder rewards off it names a fee
+ * recipient (`recipient_needed` if not) and no holder distributor; with them on, no fee recipient
+ * (`recipient_unused` if it does).
  */
 export function brewOptionsGoTogether(
   options: Readonly<Record<string, LaunchOptionValue>>,
-): boolean {
+): boolean | LaunchSettingsRefusal {
   const isHolders = options["holderRewards"] === true;
-  return (
-    isHolders === (options["poolFeeRecipient"] === undefined) &&
-    (isHolders || options["holderDistributor"] === undefined)
-  );
+  const hasRecipient = options["poolFeeRecipient"] !== undefined;
+  if (isHolders) {
+    return hasRecipient ? "recipient_unused" : true;
+  }
+  return hasRecipient ? options["holderDistributor"] === undefined : "recipient_needed";
 }
 
 /** A Brew launch's settings, as its create call writes them. */
@@ -99,7 +102,7 @@ export function brewSettingsOf(
   if (typeof start !== "string" || !/^[1-9][0-9]*$/.test(start)) {
     throw refuse("The launch has no starting market cap.");
   }
-  if (typeof holderRewards !== "boolean" || !brewOptionsGoTogether(options)) {
+  if (typeof holderRewards !== "boolean" || brewOptionsGoTogether(options) !== true) {
     throw refuse("A launch names a fee recipient exactly when holder rewards are off.");
   }
   const feeRecipient = recipientOf(options["poolFeeRecipient"]);
