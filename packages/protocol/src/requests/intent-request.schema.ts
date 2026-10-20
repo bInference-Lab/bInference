@@ -124,13 +124,22 @@ export interface TokenLinks {
   readonly telegram?: string;
 }
 
+/**
+ * The `image` of a launch on a launchpad that takes its picture as a link and uploads nothing
+ * (decision 0276): it names no upload. A launch on a launchpad that uploads names a real upload.
+ */
+export const noUploadImage = "none";
+
 /** Launches a token on a launchpad, with an optional first buy. */
 export interface LaunchTokenRequest extends RequestBase {
   readonly kind: "launchToken";
   readonly venue: string;
   readonly name: string;
   readonly symbol: string;
-  /** The id of an uploaded image. */
+  /**
+   * The id of an uploaded image, or {@link noUploadImage} on a launchpad that takes its picture as
+   * a link.
+   */
   readonly image: string;
   readonly description?: string;
   readonly links?: TokenLinks;

@@ -44,7 +44,7 @@ describe("a token launch's card in Chinese", () => {
   it("shows a picture link whole, with no picture sent and nothing public", async () => {
     const { test } = await testLaunchEngine({ takesPictureLink: true });
     const pictureLink = "https://pictures.example/cat.png";
-    const request = { ...testLaunch, venueOptions: { taxBps: 300, pictureLink } };
+    const request = { ...testLaunch, image: "none", venueOptions: { taxBps: 300, pictureLink } };
     const lines = await testCardText(test, await proposeIntent(test, request), "zh");
     expect(lines).toContain("图片地址 https://pictures.example/cat.png（binference 从不打开它）");
     expect(lines.some((line) => line.startsWith("已发送图片"))).toBe(false);

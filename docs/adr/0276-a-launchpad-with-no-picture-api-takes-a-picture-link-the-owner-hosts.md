@@ -23,8 +23,9 @@ needs one.
 ## Decision
 
 - **A link setting.** A launch setting may be of type `link`: an `ipfs://` or `https://` address,
-  something after the scheme, at most 512 bytes in UTF-8, and no C0 or C1 control character or
-  DEL. Any other value is `protocol.bad_args` when the launch is proposed, as every setting is
+  something after the scheme, at most 512 bytes in UTF-8, and after the scheme no space or
+  separator of any kind, no control or format character and no lone surrogate, so the card never
+  hides part of it. Any other value is `protocol.bad_args` when the launch is proposed, as every setting is
   (decision 0235). Nothing in binference opens, fetches or reads it, and no surface previews it.
 - **The card shows it whole.** A link setting's line names its value `link`, which a card shows in
   full through the outside text display, up to 512 characters: `launch.option.pictureLink`,
@@ -33,15 +34,20 @@ needs one.
   checks it like every other one (decision 0238).
 - **A launcher with no upload.** A launcher may leave out `pin` and `pinStatus`, both together; one
   alone is refused when the venue is defined (`plugin.bad_venue`) and when it is hosted
-  (`venue.bad_declaration`). Such a launchpad reads no picture: the request's `image`, which
-  protocol v1 keeps required, names no upload the engine reads. Its build gets no metadata
-  address, and its decoder names none.
+  (`venue.bad_declaration`). Such a launchpad must declare a `link` setting with no default, so
+  every launch gives its picture; one without is refused when it is hosted. It reads no picture:
+  the request's `image`, which protocol v1 keeps required, is the literal `none`
+  (`noUploadImage`), and any other value is `protocol.bad_args` when the launch is proposed, so a
+  picture the owner uploaded is never dropped unseen; `none` on a launchpad that uploads is refused
+  the same way. Its build gets no metadata address, and its decoder names none.
 - **No pin wait.** The launch's quote then holds no picture, metadata address or pin, and its pin
   wait ends at its quote. The pin follow moves such a launch from `quoted` to `assessed` at once,
   so it passes through the same states as any launch, and its simulation and card follow.
 - **Its card.** No picture line and no line saying the picture and words are public.
-- **Its notice.** A launch from a launchpad that uploads nothing that stops before its card tells
-  the owner that nothing was signed or made public (`notice.launchStopped` with `private`). The
+- **Its notice.** A launch that stops before its card tells the owner that nothing was signed or
+  made public (`notice.launchStopped` with `private`) when its stored quote holds no pin, or,
+  before a quote, when its launchpad is one the engine holds that uploads nothing. A launchpad the
+  engine no longer holds may hold the picture and words, so its notice says they may be public. The
   `upload_lost` words now say the launch stopped before its steps were ready, true for both kinds.
 
 ## Consequences
@@ -55,7 +61,9 @@ needs one.
   and `pin` become optional, the launch host gains `takesUpload`, and the chain package's fakes
   gain `createFakeLinkLauncher`. Specs 1, 4 and 6 say so.
 - Protocol v1 keeps `image` required. A later version can make it optional; until then a surface
-  sends an upload id the engine does not read for such a launchpad.
+  sends `none` for such a launchpad. No surface starts a launch yet; the first that does reads
+  which launchpads take an upload or a link before it asks the owner for a picture.
+- The protocol gains `noUploadImage`.
 
 ## Alternatives
 

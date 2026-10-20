@@ -7,6 +7,7 @@ import {
 } from "@binference/chain";
 import {
   createFakeLauncher,
+  createFakeLinkLauncher,
   createFakeLaunchpad,
   type FakeLauncherOptions,
   fakeDraft,
@@ -97,6 +98,25 @@ describe("a launchpad's settings in the launch host", () => {
       expect.objectContaining({ code: "venue.bad_declaration" }),
     );
     expect(() => fake({ launchOptions: wide })).toThrow(
+      expect.objectContaining({ code: "venue.bad_declaration" }),
+    );
+  });
+});
+
+describe("a launchpad that uploads nothing", () => {
+  const link: LaunchOption = { name: "pictureLink", type: "link" };
+
+  it("is hosted when every launch must give its picture link", () => {
+    const host = hostOf(createFakeLinkLauncher({ launchOptions: [link] }));
+    expect(host.takesUpload(pad)).toBe(false);
+    expect(host.takesUpload("other-pad")).toBeUndefined();
+  });
+
+  it.each<[string, readonly LaunchOption[]]>([
+    ["no picture link", []],
+    ["a picture link with a default", [{ ...link, default: "https://pictures.example/cat.png" }]],
+  ])("is refused with %s", (_case, launchOptions) => {
+    expect(() => hostOf(createFakeLinkLauncher({ launchOptions }))).toThrow(
       expect.objectContaining({ code: "venue.bad_declaration" }),
     );
   });

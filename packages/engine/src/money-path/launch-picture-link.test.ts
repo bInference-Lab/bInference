@@ -1,5 +1,5 @@
 import type { TxSimulator } from "@binference/chain";
-import type { IntentView, LaunchTokenRequest } from "@binference/protocol";
+import { type IntentView, type LaunchTokenRequest, noUploadImage } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
 import {
@@ -14,10 +14,10 @@ import {
 // 0276): nothing reads the picture upload or the link, and no pin is waited for.
 const link = "ipfs://bafkreig7wwicvvvzrbrcgs62ybg7yc7f7ay6s6yhsgpxcxvan5owbcfefm";
 
-/** The test launch with a picture link, naming an upload no one made. */
+/** The test launch with a picture link, naming no upload. */
 const linked: LaunchTokenRequest = {
   ...testLaunch,
-  image: "upl_none",
+  image: noUploadImage,
   venueOptions: { taxBps: 300, pictureLink: link },
 };
 
@@ -58,18 +58,19 @@ describe("a token launch on a launchpad that takes its picture as a link", () =>
     expect(lines.some((line) => line.includes("already public"))).toBe(false);
   });
 
-  it.each([
-    ["an http link", "http://pictures.example/cat.png"],
-    ["a link of another scheme", "data:image/png;base64,iVBORw0KGgo="],
-    ["a link with a control character", "https://pictures.example/cat\u0007.png"],
-    ["a link with a line break", "https://pictures.example/\ncat.png"],
-    ["a link over 512 bytes", `https://pictures.example/${"a".repeat(488)}`],
-    ["a scheme with nothing after it", "ipfs://"],
-  ])("refuses %s before anything is stored", async (_case, pictureLink) => {
+  it("refuses a link the setting does not take before anything is stored", async () => {
     const { test } = await testLaunchEngine({ takesPictureLink: true });
-    const request = { ...linked, venueOptions: { taxBps: 300, pictureLink } };
+    const request = { ...linked, venueOptions: { taxBps: 300, pictureLink: "http://cat.example" } };
     const proposed = await test.engine.handlers["intent/propose"](
       testCall(request, testCallers.cli),
+    );
+    expect(proposed).toStrictEqual({ ok: false, error: "protocol.bad_args" });
+  });
+
+  it("refuses a real upload, so no picture is dropped unseen", async () => {
+    const { test } = await testLaunchEngine({ takesPictureLink: true });
+    const proposed = await test.engine.handlers["intent/propose"](
+      testCall({ ...linked, image: "upl_moon" }, testCallers.cli),
     );
     expect(proposed).toStrictEqual({ ok: false, error: "protocol.bad_args" });
   });

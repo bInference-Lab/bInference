@@ -2,7 +2,7 @@ import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import type { TokenLaunchQuote } from "../intents/token-launch-quote.js";
+import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { noticePush } from "../pushes/notice-push.js";
 import type { LaunchPathOptions } from "./resolve-launch.js";
 
@@ -23,6 +23,19 @@ export function pinWaitOf(options: Pick<LaunchPathOptions, "launch">): number {
  */
 type LaunchStop = NonNullable<IntentRecord["reason"]> | "engine_stopping";
 
+// Nothing of the launch went public (decision 0276): its quote holds no pin, or, before a quote,
+// its launchpad is one the engine holds that uploads nothing. A launchpad it no longer holds may
+// hold the picture and words.
+function isUnpublished(
+  options: Pick<LaunchPathOptions, "launch">,
+  stopped: { readonly record: IntentRecord; readonly venue: string },
+): boolean {
+  const { quote } = stopped.record;
+  return quote === undefined
+    ? options.launch.host.takesUpload(stopped.venue) === false
+    : tokenLaunchQuoteDocument.decode(quote).pin === undefined;
+}
+
 /**
  * Tells the owner that a launch stopped once its upload began, and why: nothing was signed, and
  * its picture and words may be public on the launchpad (decision 0237), unless the launchpad
@@ -36,8 +49,7 @@ function tellLaunchStopped(
   const request = requestDocument.decode(record.request);
   const symbol = request.kind === "launchToken" ? request.symbol : "";
   const venue = request.kind === "launchToken" ? request.venue : "";
-  // A launchpad that uploads nothing made nothing public (decision 0276).
-  const isPrivate = !options.launch.host.takesUpload(venue);
+  const isPrivate = isUnpublished(options, { record, venue });
   const values = { symbol, venue, reason, private: isPrivate ? "yes" : "no" };
   options.launch.publish(
     noticePush({ key: launchStoppedNoticeKey, agent: record.agentId, intent: record.id, values }),

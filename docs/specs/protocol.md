@@ -447,8 +447,10 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   declare, or values that do not fit them, with `protocol.bad_args`; neither stores anything. Its
   `image` is an upload id from `upload/start` ([decision 0234](../DECISIONS.md#d0234)). A
   launchpad with no API for pictures takes the picture as a `link` setting in `venueOptions`, an
-  `ipfs://` or `https://` address of at most 512 bytes the owner hosts, which nothing opens; it
-  reads no upload, so its launch names any upload id while `image` stays required in this version
+  `ipfs://` or `https://` address of at most 512 bytes the owner hosts, which nothing opens. It
+  reads no upload: its launch's `image` is the literal `none` (`noUploadImage`), which this version
+  keeps required, and any other `image` fails with `protocol.bad_args`, so no picture is dropped
+  unseen; `none` on a launchpad that uploads fails the same way. Both store nothing
   ([decision 0276](../DECISIONS.md#d0276)). Only the
   owner starts a launch: one the agent runtime or an MCP client proposes fails with
   `intent.owner_only` before anything is read, stored or uploaded, and a launch whose `image` the

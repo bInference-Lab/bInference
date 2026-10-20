@@ -119,6 +119,7 @@ export type { AssetSearchTerms } from "./operations/market-operations.schema.js"
 export {
   buyTermsSchema,
   intentRequestSchema,
+  noUploadImage,
   readIntentRequestSchema,
   sellTermsSchema,
   swapRequestSchema,

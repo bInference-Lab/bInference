@@ -77,3 +77,37 @@ describe("a launchpad's settings as the engine hosts them", () => {
     expect(launchSettingsProblem([option], chain)).toEqual(expect.any(String));
   });
 });
+
+describe("a picture link setting", () => {
+  const link: readonly LaunchOption[] = [{ name: "pictureLink", type: "link" }];
+  const valueOf = (pictureLink: string) => launchSettingsOf(link, { pictureLink }, chain);
+
+  it.each([
+    ["an IPFS address", "ipfs://bafkreig7wwicvvvzrbrcgs62ybg7yc7f7ay6s6yhsgpxcxvan5owbcfefm"],
+    ["an HTTPS address of 512 bytes", `https://pictures.example/${"a".repeat(487)}`],
+  ])("takes %s", (_case, pictureLink) => {
+    expect(valueOf(pictureLink)).toStrictEqual({
+      ok: true,
+      value: [{ name: "pictureLink", type: "link", value: pictureLink }],
+    });
+  });
+
+  it.each([
+    ["an http link", "http://pictures.example/cat.png"],
+    ["another scheme", "data:image/png;base64,iVBORw0KGgo="],
+    ["a scheme in capitals", "HTTPS://pictures.example/cat.png"],
+    ["a scheme with nothing after it", "ipfs://"],
+    ["a control character", "https://pictures.example/cat\u0007.png"],
+    ["a line break", "https://pictures.example/\ncat.png"],
+    ["a space", "https://pictures.example/a cat.png"],
+    ["a trailing space", "https://pictures.example/cat.png "],
+    ["a non-breaking space", "https://pictures.example/a\u00a0cat.png"],
+    ["an ideographic space", "https://pictures.example/a\u3000cat.png"],
+    ["a zero-width space", "https://pictures.example/a\u200bcat.png"],
+    ["a right-to-left override", "https://pictures.example/a\u202ecat.png"],
+    ["a lone surrogate", "https://pictures.example/a\ud800cat.png"],
+    ["over 512 bytes", `https://pictures.example/${"a".repeat(488)}`],
+  ])("refuses %s", (_case, pictureLink) => {
+    expect(valueOf(pictureLink)).toStrictEqual({ ok: false, error: "bad_settings" });
+  });
+});

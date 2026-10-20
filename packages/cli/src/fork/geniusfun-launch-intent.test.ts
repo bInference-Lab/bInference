@@ -2,7 +2,12 @@ import { setTimeout as wait } from "node:timers/promises";
 import { bscContract, type Fork, withFork } from "@binference/chain-evm/fork";
 import { BinferenceError, type Id } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
-import type { CardView, IntentView, LaunchTokenRequest } from "@binference/protocol";
+import {
+  type CardView,
+  type IntentView,
+  type LaunchTokenRequest,
+  noUploadImage,
+} from "@binference/protocol";
 import { type Address, getAddress, parseAbi } from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bundle.js";
@@ -80,8 +85,8 @@ function launchOf(rig: LaunchRig, fork: Fork): LaunchTokenRequest {
     venue: "geniusfun",
     name: "Fork Genius",
     symbol: "FGEN",
-    // Protocol v1 asks for an upload id; a launchpad that takes a picture link reads none.
-    image: "upl_none",
+    // A launchpad that takes a picture link names no upload (decision 0276).
+    image: noUploadImage,
     description: "A token launched on a fork",
     links: { website: "https://fork.example", x: "https://x.com/forkgenius" },
     pairWith: coin,

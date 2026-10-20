@@ -185,7 +185,7 @@ async function loseUpload(run: LaunchRun, checked: IntentSnapshot): Promise<void
 // link reads none (decision 0276).
 async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
   const { options, resolved, credential, signal } = run;
-  const isUploaded = options.launch.host.takesUpload(resolved.request.venue);
+  const isUploaded = options.launch.host.takesUpload(resolved.request.venue) !== false;
   const asked = { upload: resolved.request.image, credential };
   const picture = isUploaded ? await readOwnPicture(options, asked, signal) : undefined;
   if (isUploaded && picture === undefined) {

@@ -73,9 +73,10 @@ export interface LaunchHost {
   ): Promise<Result<LaunchQuote, VenueFailure>>;
   /**
    * Whether the launchpad uploads a launch's picture and words and pins them; one that does not
-   * takes its picture as a link setting (decision 0276).
+   * takes its picture as a link setting (decision 0276). `undefined` for a venue the host does not
+   * hold.
    */
-  takesUpload(venue: string): boolean;
+  takesUpload(venue: string): boolean | undefined;
   /**
    * Uploads the launch's words and picture; a launchpad that cannot, or uploads nothing, is
    * `venue_down`.
@@ -142,6 +143,14 @@ function problemOf(item: HostedLauncher, chain: RegisteredChain): string | undef
   const { launchOptions, pin, pinStatus } = item.launcher;
   if ((pin === undefined) !== (pinStatus === undefined)) {
     return "it gives a pin without a pin status, or a pin status without a pin.";
+  }
+  // A launchpad that uploads nothing takes its picture as a link the owner must give (decision
+  // 0276), so every launch shows its picture on the card.
+  const isLinked = launchOptions.some(
+    (option) => option.type === "link" && option.default === undefined,
+  );
+  if (pin === undefined && !isLinked) {
+    return "it uploads nothing and declares no picture link every launch must give.";
   }
   return launchOptionsSchema.safeParse(launchOptions).success
     ? launchSettingsProblem(launchOptions, chain)
@@ -281,7 +290,10 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
       (parts.launchers.get(venue)?.launcher.launchOptions ?? [])
         .filter((option) => option.isOutsideOnly === true)
         .map((option) => option.name),
-    takesUpload: (venue) => parts.launchers.get(venue)?.launcher.pin !== undefined,
+    takesUpload(venue) {
+      const launcher = parts.launchers.get(venue)?.launcher;
+      return launcher === undefined ? undefined : launcher.pin !== undefined;
+    },
     launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],
     async quote(launch, { signal }) {
       signal.throwIfAborted();

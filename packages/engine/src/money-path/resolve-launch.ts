@@ -8,7 +8,11 @@ import {
   type TxSimulator,
 } from "@binference/chain";
 import { type Clock, err, type Id, type IdSource, ok, type Result } from "@binference/core";
-import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol";
+import {
+  type LaunchTokenRequest,
+  noUploadImage,
+  type ProtocolErrorCode,
+} from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { isInstallWalletAccount, launchWalletOf } from "../install/launch-wallet.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
@@ -176,8 +180,13 @@ async function launchpadSettingsOf(
     return err(settings.error === "no_launchpad" ? "quote.no_route" : "protocol.bad_args");
   }
   // A launchpad that writes the words on chain takes only as many bytes as its create call does
-  // (decision 0275), so a launch over them is refused before anything is stored or sent.
-  if (!host.fitsWords(request.venue, request)) {
+  // (decision 0275), and one that takes its picture as a link names no upload, so no picture is
+  // dropped unseen (decision 0276); a launch otherwise is refused before anything is stored.
+  const namesNoUpload = request.image === noUploadImage;
+  if (
+    !host.fitsWords(request.venue, request) ||
+    host.takesUpload(request.venue) === namesNoUpload
+  ) {
     return err("protocol.bad_args");
   }
   const isOwn = await namesOwnWallet(options, { request, settings: settings.value, signal });
@@ -189,7 +198,8 @@ async function launchpadSettingsOf(
  * description and links fit the card whole (else `protocol.bad_args`, decision 0239); its chain
  * is the pair's, its launchpad one the engine hosts that launches tokens there (else
  * `quote.no_route`), its launchpad settings pass their declaration and its words fit what the
- * launchpad writes on chain (else `protocol.bad_args`), no setting that must be outside the
+ * launchpad writes on chain, and its `image` names an upload on a launchpad that uploads and
+ * `none` on one that takes a picture link (else `protocol.bad_args`), no setting that must be outside the
  * install names one of its wallets (else `intent.own_wallet_recipient`), and its wallet is one of the agent's with
  * an account on the chain (else `wallet.not_found`), with that wallet's facts in the intent's
  * mode.
