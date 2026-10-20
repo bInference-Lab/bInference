@@ -25,7 +25,9 @@ intent in `executing` may have a transaction on its way.
   writer fence is raised first.
 - Everything else stays: wallets, the custody link, the keys, the config, limits, send levels,
   saved addresses, auto orders, alerts, schedules, the workspace files, notices, model spend and
-  every money record. The wallets read as before the reset.
+  every money record. The wallets read as before the reset. The owner chose on 2026-10-20 that
+  auto orders, alerts and schedules stay, and that `STRATEGY.md`, `PERSONA.md` and the other
+  workspace files stay.
 - It runs with the engine stopped, as `binference backup restore` does: it stops the engine as
   `binference stop` does, works under the engine lock, then starts the engine again as it ran, with
   this run's `--set` flags.
@@ -51,5 +53,7 @@ intent in `executing` may have a transaction on its way.
   Rejected.
 - **Clear with the engine running.** The runtime holds `agent.sqlite` and could write between the
   backup and the clearing. Rejected.
-- **Cancel the auto orders, or reset the workspace files.** They are the owner's standing choices,
-  not chat state; whether a reset should touch them is left to the owner.
+- **Cancel the auto orders, alerts and schedules.** They are the owner's standing choices, not
+  chat state. Rejected by the owner.
+- **Put the workspace files back to their templates.** The owner wrote them, and the first chat can
+  write them again. Rejected by the owner.
