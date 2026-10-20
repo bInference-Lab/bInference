@@ -552,6 +552,11 @@ interface Signer {
   and its worst price is respected; otherwise it is skipped and reported. Missed DCA buys are not
   replayed; the next one runs on time. Missed schedules run once, not once per missed interval. The
   owner gets one report: how long the engine was off, and what was checked, filled and skipped.
+  The engine finds a resume itself: a start after its last mark of a run, or a jump of its wall
+  clock while it runs ([decision 0266](DECISIONS.md#d0266)). The report counts the skips' reasons
+  and stands in for their own notices; each agent with checked orders gets it in its inbox
+  ([decision 0267](DECISIONS.md#d0267)). No fill runs on a price read before the latest resume
+  ([decision 0268](DECISIONS.md#d0268)).
 - **The model wakes only when it adds value.** Examples: "every morning, review my portfolio", or
   "when a new Flap token passes these filters, tell me and propose a buy". Those are cron or event
   triggers that start a turn in the agent runtime. There is no LLM heartbeat by default.
@@ -1054,8 +1059,9 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
 - **One engine per state folder.** An OS file lock in `~/.binference`; a second engine refuses to
   start, because two engines would race on nonces.
 - **Startup order.** Lock, config, migrations (after a backup), integrity check, signer, reconcile
-  unfinished transactions by hash and nonce, record the positions of recent paper fills a crash
-  left without them, resume orders and watchers, then channels and the server. Until then every
+  unfinished transactions by hash and nonce, take the auto orders to re-check after the stop,
+  record the positions of recent paper fills a crash left without them, resume orders and
+  watchers, then channels and the server. Until then every
   method answers "starting".
 - **Shutdown order, within 30 seconds.** Stop accepting intents, finish signing and broadcasts in
   flight, save state, stop channels, close the databases.

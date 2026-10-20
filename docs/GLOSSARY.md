@@ -72,6 +72,10 @@ new name here first, in the change that uses it.
 - **fill**: one execution of an auto order or a webhook rule.
 - **watcher**: code that reads blocks, prices, leader wallets or launches and triggers fills. No
   model runs in it.
+- **downtime**: a span the engine did not run: stopped, crashed, or its machine asleep. A start
+  after it, or a jump of the wall clock while the engine runs, is a **resume**; the **downtime
+  re-check** then checks every auto order once on a price read after the resume and sends one
+  **resume report**.
 - **price watcher**: the watcher that reads the price of every token with an active auto order at
   each new block, all in one batched call, and says how many blocks it trails the chain (its
   **lag**).
@@ -421,6 +425,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | agent key                               | Agent 密钥              |                             |
 | Binance agent (one on Binance Agent OS) | Binance Agent           |                             |
 | engine                                  | 引擎                    |                             |
+| sleep (of the machine)                  | 休眠                    |                             |
 | console                                 | 控制台                  |                             |
 | CLI                                     | 命令行                  |                             |
 | Mini App                                | Mini App                | Stays English               |

@@ -184,8 +184,10 @@ token, wallet, mode or side than its order, or its quote's minimum gives up more
 output than the order's maximum slippage, else the agent's for the pair), `worst_price` (its quote's price at its minimum out is worse than the order's worst
 price, or nothing values it), `trigger_unconfirmed` (a thin pool's price fired it, and the quote's
 own expected price does not meet the trigger), `daily_cap` (another confirmation took the
-rolling cap's room after its policy step), and `live_fills_off` (a live fill while live fills are
-off, which the money path refuses on its own; [decision 0210](../DECISIONS.md#d0210)).
+rolling cap's room after its policy step), `live_fills_off` (a live fill while live fills are
+off, which the money path refuses on its own; [decision 0210](../DECISIONS.md#d0210)), and
+`price_stale` (its price was read before a resume that came while it ran, so the order waits for
+a price read after it; [decision 0268](../DECISIONS.md#d0268)).
 
 An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
 order's buy that would pass its daily cap for the leader; `engine_locked`, the engine is locked;
@@ -539,6 +541,10 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 6. A live order fill a stop left before its confirmation is cancelled unsigned, and its order
    records `fill_failed`; a confirmed one is the executor's, as any live intent
    ([decision 0210](../DECISIONS.md#d0210)).
+7. Every auto order active at the start is re-checked once, on the first price of its token read
+   after the start, and the owner gets one `notice.resumed` when an order was checked; a sleep of
+   the machine found while the engine runs is re-checked the same way. No fill runs on a price
+   read before the latest resume (decisions [0266](../DECISIONS.md#d0266) to [0268](../DECISIONS.md#d0268)).
 
 <a id="section-8"></a>
 
