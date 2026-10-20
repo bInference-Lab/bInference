@@ -157,17 +157,30 @@ function dcaLine(request: DcaOrderRequest, firstRuns?: readonly [number, number]
   };
 }
 
-// Spec 4, section 3.8: a copy order copies its leader's buys at its dollars each, at most its
-// daily dollars, and sells the share its leader sells; its leader by label, else short address.
+// Spec 4, section 3.8: a copy order copies its leader's buys with what it spends, at its dollars
+// each, at most its daily dollars, and sells the share its leader sells; its leader by short
+// address, after its label when the address book holds one.
 function copyLine(request: CopyOrderRequest, leaderLabel: string | undefined): CardLine {
   const { leader, perBuyUsdMicros, dailyUsdMicros } = request.trigger;
+  const account: CardValue = { type: "account", account: leader };
   const named: CardValue =
     leaderLabel === undefined
-      ? { type: "account", account: leader }
-      : { type: "text", text: leaderLabel };
+      ? account
+      : {
+          type: "line",
+          line: {
+            key: "card.order.leader",
+            values: { label: { type: "text", text: leaderLabel }, account },
+          },
+        };
   return {
     key: "card.order.summary.copy",
-    values: { leader: named, perBuy: usd(perBuyUsdMicros), daily: usd(dailyUsdMicros) },
+    values: {
+      leader: named,
+      spend: asset(request.spend ?? request.token),
+      perBuy: usd(perBuyUsdMicros),
+      daily: usd(dailyUsdMicros),
+    },
   };
 }
 

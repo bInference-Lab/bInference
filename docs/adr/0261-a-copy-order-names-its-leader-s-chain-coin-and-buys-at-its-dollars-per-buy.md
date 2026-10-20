@@ -37,8 +37,9 @@ it may follow.
   `protocol.bad_args`: its copies would be the leader's trades in turn.
 - **Live waits.** While live fills are off, a live copy order is `order.live_fills_off`, as a live
   price or DCA order.
-- **The card.** `card.order.summary.copy`, its leader by the agent's address book label, else its
-  short address. The `autoOrder` intent's quote holds the whole request, so the card's terms hash
+- **The card.** `card.order.summary.copy` names what the order spends and its leader by short
+  address, after the agent's address book label when it has one, so a label never hides the
+  address. The `autoOrder` intent's quote holds the whole request, so the card's terms hash
   binds the leader, the caps, what it spends, its slippage, its expiry and its fill limit.
 
 ## Consequences

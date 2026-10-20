@@ -3,10 +3,17 @@ import { bpsSchema } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import type { FillSize } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
-import { expectOk, testNowMs } from "../intents/test-intents.js";
+import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import { type TestEngine, testCall } from "../operations/test-engine.js";
-import { createdOrder, startOrderEngine, testCopy, testStopLoss } from "./test-orders.js";
+import {
+  createdOrder,
+  startOrderEngine,
+  testCopy,
+  testLeader,
+  testStopLoss,
+} from "./test-orders.js";
 
 const display = createFormatter({ locale: "zh", timeZone: "UTC" });
 
@@ -48,7 +55,7 @@ describe("an auto order's card in Chinese", () => {
     ]);
   });
 
-  it("words a copy order's leader, its dollars per buy and a day, and its sales", async () => {
+  it("words a copy order's leader, what it spends, its dollars per buy and a day, and its sales", async () => {
     const test = await startOrderEngine();
     const { intent } = await createdOrder(test, testCopy());
     const card = expectOk(await test.engine.handlers["intent/card"](testCall({ intent })));
@@ -57,7 +64,29 @@ describe("an auto order's card in Chinese", () => {
     );
 
     expect(summary?.split(" · ")[0]).toBe(
-      "批准跟单：跟单 0x00000009 的买入，每笔最多 $20.00 且不超过 0x00000009 的买入金额，每天最多 $200.00；按 0x00000009 卖出的持仓比例同步卖出",
+      "批准跟单：用 FAKE 跟单 0x00000009 的买入，每笔最多 $20.00 且不超过带单钱包的买入金额，每天最多 $200.00；按带单钱包卖出的持仓比例同步卖出",
+    );
+  });
+
+  it("names a saved leader by its label beside its short address", async () => {
+    const test = await startOrderEngine();
+    const entry = {
+      id: fixtureId("adr", 1),
+      agentId: testAgent,
+      account: testLeader,
+      label: "Whale",
+      usableAtMs: 0,
+      createdAtMs: 0,
+    };
+    expectOk(await test.stores.agents.addAddress(entry, { signal: AbortSignal.timeout(1_000) }));
+    const { intent } = await createdOrder(test, testCopy());
+    const card = expectOk(await test.engine.handlers["intent/card"](testCall({ intent })));
+    const [, summary] = card.lines.map((line) =>
+      cardLineText(line, { formatter: display, assets: card.assets }),
+    );
+
+    expect(summary?.split(" · ")[0]).toBe(
+      "批准跟单：用 FAKE 跟单 Whale（0x00000009） 的买入，每笔最多 $20.00 且不超过带单钱包的买入金额，每天最多 $200.00；按带单钱包卖出的持仓比例同步卖出",
     );
   });
 
