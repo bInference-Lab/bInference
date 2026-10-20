@@ -46,9 +46,24 @@ const geniusfun = createContracts(
   "2026-10-14",
 );
 
+// Genius.fun's m4.2 launch-and-buy router, which makes a token and runs its first buy in one call,
+// from the deployment manifest its Integrate page names. Its code matches the manifest's code hash,
+// it is no proxy, the m4.2 factory's `launchForwarder()` names it, and its `factory()` names that
+// factory; the same 2-of-3 Safe owns it.
+const geniusfunLaunches = createContracts(
+  "geniusfun",
+  {
+    "https://genius.fun/contracts/manifest.json": {
+      "router-m4-2": "0xd8b71b46498A36A4607EAb5C735BeE1DAb7F263d",
+    },
+  },
+  "2026-10-20",
+);
+
 /** The contracts of the launchpads binference trades and launches on, on BSC. */
 export const bscLaunchpadContracts: readonly ContractDefinition[] = [
   ...fourmeme,
   ...flap,
   ...geniusfun,
+  ...geniusfunLaunches,
 ];
