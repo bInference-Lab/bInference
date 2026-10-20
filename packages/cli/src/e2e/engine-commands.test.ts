@@ -1,18 +1,21 @@
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
-import { jsonValueSchema } from "@binference/core";
+import { BinferenceError, type Http, type JsonValue, jsonValueSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { messages } from "@binference/i18n";
 import { ensurePrivateFolder, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { operations } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { runCli } from "../program/run-cli.js";
 import {
   connectClient,
   engineLogLines,
   freePort,
+  type HostParts,
   hostOn,
+  hostWith,
   isUnlocked,
   type TestMachine,
   writeTestConfig,
@@ -53,15 +56,10 @@ interface Started {
 }
 
 /** Runs `binference start --json` in the foreground and waits for its ready line. */
-async function start(machine: TestMachine): Promise<Started> {
+async function start(machine: TestMachine, parts: HostParts = {}): Promise<Started> {
   const port = await freePort();
-  const host = hostOn(machine, [
-    "start",
-    "--foreground",
-    "--json",
-    "--set",
-    `engine.port=${String(port)}`,
-  ]);
+  const argv = ["start", "--foreground", "--json", "--set", `engine.port=${String(port)}`];
+  const host = hostWith(machine, argv, { env: {}, parts });
   const exit = runCli(host);
   running.push(exit);
   const line = await Promise.race([
@@ -77,14 +75,49 @@ async function run(machine: TestMachine, argv: readonly string[], env = {}) {
   return { code, stdout: host.stdout(), stderr: host.stderr() };
 }
 
+// The RPC node the config of a test names, which answers the chain reads a starting engine makes,
+// such as the launch feed's first read of the newest block, so no public node is asked.
+const nodeUrl = "https://rpc-node.example.org/";
+const nodeConfig = `  chains: { rpc: { "eip155:56": { urls: ["${nodeUrl}"] } } },\n`;
+const nodeResults: Readonly<Record<string, JsonValue>> = {
+  eth_blockNumber: "0x64",
+  eth_getBlockByNumber: {
+    number: "0x64",
+    hash: `0x${"ab".repeat(32)}`,
+    parentHash: `0x${"aa".repeat(32)}`,
+    timestamp: `0x${(nowMs / 1_000).toString(16)}`,
+  },
+  eth_getLogs: [],
+};
+const chainNode: Http = {
+  request: async (request) => {
+    if (request.url !== nodeUrl) {
+      throw new BinferenceError({
+        code: "http.unreachable",
+        message: "Tests reach no outside service.",
+        retryable: true,
+      });
+    }
+    const { id, method } = z
+      .object({ id: z.number(), method: z.string() })
+      .parse(JSON.parse(request.body ?? "{}"));
+    const result = nodeResults[method];
+    const answer =
+      result === undefined
+        ? { jsonrpc: "2.0", id, error: { code: -32_601, message: "Not served here." } }
+        : { jsonrpc: "2.0", id, result };
+    return { status: 200, headers: {}, body: JSON.stringify(answer) };
+  },
+};
+
 describe("binference start, status, health and logs end to end", () => {
   it(
     "serves the protocol in the foreground, shows its health signals and stops on a signal",
     slow,
     async () => {
       const machine = await newMachine();
-      await writeTestConfig(machine.folder);
-      const engine = await start(machine);
+      await writeTestConfig(machine.folder, nodeConfig);
+      const engine = await start(machine, { http: chainNode });
       expect(engine.ready.http.port).toBeGreaterThan(0);
 
       const status = await run(machine, ["status", "--json"]);
