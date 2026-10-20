@@ -8,6 +8,7 @@ import type { PolicyCheck } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
 import type { Positions } from "../positions/create-positions.js";
 import type { ExecutorLimits, ExecutorOptions } from "./executor-options.js";
+import type { HeldWallets } from "./held-wallets.js";
 import type { IntentPlan } from "./intent-plan.js";
 
 /** The executor's options with what it builds from them once. */
@@ -25,6 +26,8 @@ export interface ExecutorParts extends ExecutorOptions {
   readonly valuedPositions: Positions;
   readonly limits: ExecutorLimits;
   readonly log: Logger;
+  /** The wallets the watches hold now; a watch adds its wallet and takes it out as it ends. */
+  readonly held: HeldWallets;
 }
 
 /** One intent's execution: its parts, its plan, and the signals that stop it. */

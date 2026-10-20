@@ -216,7 +216,7 @@ describe("a stuck step", () => {
     expect((await transactionsOf(bench)).map(({ state }) => state)).toStrictEqual(["sent"]);
   });
 
-  it("holds its wallet while handed over, and tells the owner why later trades wait", async () => {
+  it("holds its wallet while handed over, names it held, and tells the owner why later trades wait", async () => {
     const { bench, intent } = await stuckSwap({ custody: refusingReplacements });
     await driveUntil(bench, intent, { states: [], blocks: 18 });
     const asked = bench.signed.length;
@@ -226,9 +226,13 @@ describe("a stuck step", () => {
     expect(bench.signed).toHaveLength(asked);
     const notices = bench.pushes.filter(({ kind }) => kind === "notice/new");
     expect(JSON.stringify(notices)).toContain("notice.walletHeld");
+    const [first] = await transactionsOf(bench);
+    const agent = (await bench.test.stores.intents.get(intent, live()))?.agentId;
+    expect(bench.executor.heldWallets()).toStrictEqual([{ agent, account: first?.account }]);
     bench.network.holdBelow(0n);
     await expect(driveUntil(bench, later, settled)).resolves.toBe("reconciled");
     await expect(stateOf(bench, intent)).resolves.toBe("reconciled");
+    expect(bench.executor.heldWallets()).toStrictEqual([]);
     expect((await transactionsOf(bench)).map(({ nonce }) => nonce)).toStrictEqual([0, 1]);
   });
 

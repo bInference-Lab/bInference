@@ -166,6 +166,7 @@ function holdWallet(run: ExecutionRun, state: WatchState, problem: string): Watc
   const wallet = accountRefParts(state.transaction.account).address;
   const notice = { key: heldNoticeKey, agent: agentId, intent: id, values: { wallet } };
   run.parts.publish(noticePush(notice));
+  run.parts.held.set(id, { agent: agentId, account: state.transaction.account });
   return { ...state, isHeld: true };
 }
 
@@ -276,7 +277,8 @@ async function watchFrom(
  * again each `stuckAfterBlocks` blocks. Once every relay has refused the step's bytes for
  * `droppedAfterBlocks` blocks and its nonce is still free, the step is `dropped` (decision 0115).
  * A step that waited handed over that long without it holds its wallet: the watch goes on, the
- * owner gets `notice.walletHeld`, and no later step of the wallet signs behind it. A watch that
+ * owner gets `notice.walletHeld`, the wallet is among the executor's held wallets until the watch
+ * ends, and no later step of the wallet signs behind it. A watch that
  * cannot read the head for three times `stuckAfterBlocks` blocks in a row, or whose step's nonce
  * another transaction used, hands the step over as `stuck`.
  */
@@ -286,5 +288,9 @@ export async function sendAndWatch(
 ): Promise<Watched> {
   const { intent, transaction, rivals, rules } = step;
   const state = { intent, transaction, rivals, sends: 0, waits: 0, isResent: false };
-  return watchFrom(run, rules, { ...state, isRefused: false });
+  try {
+    return await watchFrom(run, rules, { ...state, isRefused: false });
+  } finally {
+    run.parts.held.delete(intent.id);
+  }
 }

@@ -13,6 +13,7 @@ import { executeRescue, recoverRescue, rescueGroupsOf } from "./execute-rescue.j
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
 import { type ExecutionRun, type ExecutorParts, nextBlock } from "./executor-run.js";
 import { expireIfLapsed, expireLapsed, reopenIfFeeLapsed } from "./expire-lapsed.js";
+import type { HeldWallet } from "./held-wallets.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
 import {
   droppedUnderWatch,
@@ -50,6 +51,12 @@ export interface RunningExecutor extends Executor {
    * every work has ended; a second call waits for the same works.
    */
   close(options: { readonly signal: AbortSignal }): Promise<void>;
+  /**
+   * The wallets a stuck step holds now, each with its agent: what `notice.walletHeld` told, until
+   * a block holds the step or the drop rule drops it. A restart forgets them until the recovered
+   * watch holds the wallet again.
+   */
+  heldWallets(): readonly HeldWallet[];
 }
 
 /** A live intent the executor runs, and what it does with it once it runs. */
@@ -94,6 +101,7 @@ function partsOf(options: ExecutorOptions): ExecutorParts {
     valuedPositions: createPositions({ store: options.positions, prices: options.prices }),
     limits: { ...defaultExecutorLimits, ...options.limits },
     log: options.logger.child("executor"),
+    held: new Map(),
   };
 }
 
@@ -340,5 +348,6 @@ export function createExecutor(options: ExecutorOptions): RunningExecutor {
       return unsettled.length;
     },
     close: async ({ signal }) => stopAll(stops, works.running, signal),
+    heldWallets: () => [...parts.held.values()],
   };
 }
