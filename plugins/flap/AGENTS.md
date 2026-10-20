@@ -5,8 +5,9 @@ The Flap launchpad: quotes, buys and sells of tokens on Flap's bonding curves th
 The root [AGENTS.md](../../AGENTS.md) and [the plugin SDK's rules](../../packages/plugin-sdk/AGENTS.md)
 apply here. Rules for this plugin:
 
-- It imports `@binference/plugin-sdk`, viem, zod and `node:crypto` (Keccak-256 for the salt search,
-  SHA-256 for the upload's boundary); its fork tests also import
+- It imports `@binference/plugin-sdk`, viem, zod, `node:crypto` (Keccak-256 for the salt search,
+  viem's when Node's OpenSSL has none, and SHA-256 for the upload's boundary) and
+  `node:timers/promises` (the salt search's turns); its fork tests also import
   `@binference/chain-evm/fork`. The package graph enforces it.
 - The Portal's address comes only from the registry: the venue declares it by name. Every read is
   an `eth_call` of the Portal through the chain's RPC failover, which the composition root gives.
@@ -33,6 +34,8 @@ apply here. Rules for this plugin:
   `src/upload/`: the upload and the pin status. Nothing reads an IPFS gateway, ever: a read of a
   fresh CID through Flap's gateway before Flap holds it breaks the token's picture for good. The
   API fake in `src/testing/` throws on any other URL.
+- Flap's create call `newTokenV6` is a launch wallet's alone (`isLaunchWalletOnly`): only a launch
+  wallet's ceiling allows it, and the signer refuses it from any other wallet.
 - A create call is Flap's only when the venue would write the same bytes for what it reads and its
   settings are ones `flapSettingsOf` takes, so the decoder refuses every fixed value and every
   setting the launcher does not write. The salt is found off line from the
