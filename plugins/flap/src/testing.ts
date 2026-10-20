@@ -14,4 +14,6 @@ export {
   venueOver,
 } from "./testing/portal-fixtures.js";
 export type { PortalAnswer, ScriptedPortal } from "./testing/portal-fixtures.js";
+export { apiAnswer, flapApiFake, pinAnswer } from "./testing/flap-api-fake.js";
+export type { FlapApiFake } from "./testing/flap-api-fake.js";
 export { recordedBlock } from "./testing/recorded-portal.js";

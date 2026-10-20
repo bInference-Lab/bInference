@@ -22,6 +22,7 @@ import { createFakePrivy } from "@binference/custody-privy/testing";
 import {
   createEngine,
   type Engine,
+  type EngineOptions,
   type PositionStore,
   type VenueHost,
   type WalletFactsSource,
@@ -185,10 +186,12 @@ export interface RigParts {
   readonly positions: PositionStore;
   readonly custody: Signer;
   readonly wallets: WalletFactsSource;
-  readonly venue: Venue;
+  readonly venues: readonly Venue[];
   readonly host: VenueHost;
   /** The tokens the risk source reports on, each with deep liquidity and no flag. */
   readonly covered: readonly AssetRef[];
+  /** What token launches need, when the rig launches tokens. */
+  readonly launching?: Pick<EngineOptions, "launchHost" | "launchTokenCode" | "launchImages">;
 }
 
 function executorOf(parts: RigParts) {
@@ -211,7 +214,7 @@ function executorOf(parts: RigParts) {
     }),
     prices: createFakePriceSource(prices),
     chains: selfHostedChains(),
-    venues: [parts.venue],
+    venues: parts.venues,
     curves: parts.host,
     sending: new Map([[chain.ref, sending]]),
     clock,
@@ -267,6 +270,7 @@ export function engineOf(parts: RigParts, walletMaker: WalletMaker): Engine {
     }),
     chainSimulator: createEvmTxSimulator({ rpc, chain }),
     executor: executorOf(parts),
+    ...parts.launching,
     ...forkEngineBasics(fork, 2172),
   });
 }

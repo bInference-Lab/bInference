@@ -1,11 +1,17 @@
-import { accountRefParts } from "@binference/chain";
+import { accountRefParts, type Venue } from "@binference/chain";
 import { erc20AssetRef, evmAccountRef } from "@binference/chain-evm";
 import type { Fork } from "@binference/chain-evm/fork";
 import { BinferenceError, createSecret, type Id, idSchema } from "@binference/core";
-import { createVenueHost, type Engine, type PositionStore } from "@binference/engine";
+import {
+  createLaunchHost,
+  createVenueHost,
+  type Engine,
+  type PositionStore,
+} from "@binference/engine";
 import type { WalletMaker } from "@binference/engine/install";
 import {
   createMemoryEngineStores,
+  createMemoryLaunchImages,
   createMemoryPositionStore,
   type MemoryEngineStores,
 } from "@binference/engine/testing";
@@ -13,6 +19,7 @@ import type { SignerRefusalNotice } from "@binference/signer";
 import { type Address, getAddress, keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
+import { chainTokenCode } from "../compose/token-facts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
 import {
@@ -67,9 +74,14 @@ const rescue = privateKeyToAccount(
 /** What each of the agent's wallets holds of BNB when the rig starts: 0.05 BNB. */
 export const rigFunding: bigint = 5n * 10n ** 16n;
 
-// The rig's one agent: live, trading on Genius.fun under the fork limits, asking for each trade.
-async function storeAgent(stores: MemoryEngineStores, fork: Fork, signal: AbortSignal) {
-  const limits = { ...forkLimits(fork), venues: ["geniusfun"] };
+// The rig's one agent: live, trading on the rig's launchpads under the fork limits, asking for
+// each trade.
+async function storeAgent(
+  stores: MemoryEngineStores,
+  parts: { readonly fork: Fork; readonly venues: readonly string[] },
+  signal: AbortSignal,
+) {
+  const limits = { ...forkLimits(parts.fork), venues: [...parts.venues] };
   const draft = { locale: "en", models: {}, notifications: {}, limits, sendLevel: 0 } as const;
   await stores.agents.create(
     {
@@ -96,7 +108,12 @@ function refused(code: `fork.${string}`, problem: string): BinferenceError {
 // The install as init leaves it: custody, the rescue address in effect, and the agent's main
 // wallet, which the maker made under the ceiling init plans.
 async function setUpInstall(
-  parts: { readonly fork: Fork; readonly stores: MemoryEngineStores; readonly maker: WalletMaker },
+  parts: {
+    readonly fork: Fork;
+    readonly stores: MemoryEngineStores;
+    readonly maker: WalletMaker;
+    readonly venues: readonly string[];
+  },
   custody: RigCustody,
   signal: AbortSignal,
 ): Promise<LaunchRigWallet> {
@@ -104,7 +121,7 @@ async function setUpInstall(
   const request = {
     wallet: mainWallet,
     ownerKey: createSecret(custody.ownerKey),
-    venues: ["geniusfun"],
+    venues: parts.venues,
     recipients: [rescueAddress],
     isLaunch: false,
   };
@@ -150,32 +167,54 @@ async function fund(fork: Fork, wallets: readonly LaunchRigWallet[]): Promise<vo
   ]);
 }
 
+/** A launchpad the rig also launches tokens on, and the owner's pictures, by upload id. */
+export interface RigLauncher {
+  readonly venue: Venue;
+  readonly images: ReadonlyMap<string, Readonly<Uint8Array>>;
+}
+
+// What the engine's token launches need on the fork: the launch host over the rig's venues, a
+// code read through the fork, and the owner's pictures, each uploaded by the rig's CLI owner.
+function launchingOf(fork: Fork, venues: readonly Venue[], launcher: RigLauncher) {
+  const chains = selfHostedChains();
+  const clock = createSystemClock();
+  return {
+    launchHost: createLaunchHost({ venues, chains, clock, callTimeoutMs: 15_000 }),
+    launchTokenCode: chainTokenCode(new Map([[fork.chain.ref, { rpc: fork.rpc }]])),
+    launchImages: createMemoryLaunchImages(launcher.images, rigOwner.credential),
+  };
+}
+
 /**
  * The launch wallet rig on `fork`, its signer run from the bundle at `entry`, its risk source
- * reporting on `token` alone. A rig that fails to set up stops its signer; a test stops it with
- * {@link LaunchRig.stop} once done.
+ * reporting on `token` alone, trading on Genius.fun and, given one, launching on `launcher` too.
+ * A rig that fails to set up stops its signer; a test stops it with {@link LaunchRig.stop} once
+ * done.
  */
 export async function launchRigOf(
   fork: Fork,
-  run: { readonly entry: string; readonly token: Address },
+  run: { readonly entry: string; readonly token?: Address; readonly launcher?: RigLauncher },
   signal: AbortSignal,
 ): Promise<LaunchRig> {
   const stores = createMemoryEngineStores();
   const positions = createMemoryPositionStore();
   const custody = await custodyOn(fork, run.entry, signal);
-  const venue = geniusfunOn(fork);
+  const venues = [geniusfunOn(fork), ...(run.launcher === undefined ? [] : [run.launcher.venue])];
   const clock = createSystemClock();
   const chains = selfHostedChains();
-  const host = createVenueHost({ venues: [venue], chains, clock, callTimeoutMs: 15_000 });
-  const maker = walletMakerOf(custody, { stores, venues: [venue] });
+  const host = createVenueHost({ venues, chains, clock, callTimeoutMs: 15_000 });
+  const maker = walletMakerOf(custody, { stores, venues });
   const wallets = walletFactsOn(fork, stores);
-  const covered = [erc20AssetRef(fork.chain, run.token)];
+  const covered = run.token === undefined ? [] : [erc20AssetRef(fork.chain, run.token)];
   const signer = signerOver(custody);
-  const parts = { fork, stores, positions, custody: signer, wallets, venue, host, covered };
-  const engine = engineOf(parts, maker);
+  const launching =
+    run.launcher === undefined ? {} : { launching: launchingOf(fork, venues, run.launcher) };
+  const parts = { fork, stores, positions, custody: signer, wallets, venues, host, covered };
+  const engine = engineOf({ ...parts, ...launching }, maker);
+  const ids = venues.map((venue) => venue.id);
   try {
-    await storeAgent(stores, fork, signal);
-    const main = await setUpInstall({ fork, stores, maker }, custody, signal);
+    await storeAgent(stores, { fork, venues: ids }, signal);
+    const main = await setUpInstall({ fork, stores, maker, venues: ids }, custody, signal);
     const launch = await createLaunchWallet(engine, custody, signal);
     await fund(fork, [main, launch]);
     const { refusals } = custody;
