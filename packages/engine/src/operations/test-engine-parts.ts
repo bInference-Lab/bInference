@@ -46,7 +46,12 @@ export function hostsOf(
   const withCode = new Set(options.tokensWithCode);
   return {
     host: createVenueHost(hosted),
-    launchHost: createLaunchHost(hosted),
+    launchHost: createLaunchHost({
+      ...hosted,
+      ...(options.unboundFirstBuys === undefined
+        ? {}
+        : { unboundFirstBuys: options.unboundFirstBuys }),
+    }),
     launchTokenCode: async (token, { signal }) => {
       signal.throwIfAborted();
       return Promise.resolve(withCode.has(token));

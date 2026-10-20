@@ -8,7 +8,7 @@ import {
   type Venue,
 } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
-import { bsc, bscPoolHooks, bscPriceFeeds } from "@binference/chains";
+import { bsc, bscPoolHooks, bscUnboundFirstBuys, bscPriceFeeds } from "@binference/chains";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
 import type { BackupFailure } from "@binference/engine/backups";
@@ -32,6 +32,7 @@ import type { WebPushKey } from "../web-push/web-push-key.js";
 import type { ChainReads } from "./chain-reads.js";
 import type { Closers } from "./closers.js";
 import { type BackupSources, backUpBeforeMigration, backupPartsOf } from "./compose-backups.js";
+import type { ComposeEngineOptions } from "./compose-engine.js";
 import type { SetUpInstall } from "./compose-lock.js";
 import type { ConfigCell } from "./config-cell.js";
 import type { ConfigReloadLink } from "./config-reload-link.js";
@@ -209,6 +210,24 @@ export function selfHostedChains(): ChainRegistry {
 /** The pool hooks routes may pass on each chain this binference serves (decision 0214). */
 export function selfHostedPoolHooks(): ReadonlyMap<ChainRef, readonly PoolHookDefinition[]> {
   return new Map([[chainRefSchema.parse(bsc.id), bscPoolHooks]]);
+}
+
+/**
+ * The launchpads whose create call runs a launch's first buy with no minimum, on each chain this
+ * binference serves, as the registry names them (decision 0270).
+ */
+export function selfHostedUnboundFirstBuys(): ReadonlyMap<ChainRef, readonly string[]> {
+  return new Map([[chainRefSchema.parse(bsc.id), bscUnboundFirstBuys]]);
+}
+
+/**
+ * What the engine reads of the registry: its chains, and the launchpads whose create call runs a
+ * launch's first buy with no minimum (decision 0270).
+ */
+export function registryParts(
+  chains: ChainRegistry,
+): Pick<ComposeEngineOptions, "chains" | "unboundFirstBuys"> {
+  return { chains, unboundFirstBuys: selfHostedUnboundFirstBuys() };
 }
 
 /** The Chainlink feeds of each chain this binference serves, as the registry names them. */

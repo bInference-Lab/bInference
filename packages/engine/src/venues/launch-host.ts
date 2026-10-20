@@ -94,6 +94,12 @@ export interface LaunchHostOptions {
   readonly callTimeoutMs: number;
   /** How long one upload of the words and picture may take: 12 s when absent. */
   readonly uploadTimeoutMs?: number;
+  /**
+   * On each chain, the launchpads the registry lists as running a launch's first buy inside its
+   * create call, with no minimum: only their launchers' `noFirstBuyMin` counts (decision 0270).
+   * None when absent.
+   */
+  readonly unboundFirstBuys?: ReadonlyMap<ChainRef, readonly string[]>;
 }
 
 // An upload carries a picture of up to 5 MiB, so it gets longer than a read: with a quote, a
@@ -142,12 +148,11 @@ function launchersOf(options: LaunchHostOptions): ReadonlyMap<string, HostedLaun
 }
 
 function contextOf(
-  launchers: ReadonlyMap<string, HostedLauncher>,
-  chains: ChainRegistry,
+  parts: Pick<LaunchParts, "launchers" | "chains" | "unboundFirstBuys">,
   launch: HostedLaunch,
 ): LaunchContext | undefined {
-  const item = launchers.get(launch.venue);
-  const chain = chains.get(assetRefParts(launch.pair).chain);
+  const item = parts.launchers.get(launch.venue);
+  const chain = parts.chains.get(assetRefParts(launch.pair).chain);
   const contracts = chain.ok ? item?.hosted.contracts.get(chain.value.ref) : undefined;
   if (item === undefined || !chain.ok || contracts === undefined) {
     return undefined;
@@ -155,13 +160,16 @@ function contextOf(
   const { venue: _venue, settings, ...rest } = launch;
   const options = Object.fromEntries(settings.map((setting) => [setting.name, setting.value]));
   const terms = Object.freeze({ ...rest, options: Object.freeze(options), contracts });
-  return { launcher: item.launcher, chain: chain.value, terms };
+  const listed = parts.unboundFirstBuys.get(chain.value.ref)?.includes(launch.venue) === true;
+  const isFirstBuyUnbound = listed && item.launcher.noFirstBuyMin === true;
+  return { launcher: item.launcher, chain: chain.value, terms, isFirstBuyUnbound };
 }
 
 /** What every method of the launch host reads: its launchpads, the registry and its timeout. */
 interface LaunchParts {
   readonly launchers: ReadonlyMap<string, HostedLauncher>;
   readonly chains: ChainRegistry;
+  readonly unboundFirstBuys: ReadonlyMap<ChainRef, readonly string[]>;
   readonly callOf: (signal: AbortSignal) => VenueCallOptions;
 }
 
@@ -177,7 +185,7 @@ async function onLaunchpad<T>(
   launch: HostedLaunch,
   call: OnLaunchpad<T>,
 ): Promise<T> {
-  const context = contextOf(parts.launchers, parts.chains, launch);
+  const context = contextOf(parts, launch);
   return context === undefined ? call.missing : await call.run(context);
 }
 
@@ -229,7 +237,8 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
     signal,
     timeoutMs: callTimeoutMs,
   });
-  const parts: LaunchParts = { launchers: launchersOf(options), chains, callOf };
+  const unboundFirstBuys = options.unboundFirstBuys ?? new Map();
+  const parts: LaunchParts = { launchers: launchersOf(options), chains, callOf, unboundFirstBuys };
   return {
     settingsOf: (venue, chainRef, given) => settingsOn(parts, { venue, chainRef, given }),
     launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],

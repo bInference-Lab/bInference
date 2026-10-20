@@ -3,6 +3,7 @@ import {
   accountRefSchema,
   type Amount,
   type AssetRef,
+  type ChainRef,
   type ChainRegistry,
   chainRefSchema,
   createChainRegistry,
@@ -154,6 +155,8 @@ export interface TestEngineOptions {
   /** The owner's uploads, shared with the test that fills them. */
   readonly uploads?: UploadShelf;
   /** The owner's uploads a token launch's picture comes from; none when absent. */
+  /** The launchpads the registry lists as running a first buy with no minimum (decision 0270). */
+  readonly unboundFirstBuys?: ReadonlyMap<ChainRef, readonly string[]>;
   readonly launchImages?: LaunchImageSource;
   /** The tokens whose address holds code, as a token that exists does; none when absent. */
   readonly tokensWithCode?: readonly AssetRef[];

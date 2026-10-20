@@ -1,4 +1,4 @@
-import type { Amount, ChainRegistry, TxSimulator, Venue } from "@binference/chain";
+import type { Amount, ChainRef, ChainRegistry, TxSimulator, Venue } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -77,6 +77,11 @@ interface RiskParts {
 /** What the engine and its protocol server are built from besides the profile parts. */
 export interface ComposeEngineOptions {
   readonly chains: ChainRegistry;
+  /**
+   * The launchpads the registry lists, on each chain, as running a launch's first buy inside its
+   * create call with no minimum (decision 0270); none when absent.
+   */
+  readonly unboundFirstBuys?: ReadonlyMap<ChainRef, readonly string[]>;
   /** Every venue the engine may use; the venue host checks their declarations at once. */
   readonly venues: readonly Venue[];
   readonly simulator: Simulator;
@@ -221,7 +226,12 @@ function tradingOf(parts: EngineParts, options: ComposeEngineOptions): Trading {
     clock,
     random,
   });
-  return { host, launchHost: createLaunchHost(hosted), risk };
+  const unbound = options.unboundFirstBuys;
+  const launchHost = createLaunchHost({
+    ...hosted,
+    ...(unbound === undefined ? {} : { unboundFirstBuys: unbound }),
+  });
+  return { host, launchHost, risk };
 }
 
 // The custody ports the engine takes: signing, ceilings, new wallets and, where custody gives

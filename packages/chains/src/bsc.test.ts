@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { chainDefinitionSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
-import { bsc, bscCeilingCaps, bscPoolHooks, bscPriceFeeds } from "./bsc.js";
+import { bsc, bscCeilingCaps, bscPoolHooks, bscPriceFeeds, bscUnboundFirstBuys } from "./bsc.js";
 
 // EIP-55: a hex letter is upper case where the same nibble of the Keccak-256 hash of the lower
 // case address is 8 or more. Node's own Keccak-256 keeps viem out of this package.
@@ -146,6 +146,12 @@ describe("bsc ceiling caps", () => {
     expect(wbnb?.floorUsd).toBe(bscCeilingCaps.nativeFloorUsd);
     const stablecoins = bscCeilingCaps.tokens.filter((item) => item.symbol.startsWith("USD"));
     expect(stablecoins.map((item) => item.floorUsd)).toStrictEqual([1_000_000n, 1_000_000n]);
+  });
+});
+
+describe("bsc launchpads whose first buy runs in the create call", () => {
+  it.each(bscUnboundFirstBuys)("lists %s, a venue with contracts in the registry", (venue) => {
+    expect(bsc.contracts.some((contract) => contract.venue === venue)).toBe(true);
   });
 });
 

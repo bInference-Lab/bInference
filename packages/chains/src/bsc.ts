@@ -341,6 +341,13 @@ export const bscPoolHooks: readonly PoolHookDefinition[] = [
 ];
 
 /**
+ * The launchpads on BSC whose create call runs a launch's first buy inside it, before any other
+ * trade can reach the new curve, with no minimum (decision 0270): Flap's Portal `newTokenV6`, read
+ * on 2026-10-20. Only these may launch with a first buy that carries no minimum.
+ */
+export const bscUnboundFirstBuys: readonly string[] = ["flap"];
+
+/**
  * BSC's standard Chainlink USD feeds, 8 decimals each, with the heartbeat Chainlink publishes.
  * Each names its proxy among the `chainlink` contracts of {@link bsc}. WBNB's `deposit` and
  * `withdraw` swap BNB for it one for one, so the BNB feed prices it too.

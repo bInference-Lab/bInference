@@ -20,7 +20,7 @@ import { type ComposedWatching, composeWatching, serveWatching } from "./compose
 import { engineHandlers } from "./engine-handlers.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { botParts } from "./open-bot.js";
-import type { Opened, Opening } from "./open-engine-parts.js";
+import { type Opened, type Opening, registryParts } from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
 import { publishedParts } from "./published-parts.js";
@@ -232,7 +232,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       marketReads: selfHostedMarketReads(wiring.sources, host.clock),
     },
     {
-      chains: wiring.chains,
+      ...registryParts(wiring.chains),
       venues: opened.venues,
       simulator: parts.simulators.simulator,
       risk: {

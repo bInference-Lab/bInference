@@ -33,12 +33,17 @@ const settings: readonly LaunchOption[] = [
   { name: "buyback", type: "flag", default: false },
 ];
 
-function hostOf(launcher: Launcher, clock = createManualClock(testNowMs)): LaunchHost {
+function hostOf(
+  launcher: Launcher,
+  clock = createManualClock(testNowMs),
+  unboundFirstBuys: readonly string[] = [pad],
+): LaunchHost {
   return createLaunchHost({
     venues: [createFakeLaunchpad({ onCurve: [], launcher })],
     chains: testChains([pad]),
     clock,
     callTimeoutMs: 1_000,
+    unboundFirstBuys: new Map([[chain, unboundFirstBuys]]),
   });
 }
 
@@ -233,6 +238,17 @@ describe("the launch host's build", () => {
     const minOut = { ...upload, minOutBase: 49_500n };
     await expect(declared.build(launch, minOut, live)).resolves.toMatchObject({ ok: true });
     await expect(silent.build(launch, minOut, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "low_min_out",
+    });
+  });
+
+  it("holds a declared launcher to its minimum when the registry does not list it", async () => {
+    const unlisted = hostOf(createFakeLauncher({ noFirstBuyMin: true }), undefined, []);
+    await expect(
+      unlisted.build(launch, { ...upload, minOutBase: 49_500n }, live),
+    ).resolves.toStrictEqual({
       ok: false,
       error: "decode_mismatch",
       mismatch: "low_min_out",

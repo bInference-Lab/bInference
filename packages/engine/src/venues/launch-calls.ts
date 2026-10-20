@@ -69,6 +69,11 @@ export interface LaunchContext {
   readonly launcher: Launcher;
   readonly chain: RegisteredChain;
   readonly terms: LaunchTerms;
+  /**
+   * The create call's first buy carries no minimum: the launcher declares it, and the registry
+   * lists the launchpad as one whose create call runs its first buy so (decision 0270).
+   */
+  readonly isFirstBuyUnbound: boolean;
 }
 
 const quoteAnswerSchema = z.discriminatedUnion("ok", [
@@ -124,7 +129,7 @@ const buildAnswerSchema = z.object({ token: assetRefSchema, steps: z.array(z.unk
 
 // The terms the launch's steps must keep (decision 0235), from its context and its upload.
 function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef): LaunchBounds {
-  const { launcher, chain, terms } = context;
+  const { chain, terms } = context;
   const { minOutBase } = upload;
   return {
     ...terms,
@@ -135,17 +140,17 @@ function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef)
     token,
     family: chain.family,
     ...(minOutBase === undefined ? {} : { minOutBase }),
-    ...(launcher.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
+    ...(context.isFirstBuyUnbound ? { noFirstBuyMin: true } : {}),
   };
 }
 
 // The checked plan; a first buy that carries no minimum is marked (decision 0270).
 function planOf(
-  launcher: Launcher,
+  context: LaunchContext,
   steps: readonly LaunchStep[],
   launch: DecodedLaunch,
 ): LaunchPlan {
-  const isUnbound = launcher.noFirstBuyMin === true && launch.firstBuy !== undefined;
+  const isUnbound = context.isFirstBuyUnbound && launch.firstBuy !== undefined;
   return { steps, launch, ...(isUnbound ? { isFirstBuyUnbound: true } : {}) };
 }
 
@@ -170,6 +175,6 @@ export async function buildLaunch(
   }
   const checkedSteps = checkLaunchSteps(steps.value, boundsOf(context, upload, answer.data.token));
   return checkedSteps.ok
-    ? ok(planOf(launcher, steps.value, checkedSteps.value))
+    ? ok(planOf(context, steps.value, checkedSteps.value))
     : { ok: false, error: "decode_mismatch", mismatch: checkedSteps.error };
 }

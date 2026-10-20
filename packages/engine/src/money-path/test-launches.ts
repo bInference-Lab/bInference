@@ -1,6 +1,7 @@
 import {
   type AccountRef,
   accountRefSchema,
+  chainRefSchema,
   type LaunchOption,
   type SimulatedStep,
   type TxSimulator,
@@ -189,6 +190,7 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
       testCallers.cli.credential,
     ),
     wallets: [testWallet, testLaunchWallet],
+    unboundFirstBuys: new Map([[chainRefSchema.parse("fake:1"), [testPad]]]),
     custodyWallets: new Map([[testLaunchWallet, testLaunchAccount]]),
     ...options,
     agent: {

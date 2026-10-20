@@ -18,7 +18,7 @@ import {
 import type { SignerRefusalNotice } from "@binference/signer";
 import { type Address, getAddress, keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { selfHostedChains } from "../compose/open-engine-parts.js";
+import { selfHostedChains, selfHostedUnboundFirstBuys } from "../compose/open-engine-parts.js";
 import { chainTokenCode } from "../compose/token-facts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
@@ -179,7 +179,13 @@ function launchingOf(fork: Fork, venues: readonly Venue[], launcher: RigLauncher
   const chains = selfHostedChains();
   const clock = createSystemClock();
   return {
-    launchHost: createLaunchHost({ venues, chains, clock, callTimeoutMs: 15_000 }),
+    launchHost: createLaunchHost({
+      venues,
+      chains,
+      clock,
+      callTimeoutMs: 15_000,
+      unboundFirstBuys: selfHostedUnboundFirstBuys(),
+    }),
     launchTokenCode: chainTokenCode(new Map([[fork.chain.ref, { rpc: fork.rpc }]])),
     launchImages: createMemoryLaunchImages(launcher.images, rigOwner.credential),
   };
