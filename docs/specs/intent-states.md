@@ -178,7 +178,9 @@ launch wallet's curve trade whose launch it cannot read, or that left the curve
 but the agent's live launch wallet, `image_unreadable` (its picture is no PNG, JPEG or WebP of at
 most 5 MiB), both before any upload, and `pin_failed` and `pin_timeout` from `quoted`
 ([decision 0234](../DECISIONS.md#d0234)); `upload_lost` from `checked`, for a launch a fault or a
-stop cut short once its upload began ([decision 0237](../DECISIONS.md#d0237)).
+stop cut short once its upload began ([decision 0237](../DECISIONS.md#d0237)); `ceiling_lacks_call`
+for a launch whose launch wallet's ceiling does not allow a call only a launch wallet makes on its
+launchpad, such as its create call, before any upload ([decision 0271](../DECISIONS.md#d0271)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or

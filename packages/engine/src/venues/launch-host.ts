@@ -71,6 +71,12 @@ export interface LaunchHost {
     pin: JsonValue,
     options: { readonly signal: AbortSignal },
   ): Promise<PinStatus>;
+  /**
+   * The JSON ABI entry of each call only a launch wallet makes on the launchpad, such as its
+   * create call, which the launch wallet's ceiling must allow (decision 0271); none for a venue
+   * the host does not hold.
+   */
+  launchWalletCalls(venue: string): readonly JsonValue[];
   /** Builds the launch's steps and checks each one; `decode_mismatch` names the failed check. */
   build(
     launch: HostedLaunch,
@@ -226,6 +232,7 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
   const parts: LaunchParts = { launchers: launchersOf(options), chains, callOf };
   return {
     settingsOf: (venue, chainRef, given) => settingsOn(parts, { venue, chainRef, given }),
+    launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],
     async quote(launch, { signal }) {
       signal.throwIfAborted();
       const run = async (context: LaunchContext) => quoteLaunch(context, callOf(signal));

@@ -10,6 +10,7 @@ import {
   tokenLaunchQuoteDocument,
 } from "../intents/token-launch-quote.js";
 import { statesBeforeSigning } from "../intents/transition-table.js";
+import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import { minOutFloor } from "../venues/build-checks.js";
 import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
@@ -226,6 +227,17 @@ function wordsOf(
   };
 }
 
+// Whether the launch wallet's ceiling, as last read back, lacks a call only a launch wallet makes
+// on the launchpad, such as its create call: custody would refuse the signature after the upload
+// and the card (decision 0271). A wallet the install no longer lists lacks every one.
+async function isCeilingLacking(run: LaunchRun): Promise<boolean> {
+  const { options, resolved, signal } = run;
+  const calls = options.launch.host.launchWalletCalls(resolved.request.venue);
+  const install = await options.install?.read({ signal });
+  const wallet = install?.wallets.find((item) => item.id === resolved.wallet);
+  return wallet === undefined ? calls.length > 0 : callsOutsideCeiling(wallet, calls).length > 0;
+}
+
 // A paper launch is refused by the policy with nothing read; a live one is quoted first, so the
 // policy judges its fee too, and then runs from the launch wallet alone (decision 0234).
 async function runLaunch(run: LaunchRun, proposed: IntentSnapshot): Promise<IntentSnapshot> {
@@ -247,6 +259,9 @@ async function runLaunch(run: LaunchRun, proposed: IntentSnapshot): Promise<Inte
   }
   if (!quote.ok) {
     return failQuote(run, checked, quote.error);
+  }
+  if (await isCeilingLacking(run)) {
+    return failQuote(run, checked, "ceiling_lacks_call");
   }
   const quoted = await upload(run, { checked, quote: quote.value, pass: verdict.value });
   if (quoted.record.state !== "quoted") {

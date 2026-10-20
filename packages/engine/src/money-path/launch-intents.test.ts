@@ -230,6 +230,18 @@ describe("a token launch refused before any upload", () => {
     expect([...named.launcher.uploads(), ...other.launcher.uploads()]).toStrictEqual([]);
   });
 
+  it("ends ceiling_lacks_call before any upload when the launch wallet cannot make its create call", async () => {
+    const lacking = await engineOver({ createCall: { isHeld: false } });
+    const held = await engineOver({ createCall: { isHeld: true }, pin: { never: true } });
+    const views = [await propose(lacking.test), await propose(held.test)];
+    expect(views.map((view) => [view.state, view.outcome?.reason])).toStrictEqual([
+      ["failed_check", "ceiling_lacks_call"],
+      ["quoted", undefined],
+    ]);
+    expect(lacking.launcher.uploads()).toStrictEqual([]);
+    expect(held.launcher.uploads()).toHaveLength(1);
+  });
+
   it("ends image_unreadable for an upload the engine does not hold", async () => {
     const { test, launcher } = await engineOver();
     const view = await propose(test, { ...launch, image: "upl_gone" });

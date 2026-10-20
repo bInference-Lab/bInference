@@ -4,6 +4,7 @@ import {
   type LaunchOption,
   type SimulatedStep,
   type TxSimulator,
+  type Venue,
 } from "@binference/chain";
 import {
   createFakeFamily,
@@ -13,7 +14,7 @@ import {
   type FakeLauncher,
   type FakePinScript,
 } from "@binference/chain/testing";
-import type { Id } from "@binference/core";
+import type { Id, JsonValue } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import type { IntentRequest, IntentView, LaunchTokenRequest } from "@binference/protocol";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -101,6 +102,26 @@ export interface Launching {
   readonly hasLaunchWallet?: boolean;
   /** The launchpad's create call carries no first-buy minimum, as it declares (decision 0270). */
   readonly noFirstBuyMin?: boolean;
+  /**
+   * The launchpad marks a create call only a launch wallet makes (decision 0271), which the launch
+   * wallet's ceiling holds or lacks; it marks none when absent.
+   */
+  readonly createCall?: { readonly isHeld: boolean };
+}
+
+// The create call a test launchpad marks as a launch wallet's alone.
+const testCreateAbi: JsonValue = { type: "function", name: "create", inputs: [] };
+
+// The fake launchpad, with a create call only a launch wallet makes when the test asks for one.
+function launchpadOf(launcher: FakeLauncher, launching: Launching): Venue {
+  const pad = createFakeLaunchpad({ onCurve: [], launcher });
+  if (launching.createCall === undefined) {
+    return pad;
+  }
+  const calls = [
+    { contract: "router", abi: testCreateAbi, walletInputs: [], isLaunchWalletOnly: true },
+  ];
+  return { ...pad, contracts: pad.contracts.map((item) => Object.assign({}, item, { calls })) };
 }
 
 /** A test engine for launches, with the fake launchpad's launcher. */
@@ -157,7 +178,7 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
     }),
     launching.launcher,
   );
-  const venues = [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launcher })];
+  const venues = [createFakeVenue(), launchpadOf(launcher, launching)];
   const { options = {}, hasLaunchWallet = true } = launching;
   const test = await startTestEngine({
     chains: testChains([testPad]),
@@ -177,15 +198,15 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
     },
   });
   if (hasLaunchWallet) {
-    test.stores.install.addWallet(
-      testWalletRecord({
-        id: testLaunchWallet,
-        agentId: testAgent,
-        label: "launches",
-        createdAtMs: testNowMs,
-        role: "launch",
-      }),
-    );
+    const record = testWalletRecord({
+      id: testLaunchWallet,
+      agentId: testAgent,
+      label: "launches",
+      createdAtMs: testNowMs,
+      role: "launch",
+    });
+    const policy = launching.createCall?.isHeld === true ? [testCreateAbi] : [];
+    test.stores.install.addWallet({ ...record, ceiling: { ...record.ceiling, policy } });
   }
   return { test, launcher, built };
 }
