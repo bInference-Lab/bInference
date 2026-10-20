@@ -3,7 +3,7 @@ import { bsc } from "@binference/chains";
 import { BinferenceError, type JsonValue } from "@binference/core";
 import { type Address, getAddress, type Hex, keccak256, pad, toHex } from "viem";
 import { assemble, fail, type Item, op, p } from "./crash-assembler.js";
-import { crashTokenCode } from "./crash-token.js";
+import { crashBalanceSlot, crashTokenCode } from "./crash-token.js";
 
 /** Calls anvil itself, past the test's counting and kills. */
 type AnvilCall = (method: string, params: readonly JsonValue[]) => Promise<JsonValue>;
@@ -187,7 +187,7 @@ export async function installCrashMarket(call: AnvilCall): Promise<void> {
     ),
   );
   const held = pad(toHex(10n ** 30n), { size: 32 });
-  await call("anvil_setStorageAt", [crashUsdt, pad(crashRouter, { size: 32 }), held]);
+  await call("anvil_setStorageAt", [crashUsdt, crashBalanceSlot(crashRouter), held]);
   await call("anvil_setBalance", [crashRouter, toHex(10n ** 24n)]);
   await freshCrashFeeds(call);
 }
@@ -215,5 +215,5 @@ export async function freshCrashFeeds(call: AnvilCall): Promise<void> {
 /** Gives `holder` `base` units of the crash chain's USDT, as a wallet that bought it earlier. */
 export async function fundCrashUsdt(call: AnvilCall, holder: Address, base: bigint): Promise<void> {
   const units = pad(toHex(base), { size: 32 });
-  await call("anvil_setStorageAt", [crashUsdt, pad(holder, { size: 32 }), units]);
+  await call("anvil_setStorageAt", [crashUsdt, crashBalanceSlot(holder), units]);
 }
