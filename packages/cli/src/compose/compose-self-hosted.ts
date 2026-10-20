@@ -293,7 +293,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       executor: sending.executor,
       positions: parts.positions,
       paperBalances: parts.paperBalances,
-      launchFeed: wiring.launchFeeds.isRunning,
+      ...wiring.watchedParts,
     },
   );
 }

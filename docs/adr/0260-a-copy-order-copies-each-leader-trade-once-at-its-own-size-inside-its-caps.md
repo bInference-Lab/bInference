@@ -34,8 +34,11 @@ Every order fill runs the money path with no card, held to its order's bounds
   cut off is recorded as `missed`; a sale so cut off is sold again, as below, never twice. While a live fill of its
   agent settles, the order reads no trade: a leader sale of a token its own buy is still landing
   waits for that buy, then is sold, never passed over.
-- **What it copies.** A buy of a token that is neither the chain's coin nor what the order spends,
-  and a sale of a token the order holds from its own buys. Every other trade is passed over with no
+- **What it copies.** A buy of a token that is neither a quote asset nor what the order spends,
+  and a sale of a token the order holds from its own buys. The quote assets are those the leader
+  watcher counts a trade against: the chain's coin, the tokens that wrap it and the stablecoins
+  with a feed. A leader's swap of one for another reads as a buy of the one received, whose sale
+  would never come, so a copy order does not follow it. Every other trade is passed over with no
   row: it is not a trade the order follows.
 - **Once per leader trade, at a confirmed depth.** A trade is copied once per order by its
   transaction hash, side and token: the order keeps those of its last 50 takes, so a trade a

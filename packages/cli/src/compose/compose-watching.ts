@@ -1,6 +1,12 @@
 import type { ChainRef } from "@binference/chain";
 import type { Clock } from "@binference/core";
-import { createVenueHost, type Engine, type EnginePush, type VenueHost } from "@binference/engine";
+import {
+  createVenueHost,
+  type Engine,
+  type EngineOptions,
+  type EnginePush,
+  type VenueHost,
+} from "@binference/engine";
 import type { ChainReads } from "./chain-reads.js";
 import { composeChainWatches } from "./chain-watches.js";
 import { type ComposedPriceWatchers, composePriceWatchers } from "./compose-price-watchers.js";
@@ -21,6 +27,8 @@ export interface ComposedWatching {
   readonly launchFeeds: ComposedLaunchFeeds;
   /** Where the watchers' notices go, set once the engine's publish exists. */
   readonly watcherPushes: { publish: (push: EnginePush) => void };
+  /** What the engine takes from the watchers: whether a launch feed runs, and the quote assets. */
+  readonly watchedParts: Pick<EngineOptions, "launchFeed" | "quoteAssets">;
 }
 
 // A venue's price read gets this long, as a quote does.
@@ -99,7 +107,11 @@ export function composeWatching(
   });
   const publish = (push: EnginePush): void => watcherPushes.publish(push);
   const logWatchers = composeLogWatchers(opened, { reads, host: venues, clock, publish });
-  return { sources, priceWatchers, ...logWatchers, watcherPushes };
+  const watchedParts = {
+    launchFeed: logWatchers.launchFeeds.isRunning,
+    quoteAssets: logWatchers.leaderWatchers.quotes,
+  };
+  return { sources, priceWatchers, ...logWatchers, watcherPushes, watchedParts };
 }
 
 /** The watchers the engine serves: its price and leader watchers and its launch feeds. */

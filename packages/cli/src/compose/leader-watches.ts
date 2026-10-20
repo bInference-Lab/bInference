@@ -37,6 +37,11 @@ export interface ComposedLeaderWatchers {
   readonly attach: (engine: Pick<Engine, "alerts">) => void;
   /** Runs each chain's watcher while the install tracks a wallet on it. */
   readonly start: (closers: Closers, logger: Logger) => void;
+  /**
+   * Each chain's coin, the tokens that wrap it and the stablecoins with a feed, which a trade
+   * spends or gets: a copy order never buys one (decision 0260).
+   */
+  readonly quotes: ReadonlySet<AssetRef>;
 }
 
 /** What the leader watchers read and where they store. */
@@ -82,6 +87,19 @@ function contextOf(
 ): TradeContext {
   const quotes = new Set([reads.evm.nativeAsset, ...feeds.map(({ asset }) => asset)]);
   return { chain: reads.evm, quotes, venues: venuesOf(reads.chain) };
+}
+
+// Each chain's quote assets: its coin, the tokens that wrap it and the stablecoins with a feed.
+function quoteAssetsOf(
+  chains: ChainRegistry,
+  feeds: LeaderWatchersOptions["feeds"],
+): ReadonlySet<AssetRef> {
+  return new Set(
+    [...feeds].flatMap(([ref, list]) => {
+      const chain = chains.get(ref);
+      return chain.ok ? feedAssetsOf(chain.value.definition, list).map(({ asset }) => asset) : [];
+    }),
+  );
 }
 
 function recordOf(chain: ChainRef, read: LeaderRead, atMs: number): LeaderReadRecord {
@@ -220,6 +238,7 @@ async function syncWatches(
 export function composeLeaderWatchers(options: LeaderWatchersOptions): ComposedLeaderWatchers {
   const links: Links = {};
   return {
+    quotes: quoteAssetsOf(options.chains, options.feeds),
     attach(engine) {
       links.alerts = engine.alerts;
     },

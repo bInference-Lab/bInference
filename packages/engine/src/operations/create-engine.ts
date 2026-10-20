@@ -1,4 +1,11 @@
-import type { Amount, ChainRegistry, PriceSource, Signer, TxSimulator } from "@binference/chain";
+import type {
+  Amount,
+  AssetRef,
+  ChainRegistry,
+  PriceSource,
+  Signer,
+  TxSimulator,
+} from "@binference/chain";
 import type { Clock, IdSource, Random, WorkspaceFiles } from "@binference/core";
 import {
   type AddressBookHandlers,
@@ -244,6 +251,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
    * for the crash suite on fills (decision 0195), so a live order skips with `live_fills_off`.
    */
   readonly liveOrderFills?: boolean;
+  /**
+   * Each chain's coin, the tokens that wrap it and the stablecoins with a feed: what a leader's
+   * trade spends or gets, so a copy order never buys one (decision 0260). The coins alone when absent.
+   */
+  readonly quoteAssets?: ReadonlySet<AssetRef>;
   /** The launch side of the venue host; without it no token launch is proposed (decision 0234). */
   readonly launchHost?: LaunchHost;
   /**
@@ -315,6 +327,7 @@ function intentParts(
     trackedWallets: stores.trackedWallets,
     intents: stores.intents,
     chains,
+    quotes: options.quoteAssets ?? new Set(),
     readTokenFacts: options.readTokenFacts,
     clock,
   });

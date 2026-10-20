@@ -68,6 +68,18 @@ describe("the copy orders' runner", () => {
     expect((await copyStateNow(test, order.id)).through).toBe(stored.at(-1)?.id);
   });
 
+  it("passes over a leader's buy of a quote asset, which it would never sell", async () => {
+    const test = await startFillEngine({ prices, quoteAssets: new Set([testToken]) });
+    const order = await activeOrder(test, testCopy());
+    const now = test.clock.now();
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: now })]);
+
+    await test.engine.runCopies(live);
+
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
   it("sells 40% of the copied position when the leader sells 40%", async () => {
     const test = await startFillEngine({ prices });
     const order = await activeOrder(test, testCopy());

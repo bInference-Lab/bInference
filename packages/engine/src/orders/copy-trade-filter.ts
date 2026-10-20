@@ -47,19 +47,31 @@ export interface TradeSeen {
   readonly asset: AssetRef;
 }
 
+/** What a copy order judges a leader trade by: the chains, and the assets it never buys. */
+export interface CopyFilterParts {
+  readonly chains: ChainRegistry;
+  /**
+   * The assets a leader trade spends or gets: each chain's coin, the tokens that wrap it and the
+   * stablecoins with a feed. The leader watcher counts a swap of one for another as a buy of the
+   * one received, which no copy order follows, since its sale would never come (decision 0260).
+   */
+  readonly quotes: ReadonlySet<AssetRef>;
+}
+
 /**
  * Whether a copy order copies a leader trade (decision 0260): never one it took before by its
  * transaction, side and token, as a reorganization may store again; a buy of a token other than
- * the chain's coin and what the order spends; a sale of a token the order holds from its own buys.
+ * the chain's coin, the quote assets and what the order spends; a sale of a token the order holds
+ * from its own buys.
  */
 export function isCopied(
-  chains: ChainRegistry,
+  parts: CopyFilterParts,
   call: { readonly order: CopyOrder; readonly state: CopyState },
   trade: TradeSeen,
 ): boolean {
   const { order, state } = call;
   const { asset, side } = trade;
-  const chain = chains.get(accountRefParts(order.request.trigger.leader).chain);
+  const chain = parts.chains.get(accountRefParts(order.request.trigger.leader).chain);
   const wasTaken = state.recent.some(
     (seen) => seen.txHash === trade.txHash && seen.side === side && seen.asset === asset,
   );
@@ -69,5 +81,6 @@ export function isCopied(
   if (side === "sell") {
     return copiedHeldOf(state, asset) > 0n;
   }
-  return asset !== nativeAssetOf(chain.value) && asset !== order.request.spend;
+  const isQuote = parts.quotes.has(asset) || asset === nativeAssetOf(chain.value);
+  return !isQuote && asset !== order.request.spend;
 }

@@ -16,7 +16,7 @@ import {
   takenState,
 } from "./copy-state.js";
 import { isRetryLapsed, retryAtOf, type TakeEnd, takeEndOf } from "./copy-takes.js";
-import { confirmedBlockOf, isCopied } from "./copy-trade-filter.js";
+import { confirmedBlockOf, type CopyFilterParts, isCopied } from "./copy-trade-filter.js";
 import { isLineHeld } from "./fill-faults.js";
 import type { OrderFills } from "./fill-orders.js";
 import { moveOrder } from "./order-machine.js";
@@ -40,6 +40,8 @@ export interface CopyOrdersParts {
   /** The agents' live fills in flight, which hold a live order's line. */
   readonly intents: Pick<IntentStore, "fillsInFlight">;
   readonly chains: ChainRegistry;
+  /** The quote assets, whose buys no copy order follows (decision 0260). */
+  readonly quotes: CopyFilterParts["quotes"];
   readonly readTokenFacts: ReadTokenFacts;
   readonly clock: Clock;
 }
@@ -271,7 +273,7 @@ async function copyTrades(
   const seen = asset.ok
     ? { txHash: trade.txHash, side: trade.side, asset: asset.value }
     : undefined;
-  if (seen === undefined || !isCopied(parts.chains, reading, seen)) {
+  if (seen === undefined || !isCopied(parts, reading, seen)) {
     return copyTrades(parts, { ...reading, passedTo: trade.id }, { ...call, trades: rest });
   }
   const goesOn = await copyOne(parts, reading, { trade, asset: seen.asset, signal });

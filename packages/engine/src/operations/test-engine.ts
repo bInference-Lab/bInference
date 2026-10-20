@@ -133,6 +133,8 @@ export interface TestEngineOptions {
   readonly isLocked?: () => boolean;
   /** Whether a live order may fill and so be made; off when absent, as in the product now. */
   readonly liveOrderFills?: boolean;
+  /** The quote assets, whose leader buys no copy order follows; none when absent. */
+  readonly quoteAssets?: ReadonlySet<AssetRef>;
   /** The risk step; one that passes registry tokens and refuses others as `sources_down` when absent. */
   readonly risk?: RiskCheck;
   /** The ceilings the owner key changes; a fake holding none when absent. */
@@ -257,12 +259,13 @@ function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter
   };
 }
 
-// Whether live orders fill and a launch feed runs, and the uploads, as the test asks.
+// Whether live orders fill and a launch feed runs, the uploads and quote assets, as the test asks.
 function switchesOf(
   options: TestEngineOptions,
-): Pick<EngineOptions, "liveOrderFills" | "launchFeed" | "uploads"> {
+): Pick<EngineOptions, "liveOrderFills" | "launchFeed" | "uploads" | "quoteAssets"> {
   return {
     liveOrderFills: options.liveOrderFills === true,
+    ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
     ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
   };
