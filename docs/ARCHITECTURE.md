@@ -321,7 +321,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `quote`                               | Best route for a swap: venues, impact, minimum out                                         |
 | `market_scan`                         | Trending tokens, new launches (Flap and four.meme events on chain), Binance Alpha listings |
 | `chart`                               | OHLCV for a token                                                                          |
-| `wallet_activity`                     | A wallet's trades and P&L (the agent's own or a tracked one)                               |
+| `wallet_activity`                     | A tracked wallet's trades; the agent's own get `wallet.not_found`                          |
 | `lending_markets`, `lending_position` | Rates, collateral factors, the agent's health factor                                       |
 | `staking_options`                     | Validators (APR, commission, jail status), the slisBNB rate                                |
 | `bridge_quote`                        | Routes, fees and times to and from other chains                                            |

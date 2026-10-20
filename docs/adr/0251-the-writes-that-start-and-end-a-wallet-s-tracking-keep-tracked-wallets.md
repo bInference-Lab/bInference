@@ -1,6 +1,6 @@
 # 0251. The writes that start and end a wallet's tracking keep tracked wallets
 
-Status: Accepted
+Status: Amended by 0259
 
 Accepted by the owner on 2026-10-19.
 

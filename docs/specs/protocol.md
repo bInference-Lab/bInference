@@ -353,7 +353,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                            |
 | `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                 |
 | `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, priceScale?, source }` (below) |
-| `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }`, newest first (below)             |
+| `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }` of a tracked wallet (below)       |
 | `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                  |
 
 - `asset/search` reads the chain registry and the positions store, never the web. A query the
@@ -406,10 +406,12 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   lowest price above zero, in the chart or in the item, comes to at least one dollar, and is absent
   when 0. A chart's `priceScale` sits beside its `candles`. Volumes and liquidity stay
   micro-dollars.
-- `wallet/activity` reads the trades of one account: one of `agent`'s wallets, from its executions,
-  or a wallet the agent tracks (a leader of one of its copy orders, or the account of one of its
-  wallet alerts), from what the leader watcher recorded since tracking began. Any other account
-  fails `wallet.not_found`: the engine reads no history it did not watch. An `ActivityItem` is
+- `wallet/activity` reads the trades of a wallet the agent tracks (a leader of one of its copy
+  orders, or the account of one of its wallet alerts), newest first, from what the leader watcher
+  recorded since tracking began. Any other account, the agent's own wallets among them, fails
+  `wallet.not_found`: the engine reads no history it did not watch, and the agent reads its own
+  wallets with `portfolio/get` and `intent/get` ([decision 0259](../DECISIONS.md#d0259)). An
+  `ActivityItem` is
   `{ at, block, tx, side: buy | sell, asset, amount, counterAsset, counterAmount, valueUsdMicros?, shareSoldBps?, venue? }`;
   `shareSoldBps` is the share of the account's holding a sale took, as the watcher saw it.
 - Names and symbols in `assets` of these results are set by whoever deployed each token

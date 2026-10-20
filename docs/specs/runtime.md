@@ -318,6 +318,11 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 | `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `lend`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`, `token_launch`                                                                                                                                                                |
 | `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242))                                                                                                                    |
 
+`wallet_activity` reads only a wallet the agent tracks, the leader of one of its copy orders or the
+account of one of its wallet alerts. For the agent's own wallets the engine answers
+`wallet.not_found`, and the tool tells the model to read them with `portfolio` and `tx_status`
+([decision 0259](../DECISIONS.md#d0259)).
+
 <a id="section-5-2"></a>
 
 ### 5.2 Declaring and checking a call
