@@ -15,8 +15,11 @@ export interface AgentToolParts {
    */
   readonly agent: Id<"agt">;
   readonly client: ToolClient;
-  /** The turn the tools serve: its session and the turn id, where `ask_owner` asks. */
-  readonly turn: Pick<TurnPlace, "session" | "turn">;
+  /**
+   * The turn the tools serve: its session and the turn id, where `ask_owner` asks, and the photos
+   * the owner sent the bot with its messages, which `launch_draft` names.
+   */
+  readonly turn: Pick<TurnPlace, "session" | "turn" | "photos">;
   /** How the web tools reach the internet; without it, the agent has no web tools. */
   readonly web?: WebToolParts;
 }

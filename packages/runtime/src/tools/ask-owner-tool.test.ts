@@ -26,7 +26,8 @@ const question = {
 const asked: FakeAnswer = {
   question: "qst_0190f1c2-3a4b-7c5d-8e6f-0123456789ab",
   agent,
-  ...toolTurn,
+  session: toolTurn.session,
+  turn: toolTurn.turn,
   ...question,
   state: "open",
   createdAt: 1,
@@ -60,7 +61,11 @@ describe("ask_owner", () => {
       endsTurn: true,
     });
     expect(run.client.calls()).toStrictEqual([
-      { op: "turn/ask", args: { agent, ...toolTurn, ...question }, key: context.idempotencyKey },
+      {
+        op: "turn/ask",
+        args: { agent, session: toolTurn.session, turn: toolTurn.turn, ...question },
+        key: context.idempotencyKey,
+      },
     ]);
   });
 

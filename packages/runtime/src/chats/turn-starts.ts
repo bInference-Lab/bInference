@@ -1,4 +1,4 @@
-import { err, type Id, ok } from "@binference/core";
+import { err, type Id, idSchema, ok } from "@binference/core";
 import type { QueuedMessage } from "@binference/store";
 import { readTurnPrefix } from "../context/turn-prefix.js";
 import { createChatTurn, type TurnReport } from "../loop/chat-turn.js";
@@ -11,7 +11,7 @@ import { createRelayTurnEngine } from "../relay/relay-turn-engine.js";
 import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
-import type { TurnPlace } from "../sessions/turn-place.js";
+import type { TurnPhoto, TurnPlace } from "../sessions/turn-place.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
 import { isWakeUp, noteOf, ownerMessageOf, turnMessageOf } from "./queued-view.js";
@@ -271,13 +271,22 @@ function turnPartsOf(
   };
 }
 
+// The photos the owner sent the bot with the turn's messages, in order (decision 0286).
+function photosOf(taken: readonly Waiting[]): readonly TurnPhoto[] {
+  return taken.flatMap(({ owner }) => {
+    const message = idSchema("msg").safeParse(owner.id);
+    const images = (owner.images ?? []).filter((image) => image.startsWith("tg:"));
+    return message.success ? images.map((image) => ({ message: message.data, image })) : [];
+  });
+}
+
 async function runTurn(
   context: ChatContext,
   place: TurnPlace,
   taken: readonly Waiting[],
 ): Promise<void> {
   const { stores, lifetime } = context;
-  const setup = context.setup(place);
+  const setup = context.setup({ ...place, photos: photosOf(taken) });
   const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
   if (prefix === undefined) {
     return;

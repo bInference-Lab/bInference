@@ -10,6 +10,7 @@ import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { ContextSource } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import { createMemoryAgentStores, nthTestId } from "./memory-agent-stores.js";
 import { createMemoryContextSource } from "./memory-context-source.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
@@ -30,6 +31,8 @@ export interface ChatRig {
   readonly runner: ChatRunner;
   readonly transport: ScriptedTransport;
   readonly clock: ManualClock;
+  /** Where each turn's setup was asked for, in order: its place, with the turn's photos. */
+  readonly places: readonly TurnPlace[];
   /** The owner posts; settles once the runner took the message, not once its turn ended. */
   post(
     text: string,
@@ -83,19 +86,23 @@ export async function startChatRig(options: ChatRigOptions): Promise<ChatRig> {
   const transport = createScriptedTransport(options.replies);
   const clock = createManualClock(10_000);
   const holder: { rig?: ChatRig } = {};
+  const places: TurnPlace[] = [];
   const rigNow = (): ChatRig => holder.rig ?? notStarted();
   const tools = typeof options.tools === "function" ? options.tools(rigNow) : (options.tools ?? []);
   const runner = createChatRunner({
     stores,
     engine,
     turnContext: options.context ?? createMemoryContextSource({ now: () => clock.now() }),
-    setup: () => ({
-      models: options.models?.(clock) ?? oneModelChain(transport, clock),
-      tools: testToolBox(tools),
-      instructions: "You are a test agent.",
-      limits: turnLimits,
-      ...(options.compaction === undefined ? {} : { compaction: options.compaction(clock) }),
-    }),
+    setup: (place) => {
+      places.push(place);
+      return {
+        models: options.models?.(clock) ?? oneModelChain(transport, clock),
+        tools: testToolBox(tools),
+        instructions: "You are a test agent.",
+        limits: turnLimits,
+        ...(options.compaction === undefined ? {} : { compaction: options.compaction(clock) }),
+      };
+    },
     mode: () => options.mode ?? "merge",
     clock,
     lifetime: new AbortController().signal,
@@ -109,6 +116,7 @@ export async function startChatRig(options: ChatRigOptions): Promise<ChatRig> {
     runner,
     transport,
     clock,
+    places,
     async post(text, images) {
       const posted = engine.post(agent, text, images);
       await last.taking;

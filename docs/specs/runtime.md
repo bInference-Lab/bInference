@@ -312,11 +312,11 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 | `propose` | Creates an intent or an auto order in the engine, which opens a card | Alone, in order; one per turn (section 6.2) | Yes              |
 | `control` | Changes something without moving money or opening a card             | In order                                    | No               |
 
-| Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                                           |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `read`    | `token_search`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `lending_markets`, `lending_position`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill` |
-| `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `lend`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`, `token_launch`                                                                                                                                                                |
-| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242))                                                                                                                    |
+| Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                                                         |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `read`    | `token_search`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `lending_markets`, `lending_position`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill`, `launchpads` |
+| `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `lend`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`                                                                                                                                                                                              |
+| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242)), `launch_draft` ([decision 0285](../DECISIONS.md#d0285))                                                                         |
 
 `wallet_activity` reads only a wallet the agent tracks, the leader of one of its copy orders or the
 account of one of its wallet alerts. For the agent's own wallets the engine answers
@@ -435,6 +435,20 @@ The turn ends after its batch with outcome `ok`, without another model call. The
 is the answer too. A proposal wins over a question: in a batch with a propose call that passed its
 check, every `ask_owner` call gets "not run: the card already asks the owner"
 ([decision 0173](../DECISIONS.md#d0173)).
+
+<a id="section-6-5"></a>
+
+### 6.5 Drafting a launch
+
+The agent never launches a token: only the owner starts one
+([decisions 0236](../DECISIONS.md#d0236) and [0285](../DECISIONS.md#d0285)). `launch_draft` is a
+control tool. It sends the launch's terms with `launch/draft` (spec 1, section 7.7) and returns
+"drafted; the owner sees every line in Telegram and starts it with Start launch, within 10
+minutes". Its picture is `photo`, the nth photo the owner sent the bot with the messages the turn
+took, in order (`tg:` names only, [decision 0286](../DECISIONS.md#d0286)); a `photo` the turn does
+not hold is refused before the engine. A launchpad that takes a picture link takes no `photo`, and
+the link as its `link` setting. The tool never commits the turn, and the turn goes on. `launchpads`
+reads `launchpad/list`: where each launchpad takes a picture, and its settings.
 
 <a id="section-7"></a>
 

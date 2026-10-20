@@ -344,14 +344,16 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `stake`, `unstake`, `claim`              | Native BNB staking (StakeHub), slisBNB                                                                                           |
 | `bridge`                                 | Across, Relay, LI.FI, as a cross-chain send to an address-book entry or the rescue address ([decision 0067](DECISIONS.md#d0067)) |
 | `cex_order` (plugin)                     | Binance spot and convert orders through Agent OS; futures and margin off by default                                              |
-| `token_launch`                           | A token on Flap, four.meme, Genius.fun or Brew; every launch setting is on its card ([decision 0082](DECISIONS.md#d0082))        |
 
 **Control tools:** `order_cancel` (braking, so no confirmation), `notes_write` (labelled memory),
 `workspace_write` and `first_chat_end` (the owner's strategy and persona, and the first chat's end;
 [decision 0242](DECISIONS.md#d0242)),
 `alert_create` (price and wallet alerts, no transaction), `schedule_create`, `schedule_list` and `schedule_cancel` (model turns on a
-schedule, counted against the model budget; [section 26](#section-26)) and `ask_owner` (a question
-with buttons).
+schedule, counted against the model budget; [section 26](#section-26)), `launch_draft` (a token
+launch on Flap, four.meme, Genius.fun or Brew that only the owner starts, with Start launch in
+Telegram, and whose card then shows every setting; [decisions 0082](DECISIONS.md#d0082) and
+[0285](DECISIONS.md#d0285)) and `ask_owner` (a question with buttons). The read tool `launchpads`
+says where each launchpad takes a launch's picture.
 
 **Never tools:** limits, send levels, paper or live mode, the address book, the rescue address, the
 model budget, webhook rules and plugins. Those are settings that only the owner changes, in the CLI

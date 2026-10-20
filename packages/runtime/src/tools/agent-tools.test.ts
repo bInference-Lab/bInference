@@ -30,6 +30,14 @@ import { createFakeToolClient, type FakeAnswer } from "../testing/fake-tool-clie
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import { agentToolBox, agentTools } from "./agent-tools.js";
 
+const launchTerms = {
+  reason: "You asked for a cat token",
+  venue: "fake-curve",
+  name: "Moon Cat",
+  symbol: "MCAT",
+  pairWith: coin,
+};
+
 const answers: Readonly<Record<string, FakeAnswer>> = {
   "asset/search": { items: [{ asset: coin, ...coinInfo }] },
   "portfolio/get": { balances: [], positions: [], totalUsdMicros: "0", assets: {} },
@@ -69,10 +77,13 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "schedule/cancel": {},
   "agent/editFile": { updatedAt: 1 },
   "agent/endFirstChat": {},
+  "launchpad/list": { items: [] },
+  "launch/draft": { draft: "c2hvd24tb25jZS1h", expiresAt: 600_001 },
   "turn/ask": {
     question: "qst_0190f1c2-3a4b-7c5d-8e6f-0123456789ab",
     agent,
-    ...toolTurn,
+    session: toolTurn.session,
+    turn: toolTurn.turn,
     text: "Hold for hours or days?",
     choices: ["Hours", "Days"],
     state: "open",
@@ -216,13 +227,36 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     [{ op: "agent/editFile", args: { agent, file: "STRATEGY.md", text: "Hold for days." }, key }],
   ],
   ["first_chat_end", {}, [{ op: "agent/endFirstChat", args: { agent }, key }]],
+  ["launchpads", { chain: "fake:1" }, [{ op: "launchpad/list", args: { chain: "fake:1" } }]],
+  [
+    "launch_draft",
+    { launch: launchTerms },
+    [
+      {
+        op: "launch/draft",
+        args: {
+          agent,
+          session: toolTurn.session,
+          turn: toolTurn.turn,
+          launch: launchTerms,
+        },
+        key,
+      },
+    ],
+  ],
   [
     "ask_owner",
     { text: "Hold for hours or days?", choices: ["Hours", "Days"] },
     [
       {
         op: "turn/ask",
-        args: { agent, ...toolTurn, text: "Hold for hours or days?", choices: ["Hours", "Days"] },
+        args: {
+          agent,
+          session: toolTurn.session,
+          turn: toolTurn.turn,
+          text: "Hold for hours or days?",
+          choices: ["Hours", "Days"],
+        },
         key,
       },
     ],
@@ -240,6 +274,7 @@ const controlWrites = new Set([
   "notes_write",
   "workspace_write",
   "first_chat_end",
+  "launch_draft",
 ]);
 const controls = mappings.filter(([name]) => controlWrites.has(name));
 

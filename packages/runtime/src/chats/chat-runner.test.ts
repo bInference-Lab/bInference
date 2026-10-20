@@ -437,4 +437,16 @@ describe("createChatRunner", () => {
     await rig.runner.rested();
     expect(turnsStarted(rig)).toStrictEqual([first.turn, second.turn, fourth.turn]);
   });
+
+  it("hands the turn's setup the photos the owner sent the bot, in order", async () => {
+    const rig = await startChatRig({ replies: [textReply("one")] });
+    const posted = await rig.post("launch this", ["tg:cat", "upl_moon", "tg:dog"]);
+    await rig.runner.rested();
+    expect(rig.places.map(({ photos }) => photos)).toStrictEqual([
+      [
+        { message: posted.message, image: "tg:cat" },
+        { message: posted.message, image: "tg:dog" },
+      ],
+    ]);
+  });
 });

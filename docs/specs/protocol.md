@@ -698,7 +698,7 @@ outside-content mark of its agent's running turn ([spec 8, section 4.3](runtime.
 
 **The agent's launch drafts** ([decisions 0285](../DECISIONS.md#d0285) and
 [0286](../DECISIONS.md#d0286)). `launch/draft` is how the `launch_draft` tool suggests a token
-launch ([spec 8, section 6.4](runtime.md#section-6-4)); a `launchToken` the runtime proposes stays
+launch ([spec 8, section 6.5](runtime.md#section-6-5)); a `launchToken` the runtime proposes stays
 `intent.owner_only`:
 
 - Only the runtime the engine runs now calls it (else `auth.scope`), in its agent's running turn

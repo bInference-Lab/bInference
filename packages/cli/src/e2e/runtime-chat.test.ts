@@ -293,6 +293,8 @@ describe("the chat relay to the agent runtime process", () => {
         "notes_write",
         "workspace_write",
         "first_chat_end",
+        "launchpads",
+        "launch_draft",
         "ask_owner",
       ]);
     },
