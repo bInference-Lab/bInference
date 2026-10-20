@@ -1,5 +1,6 @@
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { readSystemFacts } from "@binference/platform";
 import type { CliHost } from "../program/cli-host.js";
 import { runCli } from "../program/run-cli.js";
 import { createSystemClock } from "../runtime/system-clock.js";
@@ -28,6 +29,7 @@ const host: CliHost = {
   http: crashHttp(http, { relays: env.CRASH_RELAYS, services: env.CRASH_SERVICES }),
   signals: process,
   version,
+  system: readSystemFacts(),
   // Store workers run with this process's Node options, the TypeScript loader among them.
   workerExecArgv: process.execArgv,
   entry: {

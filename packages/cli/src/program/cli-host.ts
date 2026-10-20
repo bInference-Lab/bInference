@@ -1,7 +1,7 @@
 import type { AssetRef } from "@binference/chain";
 import type { Clock, Http, HttpDownload, Random } from "@binference/core";
 import type { Engine } from "@binference/engine";
-import type { ServiceManager, SignalEvents } from "@binference/platform";
+import type { ServiceManager, SignalEvents, SystemFacts } from "@binference/platform";
 import type { ChatTerminal } from "@binference/tui";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
@@ -57,6 +57,8 @@ export interface CliHost {
   readonly signals: SignalEvents;
   /** The binference release, such as `2026.10.0`. */
   readonly version: string;
+  /** The machine binference runs on, from `process` in the entry file. */
+  readonly system: SystemFacts;
   /** The account's home folder; the OS's own answer when left out. */
   readonly homeDir?: string;
   /** Node options for the store's worker threads, such as a TypeScript loader in tests. */

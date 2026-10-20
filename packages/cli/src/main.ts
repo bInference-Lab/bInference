@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { readTextFile } from "@binference/platform";
+import { readSystemFacts, readTextFile } from "@binference/platform";
 import { z } from "zod";
 import { runCli } from "./program/run-cli.js";
 import { createSystemClock } from "./runtime/system-clock.js";
@@ -60,6 +60,7 @@ process.exitCode = await runCli({
     : {}),
   signals: process,
   version,
+  system: readSystemFacts(),
   // Store workers run with this process's Node options, such as a TypeScript loader.
   workerExecArgv: process.execArgv,
   entry,

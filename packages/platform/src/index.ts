@@ -34,6 +34,8 @@ export type { ReadPiecesOptions } from "./read-file-pieces.js";
 export { readTextFile } from "./read-text-file.js";
 export { realFilePath } from "./real-file-path.js";
 export { runCommand, runCommandToExit, runCommandWithin } from "./run-command.js";
+export { readSystemFacts } from "./system-facts.js";
+export type { SystemFacts } from "./system-facts.js";
 export { startTerminalProgram } from "./terminal-program.js";
 export type { TerminalExit, TerminalProgram, TerminalProgramOptions } from "./terminal-program.js";
 export type { ProgramExit, RunProgram, RunToExit, RunWithinOptions } from "./run-command.js";

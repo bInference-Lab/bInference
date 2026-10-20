@@ -38,6 +38,9 @@ export interface TestMachine {
 const workerExecArgv = ["--conditions=@binference/source", "--import", "tsx"];
 // Each host draws its own random bytes.
 const seeds = { next: 17 };
+/** The machine every test host names: a fixed one, so a support bundle reads the same anywhere. */
+const testSystem = { node: "v26.10.0", os: "linux", osRelease: "6.8.0", cpu: "x64" };
+
 /** Permissions that change nothing: a test's folder is its own, so its permissions do not matter. */
 export const noPermissions: FilePermissions = {
   restrictFolder: async () => Promise.resolve(),
@@ -157,6 +160,7 @@ export function hostWith(
     ...parts,
     signals: machine.signals,
     version: "2026.10.0-test",
+    system: testSystem,
     workerExecArgv,
     stdout: () => written.out,
     stderr: () => written.err,
