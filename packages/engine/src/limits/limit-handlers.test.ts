@@ -1,10 +1,5 @@
-import { accountRefSchema, assetRefSchema, type Venue } from "@binference/chain";
-import {
-  createFakeLaunchpad,
-  createFakePictureLauncher,
-  createFakeVenue,
-  fakeLaunchCallAbi,
-} from "@binference/chain/testing";
+import { accountRefSchema, assetRefSchema } from "@binference/chain";
+import { createFakeLaunchpad, createFakeVenue, fakeLaunchCallAbi } from "@binference/chain/testing";
 import { bpsSchema, err, idSchema, type JsonValue } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -29,6 +24,7 @@ import {
 } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { AgentStore } from "../ports.js";
+import { testLaunchesOnlyVenue } from "../venues/test-launches-only-venue.js";
 
 const live = { signal: new AbortController().signal };
 // The Mini App holds `confirm` and `loosen`; these callers hold one of the two.
@@ -114,24 +110,12 @@ async function besideLaunchCurves(mode: "paper" | "live"): Promise<TestEngine> {
   return test;
 }
 
-// An agent in the mode, beside a launchpad that only launches tokens (decision 0282): a launcher,
-// and one call, a launch wallet's alone, with a live wallet whose ceiling names no contract.
+// An agent in the mode, beside a launchpad that only launches tokens (decision 0282), with a live
+// wallet whose ceiling names no contract.
 async function besideLaunchesOnly(mode: "paper" | "live"): Promise<TestEngine> {
-  const launcher = createFakePictureLauncher({ mostBytes: 1_000 });
-  const { curve: _curve, ...pad } = createFakeLaunchpad({ onCurve: [], launcher });
-  const launching: Venue = {
-    ...pad,
-    contracts: pad.contracts.map((item) => ({
-      chain: item.chain,
-      names: item.names,
-      calls: [
-        { contract: "router", abi: fakeLaunchCallAbi, walletInputs: [], isLaunchWalletOnly: true },
-      ],
-    })),
-  };
   const test = await startTestEngine({
     chains: testChains(["fake-curve"]),
-    venues: [createFakeVenue(), launching],
+    venues: [createFakeVenue(), testLaunchesOnlyVenue()],
     agent: { mode, limits: { ...testLimits, venues: [] } },
   });
   test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: [] } });

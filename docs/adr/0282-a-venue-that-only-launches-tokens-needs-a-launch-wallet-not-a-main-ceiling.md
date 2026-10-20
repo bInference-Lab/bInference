@@ -27,7 +27,9 @@ and a launch names its venue, which the policy refuses unless the agent's limits
   every call it declares a launch wallet's alone, with no spender a main wallet approves
   (`launchesOnly`). `limit/set` treats it as it treats a launchpad whose trades call a launch's own
   contracts: a live agent needs its live launch wallet to add it (`limit.needs_launch_wallet`), no
-  main wallet's ceiling is asked, and a paper agent adds it with no ceiling to check. The launch
+  main wallet's ceiling is asked, and a paper agent adds it with no ceiling to check. A paper agent
+  whose venues hold it goes live only with its live launch wallet (`agent/goLive`,
+  `limit.needs_launch_wallet`), as one whose venues hold such a launchpad. The launch
   wallet's ceiling must still allow its create call, which a launch checks before its build
   (`ceiling_lacks_call`) and `binference check` reports (`wallets.launch_calls`).
 

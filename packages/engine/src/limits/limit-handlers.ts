@@ -165,6 +165,17 @@ async function move(
 }
 
 /**
+ * Whether a venue is a launch wallet's alone: it trades on a launch's own contracts (decision
+ * 0217), or it only launches tokens (decision 0282).
+ */
+export function needsLaunchWallet(
+  host: Pick<VenueHost, "hasLaunchContracts" | "launchesOnly">,
+  venue: string,
+): boolean {
+  return host.hasLaunchContracts(venue) || host.launchesOnly(venue);
+}
+
+/**
  * Why a live agent cannot use venues that trade on a launch's own contracts (decisions 0217 and
  * 0218): it has no live launch wallet, or that wallet's ceiling lacks one of their launch calls.
  */
@@ -182,10 +193,10 @@ export function launchRefusal(
 }
 
 // A venue or chain the registry lacks is malformed. A venue that trades on a launch's own
-// contracts, or only launches tokens, needs a launch wallet to trade live, whose ceiling allows the calls of every launchpad
-// the install runs (decision 0217): a live agent without one cannot add it, one whose launch
-// wallet's ceiling lacks its launch calls waits for the owner key (decision 0218), and a paper
-// agent adds it with no ceiling to check. Any other venue a live
+// contracts, or only launches tokens, needs a launch wallet to trade live, whose ceiling allows
+// the calls of every launchpad the install runs (decision 0217): a live agent without one cannot
+// add it, one whose launch wallet's ceiling lacks its launch calls waits for the owner key
+// (decision 0218), and a paper agent adds it with no ceiling to check. Any other venue a live
 // wallet's ceiling leaves out waits for the owner key, which alone adds it to the ceiling.
 async function refusalOf(
   options: LimitHandlersOptions,
@@ -198,10 +209,7 @@ async function refusalOf(
   if (unknownChain || unknownVenues(options.chains, added).length > 0) {
     return "protocol.bad_args";
   }
-  // A venue that only launches is a launch wallet's alone too (decision 0282).
-  const launched = added.filter(
-    (venue) => options.host.hasLaunchContracts(venue) || options.host.launchesOnly(venue),
-  );
+  const launched = added.filter((venue) => needsLaunchWallet(options.host, venue));
   const { wallets } = await options.install.read({ signal: call.signal });
   const launchWallet = launchWalletIn(wallets, call.args.agent);
   if (launched.length > 0 && agent.mode === "live") {

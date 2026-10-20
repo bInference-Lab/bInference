@@ -6,7 +6,7 @@ import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
 import type { LimitsRecord } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { launchWalletOf } from "../install/launch-wallet.js";
-import { launchRefusal } from "../limits/limit-handlers.js";
+import { launchRefusal, needsLaunchWallet } from "../limits/limit-handlers.js";
 import type { AgentStore, ConfigJournal, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { VenueHost } from "../venues/venue-host.js";
@@ -28,8 +28,11 @@ export interface AgentModeHandlersOptions {
   readonly wallets: WalletFactsSource;
   readonly custody: Signer;
   readonly chains: ChainRegistry;
-  /** Which venues trade on contracts each launch has, which only a launch wallet may call. */
-  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchCalls">;
+  /**
+   * Which venues trade on contracts each launch has, or only launch tokens, which only a launch
+   * wallet may do.
+   */
+  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchesOnly" | "launchCalls">;
   /**
    * The install's wallets, among them the agent's launch wallet, and the disclaimer its owner
    * accepted.
@@ -74,8 +77,9 @@ async function isFunded(
 }
 
 // Why the agent cannot go live with its venues, in effect or waiting: one trades on a launch's own
-// contracts while the agent has no live launch wallet, which alone may call them (decision 0217),
-// or while that wallet's ceiling lacks one of its launch calls (decision 0218).
+// contracts or only launches tokens (decision 0282) while the agent has no live launch wallet,
+// which alone may call them (decision 0217), or while that wallet's ceiling lacks one of its
+// launch calls (decision 0218).
 async function launchVenueRefusal(
   options: AgentModeHandlersOptions,
   found: { readonly agent: AgentRecord; readonly limits: LimitsRecord },
@@ -83,7 +87,7 @@ async function launchVenueRefusal(
 ): Promise<ProtocolErrorCode | undefined> {
   const { limits } = found;
   const named = [...limits.venues, ...(limits.pending?.values.venues ?? [])];
-  const venues = named.filter((venue) => options.host.hasLaunchContracts(venue));
+  const venues = named.filter((venue) => needsLaunchWallet(options.host, venue));
   if (venues.length === 0) {
     return undefined;
   }

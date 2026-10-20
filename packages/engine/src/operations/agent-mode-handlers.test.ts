@@ -7,6 +7,7 @@ import { fixtureId } from "../contracts/store-fixtures.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testLimits, testNowMs, testSwap } from "../intents/test-intents.js";
 import type { AgentStore } from "../ports.js";
+import { testLaunchesOnlyVenue } from "../venues/test-launches-only-venue.js";
 import {
   startTestEngine,
   testChains,
@@ -135,6 +136,30 @@ describe("the live switch", () => {
       err("limit.needs_launch_wallet"),
     );
     await expect(modeOf(test)).resolves.toBe("paper");
+  });
+
+  it("refuses to go live while its venues hold one that only launches tokens", async () => {
+    const test = await startTestEngine({
+      chains: testChains(["fake-curve"]),
+      venues: [createFakeVenue(), testLaunchesOnlyVenue()],
+      agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-curve"] } },
+    });
+    await expect(test.engine.handlers["agent/goLive"](testCall(accepted))).resolves.toStrictEqual(
+      err("limit.needs_launch_wallet"),
+    );
+    await expect(modeOf(test)).resolves.toBe("paper");
+    test.stores.install.addWallet(
+      testWalletRecord({
+        id: fixtureId("wal", 77),
+        agentId: testAgent,
+        label: "launches",
+        createdAtMs: testNowMs,
+        role: "launch",
+      }),
+    );
+    expect(expectOk(await test.engine.handlers["agent/goLive"](testCall(accepted))).mode).toBe(
+      "live",
+    );
   });
 
   it("goes live with a venue on a launch's own contracts once it has a launch wallet", async () => {
