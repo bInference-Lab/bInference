@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { type ChainRef, chainRefSchema } from "@binference/chain";
 import {
+  activityKeyOf,
   type ActivityQuery,
   activityQuerySchema,
   type ActivitySinceQuery,
@@ -58,6 +59,10 @@ export const trackedWalletsTask: StoreTask<ChainRef, readonly TrackedWalletRecor
 export const watchCursorTask: StoreTask<ChainRef, WatchCursorRecord | undefined> =
   watchCursorTaskOf("leaders.cursor", watcher);
 
+// How many of a wallet's newest rows a read looks at for ones a reorganization removed: a read
+// again covers the few blocks after the last final one, at most 100 trades a block a wallet.
+const rereadRows = 2_000;
+
 // The accounts of `read` tracked now, by the rows themselves.
 function liveAccounts(database: DatabaseSync, read: LeaderReadRecord): ReadonlySet<string> {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
@@ -114,6 +119,45 @@ function storeTrades(
   });
 }
 
+// The rows of a block this read read again that its trades no longer hold: a reorganization
+// removed them (decision 0262). Blocks the read cut for a wallet keep their rows.
+function dropRemoved(database: DatabaseSync, read: LeaderReadRecord, live: ReadonlySet<string>) {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const kept = new Set(read.trades.map(activityKeyOf));
+  for (const { account, readFrom } of read.wallets) {
+    const from = readFrom > read.from ? readFrom : read.from;
+    const cut = new Set(
+      read.overflows.filter((cutOne) => cutOne.account === account).map(({ block }) => block),
+    );
+    const recent = live.has(account)
+      ? execute(
+          kysely
+            .selectFrom("wallet_activity")
+            .selectAll()
+            .where("account", "=", account)
+            .orderBy("id", "desc")
+            .limit(rereadRows),
+        ).rows.map(toStoredActivity)
+      : [];
+    const removed = recent.filter(
+      (row) =>
+        row.block >= from &&
+        row.block <= read.to &&
+        !cut.has(row.block) &&
+        !kept.has(activityKeyOf(row)),
+    );
+    if (removed.length > 0) {
+      execute(
+        kysely.deleteFrom("wallet_activity").where(
+          "id",
+          "in",
+          removed.map(({ id }) => id),
+        ),
+      );
+    }
+  }
+}
+
 function moveWallets(
   database: DatabaseSync,
   read: LeaderReadRecord,
@@ -155,6 +199,7 @@ export const recordLeaderReadTask: StoreTask<LeaderReadRecord, readonly StoredAc
     output: z.array(storedActivitySchema),
     run(database, read) {
       const live = liveAccounts(database, read);
+      dropRemoved(database, read, live);
       const stored = storeTrades(database, read, live);
       moveWallets(database, read, live);
       writeWatchCursor(database, watcher, read);

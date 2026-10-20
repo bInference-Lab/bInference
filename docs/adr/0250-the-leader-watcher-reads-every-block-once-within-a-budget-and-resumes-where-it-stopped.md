@@ -1,6 +1,6 @@
 # 0250. The leader watcher reads every block once, within a budget, and resumes where it stopped
 
-Status: Accepted
+Status: Amended by 0262
 
 Accepted by the owner on 2026-10-19.
 

@@ -15,6 +15,8 @@ import type { MemoryTracking, TrackedRow } from "./memory-tracking.js";
 interface Rows {
   /** The stored trades by number, from 1. */
   readonly activity: Map<number, StoredActivity>;
+  /** The numbers of removed trades, which are never used again. */
+  readonly dropped: Set<number>;
   readonly cursors: Map<string, WatchCursorRecord>;
 }
 
@@ -62,18 +64,39 @@ function tellOverflows(tracking: MemoryTracking, query: OverflowQuery): readonly
   });
 }
 
+// Drops the rows of the blocks a read read again that its trades no longer hold, as a
+// reorganization removed them; a block the read cut for a wallet keeps its rows.
+function dropRemoved(rows: Rows, tracking: MemoryTracking, read: LeaderReadRecord): void {
+  const kept = new Set(read.trades.map(activityKeyOf));
+  for (const { account, readFrom } of read.wallets) {
+    const from = readFrom > read.from ? readFrom : read.from;
+    const cut = new Set(
+      read.overflows.filter((one) => one.account === account).map(({ block }) => block),
+    );
+    for (const [id, row] of rows.activity) {
+      const isReadAgain = row.block >= from && row.block <= read.to && !cut.has(row.block);
+      const isRemoved = isReadAgain && !kept.has(activityKeyOf(row));
+      if (row.account === account && liveRow(tracking, account) !== undefined && isRemoved) {
+        rows.activity.delete(id);
+        rows.dropped.add(id);
+      }
+    }
+  }
+}
+
 function record(
   rows: Rows,
   tracking: MemoryTracking,
   read: LeaderReadRecord,
 ): readonly StoredActivity[] {
+  dropRemoved(rows, tracking, read);
   const known = new Set([...rows.activity.values()].map(activityKeyOf));
   const stored: StoredActivity[] = [];
   for (const trade of read.trades) {
     const key = activityKeyOf(trade);
     if (liveRow(tracking, trade.account) !== undefined && !known.has(key)) {
       known.add(key);
-      const id = rows.activity.size + 1;
+      const id = rows.activity.size + rows.dropped.size + 1;
       rows.activity.set(id, { ...trade, id });
       stored.push({ ...trade, id });
     }
@@ -97,7 +120,7 @@ function tradesSince(rows: Rows, query: ActivitySinceQuery): readonly StoredActi
 
 /** Creates an in-memory {@link TrackedWalletStore} over the tracking the alert and order fakes keep. */
 export function createMemoryTrackedWalletStore(tracking: MemoryTracking): TrackedWalletStore {
-  const rows: Rows = { activity: new Map(), cursors: new Map() };
+  const rows: Rows = { activity: new Map(), cursors: new Map(), dropped: new Set() };
   return {
     async tracked(chain, call) {
       call.signal.throwIfAborted();

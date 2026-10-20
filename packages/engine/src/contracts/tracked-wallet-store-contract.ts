@@ -234,6 +234,30 @@ async function listsTradesSince(subject: TrackedWalletSubject): Promise<void> {
   );
 }
 
+async function dropsRemovedTrades(subject: TrackedWalletSubject): Promise<void> {
+  await track(subject, 1);
+  const account = accountOf(1);
+  const [moved] = await subject.tracked.record(
+    readOf([10, 12], { trades: [saleOf(1, 11), saleOf(1, 12)] }),
+    live(),
+  );
+  const again = readOf([11, 13], {
+    wallets: [{ account, sinceBlock: 10n, readFrom: 11n }],
+    trades: [saleOf(1, 12), saleOf(1, 13)],
+  });
+  const [added] = await subject.tracked.record(again, live());
+  const left = await subject.tracked.since({ account, afterId: 0, limit: 10 }, live());
+  assert.deepEqual(
+    left.map(({ block }) => block),
+    [12n, 13n],
+  );
+  assert.equal(
+    left.some(({ id }) => id === moved?.id),
+    false,
+  );
+  assert.equal((added?.id ?? 0) > (moved?.id ?? 0), true);
+}
+
 async function refusesAborted(subject: TrackedWalletSubject): Promise<void> {
   await track(subject, 1);
   const read = readOf([10, 12], { trades: [saleOf(1, 11)] });
@@ -260,6 +284,11 @@ export function trackedWalletStoreContract(
     checkOn("tracks no wallet only an archived agent names", create, leavesArchivedAgents),
     checkOn("pages a wallet's trades newest first, by time", create, pagesActivity),
     checkOn("lists a wallet's trades stored after a given one, in order", create, listsTradesSince),
+    checkOn(
+      "drops the trades of a block read again that the read no longer holds",
+      create,
+      dropsRemovedTrades,
+    ),
     checkOn("refuses a call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

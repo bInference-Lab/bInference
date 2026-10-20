@@ -194,7 +194,9 @@ transaction with their position changes.
 - **`wallet_activity`** holds the trades the leader watcher read for tracked wallets: transfers of
   an ERC-20 to and from the wallet and its native value, matched into buys and sells, with the
   share of its holding a sale took. `wallet/activity` reads a tracked wallet here, and only
-  a tracked one ([decision 0259](../DECISIONS.md#d0259)).
+  a tracked one ([decision 0259](../DECISIONS.md#d0259)). A read of a block again, after a
+  reorganization, drops a wallet's rows in that block that it no longer holds
+  ([decision 0262](../DECISIONS.md#d0262)).
 - **`watch_cursors`** holds where each log watcher stopped. After an outage it checks that the
   stored block still has `block_hash`, then reads on from the block after it; when the hash
   differs, it reads again from the chain's last final block.
