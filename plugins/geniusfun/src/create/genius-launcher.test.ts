@@ -144,6 +144,11 @@ describe("the geniusfun launcher", () => {
     expect(launcher.pin).toBeUndefined();
     expect(launcher.pinStatus).toBeUndefined();
     expect(launcher.noFirstBuyMin).toBeUndefined();
+    // Genius.fun pays creator fees only on the recipient's own claim, so it is outside binference.
+    expect(launcher.launchOptions).toStrictEqual([
+      { name: "creatorFeeRecipient", type: "account", isOutsideOnly: true },
+      { name: "pictureLink", type: "link" },
+    ]);
     expect(launcher.wordLimits).toStrictEqual({
       nameBytes: 64,
       symbolBytes: 16,

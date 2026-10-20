@@ -42,6 +42,12 @@ export interface LaunchOption {
   readonly max?: number;
   /** The value when a request leaves the setting out; absent, every request must give it. */
   readonly default?: LaunchOptionValue;
+  /**
+   * An `account` that must be outside the install: the launchpad pays it only when that account
+   * claims from the launchpad itself, which binference never does, so none of the install's own
+   * wallets may be it (decision 0277). Given for an `account` alone.
+   */
+  readonly isOutsideOnly?: true;
 }
 
 const wordSchema = z.string().regex(/^[a-z][a-zA-Z0-9]{0,31}$/);
@@ -67,6 +73,10 @@ function isShaped(option: LaunchOption): boolean {
   );
 }
 
+// The outside rule belongs to an account alone.
+const isOutsideShaped = (option: LaunchOption): boolean =>
+  option.isOutsideOnly !== true || option.type === "account";
+
 /**
  * Checks one launch setting a launchpad declares: a camelCase name of at most 32 characters, words
  * only for a `choice`, each once, and whole bounds only for a `bps` or a `count`, the least at
@@ -84,8 +94,10 @@ export const launchOptionSchema: z.ZodType<LaunchOption> = z
     min: z.int().nonnegative().exactOptional(),
     max: z.int().nonnegative().exactOptional(),
     default: z.union([z.number(), z.boolean(), z.string()]).exactOptional(),
+    isOutsideOnly: z.literal(true).exactOptional(),
   })
-  .refine(isShaped, { message: "Bounds or choices do not fit the setting's type." });
+  .refine(isShaped, { message: "Bounds or choices do not fit the setting's type." })
+  .refine(isOutsideShaped, { message: "Only an account may be outside the install." });
 
 /** Checks a launchpad's settings: each as {@link launchOptionSchema} says, each name once. */
 export const launchOptionsSchema: z.ZodType<readonly LaunchOption[]> = z

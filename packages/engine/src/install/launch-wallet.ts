@@ -28,6 +28,28 @@ export async function launchWalletOf(
   return launchWalletIn(wallets, agent);
 }
 
+// Whether the account is the address of one of the wallets the test keeps, on a chain of the
+// wallet's family. An account on a chain the registry lacks is none.
+function isWalletAccount(
+  wallets: readonly WalletRecord[],
+  asked: { readonly account: AccountRef; readonly chains: ChainRegistry },
+  keeps: (wallet: WalletRecord) => boolean,
+): boolean {
+  const { chain, address } = accountRefParts(asked.account);
+  const registered = asked.chains.get(chain);
+  if (!registered.ok) {
+    return false;
+  }
+  const { family, definition } = registered.value;
+  const typed = family.parseAddress(address);
+  return wallets.some((wallet) => {
+    const own = family.parseAddress(wallet.address);
+    return keeps(wallet) && wallet.family === definition.family && own.ok && typed.ok
+      ? own.value === typed.value
+      : false;
+  });
+}
+
 /**
  * Whether the account is the address of a live launch wallet of any agent of the install, on a
  * chain of the wallet's family (decision 0218): no ceiling may list one, so the agent's other
@@ -38,18 +60,22 @@ export function isLaunchWalletAccount(
   account: AccountRef,
   chains: ChainRegistry,
 ): boolean {
-  const { chain, address } = accountRefParts(account);
-  const registered = chains.get(chain);
-  if (!registered.ok) {
-    return false;
-  }
-  const { family, definition } = registered.value;
-  const typed = family.parseAddress(address);
-  return wallets.some((wallet) => {
-    const own = family.parseAddress(wallet.address);
-    const isLive = wallet.role === "launch" && wallet.archivedAtMs === undefined;
-    return isLive && wallet.family === definition.family && own.ok && typed.ok
-      ? own.value === typed.value
-      : false;
-  });
+  return isWalletAccount(
+    wallets,
+    { account, chains },
+    (wallet) => wallet.role === "launch" && wallet.archivedAtMs === undefined,
+  );
+}
+
+/**
+ * Whether the account is the address of any wallet of the install, of any agent, launch or main,
+ * archived or live, on a chain of the wallet's family (decision 0277). An account on a chain the
+ * registry lacks is none.
+ */
+export function isInstallWalletAccount(
+  wallets: readonly WalletRecord[],
+  account: AccountRef,
+  chains: ChainRegistry,
+): boolean {
+  return isWalletAccount(wallets, { account, chains }, () => true);
 }

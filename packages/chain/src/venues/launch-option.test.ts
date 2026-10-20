@@ -8,6 +8,11 @@ describe("a launchpad's settings", () => {
     ["a share with bounds", tax],
     ["a choice with its words", { name: "feeTier", type: "choice", choices: ["low", "high"] }],
     ["an account with no default", { name: "taxRecipient", type: "account" }],
+    [
+      "an account outside the install",
+      { name: "creatorFeeRecipient", type: "account", isOutsideOnly: true },
+    ],
+    ["a picture link", { name: "pictureLink", type: "link" }],
     ["a flag", { name: "buyback", type: "flag", default: false }],
   ])("takes %s", (_case, option) => {
     expect(launchOptionSchema.safeParse(option).success).toBe(true);
@@ -21,6 +26,7 @@ describe("a launchpad's settings", () => {
     ["a choice without words", { name: "feeTier", type: "choice" }],
     ["words on a share", { ...tax, choices: ["low"] }],
     ["a word twice", { name: "feeTier", type: "choice", choices: ["low", "low"] }],
+    ["the outside rule on a share", { ...tax, isOutsideOnly: true }],
   ])("refuses %s", (_case, option) => {
     expect(launchOptionSchema.safeParse(option).success).toBe(false);
   });

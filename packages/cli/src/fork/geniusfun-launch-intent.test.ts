@@ -172,7 +172,7 @@ describe("a geniusfun launch on a BSC fork", () => {
       expect(await cardText(rig, view, "en")).toStrictEqual(
         expect.arrayContaining([
           "Launch fee 0.002 BNB",
-          `Creator fees from every trade go to ${recipient}`,
+          `Creator fees from every trade wait on the launchpad until ${recipient} claims them; that address also buys free of the snipe tax`,
           `Picture at ${pictureLink} (binference never opens it)`,
           "Description: A token launched on a fork",
         ]),

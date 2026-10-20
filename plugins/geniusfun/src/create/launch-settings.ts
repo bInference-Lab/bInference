@@ -12,10 +12,12 @@ import type { Address } from "viem";
 /**
  * The settings of a Genius.fun launch (decision 0277): who receives the creator's share of every
  * trade's fee, and the address of the token's picture, a link the owner hosts (decision 0276).
- * Both must be given; nothing picks either for the owner.
+ * Both must be given; nothing picks either for the owner. Genius.fun keeps creator fees in its fee
+ * escrow until the recipient claims them, a call binference never makes, so the recipient is an
+ * address outside the install.
  */
 export const geniusfunLaunchOptions: readonly LaunchOption[] = [
-  { name: "creatorFeeRecipient", type: "account" },
+  { name: "creatorFeeRecipient", type: "account", isOutsideOnly: true },
   { name: "pictureLink", type: "link" },
 ];
 

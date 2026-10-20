@@ -457,7 +457,11 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   `description` longer than 1,000 characters or a link longer than 200 fails with
   `protocol.bad_args` and stores nothing ([decision 0239](../DECISIONS.md#d0239)). While another
   launch of the agent is under way, before it is signed or ends, a `launchToken` fails with
-  `intent.launch_waiting` and stores nothing ([decision 0240](../DECISIONS.md#d0240)).
+  `intent.launch_waiting` and stores nothing ([decision 0240](../DECISIONS.md#d0240)). A launch
+  whose setting that must be outside the install, such as Genius.fun's `creatorFeeRecipient`,
+  names any wallet of the install fails with `intent.own_wallet_recipient` and stores nothing: the
+  launchpad pays that account only on a claim binference never makes
+  ([decision 0277](../DECISIONS.md#d0277)).
 - `intent/confirm` must name the card's current `cardVersion`. A re-quote that changes the terms
   opens a new card version ([rule 4](../ARCHITECTURE.md#rule-4)), and confirming an old version
   fails with `intent.card_changed`. A Confirm that would take the agent past its rolling 24-hour
@@ -1002,38 +1006,38 @@ every field given must hold, and an empty filter passes every launch. `launch/li
 owner: surfaces map `code` to an i18n message. `retryable` says whether the same call may succeed
 later unchanged.
 
-| Area       | Codes                                                                                                       |
-| ---------- | ----------------------------------------------------------------------------------------------------------- |
-| `protocol` | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`             |
-| `auth`     | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`                 |
-| `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                                 |
-| `runtime`  | `unavailable`                                                                                               |
-| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`, `file_missing`, `file_untrusted`   |
-| `question` | `not_found`, `closed`                                                                                       |
-| `image`    | `not_found`, `too_large`, `format`, `unreadable`                                                            |
-| `alert`    | `not_found`, `too_many`                                                                                     |
-| `market`   | `no_data`, `source_down`, `no_launch_feed`                                                                  |
-| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`, `launch_exists`, `no_launch_calls` |
-| `address`  | `not_found`, `launch_wallet`                                                                                |
-| `rescue`   | `no_address`, `nothing_to_move`                                                                             |
-| `signer`   | `not_found`, `last_signer`, `own_key`                                                                       |
-| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`          |
-| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                          |
-| `schedule` | `not_found`, `bad_when`, `too_many`                                                                         |
-| `note`     | `not_found`                                                                                                 |
-| `asset`    | `not_found`, `bad_address`, `unreadable`                                                                    |
-| `name`     | `not_found`, `resolver_down`                                                                                |
-| `quote`    | `no_route`, `venue_down`                                                                                    |
-| `chain`    | `rpc_down`, `simulation_failed`                                                                             |
-| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`                                           |
-| `config`   | `invalid`, `secret_inline`                                                                                  |
-| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                               |
-| `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                            |
-| `job`      | `not_found`                                                                                                 |
-| `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                            |
-| `telegram` | `not_running`, `unreachable`                                                                                |
-| `token`    | `not_found`                                                                                                 |
-| `internal` | `error` (with a `details.ref` to find the log line)                                                         |
+| Area       | Codes                                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `protocol` | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`                            |
+| `auth`     | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`                                |
+| `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                                                |
+| `runtime`  | `unavailable`                                                                                                              |
+| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`, `file_missing`, `file_untrusted`                  |
+| `question` | `not_found`, `closed`                                                                                                      |
+| `image`    | `not_found`, `too_large`, `format`, `unreadable`                                                                           |
+| `alert`    | `not_found`, `too_many`                                                                                                    |
+| `market`   | `no_data`, `source_down`, `no_launch_feed`                                                                                 |
+| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`, `launch_exists`, `no_launch_calls`                |
+| `address`  | `not_found`, `launch_wallet`                                                                                               |
+| `rescue`   | `no_address`, `nothing_to_move`                                                                                            |
+| `signer`   | `not_found`, `last_signer`, `own_key`                                                                                      |
+| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`, `own_wallet_recipient` |
+| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                                         |
+| `schedule` | `not_found`, `bad_when`, `too_many`                                                                                        |
+| `note`     | `not_found`                                                                                                                |
+| `asset`    | `not_found`, `bad_address`, `unreadable`                                                                                   |
+| `name`     | `not_found`, `resolver_down`                                                                                               |
+| `quote`    | `no_route`, `venue_down`                                                                                                   |
+| `chain`    | `rpc_down`, `simulation_failed`                                                                                            |
+| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`                                                          |
+| `config`   | `invalid`, `secret_inline`                                                                                                 |
+| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                                              |
+| `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                                           |
+| `job`      | `not_found`                                                                                                                |
+| `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                                           |
+| `telegram` | `not_running`, `unreachable`                                                                                               |
+| `token`    | `not_found`                                                                                                                |
+| `internal` | `error` (with a `details.ref` to find the log line)                                                                        |
 
 Policy and risk refusals are intent states with reasons, not errors (section 7.4). Their reason
 codes (`daily_cap`, `per_trade_cap`, `gas_reserve`, `slippage`, `price_impact`, `tax`,

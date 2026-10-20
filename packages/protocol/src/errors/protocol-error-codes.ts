@@ -66,6 +66,7 @@ export const protocolErrorCodes = [
   "intent.not_yours",
   "intent.owner_only",
   "intent.launch_waiting",
+  "intent.own_wallet_recipient",
   "order.not_found",
   "order.wrong_state",
   "order.kind_unavailable",

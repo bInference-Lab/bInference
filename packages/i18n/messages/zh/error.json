@@ -62,6 +62,7 @@
   "intent.not_yours": "此操作由其他客户端发起，此客户端无法取消。请在控制台或命令行中取消。",
   "intent.owner_only": "只有所有者可以发起代币发射。请在对话中向所有者建议这次发射，说明名称、代币符号和图片，由所有者发起。",
   "intent.launch_waiting": "该 Agent 的另一项代币发射正在进行，正在等待固定或所有者确认。请等它结束，或取消其确认卡片，再发起下一项。",
+  "intent.own_wallet_recipient": "某个发射设置填写了 binference 自己的钱包，但发射台只在该地址自己领取时才付款，而 binference 从不领取。请填写一个你在 binference 之外控制的地址。",
   "order.not_found": "此自动订单不存在。请在控制台查看你的自动订单。",
   "order.wrong_state": "此自动订单已结束或已变化。请刷新查看当前状态。",
   "order.kind_unavailable": "暂不支持这类自动订单。请使用限价单、止盈、止损或追踪止损。",

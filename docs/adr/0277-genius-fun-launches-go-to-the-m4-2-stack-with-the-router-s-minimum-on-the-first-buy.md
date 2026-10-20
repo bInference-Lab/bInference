@@ -53,6 +53,15 @@ false and never offered; no wallet is exempted from the snipe tax.
   through the factory's `launchToken`. The registry lists the router as `router-m4-2`.
 - **Its settings.** `creatorFeeRecipient` (an account) and `pictureLink` (a link, decision 0276),
   both required. The card shows both, and the decoder reads both from the call's bytes.
+- **The creator fee recipient is outside binference.** Genius.fun never pays creator fees out:
+  the curve credits them to its fee escrow, and only the recipient's own `claim` takes them, as
+  only it can move them to another recipient (`transferCreatorFeeRecipient`). binference makes
+  neither call. So the setting is outside-only (`isOutsideOnly`): a launch that names any wallet of
+  the install, of any agent, launch or main, fails with `intent.own_wallet_recipient` when it is
+  proposed, before anything is stored, with words that ask for an address the owner controls
+  outside binference. This holds the owner's ruling that the owner always names it over naming
+  the launch wallet. The card says the fees wait on the launchpad until that address claims them,
+  and that the address buys free of the snipe tax, as the factory spares it.
 - **What every launch writes.** Launch configuration 0, no creator tax, the buyback on, no Discord
   or Farcaster link, `toFoundation` false, and no snipe tax exemptions. A create call is the
   venue's only when it would write the same bytes for what it reads, with none after them, so the
@@ -81,6 +90,8 @@ false and never offered; no wallet is exempted from the snipe tax.
 
 - A Genius.fun launch runs through the engine's launch path from the launch wallet, with the
   creator fee recipient and the picture link on its card.
+- `LaunchOption` gains `isOutsideOnly` for an account, the launch host `outsideOnlySettings`, and
+  the protocol the error code `intent.own_wallet_recipient`. Spec 1 says so.
 - No agent wallet's ceiling lists the router. Its verified source takes a token only from the
   caller of `launchAndBuy`, by `transferFrom(msg.sender)`, and has no payer argument, no multicall
   and no proxy; a new router is read again for this before it joins the registry.

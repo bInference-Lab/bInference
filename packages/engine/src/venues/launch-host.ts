@@ -57,6 +57,11 @@ export interface LaunchHost {
    */
   fitsWords(venue: string, launch: WordsOfLaunch): boolean;
   /**
+   * The names of the launchpad's `account` settings that must be outside the install, which none
+   * of its own wallets may be (decision 0277); none for a venue the host does not hold.
+   */
+  outsideOnlySettings(venue: string): readonly string[];
+  /**
    * The launch fee and the first buy's output, read from the launchpad's contracts. A pair it does
    * not launch against is `no_route`; a launchpad that throws, times out or answers outside its
    * types is `venue_down`; a fee in another asset than the chain's coin, or a first buy's output
@@ -272,6 +277,10 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
       const limits = launcher?.wordLimits;
       return launcher !== undefined && (limits === undefined || fitsWordLimits(limits, launch));
     },
+    outsideOnlySettings: (venue) =>
+      (parts.launchers.get(venue)?.launcher.launchOptions ?? [])
+        .filter((option) => option.isOutsideOnly === true)
+        .map((option) => option.name),
     takesUpload: (venue) => parts.launchers.get(venue)?.launcher.pin !== undefined,
     launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],
     async quote(launch, { signal }) {

@@ -1,5 +1,6 @@
 import {
   type AccountRef,
+  accountRefSchema,
   assetRefParts,
   type ChainRegistry,
   type RegisteredChain,
@@ -9,7 +10,7 @@ import {
 import { type Clock, err, type Id, type IdSource, ok, type Result } from "@binference/core";
 import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { isInstallWalletAccount, launchWalletOf } from "../install/launch-wallet.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { AgentStore, InstallStore, WalletFactsSource } from "../ports.js";
@@ -136,12 +137,60 @@ function isWhole(request: LaunchTokenRequest): boolean {
   );
 }
 
+// Whether a setting that must be outside the install names one of its wallets, of any agent
+// (decision 0277): the launchpad would pay it only on a claim binference never makes.
+async function namesOwnWallet(
+  options: ResolveLaunchOptions,
+  asked: {
+    readonly request: LaunchTokenRequest;
+    readonly settings: readonly LaunchSetting[];
+    readonly signal: AbortSignal;
+  },
+): Promise<boolean> {
+  const names = options.launch.host.outsideOnlySettings(asked.request.venue);
+  const named = asked.settings.filter((setting) => names.includes(setting.name));
+  if (named.length === 0 || options.install === undefined) {
+    return false;
+  }
+  const { wallets } = await options.install.read({ signal: asked.signal });
+  return named.some((setting) => {
+    const account = accountRefSchema.safeParse(setting.value);
+    return account.success && isInstallWalletAccount(wallets, account.data, options.chains);
+  });
+}
+
+// The launch's launchpad settings, checked against their declaration, the words against what the
+// launchpad writes on chain, and each outside-only setting against the install's wallets.
+async function launchpadSettingsOf(
+  options: ResolveLaunchOptions,
+  asked: {
+    readonly request: LaunchTokenRequest;
+    readonly chain: RegisteredChain;
+    readonly signal: AbortSignal;
+  },
+): Promise<Result<readonly LaunchSetting[], ProtocolErrorCode>> {
+  const { request, chain, signal } = asked;
+  const { host } = options.launch;
+  const settings = host.settingsOf(request.venue, chain.ref, request.venueOptions);
+  if (!settings.ok) {
+    return err(settings.error === "no_launchpad" ? "quote.no_route" : "protocol.bad_args");
+  }
+  // A launchpad that writes the words on chain takes only as many bytes as its create call does
+  // (decision 0275), so a launch over them is refused before anything is stored or sent.
+  if (!host.fitsWords(request.venue, request)) {
+    return err("protocol.bad_args");
+  }
+  const isOwn = await namesOwnWallet(options, { request, settings: settings.value, signal });
+  return isOwn ? err("intent.own_wallet_recipient") : settings;
+}
+
 /**
  * Resolves a token launch before anything is stored: its first buy spends its pair, and its
  * description and links fit the card whole (else `protocol.bad_args`, decision 0239); its chain
  * is the pair's, its launchpad one the engine hosts that launches tokens there (else
  * `quote.no_route`), its launchpad settings pass their declaration and its words fit what the
- * launchpad writes on chain (else `protocol.bad_args`), and its wallet is one of the agent's with
+ * launchpad writes on chain (else `protocol.bad_args`), no setting that must be outside the
+ * install names one of its wallets (else `intent.own_wallet_recipient`), and its wallet is one of the agent's with
  * an account on the chain (else `wallet.not_found`), with that wallet's facts in the intent's
  * mode.
  */
@@ -157,18 +206,13 @@ export async function resolveLaunch(
   if (!chain.ok) {
     return err("quote.no_route");
   }
-  const launchSettings = options.launch.host.settingsOf(
-    request.venue,
-    chain.value.ref,
-    request.venueOptions,
-  );
+  const launchSettings = await launchpadSettingsOf(options, {
+    request,
+    chain: chain.value,
+    signal,
+  });
   if (!launchSettings.ok) {
-    return err(launchSettings.error === "no_launchpad" ? "quote.no_route" : "protocol.bad_args");
-  }
-  // A launchpad that writes the words on chain takes only as many bytes as its create call does
-  // (decision 0275), so a launch over them is refused before anything is stored or sent.
-  if (!options.launch.host.fitsWords(request.venue, request)) {
-    return err("protocol.bad_args");
+    return launchSettings;
   }
   const picked = await walletOf(options, resolving);
   const account =
