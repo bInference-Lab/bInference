@@ -2,7 +2,6 @@ import {
   assetRefParts,
   type ChainRef,
   type ChainRegistry,
-  fitsWordLimits,
   type Launcher,
   type LaunchOption,
   launchOptionsSchema,
@@ -18,7 +17,7 @@ import { BinferenceError, type Clock, err, type JsonValue, type Result } from "@
 import type { LaunchTokenRequest } from "@binference/protocol";
 import { z } from "zod";
 import { callVenue, type VenueCallOptions } from "./call-venue.js";
-import { type HostedVenue, hostVenues } from "./hosted-venue.js";
+import { hostVenues } from "./hosted-venue.js";
 import {
   buildLaunch,
   type HostedLaunch,
@@ -30,6 +29,12 @@ import {
   pinLaunch,
   quoteLaunch,
 } from "./launch-calls.js";
+import {
+  declarationsOf,
+  type HostedLauncher,
+  type PicturePlace,
+  placeOf,
+} from "./launch-declarations.js";
 import {
   type LaunchSetting,
   launchSettingsOf,
@@ -119,9 +124,6 @@ export interface LaunchHost {
   ): Promise<Result<LaunchPlan, VenueFailure> | LaunchRefused>;
 }
 
-/** Where a launchpad takes a launch's picture. */
-export type PicturePlace = "upload" | "create_call" | "link";
-
 /** A launch's name, symbol and words, as the launchpad's word limits count them. */
 type WordsOfLaunch = { readonly name: string; readonly symbol: string } & LaunchWords;
 
@@ -145,20 +147,6 @@ export interface LaunchHostOptions {
 // An upload carries a picture of up to 5 MiB, so it gets longer than a read: with a quote, a
 // build and the first pin read at the call timeout, a launch's proposal stays under 30 s.
 const defaultUploadTimeoutMs = 12_000;
-
-/** A launchpad the host holds that launches tokens, with its declared contracts. */
-interface HostedLauncher {
-  readonly hosted: HostedVenue;
-  readonly launcher: Launcher;
-}
-
-// Where a launcher takes its picture: through its pin, into its create call, or as a link.
-function placeOf(launcher: Launcher): PicturePlace {
-  if (launcher.pin !== undefined) {
-    return "upload";
-  }
-  return launcher.pictureBytesFor === undefined ? "link" : "create_call";
-}
 
 // A launchpad's settings must pass their schema, however the venue reached the host, and have
 // their card lines and fitting defaults on each chain it serves; it pins with both its pin and its
@@ -309,24 +297,7 @@ function goTogether(launcher: Launcher, settings: readonly LaunchSetting[]): boo
   }
 }
 
-const pictureBytesSchema = z.int().positive();
 const goTogetherSchema = z.literal(true);
-
-// Launchpad code may throw or answer outside its type: no picture fits then.
-function pictureBytesOn(parts: LaunchParts, venue: string, words: LaunchWords): number | undefined {
-  const launcher = parts.launchers.get(venue)?.launcher;
-  if (launcher?.pictureBytesFor === undefined) {
-    return undefined;
-  }
-  try {
-    const bytes = pictureBytesSchema.safeParse(
-      launcher.pictureBytesFor(Object.freeze({ ...words })),
-    );
-    return bytes.success ? bytes.data : 0;
-  } catch {
-    return 0;
-  }
-}
 
 /**
  * Creates the {@link LaunchHost} over every venue the engine may use, checked against the chain
@@ -345,22 +316,7 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
   const parts: LaunchParts = { launchers: launchersOf(options), chains, callOf, unboundFirstBuys };
   return {
     settingsOf: (venue, chainRef, given) => settingsOn(parts, { venue, chainRef, given }),
-    fitsWords(venue, launch) {
-      const launcher = parts.launchers.get(venue)?.launcher;
-      const limits = launcher?.wordLimits;
-      return launcher !== undefined && (limits === undefined || fitsWordLimits(limits, launch));
-    },
-    launchOptions: (venue) => parts.launchers.get(venue)?.launcher.launchOptions ?? [],
-    outsideOnlySettings: (venue) =>
-      (parts.launchers.get(venue)?.launcher.launchOptions ?? [])
-        .filter((option) => option.isOutsideOnly === true)
-        .map((option) => option.name),
-    picturePlace(venue) {
-      const launcher = parts.launchers.get(venue)?.launcher;
-      return launcher === undefined ? undefined : placeOf(launcher);
-    },
-    pictureBytesFor: (venue, words) => pictureBytesOn(parts, venue, words),
-    launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],
+    ...declarationsOf(parts.launchers),
     async quote(launch, { signal }) {
       signal.throwIfAborted();
       const run = async (context: LaunchContext) => quoteLaunch(context, callOf(signal));

@@ -4,7 +4,8 @@ import { requestDocument } from "../intents/intent-documents.schema.js";
 import { testCoin, testNowMs } from "../intents/test-intents.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import type { EnginePush } from "../pushes/engine-push.js";
-import type { LaunchHost, PicturePlace } from "../venues/launch-host.js";
+import type { PicturePlace } from "../venues/launch-declarations.js";
+import type { LaunchHost } from "../venues/launch-host.js";
 import { toldIfEnded } from "./launch-ending.js";
 import { testLaunch } from "./test-launches.js";
 
