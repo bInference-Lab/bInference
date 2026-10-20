@@ -108,3 +108,36 @@ test("answers the agent's question with a button in the chat", async ({
   await page.screenshot({ path: testInfo.outputPath("question-answered.png"), fullPage: true });
   expect(problems).toStrictEqual([]);
 });
+
+test("shows the paper portfolio apart from any live one, in light and in dark", async ({
+  page,
+  request,
+}, testInfo) => {
+  const problems = await openPaired(page, request);
+  await page.getByRole("link", { name: "Portfolio" }).click();
+  await expect(page.getByRole("heading", { name: "Portfolio", level: 1 })).toBeVisible();
+  const paper = page.getByRole("region", { name: "Paper holdings" });
+  await expect(paper).toContainText("Paper total: $");
+  await expect(page.getByRole("region", { name: "Live holdings" })).toHaveCount(0);
+  // The earlier tests' swaps filled on paper, so the paper section holds their positions.
+  await expect(paper.getByRole("list", { name: "Positions" }).getByText("Paper")).not.toHaveCount(
+    0,
+  );
+  const background = async (): Promise<string> =>
+    page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  await page.emulateMedia({ colorScheme: "light" });
+  expect(await background()).toBe("rgb(255, 255, 255)");
+  await page.screenshot({
+    path: testInfo.outputPath("portfolio-light.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.emulateMedia({ colorScheme: "dark" });
+  expect(await background()).toBe("rgb(11, 14, 17)");
+  await page.screenshot({
+    path: testInfo.outputPath("portfolio-dark.png"),
+    fullPage: true,
+    animations: "disabled",
+  });
+  expect(problems).toStrictEqual([]);
+});
