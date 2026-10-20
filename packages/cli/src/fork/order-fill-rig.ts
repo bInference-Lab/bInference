@@ -10,6 +10,7 @@ import {
   type Engine,
   type EngineCaller,
   type EnginePush,
+  type PositionStore,
   type VenueHost,
 } from "@binference/engine";
 import { createSourceMarketReads } from "@binference/engine/market";
@@ -79,6 +80,8 @@ export interface FillRig {
   readonly token: AssetRef;
   /** Every fixture's token, in the fixtures' order. */
   readonly tokens: readonly AssetRef[];
+  /** A new engine on the same stores, as a restart starts one: nothing it kept in memory stays. */
+  readonly restart: () => Engine;
 }
 
 // The risk step on the fork: one required source that reports each fixture's flags, and the test
@@ -137,19 +140,23 @@ function hostOf(fork: Fork, fixtures: readonly FillFixture[]): VenueHost {
 
 function engineOf(
   fork: Fork,
-  parts: { readonly pushes: EnginePush[]; readonly fixtures: readonly FillFixture[] },
+  parts: {
+    readonly pushes: EnginePush[];
+    readonly fixtures: readonly FillFixture[];
+    readonly stores: MemoryEngineStores;
+    readonly positions: PositionStore;
+  },
 ): { readonly engine: Engine; readonly stores: MemoryEngineStores } {
-  const { pushes, fixtures } = parts;
+  const { pushes, fixtures, stores, positions } = parts;
   const clock = createSystemClock();
   const chains = selfHostedChains();
   const native = fork.chain.nativeAsset;
   const { rpc, chain } = fork;
-  const stores = createMemoryEngineStores();
   const host = hostOf(fork, fixtures);
   const account = evmAccountRef(chain, forkWallet(walletKey).address);
   const engine = createEngine({
     stores,
-    positions: createMemoryPositionStore(),
+    positions,
     custody: forkCustody(fillWallet, account, walletKey),
     ceilings: createFakeCeilingEditor({ clock }),
     walletMaker: createFakeWalletMaker({ clock, chain: chain.ref, family: "evm" }),
@@ -227,7 +234,9 @@ export async function onFillFork(
     "token" in fixture ? [fixture] : fixture;
   await withFork(signal, async (fork) => {
     const pushes: EnginePush[] = [];
-    const { engine, stores } = engineOf(fork, { pushes, fixtures });
+    const stores = createMemoryEngineStores();
+    const parts = { pushes, fixtures, stores, positions: createMemoryPositionStore() };
+    const { engine } = engineOf(fork, parts);
     const tokens = fixtures.map(({ token }) => erc20AssetRef(fork.chain, token));
     const rig = {
       engine,
@@ -235,6 +244,7 @@ export async function onFillFork(
       pushes,
       token: erc20AssetRef(fork.chain, fixtures[0].token),
       tokens,
+      restart: () => engineOf(fork, parts).engine,
     };
     await seed(fork, rig);
     await test(rig, fork);
