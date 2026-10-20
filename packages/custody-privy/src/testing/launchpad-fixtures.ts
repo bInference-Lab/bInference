@@ -2,6 +2,7 @@ import { encodeFunctionData, getAbiItem, getAddress, type Hex, parseAbi, zeroAdd
 import { abiFunctionSchema } from "../ceiling/abi-function.schema.js";
 import type { CeilingCall, CeilingRequest } from "../ceiling/ceiling.js";
 import type { AbiFunction } from "../ceiling/policy-rule.js";
+import { brewCreateCall } from "./brew-fixtures.js";
 import { testAddresses } from "./custody-fixtures.js";
 
 // A launchpad's create call with the shape of Flap's `newTokenV6` (decision 0271): one struct of
@@ -60,11 +61,11 @@ const geniusCreateCalls: readonly CeilingCall[] = [
 
 /**
  * A request with the create calls added to its first chain's calls, as a launch wallet's has:
- * Flap's `newTokenV6`, and Genius.fun's `launchAndBuy` and `launchToken`.
+ * Flap's `newTokenV6`, Genius.fun's `launchAndBuy` and `launchToken`, and Brew's `launch`.
  */
 export function withCreateCall(request: CeilingRequest): CeilingRequest {
   const [first, ...rest] = request.chains;
-  const calls = [testCreateCall, ...geniusCreateCalls];
+  const calls = [testCreateCall, ...geniusCreateCalls, brewCreateCall];
   return first === undefined
     ? request
     : { ...request, chains: [{ ...first, calls: [...first.calls, ...calls] }, ...rest] };
