@@ -30,7 +30,7 @@ function subjectOf(options: FakeLauncherOptions = {}) {
   return {
     launcher: createFakePictureLauncher({ launchOptions, mostBytes: 1_000, ...options }),
     launch,
-    otherOptions: { taxBps: 100 },
+    otherOptionSets: [{ taxBps: 100 }],
     otherPair: { ...launch, pair: assetRefSchema.parse("fake:1/token:0x0000000e") },
     other: fakeDraft(wallet, { to: "0x0000000d", value: 0n, data: "swap" }),
   };

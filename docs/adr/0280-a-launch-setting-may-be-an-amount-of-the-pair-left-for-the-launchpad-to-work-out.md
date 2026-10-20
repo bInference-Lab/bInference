@@ -58,7 +58,9 @@ Brew's launch needs three things those cannot say, the owner ruled on 2026-10-20
 
 - `LaunchOptionType` gains `amount`, `LaunchOption` `isOptional` and `isWorkedOut`, `Launcher`
   `checkOptions`, `LaunchQuote` and `LaunchBuild` `settings`, `LaunchTerms` `pairUsdPrice`, the launch host `launchOptions`, and the
-  launch path the price source. The chain package's fake launcher can quote and build settings.
+  launch path the price source. The chain package's fake launcher can quote and build settings, and the launcher contract takes
+  several sets of other settings (`otherOptionSets`), so an optional setting is still read back
+  from the bytes in some set (decision 0238).
 - Specs 1 and 4 say so. Launchpads that declare no optional setting and no check work as before.
 - The card shows a value a launchpad worked out, which the owner confirms like any other. A
   launchpad that works out a starting price from `pairUsdPrice` puts the engine's price on the

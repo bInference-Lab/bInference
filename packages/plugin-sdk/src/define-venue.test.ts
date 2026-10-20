@@ -270,7 +270,7 @@ describe("defineVenue", () => {
             contracts: { router },
             image: { contentType: "image/png", bytes: new Uint8Array([137, 80, 78, 71]) },
           },
-          otherOptions: {},
+          otherOptionSets: [{}],
           otherPair: {
             wallet,
             name: "Moon",

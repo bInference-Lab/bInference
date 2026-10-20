@@ -1,7 +1,7 @@
 import type { TxDraft } from "@binference/plugin-sdk";
 import { decodeEvmDraft, encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { createSeededRandom, successOf } from "@binference/plugin-sdk/testing";
-import { type Hex, parseEther } from "viem";
+import { getAddress, type Hex, parseEther } from "viem";
 import { describe, expect, it } from "vitest";
 import { brewSetupsOf } from "../brew-setups.js";
 import { launchCallData, readLaunchCall } from "../contracts/launch-call.js";
@@ -75,6 +75,17 @@ describe("a Brew create call's decoder", () => {
       words: { description: "A cat on the moon" },
     });
     expect(decoded.picture?.contentType).toBe("image/png");
+  });
+
+  // The host refuses a call whose settings are not the card's (`other_settings`), so the decoder
+  // must read the fee recipient from the bytes, never echo the request's.
+  it("reads a fee recipient changed in the bytes, not the request's", async () => {
+    const { parts, params, changed } = await builtCall();
+    const elsewhere = getAddress("0x00000000000000000000000000000000000000bb");
+    const draft = changed(launchCallData({ ...params, creatorFeeRecipient: elsewhere }));
+    expect(successOf(decodeLaunch(draft, parts)).options).toMatchObject({
+      poolFeeRecipient: `${bscChain}:${elsewhere}`,
+    });
   });
 
   it("refuses a call it never built", async () => {

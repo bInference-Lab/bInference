@@ -1,7 +1,12 @@
-import { assetRefSchema, type LaunchPinRequest, type LaunchTerms } from "@binference/plugin-sdk";
+import {
+  accountRefSchema,
+  assetRefSchema,
+  type LaunchPinRequest,
+  type LaunchTerms,
+} from "@binference/plugin-sdk";
 import { encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { launcherContract, successOf } from "@binference/plugin-sdk/testing";
-import { parseEther } from "viem";
+import { getAddress, parseEther } from "viem";
 import { describe, expect, it } from "vitest";
 import {
   btcb,
@@ -16,7 +21,16 @@ import { bnb } from "../testing/recorded-launches.js";
 
 const live = { signal: new AbortController().signal };
 const other = encodeEvmDraft({ from: launchWallet, to: launchWallet, value: 0n, data: "0x" });
-const otherOptions = { holderRewards: true, startMarketCap: parseEther("9").toString() };
+const otherStart = parseEther("9").toString();
+// Another outside fee recipient, and holder rewards on in its place: each set the bytes must carry.
+const otherRecipient = accountRefSchema.parse(
+  `eip155:56:${getAddress("0x00000000000000000000000000000000000000bb")}`,
+);
+const otherOptions = { holderRewards: true, startMarketCap: otherStart };
+const otherOptionSets = [
+  { poolFeeRecipient: otherRecipient, startMarketCap: otherStart },
+  otherOptions,
+];
 const elsewhere = assetRefSchema.parse(
   "eip155:56/erc20:0x00000000000000000000000000000000000000E1",
 );
@@ -32,7 +46,7 @@ function subjectOf(launch: LaunchPinRequest = testLaunch) {
   return {
     launcher: launcherOver(),
     launch,
-    otherOptions,
+    otherOptionSets,
     otherPair: { ...launch, pair: elsewhere },
     other,
   };

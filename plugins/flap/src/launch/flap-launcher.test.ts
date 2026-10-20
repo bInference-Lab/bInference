@@ -39,7 +39,7 @@ function subjectOf(launcher: Launcher, pinned: LaunchPinRequest = launch) {
   return {
     launcher,
     launch: pinned,
-    otherOptions,
+    otherOptionSets: [otherOptions],
     otherPair: { ...pinned, pair: wbnb },
     other: swap,
   };

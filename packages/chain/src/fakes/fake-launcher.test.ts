@@ -39,7 +39,7 @@ function subjectOf(options: FakeLauncherOptions, pinned: LaunchPinRequest) {
   return {
     launcher: createFakeLauncher({ launchOptions, ...options }),
     launch: pinned,
-    otherOptions,
+    otherOptionSets: [otherOptions],
     otherPair: { ...pinned, pair: assetRefSchema.parse("fake:1/token:0x0000000e") },
     other: fakeDraft(wallet, { to: "0x0000000d", value: 0n, data: "swap" }),
   };

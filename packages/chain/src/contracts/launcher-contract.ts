@@ -31,11 +31,12 @@ export interface LauncherSubject {
    */
   readonly launch: LaunchPinRequest;
   /**
-   * Another value of every setting the launchpad declares, each unlike the launch's: a choice of
-   * one word keeps its word, and an optional setting may be left out when the other values do not
-   * take it (decision 0280).
+   * Other values of the settings the launchpad declares, set by set, each value unlike the
+   * launch's (decision 0238). A setting a set leaves out keeps the launch's value, but an optional
+   * one is left out with it (decision 0280); every setting but a choice of one word is varied in
+   * some set, an optional one the launch gives among them.
    */
-  readonly otherOptions: Readonly<Record<string, LaunchOptionValue>>;
+  readonly otherOptionSets: readonly Readonly<Record<string, LaunchOptionValue>>[];
   /** A launch against a pair the launchpad does not launch against. */
   readonly otherPair: LaunchTerms;
   /** A draft that is no create call of the launchpad. */
@@ -203,27 +204,57 @@ function buildsCreate(harness: LauncherHarness): ContractCheck {
 const isFixed = (option: LaunchOption): boolean =>
   option.type === "choice" && option.choices?.length === 1;
 
+// The settings a set is built with: the launch's values of the settings that are not optional, and
+// the set's own over them.
+function optionsOf(
+  subject: LauncherSubject,
+  set: Readonly<Record<string, LaunchOptionValue>>,
+): Readonly<Record<string, LaunchOptionValue>> {
+  const kept = subject.launcher.launchOptions.flatMap((option): [string, LaunchOptionValue][] => {
+    const value = subject.launch.options[option.name];
+    return value === undefined || option.isOptional === true ? [] : [[option.name, value]];
+  });
+  return { ...Object.fromEntries(kept), ...set };
+}
+
+// Every set names only settings that can change, each to a value unlike the launch's, and every
+// such setting the launch gives changes in some set.
+function checkSets(subject: LauncherSubject): void {
+  const { launch, otherOptionSets, launcher } = subject;
+  const declared = launcher.launchOptions.filter((option) => option.isWorkedOut !== true);
+  const names = declared.map((option) => option.name).toSorted();
+  assert.deepEqual(Object.keys(launch.options).toSorted(), names);
+  const changing = declared.filter((option) => !isFixed(option)).map((option) => option.name);
+  assert.ok(otherOptionSets.length > 0);
+  for (const set of otherOptionSets) {
+    const named = Object.entries(set);
+    assert.ok(
+      named.every(([name]: readonly [string, LaunchOptionValue]) => changing.includes(name)),
+    );
+    assert.ok(
+      named.every(
+        ([name, value]: readonly [string, LaunchOptionValue]) => launch.options[name] !== value,
+      ),
+    );
+  }
+  const varied = new Set(otherOptionSets.flatMap((set) => Object.keys(set)));
+  assert.ok(changing.every((name) => varied.has(name)));
+}
+
 function readsSettings(harness: LauncherHarness): ContractCheck {
   return {
     name: "writes other settings into its create call, and reads them back from its bytes",
     run: async () => {
       const subject = harness.create();
-      const { launch, otherOptions } = subject;
-      const declared = subject.launcher.launchOptions;
-      const names = declared.map((option) => option.name).toSorted();
-      assert.deepEqual(Object.keys(launch.options).toSorted(), names);
-      const others = Object.keys(otherOptions);
-      const changing = declared.filter((option) => !isFixed(option));
-      const required = changing.filter((option) => option.isOptional !== true);
-      assert.ok(others.every((name) => changing.some((option) => option.name === name)));
-      assert.ok(required.every((option) => others.includes(option.name)));
-      assert.ok(others.every((name) => launch.options[name] !== otherOptions[name]));
-      const fixed = declared.filter(isFixed).flatMap((option): [string, LaunchOptionValue][] => {
-        const value = launch.options[option.name];
-        return value === undefined ? [] : [[option.name, value]];
-      });
-      const options = { ...Object.fromEntries(fixed), ...otherOptions };
-      checkCreate(subject, await built(subject, { ...launch, options }));
+      checkSets(subject);
+      const builds = await Promise.all(
+        subject.otherOptionSets.map(async (set) =>
+          built(subject, { ...subject.launch, options: optionsOf(subject, set) }),
+        ),
+      );
+      for (const launch of builds) {
+        checkCreate(subject, launch);
+      }
     },
   };
 }

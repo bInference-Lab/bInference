@@ -47,7 +47,7 @@ function subjectOf(launcher: Launcher, launched: LaunchPinRequest = launch) {
   return {
     launcher,
     launch: launched,
-    otherOptions,
+    otherOptionSets: [otherOptions],
     otherPair: { ...launched, pair: wbnb },
     other: buy,
   };
