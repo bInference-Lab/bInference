@@ -69,12 +69,15 @@ function callsOf(
   return ok(calls);
 }
 
+// The spenders a ceiling allows: a launch wallet's also those only it may approve (decision 0277).
 function spendersOf(
   declared: Declared,
-  definition: ChainDefinition,
+  ceiling: { readonly definition: ChainDefinition; readonly isLaunch: boolean },
 ): Result<readonly string[], "unknown_contract"> {
+  const { definition } = ceiling;
   const spenders: string[] = [];
-  const listed = (declared.contracts.spenders ?? []).filter((name) =>
+  const launchOnly = ceiling.isLaunch ? (declared.contracts.launchWalletSpenders ?? []) : [];
+  const listed = [...(declared.contracts.spenders ?? []), ...launchOnly].filter((name) =>
     isRegistryName(declared, name),
   );
   for (const name of listed) {
@@ -91,8 +94,8 @@ function spendersOf(
  * The ceiling's view of one chain from the registry (decision 0149), before its 24-hour caps:
  * the functions each enabled venue declares its trades call, on the contracts it names, and the
  * contracts it names as spenders, each read from the chain definition by name. A call only a launch
- * wallet makes is in a launch wallet's ceiling alone (decision 0271). A venue that declares nothing on the
- * chain adds nothing. A name the definition does not hold, or a call that is no JSON ABI entry,
+ * wallet makes is in a launch wallet's ceiling alone (decision 0271), as is a spender only it
+ * approves (decision 0277). A venue that declares nothing on the chain adds nothing. A name the definition does not hold, or a call that is no JSON ABI entry,
  * is an expected failure, so a ceiling never allows less, or more, than the venues use. A call
  * or a spender on a contract each launch makes, such as a launchpad's curve, adds nothing: no
  * address list can hold one, so such trades stay outside every ceiling (decision 0212).
@@ -112,8 +115,7 @@ export function registryCeilingChain(
     const declared = contracts === undefined ? undefined : { venue, contracts };
     const ceiling = { definition: request.definition, isLaunch: request.isLaunch === true };
     const venueCalls = declared === undefined ? ok([]) : callsOf(declared, ceiling);
-    const venueSpenders =
-      declared === undefined ? ok([]) : spendersOf(declared, request.definition);
+    const venueSpenders = declared === undefined ? ok([]) : spendersOf(declared, ceiling);
     if (!venueCalls.ok) {
       return venueCalls;
     }

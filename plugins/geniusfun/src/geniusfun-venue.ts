@@ -57,7 +57,8 @@ export function geniusfunDeclaration(chains: readonly ChainRef[]): VenueDeclarat
           isLaunchWalletOnly: true,
         },
       ],
-      spenders: [curveName, launchStack.router],
+      spenders: [curveName],
+      launchWalletSpenders: [launchStack.router],
       noDeadline: true,
     })),
   };

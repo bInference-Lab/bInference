@@ -72,17 +72,19 @@ false and never offered; no wallet is exempted from the snipe tax.
   every other field from the bytes. A fee other than the quoted one fails the build.
 - **Launch wallets alone.** `launchAndBuy` and `launchToken` are calls only a launch wallet makes
   (`isLaunchWalletOnly`, decision 0271): only a launch wallet's ceiling allows them, and the signer
-  refuses them from any other wallet. The router is also a spender, for a token first buy's exact
-  approval.
+  refuses them from any other wallet. The router is a spender a launch wallet alone approves, for
+  a token first buy's exact approval: the venue declares it among its launch wallet spenders
+  (`launchWalletSpenders`), which only a launch wallet's ceiling lists.
 - **No commission.** Nothing in the call pays anyone but the launch fee the factory charges.
 
 ## Consequences
 
 - A Genius.fun launch runs through the engine's launch path from the launch wallet, with the
   creator fee recipient and the picture link on its card.
-- An agent wallet's ceiling may list the router as a spender. The router takes a token only from
-  the caller of `launchAndBuy`, which no agent wallet's ceiling allows, so such an approval moves
-  nothing.
+- No agent wallet's ceiling lists the router. Its verified source takes a token only from the
+  caller of `launchAndBuy`, by `transferFrom(msg.sender)`, and has no payer argument, no multicall
+  and no proxy; a new router is read again for this before it joins the registry.
+- `VenueContracts` gains `launchWalletSpenders`, which a launch wallet's ceiling alone lists.
 - The decoder knows a create call's token only from the build that made it, in the same engine
   process; a call the venue never built is `unknown_call`. The engine decodes a launch only at its
   build.

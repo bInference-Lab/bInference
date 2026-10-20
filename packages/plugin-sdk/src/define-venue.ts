@@ -33,6 +33,9 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
         names: Object.freeze([...item.names]),
         ...(item.calls === undefined ? {} : { calls: Object.freeze(item.calls.map(frozenCall)) }),
         ...(item.spenders === undefined ? {} : { spenders: Object.freeze([...item.spenders]) }),
+        ...(item.launchWalletSpenders === undefined
+          ? {}
+          : { launchWalletSpenders: Object.freeze([...item.launchWalletSpenders]) }),
         ...(item.launchContracts === undefined
           ? {}
           : { launchContracts: Object.freeze([...item.launchContracts]) }),

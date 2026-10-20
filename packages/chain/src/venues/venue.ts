@@ -45,6 +45,13 @@ export interface VenueContracts {
    */
   readonly spenders?: readonly string[];
   /**
+   * The names among `names` a launch wallet's token approval alone may name as its spender, such
+   * as a launchpad's router that pulls a token first buy: only a launch wallet's ceiling allows
+   * them, as it alone allows a call marked `isLaunchWalletOnly`. Each differs from `spenders`; left
+   * out, none.
+   */
+  readonly launchWalletSpenders?: readonly string[];
+  /**
    * The contracts each launch of the venue has of its own on this chain, by name, such as a
    * launchpad's curve for each token, which no registry can list. The launchpad's curve read
    * names their addresses for a token it holds (`CurveHolding.launch`), found through its own
@@ -83,6 +90,7 @@ export interface VenueDeclarationWire {
     readonly names: readonly string[];
     readonly calls?: readonly VenueCallWire[];
     readonly spenders?: readonly string[];
+    readonly launchWalletSpenders?: readonly string[];
     readonly launchContracts?: readonly string[];
     readonly noDeadline?: boolean;
   }[];
@@ -103,17 +111,20 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z.strictObject({
 });
 
 // Every call and every spender names one of the chain's declared contracts, registry or launch,
-// and a spender once; a launch's contract shares no name with a registry one.
+// a launch wallet's spender a registry one, and a spender once; a launch's contract shares no name
+// with a registry one.
 function namesDeclared(item: Omit<VenueContracts, "chain">): boolean {
   const launch = item.launchContracts ?? [];
   const named = (name: string) => item.names.includes(name) || launch.includes(name);
   const spenders = item.spenders ?? [];
+  const launchSpenders = item.launchWalletSpenders ?? [];
   const calls = item.calls ?? [];
   const isApart = launch.every((name) => !item.names.includes(name));
   return (
     isApart &&
-    isUnique(spenders) &&
+    isUnique([...spenders, ...launchSpenders]) &&
     spenders.every(named) &&
+    launchSpenders.every((name) => item.names.includes(name)) &&
     calls.every((call) => named(call.contract))
   );
 }
@@ -134,6 +145,7 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
           names: z.array(kebabCaseSchema).min(1).refine(isUnique, { message: "A name repeats." }),
           calls: z.array(callSchema).exactOptional(),
           spenders: z.array(kebabCaseSchema).exactOptional(),
+          launchWalletSpenders: z.array(kebabCaseSchema).exactOptional(),
           launchContracts: z
             .array(kebabCaseSchema)
             .min(1)

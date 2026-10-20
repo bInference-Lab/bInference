@@ -88,6 +88,24 @@ function launchingCalls(wallet: { readonly isLaunch: boolean }) {
   return built.ok ? built.value.calls.map((call) => call.abi.name) : built.error;
 }
 
+// A venue whose router only a launch wallet approves.
+const pulling = declaredVenue("swapper", {
+  names: ["router", "permit2"],
+  spenders: ["permit2"],
+  launchWalletSpenders: ["router"],
+});
+
+// The spenders a ceiling of that venue allows, for a launch wallet or another.
+function spendersFor(wallet: { readonly isLaunch: boolean }) {
+  const built = registryCeilingChain({
+    definition,
+    venues: [pulling],
+    perTxNativeCapBase: oneBnbWei,
+    isLaunch: wallet.isLaunch,
+  });
+  return built.ok ? built.value.spenders : built.error;
+}
+
 describe("registryCeilingChain", () => {
   it("lists the calls and spenders each enabled venue declares on the chain, and only those", () => {
     const chain = registryCeilingChain({
@@ -114,6 +132,14 @@ describe("registryCeilingChain", () => {
     expect(launchingCalls({ isLaunch: true })).toStrictEqual([
       testRouterAbi.swap.name,
       testRouterAbi.swapTo.name,
+    ]);
+  });
+
+  it("lists a spender only a launch wallet approves in a launch wallet's ceiling alone", () => {
+    expect(spendersFor({ isLaunch: false })).toStrictEqual([testAddresses.permit2]);
+    expect(spendersFor({ isLaunch: true })).toStrictEqual([
+      testAddresses.permit2,
+      testAddresses.router,
     ]);
   });
 

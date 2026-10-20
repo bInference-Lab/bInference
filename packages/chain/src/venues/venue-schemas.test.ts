@@ -158,6 +158,24 @@ describe("venue schemas", () => {
     ["a spender no contract declares", { chain: "fake:1", names: ["router"], spenders: ["pool"] }],
     ["a spender twice", { chain: "fake:1", names: ["router"], spenders: ["router", "router"] }],
     [
+      "a launch wallet's spender that is also everyone's",
+      {
+        chain: "fake:1",
+        names: ["router"],
+        spenders: ["router"],
+        launchWalletSpenders: ["router"],
+      },
+    ],
+    [
+      "a launch wallet's spender on a launch's own contract",
+      {
+        chain: "fake:1",
+        names: ["router"],
+        launchContracts: ["curve"],
+        launchWalletSpenders: ["curve"],
+      },
+    ],
+    [
       "a wallet input twice",
       {
         chain: "fake:1",
