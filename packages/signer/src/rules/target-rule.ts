@@ -1,4 +1,5 @@
 import type { AccountRef, AuthorizeInput, StepAction } from "@binference/chain";
+import { callSelectorOf } from "./call-selector.schema.js";
 import { isAccount, listsAccount, type RuleView } from "./hard-rule.js";
 import { readTokenCall } from "./token-call.js";
 
@@ -42,10 +43,25 @@ function approvalReaches(
   );
 }
 
+// A call only a launch wallet makes, by its selector, from any other wallet (decision 0271). An
+// entry whose selector cannot be read refuses every call, so the rule fails closed.
+function isLaunchOnlyCall(view: RuleView): boolean {
+  const { wallet, allowed } = view.input;
+  if (wallet.role === "launch") {
+    return false;
+  }
+  const selector = view.transaction.data.slice(2, 10);
+  return (allowed.launchOnlyCalls ?? []).some((abi) => {
+    const launchOnly = callSelectorOf(abi);
+    return launchOnly === undefined || launchOnly === selector;
+  });
+}
+
 /**
  * Rule 2: `to` is in `allowed`. A call goes to one of the venue's declared contracts; an approval
  * goes to the step's token and names a registry spender; from a launch wallet, a call may also go
- * to, and an approval name, a contract of the launch the step trades on (decision 0217); a send
+ * to, and an approval name, a contract of the launch the step trades on (decision 0217), and only
+ * a launch wallet makes a call `allowed` names as a launch wallet's alone (decision 0271); a send
  * pays the confirmed recipient, in the native coin with no calldata or by the token's `transfer`.
  * A cancel is rule 6's.
  */
@@ -57,7 +73,7 @@ export function targetHolds(view: RuleView): boolean {
   const { action } = step;
   if (action.kind === "call") {
     const contracts = [...allowed.contracts, ...launchTargets(view.input)];
-    return listsAccount(contracts, step.chain, view.transaction.to);
+    return listsAccount(contracts, step.chain, view.transaction.to) && !isLaunchOnlyCall(view);
   }
   return action.kind === "approve" ? approvalReaches(view, action) : sendReaches(view, action);
 }

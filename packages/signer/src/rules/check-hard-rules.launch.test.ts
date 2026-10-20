@@ -88,3 +88,50 @@ describe("a launch wallet's steps on a launch's own contracts", () => {
     expect(brokenHardRules(fromLaunchWallet(unlaunched), context)).toStrictEqual([2]);
   });
 });
+
+// A create call only a launch wallet makes (decision 0271), on the router the step may call:
+// `create((address,uint256[],(bytes32,bool)[2]),address[],string)`, selector 0x59bee192.
+const createAbi = {
+  type: "function",
+  name: "create",
+  inputs: [
+    {
+      type: "tuple",
+      name: "p",
+      components: [
+        { type: "address", name: "a" },
+        { type: "uint256[]", name: "b" },
+        {
+          type: "tuple[2]",
+          name: "c",
+          components: [
+            { type: "bytes32", name: "x" },
+            { type: "bool", name: "y" },
+          ],
+        },
+      ],
+    },
+    { type: "address[]", name: "list" },
+    { type: "string", name: "s" },
+  ],
+};
+const createCall = {
+  ...withTransaction(call, { to: router, data: "0x59bee192" }),
+  allowed: { ...call.allowed, launchOnlyCalls: [createAbi] },
+};
+
+describe("a call only a launch wallet makes", () => {
+  it("signs it from the launch wallet, and refuses it from any other wallet as rule 2", () => {
+    expect(checkHardRules(fromLaunchWallet(createCall), context)).toBeUndefined();
+    expect(brokenHardRules(createCall, context)).toStrictEqual([2]);
+  });
+
+  it("signs another call to the same contract from any wallet", () => {
+    expect(checkHardRules({ ...call, allowed: createCall.allowed }, context)).toBeUndefined();
+  });
+
+  it("refuses every call from another wallet when an entry's selector cannot be read", () => {
+    const unread = { ...call, allowed: { ...call.allowed, launchOnlyCalls: [{ name: "x" }] } };
+    expect(brokenHardRules(unread, context)).toStrictEqual([2]);
+  });
+});

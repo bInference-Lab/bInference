@@ -149,9 +149,9 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
 /**
  * The registry's set for the intent's steps: the contracts the venues of its quote's route, or a
  * token launch's launchpad (decision 0234), declare on the chain, read from the registry by name
- * as the ceiling reads them, which are also the spenders an approval may name. A venue no
- * declaration names, or one that names a contract the registry lacks, adds none. A swap sends to no
- * one.
+ * as the ceiling reads them, which are also the spenders an approval may name, and the calls
+ * those venues mark as a launch wallet's alone (decision 0271). A venue no declaration names, or
+ * one that names a contract the registry lacks, adds none. A swap sends to no one.
  */
 function allowedTargetsOf(
   snapshot: IntentSnapshot,
@@ -166,16 +166,20 @@ function allowedTargetsOf(
   const used = new Set(
     launch === undefined ? (quote?.route.map((leg) => leg.venue) ?? []) : [launch.venue],
   );
-  const addresses = context.venues
-    .filter((venue) => used.has(venue.id))
-    .flatMap((venue) => {
-      const declared = declaredContracts(venue, chain);
-      return declared.ok ? declared.value : [];
-    });
+  const usedVenues = context.venues.filter((venue) => used.has(venue.id));
+  const addresses = usedVenues.flatMap((venue) => {
+    const declared = declaredContracts(venue, chain);
+    return declared.ok ? declared.value : [];
+  });
   const contracts: readonly AccountRef[] = [...new Set(addresses)].map((address) =>
     accountRefSchema.parse(`${chain.ref}:${address}`),
   );
-  return { contracts, spenders: contracts, recipients: [] };
+  const launchOnlyCalls = usedVenues
+    .flatMap((venue) => venue.contracts.filter((item) => item.chain === chain.ref))
+    .flatMap((item) => (item.calls ?? []).filter((call) => call.isLaunchWalletOnly === true))
+    .map((call) => call.abi);
+  const marked = launchOnlyCalls.length === 0 ? {} : { launchOnlyCalls };
+  return { contracts, spenders: contracts, recipients: [], ...marked };
 }
 
 /** What the owner's confirmation of the intent lets the signer check, once it is stored. */

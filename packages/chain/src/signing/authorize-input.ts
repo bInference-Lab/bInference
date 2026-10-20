@@ -1,4 +1,4 @@
-import { type Id, idSchema } from "@binference/core";
+import { type Id, idSchema, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
 import { type PrivyRequest, privyRequestSchema } from "./privy-request.js";
@@ -36,6 +36,12 @@ export interface AllowedTargets {
   readonly recipients: readonly AccountRef[];
   /** The launch's own contracts, read from its launchpad right before signing; none when absent. */
   readonly launch?: readonly AccountRef[];
+  /**
+   * The calls only a launch wallet makes on the step's venues, each as its JSON ABI entry, such as
+   * a launchpad's create call (decision 0271): the signer refuses one from any other wallet. None
+   * when absent.
+   */
+  readonly launchOnlyCalls?: readonly JsonValue[];
 }
 
 /**
@@ -72,6 +78,7 @@ export interface AuthorizeInputWire {
     readonly spenders: readonly string[];
     readonly recipients: readonly string[];
     readonly launch?: readonly string[];
+    readonly launchOnlyCalls?: readonly JsonValue[];
   };
 }
 
@@ -96,5 +103,6 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
     spenders: targetsSchema,
     recipients: targetsSchema,
     launch: targetsSchema.exactOptional(),
+    launchOnlyCalls: z.array(z.json()).max(64).exactOptional(),
   }),
 });
