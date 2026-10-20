@@ -1,18 +1,14 @@
 import {
   type AccountRef,
-  accountRefParts,
   type Amount,
   type AssetRef,
-  assetRefParts,
   type ChainRef,
   type ChainRegistry,
-  type QuoteRequest,
-  type RegisteredChain,
   type Venue,
   type VenueQuote,
   venueQuoteSchema,
 } from "@binference/chain";
-import { type Bps, type Clock, type Err, err, type Ok, ok, type Result } from "@binference/core";
+import { type Bps, type Clock, type Err, type Ok, ok, type Result } from "@binference/core";
 import { z } from "zod";
 import type { QuoteFailure } from "../intents/intent-reason.js";
 import type { QuoteTerms } from "../intents/intent-status.js";
@@ -27,11 +23,12 @@ import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { frozenAmount, frozenQuote, nativeAssetOf } from "./host-terms.js";
 import type { HostedLaunchReader, HostedVenue } from "./hosted-venue.js";
 import { hostVenues, launchCallsOf, launchReadersOf, launchWalletCallsOf } from "./hosted-venue.js";
-import { contractsWithLaunch, type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
+import { type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
 import { readInsiders } from "./read-insiders.js";
 import { type HostedPriceRead, readPrices } from "./read-prices.js";
 import { readSteps } from "./read-steps.js";
+import { type TradeContext, tradeContextOf, withLaunch } from "./trade-context.js";
 
 /** A resolved trade the host quotes and builds on one venue. */
 export interface VenueTrade {
@@ -194,54 +191,6 @@ function refuse(error: VenueFailure, mismatch?: BuildMismatch): VenueRefused {
   return mismatch === undefined ? { ok: false, error } : { ok: false, error, mismatch };
 }
 
-/** The trade's venue, chain and contracts, and the request the venue quotes. */
-interface TradeContext {
-  readonly trade: VenueTrade;
-  readonly hosted: HostedVenue;
-  readonly chain: RegisteredChain;
-  readonly request: QuoteRequest;
-}
-
-// A trade the host cannot run on its venue: unknown venue, or a chain or pair it does not serve.
-function contextOf(
-  trade: VenueTrade,
-  venues: ReadonlyMap<string, HostedVenue>,
-  chains: ChainRegistry,
-): Result<TradeContext, VenueFailure> {
-  const hosted = venues.get(trade.venue);
-  if (hosted === undefined) {
-    return err("venue_down");
-  }
-  const chainRef = accountRefParts(trade.wallet).chain;
-  const chain = chains.get(chainRef);
-  const contracts = hosted.contracts.get(chainRef);
-  const assets = [trade.amountIn.asset, trade.assetOut];
-  const isPair = assets.every((asset) => assetRefParts(asset).chain === chainRef);
-  if (!chain.ok || contracts === undefined || !isPair || trade.amountIn.asset === trade.assetOut) {
-    return err("no_route");
-  }
-  const request: QuoteRequest = Object.freeze({
-    wallet: trade.wallet,
-    amountIn: frozenAmount(trade.amountIn),
-    assetOut: trade.assetOut,
-    contracts,
-  });
-  return ok({ trade, hosted, chain: chain.value, request });
-}
-
-// The trade with a launch's contracts in its request, or `undefined` when the launch names a
-// contract the venue does not declare as a launch's on the trade's chain.
-function withLaunch(
-  context: TradeContext,
-  launch: LaunchContracts | undefined,
-): TradeContext | undefined {
-  const names = context.hosted.launchNames.get(context.chain.ref);
-  const contracts = contractsWithLaunch(context.request.contracts, launch, names);
-  return contracts === undefined
-    ? undefined
-    : { ...context, request: Object.freeze({ ...context.request, contracts }) };
-}
-
 async function quoteOf(
   { hosted, request }: TradeContext,
   call: VenueCallOptions,
@@ -322,7 +271,7 @@ async function quoteTrade(
   trade: VenueTrade,
   signal: AbortSignal,
 ): Promise<QuoteOutcome> {
-  const context = contextOf(trade, parts.venues, parts.chains);
+  const context = tradeContextOf(trade, parts.venues, parts.chains);
   if (!context.ok) {
     return refuse(context.error);
   }
@@ -352,7 +301,7 @@ async function buildTrade(
   quoted: TradeQuote,
   signal: AbortSignal,
 ): Promise<VenueOutcome> {
-  const context = contextOf(quoted.trade, parts.venues, parts.chains);
+  const context = tradeContextOf(quoted.trade, parts.venues, parts.chains);
   if (!context.ok) {
     return refuse(context.error);
   }
