@@ -59,7 +59,7 @@ export function triggerPriceOf(
         usdPerBaseUnit: usdPrice,
         decimals,
         isThin: isThin(price),
-        readAtMs: price.atMs,
+        readAtMs: price.askedAtMs,
       }
     : undefined;
 }

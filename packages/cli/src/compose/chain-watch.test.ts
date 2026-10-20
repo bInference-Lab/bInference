@@ -76,6 +76,7 @@ function fakeWatcher(options: { readonly failsWith?: Error; readonly failures?: 
         token,
         block,
         atMs: by.atMs ?? 1,
+        askedAtMs: by.atMs ?? 1,
         source: "pools",
         plan: by.plan ?? poolPlan,
         quoteAsset: tokenOf("ff"),

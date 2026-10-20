@@ -11,6 +11,11 @@ export interface WatchedPrice {
   readonly block: bigint;
   /** When the watcher read it, by its clock. */
   readonly atMs: number;
+  /**
+   * When the watcher asked for the block's read, by its clock: a read asked before a sleep of the
+   * machine and answered after it keeps the time before the sleep.
+   */
+  readonly askedAtMs: number;
   /** Who priced it: the venue whose reads it asked, or the pools the chain family reads. */
   readonly source: string;
   /** Which plan priced it: its source and the contracts it read; another pool is another plan. */
@@ -74,11 +79,15 @@ function priceOf(planned: PlannedToken, answers: readonly ReadAnswer[]): Result<
 }
 
 /**
- * Prices every token of one block's read at `atMs`: in its quote asset by its own pricing step,
- * and in USD by its quote asset's feed at the same block. A pricing step that throws prices
- * nothing; a token whose calls left the batch is `quarantined`.
+ * Prices every token of one block's read, answered at `atMs` and asked at `askedAtMs`: in its
+ * quote asset by its own pricing step, and in USD by its quote asset's feed at the same block. A
+ * pricing step that throws prices nothing; a token whose calls left the batch is `quarantined`.
  */
-export function pricesOf(read: BlockRead, atMs: number): readonly TokenRead[] {
+export function pricesOf(
+  read: BlockRead,
+  stamps: { readonly atMs: number; readonly askedAtMs: number },
+): readonly TokenRead[] {
+  const { atMs, askedAtMs } = stamps;
   const usd = read.feeds.usdPrices(read.feedAnswers, atMs);
   const left = read.quarantined.map(({ token }): TokenRead => ({ token, outcome: "quarantined" }));
   const priced = read.tokens.map(({ planned, answers }): TokenRead => {
@@ -92,6 +101,7 @@ export function pricesOf(read: BlockRead, atMs: number): readonly TokenRead[] {
       token,
       block: read.block,
       atMs,
+      askedAtMs,
       source,
       plan,
       ...(depthUsdMicros === undefined ? {} : { depthUsdMicros }),

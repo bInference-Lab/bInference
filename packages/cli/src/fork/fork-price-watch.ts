@@ -42,7 +42,7 @@ export function orderPriceOf(price: WatchedPrice): WatchedOrderPrice {
     },
     decimals: 18,
     isThin: false,
-    readAtMs: price.atMs,
+    readAtMs: price.askedAtMs,
   };
 }
 

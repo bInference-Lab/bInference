@@ -22,6 +22,7 @@ const watched: LatestPrice = {
   token,
   block: 100n,
   atMs: startMs,
+  askedAtMs: startMs,
   source: "pools",
   plan: "pools:0x0000000000000000000000000000000000000002",
   quoteAsset: assetRefSchema.parse("eip155:56/slip44:714"),

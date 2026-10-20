@@ -17,6 +17,7 @@ const curve: LatestPrice = {
   token,
   block: 100n,
   atMs: nowMs,
+  askedAtMs: nowMs,
   source: "flap",
   plan: "flap:0x0000000000000000000000000000000000000003",
   quoteAsset: bsc,
@@ -124,9 +125,9 @@ describe("the hand-off after a sleep of the machine", () => {
     fake.read(curve);
     // 90 seconds of 450 ms blocks: 200 blocks, so a block must pass 100 + 100.
     fence.afterSleep(90_000);
-    fake.read({ ...curve, block: 101n, atMs: nowMs + 1 });
-    fake.read({ ...curve, block: 200n, atMs: nowMs + 2 });
-    fake.read({ ...curve, block: 201n, atMs: nowMs + 3 });
+    fake.read({ ...curve, block: 101n, atMs: nowMs + 1, askedAtMs: nowMs + 1 });
+    fake.read({ ...curve, block: 200n, atMs: nowMs + 2, askedAtMs: nowMs + 2 });
+    fake.read({ ...curve, block: 201n, atMs: nowMs + 3, askedAtMs: nowMs + 3 });
     await closers.closeAll(new AbortController().signal);
 
     expect(seen).toStrictEqual([nowMs, nowMs + 3]);

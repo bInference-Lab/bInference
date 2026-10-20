@@ -106,7 +106,11 @@ function blocksFrom(first: bigint, last: bigint): readonly bigint[] {
 
 // Hands on the prices of each block read, in block order, and answers the outcome that stopped
 // the reads, if one did.
-function handOn(run: WatcherRun, outcomes: readonly BlockOutcome[]): BlockOutcome | undefined {
+function handOn(
+  run: WatcherRun,
+  read: { readonly outcomes: readonly BlockOutcome[]; readonly askedAtMs: number },
+): BlockOutcome | undefined {
+  const { outcomes, askedAtMs } = read;
   for (const outcome of outcomes) {
     if (outcome.kind === "failed") {
       run.progress.markFailed(outcome.code);
@@ -116,8 +120,9 @@ function handOn(run: WatcherRun, outcomes: readonly BlockOutcome[]): BlockOutcom
     }
     run.progress.markRead(outcome.read.block);
     outcome.read.quarantined.forEach((quarantine) => run.options.onQuarantine?.(quarantine));
-    for (const { token, outcome: read, price } of pricesOf(outcome.read, run.options.clock.now())) {
-      run.list.report(token, read);
+    const times = { atMs: run.options.clock.now(), askedAtMs };
+    for (const { token, outcome: tokenRead, price } of pricesOf(outcome.read, times)) {
+      run.list.report(token, tokenRead);
       if (price !== undefined) {
         run.emit(price);
       }
@@ -154,7 +159,9 @@ async function readStep(run: WatcherRun): Promise<undefined> {
     return undefined;
   }
   const blocks = blocksFrom(progress.nextBlock(head, maxCatchUpBlocks), head);
-  const stopped = handOn(run, await readBlocks(readerOf(run), planned, blocks));
+  const askedAtMs = options.clock.now();
+  const outcomes = await readBlocks(readerOf(run), planned, blocks);
+  const stopped = handOn(run, { outcomes, askedAtMs });
   if (stopped !== undefined) {
     const waitMs = stopped.kind === "not_yet" ? notYetRetryMs : options.blockTimeMs;
     await options.clock.sleep(waitMs, run.signal);

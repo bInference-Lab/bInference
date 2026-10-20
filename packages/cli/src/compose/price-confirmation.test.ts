@@ -13,6 +13,7 @@ const deep: LatestPrice = {
   token,
   block: 100n,
   atMs: nowMs,
+  askedAtMs: nowMs,
   source: poolSource,
   plan,
   depthUsdMicros: 50_000_000_000n,
