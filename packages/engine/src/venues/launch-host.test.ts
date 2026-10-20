@@ -227,6 +227,18 @@ describe("the launch host's build", () => {
     });
   });
 
+  it("takes a first buy with no minimum only from a launcher that declares it", async () => {
+    const declared = fake({ noFirstBuyMin: true });
+    const silent = fake({ writesMinOut: 0n });
+    const minOut = { ...upload, minOutBase: 49_500n };
+    await expect(declared.build(launch, minOut, live)).resolves.toMatchObject({ ok: true });
+    await expect(silent.build(launch, minOut, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "low_min_out",
+    });
+  });
+
   it("refuses a create call that writes another tax than the card shows", async () => {
     const written = { taxBps: 1_000, taxRecipient: wallet, buyback: false };
     const host = fake({ launchOptions: settings, writesOptions: written });

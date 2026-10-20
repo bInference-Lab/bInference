@@ -145,6 +145,7 @@ function launcherOf(launcher: Launcher): Launcher {
   }
   const kept: Launcher = {
     launchOptions: Object.freeze(options.data.map((option) => Object.freeze({ ...option }))),
+    ...(launcher.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
     quoteLaunch: async (terms, call) => launcher.quoteLaunch(terms, call),
     pin: async (request, call) => launcher.pin(request, call),
     pinStatus: async (pin, call) => launcher.pinStatus(pin, call),

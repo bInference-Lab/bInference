@@ -122,6 +122,14 @@ export interface Launcher {
   /** The settings the launchpad takes beyond those every launch has, such as a tax. */
   readonly launchOptions: readonly LaunchOption[];
   /**
+   * The create call's first buy carries no minimum out: it runs inside the call that makes the
+   * token, before any other trade can reach the new curve, and the launchpad's contracts take no
+   * minimum for it. The decoder then reads its minimum as 0, and the host accepts it; the
+   * simulation before the card still holds the first buy to its minimum (decision 0270). Left
+   * out, every first buy carries its minimum in the create call.
+   */
+  readonly noFirstBuyMin?: boolean;
+  /**
    * The launch fee and the first buy's output, read from the launchpad's contracts at the latest
    * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`; a
    * launchpad that cannot answer throws. Rejects with the signal's reason once it aborts.
@@ -144,7 +152,8 @@ export interface Launcher {
   /**
    * Builds the launch's steps from the launch wallet: an exact approval of the first buy's spend
    * when the launchpad needs one, then one create call that pays the quoted fee, names the
-   * metadata address and, with a first buy, buys for the wallet no less than its minimum. Every
+   * metadata address and, with a first buy, buys for the wallet no less than its minimum, or with
+   * none when the launcher declares `noFirstBuyMin`. Every
    * step calls the launchpad's registry contracts. A launchpad that cannot build throws. Rejects
    * with the signal's reason once it aborts.
    */

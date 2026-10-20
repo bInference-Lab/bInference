@@ -26,4 +26,17 @@ describe("a token launch's card in Chinese", () => {
       "⚠️ 图片和文字已在 fake-curve 的存储中公开，即使取消也会保持公开",
     ]);
   });
+
+  it("warns when the create call carries no minimum for the first buy", async () => {
+    const { test } = await testLaunchEngine({ noFirstBuyMin: true });
+    const lines = await testCardText(test, await proposeIntent(test, testSettledLaunch), "zh");
+    expect(lines).toContain(
+      "⚠️ 首笔买入在链上没有最低数量：它在创建代币的同一笔调用中执行，早于任何其他交易，模拟结果至少为上面的数量",
+    );
+    const bound = await testLaunchEngine();
+    const boundLines = await testCardText(bound.test, await proposeIntent(bound.test), "zh");
+    expect(boundLines).not.toContain(
+      "⚠️ 首笔买入在链上没有最低数量：它在创建代币的同一笔调用中执行，早于任何其他交易，模拟结果至少为上面的数量",
+    );
+  });
 });

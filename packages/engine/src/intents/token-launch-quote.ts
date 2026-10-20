@@ -27,6 +27,11 @@ interface LaunchFirstBuy {
   readonly expectedOut: bigint;
   /** In base units of the new token: the expected output less the slippage the policy allowed. */
   readonly minOut: bigint;
+  /**
+   * The create call carries no minimum for the first buy, as its launcher declares (decision
+   * 0270): the simulation before the card holds it to `minOut`, and the card says so.
+   */
+  readonly isUnbound?: true;
 }
 
 /**
@@ -64,6 +69,7 @@ interface TokenLaunchQuoteWire {
     readonly spend: AmountWire;
     readonly expectedOut: string;
     readonly minOut: string;
+    readonly isUnbound?: true;
   };
   readonly image: { readonly contentType: string; readonly bytes: number; readonly sha256: string };
   readonly metadataUri: string;
@@ -89,6 +95,7 @@ const tokenLaunchQuoteSchema: z.ZodType<TokenLaunchQuote, TokenLaunchQuoteWire> 
       spend: amountSchema,
       expectedOut: decimalStringSchema,
       minOut: decimalStringSchema,
+      isUnbound: z.literal(true).exactOptional(),
     })
     .exactOptional(),
   image: z.strictObject({

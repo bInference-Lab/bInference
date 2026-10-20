@@ -206,6 +206,18 @@ describe("the build checks of a token launch", () => {
       error: "step_order",
     });
   });
+  it("pass a first buy with no minimum when the launcher declares it carries none", () => {
+    const unbound = { ...create, firstBuy: { ...buy, minOut: 0n } };
+    const drafts = [
+      fakeDraft(wallet, { to: "0x0000000d", value: 2_050n, data: fakeLaunchData(unbound) }),
+    ];
+    expect(checkDrafts(drafts, { ...bounds, noFirstBuyMin: true })).toStrictEqual({
+      ok: true,
+      value: unbound,
+    });
+    expect(checkDrafts(drafts)).toStrictEqual({ ok: false, error: "low_min_out" });
+  });
+
   it("refuse a draft the launchpad's decoder cannot read", () => {
     const swap = fakeDraft(wallet, { to: "0x0000000d", value: 0n, data: "swap" });
     expect(readLaunchSteps([swap], readers)).toStrictEqual({ ok: false, error: "unreadable_step" });

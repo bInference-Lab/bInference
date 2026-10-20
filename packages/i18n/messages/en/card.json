@@ -59,6 +59,7 @@
   "warn.requoted": "⚠️ The price moved: this is a new quote",
   "warn.placeChanged": "⚠️ {token} graduated since the last quote: this trade now runs in the pools",
   "warn.noDeadline": "⚠️ This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received",
+  "warn.unboundFirstBuy": "⚠️ The first buy has no minimum on chain: it runs in the call that makes the token, before any other trade, and the simulation got at least the amount above",
   "warn.paper": "🧪 Paper mode: nothing is sent on chain",
   "warn.paperEstimate": "⚠️ Estimate: binference cannot simulate a sale of this token, so the paper fill uses the quote",
   "warn.firstLive": "🔴 First live trade: this one uses real money",

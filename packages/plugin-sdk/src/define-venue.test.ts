@@ -295,6 +295,9 @@ describe("defineVenue", () => {
     await launchpad.launcher?.pinStatus(null, { signal: new AbortController().signal });
     expect(launcher.statusReads()).toBe(1);
     expect(defineLaunchpad(createFakeLaunchpad({ onCurve: [token] })).launcher).toBeUndefined();
+    const unbound = createFakeLauncher({ noFirstBuyMin: true });
+    const kept = defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher: unbound }));
+    expect(kept.launcher?.noFirstBuyMin).toBe(true);
   });
 
   it("refuses a launchpad whose settings are wrong", () => {

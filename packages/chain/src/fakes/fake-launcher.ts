@@ -43,6 +43,10 @@ export interface FakeLauncherOptions {
    * them would; the request's when absent.
    */
   readonly writesOptions?: Readonly<Record<string, LaunchOptionValue>>;
+  /** Its create call's first buy carries no minimum, as it declares; one when absent. */
+  readonly noFirstBuyMin?: boolean;
+  /** The minimum its create call writes for a first buy; the request's when absent. */
+  readonly writesMinOut?: bigint;
 }
 
 /** A fake launcher, which tells a test what it uploaded and how often its pins were read. */
@@ -157,6 +161,7 @@ function decodeLaunch(draft: TxDraft): Result<DecodedLaunch, "unknown_call"> {
 interface Written {
   readonly token: AssetRef;
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
+  readonly minOut: bigint;
 }
 
 // An exact approval of an ERC-20 first buy's spend, then the create call, which pays the fee and
@@ -170,7 +175,7 @@ function buildSteps(request: LaunchBuildRequest, written: Written): readonly TxD
       : {
           firstBuy: {
             spend: firstBuy,
-            minOut: request.firstBuyMinOut ?? 0n,
+            minOut: written.minOut,
             recipient: wallet,
           },
         };
@@ -197,6 +202,13 @@ function buildSteps(request: LaunchBuildRequest, written: Written): readonly TxD
   return [approval, create];
 }
 
+// The first buy's minimum its create call writes: the request's, none for a launcher that
+// declares it carries none, or what the test scripts.
+function writtenMinOut(options: FakeLauncherOptions, request: LaunchBuildRequest): bigint {
+  const declared = options.noFirstBuyMin === true ? 0n : (request.firstBuyMinOut ?? 0n);
+  return options.writesMinOut ?? declared;
+}
+
 function statusOf(script: FakePinScript, reads: number): PinStatus {
   if ("never" in script) {
     return "pending";
@@ -221,6 +233,7 @@ export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLaunc
   const counted = { reads: 0 };
   return {
     launchOptions: options.launchOptions ?? [],
+    ...(options.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
     async quoteLaunch(terms, { signal }) {
       signal.throwIfAborted();
       const coin = assetRefSchema.parse(`${accountRefParts(terms.wallet).chain}/slip44:1`);
@@ -248,7 +261,11 @@ export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLaunc
     },
     async buildLaunch(request, { signal }) {
       signal.throwIfAborted();
-      const written = { token, options: options.writesOptions ?? request.options };
+      const written = {
+        token,
+        options: options.writesOptions ?? request.options,
+        minOut: writtenMinOut(options, request),
+      };
       return await Promise.resolve({ token, steps: buildSteps(request, written) });
     },
     decodeLaunch,

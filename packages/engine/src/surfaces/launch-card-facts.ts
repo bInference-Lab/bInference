@@ -68,7 +68,10 @@ export function launchCardFacts(
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
     action: { kind: "launchToken", symbol, name, venue, pair: pairWith, firstBuy, details },
     ...(launchWallet === undefined ? {} : { launchWallet }),
-    warnings,
+    warnings: {
+      ...warnings,
+      ...(quote.firstBuy?.isUnbound === true ? { hasUnboundFirstBuy: true } : {}),
+    },
     reason: request.reason,
   };
 }

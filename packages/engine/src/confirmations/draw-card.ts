@@ -64,6 +64,12 @@ export interface CardWarnings {
    */
   readonly hasNoDeadline?: boolean;
   /**
+   * A launch's create call carries no minimum for its first buy (decision 0270): it runs before any
+   * other trade on the new curve, and the simulation showed the least it gets. Absent shows no
+   * warning.
+   */
+  readonly hasUnboundFirstBuy?: boolean;
+  /**
    * The token of an exit order whose position holds another active exit order: a full sale by one
    * ends the others (spec 4, section 3.8). Absent shows no line.
    */
@@ -212,7 +218,10 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
     ...poolFeeLines(warnings.poolFees),
     ...shown([[facts.card.version > 1, "card.warn.requoted"]]),
     ...optional(warnings.placeChangedToken, placeChangedLine),
-    ...shown([[warnings.hasNoDeadline === true, "card.warn.noDeadline"]]),
+    ...shown([
+      [warnings.hasNoDeadline === true, "card.warn.noDeadline"],
+      [warnings.hasUnboundFirstBuy === true, "card.warn.unboundFirstBuy"],
+    ]),
     ...optional(warnings.exitsLinkedToken, exitsLinkedLine),
     ...optional(warnings.worstPrice, worstPriceLine),
     ...shown([

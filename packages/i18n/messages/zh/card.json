@@ -59,6 +59,7 @@
   "warn.requoted": "⚠️ 价格已变动：这是新的报价",
   "warn.placeChanged": "⚠️ 自上次报价以来 {token} 已毕业：此交易现在在交易池中进行",
   "warn.noDeadline": "⚠️ 此交易没有时限：如有延迟，之后仍可能成交，但绝不会低于至少收到的数量",
+  "warn.unboundFirstBuy": "⚠️ 首笔买入在链上没有最低数量：它在创建代币的同一笔调用中执行，早于任何其他交易，模拟结果至少为上面的数量",
   "warn.paper": "🧪 模拟模式：不会发送链上交易",
   "warn.paperEstimate": "⚠️ 估算：binference 无法模拟卖出此代币，模拟成交按报价计算",
   "warn.firstLive": "🔴 首笔实盘交易：此交易使用真实资金",

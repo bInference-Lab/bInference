@@ -18,7 +18,12 @@ import { z } from "zod";
 import type { BuildMismatch } from "./build-checks.js";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { nativeAssetOf } from "./host-terms.js";
-import { checkLaunchSteps, type LaunchStep, readLaunchSteps } from "./launch-checks.js";
+import {
+  checkLaunchSteps,
+  type LaunchBounds,
+  type LaunchStep,
+  readLaunchSteps,
+} from "./launch-checks.js";
 import type { LaunchSetting } from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
@@ -48,6 +53,8 @@ export interface LaunchUpload {
 export interface LaunchPlan {
   readonly steps: readonly LaunchStep[];
   readonly launch: DecodedLaunch;
+  /** The create call's first buy carries no minimum, as its launcher declares (decision 0270). */
+  readonly isFirstBuyUnbound?: true;
 }
 
 /** The host's refusal of a launch's build; `mismatch` names the failed check. */
@@ -115,6 +122,33 @@ export async function pinLaunch(
 
 const buildAnswerSchema = z.object({ token: assetRefSchema, steps: z.array(z.unknown()) });
 
+// The terms the launch's steps must keep (decision 0235), from its context and its upload.
+function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef): LaunchBounds {
+  const { launcher, chain, terms } = context;
+  const { minOutBase } = upload;
+  return {
+    ...terms,
+    contracts: Object.values(terms.contracts),
+    nativeAsset: nativeAssetOf(chain),
+    metadataUri: upload.metadataUri,
+    fee: upload.quote.fee,
+    token,
+    family: chain.family,
+    ...(minOutBase === undefined ? {} : { minOutBase }),
+    ...(launcher.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
+  };
+}
+
+// The checked plan; a first buy that carries no minimum is marked (decision 0270).
+function planOf(
+  launcher: Launcher,
+  steps: readonly LaunchStep[],
+  launch: DecodedLaunch,
+): LaunchPlan {
+  const isUnbound = launcher.noFirstBuyMin === true && launch.firstBuy !== undefined;
+  return { steps, launch, ...(isUnbound ? { isFirstBuyUnbound: true } : {}) };
+}
+
 /** Asks a launch's launchpad to build its steps, and checks each one (decision 0235). */
 export async function buildLaunch(
   context: LaunchContext,
@@ -134,18 +168,8 @@ export async function buildLaunch(
   if (!steps.ok) {
     return { ok: false, error: "decode_mismatch", mismatch: steps.error };
   }
-  const bounds = {
-    ...terms,
-    contracts: Object.values(terms.contracts),
-    nativeAsset: nativeAssetOf(chain),
-    metadataUri,
-    fee: quote.fee,
-    token: answer.data.token,
-    family: chain.family,
-    ...(minOutBase === undefined ? {} : { minOutBase }),
-  };
-  const checkedSteps = checkLaunchSteps(steps.value, bounds);
+  const checkedSteps = checkLaunchSteps(steps.value, boundsOf(context, upload, answer.data.token));
   return checkedSteps.ok
-    ? ok({ steps: steps.value, launch: checkedSteps.value })
+    ? ok(planOf(launcher, steps.value, checkedSteps.value))
     : { ok: false, error: "decode_mismatch", mismatch: checkedSteps.error };
 }

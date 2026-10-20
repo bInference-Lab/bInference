@@ -67,6 +67,7 @@ export const cardKeys = [
   "card.warn.requoted",
   "card.warn.placeChanged",
   "card.warn.noDeadline",
+  "card.warn.unboundFirstBuy",
   "card.warn.paper",
   "card.warn.paperEstimate",
   "card.warn.firstLive",

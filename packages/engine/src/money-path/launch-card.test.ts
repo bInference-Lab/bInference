@@ -26,4 +26,17 @@ describe("a token launch's card in English", () => {
       "⚠️ The picture and words are already public on fake-curve's storage, and stay public if you cancel",
     ]);
   });
+
+  it("warns when the create call carries no minimum for the first buy", async () => {
+    const { test } = await testLaunchEngine({ noFirstBuyMin: true });
+    const lines = await testCardText(test, await proposeIntent(test, testSettledLaunch), "en");
+    expect(lines).toContain(
+      "⚠️ The first buy has no minimum on chain: it runs in the call that makes the token, before any other trade, and the simulation got at least the amount above",
+    );
+    const bound = await testLaunchEngine();
+    const boundLines = await testCardText(bound.test, await proposeIntent(bound.test), "en");
+    expect(boundLines).not.toContain(
+      "⚠️ The first buy has no minimum on chain: it runs in the call that makes the token, before any other trade, and the simulation got at least the amount above",
+    );
+  });
 });

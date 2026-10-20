@@ -48,6 +48,11 @@ export interface LaunchBounds {
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
   /** The least of the new token the first buy may accept; with a first buy alone. */
   readonly minOutBase?: bigint;
+  /**
+   * The launcher declares that its create call's first buy carries no minimum, so the call's own
+   * minimum is not checked; the simulation before the card holds it to `minOutBase` (decision 0270).
+   */
+  readonly noFirstBuyMin?: boolean;
   /** The token the build says its create call makes. */
   readonly token: AssetRef;
   readonly family: ChainFamily;
@@ -166,6 +171,11 @@ function paysValue(step: CreateStep, bounds: LaunchBounds): boolean {
   return step.call.nativeValue === fee.base + coin;
 }
 
+// The first buy keeps its minimum, unless its launcher declares it carries none (decision 0270).
+function isBound(minOut: bigint | undefined, bounds: LaunchBounds): boolean {
+  return bounds.noFirstBuyMin === true || (minOut ?? 0n) >= (bounds.minOutBase ?? 0n);
+}
+
 // The first buy spends exactly the request's, for the wallet, at no less than the minimum.
 function buyMismatch(step: CreateStep, bounds: LaunchBounds): BuildMismatch | undefined {
   const bought = step.launch.firstBuy;
@@ -177,7 +187,7 @@ function buyMismatch(step: CreateStep, bounds: LaunchBounds): BuildMismatch | un
   if (!isTheSpend(bought?.spend, bounds) || !paysValue(step, bounds)) {
     return "other_amount";
   }
-  return (bought?.minOut ?? 0n) >= (bounds.minOutBase ?? 0n) ? undefined : "low_min_out";
+  return isBound(bought?.minOut, bounds) ? undefined : "low_min_out";
 }
 
 function createMismatch(step: CreateStep, bounds: LaunchBounds): BuildMismatch | undefined {
@@ -210,7 +220,9 @@ function orderOf(steps: readonly LaunchStep[]) {
  * on the first buy's spend, to a registry contract of the launchpad; the create call goes to one
  * of its registry contracts, makes the build's token with the launch's name, symbol, pair and
  * metadata, writes every launchpad setting at the card's value (decision 0238), pays exactly the
- * quoted fee, and buys exactly the first buy for the wallet at no less than its minimum. Gives the create call's launch, or the first check that fails.
+ * quoted fee, and buys exactly the first buy for the wallet at no less than its minimum, unless the
+ * launcher declares that its first buy carries none (decision 0270). Gives the create call's
+ * launch, or the first check that fails.
  */
 export function checkLaunchSteps(
   steps: readonly LaunchStep[],

@@ -81,6 +81,29 @@ describe("fake launcher", () => {
     ]);
   });
 
+  it.each(launcherContract({ create: () => subjectOf({ noFirstBuyMin: true }, launch) }))(
+    "follows the launcher contract with a first buy that carries no minimum: $name",
+    async ({ run }) => {
+      await expect(run()).resolves.toBeUndefined();
+    },
+  );
+
+  it("fails the contract when its decoder names a minimum it declares it carries none of", async () => {
+    const lying = subjectOf({ noFirstBuyMin: true, writesMinOut: 5n }, launch);
+    expect(await failedChecks(launcherContract({ create: () => lying }))).toEqual([
+      "builds steps from the wallet whose create call decodes to the launch",
+      "writes other settings into its create call, and reads them back from its bytes",
+    ]);
+  });
+
+  it("fails the contract when its create call buys below the minimum it was given", async () => {
+    const low = subjectOf({ writesMinOut: 1n }, launch);
+    expect(await failedChecks(launcherContract({ create: () => low }))).toEqual([
+      "builds steps from the wallet whose create call decodes to the launch",
+      "writes other settings into its create call, and reads them back from its bytes",
+    ]);
+  });
+
   it("approves a token first buy exactly before its create call", async () => {
     const launcher = createFakeLauncher({ pair: usd });
     const request = { ...launch, pair: usd, firstBuy: { asset: usd, base: 7n } };

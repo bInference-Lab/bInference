@@ -114,6 +114,16 @@ function pinsUpload(harness: LauncherHarness): ContractCheck {
   };
 }
 
+// A first buy keeps its minimum in the create call, or, from a launcher that declares it carries
+// none, reads back with a minimum of 0: a decoder never names a minimum the bytes do not hold.
+function checkMinOut(launcher: Launcher, minOut: bigint, request: LaunchBuildRequest): void {
+  if (launcher.noFirstBuyMin === true) {
+    assert.equal(minOut, 0n);
+  } else {
+    assert.ok(minOut >= (request.firstBuyMinOut ?? 0n));
+  }
+}
+
 // The create call reads back as the launch it was built for: its token, words, pair, fee and every
 // setting, and a first buy for the wallet of its spend, at no less than its minimum.
 function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
@@ -137,7 +147,7 @@ function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
   );
   assert.deepEqual(firstBuy?.spend, request.firstBuy);
   assert.equal(firstBuy?.recipient, request.wallet);
-  assert.ok((firstBuy?.minOut ?? 0n) >= (request.firstBuyMinOut ?? 0n));
+  checkMinOut(subject.launcher, firstBuy?.minOut ?? 0n, request);
 }
 
 function buildsCreate(harness: LauncherHarness): ContractCheck {

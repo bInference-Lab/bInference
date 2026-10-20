@@ -167,6 +167,11 @@ A `launchToken` shows, right after its action line, each line below that has its
 | Setting, each     | `launch.option.<name>`    | One per launchpad setting, such as `launch.option.taxBps`: Tax on every trade: {value}          | 如 `launch.option.taxBps`：每笔交易的交易税：{value}                |
 | Public already    | `card.launch.pinned`      | ⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel | ⚠️ 图片和文字已在 {venue} 的存储中公开，即使取消也会保持公开        |
 
+A launch whose launchpad declares that its create call's first buy carries no minimum shows
+`card.warn.unboundFirstBuy` among the warnings, right after where `card.warn.noDeadline` would
+show ([decision 0270](../adr/0270-a-launch-s-first-buy-may-carry-no-minimum-when-it-runs-inside-the-create-call.md)):
+the simulation before the card held the first buy to the least the card shows.
+
 `{digest}` is the first 16 hex digits of the picture's SHA-256; the terms hash binds all of it.
 A card cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200. A launchpad's
 setting names its own message, which must exist in both languages before the engine hosts the
@@ -183,19 +188,20 @@ owner gave it ([decision 0217](../DECISIONS.md#d0217)).
 
 ### 3.4 Warning lines
 
-| Key                        | English                                                                                                      | 中文                                                                    |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- |
-| `card.warn.outsideContent` | ⚠️ This came after reading outside content (web, X, token data or an image)                                  | ⚠️ 此请求发生在读取外部内容（网页、X、代币信息或图片）之后              |
-| `card.warn.newAddress`     | ⚠️ You have never sent to this address                                                                       | ⚠️ 你从未向此地址转账                                                   |
-| `card.warn.unusualName`    | ⚠️ Unusual characters in this token's name                                                                   | ⚠️ 此代币名称含有不常见字符                                             |
-| `card.warn.unverified`     | ⚠️ Not a verified token: risk checks passed, but check the address                                           | ⚠️ 非已验证代币：风险检查已通过，但请核对地址                           |
-| `card.warn.highTax`        | ⚠️ This token takes {tax} tax on every trade                                                                 | ⚠️ 此代币每笔交易收取 {tax} 交易税                                      |
-| `card.warn.poolFee`        | Includes a {fee} {maker} pool fee                                                                            | 含 {fee} 的 {maker} 交易池手续费                                        |
-| `card.warn.requoted`       | ⚠️ The price moved: this is a new quote                                                                      | ⚠️ 价格已变动：这是新的报价                                             |
-| `card.warn.noDeadline`     | ⚠️ This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received | ⚠️ 此交易没有时限：如有延迟，之后仍可能成交，但绝不会低于至少收到的数量 |
-| `card.warn.paper`          | 🧪 Paper mode: nothing is sent on chain                                                                      | 🧪 模拟模式：不会发送链上交易                                           |
-| `card.warn.paperEstimate`  | ⚠️ Estimate: binference cannot simulate a sale of this token, so the paper fill uses the quote               | ⚠️ 估算：binference 无法模拟卖出此代币，模拟成交按报价计算              |
-| `card.warn.autoAsks`       | Auto mode asks you here: {why}                                                                               | 自动模式在此需要你确认：{why}                                           |
+| Key                         | English                                                                                                                                                      | 中文                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
+| `card.warn.outsideContent`  | ⚠️ This came after reading outside content (web, X, token data or an image)                                                                                  | ⚠️ 此请求发生在读取外部内容（网页、X、代币信息或图片）之后                                                |
+| `card.warn.newAddress`      | ⚠️ You have never sent to this address                                                                                                                       | ⚠️ 你从未向此地址转账                                                                                     |
+| `card.warn.unusualName`     | ⚠️ Unusual characters in this token's name                                                                                                                   | ⚠️ 此代币名称含有不常见字符                                                                               |
+| `card.warn.unverified`      | ⚠️ Not a verified token: risk checks passed, but check the address                                                                                           | ⚠️ 非已验证代币：风险检查已通过，但请核对地址                                                             |
+| `card.warn.highTax`         | ⚠️ This token takes {tax} tax on every trade                                                                                                                 | ⚠️ 此代币每笔交易收取 {tax} 交易税                                                                        |
+| `card.warn.poolFee`         | Includes a {fee} {maker} pool fee                                                                                                                            | 含 {fee} 的 {maker} 交易池手续费                                                                          |
+| `card.warn.requoted`        | ⚠️ The price moved: this is a new quote                                                                                                                      | ⚠️ 价格已变动：这是新的报价                                                                               |
+| `card.warn.noDeadline`      | ⚠️ This trade has no time limit: if it is delayed, it can still fill later, never below the minimum received                                                 | ⚠️ 此交易没有时限：如有延迟，之后仍可能成交，但绝不会低于至少收到的数量                                   |
+| `card.warn.unboundFirstBuy` | ⚠️ The first buy has no minimum on chain: it runs in the call that makes the token, before any other trade, and the simulation got at least the amount above | ⚠️ 首笔买入在链上没有最低数量：它在创建代币的同一笔调用中执行，早于任何其他交易，模拟结果至少为上面的数量 |
+| `card.warn.paper`           | 🧪 Paper mode: nothing is sent on chain                                                                                                                      | 🧪 模拟模式：不会发送链上交易                                                                             |
+| `card.warn.paperEstimate`   | ⚠️ Estimate: binference cannot simulate a sale of this token, so the paper fill uses the quote                                                               | ⚠️ 估算：binference 无法模拟卖出此代币，模拟成交按报价计算                                                |
+| `card.warn.autoAsks`        | Auto mode asks you here: {why}                                                                                                                               | 自动模式在此需要你确认：{why}                                                                             |
 
 A `swap`, `buy` or `sell` whose route passes pool hooks that keep a share shows
 `card.warn.poolFee` right after the tax line, once for each maker of those pools: `{fee}` is what

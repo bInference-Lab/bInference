@@ -145,13 +145,14 @@ async function pinAndBuild(
     return err(plan.error);
   }
   const nowMs = options.clock.now();
+  const unbound = plan.value.isFirstBuyUnbound === true ? { isUnbound: true as const } : {};
   const quote: TokenLaunchQuote = {
     venue: request.venue,
     settings: resolved.launchSettings,
     token: plan.value.launch.token,
     tokenDecimals: quoted.quote.tokenDecimals,
     fee: quoted.quote.fee,
-    ...(firstBuy === undefined ? {} : { firstBuy }),
+    ...(firstBuy === undefined ? {} : { firstBuy: { ...firstBuy, ...unbound } }),
     image,
     metadataUri,
     pin: pin.value.pin,

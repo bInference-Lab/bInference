@@ -69,10 +69,12 @@ export function testLaunchSimulator(launcher: FakeLauncher): Pick<TxSimulator, "
           };
           const bought = launch.value.firstBuy;
           const token = launch.value.token;
+          // A create call that carries no minimum gets what the fake launchpad quotes.
+          const base = bought?.minOut === 0n ? bought.spend.base * 1_000n : bought?.minOut;
           const got =
-            bought === undefined
+            bought === undefined || base === undefined
               ? []
-              : [{ from: to, to: draft.from, amount: { asset: token, base: bought.minOut } }];
+              : [{ from: to, to: draft.from, amount: { asset: token, base } }];
           return { status: "success", gasUsed: 21_000n, transfers: [paid, ...got], approvals: [] };
         }),
       );
@@ -97,6 +99,8 @@ export interface Launching {
   readonly simulator?: (real: Pick<TxSimulator, "simulate">) => Pick<TxSimulator, "simulate">;
   readonly options?: TestEngineOptions;
   readonly hasLaunchWallet?: boolean;
+  /** The launchpad's create call carries no first-buy minimum, as it declares (decision 0270). */
+  readonly noFirstBuyMin?: boolean;
 }
 
 /** A test engine for launches, with the fake launchpad's launcher. */
@@ -149,6 +153,7 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
     createFakeLauncher({
       launchOptions: settings,
       ...(launching.pin === undefined ? {} : { pin: launching.pin }),
+      ...(launching.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
     }),
     launching.launcher,
   );
