@@ -6,7 +6,7 @@ import { engineDatabase } from "../databases/engine-database.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { createIntent } from "../testing/create-intent.js";
-import { plantAgent } from "../testing/plant-agent.js";
+import { type PlantedAgent, plantAgent } from "../testing/plant-agent.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
 import { createAgentStateReset, createEngineStateReset } from "./local-state-reset.js";
 
@@ -18,6 +18,8 @@ const options = { signal: new AbortController().signal };
 const session = "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const turn = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const question = "qst_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+const copyOrder = "ord_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+const copyState = JSON.stringify({ taken: 7, held: "1000" });
 
 function countOf(database: DatabaseSync, table: keyof EngineTables | keyof AgentTables): number {
   const row = database.prepare(`SELECT count(*) AS n FROM ${table}`).get();
@@ -72,6 +74,56 @@ function seedEngine(database: DatabaseSync, agentId: string): void {
       .insertInto("risk_cache")
       .values({ asset: "fake:1/erc20:0x01", source: "goplus", result: "{}", fetched_at: 1 }),
   );
+}
+
+// A live copy order the owner cancelled, and its row for a copied leader trade.
+function seedCopyOrder(database: DatabaseSync, agent: PlantedAgent, intentId: string): void {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  execute(
+    kysely.insertInto("orders").values({
+      id: copyOrder,
+      agent_id: agent.agentId,
+      wallet_id: agent.walletId,
+      kind: "copy",
+      state: "cancelled",
+      request: JSON.stringify({ kind: "copy" }),
+      trigger_state: copyState,
+      fills: 1,
+      max_fills: null,
+      expires_at: 9,
+      intent_id: intentId,
+      card_id: null,
+      paper: 0,
+      outside_content: 0,
+      end_reason: null,
+      expiry_noticed_at: null,
+      created_at: 1,
+      changed_at: 1,
+      version: 1,
+    }),
+  );
+  execute(
+    kysely.insertInto("order_fills").values({
+      id: "ofl_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+      order_id: copyOrder,
+      intent_id: intentId,
+      outcome: "filled",
+      reason: null,
+      at: 2,
+      notices: null,
+      announced_at: null,
+      copy_trade: 7,
+      copy_take: 1,
+    }),
+  );
+}
+
+function copyRows(database: DatabaseSync): unknown {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  return [
+    takeFirst(kysely.selectFrom("orders").select(["state", "trigger_state", "fills"])),
+    takeFirst(kysely.selectFrom("order_fills").select(["copy_trade", "copy_take", "outcome"])),
+  ];
 }
 
 // One chat with a turn, an event and a queued message, and one note, in agent.sqlite.
@@ -135,12 +187,14 @@ function seedAgent(database: DatabaseSync, agentId: string): void {
 }
 
 describe("local state reset", () => {
-  it("clears the chats, notes, inbox, questions and caches, and keeps money records", async () => {
+  it("clears the chats, notes, inbox, questions and caches, and keeps orders and money records", async () => {
     const engine = databases.open(engineDatabase);
     const agent = databases.open(agentDatabase);
     const planted = plantAgent(engine.database, 1);
-    await createIntent(engine.host, planted, 1);
+    const intentId = await createIntent(engine.host, planted, 1);
     seedEngine(engine.database, planted.agentId);
+    seedCopyOrder(engine.database, planted, intentId);
+    const copyBefore = copyRows(engine.database);
     seedAgent(agent.database, planted.agentId);
 
     await expect(createEngineStateReset(engine.host).clear(options)).resolves.toStrictEqual({
@@ -161,8 +215,9 @@ describe("local state reset", () => {
     expect(engineLeft.map((table) => countOf(engine.database, table))).toStrictEqual([0, 0, 0]);
     const agentLeft = ["sessions", "transcript_events", "notes", "notes_fts"] as const;
     expect(agentLeft.map((table) => countOf(agent.database, table))).toStrictEqual([0, 0, 0, 0]);
-    const kept = ["intents", "wallets", "agents"] as const;
-    expect(kept.map((table) => countOf(engine.database, table))).toStrictEqual([1, 1, 1]);
+    const kept = ["intents", "wallets", "agents", "orders", "order_fills"] as const;
+    expect(kept.map((table) => countOf(engine.database, table))).toStrictEqual([1, 1, 1, 1, 1]);
+    expect(copyRows(engine.database)).toEqual(copyBefore);
     const meta = agent.database
       .prepare("SELECT key, value FROM meta WHERE key != 'schema_version'")
       .all();
