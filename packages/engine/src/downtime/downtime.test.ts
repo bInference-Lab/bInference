@@ -5,6 +5,7 @@ import type { TestEngine } from "../operations/test-engine.js";
 import type { WatchedOrderPrice } from "../orders/order-triggers.js";
 import {
   activeOrder,
+  fillIntentsOf,
   fillRowsOf,
   noticesOf,
   startFillEngine,
@@ -161,5 +162,94 @@ describe("the downtime re-check", () => {
         parts: { duration: { key: "pnl.minutes", values: { count: "10" } } },
       },
     ]);
+  });
+
+  it("counts a DCA period missed while the engine was off in the report, never told on its own", async () => {
+    const test = await startFillEngine();
+    const dca = await activeOrder(test, {
+      kind: "dca",
+      agent: testAgent,
+      token: testToken,
+      side: "buy",
+      size: { usdMicros: 10_000_000n },
+      trigger: { cron: "*/5 * * * *" },
+      reason: "Buy a little every five minutes",
+    });
+    await test.engine.downtime.alive(live);
+    await test.clock.advance(hourMs);
+
+    const restarted = test.restart();
+    const run = await restarted.downtime.started(live);
+    await restarted.runSchedules(live);
+    await test.clock.advance(20_000);
+    const report = await run?.reported;
+
+    expect(report?.orders).toMatchObject([
+      { order: dca.id, kind: "dca", outcome: "skipped", reason: "missed" },
+    ]);
+    expect(await fillRowsOf(test, dca.id)).toMatchObject([
+      { outcome: "skipped", reason: "missed" },
+    ]);
+    expect(keysOf(noticesOf(test))).not.toContain("notice.skipped");
+    expect(keysOf(noticesOf(test))).toContain("notice.resumed");
+  });
+
+  it("skips an order whose token no price reaches within two minutes", async () => {
+    const test = await startFillEngine();
+    const stop = await activeOrder(test, testStopLoss());
+    await test.engine.downtime.alive(live);
+    await test.clock.advance(5 * minuteMs);
+
+    const run = await test.restart().downtime.started(live);
+    await test.clock.advance(2 * minuteMs);
+    const report = await run?.reported;
+
+    expect(report?.orders).toMatchObject([
+      { order: stop.id, outcome: "skipped", reason: "no_fresh_price" },
+    ]);
+    expect(await storedOrder(test, stop.id)).toMatchObject({ state: "active", fills: 0 });
+  });
+
+  it("ends a fill whose price was read before a resume that came while it ran, and keeps the order", async () => {
+    const test = await startFillEngine();
+    const stop = await activeOrder(test, testStopLoss());
+    const readAtMs = test.clock.now();
+    await test.clock.advance(minuteMs);
+    await test.engine.downtime.woke(readAtMs, live);
+
+    const price = { usdPerBaseUnit: { numerator: 4n, denominator: 5n }, decimals: 6, readAtMs };
+    const outcome = await test.engine.fillOrder({ order: stop.id, price }, live);
+
+    const [intent] = await fillIntentsOf(test);
+    expect(outcome).toBe("skipped");
+    expect(intent).toMatchObject({ state: "failed_check", reason: "price_stale" });
+    expect(await storedOrder(test, stop.id)).toMatchObject({ state: "active", fills: 0 });
+  });
+
+  it("only marks the engine alive at an install's first start", async () => {
+    const test = await startFillEngine();
+
+    const run = await test.engine.downtime.started(live);
+
+    expect(run).toBeUndefined();
+    await expect(test.stores.alive.lastAlive(live)).resolves.toBe(test.clock.now());
+  });
+
+  it("keeps the mark from before the resume until the report went out", async () => {
+    const test = await startFillEngine();
+    await activeOrder(test, testStopLoss());
+    await test.engine.downtime.alive(live);
+    const markedMs = test.clock.now();
+    await test.clock.advance(hourMs);
+    const restarted = test.restart();
+    const run = await restarted.downtime.started(live);
+
+    await restarted.downtime.alive(live);
+    const during = await test.stores.alive.lastAlive(live);
+    await test.clock.advance(2 * minuteMs);
+    await run?.reported;
+
+    expect(during).toBe(markedMs);
+    await expect(test.stores.alive.lastAlive(live)).resolves.toBe(test.clock.now());
   });
 });

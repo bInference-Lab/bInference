@@ -130,7 +130,7 @@ Rules for this package:
   before it, and a fill whose price was read before it ends `price_stale` at its check. Each price
   order active at a resume takes its outcome from its first fresh judgment and fill, a DCA or copy
   order from its skip rows of the downtime; the skips it reports are marked announced unsent
-  (`orders/resume-fence.ts`).
+  (`orders/resume-fence.ts`). A change to the fence changes `downtime.property.test.ts`.
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
   reports each outcome to the state machine as a trigger. Only the venues' quotes run before the
   policy, which prices a token without a feed from the first venue's quote; no venue builds until
