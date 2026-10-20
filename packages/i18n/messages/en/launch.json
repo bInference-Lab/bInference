@@ -10,6 +10,11 @@
   "option.taxDays": "Tax lasts {value, plural, one {# day} other {# days}}",
   "option.pictureLink": "Picture at {link} (binference never opens it)",
   "option.creatorFeeRecipient": "Creator fees from every trade wait on the launchpad until {address} claims them; that address also buys free of the snipe tax",
+  "option.poolFeeRecipient": "Creator fees from the pool wait in Brew's locker until {address} claims them",
+  "option.holderRewards": "Holder rewards: {value, select, yes {on: Brew's holder distributor spends the creator's part of the pool fees on the token and burns what it gets, for good} other {off}}",
+  "option.startMarketCap": "Starts at a market cap of about {value}, rounded down to the pool's next price step",
+  "option.poolFee": "Pool fee: {value, select, onePercent {1% on every trade; Brew's locker burns the token's side and keeps up to half of the pair's side for Brew} other {{value}}}",
+  "option.liquidity": "Liquidity: {value, select, oneRange {the whole supply of 1,000,000,000 in one range from the starting price up, locked in Brew's locker for good} other {{value}}}",
   "warn.notForUsCitizens": "⚠️ Brew's site says it is not available to U.S. citizens",
   "age": "{unit, select, minute {{count} min} hour {{count} h} other {{count} d}}"
 }

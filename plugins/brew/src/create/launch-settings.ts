@@ -1,0 +1,100 @@
+import {
+  accountRefParts,
+  accountRefSchema,
+  BinferenceError,
+  type LaunchOption,
+  type LaunchOptionValue,
+  type LaunchWordLimits,
+} from "@binference/plugin-sdk";
+import { parseEvmAddress } from "@binference/plugin-sdk/evm";
+import type { Address } from "viem";
+
+/**
+ * The settings of a Brew launch (decision 0283), as the owner ruled on 2026-10-20:
+ * - `poolFeeRecipient`, who receives the creator's share of the pool's fees: an address outside
+ *   the install, since Brew's locker only credits it until that address claims it, a call
+ *   binference never makes; given exactly when holder rewards are off.
+ * - `holderRewards`, off unless asked: the creator's share buys the token back and burns it,
+ *   through the holder distributor Brew makes for the token.
+ * - `startMarketCap`, the market cap the token starts at, in base units of the pair: the owner
+ *   may set it, else the quote works it out.
+ * - `poolFee` and `liquidity`, each one word: a 1% pool, and the whole supply in one range from
+ *   the starting price up.
+ */
+export const brewLaunchOptions: readonly LaunchOption[] = [
+  { name: "poolFeeRecipient", type: "account", isOutsideOnly: true, isOptional: true },
+  { name: "holderRewards", type: "flag", default: false },
+  { name: "startMarketCap", type: "amount", isOptional: true },
+  { name: "poolFee", type: "choice", choices: ["onePercent"], default: "onePercent" },
+  { name: "liquidity", type: "choice", choices: ["oneRange"], default: "oneRange" },
+];
+
+/**
+ * The bytes a Brew launch's words take: the factory's 64 for a name and 32 for a symbol
+ * (BrewFactory's verified source), and a description and links short enough that the words alone
+ * always fit its 2,048-byte metadata address, leaving room for a small picture.
+ */
+export const brewWordLimits: LaunchWordLimits = {
+  nameBytes: 64,
+  symbolBytes: 32,
+  descriptionBytes: 600,
+  linkBytes: 100,
+};
+
+/** Whether a launch names a fee recipient exactly when its holder rewards are off. */
+export function brewOptionsGoTogether(
+  options: Readonly<Record<string, LaunchOptionValue>>,
+): boolean {
+  return (options["holderRewards"] === true) === (options["poolFeeRecipient"] === undefined);
+}
+
+/** A Brew launch's settings, as its create call writes them. */
+export interface BrewLaunchSettings {
+  /** The creator fee recipient the owner named; absent with holder rewards on. */
+  readonly feeRecipient?: Address;
+  readonly holderRewards: boolean;
+  /** The starting market cap, in base units of the pair. */
+  readonly startMarketCap: bigint;
+}
+
+function refuse(message: string): BinferenceError {
+  return new BinferenceError({ code: "brew.bad_settings", message });
+}
+
+function recipientOf(value: LaunchOptionValue | undefined): Address | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  const account = accountRefSchema.safeParse(value);
+  const address = account.success
+    ? parseEvmAddress(accountRefParts(account.data).address)
+    : undefined;
+  if (address?.ok !== true) {
+    throw refuse("The launch names a fee recipient that is no address on its chain.");
+  }
+  return address.value;
+}
+
+/**
+ * A launch's settings, read from the values the host checked against {@link brewLaunchOptions},
+ * the start the quote worked out among them. A start missing, a fee recipient beside holder
+ * rewards or neither, or a value of another type throws `brew.bad_settings`.
+ */
+export function brewSettingsOf(
+  options: Readonly<Record<string, LaunchOptionValue>>,
+): BrewLaunchSettings {
+  const start = options["startMarketCap"];
+  const holderRewards = options["holderRewards"];
+  if (typeof start !== "string" || !/^[1-9][0-9]*$/.test(start)) {
+    throw refuse("The launch has no starting market cap.");
+  }
+  if (typeof holderRewards !== "boolean" || !brewOptionsGoTogether(options)) {
+    throw refuse("A launch names a fee recipient exactly when holder rewards are off.");
+  }
+  const feeRecipient = recipientOf(options["poolFeeRecipient"]);
+  return {
+    ...(feeRecipient === undefined ? {} : { feeRecipient }),
+    holderRewards,
+    startMarketCap: BigInt(start),
+  };
+}

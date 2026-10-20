@@ -221,6 +221,11 @@ new name here first, in the change that uses it.
   call.
 - **creator fee recipient**: the account a launch names to receive the creator's part of every
   trade's fee on the token, such as on Genius.fun, where it claims them from the launchpad.
+- **holder rewards**: a Brew launch setting: the creator's part of the pool fees goes to a holder
+  distributor that spends it on the token and burns what it gets, in place of a creator fee
+  recipient.
+- **starting market cap**: what a launched token's whole supply is worth at its pool's first
+  price, in the pair it launches against, such as a Brew launch's.
 - **extra launch wallet**: a live launch wallet beyond the agent's launch wallet, which only a
   rebuild adopts. Nothing trades from it; `wallet list` and `binference check` name it so the
   owner rescues what it holds.
@@ -551,6 +556,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | bonding curve                                      | 联合曲线                     |                                         |
 | graduate, graduation                               | 毕业                         | A token moving from its curve to a pool |
 | pool (a DEX trading pool)                          | 交易池                       |                                         |
+| holder rewards                                     | 持有者奖励                   |                                         |
+| starting market cap                                | 起始市值                     |                                         |
 | stablecoin                                         | 稳定币                       |                                         |
 | holder, holders (count)                            | 持有者, 持有人数             |                                         |
 | supply (of a token)                                | 供应量                       |                                         |

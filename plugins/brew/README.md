@@ -11,6 +11,11 @@ venue trades nothing itself (decision 0278).
   contract is unknown.
 - **Launch reading.** For the launch feed, the factory's `TokenLaunched` logs, with the token's
   creator, words and pair, and the first buy's recipient as an insider.
+- **Launches.** Given its launch options, a token from the launch wallet through BrewFactory's
+  `launch`: a 1% pool with the whole supply in one range from the starting price, the first buy
+  in the same call at the host's minimum, the card's words and the owner's small picture in the
+  metadata address, the owner's fee recipient or holder rewards, and an address ending in 6666
+  (decision 0283).
 
 ## API
 

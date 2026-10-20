@@ -58,6 +58,7 @@ export type {
   TxDraft,
   TxSimulator,
   UploadingLauncher,
+  UsdPrice,
   Venue,
   VenueCall,
   VenueContracts,

@@ -59,3 +59,20 @@ export function brewAssetOf(address: Address, setup: BrewSetup): AssetRef {
   }
   return assetRefSchema.parse(`${setup.chain}/erc20:${address}`);
 }
+
+/**
+ * The token a Brew pool against the asset holds: the wrapped coin for the chain's coin, else the
+ * asset's own ERC-20 address. The wrapped coin as a token, or an asset of another chain or kind,
+ * is `undefined`: a launch against the coin names the coin.
+ */
+export function quoteTokenOf(asset: AssetRef, setup: BrewSetup): Address | undefined {
+  if (asset === setup.nativeAsset) {
+    return setup.wrappedNative;
+  }
+  const { chain, assetNamespace, assetReference } = assetRefParts(asset);
+  const address = parseEvmAddress(assetReference);
+  const isToken = chain === setup.chain && assetNamespace === "erc20" && address.ok;
+  return isToken && address.value.toLowerCase() !== setup.wrappedNative.toLowerCase()
+    ? address.value
+    : undefined;
+}

@@ -4,7 +4,11 @@ import type { ContractCheck } from "@binference/core/testing";
 import { accountRefParts } from "../caip/account-ref.js";
 import { assetRefParts } from "../caip/asset-ref.js";
 import type { TxDraft } from "../transaction.js";
-import { type LaunchOptionValue, launchOptionsSchema } from "../venues/launch-option.js";
+import {
+  type LaunchOption,
+  type LaunchOptionValue,
+  launchOptionsSchema,
+} from "../venues/launch-option.js";
 import {
   type LaunchBuild,
   type LaunchBuildRequest,
@@ -26,7 +30,11 @@ export interface LauncherSubject {
    * every setting the launchpad declares: an `account` as its canonical account id.
    */
   readonly launch: LaunchPinRequest;
-  /** Another value of every setting the launchpad declares, each unlike the launch's. */
+  /**
+   * Another value of every setting the launchpad declares, each unlike the launch's: a choice of
+   * one word keeps its word, and an optional setting may be left out when the other values do not
+   * take it (decision 0280).
+   */
   readonly otherOptions: Readonly<Record<string, LaunchOptionValue>>;
   /** A launch against a pair the launchpad does not launch against. */
   readonly otherPair: LaunchTerms;
@@ -65,7 +73,9 @@ async function built(
   const metadata = pin === undefined ? {} : { metadataUri: pin.metadataUri };
   const { image, ...terms } = launch;
   const picture = launcher.pictureBytesFor === undefined ? {} : { picture: image };
-  const request = { ...terms, ...metadata, ...picture, fee: quote.fee, ...minOut };
+  // The values the quote worked out join the launch's settings, as the engine adds them.
+  const options = { ...terms.options, ...quote.settings };
+  const request = { ...terms, options, ...metadata, ...picture, fee: quote.fee, ...minOut };
   return { request, build: await launcher.buildLaunch(request, { signal: live() }) };
 }
 
@@ -188,17 +198,31 @@ function buildsCreate(harness: LauncherHarness): ContractCheck {
   };
 }
 
+// The settings a launch need not change: a choice of one word, which has no other value.
+const isFixed = (option: LaunchOption): boolean =>
+  option.type === "choice" && option.choices?.length === 1;
+
 function readsSettings(harness: LauncherHarness): ContractCheck {
   return {
     name: "writes other settings into its create call, and reads them back from its bytes",
     run: async () => {
       const subject = harness.create();
       const { launch, otherOptions } = subject;
-      const names = subject.launcher.launchOptions.map((option) => option.name).toSorted();
+      const declared = subject.launcher.launchOptions;
+      const names = declared.map((option) => option.name).toSorted();
       assert.deepEqual(Object.keys(launch.options).toSorted(), names);
-      assert.deepEqual(Object.keys(otherOptions).toSorted(), names);
-      assert.ok(names.every((name) => launch.options[name] !== otherOptions[name]));
-      checkCreate(subject, await built(subject, { ...launch, options: otherOptions }));
+      const others = Object.keys(otherOptions);
+      const changing = declared.filter((option) => !isFixed(option));
+      const required = changing.filter((option) => option.isOptional !== true);
+      assert.ok(others.every((name) => changing.some((option) => option.name === name)));
+      assert.ok(required.every((option) => others.includes(option.name)));
+      assert.ok(others.every((name) => launch.options[name] !== otherOptions[name]));
+      const fixed = declared.filter(isFixed).flatMap((option): [string, LaunchOptionValue][] => {
+        const value = launch.options[option.name];
+        return value === undefined ? [] : [[option.name, value]];
+      });
+      const options = { ...Object.fromEntries(fixed), ...otherOptions };
+      checkCreate(subject, await built(subject, { ...launch, options }));
     },
   };
 }

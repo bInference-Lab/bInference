@@ -9,6 +9,7 @@ import { encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { launchReaderContract } from "@binference/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
 import { brewDeclaration, createBrewVenue } from "./brew-venue.js";
+import { launcherOver } from "./testing/launch-fixtures.js";
 import {
   bnb,
   boughtLaunch,
@@ -67,6 +68,19 @@ describe("the brew venue", () => {
       contracts: [{ chain: bscChain, names: ["factory"] }],
     });
     expect(venue.contracts).toStrictEqual(brewDeclaration([bscChain]).contracts);
+  });
+
+  it("declares launch as a launch wallet's alone, and the factory as its spender, where it launches", () => {
+    const [launching] = brewDeclaration([bscChain], [bscChain]).contracts;
+    expect(launching).toMatchObject({
+      chain: bscChain,
+      names: ["factory", "distributor-factory"],
+      calls: [{ contract: "factory", walletInputs: [], isLaunchWalletOnly: true }],
+      launchWalletSpenders: ["factory"],
+    });
+    expect(launching).not.toHaveProperty("spenders");
+    expect(launcherOver().cardWarnings).toStrictEqual(["notForUsCitizens"]);
+    expect(venue.launcher).toBeUndefined();
   });
 
   it("quotes, builds and decodes no trade: its tokens trade in their pools", async () => {
