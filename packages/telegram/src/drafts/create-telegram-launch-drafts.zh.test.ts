@@ -48,4 +48,14 @@ describe("the agent's launch drafts in Telegram, in Chinese", () => {
       `${refused} 发射在确认卡片之前已结束：超过了你的单笔上限。没有签名任何交易。`,
     );
   });
+
+  it("answers in Chinese a press on a draft the engine no longer holds", async () => {
+    const context = await setUpDrafts("zh");
+    await context.drafts.show(openedDraft, live);
+    await context.drafts.press(pressOf(context, "bnf1:s:n:AAAAAAAAAAAAAAAA"), live);
+    expect([context.botApi.answers()[0]?.text, context.botApi.messages()[0]?.text]).toStrictEqual([
+      "binference 已不再保留此草稿。请让 Agent 重新起草。",
+      `${refused} binference 已不再保留此发射草稿（重启后或已有较新的草稿）。请让 Agent 重新起草。`,
+    ]);
+  });
 });

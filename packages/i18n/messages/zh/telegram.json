@@ -26,6 +26,8 @@
   "draft.answer.expired": "此草稿已失效。请让 Agent 重新起草。",
   "draft.noPhoto": "⚠️ binference 无法在此显示图片，因此该草稿无法开始。请让 Agent 重新起草。",
   "draft.ended": "❌ 发射在确认卡片之前已结束：{reason}。没有签名任何交易。",
+  "draft.answer.gone": "binference 已不再保留此草稿。请让 Agent 重新起草。",
+  "draft.gone": "❌ binference 已不再保留此发射草稿（重启后或已有较新的草稿）。请让 Agent 重新起草。",
   "draft.answer.starting": "正在开始发射，草稿消息会显示进展。",
   "draft.starting": "🟡 正在开始发射，此消息会显示结果。"
 }

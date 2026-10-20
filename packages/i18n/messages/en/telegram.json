@@ -26,6 +26,8 @@
   "draft.answer.expired": "This draft has ended. Ask your agent to draft it again.",
   "draft.noPhoto": "⚠️ binference could not show the picture here, so this draft cannot start. Ask your agent to draft it again.",
   "draft.ended": "❌ The launch ended before its card: {reason}. Nothing was signed.",
+  "draft.answer.gone": "binference no longer holds this draft. Ask your agent to draft it again.",
+  "draft.gone": "❌ binference no longer holds this launch draft, after a restart or a newer draft. Ask your agent to draft it again.",
   "draft.answer.starting": "Starting the launch. The draft's message says how it goes.",
   "draft.starting": "🟡 Starting the launch. This message says how it ends."
 }

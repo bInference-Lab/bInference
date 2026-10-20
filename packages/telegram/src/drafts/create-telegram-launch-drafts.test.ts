@@ -92,7 +92,7 @@ describe("the agent's launch drafts in Telegram", () => {
   });
 
   it("sends the held photo right above the draft, which replies to it", async () => {
-    const context = await setUpDrafts("en", { fileId: "AgACforkcat", held: "photo" });
+    const context = await setUpDrafts("en", { photo: { fileId: "AgACforkcat", held: "photo" } });
     await context.drafts.show(openedDraft, live);
     const [photo, draft] = context.botApi.sent();
     const [photoMessage] = context.botApi.messages();
@@ -105,7 +105,7 @@ describe("the agent's launch drafts in Telegram", () => {
   });
 
   it("sends a photo the owner sent as a file again as a file", async () => {
-    const context = await setUpDrafts("en", { fileId: "BQACforkcat", held: "document" });
+    const context = await setUpDrafts("en", { photo: { fileId: "BQACforkcat", held: "document" } });
     await context.drafts.show(openedDraft, live);
     expect(context.botApi.sent()[0]?.file).toStrictEqual({
       kind: "document",
@@ -114,12 +114,38 @@ describe("the agent's launch drafts in Telegram", () => {
   });
 
   it("offers only Drop when the bot cannot show the draft's picture", async () => {
-    const context = await setUpDrafts("en", { fileId: "AgACgone" });
+    const context = await setUpDrafts("en", { photo: { fileId: "AgACgone" } });
     await context.drafts.show(openedDraft, live);
     const [message] = context.botApi.messages();
     expect(message?.buttons).toStrictEqual([[{ text: "Drop", data: `bnf1:s:n:${draftRef}` }]]);
-    expect(message?.text.split("\n").at(-1)).toBe(
+    expect(message?.text.split("\n").at(-2)).toBe(
       `${warning} binference could not show the picture here, so this draft cannot start. Ask your agent to draft it again.`,
     );
+  });
+
+  it("answers the owner's press on a draft the engine no longer holds, and drops its buttons", async () => {
+    const context = await setUpDrafts();
+    await context.drafts.show(openedDraft, live);
+    expect(await context.drafts.press(pressOf(context, "bnf1:s:y:AAAAAAAAAAAAAAAA"), live)).toBe(
+      true,
+    );
+    expect(context.botApi.answers().map((answer) => answer.text)).toStrictEqual([
+      "binference no longer holds this draft. Ask your agent to draft it again.",
+    ]);
+    expect(context.botApi.messages()).toMatchObject([
+      {
+        text: `${refused} binference no longer holds this launch draft, after a restart or a newer draft. Ask your agent to draft it again.`,
+        buttons: [],
+      },
+    ]);
+  });
+
+  it("splits a draft past one message's 4,096 characters, the buttons on the last", async () => {
+    const context = await setUpDrafts("en", { description: "\u200B".repeat(1000) });
+    await context.drafts.show(openedDraft, live);
+    const messages = context.botApi.messages();
+    expect(messages.map(({ text }) => text.length <= 4096)).toStrictEqual([true, true, true, true]);
+    expect(messages.map(({ buttons }) => buttons.length)).toStrictEqual([0, 0, 0, 1]);
+    expect(messages.map(({ text }) => text).join("")).toContain("\\u{200B}".repeat(1000));
   });
 });

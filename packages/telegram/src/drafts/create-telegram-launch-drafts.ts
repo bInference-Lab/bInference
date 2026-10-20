@@ -4,13 +4,12 @@ import type { MessageLocale } from "@binference/i18n";
 import { type LaunchDraftPush, launchDraftPushOf } from "@binference/protocol";
 import type { Api } from "grammy";
 import { answerPress, sendButtonMessage, type TopicButtons } from "../chat/button-message.js";
-import { escapeHtml } from "../format/escape-html.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
-import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
+import { type BotCalls, type ButtonRows, createBotCalls } from "../ingress/bot-calls.js";
 import type { LaunchDraftAnswers } from "../ports.js";
 import type { ButtonPress } from "../updates/chat-update.schema.js";
 import { launchDraftCallbackSchema } from "./launch-draft-callback.schema.js";
-import { launchDraftButtons, launchDraftHtml, type DraftWords } from "./launch-draft-html.js";
+import { launchDraftButtons, launchDraftMessages, type DraftWords } from "./launch-draft-html.js";
 import { sendDraftPhoto } from "./send-draft-photo.js";
 
 /**
@@ -67,6 +66,31 @@ function wordsOf(parts: Parts): DraftWords {
   return (key, values) => formatter.message(key, values);
 }
 
+// Sends the draft's messages in order, the first as a reply to its photo and the last with its
+// buttons, and answers the last one's id.
+async function sendAll(
+  parts: Parts,
+  draft: {
+    readonly chatId: number;
+    readonly messages: readonly string[];
+    readonly buttons: ButtonRows;
+    readonly replyTo: number | undefined;
+  },
+  call: Call,
+): Promise<number> {
+  const { chatId, messages, buttons, replyTo } = draft;
+  return messages.reduce<Promise<number>>(async (previous, html, at) => {
+    await previous;
+    const reply = at === 0 && replyTo !== undefined ? { replyTo } : {};
+    const keys = at === messages.length - 1 ? buttons : [];
+    return sendButtonMessage(
+      parts.options.api,
+      { chatId, html, buttons: keys, ...reply },
+      call.signal,
+    );
+  }, Promise.resolve(0));
+}
+
 // Sends an open draft to the owner's chat with its buttons, and keeps where it went.
 async function drafted(parts: Parts, draft: string, call: Call): Promise<void> {
   const { options } = parts;
@@ -78,11 +102,6 @@ async function drafted(parts: Parts, draft: string, call: Call): Promise<void> {
   const formatter = parts.formatter();
   const words = wordsOf(parts);
   const display = { formatter, assets: showing.assets };
-  const html = launchDraftHtml(showing, {
-    words,
-    display,
-    until: formatter.time(showing.expiresAtMs),
-  });
   // The owner sees the same picture Start publishes, right above the draft that names it; a draft
   // whose picture cannot be shown cannot start (decision 0286).
   const chatId = owner.userId;
@@ -91,14 +110,11 @@ async function drafted(parts: Parts, draft: string, call: Call): Promise<void> {
       ? undefined
       : await sendDraftPhoto(options.api, { chatId, image: showing.photo }, call.signal);
   const isUnshown = showing.photo !== undefined && shown === undefined;
+  const notes = isUnshown ? [words("telegram.draft.noPhoto")] : [];
+  const until = formatter.time(showing.expiresAtMs);
+  const messages = launchDraftMessages(showing, { words, display, until, notes });
   const buttons = launchDraftButtons(showing.ref, words, { canStart: !isUnshown });
-  const text = isUnshown ? `${html}\n${escapeHtml(words("telegram.draft.noPhoto"))}` : html;
-  const replyTo = shown === undefined ? {} : { replyTo: shown };
-  const messageId = await sendButtonMessage(
-    options.api,
-    { chatId, html: text, buttons, ...replyTo },
-    call.signal,
-  );
+  const messageId = await sendAll(parts, { chatId, messages, buttons, replyTo: shown }, call);
   parts.sent.set(draft, { chatId, messageId });
   // A Map keeps its keys in the order they came: past the most, the oldest message goes first,
   // and keeps its buttons, which still reach the engine.
@@ -145,17 +161,30 @@ async function show(
 
 // The press's notice: at most 200 characters, as Telegram's answer to a press holds.
 function noticeOf(parts: Parts, standing: LaunchDraftStanding): string {
-  return wordsOf(parts)(`telegram.draft.answer.${standing.status}`);
+  const status = standing.status === "unknown" ? "gone" : standing.status;
+  return wordsOf(parts)(`telegram.draft.answer.${status}`);
 }
 
-// A Start the engine took: the pressed message loses its buttons and says the launch is starting,
-// until the draft's closing push says how it went.
-async function starting(parts: Parts, pressed: ButtonPress, call: Call): Promise<void> {
-  const { chatId, messageId } = pressed;
+// The pressed message loses its buttons and says where the draft went: starting, once the engine
+// took a Start, until the draft's closing push says how it went; or gone, for a draft the engine
+// no longer holds after a restart or past the messages the bot remembers.
+async function settlePressed(
+  parts: Parts,
+  settled: { readonly pressed: ButtonPress; readonly status: "starting" | "gone" },
+  call: Call,
+): Promise<void> {
+  const { chatId, messageId } = settled.pressed;
   if (chatId !== undefined && messageId !== undefined) {
-    const line = wordsOf(parts)("telegram.draft.starting");
+    const line = wordsOf(parts)(`telegram.draft.${settled.status}`);
     await parts.bot.edit({ chatId, messageId }, line, { signal: call.signal });
   }
+}
+
+// Whether the presser owns the install; ingress drops other people's presses before this, and a
+// press the engine did not take for the owner's gets no answer, as a card's does.
+async function isOwners(parts: Parts, pressed: ButtonPress, call: Call): Promise<boolean> {
+  const owner = await parts.options.owners.get(call);
+  return owner?.userId === pressed.sender.id;
 }
 
 async function press(parts: Parts, pressed: ButtonPress, call: Call): Promise<boolean> {
@@ -165,21 +194,22 @@ async function press(parts: Parts, pressed: ButtonPress, call: Call): Promise<bo
   }
   const asked = { ...callback.data, presserId: pressed.sender.id };
   const standing = await parts.options.answers.answer(asked, call);
-  // A press the engine did not take for the owner's gets no answer, as a card's does.
+  if (standing.status === "unknown" && !(await isOwners(parts, pressed, call))) {
+    return true;
+  }
   if (standing.status === "starting") {
-    await starting(parts, pressed, call);
+    await settlePressed(parts, { pressed, status: "starting" }, call);
   }
-  if (standing.status !== "unknown") {
-    const notice = noticeOf(parts, standing);
-    await answerPress(
-      parts.bot,
-      { callbackId: pressed.callbackId, notice },
-      {
-        signal: call.signal,
-        logger: parts.options.logger,
-      },
-    );
+  if (standing.status === "unknown") {
+    await settlePressed(parts, { pressed, status: "gone" }, call);
   }
+  const notice = noticeOf(parts, standing);
+  const { logger } = parts.options;
+  await answerPress(
+    parts.bot,
+    { callbackId: pressed.callbackId, notice },
+    { signal: call.signal, logger },
+  );
   return true;
 }
 

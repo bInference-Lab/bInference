@@ -85,19 +85,45 @@ export interface DraftsContext {
 }
 
 /** The photo a draft names, and what the bot holds it as; none when absent from the bot. */
-export interface DraftPhoto {
+interface DraftPhoto {
   readonly fileId: string;
   readonly held?: FakeFileKind;
 }
 
+/** How a drafts test sets up its draft. */
+export interface DraftSetUp {
+  /** The photo the draft names; none when the draft has none. */
+  readonly photo?: DraftPhoto;
+  /** The draft's description in place of the fixture's. */
+  readonly description?: string;
+}
+
+// The fixture's draft with a test's photo and description.
+function showingOf(setUp: DraftSetUp): LaunchDraftShowing {
+  const { photo, description } = setUp;
+  const lines =
+    description === undefined
+      ? testDraftShowing.lines
+      : [
+          {
+            key: "card.launch.description",
+            values: { description: { type: "text", text: description } },
+          } as const,
+          ...testDraftShowing.lines.slice(1),
+        ];
+  const withPhoto = photo === undefined ? {} : { photo: `tg:${photo.fileId}` };
+  return { ...testDraftShowing, lines, ...withPhoto };
+}
+
 /**
- * The drafts with the owner paired, one open draft, and the synthetic Bot API; with `photo`, the
+ * The drafts with the owner paired, one open draft, and the synthetic Bot API; with a photo, the
  * draft names that photo, which the bot holds as `held`.
  */
 export async function setUpDrafts(
   locale: "en" | "zh" = "en",
-  photo?: DraftPhoto,
+  setUp: DraftSetUp = {},
 ): Promise<DraftsContext> {
+  const { photo } = setUp;
   const botApi = createFakeBotApi();
   if (photo?.held !== undefined) {
     botApi.addFile(photo.fileId, {
@@ -105,8 +131,7 @@ export async function setUpDrafts(
       kind: photo.held,
     });
   }
-  const showing =
-    photo === undefined ? testDraftShowing : { ...testDraftShowing, photo: `tg:${photo.fileId}` };
+  const showing = showingOf(setUp);
   const api = new Api(fakeBotToken, { fetch: botApi.fetch });
   const stores = createMemoryEngineStores();
   await stores.owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
