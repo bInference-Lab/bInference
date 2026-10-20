@@ -1,6 +1,7 @@
 import { join } from "node:path";
+import { createMemorySecretStore } from "@binference/core/testing";
 import type { ProgramExit } from "@binference/platform";
-import { fileSize } from "@binference/platform";
+import { fileSize, readTextFile, writePrivateFile } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
@@ -12,8 +13,9 @@ import {
   runOn,
   secretEnv,
 } from "./init-fixtures.js";
+import { seedSendingTrade } from "./state-fixtures.js";
 import type { HostParts } from "./test-host.js";
-import { freePort, hostWith, isUnlocked, testSystem } from "./test-host.js";
+import { freePort, hostWith, isUnlocked, noPermissions, testSystem } from "./test-host.js";
 import { createTestServices, type TestServices } from "./test-services.js";
 import { createTestSigner } from "./test-signer.js";
 
@@ -86,6 +88,17 @@ function recorder() {
   return { runs, runProgram };
 }
 
+// Adds a key to the install's config.json5, before its closing brace.
+async function addToConfig(home: Home, line: string): Promise<void> {
+  const config = join(home.machine.folder, "config.json5");
+  const text = await readTextFile(config, signal());
+  if (!text.ok) {
+    throw new Error("Expected binference init to write config.json5.");
+  }
+  const files = { permissions: noPermissions, signal: signal() };
+  await writePrivateFile(config, `${text.value.replace(/\}\s*$/, "")}  ${line}\n}\n`, files);
+}
+
 // Answers as npm does when it cannot remove a package.
 async function npmFails(): Promise<ProgramExit> {
   return Promise.resolve({ exitCode: 1, stdout: "", stderr: "EACCES" });
@@ -129,6 +142,28 @@ describe("binference uninstall", () => {
     },
   );
 
+  it("removes the state folder and the install's keychain entries with --state", slow, async () => {
+    const home = await setUpHome();
+    await addToConfig(home, `search: { keys: { brave: { fromKeychain: "brave-search" } } },`);
+    const config = join(home.machine.folder, "config.json5");
+    const keychain = createMemorySecretStore({ "brave-search": "key", "other-app": "kept" });
+    await startService(home);
+
+    const removed = await cli(home, ["uninstall", "--state", "--yes"], { keychain });
+
+    expect([removed.code, removed.stderr]).toStrictEqual([0, ""]);
+    expect(removed.stdout).toContain("Your wallets and what they hold stay in Privy.");
+    expect(removed.stdout).toContain("The owner key is not in the state folder");
+    expect(removed.stdout).toContain(
+      `The state folder ${home.machine.folder} is removed, with 1 keychain entry: brave-search.`,
+    );
+    await expect(exists(config)).resolves.toBe(false);
+    await expect(exists(join(home.machine.folder, "engine.sqlite"))).resolves.toBe(false);
+    await expect(keychain.read("brave-search", signal())).resolves.toMatchObject({ ok: false });
+    await expect(keychain.read("other-app", signal())).resolves.toMatchObject({ ok: true });
+    await expect(serviceState(home)).resolves.toBe("not_installed");
+  });
+
   it("asks for the typed phrase at a terminal and goes on once it is typed", slow, async () => {
     const home = await setUpHome();
     const prompter = createScriptedPrompter({ uninstallConfirm: ["yes", "uninstall"] });
@@ -148,7 +183,7 @@ describe("binference uninstall", () => {
     const home = await setUpHome();
     await startService(home);
 
-    const refused = await cli(home, ["uninstall"]);
+    const refused = await cli(home, ["uninstall", "--state"]);
 
     expect(refused.code).toBe(1);
     expect(refused.stderr).toContain("binference uninstall asks you to type uninstall first.");
@@ -182,5 +217,31 @@ describe("binference uninstall", () => {
 
     expect(removed.code).toBe(1);
     expect(JSON.parse(removed.stdout)).toMatchObject({ program: "failed" });
+  });
+
+  it("keeps the state folder while a live trade is being sent", slow, async () => {
+    const home = await setUpHome();
+    await seedSendingTrade(home.machine);
+
+    const refused = await cli(home, ["uninstall", "--state", "--yes"]);
+
+    expect(refused.code).toBe(1);
+    expect(refused.stderr).toContain(
+      "A live trade was still being sent, so the state folder stays.",
+    );
+    await expect(exists(join(home.machine.folder, "engine.sqlite"))).resolves.toBe(true);
+  });
+
+  it("never removes a folder that holds the home folder", slow, async () => {
+    const home = await setUpHome();
+
+    const refused = await runOn(home.machine, ["uninstall", "--state", "--yes"], {
+      env: { ...secretEnv(home.machine), BINFERENCE_HOME: home.home },
+      parts: { homeDir: home.home, serviceManager: home.services.manager },
+    });
+
+    expect(refused.code).toBe(1);
+    expect(refused.stderr).toContain(`${home.home} holds no config.json5 and no engine.sqlite`);
+    await expect(exists(join(home.machine.folder, "config.json5"))).resolves.toBe(true);
   });
 });

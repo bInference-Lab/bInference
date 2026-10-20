@@ -180,7 +180,9 @@ Rules for this package:
   log line passes only by the field rules of `report-log-line.ts`; every other value passes
   `redactReportJson`. A new log field needs its rule there, or the bundle shows it as `[omitted]`.
 - `binference uninstall` (`src/uninstall/`, decision 0264) stops the engine, removes the service,
-  then the npm package it runs from. Its tests pass a program runner of their own: the test host's
-  runner refuses, so no test runs npm.
+  then with `--state` the state folder and the keychain entries its config names, then the npm
+  package it runs from. It removes a folder only when it holds `config.json5` or `engine.sqlite`
+  and not the home folder. Its tests pass a keychain and a program runner of their own: the test
+  host's runner refuses, so no test runs npm.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

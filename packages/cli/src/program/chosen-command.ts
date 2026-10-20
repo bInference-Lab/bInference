@@ -11,6 +11,7 @@ import type {
   InitFlags,
   LogsFlags,
   StartFlags,
+  UninstallFlags,
   WalletAddressFlags,
 } from "./cli-flags.schema.js";
 import type { CliHost } from "./cli-host.js";
@@ -64,7 +65,7 @@ export type ChosenCommand =
       readonly entry: ProtocolId<"addressBook">;
     }
   | { readonly name: "check"; readonly options: CheckFlags }
-  | { readonly name: "uninstall"; readonly options: CommonOptions }
+  | { readonly name: "uninstall"; readonly options: UninstallFlags }
   | { readonly name: "configGet"; readonly options: CommonOptions; readonly key?: string }
   | {
       readonly name: "configSet";

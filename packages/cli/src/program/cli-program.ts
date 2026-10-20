@@ -12,6 +12,7 @@ import {
   logsFlagsSchema,
   maxLogLines,
   startFlagsSchema,
+  uninstallFlagsSchema,
   walletAddressFlagsSchema,
   walletCreateFlagsSchema,
 } from "./cli-flags.schema.js";
@@ -149,12 +150,11 @@ function addInstallCommands(program: Command, options: ProgramOptions): void {
     .action((flags: OptionValues) =>
       choose({ name: "check", options: checkFlagsSchema.parse(flags) }),
     );
-  withCommon(
-    program.command("uninstall").description(message("command.uninstall")),
-    message,
-  ).action((flags: OptionValues) =>
-    choose({ name: "uninstall", options: commonFlagsSchema.parse(flags) }),
-  );
+  withCommon(program.command("uninstall").description(message("command.uninstall")), message)
+    .option("--state", message("option.state"))
+    .action((flags: OptionValues) =>
+      choose({ name: "uninstall", options: uninstallFlagsSchema.parse(flags) }),
+    );
 }
 
 function addCommands(program: Command, options: ProgramOptions): void {

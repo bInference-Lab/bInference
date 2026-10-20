@@ -53,6 +53,11 @@ export interface WalletCreateFlags extends LabelFlags {
   readonly launch: boolean;
 }
 
+/** What `uninstall` takes: `--state` also removes the state folder. */
+export interface UninstallFlags extends CommonOptions {
+  readonly state: boolean;
+}
+
 /** What `check` takes: `--fix` repairs what the check may repair. */
 export interface CheckFlags extends CommonOptions {
   readonly fix: boolean;
@@ -176,6 +181,12 @@ export const walletCreateFlagsSchema: z.ZodType<WalletCreateFlags> = z.object({
 export const checkFlagsSchema: z.ZodType<CheckFlags> = z.object({
   ...commonShape,
   fix: z.boolean().default(false),
+});
+
+/** Parses the options commander read for `uninstall`; the state folder stays unless `--state`. */
+export const uninstallFlagsSchema: z.ZodType<UninstallFlags> = z.object({
+  ...commonShape,
+  state: z.boolean().default(false),
 });
 
 /** Parses the options commander read for `logs`; 100 lines unless `--lines` says otherwise. */

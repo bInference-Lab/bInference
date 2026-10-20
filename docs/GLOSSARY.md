@@ -385,7 +385,7 @@ new name here first, in the change that uses it.
   `deny`, `wallet list`, `wallet address`, `wallet create`, `wallet create --launch`, `wallet export`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
-  `limit cancel`, `telegram pair`, `unlock`, `expose`, `uninstall`.
+  `limit cancel`, `telegram pair`, `unlock`, `expose`, `uninstall`, `uninstall --state`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
