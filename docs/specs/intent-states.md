@@ -280,7 +280,8 @@ and `step_unsent` (a step never signed after an earlier one landed,
 - **Copy order fills** ([decision 0260](../DECISIONS.md#d0260)) run the same path, one for each
   leader trade the order copies. The order reads its leader's trades in the order the leader
   watcher stored them, from the moment it became active, and keeps the last one it took in its
-  trigger state before the trade's fill, so a trade is copied once per order; a stop between the
+  trigger state before the trade's fill, so a trade is copied once per order, and once per
+  transaction, side and token, only from a block at a confirmed depth behind the leader watcher; a stop between the
   two records a buy as `missed` at the next start, and leaves a sale to be sold late. A buy more
   than 60 seconds late is never made; a late sale is still made, at the price then, and told with
   `fill.copySellLate`. It copies a buy of a token other than the

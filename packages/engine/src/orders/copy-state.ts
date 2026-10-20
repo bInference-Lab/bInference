@@ -1,10 +1,20 @@
-import { type Amount, amountSchema, type AssetRef, assetRefSchema } from "@binference/chain";
+import {
+  type Amount,
+  amountSchema,
+  type AssetRef,
+  assetRefSchema,
+  isTxHash,
+  type TxHash,
+} from "@binference/chain";
 import { type Bps, bpsSchema, decimalStringSchema, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import { type DocumentCodec, documentCodec } from "../intents/intent-documents.schema.js";
 import type { TokenFacts } from "../money-path/token-facts.js";
 import { type NoticeHour, noticeHourSchema } from "../notices/notice-hour.js";
 import { epochMsSchema } from "../records/record-fields.js";
+
+// How many of its last takes a copy order remembers, to copy a trade stored again only once.
+const recentTakes = 50;
 
 /** The window a copy order's daily cap counts its buys in: the last 24 hours (decision 0260). */
 export const copyDayMs = 86_400_000;
@@ -30,6 +40,8 @@ export interface CopyTaking {
    * names it, so a take a stop cut off is found by its row, never by a clock.
    */
   readonly take: number;
+  /** The leader's transaction: with the side and the token, what a trade is copied once by. */
+  readonly txHash: TxHash;
   readonly side: "buy" | "sell";
   /** The token the leader bought or sold, in its canonical form. */
   readonly asset: AssetRef;
@@ -71,6 +83,15 @@ export interface CopyState {
   readonly through: number;
   /** How many takes the order made: the last take's number. */
   readonly takes: number;
+  /**
+   * The leader trades of its last takes, by transaction, side and token, at most 50: a trade a
+   * reorganization stored again is passed over (decision 0260).
+   */
+  readonly recent: readonly {
+    readonly txHash: TxHash;
+    readonly side: "buy" | "sell";
+    readonly asset: AssetRef;
+  }[];
   readonly taking?: CopyTaking;
   readonly buys: readonly CopyBuy[];
   readonly held: readonly CopyHolding[];
@@ -82,10 +103,20 @@ const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
   sinceMs: epochMsSchema,
   through: z.int().nonnegative(),
   takes: z.int().nonnegative(),
+  recent: z
+    .array(
+      z.strictObject({
+        txHash: z.string().refine(isTxHash),
+        side: z.enum(["buy", "sell"]),
+        asset: assetRefSchema,
+      }),
+    )
+    .max(recentTakes),
   taking: z
     .strictObject({
       id: z.int().positive(),
       take: z.int().positive(),
+      txHash: z.string().refine(isTxHash),
       side: z.enum(["buy", "sell"]),
       asset: assetRefSchema,
       shareSoldBps: bpsSchema.exactOptional(),
@@ -120,7 +151,7 @@ export function copyStateOf(kept: JsonValue | undefined): CopyState | undefined 
 
 /** The state a copy order starts with as it becomes active at `nowMs`. */
 export function copyStartOf(nowMs: number): CopyState {
-  return { sinceMs: nowMs, through: 0, takes: 0, buys: [], held: [] };
+  return { sinceMs: nowMs, through: 0, takes: 0, recent: [], buys: [], held: [] };
 }
 
 /**
@@ -142,7 +173,9 @@ export function copiedHeldOf(state: CopyState, asset: AssetRef): bigint {
 export function takenState(state: CopyState, taking: Omit<CopyTaking, "take">): CopyState {
   const take = state.takes + 1;
   const through = taking.id > state.through ? taking.id : state.through;
-  return { ...state, through, takes: take, taking: { ...taking, take } };
+  const { txHash, side, asset } = taking;
+  const recent = [...state.recent, { txHash, side, asset }].slice(-recentTakes);
+  return { ...state, through, takes: take, recent, taking: { ...taking, take } };
 }
 
 /** What a copy order's row names: the leader trade its take copies, and the take; none else. */

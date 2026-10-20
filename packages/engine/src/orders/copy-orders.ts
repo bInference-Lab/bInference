@@ -1,20 +1,12 @@
-import {
-  accountRefParts,
-  type AssetRef,
-  assetRefParts,
-  canonicalAsset,
-  type ChainRegistry,
-} from "@binference/chain";
+import { type AssetRef, canonicalAsset, type ChainRegistry } from "@binference/chain";
 import { BinferenceError, type Clock, type Id } from "@binference/core";
 import type { TrackedWalletStore } from "../leaders/ports.js";
 import type { StoredActivity } from "../leaders/tracked-wallet-record.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
-import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import type { IntentStore } from "../ports.js";
 import { asCopyOrder, type CopyOrder } from "./copy-fills.js";
 import {
-  copiedHeldOf,
   type CopyState,
   copyStateDocument,
   copyStateOf,
@@ -23,6 +15,7 @@ import {
   takenState,
 } from "./copy-state.js";
 import { lostTakeOf } from "./copy-taken.js";
+import { confirmedBlockOf, isCopied } from "./copy-trade-filter.js";
 import { isLineHeld } from "./fill-faults.js";
 import type { OrderFills } from "./fill-orders.js";
 import { moveOrder } from "./order-machine.js";
@@ -42,7 +35,7 @@ export interface CopyOrders {
 export interface CopyOrdersParts {
   readonly orders: OrderStore;
   readonly fills: OrderFills;
-  readonly trackedWallets: Pick<TrackedWalletStore, "since">;
+  readonly trackedWallets: Pick<TrackedWalletStore, "since" | "cursor">;
   /** The agents' live fills in flight, which hold a live order's line. */
   readonly intents: Pick<IntentStore, "fillsInFlight">;
   readonly chains: ChainRegistry;
@@ -73,24 +66,6 @@ export async function copyOrdersIn(
   }
   const cursor = { createdAtMs: last.createdAtMs, id: last.id };
   return [...copies, ...(await copyOrdersIn(orders, { states, signal, after: cursor }))];
-}
-
-// Whether the order copies the trade: a buy of a token other than the chain's coin and what the
-// order spends, or a sale of a token the order holds from its own buys (decision 0260).
-function isCopied(
-  chains: ChainRegistry,
-  call: { readonly order: CopyOrder; readonly state: CopyState; readonly asset: AssetRef },
-  side: "buy" | "sell",
-): boolean {
-  const { order, state, asset } = call;
-  const chain = chains.get(accountRefParts(order.request.trigger.leader).chain);
-  if (!chain.ok || assetRefParts(asset).chain !== chain.value.ref) {
-    return false;
-  }
-  if (side === "sell") {
-    return copiedHeldOf(state, asset) > 0n;
-  }
-  return asset !== nativeAssetOf(chain.value) && asset !== order.request.spend;
 }
 
 // The token's symbol, name and decimals: the registry's, else what its contract answers now;
@@ -177,6 +152,7 @@ async function copyOne(
   const share = trade.shareSoldBps === undefined ? {} : { shareSoldBps: trade.shareSoldBps };
   const taking: Omit<CopyTaking, "take"> = {
     id: trade.id,
+    txHash: trade.txHash,
     side: trade.side,
     asset,
     atMs: trade.atMs,
@@ -215,20 +191,31 @@ async function readingOf(
 async function copyTrades(
   parts: CopyOrdersParts,
   reading: Reading,
-  call: { readonly trades: readonly StoredActivity[]; readonly signal: AbortSignal },
+  call: {
+    readonly trades: readonly StoredActivity[];
+    readonly deepest: bigint;
+    readonly signal: AbortSignal;
+  },
 ): Promise<Reading | undefined> {
   const [trade, ...rest] = call.trades;
   const { signal } = call;
   if (trade === undefined) {
     return reading;
   }
-  const asset = canonicalAsset(parts.chains, trade.asset);
-  if (!asset.ok || !isCopied(parts.chains, { ...reading, asset: asset.value }, trade.side)) {
-    return copyTrades(parts, { ...reading, passedTo: trade.id }, { trades: rest, signal });
+  // A trade not yet deep enough waits, with every trade after it, for a later run.
+  if (trade.block > call.deepest) {
+    return reading;
   }
-  const goesOn = await copyOne(parts, reading, { trade, asset: asset.value, signal });
+  const asset = canonicalAsset(parts.chains, trade.asset);
+  const seen = asset.ok
+    ? { txHash: trade.txHash, side: trade.side, asset: asset.value }
+    : undefined;
+  if (seen === undefined || !isCopied(parts.chains, reading, seen)) {
+    return copyTrades(parts, { ...reading, passedTo: trade.id }, { ...call, trades: rest });
+  }
+  const goesOn = await copyOne(parts, reading, { trade, asset: seen.asset, signal });
   const next = goesOn ? await readingOf(parts, reading.order.id, signal) : undefined;
-  return next === undefined ? undefined : copyTrades(parts, next, { trades: rest, signal });
+  return next === undefined ? undefined : copyTrades(parts, next, { ...call, trades: rest });
 }
 
 // Copies the next trades of one read; answers whether another read may follow.
@@ -249,8 +236,12 @@ async function copyRead(
     fromMs: state.sinceMs,
     limit: tradesPerRead,
   };
+  const deepest = await confirmedBlockOf(parts, order, signal);
+  if (deepest === undefined) {
+    return false;
+  }
   const trades = await parts.trackedWallets.since(query, { signal });
-  const reading = await copyTrades(parts, start, { trades, signal });
+  const reading = await copyTrades(parts, start, { trades, deepest, signal });
   if (reading === undefined) {
     return false;
   }

@@ -13,10 +13,12 @@ import {
   takenState,
   usedInDayOf,
 } from "./copy-state.js";
+import { testLeaderTx } from "./test-copies.js";
 
 const other = assetRefSchema.parse("fake:1/token:0x0000000b");
 const taking = {
   id: 7,
+  txHash: testLeaderTx,
   side: "buy" as const,
   asset: testToken,
   atMs: 1_000,
@@ -45,7 +47,14 @@ function sold(base: bigint, atMs: number) {
 describe("a copy order's state", () => {
   it("starts with nothing taken, bought or held, and reads back from its document", () => {
     const start = copyStartOf(5);
-    expect(start).toStrictEqual({ sinceMs: 5, through: 0, takes: 0, buys: [], held: [] });
+    expect(start).toStrictEqual({
+      sinceMs: 5,
+      through: 0,
+      takes: 0,
+      recent: [],
+      buys: [],
+      held: [],
+    });
     const kept = takenState(start, { ...taking, shareSoldBps: bpsSchema.parse(4_000) });
     const json = copyStateDocument.encode(kept);
     expect(copyStateOf(json)).toStrictEqual(kept);

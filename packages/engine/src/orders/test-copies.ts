@@ -50,6 +50,9 @@ export async function copyTrade(
   return test.engine.fillOrder({ order, price: { decimals: 0 } }, live);
 }
 
+/** A leader transaction the copy tests' takes name. */
+export const testLeaderTx: TxHash = txOf(1n);
+
 function txOf(n: bigint): TxHash {
   const hash = `0x${n.toString(16).padStart(64, "0")}`;
   if (!isTxHash(hash)) {
@@ -89,14 +92,18 @@ export function leaderTrade(
   };
 }
 
-/** Stores the leader's trades as one read of the leader watcher does, answering them stored. */
+/**
+ * Stores the leader's trades as one read of the leader watcher does, the read reaching 100 blocks
+ * past the last, and answers them stored.
+ */
 export async function storeTrades(
   test: TestEngine,
   trades: readonly WalletActivity[],
 ): Promise<readonly StoredActivity[]> {
   const blocks = trades.map(({ block }) => block);
   const from = blocks.reduce((low, block) => (block < low ? block : low), blocks[0] ?? 0n);
-  const to = blocks.reduce((high, block) => (block > high ? block : high), 0n);
+  // The watcher read on well past the trades, so each is deep enough to copy.
+  const to = blocks.reduce((high, block) => (block > high ? block : high), 0n) + 100n;
   const read = {
     chain: assetRefParts(testToken).chain,
     from,

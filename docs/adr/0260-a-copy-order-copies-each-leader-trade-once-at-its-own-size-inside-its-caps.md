@@ -37,6 +37,14 @@ Every order fill runs the money path with no card, held to its order's bounds
 - **What it copies.** A buy of a token that is neither the chain's coin nor what the order spends,
   and a sale of a token the order holds from its own buys. Every other trade is passed over with no
   row: it is not a trade the order follows.
+- **Once per leader trade, at a confirmed depth.** A trade is copied once per order by its
+  transaction hash, side and token: the order keeps those of its last 50 takes, so a trade a
+  reorganization stored again under another log index is passed over. It copies a trade only once
+  its block is at least 5 seconds of blocks, and at least 2 blocks, behind the leader watcher's
+  last block, the confirmed depth the watcher exposes through its cursor: 12 blocks on BNB Smart
+  Chain, past its fast finality. By then a reorganization that removed the trade was read again,
+  and the read dropped it ([decision 0262](0262-a-leader-read-of-a-block-again-drops-the-trades-it-no-longer-holds.md)).
+  A trade not yet that deep waits, with every trade after it.
 - **Lateness** (the owner's choice, 2026-10-20). A buy whose block time is more than 60 seconds
   old when its copy reaches the head of its agent's line of fills is skipped as `late` and never
   made, as a DCA period is

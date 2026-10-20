@@ -9,7 +9,7 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { testCoin, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import { copiedHeldOf } from "./copy-state.js";
-import { copyStateNow, copyTrade } from "./test-copies.js";
+import { copyStateNow, copyTrade, testLeaderTx } from "./test-copies.js";
 import {
   activeOrder,
   fillIntentsOf,
@@ -36,6 +36,7 @@ function buyOf(id: number, atMs: number) {
   const paid = { asset: testCoin, base: 10n ** 17n };
   return {
     id,
+    txHash: testLeaderTx,
     side: "buy" as const,
     asset: testToken,
     atMs,
@@ -47,7 +48,7 @@ function buyOf(id: number, atMs: number) {
 // A leader's sale of the test token, stored as trade `id`, taking `shareBps` of its holding.
 function saleOf(id: number, atMs: number, shareBps?: number) {
   const share = shareBps === undefined ? {} : { shareSoldBps: bpsSchema.parse(shareBps) };
-  const sale = { id, side: "sell" as const, asset: testToken, atMs };
+  const sale = { id, txHash: testLeaderTx, side: "sell" as const, asset: testToken, atMs };
   return { ...sale, facts: tokenFacts, ...share };
 }
 
@@ -152,6 +153,7 @@ describe("a copy order's fills", () => {
     const paid = { asset: testCoin, base: 10n ** 17n };
     const honey = {
       id: 1,
+      txHash: testLeaderTx,
       side: "buy" as const,
       asset: unlisted,
       atMs,

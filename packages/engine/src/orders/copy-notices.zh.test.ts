@@ -13,6 +13,7 @@ import {
   takenState,
 } from "./copy-state.js";
 import { fillNotice, skippedNotice } from "./fill-notices.js";
+import { testLeaderTx } from "./test-copies.js";
 import { testCopy, testLeader } from "./test-orders.js";
 
 const chains = testChains();
@@ -39,6 +40,7 @@ function copying(taking: Omit<CopyTaking, "take">) {
 
 const honeyBuy = copying({
   id: 3,
+  txHash: testLeaderTx,
   side: "buy",
   asset: unlisted,
   atMs: 0,
@@ -46,6 +48,7 @@ const honeyBuy = copying({
 });
 const tokenSale = copying({
   id: 4,
+  txHash: testLeaderTx,
   side: "sell",
   asset: testToken,
   atMs: 0,

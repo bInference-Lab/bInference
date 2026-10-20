@@ -1,4 +1,4 @@
-import { assetRefSchema } from "@binference/chain";
+import { assetRefParts, assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
@@ -16,7 +16,7 @@ import {
   noticesOf,
   startFillEngine,
 } from "./test-fills.js";
-import { testCopy } from "./test-orders.js";
+import { testCopy, testLeader } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
@@ -28,8 +28,8 @@ function takingOf(stored: StoredActivity | undefined): Omit<CopyTaking, "take"> 
   if (stored === undefined) {
     throw new Error("Expected the stored trade.");
   }
-  const { id, atMs } = stored;
-  return { id, side: "buy", asset: testToken, atMs };
+  const { id, atMs, txHash } = stored;
+  return { id, txHash, side: "buy", asset: testToken, atMs };
 }
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
@@ -233,5 +233,32 @@ describe("the copy orders' runner", () => {
     const rows = await fillRowsOf(test, order.id);
     expect(outcomes(rows)).toStrictEqual(["skipped:share_unread", "filled"]);
     expect(rows.map(({ copy }) => copy?.take)).toStrictEqual([2, 1]);
+  });
+
+  it("copies a leader trade stored twice once, and only once its block is deep enough", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    const buy = leaderTrade(1, { side: "buy", atMs: test.clock.now() });
+    const read = {
+      chain: assetRefParts(testToken).chain,
+      from: 1n,
+      to: 2n,
+      toHash: `0x${"2".padStart(64, "0")}`,
+      atMs: test.clock.now(),
+      wallets: [{ account: testLeader, sinceBlock: 1n, readFrom: 1n }],
+      trades: [buy],
+      overflows: [],
+    };
+    await test.stores.trackedWallets.record(read, live);
+
+    await test.engine.runCopies(live);
+    const shallow = await fillRowsOf(test, order.id);
+    // A reorganization stored the same transaction again, at another log index.
+    await storeTrades(test, [{ ...buy, block: 2n, logIndex: 3 }]);
+    await test.engine.runCopies(live);
+
+    expect(shallow).toStrictEqual([]);
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
+    expect(await fillIntentsOf(test)).toHaveLength(1);
   });
 });

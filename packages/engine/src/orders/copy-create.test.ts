@@ -33,6 +33,7 @@ describe("a copy order's creation", () => {
       sinceMs: testNowMs,
       through: 0,
       takes: 0,
+      recent: [],
       buys: [],
       held: [],
     });

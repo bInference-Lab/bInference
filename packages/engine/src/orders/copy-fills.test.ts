@@ -25,6 +25,7 @@ import {
   takenState,
 } from "./copy-state.js";
 import type { OrderRecord } from "./order-record.js";
+import { testLeaderTx } from "./test-copies.js";
 import { testCopy } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
@@ -32,6 +33,7 @@ const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
 const listedFacts = { symbol: "TKN", name: "Test token", decimals: 6, verified: true };
 const buy: Omit<CopyTaking, "take"> = {
   id: 1,
+  txHash: testLeaderTx,
   side: "buy",
   asset: testToken,
   atMs: testNowMs,
