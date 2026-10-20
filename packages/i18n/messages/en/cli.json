@@ -108,7 +108,7 @@
   "command.serviceRemove": "Stop binference and remove its background service from this machine; the state folder stays",
   "serviceRemove.removed": "binference stopped, and its background service is removed: it no longer starts when you log in. The state folder {folder} stays.",
   "serviceRemove.none": "binference is stopped, and this machine has no background service to remove. The state folder {folder} stays.",
-  "report.written": "The support bundle is at {file}. It holds the versions, the config with each secret shown only by its secret source's kind, the check's findings, the engine's status and the newest log lines, with addresses cut short. It holds no secret, address book entry or chat. Read it before you share it.",
+  "report.written": "The support bundle is at {file}. It holds the versions, the config with each secret shown only by its secret source's kind, the check's findings, the engine's status and the newest log lines, with addresses cut short and each URL shown only by its kind. It holds no secret, address book entry or chat. Read it before you share it.",
   "uninstall.title": "binference uninstall",
   "uninstall.plan": "binference stops, its background service is removed, then the program. The state folder {folder} stays.",
   "uninstall.planState": "binference stops, its background service is removed, then the state folder {folder}, binference's keychain entries and the program.",

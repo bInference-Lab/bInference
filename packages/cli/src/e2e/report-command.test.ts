@@ -17,6 +17,8 @@ afterEach(async () => {
 // A value of every kind the install holds that no bundle may carry.
 const seeded = {
   rpcKey: "4f9Qx2LmZ8vR1tY6uI0oP3aSdFgHjK",
+  privateHost: "node7.ana-private.example",
+  publicHost: "ana-laptop.tail1234.ts.net",
   proxyPassword: "Pr0xyPassw0rdForTests",
   keyFilePath: "/srv/ana/keys/brave-search-key",
   commandItem: "op://vault/zerox-routing",
@@ -27,12 +29,13 @@ const seeded = {
 };
 
 const extraConfig = [
-  `  chains: { rpc: { "eip155:56": { urls: ["https://bsc.example.com/v1/${seeded.rpcKey}"] } } },`,
+  `  chains: { rpc: { "eip155:56": { urls: ["https://${seeded.privateHost}:8545/v1/${seeded.rpcKey}"] } } },`,
   `  search: { keys: { brave: { fromFile: "${seeded.keyFilePath}" } } },`,
   `  venues: { keys: { zerox: { fromCommand: ["op", "read", "${seeded.commandItem}"] } } },`,
   `  network: { proxy: { fromEnv: "TEST_PROXY" } },`,
   `  defaults: { limits: { denyTokens: ["eip155:56/erc20:${seeded.savedAddress}"] } },`,
   `  backups: { copyTo: "/srv/ana/backup copies" },`,
+  `  remote: { publicUrl: "https://${seeded.publicHost}" },`,
 ].join("\n");
 
 const signal = (): AbortSignal => new AbortController().signal;
@@ -153,12 +156,13 @@ describe("binference report", () => {
         version: 1,
         versions: { binference: "2026.10.0-test", ...testSystem },
         config: {
-          chains: { rpc: { "eip155:56": { urls: ["https://bsc.example.com"] } } },
+          chains: { rpc: { "eip155:56": { urls: ["[url:rpc]"] } } },
           search: { keys: { brave: "fromFile" } },
           venues: { keys: { zerox: "fromCommand" } },
           network: { proxy: "fromEnv" },
           telegram: { botToken: "fromEnv" },
           backups: { copyTo: "[path]" },
+          remote: { publicUrl: "[url:public_address]" },
         },
         engine: { answered: true, status: { state: "ready" } },
       });

@@ -35,10 +35,13 @@ free text.
     assets with their address cut to `0x1234…abcd`; numbers. A value that breaks its rule stays
     as `[omitted]`.
   - `logs/service.log` is free text, so only its size goes in.
-  - In the config, the check findings and the status, a URL is cut to its origin, a local path
-    becomes `[path]`, and every other string passes a last filter: the secret patterns of the log
-    redaction, addresses cut short, any other run of 24 or more key-like characters masked unless
-    it is a binference id, and the home folder written as `~`.
+  - In the config, the check findings and the status, a URL keeps only its kind, by the config
+    keys above it: `[url:rpc]`, `[url:relay]`, `[url:public_address]`, `[url:model_provider]` or
+    `[url:webhook]`, else `[url]`. No host, path, query or credential stays, so the owner's own
+    host names never leave (the owner's choice, 2026-10-20). A local path becomes `[path]`, and
+    every other string passes a last filter: the secret patterns of the log redaction, addresses
+    cut short, any other URL replaced by `[url]`, any other run of 24 or more key-like characters
+    masked unless it is a binference id, and the home folder written as `~`.
 - `report/create` stays unserved in v1. A surface other than the terminal that needs a bundle gets
   its own decision.
 
@@ -48,8 +51,10 @@ free text.
   secret, a saved address's label or chat text in it unless a field rule is widened on purpose.
 - Support sees no free-text error output; a crash at start shows as the engine log's error codes
   and the service log's size, and the owner shares `logs/service.log` by hand if asked.
-- The CLI host names the machine's Node version, OS, OS release and CPU type, which `src/main.ts`
-  reads from `process`.
+- The platform reads the machine's Node version, OS, OS release and CPU type, and the CLI host
+  carries them.
+- Support cannot tell which RPC or model provider an install uses from the bundle; it asks the
+  owner.
 - The protocol spec's `report/create` row says it is unserved.
 
 ## Alternatives
@@ -58,5 +63,7 @@ free text.
   the time it is needed most. Rejected for v1.
 - **Raw logs with secrets masked by patterns.** A pattern list misses what it does not know, such
   as a label or a sentence of chat. Rejected for the engine log, whose shape allows field rules.
+- **Keep each URL's origin.** It would name the owner's private RPC hosts and the address where
+  the engine is published. Rejected by the owner.
 - **A compressed archive of several files.** The owner could not read it before sharing it, and
   one JSON file of this size needs no compression. Rejected.

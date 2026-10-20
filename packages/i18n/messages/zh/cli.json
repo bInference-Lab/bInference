@@ -108,7 +108,7 @@
   "command.serviceRemove": "停止 binference，并从此机器移除它的后台服务；状态文件夹保留",
   "serviceRemove.removed": "binference 已停止，后台服务已移除：你登录时它不会再启动。状态文件夹 {folder} 保留。",
   "serviceRemove.none": "binference 已停止，此机器没有可移除的后台服务。状态文件夹 {folder} 保留。",
-  "report.written": "诊断包已保存到 {file}。其中包含版本、配置（每个密钥只显示其密钥来源的类型）、检查结果、引擎状态和最新的日志，地址只显示缩写。其中不含任何密钥、地址簿条目或对话内容。分享前请先查看。",
+  "report.written": "诊断包已保存到 {file}。其中包含版本、配置（每个密钥只显示其密钥来源的类型）、检查结果、引擎状态和最新的日志，地址只显示缩写，网址只显示其类型。其中不含任何密钥、地址簿条目或对话内容。分享前请先查看。",
   "uninstall.title": "binference 卸载",
   "uninstall.plan": "binference 将停止，移除其后台服务，然后移除程序。状态文件夹 {folder} 会保留。",
   "uninstall.planState": "binference 将停止，移除其后台服务，然后移除状态文件夹 {folder}、binference 的钥匙串条目和程序。",

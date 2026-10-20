@@ -23,12 +23,12 @@ describe("redactReportText", () => {
     expect(redactReportText(`sent to ${address}`, places)).toBe("sent to 0x3043…DBcB");
   });
 
-  it("keeps only a URL's origin, so no path, query or user name carries a key", () => {
+  it("replaces every URL, so no host, path, query or user name stays", () => {
     const text = redactReportText(
-      "rpc https://user:pass@bsc.example.com:8545/v1/keyed?apikey=abc down",
+      "rpc https://user:pass@node.ana-private.example:8545/v1/keyed?apikey=abc down",
       places,
     );
-    expect(text).toBe("rpc https://bsc.example.com:8545 down");
+    expect(text).toBe(`rpc ${urlMark} down`);
     expect(redactReportText("see http://[bad and file:///etc/key", places)).toBe(
       `see ${urlMark} and ${urlMark}`,
     );
@@ -42,10 +42,15 @@ describe("redactReportText", () => {
 });
 
 describe("redactReportJson", () => {
-  it("cuts URLs to their origin, hides paths and redacts every other string and key", () => {
+  it("keeps only each URL's kind, hides paths and redacts every other string and key", () => {
     const redacted = redactReportJson(
       {
-        urls: ["https://bsc.example.com/v1/4f9Qx2LmZ8vR1tY6uI0oP3aSdF"],
+        chains: { rpc: { "eip155:56": { urls: ["https://node.ana-private.example/v1/key"] } } },
+        relays: { "eip155:56": ["https://relay.example/send"] },
+        remote: { publicUrl: "https://ana-laptop.tail1234.ts.net" },
+        models: { providers: { openai: { baseUrl: "https://llm.ana-private.example/v1" } } },
+        telegram: { webhookUrl: "https://hooks.ana-private.example/tg" },
+        check: [{ endpoint: "https://other.example" }],
         copyTo: "~/backups",
         windows: "C:\\Data\\ana\\backups",
         deny: [`eip155:56/erc20:${address}`],
@@ -55,7 +60,12 @@ describe("redactReportJson", () => {
       places,
     );
     expect(redacted).toStrictEqual({
-      urls: ["https://bsc.example.com"],
+      chains: { rpc: { "eip155:56": { urls: ["[url:rpc]"] } } },
+      relays: { "eip155:56": ["[url:relay]"] },
+      remote: { publicUrl: "[url:public_address]" },
+      models: { providers: { openai: { baseUrl: "[url:model_provider]" } } },
+      telegram: { webhookUrl: "[url:webhook]" },
+      check: [{ endpoint: urlMark }],
       copyTo: pathMark,
       windows: pathMark,
       deny: ["eip155:56/erc20:0x3043…DBcB"],
