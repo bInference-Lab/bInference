@@ -20,6 +20,7 @@ import { isRetryLapsed, retryAtOf, type TakeEnd, takeEndOf } from "./copy-takes.
 import { confirmedBlockOf, type CopyFilterParts, isCopied } from "./copy-trade-filter.js";
 import { isLineHeld } from "./fill-faults.js";
 import type { OrderFills } from "./fill-orders.js";
+import { type InstallAccountParts, isInstallAccount } from "./install-accounts.js";
 import { moveOrder } from "./order-machine.js";
 import type { OrderStore } from "./ports.js";
 
@@ -43,6 +44,9 @@ export interface CopyOrdersParts {
   readonly chains: ChainRegistry;
   /** The quote assets, whose buys no copy order follows (decision 0260). */
   readonly quotes: CopyFilterParts["quotes"];
+  /** The install's wallets and their accounts: a leader that became one is not followed. */
+  readonly install: InstallAccountParts["install"];
+  readonly custody: InstallAccountParts["custody"];
   readonly readTokenFacts: ReadTokenFacts;
   readonly clock: Clock;
 }
@@ -236,6 +240,7 @@ async function copyTrades(
   call: {
     readonly trades: readonly StoredActivity[];
     readonly deepest: bigint;
+    readonly isOwn: boolean;
     readonly signal: AbortSignal;
   },
 ): Promise<Reading | undefined> {
@@ -252,7 +257,7 @@ async function copyTrades(
   const seen = asset.ok
     ? { txHash: trade.txHash, side: trade.side, asset: asset.value }
     : undefined;
-  if (seen === undefined || !isCopied(parts, reading, seen)) {
+  if (seen === undefined || call.isOwn || !isCopied(parts, reading, seen)) {
     return copyTrades(parts, { ...reading, passedTo: trade.id }, { ...call, trades: rest });
   }
   const goesOn = await copyOne(parts, reading, { trade, asset: seen.asset, signal });
@@ -279,7 +284,10 @@ async function copyRead(
     return false;
   }
   const trades = await parts.trackedWallets.since(query, { signal });
-  const reading = await copyTrades(parts, start, { trades, deepest, signal });
+  // A leader that became a wallet of the install since the order was made, as a wallet attached
+  // from another machine may, is followed no more: each of its trades is passed over (decision 0261).
+  const isOwn = trades.length > 0 && (await isInstallAccount(parts, query.account, signal));
+  const reading = await copyTrades(parts, start, { trades, deepest, isOwn, signal });
   if (reading === undefined) {
     return false;
   }

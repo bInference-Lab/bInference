@@ -38,6 +38,7 @@ export function orderPartsOf(
     agents,
     wallets,
     custody,
+    install: stores.install,
     chains,
     clock,
     ids,
@@ -93,10 +94,10 @@ export function orderFillsOf(
 
 /**
  * The copy orders' runner (decision 0260) over the order fills: it reads the leader trades the
- * leader watchers stored, and passes over buys of the quote assets.
+ * leader watchers stored, and passes over buys of the quote assets and leaders of the install.
  */
 export function copyOrdersOf(options: EngineOptions, fills: OrderFills): CopyOrders {
-  const { stores, chains, clock } = options;
+  const { stores, chains, custody, clock } = options;
   return createCopyOrders({
     orders: stores.orders,
     fills,
@@ -104,6 +105,8 @@ export function copyOrdersOf(options: EngineOptions, fills: OrderFills): CopyOrd
     intents: stores.intents,
     chains,
     quotes: options.quoteAssets ?? new Set(),
+    install: stores.install,
+    custody,
     readTokenFacts: options.readTokenFacts,
     clock,
   });

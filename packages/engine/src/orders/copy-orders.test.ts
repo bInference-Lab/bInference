@@ -2,7 +2,9 @@ import { assetRefParts, assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import type { StoredActivity } from "../leaders/tracked-wallet-record.js";
 import { testCall, testChains } from "../operations/test-engine.js";
@@ -73,6 +75,21 @@ describe("the copy orders' runner", () => {
     const order = await activeOrder(test, testCopy());
     const now = test.clock.now();
     await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: now })]);
+
+    await test.engine.runCopies(live);
+
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
+  it("passes over the trades of a leader that became a wallet of the install", async () => {
+    const wallet = fixtureId("wal", 2);
+    const custodyWallets = new Map([[wallet, testLeader]]);
+    const test = await startFillEngine({ prices, custodyWallets });
+    const order = await activeOrder(test, testCopy());
+    const record = { id: wallet, agentId: fixtureId("agt", 2), label: "B", createdAtMs: 0 };
+    test.stores.install.addWallet(testWalletRecord(record));
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
 
     await test.engine.runCopies(live);
 

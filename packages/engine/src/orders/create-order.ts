@@ -19,6 +19,7 @@ import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-fac
 import type { AgentStore, IntentStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { autoOrderQuoteDocument } from "./auto-order-quote.js";
+import { type InstallAccountParts, isInstallAccount } from "./install-accounts.js";
 import {
   hasPriceTrigger,
   isExitOrder,
@@ -39,6 +40,8 @@ export interface OrderParts {
   readonly wallets: Pick<WalletFactsSource, "wallets">;
   /** Custody, which holds each wallet's account on each chain. */
   readonly custody: Pick<Signer, "account">;
+  /** The install's wallets of every agent, which no copy order may follow (decision 0261). */
+  readonly install: InstallAccountParts["install"];
   readonly chains: ChainRegistry;
   /** What intents stored of tokens the registry does not list, which order lists show. */
   readonly intents: Pick<IntentStore, "storedAssets">;
@@ -165,10 +168,10 @@ async function holderOf(
   return assets.ok ? ok({ wallet, assets: assets.value }) : assets;
 }
 
-// Whether a copy order's leader is an account of one of the agent's own wallets: its copies would
-// be leader trades in turn (decision 0261).
-async function followsItself(
-  parts: Pick<OrderParts, "wallets" | "custody">,
+// Whether a copy order's leader is an account of one of the agent's own wallets, or of any other
+// wallet of the install: its copies would be leader trades in turn (decision 0261).
+async function followsTheInstall(
+  parts: Pick<OrderParts, "wallets" | "custody" | "install" | "chains">,
   checked: CheckedOrder,
   signal: AbortSignal,
 ): Promise<boolean> {
@@ -180,7 +183,9 @@ async function followsItself(
   const accounts = await Promise.all(
     owned.map(async (wallet) => parts.custody.account(wallet, chain.ref, { signal })),
   );
-  return accounts.some((account) => account.ok && account.value === request.trigger.leader);
+  const { leader } = request.trigger;
+  const isOwn = accounts.some((account) => account.ok && account.value === leader);
+  return isOwn || (await isInstallAccount(parts, leader, signal));
 }
 
 // Whether the position of a new exit order holds another exit order that has not ended.
@@ -307,7 +312,7 @@ function storedOrder(
  * its `autoOrder` intent, which always opens one card, whatever the mode or the mark. The order
  * becomes `active` only on that card's Confirm. A refusal stores nothing: an unknown, archived or
  * frozen agent, a wallet that is not the agent's, a launchpad whose curve read failed as it picks
- * the wallet (`quote.venue_down`), a broken rule, a copy order of one of the agent's own wallets, or
+ * the wallet (`quote.venue_down`), a broken rule, a copy order of a wallet of the install, or
  * a price order for a token the price watcher cannot price now (decision 0194), or a token the
  * registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
  * decision 0199), or a copy order whose leader would be the 51st tracked wallet
@@ -335,7 +340,7 @@ export async function createOrder(
   if (offLive !== undefined) {
     return err(offLive);
   }
-  if (await followsItself(parts, checked.value, signal)) {
+  if (await followsTheInstall(parts, checked.value, signal)) {
     return err("protocol.bad_args");
   }
   const isPaper = settings.agent.mode === "paper";

@@ -33,8 +33,12 @@ it may follow.
 - **No fill limit by default.** It copies until it expires, 30 days by default, unless it names
   `maxFills`, which counts buys and sales.
 - **The leader** is an account on a chain the registry holds, kept in its canonical form, so the
-  leader watcher's rows name it the same way. An account of one of the agent's own wallets is
-  `protocol.bad_args`: its copies would be the leader's trades in turn.
+  leader watcher's rows name it the same way. An account of any wallet of the install, of this agent
+  or another, archived ones among them, by the address the install keeps or the one custody holds,
+  is `protocol.bad_args`: its copies would be the leader's trades in turn, and two agents copying
+  each other would buy without end. A leader that becomes a wallet of the install later, as a wallet
+  attached from another machine may, is followed no more: the copy order passes over each of its
+  trades with no row.
 - **Live waits.** While live fills are off, a live copy order is `order.live_fills_off`, as a live
   price or DCA order.
 - **The card.** `card.order.summary.copy` names what the order spends and its leader by short

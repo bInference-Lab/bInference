@@ -1,6 +1,8 @@
 import { accountRefSchema, assetRefParts } from "@binference/chain";
 import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
 import { testAgent, testNowMs, testToken } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
 import { defaultOrderLifetimeMs } from "./order-rules.js";
@@ -68,6 +70,17 @@ describe("a copy order's creation", () => {
       live,
     );
     expect(waiting).toStrictEqual([]);
+  });
+
+  it("refuses a leader that is a wallet of another agent of the install", async () => {
+    const wallet = fixtureId("wal", 2);
+    const test = await startOrderEngine({ custodyWallets: new Map([[wallet, testLeader]]) });
+    const record = { id: wallet, agentId: fixtureId("agt", 2), label: "B", createdAtMs: 0 };
+    test.stores.install.addWallet(testWalletRecord(record));
+
+    expect(await test.engine.handlers["order/create"](testCall(testCopy()))).toStrictEqual(
+      err("protocol.bad_args"),
+    );
   });
 
   it("refuses a live copy order while live fills are off", async () => {
