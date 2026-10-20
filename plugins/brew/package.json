@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@binference/plugin-sdk": "workspace:*",
-    "viem": "catalog:"
+    "viem": "catalog:",
+    "zod": "catalog:"
   }
 }

@@ -968,6 +968,9 @@ importers:
       viem:
         specifier: 'catalog:'
         version: 2.57.1(typescript@7.0.2)(zod@4.6.5)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
 
   plugins/dexscreener:
     dependencies:
