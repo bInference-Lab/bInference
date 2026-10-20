@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
+import { setTimeout as delay } from "node:timers/promises";
 import { err, ok } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { PrivyId } from "../privy/privy-records.js";
@@ -68,6 +69,25 @@ async function paid(setup: CustodySetup, to: string): Promise<boolean> {
   return (await askPrivy(setup, sendTo(to))).ok;
 }
 
+// The live app may answer a policy change before every request sees it, so a check after a change
+// asks again, every half second for up to 15 seconds, until the answers are the ones it expects.
+async function paidOnceSettled(
+  setup: CustodySetup,
+  call: {
+    readonly to: readonly string[];
+    readonly expected: readonly boolean[];
+    readonly tries?: number;
+  },
+): Promise<readonly boolean[]> {
+  const answers = await Promise.all(call.to.map(async (to) => paid(setup, to)));
+  const tries = call.tries ?? 30;
+  if (tries <= 1 || answers.every((answer, at) => answer === call.expected[at])) {
+    return answers;
+  }
+  await delay(500);
+  return paidOnceSettled(setup, { ...call, tries: tries - 1 });
+}
+
 // A shared wallet on the live app goes back to the ceiling the suite made it with.
 async function restored(setup: CustodySetup): Promise<void> {
   await setTo(setup, [rescue, saved]);
@@ -75,9 +95,14 @@ async function restored(setup: CustodySetup): Promise<void> {
 
 async function movesSends(setup: CustodySetup): Promise<void> {
   await setTo(setup, [unsaved]);
-  assert.deepEqual([await paid(setup, unsaved), await paid(setup, rescue)], [true, false]);
-  await restored(setup);
-  assert.deepEqual([await paid(setup, unsaved), await paid(setup, rescue)], [false, true]);
+  try {
+    const to = [unsaved, rescue];
+    assert.deepEqual(await paidOnceSettled(setup, { to, expected: [true, false] }), [true, false]);
+  } finally {
+    await restored(setup);
+  }
+  const to = [unsaved, rescue];
+  assert.deepEqual(await paidOnceSettled(setup, { to, expected: [false, true] }), [false, true]);
 }
 
 async function refusesAStranger(setup: CustodySetup): Promise<void> {
@@ -107,7 +132,8 @@ async function sendsWhileUnchanged(setup: CustodySetup): Promise<void> {
   assert.deepEqual(await sendSignedRecipients(api, signed.value, live()), err("changed"));
   await restored(setup);
   assert.deepEqual(await sendSignedRecipients(api, signed.value, live()), ok(undefined));
-  assert.deepEqual([await paid(setup, saved), await paid(setup, rescue)], [false, true]);
+  const to = [saved, rescue];
+  assert.deepEqual(await paidOnceSettled(setup, { to, expected: [false, true] }), [false, true]);
   assert.deepEqual(await sendSignedRecipients(api, signed.value, live()), ok(undefined));
   assert.equal(owner.signed(), 2);
   await restored(setup);
