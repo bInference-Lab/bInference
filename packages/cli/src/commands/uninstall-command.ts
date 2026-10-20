@@ -8,6 +8,7 @@ import { removeState, type StateRemoval } from "../uninstall/remove-state.js";
 import { removeService } from "./service-remove-command.js";
 import type { ServiceRun } from "./service-start-command.js";
 import { refuseLate, stopEngine, withStopRun } from "./stop-command.js";
+import { isTypedConfirmed } from "./typed-confirmation.js";
 
 /** What one uninstall asks for. */
 interface Uninstall {
@@ -15,36 +16,14 @@ interface Uninstall {
   readonly options: UninstallFlags;
 }
 
-// The plan, the warning about the wallets with `--state`, then the phrase typed back; a wrong
-// answer asks again. With `--yes` nobody is asked; with nobody to ask and no `--yes` it refuses.
+// The warning about the wallets with `--state`, then the plan and the phrase typed back.
 async function isConfirmed(uninstall: Uninstall, folder: string): Promise<boolean> {
   const { run, options } = uninstall;
-  const message = (key: string): string => run.formatter.message(`cli.${key}`, { folder });
-  const phrase = message("uninstall.phrase");
   if (options.state) {
     run.output.say("uninstall.warning");
   }
-  if (options.yes) {
-    return true;
-  }
-  const { prompter } = run.host;
-  if (prompter === undefined || options.json) {
-    run.output.fail({
-      code: "cli.needs_confirmation",
-      key: "uninstall.needsYes",
-      values: { phrase },
-    });
-    return false;
-  }
-  const plan = message(options.state ? "uninstall.planState" : "uninstall.plan");
-  prompter.note(plan, message("uninstall.title"));
-  const ask = run.formatter.message("cli.uninstall.ask", { phrase });
-  await prompter.ask({
-    id: "uninstallConfirm",
-    message: ask,
-    check: (answer) => (answer.trim() === phrase ? undefined : ask),
-  });
-  return true;
+  const planKey = options.state ? "uninstall.planState" : "uninstall.plan";
+  return isTypedConfirmed(run, options, { area: "uninstall", planKey, values: { folder } });
 }
 
 // Stops the engine and removes the service; an exit code when either did not happen.

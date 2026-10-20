@@ -9,6 +9,7 @@ import { systemDefaults } from "../program/system-defaults.js";
 import { clearLocalState, type ResetOutcome } from "../reset/clear-local-state.js";
 import { isLiveTradeAnswered } from "../state/live-trade.js";
 import { type EngineRun, startAs, stopFor } from "./engine-runs.js";
+import { isTypedConfirmed } from "./typed-confirmation.js";
 
 // The backup reads and seals both databases; on a large install that takes a while.
 const resetBudgetMs = 10 * 60_000;
@@ -36,29 +37,6 @@ async function configOf(reset: Reset): Promise<BinferenceConfig | undefined> {
     return undefined;
   }
   return loaded.config;
-}
-
-// The plan, then the phrase typed back; a wrong answer asks again. With `--yes` nobody is asked;
-// with nobody to ask and no `--yes` it refuses.
-async function isConfirmed(reset: Reset): Promise<boolean> {
-  const { run, options } = reset;
-  const phrase = run.formatter.message("cli.reset.phrase");
-  if (options.yes) {
-    return true;
-  }
-  const { prompter } = run.host;
-  if (prompter === undefined || options.json) {
-    run.output.fail({ code: "cli.needs_confirmation", key: "reset.needsYes", values: { phrase } });
-    return false;
-  }
-  prompter.note(run.formatter.message("cli.reset.plan"), run.formatter.message("cli.reset.title"));
-  const ask = run.formatter.message("cli.reset.ask", { phrase });
-  await prompter.ask({
-    id: "resetConfirm",
-    message: ask,
-    check: (answer) => (answer.trim() === phrase ? undefined : ask),
-  });
-  return true;
 }
 
 // Why a reset changed nothing: the code scripts read and the words a person reads.
@@ -150,7 +128,7 @@ export async function runReset(
     run.output.fail({ code: "intent.executing", key: "reset.tradeSending" });
     return 1;
   }
-  if (!(await isConfirmed(reset))) {
+  if (!(await isTypedConfirmed(run, request.options, { area: "reset", planKey: "reset.plan" }))) {
     return 1;
   }
   const ran = await stopFor(run);
