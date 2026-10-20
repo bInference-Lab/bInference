@@ -6,7 +6,7 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0246](../DECISIONS.md#d0246), [0247](../DECISIONS.md#d0247), [0248](../DECISIONS.md#d0248), [0255](../DECISIONS.md#d0255) and [0256](../DECISIONS.md#d0256); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0246](../DECISIONS.md#d0246), [0247](../DECISIONS.md#d0247), [0248](../DECISIONS.md#d0248), [0255](../DECISIONS.md#d0255), [0256](../DECISIONS.md#d0256), [0285](../DECISIONS.md#d0285) and [0286](../DECISIONS.md#d0286); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
@@ -264,7 +264,7 @@ A Telegram tap is handled inside the engine and never travels over this protocol
 | `alert`         | `read`  | `alert/fired` (an `AlertFired`, section 8.4)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `notice`        | `read`  | `notice/new`: the owner notifications of [ARCHITECTURE.md section 27](../ARCHITECTURE.md#section-27), as an i18n key and its values, with the times (epoch milliseconds), amounts (base units) and parts (messages its message takes as arguments, `{ key, values, times?, amounts?, parts? }`, two levels deep at most) among them for each surface to format, the messages that follow it on lines of their own (`after`), and the notice's `id` and `at`; `notice/list` reads on from the last `id` ([decision 0133](../DECISIONS.md#d0133)) |
 | `launch`        | `read`  | `launch/new`: a `LaunchView` (section 8.3) for each token a launchpad created, once, in block order; `launch/list` reads on from a time                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `chat:<agt_id>` | `read`  | `chat/message`, `chat/status`, `chat/turnStarted`, `chat/turnEnded`, `chat/question` (a `QuestionView`, section 7.7), `chat/questionClosed` (`{ question, state, answer? }`)                                                                                                                                                                                                                                                                                                                                                                    |
+| `chat:<agt_id>` | `read`  | `chat/message`, `chat/status`, `chat/turnStarted`, `chat/turnEnded`, `chat/question` (a `QuestionView`, section 7.7), `chat/questionClosed` (`{ question, state, answer? }`), `chat/launchDraft` and `chat/launchDraftClosed` (section 7.7)                                                                                                                                                                                                                                                                                                     |
 | `inbox`         | `agent` | `inbox/message`, `inbox/intentSettled`, `inbox/orderSettled`, `inbox/scheduleDue`, `inbox/alertFired`, `inbox/resumeReport`, `inbox/stop`, `inbox/clear`; each is a stored message, with the data of [spec 8, section 3.3](runtime.md#section-3-3)                                                                                                                                                                                                                                                                                              |
 | `config`        | `read`  | `config/changed` (a config journal entry)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `job`           | `read`  | `job/progress`, `job/done`, `job/failed`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -476,7 +476,8 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   owner starts a launch: one the agent runtime or an MCP client proposes fails with
   `intent.owner_only` before anything is read, stored or uploaded, and a launch whose `image` the
   proposer's own credential did not upload ends `failed_check` with `image_unreadable`
-  ([decision 0236](../DECISIONS.md#d0236)). A `firstBuy` in any asset but `pairWith`, a
+  ([decision 0236](../DECISIONS.md#d0236)); the agent drafts one with `launch/draft` instead,
+  which the owner starts from Telegram (section 7.7, [decision 0285](../DECISIONS.md#d0285)). A `firstBuy` in any asset but `pairWith`, a
   `description` longer than 1,000 characters or a link longer than 200 fails with
   `protocol.bad_args` and stores nothing ([decision 0239](../DECISIONS.md#d0239)). While another
   launch of the agent is under way, before it is signed or ends, a `launchToken` fails with
@@ -652,6 +653,7 @@ agent adds it with no ceiling to check ([decisions 0212](../DECISIONS.md#d0212),
 | `turn/ask`          | `agent`                | ✓     | `{ agent, session, turn, text, choices }` → `QuestionView`: the agent's question to the owner with 2 to 4 answer buttons (below)                                                                                                              |
 | `chat/answer`       | `chat`                 | ✓     | `{ agent, question, choice }` → `{ session, turn }`: the owner picks a choice of an open question by its place, `0` to `3`; fails `question.not_found` or `question.closed`                                                                   |
 | `chat/openQuestion` | `read`                 |       | `{ agent }` → `{ question? }`: the agent's open question as a `QuestionView`, or none ([decision 0248](../DECISIONS.md#d0248))                                                                                                                |
+| `launch/draft`      | `agent`                | ✓     | `{ agent, session, turn, launch, photo?: { message, image } }` → `{ draft, expiresAt }`: the agent's token launch draft, which only the owner starts (below)                                                                                  |
 | `usage/record`      | `agent`                | ✓     | `{ agent, turn, model, inputTokens, outputTokens, cachedTokens, usdMicros }` → `{ budgetLeftMicros, resumesAt? }`; `resumesAt` once nothing is left                                                                                           |
 | `inbox/list`        | `agent`                |       | paging, `{ agent? }` → the untaken inbox messages, oldest first                                                                                                                                                                               |
 | `inbox/take`        | `agent`                | ✓     | `{ messages }` → `{}`: the runtime holds them in its chat queue                                                                                                                                                                               |
@@ -693,6 +695,34 @@ outside-content mark of its agent's running turn ([spec 8, section 4.3](runtime.
   changes nothing.
 - An answer is only a message to the agent. It confirms nothing: a proposal that follows it opens
   its own card.
+
+**The agent's launch drafts** ([decisions 0285](../DECISIONS.md#d0285) and
+[0286](../DECISIONS.md#d0286)). `launch/draft` is how the `launch_draft` tool suggests a token
+launch ([spec 8, section 6.4](runtime.md#section-6-4)); a `launchToken` the runtime proposes stays
+`intent.owner_only`:
+
+- Only the runtime the engine runs now calls it (else `auth.scope`), in its agent's running turn
+  (else `protocol.bad_args`). `launch` is the launch's terms without `kind`, `agent`, `wallet` or
+  `image`. The engine checks them as `intent/propose` checks a launch before it stores anything:
+  `agent.paper_only` for a paper agent, `intent.launch_waiting` while another launch of the agent
+  is under way, every refusal of section 8.1's launch rules, and `intent.launch_wallet_missing`
+  for an agent with no live launch wallet.
+- On a launchpad that uploads or writes the picture, `photo` names one image of one of the
+  agent's own `inbox/message`s from Telegram, `tg:<file_id>`; any other is `image.not_found`, and
+  a missing one `protocol.bad_args`. The engine reads it once, as a launch reads an upload
+  (`image.format`, `image.too_large`, `image.unreadable`, and for a picture the create call writes,
+  `intent.launch_picture_too_large`), and keeps its bytes. On a launchpad that takes a picture
+  link, `photo` is absent and the link is the launchpad's `link` setting.
+- The draft lives in memory for 10 minutes; a new draft of the agent replaces the open one, and a
+  restart forgets it. Nothing is uploaded, quoted or stored. `chat/launchDraft`
+  `{ agent, draft, expiresAt }` tells the agent's chat topic, and `chat/launchDraftClosed`
+  `{ agent, draft, outcome: started | dropped | expired | replaced | failed, intent?, error? }`
+  how it ended.
+- Telegram shows it to the owner with Start launch and Drop
+  . The owner's Start proposes the
+  draft's request through `intent/propose` as the owner on Telegram, with the photo put on the
+  upload shelf under the owner's Telegram credential: the one proposal the owner's chat makes.
+  The launch then runs as any launch: its upload, its pin and its card, which the owner confirms.
 
 `images` are upload ids from `upload/start` (section 7.9): at most 4 per message, each a PNG, JPEG
 or WebP of at most 5 MiB. A message with images marks the turn as outside content
@@ -1034,38 +1064,38 @@ every field given must hold, and an empty filter passes every launch. `launch/li
 owner: surfaces map `code` to an i18n message. `retryable` says whether the same call may succeed
 later unchanged.
 
-| Area       | Codes                                                                                                                                                                            |
-| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `protocol` | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`                                                                                  |
-| `auth`     | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`                                                                                      |
-| `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                                                                                                      |
-| `runtime`  | `unavailable`                                                                                                                                                                    |
-| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`, `file_missing`, `file_untrusted`                                                                        |
-| `question` | `not_found`, `closed`                                                                                                                                                            |
-| `image`    | `not_found`, `too_large`, `format`, `unreadable`                                                                                                                                 |
-| `alert`    | `not_found`, `too_many`                                                                                                                                                          |
-| `market`   | `no_data`, `source_down`, `no_launch_feed`                                                                                                                                       |
-| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`, `launch_exists`, `no_launch_calls`                                                                      |
-| `address`  | `not_found`, `launch_wallet`                                                                                                                                                     |
-| `rescue`   | `no_address`, `nothing_to_move`                                                                                                                                                  |
-| `signer`   | `not_found`, `last_signer`, `own_key`                                                                                                                                            |
-| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`, `own_wallet_recipient`, `launch_recipient_needed`, `launch_recipient_unused` |
-| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                                                                                               |
-| `schedule` | `not_found`, `bad_when`, `too_many`                                                                                                                                              |
-| `note`     | `not_found`                                                                                                                                                                      |
-| `asset`    | `not_found`, `bad_address`, `unreadable`                                                                                                                                         |
-| `name`     | `not_found`, `resolver_down`                                                                                                                                                     |
-| `quote`    | `no_route`, `venue_down`                                                                                                                                                         |
-| `chain`    | `rpc_down`, `simulation_failed`                                                                                                                                                  |
-| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`                                                                                                                |
-| `config`   | `invalid`, `secret_inline`                                                                                                                                                       |
-| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                                                                                                    |
-| `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                                                                                                 |
-| `job`      | `not_found`                                                                                                                                                                      |
-| `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                                                                                                 |
-| `telegram` | `not_running`, `unreachable`                                                                                                                                                     |
-| `token`    | `not_found`                                                                                                                                                                      |
-| `internal` | `error` (with a `details.ref` to find the log line)                                                                                                                              |
+| Area       | Codes                                                                                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `protocol` | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`                                                                                                                                       |
+| `auth`     | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`                                                                                                                                           |
+| `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                                                                                                                                                           |
+| `runtime`  | `unavailable`                                                                                                                                                                                                                         |
+| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`, `file_missing`, `file_untrusted`                                                                                                                             |
+| `question` | `not_found`, `closed`                                                                                                                                                                                                                 |
+| `image`    | `not_found`, `too_large`, `format`, `unreadable`                                                                                                                                                                                      |
+| `alert`    | `not_found`, `too_many`                                                                                                                                                                                                               |
+| `market`   | `no_data`, `source_down`, `no_launch_feed`                                                                                                                                                                                            |
+| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`, `launch_exists`, `no_launch_calls`                                                                                                                           |
+| `address`  | `not_found`, `launch_wallet`                                                                                                                                                                                                          |
+| `rescue`   | `no_address`, `nothing_to_move`                                                                                                                                                                                                       |
+| `signer`   | `not_found`, `last_signer`, `own_key`                                                                                                                                                                                                 |
+| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`, `own_wallet_recipient`, `launch_recipient_needed`, `launch_recipient_unused`, `launch_wallet_missing`, `launch_picture_too_large` |
+| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                                                                                                                                                    |
+| `schedule` | `not_found`, `bad_when`, `too_many`                                                                                                                                                                                                   |
+| `note`     | `not_found`                                                                                                                                                                                                                           |
+| `asset`    | `not_found`, `bad_address`, `unreadable`                                                                                                                                                                                              |
+| `name`     | `not_found`, `resolver_down`                                                                                                                                                                                                          |
+| `quote`    | `no_route`, `venue_down`                                                                                                                                                                                                              |
+| `chain`    | `rpc_down`, `simulation_failed`                                                                                                                                                                                                       |
+| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`                                                                                                                                                                     |
+| `config`   | `invalid`, `secret_inline`                                                                                                                                                                                                            |
+| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                                                                                                                                                         |
+| `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                                                                                                                                                      |
+| `job`      | `not_found`                                                                                                                                                                                                                           |
+| `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                                                                                                                                                      |
+| `telegram` | `not_running`, `unreachable`                                                                                                                                                                                                          |
+| `token`    | `not_found`                                                                                                                                                                                                                           |
+| `internal` | `error` (with a `details.ref` to find the log line)                                                                                                                                                                                   |
 
 Policy and risk refusals are intent states with reasons, not errors (section 7.4). Their reason
 codes (`daily_cap`, `per_trade_cap`, `gas_reserve`, `slippage`, `price_impact`, `tax`,

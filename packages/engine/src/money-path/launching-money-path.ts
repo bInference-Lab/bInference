@@ -1,9 +1,11 @@
-import { err } from "@binference/core";
+import { err, type Result } from "@binference/core";
+import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol";
+import { checkLaunchDraft } from "./check-launch-draft.js";
 import type { MoneyPath } from "./create-money-path.js";
 import type { PinFollow } from "./follow-launch-pin.js";
 import { followLaunchPins } from "./follow-launch-pins.js";
 import { proposeLaunch } from "./propose-launch.js";
-import type { LaunchPathOptions } from "./resolve-launch.js";
+import type { LaunchPathOptions, ResolvedLaunch } from "./resolve-launch.js";
 
 /** The money path with token launches (decision 0234), and the pin follow that moves them. */
 export interface LaunchingMoneyPath extends MoneyPath {
@@ -12,6 +14,14 @@ export interface LaunchingMoneyPath extends MoneyPath {
    * 0237), and answers how many it moved on or ended.
    */
   followPins(follow: PinFollow): Promise<number>;
+  /**
+   * Checks the agent's launch draft as a proposal is checked, storing nothing (decision 0285);
+   * without launch options no launch resolves, and the draft is `quote.no_route`.
+   */
+  checkDraft(
+    request: LaunchTokenRequest,
+    signal: AbortSignal,
+  ): Promise<Result<ResolvedLaunch, ProtocolErrorCode>>;
 }
 
 /**
@@ -38,5 +48,7 @@ export function withLaunches(
         : proposeLaunch(launch, { request, proposer, credential: call.credential }, call.signal);
     },
     followPins: async (call) => (launch === undefined ? 0 : followLaunchPins(launch, call)),
+    checkDraft: async (request, signal) =>
+      launch === undefined ? err("quote.no_route") : checkLaunchDraft(launch, request, signal),
   };
 }

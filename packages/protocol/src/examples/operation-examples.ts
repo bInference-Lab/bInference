@@ -7,12 +7,8 @@ import {
   questionExamples,
 } from "./chat-examples.js";
 import { agentExamples, engineExamples, walletExamples } from "./engine-examples.js";
-import {
-  intentExamples,
-  launchpadExamples,
-  marketExamples,
-  orderExamples,
-} from "./market-examples.js";
+import { launchDraftExamples, launchpadExamples } from "./launch-examples.js";
+import { intentExamples, marketExamples, orderExamples } from "./market-examples.js";
 import {
   accessExamples,
   binanceAgentExamples,
@@ -30,6 +26,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...walletExamples,
   ...marketExamples,
   ...launchpadExamples,
+  ...launchDraftExamples,
   ...intentExamples,
   ...orderExamples,
   ...limitExamples,

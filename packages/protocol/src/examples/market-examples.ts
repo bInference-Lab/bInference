@@ -1,5 +1,4 @@
 import type { IntentOperationShapes } from "../operations/intent-operations.schema.js";
-import type { LaunchpadOperationShapes } from "../operations/launchpad-operations.schema.js";
 import type { MarketOperationShapes } from "../operations/market-operations.schema.js";
 import type { OrderOperationShapes } from "../operations/order-operations.schema.js";
 import {
@@ -174,27 +173,6 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
   "launch/list": {
     args: { chain: refs.chain, from: at - 86_400_000, filters: { maxTaxBps: 300 }, limit: 1 },
     result: { items: [launchView], next: "1800000000000:128622596:278" },
-  },
-};
-
-/** An example call of the launchpad read: one launchpad that uploads, one that takes a link. */
-export const launchpadExamples: { readonly [N in keyof LaunchpadOperationShapes]: WireExample } = {
-  "launchpad/list": {
-    args: { chain: refs.chain },
-    result: {
-      items: [
-        {
-          venue: "fake-curve",
-          picture: { place: "upload", mostBytes: 5_242_880 },
-          settings: [{ name: "taxBps", type: "bps", max: 1_000, default: 100 }],
-        },
-        {
-          venue: "fake-linked",
-          picture: { place: "link" },
-          settings: [{ name: "pictureLink", type: "link" }],
-        },
-      ],
-    },
   },
 };
 

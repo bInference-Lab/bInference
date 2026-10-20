@@ -161,6 +161,12 @@ export type BuyTerms = Omit<BuyRequest, ActorFields>;
 /** A sell's terms: what the agent names, without who acts, which its runtime fills. */
 export type SellTerms = Omit<SellRequest, ActorFields>;
 
+/**
+ * A token launch's terms as the agent drafts them (decision 0285): without who acts or the
+ * picture, which the engine fills from the owner's own photo or `none`.
+ */
+export type LaunchTerms = Omit<LaunchTokenRequest, ActorFields | "image">;
+
 /** What `intent/propose` asks for: one action, by `kind`. */
 export type IntentRequest =
   | SwapRequest
@@ -296,6 +302,19 @@ export const buyTermsSchema: z.ZodType<BuyTerms> = z.strictObject({ ...buyFields
 
 /** Parses a sell's terms, as {@link swapTermsSchema} does a swap's. */
 export const sellTermsSchema: z.ZodType<SellTerms> = z.strictObject({ ...sellFields, reason });
+
+/** Parses a launch's terms, as {@link swapTermsSchema} does a swap's; an image is refused too. */
+export const launchTermsSchema: z.ZodType<LaunchTerms> = z.strictObject({
+  reason,
+  venue: launchTokenShape.venue,
+  name: launchTokenShape.name,
+  symbol: launchTokenShape.symbol,
+  description: launchTokenShape.description,
+  links: launchTokenShape.links,
+  pairWith: launchTokenShape.pairWith,
+  firstBuy: launchTokenShape.firstBuy,
+  venueOptions: launchTokenShape.venueOptions,
+});
 
 /** Parses a swap request, the args of `quote/get`. */
 export const swapRequestSchema: z.ZodType<SwapRequest> = z.strictObject(swapShape);

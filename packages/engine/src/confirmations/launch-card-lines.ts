@@ -33,6 +33,18 @@ interface WrittenLaunchPicture {
   readonly digest: string;
 }
 
+/**
+ * The owner's photo a launch draft takes (decision 0286), as its draft shows it before any upload:
+ * its format, its size and its digest.
+ */
+interface DraftLaunchPhoto {
+  readonly format: "png" | "jpeg" | "webp";
+  /** Its size in KiB, rounded up. */
+  readonly kib: number;
+  /** The first 16 hex digits of its SHA-256. */
+  readonly digest: string;
+}
+
 /** One web link a launched token shows. */
 export interface LaunchLink {
   readonly site: "website" | "x" | "telegram";
@@ -57,10 +69,15 @@ export interface LaunchDetails {
   readonly description?: string;
   readonly links: readonly LaunchLink[];
   /**
-   * The uploaded picture, the one the create call writes, or the upload id of one not read yet;
-   * absent for a launchpad that takes its picture as a link setting (decision 0276).
+   * The uploaded picture, the one the create call writes, the owner's photo of a draft, or the
+   * upload id of one not read yet; absent for a launchpad that takes its picture as a link
+   * setting (decision 0276).
    */
-  readonly picture?: LaunchPicture | WrittenLaunchPicture | { readonly upload: string };
+  readonly picture?:
+    | LaunchPicture
+    | WrittenLaunchPicture
+    | DraftLaunchPhoto
+    | { readonly upload: string };
   /** The launchpad's own settings, every one with its value, defaults filled. */
   readonly settings: readonly LaunchSetting[];
 }
@@ -119,6 +136,13 @@ function pictureLine(picture: NonNullable<LaunchDetails["picture"]>): CardLine {
   }
   if ("width" in picture) {
     return writtenPictureLine(picture);
+  }
+  if (!("uri" in picture)) {
+    const { format, kib, digest } = picture;
+    return {
+      key: "card.launch.photo",
+      values: { format: choice(format), kib: count(kib), digest: text(digest) },
+    };
   }
   const { format, kib, digest, uri } = picture;
   return {

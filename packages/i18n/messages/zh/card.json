@@ -26,6 +26,7 @@
   "launch.link": "{site, select, website {网站} x {X} telegram {Telegram} other {链接}}：{url}",
   "launch.picture": "已发送图片：{format, select, png {PNG} jpeg {JPEG} other {WebP}}，{kib} KB，SHA-256 {digest} · 元数据位于 {uri}",
   "launch.writtenPicture": "随代币写入链上的图片：{format, select, png {PNG} jpeg {JPEG} other {WebP}}，{bytes} 字节，{width} x {height} 像素，SHA-256 {digest}",
+  "launch.photo": "图片：你在对话中发送的图片，{format, select, png {PNG} jpeg {JPEG} other {WebP}}，{kib} KB，SHA-256 {digest}",
   "launch.upload": "图片：上传 {upload}",
   "launch.pinned": "⚠️ 图片和文字已在 {venue} 的存储中公开，即使取消也会保持公开",
   "rescue.action": "将全部资产转到你的紧急转出地址 {address}：{wallets, plural, other {# 个钱包}}中的 {count, plural, other {# 种代币}}，约 {usd}",

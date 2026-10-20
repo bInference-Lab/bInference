@@ -484,6 +484,8 @@
         "intent.own_wallet_recipient",
         "intent.launch_recipient_needed",
         "intent.launch_recipient_unused",
+        "intent.launch_wallet_missing",
+        "intent.launch_picture_too_large",
         "order.not_found",
         "order.wrong_state",
         "order.kind_unavailable",
@@ -10939,6 +10941,204 @@
           },
           "required": [
             "items"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/launch/draft": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "launch/draft"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            },
+            "launch": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "venue": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                },
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                "symbol": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 16
+                },
+                "description": {
+                  "type": "string"
+                },
+                "links": {
+                  "type": "object",
+                  "properties": {
+                    "website": {
+                      "type": "string",
+                      "maxLength": 512,
+                      "format": "uri"
+                    },
+                    "x": {
+                      "type": "string",
+                      "maxLength": 512,
+                      "format": "uri"
+                    },
+                    "telegram": {
+                      "type": "string",
+                      "maxLength": 512,
+                      "format": "uri"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "pairWith": {
+                  "type": "string"
+                },
+                "firstBuy": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "venueOptions": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "reason",
+                "venue",
+                "name",
+                "symbol",
+                "pairWith"
+              ],
+              "additionalProperties": false
+            },
+            "photo": {
+              "type": "object",
+              "properties": {
+                "message": {
+                  "type": "string",
+                  "pattern": "^msg_"
+                },
+                "image": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                }
+              },
+              "required": [
+                "message",
+                "image"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "agent",
+            "session",
+            "turn",
+            "launch"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "agent",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/launch/draft": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "draft": {
+              "type": "string",
+              "pattern": "^[\\w-]{16}$"
+            },
+            "expiresAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "draft",
+            "expiresAt"
           ]
         }
       },

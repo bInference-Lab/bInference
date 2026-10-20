@@ -2,19 +2,22 @@ import type { LaunchTokenRequest } from "@binference/protocol";
 import type { CardFacts, CardWarnings } from "../confirmations/draw-card.js";
 import type { LaunchDetails, LaunchLink } from "../confirmations/launch-card-lines.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
-import type { TokenLaunchQuote } from "../intents/token-launch-quote.js";
+import type { LaunchImage, TokenLaunchQuote } from "../intents/token-launch-quote.js";
 import type { CardSource } from "./card-facts-of.js";
 
-const formats = {
-  "image/png": "png",
-  "image/jpeg": "jpeg",
-  "image/webp": "webp",
-} as const;
+/** A picture's format as a card names it, by its content type. */
+export const pictureFormats: Readonly<Record<LaunchImage["contentType"], "png" | "jpeg" | "webp">> =
+  {
+    "image/png": "png",
+    "image/jpeg": "jpeg",
+    "image/webp": "webp",
+  };
 
-// The digits of the picture's SHA-256 a card shows; the terms hash binds all of them.
-const digestDigits = 16;
+/** The digits of a picture's SHA-256 a card shows; the terms hash binds all of them. */
+export const digestDigits: number = 16;
 
-function linksOf(links: LaunchTokenRequest["links"]): readonly LaunchLink[] {
+/** A launch's links, as its card shows them, in the order website, X, Telegram. */
+export function linksOf(links: LaunchTokenRequest["links"]): readonly LaunchLink[] {
   const sites = ["website", "x", "telegram"] as const;
   return sites.flatMap((site) => {
     const url = links?.[site];
@@ -31,14 +34,14 @@ function pictureOf(quote: TokenLaunchQuote): Pick<LaunchDetails, "picture"> {
   }
   const { width, height } = image;
   if (metadataUri === undefined) {
-    const format = formats[image.contentType];
+    const format = pictureFormats[image.contentType];
     const digest = image.sha256.slice(0, digestDigits);
     return width === undefined || height === undefined
       ? {}
       : { picture: { format, bytes: image.bytes, width, height, digest } };
   }
   const picture = {
-    format: formats[image.contentType],
+    format: pictureFormats[image.contentType],
     kib: Math.ceil(image.bytes / 1024),
     digest: image.sha256.slice(0, digestDigits),
     uri: metadataUri,

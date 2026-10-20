@@ -1,6 +1,7 @@
 import type { Clock } from "@binference/core";
 import type { AlertFiring } from "../alerts/fire-alerts.js";
 import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
+import type { LaunchDraftDesk } from "../launches/launch-draft-desk.js";
 import type { CopyOrders } from "../orders/copy-orders.js";
 import type { OrderParts } from "../orders/create-order.js";
 import type { DcaOrders } from "../orders/dca-orders.js";
@@ -52,21 +53,28 @@ interface TimedParts {
     readonly copies: CopyOrders;
   };
   readonly chat: { readonly alerts: AlertFiring; readonly schedules: ScheduleQueue };
+  readonly drafts: Pick<LaunchDraftDesk, "expire">;
   readonly clock: Clock;
 }
 
+/** The next time of two, either of which may be none. */
+const sooner = (one: number | undefined, two: number | undefined): number | undefined =>
+  one === undefined || two === undefined ? (one ?? two) : Math.min(one, two);
+
 /**
  * The engine's work a timer of the composition root runs: the orders and alerts that wait for no
- * price, the cards whose time is up, the schedule queue and the copy orders' leader trades.
+ * price, the cards and launch drafts whose time is up, the schedule queue and the copy orders'
+ * leader trades.
  */
 export function timedWorkOf(
   parts: TimedParts,
 ): Pick<Engine, "tickOrders" | "expireCards" | "runSchedules" | "runCopies"> {
-  const { intents, chat, clock } = parts;
+  const { intents, chat, drafts, clock } = parts;
   return {
     tickOrders: async ({ signal }) =>
       tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
-    expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
+    expireCards: async ({ signal }) =>
+      sooner(await expireDueCards(intents.cardTimer, signal), drafts.expire()),
     runSchedules: async ({ signal }) =>
       runQueue({ schedules: chat.schedules, dca: intents.dca, clock }, signal),
     runCopies: async (call) => intents.copies.run(call),

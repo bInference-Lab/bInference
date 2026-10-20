@@ -69,6 +69,8 @@ export const protocolErrorCodes = [
   "intent.own_wallet_recipient",
   "intent.launch_recipient_needed",
   "intent.launch_recipient_unused",
+  "intent.launch_wallet_missing",
+  "intent.launch_picture_too_large",
   "order.not_found",
   "order.wrong_state",
   "order.kind_unavailable",

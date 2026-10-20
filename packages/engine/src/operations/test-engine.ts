@@ -28,6 +28,7 @@ import {
   type ManualClock,
 } from "@binference/core/testing";
 import type { AgentDraft, AgentRecord } from "../agents/agent-record.js";
+import type { OwnerImageSource } from "../chat/ports.js";
 import { createRunningTurns, type RunningTurns } from "../chat/running-turns.js";
 import { createFakeCeilingEditor, type FakeCeilingEditor } from "../fakes/fake-ceiling-editor.js";
 import { createFakeExecutor, type FakeExecutor } from "../fakes/fake-executor.js";
@@ -154,6 +155,8 @@ export interface TestEngineOptions {
   readonly custodyWallets?: ReadonlyMap<Id<"wal">, AccountRef>;
   /** The owner's uploads, shared with the test that fills them. */
   readonly uploads?: UploadShelf;
+  /** The photos the owner sent the bot, by `tg:<file id>`; none when absent. */
+  readonly botImages?: OwnerImageSource;
   /** The owner's uploads a token launch's picture comes from; none when absent. */
   /** The launchpads the registry lists as running a first buy with no minimum (decision 0270). */
   readonly unboundFirstBuys?: ReadonlyMap<ChainRef, readonly string[]>;
@@ -262,15 +265,17 @@ function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter
   };
 }
 
-// Whether live orders fill and a launch feed runs, the uploads and quote assets, as the test asks.
+// Whether live orders fill and a launch feed runs, the uploads, the bot's photos and quote assets,
+// as the test asks.
 function switchesOf(
   options: TestEngineOptions,
-): Pick<EngineOptions, "liveOrderFills" | "launchFeed" | "uploads" | "quoteAssets"> {
+): Pick<EngineOptions, "liveOrderFills" | "launchFeed" | "uploads" | "botImages" | "quoteAssets"> {
   return {
     liveOrderFills: options.liveOrderFills === true,
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
     ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
+    ...(options.botImages === undefined ? {} : { botImages: options.botImages }),
   };
 }
 

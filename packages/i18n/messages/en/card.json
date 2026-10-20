@@ -26,6 +26,7 @@
   "launch.link": "{site, select, website {Website} x {X} telegram {Telegram} other {Link}}: {url}",
   "launch.picture": "Picture sent: {format, select, png {PNG} jpeg {JPEG} other {WebP}}, {kib} KB, SHA-256 {digest} · metadata at {uri}",
   "launch.writtenPicture": "Picture written on chain with the token: {format, select, png {PNG} jpeg {JPEG} other {WebP}}, {bytes} bytes, {width} x {height} pixels, SHA-256 {digest}",
+  "launch.photo": "Picture: your photo from the chat, {format, select, png {PNG} jpeg {JPEG} other {WebP}}, {kib} KB, SHA-256 {digest}",
   "launch.upload": "Picture: upload {upload}",
   "launch.pinned": "⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel",
   "rescue.action": "Move everything to your rescue address {address}: {count, plural, one {# token} other {# tokens}} from {wallets, plural, one {# wallet} other {# wallets}}, about {usd}",

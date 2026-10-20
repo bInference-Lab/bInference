@@ -36,6 +36,7 @@ import type {
   WalletMaker,
 } from "../install/ports.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
+import type { LaunchDraftDesk } from "../launches/launch-draft-desk.js";
 import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
 import type { MarketParts } from "../market/market-handlers.js";
 import type { PinFollow } from "../money-path/follow-launch-pin.js";
@@ -75,6 +76,11 @@ import {
   requoteOptions,
   storedIntentsOf,
 } from "./engine-intent-parts.js";
+import {
+  launchDraftsOf,
+  type LaunchDraftHandlers,
+  withSharedParts,
+} from "./engine-launch-drafts.js";
 import { moneyPathOf } from "./engine-money-path.js";
 import { cardTimerOf, copyOrdersOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
 import { type EngineChatHandlers, engineChatOf, safetyHandlersOf } from "./engine-parts.js";
@@ -99,7 +105,8 @@ export interface EngineHandlers
     SendLevelHandlers,
     AddressBookHandlers,
     RescueAddressHandlers,
-    SafetyHandlers {}
+    SafetyHandlers,
+    LaunchDraftHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
@@ -112,6 +119,11 @@ export interface Engine {
   readonly handlers: EngineHandlers;
   /** Applies a card answer from a surface the engine serves itself, such as a Telegram tap. */
   readonly answer: AnswerCard;
+  /**
+   * The agent's open launch drafts (decision 0285): what the owner's surfaces show of each, and
+   * the owner's Start or Drop, which only a press of the owner's own reaches.
+   */
+  readonly launchDrafts: LaunchDraftDesk;
   /**
    * Does the work that waits for its time: once a new rescue address takes effect, it sends the
    * change that leaves the old one out of every ceiling. A timer of the composition root calls it;
@@ -146,8 +158,9 @@ export interface Engine {
   /**
    * The card timer (spec 6, section 3): closes as expired every card waiting for the owner whose
    * time is up, an auto order's card with its order, and answers when the next open card's time
-   * is up, or `undefined` when no card waits. A timer of the composition root calls it again at
-   * that time, locked or not: it signs nothing.
+   * is up, or `undefined` when no card waits. It also ends every launch draft whose 10 minutes
+   * ran out (decision 0285), and counts the next draft's end as the next time. A timer of the
+   * composition root calls it again at that time, locked or not: it signs nothing.
    */
   readonly expireCards: (options: { readonly signal: AbortSignal }) => Promise<number | undefined>;
   /**
@@ -401,7 +414,7 @@ export function createEngineWithFills(given: EngineOptions): {
 } {
   // Every part reads an agent's limits as they are in effect now (decision 0111).
   const agents = withLimitsInEffect(given.stores.agents, given.clock);
-  const options = { ...given, stores: { ...given.stores, agents } };
+  const options = withSharedParts({ ...given, stores: { ...given.stores, agents } });
   const paper = createPaperParts(options);
   const chat = engineChatOf(options);
   const check = createDowntimeCheck();
@@ -409,6 +422,7 @@ export function createEngineWithFills(given: EngineOptions): {
   chat.attach(intents.stored);
   const { rescueParts } = sharedParts(options);
   const summaries = dailySummariesOf(options, paper);
+  const drafts = launchDraftsOf(options, intents);
   const engine: Engine = {
     handlers: {
       ...intents.handlers,
@@ -417,12 +431,14 @@ export function createEngineWithFills(given: EngineOptions): {
       ...ownerSettingsHandlers(options, paper),
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
       ...chat.handlers,
+      ...drafts.handlers,
     },
     answer: intents.answer,
+    launchDrafts: drafts.desk,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     ...startupWorkOf(options, { ...intents, relay: chat.relay, check, paper }),
-    ...timedWorkOf({ intents, chat, clock: options.clock }),
+    ...timedWorkOf({ intents, chat, drafts: drafts.desk, clock: options.clock }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,

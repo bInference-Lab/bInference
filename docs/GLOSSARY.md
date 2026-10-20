@@ -211,6 +211,9 @@ new name here first, in the change that uses it.
   launchpad's contracts, uploads its words and picture, reports their pin, and builds and decodes
   the create call. A launchpad with no API for pictures uploads nothing: it takes a picture link,
   or writes a small picture into its create call. It never signs.
+- **launch draft**: a token launch the agent suggests with `launch/draft`, held 10 minutes; the
+  owner starts it with Start launch in Telegram, and its card follows. The agent never starts a
+  launch itself.
 - **picture link**: an `ipfs://` or `https://` address of a token's picture that the owner hosts,
   which a launchpad's create call names. Nothing in binference opens it.
 - **pin**: a launchpad's report that it keeps a launch's picture and words on its storage. A token
@@ -625,54 +628,55 @@ it. Write Chinese the way Binance's own Chinese docs do:
 
 ### Wallets and safety
 
-| English                                  | 中文                   | Notes                            |
-| ---------------------------------------- | ---------------------- | -------------------------------- |
-| agent wallet                             | Agent 钱包             |                                  |
-| launch wallet                            | 发射钱包               | Trades on a launch's own curve   |
-| extra launch wallet                      | 额外的发射钱包         | Nothing trades from it           |
-| pin (a launch's picture and words)       | 固定                   | The launchpad's storage keeps it |
-| picture link                             | 图片地址               | The owner hosts it               |
-| launch fee                               | 发射手续费             | Paid with the create call        |
-| creator fee recipient                    | 创建者费用接收地址     | Claims a launch's creator fees   |
-| first buy                                | 首笔买入               | The launch wallet's own buy      |
-| owner key                                | 所有者密钥             | Shown once as a `bnok1` code     |
-| balance                                  | 余额                   |                                  |
-| withdraw, fund (a wallet)                | 提取, 充值             | Lending's withdraw is 取出       |
-| top up                                   | 充值                   |                                  |
-| send (to an address)                     | 转账                   |                                  |
-| transfer (between your own accounts)     | 划转                   |                                  |
-| recipient address                        | 收款地址               |                                  |
-| private key                              | 私钥                   | API keys stay 密钥               |
-| recovery phrase                          | 助记词                 |                                  |
-| API key, key                             | API 密钥, 密钥         |                                  |
-| export (a private key)                   | 导出                   |                                  |
-| signature, sign                          | 签名                   |                                  |
-| approve (a token allowance), approval    | 授权                   |                                  |
-| permit (a signed approval)               | 签名授权               |                                  |
-| revoke                                   | 撤销                   |                                  |
-| attach (a machine)                       | 接入                   | `binference init --attach`       |
-| key quorum                               | 密钥组                 | Privy's record of signing keys   |
-| connect wallet                           | 连接钱包               |                                  |
-| sign in, sign out                        | 登录, 退出登录         |                                  |
-| paper mode, live                         | 模拟模式, 实盘         |                                  |
-| approval mode, manual, auto              | 批准模式, 手动, 自动   |                                  |
-| ceiling (the wallet policy's hard limit) | 上限                   |                                  |
-| per-trade cap, 24-hour cap               | 单笔上限, 24 小时上限  |                                  |
-| floor price (of a 24-hour cap)           | 底价                   |                                  |
-| per-trade limit, daily limit             | 单笔上限, 每日上限     |                                  |
-| trade limits                             | 交易限额               |                                  |
-| spending limit                           | 消费上限               |                                  |
-| gas reserve                              | 网络费预留             |                                  |
-| spendable (balance)                      | 可用                   |                                  |
-| network fee cap                          | 网络费上限             |                                  |
-| freeze, unfreeze                         | 冻结, 解除冻结         |                                  |
-| rescue, rescue address                   | 紧急转出, 紧急转出地址 |                                  |
-| send level                               | 转账级别               |                                  |
-| address book                             | 地址簿                 |                                  |
-| safety check                             | 安全检查               |                                  |
-| verified (a token)                       | 已验证                 |                                  |
-| take back access, give access back       | 收回权限, 恢复权限     | The agent's access to its wallet |
-| expire, expires, expiry                  | 过期, 到期             |                                  |
-| backup                                   | 备份                   |                                  |
-| locked                                   | 锁定                   |                                  |
-| plaintext secret                         | 明文密钥               |                                  |
+| English                                  | 中文                   | Notes                                |
+| ---------------------------------------- | ---------------------- | ------------------------------------ |
+| agent wallet                             | Agent 钱包             |                                      |
+| launch wallet                            | 发射钱包               | Trades on a launch's own curve       |
+| extra launch wallet                      | 额外的发射钱包         | Nothing trades from it               |
+| pin (a launch's picture and words)       | 固定                   | The launchpad's storage keeps it     |
+| picture link                             | 图片地址               | The owner hosts it                   |
+| launch draft                             | 发射草稿               | The agent suggests, the owner starts |
+| launch fee                               | 发射手续费             | Paid with the create call            |
+| creator fee recipient                    | 创建者费用接收地址     | Claims a launch's creator fees       |
+| first buy                                | 首笔买入               | The launch wallet's own buy          |
+| owner key                                | 所有者密钥             | Shown once as a `bnok1` code         |
+| balance                                  | 余额                   |                                      |
+| withdraw, fund (a wallet)                | 提取, 充值             | Lending's withdraw is 取出           |
+| top up                                   | 充值                   |                                      |
+| send (to an address)                     | 转账                   |                                      |
+| transfer (between your own accounts)     | 划转                   |                                      |
+| recipient address                        | 收款地址               |                                      |
+| private key                              | 私钥                   | API keys stay 密钥                   |
+| recovery phrase                          | 助记词                 |                                      |
+| API key, key                             | API 密钥, 密钥         |                                      |
+| export (a private key)                   | 导出                   |                                      |
+| signature, sign                          | 签名                   |                                      |
+| approve (a token allowance), approval    | 授权                   |                                      |
+| permit (a signed approval)               | 签名授权               |                                      |
+| revoke                                   | 撤销                   |                                      |
+| attach (a machine)                       | 接入                   | `binference init --attach`           |
+| key quorum                               | 密钥组                 | Privy's record of signing keys       |
+| connect wallet                           | 连接钱包               |                                      |
+| sign in, sign out                        | 登录, 退出登录         |                                      |
+| paper mode, live                         | 模拟模式, 实盘         |                                      |
+| approval mode, manual, auto              | 批准模式, 手动, 自动   |                                      |
+| ceiling (the wallet policy's hard limit) | 上限                   |                                      |
+| per-trade cap, 24-hour cap               | 单笔上限, 24 小时上限  |                                      |
+| floor price (of a 24-hour cap)           | 底价                   |                                      |
+| per-trade limit, daily limit             | 单笔上限, 每日上限     |                                      |
+| trade limits                             | 交易限额               |                                      |
+| spending limit                           | 消费上限               |                                      |
+| gas reserve                              | 网络费预留             |                                      |
+| spendable (balance)                      | 可用                   |                                      |
+| network fee cap                          | 网络费上限             |                                      |
+| freeze, unfreeze                         | 冻结, 解除冻结         |                                      |
+| rescue, rescue address                   | 紧急转出, 紧急转出地址 |                                      |
+| send level                               | 转账级别               |                                      |
+| address book                             | 地址簿                 |                                      |
+| safety check                             | 安全检查               |                                      |
+| verified (a token)                       | 已验证                 |                                      |
+| take back access, give access back       | 收回权限, 恢复权限     | The agent's access to its wallet     |
+| expire, expires, expiry                  | 过期, 到期             |                                      |
+| backup                                   | 备份                   |                                      |
+| locked                                   | 锁定                   |                                      |
+| plaintext secret                         | 明文密钥               |                                      |

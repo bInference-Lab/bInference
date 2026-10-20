@@ -15,7 +15,7 @@ import { advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
 import { pinWaitOf, toldIfEnded } from "./launch-ending.js";
-import { writtenPictureMostSide } from "./launch-image.js";
+import { writtenPictureFit } from "./launch-image.js";
 import { launchSubjectOf } from "./launch-policy.js";
 import { type LaunchRun, quotedRunOf } from "./launch-run.js";
 import { type ReadPicture, readOwnPicture, uploadPicture } from "./launch-upload.js";
@@ -239,14 +239,11 @@ async function pictureOf(run: LaunchRun): Promise<Result<ReadPicture | undefined
   if (place !== "create_call") {
     return ok(picture);
   }
-  const { image } = picture;
-  if (image.width === undefined || image.height === undefined) {
+  const fit = writtenPictureFit(picture.image, host.pictureBytesFor(request.venue, request) ?? 0);
+  if (fit === "unsized") {
     return err("image_unreadable");
   }
-  const mostBytes = host.pictureBytesFor(request.venue, request) ?? 0;
-  const isOver =
-    image.bytes > mostBytes || Math.max(image.width, image.height) > writtenPictureMostSide;
-  return isOver ? err("picture_too_large") : ok(picture);
+  return fit === "too_large" ? err("picture_too_large") : ok(picture);
 }
 
 // Once its upload begins, the owner hears of any end before the pin wait (decision 0237).
@@ -311,9 +308,12 @@ async function runLaunch(given: LaunchRun, proposed: IntentSnapshot): Promise<In
   });
 }
 
-// One launch of an agent at a time, from its proposal until it is signed or ends, so each
-// proposal's upload waits for the last to settle (decision 0240).
-async function hasLaunchUnderWay(
+/**
+ * Whether a launch of the agent is under way, from its proposal until it is signed or ends: one
+ * launch of an agent runs at a time, so each proposal's upload waits for the last to settle
+ * (decision 0240).
+ */
+export async function hasLaunchUnderWay(
   options: LaunchPathOptions,
   agentId: Id<"agt">,
   signal: AbortSignal,

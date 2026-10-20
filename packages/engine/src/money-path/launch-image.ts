@@ -51,3 +51,20 @@ export function launchImageOf(bytes: Readonly<Uint8Array>): LaunchImage | undefi
     ...(size === undefined ? {} : size),
   };
 }
+
+/**
+ * Whether a picture a launchpad writes into its create call fits (decision 0279): it must tell
+ * its width and height (`unsized` when it does not), be at most `mostBytes` and at most 1,024
+ * pixels each way (`too_large` when it is not).
+ */
+export function writtenPictureFit(
+  image: LaunchImage,
+  mostBytes: number,
+): "fits" | "unsized" | "too_large" {
+  const { width, height } = image;
+  if (width === undefined || height === undefined) {
+    return "unsized";
+  }
+  const isOver = image.bytes > mostBytes || Math.max(width, height) > writtenPictureMostSide;
+  return isOver ? "too_large" : "fits";
+}

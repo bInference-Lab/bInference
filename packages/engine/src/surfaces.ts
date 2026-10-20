@@ -8,6 +8,17 @@ export type {
   QuestionPressesOptions,
   QuestionStanding,
 } from "./surfaces/create-question-presses.js";
+export { createLaunchDraftPresses } from "./surfaces/create-launch-draft-presses.js";
+export type {
+  LaunchDraftPress,
+  LaunchDraftPresses,
+  LaunchDraftPressesOptions,
+} from "./surfaces/create-launch-draft-presses.js";
+export type {
+  LaunchDraftDesk,
+  LaunchDraftShowing,
+  LaunchDraftStanding,
+} from "./launches/launch-draft-desk.js";
 export { createCardShowings } from "./surfaces/create-card-showings.js";
 export type { PaperReceipt } from "./surfaces/paper-receipt.js";
 export type {

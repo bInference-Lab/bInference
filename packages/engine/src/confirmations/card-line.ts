@@ -33,6 +33,7 @@ export const cardKeys = [
   "card.launch.link",
   "card.launch.picture",
   "card.launch.writtenPicture",
+  "card.launch.photo",
   "card.launch.upload",
   "card.launch.pinned",
   "card.rescue.action",

@@ -164,6 +164,7 @@ A `launchToken` shows, right after its action line, each line below that has its
 | Link, each        | `card.launch.link`           | {site}: {url} (Website, X, Telegram)                                                                          | {site}：{url}（网站、X、Telegram）                                                      |
 | Picture           | `card.launch.picture`        | Picture sent: {format}, {kib} KB, SHA-256 {digest} · metadata at {uri}                                        | 已发送图片：{format}，{kib} KB，SHA-256 {digest} · 元数据位于 {uri}                     |
 | Picture written   | `card.launch.writtenPicture` | Picture written on chain with the token: {format}, {bytes} bytes, {width} x {height} pixels, SHA-256 {digest} | 随代币写入链上的图片：{format}，{bytes} 字节，{width} x {height} 像素，SHA-256 {digest} |
+| Draft photo       | `card.launch.photo`          | Picture: your photo from the chat, {format}, {kib} KB, SHA-256 {digest}                                       | 图片：你在对话中发送的图片，{format}，{kib} KB，SHA-256 {digest}                        |
 | Picture, paper    | `card.launch.upload`         | Picture: upload {upload}                                                                                      | 图片：上传 {upload}                                                                     |
 | Picture link      | `launch.option.pictureLink`  | Picture at {link} (binference never opens it)                                                                 | 图片地址 {link}（binference 从不打开它）                                                |
 | Setting, each     | `launch.option.<name>`       | One per launchpad setting, such as `launch.option.taxBps`: Tax on every trade: {value}                        | 如 `launch.option.taxBps`：每笔交易的交易税：{value}                                    |
@@ -188,6 +189,9 @@ worked out at its quote or its build shows like one the owner gave
 A launchpad that writes the picture into its create call shows `card.launch.writtenPicture` in
 place of `card.launch.picture`, and no `card.launch.pinned`: nothing is public before the
 signature ([decision 0279](../DECISIONS.md#d0279)).
+A launch draft shows the owner's photo with `card.launch.photo` before anything is
+uploaded; the launch's card then shows the picture line its launchpad's place calls for
+([decision 0286](../DECISIONS.md#d0286)).
 A card cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200, and shows `{link}`
 whole, up to its 512 bytes, as it shows a launch setting's `{address}` whole: an account a
 launch pays. A launchpad that takes its picture as a link uploads nothing, so its

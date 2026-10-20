@@ -9,6 +9,10 @@ import { type EngineOperationShapes, engineOperations } from "./engine-operation
 import { type ImageOperationShapes, imageOperations } from "./image-operations.schema.js";
 import { type IntentOperationShapes, intentOperations } from "./intent-operations.schema.js";
 import {
+  type LaunchDraftOperationShapes,
+  launchDraftOperations,
+} from "./launch-draft-operations.schema.js";
+import {
   type LaunchpadOperationShapes,
   launchpadOperations,
 } from "./launchpad-operations.schema.js";
@@ -35,6 +39,7 @@ export interface OperationShapes
     WalletOperationShapes,
     MarketOperationShapes,
     LaunchpadOperationShapes,
+    LaunchDraftOperationShapes,
     IntentOperationShapes,
     OrderOperationShapes,
     LimitOperationShapes,
@@ -65,6 +70,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...walletOperations,
   ...marketOperations,
   ...launchpadOperations,
+  ...launchDraftOperations,
   ...intentOperations,
   ...orderOperations,
   ...limitOperations,

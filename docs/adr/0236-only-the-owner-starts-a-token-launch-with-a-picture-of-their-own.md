@@ -1,6 +1,6 @@
 # 0236. Only the owner starts a token launch, with a picture of their own
 
-Status: Accepted
+Status: Amended by 0285
 
 Accepted by the owner on 2026-10-19.
 
