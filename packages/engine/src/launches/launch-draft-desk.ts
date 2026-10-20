@@ -68,12 +68,15 @@ export interface LaunchDraftDeskOptions {
   readonly publish: PublishPush;
 }
 
-// The owner on Telegram, as the one proposal the owner's chat makes runs (decision 0285).
-function ownerOnTelegram(userId: number): EngineCaller {
+// The owner on Telegram, as the one proposal the owner's chat makes runs (decision 0285), with
+// the outside-content mark of the agent's turn that drafted it, so its card warns as the turn's
+// own proposals would.
+function ownerOnTelegram(userId: number, draft: LaunchDraft): EngineCaller {
   return {
     credential: `tg:${String(userId)}`,
     client: { kind: "telegram" },
     scopes: ownerChatScopes,
+    turn: { hasOutsideContent: draft.hasOutsideContent },
   };
 }
 
@@ -95,7 +98,7 @@ async function startDraft(
   draft: LaunchDraft,
   call: { readonly userId: number; readonly signal: AbortSignal },
 ): Promise<LaunchDraftStanding> {
-  const caller = ownerOnTelegram(call.userId);
+  const caller = ownerOnTelegram(call.userId, draft);
   const image = imageOf(options, draft, caller.credential);
   if (image === undefined) {
     publishDraftClosed(options.publish, draft, { outcome: "failed", error: "image.unreadable" });

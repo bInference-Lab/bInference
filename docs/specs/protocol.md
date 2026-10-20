@@ -722,7 +722,10 @@ launch ([spec 8, section 6.5](runtime.md#section-6-5)); a `launchToken` the runt
   ([spec 4, section 8.5](cards-and-messages.md#section-8-5)). The owner's Start proposes the
   draft's request through `intent/propose` as the owner on Telegram, with the photo put on the
   upload shelf under the owner's Telegram credential: the one proposal the owner's chat makes.
-  The launch then runs as any launch: its upload, its pin and its card, which the owner confirms.
+  The launch carries the outside-content mark of the turn that drafted it, so its card warns as
+  that turn's own proposals would, and a draft from a clean turn carries none. The launch then
+  runs as any launch, never in auto mode: its upload, its pin and its card, which the owner
+  confirms.
 
 `images` are upload ids from `upload/start` (section 7.9): at most 4 per message, each a PNG, JPEG
 or WebP of at most 5 MiB. A message with images marks the turn as outside content

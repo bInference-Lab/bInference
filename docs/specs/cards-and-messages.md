@@ -999,7 +999,8 @@ card shows from the draft (`card.launch.action`, the description, each link, the
 with its default filled in), the outside content warning when the drafting turn read any, and the
 footer. Every value of the draft is outside text, cut and made visible as a card's is. Its two
 buttons are Start launch and Drop (section 2). After Start, the launch runs as any launch: its card
-follows, with the fee, the new token and the least the first buy gets.
+follows, with the fee, the new token and the least the first buy gets, and with
+`card.warn.outsideContent` when the drafting turn read outside content.
 
 Once the draft ends, its message loses its buttons and becomes the line of how it ended. The
 answer to a press is under 200 characters.

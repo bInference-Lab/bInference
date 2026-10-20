@@ -42,9 +42,10 @@ export interface EngineCaller {
   readonly transport?: "ipc" | "ws";
   /**
    * The running turn of the agent the runtime proposes for, set only for a call made with the
-   * token the engine made at the runtime's current start (`markRuntimeTurns`); the protocol server
-   * never sets it, so no client can clear the mark. Without it, a proposal of a client with
-   * `agent` counts as outside content.
+   * token the engine made at the runtime's current start (`markRuntimeTurns`), or the mark of the
+   * turn that drafted the launch the owner's Start in Telegram proposes (decision 0285); the
+   * protocol server never sets it, so no client can clear the mark. Without it, a proposal of a
+   * client with `agent` counts as outside content.
    */
   readonly turn?: TurnMark;
 }
@@ -92,15 +93,17 @@ function isTelegramOwner(caller: EngineCaller): boolean {
  * Who proposes, from the scopes the server signed the caller in with: the agent runtime holds
  * `agent`, the owner's CLI and console devices hold `confirm`, and any other client is an MCP
  * client, which the auto test never lets skip a card. The owner's Telegram chat and the Mini App
- * propose as the owner on Telegram. Any other credential that is neither a token nor a device
- * proposes nothing. A proposal of
+ * propose as the owner on Telegram, with the outside-content mark only when the caller carries the
+ * mark of the agent's turn that drafted the launch its press starts (decision 0285). Any other
+ * credential that is neither a token nor a device proposes nothing. A proposal of
  * the agent runtime carries the outside-content mark unless the caller's turn says it read none.
  */
 export function proposerOf(caller: EngineCaller): Proposer | undefined {
   const { credential, scopes } = caller;
   if (isTelegramOwner(caller)) {
+    const hasOutsideContent = caller.turn?.hasOutsideContent === true;
     return scopes.includes("confirm")
-      ? { role: "owner", ref: "telegram", hasOutsideContent: false }
+      ? { role: "owner", ref: "telegram", hasOutsideContent }
       : undefined;
   }
   if (!isCredentialId(credential)) {

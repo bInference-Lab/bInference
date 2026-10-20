@@ -27,6 +27,7 @@ const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.time
 const photoId = "AgACAgIAAxkBAAIBforkcat";
 const firstBuy = 10n ** 16n;
 const done = String.fromCodePoint(0x2705);
+const warning = `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}`;
 
 beforeAll(async () => {
   built.bundle = await buildSignerBundle("signer-launch-chat-");
@@ -185,6 +186,8 @@ describe("a token launch started from a Telegram chat on a BSC fork", () => {
           `https://funcs.flap.sh/api/v1/ipfs/pins?cid=${cid}`,
           `https://funcs.flap.sh/api/v1/ipfs/pins?cid=${cid}`,
         ]);
+        // The owner's photo made the drafting turn outside content, so the launch's card warns.
+        expect(card.text).toContain(`${warning} This came after reading outside content`);
         expect(card.text).toMatch(
           /Launch FCAT \(Fork Cat\) on flap, paired with BNB · first buy 0\.01 BNB/u,
         );

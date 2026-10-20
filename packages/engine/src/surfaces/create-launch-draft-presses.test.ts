@@ -6,6 +6,7 @@ import { launchDraftOpenMs } from "../launches/launch-draft-shelf.js";
 import {
   chatPushes,
   type DraftEngine,
+  draftArgs,
   draftArgsWithoutPhoto,
   draftOf,
   draftOwnerId,
@@ -14,6 +15,7 @@ import {
   refOf,
   testDraftEngine,
 } from "../launches/test-launch-drafts.js";
+import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import { createLaunchDraftPresses } from "./create-launch-draft-presses.js";
 
@@ -43,6 +45,32 @@ function startedIntent(standing: LaunchDraftStanding): Id<"int"> {
     throw new Error(`Expected a start, got ${standing.status}.`);
   }
   return standing.intent;
+}
+
+const outsideWarning =
+  "\u26a0\ufe0f This came after reading outside content (web, X, token data or an image)";
+
+// A launch the owner started from a draft of a turn marked outside content or not, its stored
+// intent and its card as the owner reads it.
+async function startedFrom(turn: { readonly isMarked: boolean }) {
+  const drafting = await testDraftEngine();
+  if (turn.isMarked) {
+    const { agent, turn: id } = draftArgs();
+    expectOk(
+      await drafting.test.engine.handlers["turn/mark"](
+        testCall({ agent, turn: id }, testCallers.runtime),
+      ),
+    );
+  }
+  const { draft } = expectOk(await draftOf(drafting.test));
+  const ref = refOf(drafting.test, draft);
+  const presses = pressesOf(drafting);
+  const intent = startedIntent(await presses.answer(start(ref), { signal: signal() }));
+  const stored = await drafting.test.stores.intents.get(intent, { signal: signal() });
+  const view = expectOk(
+    await drafting.test.engine.handlers["intent/get"](testCall({ intent }, testCallers.cli)),
+  );
+  return { stored, card: await testCardText(drafting.test, view, "en") };
 }
 
 describe("the owner's presses of a launch draft", () => {
@@ -167,5 +195,27 @@ describe("the owner's presses of a launch draft", () => {
       { ok: false, error: "intent.owner_only" },
       { ok: false, error: "intent.owner_only" },
     ]);
+  });
+
+  it("carries the drafting turn's outside-content mark to the launch's card, and only that", async () => {
+    const clean = await startedFrom({ isMarked: false });
+    const marked = await startedFrom({ isMarked: true });
+    expect([clean.stored?.hasOutsideContent, marked.stored?.hasOutsideContent]).toStrictEqual([
+      false,
+      true,
+    ]);
+    expect(clean.card).not.toContain(outsideWarning);
+    expect(marked.card).toContain(outsideWarning);
+  });
+
+  it("opens a card for a launch from a draft even in auto mode", async () => {
+    const { drafting, ref, presses } = await drafted({
+      options: { agent: { approvalMode: "auto" } },
+    });
+    const intent = startedIntent(await presses.answer(start(ref), { signal: signal() }));
+    const view = expectOk(
+      await drafting.test.engine.handlers["intent/get"](testCall({ intent }, testCallers.cli)),
+    );
+    expect(view.state).toBe("awaiting_confirmation");
   });
 });

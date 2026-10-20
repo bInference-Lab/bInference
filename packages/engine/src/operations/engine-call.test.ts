@@ -42,6 +42,14 @@ describe("who calls the engine", () => {
     expect(proposerOf(caller)).toBeUndefined();
   });
 
+  it("proposes from Telegram with the mark of the turn that drafted the launch, and only then", () => {
+    const marked = { ...telegram, turn: { hasOutsideContent: true } };
+    const clean = { ...telegram, turn: { hasOutsideContent: false } };
+    expect(
+      [proposerOf(marked), proposerOf(clean)].map((proposer) => proposer?.hasOutsideContent),
+    ).toStrictEqual([true, false]);
+  });
+
   it("proposes nothing from a Telegram caller that may only read", () => {
     expect(proposerOf({ ...telegram, scopes: ["read"] })).toBeUndefined();
   });
