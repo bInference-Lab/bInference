@@ -13,46 +13,15 @@ import type { InitContext, InitStep } from "../init/init-context.js";
 import type { StartFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
+import { type EngineRun, startAs, stopFor } from "./engine-runs.js";
 import { refuse } from "./init-command.js";
 import { initContextOf } from "./init-context-of.js";
 import type { Report } from "./init-summary.js";
-import {
-  isEngineRunning,
-  isHomeMoved,
-  runServiceStart,
-  type ServiceRun,
-  serviceStatusOf,
-} from "./service-start-command.js";
-import { type ForegroundStart, startForeground } from "./start-command.js";
-import { stopEngine, withStopRun } from "./stop-command.js";
 
 /** What `binference backup restore` was asked: the backup file, and the `--set` of the start after. */
 export interface BackupRestoreRequest {
   readonly file: string;
   readonly options: StartFlags;
-}
-
-/** How the engine ran before the restore, and so how it starts after it. */
-type EngineRun = "service" | "foreground" | "stopped";
-
-async function howItRuns(run: ServiceRun): Promise<EngineRun> {
-  if (!isHomeMoved(run.host) && (await serviceStatusOf(run))?.state === "running") {
-    return "service";
-  }
-  return isEngineRunning(run.platform) ? "foreground" : "stopped";
-}
-
-// Stops the engine as `binference stop` does and answers how it ran; undefined when it still runs
-// once the stop's time is up.
-async function stopFor(run: CommandRun): Promise<EngineRun | undefined> {
-  const how: { ran: EngineRun | undefined } = { ran: undefined };
-  await withStopRun(run.host, run.output, async (stopping) => {
-    const ran = await howItRuns(stopping);
-    const isLate = ran !== "stopped" && (await stopEngine(stopping)).kind === "late";
-    how.ran = isLate ? undefined : ran;
-    return 0;
-  });
-  return how.ran;
 }
 
 /** A swap that happened, or why none did. */
@@ -172,7 +141,7 @@ async function startOrUndo(
   }
   const isForeground = ran === "foreground";
   context.prompter.say(context.words(isForeground ? "restore.startHere" : "restore.startService"));
-  const first = await startAs(restore, ran);
+  const first = await startAs(restore.run, restore.options.sets, ran);
   if (first.isStarted) {
     return first.serve();
   }
@@ -185,27 +154,11 @@ async function startOrUndo(
     return refuseMixed(restore, undone);
   }
   context.prompter.say(context.words("restore.startFailedUndone"));
-  const again = await startAs(restore, ran);
+  const again = await startAs(restore.run, restore.options.sets, ran);
   if (again.isStarted) {
     await again.serve();
   }
   return 1;
-}
-
-// One start as the engine ran, with this run's `--set` flags.
-async function startAs(
-  restore: RestoreRun,
-  ran: Exclude<EngineRun, "stopped">,
-): Promise<ForegroundStart> {
-  const { host, output } = restore.run;
-  const { sets } = restore.options;
-  if (ran === "foreground") {
-    return startForeground(host, output, sets);
-  }
-  const code = await runServiceStart(host, output, sets);
-  return code === 0
-    ? { isStarted: true, serve: async () => Promise.resolve(0) }
-    : { isStarted: false, code };
 }
 
 // Refuses a swap that did not happen, after which the engine runs as it did: an engine held the
@@ -233,7 +186,8 @@ async function refuseSwap(
     key: isCarry ? "refused.restoreCarryFailed" : "refused.restoreMoveFailed",
     values: { folder },
   });
-  const again = ran === "stopped" ? undefined : await startAs(restore, ran);
+  const again =
+    ran === "stopped" ? undefined : await startAs(restore.run, restore.options.sets, ran);
   if (again?.isStarted === true) {
     await again.serve();
   }
