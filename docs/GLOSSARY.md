@@ -31,6 +31,9 @@ new name here first, in the change that uses it.
   chains' RPC nodes.
 - **engine log**: `logs/engine.log` in the state folder, one JSON line per log record with ids
   and no content, set aside by size and read back by `binference logs`.
+- **support bundle**: the JSON file `binference report` writes to `reports/` in the state folder for
+  the owner to share when asking for help: versions, the config with secret sources by kind, the
+  check's findings, the engine's status and the newest engine log lines, kept by field rules.
 - **browser push**: a notification a console device's browser shows when a card opens or closes,
   sent through the browser's push service (Web Push) and encrypted to the browser; the owner turns
   it on in the console. The message names the card only.
@@ -496,6 +499,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | wallet facts                                | 钱包信息               |                              |
 | health signal                               | 健康信号               | Shown by `binference status` |
 | log (the engine's log file)                 | 日志                   |                              |
+| support bundle                              | 诊断包                 | `binference report`          |
 | background service                          | 后台服务               | `binference start`           |
 | telemetry, usage counts                     | 使用统计, 使用次数统计 | `telemetry.enabled`, opt-in  |
 | API address, base URL (of a model provider) | 接口地址               | Where its API answers        |

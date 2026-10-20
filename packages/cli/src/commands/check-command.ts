@@ -1,6 +1,7 @@
 import { createDeadline, type JsonValue } from "@binference/core";
 import { platformOf } from "../compose/engine-locations.js";
 import type { CheckFlags } from "../program/cli-flags.schema.js";
+import type { CliHost } from "../program/cli-host.js";
 import type { CliOutput, ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { accessFindings } from "./access-findings.js";
@@ -15,7 +16,8 @@ import { rpcFindings } from "./rpc-keyed-finding.js";
 // Reading files and one engine call take moments; past this the check gives up.
 const checkBudgetMs = 15_000;
 
-function findingJson(finding: CheckFinding): JsonValue {
+/** A finding as `--json` prints it: its check id, its level and what scripts read beside them. */
+export function findingJson(finding: CheckFinding): JsonValue {
   return { check: finding.check, level: finding.level, ...finding.details };
 }
 
@@ -58,6 +60,32 @@ function printFindings(output: CliOutput, findings: readonly CheckFinding[]): vo
   }
 }
 
+/** What one run of the checks reads: the host, and whether `--fix` repairs what it may. */
+export interface CheckRun {
+  readonly host: CliHost;
+  readonly fix: boolean;
+  readonly signal: AbortSignal;
+}
+
+/**
+ * Every finding of `binference check` on the host's install, in the order it prints them. With
+ * `fix` it makes owner-only every path others can open, and the finding says so.
+ */
+export async function checkFindings(run: CheckRun): Promise<readonly CheckFinding[]> {
+  const { host, fix, signal } = run;
+  const platform = platformOf(host);
+  const config = await configFinding({ host, platform, signal });
+  const access = await accessFindings({ platform, fix, signal });
+  const unlock = config.config === undefined ? [] : [unlockFinding(config.config, platform)];
+  const prices = config.config === undefined ? [] : [modelPriceFinding(config.config)];
+  const reach = await modelReachFinding({ host, platform, signal }, config.config);
+  const images = modelImagesFinding(config.config);
+  const engine = await engineFinding({ host, platform, signal });
+  const rpc = await rpcFindings({ host, platform, signal }, config.config);
+  const extra = await extraLaunchFinding({ host, platform, signal });
+  return [config.finding, ...access, ...unlock, ...prices, reach, images, engine, ...rpc, extra];
+}
+
 /**
  * `binference check [--fix]`: checks this install with or without a running engine, each finding
  * under a stable check id: `config.valid` (config.json5 loads and passes its schema),
@@ -79,7 +107,6 @@ export async function runCheck(
   request: { readonly options: CheckFlags },
 ): Promise<ExitCode> {
   const { host, output } = run;
-  const platform = platformOf(host);
   const deadline = createDeadline({
     clock: host.clock,
     signal: new AbortController().signal,
@@ -87,26 +114,7 @@ export async function runCheck(
   });
   try {
     const { signal } = deadline;
-    const config = await configFinding({ host, platform, signal });
-    const access = await accessFindings({ platform, fix: request.options.fix, signal });
-    const unlock = config.config === undefined ? [] : [unlockFinding(config.config, platform)];
-    const prices = config.config === undefined ? [] : [modelPriceFinding(config.config)];
-    const reach = await modelReachFinding({ host, platform, signal }, config.config);
-    const images = modelImagesFinding(config.config);
-    const engine = await engineFinding({ host, platform, signal });
-    const rpc = await rpcFindings({ host, platform, signal }, config.config);
-    const extra = await extraLaunchFinding({ host, platform, signal });
-    const findings = [
-      config.finding,
-      ...access,
-      ...unlock,
-      ...prices,
-      reach,
-      images,
-      engine,
-      ...rpc,
-      extra,
-    ];
+    const findings = await checkFindings({ host, fix: request.options.fix, signal });
     printFindings(output, findings);
     return findings.some((finding) => finding.level === "fail") ? 1 : 0;
   } finally {

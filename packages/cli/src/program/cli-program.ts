@@ -155,7 +155,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
     .action((flags: OptionValues) =>
       choose({ name: "restart", options: startFlagsSchema.parse(flags) }),
     );
-  for (const name of ["status", "health", "stop", "console"] as const) {
+  for (const name of ["status", "health", "stop", "console", "report"] as const) {
     withCommon(program.command(name).description(message(`command.${name}`)), message).action(
       (flags: OptionValues) => choose({ name, options: commonFlagsSchema.parse(flags) }),
     );

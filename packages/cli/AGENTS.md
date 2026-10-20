@@ -175,5 +175,9 @@ Rules for this package:
   they list now (`src/attach/prepare-restore.ts`), so a refusal changes nothing. It stops the
   engine as `binference stop` does, swaps the files under the engine lock, and starts the engine
   as it ran: the service again, or in the foreground in its own terminal.
+- `binference report` (`src/report/`, decision 0263) writes the support bundle in the CLI, so it
+  works while the engine is stopped. It never opens a key, a database or the keychain. An engine
+  log line passes only by the field rules of `report-log-line.ts`; every other value passes
+  `redactReportJson`. A new log field needs its rule there, or the bundle shows it as `[omitted]`.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

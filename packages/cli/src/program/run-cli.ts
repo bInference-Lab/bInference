@@ -21,6 +21,7 @@ import { runMcpSession } from "../commands/mcp-session-command.js";
 import { runMcpSetup } from "../commands/mcp-setup-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runOwnerKeyCreate } from "../commands/owner-key-create-command.js";
+import { runReport } from "../commands/report-command.js";
 import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
 import { runServiceRemove } from "../commands/service-remove-command.js";
@@ -102,6 +103,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
     return runStatus(host, output, { name, dateTime: (epochMs) => formatter.dateTime(epochMs) });
   },
   health: async ({ host, output }) => runHealth(host, output),
+  report: async (context) => runReport(context),
   unlock: async (context, chosen) => runUnlock(context, chosen.options),
   logs: async ({ host, output }, chosen) => runLogs(host, output, chosen.options),
   approval: runApproval,

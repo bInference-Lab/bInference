@@ -49,6 +49,7 @@ describe("the binference command tree", () => {
       "health",
       "stop",
       "console",
+      "report",
       "unlock",
       "logs",
       "approval",
