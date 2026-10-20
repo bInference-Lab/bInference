@@ -7,7 +7,12 @@ import {
   oneBnbWei,
   testAddresses,
 } from "../testing/custody-fixtures.js";
-import { createData } from "../testing/launchpad-fixtures.js";
+import {
+  createData,
+  geniusLaunchAndBuyData,
+  geniusLaunchTokenData,
+  geniusUnbuiltData,
+} from "../testing/launchpad-fixtures.js";
 import { readBackWallet } from "../wallets/read-back.js";
 import {
   askPrivy,
@@ -82,10 +87,58 @@ function approvalChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] 
   ];
 }
 
+// Genius.fun's create calls (decision 0277): its two built ones, signed from the launch wallet and
+// refused from the main wallet, and an overload it never builds, refused from the launch wallet too.
+function geniusChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
+  const launchAndBuy = (recipient: string): TestCall => ({
+    to: router,
+    valueWei: oneBnbWei,
+    data: geniusLaunchAndBuyData({ quoteIn: oneBnbWei - 2_000_000_000_000_000n, recipient }),
+  });
+  const launchToken: TestCall = {
+    to: router,
+    valueWei: 2_000_000_000_000_000n,
+    data: geniusLaunchTokenData(),
+  };
+  return [
+    launchCheck(
+      harness,
+      "signs Genius.fun's launchAndBuy and launchToken from the launch wallet",
+      async (w) => {
+        await privySigns(w.launch, launchAndBuy(w.launch.wallet.address));
+        await privySigns(w.launch, launchToken);
+      },
+    ),
+    launchCheck(
+      harness,
+      "refuses Genius.fun's launchAndBuy and launchToken from the main wallet",
+      async (w) => {
+        await privyRefuses(w.main, launchAndBuy(w.main.wallet.address));
+        await privyRefuses(w.main, launchToken);
+      },
+    ),
+    launchCheck(
+      harness,
+      "refuses a Genius.fun create overload the venue never builds, even from the launch wallet",
+      async (w) => {
+        const recipient = w.launch.wallet.address;
+        const quoteIn = oneBnbWei - 2_000_000_000_000_000n;
+        await privyRefuses(w.launch, {
+          to: router,
+          valueWei: oneBnbWei,
+          data: geniusUnbuiltData({ quoteIn, recipient }),
+        });
+      },
+    ),
+  ];
+}
+
 /**
  * What a launch wallet's ceiling holds on the Privy fake and the Privy test app (decision 0217):
  * a curve's `buy` and `sell` on a contract no list holds, paying the launch wallet itself, and an
- * approval naming the curve, which the agent's main wallet is refused; an approval naming any
+ * approval naming the curve, which the agent's main wallet is refused; Flap's and Genius.fun's
+ * create calls, refused from the main wallet, and a Genius.fun overload the venue never builds,
+ * refused from the launch wallet too (decision 0277); an approval naming any
  * spender of a capped token within its cap, which is what a stolen key can take; a call paying
  * anyone else, a send to an unsaved address and an approval through any other function, refused.
  */
@@ -125,6 +178,7 @@ export function launchWalletChecks(harness: PrivyCustodyHarness): readonly Contr
       await privyRefuses(w.launch, { to: unsaved, valueWei: 1n, data: "0x" });
       await privyRefuses(w.launch, { to: w.main.wallet.address, valueWei: 1n, data: "0x" });
     }),
+    ...geniusChecks(harness),
     ...approvalChecks(harness),
     launchCheck(harness, "refuses a curve call above the cap in native coin", async (w) => {
       const buy = curveCall("buy", w.launch.wallet.address);
