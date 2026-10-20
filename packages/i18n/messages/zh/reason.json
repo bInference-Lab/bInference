@@ -48,7 +48,7 @@
   "fill_bounds": "该交易将超出订单的数量或滑点上限",
   "worst_price": "价格差于订单的最差价格",
   "trigger_unconfirmed": "该交易自身的价格未达到订单的触发价格",
-  "price_stale": "触发它的价格是在本机休眠前读取的；它会等待新的价格",
+  "price_stale": "触发它的价格是在 binference 暂停前读取的；它会等待新的价格",
   "copy_daily_cap": "将超过该带单钱包的每日上限（已用 {used}，上限 {cap}）",
   "share_unread": "无法读取带单钱包卖出的持仓比例",
   "token_unreadable": "该代币合约未返回其符号和小数位数",
@@ -68,5 +68,7 @@
   "period_unreadable": "binference 已无法读取此订单的计划或时区，因此订单已结束；未买入任何代币",
   "trigger_not_met": "当前价格未达到其触发价格；订单继续等待",
   "no_fresh_price": "binference 恢复后未读到该代币的价格",
-  "position_closed": "其持仓已卖出"
+  "position_closed": "其持仓已卖出",
+  "rearming": "它此前已成交，价格离开触发价格再回来后才会再次触发",
+  "behind_fill": "它在该 Agent 的另一笔成交之后或最近几次跳过之后等待；之后的价格会再次触发它"
 }

@@ -2,7 +2,7 @@ import type { Id, JsonValue } from "@binference/core";
 import type { OrderKind } from "../orders/order-record.js";
 import type { Notice, NoticePart } from "../pushes/notice-push.js";
 import { wholeUnitsOf } from "../records/whole-units.js";
-import type { CheckedSkipReason } from "./downtime-check.js";
+import type { CheckedSkipReason, ResumeCause } from "./downtime-check.js";
 
 /** What the re-check found of one order: filled, or skipped with a reason. */
 export interface CheckedOrder {
@@ -17,8 +17,11 @@ export interface CheckedOrder {
 
 /** One resume's report: what kind of stop it was, how long, and what each order came to. */
 export interface DowntimeReport {
-  /** `start` once the engine started again in it, else `wake`: the machine slept. */
-  readonly cause: "start" | "wake";
+  /**
+   * `start` once the engine started again in it, else `clock` once the wall clock was set back,
+   * else `wake`: the engine paused, as when the machine slept.
+   */
+  readonly cause: ResumeCause;
   /** When the engine last ran before the resume. */
   readonly offFromMs: number;
   /** How long the engine was off or asleep, every resume the re-check joined counted. */

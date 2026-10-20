@@ -13,6 +13,7 @@ import {
 } from "../orders/test-fills.js";
 import { storedOrder, testStopLoss } from "../orders/test-orders.js";
 import { noticeSchema } from "../pushes/notice-push.js";
+import type { Pause } from "./downtime.js";
 
 const live = { signal: new AbortController().signal };
 const minuteMs = 60_000;
@@ -58,6 +59,16 @@ async function reportsOf(test: TestEngine): Promise<readonly JsonValue[]> {
   const query = { agentId: testAgent, limit: 50 };
   const untaken = await test.stores.agentInbox.untaken(query, live);
   return untaken.filter(({ kind }) => kind === "inbox/resumeReport").map(({ payload }) => payload);
+}
+
+// The composition root's check for a pause, which finds `pause` once, at the first question.
+function pauseOnce(test: TestEngine, pause: Pause): () => boolean {
+  const pending = { pause: [pause] };
+  return () => {
+    const found = pending.pause.splice(0);
+    found.forEach((each) => void test.engine.downtime.paused(each, live));
+    return found.length > 0;
+  };
 }
 
 describe("the downtime re-check", () => {
@@ -142,7 +153,8 @@ describe("the downtime re-check", () => {
     const asleepFromMs = test.clock.now();
     await test.clock.advance(10 * minuteMs);
 
-    const run = await test.engine.downtime.woke(asleepFromMs, live);
+    const pause = { cause: "wake", fromMs: asleepFromMs, offMs: 10 * minuteMs } as const;
+    const run = await test.engine.downtime.paused(pause, live);
     const stale = await test.engine.seePrice(at(700_000n, asleepFromMs), live);
     await test.engine.seePrice(at(700_000n, test.clock.now()), live);
     await test.clock.advance(20_000);
@@ -210,20 +222,52 @@ describe("the downtime re-check", () => {
     expect(await storedOrder(test, stop.id)).toMatchObject({ state: "active", fills: 0 });
   });
 
-  it("ends a fill whose price was read before a resume that came while it ran, and keeps the order", async () => {
+  it("ends a fill whose trigger fired before a resume that came while it ran, and keeps the order", async () => {
     const test = await startFillEngine();
     const stop = await activeOrder(test, testStopLoss());
-    const readAtMs = test.clock.now();
-    await test.clock.advance(minuteMs);
-    await test.engine.downtime.woke(readAtMs, live);
+    const fromMs = test.clock.now();
+    await test.clock.advance(2 * minuteMs);
+    await test.engine.downtime.paused({ cause: "wake", fromMs, offMs: 2 * minuteMs }, live);
 
-    const price = { usdPerBaseUnit: { numerator: 4n, denominator: 5n }, decimals: 6, readAtMs };
+    const price = { usdPerBaseUnit: { numerator: 4n, denominator: 5n }, decimals: 6, resumes: 0 };
     const outcome = await test.engine.fillOrder({ order: stop.id, price }, live);
 
     const [intent] = await fillIntentsOf(test);
     expect(outcome).toBe("skipped");
     expect(intent).toMatchObject({ state: "failed_check", reason: "price_stale" });
     expect(await storedOrder(test, stop.id)).toMatchObject({ state: "active", fills: 0 });
+  });
+
+  it("ends a fill whose own check is the first to find a pause, at that check", async () => {
+    const test = await startFillEngine();
+    const stop = await activeOrder(test, testStopLoss());
+    const fromMs = test.clock.now();
+    await test.clock.advance(2 * minuteMs);
+    test.engine.downtime.findPausesWith(
+      pauseOnce(test, { cause: "wake", fromMs, offMs: 2 * minuteMs }),
+    );
+
+    const price = { usdPerBaseUnit: { numerator: 4n, denominator: 5n }, decimals: 6, resumes: 0 };
+    const outcome = await test.engine.fillOrder({ order: stop.id, price }, live);
+
+    expect(outcome).toBe("skipped");
+    expect(await fillIntentsOf(test)).toMatchObject([{ reason: "price_stale" }]);
+  });
+
+  it("fences a pause before it awaits anything, so the next price read before it is dropped", async () => {
+    const test = await startFillEngine();
+    await activeOrder(test, testStopLoss());
+    const fromMs = test.clock.now();
+    await test.clock.advance(2 * minuteMs);
+
+    const run = test.engine.downtime.paused({ cause: "wake", fromMs, offMs: 2 * minuteMs }, live);
+    const stale = await test.engine.seePrice(at(700_000n, test.clock.now() - 1), live);
+    await test.clock.advance(3 * minuteMs);
+    await (
+      await run
+    ).reported;
+
+    expect(stale).toStrictEqual([]);
   });
 
   it("tells every skip after an order's first judgment, and counts only that judgment", async () => {

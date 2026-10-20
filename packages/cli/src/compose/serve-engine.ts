@@ -155,7 +155,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   // reaches the triggers before it took the orders to check (decision 0267).
   await startDowntimeTimer({
     downtime: composed.downtime,
-    onSleep: (asleepMs) => composed.priceWatchers.afterSleep(asleepMs),
+    onPause: (offMs) => composed.priceWatchers.afterSleep(offMs),
     clock: opening.host.clock,
     closers: opening.closers,
     logger: log.logger,

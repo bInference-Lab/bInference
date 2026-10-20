@@ -5,9 +5,14 @@ import type { FillPrice, OrderFills } from "./fill-orders.js";
 import { moveOrder } from "./order-machine.js";
 import { hasPriceTrigger, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
-import { type PriceLevel, wholeTokenPrice } from "./price-level.js";
-import { judgeTrigger, type TriggerState, triggerStateDocument } from "./price-triggers.js";
-import type { ResumeFence } from "./resume-fence.js";
+import { meetsLevel, type PriceLevel, wholeTokenPrice } from "./price-level.js";
+import {
+  isTriggerDisarmed,
+  judgeTrigger,
+  type TriggerState,
+  triggerStateDocument,
+} from "./price-triggers.js";
+import type { ResumeFence, TriggerVerdict } from "./resume-fence.js";
 import { runInLine } from "./run-in-line.js";
 
 /** One confirmed price of a watched token, as the price watcher read it at a block. */
@@ -53,7 +58,7 @@ export interface OrderTriggersParts {
    * The downtime re-check, which drops a price read before the latest resume and hears each
    * order's first judgment after one (decisions 0267 and 0268); none in a test without one.
    */
-  readonly fence?: Pick<ResumeFence, "isStale" | "ready" | "judged" | "fillEnded">;
+  readonly fence?: Pick<ResumeFence, "resumes" | "isStale" | "ready" | "judged" | "fillEnded">;
 }
 
 // The active orders are read again at most this often; each move a trigger makes updates them.
@@ -134,12 +139,14 @@ async function judgeOrder(
   call: {
     readonly order: OrderRecord;
     readonly price: WatchedOrderPrice;
+    readonly resumes: number;
     readonly signal: AbortSignal;
     readonly left: number;
   },
 ): Promise<FillPrice | undefined> {
   const { order, price, signal, left } = call;
-  const judged = judgeTrigger(order, wholeTokenPrice(price.usdPerBaseUnit, price.decimals));
+  const whole = wholeTokenPrice(price.usdPerBaseUnit, price.decimals);
+  const judged = judgeTrigger(order, whole);
   const kept =
     judged?.state === undefined
       ? order
@@ -153,31 +160,58 @@ async function judgeOrder(
   if (judged === undefined) {
     return undefined;
   }
-  parts.fence?.judged({ order: kept, readAtMs: price.readAtMs, fires: judged.fires });
-  return judged.fires ? fillPriceOf(order, price, judged.level) : undefined;
+  const verdict = verdictOf(order, { fires: judged.fires, holds: meetsLevel(whole, judged.level) });
+  const { resumes } = call;
+  parts.fence?.judged({ order: kept, resumes, verdict, atMs: parts.clock.now() });
+  return judged.fires ? fillPriceOf(order, { price, level: judged.level, resumes }) : undefined;
+}
+
+// How the judgment reads to the downtime re-check: an order that waits to re-arm while its level
+// still holds is not one whose trigger the price missed.
+function verdictOf(
+  order: OrderRecord,
+  judged: { readonly fires: boolean; readonly holds: boolean },
+): TriggerVerdict {
+  if (judged.fires) {
+    return "fires";
+  }
+  return judged.holds && isTriggerDisarmed(order.triggerState) ? "rearming" : "not_met";
 }
 
 // The price a fill runs at, with the level its own quote must meet when it must.
-function fillPriceOf(order: OrderRecord, price: WatchedOrderPrice, level: PriceLevel): FillPrice {
-  const { usdPerBaseUnit, decimals, readAtMs } = price;
+function fillPriceOf(
+  order: OrderRecord,
+  fired: {
+    readonly price: WatchedOrderPrice;
+    readonly level: PriceLevel;
+    readonly resumes: number;
+  },
+): FillPrice {
+  const { price, level, resumes } = fired;
+  const { usdPerBaseUnit, decimals } = price;
   return price.isThin || holdsLevelAtFill(order)
-    ? { usdPerBaseUnit, decimals, readAtMs, confirm: level }
-    : { usdPerBaseUnit, decimals, readAtMs };
+    ? { usdPerBaseUnit, decimals, resumes, confirm: level }
+    : { usdPerBaseUnit, decimals, resumes };
 }
 
 // Judges the active orders on a price's token one after the other, and answers those that fire.
 async function judgeAll(
   parts: OrderTriggersParts,
   active: ActiveOrders,
-  call: { readonly price: WatchedOrderPrice; readonly signal: AbortSignal },
+  call: {
+    readonly price: WatchedOrderPrice;
+    readonly resumes: number;
+    readonly signal: AbortSignal;
+  },
 ): Promise<readonly { readonly order: Id<"ord">; readonly price: FillPrice }[]> {
-  const { price, signal } = call;
+  const { price, resumes, signal } = call;
   const orders = await active.on(price.token, signal);
   type Fired = readonly { readonly order: Id<"ord">; readonly price: FillPrice }[];
   // One order after the other: each writes its own kept state under the version it read.
   return orders.reduce<Promise<Fired>>(async (done, order) => {
     const fired = await done;
-    const fillPrice = await judgeOrder(parts, active, { order, price, signal, left: keepAttempts });
+    const judging = { order, price, resumes, signal, left: keepAttempts };
+    const fillPrice = await judgeOrder(parts, active, judging);
     return fillPrice === undefined ? fired : [...fired, { order: order.id, price: fillPrice }];
   }, Promise.resolve([]));
 }
@@ -198,14 +232,16 @@ export function createOrderTriggers(parts: OrderTriggersParts): OrderTriggers {
       if (fence?.isStale(price.readAtMs) === true) {
         return [];
       }
+      // Taken at once: a resume found while the price waits in its token's line makes its
+      // judgments and fills stale.
+      const resumes = fence?.resumes() ?? 0;
       const fired = await runInLine(lines, price.token, async () =>
-        judgeAll(parts, active, { price, signal }),
+        judgeAll(parts, active, { price, resumes, signal }),
       );
-      const { readAtMs } = price;
       return Promise.all(
         fired.map(async ({ order, price: fillPrice }) => {
           const outcome = await parts.fills.run({ order, price: fillPrice }, { signal });
-          fence?.fillEnded({ order, readAtMs, outcome });
+          fence?.fillEnded({ order, resumes, outcome });
           if (outcome === "filled" || outcome === "ended") {
             active.forget();
           }

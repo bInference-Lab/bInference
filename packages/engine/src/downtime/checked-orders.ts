@@ -64,7 +64,7 @@ async function fillSkipOf(parts: RowsParts, call: OrderCall): Promise<CheckedOrd
 async function priceOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {
   const { base, watched, signal } = call;
   const { standing } = watched;
-  if (standing.state === "filled") {
+  if (standing.state === "filled" || standing.state === "sent") {
     return { ...base, outcome: "filled" };
   }
   if (standing.state === "firing") {

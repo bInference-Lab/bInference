@@ -3,26 +3,35 @@ import type { FillOutcome } from "./fill-orders.js";
 import type { OrderFillRecord } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 
+/** How a price order's trigger judged a price: it fires, its level is not met, or it re-arms. */
+export type TriggerVerdict = "fires" | "not_met" | "rearming";
+
 /**
  * What the price triggers, the order fills and their notices ask of the downtime re-check
- * (decisions 0267 and 0268): whether a price was read before the latest resume, and what each
- * price order's first fresh judgment and fill came to.
+ * (decisions 0267 and 0268): how many resumes the engine has seen, whether a price was read before
+ * the latest, and what each price order's first fresh judgment and its fill came to.
  */
 export interface ResumeFence {
-  /** Whether a price read at `readAtMs` was read before the latest resume: no fill runs on it. */
+  /**
+   * How many resumes the engine has seen. A judgment carries the count it was made under, and a
+   * fill whose count is behind no longer runs.
+   */
+  resumes(): number;
+  /** Whether a price read at `readAtMs` was read before the latest resume: nothing judges it. */
   isStale(readAtMs: number): boolean;
   /** Resolves once a resume that began is ready to take judgments; at once when none began. */
   ready(): Promise<void>;
-  /** A price order judged on a price read at `readAtMs`: whether its trigger fires. */
+  /** A price order judged under `resumes` resumes, at `atMs`. */
   judged(call: {
     readonly order: Pick<OrderRecord, "id">;
-    readonly readAtMs: number;
-    readonly fires: boolean;
+    readonly resumes: number;
+    readonly verdict: TriggerVerdict;
+    readonly atMs: number;
   }): void;
-  /** What the fill of an order fired on a price read at `readAtMs` came to. */
+  /** What the fill of an order fired under `resumes` resumes came to. */
   fillEnded(call: {
     readonly order: Id<"ord">;
-    readonly readAtMs: number;
+    readonly resumes: number;
     readonly outcome: FillOutcome;
   }): void;
   /**

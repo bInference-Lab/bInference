@@ -96,10 +96,11 @@ function dollarSaleOf(order: OrderRecord): bigint | undefined {
   return side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
 }
 
-// Whether a resume came while the fill ran: its price may be one read before the downtime
-// (decision 0268). A DCA buy has no price of its own.
+// Whether a resume came while the fill ran: its trigger may have fired on a price read before the
+// downtime (decision 0268). A DCA buy has no price of its own.
 function isStaleNow(parts: Pick<OrderFillsParts, "fence">, price: FillPrice): boolean {
-  return price.readAtMs !== undefined && parts.fence?.isStale(price.readAtMs) === true;
+  const { fence } = parts;
+  return price.resumes !== undefined && fence !== undefined && price.resumes < fence.resumes();
 }
 
 // The check in the agent's line, on the other side's price read before it.

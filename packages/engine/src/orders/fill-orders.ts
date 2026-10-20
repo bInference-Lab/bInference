@@ -35,10 +35,10 @@ export interface FillPrice {
   /** The level the fill's own quote must meet: a thin pool priced the token (decision 0195). */
   readonly confirm?: PriceLevel;
   /**
-   * When the price watcher read the price, absent for a DCA buy: a fill whose price was read before
-   * a resume that came while it ran ends `price_stale` (decision 0268).
+   * How many resumes the engine had seen when the trigger fired, absent for a DCA buy: a resume
+   * found since ends the fill `price_stale` (decision 0268).
    */
-  readonly readAtMs?: number;
+  readonly resumes?: number;
 }
 
 /**
@@ -105,7 +105,7 @@ export interface OrderFillsParts extends FillSizeParts {
    * The downtime re-check, which ends a fill whose price was read before a resume, and reports a
    * resume's skips in its one report (decisions 0267 and 0268); none in a test without one.
    */
-  readonly fence?: Pick<ResumeFence, "isStale" | "holds">;
+  readonly fence?: Pick<ResumeFence, "resumes" | "holds">;
 }
 
 // What the fill's intent came to. Its row and notices were written with its end; they are told

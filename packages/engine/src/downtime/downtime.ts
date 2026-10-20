@@ -18,10 +18,22 @@ export interface DowntimeRun {
 }
 
 /**
- * The downtime re-check (decisions 0266 and 0267): a start after a stop, or a wake of the machine,
- * re-checks every auto order once and sends one report when it checked one. The composition root
- * calls `started` at the start, before any price reaches the triggers, `woke` when its timer finds
- * the wall clock jumped, and `alive` about once a minute and as the engine stops.
+ * A pause the composition root found while the engine runs: a jump of the wall clock past its
+ * timer's sleep (`wake`, as when the machine slept), or the wall clock set back (`clock`), and how
+ * long it lasted or how far the clock went back.
+ */
+export interface Pause {
+  readonly cause: "wake" | "clock";
+  /** The wall clock's time when the pause began. */
+  readonly fromMs: number;
+  readonly offMs: number;
+}
+
+/**
+ * The downtime re-check (decisions 0266 and 0267): a start after a stop, or a pause of the engine
+ * found while it runs, re-checks every auto order once and sends one report when it checked one.
+ * The composition root calls `started` at the start, before any price reaches the triggers,
+ * `paused` the moment it finds a pause, and `alive` about once a minute and as the engine stops.
  */
 export interface Downtime {
   /**
@@ -29,10 +41,18 @@ export interface Downtime {
    * start, which only marks the engine alive.
    */
   started(options: { readonly signal: AbortSignal }): Promise<DowntimeRun | undefined>;
-  /** A wake's re-check: the machine slept from `asleepFromMs` to now. An open one is joined. */
-  woke(asleepFromMs: number, options: { readonly signal: AbortSignal }): Promise<DowntimeRun>;
+  /**
+   * A pause's re-check, joined to the open one. Before it awaits anything, it fences off every
+   * price read and every judgment made before it (decision 0268).
+   */
+  paused(pause: Pause, options: { readonly signal: AbortSignal }): Promise<DowntimeRun>;
   /** Marks the engine alive now, unless a re-check is open: its stop leaves the earlier mark. */
   alive(options: { readonly signal: AbortSignal }): Promise<void>;
+  /**
+   * Hands the fence the composition root's check for a pause: every question of whether a price
+   * or a fill is stale asks it first, so the first one after a sleep finds the sleep.
+   */
+  findPausesWith(findPause: () => boolean): void;
 }
 
 /** What the re-check reads, waits on, and tells through. */
@@ -128,7 +148,8 @@ async function closedReport(
 
 // Sends the report to the owner, when the re-check checked an order (the owner's choice, decision
 // 0267), marks the skips it told, tells each agent whose orders it names, then marks the engine
-// alive: a stop before that leaves the earlier mark, so the next start reports the span again.
+// alive while no re-check is open: a stop before that leaves the earlier mark, so the next start
+// reports the span again.
 async function report(parts: DowntimeParts, signal: AbortSignal): Promise<DowntimeReport> {
   const { report: done, held } = await closedReport(parts, signal);
   const { orders } = done;
@@ -144,7 +165,9 @@ async function report(parts: DowntimeParts, signal: AbortSignal): Promise<Downti
     // oxlint-disable-next-line eslint/no-await-in-loop -- one inbox write at a time
     await parts.tellAgent(agent, resumeReportPayload(done, agent), { signal });
   }
-  await parts.alive.markAlive(parts.clock.now(), { signal });
+  if (parts.check.open() === undefined) {
+    await parts.alive.markAlive(parts.clock.now(), { signal });
+  }
   return done;
 }
 
@@ -152,39 +175,51 @@ async function report(parts: DowntimeParts, signal: AbortSignal): Promise<Downti
 export function createDowntime(parts: DowntimeParts): Downtime {
   const running: { run?: DowntimeRun } = {};
   const resume = async (
-    cause: "start" | "wake",
-    offFromMs: number,
+    cause: "start" | Pause["cause"],
+    span: { readonly fromMs: number; readonly offMs: number },
     signal: AbortSignal,
   ): Promise<DowntimeRun> => {
+    // Before any await: the caller's next price is judged against this resume.
     const atMs = parts.clock.now();
+    parts.check.fence(atMs);
     const read = allOrdersIn(parts.orders, ["active"], signal);
     parts.check.beginning(read.then(() => undefined));
     const orders = await read;
     const isOpen = parts.check.open() !== undefined;
-    parts.check.begin({ cause, offFromMs, atMs, orders });
+    parts.check.begin({ cause, offFromMs: span.fromMs, offMs: span.offMs, atMs, orders });
     if (isOpen && running.run !== undefined) {
       return running.run;
     }
-    const reported = report(parts, signal).finally(() => {
-      delete running.run;
-    });
-    running.run = { reported };
-    return running.run;
+    const reported = report(parts, signal);
+    const run: DowntimeRun = { reported };
+    running.run = run;
+    // Only this run's own end forgets it: a later resume may already run the next.
+    const forget = (): void => {
+      if (running.run === run) {
+        delete running.run;
+      }
+    };
+    void reported.then(forget, forget);
+    return run;
   };
   return {
     async started({ signal }) {
       const lastMs = await parts.alive.lastAlive({ signal });
+      const nowMs = parts.clock.now();
       if (lastMs === undefined) {
-        await parts.alive.markAlive(parts.clock.now(), { signal });
+        await parts.alive.markAlive(nowMs, { signal });
         return undefined;
       }
-      return resume("start", lastMs, signal);
+      return resume("start", { fromMs: lastMs, offMs: Math.max(0, nowMs - lastMs) }, signal);
     },
-    woke: async (asleepFromMs, { signal }) => resume("wake", asleepFromMs, signal),
+    paused: async (pause, { signal }) => resume(pause.cause, pause, signal),
     async alive({ signal }) {
       if (parts.check.open() === undefined) {
         await parts.alive.markAlive(parts.clock.now(), { signal });
       }
+    },
+    findPausesWith(findPause) {
+      parts.check.probe(findPause);
     },
   };
 }

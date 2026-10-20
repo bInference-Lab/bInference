@@ -9,58 +9,63 @@ const startMs = Date.parse("2026-10-20T08:00:00Z");
 const minuteMs = 60_000;
 const stop = new AbortController().signal;
 
-// A manual clock whose wall time can jump ahead while its sleepers stay put, as when the machine
-// sleeps: a timer's sleep stops with the machine, the wall clock does not.
-function sleepyClock() {
+// A manual clock whose wall time can jump ahead or back while its sleepers stay put, as when the
+// machine sleeps or its clock is set: a timer's sleep stops with the machine, the wall clock does
+// not.
+function steppedClock() {
   const manual = createManualClock(startMs);
-  const asleep = { ms: 0 };
+  const stepped = { ms: 0 };
   return {
-    now: () => manual.now() + asleep.ms,
+    now: () => manual.now() + stepped.ms,
     sleep: async (delayMs: number, signal: AbortSignal) => manual.sleep(delayMs, signal),
     advance: async (delayMs: number) => manual.advance(delayMs),
-    sleepFor: (delayMs: number): void => {
-      asleep.ms += delayMs;
+    step: (byMs: number): void => {
+      stepped.ms += byMs;
     },
   };
 }
 
 const report: DowntimeReport = { cause: "wake", offFromMs: startMs, offMs: 0, orders: [] };
+const time = (atMs: number): string => new Date(atMs).toISOString().slice(11, 19);
 
 // The engine's re-check as a test sees it: each call it gets, with the time it came.
 function fakeDowntime(clock: { readonly now: () => number }) {
   const calls: string[] = [];
-  const at = (): string => new Date(clock.now()).toISOString().slice(11, 19);
   const downtime: Engine["downtime"] = {
     started: async () => {
-      calls.push(`started ${at()}`);
+      calls.push(`started ${time(clock.now())}`);
       return Promise.resolve({ reported: Promise.resolve({ ...report, cause: "start" }) });
     },
-    woke: async (asleepFromMs) => {
-      calls.push(`woke ${at()} from ${new Date(asleepFromMs).toISOString().slice(11, 19)}`);
+    paused: async (pause) => {
+      const span = `${time(pause.fromMs)} for ${String(pause.offMs / 1_000)} s`;
+      calls.push(`${pause.cause} ${time(clock.now())} from ${span}`);
       return Promise.resolve({ reported: Promise.resolve(report) });
     },
     alive: async () => {
-      calls.push(`alive ${at()}`);
+      calls.push(`alive ${time(clock.now())}`);
       return Promise.resolve();
     },
+    findPausesWith: () => undefined,
   };
   return { downtime, calls };
 }
 
 async function timerWith() {
-  const clock = sleepyClock();
+  const clock = steppedClock();
   const fake = fakeDowntime(clock);
-  const sleeps: number[] = [];
+  const pauses = { count: 0 };
   const closers = createClosers();
   const logger = createMemoryLogger({ subsystem: "engine" });
-  await startDowntimeTimer({
+  const running = await startDowntimeTimer({
     downtime: fake.downtime,
-    onSleep: (asleepMs) => sleeps.push(asleepMs),
+    onPause: () => {
+      pauses.count += 1;
+    },
     clock,
     closers,
     logger,
   });
-  return { clock, closers, logger, sleeps, calls: fake.calls };
+  return { clock, closers, logger, pauses, calls: fake.calls, check: running.check };
 }
 
 describe("the downtime timer", () => {
@@ -75,38 +80,50 @@ describe("the downtime timer", () => {
       "alive 08:02:00",
       "alive 08:02:00",
     ]);
-    expect(timer.sleeps).toStrictEqual([]);
+    expect(timer.pauses.count).toBe(0);
   });
 
-  it("re-checks after a jump of the wall clock past a minute, as a sleep of the machine", async () => {
+  it("finds a sleep at the first price after it, before the tick, and fences once", async () => {
     const timer = await timerWith();
     await timer.clock.advance(10_000);
 
-    timer.clock.sleepFor(30 * minuteMs);
+    timer.clock.step(30 * minuteMs);
+    const first = timer.check();
+    const second = timer.check();
     await timer.clock.advance(5_000);
     await timer.closers.closeAll(stop);
 
-    expect(timer.calls.slice(0, 3)).toStrictEqual([
+    expect([first, second]).toStrictEqual([true, false]);
+    expect(timer.calls.slice(0, 2)).toStrictEqual([
       "started 08:00:00",
-      "woke 08:30:15 from 08:00:10",
-      "alive 08:30:15",
+      "wake 08:30:10 from 08:00:15 for 1795 s",
     ]);
-    expect(timer.sleeps).toStrictEqual([30 * minuteMs + 5_000]);
+    expect(timer.pauses.count).toBe(1);
     expect(timer.logger.records()).toContainEqual(
-      expect.objectContaining({
-        event: "engine.woke",
-        fields: { durationMs: 30 * minuteMs + 5_000 },
-      }),
+      expect.objectContaining({ event: "engine.woke", fields: { durationMs: 1_795_000 } }),
     );
   });
 
-  it("takes a jump of less than a minute for a slow tick, not a sleep", async () => {
+  it("finds a clock set back, re-checks it as a pause, and goes on marking the engine alive", async () => {
     const timer = await timerWith();
-    timer.clock.sleepFor(50_000);
+    await timer.clock.advance(minuteMs);
+
+    timer.clock.step(-10 * minuteMs);
+    await timer.clock.advance(minuteMs + 5_000);
+    await timer.closers.closeAll(stop);
+
+    expect(timer.calls).toContain("clock 07:51:05 from 08:01:00 for 595 s");
+    expect(timer.calls).toContain("alive 07:52:05");
+    expect(timer.pauses.count).toBe(1);
+  });
+
+  it("takes a jump of less than a minute for a slow tick, not a pause", async () => {
+    const timer = await timerWith();
+    timer.clock.step(50_000);
     await timer.clock.advance(5_000);
     await timer.closers.closeAll(stop);
 
-    expect(timer.calls.filter((call) => call.startsWith("woke"))).toStrictEqual([]);
-    expect(timer.sleeps).toStrictEqual([]);
+    expect(timer.calls.some((call) => /^(wake|clock) /.test(call))).toBe(false);
+    expect(timer.pauses.count).toBe(0);
   });
 });

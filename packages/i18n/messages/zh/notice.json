@@ -49,7 +49,7 @@
   "watcherUnpriced": "⚠️ {chain} 的价格监控无法获取 {count, plural, other {# 个}}监控中代币的价格（首个为 {token}），在价格恢复之前，这些代币的自动订单无法触发。价格来自发射台联合曲线，或可交易至少 $1,000 WBNB 或稳定币的 PancakeSwap 交易池。",
   "walletOverflow": "⚠️ {wallet} 在 {blocks, plural, other {# 个区块}}中的交易过多，无法读取；跟单和提醒错过了这些交易。",
   "watcherStopped": "🔴 {chain} 的价格监控因故障停止，会自动重新启动；在此之前，该链上的自动订单不会成交。请运行 `binference logs` 查看原因。",
-  "resumed": "{cause, select, wake {本机休眠了 {duration}} other {引擎停止了 {duration}}}：已检查 {checked, plural, other {# 个订单}}，成交 {filled} 个，跳过 {skipped} 个",
+  "resumed": "{cause, select, wake {引擎暂停了 {duration}} clock {时钟被调回了 {duration}} other {引擎停止了 {duration}}}：已检查 {checked, plural, other {# 个订单}}，成交 {filled} 个，跳过 {skipped} 个",
   "update": "binference {version} 已发布：{summary}。请运行 `binference update`。",
   "updateBare": "binference {version} 已发布。请运行 `binference update`。",
   "updated": "binference 已更新到 {version}。更新内容：{summary}",
