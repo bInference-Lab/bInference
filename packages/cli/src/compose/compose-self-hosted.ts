@@ -1,22 +1,13 @@
-import type { Amount, ChainRef, ChainRegistry, PriceSource, Signer } from "@binference/chain";
+import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
-import {
-  type Engine,
-  type EnginePush,
-  type PositionStore,
-  signerStoppedNotice,
-  type WalletFactsSource,
-} from "@binference/engine";
+import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
 import { isPublicEndpoint } from "../runtime/public-address.js";
-import { composePrices } from "./chain-prices.js";
-import { type ChainReads, rpcHealthOf } from "./chain-reads.js";
-import { type ComposedSimulators, composeSimulators } from "./chain-simulators.js";
-import { createChainWalletFacts } from "./chain-wallet-facts.js";
+import { rpcHealthOf } from "./chain-reads.js";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
@@ -24,14 +15,14 @@ import { type ComposedLock, composeLock } from "./compose-lock.js";
 import type { ComposedPriceWatchers } from "./compose-price-watchers.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
+import { composeTrading, type TradingParts } from "./compose-trading.js";
 import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
 import { engineHandlers } from "./engine-handlers.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { botParts } from "./open-bot.js";
-import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
+import type { Opened, Opening } from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
-import { paperBalancesOf } from "./paper-balances.js";
 import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
@@ -71,35 +62,6 @@ export interface ComposedSelfHosted extends Pick<
   readonly priceWatchers: ComposedPriceWatchers;
   readonly leaderWatchers: ComposedWatching["leaderWatchers"];
   readonly launchFeeds: ComposedWatching["launchFeeds"];
-}
-
-/** What the self-hosted engine trades on, each part over the chains' one set of reads. */
-interface TradingParts {
-  readonly reads: ReadonlyMap<ChainRef, ChainReads>;
-  /** Chainlink feeds (decision 0059). */
-  readonly prices: PriceSource;
-  /** The install's wallets with their balances, fees and ceilings read on chain. */
-  readonly wallets: WalletFactsSource;
-  /** `eth_simulateV1`, and the engine's simulation check over it. */
-  readonly simulators: ComposedSimulators;
-  /** The positions on `engine.sqlite`. */
-  readonly positions: PositionStore;
-  /** What a paper portfolio starts with: config's `defaults.paper.balances`. */
-  readonly paperBalances: readonly Amount[];
-}
-
-function composeTrading(opening: Opening, opened: Opened): TradingParts {
-  const { clock } = opening.host;
-  const { config, stores, chains, reads } = opened;
-  const { install, intents, positions } = stores;
-  return {
-    reads,
-    prices: composePrices(reads, { feeds: selfHostedFeeds(), clock }),
-    wallets: createChainWalletFacts({ install, intents, reads, clock }),
-    simulators: composeSimulators(reads, { chains, clock }),
-    positions,
-    paperBalances: paperBalancesOf(config.defaults.paper.balances, reads),
-  };
 }
 
 // The executor sends through the chains' relays; its pushes reach the engine's once it exists.
