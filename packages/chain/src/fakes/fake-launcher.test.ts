@@ -6,7 +6,8 @@ import { launcherContract } from "../contracts/launcher-contract.js";
 import type { LaunchOption } from "../venues/launch-option.js";
 import type { LaunchPinRequest } from "../venues/launch-terms.js";
 import { fakeDraft } from "./fake-draft.js";
-import { createFakeLauncher, type FakeLauncherOptions } from "./fake-launcher.js";
+import type { FakeLauncherOptions } from "./fake-launcher-options.js";
+import { createFakeLauncher } from "./fake-launcher.js";
 
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
 const router = accountRefSchema.parse("fake:1:0x0000000d");

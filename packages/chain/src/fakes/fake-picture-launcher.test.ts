@@ -5,7 +5,7 @@ import { launcherContract } from "../contracts/launcher-contract.js";
 import type { LaunchOption } from "../venues/launch-option.js";
 import type { LaunchPinRequest } from "../venues/launch-terms.js";
 import { fakeDraft } from "./fake-draft.js";
-import type { FakeLauncherOptions } from "./fake-launcher.js";
+import type { FakeLauncherOptions } from "./fake-launcher-options.js";
 import { createFakePictureLauncher } from "./fake-picture-launcher.js";
 
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");

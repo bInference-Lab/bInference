@@ -1,5 +1,6 @@
 import type { Launcher } from "../venues/ports.js";
-import { createFakeLinkLauncher, type FakeLauncherOptions } from "./fake-launcher.js";
+import type { FakeLauncherOptions } from "./fake-launcher-options.js";
+import { createFakeLinkLauncher } from "./fake-launcher.js";
 
 /**
  * Creates the launcher of a fake launchpad that writes the owner's picture into its create call
