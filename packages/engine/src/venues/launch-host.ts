@@ -2,7 +2,6 @@ import {
   assetRefParts,
   type ChainRef,
   type ChainRegistry,
-  type Launcher,
   type LaunchOption,
   launchOptionsSchema,
   type LaunchPin,
@@ -15,7 +14,6 @@ import {
 } from "@binference/chain";
 import { BinferenceError, type Clock, err, type JsonValue, type Result } from "@binference/core";
 import type { LaunchTokenRequest } from "@binference/protocol";
-import { z } from "zod";
 import { callVenue, type VenueCallOptions } from "./call-venue.js";
 import { hostVenues } from "./hosted-venue.js";
 import {
@@ -40,6 +38,7 @@ import {
   launchSettingsOf,
   launchSettingsProblem,
   launchWarningsProblem,
+  settingsGoTogether,
 } from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
@@ -285,26 +284,13 @@ function settingsOn(
     return err("no_launchpad");
   }
   const settings = launchSettingsOf(item.launcher.launchOptions, given, chain.value);
-  return settings.ok && !goTogether(item.launcher, settings.value) ? err("bad_settings") : settings;
+  const options = settings.ok
+    ? Object.fromEntries(settings.value.map((setting) => [setting.name, setting.value]))
+    : {};
+  return settings.ok && !settingsGoTogether(item.launcher, options)
+    ? err("bad_settings")
+    : settings;
 }
-
-// Whether the launchpad takes the settings together (decision 0280); launchpad code that throws or
-// answers anything but a yes refuses them.
-function goTogether(launcher: Launcher, settings: readonly LaunchSetting[]): boolean {
-  if (launcher.checkOptions === undefined) {
-    return true;
-  }
-  const options = Object.freeze(
-    Object.fromEntries(settings.map((setting) => [setting.name, setting.value])),
-  );
-  try {
-    return goTogetherSchema.safeParse(launcher.checkOptions(options)).success;
-  } catch {
-    return false;
-  }
-}
-
-const goTogetherSchema = z.literal(true);
 
 /**
  * Creates the {@link LaunchHost} over every venue the engine may use, checked against the chain

@@ -193,6 +193,18 @@ describe("a launchpad's optional settings and its own check of them", () => {
     });
   });
 
+  it("refuses a quoted value the launchpad's own check does not take with the rest", async () => {
+    const launcher = createFakeLauncher({
+      launchOptions: optional,
+      quotesSettings: { sellTaxBps: "8000" },
+    });
+    const host = hostOf({ ...launcher, checkOptions: (values) => values["sellTaxBps"] !== "8000" });
+    await expect(host.quote(launch, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+    });
+  });
+
   it("gives the launchpad binference's USD price of the pair with the terms", async () => {
     const seen: unknown[] = [];
     const launcher = createFakeLauncher();
@@ -362,6 +374,54 @@ describe("the launch host's quote, pin and pin status", () => {
 });
 
 describe("the launch host's build", () => {
+  // A setting only the launchpad's build fills in (decision 0280).
+  const workedOut: readonly LaunchOption[] = [
+    ...settings,
+    { name: "creatorFeeRecipient", type: "account", isWorkedOut: true },
+  ];
+  const fills = { creatorFeeRecipient: "0x000000aa" };
+
+  it("keeps a worked-out setting its build fills in and its create call writes", async () => {
+    const host = fake({ launchOptions: workedOut, buildsSettings: fills });
+    await expect(host.build(launch, upload, live)).resolves.toMatchObject({
+      ok: true,
+      value: { settings: [{ name: "creatorFeeRecipient", value: "fake:1:0x000000aa" }] },
+    });
+  });
+
+  it.each<[string, FakeLauncherOptions]>([
+    [
+      "a setting that is not left to it",
+      { launchOptions: workedOut, buildsSettings: { buyback: true } },
+    ],
+    [
+      "a value that does not fit",
+      { launchOptions: workedOut, buildsSettings: { creatorFeeRecipient: "x" } },
+    ],
+    [
+      "a value its create call does not write",
+      {
+        launchOptions: workedOut,
+        buildsSettings: fills,
+        writesOptions: { creatorFeeRecipient: "fake:1:0x000000bb" },
+      },
+    ],
+  ])("refuses a build that names %s", async (_case, options) => {
+    await expect(fake(options).build(launch, upload, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "other_settings",
+    });
+  });
+
+  it("refuses a request that gives a worked-out setting", () => {
+    const host = fake({ launchOptions: workedOut });
+    expect(host.settingsOf(pad, chain, { creatorFeeRecipient: "0x000000aa" })).toStrictEqual({
+      ok: false,
+      error: "bad_settings",
+    });
+  });
+
   it("checks and keeps the create call of a coin first buy", async () => {
     const built = await fake().build(launch, upload, live);
     expect(built).toMatchObject({

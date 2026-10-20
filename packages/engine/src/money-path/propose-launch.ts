@@ -10,6 +10,7 @@ import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import { minOutFloor } from "../venues/build-checks.js";
 import type { LaunchUpload } from "../venues/launch-calls.js";
+import type { LaunchSetting } from "../venues/launch-settings.schema.js";
 import { advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
@@ -19,7 +20,12 @@ import { type LaunchRun, quotedRunOf } from "./launch-run.js";
 import { type ReadPicture, readOwnPicture, uploadPicture } from "./launch-upload.js";
 import { liveIntentsIn } from "./live-intents.js";
 import { policyFactsOf } from "./policy-facts-of.js";
-import { hostedLaunchOf, type LaunchPathOptions, resolveLaunch } from "./resolve-launch.js";
+import {
+  hostedLaunchOf,
+  type LaunchPathOptions,
+  namesOwnWallet,
+  resolveLaunch,
+} from "./resolve-launch.js";
 import { nativeAssetOf } from "./resolve-proposal.js";
 import { startProposal, storeProposed } from "./store-proposed.js";
 
@@ -84,6 +90,27 @@ interface Built {
   readonly drafts: readonly TxDraft[];
 }
 
+// Whether a setting the launchpad worked out, or the request gave, names one of the install's own
+// wallets where the launchpad pays only on a claim (decision 0277).
+async function namesOwnWalletIn(
+  run: LaunchRun,
+  settings: readonly LaunchSetting[],
+): Promise<boolean> {
+  const { options, resolved, signal } = run;
+  return namesOwnWallet(options, { request: resolved.request, settings, signal });
+}
+
+// The launch's settings with what its build worked out, in the order the launchpad declares them.
+function withBuilt(run: LaunchRun, built: readonly LaunchSetting[]): readonly LaunchSetting[] {
+  const { resolved } = run;
+  const order = run.options.launch.host
+    .launchOptions(resolved.request.venue)
+    .map(({ name }) => name);
+  return [...resolved.launchSettings, ...built].toSorted(
+    (one, two) => order.indexOf(one.name) - order.indexOf(two.name),
+  );
+}
+
 /** What the build gets of the picture, and what the launch's quote keeps of it. */
 interface PictureStep {
   readonly build: Pick<LaunchUpload, "metadataUri" | "picture">;
@@ -132,13 +159,17 @@ async function pinAndBuild(
   if (!plan.ok) {
     return err(plan.error);
   }
+  const settings = withBuilt(run, plan.value.settings ?? []);
+  if (await namesOwnWalletIn(run, settings)) {
+    return err("own_wallet_recipient");
+  }
   const nowMs = options.clock.now();
   const unbound = plan.value.isFirstBuyUnbound === true ? { isUnbound: true as const } : {};
   const { kept } = pictured.value;
   const warnings = options.launch.host.cardWarnings(request.venue);
   const quote: TokenLaunchQuote = {
     venue: request.venue,
-    settings: resolved.launchSettings,
+    settings,
     token: plan.value.launch.token,
     tokenDecimals: quoted.quote.tokenDecimals,
     fee: quoted.quote.fee,
@@ -262,6 +293,9 @@ async function runLaunch(given: LaunchRun, proposed: IntentSnapshot): Promise<In
   }
   if (await isCeilingLacking(run)) {
     return failQuote(run, checked, "ceiling_lacks_call");
+  }
+  if (await namesOwnWalletIn(run, run.resolved.launchSettings)) {
+    return failQuote(run, checked, "own_wallet_recipient");
   }
   const quoted = await upload(run, { checked, quote: quote.value, pass: verdict.value });
   if (quoted.record.state !== "quoted") {

@@ -180,8 +180,8 @@ A launchpad's own warnings, `launch.warn.<name>`, show among the warnings right 
 site says it is not available to U.S. citizens / ⚠️ Brew 的网站称其不向美国公民提供服务
 ([decision 0281](../DECISIONS.md#d0281)).
 
-An `amount` setting's `{value}` is an amount of the launch's pair, and an optional setting its
-launchpad worked out at its quote shows like one the owner gave
+An `amount` setting's `{value}` is an amount of the launch's pair, and a setting its launchpad
+worked out at its quote or its build shows like one the owner gave
 ([decision 0280](../DECISIONS.md#d0280)).
 
 `{digest}` is the first 16 hex digits of the picture's SHA-256; the terms hash binds all of it.

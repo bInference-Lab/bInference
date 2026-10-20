@@ -41,6 +41,7 @@
   "pin_timeout": "发射台未在 5 分钟内固定代币的图片和文字，因此未签名任何内容；请重新发起发射",
   "upload_lost": "发射在开始向发射台发送代币的图片和文字之后、等待固定之前停止了；未签名任何内容，但图片和文字可能已在发射台公开；请重新发起发射",
   "ceiling_lacks_call": "该发射钱包的上限缺少此发射台的创建调用，因此未上传任何内容：请用你的所有者密钥重新写入上限，即 `binference ceiling set --wallet ID --venues VENUES`，然后再发射",
+  "own_wallet_recipient": "发射台将 binference 自己的某个钱包设为只能由该账户自行领取的款项接收方，而 binference 从不领取，因此未签名任何内容；请重新发起发射",
   "reverted": "交易已回滚，只扣除了网络费",
   "stuck_cancelled": "交易长时间未上链，已被取消；只扣除了网络费",
   "nonce_taken": "另一笔交易占用了此钱包的随机数，这笔交易未能上链",

@@ -149,8 +149,9 @@ export interface Launcher {
   /**
    * Whether a launch's settings go together as the launchpad takes them (decision 0280), such as
    * a fee recipient only while holder rewards are off: each is already checked against its
-   * declaration. A launch whose settings do not is refused before anything is stored. Left out,
-   * any settings that pass their declarations go together.
+   * declaration. It is asked of the request's settings, which a launch whose settings do not go
+   * together is refused for before anything is stored, and again with what the quote and the
+   * build worked out. Left out, any settings that pass their declarations go together.
    */
   readonly checkOptions?: (options: Readonly<Record<string, LaunchOptionValue>>) => boolean;
   /**

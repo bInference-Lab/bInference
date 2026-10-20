@@ -48,4 +48,9 @@ export interface FakeLauncherOptions {
    * named only when the terms leave it out; none when absent.
    */
   readonly quotesSettings?: Readonly<Record<string, LaunchOptionValue>>;
+  /**
+   * Values its build works out for settings a launch leaves out (decision 0280), which its create
+   * call writes beside the request's; none when absent.
+   */
+  readonly buildsSettings?: Readonly<Record<string, LaunchOptionValue>>;
 }

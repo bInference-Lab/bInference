@@ -8,6 +8,7 @@ import {
   type LaunchPin,
   type LaunchPinRequest,
   launchPinSchema,
+  launchOptionValuesSchema,
   type LaunchOptionValue,
   type LaunchQuote,
   launchQuoteSchema,
@@ -30,7 +31,11 @@ import {
   type LaunchStep,
   readLaunchSteps,
 } from "./launch-checks.js";
-import { type LaunchSetting, quotedSettingOf } from "./launch-settings.schema.js";
+import {
+  type LaunchSetting,
+  quotedSettingOf,
+  settingsGoTogether,
+} from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
 /**
@@ -70,6 +75,11 @@ export interface LaunchUpload {
 export interface LaunchPlan {
   readonly steps: readonly LaunchStep[];
   readonly launch: DecodedLaunch;
+  /**
+   * The settings the build worked out, which the create call writes and the card shows
+   * (decision 0280); none when absent.
+   */
+  readonly settings?: readonly LaunchSetting[];
   /** The create call's first buy carries no minimum, as its launcher declares (decision 0270). */
   readonly isFirstBuyUnbound?: true;
 }
@@ -111,13 +121,14 @@ function isQuoteShaped(quote: LaunchQuote, context: LaunchContext): boolean {
   );
 }
 
-// The quote's values for optional settings the terms leave out, each fit to its declaration and
-// in its canonical form (decision 0280); `undefined` when one is not.
-function quotedSettingsOf(
-  quote: LaunchQuote,
+// The values a launchpad worked out at its quote or its build for optional or worked-out settings
+// the terms leave out, each fit to its declaration and in its canonical form, which go together
+// with the terms' own (decision 0280); `undefined` when one does not.
+function workedOutOf(
+  values: Readonly<Record<string, LaunchOptionValue>> | undefined,
   context: LaunchContext,
-): Readonly<Record<string, LaunchOptionValue>> | undefined {
-  const named = Object.entries(quote.settings ?? {});
+): readonly LaunchSetting[] | undefined {
+  const named = Object.entries(values ?? {});
   const fitted = named.flatMap(([name, value]: readonly [string, LaunchOptionValue]) => {
     const option = context.launcher.launchOptions.find((item) => item.name === name);
     const isLeftOut = context.terms.options[name] === undefined;
@@ -125,10 +136,16 @@ function quotedSettingsOf(
       option === undefined || !isLeftOut
         ? undefined
         : quotedSettingOf(option, value, context.chain);
-    return setting === undefined ? [] : [[setting.name, setting.value] as const];
+    return setting === undefined ? [] : [setting];
   });
-  return fitted.length === named.length ? Object.fromEntries(fitted) : undefined;
+  const merged = { ...context.terms.options, ...valuesOf(fitted) };
+  return fitted.length === named.length && settingsGoTogether(context.launcher, merged)
+    ? fitted
+    : undefined;
 }
+
+const valuesOf = (settings: readonly LaunchSetting[]): Record<string, LaunchOptionValue> =>
+  Object.fromEntries(settings.map((setting) => [setting.name, setting.value]));
 
 /** Asks a launch's launchpad for its quote, and checks its shape. */
 export async function quoteLaunch(
@@ -144,12 +161,12 @@ export async function quoteLaunch(
   if (!quote.ok) {
     return quote;
   }
-  const settings = quotedSettingsOf(quote.value, context);
+  const settings = workedOutOf(quote.value.settings, context);
   if (!isQuoteShaped(quote.value, context) || settings === undefined) {
     return err("decode_mismatch");
   }
   const { settings: _settings, ...rest } = quote.value;
-  return ok(Object.keys(settings).length === 0 ? rest : { ...rest, settings });
+  return ok(settings.length === 0 ? rest : { ...rest, settings: valuesOf(settings) });
 }
 
 /**
@@ -172,7 +189,11 @@ export async function pinLaunch(
   return pin === undefined ? err("venue_down") : ok(pin);
 }
 
-const buildAnswerSchema = z.object({ token: assetRefSchema, steps: z.array(z.unknown()) });
+const buildAnswerSchema = z.object({
+  token: assetRefSchema,
+  steps: z.array(z.unknown()),
+  settings: launchOptionValuesSchema.optional(),
+});
 
 // The picture the create call must write, by its type and digest; none without one.
 function writtenPictureOf(picture: UploadedPicture | undefined): Pick<LaunchBounds, "picture"> {
@@ -206,23 +227,26 @@ function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef)
   };
 }
 
-// The checked plan; a first buy that carries no minimum is marked (decision 0270).
+// The checked plan with the settings the build worked out; a first buy that carries no minimum is
+// marked (decision 0270).
 function planOf(
   context: LaunchContext,
-  steps: readonly LaunchStep[],
+  built: { readonly steps: readonly LaunchStep[]; readonly settings: readonly LaunchSetting[] },
   launch: DecodedLaunch,
 ): LaunchPlan {
+  const { steps, settings } = built;
   const isUnbound = context.isFirstBuyUnbound && launch.firstBuy !== undefined;
-  return { steps, launch, ...(isUnbound ? { isFirstBuyUnbound: true } : {}) };
+  return {
+    steps,
+    launch,
+    ...(settings.length === 0 ? {} : { settings }),
+    ...(isUnbound ? { isFirstBuyUnbound: true } : {}),
+  };
 }
 
-/** Asks a launch's launchpad to build its steps, and checks each one (decision 0235). */
-export async function buildLaunch(
-  context: LaunchContext,
-  upload: LaunchUpload,
-  call: VenueCallOptions,
-): Promise<Result<LaunchPlan, VenueFailure> | LaunchRefused> {
-  const { launcher, chain, terms, words } = context;
+// What the launchpad's build is asked: the terms, the words, the pinned or written picture, the
+// quoted fee and the first buy's minimum.
+function buildRequestOf(context: LaunchContext, upload: LaunchUpload) {
   const { quote, metadataUri, minOutBase, picture } = upload;
   const minOut = minOutBase === undefined ? {} : { firstBuyMinOut: minOutBase };
   const metadata = metadataUri === undefined ? {} : { metadataUri };
@@ -231,25 +255,42 @@ export async function buildLaunch(
     picture === undefined
       ? {}
       : { picture: Object.freeze({ ...picture, bytes: Uint8Array.from(picture.bytes) }) };
-  const request = Object.freeze({
-    ...terms,
-    ...words,
+  return Object.freeze({
+    ...context.terms,
+    ...context.words,
     ...metadata,
     ...written,
     fee: quote.fee,
     ...minOut,
   });
+}
+
+/** Asks a launch's launchpad to build its steps, and checks each one (decision 0235). */
+export async function buildLaunch(
+  context: LaunchContext,
+  upload: LaunchUpload,
+  call: VenueCallOptions,
+): Promise<Result<LaunchPlan, VenueFailure> | LaunchRefused> {
+  const { launcher, chain, terms } = context;
+  const request = buildRequestOf(context, upload);
   const built = await callVenue(async (signal) => launcher.buildLaunch(request, { signal }), call);
   const answer = built.ok ? buildAnswerSchema.safeParse(built.value) : undefined;
   if (!built.ok || answer?.success !== true) {
     return err("venue_down");
   }
+  const settings = workedOutOf(answer.data.settings, context);
+  if (settings === undefined) {
+    return { ok: false, error: "decode_mismatch", mismatch: "other_settings" };
+  }
   const steps = readLaunchSteps(built.value.steps, { family: chain.family, launcher });
   if (!steps.ok) {
     return { ok: false, error: "decode_mismatch", mismatch: steps.error };
   }
-  const checkedSteps = checkLaunchSteps(steps.value, boundsOf(context, upload, answer.data.token));
+  // The create call must write what the build worked out, as every other setting.
+  const options = { ...terms.options, ...valuesOf(settings) };
+  const bounded = { ...context, terms: { ...terms, options } };
+  const checkedSteps = checkLaunchSteps(steps.value, boundsOf(bounded, upload, answer.data.token));
   return checkedSteps.ok
-    ? ok(planOf(context, steps.value, checkedSteps.value))
+    ? ok(planOf(context, { steps: steps.value, settings }, checkedSteps.value))
     : { ok: false, error: "decode_mismatch", mismatch: checkedSteps.error };
 }

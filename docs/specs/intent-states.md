@@ -187,7 +187,10 @@ of a launchpad that writes it in takes beside its words,
 ([decision 0234](../DECISIONS.md#d0234)); `upload_lost` from `checked`, for a launch a fault or a
 stop cut short once its upload began ([decision 0237](../DECISIONS.md#d0237)); `ceiling_lacks_call`
 for a launch whose launch wallet's ceiling does not allow a call only a launch wallet makes on its
-launchpad, such as its create call, before any upload ([decision 0271](../DECISIONS.md#d0271)).
+launchpad, such as its create call, before any upload ([decision 0271](../DECISIONS.md#d0271));
+`own_wallet_recipient` for a launch whose launchpad worked out, at its quote or its build, a value
+for a setting that must be outside the install that names one of its wallets, before the upload or
+the card ([decision 0280](../DECISIONS.md#d0280)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or

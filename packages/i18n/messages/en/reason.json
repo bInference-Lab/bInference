@@ -41,6 +41,7 @@
   "pin_timeout": "the launchpad did not pin the token's picture and words within 5 minutes, so nothing was signed; propose the launch again",
   "upload_lost": "the launch stopped after it began sending the token's picture and words to the launchpad, before its pin wait; nothing was signed, but they may be public on the launchpad; propose the launch again",
   "ceiling_lacks_call": "the launch wallet's ceiling lacks this launchpad's create call, so nothing was uploaded: write it again with your owner key, `binference ceiling set --wallet ID --venues VENUES`, then launch again",
+  "own_wallet_recipient": "the launchpad named one of binference's own wallets for money it pays only when that account claims it, which binference never does, so nothing was signed; propose the launch again",
   "reverted": "the transaction reverted; only the network fee was spent",
   "stuck_cancelled": "the transaction was stuck and was cancelled; only the network fee was spent",
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",

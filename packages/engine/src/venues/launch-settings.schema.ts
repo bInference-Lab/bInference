@@ -1,4 +1,5 @@
 import {
+  type Launcher,
   type LaunchOption,
   type LaunchOptionType,
   type LaunchOptionValue,
@@ -76,8 +77,12 @@ function valueSchema(option: LaunchOption, chain: RegisteredChain): z.ZodType<La
 }
 
 // A declared setting's schema in a request: one with a default takes it, parsed like a given
-// value, and an optional one may be left out (decision 0280).
+// value, an optional one may be left out, and one the launchpad works out may not be given
+// (decision 0280).
 function requestSchemaOf(option: LaunchOption, chain: RegisteredChain) {
+  if (option.isWorkedOut === true) {
+    return z.never().optional();
+  }
   const schema = valueSchema(option, chain);
   if (option.default !== undefined) {
     return schema.prefault(option.default);
@@ -94,9 +99,9 @@ function settingsSchema(options: readonly LaunchOption[], chain: RegisteredChain
 }
 
 /**
- * A value a launchpad worked out at its quote for one of its optional settings (decision 0280),
- * checked as a request's value would be: an account in its canonical form. A value that does not
- * fit its setting, or a setting that is not optional, is `undefined`.
+ * A value a launchpad worked out at its quote or its build for one of its optional or worked-out
+ * settings (decision 0280), checked as a request's value would be: an account in its canonical
+ * form. A value that does not fit its setting, or a setting that is neither, is `undefined`.
  */
 export function quotedSettingOf(
   option: LaunchOption,
@@ -104,9 +109,30 @@ export function quotedSettingOf(
   chain: RegisteredChain,
 ): LaunchSetting | undefined {
   const parsed = valueSchema(option, chain).safeParse(value);
-  return option.isOptional === true && parsed.success
+  const isLeftToIt = option.isOptional === true || option.isWorkedOut === true;
+  return isLeftToIt && parsed.success
     ? { name: option.name, type: option.type, value: parsed.data }
     : undefined;
+}
+
+const goTogetherSchema = z.literal(true);
+
+/**
+ * Whether the launchpad takes the settings together (decision 0280); launchpad code that throws
+ * or answers anything but a yes refuses them.
+ */
+export function settingsGoTogether(
+  launcher: Pick<Launcher, "checkOptions">,
+  options: Readonly<Record<string, LaunchOptionValue>>,
+): boolean {
+  if (launcher.checkOptions === undefined) {
+    return true;
+  }
+  try {
+    return goTogetherSchema.safeParse(launcher.checkOptions(Object.freeze({ ...options }))).success;
+  } catch {
+    return false;
+  }
 }
 
 /**

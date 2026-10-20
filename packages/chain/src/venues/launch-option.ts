@@ -61,6 +61,12 @@ export interface LaunchOption {
    */
   readonly isOptional?: true;
   /**
+   * Only the launchpad works the setting out, at its quote or its build, such as an address that
+   * depends on the new token: a request that gives it is refused (decision 0280). Such a setting
+   * is optional and has no default.
+   */
+  readonly isWorkedOut?: true;
+  /**
    * An `account` that must be outside the install: the launchpad pays it only when that account
    * claims from the launchpad itself, which binference never does, so none of the install's own
    * wallets may be it (decision 0277). Given for an `account` alone.
@@ -95,7 +101,7 @@ function isShaped(option: LaunchOption): boolean {
 const isOutsideShaped = (option: LaunchOption): boolean =>
   option.isOutsideOnly !== true || option.type === "account";
 const isOptionalShaped = (option: LaunchOption): boolean =>
-  option.isOptional !== true || option.default === undefined;
+  (option.isOptional !== true && option.isWorkedOut !== true) || option.default === undefined;
 
 /**
  * Checks one launch setting a launchpad declares: a camelCase name of at most 32 characters, words
@@ -116,10 +122,11 @@ export const launchOptionSchema: z.ZodType<LaunchOption> = z
     default: z.union([z.number(), z.boolean(), z.string()]).exactOptional(),
     isOutsideOnly: z.literal(true).exactOptional(),
     isOptional: z.literal(true).exactOptional(),
+    isWorkedOut: z.literal(true).exactOptional(),
   })
   .refine(isShaped, { message: "Bounds or choices do not fit the setting's type." })
   .refine(isOutsideShaped, { message: "Only an account may be outside the install." })
-  .refine(isOptionalShaped, { message: "An optional setting has no default." });
+  .refine(isOptionalShaped, { message: "An optional or worked-out setting has no default." });
 
 /** Checks a launchpad's settings: each as {@link launchOptionSchema} says, each name once. */
 export const launchOptionsSchema: z.ZodType<readonly LaunchOption[]> = z

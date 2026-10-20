@@ -151,6 +151,7 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   picture_too_large: "quote.no_route",
   upload_lost: "quote.no_route",
   ceiling_lacks_call: "limit.over_ceiling",
+  own_wallet_recipient: "intent.own_wallet_recipient",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

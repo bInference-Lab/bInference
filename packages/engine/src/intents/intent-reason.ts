@@ -64,7 +64,8 @@ export type RiskReason = (typeof riskReasons)[number];
  * short once its upload began, before it waited for its pin (decision 0237);
  * `ceiling_lacks_call` is one whose launch wallet's ceiling does not allow a call only a launch
  * wallet makes on its launchpad, such as its create call, refused before any upload (decision
- * 0271).
+ * 0271); `own_wallet_recipient` one whose launchpad worked out, at its quote or its build, an
+ * outside-only setting that names one of the install's own wallets (decisions 0277 and 0280).
  */
 export const checkReasons = [
   "no_route",
@@ -84,6 +85,7 @@ export const checkReasons = [
   "pin_timeout",
   "upload_lost",
   "ceiling_lacks_call",
+  "own_wallet_recipient",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

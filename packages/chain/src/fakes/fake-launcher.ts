@@ -205,13 +205,32 @@ function writtenMinOut(options: FakeLauncherOptions, request: LaunchBuildRequest
   return options.writesMinOut ?? declared;
 }
 
+// The values its build works out as its create call writes them: an account setting's address as
+// an account on the launch wallet's chain, as the request's own accounts come.
+function builtOf(options: FakeLauncherOptions, request: LaunchBuildRequest) {
+  const chain = accountRefParts(request.wallet).chain;
+  const entries = Object.entries(options.buildsSettings ?? {}).map(
+    ([name, value]: readonly [string, LaunchOptionValue]) => {
+      const isAccount = options.launchOptions?.some(
+        (option) => option.name === name && option.type === "account",
+      );
+      const account =
+        isAccount === true && typeof value === "string"
+          ? printAccountRef({ chain, address: value })
+          : undefined;
+      return [name, account?.ok === true ? account.value : value] as const;
+    },
+  );
+  return Object.fromEntries(entries);
+}
+
 // What the create call writes beyond the request: the token, the settings, the minimum, the
 // picture and, for a launchpad that keeps them on chain, the words, each as the test scripts.
 function writtenOf(options: FakeLauncherOptions, request: LaunchBuildRequest): Written {
   const words = options.writesWords ?? writtenWordsOf(request);
   return {
     token: options.token ?? fakeToken,
-    options: options.writesOptions ?? request.options,
+    options: options.writesOptions ?? { ...request.options, ...builtOf(options, request) },
     minOut: writtenMinOut(options, request),
     ...(options.wordLimits === undefined ? {} : { words }),
     ...fakeWrittenPictureOf(request, options.writesPictureSha256),
@@ -309,9 +328,12 @@ export function createFakeLinkLauncher(options: FakeLauncherOptions = {}): Launc
     },
     async buildLaunch(request, { signal }) {
       signal.throwIfAborted();
+      const built =
+        options.buildsSettings === undefined ? {} : { settings: options.buildsSettings };
       return await Promise.resolve({
         token,
         steps: buildSteps(request, writtenOf(options, request)),
+        ...built,
       });
     },
     decodeLaunch,

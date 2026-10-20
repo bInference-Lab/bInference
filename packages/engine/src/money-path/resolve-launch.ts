@@ -144,9 +144,12 @@ function isWhole(request: LaunchTokenRequest): boolean {
   );
 }
 
-// Whether a setting that must be outside the install names one of its wallets, of any agent
-// (decision 0277): the launchpad would pay it only on a claim binference never makes.
-async function namesOwnWallet(
+/**
+ * Whether a setting that must be outside the install names one of its wallets, of any agent
+ * (decision 0277): the launchpad would pay it only on a claim binference never makes. Asked of
+ * the request's settings, and again of what the launchpad's quote and build worked out.
+ */
+export async function namesOwnWallet(
   options: ResolveLaunchOptions,
   asked: {
     readonly request: LaunchTokenRequest;

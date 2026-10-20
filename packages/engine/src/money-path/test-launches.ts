@@ -134,6 +134,11 @@ export interface Launching {
    * its quote works out as this when a launch leaves it out (decision 0280).
    */
   readonly quotesAmount?: string;
+  /**
+   * The launchpad declares an outside-only `creatorFeeRecipient` (decision 0277) that its quote
+   * works out when a launch leaves it out, or its build always works out (decision 0280), as this.
+   */
+  readonly worksOutRecipient?: { readonly at: "quote" | "build"; readonly value: string };
   /** The launchpad's own card warnings, by name (decision 0281); none when absent. */
   readonly cardWarnings?: readonly string[];
 }
@@ -212,6 +217,29 @@ function uploadlessOf(launching: Launching, fakeOptions: FakeLauncherOptions): P
   return createFakePictureLauncher({ ...fakeOptions, ...lies, mostBytes: writesPicture.mostBytes });
 }
 
+// The outside-only recipient a test launchpad works out at its quote or its build, if any.
+function recipientOf(launching: Launching): {
+  readonly options: readonly LaunchOption[];
+  readonly fake: Pick<FakeLauncherOptions, "quotesSettings" | "buildsSettings">;
+} {
+  const worked = launching.worksOutRecipient;
+  if (worked === undefined) {
+    return { options: [], fake: {} };
+  }
+  const isQuoted = worked.at === "quote";
+  const option: LaunchOption = {
+    name: "creatorFeeRecipient",
+    type: "account",
+    isOutsideOnly: true,
+    ...(isQuoted ? { isOptional: true } : { isWorkedOut: true }),
+  };
+  const values = { creatorFeeRecipient: worked.value };
+  return {
+    options: [option],
+    fake: isQuoted ? { quotesSettings: values } : { buildsSettings: values },
+  };
+}
+
 // The fake launchers of a test: the uploading fake that counts uploads and pin reads, and the one
 // the launchpad uses, which uploads nothing for a launchpad that takes a link or writes the
 // picture into its create call.
@@ -221,8 +249,14 @@ function launchersOf(launching: Launching) {
   const optional: readonly LaunchOption[] =
     quoted === undefined ? [] : [{ name: "sellTaxBps", type: "amount", isOptional: true }];
   const fakeOptions = {
-    launchOptions: [...settings, ...optional, ...(isLink ? [pictureLinkSetting] : [])],
+    launchOptions: [
+      ...settings,
+      ...optional,
+      ...recipientOf(launching).options,
+      ...(isLink ? [pictureLinkSetting] : []),
+    ],
     ...(quoted === undefined ? {} : { quotesSettings: { sellTaxBps: quoted } }),
+    ...recipientOf(launching).fake,
     ...(launching.pin === undefined ? {} : { pin: launching.pin }),
     ...(launching.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
   };

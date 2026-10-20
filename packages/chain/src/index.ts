@@ -131,6 +131,7 @@ export {
   launchOptionSchema,
   launchOptionsSchema,
   launchOptionTypes,
+  launchOptionValuesSchema,
 } from "./venues/launch-option.js";
 export type { LaunchOption, LaunchOptionType, LaunchOptionValue } from "./venues/launch-option.js";
 export {

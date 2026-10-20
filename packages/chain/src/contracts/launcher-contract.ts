@@ -164,7 +164,8 @@ function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
       metadataUri: request.metadataUri,
       pair: request.pair,
       feeBase: request.fee.base,
-      options: request.options,
+      // What the build worked out joins the request's settings, as the engine adds it.
+      options: { ...request.options, ...build.settings },
     },
   );
   const written = subject.launcher.wordLimits === undefined ? undefined : writtenWordsOf(request);

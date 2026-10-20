@@ -100,7 +100,7 @@ export interface LaunchBuildRequest extends LaunchTerms, LaunchWords {
   readonly firstBuyMinOut?: bigint;
 }
 
-/** The launch's steps, and the token its create call makes. */
+/** The launch's steps, the token its create call makes, and what the build worked out. */
 export interface LaunchBuild {
   /**
    * The token the create call makes, at the address the launchpad's contracts give it before the
@@ -109,6 +109,12 @@ export interface LaunchBuild {
   readonly token: AssetRef;
   /** In order: at most one exact approval of the first buy's spend, then the create call. */
   readonly steps: readonly TxDraft[];
+  /**
+   * The values the build worked out for optional settings neither the request nor the quote gave,
+   * such as an address that depends on the token (decision 0280): the card shows them, and the
+   * create call writes them. Left out, none.
+   */
+  readonly settings?: Readonly<Record<string, LaunchOptionValue>>;
 }
 
 /** What a launchpad's create call does, read back from its bytes by the launchpad's decoder. */

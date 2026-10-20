@@ -35,18 +35,30 @@ Brew's launch needs three things those cannot say, the owner ruled on 2026-10-20
   the build check holds the create call to them like every other setting. An optional setting
   neither the request nor the quote names is not on the card, and the create call must not write
   one.
+- **The build works one out.** A setting with no default may instead be `isWorkedOut`: a request
+  may not give it, and the launcher's build names its value (`LaunchBuild.settings`), such as an
+  address only the build reads. The launch host refuses a build whose values name a setting that
+  is not an optional or worked-out one the launch left out, or that does not fit its setting
+  (`other_settings`), and holds the create call to them. The engine adds them to the launch's
+  settings as it adds a quote's, so the card shows them.
 - **The launchpad's own check.** A launcher may declare `checkOptions`: whether the settings it is
   given go together, each already checked against its declaration. A launch whose settings do not,
-  or whose check throws, is `protocol.bad_args` before anything is stored.
+  or whose check throws, is `protocol.bad_args` before anything is stored. The host asks it again
+  of the launch's settings with what the quote, and then the build, worked out, and refuses either
+  answer when it says no (`decode_mismatch`).
+- **The same rules for worked-out values.** A value the quote or the build works out for a
+  setting that must be outside the install (decision 0277) that names one of the install's wallets
+  ends the launch `failed_check` with `own_wallet_recipient`, before the upload for the quote's
+  and before the card for the build's.
 - **The pair's price.** The engine reads binference's USD price of the pair through its price
   source as it quotes a launch, and gives it to the launchpad with the terms (`pairUsdPrice`),
   absent when there is none. It is what the policy prices the launch with, read once more.
 
 ## Consequences
 
-- `LaunchOptionType` gains `amount`, `LaunchOption` `isOptional`, `Launcher` `checkOptions`,
-  `LaunchQuote` `settings`, `LaunchTerms` `pairUsdPrice`, the launch host `launchOptions`, and the
-  launch path the price source. The chain package's fake launcher can quote settings.
+- `LaunchOptionType` gains `amount`, `LaunchOption` `isOptional` and `isWorkedOut`, `Launcher`
+  `checkOptions`, `LaunchQuote` and `LaunchBuild` `settings`, `LaunchTerms` `pairUsdPrice`, the launch host `launchOptions`, and the
+  launch path the price source. The chain package's fake launcher can quote and build settings.
 - Specs 1 and 4 say so. Launchpads that declare no optional setting and no check work as before.
 - The card shows a value a launchpad worked out, which the owner confirms like any other. A
   launchpad that works out a starting price from `pairUsdPrice` puts the engine's price on the
