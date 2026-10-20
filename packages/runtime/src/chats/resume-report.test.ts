@@ -51,4 +51,20 @@ describe("a resume report in the agent's chat", () => {
     ]);
     expect(rig.engine.untaken()).toStrictEqual([]);
   });
+
+  it("keeps one report waiting, the newest, so 25 of them never hold back the owner's message", async () => {
+    const rig = await startChatRig({ replies: [textReply("Back.")] });
+    for (const minutes of Array.from({ length: 25 }, (_, index) => index + 1)) {
+      rig.engine.resumed(rig.agent, { ...report, offMs: minutes * 60_000 });
+      // oxlint-disable-next-line eslint/no-await-in-loop -- each report lands before the next
+      await rig.received();
+    }
+    await rig.post("still there?");
+    await rig.runner.rested();
+
+    const [request] = rig.transport.requests;
+    expect(request?.messages).toHaveLength(2);
+    expect(request?.messages[0]?.text).toContain("off for 25 min");
+    expect(request?.messages[1]).toStrictEqual({ role: "owner", text: "still there?" });
+  });
 });

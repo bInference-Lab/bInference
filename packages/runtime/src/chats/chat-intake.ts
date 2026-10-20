@@ -95,6 +95,31 @@ async function queued(context: ChatContext, view: InboxMessageView): Promise<boo
   );
 }
 
+// Keeps one resume report waiting in a session, the newest: older ones are dropped as replaced,
+// so reports never fill the turn's messages ahead of the owner's (decision 0267).
+async function foldReports(context: ChatContext, view: InboxMessageView): Promise<void> {
+  const waiting = await waitingIn(context, view.session);
+  const older = waiting.filter(
+    ({ kind, message }) => kind === "inbox/resumeReport" && message !== view.message,
+  );
+  await dropMessages(
+    context,
+    older.map(({ message }) => message),
+    "replaced",
+  );
+}
+
+// What a message that now waits in the chat queue does there: a stop or clear applies, a resume
+// report replaces the one before.
+async function applyQueued(context: ChatContext, view: InboxMessageView): Promise<void> {
+  if (view.kind === "inbox/stop" || view.kind === "inbox/clear") {
+    await applyControl(context, view);
+  }
+  if (view.kind === "inbox/resumeReport") {
+    await foldReports(context, view);
+  }
+}
+
 async function receiveOne(context: ChatContext, view: InboxMessageView): Promise<void> {
   const turnMessage = startsTurns(view.kind);
   // A resume report starts no turn, but waits in its session for the next one.
@@ -106,8 +131,8 @@ async function receiveOne(context: ChatContext, view: InboxMessageView): Promise
     return;
   }
   const waits = await queued(context, view);
-  if (waits && (view.kind === "inbox/stop" || view.kind === "inbox/clear")) {
-    await applyControl(context, view);
+  if (waits) {
+    await applyQueued(context, view);
   }
   await context.engine.takeInbox([view.message], context.lifetime);
   if (waits && turnMessage) {
