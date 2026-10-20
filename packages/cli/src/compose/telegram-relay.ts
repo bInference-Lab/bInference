@@ -9,10 +9,10 @@ export interface TelegramRelay {
   /**
    * Takes one engine push. A card version that opens is shown in the owner's chat, and one that
    * closes on another surface or by its timer becomes its receipt there, with the paper fill once
-   * a paper intent records it. A stored notice sends the outbox's deliveries up to it, oldest
-   * first, once the relay started. A push of an agent's chat topic shows the agent's reply. A
-   * failure is logged and never reaches the engine; past 1,000 pushes waiting, a push is dropped
-   * and logged.
+   * a paper intent records it, and every copy shows how a confirmed live intent ended on chain. A
+   * stored notice sends the outbox's deliveries up to it, oldest first, once the relay started. A
+   * push of an agent's chat topic shows the agent's reply. A failure is logged and never reaches
+   * the engine; past 1,000 pushes waiting, a push is dropped and logged.
    */
   relay(push: EnginePush): void;
   /**
@@ -67,6 +67,13 @@ const openedSchema: z.ZodType<CardVersionRef> = z.object({
 const movedSchema = z.object({ intent: idSchema("int"), state: z.string().optional() });
 const storedNoticeSchema = z.object({ id: idSchema("ntc") });
 const deliverAll: RelayWork = { kind: "deliver" };
+// The moves after which a confirmed card's receipt shows more: a paper fill, and a live intent's
+// end on chain (spec 4, section 3.5).
+const settlingStates: ReadonlySet<string> = new Set([
+  "paper_filled",
+  "reconciled",
+  "failed_onchain",
+]);
 
 // Pushes wait in one line, in order; past this many waiting, a push is dropped and logged, and
 // the card stays on the other surfaces and the notice in the outbox.
@@ -77,8 +84,15 @@ function workOf(push: EnginePush): RelayWork | undefined {
   return push.topic.startsWith("chat:") ? { kind: "chat", push } : cardWorkOf(push);
 }
 
-// A card version that opens is shown. One that closes is settled, and so is a paper intent's card
-// once the intent records its fill, which the receipt shows. A stored notice is delivered.
+// A closed card settles, and so does a confirmed one whose intent moved to a state its receipt
+// shows.
+function settles(kind: string, state: string | undefined): boolean {
+  return kind === "card/closed" || (kind === "intent/changed" && settlingStates.has(state ?? ""));
+}
+
+// A card version that opens is shown. One that closes is settled, and so is a confirmed intent's
+// card once the intent records its paper fill or ends on chain, which the receipt shows. A stored
+// notice is delivered.
 function cardWorkOf(push: EnginePush): RelayWork | undefined {
   if (push.kind === "notice/new") {
     const notice = storedNoticeSchema.safeParse(push.data);
@@ -89,16 +103,17 @@ function cardWorkOf(push: EnginePush): RelayWork | undefined {
     return opened.success ? { kind: "show", ref: opened.data } : undefined;
   }
   const moved = movedSchema.safeParse(push.data);
-  const settles =
-    push.kind === "card/closed" ||
-    (push.kind === "intent/changed" && moved.data?.state === "paper_filled");
-  return moved.success && settles ? { kind: "settle", intent: moved.data.intent } : undefined;
+  return moved.success && settles(push.kind, moved.data.state)
+    ? { kind: "settle", intent: moved.data.intent }
+    : undefined;
 }
 
-// A Confirm or Cancel pressed in Telegram turns the pressed card into its receipt itself.
+// A Confirm or Cancel pressed in Telegram turns the pressed card into its receipt itself; how a
+// live intent ended on chain comes later, so every copy shows it.
 function isTelegramAnswer(settling: CardSettling): boolean {
   const { closing } = settling;
-  return closing.outcome !== "expired" && closing.answeredBy.surface === "telegram";
+  const isAnswered = closing.outcome !== "expired" && closing.answeredBy.surface === "telegram";
+  return isAnswered && settling.live === undefined;
 }
 
 async function show(context: TelegramRelayContext, ref: CardVersionRef, call: Call) {

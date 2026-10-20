@@ -80,6 +80,7 @@ async function actionOf(test: TestEngine, intent: Id<"int">) {
   const showings = createCardShowings({
     intents: test.stores.intents,
     agents: test.stores.agents,
+    transactions: test.stores.transactions,
     access: test.stores.access,
     install: test.stores.install,
     chains: testChains(),

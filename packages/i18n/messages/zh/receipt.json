@@ -4,5 +4,9 @@
   "expired": "❌ 未回复，已过期",
   "paper": "🧪 模拟成交：{result}",
   "auto": "⚡ 自动交易：{result} · {explorerLink}",
-  "result": "{sold} → {bought}"
+  "result": "{sold} → {bought}",
+  "filled": "✅ 已完成：{result} · {explorerLink}",
+  "launched": "✅ 已发射 {token}：首笔买入 {result} · {explorerLink}",
+  "launchedAlone": "✅ 已发射 {token} · {explorerLink}",
+  "failed": "❌ 链上失败：{reason} · {explorerLink}"
 }

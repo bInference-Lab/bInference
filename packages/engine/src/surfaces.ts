@@ -20,6 +20,8 @@ export type {
   LaunchDraftStanding,
 } from "./launches/launch-draft-desk.js";
 export { createCardShowings } from "./surfaces/create-card-showings.js";
+export type { LiveReceipt } from "./surfaces/live-receipt.js";
+export type { LiveOutcome, ReceiptAfter } from "./confirmations/card-closing.js";
 export type { PaperReceipt } from "./surfaces/paper-receipt.js";
 export type {
   CardSettling,

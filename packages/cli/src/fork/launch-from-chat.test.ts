@@ -194,8 +194,15 @@ describe("a token launch started from a Telegram chat on a BSC fork", () => {
           text: `${done} Launch started. Its card follows: confirm there before anything is signed.`,
           buttons: [],
         });
-        expect(messages.find(({ messageId }) => messageId === card.messageId)?.text).toMatch(
-          new RegExp(`^${done} Confirmed on Telegram at \\d{2}:\\d{2}:\\d{2} · sending$`, "u"),
+        // Once the launch landed, the card's message is its receipt: the token, the first buy, the
+        // create call's link.
+        const receipt = messages.find(({ messageId }) => messageId === card.messageId)?.text;
+        const short = `${token.slice(0, 6)}…${token.slice(-4)}`;
+        expect(receipt).toMatch(
+          new RegExp(
+            `^${done} Launched FCAT \\(${short}\\): first buy 0\\.01 BNB → [\\d.,]+[KMB]? FCAT \\(${short}\\) · https://bscscan\\.com/tx/0x[0-9a-f]{64}$`,
+            "u",
+          ),
         );
         // The token is new, at a Flap tax token's address, and the launch wallet holds its first buy.
         expect(token).toMatch(/7777$/u);

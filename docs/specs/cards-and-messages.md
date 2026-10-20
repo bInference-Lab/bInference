@@ -271,19 +271,28 @@ proposed, or Telegram. A card of an agent in manual mode shows no such line.
 
 The card's message is edited into its receipt; the buttons go away.
 
-| Outcome         | Key                 | English                                           | 中文                                      |
-| --------------- | ------------------- | ------------------------------------------------- | ----------------------------------------- |
-| Confirmed       | `receipt.confirmed` | ✅ Confirmed on {surface} at {time} · sending     | ✅ 已于 {time} 在 {surface} 确认 · 发送中 |
-| Filled          | `receipt.filled`    | ✅ Done: {result} · {explorerLink}                | ✅ 已完成：{result} · {explorerLink}      |
-| Paper fill      | `receipt.paper`     | 🧪 Paper fill: {result}                           | 🧪 模拟成交：{result}                     |
-| Auto trade      | `receipt.auto`      | ⚡ Auto trade: {result} · {explorerLink}          | ⚡ 自动交易：{result} · {explorerLink}    |
-| Cancelled       | `receipt.denied`    | ❌ Cancelled on {surface}                         | ❌ 已在 {surface} 取消                    |
-| Expired         | `receipt.expired`   | ❌ Expired with no reply                          | ❌ 未回复，已过期                         |
-| Refused         | `receipt.refused`   | ❌ Not sent: {reason}                             | ❌ 未发送：{reason}                       |
-| Failed on chain | `receipt.failed`    | ❌ Failed on chain: {reason} · {explorerLink}     | ❌ 链上失败：{reason} · {explorerLink}    |
-| Unknown         | `receipt.unknown`   | ⚠️ Sent, result not known yet; checking the chain | ⚠️ 已发送，结果待确认；正在检查链上记录   |
+| Outcome                | Key                     | English                                                  | 中文                                                  |
+| ---------------------- | ----------------------- | -------------------------------------------------------- | ----------------------------------------------------- |
+| Confirmed              | `receipt.confirmed`     | ✅ Confirmed on {surface} at {time} · sending            | ✅ 已于 {time} 在 {surface} 确认 · 发送中             |
+| Filled                 | `receipt.filled`        | ✅ Done: {result} · {explorerLink}                       | ✅ 已完成：{result} · {explorerLink}                  |
+| Launched               | `receipt.launched`      | ✅ Launched {token}: first buy {result} · {explorerLink} | ✅ 已发射 {token}：首笔买入 {result} · {explorerLink} |
+| Launched, no first buy | `receipt.launchedAlone` | ✅ Launched {token} · {explorerLink}                     | ✅ 已发射 {token} · {explorerLink}                    |
+| Paper fill             | `receipt.paper`         | 🧪 Paper fill: {result}                                  | 🧪 模拟成交：{result}                                 |
+| Auto trade             | `receipt.auto`          | ⚡ Auto trade: {result} · {explorerLink}                 | ⚡ 自动交易：{result} · {explorerLink}                |
+| Cancelled              | `receipt.denied`        | ❌ Cancelled on {surface}                                | ❌ 已在 {surface} 取消                                |
+| Expired                | `receipt.expired`       | ❌ Expired with no reply                                 | ❌ 未回复，已过期                                     |
+| Refused                | `receipt.refused`       | ❌ Not sent: {reason}                                    | ❌ 未发送：{reason}                                   |
+| Failed on chain        | `receipt.failed`        | ❌ Failed on chain: {reason} · {explorerLink}            | ❌ 链上失败：{reason} · {explorerLink}                |
+| Unknown                | `receipt.unknown`       | ⚠️ Sent, result not known yet; checking the chain        | ⚠️ 已发送，结果待确认；正在检查链上记录               |
 
 `{reason}` comes from `reason.<code>` (section 6).
+
+A confirmed live intent's receipt says `receipt.confirmed` while it sends, and every copy turns
+into how it ended once it did: `receipt.filled` for a trade that reconciled, with what it sold and
+bought; `receipt.launched` for a token launch, with its new token (its symbol and short address)
+and what its first buy spent and got, or `receipt.launchedAlone` with no first buy; and
+`receipt.failed` for one that failed on chain. `{explorerLink}` is its last transaction's page on
+the first block explorer the chain registry lists, shown whole.
 
 <a id="section-3-6"></a>
 

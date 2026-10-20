@@ -275,8 +275,31 @@ describe("a card in Telegram HTML", () => {
       amountIn: { asset: refs.bnb, base: 5n * 10n ** 17n },
       amountOut: { asset: refs.usdt, base: 31_395n * 10n ** 16n },
     };
-    expect(shown(receiptHtml(closing, display, fill)).text).toBe(
+    expect(shown(receiptHtml(closing, display, { kind: "paper", fill })).text).toBe(
       `${icons.paper} Paper fill: 0.5 BNB → 313.95 USDT`,
     );
+  });
+
+  it("draws how a confirmed live trade or launch ended on chain, its explorer link whole", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const closing = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    const explorerLink = `https://bscscan.com/tx/0x${"ab".repeat(32)}`;
+    const fill = {
+      amountIn: { asset: refs.bnb, base: 10n ** 16n },
+      amountOut: { asset: refs.pepe, base: 31_395n * 10n ** 18n },
+    };
+    const token = refs.pepe;
+    const receipts = [
+      receiptHtml(closing, display, { kind: "filled", fill, explorerLink }),
+      receiptHtml(closing, display, { kind: "launched", token, fill, explorerLink }),
+      receiptHtml(closing, display, { kind: "launched", token, explorerLink }),
+      receiptHtml(closing, display, { kind: "failed", reason: "reverted", explorerLink }),
+    ];
+    expect(receipts.map((html) => shown(html).text)).toStrictEqual([
+      `${icons.done} Done: 0.01 BNB → 31,395 PEPE (0x6982…1933) · ${explorerLink}`,
+      `${icons.done} Launched PEPE (0x6982…1933): first buy 0.01 BNB → 31,395 PEPE (0x6982…1933) · ${explorerLink}`,
+      `${icons.done} Launched PEPE (0x6982…1933) · ${explorerLink}`,
+      `${icons.refused} Failed on chain: the transaction reverted; only the network fee was spent · ${explorerLink}`,
+    ]);
   });
 });

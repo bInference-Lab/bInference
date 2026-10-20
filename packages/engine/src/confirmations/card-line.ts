@@ -1,4 +1,5 @@
 import type { CardValueView } from "@binference/protocol";
+import type { IntentReason } from "../intents/intent-reason.js";
 
 /**
  * Every message key a card, its receipt or a P&L card uses (spec 4, section 3), the formats of
@@ -94,6 +95,10 @@ export const cardKeys = [
   "receipt.expired",
   "receipt.paper",
   "receipt.auto",
+  "receipt.filled",
+  "receipt.launched",
+  "receipt.launchedAlone",
+  "receipt.failed",
   "receipt.result",
   // The P&L card's lines (spec 4, section 3.7).
   "pnl.header",
@@ -116,13 +121,15 @@ export const cardKeys = [
 
 /**
  * A message key of a card or a receipt, of a launchpad setting's card line, `launch.option.` and
- * the setting's name (decision 0235), or of a launchpad's card warning, `launch.warn.` and its
- * name (decision 0281), which the launch host checks exists in every language.
+ * the setting's name (decision 0235), of a launchpad's card warning, `launch.warn.` and its
+ * name (decision 0281), which the launch host checks exists in every language, or of an intent's
+ * reason, `reason.` and its code, as a receipt names why an intent failed.
  */
 export type CardKey =
   | (typeof cardKeys)[number]
   | `launch.option.${string}`
-  | `launch.warn.${string}`;
+  | `launch.warn.${string}`
+  | `reason.${IntentReason}`;
 
 /**
  * One argument of a card line, typed so every surface formats it with the one formatter: an

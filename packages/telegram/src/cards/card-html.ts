@@ -1,4 +1,5 @@
-import { type Card, type CardClosing, type ReceiptFill, receiptLine } from "@binference/engine";
+import { type Card, type CardClosing, receiptLine } from "@binference/engine";
+import type { ReceiptAfter } from "@binference/engine/surfaces";
 import { type CardDisplay, cardLineText } from "@binference/i18n";
 import { escapeHtml } from "../format/escape-html.js";
 
@@ -15,12 +16,13 @@ export function cardHtml(card: Card, display: CardDisplay): string {
 
 /**
  * The receipt a card becomes when it closes (spec 4, section 3.5), as Telegram HTML. A confirmed
- * paper intent passes its paper fill, whose assets must be in `display.assets`.
+ * intent passes what followed, a paper fill or how the live intent ended on chain, whose assets
+ * must be in `display.assets`.
  */
 export function receiptHtml(
   closing: CardClosing,
   display: CardDisplay,
-  paperFill?: ReceiptFill,
+  after?: ReceiptAfter,
 ): string {
-  return escapeHtml(cardLineText(receiptLine(closing, paperFill), display));
+  return escapeHtml(cardLineText(receiptLine(closing, after), display));
 }

@@ -111,8 +111,25 @@ describe("a card in Telegram HTML, in Chinese", () => {
       amountIn: { asset: refs.bnb, base: 5n * 10n ** 17n },
       amountOut: { asset: refs.usdt, base: 31_395n * 10n ** 16n },
     };
-    expect(textOf(receiptHtml(confirmed, display, fill))).toBe(
+    expect(textOf(receiptHtml(confirmed, display, { kind: "paper", fill }))).toBe(
       `${icons.paper} 模拟成交：0.5 BNB → 313.95 USDT`,
     );
+    const explorerLink = `https://bscscan.com/tx/0x${"ab".repeat(32)}`;
+    const token = refs.usdt;
+    expect(
+      [
+        { kind: "filled", fill, explorerLink } as const,
+        { kind: "launched", token, fill, explorerLink } as const,
+        { kind: "launched", token, explorerLink } as const,
+        { kind: "failed", reason: "reverted", explorerLink } as const,
+      ].map((after) => textOf(receiptHtml(confirmed, display, after))),
+    ).toStrictEqual([
+      `${icons.done} 已完成：0.5 BNB → 313.95 USDT · ${explorerLink}`,
+      `${icons.done} 已发射 USDT：首笔买入 0.5 BNB → 313.95 USDT · ${explorerLink}`,
+      `${icons.done} 已发射 USDT · ${explorerLink}`,
+      expect.stringMatching(
+        new RegExp(`^${icons.refused} 链上失败：.+ · ${explorerLink.replaceAll(".", "\\.")}$`, "u"),
+      ),
+    ]);
   });
 });

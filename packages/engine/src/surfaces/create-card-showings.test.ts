@@ -59,6 +59,7 @@ function showingsOf(test: TestEngine, stores: StoresSeen = {}) {
   return createCardShowings({
     intents: stores.intents ?? test.stores.intents,
     agents: stores.agents ?? test.stores.agents,
+    transactions: test.stores.transactions,
     access: test.stores.access,
     install: test.stores.install,
     chains,

@@ -11,9 +11,16 @@ import type { CardCloseReason, CardRecord } from "../intents/card-record.js";
 import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
-import type { AccessStore, AgentStore, InstallStore, IntentStore } from "../ports.js";
+import type {
+  AccessStore,
+  AgentStore,
+  InstallStore,
+  IntentStore,
+  TransactionStore,
+} from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
+import { type LiveReceipt, liveReceiptOf } from "./live-receipt.js";
 import { type PaperReceipt, paperReceiptOf } from "./paper-receipt.js";
 
 /** One card version, named by its intent and its id, as `card/opened` names it. */
@@ -49,6 +56,8 @@ export interface CardSettling {
   readonly closing: CardClosing;
   /** The fill of a confirmed paper intent, which its receipt shows. */
   readonly paper?: PaperReceipt;
+  /** How a confirmed live intent ended on chain, once it did, which its receipt shows. */
+  readonly live?: LiveReceipt;
 }
 
 /** Reads card versions as button surfaces show them, from open card to receipt. */
@@ -72,8 +81,9 @@ export interface CardShowings {
   ): Promise<DrawnCard | undefined>;
   /**
    * The receipt of the intent's newest card version that an answer or the timer closed. A
-   * confirmed paper intent settles once it recorded its fill, with the fill. `undefined` before
-   * then, for an intent with no such version, and for a version without a callback reference.
+   * confirmed paper intent settles once it recorded its fill, with the fill, and a confirmed live
+   * one settles again once it ended on chain, with how. `undefined` before a paper fill, for an
+   * intent with no such version, and for a version without a callback reference.
    */
   settled(
     intent: Id<"int">,
@@ -97,6 +107,8 @@ export const maxWaitingCards = 20;
 export interface CardShowingsOptions {
   readonly intents: IntentStore;
   readonly agents: AgentStore;
+  /** Each intent's transactions, whose last one a live receipt links to. */
+  readonly transactions: Pick<TransactionStore, "ofIntent">;
   /** The client tokens and console devices, whose labels name who proposed an intent. */
   readonly access: Pick<AccessStore, "listTokens" | "findDevice">;
   /** The install's wallets, whose launch wallets a card names (decision 0217). */
@@ -259,9 +271,15 @@ async function settled(
   if (record === undefined || card?.callbackRef === undefined || closing === undefined) {
     return undefined;
   }
-  const paper = paperReceiptOf({ record, history: { events, cards } }, chains);
+  const history = { events, cards };
+  const paper = paperReceiptOf({ record, history }, chains);
   if (paper !== undefined) {
     return { ref: card.callbackRef, closing, paper };
+  }
+  const { transactions } = options;
+  const live = await liveReceiptOf({ record, history, transactions, chains }, call);
+  if (live !== undefined) {
+    return { ref: card.callbackRef, closing, live };
   }
   // A confirmed paper intent fills right after; its receipt waits to show the fill.
   const isFilling = record.isPaper && closing.outcome === "confirmed";

@@ -34,9 +34,16 @@ import {
   testPad,
 } from "../money-path/test-launches.js";
 import { testCallers, testChains } from "../operations/test-engine.js";
+import { createCardShowings } from "../surfaces/create-card-showings.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
-import { driveUntil, type ExecutorBench, startExecutorBench, tapped } from "./test-executor.js";
+import {
+  driveUntil,
+  type ExecutorBench,
+  hashOf,
+  startExecutorBench,
+  tapped,
+} from "./test-executor.js";
 
 // A token launch in the wallet queue (decision 0234): signed from the launch wallet, to the
 // launchpad's registry contracts alone, and settled with its first buy as a position.
@@ -86,6 +93,22 @@ function settledOf(spend: string, minOut: string): bigint {
     return 0n;
   }
   return minOut === "0" ? BigInt(spend) * 500n : BigInt(minOut);
+}
+
+// A launch with no first buy, reconciled from a launch wallet that holds the coin for its fee, and
+// its receipt as the owner's surfaces read it.
+async function feeOnlyLaunched() {
+  const bench = await benchOf();
+  await holdCoin(bench, 10n ** 18n);
+  const { firstBuy: _buy, ...feeOnly } = launch;
+  const intent = await tapped(bench, feeOnly);
+  await driveUntil(bench, intent, { states: ["reconciled"] });
+  const showings = createCardShowings({
+    ...bench.test.stores,
+    chains,
+    venues: { hasNoDeadline: () => false },
+  });
+  return { feeOnly: await showings.settled(intent, live) };
 }
 
 async function benchOf(pad: { readonly noFirstBuyMin?: boolean } = {}): Promise<ExecutorBench> {
@@ -175,6 +198,32 @@ describe("a token launch in the wallet queue", () => {
         bought: { asset: token, base: 970_000_000n },
       },
     ]);
+  });
+
+  it("ends its receipt with its new token, its first buy and its create call's link", async () => {
+    const bench = await benchOf();
+    const intent = await tapped(bench, launch);
+    await driveUntil(bench, intent, { states: ["reconciled"] });
+    const { feeOnly } = await feeOnlyLaunched();
+    const [created] = await bench.test.stores.transactions.ofIntent(intent, live);
+    const showings = createCardShowings({
+      ...bench.test.stores,
+      chains,
+      venues: { hasNoDeadline: () => false },
+    });
+    const ended = await showings.settled(intent, live);
+    expect(ended?.live?.outcome).toStrictEqual({
+      kind: "launched",
+      token,
+      fill: {
+        amountIn: { asset: testCoin, base: 1_000_000n },
+        amountOut: { asset: token, base: 970_000_000n },
+      },
+      explorerLink: `https://scan.example.invalid/tx/${hashOf(created)}`,
+    });
+    expect(ended?.live?.assets[token]).toMatchObject({ symbol: "MCAT", verified: false });
+    expect(feeOnly?.live?.outcome).toMatchObject({ kind: "launched", token });
+    expect(feeOnly?.live?.outcome).not.toHaveProperty("fill");
   });
 
   it("raises the owner's alarm when a first buy with no minimum settles below its simulation", async () => {

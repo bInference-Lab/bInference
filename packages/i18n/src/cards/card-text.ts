@@ -46,6 +46,8 @@ const textLengths: Readonly<Record<string, number>> = {
   link: 512,
   // A launch setting's account, such as a tax recipient, shows whole: it receives money.
   address: 128,
+  // A receipt's link to its transaction on a block explorer shows whole.
+  explorerLink: 200,
 };
 const ratioDecimals = 2;
 
