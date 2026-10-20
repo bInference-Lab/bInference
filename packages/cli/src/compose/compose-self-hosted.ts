@@ -27,6 +27,7 @@ import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
 import { stateWorkspace } from "./state-workspace.js";
+import { type TimedWork, timedWorkOf } from "./timed-work.js";
 import { chainTokenReads } from "./token-facts.js";
 
 /**
@@ -35,17 +36,7 @@ import { chainTokenReads } from "./token-facts.js";
  * that wait for no price, the cards whose time is up, the schedules whose time came, the copy
  * orders' leader trades, and the token launches waiting for their launchpad's pin (decision 0234).
  */
-export interface ComposedSelfHosted extends Pick<
-  Engine,
-  | "settle"
-  | "checkGas"
-  | "tickOrders"
-  | "expireCards"
-  | "runSchedules"
-  | "runCopies"
-  | "checkPins"
-  | "downtime"
-> {
+export interface ComposedSelfHosted extends TimedWork {
   readonly server: ProtocolServer;
   /** Where the engine's pushes go: the server, and the owner's bot when there is one. */
   readonly publish: (push: EnginePush) => void;
@@ -307,16 +298,9 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     server,
     publish,
     executor: sending.executor,
-    settle: engine.settle,
-    checkGas: engine.checkGas,
-    tickOrders: engine.tickOrders,
-    expireCards: engine.expireCards,
-    runSchedules: engine.runSchedules,
-    runCopies: engine.runCopies,
-    checkPins: engine.checkPins,
+    ...timedWorkOf(engine),
     repairPaperFills: engine.repairPaperFills,
     repairOrderFills: engine.repairOrderFills,
-    downtime: engine.downtime,
     resume,
     stopper,
     state,
