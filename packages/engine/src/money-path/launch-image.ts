@@ -5,6 +5,12 @@ import { pictureSizeOf } from "./picture-size.js";
 /** The largest picture a launch uploads: 5 MiB, as every upload (protocol spec, section 7.9). */
 export const launchImageMaxBytes: number = 5 * 1024 * 1024;
 
+/**
+ * The widest and tallest picture a launchpad writes into its create call, in pixels (decision
+ * 0279): a few bytes can tell a far larger picture than a launch's page shows.
+ */
+export const writtenPictureMostSide: number = 1_024;
+
 type ImageType = LaunchImage["contentType"];
 
 // Each format by the bytes it starts with; WebP's RIFF header names it at byte 8.

@@ -187,6 +187,8 @@ export type { LaunchView } from "./views/launch-view.schema.js";
 export { assetInfosSchema, assetViewSchema } from "./views/asset-info.schema.js";
 export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema.js";
 export { launchFilterSchema, launchpadIdSchema } from "./views/launch-filter.schema.js";
+export { launchpadViewSchema } from "./views/launchpad-view.schema.js";
+export type { LaunchpadView, LaunchSettingView } from "./views/launchpad-view.schema.js";
 export type { LaunchFilter, LaunchpadId, ScanFilter } from "./views/launch-filter.schema.js";
 export { marketTermFields } from "./requests/market-terms.schema.js";
 export type { MarketTermFields } from "./requests/market-terms.schema.js";

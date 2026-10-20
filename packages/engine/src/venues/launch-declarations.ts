@@ -1,4 +1,4 @@
-import { fitsWordLimits, type Launcher, type LaunchWords } from "@binference/chain";
+import { type ChainRef, fitsWordLimits, type Launcher, type LaunchWords } from "@binference/chain";
 import { z } from "zod";
 import type { HostedVenue } from "./hosted-venue.js";
 import type { LaunchHost } from "./launch-host.js";
@@ -52,6 +52,7 @@ export type DeclarationReads = Pick<
   | "picturePlace"
   | "pictureBytesFor"
   | "launchWalletCalls"
+  | "launchpadsOn"
 >;
 
 /** The host's reads of each launchpad's declaration, over the launchpads it holds. */
@@ -75,5 +76,9 @@ export function declarationsOf(launchers: ReadonlyMap<string, HostedLauncher>): 
     },
     pictureBytesFor: (venue, words) => pictureBytesOn(launchers, venue, words),
     launchWalletCalls: (venue) => launchers.get(venue)?.hosted.launchWalletCalls ?? [],
+    launchpadsOn: (chain: ChainRef) =>
+      [...launchers.values()]
+        .filter((item) => item.hosted.contracts.has(chain))
+        .map((item) => item.hosted.venue.id),
   };
 }

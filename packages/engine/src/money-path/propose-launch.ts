@@ -15,6 +15,7 @@ import { advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
 import { pinWaitOf, toldIfEnded } from "./launch-ending.js";
+import { writtenPictureMostSide } from "./launch-image.js";
 import { launchSubjectOf } from "./launch-policy.js";
 import { type LaunchRun, quotedRunOf } from "./launch-run.js";
 import { type ReadPicture, readOwnPicture, uploadPicture } from "./launch-upload.js";
@@ -218,10 +219,6 @@ async function loseUpload(run: LaunchRun, checked: IntentSnapshot): Promise<void
   const trigger = { type: "quote_failed", reason: "upload_lost" } as const;
   toldIfEnded(run.options, await advanceIntent({ ...run.parts, signal }, now, { trigger }));
 }
-
-// The widest and tallest picture a launchpad writes into its create call, in pixels (decision
-// 0279): a few bytes can tell a far larger picture than a launch's page shows.
-const writtenPictureMostSide = 1_024;
 
 // The picture a launch reads, once, from the owner's upload: none for a launchpad that takes a link
 // (decision 0276). One a launchpad writes into its create call must fit beside the words and tell

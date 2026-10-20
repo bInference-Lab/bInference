@@ -355,6 +355,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, priceScale?, source }` (below) |
 | `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }` of a tracked wallet (below)       |
 | `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                  |
+| `launchpad/list`       | `read`           | `{ chain }` → `{ items: [LaunchpadView] }`: each launchpad the engine runs on the chain, where it takes the picture, its settings   |
 
 - `asset/search` reads the chain registry and the positions store, never the web. A query the
   chain's family reads as an address names that token: `items` holds it with the registry's
@@ -391,6 +392,19 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   `minLiquidityUsdMicros` passes no launch, since the feed reads no liquidity. Each `LaunchView`
   carries `assets`: its token's info as its creator wrote it, unverified unless the registry lists
   the token, and its quote token's ([decision 0255](../DECISIONS.md#d0255)).
+- `launchpad/list` answers each launchpad the engine runs on the chain, in the order its venues
+  came, as a `LaunchpadView` `{ venue, picture: { place, mostBytes?, mostSide? }, settings }`. Its
+  `picture.place` says what a `launchToken` on it names as `image`: `upload`, an upload id of the
+  proposer's own, at most `mostBytes` (5 MiB); `create_call`, an upload id of a small picture the
+  create call writes, at most `mostBytes` beside a launch with no description or links (longer
+  words leave fewer) and `mostSide` pixels each way; `link`, the literal `none`, with the picture
+  as the launchpad's `link` setting. `settings` holds each setting it declares, as `venueOptions`
+  takes it: `{ name, type, choices?, min?, max?, default?, optional?, workedOut?, outsideOnly? }`;
+  one with neither `default` nor `optional` must be given, and a `workedOut` one never is. A
+  surface that starts a launch reads it before it asks the owner for a picture, and asks only for
+  what the engine takes ([decisions 0276](../DECISIONS.md#d0276) and
+  [0279](../DECISIONS.md#d0279)). A chain the registry does not hold is `protocol.bad_args`; an
+  engine whose venues launch no token answers no item.
 - `market/chart` answers OHLCV candles in USD, oldest first: each
   `{ at, openUsdMicros, highUsdMicros, lowUsdMicros, closeUsdMicros, volumeUsdMicros }`, `at` the
   candle's start. They are the `limit` newest candles that start before `to`; `limit` is 100 by

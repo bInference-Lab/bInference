@@ -8,6 +8,7 @@ import { type ChatHandlers, type ChatRelay, createChatRelay } from "../chat/chat
 import { createRunningTurns } from "../chat/running-turns.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { createLaunchHandlers, type LaunchHandlers } from "../launches/launch-handlers.js";
+import { createLaunchpadHandlers, type LaunchpadHandlers } from "../launches/launchpad-handlers.js";
 import { type ActivityHandlers, createActivityHandlers } from "../leaders/activity-handlers.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { ModelBilling } from "../ports.js";
@@ -23,8 +24,8 @@ import { intentViewOf } from "./intent-view-of.js";
 /**
  * The chat operations the engine answers itself, `usage/get`, `upload/start`, the schedule and
  * alert operations, whose wake-ups reach the agent through the chat, `wallet/activity`, which
- * reads the wallets the alerts and copy orders track, and `launch/list`, which reads the launch
- * feed's records.
+ * reads the wallets the alerts and copy orders track, `launch/list`, which reads the launch
+ * feed's records, and `launchpad/list`, which reads the launchpads the engine runs.
  */
 export interface EngineChatHandlers
   extends
@@ -34,7 +35,8 @@ export interface EngineChatHandlers
     ScheduleHandlers,
     AlertHandlers,
     ActivityHandlers,
-    LaunchHandlers {}
+    LaunchHandlers,
+    LaunchpadHandlers {}
 
 /**
  * The engine's chat relay, whose settle pushes carry each intent's view as `intent/get` gives it,
@@ -131,9 +133,12 @@ export function engineChatOf(options: EngineOptions): EngineChat {
   };
 }
 
-// `wallet/activity` and `launch/list`, over what the leader watcher and the launch feed stored.
-function watchedHandlersOf(options: EngineOptions): ActivityHandlers & LaunchHandlers {
-  const { stores, chains, host } = options;
+// `wallet/activity` and `launch/list`, over what the leader watcher and the launch feed stored,
+// and `launchpad/list`, over the launchpads the launch host runs.
+function watchedHandlersOf(
+  options: EngineOptions,
+): ActivityHandlers & LaunchHandlers & LaunchpadHandlers {
+  const { stores, chains, host, launchHost } = options;
   return {
     ...createActivityHandlers({
       trackedWallets: stores.trackedWallets,
@@ -147,6 +152,7 @@ function watchedHandlersOf(options: EngineOptions): ActivityHandlers & LaunchHan
       chains,
       isLaunchpad: (venue) => host.isLaunchpad(venue),
     }),
+    ...createLaunchpadHandlers({ chains, ...(launchHost === undefined ? {} : { launchHost }) }),
   };
 }
 

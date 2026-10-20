@@ -69,6 +69,8 @@ export interface LaunchHost {
   fitsWords(venue: string, launch: WordsOfLaunch): boolean;
   /** The settings the launchpad declares; none for a venue the host does not hold. */
   launchOptions(venue: string): readonly LaunchOption[];
+  /** The launchpads the host holds that launch tokens on the chain, in the order venues came. */
+  launchpadsOn(chain: ChainRef): readonly string[];
   /**
    * The warnings every card of the launchpad's launches shows, by name (decision 0281); none for
    * a venue the host does not hold.

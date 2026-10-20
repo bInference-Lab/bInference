@@ -8,6 +8,10 @@ import { type ChatOperationShapes, chatOperations } from "./chat-operations.sche
 import { type EngineOperationShapes, engineOperations } from "./engine-operations.schema.js";
 import { type ImageOperationShapes, imageOperations } from "./image-operations.schema.js";
 import { type IntentOperationShapes, intentOperations } from "./intent-operations.schema.js";
+import {
+  type LaunchpadOperationShapes,
+  launchpadOperations,
+} from "./launchpad-operations.schema.js";
 import { type LimitOperationShapes, limitOperations } from "./limit-operations.schema.js";
 import { type MarketOperationShapes, marketOperations } from "./market-operations.schema.js";
 import { type NoteOperationShapes, noteOperations } from "./note-operations.schema.js";
@@ -30,6 +34,7 @@ export interface OperationShapes
     AgentOperationShapes,
     WalletOperationShapes,
     MarketOperationShapes,
+    LaunchpadOperationShapes,
     IntentOperationShapes,
     OrderOperationShapes,
     LimitOperationShapes,
@@ -59,6 +64,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...agentOperations,
   ...walletOperations,
   ...marketOperations,
+  ...launchpadOperations,
   ...intentOperations,
   ...orderOperations,
   ...limitOperations,
