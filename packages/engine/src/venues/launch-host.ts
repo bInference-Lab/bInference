@@ -15,6 +15,7 @@ import {
 } from "@binference/chain";
 import { BinferenceError, type Clock, err, type JsonValue, type Result } from "@binference/core";
 import type { LaunchTokenRequest } from "@binference/protocol";
+import { z } from "zod";
 import { callVenue, type VenueCallOptions } from "./call-venue.js";
 import { type HostedVenue, hostVenues } from "./hosted-venue.js";
 import {
@@ -72,11 +73,17 @@ export interface LaunchHost {
     options: { readonly signal: AbortSignal },
   ): Promise<Result<LaunchQuote, VenueFailure>>;
   /**
-   * Whether the launchpad uploads a launch's picture and words and pins them; one that does not
-   * takes its picture as a link setting (decision 0276). `undefined` for a venue the host does not
-   * hold.
+   * Where the launchpad takes a launch's picture: `upload`, through its own API, which pins it;
+   * `create_call`, written into its create call (decision 0279); `link`, as a link setting the
+   * owner hosts (decision 0276). `undefined` for a venue the host does not hold.
    */
-  takesUpload(venue: string): boolean | undefined;
+  picturePlace(venue: string): PicturePlace | undefined;
+  /**
+   * The most bytes of a picture a launchpad that writes it into its create call takes beside the
+   * launch's words; `undefined` for any other launchpad, and 0 for one whose answer is no whole
+   * number of bytes or that throws.
+   */
+  pictureBytesFor(venue: string, words: LaunchWords): number | undefined;
   /**
    * Uploads the launch's words and picture; a launchpad that cannot, or uploads nothing, is
    * `venue_down`.
@@ -105,6 +112,9 @@ export interface LaunchHost {
     options: { readonly signal: AbortSignal },
   ): Promise<Result<LaunchPlan, VenueFailure> | LaunchRefused>;
 }
+
+/** Where a launchpad takes a launch's picture. */
+export type PicturePlace = "upload" | "create_call" | "link";
 
 /** A launch's name, symbol and words, as the launchpad's word limits count them. */
 type WordsOfLaunch = { readonly name: string; readonly symbol: string } & LaunchWords;
@@ -136,20 +146,32 @@ interface HostedLauncher {
   readonly launcher: Launcher;
 }
 
+// Where a launcher takes its picture: through its pin, into its create call, or as a link.
+function placeOf(launcher: Launcher): PicturePlace {
+  if (launcher.pin !== undefined) {
+    return "upload";
+  }
+  return launcher.pictureBytesFor === undefined ? "link" : "create_call";
+}
+
 // A launchpad's settings must pass their schema, however the venue reached the host, and have
 // their card lines and fitting defaults on each chain it serves; it pins with both its pin and its
-// pin status, or uploads nothing.
+// pin status, writes the picture into its create call, or takes a link to it.
 function problemOf(item: HostedLauncher, chain: RegisteredChain): string | undefined {
-  const { launchOptions, pin, pinStatus } = item.launcher;
+  const { launcher } = item;
+  const { launchOptions, pin, pinStatus } = launcher;
   if ((pin === undefined) !== (pinStatus === undefined)) {
     return "it gives a pin without a pin status, or a pin status without a pin.";
   }
-  // A launchpad that uploads nothing takes its picture as a link the owner must give (decision
-  // 0276), so every launch shows its picture on the card.
+  if (pin !== undefined && launcher.pictureBytesFor !== undefined) {
+    return "it both uploads its picture and writes it into its create call.";
+  }
+  // A launchpad that takes its picture as a link takes one the owner must give (decision 0276),
+  // so every launch shows its picture on the card.
   const isLinked = launchOptions.some(
     (option) => option.type === "link" && option.default === undefined,
   );
-  if (pin === undefined && !isLinked) {
+  if (placeOf(launcher) === "link" && !isLinked) {
     return "it uploads nothing and declares no picture link every launch must give.";
   }
   return launchOptionsSchema.safeParse(launchOptions).success
@@ -264,6 +286,24 @@ function settingsOn(
   return launchSettingsOf(item.launcher.launchOptions, given, chain.value);
 }
 
+const pictureBytesSchema = z.int().positive();
+
+// Launchpad code may throw or answer outside its type: no picture fits then.
+function pictureBytesOn(parts: LaunchParts, venue: string, words: LaunchWords): number | undefined {
+  const launcher = parts.launchers.get(venue)?.launcher;
+  if (launcher?.pictureBytesFor === undefined) {
+    return undefined;
+  }
+  try {
+    const bytes = pictureBytesSchema.safeParse(
+      launcher.pictureBytesFor(Object.freeze({ ...words })),
+    );
+    return bytes.success ? bytes.data : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Creates the {@link LaunchHost} over every venue the engine may use, checked against the chain
  * registry as the venue host checks them. A launchpad whose settings have no card line in every
@@ -290,10 +330,11 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
       (parts.launchers.get(venue)?.launcher.launchOptions ?? [])
         .filter((option) => option.isOutsideOnly === true)
         .map((option) => option.name),
-    takesUpload(venue) {
+    picturePlace(venue) {
       const launcher = parts.launchers.get(venue)?.launcher;
-      return launcher === undefined ? undefined : launcher.pin !== undefined;
+      return launcher === undefined ? undefined : placeOf(launcher);
     },
+    pictureBytesFor: (venue, words) => pictureBytesOn(parts, venue, words),
     launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],
     async quote(launch, { signal }) {
       signal.throwIfAborted();

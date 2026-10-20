@@ -9,6 +9,7 @@ import { statesBeforeSigning } from "../intents/transition-table.js";
 import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import { minOutFloor } from "../venues/build-checks.js";
+import type { LaunchUpload } from "../venues/launch-calls.js";
 import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
@@ -97,9 +98,33 @@ interface Built {
   readonly drafts: readonly TxDraft[];
 }
 
-// The launchpad uploads the words and the picture and asks for the pin, and the launch is built
-// against the metadata address it got back (decision 0234); a launchpad that uploads nothing builds
-// at once and waits for no pin (decision 0276).
+/** What the build gets of the picture, and what the launch's quote keeps of it. */
+interface PictureStep {
+  readonly build: Pick<LaunchUpload, "metadataUri" | "picture">;
+  readonly kept: Pick<TokenLaunchQuote, "image" | "metadataUri" | "pin">;
+}
+
+// A launchpad that writes the picture into its create call gets its bytes and uploads nothing
+// (decision 0279); one that uploads gets the metadata address and the pin its upload gave
+// (decision 0234); one that takes a link gets neither (decision 0276).
+async function pictureStepOf(
+  run: LaunchRun,
+  picture: ReadPicture | undefined,
+): Promise<Result<PictureStep, QuoteFailure>> {
+  const { options, resolved, signal } = run;
+  if (picture === undefined) {
+    return ok({ build: {}, kept: {} });
+  }
+  const { image, bytes } = picture;
+  if (options.launch.host.picturePlace(resolved.request.venue) === "create_call") {
+    return ok({ build: { picture: { contentType: image.contentType, bytes } }, kept: { image } });
+  }
+  const sent = await uploadPicture(options, { hosted: hostedLaunchOf(resolved), picture }, signal);
+  return sent.ok ? ok({ build: { metadataUri: sent.value.metadataUri }, kept: sent.value }) : sent;
+}
+
+// The launch is built against what its picture step gave, and waits for its pin only when it
+// uploaded (decisions 0234, 0276 and 0279).
 async function pinAndBuild(
   run: LaunchRun,
   quoted: Quoted,
@@ -107,21 +132,15 @@ async function pinAndBuild(
 ): Promise<Result<Built, QuoteFailure>> {
   const { options, resolved, signal } = run;
   const { request } = resolved;
-  const hosted = hostedLaunchOf(resolved);
-  const uploaded =
-    picture === undefined
-      ? ok(undefined)
-      : await uploadPicture(options, { hosted, picture }, signal);
-  if (!uploaded.ok) {
-    return uploaded;
+  const pictured = await pictureStepOf(run, picture);
+  if (!pictured.ok) {
+    return pictured;
   }
-  const sent = uploaded.value;
   const firstBuy = firstBuyOf(run, quoted.quote);
   const minOut = firstBuy === undefined ? {} : { minOutBase: firstBuy.minOut };
-  const metadata = sent === undefined ? {} : { metadataUri: sent.metadataUri };
   const plan = await options.launch.host.build(
-    hosted,
-    { quote: quoted.quote, ...metadata, ...minOut },
+    hostedLaunchOf(resolved),
+    { quote: quoted.quote, ...pictured.value.build, ...minOut },
     { signal },
   );
   if (!plan.ok) {
@@ -129,6 +148,7 @@ async function pinAndBuild(
   }
   const nowMs = options.clock.now();
   const unbound = plan.value.isFirstBuyUnbound === true ? { isUnbound: true as const } : {};
+  const { kept } = pictured.value;
   const quote: TokenLaunchQuote = {
     venue: request.venue,
     settings: resolved.launchSettings,
@@ -136,8 +156,8 @@ async function pinAndBuild(
     tokenDecimals: quoted.quote.tokenDecimals,
     fee: quoted.quote.fee,
     ...(firstBuy === undefined ? {} : { firstBuy: { ...firstBuy, ...unbound } }),
-    ...sent,
-    pinWaitUntilMs: nowMs + (sent === undefined ? 0 : pinWaitOf(options)),
+    ...kept,
+    pinWaitUntilMs: nowMs + (kept.pin === undefined ? 0 : pinWaitOf(options)),
     quotedAtMs: nowMs,
   };
   return ok({ quote, drafts: plan.value.steps.map((step) => step.draft) });
@@ -180,19 +200,41 @@ async function loseUpload(run: LaunchRun, checked: IntentSnapshot): Promise<void
   toldIfEnded(run.options, await advanceIntent({ ...run.parts, signal }, now, { trigger }));
 }
 
-// The picture is read once, by a launchpad that uploads one; once its upload begins, the owner
-// hears of any end before the pin wait (decision 0237). A launchpad that takes its picture as a
-// link reads none (decision 0276).
-async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
+// The picture a launch reads, once, from the owner's upload: none for a launchpad that takes a link
+// (decision 0276). One a launchpad writes into its create call must fit beside the words and tell
+// its size (decision 0279).
+async function pictureOf(run: LaunchRun): Promise<Result<ReadPicture | undefined, QuoteFailure>> {
   const { options, resolved, credential, signal } = run;
-  const isUploaded = options.launch.host.takesUpload(resolved.request.venue) !== false;
-  const asked = { upload: resolved.request.image, credential };
-  const picture = isUploaded ? await readOwnPicture(options, asked, signal) : undefined;
-  if (isUploaded && picture === undefined) {
-    return failQuote(run, quoted.checked, "image_unreadable");
+  const { request } = resolved;
+  const { host } = options.launch;
+  const place = host.picturePlace(request.venue);
+  if (place === "link") {
+    return ok(undefined);
+  }
+  const asked = { upload: request.image, credential };
+  const picture = await readOwnPicture(options, asked, signal);
+  if (picture === undefined) {
+    return err("image_unreadable");
+  }
+  if (place !== "create_call") {
+    return ok(picture);
+  }
+  const { image } = picture;
+  if (image.width === undefined || image.height === undefined) {
+    return err("image_unreadable");
+  }
+  const mostBytes = host.pictureBytesFor(request.venue, request) ?? 0;
+  return image.bytes > mostBytes ? err("picture_too_large") : ok(picture);
+}
+
+// Once its upload begins, the owner hears of any end before the pin wait (decision 0237).
+async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
+  const picture = await pictureOf(run);
+  if (!picture.ok) {
+    return failQuote(run, quoted.checked, picture.error);
   }
   try {
-    return toldIfEnded(run.options, await uploadAndBuild(run, quoted, picture));
+    return toldIfEnded(run.options, await uploadAndBuild(run, quoted, picture.value));
   } catch (fault) {
     await loseUpload(run, quoted.checked).catch(() => undefined);
     throw fault;

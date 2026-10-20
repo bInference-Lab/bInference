@@ -148,6 +148,7 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   launch_unread: "quote.venue_down",
   // A launch reads its picture once, before its pin, and is never quoted again at a tap.
   image_unreadable: "quote.no_route",
+  picture_too_large: "quote.no_route",
   upload_lost: "quote.no_route",
   ceiling_lacks_call: "limit.over_ceiling",
   simulation_reverted: "chain.simulation_failed",

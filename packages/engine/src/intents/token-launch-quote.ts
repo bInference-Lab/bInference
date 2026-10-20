@@ -13,11 +13,16 @@ import { type Sha256Hex, sha256HexSchema } from "../records/sha256-hex.js";
 import type { LaunchSetting } from "../venues/launch-settings.schema.js";
 import { type DocumentCodec, documentCodec } from "./intent-documents.schema.js";
 
-/** The picture a launch uploaded: its type, its size in bytes and the SHA-256 of its bytes. */
+/**
+ * The owner's picture of a launch: its type, its size in bytes, the SHA-256 of its bytes, and its
+ * width and height in pixels when its header tells them.
+ */
 export interface LaunchImage {
   readonly contentType: "image/png" | "image/jpeg" | "image/webp";
   readonly bytes: number;
   readonly sha256: Sha256Hex;
+  readonly width?: number;
+  readonly height?: number;
 }
 
 /** A launch's first buy: what it spends, what the quote said it gets, and the least it accepts. */
@@ -49,7 +54,10 @@ export interface TokenLaunchQuote {
   /** The launchpad's fee, in the chain's coin. */
   readonly fee: Amount;
   readonly firstBuy?: LaunchFirstBuy;
-  /** The uploaded picture; absent for a launchpad that uploads nothing (decision 0276). */
+  /**
+   * The owner's picture: uploaded, or written into the create call (decision 0279); absent for a
+   * launchpad that takes a picture link (decision 0276).
+   */
   readonly image?: LaunchImage;
   /** The metadata address of the upload; absent with no upload. */
   readonly metadataUri?: string;
@@ -83,6 +91,8 @@ interface TokenLaunchQuoteWire {
     readonly contentType: string;
     readonly bytes: number;
     readonly sha256: string;
+    readonly width?: number;
+    readonly height?: number;
   };
   readonly metadataUri?: string;
   readonly pin?: JsonValue;
@@ -115,6 +125,8 @@ const tokenLaunchQuoteSchema: z.ZodType<TokenLaunchQuote, TokenLaunchQuoteWire> 
       contentType: z.enum(["image/png", "image/jpeg", "image/webp"]),
       bytes: z.int().positive(),
       sha256: sha256HexSchema,
+      width: z.int().positive().exactOptional(),
+      height: z.int().positive().exactOptional(),
     })
     .exactOptional(),
   metadataUri: z.string().min(1).exactOptional(),

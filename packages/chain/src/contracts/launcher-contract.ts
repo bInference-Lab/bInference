@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import type { ContractCheck } from "@binference/core/testing";
 import { accountRefParts } from "../caip/account-ref.js";
 import { assetRefParts } from "../caip/asset-ref.js";
@@ -62,8 +63,9 @@ async function built(
   const pin = await launcher.pin?.(launch, { signal: live() });
   const minOut = quote.firstBuyOut === undefined ? {} : { firstBuyMinOut: quote.firstBuyOut };
   const metadata = pin === undefined ? {} : { metadataUri: pin.metadataUri };
-  const { image: _image, ...terms } = launch;
-  const request = { ...terms, ...metadata, fee: quote.fee, ...minOut };
+  const { image, ...terms } = launch;
+  const picture = launcher.pictureBytesFor === undefined ? {} : { picture: image };
+  const request = { ...terms, ...metadata, ...picture, fee: quote.fee, ...minOut };
   return { request, build: await launcher.buildLaunch(request, { signal: live() }) };
 }
 
@@ -110,6 +112,9 @@ function pinsUpload(harness: LauncherHarness): ContractCheck {
       const { launcher, launch } = harness.create();
       const pin = await launcher.pin?.(launch, { signal: live() });
       assert.equal(pin === undefined, launcher.pinStatus === undefined);
+      // One that writes its picture into its create call uploads none, and takes some bytes.
+      assert.ok(launcher.pictureBytesFor === undefined || pin === undefined);
+      assert.ok((launcher.pictureBytesFor?.(launch) ?? 1) > 0);
       if (pin !== undefined) {
         assert.ok(launchPinSchema.safeParse(pin).success);
         const status = await launcher.pinStatus?.(pin.pin, { signal: live() });
@@ -131,7 +136,8 @@ function checkMinOut(launcher: Launcher, minOut: bigint, request: LaunchBuildReq
 
 // The create call reads back as the launch it was built for: its token, words, pair, fee and every
 // setting, and a first buy for the wallet of its spend, at no less than its minimum. A launcher that
-// writes the words on chain names them as the request gives them.
+// writes the words on chain names them as the request gives them, and one that writes the picture
+// into its create call names it by its type and digest (decision 0279).
 function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
   const { request, build } = launch;
   const create = build.steps.at(-1);
@@ -153,6 +159,15 @@ function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
   );
   const written = subject.launcher.wordLimits === undefined ? undefined : writtenWordsOf(request);
   assert.deepEqual(decoded.value.words, written);
+  const { picture } = request;
+  const digest =
+    picture === undefined
+      ? undefined
+      : {
+          contentType: picture.contentType,
+          sha256: createHash("sha256").update(picture.bytes).digest("hex"),
+        };
+  assert.deepEqual(decoded.value.picture, digest);
   assert.deepEqual(firstBuy?.spend, request.firstBuy);
   assert.equal(firstBuy?.recipient, request.wallet);
   checkMinOut(subject.launcher, firstBuy?.minOut ?? 0n, request);

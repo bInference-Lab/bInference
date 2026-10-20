@@ -13,10 +13,12 @@ import {
   type LaunchTerms,
   type LaunchWords,
   type RegisteredChain,
+  writtenPictureSchema,
   writtenWordsOf,
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
+import { sha256HexOfBytes } from "../records/sha256-hex.js";
 import type { BuildMismatch } from "./build-checks.js";
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { nativeAssetOf } from "./host-terms.js";
@@ -43,7 +45,7 @@ export interface HostedLaunch extends LaunchWords {
   readonly settings: readonly LaunchSetting[];
 }
 
-/** The picture a launchpad uploads and pins for a launch, with the launch's words. */
+/** The picture a launchpad uploads and pins for a launch, or writes into its create call. */
 export type UploadedPicture = LaunchPinRequest["image"];
 
 /** What a launch is built from once its quote and its upload, if any, are in hand. */
@@ -51,6 +53,11 @@ export interface LaunchUpload {
   readonly quote: LaunchQuote;
   /** The metadata address the upload gave; absent for a launchpad that uploads nothing. */
   readonly metadataUri?: string;
+  /**
+   * The owner's picture, for a launchpad that writes it into its create call (decision 0279);
+   * absent for any other.
+   */
+  readonly picture?: UploadedPicture;
   /** The least of the new token the first buy may accept; with a first buy alone. */
   readonly minOutBase?: bigint;
 }
@@ -139,6 +146,18 @@ export async function pinLaunch(
 
 const buildAnswerSchema = z.object({ token: assetRefSchema, steps: z.array(z.unknown()) });
 
+// The picture the create call must write, by its type and digest; none without one.
+function writtenPictureOf(picture: UploadedPicture | undefined): Pick<LaunchBounds, "picture"> {
+  const written =
+    picture === undefined
+      ? undefined
+      : writtenPictureSchema.safeParse({
+          contentType: picture.contentType,
+          sha256: sha256HexOfBytes(picture.bytes),
+        });
+  return written?.success === true ? { picture: written.data } : {};
+}
+
 // The terms the launch's steps must keep (decision 0235), from its context and its upload.
 function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef): LaunchBounds {
   const { chain, terms } = context;
@@ -148,6 +167,7 @@ function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef)
     contracts: Object.values(terms.contracts),
     nativeAsset: nativeAssetOf(chain),
     ...(upload.metadataUri === undefined ? {} : { metadataUri: upload.metadataUri }),
+    ...writtenPictureOf(upload.picture),
     words: writtenWordsOf(context.words),
     mustWriteWords: context.launcher.wordLimits !== undefined,
     fee: upload.quote.fee,
@@ -175,10 +195,22 @@ export async function buildLaunch(
   call: VenueCallOptions,
 ): Promise<Result<LaunchPlan, VenueFailure> | LaunchRefused> {
   const { launcher, chain, terms, words } = context;
-  const { quote, metadataUri, minOutBase } = upload;
+  const { quote, metadataUri, minOutBase, picture } = upload;
   const minOut = minOutBase === undefined ? {} : { firstBuyMinOut: minOutBase };
   const metadata = metadataUri === undefined ? {} : { metadataUri };
-  const request = Object.freeze({ ...terms, ...words, ...metadata, fee: quote.fee, ...minOut });
+  // The launchpad gets its own copy of the picture's bytes, as an upload does.
+  const written =
+    picture === undefined
+      ? {}
+      : { picture: Object.freeze({ ...picture, bytes: Uint8Array.from(picture.bytes) }) };
+  const request = Object.freeze({
+    ...terms,
+    ...words,
+    ...metadata,
+    ...written,
+    fee: quote.fee,
+    ...minOut,
+  });
   const built = await callVenue(async (signal) => launcher.buildLaunch(request, { signal }), call);
   const answer = built.ok ? buildAnswerSchema.safeParse(built.value) : undefined;
   if (!built.ok || answer?.success !== true) {

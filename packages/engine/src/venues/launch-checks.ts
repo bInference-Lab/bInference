@@ -12,6 +12,7 @@ import {
   type Launcher,
   type LaunchOptionValue,
   type TxDraft,
+  type WrittenPicture,
   type WrittenWords,
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
@@ -43,6 +44,11 @@ export interface LaunchBounds {
   readonly pair: AssetRef;
   /** The metadata address the upload gave; absent for a launchpad that uploads nothing. */
   readonly metadataUri?: string;
+  /**
+   * The owner's picture, which a launchpad that writes it into its create call must write; absent
+   * for any other launchpad (decision 0279).
+   */
+  readonly picture?: WrittenPicture;
   /** The description and links the card shows, as a create call writes them on chain. */
   readonly words: WrittenWords;
   /** The launchpad writes the words into its create call, so its decoder must name them. */
@@ -131,7 +137,25 @@ function isTheWords(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
   );
 }
 
-// The create call makes the build's token with the launch's words, pair, metadata and fee.
+// The call writes the card's picture, byte for byte, or none when the card shows none written.
+function isThePicture(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
+  const { picture } = launch;
+  const shown = bounds.picture;
+  return picture === undefined || shown === undefined
+    ? picture === shown
+    : picture.contentType === shown.contentType && picture.sha256 === shown.sha256;
+}
+
+// The call names the upload's metadata, the card's picture and the card's words.
+function isTheContent(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
+  return (
+    launch.metadataUri === bounds.metadataUri &&
+    isThePicture(launch, bounds) &&
+    isTheWords(launch, bounds)
+  );
+}
+
+// The create call makes the build's token with the launch's words, pair, metadata, picture and fee.
 function isTheLaunch(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
   const isOnChain = assetRefParts(launch.token).chain === assetRefParts(bounds.pair).chain;
   return (
@@ -142,9 +166,8 @@ function isTheLaunch(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
     launch.name === bounds.name &&
     launch.symbol === bounds.symbol &&
     launch.pair === bounds.pair &&
-    launch.metadataUri === bounds.metadataUri &&
     launch.feeBase === bounds.fee.base &&
-    isTheWords(launch, bounds)
+    isTheContent(launch, bounds)
   );
 }
 
@@ -242,7 +265,8 @@ function orderOf(steps: readonly LaunchStep[]) {
  * its chain; the plan is at most one token approval, then one create call; the approval is exact
  * on the first buy's spend, to a registry contract of the launchpad; the create call goes to one
  * of its registry contracts, makes the build's token with the launch's name, symbol, pair,
- * metadata and, when it writes them on chain, the card's description and links (decision 0275),
+ * metadata, the card's picture when it writes one into the call (decision 0279), and, when it
+ * writes them on chain, the card's description and links (decision 0275),
  * writes every launchpad setting at the card's value (decision 0238), pays exactly the quoted fee,
  * and buys exactly the first buy for the wallet at no less than its minimum, unless the launcher
  * declares that its first buy carries none (decision 0270). Gives the create call's launch, or

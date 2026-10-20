@@ -22,11 +22,20 @@ function linksOf(links: LaunchTokenRequest["links"]): readonly LaunchLink[] {
   });
 }
 
-// The picture the launch uploaded; none for a launchpad that takes it as a link (decision 0276).
+// The picture the launch uploaded, or the one its create call writes (decision 0279); none for a
+// launchpad that takes it as a link (decision 0276).
 function pictureOf(quote: TokenLaunchQuote): Pick<LaunchDetails, "picture"> {
   const { image, metadataUri } = quote;
-  if (image === undefined || metadataUri === undefined) {
+  if (image === undefined) {
     return {};
+  }
+  const { width, height } = image;
+  if (metadataUri === undefined) {
+    const format = formats[image.contentType];
+    const digest = image.sha256.slice(0, digestDigits);
+    return width === undefined || height === undefined
+      ? {}
+      : { picture: { format, bytes: image.bytes, width, height, digest } };
   }
   const picture = {
     format: formats[image.contentType],

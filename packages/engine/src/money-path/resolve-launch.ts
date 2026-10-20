@@ -181,12 +181,11 @@ async function launchpadSettingsOf(
   }
   // A launchpad that writes the words on chain takes only as many bytes as its create call does
   // (decision 0275), and one that takes its picture as a link names no upload, so no picture is
-  // dropped unseen (decision 0276); a launch otherwise is refused before anything is stored.
+  // dropped unseen (decision 0276), while every other one reads an upload (decision 0279); a
+  // launch otherwise is refused before anything is stored.
   const namesNoUpload = request.image === noUploadImage;
-  if (
-    !host.fitsWords(request.venue, request) ||
-    host.takesUpload(request.venue) === namesNoUpload
-  ) {
+  const isLinked = host.picturePlace(request.venue) === "link";
+  if (!host.fitsWords(request.venue, request) || isLinked !== namesNoUpload) {
     return err("protocol.bad_args");
   }
   const isOwn = await namesOwnWallet(options, { request, settings: settings.value, signal });

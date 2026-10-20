@@ -59,6 +59,7 @@ describe("intent reasons", () => {
       "launch_unread",
       "launch_moved",
       "image_unreadable",
+      "picture_too_large",
       "pin_failed",
       "pin_timeout",
       "upload_lost",
@@ -90,7 +91,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(52);
+    expect(intentReasons).toHaveLength(53);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {

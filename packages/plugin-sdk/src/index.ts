@@ -26,6 +26,7 @@ export type {
   LaunchOption,
   LaunchOptionType,
   LaunchOptionValue,
+  LaunchPicture,
   LaunchPin,
   LaunchPinRequest,
   LaunchpadVenue,
@@ -62,6 +63,7 @@ export type {
   VenueContracts,
   VenueDeclaration,
   VenueQuote,
+  WrittenPicture,
   WrittenWords,
 } from "@binference/chain";
 export {

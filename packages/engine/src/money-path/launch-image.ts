@@ -1,5 +1,6 @@
 import type { LaunchImage } from "../intents/token-launch-quote.js";
 import { sha256HexOfBytes } from "../records/sha256-hex.js";
+import { pictureSizeOf } from "./picture-size.js";
 
 /** The largest picture a launch uploads: 5 MiB, as every upload (protocol spec, section 7.9). */
 export const launchImageMaxBytes: number = 5 * 1024 * 1024;
@@ -28,11 +29,19 @@ function typeOf(bytes: Readonly<Uint8Array>): ImageType | undefined {
 
 /**
  * A launch's picture as its quote keeps it (decision 0234): a PNG, JPEG or WebP, told by its first
- * bytes, of at most 5 MiB, with the SHA-256 of its bytes. Anything else is `undefined`.
+ * bytes, of at most 5 MiB, with the SHA-256 of its bytes, and its width and height when its header
+ * tells them (decision 0279). Anything else is `undefined`.
  */
 export function launchImageOf(bytes: Readonly<Uint8Array>): LaunchImage | undefined {
   const contentType = typeOf(bytes);
-  return contentType === undefined || bytes.byteLength > launchImageMaxBytes
-    ? undefined
-    : { contentType, bytes: bytes.byteLength, sha256: sha256HexOfBytes(bytes) };
+  if (contentType === undefined || bytes.byteLength > launchImageMaxBytes) {
+    return undefined;
+  }
+  const size = pictureSizeOf(bytes, contentType);
+  return {
+    contentType,
+    bytes: bytes.byteLength,
+    sha256: sha256HexOfBytes(bytes),
+    ...(size === undefined ? {} : size),
+  };
 }

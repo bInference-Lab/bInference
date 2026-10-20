@@ -36,6 +36,7 @@
   "launch_unread": "binference could not read the launch's curve from its launchpad, so nothing was sent; try again",
   "launch_moved": "the launchpad no longer holds the token on the curve its quote named, as after its graduation, so nothing was sent; propose the trade again",
   "image_unreadable": "binference could not read the picture as a PNG, JPEG or WebP of at most 5 MiB, so nothing was uploaded; upload it again",
+  "picture_too_large": "the picture is over what the launchpad writes on chain beside the words, so nothing was signed; upload a smaller one, such as a 64 by 64 WebP of about 1 KB, or shorten the description",
   "pin_failed": "the launchpad could not pin the token's picture and words, so nothing was signed; propose the launch again",
   "pin_timeout": "the launchpad did not pin the token's picture and words within 5 minutes, so nothing was signed; propose the launch again",
   "upload_lost": "the launch stopped after it began sending the token's picture and words to the launchpad, before its pin wait; nothing was signed, but they may be public on the launchpad; propose the launch again",

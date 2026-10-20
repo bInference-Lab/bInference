@@ -8,12 +8,13 @@ import {
   type LaunchOptionValue,
   launchOptionValuesSchema,
 } from "../venues/launch-option.js";
-import type {
-  DecodedLaunch,
-  LaunchBuildRequest,
-  LaunchPinRequest,
-  LaunchTerms,
-  PinStatus,
+import {
+  type DecodedLaunch,
+  type LaunchBuildRequest,
+  type LaunchPinRequest,
+  type LaunchTerms,
+  type PinStatus,
+  type WrittenPicture,
 } from "../venues/launch-terms.js";
 import {
   type LaunchWordLimits,
@@ -23,6 +24,7 @@ import {
 } from "../venues/launch-words.js";
 import type { Launcher, UploadingLauncher } from "../venues/ports.js";
 import { fakeApprovalData, fakeCallOf, fakeDraft, isFakeUnsigned } from "./fake-draft.js";
+import { fakePictureOf, fakeWrittenPictureOf } from "./fake-launch-picture.js";
 
 /** How a fake launchpad's pins go: pinned after some status reads, never, or failed. */
 export type FakePinScript =
@@ -60,6 +62,11 @@ export interface FakeLauncherOptions {
   readonly wordLimits?: LaunchWordLimits;
   /** Words its create call writes in place of the request's, as a launchpad that lies would. */
   readonly writesWords?: WrittenWords;
+  /**
+   * The SHA-256 its create call writes for the picture in place of the request's picture's, as a
+   * launchpad that lies would; a fake that writes the picture into its create call only.
+   */
+  readonly writesPictureSha256?: string;
 }
 
 /** A fake launcher, which tells a test what it uploaded and how often its pins were read. */
@@ -107,6 +114,7 @@ export function fakeLaunchData(launch: DecodedLaunch): string {
     firstBuy === undefined ? "" : accountRefParts(firstBuy.recipient).address,
     word(JSON.stringify(launch.options)),
     launch.words === undefined ? "" : word(JSON.stringify(launch.words)),
+    launch.picture === undefined ? "" : word(JSON.stringify(launch.picture)),
   ].join(",");
 }
 
@@ -154,25 +162,30 @@ function firstBuyOf(from: AccountRef, pair: AssetRef, words: readonly string[]) 
 const wordAt = (words: readonly string[], index: number): string => words[index] ?? "";
 
 // The words of a create call after `launch`: token, name, symbol, metadata, pair, fee, the first
-// buy's three words, the settings and the words it writes on chain.
+// buy's three words, the settings, the words it writes on chain and the picture it writes.
 function launchOf(draft: TxDraft, words: readonly string[]): DecodedLaunch | undefined {
   const token = parseAssetRef(wordAt(words, 0));
   const pair = parseAssetRef(wordAt(words, 4));
   const fee = wordAt(words, 5);
-  if (words.length !== 11 || !token.ok || !pair.ok || !isFakeUnsigned(fee)) {
+  if (words.length !== 12 || !token.ok || !pair.ok || !isFakeUnsigned(fee)) {
     return undefined;
   }
   const bought = firstBuyOf(draft.from, pair.value, words.slice(6, 9));
   const options = optionsOf(wordAt(words, 9));
   const written = wordsOf(wordAt(words, 10));
+  const picture = fakePictureOf(wordAt(words, 11));
   const metadataUri = decodeURIComponent(wordAt(words, 3));
-  return bought === undefined || options === undefined || written === undefined
+  return bought === undefined ||
+    options === undefined ||
+    written === undefined ||
+    picture === undefined
     ? undefined
     : {
         token: token.value,
         name: decodeURIComponent(wordAt(words, 1)),
         symbol: decodeURIComponent(wordAt(words, 2)),
         ...(metadataUri === "" ? {} : { metadataUri }),
+        ...picture,
         pair: pair.value,
         feeBase: BigInt(fee),
         ...bought,
@@ -193,6 +206,7 @@ interface Written {
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
   readonly minOut: bigint;
   readonly words?: WrittenWords;
+  readonly picture?: WrittenPicture;
 }
 
 // An exact approval of an ERC-20 first buy's spend, then the create call, which pays the fee and
@@ -220,6 +234,7 @@ function buildSteps(request: LaunchBuildRequest, written: Written): readonly TxD
     ...bought,
     options: written.options,
     ...(written.words === undefined ? {} : { words: written.words }),
+    ...(written.picture === undefined ? {} : { picture: written.picture }),
   });
   const coinSpend = firstBuy !== undefined && isCoin(firstBuy.asset) ? firstBuy.base : 0n;
   const create = fakeDraft(wallet, { to: router, value: request.fee.base + coinSpend, data });
@@ -241,8 +256,8 @@ function writtenMinOut(options: FakeLauncherOptions, request: LaunchBuildRequest
   return options.writesMinOut ?? declared;
 }
 
-// What the create call writes beyond the request: the token, the settings, the minimum and, for a
-// launchpad that keeps them on chain, the words, each as the test scripts.
+// What the create call writes beyond the request: the token, the settings, the minimum, the
+// picture and, for a launchpad that keeps them on chain, the words, each as the test scripts.
 function writtenOf(options: FakeLauncherOptions, request: LaunchBuildRequest): Written {
   const words = options.writesWords ?? writtenWordsOf(request);
   return {
@@ -250,6 +265,7 @@ function writtenOf(options: FakeLauncherOptions, request: LaunchBuildRequest): W
     options: options.writesOptions ?? request.options,
     minOut: writtenMinOut(options, request),
     ...(options.wordLimits === undefined ? {} : { words }),
+    ...fakeWrittenPictureOf(request, options.writesPictureSha256),
   };
 }
 

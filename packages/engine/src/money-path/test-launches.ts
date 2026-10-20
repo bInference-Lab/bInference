@@ -12,8 +12,10 @@ import {
   createFakeLauncher,
   createFakeLaunchpad,
   createFakeLinkLauncher,
+  createFakePictureLauncher,
   createFakeVenue,
   type FakeLauncher,
+  type FakeLauncherOptions,
   type FakePinScript,
 } from "@binference/chain/testing";
 import type { Id, JsonValue } from "@binference/core";
@@ -42,6 +44,11 @@ export const testLaunchWallet: Id<"wal"> = fixtureId("wal", 270);
 /** The launch wallet's account on the fake chain. */
 export const testLaunchAccount: AccountRef = accountRefSchema.parse("fake:1:0x000000d9");
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+// A PNG whose IHDR chunk tells a 64 by 48 picture: 24 bytes of header, then its chunk's rest.
+const sizedPng = new Uint8Array([
+  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 64,
+  0, 0, 0, 48, 8, 6, 0, 0, 0,
+]);
 const settings: readonly LaunchOption[] = [
   { name: "taxBps", type: "bps", max: 1000, default: 0 },
   { name: "buyback", type: "flag", default: false },
@@ -117,6 +124,11 @@ export interface Launching {
    * with no API for it (decision 0276); it uploads and pins when absent.
    */
   readonly takesPictureLink?: boolean;
+  /**
+   * The launchpad writes the picture into its create call, up to these bytes, and the digest it
+   * writes when it lies about it (decision 0279); it uploads and pins when absent.
+   */
+  readonly writesPicture?: { readonly mostBytes: number; readonly sha256?: string };
 }
 
 // The create call a test launchpad marks as a launch wallet's alone.
@@ -181,8 +193,21 @@ function scripted<T extends PadLauncher>(launcher: T, script: BuildScript | unde
 /** The launcher a test launchpad uses, which may upload nothing. */
 type PadLauncher = Omit<FakeLauncher, "pin" | "pinStatus" | "uploads" | "statusReads">;
 
+// The launcher a launchpad that uploads nothing uses: one that takes a link, or one that writes
+// the picture into its create call.
+function uploadlessOf(launching: Launching, fakeOptions: FakeLauncherOptions): PadLauncher {
+  const { writesPicture } = launching;
+  if (writesPicture === undefined) {
+    return createFakeLinkLauncher(fakeOptions);
+  }
+  const lies =
+    writesPicture.sha256 === undefined ? {} : { writesPictureSha256: writesPicture.sha256 };
+  return createFakePictureLauncher({ ...fakeOptions, ...lies, mostBytes: writesPicture.mostBytes });
+}
+
 // The fake launchers of a test: the uploading fake that counts uploads and pin reads, and the one
-// the launchpad uses, which is the link launcher for a launchpad that uploads nothing.
+// the launchpad uses, which uploads nothing for a launchpad that takes a link or writes the
+// picture into its create call.
 function launchersOf(launching: Launching) {
   const isLink = launching.takesPictureLink === true;
   const fakeOptions = {
@@ -191,10 +216,10 @@ function launchersOf(launching: Launching) {
     ...(launching.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
   };
   const counting = scripted(createFakeLauncher(fakeOptions), launching.launcher);
-  if (!isLink) {
+  if (!isLink && launching.writesPicture === undefined) {
     return { ...counting, pad: counting.launcher };
   }
-  const used = scripted(createFakeLinkLauncher(fakeOptions), launching.launcher);
+  const used = scripted(uploadlessOf(launching, fakeOptions), launching.launcher);
   return { launcher: counting.launcher, built: used.built, pad: used.launcher };
 }
 
@@ -211,7 +236,10 @@ export async function testLaunchEngine(launching: Launching = {}): Promise<TestL
     venues,
     chainSimulator: (launching.simulator ?? ((real) => real))(testLaunchSimulator(pad)),
     launchImages: createMemoryLaunchImages(
-      new Map([["upl_moon", png]]),
+      new Map([
+        ["upl_moon", png],
+        ["upl_sized", sizedPng],
+      ]),
       testCallers.cli.credential,
     ),
     wallets: [testWallet, testLaunchWallet],

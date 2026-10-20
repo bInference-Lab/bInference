@@ -451,7 +451,10 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   reads no upload: its launch's `image` is the literal `none` (`noUploadImage`), which this version
   keeps required, and any other `image` fails with `protocol.bad_args`, so no picture is dropped
   unseen; `none` on a launchpad that uploads fails the same way. Both store nothing
-  ([decision 0276](../DECISIONS.md#d0276)). Only the
+  ([decision 0276](../DECISIONS.md#d0276)). A launchpad that writes the picture into its create
+  call reads the upload `image` names, which must tell its width and height and fit beside the
+  launch's words, else the launch ends `failed_check` with `image_unreadable` or
+  `picture_too_large` ([decision 0279](../DECISIONS.md#d0279)). Only the
   owner starts a launch: one the agent runtime or an MCP client proposes fails with
   `intent.owner_only` before anything is read, stored or uploaded, and a launch whose `image` the
   proposer's own credential did not upload ends `failed_check` with `image_unreadable`

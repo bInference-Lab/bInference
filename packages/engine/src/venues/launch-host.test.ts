@@ -8,6 +8,7 @@ import {
 import {
   createFakeLauncher,
   createFakeLinkLauncher,
+  createFakePictureLauncher,
   createFakeLaunchpad,
   type FakeLauncherOptions,
   fakeDraft,
@@ -108,8 +109,8 @@ describe("a launchpad that uploads nothing", () => {
 
   it("is hosted when every launch must give its picture link", () => {
     const host = hostOf(createFakeLinkLauncher({ launchOptions: [link] }));
-    expect(host.takesUpload(pad)).toBe(false);
-    expect(host.takesUpload("other-pad")).toBeUndefined();
+    expect(host.picturePlace(pad)).toBe("link");
+    expect(host.picturePlace("other-pad")).toBeUndefined();
   });
 
   it.each<[string, readonly LaunchOption[]]>([
@@ -119,6 +120,50 @@ describe("a launchpad that uploads nothing", () => {
     expect(() => hostOf(createFakeLinkLauncher({ launchOptions }))).toThrow(
       expect.objectContaining({ code: "venue.bad_declaration" }),
     );
+  });
+});
+
+describe("a launchpad that writes the picture into its create call", () => {
+  const words = { description: "A cat" };
+
+  it("is hosted with no link, and says how many bytes of a picture fit beside the words", () => {
+    const host = hostOf(createFakePictureLauncher({ mostBytes: 900 }));
+    expect(host.picturePlace(pad)).toBe("create_call");
+    expect(host.pictureBytesFor(pad, words)).toBe(900);
+    expect(host.pictureBytesFor("other-pad", words)).toBeUndefined();
+    expect(hostOf(createFakeLauncher()).pictureBytesFor(pad, words)).toBeUndefined();
+  });
+
+  it.each<[string, () => number]>([
+    [
+      "throws",
+      () => {
+        throw new Error("broken");
+      },
+    ],
+    ["answers no whole number", () => 1.5],
+    ["answers nothing", () => 0],
+  ])("takes no picture from one whose answer %s", (_case, pictureBytesFor) => {
+    const launcher = { ...createFakePictureLauncher({ mostBytes: 900 }), pictureBytesFor };
+    expect(hostOf(launcher).pictureBytesFor(pad, words)).toBe(0);
+  });
+
+  it("is refused when it also uploads its picture", () => {
+    const both = { ...createFakeLauncher(), pictureBytesFor: () => 900 };
+    expect(() => hostOf(both)).toThrow(expect.objectContaining({ code: "venue.bad_declaration" }));
+  });
+
+  it("builds with the picture, and refuses a call that writes another", async () => {
+    const written = { quote: upload.quote, minOutBase: upload.minOutBase, picture };
+    const honest = hostOf(createFakePictureLauncher({ mostBytes: 900 }));
+    await expect(honest.build(launch, written, live)).resolves.toMatchObject({ ok: true });
+    const lying = hostOf(
+      createFakePictureLauncher({ mostBytes: 900, writesPictureSha256: "0".repeat(64) }),
+    );
+    await expect(lying.build(launch, written, live)).resolves.toMatchObject({
+      ok: false,
+      mismatch: "other_launch",
+    });
   });
 });
 

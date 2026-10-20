@@ -209,8 +209,8 @@ new name here first, in the change that uses it.
   list only registry contracts, so until it exists only a paper agent uses such a venue.
 - **launcher**: the part of a launchpad's plugin that launches tokens: it quotes a launch from the
   launchpad's contracts, uploads its words and picture, reports their pin, and builds and decodes
-  the create call. A launchpad with no API for pictures uploads nothing and takes a picture link.
-  It never signs.
+  the create call. A launchpad with no API for pictures uploads nothing: it takes a picture link,
+  or writes a small picture into its create call. It never signs.
 - **picture link**: an `ipfs://` or `https://` address of a token's picture that the owner hosts,
   which a launchpad's create call names. Nothing in binference opens it.
 - **pin**: a launchpad's report that it keeps a launch's picture and words on its storage. A token

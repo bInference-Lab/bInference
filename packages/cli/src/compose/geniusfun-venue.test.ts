@@ -150,7 +150,7 @@ describe("the geniusfun launchpad in the self-hosted venue host", () => {
       ok: false,
       error: "bad_settings",
     });
-    expect(host.takesUpload("geniusfun")).toBe(false);
+    expect(host.picturePlace("geniusfun")).toBe("link");
     // Its two create calls, and its curves' buy and sell, are a launch wallet's ceiling's to allow;
     // the overloads it never builds are not.
     const names = host.launchWalletCalls("geniusfun").map((abi) => JSON.stringify(abi));

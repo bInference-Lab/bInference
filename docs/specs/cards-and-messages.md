@@ -155,19 +155,20 @@ Agent 说明  “按你的要求在 $625 止盈”
 A `launchToken` shows, right after its action line, each line below that has its facts
 ([decision 0235](../DECISIONS.md#d0235)), then `card.launchWallet`:
 
-| Line              | Key                         | English                                                                                         | 中文                                                                |
-| ----------------- | --------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Token             | `card.launch.token`         | New token {token}                                                                               | 新代币 {token}                                                      |
-| First buy's least | `card.launch.firstBuyMin`   | First buy gets at least {minOut}                                                                | 首笔买入至少获得 {minOut}                                           |
-| Launch fee        | `card.launch.fee`           | Launch fee {fee}                                                                                | 发射手续费 {fee}                                                    |
-| Description       | `card.launch.description`   | Description: {description}                                                                      | 简介：{description}                                                 |
-| Link, each        | `card.launch.link`          | {site}: {url} (Website, X, Telegram)                                                            | {site}：{url}（网站、X、Telegram）                                  |
-| Picture           | `card.launch.picture`       | Picture sent: {format}, {kib} KB, SHA-256 {digest} · metadata at {uri}                          | 已发送图片：{format}，{kib} KB，SHA-256 {digest} · 元数据位于 {uri} |
-| Picture, paper    | `card.launch.upload`        | Picture: upload {upload}                                                                        | 图片：上传 {upload}                                                 |
-| Picture link      | `launch.option.pictureLink` | Picture at {link} (binference never opens it)                                                   | 图片地址 {link}（binference 从不打开它）                            |
-| Setting, each     | `launch.option.<name>`      | One per launchpad setting, such as `launch.option.taxBps`: Tax on every trade: {value}          | 如 `launch.option.taxBps`：每笔交易的交易税：{value}                |
-| Account setting   | `launch.option.<name>`      | Such as `launch.option.taxRecipient`: Tax paid to {address}, the whole address                  | 如 `launch.option.taxRecipient`：交易税支付给 {address}，完整地址   |
-| Public already    | `card.launch.pinned`        | ⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel | ⚠️ 图片和文字已在 {venue} 的存储中公开，即使取消也会保持公开        |
+| Line              | Key                          | English                                                                                                       | 中文                                                                                    |
+| ----------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Token             | `card.launch.token`          | New token {token}                                                                                             | 新代币 {token}                                                                          |
+| First buy's least | `card.launch.firstBuyMin`    | First buy gets at least {minOut}                                                                              | 首笔买入至少获得 {minOut}                                                               |
+| Launch fee        | `card.launch.fee`            | Launch fee {fee}                                                                                              | 发射手续费 {fee}                                                                        |
+| Description       | `card.launch.description`    | Description: {description}                                                                                    | 简介：{description}                                                                     |
+| Link, each        | `card.launch.link`           | {site}: {url} (Website, X, Telegram)                                                                          | {site}：{url}（网站、X、Telegram）                                                      |
+| Picture           | `card.launch.picture`        | Picture sent: {format}, {kib} KB, SHA-256 {digest} · metadata at {uri}                                        | 已发送图片：{format}，{kib} KB，SHA-256 {digest} · 元数据位于 {uri}                     |
+| Picture written   | `card.launch.writtenPicture` | Picture written on chain with the token: {format}, {bytes} bytes, {width} x {height} pixels, SHA-256 {digest} | 随代币写入链上的图片：{format}，{bytes} 字节，{width} x {height} 像素，SHA-256 {digest} |
+| Picture, paper    | `card.launch.upload`         | Picture: upload {upload}                                                                                      | 图片：上传 {upload}                                                                     |
+| Picture link      | `launch.option.pictureLink`  | Picture at {link} (binference never opens it)                                                                 | 图片地址 {link}（binference 从不打开它）                                                |
+| Setting, each     | `launch.option.<name>`       | One per launchpad setting, such as `launch.option.taxBps`: Tax on every trade: {value}                        | 如 `launch.option.taxBps`：每笔交易的交易税：{value}                                    |
+| Account setting   | `launch.option.<name>`       | Such as `launch.option.taxRecipient`: Tax paid to {address}, the whole address                                | 如 `launch.option.taxRecipient`：交易税支付给 {address}，完整地址                       |
+| Public already    | `card.launch.pinned`         | ⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel               | ⚠️ 图片和文字已在 {venue} 的存储中公开，即使取消也会保持公开                            |
 
 A launch whose launchpad declares that its create call's first buy carries no minimum shows
 `card.warn.unboundFirstBuy` among the warnings, right after where `card.warn.noDeadline` would
@@ -175,6 +176,9 @@ show ([decision 0270](../adr/0270-a-launch-s-first-buy-may-carry-no-minimum-when
 the simulation before the card held the first buy to the least the card shows.
 
 `{digest}` is the first 16 hex digits of the picture's SHA-256; the terms hash binds all of it.
+A launchpad that writes the picture into its create call shows `card.launch.writtenPicture` in
+place of `card.launch.picture`, and no `card.launch.pinned`: nothing is public before the
+signature ([decision 0279](../DECISIONS.md#d0279)).
 A card cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200, and shows `{link}`
 whole, up to its 512 bytes, as it shows a launch setting's `{address}` whole: an account a
 launch pays. A launchpad that takes its picture as a link uploads nothing, so its

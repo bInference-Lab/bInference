@@ -55,7 +55,10 @@ export type RiskReason = (typeof riskReasons)[number];
  * failed as it picked the wallet or as the wallet queue took it; `launch_moved` is a launch
  * wallet's curve trade whose launchpad no longer holds the token on that curve when the queue
  * takes it, as after a graduation (decision 0218). `image_unreadable` is a token launch whose
- * picture the engine cannot read as an image of at most 5 MiB, `pin_failed` one whose launchpad
+ * picture the engine cannot read as an image of at most 5 MiB, or, for a launchpad that writes it
+ * into its create call, as one whose header tells its size, and `picture_too_large` one whose
+ * picture is larger than that launchpad's create call takes beside its words (decision 0279);
+ * `pin_failed` one whose launchpad
  * reported that the pin of its words and picture failed, and `pin_timeout` one whose launchpad
  * reported no pin within the pin wait (decision 0234); `upload_lost` is one a fault or a stop cut
  * short once its upload began, before it waited for its pin (decision 0237);
@@ -76,6 +79,7 @@ export const checkReasons = [
   "launch_unread",
   "launch_moved",
   "image_unreadable",
+  "picture_too_large",
   "pin_failed",
   "pin_timeout",
   "upload_lost",

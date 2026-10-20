@@ -138,6 +138,7 @@ export {
   launchPinSchema,
   launchQuoteSchema,
   pinStatusSchema,
+  writtenPictureSchema,
 } from "./venues/launch-terms.js";
 export {
   fitsWordLimits,
@@ -156,12 +157,14 @@ export type {
   DecodedLaunchWire,
   LaunchBuild,
   LaunchBuildRequest,
+  LaunchPicture,
   LaunchPin,
   LaunchPinRequest,
   LaunchQuote,
   LaunchQuoteWire,
   LaunchTerms,
   PinStatus,
+  WrittenPicture,
 } from "./venues/launch-terms.js";
 export type {
   CurveReader,

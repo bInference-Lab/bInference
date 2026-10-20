@@ -179,7 +179,11 @@ and before any quote; `launch_unread` and `launch_moved` again when the wallet q
 launch wallet's curve trade whose launch it cannot read, or that left the curve
 ([decision 0218](../DECISIONS.md#d0218)); for a token launch, `needs_launch_wallet` from any wallet
 but the agent's live launch wallet, `image_unreadable` (its picture is no PNG, JPEG or WebP of at
-most 5 MiB, on a launchpad that uploads one), both before any upload, and `pin_failed` and `pin_timeout` from `quoted`
+most 5 MiB, on a launchpad that uploads one or writes it into its create call, and for the latter
+one whose header tells its size), `picture_too_large` (its picture is larger than the create call
+of a launchpad that writes it in takes beside its words,
+[decision 0279](../DECISIONS.md#d0279)), each before any upload, and `pin_failed` and
+`pin_timeout` from `quoted`
 ([decision 0234](../DECISIONS.md#d0234)); `upload_lost` from `checked`, for a launch a fault or a
 stop cut short once its upload began ([decision 0237](../DECISIONS.md#d0237)); `ceiling_lacks_call`
 for a launch whose launch wallet's ceiling does not allow a call only a launch wallet makes on its

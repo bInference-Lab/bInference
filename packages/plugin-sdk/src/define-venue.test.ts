@@ -8,6 +8,7 @@ import {
 } from "@binference/chain";
 import {
   createFakeLauncher,
+  createFakePictureLauncher,
   createFakeLaunchpad,
   createFakeVenue,
   fakeDraft,
@@ -298,6 +299,19 @@ describe("defineVenue", () => {
     const unbound = createFakeLauncher({ noFirstBuyMin: true });
     const kept = defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher: unbound }));
     expect(kept.launcher?.noFirstBuyMin).toBe(true);
+  });
+
+  it("keeps the picture limit of a launcher that writes the picture into its create call", () => {
+    const launcher = createFakePictureLauncher({ mostBytes: 900 });
+    const launchpad = defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher }));
+    expect(launchpad.launcher?.pictureBytesFor?.({})).toBe(900);
+  });
+
+  it("refuses a launcher that both uploads its picture and writes it into its create call", () => {
+    const launcher = { ...createFakeLauncher(), pictureBytesFor: () => 900 };
+    expect(() => defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher }))).toThrow(
+      expect.objectContaining({ code: "plugin.bad_venue" }),
+    );
   });
 
   it("refuses a launchpad whose settings are wrong", () => {

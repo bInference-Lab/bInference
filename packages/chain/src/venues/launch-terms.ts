@@ -42,10 +42,15 @@ export interface LaunchQuote {
   readonly tokenDecimals: number;
 }
 
+/** The owner's picture of a launch: its type (`image/png`, `image/jpeg` or `image/webp`) and its bytes. */
+export interface LaunchPicture {
+  readonly contentType: string;
+  readonly bytes: Readonly<Uint8Array>;
+}
+
 /** The launch's words and picture, which the launchpad uploads and pins through its own API. */
 export interface LaunchPinRequest extends LaunchTerms, LaunchWords {
-  /** The picture: its type (`image/png`, `image/jpeg` or `image/webp`) and its bytes. */
-  readonly image: { readonly contentType: string; readonly bytes: Readonly<Uint8Array> };
+  readonly image: LaunchPicture;
 }
 
 /** What an upload gave: the metadata address the token's create call names, and its pin. */
@@ -72,6 +77,11 @@ export type PinStatus = "pending" | "pinned" | "failed";
 export interface LaunchBuildRequest extends LaunchTerms, LaunchWords {
   /** The metadata address the upload gave; absent for a launchpad that uploads nothing. */
   readonly metadataUri?: string;
+  /**
+   * The owner's picture, for a launchpad that writes it into its create call (decision 0279);
+   * absent for any other.
+   */
+  readonly picture?: LaunchPicture;
   /** The launch fee the quote read, which the create call pays. */
   readonly fee: Amount;
   /** The least of the new token the first buy accepts, in base units; with a first buy alone. */
@@ -96,6 +106,12 @@ export interface DecodedLaunch {
   readonly symbol: string;
   /** The metadata address the call names; absent for a launchpad that uploads nothing. */
   readonly metadataUri?: string;
+  /**
+   * The picture the call writes, for a launchpad that writes it in (decision 0279): its type and
+   * the SHA-256 of its bytes as lowercase hex. The host refuses a call whose picture is not the
+   * card's.
+   */
+  readonly picture?: WrittenPicture;
   readonly pair: AssetRef;
   /** The launch fee the call pays, in base units of the chain's coin. */
   readonly feeBase: bigint;
@@ -118,6 +134,19 @@ export interface DecodedLaunch {
    */
   readonly words?: WrittenWords;
 }
+
+/** A picture a create call writes, by its type and the SHA-256 of its bytes. */
+export interface WrittenPicture {
+  readonly contentType: "image/png" | "image/jpeg" | "image/webp";
+  /** Lowercase hex, 64 digits. */
+  readonly sha256: string;
+}
+
+/** Checks a picture a create call writes. */
+export const writtenPictureSchema: z.ZodType<WrittenPicture, WrittenPicture> = z.strictObject({
+  contentType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+});
 
 /** A {@link LaunchQuote} as JSON carries it. */
 export interface LaunchQuoteWire {
@@ -157,6 +186,7 @@ export interface DecodedLaunchWire {
   readonly name: string;
   readonly symbol: string;
   readonly metadataUri?: string;
+  readonly picture?: WrittenPicture;
   readonly pair: string;
   readonly feeBase: string;
   readonly firstBuy?: {
@@ -174,6 +204,7 @@ export const decodedLaunchSchema: z.ZodType<DecodedLaunch, DecodedLaunchWire> = 
   name: z.string(),
   symbol: z.string(),
   metadataUri: z.string().exactOptional(),
+  picture: writtenPictureSchema.exactOptional(),
   pair: assetRefSchema,
   feeBase: decimalStringSchema,
   firstBuy: z

@@ -8,6 +8,16 @@ import {
 } from "./test-launches.js";
 
 describe("a token launch's card in Chinese", () => {
+  it("shows a picture written into the create call with its size", async () => {
+    const { test } = await testLaunchEngine({ writesPicture: { mostBytes: 1_000 } });
+    const view = await proposeIntent(test, { ...testLaunch, image: "upl_sized" });
+    expect(await testCardText(test, view, "zh")).toContainEqual(
+      expect.stringMatching(
+        /^随代币写入链上的图片：PNG，29 字节，64 x 48 像素，SHA-256 [0-9a-f]{16}$/,
+      ),
+    );
+  });
+
   it("shows every setting of the launch in Chinese", async () => {
     const { test } = await testLaunchEngine();
     const lines = await testCardText(test, await proposeIntent(test, testSettledLaunch), "zh");

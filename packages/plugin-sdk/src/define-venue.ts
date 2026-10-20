@@ -148,8 +148,15 @@ export function defineVenue(definition: Venue): Venue {
 const isUploading = (launcher: Launcher): launcher is UploadingLauncher =>
   launcher.pin !== undefined && launcher.pinStatus !== undefined;
 
-// A launcher uploads through both its pin and its pin status, or through neither (decision 0276).
+// A launcher uploads through both its pin and its pin status, or through neither (decision 0276),
+// and one that writes the picture into its create call uploads nothing (decision 0279).
 function pinOf(launcher: Launcher): Pick<Launcher, "pin" | "pinStatus"> {
+  if (isUploading(launcher) && launcher.pictureBytesFor !== undefined) {
+    throw new BinferenceError({
+      code: "plugin.bad_venue",
+      message: "A launchpad either uploads its picture or writes it into its create call.",
+    });
+  }
   if (isUploading(launcher)) {
     return {
       pin: async (request, call) => launcher.pin(request, call),
@@ -164,6 +171,14 @@ function pinOf(launcher: Launcher): Pick<Launcher, "pin" | "pinStatus"> {
     });
   }
   return {};
+}
+
+// A launchpad that writes the picture into its create call keeps that limit, called on it.
+function pictureBytesOf(launcher: Launcher): Pick<Launcher, "pictureBytesFor"> {
+  const { pictureBytesFor } = launcher;
+  return pictureBytesFor === undefined
+    ? {}
+    : { pictureBytesFor: (words) => pictureBytesFor(words) };
 }
 
 // A launchpad's settings are checked as it loads; its launcher's methods are called on it.
@@ -189,6 +204,7 @@ function launcherOf(launcher: Launcher): Launcher {
     launchOptions: Object.freeze(options.data.map((option) => Object.freeze({ ...option }))),
     ...(launcher.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
     ...(limits === undefined ? {} : { wordLimits: Object.freeze({ ...limits.data }) }),
+    ...pictureBytesOf(launcher),
     quoteLaunch: async (terms, call) => launcher.quoteLaunch(terms, call),
     ...pinOf(launcher),
     buildLaunch: async (request, call) => launcher.buildLaunch(request, call),

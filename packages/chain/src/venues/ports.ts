@@ -16,7 +16,7 @@ import type {
   LaunchTerms,
   PinStatus,
 } from "./launch-terms.js";
-import type { LaunchWordLimits } from "./launch-words.js";
+import type { LaunchWordLimits, LaunchWords } from "./launch-words.js";
 import type { PriceRead, PriceReadRequest } from "./price-read.js";
 import type { QuoteRequest, VenueQuote } from "./venue-quote.js";
 
@@ -118,8 +118,9 @@ export interface PriceReader {
  * words and picture through the launchpad's own API, builds its create call with the first buy,
  * and decodes that call back. It never signs or sends, and never reads the picture's gateway
  * address: a gateway read before the pin can break the picture for good. A launchpad with no API
- * for them leaves out `pin` and `pinStatus` together: it uploads nothing, its create call names
- * the picture as a `link` setting the owner hosts, and nothing reads that link (decision 0276).
+ * for them leaves out `pin` and `pinStatus` together: it uploads nothing, and either its create
+ * call names the picture as a `link` setting the owner hosts, which nothing reads (decision 0276),
+ * or it writes the picture's bytes into its create call (`pictureBytesFor`, decision 0279).
  */
 export interface Launcher {
   /** The settings the launchpad takes beyond those every launch has, such as a tax. */
@@ -138,6 +139,13 @@ export interface Launcher {
    * stored. Left out, the launchpad takes the words every request may give.
    */
   readonly wordLimits?: LaunchWordLimits;
+  /**
+   * The launchpad writes the owner's picture into its create call (decision 0279): the most bytes
+   * of a picture the call takes beside these words. Such a launcher uploads nothing and has no
+   * pin; its build gets the picture's bytes and its decoder names the picture it writes. Left
+   * out, the launchpad writes no picture into its create call.
+   */
+  readonly pictureBytesFor?: (words: LaunchWords) => number;
   /**
    * The launch fee and the first buy's output, read from the launchpad's contracts at the latest
    * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`; a

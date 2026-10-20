@@ -23,17 +23,19 @@ export function pinWaitOf(options: Pick<LaunchPathOptions, "launch">): number {
  */
 type LaunchStop = NonNullable<IntentRecord["reason"]> | "engine_stopping";
 
-// Nothing of the launch went public (decision 0276): its quote holds no pin, or, before a quote,
-// its launchpad is one the engine holds that uploads nothing. A launchpad it no longer holds may
-// hold the picture and words.
+// Nothing of the launch went public (decisions 0276 and 0279): its quote holds no pin, or, before
+// a quote, its launchpad is one the engine holds that uploads nothing. A launchpad it no longer
+// holds may hold the picture and words.
 function isUnpublished(
   options: Pick<LaunchPathOptions, "launch">,
   stopped: { readonly record: IntentRecord; readonly venue: string },
 ): boolean {
   const { quote } = stopped.record;
-  return quote === undefined
-    ? options.launch.host.takesUpload(stopped.venue) === false
-    : tokenLaunchQuoteDocument.decode(quote).pin === undefined;
+  if (quote !== undefined) {
+    return tokenLaunchQuoteDocument.decode(quote).pin === undefined;
+  }
+  const place = options.launch.host.picturePlace(stopped.venue);
+  return place !== undefined && place !== "upload";
 }
 
 /**

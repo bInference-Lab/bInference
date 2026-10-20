@@ -20,6 +20,19 @@ interface LaunchPicture {
   readonly uri: string;
 }
 
+/**
+ * The picture a launchpad writes into the create call (decision 0279), as its card shows it: its
+ * format, its size in bytes and pixels, and its digest.
+ */
+interface WrittenLaunchPicture {
+  readonly format: "png" | "jpeg" | "webp";
+  readonly bytes: number;
+  readonly width: number;
+  readonly height: number;
+  /** The first 16 hex digits of its SHA-256; the terms hash binds the whole digest. */
+  readonly digest: string;
+}
+
 /** One web link a launched token shows. */
 export interface LaunchLink {
   readonly site: "website" | "x" | "telegram";
@@ -42,10 +55,10 @@ export interface LaunchDetails {
   readonly description?: string;
   readonly links: readonly LaunchLink[];
   /**
-   * The uploaded picture, or the upload id of one not uploaded yet; absent for a launchpad that
-   * takes its picture as a link setting and uploads nothing (decision 0276).
+   * The uploaded picture, the one the create call writes, or the upload id of one not read yet;
+   * absent for a launchpad that takes its picture as a link setting (decision 0276).
    */
-  readonly picture?: LaunchPicture | { readonly upload: string };
+  readonly picture?: LaunchPicture | WrittenLaunchPicture | { readonly upload: string };
   /** The launchpad's own settings, every one with its value, defaults filled. */
   readonly settings: readonly LaunchSetting[];
 }
@@ -78,16 +91,35 @@ const argumentOf = (type: LaunchSetting["type"]): string => {
   return type === "account" ? "address" : "value";
 };
 
+const count = (value: number): CardValue => ({ type: "count", count: value });
+
+function writtenPictureLine(picture: WrittenLaunchPicture): CardLine {
+  const { format, bytes, width, height, digest } = picture;
+  return {
+    key: "card.launch.writtenPicture",
+    values: {
+      format: choice(format),
+      bytes: count(bytes),
+      width: count(width),
+      height: count(height),
+      digest: text(digest),
+    },
+  };
+}
+
 function pictureLine(picture: NonNullable<LaunchDetails["picture"]>): CardLine {
   if ("upload" in picture) {
     return { key: "card.launch.upload", values: { upload: text(picture.upload) } };
+  }
+  if ("width" in picture) {
+    return writtenPictureLine(picture);
   }
   const { format, kib, digest, uri } = picture;
   return {
     key: "card.launch.picture",
     values: {
       format: choice(format),
-      kib: { type: "count", count: kib },
+      kib: count(kib),
       digest: text(digest),
       uri: text(uri),
     },
@@ -101,8 +133,8 @@ function optional<T>(value: T | undefined, draw: (value: T) => CardLine): readon
 /**
  * The lines a token launch's card shows under its action line (spec 4, section 3.3): the token it
  * makes, the first buy's minimum, the launch fee, the description, each link, the picture when
- * the launchpad takes one, each launchpad setting, and, once the picture is uploaded, that it is
- * public already.
+ * the launchpad takes one, uploaded or written into the create call, each launchpad setting, and,
+ * once the picture is uploaded, that it is public already.
  */
 export function launchDetailLines(details: LaunchDetails): readonly CardLine[] {
   const { picture } = details;
@@ -132,8 +164,8 @@ export function launchDetailLines(details: LaunchDetails): readonly CardLine[] {
       key: launchSettingKey(setting.name),
       values: { [argumentOf(setting.type)]: settingValues[setting.type](setting.value) },
     })),
-    ...(picture === undefined || "upload" in picture
-      ? []
-      : [{ key: "card.launch.pinned", values: { venue: text(details.venue) } } as const]),
+    ...(picture !== undefined && "uri" in picture
+      ? [{ key: "card.launch.pinned", values: { venue: text(details.venue) } } as const]
+      : []),
   ];
 }
