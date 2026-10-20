@@ -2,10 +2,12 @@ import {
   assetRefParts,
   type ChainRef,
   type ChainRegistry,
+  fitsWordLimits,
   type Launcher,
   launchOptionsSchema,
   type LaunchPin,
   type LaunchQuote,
+  type LaunchWords,
   type PinStatus,
   pinStatusSchema,
   type RegisteredChain,
@@ -21,8 +23,8 @@ import {
   type LaunchContext,
   type LaunchPlan,
   type LaunchRefused,
+  type UploadedPicture,
   type LaunchUpload,
-  type LaunchWords,
   pinLaunch,
   quoteLaunch,
 } from "./launch-calls.js";
@@ -50,6 +52,11 @@ export interface LaunchHost {
     given: LaunchTokenRequest["venueOptions"],
   ): Result<readonly LaunchSetting[], "no_launchpad" | "bad_settings">;
   /**
+   * Whether a launch's name, symbol, description and links fit what the launchpad's create call
+   * takes, when it writes them on chain; a launchpad the host does not hold takes none.
+   */
+  fitsWords(venue: string, launch: WordsOfLaunch): boolean;
+  /**
    * The launch fee and the first buy's output, read from the launchpad's contracts. A pair it does
    * not launch against is `no_route`; a launchpad that throws, times out or answers outside its
    * types is `venue_down`; a fee in another asset than the chain's coin, or a first buy's output
@@ -62,7 +69,7 @@ export interface LaunchHost {
   /** Uploads the launch's words and picture; a launchpad that cannot is `venue_down`. */
   pin(
     launch: HostedLaunch,
-    words: LaunchWords,
+    picture: UploadedPicture,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<LaunchPin, "venue_down">>;
   /** Where a pin stands; a launchpad that throws, times out or answers outside its type: pending. */
@@ -84,6 +91,9 @@ export interface LaunchHost {
     options: { readonly signal: AbortSignal },
   ): Promise<Result<LaunchPlan, VenueFailure> | LaunchRefused>;
 }
+
+/** A launch's name, symbol and words, as the launchpad's word limits count them. */
+type WordsOfLaunch = { readonly name: string; readonly symbol: string } & LaunchWords;
 
 /** What the launch host is made from: every venue the engine may use, as the venue host is. */
 export interface LaunchHostOptions {
@@ -157,12 +167,16 @@ function contextOf(
   if (item === undefined || !chain.ok || contracts === undefined) {
     return undefined;
   }
-  const { venue: _venue, settings, ...rest } = launch;
+  const { venue: _venue, settings, description, links, ...rest } = launch;
   const options = Object.fromEntries(settings.map((setting) => [setting.name, setting.value]));
   const terms = Object.freeze({ ...rest, options: Object.freeze(options), contracts });
+  const words = Object.freeze({
+    ...(description === undefined ? {} : { description }),
+    ...(links === undefined ? {} : { links }),
+  });
   const listed = parts.unboundFirstBuys.get(chain.value.ref)?.includes(launch.venue) === true;
   const isFirstBuyUnbound = listed && item.launcher.noFirstBuyMin === true;
-  return { launcher: item.launcher, chain: chain.value, terms, isFirstBuyUnbound };
+  return { launcher: item.launcher, chain: chain.value, terms, words, isFirstBuyUnbound };
 }
 
 /** What every method of the launch host reads: its launchpads, the registry and its timeout. */
@@ -241,16 +255,21 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
   const parts: LaunchParts = { launchers: launchersOf(options), chains, callOf, unboundFirstBuys };
   return {
     settingsOf: (venue, chainRef, given) => settingsOn(parts, { venue, chainRef, given }),
+    fitsWords(venue, launch) {
+      const launcher = parts.launchers.get(venue)?.launcher;
+      const limits = launcher?.wordLimits;
+      return launcher !== undefined && (limits === undefined || fitsWordLimits(limits, launch));
+    },
     launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],
     async quote(launch, { signal }) {
       signal.throwIfAborted();
       const run = async (context: LaunchContext) => quoteLaunch(context, callOf(signal));
       return onLaunchpad(parts, launch, { run, missing: err("no_route") });
     },
-    async pin(launch, words, { signal }) {
+    async pin(launch, picture, { signal }) {
       signal.throwIfAborted();
       const upload = { ...callOf(signal), timeoutMs: uploadTimeoutMs };
-      const run = async (context: LaunchContext) => pinLaunch(context, words, upload);
+      const run = async (context: LaunchContext) => pinLaunch(context, picture, upload);
       return onLaunchpad(parts, launch, { run, missing: err("venue_down") });
     },
     async pinStatus(venue, pin, { signal }) {

@@ -20,6 +20,7 @@ export type {
   Launcher,
   LaunchesFound,
   LaunchFacts,
+  LaunchLinks,
   LaunchLog,
   LaunchLogsRequest,
   LaunchOption,
@@ -31,6 +32,8 @@ export type {
   LaunchQuote,
   LaunchReader,
   LaunchTerms,
+  LaunchWordLimits,
+  LaunchWords,
   MarketCandle,
   MarketDataSource,
   MarketPool,
@@ -58,6 +61,7 @@ export type {
   VenueContracts,
   VenueDeclaration,
   VenueQuote,
+  WrittenWords,
 } from "@binference/chain";
 export {
   accountRefParts,
@@ -67,6 +71,7 @@ export {
   candleIntervals,
   chainRefSchema,
   orderedFlags,
+  writtenWordsOf,
 } from "@binference/chain";
 export {
   BinferenceError,

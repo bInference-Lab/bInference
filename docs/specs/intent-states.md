@@ -119,7 +119,10 @@ venue that declares its calls on the chain carry none, such as a launchpad's cur
 minimum out still binds it ([decision 0180](../DECISIONS.md#d0180)). A token launch's first buy
 passes with no minimum in its create call only from a launcher that declares its first buy runs
 inside that call and carries none; the simulation before the card holds it to its minimum
-([decision 0270](../DECISIONS.md#d0270)).
+([decision 0270](../DECISIONS.md#d0270)). A launch's create call that writes its description and
+links on chain must write the card's, each link at its site, and a launch whose name, symbol,
+description or a link is over the bytes its launchpad's create call takes is refused when it is
+proposed ([decision 0275](../DECISIONS.md#d0275)).
 
 The same step's declared-contract check also passes a call or an approval to a contract of the
 token's own launch, such as its curve, when its launchpad declares such contracts and its curve read

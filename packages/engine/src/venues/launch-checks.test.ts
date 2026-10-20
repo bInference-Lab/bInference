@@ -3,6 +3,7 @@ import {
   assetRefSchema,
   type DecodedLaunch,
   type TxDraft,
+  writtenWordsOf,
 } from "@binference/chain";
 import {
   createFakeFamily,
@@ -29,6 +30,8 @@ const bounds: LaunchBounds = {
   symbol: "MCAT",
   pair: coin,
   metadataUri: "ipfs://fake-1",
+  words: writtenWordsOf({}),
+  mustWriteWords: false,
   fee: { asset: coin, base: 2_000n },
   firstBuy: { asset: coin, base: 50n },
   options: { taxBps: 300, taxRecipient: wallet, buyback: true },
@@ -221,5 +224,39 @@ describe("the build checks of a token launch", () => {
   it("refuse a draft the launchpad's decoder cannot read", () => {
     const swap = fakeDraft(wallet, { to: "0x0000000d", value: 0n, data: "swap" });
     expect(readLaunchSteps([swap], readers)).toStrictEqual({ ok: false, error: "unreadable_step" });
+  });
+});
+
+describe("the build checks of a launch whose words go on chain", () => {
+  const written = {
+    description: "A cat",
+    links: { website: "https://cat.example", x: "", telegram: "" },
+  };
+  const onChain: LaunchBounds = { ...bounds, words: written, mustWriteWords: true };
+  const check = (launch: DecodedLaunch) =>
+    checkDrafts(
+      [fakeDraft(wallet, { to: "0x0000000d", value: 2_050n, data: fakeLaunchData(launch) })],
+      onChain,
+    );
+
+  it("passes a create call that writes the card's description and links", () => {
+    expect(check({ ...create, words: written })).toMatchObject({ ok: true });
+  });
+
+  it("refuses a create call that writes another description", () => {
+    const words = { ...written, description: "A dog" };
+    expect(check({ ...create, words })).toStrictEqual({ ok: false, error: "other_launch" });
+  });
+
+  it("refuses a create call that moves a link to another site", () => {
+    const links = { website: "", x: "https://cat.example", telegram: "" };
+    expect(check({ ...create, words: { ...written, links } })).toStrictEqual({
+      ok: false,
+      error: "other_launch",
+    });
+  });
+
+  it("refuses a create call that names no words from a launchpad that writes them", () => {
+    expect(check(create)).toStrictEqual({ ok: false, error: "other_launch" });
   });
 });

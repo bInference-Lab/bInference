@@ -11,7 +11,9 @@ import {
   type LaunchQuote,
   launchQuoteSchema,
   type LaunchTerms,
+  type LaunchWords,
   type RegisteredChain,
+  writtenWordsOf,
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
@@ -27,8 +29,11 @@ import {
 import type { LaunchSetting } from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
-/** A launch the host quotes, pins and builds on one launchpad, from the agent's launch wallet. */
-export interface HostedLaunch {
+/**
+ * A launch the host quotes, pins and builds on one launchpad, from the agent's launch wallet, with
+ * the words its card shows.
+ */
+export interface HostedLaunch extends LaunchWords {
   readonly venue: string;
   readonly wallet: AccountRef;
   readonly name: string;
@@ -38,8 +43,8 @@ export interface HostedLaunch {
   readonly settings: readonly LaunchSetting[];
 }
 
-/** The words and picture a launchpad uploads and pins for a launch. */
-export type LaunchWords = Pick<LaunchPinRequest, "description" | "links" | "image">;
+/** The picture a launchpad uploads and pins for a launch, with the launch's words. */
+export type UploadedPicture = LaunchPinRequest["image"];
 
 /** What a launch is built from once its quote and its upload are in hand. */
 export interface LaunchUpload {
@@ -69,6 +74,8 @@ export interface LaunchContext {
   readonly launcher: Launcher;
   readonly chain: RegisteredChain;
   readonly terms: LaunchTerms;
+  /** The launch's description and links, which a launchpad that keeps them on chain writes. */
+  readonly words: LaunchWords;
   /**
    * The create call's first buy carries no minimum: the launcher declares it, and the registry
    * lists the launchpad as one whose create call runs its first buy so (decision 0270).
@@ -115,11 +122,11 @@ export async function quoteLaunch(
  */
 export async function pinLaunch(
   context: LaunchContext,
-  words: LaunchWords,
+  picture: UploadedPicture,
   call: VenueCallOptions,
 ): Promise<Result<LaunchPin, "venue_down">> {
-  const image = Object.freeze({ ...words.image, bytes: Uint8Array.from(words.image.bytes) });
-  const request: LaunchPinRequest = Object.freeze({ ...context.terms, ...words, image });
+  const image = Object.freeze({ ...picture, bytes: Uint8Array.from(picture.bytes) });
+  const request: LaunchPinRequest = Object.freeze({ ...context.terms, ...context.words, image });
   const answer = await callVenue(async (signal) => context.launcher.pin(request, { signal }), call);
   const pin = answer.ok ? ownCopy(launchPinSchema, answer.value) : undefined;
   return pin === undefined ? err("venue_down") : ok(pin);
@@ -136,6 +143,8 @@ function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef)
     contracts: Object.values(terms.contracts),
     nativeAsset: nativeAssetOf(chain),
     metadataUri: upload.metadataUri,
+    words: writtenWordsOf(context.words),
+    mustWriteWords: context.launcher.wordLimits !== undefined,
     fee: upload.quote.fee,
     token,
     family: chain.family,
@@ -160,10 +169,10 @@ export async function buildLaunch(
   upload: LaunchUpload,
   call: VenueCallOptions,
 ): Promise<Result<LaunchPlan, VenueFailure> | LaunchRefused> {
-  const { launcher, chain, terms } = context;
+  const { launcher, chain, terms, words } = context;
   const { quote, metadataUri, minOutBase } = upload;
   const minOut = minOutBase === undefined ? {} : { firstBuyMinOut: minOutBase };
-  const request = Object.freeze({ ...terms, metadataUri, fee: quote.fee, ...minOut });
+  const request = Object.freeze({ ...terms, ...words, metadataUri, fee: quote.fee, ...minOut });
   const built = await callVenue(async (signal) => launcher.buildLaunch(request, { signal }), call);
   const answer = built.ok ? buildAnswerSchema.safeParse(built.value) : undefined;
   if (!built.ok || answer?.success !== true) {

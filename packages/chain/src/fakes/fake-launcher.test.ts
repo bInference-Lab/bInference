@@ -20,6 +20,7 @@ const launchOptions: readonly LaunchOption[] = [
   { name: "buyback", type: "flag", default: false },
 ];
 const otherOptions = { taxBps: 100, taxRecipient: router, buyback: false };
+const limits = { nameBytes: 64, symbolBytes: 16, descriptionBytes: 2_048, linkBytes: 256 };
 
 const launch: LaunchPinRequest = {
   wallet,
@@ -99,6 +100,22 @@ describe("fake launcher", () => {
   it("fails the contract when its create call buys below the minimum it was given", async () => {
     const low = subjectOf({ writesMinOut: 1n }, launch);
     expect(await failedChecks(launcherContract({ create: () => low }))).toEqual([
+      "builds steps from the wallet whose create call decodes to the launch",
+      "writes other settings into its create call, and reads them back from its bytes",
+    ]);
+  });
+
+  it.each(launcherContract({ create: () => subjectOf({ wordLimits: limits }, launch) }))(
+    "follows the launcher contract with its words written on chain: $name",
+    async ({ run }) => {
+      await expect(run()).resolves.toBeUndefined();
+    },
+  );
+
+  it("fails the contract when its create call writes other words than the card's", async () => {
+    const words = { description: "A dog", links: { website: "", x: "", telegram: "" } };
+    const lying = subjectOf({ wordLimits: limits, writesWords: words }, launch);
+    expect(await failedChecks(launcherContract({ create: () => lying }))).toEqual([
       "builds steps from the wallet whose create call decodes to the launch",
       "writes other settings into its create call, and reads them back from its bytes",
     ]);

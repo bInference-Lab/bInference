@@ -5,6 +5,7 @@ import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
 import type { TxDraft } from "../transaction.js";
 import { type LaunchOptionValue, launchOptionValuesSchema } from "./launch-option.js";
+import { type LaunchWords, type WrittenWords, writtenWordsSchema } from "./launch-words.js";
 
 /**
  * What every launch request the venue host makes of a launchpad holds: the token's name and
@@ -42,13 +43,7 @@ export interface LaunchQuote {
 }
 
 /** The launch's words and picture, which the launchpad uploads and pins through its own API. */
-export interface LaunchPinRequest extends LaunchTerms {
-  readonly description?: string;
-  readonly links?: {
-    readonly website?: string;
-    readonly x?: string;
-    readonly telegram?: string;
-  };
+export interface LaunchPinRequest extends LaunchTerms, LaunchWords {
   /** The picture: its type (`image/png`, `image/jpeg` or `image/webp`) and its bytes. */
   readonly image: { readonly contentType: string; readonly bytes: Readonly<Uint8Array> };
 }
@@ -70,8 +65,11 @@ export interface LaunchPin {
  */
 export type PinStatus = "pending" | "pinned" | "failed";
 
-/** What the host asks a launchpad to build, once its quote and its upload are in hand. */
-export interface LaunchBuildRequest extends LaunchTerms {
+/**
+ * What the host asks a launchpad to build, once its quote and its upload are in hand, with the
+ * launch's words, which a launchpad that keeps them on chain writes into its create call.
+ */
+export interface LaunchBuildRequest extends LaunchTerms, LaunchWords {
   readonly metadataUri: string;
   /** The launch fee the quote read, which the create call pays. */
   readonly fee: Amount;
@@ -111,6 +109,12 @@ export interface DecodedLaunch {
    * card shows (decision 0238).
    */
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
+  /**
+   * The description and links the call writes on chain, for a launchpad whose create call keeps
+   * them; absent for one whose words go in the uploaded metadata. The host refuses a call whose
+   * words differ from those the card shows.
+   */
+  readonly words?: WrittenWords;
 }
 
 /** A {@link LaunchQuote} as JSON carries it. */
@@ -159,6 +163,7 @@ export interface DecodedLaunchWire {
     readonly recipient: string;
   };
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
+  readonly words?: WrittenWords;
 }
 
 /** Decodes a decoded launch from JSON, and encodes it back with `z.encode`. */
@@ -177,4 +182,5 @@ export const decodedLaunchSchema: z.ZodType<DecodedLaunch, DecodedLaunchWire> = 
     })
     .exactOptional(),
   options: launchOptionValuesSchema,
+  words: writtenWordsSchema.exactOptional(),
 });

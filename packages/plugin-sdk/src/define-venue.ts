@@ -4,6 +4,7 @@ import {
   type LaunchReader,
   launchOptionsSchema,
   type LaunchpadVenue,
+  launchWordLimitsSchema,
   type PriceReader,
   type Venue,
   type VenueCall,
@@ -148,9 +149,20 @@ function launcherOf(launcher: Launcher): Launcher {
       message: `A launchpad's settings are wrong: ${z.prettifyError(options.error)}`,
     });
   }
+  const limits =
+    launcher.wordLimits === undefined
+      ? undefined
+      : launchWordLimitsSchema.safeParse(launcher.wordLimits);
+  if (limits?.success === false) {
+    throw new BinferenceError({
+      code: "plugin.bad_venue",
+      message: `A launchpad's word limits are wrong: ${z.prettifyError(limits.error)}`,
+    });
+  }
   const kept: Launcher = {
     launchOptions: Object.freeze(options.data.map((option) => Object.freeze({ ...option }))),
     ...(launcher.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
+    ...(limits === undefined ? {} : { wordLimits: Object.freeze({ ...limits.data }) }),
     quoteLaunch: async (terms, call) => launcher.quoteLaunch(terms, call),
     pin: async (request, call) => launcher.pin(request, call),
     pinStatus: async (pin, call) => launcher.pinStatus(pin, call),

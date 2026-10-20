@@ -139,6 +139,18 @@ export {
   launchQuoteSchema,
   pinStatusSchema,
 } from "./venues/launch-terms.js";
+export {
+  fitsWordLimits,
+  launchWordLimitsSchema,
+  writtenWordsOf,
+  writtenWordsSchema,
+} from "./venues/launch-words.js";
+export type {
+  LaunchLinks,
+  LaunchWordLimits,
+  LaunchWords,
+  WrittenWords,
+} from "./venues/launch-words.js";
 export type {
   DecodedLaunch,
   DecodedLaunchWire,

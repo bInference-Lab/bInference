@@ -1,4 +1,9 @@
-import { accountRefSchema, assetRefSchema, type DecodedLaunch } from "@binference/chain";
+import {
+  accountRefSchema,
+  assetRefSchema,
+  type DecodedLaunch,
+  writtenWordsOf,
+} from "@binference/chain";
 import {
   createFakeFamily,
   createFakeLauncher,
@@ -25,6 +30,8 @@ const bounds: LaunchBounds = {
   symbol: "MCAT",
   pair: coin,
   metadataUri: "ipfs://fake-1",
+  words: writtenWordsOf({}),
+  mustWriteWords: false,
   fee: { asset: coin, base: 0n },
   firstBuy: spend,
   options: {},

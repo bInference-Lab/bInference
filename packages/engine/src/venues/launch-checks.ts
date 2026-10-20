@@ -12,6 +12,7 @@ import {
   type Launcher,
   type LaunchOptionValue,
   type TxDraft,
+  type WrittenWords,
 } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import type { ApprovalStep, BuildMismatch } from "./build-checks.js";
@@ -41,6 +42,10 @@ export interface LaunchBounds {
   readonly symbol: string;
   readonly pair: AssetRef;
   readonly metadataUri: string;
+  /** The description and links the card shows, as a create call writes them on chain. */
+  readonly words: WrittenWords;
+  /** The launchpad writes the words into its create call, so its decoder must name them. */
+  readonly mustWriteWords: boolean;
   /** The launch fee the quote read, which the create call pays in the chain's coin. */
   readonly fee: Amount;
   readonly firstBuy?: Amount;
@@ -109,6 +114,22 @@ function approvalMismatch(step: ApprovalStep, bounds: LaunchBounds): BuildMismat
   return isExact && call.nativeValue === 0n ? undefined : "other_approval";
 }
 
+// Words a create call writes on chain are the card's, each link at its site; a launchpad that
+// writes them must name them.
+function isTheWords(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
+  const { words } = launch;
+  if (words === undefined) {
+    return !bounds.mustWriteWords;
+  }
+  const shown = bounds.words;
+  return (
+    words.description === shown.description &&
+    words.links.website === shown.links.website &&
+    words.links.x === shown.links.x &&
+    words.links.telegram === shown.links.telegram
+  );
+}
+
 // The create call makes the build's token with the launch's words, pair, metadata and fee.
 function isTheLaunch(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
   const isOnChain = assetRefParts(launch.token).chain === assetRefParts(bounds.pair).chain;
@@ -121,7 +142,8 @@ function isTheLaunch(launch: DecodedLaunch, bounds: LaunchBounds): boolean {
     launch.symbol === bounds.symbol &&
     launch.pair === bounds.pair &&
     launch.metadataUri === bounds.metadataUri &&
-    launch.feeBase === bounds.fee.base
+    launch.feeBase === bounds.fee.base &&
+    isTheWords(launch, bounds)
   );
 }
 
@@ -218,11 +240,12 @@ function orderOf(steps: readonly LaunchStep[]) {
  * The build checks of a token launch (decision 0235). Every step goes from the launch wallet on
  * its chain; the plan is at most one token approval, then one create call; the approval is exact
  * on the first buy's spend, to a registry contract of the launchpad; the create call goes to one
- * of its registry contracts, makes the build's token with the launch's name, symbol, pair and
- * metadata, writes every launchpad setting at the card's value (decision 0238), pays exactly the
- * quoted fee, and buys exactly the first buy for the wallet at no less than its minimum, unless the
- * launcher declares that its first buy carries none (decision 0270). Gives the create call's
- * launch, or the first check that fails.
+ * of its registry contracts, makes the build's token with the launch's name, symbol, pair,
+ * metadata and, when it writes them on chain, the card's description and links (decision 0275),
+ * writes every launchpad setting at the card's value (decision 0238), pays exactly the quoted fee,
+ * and buys exactly the first buy for the wallet at no less than its minimum, unless the launcher
+ * declares that its first buy carries none (decision 0270). Gives the create call's launch, or
+ * the first check that fails.
  */
 export function checkLaunchSteps(
   steps: readonly LaunchStep[],

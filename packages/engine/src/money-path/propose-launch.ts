@@ -129,8 +129,11 @@ async function pinAndBuild(
   const { host } = options.launch;
   const hosted = hostedLaunchOf(resolved);
   const { image } = picture;
-  const words = wordsOf(request, { contentType: image.contentType, bytes: picture.bytes });
-  const pin = await host.pin(hosted, words, { signal });
+  const pin = await host.pin(
+    hosted,
+    { contentType: image.contentType, bytes: picture.bytes },
+    { signal },
+  );
   if (!pin.ok) {
     return pin;
   }
@@ -213,18 +216,6 @@ async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
     await loseUpload(run, quoted.checked).catch(() => undefined);
     throw fault;
   }
-}
-
-function wordsOf(
-  request: LaunchTokenRequest,
-  image: { readonly contentType: string; readonly bytes: Readonly<Uint8Array> },
-) {
-  const { description, links } = request;
-  return {
-    image,
-    ...(description === undefined ? {} : { description }),
-    ...(links === undefined ? {} : { links }),
-  };
 }
 
 // Whether the launch wallet's ceiling, as last read back, lacks a call only a launch wallet makes

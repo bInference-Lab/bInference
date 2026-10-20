@@ -14,6 +14,7 @@ import {
   type LaunchTerms,
   pinStatusSchema,
 } from "../venues/launch-terms.js";
+import { writtenWordsOf } from "../venues/launch-words.js";
 import type { Launcher } from "../venues/ports.js";
 
 /** A launchpad's launcher under test, a launch it takes and one it does not. */
@@ -60,7 +61,7 @@ async function built(
   const quote = await quoted(launcher, launch);
   const pin = await launcher.pin(launch, { signal: live() });
   const minOut = quote.firstBuyOut === undefined ? {} : { firstBuyMinOut: quote.firstBuyOut };
-  const { image: _image, description: _description, links: _links, ...terms } = launch;
+  const { image: _image, ...terms } = launch;
   const request = { ...terms, metadataUri: pin.metadataUri, fee: quote.fee, ...minOut };
   return { request, build: await launcher.buildLaunch(request, { signal: live() }) };
 }
@@ -125,7 +126,8 @@ function checkMinOut(launcher: Launcher, minOut: bigint, request: LaunchBuildReq
 }
 
 // The create call reads back as the launch it was built for: its token, words, pair, fee and every
-// setting, and a first buy for the wallet of its spend, at no less than its minimum.
+// setting, and a first buy for the wallet of its spend, at no less than its minimum. A launcher that
+// writes the words on chain names them as the request gives them.
 function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
   const { request, build } = launch;
   const create = build.steps.at(-1);
@@ -145,6 +147,8 @@ function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
       options: request.options,
     },
   );
+  const written = subject.launcher.wordLimits === undefined ? undefined : writtenWordsOf(request);
+  assert.deepEqual(decoded.value.words, written);
   assert.deepEqual(firstBuy?.spend, request.firstBuy);
   assert.equal(firstBuy?.recipient, request.wallet);
   checkMinOut(subject.launcher, firstBuy?.minOut ?? 0n, request);

@@ -70,9 +70,18 @@ export interface ResolvedLaunch {
 /** The launch as the launch host takes it, from the wallet it was resolved for. */
 export function hostedLaunchOf(resolved: ResolvedLaunch): HostedLaunch {
   const { request, account, launchSettings } = resolved;
-  const { venue, name, symbol, pairWith, firstBuy } = request;
-  const base = { venue, wallet: account, name, symbol, pair: pairWith, settings: launchSettings };
-  return firstBuy === undefined ? base : { ...base, firstBuy };
+  const { venue, name, symbol, pairWith, firstBuy, description, links } = request;
+  return {
+    venue,
+    wallet: account,
+    name,
+    symbol,
+    pair: pairWith,
+    settings: launchSettings,
+    ...(firstBuy === undefined ? {} : { firstBuy }),
+    ...(description === undefined ? {} : { description }),
+    ...(links === undefined ? {} : { links }),
+  };
 }
 
 /** What a launch is resolved with: the registry, its launchpad's host, the wallets and custody. */
@@ -131,9 +140,10 @@ function isWhole(request: LaunchTokenRequest): boolean {
  * Resolves a token launch before anything is stored: its first buy spends its pair, and its
  * description and links fit the card whole (else `protocol.bad_args`, decision 0239); its chain
  * is the pair's, its launchpad one the engine hosts that launches tokens there (else
- * `quote.no_route`), its launchpad settings pass their declaration (else `protocol.bad_args`),
- * and its wallet is one of the agent's with an account on the chain (else `wallet.not_found`),
- * with that wallet's facts in the intent's mode.
+ * `quote.no_route`), its launchpad settings pass their declaration and its words fit what the
+ * launchpad writes on chain (else `protocol.bad_args`), and its wallet is one of the agent's with
+ * an account on the chain (else `wallet.not_found`), with that wallet's facts in the intent's
+ * mode.
  */
 export async function resolveLaunch(
   options: ResolveLaunchOptions,
@@ -154,6 +164,11 @@ export async function resolveLaunch(
   );
   if (!launchSettings.ok) {
     return err(launchSettings.error === "no_launchpad" ? "quote.no_route" : "protocol.bad_args");
+  }
+  // A launchpad that writes the words on chain takes only as many bytes as its create call does
+  // (decision 0275), so a launch over them is refused before anything is stored or sent.
+  if (!options.launch.host.fitsWords(request.venue, request)) {
+    return err("protocol.bad_args");
   }
   const picked = await walletOf(options, resolving);
   const account =

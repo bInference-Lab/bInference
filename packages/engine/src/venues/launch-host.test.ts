@@ -59,7 +59,7 @@ const launch: HostedLaunch = {
   settings: [],
 };
 
-const words = { image: { contentType: "image/png", bytes: new Uint8Array([137, 80]) } };
+const picture = { contentType: "image/png", bytes: new Uint8Array([137, 80]) };
 const fee = { asset: coin, base: 2_000n };
 const upload = {
   quote: { fee, firstBuyOut: 50_000n, tokenDecimals: 18 },
@@ -135,7 +135,7 @@ describe("the launch host's quote, pin and pin status", () => {
       pin: async () => Promise.reject(new Error("upload failed")),
       pinStatus: async () => Promise.reject(new Error("gateway timeout")),
     });
-    await expect(host.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
+    await expect(host.pin(launch, picture, live)).resolves.toMatchObject({ error: "venue_down" });
     await expect(host.pinStatus(pad, null, live)).resolves.toBe("pending");
   });
 
@@ -149,8 +149,8 @@ describe("the launch host's quote, pin and pin status", () => {
       ...base,
       pin: async () => ({ metadataUri: `ipfs://${"a".repeat(194)}`, pin: null }),
     });
-    await expect(big.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
-    await expect(long.pin(launch, words, live)).resolves.toMatchObject({ error: "venue_down" });
+    await expect(big.pin(launch, picture, live)).resolves.toMatchObject({ error: "venue_down" });
+    await expect(long.pin(launch, picture, live)).resolves.toMatchObject({ error: "venue_down" });
   });
 
   it("hands the launchpad its own copy of the picture's bytes", async () => {
@@ -162,9 +162,9 @@ describe("the launch host's quote, pin and pin status", () => {
         return base.pin(request, call);
       },
     });
-    const picture = { image: { contentType: "image/png", bytes: new Uint8Array([137, 80]) } };
-    await expect(host.pin(launch, picture, live)).resolves.toMatchObject({ ok: true });
-    expect(picture.image.bytes).toStrictEqual(new Uint8Array([137, 80]));
+    const own = { contentType: "image/png", bytes: new Uint8Array([137, 80]) };
+    await expect(host.pin(launch, own, live)).resolves.toMatchObject({ ok: true });
+    expect(own.bytes).toStrictEqual(new Uint8Array([137, 80]));
   });
 
   it("gives an upload 12 seconds, longer than a read", async () => {
@@ -177,17 +177,17 @@ describe("the launch host's quote, pin and pin status", () => {
         return base.pin(request, call);
       },
     });
-    const taken = hostOf(slow(11_000), clock).pin(launch, words, live);
+    const taken = hostOf(slow(11_000), clock).pin(launch, picture, live);
     await clock.advance(11_000);
     await expect(taken).resolves.toMatchObject({ ok: true });
-    const lost = hostOf(slow(13_000), clock).pin(launch, words, live);
+    const lost = hostOf(slow(13_000), clock).pin(launch, picture, live);
     await clock.advance(13_000);
     await expect(lost).resolves.toMatchObject({ error: "venue_down" });
   });
 
   it("reports a pin as the launchpad does", async () => {
     const host = fake({ pin: { failsAfterReads: 1 } });
-    await expect(host.pin(launch, words, live)).resolves.toMatchObject({
+    await expect(host.pin(launch, picture, live)).resolves.toMatchObject({
       ok: true,
       value: { metadataUri: "ipfs://fake-1" },
     });
@@ -202,6 +202,36 @@ describe("the launch host's build", () => {
       ok: true,
       value: { launch: { token, metadataUri: upload.metadataUri, feeBase: fee.base } },
     });
+  });
+
+  it("hands a launchpad that writes the words on chain the card's description and links", async () => {
+    const wordLimits = { nameBytes: 64, symbolBytes: 16, descriptionBytes: 2_048, linkBytes: 256 };
+    const host = fake({ wordLimits });
+    const worded = { ...launch, description: "A cat", links: { x: "https://x.com/cat" } };
+    await expect(host.build(worded, upload, live)).resolves.toMatchObject({
+      ok: true,
+      value: {
+        launch: {
+          words: {
+            description: "A cat",
+            links: { website: "", x: "https://x.com/cat", telegram: "" },
+          },
+        },
+      },
+    });
+  });
+
+  it("tells whether a launch's words fit the bytes a launchpad writes on chain", () => {
+    const wordLimits = { nameBytes: 8, symbolBytes: 4, descriptionBytes: 6, linkBytes: 20 };
+    const host = fake({ wordLimits });
+    expect(host.fitsWords(pad, { name: "Moon Cat", symbol: "MCAT", description: "€€" })).toBe(true);
+    expect(host.fitsWords(pad, { name: "Moon Cat", symbol: "MCAT", description: "€€€" })).toBe(
+      false,
+    );
+    expect(
+      fake().fitsWords(pad, { name: "Moon Cat", symbol: "MCAT", description: "€".repeat(900) }),
+    ).toBe(true);
+    expect(host.fitsWords("other-pad", { name: "Moon Cat", symbol: "MCAT" })).toBe(false);
   });
 
   it("checks an exact approval before a token first buy", async () => {

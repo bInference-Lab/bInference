@@ -15,6 +15,12 @@ import type {
   LaunchTerms,
   PinStatus,
 } from "../venues/launch-terms.js";
+import {
+  type LaunchWordLimits,
+  type WrittenWords,
+  writtenWordsOf,
+  writtenWordsSchema,
+} from "../venues/launch-words.js";
 import type { Launcher } from "../venues/ports.js";
 import { fakeApprovalData, fakeCallOf, fakeDraft, isFakeUnsigned } from "./fake-draft.js";
 
@@ -47,6 +53,13 @@ export interface FakeLauncherOptions {
   readonly noFirstBuyMin?: boolean;
   /** The minimum its create call writes for a first buy; the request's when absent. */
   readonly writesMinOut?: bigint;
+  /**
+   * It writes a launch's words into its create call, within these limits, as a launchpad that
+   * keeps them on chain does; it writes none when absent.
+   */
+  readonly wordLimits?: LaunchWordLimits;
+  /** Words its create call writes in place of the request's, as a launchpad that lies would. */
+  readonly writesWords?: WrittenWords;
 }
 
 /** A fake launcher, which tells a test what it uploaded and how often its pins were read. */
@@ -93,7 +106,21 @@ export function fakeLaunchData(launch: DecodedLaunch): string {
     firstBuy?.minOut.toString() ?? "",
     firstBuy === undefined ? "" : accountRefParts(firstBuy.recipient).address,
     word(JSON.stringify(launch.options)),
+    launch.words === undefined ? "" : word(JSON.stringify(launch.words)),
   ].join(",");
+}
+
+// The words' word: JSON of the words the call writes, none when empty; undefined when unreadable.
+function wordsOf(text: string): { readonly words?: WrittenWords } | undefined {
+  if (text === "") {
+    return {};
+  }
+  try {
+    const parsed = writtenWordsSchema.safeParse(JSON.parse(decodeURIComponent(text)));
+    return parsed.success ? { words: parsed.data } : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // The settings' word: JSON of each setting by name, which a launch that fails to parse leaves out.
@@ -127,17 +154,18 @@ function firstBuyOf(from: AccountRef, pair: AssetRef, words: readonly string[]) 
 const wordAt = (words: readonly string[], index: number): string => words[index] ?? "";
 
 // The words of a create call after `launch`: token, name, symbol, metadata, pair, fee, the first
-// buy's three words and the settings.
+// buy's three words, the settings and the words it writes on chain.
 function launchOf(draft: TxDraft, words: readonly string[]): DecodedLaunch | undefined {
   const token = parseAssetRef(wordAt(words, 0));
   const pair = parseAssetRef(wordAt(words, 4));
   const fee = wordAt(words, 5);
-  if (words.length !== 10 || !token.ok || !pair.ok || !isFakeUnsigned(fee)) {
+  if (words.length !== 11 || !token.ok || !pair.ok || !isFakeUnsigned(fee)) {
     return undefined;
   }
   const bought = firstBuyOf(draft.from, pair.value, words.slice(6, 9));
   const options = optionsOf(wordAt(words, 9));
-  return bought === undefined || options === undefined
+  const written = wordsOf(wordAt(words, 10));
+  return bought === undefined || options === undefined || written === undefined
     ? undefined
     : {
         token: token.value,
@@ -148,6 +176,7 @@ function launchOf(draft: TxDraft, words: readonly string[]): DecodedLaunch | und
         feeBase: BigInt(fee),
         ...bought,
         options,
+        ...written,
       };
 }
 
@@ -162,6 +191,7 @@ interface Written {
   readonly token: AssetRef;
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
   readonly minOut: bigint;
+  readonly words?: WrittenWords;
 }
 
 // An exact approval of an ERC-20 first buy's spend, then the create call, which pays the fee and
@@ -188,6 +218,7 @@ function buildSteps(request: LaunchBuildRequest, written: Written): readonly TxD
     feeBase: request.fee.base,
     ...bought,
     options: written.options,
+    ...(written.words === undefined ? {} : { words: written.words }),
   });
   const coinSpend = firstBuy !== undefined && isCoin(firstBuy.asset) ? firstBuy.base : 0n;
   const create = fakeDraft(wallet, { to: router, value: request.fee.base + coinSpend, data });
@@ -207,6 +238,18 @@ function buildSteps(request: LaunchBuildRequest, written: Written): readonly TxD
 function writtenMinOut(options: FakeLauncherOptions, request: LaunchBuildRequest): bigint {
   const declared = options.noFirstBuyMin === true ? 0n : (request.firstBuyMinOut ?? 0n);
   return options.writesMinOut ?? declared;
+}
+
+// What the create call writes beyond the request: the token, the settings, the minimum and, for a
+// launchpad that keeps them on chain, the words, each as the test scripts.
+function writtenOf(options: FakeLauncherOptions, request: LaunchBuildRequest): Written {
+  const words = options.writesWords ?? writtenWordsOf(request);
+  return {
+    token: options.token ?? fakeToken,
+    options: options.writesOptions ?? request.options,
+    minOut: writtenMinOut(options, request),
+    ...(options.wordLimits === undefined ? {} : { words }),
+  };
 }
 
 function statusOf(script: FakePinScript, reads: number): PinStatus {
@@ -234,6 +277,7 @@ export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLaunc
   return {
     launchOptions: options.launchOptions ?? [],
     ...(options.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
+    ...(options.wordLimits === undefined ? {} : { wordLimits: options.wordLimits }),
     async quoteLaunch(terms, { signal }) {
       signal.throwIfAborted();
       const coin = assetRefSchema.parse(`${accountRefParts(terms.wallet).chain}/slip44:1`);
@@ -261,12 +305,10 @@ export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLaunc
     },
     async buildLaunch(request, { signal }) {
       signal.throwIfAborted();
-      const written = {
+      return await Promise.resolve({
         token,
-        options: options.writesOptions ?? request.options,
-        minOut: writtenMinOut(options, request),
-      };
-      return await Promise.resolve({ token, steps: buildSteps(request, written) });
+        steps: buildSteps(request, writtenOf(options, request)),
+      });
     },
     decodeLaunch,
     uploads: () => [...uploads],

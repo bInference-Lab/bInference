@@ -1,4 +1,9 @@
-import { accountRefSchema, assetRefSchema, type LaunchOption } from "@binference/chain";
+import {
+  accountRefSchema,
+  assetRefSchema,
+  type LaunchOption,
+  type LaunchWordLimits,
+} from "@binference/chain";
 import {
   createFakeLauncher,
   createFakeLaunchpad,
@@ -44,10 +49,14 @@ const launch: LaunchTokenRequest = {
 
 // The resolve's ports over the fake chain: a launchpad that launches, the test agent's two
 // wallets, and, when asked, the second one stored as its launch wallet.
-async function optionsOf(agent: { readonly hasLaunchWallet: boolean }) {
+async function optionsOf(agent: {
+  readonly hasLaunchWallet: boolean;
+  readonly wordLimits?: LaunchWordLimits;
+}) {
   const chains = testChains([pad]);
   const clock = createManualClock(testNowMs);
-  const launcher = createFakeLauncher({ launchOptions: settings });
+  const limits = agent.wordLimits === undefined ? {} : { wordLimits: agent.wordLimits };
+  const launcher = createFakeLauncher({ launchOptions: settings, ...limits });
   const venues = [createFakeLaunchpad({ onCurve: [], launcher })];
   const stores = createMemoryEngineStores();
   await stores.agents.create(testAgentDraft({ mode: "live" }), { signal });
@@ -85,9 +94,14 @@ function settingsOf(found: AgentSettings | undefined): AgentSettings {
 
 async function resolved(
   request: LaunchTokenRequest,
-  options: { readonly isPaper?: boolean; readonly hasLaunchWallet?: boolean } = {},
+  options: {
+    readonly isPaper?: boolean;
+    readonly hasLaunchWallet?: boolean;
+    readonly wordLimits?: LaunchWordLimits;
+  } = {},
 ) {
-  const parts = await optionsOf({ hasLaunchWallet: options.hasLaunchWallet ?? true });
+  const limits = options.wordLimits === undefined ? {} : { wordLimits: options.wordLimits };
+  const parts = await optionsOf({ hasLaunchWallet: options.hasLaunchWallet ?? true, ...limits });
   const isPaper = options.isPaper ?? false;
   return resolveLaunch(parts.options, { request, settings: parts.settings, isPaper, signal });
 }
@@ -158,5 +172,32 @@ describe("a token launch as the engine resolves it", () => {
     ],
   ])("refuses %s before anything is stored", async (_case, request, error) => {
     await expect(resolved(request)).resolves.toStrictEqual({ ok: false, error });
+  });
+
+  describe("on a launchpad that writes the words on chain", () => {
+    const wordLimits = { nameBytes: 64, symbolBytes: 16, descriptionBytes: 2_048, linkBytes: 256 };
+
+    it("takes words that fit the bytes its create call takes", async () => {
+      const description = "€".repeat(682);
+      await expect(resolved({ ...launch, description }, { wordLimits })).resolves.toMatchObject({
+        ok: true,
+      });
+    });
+
+    it.each<[string, LaunchTokenRequest]>([
+      // 683 characters of 3 bytes each: within the card's 1,000 characters, over 2,048 bytes.
+      ["a description over its bytes", { ...launch, description: "€".repeat(683) }],
+      ["a symbol over its bytes", { ...launch, symbol: "€".repeat(6) }],
+      ["a name over its bytes", { ...launch, name: "€".repeat(22) }],
+      [
+        "a link over its bytes",
+        { ...launch, links: { telegram: `https://t.me/${"€".repeat(82)}` } },
+      ],
+    ])("refuses %s before anything is stored", async (_case, request) => {
+      await expect(resolved(request, { wordLimits })).resolves.toStrictEqual({
+        ok: false,
+        error: "protocol.bad_args",
+      });
+    });
   });
 });

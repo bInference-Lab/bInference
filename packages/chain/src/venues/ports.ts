@@ -16,6 +16,7 @@ import type {
   LaunchTerms,
   PinStatus,
 } from "./launch-terms.js";
+import type { LaunchWordLimits } from "./launch-words.js";
 import type { PriceRead, PriceReadRequest } from "./price-read.js";
 import type { QuoteRequest, VenueQuote } from "./venue-quote.js";
 
@@ -129,6 +130,12 @@ export interface Launcher {
    * out, every first buy carries its minimum in the create call.
    */
   readonly noFirstBuyMin?: boolean;
+  /**
+   * The most bytes the launchpad's create call takes for a launch's name, symbol, description and
+   * each link, which it writes on chain: the engine refuses a launch over one before anything is
+   * stored. Left out, the launchpad takes the words every request may give.
+   */
+  readonly wordLimits?: LaunchWordLimits;
   /**
    * The launch fee and the first buy's output, read from the launchpad's contracts at the latest
    * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`; a
