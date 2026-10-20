@@ -44,6 +44,7 @@ export type {
   ConfirmationsRule,
   ContractDefinition,
   EndpointDefinition,
+  ExplorerDefinition,
   FinalityRule,
   FinalizedTagRule,
   NativeAssetDefinition,

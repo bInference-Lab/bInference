@@ -31,11 +31,12 @@ export interface LiveReceiptSource {
   readonly chains: ChainRegistry;
 }
 
-// A transaction's page on the chain's first block explorer, which the registry lists for each chain.
+// A transaction's page on the chain's first block explorer, from the page template the registry
+// lists for it.
 function explorerLinkOf(chains: ChainRegistry, chain: ChainRef, hash: TxHash): string | undefined {
   const registered = chains.get(chain);
   const explorer = registered.ok ? registered.value.definition.explorers[0] : undefined;
-  return explorer === undefined ? undefined : `${explorer.url}/tx/${hash}`;
+  return explorer?.txUrl.replace("{hash}", hash);
 }
 
 // A trade that reconciled: what it sold and bought; a launch: its token, and its first buy's.

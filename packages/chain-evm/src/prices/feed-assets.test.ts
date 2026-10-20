@@ -30,7 +30,14 @@ const definition: ChainDefinition = {
   finality: { kind: "finalized_tag" },
   rpcs: [{ name: "local", url: "https://rpc.invalid", source: "https://docs.invalid" }],
   relays: [],
-  explorers: [{ name: "explorer", url: "https://scan.invalid", source: "https://docs.invalid" }],
+  explorers: [
+    {
+      name: "explorer",
+      url: "https://scan.invalid",
+      txUrl: "https://scan.invalid/tx/{hash}",
+      source: "https://docs.invalid",
+    },
+  ],
   tokens: [
     { symbol: "WTEST", name: "Wrapped", decimals: 18, address: wrapped, verification },
     { symbol: "USD6", name: "Dollar", decimals: 6, address: dollar, verification },

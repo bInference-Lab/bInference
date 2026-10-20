@@ -32,7 +32,8 @@ stablecoins on BSC have 18.
 - One file per chain at the top of `packages/chains/src/`, named after the chain's registry key
   (`bsc.ts`), exported as a `ChainDefinition` from `@binference/chain`: the CAIP-2 id, the key,
   the name, the family, the native asset, the block time, the finality rule, RPCs, relays,
-  explorers, tokens and contracts.
+  explorers (each with its `txUrl` transaction page, `{hash}` where the hash goes), tokens and
+  contracts.
 - Every token and contract carries a `verification`: its source URL, the day you read it and
   `control: "read"` (`"not_read"` while the proxy and owner are still unread).
 - Contract names are kebab-case and unique within their venue; the venue is the plugin's id.

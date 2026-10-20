@@ -300,7 +300,7 @@ send or a rescue; `receipt.done` for one with nothing to send, such as an unfree
 such as one the queue's policy check refused or whose authorization lapsed, says `receipt.refused`
 with its reason, or `receipt.unsent` when it stored none; one whose send's fate is not known yet
 says `receipt.unknown` until it ends. `{explorerLink}` is its last transaction's page on the first
-block explorer the chain registry lists, shown whole.
+block explorer the chain registry lists, from that explorer's `txUrl` page template, shown whole.
 
 <a id="section-3-6"></a>
 

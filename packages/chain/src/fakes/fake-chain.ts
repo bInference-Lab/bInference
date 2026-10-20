@@ -34,6 +34,7 @@ export function createFakeChainDefinition(): ChainDefinition {
       {
         name: "fake-scan",
         url: "https://scan.example.invalid",
+        txUrl: "https://scan.example.invalid/tx/{hash}",
         source: "https://example.invalid/scan",
       },
     ],

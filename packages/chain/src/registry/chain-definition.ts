@@ -38,6 +38,12 @@ export interface EndpointDefinition {
   readonly source: string;
 }
 
+/** A block explorer, with the page of one transaction as its docs give it. */
+export interface ExplorerDefinition extends EndpointDefinition {
+  /** A transaction's page, with `{hash}` where the transaction's hash goes. */
+  readonly txUrl: string;
+}
+
 /** The chain's own coin, as a CAIP-19 asset namespace and reference. */
 export interface NativeAssetDefinition {
   readonly assetNamespace: string;
@@ -80,7 +86,7 @@ export interface ChainDefinition {
    */
   readonly logRpcs?: readonly EndpointDefinition[];
   readonly relays: readonly EndpointDefinition[];
-  readonly explorers: readonly EndpointDefinition[];
+  readonly explorers: readonly ExplorerDefinition[];
   readonly tokens: readonly TokenDefinition[];
   readonly contracts: readonly ContractDefinition[];
 }
@@ -97,6 +103,7 @@ const verificationSchema = z.strictObject({
 });
 
 const endpointSchema = z.strictObject({ name: kebabCaseSchema, url: httpsUrl, source: httpsUrl });
+const explorerSchema = endpointSchema.extend({ txUrl: httpsUrl.regex(/\{hash\}/) });
 
 const tokenSchema = z.strictObject({
   symbol: z.string().min(1),
@@ -142,7 +149,7 @@ export const chainDefinitionSchema: z.ZodType<ChainDefinition, ChainDefinition> 
     rpcs: z.array(endpointSchema).min(1),
     logRpcs: z.array(endpointSchema).min(1).exactOptional(),
     relays: z.array(endpointSchema),
-    explorers: z.array(endpointSchema).min(1),
+    explorers: z.array(explorerSchema).min(1),
     tokens: z.array(tokenSchema),
     contracts: z.array(contractSchema),
   })

@@ -251,8 +251,18 @@ export const bsc: ChainDefinition = {
     },
   ],
   explorers: [
-    { name: "bscscan", url: "https://bscscan.com", source: explorerDocs },
-    { name: "bsctrace", url: "https://bsctrace.com", source: explorerDocs },
+    {
+      name: "bscscan",
+      url: "https://bscscan.com",
+      txUrl: "https://bscscan.com/tx/{hash}",
+      source: explorerDocs,
+    },
+    {
+      name: "bsctrace",
+      url: "https://bsctrace.com",
+      txUrl: "https://bsctrace.com/tx/{hash}",
+      source: explorerDocs,
+    },
   ],
   tokens: [...tokens, ...laterTokens],
   contracts: [

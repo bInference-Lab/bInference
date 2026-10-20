@@ -39,7 +39,7 @@ const definition: ChainDefinition = {
   finality: { kind: "finalized_tag" },
   rpcs: [endpoint],
   relays: [],
-  explorers: [endpoint],
+  explorers: [{ ...endpoint, txUrl: "https://scan.example.org/tx/{hash}" }],
   tokens: [],
   contracts: [
     contract("swapper", "router", testAddresses.router),

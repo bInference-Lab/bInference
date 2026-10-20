@@ -27,6 +27,13 @@ describe("chain definition schema", () => {
     ["an http endpoint", { ...valid, rpcs: [{ ...rpc, url: "http://rpc.example.invalid" }] }],
     ["an empty list of log RPCs", { ...valid, logRpcs: [] }],
     ["no explorer", { ...valid, explorers: [] }],
+    [
+      "an explorer page with no hash",
+      {
+        ...valid,
+        explorers: valid.explorers.map((explorer) => ({ ...explorer, txUrl: explorer.url })),
+      },
+    ],
     ["a token without a date", { ...valid, tokens: [undated] }],
     ["a token address twice", { ...valid, tokens: [token, { ...token, symbol: "TWO" }] }],
     ["a contract name twice", { ...valid, contracts: [contract, contract] }],
