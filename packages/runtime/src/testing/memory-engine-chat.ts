@@ -9,9 +9,10 @@ import type {
 } from "../relay/engine-chat-records.js";
 import type { EngineChat } from "../relay/ports.js";
 import { nthTestId } from "./memory-agent-stores.js";
+import { waitForPush } from "./wait-for-push.js";
 
 /** One thing the fake engine pushed on an agent's chat topic, as the engine names its kind. */
-interface ChatPush {
+export interface ChatPush {
   readonly kind: "chat/turnStarted" | "chat/message" | "chat/status" | "chat/turnEnded";
   readonly agent: Id<"agt">;
   readonly turn: Id<"trn">;
@@ -103,22 +104,6 @@ function pushChat(state: FakeState, push: ChatPush): void {
   for (const waiter of state.waiters) {
     waiter(push);
   }
-}
-
-function waitForPush(state: FakeState, match: (push: ChatPush) => boolean): Promise<ChatPush> {
-  const made = state.pushes.find(match);
-  if (made !== undefined) {
-    return Promise.resolve(made);
-  }
-  return new Promise((resolve) => {
-    const waiter = (push: ChatPush): void => {
-      if (match(push)) {
-        state.waiters.delete(waiter);
-        resolve(push);
-      }
-    };
-    state.waiters.add(waiter);
-  });
 }
 
 // Answers 1 past the last number at each call.
