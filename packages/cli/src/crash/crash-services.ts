@@ -20,13 +20,16 @@ import {
 import { z } from "zod";
 import { type CrashFlapApi, createCrashFlapApi } from "./crash-flap-api.js";
 import { crashExecutor, crashRouter, usdtPerWei } from "./crash-market.js";
+import { type CrashTelegram, createCrashTelegram } from "./crash-telegram.js";
 
-/** Privy, KyberSwap's and Flap's APIs as the crash engines reach them, on loopback. */
+/** Privy, KyberSwap's, Flap's and Telegram's APIs as the crash engines reach them, on loopback. */
 export interface CrashServices {
-  /** Where they listen: `/privy`, `/kyberswap` and `/flap`. */
+  /** Where they listen: `/privy`, `/kyberswap`, `/flap` and `/telegram`. */
   readonly origin: string;
   /** Flap's upload and pin status API, which a run's launch reaches. */
   readonly flap: CrashFlapApi;
+  /** Telegram's Bot API, the served install's synthetic one, at `/telegram`. */
+  readonly telegram: CrashTelegram;
   /**
    * Makes the fake Privy app the services answer for from now on. Each run's install has an app of
    * its own, as each owner does: an app holds the aggregations of one install's ceiling.
@@ -243,10 +246,19 @@ function createSignatureBook(): SignatureBook {
 }
 
 // Answers one request; a signature the book holds is counted and left unanswered.
-function responderOf(served: () => FakePrivy | undefined, book: SignatureBook, flap: CrashFlapApi) {
+function responderOf(
+  served: () => FakePrivy | undefined,
+  book: SignatureBook,
+  apis: { readonly flap: CrashFlapApi; readonly telegram: CrashTelegram },
+) {
+  const { flap, telegram } = apis;
   return async (incoming: IncomingMessage, outgoing: ServerResponse): Promise<void> => {
     const body = await readBody(incoming);
     const path = incoming.url ?? "/";
+    if (path.startsWith("/telegram/")) {
+      await telegram.respond({ incoming, path: path.slice("/telegram".length), body, outgoing });
+      return;
+    }
     if (path.startsWith("/flap/")) {
       flap.respond({ path: path.slice("/flap".length), method: incoming.method, outgoing });
       return;
@@ -282,7 +294,8 @@ async function listen(server: Server): Promise<string> {
 }
 
 /**
- * Serves a fake Privy app, a KyberSwap API and Flap's API on loopback for the crash engines, which reach them through their Http as they would reach the real services. Privy
+ * Serves a fake Privy app, a KyberSwap API, Flap's API and Telegram's Bot API on loopback for the
+ * crash engines, which reach them through their Http as they would reach the real services. Privy
  * answers 503 until an app is served. The KyberSwap API routes every buy and sale through one
  * pool at {@link usdtPerWei} and encodes the router's plain `swap` for the recipient and deadline
  * asked; the crash chain's router pays it out.
@@ -290,8 +303,9 @@ async function listen(server: Server): Promise<string> {
 export async function serveCrashServices(): Promise<CrashServices> {
   const book = createSignatureBook();
   const flap = createCrashFlapApi();
+  const telegram = createCrashTelegram();
   const app: { privy?: FakePrivy } = {};
-  const respond = responderOf(() => app.privy, book, flap);
+  const respond = responderOf(() => app.privy, book, { flap, telegram });
   const server = createServer((incoming, outgoing) => {
     respond(incoming, outgoing).catch(() => {
       outgoing.writeHead(500).end();
@@ -301,6 +315,7 @@ export async function serveCrashServices(): Promise<CrashServices> {
   return {
     origin,
     flap,
+    telegram,
     serve: (privy) => {
       app.privy = privy;
     },

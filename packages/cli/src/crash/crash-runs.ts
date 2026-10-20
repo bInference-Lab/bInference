@@ -12,6 +12,7 @@ import { readTextFile, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import type { ProtocolId } from "@binference/protocol";
 import { type Address, getAddress, toHex } from "viem";
+import { z } from "zod";
 import {
   type InitMachine,
   initFlags,
@@ -43,9 +44,12 @@ export interface CrashInstall {
   readonly from: Address;
   /** The port each engine of the install listens on for HTTP, as `engine.port` sets it. */
   readonly port: number;
+  /** The start code of the bot's pairing link init printed, which pairs the owner's Telegram. */
+  readonly pairingCode: string;
 }
 
 const engineFile = fileURLToPath(new URL("./crash-engine.ts", import.meta.url));
+const initAnswerSchema = z.object({ pairing: z.object({ link: z.url() }) });
 const bscRef = chainRefSchema.parse(bsc.id);
 const spend = 10n ** 16n;
 
@@ -85,7 +89,7 @@ export async function setUpCrashInstall(
     signals: new EventEmitter(),
     privy: { ...privy, sent: [] },
   });
-  const init = await runOn(machine, ["init", "--yes", ...initFlags(machine)]);
+  const init = await runOn(machine, ["init", "--json", "--yes", ...initFlags(machine)]);
   if (init.code !== 0) {
     throw new BinferenceError({ code: "crash.init_failed", message: init.stderr });
   }
@@ -97,7 +101,9 @@ export async function setUpCrashInstall(
   const from = getAddress(wallet.address);
   await world.chain.call("anvil_setBalance", [from, toHex(10n ** 18n)]);
   await freshCrashFeeds(async (method, params) => world.chain.call(method, params));
-  return { machine, from, port: await freePort() };
+  const { link } = initAnswerSchema.parse(JSON.parse(init.stdout)).pairing;
+  const pairingCode = new URL(link).searchParams.get("start") ?? "";
+  return { machine, from, port: await freePort(), pairingCode };
 }
 
 /**
@@ -107,7 +113,7 @@ export async function setUpCrashInstall(
 export async function startCrashEngine(
   world: CrashWorld,
   install: CrashInstall,
-  run: { readonly signal: AbortSignal; readonly fills?: boolean },
+  run: { readonly signal: AbortSignal; readonly fills?: boolean; readonly chat?: boolean },
 ): Promise<SourceProgram> {
   const { signal } = run;
   const engine = startSourceProgram({
@@ -121,6 +127,7 @@ export async function startCrashEngine(
       CRASH_SERVICES: world.services.origin,
       CRASH_PORT: String(install.port),
       ...(run.fills === true ? { CRASH_FILLS: "1" } : {}),
+      ...(run.chat === true ? { CRASH_CHAT: "1" } : {}),
       ...secretEnv(install.machine),
     },
     signal,

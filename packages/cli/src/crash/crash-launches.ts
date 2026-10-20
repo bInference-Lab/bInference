@@ -77,8 +77,8 @@ async function uploadPicture(client: ProtocolClient, install: CrashInstall): Pro
   }
 }
 
-// The agent's launch intent, the newest; `undefined` while it has none.
-async function launchOf(
+/** The agent's launch intent, the newest; `undefined` while it has none. */
+export async function launchOf(
   client: ProtocolClient,
   agent: ProtocolId<"agent">,
 ): Promise<IntentView | undefined> {

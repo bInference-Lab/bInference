@@ -33,18 +33,18 @@ export interface CrashHarness {
   /** The state folders the file's runs made, removed after each run. */
   readonly folders: TempFolder[];
   /**
-   * Starts an engine on the install, with the crash prices that fire live orders when `fills`,
-   * killed after the run if it still runs.
+   * Starts an engine on the install, with the crash prices that fire live orders when `fills` and
+   * a scripted agent runtime when `chat`, killed after the run if it still runs.
    */
   readonly startEngine: (
     install: CrashInstall,
-    options?: { readonly fills?: boolean },
+    options?: { readonly fills?: boolean; readonly chat?: boolean },
   ) => Promise<SourceProgram>;
 }
 
 /**
  * Sets up a crash test file: the suite's one anvil chain behind the test's relays and RPC, Privy,
- * KyberSwap's and Flap's APIs on loopback, and the crash market and Flap, with wallet
+ * KyberSwap's, Flap's and Telegram's APIs on loopback, and the crash market and Flap, with wallet
  * keys drawn from the file's own seed; after each run, the engines that still run are killed and
  * the run's folders removed.
  */
@@ -92,8 +92,8 @@ export function useCrashHarness(
     folders,
     startEngine: async (install, options = {}) => {
       const signal = AbortSignal.timeout(engineBudgetMs);
-      const fills = options.fills === true;
-      const engine = await startCrashEngine(worldOf(), install, { signal, fills });
+      const run = { signal, fills: options.fills === true, chat: options.chat === true };
+      const engine = await startCrashEngine(worldOf(), install, run);
       programs.push(engine);
       return engine;
     },
@@ -199,6 +199,7 @@ export async function restartWith<T>(
   run: {
     readonly isMinedAfterResend: boolean;
     readonly fills: boolean;
+    readonly chat?: boolean;
     readonly settle: () => Promise<T>;
     /** The wallet whose send the mining waits for; the install's own when absent. */
     readonly from?: Address;
@@ -213,7 +214,10 @@ export async function restartWith<T>(
   const start = run.isMinedAfterResend ? resent : Promise.resolve();
   const mining = start.then(async () => chain.mine(miner.signal));
   try {
-    const engine = await harness.startEngine(install, { fills: run.fills });
+    const engine = await harness.startEngine(install, {
+      fills: run.fills,
+      chat: run.chat === true,
+    });
     const settled = await run.settle();
     await engine.program.exited;
     return { engine, settled };

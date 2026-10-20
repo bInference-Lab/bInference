@@ -12,6 +12,8 @@ export interface CrashEnv {
   readonly CRASH_PORT: string;
   /** `1` when the run's prices fire live auto orders, which then fill live. */
   readonly CRASH_FILLS?: "1";
+  /** `1` when the run's agent runtime answers the owner's chat on a scripted model. */
+  readonly CRASH_CHAT?: "1";
 }
 
 const loopback = z.url({ protocol: /^http$/, hostname: /^127\.0\.0\.1$/ });
@@ -23,4 +25,5 @@ export const crashEnvSchema: z.ZodType<CrashEnv> = z.object({
   CRASH_SERVICES: loopback,
   CRASH_PORT: z.string().regex(/^[1-9]\d{0,4}$/),
   CRASH_FILLS: z.literal("1").exactOptional(),
+  CRASH_CHAT: z.literal("1").exactOptional(),
 });
