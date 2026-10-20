@@ -50,6 +50,7 @@
     "engine/0044_launches.ts": "439e7ed2fe9d6468e05d8c502c6197da3878287817dce59165e9563efed9907f",
     "engine/0045_copy_fill_links.ts": "65bea707f3664907814eec982e4e6fcc98eafb6f2b860ff4ca9380a81fdef1f4",
     "engine/0046_engine_alive.ts": "c7cdc4ebd84ac543b960eb28f3543cbcd25cd66ec6dfd9d079e4154571d12d63",
-    "engine/0047_daily_summaries.ts": "19f5216274c13804dc66d25be658b677c85117c5f6c1224ee6984f03c1cc793f"
+    "engine/0047_daily_summaries.ts": "19f5216274c13804dc66d25be658b677c85117c5f6c1224ee6984f03c1cc793f",
+    "engine/0048_alert_fires_told.ts": "225ea1f46e5a8c0844b3310c97a91698764c7adfc5532ccf30d24f10c04e31bc"
   }
 }

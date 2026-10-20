@@ -12,6 +12,7 @@ import {
   canFire,
   maxAlertWakesPerHour,
   replacesWaitingWake,
+  tellsHeldWakes,
   wakeAnswerOf,
 } from "../alerts/alert-fire.js";
 import {
@@ -45,6 +46,8 @@ interface FireRow {
   readonly agentId: Id<"agt">;
   readonly atMs: number;
   readonly wake: AlertWakeOutcome;
+  /** A notice told this wake-up, which the hourly limit held back. */
+  readonly told: boolean;
 }
 
 interface Rows {
@@ -136,13 +139,21 @@ function firesOf(rows: Rows, agentId: Id<"agt">): readonly FireRow[] {
   return [...rows.fires.values()].filter((row) => row.agentId === agentId);
 }
 
-// The wake-ups the hourly limit held back since the agent's last one.
-function heldBack(rows: Rows, agentId: Id<"agt">): number {
-  const own = firesOf(rows, agentId);
-  const lastWoke = own.findLastIndex((row) => row.wake.outcome === "woke");
-  const after = own.slice(lastWoke + 1);
-  return after.filter((row) => row.wake.outcome === "skipped" && row.wake.reason === "hourly")
-    .length;
+// The wake-ups the hourly limit held back that no notice told yet, marked told now.
+function tellHeldBack(rows: Rows, agentId: Id<"agt">): number {
+  const untold = (row: FireRow | undefined): row is FireRow =>
+    row?.agentId === agentId &&
+    !row.told &&
+    row.wake.outcome === "skipped" &&
+    row.wake.reason === "hourly";
+  const held = [...rows.fires.keys()].filter((key) => untold(rows.fires.get(key)));
+  held.forEach((key) => {
+    const row = rows.fires.get(key);
+    if (untold(row)) {
+      rows.fires.set(key, { ...row, told: true });
+    }
+  });
+  return held.length;
 }
 
 // A new wake-up, unless the agent's alerts woke it 10 times in the last hour or its inbox is full.
@@ -209,9 +220,9 @@ function fire(
     return err("stale");
   }
   const wake = wakeOf(rows, inbox, { alert, draft });
-  const wakeSkipped = wake.outcome === "woke" ? heldBack(rows, alert.agentId) : 0;
-  keep(rows, draft, { agentId: alert.agentId, atMs: draft.atMs, wake });
   const fired = alertFireOf(alert, draft.atMs);
+  const wakeSkipped = tellsHeldWakes(wake, fired) ? tellHeldBack(rows, alert.agentId) : 0;
+  keep(rows, draft, { agentId: alert.agentId, atMs: draft.atMs, wake, told: false });
   const lastMessage = "message" in wake ? { lastMessageId: wake.message.id } : {};
   const written = put(rows, { ...fired.alert, ...lastMessage });
   return ok({ ...fired, alert: written, ...wakeAnswerOf(wake, wakeSkipped) });

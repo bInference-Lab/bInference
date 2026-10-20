@@ -70,8 +70,9 @@ export const alertFireDraftSchema: z.ZodType<AlertFireDraft> = z.strictObject({
 
 /**
  * What a fire wrote: the alert after it; whether it woke the agent, by a new wake-up or by the
- * waiting one it replaced; the wake-ups the hourly limit held back since the agent's last one,
- * when it woke; why it did not, for an alert with `wake`; and the message it stored or replaced.
+ * waiting one it replaced; the wake-ups the hourly limit held back that no notice told yet, when it
+ * woke the agent and its notice goes out; why it did not wake it, for an alert with `wake`; and the
+ * message it stored or replaced.
  */
 export interface AlertFireWritten {
   readonly alert: AlertRecord;
@@ -147,6 +148,18 @@ export type AlertWakeOutcome =
   | { readonly outcome: "quiet" }
   | { readonly outcome: "skipped"; readonly reason: AlertWakeSkip }
   | { readonly outcome: "woke" | "replaced"; readonly message: AgentInboxMessage };
+
+/**
+ * Whether a fire tells the agent's held wake-ups (decision 0274): it woke the agent and its notice
+ * goes out. It tells every wake-up the hourly limit held back that no notice told yet, so a count
+ * a held notice would have carried waits for the next notice that goes out.
+ */
+export function tellsHeldWakes(
+  wake: AlertWakeOutcome,
+  fired: Pick<AlertFireWritten, "notify">,
+): boolean {
+  return wake.outcome === "woke" && fired.notify;
+}
 
 /**
  * The part of {@link AlertFireWritten} a fire's wake-up gives, which every store adapter answers:

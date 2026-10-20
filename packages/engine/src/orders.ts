@@ -8,6 +8,7 @@ export {
   canFire,
   maxAlertWakesPerHour,
   replacesWaitingWake,
+  tellsHeldWakes,
   wakeAnswerOf,
 } from "./alerts/alert-fire.js";
 export type {

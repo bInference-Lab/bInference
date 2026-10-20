@@ -140,7 +140,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
       "created_at changed_at fired_at expires_at last_message_id notice_window_at notices_sent " +
       "notices_held",
   ),
-  alert_fires: names("alert_id fires agent_id at outcome reason message_id"),
+  alert_fires: names("alert_id fires agent_id at outcome reason message_id told"),
   tracked_wallets: names(
     "account since_block last_block overflow_blocks added_at untracked_at overflow_told_blocks " +
       "overflow_told_at",

@@ -32,6 +32,8 @@ interface AlertFiresTable {
   outcome: string;
   reason: string | null;
   message_id: string | null;
+  /** 1 once a notice told this wake-up, which the hourly limit held back. */
+  told: number;
 }
 
 /** The alert tables, by name. */

@@ -32,6 +32,9 @@ function connect(): DatabaseSync {
 }
 
 const index = engineMigrations.findIndex((migration) => migration.name === "0041_alert_fires");
+const toldIndex = engineMigrations.findIndex(
+  (migration) => migration.name === "0048_alert_fires_told",
+);
 const alertId = "alr_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const condition = JSON.stringify({
   kind: "price",
@@ -134,5 +137,32 @@ describe("the alert fires migration", () => {
     );
 
     expect(() => insert.run(walletId, agentId, walletCondition)).toThrow(/CHECK constraint/);
+  });
+
+  it("counts as told each held wake-up before its agent's last wake-up, and no later one", () => {
+    const database = connect();
+    runMigrations(database, { name: "engine", migrations: engineMigrations.slice(0, toldIndex) });
+    const { agentId } = plantAgent(database, 1);
+    database
+      .prepare(
+        "INSERT INTO alerts (id, agent_id, condition, kind, state, created_by, created_at, " +
+          "changed_at) VALUES (?, ?, ?, 'launch', 'active', 'cli', 1, 1)",
+      )
+      .run(launchId, agentId, launchCondition);
+    const fire = database.prepare(
+      "INSERT INTO alert_fires (alert_id, fires, agent_id, at, outcome, reason, message_id) " +
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+    );
+    fire.run(launchId, 1, agentId, 10, "skipped", "hourly", null);
+    fire.run(launchId, 2, agentId, 20, "woke", null, "msg_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+    fire.run(launchId, 3, agentId, 30, "skipped", "hourly", null);
+
+    runMigrations(database, { name: "engine", migrations: engineMigrations });
+
+    expect(database.prepare("SELECT fires, told FROM alert_fires ORDER BY fires").all()).toEqual([
+      { fires: 1, told: 1 },
+      { fires: 2, told: 0 },
+      { fires: 3, told: 0 },
+    ]);
   });
 });

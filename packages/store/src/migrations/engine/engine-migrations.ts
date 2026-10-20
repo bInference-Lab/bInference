@@ -46,6 +46,7 @@ import { migration as launches } from "./0044_launches.js";
 import { migration as copyFillLinks } from "./0045_copy_fill_links.js";
 import { migration as engineAlive } from "./0046_engine_alive.js";
 import { migration as dailySummaries } from "./0047_daily_summaries.js";
+import { migration as alertFiresTold } from "./0048_alert_fires_told.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -96,4 +97,5 @@ export const engineMigrations: readonly Migration[] = [
   copyFillLinks,
   engineAlive,
   dailySummaries,
+  alertFiresTold,
 ];

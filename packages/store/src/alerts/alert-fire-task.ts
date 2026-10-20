@@ -16,6 +16,7 @@ import {
   canFire,
   maxAlertWakesPerHour,
   replacesWaitingWake,
+  tellsHeldWakes,
   wakeAnswerOf,
 } from "@binference/engine/orders";
 import {
@@ -115,21 +116,19 @@ function wakeOf(
     : { outcome: "replaced", message: waiting };
 }
 
-// The wake-ups the hourly limit held back since the agent's last one, in the rows still kept.
-function heldBack(database: DatabaseSync, alert: AlertRecord): number {
-  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
-  const ofAgent = kysely.selectFrom("alert_fires").where("agent_id", "=", alert.agentId);
-  const last = takeFirst(
-    ofAgent.select((builder) => builder.fn.max("at").as("at")).where("outcome", "=", "woke"),
-  );
-  const since = last?.at ?? -1;
-  const row = takeFirst(
-    ofAgent
-      .select((builder) => builder.fn.countAll<number>().as("count"))
+// The wake-ups the hourly limit held back that no notice told yet, in the rows still kept; a fire
+// that tells them marks them told.
+function tellHeldBack(database: DatabaseSync, alert: AlertRecord): number {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const told = execute(
+    kysely
+      .updateTable("alert_fires")
+      .set({ told: 1 })
+      .where("agent_id", "=", alert.agentId)
       .where("reason", "=", "hourly")
-      .where("at", ">=", since),
+      .where("told", "=", 0),
   );
-  return row?.count ?? 0;
+  return Number(told.numAffectedRows ?? 0n);
 }
 
 // Records the fire's row, and forgets the agent's rows older than a week or past its newest 1,000.
@@ -158,6 +157,7 @@ function keep(
       outcome: wake.outcome,
       reason: wake.outcome === "skipped" ? wake.reason : null,
       message_id: "message" in wake ? wake.message.id : null,
+      told: 0,
     }),
   );
   const oldestDropped = takeFirst(
@@ -197,9 +197,9 @@ export const fireAlertTask: StoreTask<
       return err("stale");
     }
     const wake = wakeOf(database, alert, draft);
-    const wakeSkipped = wake.outcome === "woke" ? heldBack(database, alert) : 0;
-    keep(database, alert, { draft, wake });
     const fired = alertFireOf(alert, draft.atMs);
+    const wakeSkipped = tellsHeldWakes(wake, fired) ? tellHeldBack(database, alert) : 0;
+    keep(database, alert, { draft, wake });
     const lastMessage = "message" in wake ? { lastMessageId: wake.message.id } : {};
     const written = writeAlert(database, { ...fired.alert, ...lastMessage });
     return ok({ ...fired, alert: written, ...wakeAnswerOf(wake, wakeSkipped) });

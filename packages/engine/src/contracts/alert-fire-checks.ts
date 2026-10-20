@@ -140,6 +140,32 @@ async function holdsWakesToTenAnHour(subject: AlertSubject): Promise<void> {
   assert.deepEqual(later.ok && [later.value.woke, later.value.wakeSkipped], [true, 1]);
 }
 
+// A wake-up whose notice its alert's hour holds tells no held count; the count waits for the next
+// wake-up whose notice goes out (decision 0274).
+async function carriesTheHeldCountToANoticeThatGoesOut(subject: AlertSubject): Promise<void> {
+  const { alerts } = subject;
+  const numbers = Array.from({ length: 13 }, (_, index) => index + 1);
+  await inOrder(numbers, async (n) => created(subject, alertOf(subject, n)));
+  const { wake: _wake, ...quiet } = fireOf(12, 15_000);
+  await inOrder([0, 1, 2, 3, 4], async (k) =>
+    alerts.fire({ ...quiet, atMs: 15_000 + k, expectedFires: k }, live()),
+  );
+  await inOrder(numbers.slice(0, 10), async (n) => alerts.fire(fireOf(n, n * 1_000), live()));
+  const held = await alerts.fire(fireOf(11, 20_000), live());
+  const unheard = await alerts.fire(fireOf(12, 1_001 + hourMs, 5), live());
+  const told = await alerts.fire(fireOf(13, 2_001 + hourMs), live());
+  assert.deepEqual(held.ok && held.value.skip, "hourly");
+  assert.deepEqual(
+    unheard.ok && [unheard.value.woke, unheard.value.notify, unheard.value.wakeSkipped],
+    [true, false, undefined],
+  );
+  assert.deepEqual(told.ok && [told.value.woke, told.value.notify, told.value.wakeSkipped], [
+    true,
+    true,
+    1,
+  ]);
+}
+
 async function recordsSkips(subject: AlertSubject): Promise<void> {
   const { alerts, agentInbox, agentIds } = subject;
   await created(subject, alertOf(subject, 1));
@@ -206,6 +232,10 @@ export const alertFireChecks: readonly (readonly [
   ["wakes the agent once and replaces the wake-up while it waits", wakesAndReplacesWhileWaiting],
   ["wakes the agent for each launch while an earlier one waits", wakesForEachLaunchWhileOneWaits],
   ["holds the agent's wake-ups to 10 an hour and counts those held back", holdsWakesToTenAnHour],
+  [
+    "carries the held wake-ups to the next notice that goes out",
+    carriesTheHeldCountToANoticeThatGoesOut,
+  ],
   ["records a skipped wake-up and skips while the inbox is full", recordsSkips],
   ["holds an alert's notices to five an hour and tells the rest once", holdsNoticesToFiveAnHour],
   ["tells the held matches with the next hour's first notice", tellsHeldMatchesWithTheNextHour],

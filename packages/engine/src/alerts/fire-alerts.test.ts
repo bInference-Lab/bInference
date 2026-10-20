@@ -229,7 +229,43 @@ describe("wake-ups", () => {
       ],
     });
   });
+
+  it("carry the held count past a wake-up whose notice is held, to the next that goes out", async () => {
+    const test = await startTestEngine();
+    const other = accountRefSchema.parse("fake:1:0x0000bbbb");
+    await setAlert(test, { kind: "wallet", account: leader }, { wake: true });
+    await setAlert(test, { kind: "wallet", account: other }, { wake: true });
+    const five = Array.from({ length: 5 }, () => undefined);
+    // Each alert notifies and wakes five times, the agent's ten wake-ups of the hour.
+    await inOrder(five, async () => fireAndTake(test, leader));
+    await inOrder(five, async () => fireAndTake(test, other));
+    const held = await fireAndTake(test, leader);
+    await test.clock.advance(50 * 60_000);
+    // The second alert's hour holds its notice; the first alert's hour has ended.
+    const unheard = await fireAndTake(test, other);
+    const told = await fireAndTake(test, leader);
+
+    expect([held?.woke, unheard?.woke, told?.woke]).toStrictEqual([false, true, true]);
+    expect([unheard?.wakeSkipped, told?.wakeSkipped]).toStrictEqual([undefined, 1]);
+    expect(pushed(test, "notice/new").at(-1)).toMatchObject({
+      key: "notice.alertWallet",
+      after: [
+        { key: "alert.woke", values: { agent: "main" } },
+        { key: "alert.wakeSkipped", values: { agent: "main", count: "1" } },
+      ],
+    });
+  });
 });
+
+// Fires a trade of `account`, takes the wake-up it stored as the runtime would, and lets a minute
+// pass.
+async function fireAndTake(test: TestEngine, account: typeof leader) {
+  const [fired] = await test.engine.alerts.seeTrade({ ...trade("buy", 50), account }, live);
+  const ids = (await untaken(test)).map(({ id }) => id);
+  await test.stores.agentInbox.take({ ids: [...ids], atMs: test.clock.now() }, live);
+  await test.clock.advance(60_000);
+  return fired;
+}
 
 describe("wallet and launch alerts", () => {
   it("fire on each matching trade of the wallet the leader watcher reads", async () => {

@@ -624,7 +624,7 @@ is never verified, so its short address always follows its symbol.
   `notice.copyHeld` when the hour ends or before the next hour's first skip, and a mute of
   `skipped` mutes it too. A paper fill's notice starts with 🧪, as its receipt does: its `mode` is `paper`.
 - An alert's notice is followed by `alert.woke` when it started a turn, and by `alert.wakeSkipped`
-  when wake-ups were held back since the last one (spec 1, section 8.4).
+  when wake-ups were held back that no notice told yet (spec 1, section 8.4).
 - One alert sends at most five notices an hour, from its first; its later matches in that hour
   are counted and told once, in `notice.alertHeld`, when the hour ends or with the first notice
   of its next hour ([decision 0245](../DECISIONS.md#d0245)). `{age}` of `launch.line` is

@@ -929,8 +929,9 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   as auto orders do. A `price` alert has no default expiry.
 - **`AlertFired`**, the data of `alert/fired`:
   `{ alert, agent, at, fired: { kind: price, asset, priceUsdMicros } | { kind: wallet, activity: ActivityItem } | { kind: launch, launch: LaunchView }, woke, wakeSkipped?, assets }`.
-  `woke` says whether it started a turn; `wakeSkipped` counts the wake-ups of the agent held back
-  by the hourly limit since its last wake-up.
+  `woke` says whether it started a turn; `wakeSkipped` counts the wake-ups of the agent the hourly
+  limit held back that no notice told yet, on a fire that wakes the agent and whose notice goes
+  out ([decision 0274](../DECISIONS.md#d0274)).
 - **Wake-ups.** A fired alert with `wake` stores an `inbox/alertFired` message
   `{ alert: AlertView, fired, outsideContent }` in the write that records the fire
   ([spec 8, section 3.3](runtime.md#section-3-3)). `outsideContent` is always set: what fires an
@@ -948,7 +949,8 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   `alert/fired` goes out for every fire. A fire for an archived agent ends its alert, unheard.
 - **Limits on wake-ups.** At most 10 wake-ups an hour per agent, counted over the last 60 minutes.
   Past that, the alert still fires and notifies, but stores no inbox message; the count goes into
-  `wakeSkipped` of the next fire that wakes the agent. While a wake-up from a price or wallet alert
+  `wakeSkipped` of the next fire that wakes the agent and whose notice goes out, past any fire whose
+  notice its alert's five an hour hold. While a wake-up from a price or wallet alert
   waits in the agent inbox, untaken, a newer fire of the same alert replaces its data instead of
   adding a message; each fire of a launch alert stores its own, and the chat queue merges the
   waiting ones into one turn ([decision 0274](../DECISIONS.md#d0274)). The runtime skips a wake-up while the budget is spent or the agent is frozen
