@@ -1,10 +1,16 @@
-import { accountRefSchema, type TokenRiskReport, type TxSimulator } from "@binference/chain";
+import {
+  accountRefSchema,
+  chainRefSchema,
+  type TokenRiskReport,
+  type TxSimulator,
+} from "@binference/chain";
 import { createFakeRiskSource } from "@binference/chain/testing";
 import { bpsSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
-import { createVenueHost, type VenueTrade } from "@binference/engine";
+import { createLaunchHost, createVenueHost, type VenueTrade } from "@binference/engine";
 import { createRiskCheck } from "@binference/engine/risk";
 import { createMemoryRiskCacheStore } from "@binference/engine/testing";
+import { createGeniusfunVenue } from "@binference/geniusfun";
 import {
   bnb,
   graduatedToken,
@@ -23,6 +29,7 @@ import { describe, expect, it } from "vitest";
 import { selfHostedChains } from "./open-engine-parts.js";
 
 const curveAccount = accountRefSchema.parse(`eip155:56:${stackCurve}`);
+const bsc = chainRefSchema.parse("eip155:56");
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
 const nowMs = 1_800_000_000_000;
 
@@ -118,5 +125,39 @@ describe("the geniusfun launchpad in the self-hosted venue host", () => {
       refusal: "snipe_tax",
       view: { verdict: "block", insiders: [stackCreator] },
     });
+  });
+
+  it("is hosted as a launchpad on BSC that takes a link for its picture and two settings", () => {
+    const venue = createGeniusfunVenue({
+      chains: [{ chain: bsc, nativeAsset: bnb, quoteTokens: [], rpc: scriptedChain() }],
+      launches: {
+        random: createSeededRandom(277),
+        chains: [{ chain: bsc, simulator: unreachable }],
+      },
+    });
+    const host = createLaunchHost({
+      venues: [venue],
+      chains: selfHostedChains(),
+      clock: createManualClock(nowMs),
+      callTimeoutMs: 5_000,
+    });
+    const given = {
+      creatorFeeRecipient: "0x00000000000000000000000000000000000000AA",
+      pictureLink: "ipfs://bafkreig7wwicvvvzrbrcgs62ybg7yc7f7ay6s6yhsgpxcxvan5owbcfefm",
+    };
+    expect(host.settingsOf("geniusfun", bsc, given)).toMatchObject({ ok: true });
+    expect(host.settingsOf("geniusfun", bsc, { pictureLink: given.pictureLink })).toStrictEqual({
+      ok: false,
+      error: "bad_settings",
+    });
+    expect(host.takesUpload("geniusfun")).toBe(false);
+    // Its two create calls, and its curves' buy and sell, are a launch wallet's alone.
+    const names = host.launchWalletCalls("geniusfun").map((abi) => JSON.stringify(abi));
+    expect(names.map((abi) => /"name":"(\w+)"/u.exec(abi)?.[1])).toStrictEqual([
+      "launchAndBuy",
+      "launchToken",
+      "buy",
+      "sell",
+    ]);
   });
 });

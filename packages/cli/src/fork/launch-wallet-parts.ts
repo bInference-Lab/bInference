@@ -54,6 +54,7 @@ import { ceilingChainsOf, heldCapsOf } from "../compose/wallet-ceilings.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { configSchema } from "../config/schema/config.schema.js";
 import { createSystemClock } from "../runtime/system-clock.js";
+import { createSystemRandom } from "../runtime/system-random.js";
 import { forkEngineBasics } from "./fork-engine-basics.js";
 
 /** The fee cap the rig's signer and preparer hold: 10 gwei. */
@@ -143,12 +144,17 @@ export function walletMakerOf(
 }
 
 /** Genius.fun on the fork, against BNB and the registry's USDT and USDC, as the CLI runs it. */
-export function geniusfunOn(fork: Fork): Venue {
+export function geniusfunOn(fork: Fork, run: { readonly launches?: boolean } = {}): Venue {
   const { ref: chain, nativeAsset } = fork.chain;
   const quoteTokens = [bscToken("USDT"), bscToken("USDC")].map((token) =>
     erc20AssetRef(fork.chain, token),
   );
-  return createGeniusfunVenue({ chains: [{ chain, nativeAsset, quoteTokens, rpc: fork.rpc }] });
+  const simulator = createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain });
+  const launches = { random: createSystemRandom(), chains: [{ chain, simulator }] };
+  return createGeniusfunVenue({
+    chains: [{ chain, nativeAsset, quoteTokens, rpc: fork.rpc }],
+    ...(run.launches === true ? { launches } : {}),
+  });
 }
 
 /** The wallets' facts as the self-hosted engine reads them, from the install and the fork. */

@@ -205,7 +205,12 @@ export async function launchRigOf(
   const stores = createMemoryEngineStores();
   const positions = createMemoryPositionStore();
   const custody = await custodyOn(fork, run.entry, signal);
-  const venues = [geniusfunOn(fork), ...(run.launcher === undefined ? [] : [run.launcher.venue])];
+  // A Genius.fun launcher is the rig's Genius.fun venue itself; any other launches beside it.
+  const launcher = run.launcher?.venue;
+  const venues =
+    launcher?.id === "geniusfun"
+      ? [launcher]
+      : [geniusfunOn(fork), ...(launcher === undefined ? [] : [launcher])];
   const clock = createSystemClock();
   const chains = selfHostedChains();
   const host = createVenueHost({ venues, chains, clock, callTimeoutMs: 15_000 });

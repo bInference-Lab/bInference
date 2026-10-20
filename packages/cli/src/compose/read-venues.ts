@@ -25,7 +25,7 @@ import {
   type Random,
 } from "@binference/core";
 import { createFlapVenue, type FlapLaunchChain } from "@binference/flap";
-import { createGeniusfunVenue } from "@binference/geniusfun";
+import { createGeniusfunVenue, type GeniusfunLaunchChain } from "@binference/geniusfun";
 import { createKyberswapVenue, type KyberswapHook } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
 import type {
@@ -158,6 +158,23 @@ function flapLaunchChainsOf(
   });
 }
 
+// Genius.fun launches on each chain the engine reads whose registry lists its m4.2 launch router,
+// with a simulator over the chain's RPC failover for its dry runs (decision 0277).
+function geniusfunLaunchChainsOf(
+  chains: readonly RegisteredChain[],
+  reads: ReadonlyMap<ChainRef, ChainReads>,
+): readonly GeniusfunLaunchChain[] {
+  return chains.flatMap((chain) => {
+    const read = reads.get(chain.ref);
+    const isListed = chain.definition.contracts.some(
+      (item) => item.venue === "geniusfun" && item.name === "router-m4-2",
+    );
+    return read === undefined || !isListed
+      ? []
+      : [{ chain: chain.ref, simulator: createEvmTxSimulator({ rpc: read.rpc, chain: read.evm }) }];
+  });
+}
+
 // The chain's allowed pool hooks, each at its registry address with its fee (decision 0214). A hook
 // the registry does not list is a fault of this build.
 function allowedHooksOf(
@@ -185,7 +202,8 @@ function allowedHooksOf(
  * keyless, always; the Flap and Genius.fun launchpads, over each chain's RPC failover, always;
  * OKX's DEX aggregator only when `venues.keys.okx` names the owner's key (decision 0105). Flap also
  * launches tax tokens through Flap's own API on each chain the registry lists its implementation
- * on (decision 0271). The
+ * on (decision 0271), and Genius.fun launches tokens on each chain the registry lists its m4.2
+ * launch router on (decision 0277). The
  * money path asks every venue an agent allows and keeps the best plan (decision 0107), and sends a
  * token on a launchpad's curve to that launchpad alone (decision 0179). An OKX key that cannot be read is logged and OKX
  * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
@@ -217,6 +235,7 @@ export async function readVenues(options: ReadVenuesOptions): Promise<ReadVenues
   });
   const geniusfun = createGeniusfunVenue({
     chains: curveChainsOf(enabled, reads, geniusfunQuoteSymbols),
+    launches: { random: options.random, chains: geniusfunLaunchChainsOf(enabled, reads) },
   });
   const held = { keys: await okxKeysOf(options.venues.keys.okx, options, options.signal) };
   if (held.keys === undefined) {

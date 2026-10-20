@@ -98,6 +98,14 @@ describe("the self-hosted venues", () => {
     expect(flap?.contracts).toMatchObject([{ chain: bsc, names: ["portal"], noDeadline: true }]);
     // It launches tax tokens on BSC, whose registry lists Flap's Tax Token V3 implementation.
     expect(flap?.launcher?.noFirstBuyMin).toBe(true);
+    // Genius.fun launches on BSC, whose registry lists its m4.2 router: nothing uploaded, the first
+    // buy bound to its minimum.
+    const launcher = venues.find((venue) => venue.id === "geniusfun")?.launcher;
+    expect(launcher).toMatchObject({
+      launchOptions: [{ name: "creatorFeeRecipient" }, { name: "pictureLink" }],
+    });
+    expect(launcher).not.toHaveProperty("pin");
+    expect(launcher).not.toHaveProperty("noFirstBuyMin");
   });
 
   it("quote through KyberSwap and the flap and geniusfun launchpads when config names no OKX key", async () => {
