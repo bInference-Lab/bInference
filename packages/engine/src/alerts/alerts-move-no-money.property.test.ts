@@ -81,7 +81,10 @@ async function see(test: TestEngine, event: Event): Promise<void> {
   const { alerts } = test.engine;
   if (event.kind === "price") {
     const usdPerBaseUnit = { numerator: event.micros, denominator: 10n ** 6n };
-    await alerts.seePrice({ token: testToken, usdPerBaseUnit, decimals: 6, isThin: false }, live);
+    await alerts.seePrice(
+      { token: testToken, usdPerBaseUnit, decimals: 6, isThin: false, readAtMs: 0 },
+      live,
+    );
   } else if (event.kind === "trade") {
     const activity = activityItemSchema.parse({
       at: 1,

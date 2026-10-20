@@ -91,6 +91,7 @@ async function run(test: TestEngine, sequence: Sequence): Promise<readonly numbe
       usdPerBaseUnit: { numerator: step.micros, denominator: wholeToken },
       decimals: 6,
       isThin: false,
+      readAtMs: 0,
     };
     const outcomes = await test.engine.seePrice(price, live);
     return outcomes.some(({ outcome }) => outcome === "filled") ? [...filledAt, index] : filledAt;

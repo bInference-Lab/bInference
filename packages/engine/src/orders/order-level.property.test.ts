@@ -38,6 +38,7 @@ function at(micros: bigint, pool: { readonly isThin: boolean }): WatchedOrderPri
     usdPerBaseUnit: { numerator: micros, denominator: wholeToken },
     decimals: 6,
     isThin: pool.isThin,
+    readAtMs: 0,
   };
 }
 

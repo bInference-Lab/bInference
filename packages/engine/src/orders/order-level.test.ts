@@ -14,6 +14,7 @@ function deep(micros: bigint): WatchedOrderPrice {
     usdPerBaseUnit: { numerator: micros, denominator: wholeToken },
     decimals: 6,
     isThin: false,
+    readAtMs: 0,
   };
 }
 

@@ -54,7 +54,13 @@ export function triggerPriceOf(
     return undefined;
   }
   return isConfirmed(price, known.checks, known.nowMs)
-    ? { token: price.token, usdPerBaseUnit: usdPrice, decimals, isThin: isThin(price) }
+    ? {
+        token: price.token,
+        usdPerBaseUnit: usdPrice,
+        decimals,
+        isThin: isThin(price),
+        readAtMs: price.atMs,
+      }
     : undefined;
 }
 

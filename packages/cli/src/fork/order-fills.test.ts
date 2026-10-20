@@ -18,6 +18,7 @@ const dollarOf = (token: FillRig["token"]) => ({
   usdPerBaseUnit: { numerator: 1n, denominator: 10n ** 12n },
   decimals: 18,
   isThin: false,
+  readAtMs: 0,
 });
 
 // A limit buy of the rig's token for 0.02 BNB, confirmed, then filled as a price fires it. Its

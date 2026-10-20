@@ -25,6 +25,7 @@ describe("the price triggers over many active orders", () => {
       usdPerBaseUnit: { numerator: 4n, denominator: 5n },
       decimals: 6,
       isThin: false,
+      readAtMs: 0,
     };
 
     const judged = await test.engine.seePrice(price, live);

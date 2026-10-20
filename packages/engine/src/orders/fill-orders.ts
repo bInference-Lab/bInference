@@ -33,6 +33,8 @@ export interface FillPrice {
   readonly decimals: number;
   /** The level the fill's own quote must meet: a thin pool priced the token (decision 0195). */
   readonly confirm?: PriceLevel;
+  /** When the price watcher read the price; absent for a DCA buy. */
+  readonly readAtMs?: number;
 }
 
 /**

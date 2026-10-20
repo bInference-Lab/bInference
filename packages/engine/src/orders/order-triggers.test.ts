@@ -18,6 +18,7 @@ function at(micros: bigint, isThin = false): WatchedOrderPrice {
     usdPerBaseUnit: { numerator: micros, denominator: wholeToken },
     decimals: 6,
     isThin,
+    readAtMs: 0,
   };
 }
 

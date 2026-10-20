@@ -21,7 +21,7 @@ export function crashTestOrders(): TestOrders {
     start(see) {
       const stopping = new AbortController();
       const timer = setInterval(() => {
-        see(price, { signal: stopping.signal }).catch(() => undefined);
+        see({ ...price, readAtMs: Date.now() }, { signal: stopping.signal }).catch(() => undefined);
       }, bsc.blockTimeMs);
       return () => {
         clearInterval(timer);

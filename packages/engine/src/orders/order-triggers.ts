@@ -17,6 +17,8 @@ export interface WatchedOrderPrice {
   readonly decimals: number;
   /** A pool under $25,000 deep priced it, so a fill's own quote must meet the trigger too. */
   readonly isThin: boolean;
+  /** When the watcher read it, by its clock. */
+  readonly readAtMs: number;
 }
 
 /** What one order's trigger came to on a price: no fire, or its fill's outcome. */
@@ -147,10 +149,10 @@ async function judgeOrder(
 
 // The price a fill runs at, with the level its own quote must meet when it must.
 function fillPriceOf(order: OrderRecord, price: WatchedOrderPrice, level: PriceLevel): FillPrice {
-  const { usdPerBaseUnit, decimals } = price;
+  const { usdPerBaseUnit, decimals, readAtMs } = price;
   return price.isThin || holdsLevelAtFill(order)
-    ? { usdPerBaseUnit, decimals, confirm: level }
-    : { usdPerBaseUnit, decimals };
+    ? { usdPerBaseUnit, decimals, readAtMs, confirm: level }
+    : { usdPerBaseUnit, decimals, readAtMs };
 }
 
 // Judges the active orders on a price's token one after the other, and answers those that fire.

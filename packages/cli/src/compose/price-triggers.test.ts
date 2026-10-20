@@ -56,6 +56,7 @@ describe("the hand-off of watched prices to the price triggers", () => {
       usdPerBaseUnit: curve.usdPrice,
       decimals: 18,
       isThin: true,
+      readAtMs: nowMs,
     });
     const pool = { ...curve, source: poolSource };
     const { usdPrice: _usd, ...unvalued } = curve;
@@ -88,7 +89,7 @@ describe("the hand-off of watched prices to the price triggers", () => {
     await closers.closeAll(new AbortController().signal);
 
     expect(seen).toStrictEqual([
-      { token, usdPerBaseUnit: curve.usdPrice, decimals: 18, isThin: true },
+      { token, usdPerBaseUnit: curve.usdPrice, decimals: 18, isThin: true, readAtMs: nowMs },
     ]);
     expect(logger.records()).toContainEqual(
       expect.objectContaining({
@@ -109,6 +110,7 @@ describe("seeOrdersAndAlerts", () => {
     usdPerBaseUnit: { numerator: 1n, denominator: 1n },
     decimals: 18,
     isThin: false,
+    readAtMs: 0,
   };
   const call = { signal: new AbortController().signal };
 

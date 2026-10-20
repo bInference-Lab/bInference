@@ -16,6 +16,7 @@ const eightyCents: WatchedOrderPrice = {
   usdPerBaseUnit: { numerator: 800_000n, denominator: wholeToken },
   decimals: 6,
   isThin: false,
+  readAtMs: 0,
 };
 
 // The quote a fill intent stored, which a filled one has.
