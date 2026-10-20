@@ -26,7 +26,7 @@ import {
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { frozenAmount, frozenQuote, nativeAssetOf } from "./host-terms.js";
 import type { HostedLaunchReader, HostedVenue } from "./hosted-venue.js";
-import { hostVenues, launchCallsOf, launchReadersOf } from "./hosted-venue.js";
+import { hostVenues, launchCallsOf, launchReadersOf, launchWalletCallsOf } from "./hosted-venue.js";
 import { contractsWithLaunch, type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
 import { readInsiders } from "./read-insiders.js";
@@ -162,6 +162,13 @@ export interface VenueHost {
    * each (decision 0218). None for a venue the host does not hold.
    */
   launchCalls(venue?: string): HostedVenue["launchCalls"];
+  /**
+   * The JSON ABI entry of each call a launch wallet makes on the venues named: every call of a
+   * launchpad that launches tokens, its create call among them, else each venue's launch calls. A
+   * launch wallet's ceiling must allow each (decision 0271). None for a venue the host does not
+   * hold.
+   */
+  launchWalletCalls(venues: readonly string[]): HostedVenue["launchWalletCalls"];
   /** The launchpads that read their launches on the chain, with their contracts (decision 0256). */
   launchReaders(chain: ChainRef): readonly HostedLaunchReader[];
 }
@@ -405,6 +412,7 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
       return names.some((declared) => declared.size > 0);
     },
     launchCalls: (venue) => launchCallsOf(venues, venue),
+    launchWalletCalls: (named) => launchWalletCallsOf(venues, named),
     launchReaders: (chain) => launchReadersOf(venues, chain),
   };
   return host;

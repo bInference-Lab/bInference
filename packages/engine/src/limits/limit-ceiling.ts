@@ -67,6 +67,18 @@ function valuesIn(policy: JsonValue): readonly string[] {
 }
 
 /**
+ * The calls among `calls`, each a JSON ABI entry, that a wallet's ceiling, as last read back from
+ * custody, does not allow: its rules hold each call they allow as that entry.
+ */
+export function callsOutsideCeiling(
+  wallet: WalletRecord,
+  calls: readonly JsonValue[],
+): readonly JsonValue[] {
+  const held = new Set(valuesIn(wallet.ceiling.policy));
+  return calls.filter((abi) => !held.has(stableJson(abi)));
+}
+
+/**
  * The venues among `venues` that declare calls on each launch's own contracts the launch wallet's
  * ceiling, as last read back from custody, does not allow (decision 0218): its launch rules hold
  * each such call's JSON ABI entry, and a launchpad installed after the wallet was made has calls
@@ -78,8 +90,7 @@ export function launchVenuesOutsideCeiling(check: {
   readonly launchWallet: WalletRecord;
   readonly launchCalls: (venue: string) => readonly JsonValue[];
 }): readonly string[] {
-  const held = new Set(valuesIn(check.launchWallet.ceiling.policy));
-  return check.venues.filter((venue) =>
-    check.launchCalls(venue).some((abi) => !held.has(stableJson(abi))),
+  return check.venues.filter(
+    (venue) => callsOutsideCeiling(check.launchWallet, check.launchCalls(venue)).length > 0,
   );
 }

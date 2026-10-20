@@ -280,6 +280,7 @@
   "check.modelUnpriced": "{model}：其服务商不报告费用，`models.prices` 和内置价格表中也都没有它的价格",
   "check.rpcKeyed": "{count, plural, other {# 个生效中的自动订单}}只通过公共 RPC 监控价格，公共 RPC 有频率限制，可能落后。请在 config.json5 的 `chains.rpc` 中添加付费 RPC，服务商提供 `ws` 地址时一并填写。",
   "check.extraLaunch": "{count, plural, other {有 # 个发射钱包不是 Agent 的发射钱包}}，不会从中发起任何交易：{addresses}。请用 `binference rescue` 将其中的资产紧急转出。",
+  "check.launchCalls": "{count, plural, other {有 # 个发射钱包的上限}}缺少 Agent 所用发射台需要的调用，托管方会拒绝这些调用：{wallets}。请用你的所有者密钥重新写入上限：`binference ceiling set --wallet ID --venues VENUES`，其中 ID 为该钱包的 ID，VENUES 为 Agent 使用的平台。",
   "check.rpcPushed": "{count, plural, other {# 个生效中的实盘自动订单}}依赖通过 HTTP 轮询获取的新区块，可能晚到一个区块，成交可能在触发后第二个区块才上链。请在 config.json5 的 `chains.rpc` 中把 RPC 的 `wss:` 地址填为 `ws`，让每个新区块一产生就送达 binference。",
   "error.homeNotAbsolute": "BINFERENCE_HOME 不是绝对路径。请把它设为完整路径，或取消设置以使用你主文件夹中的状态文件夹。",
   "error.pathTooLong": "状态文件夹的路径太长，无法用于本地套接字。请把 BINFERENCE_HOME 设为更短的文件夹。",

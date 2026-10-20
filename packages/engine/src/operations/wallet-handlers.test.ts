@@ -61,6 +61,15 @@ function twoChains() {
   });
 }
 
+// The calls a launch wallet makes on the test agent's one venue, `fake-swap`: a create call and a buy.
+const createCall = { type: "function", name: "create", inputs: [] };
+const buyCall = { type: "function", name: "buy", inputs: [] };
+const launchHost = {
+  launchCalls: () => [],
+  launchWalletCalls: (venues: readonly string[]) =>
+    venues.includes("fake-swap") ? [createCall, buyCall] : [],
+};
+
 async function walletList(
   held: ReadonlyMap<Id<"wal">, AccountRef>,
   stored: readonly WalletRecord[] = [main, spare, others],
@@ -78,7 +87,7 @@ async function walletList(
     // The wallet list makes no wallet: these parts of `wallet/create` stay untouched.
     ceilings: createFakeCeilingEditor({ clock }),
     maker: createFakeWalletMaker({ clock, chain: chainRefSchema.parse("fake:1"), family: "fake" }),
-    host: { launchCalls: () => [] },
+    host: launchHost,
     journal: createMemoryConfigJournal(),
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(1) }),
@@ -138,5 +147,35 @@ describe("the wallet list", () => {
   it("answers no wallet for an agent that has none", async () => {
     const list = await walletList(everyAccount, [others]);
     expect(expectOk(await list(testCall({ agent: testAgent })))).toStrictEqual({ items: [] });
+  });
+
+  it("names the calls the agent's launch wallet's ceiling lacks, and none for an extra one", async () => {
+    const launch = testWalletRecord({
+      id: fixtureId("wal", 44),
+      agentId: testAgent,
+      label: "Launches",
+      createdAtMs: 40,
+      role: "launch",
+    });
+    // An older ceiling: its rules hold the buy, made before the launchpad declared its create call.
+    const older = { ...launch, ceiling: { ...launch.ceiling, policy: [{ abi: [buyCall] }] } };
+    const extra = { ...older, id: fixtureId("wal", 45), createdAtMs: 35 };
+    const accountsWithLaunch = new Map([
+      ...everyAccount,
+      [older.id, accounts.main],
+      [extra.id, accounts.others],
+    ]);
+    const list = await walletList(accountsWithLaunch, [main, older, extra]);
+    const { items } = expectOk(await list(testCall({ agent: testAgent })));
+    // The store names one of the two the agent's launch wallet; the other is an extra one.
+    const launchViews = items.filter((view) => view.role === "launch");
+    expect(launchViews.map((view) => [view.missingCalls, view.extra])).toStrictEqual(
+      expect.arrayContaining([
+        [["create"], undefined],
+        [undefined, true],
+      ]),
+    );
+    expect(launchViews).toHaveLength(2);
+    expect(items[0]?.missingCalls).toBeUndefined();
   });
 });

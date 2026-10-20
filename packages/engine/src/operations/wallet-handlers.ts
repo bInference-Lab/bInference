@@ -1,8 +1,11 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
+import { z } from "zod";
 import type { WalletRecord } from "../install/install-record.js";
 import { launchWalletIn } from "../install/launch-wallet.js";
+import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
+import type { VenueHost } from "../venues/venue-host.js";
 import { type AgentListHandlers, createAgentListHandlers } from "./agent-list-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
@@ -26,9 +29,30 @@ export interface WalletHandlersOptions
   extends MakeWalletOptions, ExportWalletOptions, RevokeSignerOptions {
   readonly custody: Signer;
   readonly chains: ChainRegistry;
+  /** The launch calls of every launchpad, and the calls a launch wallet makes on each venue. */
+  readonly host: Pick<VenueHost, "launchCalls" | "launchWalletCalls">;
 }
 
-// A wallet's view, an extra launch wallet marked: nothing trades from it, and the owner rescues it.
+const abiNameSchema = z.object({ name: z.string().min(1) });
+
+// The functions of the calls the agent's launchpads declare that its launch wallet's ceiling does
+// not allow (decision 0271); none for a wallet of an agent the store no longer holds.
+async function missingCallsOf(
+  options: WalletHandlersOptions,
+  wallet: WalletRecord,
+  signal: AbortSignal,
+): Promise<readonly string[]> {
+  const agent = await options.agents.get(wallet.agentId, { signal });
+  const calls = options.host.launchWalletCalls(agent?.limits.venues ?? []);
+  const names = callsOutsideCeiling(wallet, calls).flatMap((abi) => {
+    const parsed = abiNameSchema.safeParse(abi);
+    return parsed.success ? [parsed.data.name] : [];
+  });
+  return [...new Set(names)];
+}
+
+// A wallet's view: an extra launch wallet is marked, since nothing trades from it and the owner
+// rescues it; the agent's launch wallet names the calls its ceiling lacks.
 async function listedView(
   options: WalletHandlersOptions,
   listed: { readonly wallet: WalletRecord; readonly wallets: readonly WalletRecord[] },
@@ -38,7 +62,14 @@ async function listedView(
   const view = await walletViewOf(options, wallet, signal);
   const isLive = wallet.role === "launch" && wallet.archivedAtMs === undefined;
   const isExtra = isLive && launchWalletIn(wallets, wallet.agentId)?.id !== wallet.id;
-  return view === undefined || !isExtra ? view : { ...view, extra: true };
+  if (view === undefined || !isLive) {
+    return view;
+  }
+  if (isExtra) {
+    return { ...view, extra: true };
+  }
+  const missingCalls = await missingCallsOf(options, wallet, signal);
+  return missingCalls.length === 0 ? view : { ...view, missingCalls };
 }
 
 /**
@@ -46,7 +77,9 @@ async function listedView(
  * call names none, oldest first, so an agent's default wallet comes first; archived wallets are
  * listed with the time they were archived. Each wallet's address comes from
  * {@link walletViewOf}; a live launch wallet that is not its agent's launch wallet, as a rebuild
- * may adopt, is marked `extra` (decision 0218). An unknown agent is `agent.not_found`; a stored
+ * may adopt, is marked `extra` (decision 0218), and the agent's launch wallet names in
+ * `missingCalls` the functions its agent's launchpads call that its ceiling does not allow
+ * (decision 0271). An unknown agent is `agent.not_found`; a stored
  * wallet custody holds on no chain fails the call with `wallet.custody_down`. `wallet/create`
  * makes a wallet with the owner key (see {@link makeWallet}), one call at a time, so a second
  * launch wallet of an agent is refused before custody makes it; and `wallet/exportSealed` exports one's key sealed to the

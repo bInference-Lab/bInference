@@ -25,6 +25,11 @@ export interface HostedVenue {
   readonly launchNames: ReadonlyMap<ChainRef, ReadonlySet<string>>;
   /** The JSON ABI entry of each call the venue declares on a launch's own contracts, any chain. */
   readonly launchCalls: readonly JsonValue[];
+  /**
+   * The JSON ABI entry of each call a launch wallet makes on the venue: every call a launchpad
+   * that launches tokens declares, its create call among them, else its launch calls alone.
+   */
+  readonly launchWalletCalls: readonly JsonValue[];
 }
 
 function refuse(id: string, problem: string): BinferenceError {
@@ -84,12 +89,18 @@ function host(venue: Venue, chains: ChainRegistry): HostedVenue {
       .filter((call) => declared.launchContracts?.includes(call.contract) === true)
       .map((call) => call.abi),
   );
+  const declaredCalls = declaration.data.contracts.flatMap((declared) =>
+    (declared.calls ?? []).map((call) => call.abi),
+  );
+  const launches = "launcher" in venue && venue.launcher !== undefined;
+  const launchWalletCalls = launches ? declaredCalls : launchCalls;
   return {
     venue,
     contracts: new Map(contracts),
     noDeadline: new Set(noDeadline),
     launchNames: new Map(launchNames),
     launchCalls,
+    launchWalletCalls,
   };
 }
 
@@ -122,6 +133,18 @@ export function launchCallsOf(
 ): readonly JsonValue[] {
   const hosted = venue === undefined ? [...venues.values()] : [venues.get(venue)];
   return hosted.flatMap((item) => item?.launchCalls ?? []);
+}
+
+/**
+ * The JSON ABI entry of each call a launch wallet makes on each venue named (decision 0271): every
+ * call of a launchpad that launches tokens, else each venue's launch calls. A venue not hosted
+ * gives none.
+ */
+export function launchWalletCallsOf(
+  venues: ReadonlyMap<string, HostedVenue>,
+  named: readonly string[],
+): readonly JsonValue[] {
+  return named.flatMap((venue) => venues.get(venue)?.launchWalletCalls ?? []);
 }
 
 /** A launchpad that reads its launches on one chain, with its contracts there. */

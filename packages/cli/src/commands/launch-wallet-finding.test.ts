@@ -1,7 +1,7 @@
 import { accountRefSchema } from "@binference/chain";
 import type { WalletView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { extraLaunchOf } from "./launch-wallet-finding.js";
+import { extraLaunchOf, launchCallsOf } from "./launch-wallet-finding.js";
 
 // A launch wallet as `wallet/list` shows it, an extra one when `extra`.
 function launchWallet(n: number, changes: Partial<WalletView> = {}): WalletView {
@@ -35,5 +35,27 @@ describe("the check of extra launch wallets", () => {
   it("is fine without extra launch wallets, and skipped without an engine to ask", () => {
     expect(extraLaunchOf([launchWallet(1)]).level).toBe("ok");
     expect(extraLaunchOf(undefined).level).toBe("skip");
+  });
+});
+
+describe("the check of launch wallet ceilings", () => {
+  it("warns with each launch wallet whose ceiling lacks calls, and the calls it lacks", () => {
+    const older = launchWallet(1, { missingCalls: ["newTokenV6"] });
+    const finding = launchCallsOf([older, launchWallet(2)]);
+
+    expect(finding).toMatchObject({
+      check: "wallets.launch_calls",
+      level: "warn",
+      message: {
+        key: "check.launchCalls",
+        values: { count: 1, wallets: `${older.wallet} (${older.address}): newTokenV6` },
+      },
+      details: { wallets: [older.wallet], calls: [["newTokenV6"]] },
+    });
+  });
+
+  it("is fine when every ceiling holds its calls, and skipped without an engine to ask", () => {
+    expect(launchCallsOf([launchWallet(1)]).level).toBe("ok");
+    expect(launchCallsOf(undefined).level).toBe("skip");
   });
 });

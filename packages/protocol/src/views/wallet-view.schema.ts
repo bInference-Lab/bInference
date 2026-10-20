@@ -25,6 +25,13 @@ export interface WalletView {
    * `wallet/list` sets it.
    */
   readonly extra?: boolean;
+  /**
+   * The functions an agent's launch wallet needs that its ceiling, as last read back, does not
+   * allow: calls a launchpad the agent uses declares, such as a create call added after the wallet
+   * was made (decision 0271). The owner key writes the ceiling again with `ceiling/set`. Only
+   * `wallet/list` sets it.
+   */
+  readonly missingCalls?: readonly string[];
 }
 
 /** Parses a wallet view. */
@@ -37,4 +44,5 @@ export const walletViewSchema: z.ZodType<WalletView> = z.object({
   archivedAt: epochMsSchema.exactOptional(),
   role: z.literal("launch").exactOptional(),
   extra: z.boolean().exactOptional(),
+  missingCalls: z.array(z.string().min(1)).exactOptional(),
 });

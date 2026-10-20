@@ -13,6 +13,7 @@ import {
   createFakeChainDefinition,
   createFakeFamily,
   createFakeSigningScheme,
+  createFakeLauncher,
   createFakeVenue,
   type FakeCall,
   fakeApprovalData,
@@ -164,6 +165,21 @@ describe("venue host", () => {
       untimed.hasNoDeadline("other-swap", served),
       hostOf().hasNoDeadline("fake-swap", served),
     ]).toStrictEqual([true, false, false, false]);
+  });
+
+  it("names the calls a launch wallet makes: every call of a venue that launches tokens", () => {
+    const createAbi = { type: "function", name: "create", inputs: [] };
+    const base = createFakeVenue();
+    const calls = [{ contract: "router", abi: createAbi, walletInputs: [] }];
+    const declared: Venue = {
+      ...base,
+      contracts: base.contracts.map((item) => Object.assign({}, item, { calls })),
+    };
+    const launching = { ...declared, launcher: createFakeLauncher() } as Venue;
+    expect(hostOf(launching).launchWalletCalls(["fake-swap", "other-swap"])).toStrictEqual([
+      createAbi,
+    ]);
+    expect(hostOf(declared).launchWalletCalls(["fake-swap"])).toStrictEqual([]);
   });
 
   it("quotes a trade without building it, then builds that quote with its own time", async () => {
