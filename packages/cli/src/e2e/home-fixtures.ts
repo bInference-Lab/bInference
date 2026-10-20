@@ -70,6 +70,6 @@ export async function startService(home: Home): Promise<void> {
 }
 
 /** The `--set` that keeps the engine on the home's port when a command starts it again. */
-function portSet(home: Home): readonly string[] {
+export function portSet(home: Home): readonly string[] {
   return ["--set", `engine.port=${String(home.port)}`];
 }

@@ -385,7 +385,7 @@ new name here first, in the change that uses it.
   `deny`, `wallet list`, `wallet address`, `wallet create`, `wallet create --launch`, `wallet export`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
-  `limit cancel`, `telegram pair`, `unlock`, `expose`, `uninstall`, `uninstall --state`.
+  `limit cancel`, `telegram pair`, `unlock`, `expose`, `uninstall`, `uninstall --state`, `reset`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
@@ -501,6 +501,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | log (the engine's log file)                 | 日志                   |                              |
 | support bundle                              | 诊断包                 | `binference report`          |
 | uninstall                                   | 卸载                   | `binference uninstall`       |
+| reset (the local state)                     | 重置                   | `binference reset`           |
 | background service                          | 后台服务               | `binference start`           |
 | telemetry, usage counts                     | 使用统计, 使用次数统计 | `telemetry.enabled`, opt-in  |
 | API address, base URL (of a model provider) | 接口地址               | Where its API answers        |

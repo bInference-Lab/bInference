@@ -150,6 +150,11 @@ function addInstallCommands(program: Command, options: ProgramOptions): void {
     .action((flags: OptionValues) =>
       choose({ name: "check", options: checkFlagsSchema.parse(flags) }),
     );
+  withCommon(program.command("reset").description(message("command.reset")), message)
+    .option("--set <key=value>", message("option.set"), addSet, [])
+    .action((flags: OptionValues) =>
+      choose({ name: "reset", options: startFlagsSchema.parse(flags) }),
+    );
   withCommon(program.command("uninstall").description(message("command.uninstall")), message)
     .option("--state", message("option.state"))
     .action((flags: OptionValues) =>

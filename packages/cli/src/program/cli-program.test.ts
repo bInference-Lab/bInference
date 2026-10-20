@@ -85,6 +85,7 @@ describe("the binference command tree", () => {
       "setup",
       "session",
       "check",
+      "reset",
       "uninstall",
     ]);
     for (const command of commands) {

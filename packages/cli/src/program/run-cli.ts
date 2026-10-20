@@ -23,6 +23,7 @@ import { runModeSwitch } from "../commands/mode-command.js";
 import { runOwnerKeyCreate } from "../commands/owner-key-create-command.js";
 import { runReport } from "../commands/report-command.js";
 import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
+import { runReset } from "../commands/reset-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
 import { runServiceRemove } from "../commands/service-remove-command.js";
 import { runSignerRevoke } from "../commands/signer-revoke-command.js";
@@ -139,6 +140,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   limitSet: runLimitSet,
   limitCancel: runLimitCancel,
   check: runCheck,
+  reset: runReset,
   uninstall: runUninstall,
   configGet: runConfigGet,
   configSet: runConfigSet,

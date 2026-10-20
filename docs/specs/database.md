@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0095](../DECISIONS.md#d0095)), amended by decisions
 [0127](../DECISIONS.md#d0127), [0133](../DECISIONS.md#d0133), [0185](../DECISIONS.md#d0185),
-[0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189), [0220](../DECISIONS.md#d0220), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0249](../DECISIONS.md#d0249), [0250](../DECISIONS.md#d0250), [0251](../DECISIONS.md#d0251) and [0255](../DECISIONS.md#d0255); the agent runtime's additions
+[0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189), [0220](../DECISIONS.md#d0220), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0249](../DECISIONS.md#d0249), [0250](../DECISIONS.md#d0250), [0251](../DECISIONS.md#d0251), [0255](../DECISIONS.md#d0255) and [0265](../DECISIONS.md#d0265); the agent runtime's additions
 follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on 2026-10-12: `launches`,
 `tracked_wallets` and its cap, `wallet_activity` and `watch_cursors` (section 2.6); `questions`
 and `question_messages` (section 2.7); `orders.end_reason` and `alerts.wake`, `fires` and
@@ -330,6 +330,10 @@ A daily job (inside the engine's schedule queue) prunes:
 | `model_usage`, `budget_notices`                                                                                                                | 400 days                                                           |
 | `prices`, `risk_cache`, `watch_cursors`                                                                                                        | replaced in place                                                  |
 | `jobs` ended                                                                                                                                   | 30 days                                                            |
+
+`binference reset` clears every table of the agent database but `meta`, and in the engine
+database `agent_inbox`, `questions`, `question_messages` and `risk_cache`, after a backup and with
+the engine stopped ([decision 0265](../DECISIONS.md#d0265)).
 
 <a id="section-5"></a>
 

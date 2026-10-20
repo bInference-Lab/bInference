@@ -184,5 +184,10 @@ Rules for this package:
   package it runs from. It removes a folder only when it holds `config.json5` or `engine.sqlite`
   and not the home folder. Its tests pass a keychain and a program runner of their own: the test
   host's runner refuses, so no test runs npm.
+- `binference reset` (`src/reset/`, decision 0265) stops the engine as `backup restore` does
+  (`src/commands/engine-runs.ts`), and under the engine lock refuses while a live intent is
+  `executing`, takes a `manual` backup, then clears chats, notes, the agent inbox, questions and
+  the risk cache through the store's reset tasks and journals `state.reset`. It starts the engine
+  again as it ran.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.
