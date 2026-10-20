@@ -30,7 +30,7 @@ const portal = flapLaunchLogs.map(({ emitter }) => emitter).find(Boolean) ?? rec
 const erc20 = (address: string) => assetRefSchema.parse(`${bscChain}/erc20:${address}`);
 
 describe("the launch reading of flap", () => {
-  it("reads a launch's token, creator, words, quote token, tax, first buyers and curve from the Portal's logs", () => {
+  it("reads a launch's token, creator, words, quote token, tax, no snipe tax, first buyers and curve from the Portal's logs", () => {
     expect(read(flapLaunchLogs)).toStrictEqual({
       launches: [
         {
@@ -41,6 +41,7 @@ describe("the launch reading of flap", () => {
           name: "More ways to create, more ways to earn.",
           decimals: 18,
           taxBps: 100,
+          snipeTaxBps: 0,
           curveProgressBps: 0,
           graduated: false,
           insiders: [recordedLaunch.creator],

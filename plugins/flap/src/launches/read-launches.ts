@@ -19,6 +19,9 @@ import type { VenueParts } from "../venue-parts.js";
 
 // Every Flap token has 18 decimals.
 const tokenDecimals = 18;
+// A Flap launch has no snipe tax (decision 0254). It is known to be none, not unread, so a
+// launch filter's bound on it passes a Flap launch.
+const noSnipeTax = bpsSchema.parse(0);
 // The Portal's progress of a full curve.
 const fullProgress = 10n ** 18n;
 const fullBps = 10_000n;
@@ -77,6 +80,7 @@ function launchOf(setup: CurveChainSetup, events: readonly PortalEvent[], create
     name,
     decimals: tokenDecimals,
     ...(taxBps === undefined ? {} : { taxBps }),
+    snipeTaxBps: noSnipeTax,
     curveProgressBps: curveProgressBps ?? bpsSchema.parse(0),
     graduated: graduated === true,
     insiders: [...buyers].map((buyer) => accountOn(chain, buyer)),
@@ -109,8 +113,8 @@ function changesOf(
  * The launches and curve changes one transaction's logs tell (decision 0254), from the Portal's
  * events alone: each `TokenCreated` the registry's Portal wrote is a launch, with the quote token
  * its `TokenQuoteSet` names (the chain's coin when none does), the tax its `FlapTokenTaxSet` names
- * (none when none does), the wallets that bought it in the same transaction as insiders, and its
- * curve's last progress and graduation there. A token's progress or graduation in a transaction
+ * (none when none does), no snipe tax, the wallets that bought it in the same transaction as
+ * insiders, and its curve's last progress and graduation there. A token's progress or graduation in a transaction
  * that did not create it is a change. A log of any other contract, or outside its shape, is passed
  * over; a chain the venue does not trade on has none.
  */
