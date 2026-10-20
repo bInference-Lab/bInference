@@ -54,6 +54,24 @@ function recipientOf(options: Readonly<Record<string, LaunchOptionValue>>): Addr
 const isRate = (bps: number): boolean => bps === 0 || (bps >= leastTaxBps && bps <= mostTaxBps);
 
 /**
+ * Whether the Portal takes these settings, as the launcher writes them: each tax rate 0 or from 1%
+ * to 10%, some tax on one side, a burned share of at most the whole tax, and a tax of 1 to 36,500
+ * days.
+ */
+export function isTakenSettings(settings: FlapLaunchSettings): boolean {
+  const { buyTaxBps, sellTaxBps, burnShareBps, taxDays } = settings;
+  return (
+    isRate(buyTaxBps) &&
+    isRate(sellTaxBps) &&
+    buyTaxBps + sellTaxBps > 0 &&
+    burnShareBps >= 0 &&
+    burnShareBps <= 10_000 &&
+    taxDays >= 1 &&
+    taxDays <= mostTaxDays
+  );
+}
+
+/**
  * A launch's settings, read from the values the host checked against {@link flapLaunchOptions}.
  * A tax rate the Portal refuses, or no tax on either side, throws `flap.bad_settings` before
  * anything is read or built.
@@ -68,8 +86,7 @@ export function flapSettingsOf(
     burnShareBps: numberOf(options, "burnShareBps"),
     taxDays: numberOf(options, "taxDays"),
   };
-  const { buyTaxBps, sellTaxBps } = settings;
-  if (!isRate(buyTaxBps) || !isRate(sellTaxBps) || buyTaxBps + sellTaxBps === 0) {
+  if (!isTakenSettings(settings)) {
     throw refuse("Flap takes a tax of 0 or from 1% to 10% on each side, and some tax on one side.");
   }
   return settings;

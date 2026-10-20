@@ -1,8 +1,9 @@
 import { accountRefSchema, assetRefSchema, type LaunchTerms } from "@binference/plugin-sdk";
 import { decodeEvmDraft, encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { draftAt, successOf } from "@binference/plugin-sdk/testing";
-import { parseEther } from "viem";
+import { getAddress, parseEther } from "viem";
 import { describe, expect, it } from "vitest";
+import { newTokenArgsOf, newTokenCallData } from "../portal/launch-call.js";
 import { recordedCid } from "../testing/flap-api-fake.js";
 import { launchPartsOver, testLaunch, testOwner } from "../testing/launch-fixtures.js";
 import { bnb, bscChain, recordedWallet, usdt } from "../testing/portal-fixtures.js";
@@ -66,5 +67,28 @@ describe("a Flap create call's decoding", () => {
     const swap = encodeEvmDraft({ from: recordedWallet, to, value: 0n, data: "0x12345678" });
     expect(decodeLaunch(short, parts)).toStrictEqual({ ok: false, error: "unknown_call" });
     expect(decodeLaunch(swap, parts)).toStrictEqual({ ok: false, error: "unknown_call" });
+  });
+
+  it.each([
+    ["a salt whose token does not end in 7777", { salt: `0x${"22".repeat(32)}` as const }],
+    ["a pair Flap does not launch against", { quoteToken: getAddress(`0x${"ee".repeat(20)}`) }],
+  ])("refuses a call with %s", (_name, change) => {
+    const { parts, built } = stepsOf(testLaunch);
+    const create = successOf(decodeEvmDraft(draftAt(built.steps, 0)));
+    const args = newTokenArgsOf(create.data);
+    const changed = { ...args, ...change } as NonNullable<typeof args>;
+    const to = accountRefSchema.parse(`${bscChain}:${create.to}`);
+    const data = newTokenCallData(changed);
+    const draft = encodeEvmDraft({ from: recordedWallet, to, value: create.value, data });
+    expect(decodeLaunch(draft, parts)).toStrictEqual({ ok: false, error: "unknown_call" });
+  });
+
+  it("refuses a call with bytes after its arguments", () => {
+    const { parts, built } = stepsOf(testLaunch);
+    const create = successOf(decodeEvmDraft(draftAt(built.steps, 0)));
+    const to = accountRefSchema.parse(`${bscChain}:${create.to}`);
+    const data = `${create.data}00` as const;
+    const draft = encodeEvmDraft({ from: recordedWallet, to, value: create.value, data });
+    expect(decodeLaunch(draft, parts)).toStrictEqual({ ok: false, error: "unknown_call" });
   });
 });

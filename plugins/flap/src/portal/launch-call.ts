@@ -59,10 +59,13 @@ export function newTokenCallData(args: NewTokenArgs): Hex {
   return encodeFunctionData({ abi: launchAbi, functionName: "newTokenV6", args: [args] });
 }
 
-/** The arguments of a `newTokenV6` call; undefined for any other calldata. */
+/**
+ * The arguments of a `newTokenV6` call; undefined for any other calldata, and for calldata that is
+ * not exactly their encoding, such as one with bytes after them.
+ */
 export function newTokenArgsOf(data: Hex): NewTokenArgs | undefined {
   const decoded = decodeCall(launchAbi, data);
-  return decoded.ok && decoded.value.functionName === "newTokenV6"
-    ? decoded.value.args[0]
-    : undefined;
+  const args =
+    decoded.ok && decoded.value.functionName === "newTokenV6" ? decoded.value.args[0] : undefined;
+  return args !== undefined && newTokenCallData(args) === data.toLowerCase() ? args : undefined;
 }

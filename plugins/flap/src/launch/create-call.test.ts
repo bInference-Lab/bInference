@@ -46,6 +46,17 @@ describe("a Flap create call", () => {
     ["a dividend share", { mktBps: 5_000, dividendBps: 2_500 }],
     ["a tax that ends part way through a day", { taxDuration: 31_536_001n }],
     ["a standard token", { tokenVersion: 2 }],
+    ["an extension", { extensionID: `0x${"01".repeat(32)}` as const }],
+    ["permit data", { permitData: "0x01" as const }],
+    ["an anti-farmer wait", { antiFarmerDuration: 1n }],
+    ["another migration threshold", { dexThresh: 0 }],
+    ["another migrator", { migratorType: 0 }],
+    ["another DEX", { dexId: 1 }],
+    ["another pool fee tier", { lpFeeTier: 1 }],
+    ["a tax below 1%", { buyTaxRate: 50 }],
+    ["a tax above 10%", { sellTaxRate: 1_001 }],
+    ["no tax on either side", { buyTaxRate: 0, sellTaxRate: 0 }],
+    ["a tax of no days", { taxDuration: 0n }],
   ])("is none the venue builds with %s", (_name, change) => {
     expect(createOfArgs({ ...newTokenArgsFor(terms, settings), ...change })).toBeUndefined();
   });

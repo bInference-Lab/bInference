@@ -33,8 +33,9 @@ apply here. Rules for this plugin:
   `src/upload/`: the upload and the pin status. Nothing reads an IPFS gateway, ever: a read of a
   fresh CID through Flap's gateway before Flap holds it breaks the token's picture for good. The
   API fake in `src/testing/` throws on any other URL.
-- A create call is Flap's only when the venue would write the same bytes for what it reads, so the
-  decoder refuses every value the launcher does not write. The salt is found off line from the
+- A create call is Flap's only when the venue would write the same bytes for what it reads and its
+  settings are ones `flapSettingsOf` takes, so the decoder refuses every fixed value and every
+  setting the launcher does not write. The salt is found off line from the
   `Random` port; a token's address comes from the Portal, the salt and the registry's Tax Token V3
   implementation.
 - Unit tests use the Portal's answers recorded in `src/testing/`, never the network. The fork tests

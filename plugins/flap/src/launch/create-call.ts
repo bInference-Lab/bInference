@@ -1,5 +1,6 @@
 import { type Address, type Hex, pad, zeroAddress } from "viem";
 import { type NewTokenArgs, newTokenCallData } from "../portal/launch-call.js";
+import { isTakenSettings } from "./launch-settings.js";
 
 // What every Flap launch of this venue writes beyond its settings (decision 0271): a Tax Token V3
 // (`tokenVersion` 6), which must migrate to a V2-style pool, at Flap's default threshold of 80% of
@@ -91,7 +92,8 @@ export function createOfArgs(
     burnShareBps: deflationBps,
     taxDays: Number(taxDuration / secondsPerDay),
   };
-  // A call is ours when the venue would write the same bytes for what it reads.
+  // A call is ours when the venue would write the same bytes for what it reads, with settings the
+  // launcher would take.
   const isOurs = newTokenCallData(newTokenArgsFor(terms, settings)) === newTokenCallData(args);
-  return isOurs ? { terms, settings } : undefined;
+  return isOurs && isTakenSettings(settings) ? { terms, settings } : undefined;
 }
