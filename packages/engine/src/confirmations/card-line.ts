@@ -37,6 +37,7 @@ export const cardKeys = [
   "card.launch.photo",
   "card.launch.upload",
   "card.launch.pinned",
+  "card.launch.startPublishes",
   "card.rescue.action",
   "card.unfreeze.agent",
   "card.unfreeze.all",

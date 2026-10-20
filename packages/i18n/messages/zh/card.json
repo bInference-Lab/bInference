@@ -29,6 +29,7 @@
   "launch.photo": "图片：你在对话中发送的图片，{format, select, png {PNG} jpeg {JPEG} other {WebP}}，{kib} KB，SHA-256 {digest}",
   "launch.upload": "图片：上传 {upload}",
   "launch.pinned": "⚠️ 图片和文字已在 {venue} 的存储中公开，即使取消也会保持公开",
+  "launch.startPublishes": "⚠️ 点按“开始发射”会立即在 {venue} 的存储中公开图片和文字，即使之后取消确认卡片也会保持公开",
   "rescue.action": "将全部资产转到你的紧急转出地址 {address}：{wallets, plural, other {# 个钱包}}中的 {count, plural, other {# 种代币}}，约 {usd}",
   "unfreeze.agent": "对 {agent} 解除冻结：它可以在交易限额内再次交易",
   "unfreeze.all": "对全部 Agent 解除冻结：目前有 {count, plural, other {# 个}}已冻结，新建的 Agent 也不再冻结",

@@ -34,7 +34,7 @@ const refusals: Readonly<Record<string, string>> = {
 
 /** What the model reads once the draft went out (runtime spec, section 6.5). */
 export const draftedText =
-  "drafted; the owner sees every line in Telegram and starts it with Start launch, within 10 minutes. Nothing is public until then, and the launch card asks again before anything is signed.";
+  "drafted; the owner sees every line in Telegram and starts it with Start launch, within 10 minutes. Nothing is public until then; on a launchpad that uploads, Start makes the words and picture public at once. The launch card asks again before anything is signed.";
 
 /**
  * `launch_draft`, a control tool (runtime spec, section 6.5): drafts a token launch through

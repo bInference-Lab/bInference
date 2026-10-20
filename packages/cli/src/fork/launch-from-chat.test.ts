@@ -178,6 +178,7 @@ describe("a token launch started from a Telegram chat on a BSC fork", () => {
             ),
             "Tax on every buy: 3.00%",
             "Tax on every sell: 5.00%",
+            `${warning} Start launch makes the picture and words public on flap's storage at once, and they stay public if you cancel the card`,
           ]),
         );
         // The owner saw the photo Start publishes right above the draft, which replies to it.

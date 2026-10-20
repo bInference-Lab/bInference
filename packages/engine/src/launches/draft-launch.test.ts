@@ -35,6 +35,7 @@ describe("launch/draft", () => {
       "Picture: your photo from the chat, PNG, 1 KB, SHA-256 a96735a8ad139cd1",
       "Tax on every trade: 3.00%",
       "Buyback and burn: off",
+      "⚠️ Start launch makes the picture and words public on fake-curve's storage at once, and they stay public if you cancel the card",
     ]);
     const listed = expectOk(
       await test.engine.handlers["intent/list"](testCall({ agent: testAgent }, testCallers.cli)),

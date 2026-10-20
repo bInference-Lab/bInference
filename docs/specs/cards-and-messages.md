@@ -999,16 +999,17 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 
 ### 8.5 The agent's launch drafts
 
-The agent never starts a token launch; it drafts one with `launch_draft`, and the owner starts it
-in Telegram ([decisions 0285](../DECISIONS.md#d0285) and [0286](../DECISIONS.md#d0286)). The bot
-sends the draft to the owner's private chat as one message: the header, every line the launch's
-card shows from the draft (`card.launch.action`, the description, each link, the picture with
-`card.launch.photo`, `card.launch.writtenPicture` or the picture link, and every launchpad setting
-with its default filled in), the outside content warning when the drafting turn read any, any
-note, and the footer. A draft longer than 4,096 characters splits into messages at line breaks, a
-line longer than a message cut inside, and the buttons go on the last message. Every value of the draft is outside text, cut and made visible as a card's is. Its two
-buttons are Start launch and Drop (section 2). After Start, the launch runs as any launch: its card
-follows, with the fee, the new token and the least the first buy gets, and with
+The agent never starts a token launch; it drafts one with `launch_draft`, and the owner starts it in
+Telegram ([decisions 0285](../DECISIONS.md#d0285) and [0286](../DECISIONS.md#d0286)). The bot sends
+the draft to the owner's private chat: the header, every line the launch's card shows from the draft
+(`card.launch.action`, the description, each link, the picture with `card.launch.photo`,
+`card.launch.writtenPicture` or the picture link, and every launchpad setting with its default
+filled in), on a launchpad that uploads `card.launch.startPublishes`, the outside content warning
+when the drafting turn read any, any note, and the footer. A draft longer than 4,096 characters
+splits into messages at line breaks, a line longer than a message cut inside, and the buttons go on
+the last message. Every value of the draft is outside text, cut and made visible as a card's is. Its
+two buttons are Start launch and Drop (section 2). After Start, the launch runs as any launch: its
+card follows, with the fee, the new token and the least the first buy gets, and with
 `card.warn.outsideContent` when the drafting turn read outside content.
 
 A press of Start is answered at once, and the draft's message loses its buttons and says the
@@ -1027,6 +1028,7 @@ under 200 characters.
 | Dropped                | `telegram.draft.dropped`        | ❌ Launch draft dropped. Nothing was uploaded.                                                                                                                                                                   | ❌ 已放弃发射草稿，没有上传任何内容。                                                                                                     |
 | Ended after 10 minutes | `telegram.draft.expired`        | ❌ This launch draft ended after 10 minutes. Nothing was uploaded. Ask your agent to draft it again.                                                                                                             | ❌ 此发射草稿已在 10 分钟后失效，没有上传任何内容。如需发射，请让 Agent 重新起草。                                                        |
 | Replaced               | `telegram.draft.replaced`       | ❌ A newer launch draft replaced this one. Nothing was uploaded.                                                                                                                                                 | ❌ 较新的发射草稿已取代此草稿，没有上传任何内容。                                                                                         |
+| Start publishes        | `card.launch.startPublishes`    | ⚠️ Start launch makes the picture and words public on {venue}'s storage at once, and they stay public if you cancel the card                                                                                     | ⚠️ 点按“开始发射”会立即在 {venue} 的存储中公开图片和文字，即使之后取消确认卡片也会保持公开                                                |
 | Picture not shown      | `telegram.draft.noPhoto`        | ⚠️ binference could not show the picture here, so this draft cannot start. Ask your agent to draft it again.                                                                                                     | ⚠️ binference 无法在此显示图片，因此该草稿无法开始。请让 Agent 重新起草。                                                                 |
 | Ended before its card  | `telegram.draft.ended`          | ❌ The launch ended before its card: {reason}. Nothing was signed.                                                                                                                                               | ❌ 发射在确认卡片之前已结束：{reason}。没有签名任何交易。                                                                                 |
 | Refused                | `telegram.draft.failed`         | ❌ The launch did not start: {reason}                                                                                                                                                                            | ❌ 发射未开始：{reason}                                                                                                                   |

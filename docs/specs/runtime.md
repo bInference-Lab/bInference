@@ -440,15 +440,16 @@ check, every `ask_owner` call gets "not run: the card already asks the owner"
 
 ### 6.5 Drafting a launch
 
-The agent never launches a token: only the owner starts one
-([decisions 0236](../DECISIONS.md#d0236) and [0285](../DECISIONS.md#d0285)). `launch_draft` is a
-control tool. It sends the launch's terms with `launch/draft` (spec 1, section 7.7) and returns
-"drafted; the owner sees every line in Telegram and starts it with Start launch, within 10
-minutes". Its picture is `photo`, the nth photo the owner sent the bot with the messages the turn
-took, in order (`tg:` names only, [decision 0286](../DECISIONS.md#d0286)); a `photo` the turn does
-not hold is refused before the engine. A launchpad that takes a picture link takes no `photo`, and
-the link as its `link` setting. The tool never commits the turn, and the turn goes on. `launchpads`
-reads `launchpad/list`: where each launchpad takes a picture, and its settings.
+The agent never launches a token: only the owner starts one ([decisions 0236](../DECISIONS.md#d0236)
+and [0285](../DECISIONS.md#d0285)). `launch_draft` is a control tool. It sends the launch's terms
+with `launch/draft` (spec 1, section 7.7) and returns "drafted; the owner sees every line in
+Telegram and starts it with Start launch, within 10 minutes", and that on a launchpad that uploads,
+Start makes the words and picture public at once. Its picture is `photo`, the nth photo the owner
+sent the bot with the messages the turn took, in order (`tg:` names only, [decision
+0286](../DECISIONS.md#d0286)); a `photo` the turn does not hold is refused before the engine. A
+launchpad that takes a picture link takes no `photo`, and the link as its `link` setting. The tool
+never commits the turn, and the turn goes on. `launchpads` reads `launchpad/list`: where each
+launchpad takes a picture, and its settings.
 
 <a id="section-7"></a>
 

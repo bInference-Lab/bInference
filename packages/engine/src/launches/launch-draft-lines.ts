@@ -35,7 +35,8 @@ function photoOf(
 /**
  * The lines of a launch draft (decision 0285): the action line the card will show, then the
  * description, each link, the owner's photo and every launchpad setting with its default filled
- * in, and the outside content warning when the drafting turn read any. Each value from the draft
+ * in, on a launchpad that uploads the warning that Start publishes the words and picture at once,
+ * and the outside content warning when the drafting turn read any. Each value from the draft
  * is a text the card shows as outside text. The fee, the new token and the first buy's least
  * output come with the card.
  */
@@ -58,6 +59,11 @@ export function drawLaunchDraft(
   const warned: readonly CardLine[] = draft.hasOutsideContent
     ? [{ key: "card.warn.outsideContent", values: {} }]
     : [];
-  const lines = [action, ...launchDetailLines(details), ...warned];
+  // On a launchpad that uploads, Start itself publishes the words and picture, before the card.
+  const published: readonly CardLine[] =
+    options.place === "upload"
+      ? [{ key: "card.launch.startPublishes", values: { venue: { type: "text", text: venue } } }]
+      : [];
+  const lines = [action, ...launchDetailLines(details), ...published, ...warned];
   return { lines, assets: assetInfosOf(options.chains, [pairWith]) };
 }

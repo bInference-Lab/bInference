@@ -29,6 +29,7 @@
   "launch.photo": "Picture: your photo from the chat, {format, select, png {PNG} jpeg {JPEG} other {WebP}}, {kib} KB, SHA-256 {digest}",
   "launch.upload": "Picture: upload {upload}",
   "launch.pinned": "⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel",
+  "launch.startPublishes": "⚠️ Start launch makes the picture and words public on {venue}'s storage at once, and they stay public if you cancel the card",
   "rescue.action": "Move everything to your rescue address {address}: {count, plural, one {# token} other {# tokens}} from {wallets, plural, one {# wallet} other {# wallets}}, about {usd}",
   "unfreeze.agent": "Unfreeze {agent}: it trades again within its limits",
   "unfreeze.all": "Unfreeze every agent: {count, plural, one {# is frozen now} other {# are frozen now}}, and new agents start unfrozen",
