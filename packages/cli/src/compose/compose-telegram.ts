@@ -7,9 +7,11 @@ import {
   type CardCopyStore,
   createCardPresses,
   createCardShowings,
+  createLaunchDraftPresses,
   createOwnerCalls,
   createQuestionPresses,
   type EngineHandlerTable,
+  type LaunchDraftDesk,
   type OwnerStore,
 } from "@binference/engine/surfaces";
 import type { OwnerInfo } from "@binference/protocol";
@@ -22,6 +24,7 @@ import {
   createNoticeOutbox,
   createTelegramCards,
   createTelegramIngress,
+  createTelegramLaunchDrafts,
   createTelegramQuestions,
   type FastCommands,
   type NoticeTopics,
@@ -29,6 +32,7 @@ import {
   type OwnerUpdateSink,
   type QuestionAnswers,
   type TelegramCards,
+  type TelegramLaunchDrafts,
   type TelegramIngress,
   type TelegramQuestions,
 } from "@binference/telegram";
@@ -67,6 +71,8 @@ export interface TelegramParts {
 export interface TelegramWiring {
   readonly stores: EngineStores;
   readonly answer: AnswerCard;
+  /** The agent's open launch drafts, which the owner starts or drops here (decision 0285). */
+  readonly drafts: LaunchDraftDesk;
   /** The engine's handlers and the composition root's, such as `engine/status`. */
   readonly handlers: EngineHandlerTable;
   readonly chains: ChainRegistry;
@@ -95,6 +101,8 @@ export interface ComposedTelegram extends TelegramRelay {
   readonly questions: TelegramQuestions;
   /** The engine's side of each press of a question's button: the owner's only, stored first. */
   readonly questionAnswers: QuestionAnswers;
+  /** The agent's launch drafts with Start launch and Drop, whose presses the engine answers. */
+  readonly drafts: TelegramLaunchDrafts;
   /** The engine's side of the fast commands: each operation runs for the owner alone. */
   readonly calls: OwnerCalls;
   /** The owner's fast commands; whoever starts the bot registers their menu. */
@@ -132,10 +140,11 @@ function relayOf(
   chat: Pick<TelegramRelayContext, "showings" | "cards"> & {
     readonly display: OwnerDisplay;
     readonly questions: TelegramQuestions;
+    readonly drafts: TelegramLaunchDrafts;
   },
 ): TelegramRelay {
   const { clock, logger, chains } = wiring;
-  const { showings, cards, display, questions } = chat;
+  const { showings, cards, display, questions, drafts } = chat;
   const { notices, agents } = wiring.stores;
   const outbox = createNoticeOutbox({ ...parts, notices, agents, chains, display, clock, logger });
   const agentNames = agentNamesOf(wiring, { active: true });
@@ -145,6 +154,7 @@ function relayOf(
     show: async (...args: Parameters<typeof replies.show>) => {
       await replies.show(...args);
       await questions.show(...args);
+      await drafts.show(...args);
     },
   };
   const { stored } = wiring;
@@ -168,11 +178,12 @@ function displayOf(wiring: TelegramWiring): OwnerDisplay {
   };
 }
 
-// A fast command and its buttons are answered here, a card's press goes to the cards, and any other
-// message goes to the agent.
+// A fast command and its buttons are answered here, a question's or a launch draft's press goes to
+// them, a card's press goes to the cards, and any other message goes to the agent.
 function ownerUpdateSink(to: {
   readonly commands: FastCommands;
   readonly questions: TelegramQuestions;
+  readonly drafts: TelegramLaunchDrafts;
   readonly cards: TelegramCards;
   readonly chat: ChatIntake;
 }): OwnerUpdateSink {
@@ -184,7 +195,9 @@ function ownerUpdateSink(to: {
       return;
     }
     const taken =
-      (await to.commands.press(update, call)) || (await to.questions.press(update, call));
+      (await to.commands.press(update, call)) ||
+      (await to.questions.press(update, call)) ||
+      (await to.drafts.press(update, call));
     if (!taken) {
       await to.cards.press(update, call);
     }
@@ -243,6 +256,20 @@ function questionsOf(
   return { questions, questionAnswers };
 }
 
+// The agent's launch drafts in the owner's chat, whose Start and Drop the engine answers for the
+// owner's numeric Telegram id alone (decision 0285).
+function draftsOf(parts: TelegramParts, wiring: TelegramWiring, display: OwnerDisplay) {
+  const answers = createLaunchDraftPresses({ desk: wiring.drafts, ownerId: answersOwner(parts) });
+  return createTelegramLaunchDrafts({
+    api: parts.api,
+    owners: parts.owners,
+    drafts: wiring.drafts,
+    answers,
+    logger: wiring.logger,
+    display,
+  });
+}
+
 /**
  * Joins the owner's bot to the engine: cards whose presses the engine answers (the owner's
  * numeric Telegram id only, stored before Telegram hears back), the ingress that hands the
@@ -265,7 +292,8 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
   const commands = commandsOf(parts, wiring, { calls, cards, showings, display });
   const { questions, questionAnswers } = questionsOf(parts, wiring, { calls, display });
-  const relay = relayOf(parts, wiring, { showings, cards, display, questions });
+  const drafts = draftsOf(parts, wiring, display);
+  const relay = relayOf(parts, wiring, { showings, cards, display, questions, drafts });
   const chat = createChatIntake({ ...parts, calls, clock: wiring.clock, logger, display });
   const ingress = createTelegramIngress({
     api: parts.api,
@@ -273,7 +301,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     clock: wiring.clock,
     logger,
     display,
-    onOwnerUpdate: ownerUpdateSink({ commands, questions, cards, chat }),
+    onOwnerUpdate: ownerUpdateSink({ commands, questions, drafts, cards, chat }),
     onOwnerPaired: () => relay.paired(),
     // The replaced owner's sessions end before the bot says a word to anyone.
     onOwnerReplaced: (replaced) => wiring.ownerReplaced(replaced.userId),
@@ -283,6 +311,7 @@ export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): C
     answers,
     questions,
     questionAnswers,
+    drafts,
     calls,
     commands,
     ingress,

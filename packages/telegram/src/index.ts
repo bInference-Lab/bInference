@@ -43,7 +43,12 @@ export { createPollerLeases } from "./polling/poller-leases.js";
 export type { PollerLease, PollerLeases } from "./polling/poller-leases.js";
 export { runPolling } from "./polling/run-polling.js";
 export type { RunPollingOptions } from "./polling/run-polling.js";
-export type { CardAnswers, OwnerCalls, QuestionAnswers } from "./ports.js";
+export type { CardAnswers, LaunchDraftAnswers, OwnerCalls, QuestionAnswers } from "./ports.js";
+export { createTelegramLaunchDrafts } from "./drafts/create-telegram-launch-drafts.js";
+export type {
+  TelegramLaunchDrafts,
+  TelegramLaunchDraftsOptions,
+} from "./drafts/create-telegram-launch-drafts.js";
 export { createTelegramQuestions } from "./questions/create-telegram-questions.js";
 export type {
   TelegramQuestions,

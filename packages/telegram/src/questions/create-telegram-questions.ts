@@ -1,11 +1,4 @@
-import {
-  BinferenceError,
-  type Clock,
-  type Id,
-  idSchema,
-  type JsonValue,
-  type Logger,
-} from "@binference/core";
+import { type Clock, type Id, idSchema, type JsonValue, type Logger } from "@binference/core";
 import { type QuestionStore, questionViewOf } from "@binference/engine/chat";
 import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
@@ -14,31 +7,20 @@ import type { Api } from "grammy";
 import { z } from "zod";
 import { callBotApi } from "../api/call-bot-api.js";
 import { unlessGone } from "../api/unless-gone.js";
+import { answerPress, sendButtonMessage, type TopicButtons } from "../chat/button-message.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
-import { type BotCalls, type ButtonRows, createBotCalls } from "../ingress/bot-calls.js";
+import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import type { QuestionAnswers } from "../ports.js";
 import type { ButtonPress } from "../updates/chat-update.schema.js";
 import { questionCallbackSchema } from "./question-callback.schema.js";
 import { questionButtons, questionHtml, type QuestionWords } from "./question-html.js";
 
-/** The agent's questions in the owner's chat: each with its answer buttons, and their presses. */
-export interface TelegramQuestions {
-  /**
-   * Shows a push of an agent's chat topic that concerns a question: `chat/question` sends it with
-   * its buttons, `chat/questionClosed` turns every copy into how it ended. Any other push does
-   * nothing.
-   */
-  show(
-    push: { readonly kind: string; readonly data: JsonValue },
-    options: { readonly signal: AbortSignal },
-  ): Promise<void>;
-  /**
-   * Takes a press of a question's button and resolves `true` once it is answered; `false` for data
-   * in any other form, which it leaves alone. A press the engine does not take for the owner's
-   * gets no answer at all.
-   */
-  press(press: ButtonPress, options: { readonly signal: AbortSignal }): Promise<boolean>;
-}
+/**
+ * The agent's questions in the owner's chat, each with its answer buttons, and their presses:
+ * `chat/question` sends a question with its buttons, `chat/questionClosed` turns every copy into
+ * how it ended.
+ */
+export type TelegramQuestions = TopicButtons;
 
 /** What {@link createTelegramQuestions} needs. */
 export interface TelegramQuestionsOptions {
@@ -75,19 +57,6 @@ async function nameOf(parts: Parts, agent: string, call: Call): Promise<string> 
   return (await parts.options.agentNames(call)).get(agent) ?? agent;
 }
 
-function markupOf(buttons: ButtonRows) {
-  return {
-    inline_keyboard: buttons.map((row) =>
-      row.map((button) => ({
-        text: button.text,
-        ...("data" in button
-          ? { callback_data: button.data }
-          : { web_app: { url: button.webApp } }),
-      })),
-    ),
-  };
-}
-
 // Sends an open question to the owner's chat with its buttons, and keeps the copy.
 async function asked(parts: Parts, question: QuestionView, call: Call): Promise<void> {
   const { options } = parts;
@@ -97,20 +66,17 @@ async function asked(parts: Parts, question: QuestionView, call: Call): Promise<
     return;
   }
   const html = questionHtml(question, parts.words(), await nameOf(parts, question.agent, call));
-  const markup = markupOf(questionButtons(question.choices, stored.ref));
-  const sent = await callBotApi("sendMessage", call.signal, async (signal) =>
-    options.api.sendMessage(
-      owner.userId,
-      html,
-      { parse_mode: "HTML", link_preview_options: { is_disabled: true }, reply_markup: markup },
-      signal,
-    ),
+  const buttons = questionButtons(question.choices, stored.ref);
+  const messageId = await sendButtonMessage(
+    options.api,
+    { chatId: owner.userId, html, buttons },
+    call.signal,
   );
   const copy = {
     questionId: stored.id,
     surface: "telegram",
     chatId: owner.userId,
-    messageId: sent.message_id,
+    messageId,
     sentAtMs: options.clock.now(),
   } as const;
   await options.questions.keepCopy(copy, call);
@@ -186,13 +152,8 @@ async function press(parts: Parts, pressed: ButtonPress, call: Call): Promise<bo
   if (standing.status === "unknown") {
     return true;
   }
-  try {
-    await parts.bot.answer(pressed.callbackId, noticeOf(parts, standing), call);
-  } catch (error) {
-    call.signal.throwIfAborted();
-    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
-    parts.options.logger.warn("telegram.press_answer_failed", { errorCode });
-  }
+  const answering = { callbackId: pressed.callbackId, notice: noticeOf(parts, standing) };
+  await answerPress(parts.bot, answering, { ...call, logger: parts.options.logger });
   return true;
 }
 

@@ -1,6 +1,13 @@
 export { cardAnswersContract } from "./contracts/card-answers-contract.js";
 export type { CardAnswersHarness, CardAnswersSubject } from "./contracts/card-answers-contract.js";
 export { questionAnswersContract } from "./contracts/question-answers-contract.js";
+export { launchDraftAnswersContract } from "./contracts/launch-draft-answers-contract.js";
+export type {
+  LaunchDraftAnswersHarness,
+  LaunchDraftAnswersSubject,
+} from "./contracts/launch-draft-answers-contract.js";
+export { createFakeLaunchDraftAnswers } from "./fakes/fake-launch-draft-answers.js";
+export type { FakeLaunchDraftAnswers } from "./fakes/fake-launch-draft-answers.js";
 export type {
   QuestionAnswersHarness,
   QuestionAnswersSubject,

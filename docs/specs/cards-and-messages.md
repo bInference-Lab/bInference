@@ -69,6 +69,12 @@ names the keys and fixes the wording.
   12-byte base64url reference (spec 3, `questions.ref`). A press answers the question; it confirms
   nothing. A press on a question that is no longer open answers `answerCallbackQuery` with
   `question.closedToast` and changes nothing.
+- A button of the agent's launch draft ([section 8.5](#section-8-5)) carries
+  `bnf1:s:<y|n>:<ref>`: `y` is Start launch, `n` is Drop; `ref` is the draft's random 12-byte
+  base64url reference, kept in engine memory with the draft. Start proposes the draft's launch as
+  the owner on Telegram, the one proposal the owner's chat makes; it confirms nothing, and the
+  launch card asks again ([decision 0285](../DECISIONS.md#d0285)). A press on a draft no longer
+  open changes nothing.
 - The engine checks that the presser is the owner's numeric Telegram id, writes the decision
   durably, then answers `answerCallbackQuery`.
 - First answer wins: the other surfaces' buttons are removed, and every copy becomes the receipt.
@@ -189,7 +195,7 @@ worked out at its quote or its build shows like one the owner gave
 A launchpad that writes the picture into its create call shows `card.launch.writtenPicture` in
 place of `card.launch.picture`, and no `card.launch.pinned`: nothing is public before the
 signature ([decision 0279](../DECISIONS.md#d0279)).
-A launch draft shows the owner's photo with `card.launch.photo` before anything is
+A launch draft ([section 8.5](#section-8-5)) shows the owner's photo with `card.launch.photo` before anything is
 uploaded; the launch's card then shows the picture line its launchpad's place calls for
 ([decision 0286](../DECISIONS.md#d0286)).
 A card cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200, and shows `{link}`
@@ -971,6 +977,37 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 | A forwarded message      | `telegram.chat.forwarded`     | A forwarded message does not reach the agent. Write what you want it to read in a message of your own.                                                                               | 转发的消息不会发送给 Agent。请把你想让它读取的内容写在你自己的消息中。                                  |
 | An edit                  | `telegram.chat.edited`        | An edit does not reach the agent. Send a new message instead.                                                                                                                        | 编辑后的消息不会发送给 Agent。请发送一条新消息。                                                        |
 | Neither text nor a photo | `telegram.chat.unsupported`   | The agent reads text and photos. Send this as text or as a photo.                                                                                                                    | Agent 只读取文字和图片。请以文字或图片的形式发送。                                                      |
+
+<a id="section-8-5"></a>
+
+### 8.5 The agent's launch drafts
+
+The agent never starts a token launch; it drafts one with `launch_draft`, and the owner starts it
+in Telegram ([decisions 0285](../DECISIONS.md#d0285) and [0286](../DECISIONS.md#d0286)). The bot
+sends the draft to the owner's private chat as one message: the header, every line the launch's
+card shows from the draft (`card.launch.action`, the description, each link, the picture with
+`card.launch.photo`, `card.launch.writtenPicture` or the picture link, and every launchpad setting
+with its default filled in), the outside content warning when the drafting turn read any, and the
+footer. Every value of the draft is outside text, cut and made visible as a card's is. Its two
+buttons are Start launch and Drop (section 2). After Start, the launch runs as any launch: its card
+follows, with the fee, the new token and the least the first buy gets.
+
+Once the draft ends, its message loses its buttons and becomes the line of how it ended. The
+answer to a press is under 200 characters.
+
+| Moment                 | Key                             | English                                                                                                                                                      | 中文                                                                                                               |
+| ---------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Header                 | `telegram.draft.header`         | {agent} drafted this token launch. Nothing is uploaded or public until you tap Start launch.                                                                 | {agent} 起草了这次代币发射。在你点按“开始发射”之前，不会上传或公开任何内容。                                       |
+| Footer                 | `telegram.draft.footer`         | After Start launch, the launch card shows the launch fee, the new token and the least the first buy gets, and you confirm there. This draft ends at {time}.  | 点按“开始发射”后，发射确认卡片会显示发射手续费、新代币和首笔买入的最少所得，你在卡片上确认。此草稿在 {time} 失效。 |
+| Buttons                | `telegram.draft.start`, `.drop` | Start launch · Drop                                                                                                                                          | 开始发射 · 放弃                                                                                                    |
+| Started                | `telegram.draft.started`        | ✅ Launch started. Its card follows: confirm there before anything is signed.                                                                                | ✅ 发射已开始。确认卡片随后发送：签名前请在卡片上确认。                                                            |
+| Dropped                | `telegram.draft.dropped`        | ❌ Launch draft dropped. Nothing was uploaded.                                                                                                               | ❌ 已放弃发射草稿，没有上传任何内容。                                                                              |
+| Ended after 10 minutes | `telegram.draft.expired`        | ❌ This launch draft ended after 10 minutes. Nothing was uploaded. Ask your agent to draft it again.                                                         | ❌ 此发射草稿已在 10 分钟后失效，没有上传任何内容。如需发射，请让 Agent 重新起草。                                 |
+| Replaced               | `telegram.draft.replaced`       | ❌ A newer launch draft replaced this one. Nothing was uploaded.                                                                                             | ❌ 较新的发射草稿已取代此草稿，没有上传任何内容。                                                                  |
+| Refused                | `telegram.draft.failed`         | ❌ The launch did not start: {reason}                                                                                                                        | ❌ 发射未开始：{reason}                                                                                            |
+| Press answers          | `telegram.draft.answer.*`       | Launch started. Its card follows. · Draft dropped. · This draft has ended. Ask your agent to draft it again. · The launch did not start. The draft says why. | 发射已开始，确认卡片随后发送。· 草稿已放弃。· 此草稿已失效。请让 Agent 重新起草。· 发射未开始，原因见草稿消息。    |
+
+`{reason}` is the error message of the code the proposal was refused with.
 
 <a id="section-9"></a>
 

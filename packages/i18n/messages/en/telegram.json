@@ -12,5 +12,18 @@
   "chat.edited": "An edit does not reach the agent. Send a new message instead.",
   "chat.unsupported": "The agent reads text and photos. Send this as text or as a photo.",
   "notice.agent": "{agent} · {notice}",
-  "chat.agent": "{agent} · {text}"
+  "chat.agent": "{agent} · {text}",
+  "draft.header": "{agent} drafted this token launch. Nothing is uploaded or public until you tap Start launch.",
+  "draft.footer": "After Start launch, the launch card shows the launch fee, the new token and the least the first buy gets, and you confirm there. This draft ends at {time}.",
+  "draft.start": "Start launch",
+  "draft.drop": "Drop",
+  "draft.started": "✅ Launch started. Its card follows: confirm there before anything is signed.",
+  "draft.dropped": "❌ Launch draft dropped. Nothing was uploaded.",
+  "draft.expired": "❌ This launch draft ended after 10 minutes. Nothing was uploaded. Ask your agent to draft it again.",
+  "draft.replaced": "❌ A newer launch draft replaced this one. Nothing was uploaded.",
+  "draft.failed": "❌ The launch did not start: {reason}",
+  "draft.answer.started": "Launch started. Its card follows.",
+  "draft.answer.dropped": "Draft dropped.",
+  "draft.answer.expired": "This draft has ended. Ask your agent to draft it again.",
+  "draft.answer.failed": "The launch did not start. The draft says why."
 }

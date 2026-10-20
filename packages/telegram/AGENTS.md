@@ -65,6 +65,11 @@ Rules for this package:
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, the one
   setting the chat changes, decision 0134), and only `commandCallbackSchema` reads it. A press
   goes to the fast commands first, then to the cards. A button never loosens anything.
+- A launch draft's buttons carry `bnf1:s:<y|n>:<ref>`, and only `launchDraftCallbackSchema` reads
+  it. A press goes to the engine through `LaunchDraftAnswers`, which acts only for the owner's
+  numeric Telegram id; the owner's Start is the one proposal the chat makes (decision 0285). The
+  draft's words are outside text: every line is drawn with the engine's `cardLineText`, then
+  escaped whole.
 - Card buttons carry `bnf1:c:<y|n|d>:<ref>`, and only `cardCallbackSchema` reads it. Any other data
   does nothing. The engine checks the presser and stores the answer through `CardAnswers`; the
   press is answered only after `answer` resolves.

@@ -2,6 +2,8 @@ import type { Result } from "@binference/core";
 import type {
   CardPress,
   CardStanding,
+  LaunchDraftPress,
+  LaunchDraftStanding,
   OwnerCall,
   OwnerChatOperation,
   QuestionPress,
@@ -34,6 +36,20 @@ export interface QuestionAnswers {
     press: QuestionPress,
     options: { readonly signal: AbortSignal },
   ): Promise<QuestionStanding>;
+}
+
+/**
+ * Takes the owner's presses of a launch draft's Start and Drop from Telegram; the engine owns it
+ * (decision 0285). It finds the open draft by its button reference and checks that the presser is
+ * the owner's numeric Telegram id; the owner's Start ends the draft and proposes its launch as the
+ * owner on Telegram before it resolves, so a draft starts once.
+ */
+export interface LaunchDraftAnswers {
+  /** Starts or drops a draft for a press and says how it stands. Rejects once the signal aborts. */
+  answer(
+    press: LaunchDraftPress,
+    options: { readonly signal: AbortSignal },
+  ): Promise<LaunchDraftStanding>;
 }
 
 /**

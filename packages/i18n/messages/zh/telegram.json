@@ -12,5 +12,18 @@
   "chat.edited": "编辑后的消息不会发送给 Agent。请发送一条新消息。",
   "chat.unsupported": "Agent 只读取文字和图片。请以文字或图片的形式发送。",
   "notice.agent": "{agent} · {notice}",
-  "chat.agent": "{agent} · {text}"
+  "chat.agent": "{agent} · {text}",
+  "draft.header": "{agent} 起草了这次代币发射。在你点按“开始发射”之前，不会上传或公开任何内容。",
+  "draft.footer": "点按“开始发射”后，发射确认卡片会显示发射手续费、新代币和首笔买入的最少所得，你在卡片上确认。此草稿在 {time} 失效。",
+  "draft.start": "开始发射",
+  "draft.drop": "放弃",
+  "draft.started": "✅ 发射已开始。确认卡片随后发送：签名前请在卡片上确认。",
+  "draft.dropped": "❌ 已放弃发射草稿，没有上传任何内容。",
+  "draft.expired": "❌ 此发射草稿已在 10 分钟后失效，没有上传任何内容。如需发射，请让 Agent 重新起草。",
+  "draft.replaced": "❌ 较新的发射草稿已取代此草稿，没有上传任何内容。",
+  "draft.failed": "❌ 发射未开始：{reason}",
+  "draft.answer.started": "发射已开始，确认卡片随后发送。",
+  "draft.answer.dropped": "草稿已放弃。",
+  "draft.answer.expired": "此草稿已失效。请让 Agent 重新起草。",
+  "draft.answer.failed": "发射未开始，原因见草稿消息。"
 }

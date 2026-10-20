@@ -719,7 +719,7 @@ launch ([spec 8, section 6.5](runtime.md#section-6-5)); a `launchToken` the runt
   `{ agent, draft, outcome: started | dropped | expired | replaced | failed, intent?, error? }`
   how it ended.
 - Telegram shows it to the owner with Start launch and Drop
-  . The owner's Start proposes the
+  ([spec 4, section 8.5](cards-and-messages.md#section-8-5)). The owner's Start proposes the
   draft's request through `intent/propose` as the owner on Telegram, with the photo put on the
   upload shelf under the owner's Telegram credential: the one proposal the owner's chat makes.
   The launch then runs as any launch: its upload, its pin and its card, which the owner confirms.

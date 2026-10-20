@@ -203,3 +203,5 @@ export { createFakeRiskCheck } from "./fakes/fake-risk-check.js";
 export type { FakeRiskCheckOptions } from "./fakes/fake-risk-check.js";
 export { createMemoryBackupStore } from "./fakes/memory-backup-store.js";
 export { createMemoryRiskCacheStore } from "./fakes/memory-risk-cache-store.js";
+export { draftOf, draftOwnerId, refOf, testDraftEngine } from "./launches/test-launch-drafts.js";
+export type { DraftEngine } from "./launches/test-launch-drafts.js";

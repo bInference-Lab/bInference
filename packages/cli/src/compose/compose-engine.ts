@@ -180,6 +180,7 @@ function joinTelegram(
   options: ComposeEngineOptions,
   engine: {
     readonly answer: Engine["answer"];
+    readonly drafts: Engine["launchDrafts"];
     readonly venues: VenueHost;
     readonly handlers: EngineHandlerTable;
     readonly notices: NoticeLog;
@@ -192,6 +193,7 @@ function joinTelegram(
     : composeTelegram(telegram, {
         stores: parts.stores,
         answer: engine.answer,
+        drafts: engine.drafts,
         handlers: { ...engine.handlers, ...options.ownerChat },
         chains,
         venues: engine.venues,
@@ -355,6 +357,7 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   const handlers = markRuntimeTurns(table, turns);
   const telegram = joinTelegram(parts, options, {
     answer: engine.answer,
+    drafts: engine.launchDrafts,
     venues: trading.host,
     handlers,
     notices,
