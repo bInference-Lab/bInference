@@ -9,6 +9,7 @@ import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { startConfigReload } from "./config-reload.js";
 import { startCopyTimer } from "./copy-timer.js";
+import { startDowntimeTimer } from "./downtime-timer.js";
 import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startTestOrders } from "./order-pricing.js";
@@ -129,7 +130,8 @@ function botChannelOf(
  * unlock mode and start the signer and custody, or leave the engine locked with the reason
  * (decisions 0103 and 0117); every unfinished live intent is recovered by hash and nonce and holds
  * its place in its wallet's queue, and each recent paper fill a crash left without positions gets
- * them; once unlocked, the confirmed intents an earlier run left go to
+ * them; the downtime re-check takes every auto order to check after the stop (decision 0266);
+ * once unlocked, the confirmed intents an earlier run left go to
  * the executor; the timer for work that waits for its time starts, the watch on `config.json5`
  * that reloads the settings (decision 0118), and after a start that found Privy out of reach, the
  * signer step's retries (decision 0119); the owner's bot's channel, unless another machine took
@@ -149,6 +151,15 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   }
   const unlocked = await locked.lock.unlock({ signal });
   await executor.recover({ signal });
+  // Before the repairs and the timers: the re-check counts the skips they record, and no price
+  // reaches the triggers before it took the orders to check (decision 0267).
+  await startDowntimeTimer({
+    downtime: composed.downtime,
+    onSleep: (asleepMs) => composed.priceWatchers.afterSleep(asleepMs),
+    clock: opening.host.clock,
+    closers: opening.closers,
+    logger: log.logger,
+  });
   await composed.repairPaperFills({ signal });
   await composed.repairOrderFills({ signal });
   await composed.checkPins({ signal, isRepair: true });

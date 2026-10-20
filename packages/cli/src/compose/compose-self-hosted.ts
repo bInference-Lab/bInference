@@ -37,7 +37,14 @@ import { chainTokenReads } from "./token-facts.js";
  */
 export interface ComposedSelfHosted extends Pick<
   Engine,
-  "settle" | "checkGas" | "tickOrders" | "expireCards" | "runSchedules" | "runCopies" | "checkPins"
+  | "settle"
+  | "checkGas"
+  | "tickOrders"
+  | "expireCards"
+  | "runSchedules"
+  | "runCopies"
+  | "checkPins"
+  | "downtime"
 > {
   readonly server: ProtocolServer;
   /** Where the engine's pushes go: the server, and the owner's bot when there is one. */
@@ -309,6 +316,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     checkPins: engine.checkPins,
     repairPaperFills: engine.repairPaperFills,
     repairOrderFills: engine.repairOrderFills,
+    downtime: engine.downtime,
     resume,
     stopper,
     state,

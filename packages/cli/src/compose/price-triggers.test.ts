@@ -31,6 +31,7 @@ function fakeWatch() {
   const listeners = new Set<(price: WatchedPrice) => void>();
   const latest: LatestPrice[] = [];
   const watch = {
+    chain: { ref: chain, definition: { blockTimeMs: 450 } },
     watcher: {
       onPrice(listener: (price: WatchedPrice) => void) {
         listeners.add(listener);
@@ -98,6 +99,37 @@ describe("the hand-off of watched prices to the price triggers", () => {
       }),
     );
     expect(fake.listeners.size).toBe(0);
+  });
+});
+
+describe("the hand-off after a sleep of the machine", () => {
+  it("drops every price of a block not past half the blocks the sleep lasted", async () => {
+    const fake = fakeWatch();
+    const seen: number[] = [];
+    const link = {
+      see: async (price: WatchedOrderPrice) => {
+        seen.push(price.readAtMs);
+        return Promise.resolve([]);
+      },
+    };
+    const logger = createMemoryLogger({ subsystem: "watcher" });
+    const closers = createClosers();
+    const watches = new Map([[chain, fake.watch]]);
+    const clock = createManualClock(nowMs);
+    const fence = startPriceTriggers(
+      { watches, decimals, checks: () => [], clock, link },
+      { closers, logger },
+    );
+
+    fake.read(curve);
+    // 90 seconds of 450 ms blocks: 200 blocks, so a block must pass 100 + 100.
+    fence.afterSleep(90_000);
+    fake.read({ ...curve, block: 101n, atMs: nowMs + 1 });
+    fake.read({ ...curve, block: 200n, atMs: nowMs + 2 });
+    fake.read({ ...curve, block: 201n, atMs: nowMs + 3 });
+    await closers.closeAll(new AbortController().signal);
+
+    expect(seen).toStrictEqual([nowMs, nowMs + 3]);
   });
 });
 
