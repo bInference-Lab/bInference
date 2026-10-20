@@ -27,7 +27,7 @@ import {
   selfHostedPoolHooks,
 } from "./open-engine-parts.js";
 import { readRpcUrls } from "./read-rpc-urls.js";
-import { readVenues } from "./read-venues.js";
+import { type ReadVenues, type ReadVenuesOptions, readVenues } from "./read-venues.js";
 import { serveEngine } from "./serve-engine.js";
 import type { StartOutcome } from "./start-outcome.js";
 
@@ -89,6 +89,23 @@ type SecretParts = Pick<
   | "secrets"
 >;
 
+// The venues over the chains' reads, each call reading config as reloaded.
+async function venuesOf(
+  settings: ConfigCell,
+  parts: Pick<
+    ReadVenuesOptions,
+    "reads" | "secrets" | "http" | "clock" | "random" | "registry" | "logger" | "signal"
+  >,
+): Promise<ReadVenues> {
+  return readVenues({
+    ...parts,
+    venues: settings.started.venues,
+    current: () => settings.current().venues,
+    chains: settings.started.chains,
+    poolHooks: selfHostedPoolHooks(),
+  });
+}
+
 // The parts that read config's secret sources: the owner's own RPCs, the venues and the bot.
 async function readSecretParts(
   opening: Opening,
@@ -107,21 +124,11 @@ async function readSecretParts(
   const tracers = await readRpcUrls({ chains: config.chains, secrets, kind: "tracer" }, call);
   const headSockets = await readRpcUrls({ chains: config.chains, secrets, kind: "ws" }, call);
   const chains = selfHostedChains();
-  const { http, clock } = host;
+  const { http, clock, random } = host;
   const current = () => settings.current().chains;
   const reads = composeChainReads({ chains, config: config.chains, current, http, clock });
-  const { venues, followReload: followVenues } = await readVenues({
-    ...call,
-    venues: config.venues,
-    current: () => settings.current().venues,
-    chains: config.chains,
-    registry: chains,
-    poolHooks: selfHostedPoolHooks(),
-    reads,
-    secrets,
-    http,
-    clock,
-  });
+  const venueParts = { ...call, secrets, http, clock, random, reads, registry: chains };
+  const { venues, followReload: followVenues } = await venuesOf(settings, venueParts);
   const source = config.telegram.botToken;
   const logger = log.logger.child("telegram");
   const bot = await openBot({

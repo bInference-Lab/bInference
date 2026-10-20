@@ -4,6 +4,7 @@ import {
   createManualClock,
   createMemoryLogger,
   createScriptedHttp,
+  createSeededRandom,
 } from "@binference/core/testing";
 import { createVenueHost } from "@binference/engine";
 import {
@@ -23,6 +24,7 @@ import { selfHostedChains, selfHostedPoolHooks } from "./open-engine-parts.js";
 import { readVenues } from "./read-venues.js";
 
 const bsc = chainRefSchema.parse("eip155:56");
+const random = createSeededRandom(271);
 
 // Secrets by environment variable name; a name with no value is unavailable.
 const secrets: SecretReader = {
@@ -57,6 +59,7 @@ async function read(venues: VenuesConfig) {
   const clock = createManualClock();
   const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
   const venuesRead = await readVenues({
+    random,
     venues,
     chains,
     registry: selfHostedChains(),
@@ -78,6 +81,7 @@ describe("the self-hosted venues", () => {
     const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
     const reads = composeChainReads({ chains: selfHostedChains(), config: chains, http, clock });
     const { venues } = await readVenues({
+      random,
       venues: venuesWith(),
       chains,
       registry: selfHostedChains(),
@@ -92,6 +96,8 @@ describe("the self-hosted venues", () => {
     const flap = venues.find((venue) => venue.id === "flap");
     expect(flap?.curve).toBeTypeOf("function");
     expect(flap?.contracts).toMatchObject([{ chain: bsc, names: ["portal"], noDeadline: true }]);
+    // It launches tax tokens on BSC, whose registry lists Flap's Tax Token V3 implementation.
+    expect(flap?.launcher?.noFirstBuyMin).toBe(true);
   });
 
   it("quote through KyberSwap and the flap and geniusfun launchpads when config names no OKX key", async () => {
@@ -119,6 +125,7 @@ describe("the self-hosted venues", () => {
     const clock = createManualClock();
     const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
     const { venues } = await readVenues({
+      random,
       venues: venuesWith(),
       chains,
       registry: selfHostedChains(),
@@ -166,6 +173,7 @@ describe("the self-hosted venues", () => {
     const clock = createManualClock();
     const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
     const reading = readVenues({
+      random,
       venues: venuesWith(),
       chains,
       registry: selfHostedChains(),
@@ -196,6 +204,7 @@ describe("the self-hosted venues", () => {
     const logger = createMemoryLogger({ subsystem: "engine" });
     const signal = new AbortController().signal;
     const followed = await readVenues({
+      random,
       venues: held.venues,
       current: () => held.venues,
       chains,

@@ -7,15 +7,24 @@ import type {
   Venue,
 } from "@binference/chain";
 import {
+  createEvmTxSimulator,
   type CurveChain,
   erc20AssetRef,
+  evmAccountRef,
   type EvmChain,
   evmChainOf,
   evmFamilyId,
   parseEvmAddress,
 } from "@binference/chain-evm";
-import { BinferenceError, bpsSchema, type Clock, type Http, type Logger } from "@binference/core";
-import { createFlapVenue } from "@binference/flap";
+import {
+  BinferenceError,
+  bpsSchema,
+  type Clock,
+  type Http,
+  type Logger,
+  type Random,
+} from "@binference/core";
+import { createFlapVenue, type FlapLaunchChain } from "@binference/flap";
 import { createGeniusfunVenue } from "@binference/geniusfun";
 import { createKyberswapVenue, type KyberswapHook } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
@@ -42,6 +51,8 @@ export interface ReadVenuesOptions {
   readonly secrets: SecretReader;
   readonly http: Http;
   readonly clock: Clock;
+  /** The random start of each salt search a Flap launch makes. */
+  readonly random: Random;
   readonly logger: Logger;
   readonly signal: AbortSignal;
 }
@@ -122,6 +133,31 @@ function curveChainsOf(
   });
 }
 
+// Flap launches on each chain the engine reads whose registry lists Flap's Tax Token V3
+// implementation, with a simulator over the chain's RPC failover for its dry runs (decision 0271).
+function flapLaunchChainsOf(
+  chains: readonly RegisteredChain[],
+  reads: ReadonlyMap<ChainRef, ChainReads>,
+): readonly FlapLaunchChain[] {
+  return chains.flatMap((chain) => {
+    const read = reads.get(chain.ref);
+    const listed = chain.definition.contracts.find(
+      (item) => item.venue === "flap" && item.name === "tax-token-v3-implementation",
+    );
+    const address = listed === undefined ? undefined : parseEvmAddress(listed.address);
+    if (read === undefined || address?.ok !== true) {
+      return [];
+    }
+    return [
+      {
+        chain: chain.ref,
+        simulator: createEvmTxSimulator({ rpc: read.rpc, chain: read.evm }),
+        taxTokenImplementation: evmAccountRef(read.evm, address.value),
+      },
+    ];
+  });
+}
+
 // The chain's allowed pool hooks, each at its registry address with its fee (decision 0214). A hook
 // the registry does not list is a fault of this build.
 function allowedHooksOf(
@@ -147,7 +183,9 @@ function allowedHooksOf(
 /**
  * The venues the self-hosted engine quotes on, on each enabled chain of the EVM family: KyberSwap,
  * keyless, always; the Flap and Genius.fun launchpads, over each chain's RPC failover, always;
- * OKX's DEX aggregator only when `venues.keys.okx` names the owner's key (decision 0105). The
+ * OKX's DEX aggregator only when `venues.keys.okx` names the owner's key (decision 0105). Flap also
+ * launches tax tokens through Flap's own API on each chain the registry lists its implementation
+ * on (decision 0271). The
  * money path asks every venue an agent allows and keeps the best plan (decision 0107), and sends a
  * token on a launchpad's curve to that launchpad alone (decision 0179). An OKX key that cannot be read is logged and OKX
  * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
@@ -173,7 +211,10 @@ export async function readVenues(options: ReadVenuesOptions): Promise<ReadVenues
     })),
   });
   const { reads } = options;
-  const flap = createFlapVenue({ chains: curveChainsOf(enabled, reads, flapQuoteSymbols) });
+  const flap = createFlapVenue({
+    chains: curveChainsOf(enabled, reads, flapQuoteSymbols),
+    launches: { http, random: options.random, chains: flapLaunchChainsOf(enabled, reads) },
+  });
   const geniusfun = createGeniusfunVenue({
     chains: curveChainsOf(enabled, reads, geniusfunQuoteSymbols),
   });
