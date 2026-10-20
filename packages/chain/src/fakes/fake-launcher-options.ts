@@ -1,5 +1,6 @@
 import type { AssetRef } from "../caip/asset-ref.js";
 import type { LaunchOption, LaunchOptionValue } from "../venues/launch-option.js";
+import type { LaunchQuoteFailure } from "../venues/launch-refusals.js";
 import type { LaunchWordLimits, WrittenWords } from "../venues/launch-words.js";
 
 /** How a fake launchpad's pins go: pinned after some status reads, never, or failed. */
@@ -53,4 +54,6 @@ export interface FakeLauncherOptions {
    * call writes beside the request's; none when absent.
    */
   readonly buildsSettings?: Readonly<Record<string, LaunchOptionValue>>;
+  /** Why it cannot quote any launch now (decision 0284); it quotes when absent. */
+  readonly quoteFails?: LaunchQuoteFailure;
 }

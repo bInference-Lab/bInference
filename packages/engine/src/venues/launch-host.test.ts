@@ -148,6 +148,29 @@ describe("a launchpad's optional settings and its own check of them", () => {
     });
   });
 
+  it("names the refusal the launchpad gives for settings it does not take together", () => {
+    expect(taking(() => "recipient_needed").settingsOf(pad, chain, given)).toStrictEqual({
+      ok: false,
+      error: "recipient_needed",
+    });
+    expect(taking(() => "recipient_unused").settingsOf(pad, chain, given)).toStrictEqual({
+      ok: false,
+      error: "recipient_unused",
+    });
+    const odd = taking(() => "mystery" as unknown as true);
+    expect(odd.settingsOf(pad, chain, given)).toStrictEqual({ ok: false, error: "bad_settings" });
+  });
+
+  it.each(["launch_paused", "start_unpriced", "start_unreachable", "dry_run_failed"] as const)(
+    "passes on a quote the launchpad refuses with %s",
+    async (reason) => {
+      await expect(fake({ quoteFails: reason }).quote(launch, live)).resolves.toStrictEqual({
+        ok: false,
+        error: reason,
+      });
+    },
+  );
+
   it("keeps the values a quote works out for optional settings the launch leaves out", async () => {
     const host = fake({ launchOptions: optional, quotesSettings: { sellTaxBps: "8000" } });
     await expect(host.quote(launch, live)).resolves.toMatchObject({

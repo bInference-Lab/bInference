@@ -9,6 +9,8 @@ import {
   type LaunchPinRequest,
   launchPinSchema,
   launchOptionValuesSchema,
+  launchQuoteFailures,
+  type LaunchQuoteFailure,
   type LaunchOptionValue,
   type LaunchQuote,
   launchQuoteSchema,
@@ -31,11 +33,7 @@ import {
   type LaunchStep,
   readLaunchSteps,
 } from "./launch-checks.js";
-import {
-  type LaunchSetting,
-  quotedSettingOf,
-  settingsGoTogether,
-} from "./launch-settings.schema.js";
+import { type LaunchSetting, quotedSettingOf, settingsRefusal } from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
 /**
@@ -107,7 +105,7 @@ export interface LaunchContext {
 
 const quoteAnswerSchema = z.discriminatedUnion("ok", [
   z.strictObject({ ok: z.literal(true), value: launchQuoteSchema }),
-  z.strictObject({ ok: z.literal(false), error: z.literal("no_route") }),
+  z.strictObject({ ok: z.literal(false), error: z.enum(launchQuoteFailures) }),
 ]);
 
 // The fee is in the chain's coin, and a first buy, and only one, gets some of the new token.
@@ -139,7 +137,7 @@ function workedOutOf(
     return setting === undefined ? [] : [setting];
   });
   const merged = { ...context.terms.options, ...valuesOf(fitted) };
-  return fitted.length === named.length && settingsGoTogether(context.launcher, merged)
+  return fitted.length === named.length && settingsRefusal(context.launcher, merged) === undefined
     ? fitted
     : undefined;
 }
@@ -151,7 +149,7 @@ const valuesOf = (settings: readonly LaunchSetting[]): Record<string, LaunchOpti
 export async function quoteLaunch(
   context: LaunchContext,
   call: VenueCallOptions,
-): Promise<Result<LaunchQuote, VenueFailure>> {
+): Promise<Result<LaunchQuote, VenueFailure | LaunchQuoteFailure>> {
   const { launcher, terms } = context;
   const answer = await callVenue(async (signal) => launcher.quoteLaunch(terms, { signal }), call);
   const quote = answer.ok ? ownCopy(quoteAnswerSchema, answer.value) : undefined;

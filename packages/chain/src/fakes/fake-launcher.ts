@@ -315,8 +315,8 @@ export function createFakeLinkLauncher(options: FakeLauncherOptions = {}): Launc
       signal.throwIfAborted();
       const coin = assetRefSchema.parse(`${accountRefParts(terms.wallet).chain}/slip44:1`);
       const fee: Amount = { asset: coin, base: options.feeBase ?? 2000n };
-      if (terms.pair !== pair) {
-        return await Promise.resolve(err("no_route"));
+      if (terms.pair !== pair || options.quoteFails !== undefined) {
+        return await Promise.resolve(err(options.quoteFails ?? "no_route"));
       }
       const out =
         terms.firstBuy === undefined ? {} : { firstBuyOut: terms.firstBuy.base * tokensPerUnit };

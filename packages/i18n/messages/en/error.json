@@ -63,6 +63,8 @@
   "intent.owner_only": "Only the owner starts a token launch. Suggest the launch to the owner in chat, with its name, symbol and picture, and let the owner start it.",
   "intent.launch_waiting": "Another token launch of this agent is under way, waiting for its pin or the owner's confirmation. Let it finish, or deny its card, before starting the next.",
   "intent.own_wallet_recipient": "A launch setting names one of binference's own wallets, but the launchpad pays that account only when it claims the money itself, which binference never does. Name an address you control outside binference.",
+  "intent.launch_recipient_needed": "With these settings the launchpad pays its fees to a fee recipient, and the launch names none. Name an address you control outside binference, or switch on the launchpad's setting that pays the fees elsewhere, such as holder rewards.",
+  "intent.launch_recipient_unused": "With these settings the launchpad pays its fees elsewhere, such as through holder rewards, so the fee recipient you named would never be paid. Leave the fee recipient out, or switch that setting off.",
   "order.not_found": "This auto order does not exist. Check your auto orders in the console.",
   "order.wrong_state": "This auto order already ended or changed. Refresh to see where it stands.",
   "order.kind_unavailable": "This kind of auto order is not available yet. Use a limit, take-profit, stop-loss or trailing stop order.",

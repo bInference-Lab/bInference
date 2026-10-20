@@ -65,6 +65,10 @@ describe("intent reasons", () => {
       "upload_lost",
       "ceiling_lacks_call",
       "own_wallet_recipient",
+      "launch_paused",
+      "start_unpriced",
+      "start_unreachable",
+      "dry_run_failed",
     ]);
     expect(failureReasons).toStrictEqual([
       "reverted",
@@ -92,7 +96,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(54);
+    expect(intentReasons).toHaveLength(58);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {

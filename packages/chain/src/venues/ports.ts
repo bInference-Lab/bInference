@@ -6,6 +6,7 @@ import type { CurveHolding, CurveRequest } from "./curve-holding.js";
 import type { DecodedEffect } from "./decoded-effect.js";
 import type { LaunchesFound, LaunchLogsRequest } from "./launch-logs.js";
 import type { LaunchOption, LaunchOptionValue } from "./launch-option.js";
+import type { LaunchQuoteFailure, LaunchSettingsRefusal } from "./launch-refusals.js";
 import type {
   DecodedLaunch,
   LaunchBuild,
@@ -151,9 +152,13 @@ export interface Launcher {
    * a fee recipient only while holder rewards are off: each is already checked against its
    * declaration. It is asked of the request's settings, which a launch whose settings do not go
    * together is refused for before anything is stored, and again with what the quote and the
-   * build worked out. Left out, any settings that pass their declarations go together.
+   * build worked out. It answers `true`, or why not: a {@link LaunchSettingsRefusal} the owner
+   * can act on (decision 0284), else `false`. Left out, any settings that pass their declarations
+   * go together.
    */
-  readonly checkOptions?: (options: Readonly<Record<string, LaunchOptionValue>>) => boolean;
+  readonly checkOptions?: (
+    options: Readonly<Record<string, LaunchOptionValue>>,
+  ) => boolean | LaunchSettingsRefusal;
   /**
    * The warnings every card of the launchpad's launches shows (decision 0281), by name in
    * camelCase, each with the message `launch.warn.<name>` in every language, such as one about
@@ -162,13 +167,15 @@ export interface Launcher {
   readonly cardWarnings?: readonly string[];
   /**
    * The launch fee and the first buy's output, read from the launchpad's contracts at the latest
-   * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`; a
-   * launchpad that cannot answer throws. Rejects with the signal's reason once it aborts.
+   * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`, and any
+   * other launch it cannot quote now is the {@link LaunchQuoteFailure} that tells the owner's next
+   * step (decision 0284); a launchpad that cannot answer throws. Rejects with the signal's reason
+   * once it aborts.
    */
   quoteLaunch(
     terms: LaunchTerms,
     options: { readonly signal: AbortSignal },
-  ): Promise<Result<LaunchQuote, "no_route">>;
+  ): Promise<Result<LaunchQuote, LaunchQuoteFailure>>;
   /**
    * Uploads the launch's words and picture and asks the launchpad to pin them, without waiting
    * for the pin. A launchpad that cannot take them throws. Rejects with the signal's reason once

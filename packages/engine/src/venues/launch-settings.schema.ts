@@ -1,6 +1,8 @@
 import {
   type Launcher,
   type LaunchOption,
+  launchSettingsRefusals,
+  type LaunchSettingsRefusal,
   type LaunchOptionType,
   type LaunchOptionValue,
   printAccountRef,
@@ -115,23 +117,28 @@ export function quotedSettingOf(
     : undefined;
 }
 
-const goTogetherSchema = z.literal(true);
+const goTogetherSchema = z.union([z.literal(true), z.enum(launchSettingsRefusals)]);
 
 /**
- * Whether the launchpad takes the settings together (decision 0280); launchpad code that throws
- * or answers anything but a yes refuses them.
+ * Why the launchpad does not take the settings together (decision 0280): the refusal it names,
+ * which tells the owner's next step (decision 0284), else `bad_settings` for a no, an answer
+ * outside its types or launchpad code that throws; `undefined` when it takes them.
  */
-export function settingsGoTogether(
+export function settingsRefusal(
   launcher: Pick<Launcher, "checkOptions">,
   options: Readonly<Record<string, LaunchOptionValue>>,
-): boolean {
+): LaunchSettingsRefusal | "bad_settings" | undefined {
   if (launcher.checkOptions === undefined) {
-    return true;
+    return undefined;
   }
   try {
-    return goTogetherSchema.safeParse(launcher.checkOptions(Object.freeze({ ...options }))).success;
+    const answer = goTogetherSchema.safeParse(launcher.checkOptions(Object.freeze({ ...options })));
+    if (!answer.success) {
+      return "bad_settings";
+    }
+    return answer.data === true ? undefined : answer.data;
   } catch {
-    return false;
+    return "bad_settings";
   }
 }
 

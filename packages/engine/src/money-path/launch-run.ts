@@ -1,4 +1,4 @@
-import type { LaunchOptionValue, LaunchQuote } from "@binference/chain";
+import type { LaunchOptionValue, LaunchQuote, LaunchQuoteFailure } from "@binference/chain";
 import type { Result } from "@binference/core";
 import type { HostedLaunch } from "../venues/launch-calls.js";
 import type { VenueFailure } from "../venues/venue-host.js";
@@ -50,7 +50,7 @@ function withQuotedSettings(run: LaunchRun, quote: LaunchQuote): LaunchRun {
  */
 export async function quotedRunOf(given: LaunchRun): Promise<{
   readonly run: LaunchRun;
-  readonly quote: Result<LaunchQuote, VenueFailure> | undefined;
+  readonly quote: Result<LaunchQuote, VenueFailure | LaunchQuoteFailure> | undefined;
 }> {
   if (given.resolved.isPaper) {
     return { run: given, quote: undefined };

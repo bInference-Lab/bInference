@@ -6,6 +6,8 @@ import {
   launchOptionsSchema,
   type LaunchPin,
   type LaunchQuote,
+  type LaunchQuoteFailure,
+  type LaunchSettingsRefusal,
   type LaunchWords,
   type PinStatus,
   pinStatusSchema,
@@ -38,7 +40,7 @@ import {
   launchSettingsOf,
   launchSettingsProblem,
   launchWarningsProblem,
-  settingsGoTogether,
+  settingsRefusal,
 } from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
@@ -52,13 +54,14 @@ export interface LaunchHost {
    * The launchpad's settings for a request: each it declares, with the request's value or its
    * default, an optional one the request leaves out absent. A venue that launches no token on the
    * chain is `no_launchpad`; a request's settings that do not fit, or that the launchpad does not
-   * take together (decision 0280), are `bad_settings`.
+   * take together (decision 0280), are `bad_settings`, or the refusal the launchpad names for the
+   * latter (decision 0284).
    */
   settingsOf(
     venue: string,
     chain: ChainRef,
     given: LaunchTokenRequest["venueOptions"],
-  ): Result<readonly LaunchSetting[], "no_launchpad" | "bad_settings">;
+  ): Result<readonly LaunchSetting[], "no_launchpad" | "bad_settings" | LaunchSettingsRefusal>;
   /**
    * Whether a launch's name, symbol, description and links fit what the launchpad's create call
    * takes, when it writes them on chain; a launchpad the host does not hold takes none.
@@ -79,7 +82,8 @@ export interface LaunchHost {
   /**
    * The launch fee and the first buy's output, read from the launchpad's contracts, and the values
    * it worked out for optional settings the launch leaves out, each in its canonical form. A pair
-   * it does not launch against is `no_route`; a launchpad that throws, times out or answers
+   * it does not launch against is `no_route`, and another launch it cannot quote now the
+   * {@link LaunchQuoteFailure} it names (decision 0284); a launchpad that throws, times out or answers
    * outside its types is `venue_down`; a fee in another asset than the chain's coin, a first buy's
    * output that the terms do not ask for or that is nothing, or a value for a setting that is not
    * an optional one the launch left out, or that does not fit it, is `decode_mismatch`.
@@ -87,7 +91,7 @@ export interface LaunchHost {
   quote(
     launch: HostedLaunch,
     options: { readonly signal: AbortSignal },
-  ): Promise<Result<LaunchQuote, VenueFailure>>;
+  ): Promise<Result<LaunchQuote, VenueFailure | LaunchQuoteFailure>>;
   /**
    * Where the launchpad takes a launch's picture: `upload`, through its own API, which pins it;
    * `create_call`, written into its create call (decision 0279); `link`, as a link setting the
@@ -276,7 +280,7 @@ function settingsOn(
     readonly chainRef: ChainRef;
     readonly given: LaunchTokenRequest["venueOptions"];
   },
-): Result<readonly LaunchSetting[], "no_launchpad" | "bad_settings"> {
+): Result<readonly LaunchSetting[], "no_launchpad" | "bad_settings" | LaunchSettingsRefusal> {
   const { venue, chainRef, given } = asked;
   const item = parts.launchers.get(venue);
   const chain = parts.chains.get(chainRef);
@@ -287,9 +291,8 @@ function settingsOn(
   const options = settings.ok
     ? Object.fromEntries(settings.value.map((setting) => [setting.name, setting.value]))
     : {};
-  return settings.ok && !settingsGoTogether(item.launcher, options)
-    ? err("bad_settings")
-    : settings;
+  const refusal = settings.ok ? settingsRefusal(item.launcher, options) : undefined;
+  return refusal === undefined ? settings : err(refusal);
 }
 
 /**

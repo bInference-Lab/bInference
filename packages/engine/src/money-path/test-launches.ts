@@ -3,6 +3,8 @@ import {
   accountRefSchema,
   chainRefSchema,
   type LaunchOption,
+  type LaunchQuoteFailure,
+  type LaunchSettingsRefusal,
   type SimulatedStep,
   type TxSimulator,
   type Venue,
@@ -141,6 +143,10 @@ export interface Launching {
   readonly worksOutRecipient?: { readonly at: "quote" | "build"; readonly value: string };
   /** The launchpad's own card warnings, by name (decision 0281); none when absent. */
   readonly cardWarnings?: readonly string[];
+  /** Why the launchpad cannot quote now (decision 0284); it quotes when absent. */
+  readonly quoteFails?: LaunchQuoteFailure;
+  /** Why the launchpad does not take any settings together (decision 0284); it takes them. */
+  readonly refusesSettings?: LaunchSettingsRefusal;
 }
 
 // The create call a test launchpad marks as a launch wallet's alone.
@@ -259,6 +265,7 @@ function launchersOf(launching: Launching) {
     ...recipientOf(launching).fake,
     ...(launching.pin === undefined ? {} : { pin: launching.pin }),
     ...(launching.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
+    ...(launching.quoteFails === undefined ? {} : { quoteFails: launching.quoteFails }),
   };
   const counting = scripted(createFakeLauncher(fakeOptions), launching.launcher);
   if (!isLink && launching.writesPicture === undefined) {
@@ -268,10 +275,14 @@ function launchersOf(launching: Launching) {
   return { launcher: counting.launcher, built: used.built, pad: used.launcher };
 }
 
-// The launchpad's launcher with its card warnings, when the test names some.
+// The launchpad's launcher with its card warnings and its settings refusal, when the test names
+// them.
 function warnedOf(launcher: PadLauncher, launching: Launching): PadLauncher {
-  const { cardWarnings } = launching;
-  return cardWarnings === undefined ? launcher : { ...launcher, cardWarnings };
+  const { cardWarnings, refusesSettings } = launching;
+  const warned = cardWarnings === undefined ? launcher : { ...launcher, cardWarnings };
+  return refusesSettings === undefined
+    ? warned
+    : { ...warned, checkOptions: () => refusesSettings };
 }
 
 /**

@@ -190,7 +190,12 @@ for a launch whose launch wallet's ceiling does not allow a call only a launch w
 launchpad, such as its create call, before any upload ([decision 0271](../DECISIONS.md#d0271));
 `own_wallet_recipient` for a launch whose launchpad worked out, at its quote or its build, a value
 for a setting that must be outside the install that names one of its wallets, before the upload or
-the card ([decision 0280](../DECISIONS.md#d0280)).
+the card ([decision 0280](../DECISIONS.md#d0280)); `launch_paused` (its launchpad has paused new
+launches), `start_unpriced` (its launchpad works out the starting market cap from the pair's USD
+price, which binference lacks), `start_unreachable` (no starting price its launchpad can set fits
+the starting market cap) and `dry_run_failed` (its steps failed when run unsent at the latest
+block), each from its launchpad's quote before any upload
+([decision 0284](../DECISIONS.md#d0284)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or

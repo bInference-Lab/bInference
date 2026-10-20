@@ -169,6 +169,15 @@ export async function namesOwnWallet(
   });
 }
 
+// The protocol error of settings a launchpad does not take: each refusal it names tells the
+// owner's next step (decision 0284).
+const settingsErrors = {
+  no_launchpad: "quote.no_route",
+  bad_settings: "protocol.bad_args",
+  recipient_needed: "intent.launch_recipient_needed",
+  recipient_unused: "intent.launch_recipient_unused",
+} as const satisfies Readonly<Record<string, ProtocolErrorCode>>;
+
 // The launch's launchpad settings, checked against their declaration, the words against what the
 // launchpad writes on chain, and each outside-only setting against the install's wallets.
 async function launchpadSettingsOf(
@@ -183,7 +192,7 @@ async function launchpadSettingsOf(
   const { host } = options.launch;
   const settings = host.settingsOf(request.venue, chain.ref, request.venueOptions);
   if (!settings.ok) {
-    return err(settings.error === "no_launchpad" ? "quote.no_route" : "protocol.bad_args");
+    return err(settingsErrors[settings.error]);
   }
   // A launchpad that writes the words on chain takes only as many bytes as its create call does
   // (decision 0275), and one that takes its picture as a link names no upload, so no picture is
