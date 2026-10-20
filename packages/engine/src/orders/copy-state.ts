@@ -73,10 +73,22 @@ interface CopyBuy {
   readonly usdMicros: bigint;
 }
 
+/** The last execution of a wallet a copy order counted, by its time and number. */
+export interface ExecutionMark {
+  readonly atMs: number;
+  /** 0 before any: the mark then counts from its time. */
+  readonly id: number;
+}
+
 /** What a copy order holds of one token from its own buys, in base units. */
 interface CopyHolding {
   readonly asset: AssetRef;
   readonly base: bigint;
+  /**
+   * The wallet's last execution whose sales outside the copy orders the holding was lowered by;
+   * its first buy's time while none was counted (decision 0260).
+   */
+  readonly seen?: ExecutionMark;
 }
 
 /**
@@ -147,7 +159,13 @@ const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
   taking: z.strictObject({ ...tradeShape, take: z.int().positive() }).exactOptional(),
   retries: z.array(z.strictObject({ ...tradeShape, dueAtMs: epochMsSchema })).max(maxRetries),
   buys: z.array(z.strictObject({ atMs: epochMsSchema, usdMicros: decimalStringSchema })),
-  held: z.array(z.strictObject({ asset: assetRefSchema, base: decimalStringSchema })),
+  held: z.array(
+    z.strictObject({
+      asset: assetRefSchema,
+      base: decimalStringSchema,
+      seen: z.strictObject({ atMs: epochMsSchema, id: z.int().nonnegative() }).exactOptional(),
+    }),
+  ),
   notices: noticeHourSchema.exactOptional(),
 });
 
@@ -236,11 +254,18 @@ export interface CopyTraded {
   readonly atMs: number;
 }
 
-function addHeld(held: readonly CopyHolding[], asset: AssetRef, base: bigint): CopyHolding[] {
-  const before = held.find((holding) => holding.asset === asset)?.base ?? 0n;
-  const after = before + base;
+// The holdings with `base` added to the token's; a holding that starts counts the wallet's other
+// sales from `atMs`, its first buy.
+function addHeld(
+  held: readonly CopyHolding[],
+  change: { readonly asset: AssetRef; readonly base: bigint; readonly atMs: number },
+): CopyHolding[] {
+  const { asset, base, atMs } = change;
+  const before = held.find((holding) => holding.asset === asset);
+  const after = (before?.base ?? 0n) + base;
+  const seen = before?.seen ?? { atMs, id: 0 };
   const others = held.filter((holding) => holding.asset !== asset);
-  return after > 0n ? [...others, { asset, base: after }] : others;
+  return after > 0n ? [...others, { asset, base: after, seen }] : others;
 }
 
 /**
@@ -254,9 +279,10 @@ export function copyStateAfterFill(state: CopyState, traded: CopyTraded): CopySt
   if (traded.side === "buy") {
     const { asset, base } = traded.amountOut;
     const buys = [...recent, { atMs: traded.atMs, usdMicros: traded.usdMicros }];
-    return { ...rest, buys, held: addHeld(state.held, asset, base) };
+    return { ...rest, buys, held: addHeld(state.held, { asset, base, atMs: traded.atMs }) };
   }
   const { asset, base } = traded.amountIn;
   const sold = base < copiedHeldOf(state, asset) ? base : copiedHeldOf(state, asset);
-  return { ...rest, buys: recent, held: addHeld(state.held, asset, -sold) };
+  const held = addHeld(state.held, { asset, base: -sold, atMs: traded.atMs });
+  return { ...rest, buys: recent, held };
 }

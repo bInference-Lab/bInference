@@ -77,7 +77,11 @@ Every order fill runs the money path with no card, held to its order's bounds
   fills run one at a time, so two buys never count the same room; a skipped buy counts nothing.
 - **A sale.** The leader's `shareSoldBps` of what the order holds of the token, never more than the
   wallet holds: `min(copied, held) × share / 10,000`, rounded down, sold as an amount. What it sold
-  leaves the order's holding. A sale whose share the watcher did not read is skipped with the new
+  leaves the order's holding. Before each sale, the holding is lowered by what the wallet sold of
+  the token outside the copy orders since its first buy, by hand, through an exit order or any
+  other fill, its fees among it, never below zero: a sale outside the order is taken from the
+  copied share first, so a copy sale never sells tokens the agent bought again for itself. Sends
+  out of the wallet are not counted; `held` bounds them. A sale whose share the watcher did not read is skipped with the new
   reason `share_unread` and reported: nothing guesses it.
 - **A sale that fails for a passing reason** (the owner's choice, 2026-10-20) is sold again a
   minute after it failed, for an hour from the leader's sale: a locked engine (`engine_locked`),

@@ -107,6 +107,7 @@ export function copyOrdersOf(options: EngineOptions, fills: OrderFills): CopyOrd
     quotes: options.quoteAssets ?? new Set(),
     install: stores.install,
     custody,
+    positions: options.positions,
     readTokenFacts: options.readTokenFacts,
     clock,
   });

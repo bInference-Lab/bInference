@@ -7,6 +7,7 @@ import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import type { IntentStore } from "../ports.js";
 import { asCopyOrder, type CopyOrder } from "./copy-fills.js";
 import { copyOrdersIn } from "./copy-orders-in.js";
+import { honestHeldState, type OutsideSaleParts } from "./copy-outside-sales.js";
 import {
   type CopyState,
   copyStateDocument,
@@ -40,13 +41,15 @@ export interface CopyOrdersParts {
   readonly fills: OrderFills;
   readonly trackedWallets: Pick<TrackedWalletStore, "since" | "cursor">;
   /** The agents' live fills in flight, which hold a live order's line. */
-  readonly intents: Pick<IntentStore, "fillsInFlight">;
+  readonly intents: Pick<IntentStore, "fillsInFlight" | "get">;
   readonly chains: ChainRegistry;
   /** The quote assets, whose buys no copy order follows (decision 0260). */
   readonly quotes: CopyFilterParts["quotes"];
   /** The install's wallets and their accounts: a leader that became one is not followed. */
   readonly install: InstallAccountParts["install"];
   readonly custody: InstallAccountParts["custody"];
+  /** The wallets' executions, whose sales outside the copy orders lower a copy holding. */
+  readonly positions: OutsideSaleParts["positions"];
   readonly readTokenFacts: ReadTokenFacts;
   readonly clock: Clock;
 }
@@ -108,8 +111,13 @@ async function fillTaken(
   reading: Reading,
   call: { readonly taking: Omit<CopyTaking, "take">; readonly signal: AbortSignal },
 ): Promise<boolean> {
-  const { order, state } = reading;
+  const { order } = reading;
   const { taking, signal } = call;
+  // A sale counts first what the wallet sold of the token outside the copy orders (decision 0260).
+  const state =
+    taking.side === "sell"
+      ? await honestHeldState(parts, { order, state: reading.state, asset: taking.asset, signal })
+      : reading.state;
   const taken = await keep(parts, order, { state: takenState(state, taking), signal });
   if (taken === undefined) {
     return false;

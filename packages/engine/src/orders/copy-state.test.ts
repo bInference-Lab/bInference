@@ -110,4 +110,14 @@ describe("a copy order's state", () => {
     const beyond = copyStateAfterFill(part, sold(9n, 3_000));
     expect(beyond.held).toStrictEqual([]);
   });
+
+  it("counts the wallet's other sales of a holding from its first buy, kept as it grows", () => {
+    const first = copyStateAfterFill(copyStartOf(0), bought(10n, 20n, 1_000));
+    const more = copyStateAfterFill(first, bought(10n, 20n, 5_000));
+
+    expect(more.held).toStrictEqual([
+      { asset: testToken, base: 20n, seen: { atMs: 1_000, id: 0 } },
+    ]);
+    expect(copyStateDocument.decode(copyStateDocument.encode(more))).toStrictEqual(more);
+  });
 });

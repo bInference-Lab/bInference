@@ -1,11 +1,20 @@
 import { assetRefParts, assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
+import type { IntentRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { expectOk, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testLimits,
+  testNowMs,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import type { StoredActivity } from "../leaders/tracked-wallet-record.js";
 import { testCall, testChains } from "../operations/test-engine.js";
 import type { RiskCheck } from "../ports.js";
@@ -19,7 +28,7 @@ import {
   noticesOf,
   startFillEngine,
 } from "./test-fills.js";
-import { testCopy, testLeader } from "./test-orders.js";
+import { tapCard, testCopy, testLeader } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
@@ -115,6 +124,56 @@ describe("the copy orders' runner", () => {
     expect(copiedHeldOf(await copyStateNow(test, order.id), testToken)).toBe(
       bought - (bought * 4_000n) / 10_000n,
     );
+  });
+
+  it("counts its own earlier sale once, never again as a sale outside the order", async () => {
+    const test = await startFillEngine({ prices, tokens: 0n });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+    const bought = copiedHeldOf(await copyStateNow(test, order.id), testToken);
+    const sale = (id: number, bps: number) =>
+      leaderTrade(id, { side: "sell", atMs: test.clock.now(), shareSoldBps: bpsSchema.parse(bps) });
+
+    await storeTrades(test, [sale(2, 4_000)]);
+    await test.engine.runCopies(live);
+    await storeTrades(test, [sale(3, 5_000)]);
+    await test.engine.runCopies(live);
+
+    const left = bought - (bought * 4_000n) / 10_000n;
+    const sold = (await fillIntentsOf(test)).filter(({ kind }) => kind === "sell");
+    expect(sold.map(({ request }) => request)).toMatchObject([
+      { amount: { base: String((bought * 4_000n) / 10_000n) } },
+      { amount: { base: String((left * 5_000n) / 10_000n) } },
+    ]);
+  });
+
+  it("never sells the agent's own tokens bought again after a sale outside the order", async () => {
+    const test = await startFillEngine({ prices, tokens: 0n });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+    const bought = copiedHeldOf(await copyStateNow(test, order.id), testToken);
+    const half = { percentBps: bpsSchema.parse(5_000) };
+    const hand = { agent: testAgent, wallet: testWallet, token: testToken, reason: "By hand" };
+    const sale = { ...hand, kind: "sell", amount: half } as const;
+    const buy = { ...hand, kind: "buy", spend: { asset: testCoin, base: bought } } as const;
+    const byHand = async (request: IntentRequest) => {
+      const proposed = expectOk(await test.engine.handlers["intent/propose"](testCall(request)));
+      await tapCard(test, proposed.intent, "confirm");
+    };
+    await byHand(sale);
+    await byHand(buy);
+    const share = bpsSchema.parse(10_000);
+    await storeTrades(test, [
+      leaderTrade(2, { side: "sell", atMs: test.clock.now(), shareSoldBps: share }),
+    ]);
+
+    await test.engine.runCopies(live);
+
+    const sold = (await fillIntentsOf(test)).find(({ kind }) => kind === "sell");
+    expect(sold?.request).toMatchObject({ amount: { base: String(bought - bought / 2n) } });
+    expect(copiedHeldOf(await copyStateNow(test, order.id), testToken)).toBe(0n);
   });
 
   it("skips a leader's buy of a honeypot and tells the owner which token", async () => {
