@@ -76,7 +76,7 @@ export interface LaunchDraftDeskOptions {
   readonly host: Pick<LaunchHost, "picturePlace">;
   readonly chains: ChainRegistry;
   /** The owner's uploads, which the launch from a draft reads its picture from. */
-  readonly uploads: Pick<UploadShelf, "ticket" | "receive">;
+  readonly uploads: Pick<UploadShelf, "ticket" | "receive" | "drop">;
   readonly propose: EngineHandler<"intent/propose">;
   /** The owner's numeric Telegram id, which alone starts or drops a draft. */
   readonly owners: Pick<OwnerStore, "get">;

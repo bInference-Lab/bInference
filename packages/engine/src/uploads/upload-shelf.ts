@@ -48,6 +48,8 @@ export interface UploadShelf extends OwnerImageSource {
    * launch reads only a picture its proposer uploaded (decision 0236).
    */
   holderOf(upload: string): UploadHolder | undefined;
+  /** Forgets an upload no launch will read, as when the launch that took it was refused. */
+  drop(upload: string): void;
 }
 
 /** How long tickets and uploads last, and how many of each the shelf holds. */
@@ -144,6 +146,9 @@ export function createUploadShelf(options: UploadShelfOptions): UploadShelf {
     holderOf(upload) {
       prune(uploads, clock.now(), most);
       return uploads.get(upload)?.value.holder;
+    },
+    drop(upload) {
+      uploads.delete(upload);
     },
   };
 }

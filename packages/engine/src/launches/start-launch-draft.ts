@@ -1,4 +1,3 @@
-import type { ErrorCode } from "@binference/core";
 import { noUploadImage } from "@binference/protocol";
 import { type IntentReason, intentReasons } from "../intents/intent-reason.js";
 import { isTerminalState } from "../intents/intent-state.js";
@@ -51,36 +50,34 @@ function reasonOf(stored: string | undefined): IntentReason {
   return intentReasons.find((reason) => reason === stored) ?? "launch_unread";
 }
 
-function failed(options: LaunchDraftDeskOptions, draft: LaunchDraft, error: ErrorCode): void {
-  publishDraftClosed(options.publish, draft, { outcome: "failed", error });
-}
-
 // Proposes the draft's launch and tells how it went: started while the launch is on its way to its
 // card, or failed, with the proposal's refusal or the reason its launch ended before its card.
 async function proposeDraft(
   options: LaunchDraftDeskOptions,
   draft: LaunchDraft,
   call: { readonly ownerId: number; readonly signal: AbortSignal },
-): Promise<void> {
+): Promise<DraftEnd> {
   const caller = ownerOnTelegram(call.ownerId, draft);
   const image = imageOf(options, draft, caller.credential);
   if (image === undefined) {
-    failed(options, draft, "image.unreadable");
-    return;
+    return { outcome: "failed", error: "image.unreadable" };
   }
   const args = { ...draft.request, image };
   const proposed = await options.propose({ args, caller, signal: call.signal });
+  // A launch that never reached its card leaves no reader of its picture on the shelf.
+  const isEnded = !proposed.ok || isTerminalState(proposed.value.state);
+  if (isEnded && image !== noUploadImage) {
+    options.uploads.drop(image);
+  }
   if (!proposed.ok) {
-    failed(options, draft, proposed.error);
-    return;
+    return { outcome: "failed", error: proposed.error };
   }
   // A launch the policy refused, or whose quote, upload or first pin read failed, ended before its
   // card: the draft says why, never that the launch started.
   const { intent, state } = proposed.value;
-  const end: DraftEnd = isTerminalState(state)
+  return isTerminalState(state)
     ? { outcome: "failed", intent, reason: reasonOf(proposed.value.outcome?.reason) }
     : { outcome: "started", intent };
-  publishDraftClosed(options.publish, draft, end);
 }
 
 /**
@@ -95,11 +92,14 @@ export function createDraftStarts(options: LaunchDraftDeskOptions): DraftStarts 
   return {
     run(draft, ownerId) {
       const signal = AbortSignal.any([stop.signal, AbortSignal.timeout(timeoutMs)]);
-      const started: Promise<void> = proposeDraft(options, draft, { ownerId, signal })
-        .catch(() => {
-          failed(options, draft, "internal.error");
-        })
-        .finally(() => running.delete(started));
+      const settle = async (): Promise<void> => {
+        const end = await proposeDraft(options, draft, { ownerId, signal }).catch((): DraftEnd => ({
+          outcome: "failed",
+          error: "internal.error",
+        }));
+        publishDraftClosed(options.publish, draft, end);
+      };
+      const started: Promise<void> = settle().finally(() => running.delete(started));
       running.add(started);
     },
     idle: async () => {
