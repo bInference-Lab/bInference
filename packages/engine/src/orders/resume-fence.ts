@@ -26,8 +26,9 @@ export interface ResumeFence {
     readonly outcome: FillOutcome;
   }): void;
   /**
-   * Whether the re-check reports a skip row in its one report instead of the row's own notices,
-   * which are then marked announced without being sent. Fills are always told on their own.
+   * Whether the re-check reports a skip row in its one report instead of the row's own notices:
+   * the skip of the fill its own judgment started, or a DCA or copy order's first skip of the
+   * downtime. Such a row stays unannounced until the report went out. Fills are always told.
    */
   holds(row: OrderFillRecord): boolean;
 }

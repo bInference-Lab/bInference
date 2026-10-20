@@ -1,5 +1,6 @@
 import { BinferenceError, type Clock, type Id, type JsonValue } from "@binference/core";
 import { allOrdersIn } from "../orders/all-orders.js";
+import { announceRows } from "../orders/fill-ends.js";
 import { paceRows } from "../orders/fill-pacing.js";
 import { hasPriceTrigger } from "../orders/order-record.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -93,37 +94,50 @@ async function untilReportable(parts: DowntimeParts, signal: AbortSignal): Promi
   }
 }
 
-// The report of the open re-check, which it closes; a fault closes it too, but a stop leaves it
-// open, so the engine marks no run and its next start reports the span again.
-async function closedReport(parts: DowntimeParts, signal: AbortSignal): Promise<DowntimeReport> {
+function closedEarly(): never {
+  throw new BinferenceError({
+    code: "engine.downtime_closed",
+    message: "The downtime re-check closed before its report.",
+  });
+}
+
+// The report of the open re-check, with the skip rows it holds, which it closes. A fault closes it
+// and tells the held skips as usual; a stop leaves it open, so the engine marks no run and its next
+// start reports the span again and tells the held skips then.
+async function closedReport(
+  parts: DowntimeParts,
+  signal: AbortSignal,
+): Promise<{ readonly report: DowntimeReport; readonly held: OpenCheck["held"] }> {
+  const held = parts.check.open()?.held ?? new Map();
   try {
     await untilReportable(parts, signal);
-    const open = parts.check.open();
-    if (open === undefined) {
-      throw new BinferenceError({
-        code: "engine.downtime_closed",
-        message: "The downtime re-check closed before its report.",
-      });
-    }
+    const open = parts.check.open() ?? closedEarly();
     const orders = await checkedOrdersOf({ orders: parts.orders, rows: paceRows }, open, signal);
     parts.check.close();
-    return { cause: open.cause, offFromMs: open.offFromMs, offMs: open.offMs, orders };
+    const { cause, offFromMs, offMs } = open;
+    return { report: { cause, offFromMs, offMs, orders }, held: open.held };
   } catch (error) {
     if (!signal.aborted) {
+      const left = parts.check.open()?.held ?? held;
       parts.check.close();
+      await announceRows(parts, [...left.values()], signal);
     }
     throw error;
   }
 }
 
 // Sends the report to the owner, when the re-check checked an order (the owner's choice, decision
-// 0267), and to each agent whose orders it names, then marks the engine alive: a stop before that
-// leaves the earlier mark, so the next start reports the span again.
+// 0267), marks the skips it told, tells each agent whose orders it names, then marks the engine
+// alive: a stop before that leaves the earlier mark, so the next start reports the span again.
 async function report(parts: DowntimeParts, signal: AbortSignal): Promise<DowntimeReport> {
-  const done = await closedReport(parts, signal);
+  const { report: done, held } = await closedReport(parts, signal);
   const { orders } = done;
   if (orders.length > 0) {
     parts.publish(noticePush(resumedNotice(done)));
+  }
+  const ids = [...held.values()].map(({ id }) => id);
+  if (ids.length > 0) {
+    await parts.orders.markAnnounced({ ids, atMs: parts.clock.now() }, { signal });
   }
   const agents = [...new Set(orders.map(({ agentId }) => agentId))];
   for (const agent of agents) {

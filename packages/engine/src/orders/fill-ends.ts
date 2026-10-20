@@ -312,9 +312,9 @@ export interface AnnounceParts {
 /**
  * Tells the owner the notices of rows not yet announced, oldest first, order by order, then marks
  * them announced (decision 0197); a copy order's skips past five in its hour are counted instead
- * and told in one line (decision 0260), and the skips a downtime re-check reports in its one
- * report are marked without being told (decision 0267). A stop between the two tells them again at
- * the next start.
+ * and told in one line (decision 0260). A skip a downtime re-check reports in its one report is
+ * left unannounced: the report marks it once it went out, or it is told as usual (decision 0267).
+ * A stop between the two tells them again at the next start. Answers how many rows it marked.
  */
 export async function announceRows(
   parts: AnnounceParts,
@@ -339,9 +339,11 @@ export async function announceRows(
       parts.publish({ topic: "notice", kind: "notice/new", data });
     });
   }
-  const ids = unannounced.map(({ id }) => id);
-  await parts.orders.markAnnounced({ ids, atMs: parts.clock.now() }, { signal });
-  return unannounced.length;
+  const ids = due.map(({ id }) => id);
+  if (ids.length > 0) {
+    await parts.orders.markAnnounced({ ids, atMs: parts.clock.now() }, { signal });
+  }
+  return ids.length;
 }
 
 /** Announces an order's newest rows whose notices were not announced yet, and answers the rows. */

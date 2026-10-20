@@ -16,21 +16,25 @@ const dca = {
   kind: "dca",
 } as const;
 
-function skipRow(order: { readonly id: string }, reason: string, atMs: number) {
-  return orderFillRecordSchema.parse({
-    id: "fil_0190f1c2-3a4b-7c5d-8e6f-000000000009",
-    orderId: order.id,
-    outcome: "skipped",
-    reason,
-    atMs,
-  });
-}
-
 function begun() {
   const check = createDowntimeCheck();
   const orders = [stop, dca];
   check.begin({ cause: "start", offFromMs: testNowMs - 3_600_000, atMs: testNowMs, orders });
   return check;
+}
+
+// A skip row of `order`, numbered `n`, written at `atMs`.
+function row(
+  order: typeof stop | typeof dca,
+  skip: { readonly reason: string; readonly atMs: number; readonly n: number },
+) {
+  return orderFillRecordSchema.parse({
+    id: `fil_0190f1c2-3a4b-7c5d-8e6f-00000000000${String(skip.n)}`,
+    orderId: order.id,
+    outcome: "skipped",
+    reason: skip.reason,
+    atMs: skip.atMs,
+  });
 }
 
 describe("the downtime re-check's state", () => {
@@ -66,16 +70,26 @@ describe("the downtime re-check's state", () => {
     expect(check.open()?.cause).toBe("start");
   });
 
-  it("holds a price order's skips and a DCA order's downtime skips from the first resume on", () => {
+  it("holds only the skip of its own fill and a DCA order's first skip of the downtime", () => {
     const check = begun();
+    const beforeFill = check.holds(row(stop, { reason: "fill_failed", atMs: testNowMs, n: 1 }));
+    check.judged({ order: stop, readAtMs: testNowMs, fires: true });
+    const ownFill = check.holds(row(stop, { reason: "worst_price", atMs: testNowMs + 1, n: 2 }));
+    check.fillEnded({ order: stop.id, readAtMs: testNowMs, outcome: "skipped" });
+    const later = check.holds(row(stop, { reason: "worst_price", atMs: testNowMs + 2, n: 3 }));
 
+    expect([beforeFill, ownFill, later]).toStrictEqual([false, true, false]);
+    expect(check.open()?.orders.get(stop.id)?.standing).toMatchObject({
+      reason: "worst_price",
+      fromRow: true,
+    });
     expect([
-      check.holds(skipRow(stop, "worst_price", testNowMs)),
-      check.holds(skipRow(stop, "worst_price", testNowMs - 1)),
-      check.holds(skipRow(dca, "missed", testNowMs)),
-      check.holds(skipRow(dca, "fill_failed", testNowMs)),
-    ]).toStrictEqual([true, false, true, false]);
+      check.holds(row(dca, { reason: "missed", atMs: testNowMs - 1, n: 4 })),
+      check.holds(row(dca, { reason: "fill_failed", atMs: testNowMs, n: 5 })),
+      check.holds(row(dca, { reason: "missed", atMs: testNowMs, n: 6 })),
+      check.holds(row(dca, { reason: "late", atMs: testNowMs + 1, n: 7 })),
+    ]).toStrictEqual([false, false, true, false]);
     check.close();
-    expect(check.holds(skipRow(stop, "worst_price", testNowMs))).toBe(false);
+    expect(check.holds(row(dca, { reason: "missed", atMs: testNowMs, n: 6 }))).toBe(false);
   });
 });

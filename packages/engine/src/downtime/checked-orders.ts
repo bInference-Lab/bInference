@@ -48,9 +48,11 @@ function skipped(
   return part === undefined ? { ...base, ...reason } : { ...base, ...reason, reasonPart: part };
 }
 
-// A price order whose fill skipped: the reason of its newest skip row since the resume.
+// A price order whose fill skipped: the reason of the skip row the re-check held, else of its
+// newest skip row since the resume.
 async function fillSkipOf(parts: RowsParts, call: OrderCall): Promise<CheckedOrder> {
-  const rows = await rowsSince(parts, call);
+  const held = call.open.held.get(call.base.order);
+  const rows = held === undefined ? await rowsSince(parts, call) : [held];
   const row = rows.findLast(({ outcome }) => outcome === "skipped");
   return row?.reason === undefined
     ? skipped(call.base, { reason: "fill_failed" })
@@ -60,7 +62,7 @@ async function fillSkipOf(parts: RowsParts, call: OrderCall): Promise<CheckedOrd
 // A price order's outcome: its judgment and fill; one never judged is `no_fresh_price` while it
 // is still active, and leaves the report else.
 async function priceOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {
-  const { base, watched, open, signal } = call;
+  const { base, watched, signal } = call;
   const { standing } = watched;
   if (standing.state === "filled") {
     return { ...base, outcome: "filled" };
@@ -69,7 +71,7 @@ async function priceOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedO
     return skipped(base, { reason: "fill_failed" });
   }
   if (standing.state === "skipped") {
-    return open.skips.has(base.order)
+    return standing.fromRow === true
       ? fillSkipOf(parts, call)
       : skipped(base, { reason: standing.reason });
   }
@@ -77,19 +79,14 @@ async function priceOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedO
   return order?.state === "active" ? skipped(base, { reason: "no_fresh_price" }) : undefined;
 }
 
-// A DCA or copy order's outcome: checked only when a skip of the downtime landed in the re-check,
-// filled when a fill of the order landed too.
+// A DCA or copy order's outcome: its first skip of the downtime, which the report always shows,
+// though a fill of the order came too, since that fill tells itself.
 async function rowOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {
   const rows = await rowsSince(parts, call);
   const row = rows.find(
     ({ outcome, reason }) => outcome === "skipped" && downtimeRowReasons.has(reason ?? ""),
   );
-  if (row?.reason === undefined) {
-    return undefined;
-  }
-  return rows.some(({ outcome }) => outcome === "filled")
-    ? { ...call.base, outcome: "filled" }
-    : skipped(call.base, { reason: row.reason, row });
+  return row?.reason === undefined ? undefined : skipped(call.base, { reason: row.reason, row });
 }
 
 async function outcomeOf(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {

@@ -226,6 +226,24 @@ describe("the downtime re-check", () => {
     expect(await storedOrder(test, stop.id)).toMatchObject({ state: "active", fills: 0 });
   });
 
+  it("tells every skip after an order's first judgment, and counts only that judgment", async () => {
+    const test = await startFillEngine();
+    const bounded = await activeOrder(test, testStopLoss({ worstPrice: 1n }));
+    await test.engine.downtime.alive(live);
+    await test.clock.advance(hourMs);
+
+    const restarted = test.restart();
+    const run = await restarted.downtime.started(live);
+    await restarted.seePrice(at(900_000n, test.clock.now()), live);
+    const fell = await restarted.seePrice(at(700_000n, test.clock.now()), live);
+    await test.clock.advance(20_000);
+    const report = await run?.reported;
+
+    expect(fell).toStrictEqual([{ order: bounded.id, outcome: "skipped" }]);
+    expect(report?.orders).toMatchObject([{ outcome: "skipped", reason: "trigger_not_met" }]);
+    expect(keysOf(noticesOf(test))).toContain("notice.skipped");
+  });
+
   it("only marks the engine alive at an install's first start", async () => {
     const test = await startFillEngine();
 

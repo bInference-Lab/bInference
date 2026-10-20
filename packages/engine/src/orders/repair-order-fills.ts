@@ -25,14 +25,12 @@ async function cancelUnfinished(
   }, Promise.resolve(0));
 }
 
-// Tells the owner every notice a stop kept from being announced, the oldest first.
+// Tells the owner every notice a stop kept from being announced, the oldest first; a page that
+// marks none, its rows held for a report, ends the round.
 async function announceLeft(parts: RepairOrderFillsParts, signal: AbortSignal): Promise<number> {
   const rows = await parts.orders.unannounced({ limit: pageSize }, { signal });
-  if (rows.length === 0) {
-    return 0;
-  }
-  const announced = await announceRows(parts, rows, signal);
-  return announced + (await announceLeft(parts, signal));
+  const announced = rows.length === 0 ? 0 : await announceRows(parts, rows, signal);
+  return announced === 0 ? 0 : announced + (await announceLeft(parts, signal));
 }
 
 /**
