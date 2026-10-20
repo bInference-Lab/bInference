@@ -29,6 +29,7 @@ import {
   testChain,
   testLaunchCeilingRequest,
 } from "../testing/custody-fixtures.js";
+import { withCreateCall } from "../testing/launchpad-fixtures.js";
 import { createAgentWallet } from "../wallets/create-agent-wallet.js";
 import { createDayCaps } from "../wallets/create-day-caps.js";
 import type { WalletExpectation } from "../wallets/read-back.js";
@@ -149,8 +150,10 @@ async function makeWallet(subject: PrivyCustodySubject): Promise<CustodySetup> {
 }
 
 // The test ceiling of a launch wallet (decision 0217), with the caps given.
+// The launch wallet's ceiling: the test ceiling with its launch rules and a launchpad's create call,
+// which only a launch wallet's ceiling allows (decision 0271).
 function testLaunchCeiling(caps: ChainCaps): Ceiling {
-  const built = buildCeiling(testLaunchCeilingRequest(caps));
+  const built = buildCeiling(withCreateCall(testLaunchCeilingRequest(caps)));
   assert.ok(built.ok);
   return built.value;
 }

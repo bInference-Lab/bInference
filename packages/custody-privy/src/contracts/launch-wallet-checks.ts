@@ -7,6 +7,7 @@ import {
   oneBnbWei,
   testAddresses,
 } from "../testing/custody-fixtures.js";
+import { createData } from "../testing/launchpad-fixtures.js";
 import { readBackWallet } from "../wallets/read-back.js";
 import {
   askPrivy,
@@ -19,7 +20,7 @@ import {
   type TestCall,
 } from "./privy-custody-setup.js";
 
-const { curve, token, rescue, unsaved, unlisted } = testAddresses;
+const { curve, token, rescue, unsaved, unlisted, router } = testAddresses;
 const refused = { ok: false, error: "refused" };
 
 // The suite's wallet and its launch wallet, made on first use.
@@ -103,6 +104,12 @@ export function launchWalletChecks(harness: PrivyCustodyHarness): readonly Contr
       await privySigns(w.launch, curveCall("buy", w.launch.wallet.address));
       await privySigns(w.launch, curveCall("sell", w.launch.wallet.address));
       await privySigns(w.launch, { to: token, valueWei: 0n, data: approveData(curve, 7n) });
+    }),
+    launchCheck(harness, "signs a launchpad's create call from the launch wallet", async (w) => {
+      await privySigns(w.launch, { to: router, valueWei: oneBnbWei, data: createData(oneBnbWei) });
+    }),
+    launchCheck(harness, "refuses the create call from the main wallet", async (w) => {
+      await privyRefuses(w.main, { to: router, valueWei: oneBnbWei, data: createData(oneBnbWei) });
     }),
     launchCheck(harness, "refuses the same buy and sell from the main wallet", async (w) => {
       await privyRefuses(w.main, curveCall("buy", w.main.wallet.address));
