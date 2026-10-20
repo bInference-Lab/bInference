@@ -51,7 +51,10 @@ Every order fill runs the money path with no card, held to its order's bounds
 - **Lateness** (the owner's choice, 2026-10-20). A buy whose block time is more than 60 seconds
   old when its copy reaches the head of its agent's line of fills is skipped as `late` and never
   made, as a DCA period is
-  ([decision 0246](0246-a-dca-order-buys-once-per-period-and-never-buys-a-missed-one.md)). A sale
+  ([decision 0246](0246-a-dca-order-buys-once-per-period-and-never-buys-a-missed-one.md)).
+  Lateness is judged once, at the head of the line: a buy taken in time may still land up to its
+  fill's 30 second deadline later, about 90 seconds after the leader at most, at a price its own
+  quote and slippage bound. A buy a stop cut off is `missed`, whose words name no next run. A sale
   the agent missed, while off or behind, is still made when its turn comes, at the price then,
   through the same fill path and bounds, and its notice, `fill.copySellLate`, says when the leader
   sold. It stays fail-closed: its share must be known, it never sells more than the order bought or
