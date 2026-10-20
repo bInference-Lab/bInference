@@ -21,6 +21,11 @@ describe("sqlite alive store", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
+  it("starts with the mark of the migration that made it, so an update's start re-checks", async () => {
+    const { host } = databases.open(engineDatabase);
+    await expect(createSqliteAliveStore(host).lastAlive(live)).resolves.toBeGreaterThan(0);
+  });
+
   it("keeps the mark in one row that a second store on the database reads", async () => {
     const { host, database } = databases.open(engineDatabase);
     await createSqliteAliveStore(host).markAlive(5_000, live);
