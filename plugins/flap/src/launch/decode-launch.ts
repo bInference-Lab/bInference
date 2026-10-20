@@ -8,12 +8,11 @@ import {
   type Result,
   type TxDraft,
 } from "@binference/plugin-sdk";
-import { curveAssetOf, decodeEvmDraft } from "@binference/plugin-sdk/evm";
+import { curveAssetOf, curvePairTokenOf, decodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { zeroAddress } from "viem";
 import { newTokenArgsOf } from "../portal/launch-call.js";
 import { createOfArgs } from "./create-call.js";
 import type { LaunchParts } from "./launch-parts.js";
-import { pairTokenOf } from "./launch-steps.js";
 import { isTaxTokenAddress, tokenAddressOf } from "./vanity-salt.js";
 
 // The create call's first buy for the calling wallet, which carries no minimum; none for no spend.
@@ -47,7 +46,7 @@ export function decodeLaunch(
     terms.salt,
   );
   const coinSpend = terms.quoteToken === zeroAddress ? terms.quoteAmt : 0n;
-  const isPair = pairTokenOf(curveAssetOf(terms.quoteToken, setup), setup) !== undefined;
+  const isPair = curvePairTokenOf(curveAssetOf(terms.quoteToken, setup), setup) !== undefined;
   if (!isPair || !isTaxTokenAddress(token) || call.value.value < coinSpend) {
     return err("unknown_call");
   }

@@ -2,16 +2,10 @@ import {
   accountRefParts,
   accountRefSchema,
   BinferenceError,
-  type AssetRef,
   type LaunchTerms,
   type TxDraft,
 } from "@binference/plugin-sdk";
-import {
-  type CurveChainSetup,
-  curveTokenOf,
-  encodeEvmApproval,
-  encodeEvmDraft,
-} from "@binference/plugin-sdk/evm";
+import { curvePairTokenOf, encodeEvmApproval, encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { type Address, type Hex, zeroAddress } from "viem";
 import { portalOf } from "../flap-assets.js";
 import { newTokenCallData } from "../portal/launch-call.js";
@@ -19,17 +13,6 @@ import { newTokenArgsFor } from "./create-call.js";
 import type { LaunchChain, LaunchParts } from "./launch-parts.js";
 import { flapSettingsOf } from "./launch-settings.js";
 import { type TokenMaker, tokenAddressOf } from "./vanity-salt.js";
-
-/**
- * The pair as the Portal names it: the zero address for the chain's coin, else a quote token the
- * registry lists for Flap's curves. Any other asset: undefined.
- */
-export function pairTokenOf(pair: AssetRef, setup: CurveChainSetup): Address | undefined {
-  const token = curveTokenOf(pair, setup);
-  return token === zeroAddress || (token !== undefined && setup.quoteTokens.has(token))
-    ? token
-    : undefined;
-}
 
 /** A launch the venue can make: its chain, the Portal and the pair as the Portal names them. */
 export interface PlacedLaunch {
@@ -41,7 +24,7 @@ export interface PlacedLaunch {
 /** Where a launch's terms place it; a chain Flap does not launch on, or another pair: undefined. */
 export function placeOf(terms: LaunchTerms, parts: LaunchParts): PlacedLaunch | undefined {
   const chain = parts.chains.get(accountRefParts(terms.wallet).chain);
-  const quoteToken = chain === undefined ? undefined : pairTokenOf(terms.pair, chain.setup);
+  const quoteToken = chain === undefined ? undefined : curvePairTokenOf(terms.pair, chain.setup);
   if (chain === undefined || quoteToken === undefined) {
     return undefined;
   }

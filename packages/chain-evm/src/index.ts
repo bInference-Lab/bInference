@@ -64,6 +64,7 @@ export {
   curveChainSetupsOf,
   curveLossBps,
   curveSideOf,
+  curvePairTokenOf,
   curveTokenOf,
   curveTokenOn,
 } from "./tokens/curve-chain.js";

@@ -124,6 +124,18 @@ export function curveTokenOf(
   return isToken && token.value !== zeroAddress ? token.value : undefined;
 }
 
+/**
+ * The asset a launchpad's curves may trade a token against, as its contracts name it: the zero
+ * address for the chain's coin, else one of the quote tokens the launchpad lists on the chain. Any
+ * other asset: undefined.
+ */
+export function curvePairTokenOf(asset: AssetRef, on: CurveChainSetup): Address | undefined {
+  const token = curveTokenOf(asset, on);
+  return token === zeroAddress || (token !== undefined && on.quoteTokens.has(token))
+    ? token
+    : undefined;
+}
+
 /** The asset an address of a launchpad's contracts names on the chain. */
 export function curveAssetOf(
   token: Address,

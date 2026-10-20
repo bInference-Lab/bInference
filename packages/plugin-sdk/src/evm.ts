@@ -9,6 +9,7 @@ export {
   curveChainSetupsOf,
   curveLossBps,
   curveSideOf,
+  curvePairTokenOf,
   curveTokenOf,
   curveTokenOn,
   decodeCall,

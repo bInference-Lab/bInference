@@ -6,6 +6,7 @@ import {
   curveAssetOf,
   curveChainSetupsOf,
   curveLossBps,
+  curvePairTokenOf,
   curveSideOf,
   curveTokenOf,
   curveTokenOn,
@@ -58,6 +59,15 @@ describe("a launchpad's curve chains", () => {
     expect(curveTokenOf(assetRefSchema.parse(`eip155:1/erc20:${tokenAddress}`), on)).toBe(
       undefined,
     );
+  });
+
+  it("names the coin and a listed quote token as pairs, and no other token", () => {
+    const on = setup();
+    expect([curvePairTokenOf(bnb, on), curvePairTokenOf(usdt, on)]).toStrictEqual([
+      zero,
+      usdtAddress,
+    ]);
+    expect(curvePairTokenOf(token, on)).toBeUndefined();
   });
 
   it("reads a buy, a sale, and no curve trade between two quote assets or two tokens", () => {
