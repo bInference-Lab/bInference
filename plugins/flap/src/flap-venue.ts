@@ -9,6 +9,8 @@ import { readCurvePrice } from "./curve/read-curve-price.js";
 import { readCurve } from "./curve/read-curve.js";
 import { portalName } from "./flap-assets.js";
 import type { FlapOptions } from "./flap-options.js";
+import { createFlapLauncher } from "./launch/flap-launcher.js";
+import { launchPartsOf } from "./launch/launch-parts.js";
 import { readFlapLaunches } from "./launches/read-launches.js";
 import { newTokenFunctionJson } from "./portal/launch-call.js";
 import { swapFunctionJson } from "./portal/portal-calls.js";
@@ -48,10 +50,12 @@ export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
  * only the Portal. Its curve read says which tokens Flap holds, and its quotes name the tax the
  * Portal takes on the curve. Its price read gives the price watcher the Portal's own curve price
  * of a token each block. Its launch reading gives the launch feed each token the Portal creates,
- * from the Portal's own events (decision 0254). Bad options are a fault (`flap.bad_options`).
+ * from the Portal's own events (decision 0254). Given its launch options, it launches tax tokens
+ * with their first buy (decision 0271). Bad options are a fault (`flap.bad_options`).
  */
 export function createFlapVenue(options: FlapOptions): LaunchpadVenue {
   const parts = { setups: curveChainSetupsOf(options.chains, { id: "flap", name: "Flap" }) };
+  const { launches } = options;
   return defineLaunchpad({
     ...flapDeclaration([...parts.setups.keys()]),
     quote: async (request, { signal }) => quoteTrade(request, parts, signal),
@@ -61,5 +65,8 @@ export function createFlapVenue(options: FlapOptions): LaunchpadVenue {
     priceRead: async (request, { signal }) => readCurvePrice(request, parts, signal),
     launchEvents: portalEventIds,
     readLaunches: (request) => readFlapLaunches(request, parts),
+    ...(launches === undefined
+      ? {}
+      : { launcher: createFlapLauncher(launchPartsOf(launches, parts.setups)) }),
   });
 }

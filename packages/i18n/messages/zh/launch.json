@@ -4,5 +4,9 @@
   "option.taxBps": "每笔交易的交易税：{value}",
   "option.taxRecipient": "交易税支付给 {value}",
   "option.buyback": "回购并销毁：{value, select, yes {开启} other {关闭}}",
+  "option.buyTaxBps": "每笔买入的交易税：{value}",
+  "option.sellTaxBps": "每笔卖出的交易税：{value}",
+  "option.burnShareBps": "交易税中销毁：{value}",
+  "option.taxDays": "交易税持续 {value, plural, other {# 天}}",
   "age": "{unit, select, minute {{count} 分钟} hour {{count} 小时} other {{count} 天}}"
 }

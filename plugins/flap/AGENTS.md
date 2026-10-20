@@ -5,7 +5,8 @@ The Flap launchpad: quotes, buys and sells of tokens on Flap's bonding curves th
 The root [AGENTS.md](../../AGENTS.md) and [the plugin SDK's rules](../../packages/plugin-sdk/AGENTS.md)
 apply here. Rules for this plugin:
 
-- It imports `@binference/plugin-sdk`, viem and zod; its fork tests also import
+- It imports `@binference/plugin-sdk`, viem, zod and `node:crypto` (Keccak-256 for the salt search,
+  SHA-256 for the upload's boundary); its fork tests also import
   `@binference/chain-evm/fork`. The package graph enforces it.
 - The Portal's address comes only from the registry: the venue declares it by name. Every read is
   an `eth_call` of the Portal through the chain's RPC failover, which the composition root gives.
@@ -28,5 +29,13 @@ apply here. Rules for this plugin:
   `TokenQuoteSet` (none means the coin), `FlapTokenTaxSet` (none means no tax), `TokenBought`
   (insiders) and `FlapTokenProgressChanged` and `LaunchedToDEX` (its curve); in a later
   transaction those two are a curve change. `src/portal/portal-events.ts` holds the events' ABI.
+- The launcher (decisions 0270, 0271) lives in `src/launch/` and talks to Flap's own API only in
+  `src/upload/`: the upload and the pin status. Nothing reads an IPFS gateway, ever: a read of a
+  fresh CID through Flap's gateway before Flap holds it breaks the token's picture for good. The
+  API fake in `src/testing/` throws on any other URL.
+- A create call is Flap's only when the venue would write the same bytes for what it reads, so the
+  decoder refuses every value the launcher does not write. The salt is found off line from the
+  `Random` port; a token's address comes from the Portal, the salt and the registry's Tax Token V3
+  implementation.
 - Unit tests use the Portal's answers recorded in `src/testing/`, never the network. The fork tests
   in `src/fork/` trade live curve tokens and run in the fork suite.

@@ -2,6 +2,7 @@ import {
   type AccountRef,
   accountRefSchema,
   assetRefSchema,
+  type LaunchpadVenue,
   type LaunchPinRequest,
   type SimulatedStep,
   type TxSimulator,
@@ -9,6 +10,7 @@ import {
 import { curveChainSetupsOf, decodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { createSeededRandom } from "@binference/plugin-sdk/testing";
 import { getAddress, parseEther } from "viem";
+import { createFlapVenue } from "../flap-venue.js";
 import { type LaunchParts, launchPartsOf } from "../launch/launch-parts.js";
 import { tokenAddressOf } from "../launch/vanity-salt.js";
 import { newTokenArgsOf } from "../portal/launch-call.js";
@@ -88,6 +90,27 @@ export function launchPartsOver(
   const random = createSeededRandom(271);
   const chains = [{ chain: bscChain, simulator, taxTokenImplementation: taxImplementation }];
   return launchPartsOf({ http, random, chains }, setups);
+}
+
+/** Flap's launcher on BSC over a fake of its API and a dry-run simulator. */
+export function launcherOver(
+  http: FlapApiFake,
+  simulator: Pick<TxSimulator, "simulate"> = dryRunSimulator(),
+): NonNullable<LaunchpadVenue["launcher"]> {
+  const venue = createFlapVenue({
+    chains: [
+      { chain: bscChain, nativeAsset: bnb, quoteTokens: [usdt, usd1], rpc: scriptedPortal() },
+    ],
+    launches: {
+      http,
+      random: createSeededRandom(271),
+      chains: [{ chain: bscChain, simulator, taxTokenImplementation: taxImplementation }],
+    },
+  });
+  if (venue.launcher === undefined) {
+    throw new Error("The venue launches no token.");
+  }
+  return venue.launcher;
 }
 
 /** The tax recipient of {@link testLaunch}. */

@@ -20,15 +20,23 @@ sell of a curve token goes to Flap and nowhere else.
   its `price` is the curve's price in base units of the quote asset for one whole token. Only a
   token tradable on its curve gets a read; once it leaves its curve, or trades against another
   asset, its answers say `replan`, so the watcher finds another read.
+- **Launch.** Given its launch options, a launcher of Tax Token V3 tokens through the Portal's
+  `newTokenV6`, with the first buy in the create call (decisions 0270 and 0271). It quotes by a dry
+  run of the create call on the chain's simulator, uploads the picture and words through Flap's
+  upload API, reads the pin from Flap's pin status API, finds a salt off line so the token's address
+  ends in `7777`, and decodes every setting back from the call's bytes. It never reads an IPFS
+  gateway.
 
 ## API
 
-| Export                     | What it does                                                         |
-| -------------------------- | -------------------------------------------------------------------- |
-| `createFlapVenue`          | The `flap` launchpad over each chain's RPC failover                  |
-| `flapDeclaration`          | What the venue declares on given chains, without reading any         |
-| `FlapOptions`              | The chains the venue trades on, each a `CurveChain`                  |
-| `@binference/flap/testing` | The Portal's recorded answers, a scripted Portal and a venue over it |
+| Export                     | What it does                                                           |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `createFlapVenue`          | The `flap` launchpad over each chain's RPC failover                    |
+| `flapDeclaration`          | What the venue declares on given chains, without reading any           |
+| `FlapOptions`              | The chains the venue trades on, each a `CurveChain`, and its launches  |
+| `FlapLaunchOptions`        | Flap's API, the salts' randomness and each chain the venue launches on |
+| `FlapLaunchChain`          | A chain's simulator and Flap's tax token implementation there          |
+| `@binference/flap/testing` | The Portal's recorded answers, a scripted Portal and a venue over it   |
 
 ## Example
 

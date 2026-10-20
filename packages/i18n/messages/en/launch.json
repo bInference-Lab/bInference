@@ -4,5 +4,9 @@
   "option.taxBps": "Tax on every trade: {value}",
   "option.taxRecipient": "Tax paid to {value}",
   "option.buyback": "Buyback and burn: {value, select, yes {on} other {off}}",
+  "option.buyTaxBps": "Tax on every buy: {value}",
+  "option.sellTaxBps": "Tax on every sell: {value}",
+  "option.burnShareBps": "Burned from the tax: {value}",
+  "option.taxDays": "Tax lasts {value, plural, one {# day} other {# days}}",
   "age": "{unit, select, minute {{count} min} hour {{count} h} other {{count} d}}"
 }
