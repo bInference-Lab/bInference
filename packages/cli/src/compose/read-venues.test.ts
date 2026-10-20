@@ -1,3 +1,4 @@
+import { boughtLaunch, registryContracts as brewRegistry } from "@binference/brew/testing";
 import { chainRefSchema } from "@binference/chain";
 import { BinferenceError, bpsSchema, createSecret, type Http } from "@binference/core";
 import {
@@ -20,7 +21,7 @@ import { describe, expect, it } from "vitest";
 import type { VenuesConfig } from "../config/schema/chains-venues.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
 import { composeChainReads } from "./chain-reads.js";
-import { selfHostedChains, selfHostedPoolHooks } from "./open-engine-parts.js";
+import { selfHostedChains, selfHostedFeeds, selfHostedPoolHooks } from "./open-engine-parts.js";
 import { readVenues } from "./read-venues.js";
 
 const bsc = chainRefSchema.parse("eip155:56");
@@ -64,6 +65,7 @@ async function read(venues: VenuesConfig) {
     chains,
     registry: selfHostedChains(),
     poolHooks: selfHostedPoolHooks(),
+    feeds: selfHostedFeeds(),
     reads: composeChainReads({ chains: selfHostedChains(), config: chains, http, clock }),
     secrets,
     http,
@@ -86,6 +88,7 @@ describe("the self-hosted venues", () => {
       chains,
       registry: selfHostedChains(),
       poolHooks: selfHostedPoolHooks(),
+      feeds: selfHostedFeeds(),
       reads,
       secrets,
       http,
@@ -108,21 +111,51 @@ describe("the self-hosted venues", () => {
     expect(launcher).not.toHaveProperty("noFirstBuyMin");
   });
 
-  it("quote through KyberSwap and the flap and geniusfun launchpads when config names no OKX key", async () => {
+  it("read Brew's launches on BSC, against BNB for a WBNB pool, and trade nothing on it", async () => {
+    const http = createScriptedHttp([]);
+    const clock = createManualClock();
+    const chains = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
+    const { venues } = await readVenues({
+      random,
+      venues: venuesWith(),
+      chains,
+      registry: selfHostedChains(),
+      poolHooks: selfHostedPoolHooks(),
+      feeds: selfHostedFeeds(),
+      reads: composeChainReads({ chains: selfHostedChains(), config: chains, http, clock }),
+      secrets,
+      http,
+      clock,
+      logger: createMemoryLogger({ subsystem: "engine" }),
+      signal: new AbortController().signal,
+    });
+    const brew = venues.find((venue) => venue.id === "brew");
+    expect(brew?.contracts).toStrictEqual([{ chain: bsc, names: ["factory"] }]);
+    const found = brew?.readLaunches?.({
+      chain: bsc,
+      contracts: brewRegistry,
+      logs: boughtLaunch.logs,
+    });
+    expect(found?.launches.map(({ token, quoteAsset }) => [token, quoteAsset])).toStrictEqual([
+      [boughtLaunch.token, bnb],
+    ]);
+  });
+
+  it("quote through KyberSwap and the flap and geniusfun launchpads, with brew, when config names no OKX key", async () => {
     const { ids, logger } = await read(venuesWith());
-    expect(ids).toStrictEqual(["kyberswap", "flap", "geniusfun"]);
+    expect(ids).toStrictEqual(["kyberswap", "flap", "geniusfun", "brew"]);
     expect(logger.records()).toStrictEqual([]);
   });
 
   it("add OKX when config names the owner's OKX key", async () => {
     await expect(read(venuesWith("OKX"))).resolves.toMatchObject({
-      ids: ["kyberswap", "flap", "geniusfun", "okx"],
+      ids: ["kyberswap", "flap", "geniusfun", "brew", "okx"],
     });
   });
 
   it("leave OKX out, and say so, when its key cannot be read", async () => {
     const { ids, logger } = await read(venuesWith("MISSING"));
-    expect(ids).toStrictEqual(["kyberswap", "flap", "geniusfun"]);
+    expect(ids).toStrictEqual(["kyberswap", "flap", "geniusfun", "brew"]);
     expect(logger.records().map((record) => record.event)).toStrictEqual(["engine.venue_skipped"]);
   });
 
@@ -138,6 +171,7 @@ describe("the self-hosted venues", () => {
       chains,
       registry: selfHostedChains(),
       poolHooks: selfHostedPoolHooks(),
+      feeds: selfHostedFeeds(),
       reads: composeChainReads({ chains: selfHostedChains(), config: chains, http, clock }),
       secrets,
       http,
@@ -185,6 +219,7 @@ describe("the self-hosted venues", () => {
       venues: venuesWith(),
       chains,
       registry: selfHostedChains(),
+      feeds: selfHostedFeeds(),
       poolHooks: new Map([
         [bsc, [{ venue: "geniusfun", contract: "hook-m9", feeBps: 200, maker: "Genius.fun" }]],
       ]),
@@ -218,6 +253,7 @@ describe("the self-hosted venues", () => {
       chains,
       registry: selfHostedChains(),
       poolHooks: selfHostedPoolHooks(),
+      feeds: selfHostedFeeds(),
       reads: composeChainReads({ chains: selfHostedChains(), config: chains, http, clock }),
       secrets,
       http,

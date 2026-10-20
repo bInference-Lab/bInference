@@ -24,6 +24,7 @@ import {
   openEngineStores,
   type Opening,
   selfHostedChains,
+  selfHostedFeeds,
   selfHostedPoolHooks,
 } from "./open-engine-parts.js";
 import { readRpcUrls } from "./read-rpc-urls.js";
@@ -103,6 +104,7 @@ async function venuesOf(
     current: () => settings.current().venues,
     chains: settings.started.chains,
     poolHooks: selfHostedPoolHooks(),
+    feeds: selfHostedFeeds(),
   });
 }
 

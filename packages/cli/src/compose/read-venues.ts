@@ -1,8 +1,10 @@
+import { type BrewChain, createBrewVenue } from "@binference/brew";
 import type {
   AssetRef,
   ChainRef,
   ChainRegistry,
   PoolHookDefinition,
+  PriceFeedDefinition,
   RegisteredChain,
   Venue,
 } from "@binference/chain";
@@ -39,6 +41,7 @@ import type {
 } from "../config/schema/chains-venues.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
 import type { ChainReads } from "./chain-reads.js";
+import { wrappedCoinOf } from "./wrapped-coins.js";
 
 /** What the venues are read with. */
 export interface ReadVenuesOptions {
@@ -50,6 +53,8 @@ export interface ReadVenuesOptions {
   readonly registry: ChainRegistry;
   /** The pool hooks routes may pass on each chain, as registry contracts with their fees. */
   readonly poolHooks: ReadonlyMap<ChainRef, readonly PoolHookDefinition[]>;
+  /** The price feeds of each chain, whose coin's feed names the chain's wrapped coin. */
+  readonly feeds: ReadonlyMap<ChainRef, readonly PriceFeedDefinition[]>;
   /** Each enabled chain's reads, whose RPC failover a launchpad reads its contracts through. */
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   readonly secrets: SecretReader;
@@ -179,6 +184,24 @@ function geniusfunLaunchChainsOf(
   });
 }
 
+// Brew on each enabled chain whose registry lists its single-pair factory and names its wrapped
+// coin, which a Brew pool against the coin holds (decision 0278).
+function brewChainsOf(
+  chains: readonly RegisteredChain[],
+  feeds: ReadonlyMap<ChainRef, readonly PriceFeedDefinition[]>,
+): readonly BrewChain[] {
+  return chains.flatMap((chain) => {
+    const isListed = chain.definition.contracts.some(
+      (item) => item.venue === "brew" && item.name === "factory",
+    );
+    const wrappedNative = wrappedCoinOf(chain, feeds.get(chain.ref) ?? []);
+    const { nativeAsset } = evmChainOf(chain.definition);
+    return isListed && wrappedNative !== undefined
+      ? [{ chain: chain.ref, nativeAsset, wrappedNative }]
+      : [];
+  });
+}
+
 // The chain's allowed pool hooks, each at its registry address with its fee (decision 0214). A hook
 // the registry does not list is a fault of this build.
 function allowedHooksOf(
@@ -207,7 +230,8 @@ function allowedHooksOf(
  * OKX's DEX aggregator only when `venues.keys.okx` names the owner's key (decision 0105). Flap also
  * launches tax tokens through Flap's own API on each chain the registry lists its implementation
  * on (decision 0271), and Genius.fun launches tokens on each chain the registry lists its m4.2
- * launch router on (decision 0277). The
+ * launch router on (decision 0277). Brew, on each chain the registry lists its single-pair factory
+ * on, reads its launches for the launch feed and trades nothing itself (decision 0278). The
  * money path asks every venue an agent allows and keeps the best plan (decision 0107), and sends a
  * token on a launchpad's curve to that launchpad alone (decision 0179). An OKX key that cannot be read is logged and OKX
  * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
@@ -241,13 +265,17 @@ export async function readVenues(options: ReadVenuesOptions): Promise<ReadVenues
     chains: curveChainsOf(enabled, reads, geniusfunQuoteSymbols),
     launches: { random: options.random, chains: geniusfunLaunchChainsOf(enabled, reads) },
   });
+  const brew = createBrewVenue({ chains: brewChainsOf(enabled, options.feeds) });
   const held = { keys: await okxKeysOf(options.venues.keys.okx, options, options.signal) };
   if (held.keys === undefined) {
-    return { venues: [kyberswap, flap, geniusfun], followReload: async () => Promise.resolve() };
+    return {
+      venues: [kyberswap, flap, geniusfun, brew],
+      followReload: async () => Promise.resolve(),
+    };
   }
   const okx = createOkxVenue({ http, clock, keys: () => held.keys, chains });
   return {
-    venues: [kyberswap, flap, geniusfun, okx],
+    venues: [kyberswap, flap, geniusfun, brew, okx],
     async followReload(changed, signal) {
       if (changed.some((path) => path.startsWith("venues.keys.okx"))) {
         const named = (options.current?.() ?? options.venues).keys.okx;

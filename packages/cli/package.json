@@ -24,6 +24,7 @@
     "prepack": "node -e \"require('node:fs').cpSync('../../skills', 'skills', { recursive: true })\""
   },
   "dependencies": {
+    "@binference/brew": "workspace:*",
     "@binference/chain": "workspace:*",
     "@binference/chain-evm": "workspace:*",
     "@binference/chains": "workspace:*",

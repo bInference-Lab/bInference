@@ -476,6 +476,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@binference/brew':
+        specifier: workspace:*
+        version: link:../../plugins/brew
       '@binference/chain':
         specifier: workspace:*
         version: link:../chain
