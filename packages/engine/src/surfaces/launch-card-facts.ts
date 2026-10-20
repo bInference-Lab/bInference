@@ -91,6 +91,7 @@ export function launchCardFacts(
     warnings: {
       ...warnings,
       ...(quote.firstBuy?.isUnbound === true ? { hasUnboundFirstBuy: true } : {}),
+      ...(quote.warnings === undefined ? {} : { launchWarnings: quote.warnings }),
     },
     reason: request.reason,
   };

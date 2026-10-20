@@ -114,10 +114,14 @@ export const cardKeys = [
 ] as const;
 
 /**
- * A message key of a card or a receipt, or of a launchpad setting's card line, `launch.option.`
- * and the setting's name, which the launch host checks exists in every language (decision 0235).
+ * A message key of a card or a receipt, of a launchpad setting's card line, `launch.option.` and
+ * the setting's name (decision 0235), or of a launchpad's card warning, `launch.warn.` and its
+ * name (decision 0281), which the launch host checks exists in every language.
  */
-export type CardKey = (typeof cardKeys)[number] | `launch.option.${string}`;
+export type CardKey =
+  | (typeof cardKeys)[number]
+  | `launch.option.${string}`
+  | `launch.warn.${string}`;
 
 /**
  * One argument of a card line, typed so every surface formats it with the one formatter: an

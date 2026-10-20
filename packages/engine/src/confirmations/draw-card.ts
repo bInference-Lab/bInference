@@ -3,6 +3,7 @@ import type { Bps } from "@binference/core";
 import type { PoolFee, RouteLeg } from "@binference/protocol";
 import type { AutoAskCode } from "../intents/auto-mode-refusal.js";
 import type { CardTerms } from "../intents/intent-status.js";
+import { launchWarningKey } from "../venues/launch-settings.schema.js";
 import { actionLine, actionVerb, type CardAction } from "./card-action.js";
 import type { CardKey, CardLine, CardValue } from "./card-line.js";
 import { launchDetailLines } from "./launch-card-lines.js";
@@ -76,6 +77,8 @@ export interface CardWarnings {
   readonly exitsLinkedToken?: AssetRef;
   /** An auto order's worst price, which every fill keeps to (decision 0197). Absent shows no line. */
   readonly worstPrice?: bigint;
+  /** A launch's launchpad warnings, by name, each on a line of its own (decision 0281). */
+  readonly launchWarnings?: readonly string[];
 }
 
 /**
@@ -222,6 +225,10 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
       [warnings.hasNoDeadline === true, "card.warn.noDeadline"],
       [warnings.hasUnboundFirstBuy === true, "card.warn.unboundFirstBuy"],
     ]),
+    ...(warnings.launchWarnings ?? []).map((name): CardLine => ({
+      key: launchWarningKey(name),
+      values: {},
+    })),
     ...optional(warnings.exitsLinkedToken, exitsLinkedLine),
     ...optional(warnings.worstPrice, worstPriceLine),
     ...shown([

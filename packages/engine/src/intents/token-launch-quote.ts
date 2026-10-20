@@ -72,6 +72,8 @@ export interface TokenLaunchQuote {
    */
   readonly pinWaitUntilMs: number;
   readonly quotedAtMs: number;
+  /** The launchpad's own warnings, by name, which its card shows (decision 0281); absent, none. */
+  readonly warnings?: readonly string[];
 }
 
 /** A {@link TokenLaunchQuote} as JSON carries it. */
@@ -98,6 +100,7 @@ interface TokenLaunchQuoteWire {
   readonly pin?: JsonValue;
   readonly pinWaitUntilMs: number;
   readonly quotedAtMs: number;
+  readonly warnings?: readonly string[];
 }
 
 const settingSchema: z.ZodType<LaunchSetting, LaunchSetting> = z.strictObject({
@@ -133,6 +136,7 @@ const tokenLaunchQuoteSchema: z.ZodType<TokenLaunchQuote, TokenLaunchQuoteWire> 
   pin: z.json().exactOptional(),
   pinWaitUntilMs: epochMsSchema,
   quotedAtMs: epochMsSchema,
+  warnings: z.array(z.string().min(1)).min(1).exactOptional(),
 });
 
 /** A token launch's quote, in the `quote` column of its `launchToken` intent. */

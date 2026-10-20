@@ -134,6 +134,8 @@ export interface Launching {
    * its quote works out as this when a launch leaves it out (decision 0280).
    */
   readonly quotesAmount?: string;
+  /** The launchpad's own card warnings, by name (decision 0281); none when absent. */
+  readonly cardWarnings?: readonly string[];
 }
 
 // The create call a test launchpad marks as a launch wallet's alone.
@@ -232,13 +234,19 @@ function launchersOf(launching: Launching) {
   return { launcher: counting.launcher, built: used.built, pad: used.launcher };
 }
 
+// The launchpad's launcher with its card warnings, when the test names some.
+function warnedOf(launcher: PadLauncher, launching: Launching): PadLauncher {
+  const { cardWarnings } = launching;
+  return cardWarnings === undefined ? launcher : { ...launcher, cardWarnings };
+}
+
 /**
  * A live test engine with a fake launchpad, the picture the owner uploaded from the CLI and, by
  * default, a launch wallet.
  */
 export async function testLaunchEngine(launching: Launching = {}): Promise<TestLaunchEngine> {
   const { launcher, built, pad } = launchersOf(launching);
-  const venues = [createFakeVenue(), launchpadOf(pad, launching)];
+  const venues = [createFakeVenue(), launchpadOf(warnedOf(pad, launching), launching)];
   const { options = {}, hasLaunchWallet = true } = launching;
   const test = await startTestEngine({
     chains: testChains([testPad]),

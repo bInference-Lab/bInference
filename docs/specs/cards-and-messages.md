@@ -175,6 +175,11 @@ A launch whose launchpad declares that its create call's first buy carries no mi
 show ([decision 0270](../adr/0270-a-launch-s-first-buy-may-carry-no-minimum-when-it-runs-inside-the-create-call.md)):
 the simulation before the card held the first buy to the least the card shows.
 
+A launchpad's own warnings, `launch.warn.<name>`, show among the warnings right after
+`card.warn.unboundFirstBuy`, one line each, such as Brew's `launch.warn.notForUsCitizens`: ⚠️ Brew's
+site says it is not available to U.S. citizens / ⚠️ Brew 的网站称其不向美国公民提供服务
+([decision 0281](../DECISIONS.md#d0281)).
+
 An `amount` setting's `{value}` is an amount of the launch's pair, and an optional setting its
 launchpad worked out at its quote shows like one the owner gave
 ([decision 0280](../DECISIONS.md#d0280)).

@@ -139,6 +139,21 @@ export function launchSettingKey(name: string): `launch.option.${string}` {
   return `launch.option.${name}`;
 }
 
+/** The message key of a launchpad's card warning (decision 0281). */
+export function launchWarningKey(name: string): `launch.warn.${string}` {
+  return `launch.warn.${name}`;
+}
+
+/** Why a launchpad's card warnings cannot be hosted: one with no message in every language. */
+export function launchWarningsProblem(names: readonly string[]): string | undefined {
+  const unnamed = names.find((name) =>
+    messageLocales.some((locale) => messages[locale][launchWarningKey(name)] === undefined),
+  );
+  return unnamed === undefined
+    ? undefined
+    : `its card warning ${unnamed} has no message ${launchWarningKey(unnamed)} in every language.`;
+}
+
 /**
  * Why a launchpad's settings cannot be hosted, or `undefined` when they can: a setting with no
  * card line in every language, or a default that does not fit its setting.

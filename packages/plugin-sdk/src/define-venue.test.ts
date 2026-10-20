@@ -314,6 +314,18 @@ describe("defineVenue", () => {
     );
   });
 
+  it("keeps a launcher's card warnings, and refuses names that are not camelCase or repeat", () => {
+    const warned = { ...createFakeLauncher(), cardWarnings: ["notForUsCitizens"] };
+    const launchpad = defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher: warned }));
+    expect(launchpad.launcher?.cardWarnings).toStrictEqual(["notForUsCitizens"]);
+    for (const cardWarnings of [["Not-camel"], ["twice", "twice"]]) {
+      const launcher = { ...createFakeLauncher(), cardWarnings };
+      expect(() => defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher }))).toThrow(
+        expect.objectContaining({ code: "plugin.bad_venue" }),
+      );
+    }
+  });
+
   it("refuses a launchpad whose settings are wrong", () => {
     const launcher = createFakeLauncher({
       launchOptions: [{ name: "taxBps", type: "bps", max: 20_000 }],

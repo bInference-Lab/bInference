@@ -135,6 +135,7 @@ async function pinAndBuild(
   const nowMs = options.clock.now();
   const unbound = plan.value.isFirstBuyUnbound === true ? { isUnbound: true as const } : {};
   const { kept } = pictured.value;
+  const warnings = options.launch.host.cardWarnings(request.venue);
   const quote: TokenLaunchQuote = {
     venue: request.venue,
     settings: resolved.launchSettings,
@@ -145,6 +146,7 @@ async function pinAndBuild(
     ...kept,
     pinWaitUntilMs: nowMs + (kept.pin === undefined ? 0 : pinWaitOf(options)),
     quotedAtMs: nowMs,
+    ...(warnings.length === 0 ? {} : { warnings }),
   };
   return ok({ quote, drafts: plan.value.steps.map((step) => step.draft) });
 }

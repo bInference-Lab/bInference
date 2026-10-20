@@ -173,6 +173,25 @@ function pinOf(launcher: Launcher): Pick<Launcher, "pin" | "pinStatus"> {
   return {};
 }
 
+const warningNameSchema = z
+  .array(z.string().regex(/^[a-z][a-zA-Z0-9]{0,31}$/))
+  .refine((names: readonly string[]) => new Set(names).size === names.length);
+
+// A launchpad's card warnings are names in camelCase, each once (decision 0281).
+function cardWarningsOf(launcher: Launcher): Pick<Launcher, "cardWarnings"> {
+  if (launcher.cardWarnings === undefined) {
+    return {};
+  }
+  const names = warningNameSchema.safeParse(launcher.cardWarnings);
+  if (!names.success) {
+    throw new BinferenceError({
+      code: "plugin.bad_venue",
+      message: "A launchpad's card warnings are names in camelCase, each once.",
+    });
+  }
+  return { cardWarnings: Object.freeze([...names.data]) };
+}
+
 // A launchpad that writes the picture into its create call keeps that limit, and one that checks
 // its settings together keeps that check, each called on it.
 function pictureBytesOf(launcher: Launcher): Pick<Launcher, "pictureBytesFor" | "checkOptions"> {
@@ -209,6 +228,7 @@ function launcherOf(launcher: Launcher): Launcher {
     ...(launcher.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
     ...(limits === undefined ? {} : { wordLimits: Object.freeze({ ...limits.data }) }),
     ...pictureBytesOf(launcher),
+    ...cardWarningsOf(launcher),
     quoteLaunch: async (terms, call) => launcher.quoteLaunch(terms, call),
     ...pinOf(launcher),
     buildLaunch: async (request, call) => launcher.buildLaunch(request, call),

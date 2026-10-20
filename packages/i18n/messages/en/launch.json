@@ -10,5 +10,6 @@
   "option.taxDays": "Tax lasts {value, plural, one {# day} other {# days}}",
   "option.pictureLink": "Picture at {link} (binference never opens it)",
   "option.creatorFeeRecipient": "Creator fees from every trade wait on the launchpad until {address} claims them; that address also buys free of the snipe tax",
+  "warn.notForUsCitizens": "⚠️ Brew's site says it is not available to U.S. citizens",
   "age": "{unit, select, minute {{count} min} hour {{count} h} other {{count} d}}"
 }

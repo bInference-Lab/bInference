@@ -47,6 +47,7 @@ export type DeclarationReads = Pick<
   LaunchHost,
   | "fitsWords"
   | "launchOptions"
+  | "cardWarnings"
   | "outsideOnlySettings"
   | "picturePlace"
   | "pictureBytesFor"
@@ -63,6 +64,7 @@ export function declarationsOf(launchers: ReadonlyMap<string, HostedLauncher>): 
       return launcher !== undefined && (limits === undefined || fitsWordLimits(limits, launch));
     },
     launchOptions: (venue) => launcherOf(venue)?.launchOptions ?? [],
+    cardWarnings: (venue) => launcherOf(venue)?.cardWarnings ?? [],
     outsideOnlySettings: (venue) =>
       (launcherOf(venue)?.launchOptions ?? [])
         .filter((option) => option.isOutsideOnly === true)

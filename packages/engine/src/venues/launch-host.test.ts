@@ -209,6 +209,21 @@ describe("a launchpad's optional settings and its own check of them", () => {
   });
 });
 
+describe("a launchpad's card warnings", () => {
+  it("names the warnings it declares, each with its message in every language", () => {
+    const host = hostOf({ ...createFakeLauncher(), cardWarnings: ["notForUsCitizens"] });
+    expect(host.cardWarnings(pad)).toStrictEqual(["notForUsCitizens"]);
+    expect(host.cardWarnings("other-pad")).toStrictEqual([]);
+    expect(fake().cardWarnings(pad)).toStrictEqual([]);
+  });
+
+  it("refuses to host a launchpad whose warning has no message", () => {
+    expect(() => hostOf({ ...createFakeLauncher(), cardWarnings: ["mystery"] })).toThrow(
+      expect.objectContaining({ code: "venue.bad_declaration" }),
+    );
+  });
+});
+
 describe("a launchpad that writes the picture into its create call", () => {
   const words = { description: "A cat" };
 

@@ -39,6 +39,7 @@ import {
   type LaunchSetting,
   launchSettingsOf,
   launchSettingsProblem,
+  launchWarningsProblem,
 } from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
@@ -66,6 +67,11 @@ export interface LaunchHost {
   fitsWords(venue: string, launch: WordsOfLaunch): boolean;
   /** The settings the launchpad declares; none for a venue the host does not hold. */
   launchOptions(venue: string): readonly LaunchOption[];
+  /**
+   * The warnings every card of the launchpad's launches shows, by name (decision 0281); none for
+   * a venue the host does not hold.
+   */
+  cardWarnings(venue: string): readonly string[];
   /**
    * The names of the launchpad's `account` settings that must be outside the install, which none
    * of its own wallets may be (decision 0277); none for a venue the host does not hold.
@@ -169,7 +175,8 @@ function problemOf(item: HostedLauncher, chain: RegisteredChain): string | undef
     return "it uploads nothing and declares no picture link every launch must give.";
   }
   return launchOptionsSchema.safeParse(launchOptions).success
-    ? launchSettingsProblem(launchOptions, chain)
+    ? (launchSettingsProblem(launchOptions, chain) ??
+        launchWarningsProblem(launcher.cardWarnings ?? []))
     : "its settings break the declaration's rules.";
 }
 

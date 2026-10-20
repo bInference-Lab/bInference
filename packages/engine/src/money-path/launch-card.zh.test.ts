@@ -8,6 +8,12 @@ import {
 } from "./test-launches.js";
 
 describe("a token launch's card in Chinese", () => {
+  it("shows the launchpad's own warning in Chinese", async () => {
+    const { test } = await testLaunchEngine({ cardWarnings: ["notForUsCitizens"] });
+    const lines = await testCardText(test, await proposeIntent(test, testLaunch), "zh");
+    expect(lines).toContain("⚠️ Brew 的网站称其不向美国公民提供服务");
+  });
+
   it("shows a picture written into the create call with its size", async () => {
     const { test } = await testLaunchEngine({ writesPicture: { mostBytes: 1_000 } });
     const view = await proposeIntent(test, { ...testLaunch, image: "upl_sized" });

@@ -154,6 +154,12 @@ export interface Launcher {
    */
   readonly checkOptions?: (options: Readonly<Record<string, LaunchOptionValue>>) => boolean;
   /**
+   * The warnings every card of the launchpad's launches shows (decision 0281), by name in
+   * camelCase, each with the message `launch.warn.<name>` in every language, such as one about
+   * the launchpad's own terms. Left out, none.
+   */
+  readonly cardWarnings?: readonly string[];
+  /**
    * The launch fee and the first buy's output, read from the launchpad's contracts at the latest
    * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`; a
    * launchpad that cannot answer throws. Rejects with the signal's reason once it aborts.
