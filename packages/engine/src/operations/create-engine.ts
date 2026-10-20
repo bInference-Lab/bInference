@@ -361,6 +361,26 @@ function sharedParts(options: EngineOptions) {
   };
 }
 
+// The settings the owner changes: the agent's settings, its approval mode, limits and send level,
+// the address book and the rescue address.
+function ownerSettingsHandlers(options: EngineOptions, paper: PaperParts) {
+  const { rescueParts, settingsParts } = sharedParts(options);
+  const { journal } = settingsParts;
+  return {
+    ...settingsHandlers(options, paper),
+    ...createApprovalHandlers(settingsParts),
+    ...createLimitHandlers({
+      ...settingsParts,
+      install: options.stores.install,
+      host: options.host,
+      chains: options.chains,
+    }),
+    ...createSendLevelHandlers(settingsParts),
+    ...createAddressBookHandlers({ ...rescueParts, journal, ids: options.ids }),
+    ...createRescueAddressHandlers({ ...rescueParts, journal }),
+  };
+}
+
 /**
  * Creates the {@link Engine}. Every write of an intent goes through one writer, which pushes
  * `intent`, card and `ledger` events as each write lands. A confirmed paper intent fills at its
@@ -387,28 +407,14 @@ export function createEngineWithFills(given: EngineOptions): {
   const check = createDowntimeCheck();
   const intents = intentParts(options, paper, { settled: chat.settled, check });
   chat.attach(intents.stored);
-  const { rescueParts, settingsParts } = sharedParts(options);
+  const { rescueParts } = sharedParts(options);
   const summaries = dailySummariesOf(options, paper);
   const engine: Engine = {
     handlers: {
       ...intents.handlers,
       ...createLedgerHandlers(options.stores.ledger),
       ...createConfigHistoryHandlers(options.stores.configJournal),
-      ...settingsHandlers(options, paper),
-      ...createApprovalHandlers(settingsParts),
-      ...createLimitHandlers({
-        ...settingsParts,
-        install: options.stores.install,
-        host: options.host,
-        chains: options.chains,
-      }),
-      ...createSendLevelHandlers(settingsParts),
-      ...createAddressBookHandlers({
-        ...rescueParts,
-        journal: settingsParts.journal,
-        ids: options.ids,
-      }),
-      ...createRescueAddressHandlers({ ...rescueParts, journal: settingsParts.journal }),
+      ...ownerSettingsHandlers(options, paper),
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
       ...chat.handlers,
     },
