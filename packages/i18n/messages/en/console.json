@@ -94,5 +94,19 @@
   "chat.imageAlt": "Image {number} to send",
   "chat.image.tooMany": "A message takes at most {count} images. Send the rest in another message.",
   "chat.image.tooLarge": "{name} is over the {mib} MiB limit. Pick a smaller image.",
-  "chat.image.format": "{name} is not a PNG, JPEG or WebP image."
+  "chat.image.format": "{name} is not a PNG, JPEG or WebP image.",
+  "nav.portfolio": "Portfolio",
+  "portfolio.title": "Portfolio",
+  "portfolio.agent": "{name} · {mode, select, paper {Paper} other {Live}}",
+  "portfolio.noAgents": "There is no agent yet. Run `binference init` to make one.",
+  "portfolio.empty": "This agent holds nothing yet.",
+  "portfolio.section": "{mode, select, paper {Paper holdings} other {Live holdings}}",
+  "portfolio.wallet": "Wallet {label} · {address}",
+  "portfolio.asset": "Asset",
+  "portfolio.amount": "Amount",
+  "portfolio.value": "Value",
+  "portfolio.baseUnits": "{base} base units",
+  "portfolio.noPrice": "No price now",
+  "portfolio.total": "{mode, select, paper {Paper total} other {Live total}}: {total}",
+  "portfolio.unpriced": "Holdings with no price now are left out of the total."
 }

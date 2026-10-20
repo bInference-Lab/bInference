@@ -14,6 +14,7 @@ import { SignInEnded } from "./sign-in-ended";
 const sections = [
   { to: "/", key: "console.nav.confirmations" },
   { to: "/chat", key: "console.nav.chat" },
+  { to: "/portfolio", key: "console.nav.portfolio" },
   { to: "/ledger", key: "console.nav.ledger" },
   { to: "/limits", key: "console.nav.limits" },
 ] as const;

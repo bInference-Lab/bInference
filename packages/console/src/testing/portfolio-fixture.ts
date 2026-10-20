@@ -1,21 +1,42 @@
-// An agent's live and paper holdings in one wallet, as `portfolio/get` answers them: BNB and
+import type { FakeAnswers } from "./fake-client";
+
+// An agent with live and paper holdings in one wallet, as `portfolio/get` answers them: BNB and
 // USDT priced, and a token nothing knows without a price. The live total and the paper total are
 // the engine's, each over its own priced balances.
 
 // The fixture's agent, wallet and assets.
 const fixture = {
+  agent: "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001",
   wallet: "wal_0190f1c2-3a4b-7c5d-8e6f-000000000001",
   bnb: "eip155:56/slip44:714",
   usdt: "eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955",
   unknown: "eip155:56/erc20:0xabababababababababababababababababababab",
 } as const;
 
-const { wallet, bnb, usdt, unknown } = fixture;
+const { agent, wallet, bnb, usdt, unknown } = fixture;
 const unit = 10n ** 18n;
 
 const assets = {
   [bnb]: { symbol: "BNB", name: "BNB", decimals: 18, verified: true },
   [usdt]: { symbol: "USDT", name: "Tether USD", decimals: 18, verified: true },
+};
+
+// The fixture's agent, live.
+const agentView = {
+  agent,
+  name: "main",
+  mode: "live",
+  locale: "en",
+  createdAt: 1_790_000_000_000,
+  changedAt: 1_790_000_000_000,
+};
+
+const walletView = {
+  wallet,
+  agent,
+  address: "eip155:56:0x1111111111111111111111111111111111112222",
+  label: "trading",
+  createdAt: 1_790_000_000_000,
 };
 
 interface Held {
@@ -44,4 +65,11 @@ export const portfolioAnswer = {
   totalUsdMicros: 420_500_000n,
   paperTotalUsdMicros: 1_100_000_000n,
   assets,
+};
+
+/** A fake engine that answers the portfolio screen's calls with the fixture. */
+export const portfolioAnswers: FakeAnswers = {
+  "agent/list": () => ({ items: [agentView] }),
+  "wallet/list": () => ({ items: [walletView] }),
+  "portfolio/get": () => portfolioAnswer,
 };

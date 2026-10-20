@@ -94,5 +94,19 @@
   "chat.imageAlt": "待发送的第 {number} 张图片",
   "chat.image.tooMany": "每条消息最多 {count} 张图片。请在另一条消息中发送其余图片。",
   "chat.image.tooLarge": "{name} 超过 {mib} MiB 的上限。请选择更小的图片。",
-  "chat.image.format": "{name} 不是 PNG、JPEG 或 WebP 图片。"
+  "chat.image.format": "{name} 不是 PNG、JPEG 或 WebP 图片。",
+  "nav.portfolio": "投资组合",
+  "portfolio.title": "投资组合",
+  "portfolio.agent": "{name} · {mode, select, paper {模拟} other {实盘}}",
+  "portfolio.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。",
+  "portfolio.empty": "此 Agent 还没有持有任何资产。",
+  "portfolio.section": "{mode, select, paper {模拟资产} other {实盘资产}}",
+  "portfolio.wallet": "钱包 {label} · {address}",
+  "portfolio.asset": "资产",
+  "portfolio.amount": "数量",
+  "portfolio.value": "市值",
+  "portfolio.baseUnits": "{base} 个最小单位",
+  "portfolio.noPrice": "暂无价格",
+  "portfolio.total": "{mode, select, paper {模拟总计} other {实盘总计}}：{total}",
+  "portfolio.unpriced": "暂无价格的资产不计入总计。"
 }

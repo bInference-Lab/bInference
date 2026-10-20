@@ -3,8 +3,8 @@ import type { BalanceView, PortfolioView, ProtocolId } from "@binference/protoco
 // Live or paper: the two parts of a portfolio, which are never added together.
 type HoldingMode = "live" | "paper";
 
-// One wallet's balances in one mode, in the order the portfolio lists them.
-interface WalletHoldings {
+/** One wallet's balances in one mode, in the order the portfolio lists them. */
+export interface WalletHoldings {
   readonly wallet: ProtocolId<"wallet">;
   readonly balances: readonly BalanceView[];
 }

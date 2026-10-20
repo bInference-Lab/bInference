@@ -7,12 +7,14 @@ import { useEngine } from "./engine-context";
 const followed: readonly (readonly [PushTopic, QueryKey])[] = [
   ["intent", ["intents"]],
   ["ledger", ["ledger"]],
+  ["ledger", ["portfolio"]],
   ["notice", ["limits"]],
 ];
 
 /**
  * Follows the engine's pushes while the console is open: a new card, a closed one or a ledger
- * entry loads the screens that show them again, and a notice, such as a limit change, the limits.
+ * entry loads the screens that show them again, a ledger entry the portfolio too, since a fill
+ * or a send writes one, and a notice, such as a limit change, the limits.
  */
 export function useLiveTopics(): void {
   const { topics } = useEngine();
