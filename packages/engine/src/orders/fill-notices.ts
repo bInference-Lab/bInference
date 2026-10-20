@@ -1,8 +1,9 @@
-import { mulDiv, type Ratio } from "@binference/core";
+import { type JsonValue, mulDiv, type Ratio } from "@binference/core";
 import { addressPartOf, createFormatter, displayOutsideText, shortAddress } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { PaperFill } from "../intents/event-cause.schema.js";
+import { riskDocument } from "../intents/intent-documents.schema.js";
 import type { Notice, NoticePart } from "../pushes/notice-push.js";
 import { copyStateOf, type CopyTaking, isTakenLate } from "./copy-state.js";
 import type { OrderFillReason } from "./order-fill.js";
@@ -104,6 +105,27 @@ function skipOrderPart(
   };
 }
 
+// The most characters of a risk source's flag codes a notice shows: they are another service's words.
+const flagsLength = 80;
+
+/**
+ * The line that follows a copy order's notice of a buy whose token the risk check only warned
+ * about (the owner's choice, decision 0260): copies still buy it, and the caps bound the loss. None
+ * for a sale, another order, or a token that passed clean.
+ */
+function riskWarningOf(
+  order: Pick<OrderRecord, "kind">,
+  risk: JsonValue | undefined,
+): readonly NoticePart[] {
+  const view = order.kind === "copy" && risk !== undefined ? riskDocument.decode(risk) : undefined;
+  if (view?.verdict !== "warn") {
+    return [];
+  }
+  const codes = [...new Set(view.flags.map(({ code }) => code))].join(", ");
+  const flags = codes.length === 0 ? "none" : displayOutsideText(codes, flagsLength);
+  return [{ key: "fill.copyRiskWarn", values: { flags } }];
+}
+
 // A copied fill's result: what it bought or sold for the leader's trade, the share sold, and for
 // a sale past its minute, when the leader sold (decision 0260).
 function copyResultOf(
@@ -159,7 +181,13 @@ function withCopiedToken(assets: AssetInfos, taking: CopyTaking): AssetInfos {
 export function fillNotice(
   order: Pick<OrderRecord, "agentId" | "kind" | "isPaper" | "request" | "triggerState">,
   fill: PaperFill & { readonly soldPrice: Ratio },
-  traded: { readonly decimals: number; readonly assets: AssetInfos; readonly book?: AddressBook },
+  traded: {
+    readonly decimals: number;
+    readonly assets: AssetInfos;
+    readonly book?: AddressBook;
+    /** The fill's intent's risk view, whose warning a copy buy's notice carries. */
+    readonly risk?: JsonValue;
+  },
 ): Notice {
   const copy = copyFactsOf(order, traded.book ?? []);
   const isBuy = (copy?.taking.side ?? order.request.side) === "buy";
@@ -177,8 +205,11 @@ export function fillNotice(
     values: { mode: order.isPaper ? "paper" : "live" },
     parts: { orderKind: orderKindOf(order), result },
     ...(Object.keys(assets).length === 0 ? {} : { assets }),
+    ...afterOf(riskWarningOf(order, traded.risk)),
   };
 }
+
+const afterOf = (lines: readonly NoticePart[]) => (lines.length === 0 ? {} : { after: lines });
 
 /**
  * `notice.skipped` for a fill an order skipped (spec 4, section 4), with its reason's message; a
@@ -191,6 +222,8 @@ export function skippedNotice(
     readonly reason: OrderFillReason;
     readonly cap?: { readonly usedUsdMicros: bigint; readonly capUsdMicros: bigint };
     readonly book?: AddressBook;
+    /** The skipped fill's intent's risk view, if it had one. */
+    readonly risk?: JsonValue;
   },
 ): Notice {
   const { reason, cap } = skip;
@@ -206,5 +239,6 @@ export function skippedNotice(
       orderKind: skipOrderPart(order, skip.book ?? []),
       reason: { key: `reason.${reason}`, values },
     },
+    ...afterOf(riskWarningOf(order, skip.risk)),
   };
 }

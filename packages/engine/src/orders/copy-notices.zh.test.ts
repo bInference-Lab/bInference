@@ -2,6 +2,7 @@ import { assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
+import { riskDocument } from "../intents/intent-documents.schema.js";
 import { testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import { noticeText } from "../surfaces/notice-text.js";
@@ -63,6 +64,33 @@ const sold = {
 };
 
 describe("a copy order's notices in Chinese", () => {
+  it("carry the risk check's warning on a copy buy, and no line on a pass", () => {
+    const warned = { verdict: "warn", flags: [{ code: "high_tax", source: "measured" }] } as const;
+    const risk = riskDocument.encode({ ...warned, onCurve: false, checkedAt: 0 });
+    const passed = riskDocument.encode({
+      verdict: "pass",
+      flags: [],
+      onCurve: false,
+      checkedAt: 0,
+    });
+    const soldPrice = { numerator: 2n, denominator: 10n ** 9n };
+    const amountOut = { asset: unlisted, base: 10n ** 18n };
+    const bought = { ...sold, amountIn: sold.amountOut, amountOut, soldPrice };
+    const skip = skippedNotice(honeyBuy, { reason: "no_route", risk });
+    const fill = fillNotice(honeyBuy, bought, { decimals: 18, assets: {}, book, risk });
+    const clean = fillNotice(honeyBuy, bought, { decimals: 18, assets: {}, book, risk: passed });
+
+    expect(noticeText(skip, chinese)).toBe(
+      `${warning} 跟单 0x00000009 买入 HONEY 0x0000000f 的交易已跳过：找不到此交易的路由。订单仍然有效。\n${warning} 风险检查对该代币发出了警告（high_tax）；订单的上限限制了跟单可能的损失。`,
+    );
+    expect(noticeText(fill, chinese)).toBe(
+      `${paper} ${done} 跟单已成交：跟单 Whale：用 $2.00 买入 1 HONEY（0x0000000f）\n${warning} 风险检查对该代币发出了警告（high_tax）；订单的上限限制了跟单可能的损失。`,
+    );
+    expect(noticeText(clean, chinese)).toBe(
+      `${paper} ${done} 跟单已成交：跟单 Whale：用 $2.00 买入 1 HONEY（0x0000000f）`,
+    );
+  });
+
   it("name the leader's trade and its token in a skip", () => {
     const notice = skippedNotice(honeyBuy, { reason: "honeypot" });
 

@@ -158,6 +158,7 @@ async function noticesOf(
     assets: token.assets,
     ended,
     book,
+    ...(call.snapshot.record.risk === undefined ? {} : { risk: call.snapshot.record.risk }),
   });
   return isOverCount(order) ? [...notices, overCountNotice(order)] : notices;
 }

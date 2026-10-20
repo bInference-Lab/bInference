@@ -2,6 +2,7 @@ import { assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
+import { riskDocument } from "../intents/intent-documents.schema.js";
 import { testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import { noticeText } from "../surfaces/notice-text.js";
@@ -63,6 +64,33 @@ const sold = {
 };
 
 describe("a copy order's notices in English", () => {
+  it("carry the risk check's warning on a copy buy, and no line on a pass", () => {
+    const warned = { verdict: "warn", flags: [{ code: "high_tax", source: "measured" }] } as const;
+    const risk = riskDocument.encode({ ...warned, onCurve: false, checkedAt: 0 });
+    const passed = riskDocument.encode({
+      verdict: "pass",
+      flags: [],
+      onCurve: false,
+      checkedAt: 0,
+    });
+    const soldPrice = { numerator: 2n, denominator: 10n ** 9n };
+    const amountOut = { asset: unlisted, base: 10n ** 18n };
+    const bought = { ...sold, amountIn: sold.amountOut, amountOut, soldPrice };
+    const skip = skippedNotice(honeyBuy, { reason: "no_route", risk });
+    const fill = fillNotice(honeyBuy, bought, { decimals: 18, assets: {}, book, risk });
+    const clean = fillNotice(honeyBuy, bought, { decimals: 18, assets: {}, book, risk: passed });
+
+    expect(noticeText(skip, english)).toBe(
+      `${warning} Copy trade of 0x00000009's buy of HONEY 0x0000000f skipped: no route was found for this trade. The order stays active.\n${warning} The risk check warned about this token (high_tax); the order's caps bound what a copy can lose.`,
+    );
+    expect(noticeText(fill, english)).toBe(
+      `${paper} ${done} Copy trade filled: copied Whale: bought 1 HONEY (0x0000000f) for $2.00\n${warning} The risk check warned about this token (high_tax); the order's caps bound what a copy can lose.`,
+    );
+    expect(noticeText(clean, english)).toBe(
+      `${paper} ${done} Copy trade filled: copied Whale: bought 1 HONEY (0x0000000f) for $2.00`,
+    );
+  });
+
   it("name the leader's trade and its token in a skip, the leader by label when saved", () => {
     const notice = skippedNotice(honeyBuy, { reason: "honeypot" });
     const labelled = skippedNotice(tokenSale, { reason: "nothing_to_sell", book });

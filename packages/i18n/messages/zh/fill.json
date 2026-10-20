@@ -4,5 +4,6 @@
   "copyBuy": "跟单 {leader}：用 {spent} 买入 {amount}",
   "copySell": "跟单 {leader} 卖出 {share}：卖出 {amount}，收到 {received}",
   "copySellLate": "跟单 {leader} 于 {when} 卖出的 {share}，延后以当前价格执行：卖出 {amount}，收到 {received}",
-  "copyTrade": "跟单 {leader} {side, select, buy {买入} other {卖出}} {token} 的交易"
+  "copyTrade": "跟单 {leader} {side, select, buy {买入} other {卖出}} {token} 的交易",
+  "copyRiskWarn": "⚠️ 风险检查对该代币发出了警告{flags, select, none {} other {（{flags}）}}；订单的上限限制了跟单可能的损失。"
 }

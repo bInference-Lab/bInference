@@ -200,14 +200,17 @@ export function fillRowNotices(
     readonly ended: number;
     /** The agent's address book, which names a copy order's leader. */
     readonly book: readonly AddressEntryRecord[];
+    /** The fill's intent's risk view, whose warning a copy buy's notice carries. */
+    readonly risk?: JsonValue;
   },
 ): readonly JsonValue[] {
-  const { order, fill, decimals, assets, ended, book } = call;
+  const { order, fill, decimals, assets, ended, book, risk } = call;
   const { soldPrice } = fill;
+  const traded = { decimals: decimals ?? 0, assets, book, ...(risk === undefined ? {} : { risk }) };
   const filled =
     soldPrice === undefined || decimals === undefined
       ? undefined
-      : fillNotice(order, { ...fill, soldPrice }, { decimals, assets, book });
+      : fillNotice(order, { ...fill, soldPrice }, traded);
   const exits = endedExitsNotice(parts, { emptiedBy: order, count: ended });
   return [filled, exits]
     .filter((notice) => notice !== undefined)

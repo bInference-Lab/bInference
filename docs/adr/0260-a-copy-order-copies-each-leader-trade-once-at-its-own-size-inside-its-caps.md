@@ -88,6 +88,10 @@ Every order fill runs the money path with no card, held to its order's bounds
 - **Risk and caps as any fill.** Each buy runs the policy and the token risk check; a honeypot or a
   blocked token ends `risk_blocked` and is skipped, with a notice that names the leader's trade and
   its token. The per-trade and rolling caps hold as for any trade.
+- **A warned token is still bought** (the owner's choice, 2026-10-20). A token the risk check only
+  warns about, such as a high tax, is copied: the per-buy and daily caps bound what such a buy can
+  lose. The fill or skip notice of such a buy ends with the line `fill.copyRiskWarn`, which names
+  the check's findings.
 - **Pace and notices** (the owner's choice, 2026-10-20). A copy order waits after skips only once
   its fills failed on chain, as a DCA order does: each trade is its own. A fill is told with
   `fill.copyBuy` or `fill.copySell`. Every skip is a notice, `notice.skipped`, its order named by

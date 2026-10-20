@@ -6,6 +6,7 @@ import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
 import { expectOk, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import type { StoredActivity } from "../leaders/tracked-wallet-record.js";
 import { testCall, testChains } from "../operations/test-engine.js";
+import type { RiskCheck } from "../ports.js";
 import { copiedHeldOf, type CopyTaking } from "./copy-state.js";
 import { copyStateNow, leaderTrade, storeTrades, takeTrade } from "./test-copies.js";
 import {
@@ -105,6 +106,29 @@ describe("the copy orders' runner", () => {
     const told = noticesOf(test).map((data) => JSON.stringify(data));
     expect(told.find((text) => text.includes('"reason.honeypot"'))).toContain(
       '"token":"UNL 0x0000000f"',
+    );
+  });
+
+  it("still copies a buy the risk check warns about, and says so in the fill notice", async () => {
+    const risk: RiskCheck = {
+      assess: async (_input, { signal }) => {
+        signal.throwIfAborted();
+        const flags = [{ code: "high_tax", source: "measured" }];
+        return await Promise.resolve({
+          view: { verdict: "warn", flags, onCurve: false, checkedAt: testNowMs },
+        });
+      },
+    };
+    const test = await startFillEngine({ prices, risk });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
+    const told = noticesOf(test).map((data) => JSON.stringify(data));
+    expect(told.find((text) => text.includes('"fill.copyBuy"'))).toContain(
+      '"key":"fill.copyRiskWarn","values":{"flags":"high_tax"}',
     );
   });
 

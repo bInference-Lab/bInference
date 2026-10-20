@@ -90,7 +90,13 @@ export async function skipRowOf(parts: SkipRowParts, skip: SkipOf): Promise<Orde
   }
   const cap = await capOf(parts, skip);
   const book = intent?.settings.addressBook ?? skip.book ?? [];
-  const notice = skippedNotice(order, { reason, book, ...(cap === undefined ? {} : { cap }) });
+  const risk = intent?.record.risk;
+  const notice = skippedNotice(order, {
+    reason,
+    book,
+    ...(cap === undefined ? {} : { cap }),
+    ...(risk === undefined ? {} : { risk }),
+  });
   return { ...row, notices: [noticePush(notice).data] };
 }
 

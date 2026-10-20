@@ -4,5 +4,6 @@
   "copyBuy": "copied {leader}: bought {amount} for {spent}",
   "copySell": "copied {leader} selling {share}: sold {amount} for {received}",
   "copySellLate": "copied {leader} selling {share} at {when}, late, at the price now: sold {amount} for {received}",
-  "copyTrade": "Copy trade of {leader}'s {side, select, buy {buy} other {sale}} of {token}"
+  "copyTrade": "Copy trade of {leader}'s {side, select, buy {buy} other {sale}} of {token}",
+  "copyRiskWarn": "⚠️ The risk check warned about this token{flags, select, none {} other { ({flags})}}; the order's caps bound what a copy can lose."
 }

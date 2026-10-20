@@ -76,7 +76,8 @@ async function fillWriteOf(
     ? await exitEndMovesOf(parts, { emptiedBy: order, nowMs: fill.atMs, signal })
     : [];
   const book = snapshot.settings.addressBook;
-  const notices = fillRowNotices(parts, { ...call, ended: ended.length, book });
+  const risk = snapshot.record.risk === undefined ? {} : { risk: snapshot.record.risk };
+  const notices = fillRowNotices(parts, { ...call, ended: ended.length, book, ...risk });
   const row = {
     id: parts.ids.next("fil"),
     orderId: order.id,
