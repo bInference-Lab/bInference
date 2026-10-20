@@ -26,6 +26,7 @@ import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createDowntimeCheck, type DowntimeCheck } from "../downtime/downtime-check.js";
 import type { Downtime } from "../downtime/downtime.js";
+import type { HeldWallet } from "../executor/held-wallets.js";
 import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type {
@@ -62,6 +63,7 @@ import {
   createSendLevelHandlers,
   type SendLevelHandlers,
 } from "../send-levels/send-level-handlers.js";
+import type { DailySummaries } from "../summaries/daily-summaries.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { ImageOptions } from "../uploads/image-options.js";
 import type { LaunchHost } from "../venues/launch-host.js";
@@ -82,6 +84,7 @@ import {
   safetyHandlersOf,
 } from "./engine-parts.js";
 import { startupWorkOf } from "./engine-repairs.js";
+import { dailySummariesOf } from "./engine-summaries.js";
 import { runQueue, tickAll } from "./engine-timers.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
@@ -193,6 +196,12 @@ export interface Engine {
    * feed each new launch. It notifies and may wake the agent, and never reaches the money path.
    */
   readonly alerts: AlertFiring;
+  /**
+   * Sends each agent's daily summary whose time came today, once per owner's date across a
+   * restart (decision 0273). A timer of the composition root calls it every minute, locked or not:
+   * it only reads and tells.
+   */
+  readonly sendDailySummaries: DailySummaries["run"];
 }
 
 /** The ports and adapters the composition root builds the engine from. */
@@ -273,6 +282,8 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
   readonly launchTokenCode?: ReadTokenCode;
   /** The owner's uploads, which a token launch's picture comes from; none are readable without. */
   readonly launchImages?: LaunchImageSource;
+  /** The wallets the executor's stuck steps hold now, which the daily summary counts; none without. */
+  readonly heldWallets?: () => readonly HeldWallet[];
 }
 
 /** The intent and order parts of the engine. */
@@ -399,6 +410,7 @@ export function createEngineWithFills(given: EngineOptions): {
   const intents = intentParts(options, paper, { settled: chat.settled, check });
   chat.attach(intents.stored);
   const { rescueParts, settingsParts } = sharedParts(options);
+  const summaries = dailySummariesOf(options, paper);
   const engine: Engine = {
     handlers: {
       ...intents.handlers,
@@ -430,6 +442,7 @@ export function createEngineWithFills(given: EngineOptions): {
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,
+    sendDailySummaries: async (call) => summaries.run(call),
   };
   return { engine, fillOrder: async (request, call) => intents.fills.run(request, call) };
 }
