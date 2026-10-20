@@ -12,6 +12,7 @@ import { createFillEnd, type FillEnd } from "../orders/fill-ends.js";
 import { createFillOnPaper, type FillOnPaperParts } from "../orders/fill-on-paper.js";
 import { createOrderFills, type OrderFills } from "../orders/fill-orders.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
+import type { ResumeFence } from "../orders/resume-fence.js";
 import type { EngineOptions } from "./create-engine.js";
 
 /** What the auto order use cases read and write through, from the engine's options. */
@@ -72,6 +73,8 @@ export function orderFillsOf(
     readonly moneyPath: MoneyPath;
     readonly gate: CapGate;
     readonly holdings: Holdings;
+    /** The downtime re-check, which fences fills off prices read before a resume. */
+    readonly fence: ResumeFence;
   },
 ): OrderFills {
   const { stores, custody, prices, chains, isLocked, clock, ids, publish, positions } = options;

@@ -48,6 +48,7 @@
   "fill_bounds": "the trade would go past the order's size or slippage",
   "worst_price": "the price is worse than the order's worst price",
   "trigger_unconfirmed": "the trade's own price did not reach the order's trigger price",
+  "price_stale": "the price it fired at was read before the machine slept; it waits for a new price",
   "copy_daily_cap": "it would pass this leader's daily cap ({used} of {cap} used)",
   "share_unread": "the share of its holding the leader sold could not be read",
   "token_unreadable": "the token's contract did not give its symbol and decimals",
@@ -64,5 +65,8 @@
   "missed": "it was due while binference was off or locked, or the agent was frozen; it is not made up later",
   "late": "it could not start within a minute of its time, so it is not made up later",
   "fill_waiting": "it could not run while another fill of the agent was still settling, or after fills failed on chain; it is not made up later",
-  "period_unreadable": "binference can no longer read this order's schedule or its timezone, so the order ended; nothing was bought"
+  "period_unreadable": "binference can no longer read this order's schedule or its timezone, so the order ended; nothing was bought",
+  "trigger_not_met": "the price now does not reach its trigger price; the order waits on",
+  "no_fresh_price": "no price of its token was read after binference came back",
+  "position_closed": "its position was already sold"
 }

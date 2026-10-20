@@ -24,6 +24,7 @@ import type { RunningTurns } from "../chat/running-turns.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
 import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
+import { createDowntimeCheck, type DowntimeCheck } from "../downtime/downtime-check.js";
 import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type {
@@ -288,8 +289,12 @@ interface IntentParts {
 function intentParts(
   options: EngineOptions,
   paper: PaperParts,
-  settled: (message: AgentInboxMessage) => void,
+  parts: {
+    readonly settled: (message: AgentInboxMessage) => void;
+    readonly check: DowntimeCheck;
+  },
 ): IntentParts {
+  const { settled, check } = parts;
   const { stores, host, chains, clock, isLocked } = options;
   const gate = createCapGate({ intents: stores.intents, clock });
   const stored = storedIntentsOf(options, { settled, gate });
@@ -311,8 +316,9 @@ function intentParts(
     ...createOrderHandlers(orders),
   };
   const cardTimer = cardTimerOf(options, { confirmations, orders });
-  const fills = orderFillsOf(options, { stored, moneyPath, gate, holdings: paper.holdings });
-  const triggers = createOrderTriggers({ orders: stores.orders, fills, clock });
+  const fillParts = { stored, moneyPath, gate, holdings: paper.holdings, fence: check };
+  const fills = orderFillsOf(options, fillParts);
+  const triggers = createOrderTriggers({ orders: stores.orders, fills, clock, fence: check });
   const dca = createDcaOrders({
     orders: stores.orders,
     fills,
@@ -382,7 +388,8 @@ export function createEngineWithFills(given: EngineOptions): {
   const options = { ...given, stores: { ...given.stores, agents } };
   const paper = createPaperParts(options);
   const chat = engineChatOf(options);
-  const intents = intentParts(options, paper, chat.settled);
+  const check = createDowntimeCheck();
+  const intents = intentParts(options, paper, { settled: chat.settled, check });
   chat.attach(intents.stored);
   const { rescueParts, settingsParts } = sharedParts(options);
   const engine: Engine = {
@@ -412,7 +419,7 @@ export function createEngineWithFills(given: EngineOptions): {
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
-    repairOrderFills: orderRepairOf(options, { stored: intents.stored, fills: intents.fills }),
+    repairOrderFills: orderRepairOf(options, { ...intents, fence: check }),
     ...timedWorkOf(options, { intents, chat }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),

@@ -20,6 +20,7 @@ import type { OrderFillReason } from "./order-fill.js";
 import { isExitOrder, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import type { PriceLevel } from "./price-level.js";
+import type { ResumeFence } from "./resume-fence.js";
 import { runInLine } from "./run-in-line.js";
 import { stopFailing } from "./stop-failing.js";
 
@@ -33,7 +34,10 @@ export interface FillPrice {
   readonly decimals: number;
   /** The level the fill's own quote must meet: a thin pool priced the token (decision 0195). */
   readonly confirm?: PriceLevel;
-  /** When the price watcher read the price; absent for a DCA buy. */
+  /**
+   * When the price watcher read the price, absent for a DCA buy: a fill whose price was read before
+   * a resume that came while it ran ends `price_stale` (decision 0268).
+   */
   readonly readAtMs?: number;
 }
 
@@ -42,7 +46,7 @@ export interface FillPrice {
  * agent's live fill, a live fill handed to the executor, which records it as it settles, or no
  * fill.
  */
-type FillOutcome = "filled" | "skipped" | "ended" | "waiting" | "sent" | "inactive";
+export type FillOutcome = "filled" | "skipped" | "ended" | "waiting" | "sent" | "inactive";
 
 /**
  * Auto order fills (decision 0195): a trigger hands an order and the price it fired at, and the
@@ -97,6 +101,11 @@ export interface OrderFillsParts extends FillSizeParts {
   readonly clock: Clock;
   readonly ids: IdSource;
   readonly publish: PublishPush;
+  /**
+   * The downtime re-check, which ends a fill whose price was read before a resume, and reports a
+   * resume's skips in its one report (decisions 0267 and 0268); none in a test without one.
+   */
+  readonly fence?: Pick<ResumeFence, "isStale" | "holds">;
 }
 
 // What the fill's intent came to. Its row and notices were written with its end; they are told

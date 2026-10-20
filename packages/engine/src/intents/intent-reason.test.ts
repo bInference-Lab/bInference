@@ -1,5 +1,6 @@
 import { messageLocales, messages } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
+import { downtimeReasons } from "../downtime/downtime-check.js";
 import {
   checkReasons,
   failureReasons,
@@ -75,6 +76,7 @@ describe("intent reasons", () => {
       "worst_price",
       "trigger_unconfirmed",
       "live_fills_off",
+      "price_stale",
     ]);
   });
 
@@ -87,7 +89,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(50);
+    expect(intentReasons).toHaveLength(51);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {
@@ -112,8 +114,8 @@ describe("intent reasons", () => {
     expect(intentReasons.filter((code) => new Set<string>(orderSkipReasons).has(code))).toEqual([]);
   });
 
-  it("has a reason message in English and Chinese for every intent and skip reason", () => {
-    const wanted = [...intentReasons, ...orderSkipReasons]
+  it("has a reason message in English and Chinese for every intent, skip and re-check reason", () => {
+    const wanted = [...intentReasons, ...orderSkipReasons, ...downtimeReasons]
       .map((code) => `reason.${code}`)
       .toSorted();
     const found = messageLocales.map((locale) =>

@@ -7,6 +7,7 @@ import { hasPriceTrigger, type OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import { type PriceLevel, wholeTokenPrice } from "./price-level.js";
 import { judgeTrigger, type TriggerState, triggerStateDocument } from "./price-triggers.js";
+import type { ResumeFence } from "./resume-fence.js";
 import { runInLine } from "./run-in-line.js";
 
 /** One confirmed price of a watched token, as the price watcher read it at a block. */
@@ -17,7 +18,7 @@ export interface WatchedOrderPrice {
   readonly decimals: number;
   /** A pool under $25,000 deep priced it, so a fill's own quote must meet the trigger too. */
   readonly isThin: boolean;
-  /** When the watcher read it, by its clock. */
+  /** When the watcher read it: a price read before the latest resume fills nothing (decision 0268). */
   readonly readAtMs: number;
 }
 
@@ -48,6 +49,11 @@ export interface OrderTriggersParts {
   readonly orders: OrderStore;
   readonly fills: OrderFills;
   readonly clock: Clock;
+  /**
+   * The downtime re-check, which drops a price read before the latest resume and hears each
+   * order's first judgment after one (decisions 0267 and 0268); none in a test without one.
+   */
+  readonly fence?: Pick<ResumeFence, "isStale" | "ready" | "judged" | "fillEnded">;
 }
 
 // The active orders are read again at most this often; each move a trigger makes updates them.
@@ -144,7 +150,11 @@ async function judgeOrder(
       ? judgeOrder(parts, active, { ...call, order: again, left: left - 1 })
       : undefined;
   }
-  return judged?.fires === true ? fillPriceOf(order, price, judged.level) : undefined;
+  if (judged === undefined) {
+    return undefined;
+  }
+  parts.fence?.judged({ order: kept, readAtMs: price.readAtMs, fires: judged.fires });
+  return judged.fires ? fillPriceOf(order, price, judged.level) : undefined;
 }
 
 // The price a fill runs at, with the level its own quote must meet when it must.
@@ -175,19 +185,27 @@ async function judgeAll(
 /**
  * Creates the {@link OrderTriggers} over the order store and the order fills. One token's prices
  * are judged one at a time, in the order they came, so a trailing stop sees every peak; the fills
- * they start run on their own (decision 0197).
+ * they start run on their own (decision 0197). A price read before the latest resume is dropped
+ * unjudged (decision 0268).
  */
 export function createOrderTriggers(parts: OrderTriggersParts): OrderTriggers {
   const active = createActiveOrders(parts);
   const lines = new Map<AssetRef, Promise<void>>();
+  const { fence } = parts;
   return {
     async see(price, { signal }) {
+      await fence?.ready();
+      if (fence?.isStale(price.readAtMs) === true) {
+        return [];
+      }
       const fired = await runInLine(lines, price.token, async () =>
         judgeAll(parts, active, { price, signal }),
       );
+      const { readAtMs } = price;
       return Promise.all(
         fired.map(async ({ order, price: fillPrice }) => {
           const outcome = await parts.fills.run({ order, price: fillPrice }, { signal });
+          fence?.fillEnded({ order, readAtMs, outcome });
           if (outcome === "filled" || outcome === "ended") {
             active.forget();
           }

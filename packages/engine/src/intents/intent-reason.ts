@@ -122,7 +122,8 @@ export type FailureReason = (typeof failureReasons)[number];
  * minimum out is worse than the order's worst price, or cannot be valued; `trigger_unconfirmed`,
  * a thin pool's price fired it and its quote's own price does not meet the trigger;
  * `live_fills_off`, a live fill while live fills are off, which the money path refuses on its own
- * (decision 0210), as the fills skip one before any intent.
+ * (decision 0210), as the fills skip one before any intent; `price_stale`, a fill whose price was
+ * read before a resume that came while it ran (decision 0268).
  */
 export const fillReasons = [
   "order_inactive",
@@ -130,6 +131,7 @@ export const fillReasons = [
   "worst_price",
   "trigger_unconfirmed",
   "live_fills_off",
+  "price_stale",
 ] as const;
 
 /** A reason an auto order's fill broke its order at its authorization. */

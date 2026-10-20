@@ -18,6 +18,7 @@ import type { OrderFillReason, OrderFillRecord, OrderFillWrite } from "./order-f
 import { moveOrder } from "./order-machine.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
+import type { ResumeFence } from "./resume-fence.js";
 
 /** What a skip's row reads: the order's rows, the rolling cap's use, and new ids. */
 export interface SkipRowParts {
@@ -304,24 +305,29 @@ export interface AnnounceParts {
   readonly orders: OrderStore;
   readonly clock: Clock;
   readonly publish: PublishPush;
+  /** The downtime re-check, which reports the skips of a resume in its one report. */
+  readonly fence?: Pick<ResumeFence, "holds">;
 }
 
 /**
  * Tells the owner the notices of rows not yet announced, oldest first, order by order, then marks
  * them announced (decision 0197); a copy order's skips past five in its hour are counted instead
- * and told in one line (decision 0260). A stop between the two tells them again at the next start.
+ * and told in one line (decision 0260), and the skips a downtime re-check reports in its one
+ * report are marked without being told (decision 0267). A stop between the two tells them again at
+ * the next start.
  */
 export async function announceRows(
   parts: AnnounceParts,
   rows: readonly OrderFillRecord[],
   signal: AbortSignal,
 ): Promise<number> {
-  const due = rows.filter(
+  const unannounced = rows.filter(
     (row): row is DueRow => row.notices !== undefined && row.announcedAtMs === undefined,
   );
-  if (due.length === 0) {
+  if (unannounced.length === 0) {
     return 0;
   }
+  const due = unannounced.filter((row) => parts.fence?.holds(row) !== true);
   // Each order's rows together, in the order their first row came; a copy order's skips within its
   // notice hour (decision 0260).
   const orders = [...new Set(due.map(({ orderId }) => orderId))];
@@ -333,9 +339,9 @@ export async function announceRows(
       parts.publish({ topic: "notice", kind: "notice/new", data });
     });
   }
-  const ids = due.map(({ id }) => id);
+  const ids = unannounced.map(({ id }) => id);
   await parts.orders.markAnnounced({ ids, atMs: parts.clock.now() }, { signal });
-  return due.length;
+  return unannounced.length;
 }
 
 /** Announces an order's newest rows whose notices were not announced yet, and answers the rows. */

@@ -32,8 +32,9 @@ async function otherUsdOf(
 
 /**
  * The fill's check at `simulated` (decisions 0195 and 0197): the other side's USD price is read
- * before the agent's line; in the line, its order as it stands now is held to every bound with
- * its quote, and a sale sized in dollars to its dollars at its own quote.
+ * before the agent's line; in the line, a fill whose price was read before a resume ends
+ * (decision 0268), and its order as it stands now is held to every bound with its quote, and a
+ * sale sized in dollars to its dollars at its own quote.
  */
 export function checkOf(
   parts: OrderFillsParts,
@@ -95,6 +96,12 @@ function dollarSaleOf(order: OrderRecord): bigint | undefined {
   return side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
 }
 
+// Whether a resume came while the fill ran: its price may be one read before the downtime
+// (decision 0268). A DCA buy has no price of its own.
+function isStaleNow(parts: Pick<OrderFillsParts, "fence">, price: FillPrice): boolean {
+  return price.readAtMs !== undefined && parts.fence?.isStale(price.readAtMs) === true;
+}
+
 // The check in the agent's line, on the other side's price read before it.
 async function checkInLine(
   parts: OrderFillsParts,
@@ -108,6 +115,9 @@ async function checkInLine(
   },
 ): Promise<FillBreach | undefined> {
   const { order, sized, price, simulated, otherUsd, signal } = fill;
+  if (isStaleNow(parts, price)) {
+    return "price_stale";
+  }
   const current = await sameFillOf(parts, order, signal);
   const { quote } = simulated.record;
   if (current === undefined || quote === undefined) {

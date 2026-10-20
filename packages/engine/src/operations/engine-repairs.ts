@@ -2,6 +2,7 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { repairDcaPeriods } from "../orders/dca-repair.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { repairOrderFills } from "../orders/repair-order-fills.js";
+import type { ResumeFence } from "../orders/resume-fence.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
 import type { Engine, EngineOptions } from "./create-engine.js";
@@ -28,13 +29,18 @@ export function paperRepairOf(
  */
 export function orderRepairOf(
   options: EngineOptions,
-  parts: { readonly stored: StoredIntents; readonly fills: OrderFills },
+  parts: {
+    readonly stored: StoredIntents;
+    readonly fills: OrderFills;
+    /** The downtime re-check, whose one report tells a resume's skips. */
+    readonly fence: ResumeFence;
+  },
 ): Engine["repairOrderFills"] {
   const { stores, clock, ids, publish, chains } = options;
-  const { stored, fills } = parts;
+  const { stored, fills, fence } = parts;
   return async (call) => {
     const repaired = await repairOrderFills(
-      { stored, orders: stores.orders, clock, ids, publish },
+      { stored, orders: stores.orders, clock, ids, publish, fence },
       call,
     );
     const dca = { orders: stores.orders, fills, intents: stores.intents, chains, clock };
