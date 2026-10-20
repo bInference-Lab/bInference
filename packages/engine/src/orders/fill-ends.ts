@@ -10,6 +10,7 @@ import { createIntentStateMachine, type IntentStep } from "../intents/state-mach
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
 import { type DueRow, toldOf } from "./copy-notice-hour.js";
+import { copyLinkOf } from "./copy-state.js";
 import { type LandedFillParts, landedFillWrite } from "./fill-landed.js";
 import { skippedNotice } from "./fill-notices.js";
 import { isNewReason, paceRows } from "./fill-pacing.js";
@@ -82,6 +83,7 @@ export async function skipRowOf(parts: SkipRowParts, skip: SkipOf): Promise<Orde
     outcome: "skipped" as const,
     reason,
     atMs,
+    ...copyLinkOf(order, order.kind),
   };
   if (!(await tells(parts, skip))) {
     return row;

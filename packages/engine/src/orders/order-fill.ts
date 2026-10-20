@@ -32,6 +32,11 @@ export interface OrderFillRecord {
   readonly notices?: readonly JsonValue[];
   /** When the notices were announced; absent until they are, and for a row without notices. */
   readonly announcedAtMs?: number;
+  /**
+   * A copy order's row: the stored number of the leader trade it copied, and the take of the order
+   * it ran under (decision 0260).
+   */
+  readonly copy?: { readonly trade: number; readonly take: number };
 }
 
 // A skip carries its reason and a fill none; only a row with notices is announced.
@@ -64,6 +69,7 @@ export const orderFillRecordSchema: z.ZodType<OrderFillRecord> = z
     atMs: epochMsSchema,
     notices: z.array(jsonValueSchema).min(1).exactOptional(),
     announcedAtMs: epochMsSchema.exactOptional(),
+    copy: z.strictObject({ trade: z.int().positive(), take: z.int().positive() }).exactOptional(),
   })
   .refine(isWellFormed, {
     message: "A skip carries its reason and a fill none, and only a row with notices is announced.",

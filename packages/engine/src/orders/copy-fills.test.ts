@@ -30,14 +30,13 @@ import { testCopy } from "./test-orders.js";
 const live = { signal: new AbortController().signal };
 const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
 const listedFacts = { symbol: "TKN", name: "Test token", decimals: 6, verified: true };
-const buy: CopyTaking = {
+const buy: Omit<CopyTaking, "take"> = {
   id: 1,
   side: "buy",
   asset: testToken,
   atMs: testNowMs,
   // A tenth of the coin, $60 at the coin's $600.
   paid: { asset: testCoin, base: 10n ** 17n },
-  takenAtMs: 0,
   facts: listedFacts,
 };
 
@@ -69,7 +68,6 @@ function boughtFor(state: CopyState, usdMicros: bigint): CopyState {
     amountOut: { asset: testToken, base: 1n },
     usdMicros,
     atMs: testNowMs,
-    takenAtMs: 0,
   };
   return copyStateAfterFill(state, traded);
 }

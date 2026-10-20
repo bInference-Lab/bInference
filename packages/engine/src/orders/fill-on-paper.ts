@@ -9,6 +9,7 @@ import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
 import { copyTradedOf } from "./copy-fills.js";
+import { copyLinkOf } from "./copy-state.js";
 import { exitEndMovesOf, fillRowNotices } from "./end-exit-orders.js";
 import { cancelFill } from "./fill-ends.js";
 import type { OrderFillWrite } from "./order-fill.js";
@@ -83,6 +84,7 @@ async function fillWriteOf(
     outcome: "filled" as const,
     atMs: fill.atMs,
     ...(notices.length === 0 ? {} : { notices }),
+    ...copyLinkOf(order, order.kind),
   };
   return { moves: [recorded.value, ...ended], fill: row };
 }

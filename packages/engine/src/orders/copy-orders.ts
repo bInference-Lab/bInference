@@ -145,7 +145,7 @@ function paidOf(chains: ChainRegistry, trade: StoredActivity): Pick<CopyTaking, 
 async function fillTaken(
   parts: CopyOrdersParts,
   reading: Reading,
-  call: { readonly taking: CopyTaking; readonly signal: AbortSignal },
+  call: { readonly taking: Omit<CopyTaking, "take">; readonly signal: AbortSignal },
 ): Promise<boolean> {
   const { order, state } = reading;
   const { taking, signal } = call;
@@ -175,12 +175,11 @@ async function copyOne(
   }
   const facts = await factsOf(parts, asset, signal);
   const share = trade.shareSoldBps === undefined ? {} : { shareSoldBps: trade.shareSoldBps };
-  const taking: CopyTaking = {
+  const taking: Omit<CopyTaking, "take"> = {
     id: trade.id,
     side: trade.side,
     asset,
     atMs: trade.atMs,
-    takenAtMs: parts.clock.now(),
     ...share,
     ...paidOf(parts.chains, trade),
     ...(facts === undefined ? {} : { facts }),
@@ -195,7 +194,7 @@ async function sellLost(parts: CopyOrdersParts, reading: Reading, signal: AbortS
   if (lost?.side !== "sell") {
     return true;
   }
-  const taking = { ...lost, takenAtMs: parts.clock.now() };
+  const { take: _take, ...taking } = lost;
   return fillTaken(parts, reading, { taking, signal });
 }
 

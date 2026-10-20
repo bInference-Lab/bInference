@@ -26,7 +26,7 @@ const done = String.fromCodePoint(0x2705);
 const paper = String.fromCodePoint(0x1f9ea);
 
 // A copy order that took `taking`.
-function copying(taking: CopyTaking) {
+function copying(taking: Omit<CopyTaking, "take">) {
   const triggerState = copyStateDocument.encode(takenState(copyStartOf(0), taking));
   return {
     agentId: testAgent,
@@ -42,7 +42,6 @@ const honeyBuy = copying({
   side: "buy",
   asset: unlisted,
   atMs: 0,
-  takenAtMs: 0,
   facts: { symbol: "HONEY", name: "Honey", decimals: 18, verified: false },
 });
 const tokenSale = copying({
@@ -50,7 +49,6 @@ const tokenSale = copying({
   side: "sell",
   asset: testToken,
   atMs: 0,
-  takenAtMs: 0,
   shareSoldBps: bpsSchema.parse(4_000),
   facts: { symbol: "TKN", name: "Test token", decimals: 6, verified: true },
 });

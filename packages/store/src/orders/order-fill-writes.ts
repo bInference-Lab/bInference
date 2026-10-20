@@ -26,6 +26,9 @@ function toOrderFillRecord(row: Selectable<OrderFillsTable>): OrderFillRecord {
     atMs: row.at,
     ...jsonField("notices", row.notices),
     ...field("announcedAtMs", row.announced_at),
+    ...(row.copy_trade === null || row.copy_take === null
+      ? {}
+      : { copy: { trade: row.copy_trade, take: row.copy_take } }),
   });
 }
 
@@ -103,6 +106,8 @@ export function insertOrderFill(database: DatabaseSync, fill: OrderFillRecord): 
       at: fill.atMs,
       notices: optionalJsonText(fill.notices === undefined ? undefined : [...fill.notices]),
       announced_at: orNull(fill.announcedAtMs),
+      copy_trade: orNull(fill.copy?.trade),
+      copy_take: orNull(fill.copy?.take),
     }),
   );
   return fill;

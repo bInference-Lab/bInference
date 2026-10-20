@@ -28,9 +28,10 @@ Every order fill runs the money path with no card, held to its order's bounds
 - **Read in order, once.** A copy order reads its leader's trades from the store in the order the
   watcher stored them, from the moment it became active. Its trigger state keeps the number of the
   last trade it took, written under its version before that trade's fill starts, so each trade is
-  copied at most once per order, across restarts. A stop between that write and the fill leaves a
-  buy unmade, which the next start records as `missed`; a sale so cut off is sold once, late, when
-  no row and no live fill shows it ran.
+  copied at most once per order, across restarts. Each take has the order's next number, and every
+  row of its fill names the take and the leader trade (migration 0045): a take with no row and no
+  live fill of its agent on the way was cut off by a stop, which rows tell, never a clock. A buy so
+  cut off is recorded as `missed`; a sale so cut off is sold once, late.
 - **What it copies.** A buy of a token that is neither the chain's coin nor what the order spends,
   and a sale of a token the order holds from its own buys. Every other trade is passed over with no
   row: it is not a trade the order follows.

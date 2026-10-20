@@ -25,6 +25,11 @@ export function isTakenLate(taking: Pick<CopyTaking, "atMs">, atMs: number): boo
 export interface CopyTaking {
   /** The trade's number in the store, which orders the leader's trades. */
   readonly id: number;
+  /**
+   * The order's own number for this take, one more than its last: each row of the take's fill
+   * names it, so a take a stop cut off is found by its row, never by a clock.
+   */
+  readonly take: number;
   readonly side: "buy" | "sell";
   /** The token the leader bought or sold, in its canonical form. */
   readonly asset: AssetRef;
@@ -34,8 +39,6 @@ export interface CopyTaking {
   readonly atMs: number;
   /** For a buy: what the leader paid for it, which caps the copy's dollars (decision 0260). */
   readonly paid?: Amount;
-  /** When the order took it: the start's repair reads whether a fill row came since. */
-  readonly takenAtMs: number;
   /**
    * The token's symbol, name and decimals as the order took the trade: the registry's, marked
    * verified, else what its contract answered on chain. Its notices name it by them, and its fill
@@ -66,6 +69,8 @@ export interface CopyState {
   readonly sinceMs: number;
   /** The number of the last leader trade it took or passed over; 0 before the first. */
   readonly through: number;
+  /** How many takes the order made: the last take's number. */
+  readonly takes: number;
   readonly taking?: CopyTaking;
   readonly buys: readonly CopyBuy[];
   readonly held: readonly CopyHolding[];
@@ -76,15 +81,16 @@ export interface CopyState {
 const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
   sinceMs: epochMsSchema,
   through: z.int().nonnegative(),
+  takes: z.int().nonnegative(),
   taking: z
     .strictObject({
       id: z.int().positive(),
+      take: z.int().positive(),
       side: z.enum(["buy", "sell"]),
       asset: assetRefSchema,
       shareSoldBps: bpsSchema.exactOptional(),
       atMs: epochMsSchema,
       paid: amountSchema.exactOptional(),
-      takenAtMs: epochMsSchema,
       facts: z
         .strictObject({
           symbol: z.string().max(200),
@@ -114,7 +120,7 @@ export function copyStateOf(kept: JsonValue | undefined): CopyState | undefined 
 
 /** The state a copy order starts with as it becomes active at `nowMs`. */
 export function copyStartOf(nowMs: number): CopyState {
-  return { sinceMs: nowMs, through: 0, buys: [], held: [] };
+  return { sinceMs: nowMs, through: 0, takes: 0, buys: [], held: [] };
 }
 
 /**
@@ -132,9 +138,20 @@ export function copiedHeldOf(state: CopyState, asset: AssetRef): bigint {
   return state.held.find((holding) => holding.asset === asset)?.base ?? 0n;
 }
 
-/** The state once the order took a leader's trade, which it copies now. */
-export function takenState(state: CopyState, taking: CopyTaking): CopyState {
-  return { ...state, through: taking.id, taking };
+/** The state once the order took a leader's trade, which it copies now, under its next take. */
+export function takenState(state: CopyState, taking: Omit<CopyTaking, "take">): CopyState {
+  const take = state.takes + 1;
+  const through = taking.id > state.through ? taking.id : state.through;
+  return { ...state, through, takes: take, taking: { ...taking, take } };
+}
+
+/** What a copy order's row names: the leader trade its take copies, and the take; none else. */
+export function copyLinkOf(
+  order: { readonly triggerState?: JsonValue },
+  kind: string,
+): { readonly copy?: { readonly trade: number; readonly take: number } } {
+  const taking = kind === "copy" ? copyStateOf(order.triggerState)?.taking : undefined;
+  return taking === undefined ? {} : { copy: { trade: taking.id, take: taking.take } };
 }
 
 /** The state once the order passed over the leader's trades up to number `through`. */

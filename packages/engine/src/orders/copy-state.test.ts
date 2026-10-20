@@ -20,7 +20,6 @@ const taking = {
   side: "buy" as const,
   asset: testToken,
   atMs: 1_000,
-  takenAtMs: 0,
 };
 
 function bought(base: bigint, usdMicros: bigint, atMs: number) {
@@ -46,7 +45,7 @@ function sold(base: bigint, atMs: number) {
 describe("a copy order's state", () => {
   it("starts with nothing taken, bought or held, and reads back from its document", () => {
     const start = copyStartOf(5);
-    expect(start).toStrictEqual({ sinceMs: 5, through: 0, buys: [], held: [] });
+    expect(start).toStrictEqual({ sinceMs: 5, through: 0, takes: 0, buys: [], held: [] });
     const kept = takenState(start, { ...taking, shareSoldBps: bpsSchema.parse(4_000) });
     const json = copyStateDocument.encode(kept);
     expect(copyStateOf(json)).toStrictEqual(kept);
@@ -55,7 +54,11 @@ describe("a copy order's state", () => {
 
   it("takes a trade with its number, and passes trades over with no trade under way", () => {
     const taken = takenState(copyStartOf(5), taking);
-    expect([taken.through, taken.taking]).toStrictEqual([7, taking]);
+    expect([taken.through, taken.takes, taken.taking]).toStrictEqual([
+      7,
+      1,
+      { ...taking, take: 1 },
+    ]);
     const passed = passedState(taken, 9);
     expect(passed.through).toBe(9);
     expect(passed).not.toHaveProperty("taking");

@@ -28,7 +28,7 @@ export async function copyStateNow(test: TestEngine, order: Id<"ord">): Promise<
 export async function takeTrade(
   test: TestEngine,
   order: Id<"ord">,
-  taking: CopyTaking,
+  taking: Omit<CopyTaking, "take">,
 ): Promise<void> {
   const read = await storedOrder(test, order);
   const state = await copyStateNow(test, order);
@@ -44,7 +44,7 @@ export async function takeTrade(
 export async function copyTrade(
   test: TestEngine,
   order: Id<"ord">,
-  taking: CopyTaking,
+  taking: Omit<CopyTaking, "take">,
 ): Promise<string> {
   await takeTrade(test, order, taking);
   return test.engine.fillOrder({ order, price: { decimals: 0 } }, live);

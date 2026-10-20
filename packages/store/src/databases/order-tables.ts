@@ -34,6 +34,9 @@ export interface OrderFillsTable {
   /** The notices of the fill or skip as JSON, their pushes' data (migration 0032). */
   notices: string | null;
   announced_at: number | null;
+  /** A copy order's row: the leader trade it copied and the take it ran under (migration 0045). */
+  copy_trade: number | null;
+  copy_take: number | null;
 }
 
 /** The order store's tables, by name. */

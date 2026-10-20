@@ -132,7 +132,9 @@ const columns: Readonly<Record<string, readonly string[]>> = {
     "id agent_id wallet_id kind state request trigger_state fills max_fills expires_at intent_id " +
       "card_id paper outside_content end_reason expiry_noticed_at created_at changed_at version",
   ),
-  order_fills: names("id order_id intent_id outcome reason at notices announced_at"),
+  order_fills: names(
+    "id order_id intent_id outcome reason at notices announced_at copy_trade copy_take",
+  ),
   alerts: names(
     "id agent_id condition kind account asset state wake fires outside_content created_by " +
       "created_at changed_at fired_at expires_at last_message_id notice_window_at notices_sent " +

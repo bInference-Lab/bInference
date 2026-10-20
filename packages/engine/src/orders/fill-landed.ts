@@ -9,7 +9,7 @@ import type { IntentStore, PositionStore } from "../ports.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import { noticePush } from "../pushes/notice-push.js";
 import { copyTradedOf } from "./copy-fills.js";
-import { copyStateOf } from "./copy-state.js";
+import { copyLinkOf, copyStateOf } from "./copy-state.js";
 import { exitEndMovesOf, fillRowNotices } from "./end-exit-orders.js";
 import type { OrderFillWrite } from "./order-fill.js";
 import { moveOrder } from "./order-machine.js";
@@ -204,6 +204,7 @@ export async function landedFillWrite(
     outcome: "filled" as const,
     atMs,
     ...(notices.length === 0 ? {} : { notices }),
+    ...copyLinkOf(order, order.kind),
   };
   return { moves: [landed.value, ...ended], fill: row };
 }

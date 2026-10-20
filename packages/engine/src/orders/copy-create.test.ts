@@ -32,6 +32,7 @@ describe("a copy order's creation", () => {
     expect(order.triggerState).toStrictEqual({
       sinceMs: testNowMs,
       through: 0,
+      takes: 0,
       buys: [],
       held: [],
     });

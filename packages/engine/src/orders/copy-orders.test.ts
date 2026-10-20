@@ -24,12 +24,12 @@ const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
 const prices = new Map(fillPrices).set(testToken, { numerator: 1n, denominator: 10n ** 9n });
 
 // The take of a stored buy of the test token, the moment it was made.
-function takingOf(stored: StoredActivity | undefined): CopyTaking {
+function takingOf(stored: StoredActivity | undefined): Omit<CopyTaking, "take"> {
   if (stored === undefined) {
     throw new Error("Expected the stored trade.");
   }
   const { id, atMs } = stored;
-  return { id, side: "buy", asset: testToken, atMs, takenAtMs: atMs };
+  return { id, side: "buy", asset: testToken, atMs };
 }
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
@@ -184,7 +184,7 @@ describe("the copy orders' runner", () => {
     ]);
     await test.clock.advance(1_000);
     const taking = { ...takingOf(sale), side: "sell" as const, shareSoldBps: share };
-    await takeTrade(test, order.id, { ...taking, takenAtMs: test.clock.now() });
+    await takeTrade(test, order.id, taking);
     await test.clock.advance(120_000);
 
     const again = test.restart();
@@ -216,5 +216,22 @@ describe("the copy orders' runner", () => {
     const held = told.filter((text) => text.includes('"notice.copyHeld"'));
     expect(held).toHaveLength(1);
     expect(held[0]).toContain('"count":"2"');
+  });
+
+  it("never takes again a sale whose take ended in a row, however a restart finds it", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+    await storeTrades(test, [leaderTrade(2, { side: "sell", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+
+    const again = test.restart();
+    await again.repairOrderFills(live);
+    await again.runCopies(live);
+
+    const rows = await fillRowsOf(test, order.id);
+    expect(outcomes(rows)).toStrictEqual(["skipped:share_unread", "filled"]);
+    expect(rows.map(({ copy }) => copy?.take)).toStrictEqual([2, 1]);
   });
 });

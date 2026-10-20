@@ -39,7 +39,6 @@ function buyOf(id: number, atMs: number) {
     side: "buy" as const,
     asset: testToken,
     atMs,
-    takenAtMs: atMs,
     paid,
     facts: tokenFacts,
   };
@@ -48,7 +47,7 @@ function buyOf(id: number, atMs: number) {
 // A leader's sale of the test token, stored as trade `id`, taking `shareBps` of its holding.
 function saleOf(id: number, atMs: number, shareBps?: number) {
   const share = shareBps === undefined ? {} : { shareSoldBps: bpsSchema.parse(shareBps) };
-  const sale = { id, side: "sell" as const, asset: testToken, atMs, takenAtMs: atMs };
+  const sale = { id, side: "sell" as const, asset: testToken, atMs };
   return { ...sale, facts: tokenFacts, ...share };
 }
 
@@ -156,7 +155,6 @@ describe("a copy order's fills", () => {
       side: "buy" as const,
       asset: unlisted,
       atMs,
-      takenAtMs: atMs,
       paid,
       facts,
     };

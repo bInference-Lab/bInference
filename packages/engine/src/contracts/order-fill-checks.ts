@@ -42,6 +42,7 @@ export async function recordsSkips(subject: OrderStoreSubject): Promise<void> {
     ...fillRow(1, 4, "skipped"),
     reason: "copy_daily_cap" as const,
     atMs: second.atMs,
+    copy: { trade: 2 ** 40, take: 3 },
   };
   assert.deepEqual(await store.recordFill(first, live()), first);
   assert.deepEqual(await store.recordFill(second, live()), second);
