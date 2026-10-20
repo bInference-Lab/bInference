@@ -36,8 +36,22 @@ const brewStableStarts: ReadonlyMap<string, bigint> = new Map([
   ["USDC", 5_000n],
 ]);
 
-// What a Brew token may launch against on the chain: the coin, and every registry token but the
-// wrapped coin, each with its decimals and its fixed start, if any.
+// The registry tokens a Brew token may launch against, by symbol: those Brew's docs allow, a standard
+// token with no transfer fee and no rebase, each read so when listed here (decision 0283). A token
+// the registry adds later joins only once it is checked and named here.
+const brewPairSymbols: ReadonlySet<string> = new Set([
+  "USDT",
+  "USDC",
+  "FDUSD",
+  "BTCB",
+  "ETH",
+  "Cake",
+  "slisBNB",
+  "USD1",
+]);
+
+// What a Brew token may launch against on the chain: the coin, and every registry token named for
+// it but the wrapped coin, each with its decimals and its fixed start, if any.
 function brewPairsOf(chain: RegisteredChain, wrappedNative: AssetRef): readonly BrewPair[] {
   const evm = evmChainOf(chain.definition);
   const coin = {
@@ -48,7 +62,7 @@ function brewPairsOf(chain: RegisteredChain, wrappedNative: AssetRef): readonly 
   const tokens = chain.definition.tokens.flatMap((token): BrewPair[] => {
     const address = parseEvmAddress(token.address);
     const asset = address.ok ? erc20AssetRef(evm, address.value) : undefined;
-    if (asset === undefined || asset === wrappedNative) {
+    if (asset === undefined || asset === wrappedNative || !brewPairSymbols.has(token.symbol)) {
       return [];
     }
     const start = brewStableStarts.get(token.symbol);
@@ -82,8 +96,8 @@ function brewLaunchChainsOf(
 /**
  * The `brew` venue's options on the enabled chains (decisions 0278 and 0283): every chain whose
  * registry lists Brew's single-pair factory and names a wrapped coin, read for the launch feed,
- * and each of those the engine reads launching against the coin or any registry token, with the
- * owner's fixed starts.
+ * and each of those the engine reads launching against the coin or a registry token named for
+ * Brew, with the owner's fixed starts.
  */
 export function brewOptionsOf(
   enabled: readonly RegisteredChain[],

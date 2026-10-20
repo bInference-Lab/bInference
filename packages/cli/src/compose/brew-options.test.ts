@@ -18,18 +18,38 @@ const clock = createManualClock(1_800_000_000_000);
 const registryTokens = chains.list().flatMap((chain) => chain.definition.tokens).length;
 const config = { enabled: [bsc], rpc: {}, relays: {}, maxFeePerGasGwei: { [bsc]: "1" } };
 
+// A token with a transfer fee the registry might list one day, which Brew's docs refuse.
+const feeToken = {
+  symbol: "FEE",
+  name: "Token With A Transfer Fee",
+  decimals: 18,
+  address: "0x00000000000000000000000000000000000000Fe",
+  verification: { checkedOn: "2026-10-20", source: "https://example.com", control: "read" },
+} as const;
+
+// The registry's chains with one more token listed.
+function withToken(token: typeof feeToken) {
+  return chains.list().map((chain) =>
+    Object.assign({}, chain, {
+      definition: Object.assign({}, chain.definition, {
+        tokens: [...chain.definition.tokens, token],
+      }),
+    }),
+  );
+}
+
 // The pairs Brew launches against on BSC, each with its fixed start, if any.
-function bscPairs() {
-  const [launching] = optionsOf().launches?.chains ?? [];
+function bscPairs(enabled = chains.list()) {
+  const [launching] = optionsOf(enabled).launches?.chains ?? [];
   if (launching === undefined) {
     throw new Error("Brew launches on no chain.");
   }
   return launching.pairs.map(({ asset, startBase }) => [asset, startBase]);
 }
 
-function optionsOf() {
+function optionsOf(enabled = chains.list()) {
   const reads = composeChainReads({ chains, config, http: createScriptedHttp([]), clock });
-  return brewOptionsOf(chains.list(), {
+  return brewOptionsOf(enabled, {
     feeds: selfHostedFeeds(),
     reads,
     random: createSeededRandom(283),
@@ -37,6 +57,12 @@ function optionsOf() {
 }
 
 describe("the brew venue's options on BSC", () => {
+  it("leave out a token the registry adds until it is named for Brew", () => {
+    const assets = bscPairs(withToken(feeToken)).map(([asset]) => String(asset).toLowerCase());
+    expect(assets).toHaveLength(registryTokens);
+    expect(assets).not.toContain("eip155:56/erc20:0x00000000000000000000000000000000000000fe");
+  });
+
   it("launch against BNB and every registry token but WBNB, with the owner's fixed starts", () => {
     const starts = bscPairs();
     expect(starts.slice(0, 3)).toStrictEqual([

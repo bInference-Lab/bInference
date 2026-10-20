@@ -45,7 +45,9 @@ U.S. citizens (decision
 
 - **What a launch is.** The `brew` launcher launches through BrewFactory's `launch` alone, from
   the launch wallet, against the chain's coin (WBNB in the pool) or a registry token of the chain
-  other than its wrapped coin, which the composition root gives with its decimals. A launch
+  other than its wrapped coin that the composition root names for Brew, with its decimals: each
+  read as a standard token with no transfer fee and no rebase, as Brew's docs ask, so a token the
+  registry adds later joins only once checked. A launch
   against the wrapped coin as a token is `no_route`: it names the coin.
 - **What every launch writes.** A supply of 1,000,000,000 with 18 decimals, the 1% fee tier, no
   ranges of its own (the whole supply in one range from the starting tick up), the first buy's
