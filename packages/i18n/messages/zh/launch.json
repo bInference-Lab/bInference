@@ -11,7 +11,7 @@
   "option.pictureLink": "图片地址 {link}（binference 从不打开它）",
   "option.creatorFeeRecipient": "每笔交易的创建者费用留在发射台，直到 {address} 领取；该地址买入时也不付狙击税",
   "option.poolFeeRecipient": "交易池的创建者费用存放在 Brew 的锁仓合约中，直到 {address} 领取",
-  "option.holderRewards": "持有者奖励：{value, select, yes {开启：Brew 的持有者分配合约将交易池手续费中创建者的部分用于回购该代币，并永久销毁所得代币} other {关闭}}",
+  "option.holderRewards": "持有者奖励：{value, select, yes {开启，且之后无法关闭：Brew 的持有者分配合约将交易池手续费中创建者的部分用于回购该代币，并永久销毁所得代币；任何人都可以用任意价格限制发起每次回购，因此围绕它下的交易可能拿走其中很大一部分} other {关闭}}",
   "option.holderDistributor": "交易池的创建者费用付给该代币的持有者分配合约 {address}",
   "option.startMarketCap": "起始市值约为 {value}，向下取整到交易池的下一个价格档位",
   "option.startBasis": "{value, select, usdPrice {该起始市值按报价时 binference 的交易对美元价格算出，为 5,000 美元} other {{value}}}",

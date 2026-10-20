@@ -11,7 +11,7 @@
   "option.pictureLink": "Picture at {link} (binference never opens it)",
   "option.creatorFeeRecipient": "Creator fees from every trade wait on the launchpad until {address} claims them; that address also buys free of the snipe tax",
   "option.poolFeeRecipient": "Creator fees from the pool wait in Brew's locker until {address} claims them",
-  "option.holderRewards": "Holder rewards: {value, select, yes {on: Brew's holder distributor spends the creator's part of the pool fees on the token and burns what it gets, for good} other {off}}",
+  "option.holderRewards": "Holder rewards: {value, select, yes {on, and never off again: Brew's holder distributor spends the creator's part of the pool fees on the token and burns what it gets, for good; anyone may start each spend with any price limit, so a trade placed around it can take much of it} other {off}}",
   "option.holderDistributor": "Creator fees from the pool go to the token's holder distributor, {address}",
   "option.startMarketCap": "Starts at a market cap of about {value}, rounded down to the pool's next price step",
   "option.startBasis": "{value, select, usdPrice {That start is $5,000 at binference's USD price of the pair when quoted} other {{value}}}",
