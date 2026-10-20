@@ -1,4 +1,11 @@
-import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
+import { type AccountRef, accountRefSchema } from "@binference/chain";
+import {
+  decimalStringSchema,
+  type Id,
+  idSchema,
+  type JsonValue,
+  jsonValueSchema,
+} from "@binference/core";
 import { z } from "zod";
 import {
   type IntentReason,
@@ -135,4 +142,43 @@ export const fillAnnouncementSchema: z.ZodType<FillAnnouncement> = z.strictObjec
 export const orderFillQuerySchema: z.ZodType<OrderFillQuery> = z.strictObject({
   orderId: idSchema("ord"),
   limit: pageLimitSchema,
+});
+
+/**
+ * Which copy buys of an agent to list (decision 0260): the `filled` rows of its copy orders of one
+ * leader whose intents bought, in any order state, from `fromMs` on, oldest first, then by id.
+ */
+export interface CopyBuyQuery {
+  readonly agentId: Id<"agt">;
+  readonly leader: AccountRef;
+  readonly fromMs: number;
+  /** The last row of the page before: the page starts after it. */
+  readonly after?: { readonly atMs: number; readonly id: Id<"fil"> };
+  readonly limit: number;
+}
+
+/** Parses a copy buy query. */
+export const copyBuyQuerySchema: z.ZodType<CopyBuyQuery> = z.strictObject({
+  agentId: idSchema("agt"),
+  leader: accountRefSchema,
+  fromMs: epochMsSchema,
+  after: z.strictObject({ atMs: epochMsSchema, id: idSchema("fil") }).exactOptional(),
+  limit: pageLimitSchema,
+});
+
+/**
+ * One copy buy as the daily cap counts it: its row, when it filled, and the value the policy judged
+ * its intent at, else the dollars per buy of its order.
+ */
+export interface CopyBuyRecord {
+  readonly id: Id<"fil">;
+  readonly atMs: number;
+  readonly usdMicros: bigint;
+}
+
+/** Parses a copy buy. */
+export const copyBuyRecordSchema: z.ZodType<CopyBuyRecord> = z.strictObject({
+  id: idSchema("fil"),
+  atMs: epochMsSchema,
+  usdMicros: decimalStringSchema,
 });

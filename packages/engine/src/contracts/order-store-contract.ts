@@ -4,7 +4,7 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { FillSize } from "@binference/protocol";
 import { testCoin } from "../intents/test-intents.js";
 import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
-import { holdsTrackedWalletSlots } from "./order-copy-checks.js";
+import { holdsTrackedWalletSlots, listsCopyBuys } from "./order-copy-checks.js";
 import {
   announcesFillNotices,
   countsALandedFillOnce,
@@ -221,6 +221,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
       create,
       holdsTrackedWalletSlots,
     ),
+    checkOn("lists an agent's copy buys of a leader in any order state", create, listsCopyBuys),
     checkOn("moves orders under their versions, all or nothing", create, movesUnderVersion),
     checkOn(
       "refuses a move that breaks an order rule and writes nothing",

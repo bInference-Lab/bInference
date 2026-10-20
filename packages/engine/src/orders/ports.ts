@@ -1,5 +1,7 @@
 import type { Id, Result } from "@binference/core";
 import type {
+  CopyBuyQuery,
+  CopyBuyRecord,
   FillAnnouncement,
   OrderFillQuery,
   OrderFillRecord,
@@ -72,6 +74,12 @@ export interface OrderStore {
   ): Promise<Result<readonly OrderRecord[], "counted" | "stale">>;
   /** The `filled` row that counts an intent's fill, or `undefined` while none does. */
   countedFill(intent: Id<"int">, options: StoreCall): Promise<OrderFillRecord | undefined>;
+  /**
+   * An agent's copy buys of one leader from a time on, in any order state, oldest first, then by
+   * id (decision 0260): each `filled` row of its copy orders of that leader whose intent bought,
+   * at its intent's judged value, else its order's dollars per buy.
+   */
+  copyBuys(query: CopyBuyQuery, options: StoreCall): Promise<readonly CopyBuyRecord[]>;
   /** One order's fill rows, the newest first, then by id from the last. */
   fills(query: OrderFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
   /**

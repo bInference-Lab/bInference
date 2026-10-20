@@ -1,5 +1,6 @@
 import type { OrderStore } from "@binference/engine/orders";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
+import { copyBuysTask } from "./copy-buy-rows.js";
 import {
   createOrderTask,
   getOrderTask,
@@ -28,6 +29,7 @@ export function createSqliteOrderStore(host: StoreHost): OrderStore {
     recordFill: bindTask(host, recordOrderFillTask),
     recordLandedFill: bindTask(host, recordLandedFillTask),
     countedFill: bindTask(host, countedFillTask),
+    copyBuys: bindTask(host, copyBuysTask),
     fills: bindTask(host, listOrderFillsTask),
     unannounced: bindTask(host, unannouncedFillsTask),
     markAnnounced: bindTask(host, markAnnouncedTask),

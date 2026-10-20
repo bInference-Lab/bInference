@@ -24,7 +24,6 @@ import {
   type CopyTaking,
   takenState,
 } from "./copy-state.js";
-import type { OrderRecord } from "./order-record.js";
 import { testLeaderTx } from "./test-copies.js";
 import { testCopy } from "./test-orders.js";
 
@@ -76,12 +75,18 @@ function boughtFor(state: CopyState, usdMicros: bigint): CopyState {
 
 async function plan(
   order: CopyOrder,
-  call: { readonly others?: readonly OrderRecord[]; readonly copyPerBuy?: bigint } = {},
+  call: { readonly stored?: readonly bigint[]; readonly copyPerBuy?: bigint } = {},
 ) {
   const clock = createManualClock(testNowMs);
   const limits = { ...testLimits, copyPerBuyUsdMicros: call.copyPerBuy ?? 20_000_000n };
   const settings = agentSettingsOf(testAgentDraft({ limits }));
-  const orders = { list: async () => Promise.resolve([order, ...(call.others ?? [])]) };
+  // The agent's stored copy buys of the leader, by any of its copy orders.
+  const buys = (call.stored ?? []).map((usdMicros, n) => ({
+    id: idSchema("fil").parse(`fil_0190f1c2-3a4b-7c5d-8e6f-00000000000${String(n)}`),
+    atMs: testNowMs,
+    usdMicros,
+  }));
+  const orders = { copyBuys: async () => Promise.resolve(buys) };
   const prices = createFakePriceSource(
     new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
   );
@@ -158,20 +163,22 @@ describe("a copy order's fill plan", () => {
 
   it("skips a buy past the order's daily dollars, then past the agent's for the leader", async () => {
     const full = boughtFor(copyStartOf(0), 190_000_000n);
-    // The test agent allows $100 a day per leader; its other copy order of the leader used $30.
+    // The test agent allows $100 a day per leader; its copy orders of the leader stored $90.
     const some = boughtFor(copyStartOf(0), 60_000_000n);
-    const other = copyOrder(boughtFor(copyStartOf(0), 30_000_000n), 2);
 
     expect(await plan(copyOrder(takenState(full, buy)))).toStrictEqual({
       kind: "skip",
       reason: "copy_daily_cap",
       cap: { usedUsdMicros: 190_000_000n, capUsdMicros: 200_000_000n },
     });
-    expect(await plan(copyOrder(takenState(some, buy)), { others: [other] })).toStrictEqual({
+    const stored = [60_000_000n, 30_000_000n];
+    expect(await plan(copyOrder(takenState(some, buy)), { stored })).toStrictEqual({
       kind: "skip",
       reason: "copy_daily_cap",
       cap: { usedUsdMicros: 90_000_000n, capUsdMicros: 100_000_000n },
     });
-    expect(await plan(copyOrder(takenState(some, buy)))).toMatchObject({ kind: "fill" });
+    expect(await plan(copyOrder(takenState(some, buy)), { stored: [60_000_000n] })).toMatchObject({
+      kind: "fill",
+    });
   });
 });

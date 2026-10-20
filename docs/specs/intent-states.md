@@ -289,7 +289,8 @@ and `step_unsent` (a step never signed after an earlier one landed,
   `copy.perBuyUsd` and the leader's own buy, valued as the policy values it (`leader_unpriced` when
   nothing values it), and a sale of a token it bought, at the leader's share of what it holds from its own
   buys, never more than the wallet holds, rounded down. A buy whose dollars would pass its
-  `dailyUsdMicros` over the last 24 hours, or the agent's `copy.perLeaderDayUsd` for the leader, is
+  `dailyUsdMicros` over the last 24 hours, or the agent's `copy.perLeaderDayUsd` for the leader over its
+  copy orders of that leader in any state, is
   skipped with `copy_daily_cap`; each buy that filled counts at the value the policy judged it at.
   A copy order waits after skips only once its fills failed on chain, as a DCA order does.
 - **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.

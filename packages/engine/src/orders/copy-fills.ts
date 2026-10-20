@@ -1,5 +1,5 @@
 import type { Amount, ChainRegistry, PriceSource } from "@binference/chain";
-import { type Clock, mulDiv } from "@binference/core";
+import { type Clock, type Id, mulDiv } from "@binference/core";
 import type { CopyOrderRequest } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
@@ -7,6 +7,7 @@ import type { OrderSkipReason } from "../intents/intent-reason.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import {
+  copyDayMs,
   isTakenLate,
   type CopyState,
   copyStateOf,
@@ -41,7 +42,7 @@ export type CopyFillPlan =
  * value the leader's buy, and the time.
  */
 export interface CopyFillParts {
-  readonly orders: Pick<OrderStore, "list">;
+  readonly orders: Pick<OrderStore, "copyBuys">;
   readonly chains: ChainRegistry;
   readonly prices: PriceSource;
   readonly clock: Clock;
@@ -60,21 +61,36 @@ function perBuyOf(order: CopyOrder, settings: AgentSettings): bigint {
   return agents < own ? agents : own;
 }
 
-// The agent's copy buys of the order's leader in the last day, over its active and paused copy
-// orders.
+// The page of stored copy buys one read takes; the sum reads on, page after page.
+const buysPerPage = 500;
+
+// The agent's copy buys of the order's leader in the last day, from its stored fills, in every
+// copy order of that leader whatever its state, page after page (decision 0260).
 async function agentUsedOf(
   parts: CopyFillParts,
   order: CopyOrder,
-  call: { readonly nowMs: number; readonly signal: AbortSignal },
+  call: {
+    readonly nowMs: number;
+    readonly signal: AbortSignal;
+    readonly after?: { readonly atMs: number; readonly id: Id<"fil"> };
+  },
 ): Promise<bigint> {
-  const query = { states: ["active", "paused"] as const, agentId: order.agentId, limit: 1_000 };
-  const running = await parts.orders.list(query, { signal: call.signal });
-  return running.reduce((sum, other) => {
-    const copy = asCopyOrder(other);
-    const state = copyStateOf(other.triggerState);
-    const isSameLeader = copy?.request.trigger.leader === order.request.trigger.leader;
-    return isSameLeader && state !== undefined ? sum + usedInDayOf(state, call.nowMs) : sum;
-  }, 0n);
+  const { nowMs, signal, after } = call;
+  const query = {
+    agentId: order.agentId,
+    leader: order.request.trigger.leader,
+    fromMs: nowMs - copyDayMs + 1,
+    limit: buysPerPage,
+    ...(after === undefined ? {} : { after }),
+  };
+  const page = await parts.orders.copyBuys(query, { signal });
+  const sum = page.reduce((total, { usdMicros }) => total + usdMicros, 0n);
+  const last = page.at(-1);
+  if (page.length < buysPerPage || last === undefined) {
+    return sum;
+  }
+  const next = { atMs: last.atMs, id: last.id };
+  return sum + (await agentUsedOf(parts, order, { nowMs, signal, after: next }));
 }
 
 // The cap a buy of `perBuy` would pass: the order's daily dollars, then the agent's per leader.

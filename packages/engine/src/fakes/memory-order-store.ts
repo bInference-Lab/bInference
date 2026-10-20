@@ -1,6 +1,7 @@
 import type { AccountRef } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
+import type { IntentRecord } from "../intents/intent-record.js";
 import { copyLeaderOf, trackingOrderStates } from "../orders/copy-leader.js";
 import { type OrderFillWrite, recordsOwnFill } from "../orders/order-fill.js";
 import { countsLandedFill } from "../orders/order-machine.js";
@@ -15,6 +16,7 @@ import { isOrderEnded } from "../orders/order-states.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
+import { copyBuysOf } from "./memory-copy-buys.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryOrderFills, type MemoryOrderFills } from "./memory-order-fills.js";
 import { createMemoryTracking, type MemoryTracking } from "./memory-tracking.js";
@@ -47,6 +49,8 @@ export interface MemoryOrderStoreOptions {
   readonly confirmation: (intent: Id<"int">) => StoredConfirmation | undefined;
   /** Whether the intent store beside it holds the intent. */
   readonly hasIntent: (intent: Id<"int">) => boolean;
+  /** An intent's kind and judged value, as the intent store beside it keeps them. */
+  readonly intentNow?: (intent: Id<"int">) => IntentRecord | undefined;
   /** The tracked wallets it shares with the alert fake; its own when absent. */
   readonly tracking?: MemoryTracking;
 }
@@ -290,6 +294,10 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
   });
   return {
     ...fills,
+    copyBuys: async (query, call) =>
+      memoryCall(call, () =>
+        copyBuysOf({ orders, rows: fills.rowsNow(), intentNow: options.intentNow }, query),
+      ),
     checkWriteNow: (write) => {
       const checked = checkNow(orders, options, {
         moves: structuredClone(write.moves),

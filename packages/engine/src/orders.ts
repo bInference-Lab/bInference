@@ -40,6 +40,8 @@ export { activeAlerts } from "./alerts/alert-events.js";
 export { hasHeldToTell, noticeHourMs } from "./notices/notice-hour.js";
 export type { AlertFiring, WatchedLaunch, WatchedTrade } from "./alerts/fire-alerts.js";
 export {
+  copyBuyQuerySchema,
+  copyBuyRecordSchema,
   fillAnnouncementSchema,
   orderFillQuerySchema,
   orderFillRecordSchema,
@@ -48,6 +50,8 @@ export {
   unannouncedFillQuerySchema,
 } from "./orders/order-fill.js";
 export type {
+  CopyBuyQuery,
+  CopyBuyRecord,
   FillAnnouncement,
   OrderFillQuery,
   OrderFillReason,

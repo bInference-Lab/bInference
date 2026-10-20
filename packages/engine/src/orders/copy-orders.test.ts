@@ -3,9 +3,9 @@ import { bpsSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
-import { testNowMs, testToken } from "../intents/test-intents.js";
+import { expectOk, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import type { StoredActivity } from "../leaders/tracked-wallet-record.js";
-import { testChains } from "../operations/test-engine.js";
+import { testCall, testChains } from "../operations/test-engine.js";
 import { copiedHeldOf, type CopyTaking } from "./copy-state.js";
 import { copyStateNow, leaderTrade, storeTrades, takeTrade } from "./test-copies.js";
 import {
@@ -260,5 +260,24 @@ describe("the copy orders' runner", () => {
     expect(shallow).toStrictEqual([]);
     expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
     expect(await fillIntentsOf(test)).toHaveLength(1);
+  });
+
+  it("counts the agent's day per leader over its ended copy orders too", async () => {
+    const limits = { ...testLimits, copyPerLeaderDayUsdMicros: 40_000_000n };
+    const test = await startFillEngine({ prices, agent: { limits } });
+    const first = await activeOrder(test, testCopy());
+    const buys = [1, 2].map((n) => leaderTrade(n, { side: "buy", atMs: test.clock.now() }));
+    await storeTrades(test, buys);
+    await test.engine.runCopies(live);
+    expectOk(await test.engine.handlers["order/cancel"](testCall({ order: first.id })));
+    await test.clock.advance(1_000);
+    const second = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(3, { side: "buy", atMs: test.clock.now() })]);
+
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, first.id))).toStrictEqual(["filled", "filled"]);
+    const rows = await fillRowsOf(test, second.id);
+    expect(outcomes(rows)).toStrictEqual(["skipped:copy_daily_cap"]);
   });
 });

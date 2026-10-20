@@ -62,10 +62,12 @@ Every order fill runs the money path with no card, held to its order's bounds
   must not pass it (`fill_bounds`).
 - **The daily cap.** Each buy that filled counts at the value the policy judged it at, the value
   the rolling cap counts ([decision 0136](0136-the-24-hour-cap-counts-each-confirmation-at-its-judged-value.md)),
-  kept in the order's state with its fill, for 24 hours. A buy whose dollars would take the
-  order's buys of the last 24 hours past `dailyUsdMicros`, or the agent's copy buys of that leader
-  past `copy.perLeaderDayUsd`, is skipped with `copy_daily_cap` before any intent. One agent's fills
-  run one at a time, so two buys never count the same room; a skipped buy counts nothing.
+  else its order's dollars per buy. A buy whose dollars would take the order's buys of the last 24
+  hours, kept in its state with each fill, past `dailyUsdMicros`, or the agent's copy buys of that
+  leader past `copy.perLeaderDayUsd`, is skipped with `copy_daily_cap` before any intent. The
+  agent's count reads the stored fills of every copy order of the agent and leader, whatever its
+  state, page by page: cancelling an order and making a new one starts no new day. One agent's
+  fills run one at a time, so two buys never count the same room; a skipped buy counts nothing.
 - **A sale.** The leader's `shareSoldBps` of what the order holds of the token, never more than the
   wallet holds: `min(copied, held) × share / 10,000`, rounded down, sold as an amount. What it sold
   leaves the order's holding. A sale whose share the watcher did not read is skipped with the new

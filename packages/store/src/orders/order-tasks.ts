@@ -25,6 +25,7 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
+import { copyBuysTask } from "./copy-buy-rows.js";
 import {
   checkOrderFill,
   checkOwnFill,
@@ -231,4 +232,5 @@ export const orderTasks: readonly TaskRunner[] = [
   listOrderFillsTask,
   unannouncedFillsTask,
   markAnnouncedTask,
+  copyBuysTask,
 ];

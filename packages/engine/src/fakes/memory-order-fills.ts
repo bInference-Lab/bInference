@@ -29,6 +29,8 @@ export interface MemoryOrderFills {
     announcement: FillAnnouncement,
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
+  /** Every fill row now, unordered, for the order store's own reads. */
+  rowsNow(): readonly OrderFillRecord[];
   /** Checks a fill row inside another in-memory store's write; a broken rule throws. */
   checkFillNow(fill: OrderFillRecord): void;
   /** Writes a fill row `checkFillNow` passed, once the rest of the write has passed its checks. */
@@ -111,6 +113,7 @@ export function createMemoryOrderFills(options: MemoryOrderFillsOptions): Memory
       save(fill);
     },
     isCountedNow: (intent) => isCounted(fills, intent),
+    rowsNow: () => structuredClone([...fills.values()]),
     countedFill: async (intent, call) =>
       memoryCall(call, () =>
         structuredClone(
