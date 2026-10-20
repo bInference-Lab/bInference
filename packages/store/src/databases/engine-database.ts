@@ -6,6 +6,7 @@ import { alertTasks } from "../alerts/sqlite-alert-store.js";
 import { configJournalTasks } from "../audit/config-journal-tasks.js";
 import { backupTasks } from "../backups/backup-tasks.js";
 import { installGuardsTasks } from "../backups/install-guards-tasks.js";
+import { aliveTasks } from "../downtime/sqlite-alive-store.js";
 import { idempotencyTasks } from "../ingress/idempotency-tasks.js";
 import { inboxTasks } from "../ingress/inbox-tasks.js";
 import { installTasks } from "../install/sqlite-install-store.js";
@@ -59,6 +60,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...leaderTasks,
     ...launchTasks,
     clearEngineStateTask,
+    ...aliveTasks,
   ],
 };
 

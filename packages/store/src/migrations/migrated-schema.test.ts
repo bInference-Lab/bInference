@@ -173,6 +173,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   notices: names("id agent_id kind i18n_key values level at delivered intent_id"),
   agent_inbox: names("id agent_id session_id kind turn_id payload created_at taken_at"),
   telegram_owner: names("id user_id paired_at agent_id"),
+  engine_alive: names("id alive_at"),
   telegram_topics: names("agent_id chat_id thread_id created_at"),
   late_landings: names("intent_id tx_id at"),
   carried_outflows: names("intent_id agent_id paper confirmed_at value_usd_micros carried_at"),

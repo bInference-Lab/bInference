@@ -1,6 +1,7 @@
 import type { AlertStore } from "../alerts/ports.js";
 import type { ModelUsageStore } from "../billing/ports.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
+import type { AliveStore } from "../downtime/ports.js";
 import type { LaunchStore } from "../launches/ports.js";
 import type { TrackedWalletStore } from "../leaders/ports.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -58,4 +59,6 @@ export interface EngineStores {
   readonly trackedWallets: TrackedWalletStore;
   /** The launches the launch feed read and its cursors. */
   readonly launches: LaunchStore;
+  /** When the engine last ran, which tells a start how long it was off. */
+  readonly alive: AliveStore;
 }

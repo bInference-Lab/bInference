@@ -5,6 +5,7 @@ import { createSqliteQuestionStore } from "../agent-inbox/sqlite-question-store.
 import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { createSqliteAlertStore } from "../alerts/sqlite-alert-store.js";
 import { createSqliteConfigJournal } from "../audit/sqlite-config-journal.js";
+import { createSqliteAliveStore } from "../downtime/sqlite-alive-store.js";
 import { createSqliteIdempotencyStore } from "../ingress/sqlite-idempotency-store.js";
 import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
 import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
@@ -49,5 +50,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     alerts: createSqliteAlertStore(host),
     trackedWallets: createSqliteTrackedWalletStore(host),
     launches: createSqliteLaunchStore(host),
+    alive: createSqliteAliveStore(host),
   };
 }

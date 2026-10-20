@@ -44,6 +44,7 @@ import { migration as trackedWallets } from "./0042_tracked_wallets.js";
 import { migration as overflowNotices } from "./0043_overflow_notices.js";
 import { migration as launches } from "./0044_launches.js";
 import { migration as copyFillLinks } from "./0045_copy_fill_links.js";
+import { migration as engineAlive } from "./0046_engine_alive.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -92,4 +93,5 @@ export const engineMigrations: readonly Migration[] = [
   overflowNotices,
   launches,
   copyFillLinks,
+  engineAlive,
 ];

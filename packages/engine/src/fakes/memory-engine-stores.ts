@@ -4,6 +4,7 @@ import { createMemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import { createMemoryAgentStore, type MemoryAgentStore } from "./memory-agent-store.js";
 import { createMemoryAgentTopicStore } from "./memory-agent-topic-store.js";
 import { createMemoryAlertStore } from "./memory-alert-store.js";
+import { createMemoryAliveStore } from "./memory-alive-store.js";
 import { createMemoryCardCopyStore } from "./memory-card-copy-store.js";
 import { createMemoryConfigJournal } from "./memory-config-journal.js";
 import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
@@ -77,5 +78,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     alerts: createMemoryAlertStore({ agents, agentInbox, tracking }),
     trackedWallets: createMemoryTrackedWalletStore(tracking),
     launches: createMemoryLaunchStore(),
+    alive: createMemoryAliveStore(),
   };
 }
