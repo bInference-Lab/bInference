@@ -93,6 +93,21 @@ function imageOf(options: LaunchDraftDeskOptions, draft: LaunchDraft, holder: st
   return received.ok ? received.value : undefined;
 }
 
+// Proposes the draft's launch; a fault ends the draft's message as failed before it goes on, since
+// the draft already ended.
+async function proposeEnding(
+  options: LaunchDraftDeskOptions,
+  draft: LaunchDraft,
+  call: Parameters<LaunchDraftDeskOptions["propose"]>[0],
+): ReturnType<LaunchDraftDeskOptions["propose"]> {
+  try {
+    return await options.propose(call);
+  } catch (fault) {
+    publishDraftClosed(options.publish, draft, { outcome: "failed", error: "internal.error" });
+    throw fault;
+  }
+}
+
 async function startDraft(
   options: LaunchDraftDeskOptions,
   draft: LaunchDraft,
@@ -105,7 +120,7 @@ async function startDraft(
     return { status: "failed", error: "image.unreadable" };
   }
   const args = { ...draft.request, image };
-  const proposed = await options.propose({ args, caller, signal: call.signal });
+  const proposed = await proposeEnding(options, draft, { args, caller, signal: call.signal });
   if (!proposed.ok) {
     publishDraftClosed(options.publish, draft, { outcome: "failed", error: proposed.error });
     return { status: "failed", error: proposed.error };
