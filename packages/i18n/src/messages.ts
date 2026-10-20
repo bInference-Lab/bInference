@@ -4,6 +4,7 @@ import enCard from "../messages/en/card.json" with { type: "json" };
 import enCli from "../messages/en/cli.json" with { type: "json" };
 import enCmd from "../messages/en/cmd.json" with { type: "json" };
 import enConsole from "../messages/en/console.json" with { type: "json" };
+import enDaily from "../messages/en/daily.json" with { type: "json" };
 import enDisclaimer from "../messages/en/disclaimer.json" with { type: "json" };
 import enError from "../messages/en/error.json" with { type: "json" };
 import enFill from "../messages/en/fill.json" with { type: "json" };
@@ -28,6 +29,7 @@ import zhCard from "../messages/zh/card.json" with { type: "json" };
 import zhCli from "../messages/zh/cli.json" with { type: "json" };
 import zhCmd from "../messages/zh/cmd.json" with { type: "json" };
 import zhConsole from "../messages/zh/console.json" with { type: "json" };
+import zhDaily from "../messages/zh/daily.json" with { type: "json" };
 import zhDisclaimer from "../messages/zh/disclaimer.json" with { type: "json" };
 import zhError from "../messages/zh/error.json" with { type: "json" };
 import zhFill from "../messages/zh/fill.json" with { type: "json" };
@@ -73,6 +75,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("autoAsks", enAutoAsks),
     ...inArea("receipt", enReceipt),
     ...inArea("notice", enNotice),
+    ...inArea("daily", enDaily),
     ...inArea("order", enOrder),
     ...inArea("pnl", enPnl),
     ...inArea("fill", enFill),
@@ -99,6 +102,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("autoAsks", zhAutoAsks),
     ...inArea("receipt", zhReceipt),
     ...inArea("notice", zhNotice),
+    ...inArea("daily", zhDaily),
     ...inArea("order", zhOrder),
     ...inArea("pnl", zhPnl),
     ...inArea("fill", zhFill),

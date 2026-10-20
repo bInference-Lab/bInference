@@ -37,3 +37,7 @@ packages/i18n/messages/zh/turn.json emoji
 # Each language's name is written in that language, the same in every language, so the owner finds
 # theirs on the /lang buttons whatever binference speaks now.
 packages/i18n/messages/en/language.json cjk
+
+# The daily summary's live and paper lines carry the live and paper icons the card spec names.
+packages/i18n/messages/en/daily.json emoji
+packages/i18n/messages/zh/daily.json emoji

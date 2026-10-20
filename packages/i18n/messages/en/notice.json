@@ -67,5 +67,6 @@
   "orderOverfilled": "🔴 {orderKind} filled more often than it allows: {fills} fills of {maxFills}. Check the wallet and the order.",
   "fillUnvalued": "⚠️ {orderKind} filled on chain, but its trade cannot be valued yet. binference counted the fill on the order and keeps trying to value it.",
   "fillsFailing": "⚠️ {orderKind} stopped: its last {count} fills failed on chain. Check the token, and make a new order if you still want one.",
-  "approvalReset": "⚠️ A trade could not finish its last steps, so binference set the approval it had given for {token} back to zero."
+  "approvalReset": "⚠️ A trade could not finish its last steps, so binference set the approval it had given for {token} back to zero.",
+  "daily": "Daily summary for {agent}, the last 24 hours{live, select, yes {\n{liveLine}} other {}}{paper, select, yes {\n{paperLine}} other {}}{orders, select, yes {\n{ordersLine}} other {}}\n{spendLine}{cards, plural, =0 {} one {\n# card waits for your answer} other {\n# cards wait for your answer}}{question, select, yes {\nThe agent waits for your answer to its question} other {}}{limits, plural, =0 {} one {\n# looser limit takes effect within 24 hours} other {\n# looser limits take effect within 24 hours}}{held, plural, =0 {} one {\n# wallet waits behind a stuck transaction} other {\n# wallets wait behind stuck transactions}}"
 }

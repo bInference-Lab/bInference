@@ -1,0 +1,8 @@
+{
+  "value": "{mode, select, paper {🧪 模拟} other {🔴 实盘}}：{unread, select, yes {暂时无法读取余额} other {{value}{hasChange, select, yes {，24 小时变化 {change}} other {}}}}；已实现盈亏 {realized}",
+  "orders": "自动订单：已成交 {filled} 次，跳过 {skipped} 次，挂单 {open} 个",
+  "spend": "模型花费：{spend}，每日模型预算 {budget}",
+  "skips": "跳过 {count, plural, other {# 次}}：{reason}",
+  "skipsOther": "因其他原因跳过 {count, plural, other {# 次}}",
+  "overCap": "{cap, select, copy {将超过该带单钱包的每日上限} other {将超过你的 24 小时上限}}"
+}

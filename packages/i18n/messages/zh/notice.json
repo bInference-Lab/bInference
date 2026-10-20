@@ -67,5 +67,6 @@
   "orderOverfilled": "🔴 {orderKind}的成交次数超过了上限：已成交 {fills} 次，上限 {maxFills} 次。请检查钱包和订单。",
   "fillUnvalued": "⚠️ {orderKind}已在链上成交，但暂时无法为这笔交易估值。binference 已在订单上计入这次成交，并会继续尝试估值。",
   "fillsFailing": "⚠️ {orderKind}已停止：最近 {count} 次成交都在链上失败。请检查该代币；如仍需要，请新建订单。",
-  "approvalReset": "⚠️ 一笔交易未能完成后面的步骤，binference 已把为 {token} 给出的授权额度重置为零。"
+  "approvalReset": "⚠️ 一笔交易未能完成后面的步骤，binference 已把为 {token} 给出的授权额度重置为零。",
+  "daily": "{agent} 的每日摘要（过去 24 小时）{live, select, yes {\n{liveLine}} other {}}{paper, select, yes {\n{paperLine}} other {}}{orders, select, yes {\n{ordersLine}} other {}}\n{spendLine}{cards, plural, =0 {} other {\n# 张卡片等你回复}}{question, select, yes {\nAgent 在等你回答它的问题} other {}}{limits, plural, =0 {} other {\n# 项放宽的限额将在 24 小时内生效}}{held, plural, =0 {} other {\n# 个钱包因链上交易卡住而等待}}"
 }

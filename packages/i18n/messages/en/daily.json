@@ -1,0 +1,8 @@
+{
+  "value": "{mode, select, paper {🧪 Paper} other {🔴 Live}}: {unread, select, yes {the balances could not be read now} other {{value}{hasChange, select, yes {, {change} in 24 hours} other {}}}}; realized P&L {realized}",
+  "orders": "Auto orders: {filled} filled, {skipped} skipped, {open} open",
+  "spend": "Model spend: {spend}, against a daily model budget of {budget}",
+  "skips": "{count, plural, one {# skip} other {# skips}}: {reason}",
+  "skipsOther": "{count, plural, one {# skip} other {# skips}} for other reasons",
+  "overCap": "{cap, select, copy {it would pass a leader's daily cap} other {it would pass your 24-hour cap}}"
+}

@@ -43,6 +43,11 @@ describe("createFormatter in English", () => {
     for (const formatter of [english, chinese]) {
       expect(formatter.tokenAmount(500_000_000_000_000_000n, 18)).toBe("0.5");
       expect(formatter.usd(4_000n)).toBe("<$0.01");
+      expect([2_400_000n, -850_000n, 0n].map(formatter.usdChange)).toStrictEqual([
+        "+$2.40",
+        "-$0.85",
+        "$0.00",
+      ]);
       expect(formatter.percent(bpsSchema.parse(50))).toBe("0.50%");
     }
   });

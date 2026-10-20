@@ -39,6 +39,52 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     times: at,
     parts: { orderKind: orderKind("limit") },
   },
+  "notice.daily": {
+    key: "notice.daily",
+    agent: tableAgent,
+    values: {
+      ...agent,
+      live: "yes",
+      paper: "yes",
+      orders: "yes",
+      cards: "1",
+      question: "no",
+      limits: "0",
+      held: "0",
+    },
+    parts: {
+      liveLine: {
+        key: "daily.value",
+        values: {
+          mode: "live",
+          unread: "no",
+          value: "$1,200.00",
+          hasChange: "yes",
+          change: "+$50.00",
+          realized: "+$12.40",
+        },
+      },
+      paperLine: {
+        key: "daily.value",
+        values: {
+          mode: "paper",
+          unread: "no",
+          value: "$600.00",
+          hasChange: "no",
+          realized: "$0.00",
+        },
+      },
+      ordersLine: { key: "daily.orders", values: { filled: "1", skipped: "1", open: "2" } },
+      spendLine: { key: "daily.spend", values: { spend: "$1.20", budget: "$3.00" } },
+    },
+    after: [
+      {
+        key: "daily.skips",
+        values: { count: "1" },
+        parts: { reason: { key: "reason.nothing_to_sell", values: {} } },
+      },
+    ],
+  },
   "notice.frozen": {
     key: "notice.frozen",
     agent: tableAgent,

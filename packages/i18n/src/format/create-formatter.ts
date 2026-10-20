@@ -1,6 +1,6 @@
 import type { Bps } from "@binference/core";
 import type { MessageLocale } from "../locales.js";
-import { formatPercent, formatTokenAmount, formatUsd } from "./format-amount.js";
+import { formatPercent, formatTokenAmount, formatUsd, formatUsdChange } from "./format-amount.js";
 import { createMessageFormat, type MessageValues } from "./format-message.js";
 import { createTimeFormats } from "./format-time.js";
 
@@ -23,6 +23,8 @@ export interface Formatter {
   readonly tokenAmount: (amountBase: bigint, decimals: number) => string;
   /** A USD value from micro-dollars, with 2 decimals; `<$0.01` under a cent. */
   readonly usd: (usdMicros: bigint) => string;
+  /** A gain or a loss in micro-dollars, with its sign: `+$2.40`, `-$0.85`, `$0.00`. */
+  readonly usdChange: (usdMicros: bigint) => string;
   /** A rate in basis points as a percentage with 2 decimals. */
   readonly percent: (rate: Bps) => string;
   /** The time of day, `HH:mm:ss`, in the owner's timezone. */
@@ -44,6 +46,7 @@ export function createFormatter(options: FormatterOptions): Formatter {
     message: createMessageFormat(options.locale),
     tokenAmount: formatTokenAmount,
     usd: formatUsd,
+    usdChange: formatUsdChange,
     percent: formatPercent,
     ...times,
   };

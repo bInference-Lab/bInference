@@ -286,6 +286,10 @@ new name here first, in the change that uses it.
 - **notice**: one owner notification of spec 4, section 4, such as a freeze or low gas. The engine
   stores each for 90 days, pushes it as `notice/new` and sends it to the owner's chat through the
   outbox.
+- **daily summary**: the notice `notice.daily` that tells the owner each agent's last 24 hours once
+  a day, at 09:00 owner time unless the agent names another time: live and paper value, realized
+  P&L, fills and skips, open orders, model spend and what waits for the owner. An agent with
+  nothing to tell gets none.
 - **outbox**: the store's queue of what the engine sends to a chat surface. A delivery is `queued`,
   `sent`, `unknown_after_send` or `failed`; one whose outcome is unknown is never sent again.
 - **model billing**: what pays for an agent's model calls and says what the agent may still spend:
@@ -462,6 +466,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | picture, photo (one the owner sends)    | 图片                    |                             |
 | send (a message, a picture)             | 发送                    | Money sent is 转账          |
 | notification                            | 通知                    |                             |
+| daily summary                           | 每日摘要                |                             |
 | browser notification, browser push      | 浏览器通知              |                             |
 | console device                          | 控制台设备              |                             |
 | pairing code, confirmation code         | 验证码, 确认码          |                             |
