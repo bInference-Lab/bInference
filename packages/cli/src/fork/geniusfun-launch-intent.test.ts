@@ -1,5 +1,7 @@
 import { setTimeout as wait } from "node:timers/promises";
-import { bscContract, type Fork, withFork } from "@binference/chain-evm/fork";
+import type { AssetRef } from "@binference/chain";
+import { erc20AssetRef } from "@binference/chain-evm";
+import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
 import { BinferenceError, type Id } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import {
@@ -8,7 +10,16 @@ import {
   type LaunchTokenRequest,
   noUploadImage,
 } from "@binference/protocol";
-import { type Address, getAddress, parseAbi } from "viem";
+import {
+  type Address,
+  encodeAbiParameters,
+  erc20Abi,
+  getAddress,
+  keccak256,
+  parseAbi,
+  parseAbiParameters,
+  toHex,
+} from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bundle.js";
 import { startMining } from "./executor-rig.js";
@@ -24,7 +35,8 @@ import { heldOn } from "./rescue-rig.js";
 // process and the Privy fake under the ceiling binference builds for it. The token and its first
 // buy land on the fork (gate Y7).
 const built: { bundle?: SignerBundle } = {};
-const firstBuy = 10n ** 16n;
+const firstBuyBnb = 10n ** 16n;
+const firstBuyUsdt = 10n * 10n ** 18n;
 const launchFee = 2n * 10n ** 15n;
 const pictureLink = "ipfs://bafkreig7wwicvvvzrbrcgs62ybg7yc7f7ay6s6yhsgpxcxvan5owbcfefm";
 const factory = bscContract("geniusfun", "factory-m4-2");
@@ -76,8 +88,14 @@ async function cardText(rig: LaunchRig, view: IntentView, locale: "en" | "zh") {
   return drawn.lines.map((line) => cardLineText(line, display));
 }
 
-function launchOf(rig: LaunchRig, fork: Fork): LaunchTokenRequest {
-  const coin = fork.chain.nativeAsset;
+function launchOf(
+  rig: LaunchRig,
+  fork: Fork,
+  firstBuy: { readonly asset: AssetRef; readonly base: bigint } = {
+    asset: fork.chain.nativeAsset,
+    base: firstBuyBnb,
+  },
+): LaunchTokenRequest {
   return {
     kind: "launchToken",
     agent: rig.agent,
@@ -89,8 +107,8 @@ function launchOf(rig: LaunchRig, fork: Fork): LaunchTokenRequest {
     image: noUploadImage,
     description: "A token launched on a fork",
     links: { website: "https://fork.example", x: "https://x.com/forkgenius" },
-    pairWith: coin,
-    firstBuy: { asset: coin, base: firstBuy },
+    pairWith: firstBuy.asset,
+    firstBuy,
     venueOptions: { creatorFeeRecipient: rig.rescue, pictureLink },
   };
 }
@@ -161,6 +179,32 @@ async function launchedOn(fork: Fork, token: Address) {
   };
 }
 
+// BSC's USDT keeps its balances in the mapping at slot 1: the launch wallet gets its first buy
+// there, with no trade that would move a pool.
+const usdt = bscToken("USDT");
+async function fundUsdt(fork: Fork, holder: Address, amount: bigint): Promise<void> {
+  const slot = keccak256(encodeAbiParameters(parseAbiParameters("address, uint256"), [holder, 1n]));
+  await fork.call("anvil_setStorageAt", [usdt, slot, toHex(amount, { size: 32 })]);
+}
+
+async function usdtOf(fork: Fork, holder: Address, router: Address) {
+  const [balance, allowance] = await Promise.all([
+    fork.client.readContract({
+      address: usdt,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [holder],
+    }),
+    fork.client.readContract({
+      address: usdt,
+      abi: erc20Abi,
+      functionName: "allowance",
+      args: [holder, router],
+    }),
+  ]);
+  return { balance, allowance };
+}
+
 describe("a geniusfun launch on a BSC fork", () => {
   it("makes a token with its first buy from the launch wallet, through the intent path", async () => {
     const signal = AbortSignal.timeout(110_000);
@@ -207,7 +251,40 @@ describe("a geniusfun launch on a BSC fork", () => {
         token: minted,
       });
       const after = await fork.client.getBalance({ address: rig.launch.address });
-      expect(before - after > launchFee + firstBuy).toBe(true);
+      expect(before - after > launchFee + firstBuyBnb).toBe(true);
+      expect(rig.refusals).toStrictEqual([]);
+    });
+  });
+
+  it("makes a token against USDT with its first buy, after an exact approval of the router", async () => {
+    const signal = AbortSignal.timeout(110_000);
+    await onGeniusRig(signal, async (rig, fork) => {
+      const router = bscContract("geniusfun", "router-m4-2");
+      await fundUsdt(fork, rig.launch.address, firstBuyUsdt);
+      await expect(usdtOf(fork, rig.launch.address, router)).resolves.toStrictEqual({
+        balance: firstBuyUsdt,
+        allowance: 0n,
+      });
+      const pair = erc20AssetRef(fork.chain, usdt);
+      const request = launchOf(rig, fork, { asset: pair, base: firstBuyUsdt });
+      const proposed = valueOf(await rig.engine.handlers["intent/propose"](call(request, signal)));
+      expect(proposed).toMatchObject({ state: "awaiting_confirmation" });
+      const { view, card, token, minted } = await readied(rig, proposed, signal);
+      const tap = { intent: view.intent, card: card.card, cardVersion: card.version };
+      valueOf(await rig.engine.handlers["intent/confirm"](call(tap, signal)));
+      await expect(until(rig, view.intent, "reconciled")).resolves.toBe("reconciled");
+      // The router pulled exactly the first buy and left no allowance; the token trades on USDT.
+      await expect(usdtOf(fork, rig.launch.address, router)).resolves.toStrictEqual({
+        balance: 0n,
+        allowance: 0n,
+      });
+      await expect(launchedOn(fork, token)).resolves.toMatchObject({
+        exists: true,
+        pairToken: usdt,
+      });
+      await expect(heldOn(fork, { address: rig.launch.address, token })).resolves.toMatchObject({
+        token: minted,
+      });
       expect(rig.refusals).toStrictEqual([]);
     });
   });

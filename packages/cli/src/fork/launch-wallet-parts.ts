@@ -210,7 +210,7 @@ function executorOf(parts: RigParts) {
     sender: createEvmRelaySender({ chain, relays, http: fork.http, clock, timeoutMs: 5_000 }),
     receipts: createEvmReceiptReader({ rpc, chain, finality: { kind: "finalized_tag" } }),
   };
-  const prices = new Map([[chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }]]);
+  const prices = rigPrices(fork);
   return createExecutor({
     ...parts,
     queue: createWalletQueue({
@@ -253,13 +253,22 @@ function riskOn(parts: RigParts) {
   });
 }
 
+// The rig's prices in micro-dollars per base unit: BNB at $600, USDT at $1.
+function rigPrices(fork: Fork) {
+  const usdt = erc20AssetRef(fork.chain, bscToken("USDT"));
+  return new Map([
+    [fork.chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }],
+    [usdt, { numerator: 1n, denominator: 10n ** 12n }],
+  ]);
+}
+
 /** The engine on the fork, its executor beside it, making wallets with the maker given. */
 export function engineOf(parts: RigParts, walletMaker: WalletMaker): Engine {
   const { fork, host } = parts;
   const { rpc, chain } = fork;
   const chains = selfHostedChains();
   const clock = createSystemClock();
-  const prices = new Map([[chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }]]);
+  const prices = rigPrices(fork);
   return createEngine({
     ...parts,
     ceilings: createFakeCeilingEditor({ clock }),
