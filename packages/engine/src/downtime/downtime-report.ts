@@ -4,12 +4,15 @@ import type { Notice, NoticePart } from "../pushes/notice-push.js";
 import { wholeUnitsOf } from "../records/whole-units.js";
 import type { CheckedSkipReason, ResumeCause } from "./downtime-check.js";
 
-/** What the re-check found of one order: filled, or skipped with a reason. */
+/**
+ * What the re-check found of one order: filled, a live fill sent to the chain and not yet
+ * settled, or skipped with a reason.
+ */
 export interface CheckedOrder {
   readonly order: Id<"ord">;
   readonly agentId: Id<"agt">;
   readonly kind: OrderKind;
-  readonly outcome: "filled" | "skipped";
+  readonly outcome: "filled" | "sent" | "skipped";
   readonly reason?: CheckedSkipReason;
   /** How the owner reads the reason, when its message takes values: a cap's use and size. */
   readonly reasonPart?: NoticePart;
@@ -84,37 +87,48 @@ function reasonCounts(orders: readonly CheckedOrder[]): {
   return { counts: sorted, other: skips.length - shown.length };
 }
 
-function skipLines(orders: readonly CheckedOrder[]): readonly NoticePart[] {
+// The lines after the notice: the live fills sent and not settled yet, then the commonest skip
+// reasons, then the rest of the skips in one line.
+function afterLines(orders: readonly CheckedOrder[]): readonly NoticePart[] {
+  const sent = orders.filter(({ outcome }) => outcome === "sent").length;
+  const sentLines =
+    sent === 0 ? [] : [{ key: "order.resumedSent", values: { count: String(sent) } }];
+  return [...sentLines, ...skipLines(orders, maxSkipLines - sentLines.length)];
+}
+
+function skipLines(orders: readonly CheckedOrder[], maxLines: number): readonly NoticePart[] {
   const { counts, other } = reasonCounts(orders);
-  const lines = counts.slice(0, maxSkipLines).map(({ part, count }) => ({
+  const lines = counts.slice(0, maxLines).map(({ part, count }) => ({
     key: "order.resumedSkips",
     values: { count: String(count) },
     parts: { reason: part },
   }));
-  const rest = other + counts.slice(maxSkipLines).reduce((sum, { count }) => sum + count, 0);
+  const rest = other + counts.slice(maxLines).reduce((sum, { count }) => sum + count, 0);
   return rest === 0
     ? lines
     : [...lines, { key: "order.resumedOther", values: { count: String(rest) } }];
 }
 
-/** The counts of a report's orders: checked is filled plus skipped. */
+/** The counts of a report's orders: checked is filled, sent and skipped together. */
 function countsOf(orders: readonly CheckedOrder[]): {
   readonly checked: number;
   readonly filled: number;
   readonly skipped: number;
 } {
   const filled = orders.filter(({ outcome }) => outcome === "filled").length;
-  return { checked: orders.length, filled, skipped: orders.length - filled };
+  const skipped = orders.filter(({ outcome }) => outcome === "skipped").length;
+  return { checked: orders.length, filled, skipped };
 }
 
 /**
- * `notice.resumed` (spec 4, section 4; decision 0267): how long the engine was off or the machine
- * slept, how many orders the re-check checked, filled and skipped, and a line for each of the
- * three commonest reasons of the skips, the rest in one more line.
+ * `notice.resumed` (spec 4, section 4; decision 0267): how long the engine was off or paused, or
+ * how far its clock was set back, how many orders the re-check checked, filled and skipped, a line
+ * for the live fills it sent that have not settled yet, and up to three lines of the commonest
+ * skip reasons, the rest in one more line.
  */
 export function resumedNotice(report: DowntimeReport): Notice {
   const counts = countsOf(report.orders);
-  const after = skipLines(report.orders);
+  const after = afterLines(report.orders);
   return {
     key: "notice.resumed",
     values: {

@@ -32,11 +32,13 @@ function reasonPartOf(row: OrderFillRecord): NoticePart | undefined {
   return parsed?.success === true ? parsed.data.parts?.["reason"] : undefined;
 }
 
-// The order's rows since the re-check's first resume, the oldest first.
-async function rowsSince(parts: RowsParts, call: OrderCall): Promise<readonly OrderFillRecord[]> {
+// The order's skip rows since the re-check's first resume, the oldest first.
+async function skipsSince(parts: RowsParts, call: OrderCall): Promise<readonly OrderFillRecord[]> {
   const { base, open, signal } = call;
   const rows = await parts.orders.fills({ orderId: base.order, limit: parts.rows }, { signal });
-  return rows.filter(({ atMs }) => atMs >= open.sinceMs).toReversed();
+  return rows
+    .filter(({ atMs, outcome }) => atMs >= open.sinceMs && outcome === "skipped")
+    .toReversed();
 }
 
 function skipped(
@@ -48,45 +50,65 @@ function skipped(
   return part === undefined ? { ...base, ...reason } : { ...base, ...reason, reasonPart: part };
 }
 
-// A price order whose fill skipped: the reason of the skip row the re-check held, else of its
-// newest skip row since the resume.
-async function fillSkipOf(parts: RowsParts, call: OrderCall): Promise<CheckedOrder> {
-  const held = call.open.held.get(call.base.order);
-  const rows = held === undefined ? await rowsSince(parts, call) : [held];
-  const row = rows.findLast(({ outcome }) => outcome === "skipped");
-  return row?.reason === undefined
-    ? skipped(call.base, { reason: "fill_failed" })
-    : skipped(call.base, { reason: row.reason, row });
+// A skip row's outcome: its reason, and how its own notice wrote it.
+function rowSkip(call: OrderCall, row: OrderFillRecord): CheckedOrder {
+  return skipped(call.base, { reason: row.reason ?? "fill_failed", row });
 }
 
-// A price order's outcome: its judgment and fill; one never judged is `no_fresh_price` while it
-// is still active, and leaves the report else.
-async function priceOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {
-  const { base, watched, signal } = call;
-  const { standing } = watched;
-  if (standing.state === "filled" || standing.state === "sent") {
-    return { ...base, outcome: "filled" };
+type Judged = Extract<WatchedOrder["standing"], { readonly state: "firing" | "skipped" }>;
+
+// A price order never judged: a skip row the start's repair wrote, as for a fill a stop cut off,
+// else `no_fresh_price` while it is still active; an order no longer active leaves the report.
+async function pendingOutcome(
+  parts: RowsParts,
+  call: OrderCall,
+  rows: readonly OrderFillRecord[],
+): Promise<CheckedOrder | undefined> {
+  const [repaired] = rows;
+  if (repaired !== undefined) {
+    return rowSkip(call, repaired);
+  }
+  const order = await parts.orders.get(call.base.order, { signal: call.signal });
+  return order?.state === "active" ? skipped(call.base, { reason: "no_fresh_price" }) : undefined;
+}
+
+// A price order judged on a fresh price: a skip row written before the judgment, else a fill
+// that never ended is `fill_failed`, else its skip's own row or the judgment's reason.
+function judgedOutcome(
+  call: OrderCall,
+  rows: readonly OrderFillRecord[],
+  standing: Judged,
+): CheckedOrder {
+  const repaired = rows.find(({ atMs }) => atMs < standing.atMs);
+  if (repaired !== undefined) {
+    return rowSkip(call, repaired);
   }
   if (standing.state === "firing") {
-    return skipped(base, { reason: "fill_failed" });
+    return skipped(call.base, { reason: "fill_failed" });
   }
-  if (standing.state === "skipped") {
-    return standing.fromRow === true
-      ? fillSkipOf(parts, call)
-      : skipped(base, { reason: standing.reason });
+  const own =
+    standing.fromRow === true ? rows.findLast(({ atMs }) => atMs >= standing.atMs) : undefined;
+  return own === undefined ? skipped(call.base, { reason: standing.reason }) : rowSkip(call, own);
+}
+
+// A price order's outcome: its first fresh judgment and the fill it started (decision 0267).
+async function priceOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {
+  const { standing } = call.watched;
+  if (standing.state === "filled" || standing.state === "sent") {
+    return { ...call.base, outcome: standing.state };
   }
-  const order = await parts.orders.get(base.order, { signal });
-  return order?.state === "active" ? skipped(base, { reason: "no_fresh_price" }) : undefined;
+  const rows = await skipsSince(parts, call);
+  return standing.state === "pending"
+    ? pendingOutcome(parts, call, rows)
+    : judgedOutcome(call, rows, standing);
 }
 
 // A DCA or copy order's outcome: its first skip of the downtime, which the report always shows,
 // though a fill of the order came too, since that fill tells itself.
 async function rowOutcome(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {
-  const rows = await rowsSince(parts, call);
-  const row = rows.find(
-    ({ outcome, reason }) => outcome === "skipped" && downtimeRowReasons.has(reason ?? ""),
-  );
-  return row?.reason === undefined ? undefined : skipped(call.base, { reason: row.reason, row });
+  const rows = await skipsSince(parts, call);
+  const row = rows.find(({ reason }) => downtimeRowReasons.has(reason ?? ""));
+  return row === undefined ? undefined : rowSkip(call, row);
 }
 
 async function outcomeOf(parts: RowsParts, call: OrderCall): Promise<CheckedOrder | undefined> {

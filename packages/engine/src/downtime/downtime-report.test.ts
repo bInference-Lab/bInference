@@ -70,6 +70,24 @@ describe("the resume report", () => {
     });
   });
 
+  it("names a clock set back, and tells the live fills sent but not settled in a line first", () => {
+    const sent = {
+      order: order(1),
+      agentId: testAgent,
+      kind: "stopLoss",
+      outcome: "sent",
+    } as const;
+    const report = { ...reportOf([sent, skippedOrder(2, "worst_price")]), cause: "clock" } as const;
+
+    expect(resumedNotice(report)).toMatchObject({
+      values: { cause: "clock", checked: "2", filled: "0", skipped: "1" },
+      after: [
+        { key: "order.resumedSent", values: { count: "1" } },
+        { key: "order.resumedSkips", values: { count: "1" } },
+      ],
+    });
+  });
+
   it("gives each agent its own counts and orders, at most 50", () => {
     const own = Array.from({ length: 51 }, (_, index) => skippedOrder(index + 1, "worst_price"));
     const other = { ...skippedOrder(99, "worst_price"), agentId: otherAgent };

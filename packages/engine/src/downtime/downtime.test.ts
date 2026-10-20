@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { testAgent, testToken } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import type { WatchedOrderPrice } from "../orders/order-triggers.js";
+import type { OrderStore } from "../orders/ports.js";
 import {
   activeOrder,
   fillIntentsOf,
@@ -68,6 +69,15 @@ function pauseOnce(test: TestEngine, pause: Pause): () => boolean {
     const found = pending.pause.splice(0);
     found.forEach((each) => void test.engine.downtime.paused(each, live));
     return found.length > 0;
+  };
+}
+
+// The order store, its rows' reads failing while `failing.isOn`.
+function failingFills(store: OrderStore, failing: { readonly isOn: boolean }): OrderStore {
+  return {
+    ...store,
+    fills: async (query, call) =>
+      failing.isOn ? Promise.reject(new Error("store down")) : store.fills(query, call),
   };
 }
 
@@ -286,6 +296,26 @@ describe("the downtime re-check", () => {
     expect(fell).toStrictEqual([{ order: bounded.id, outcome: "skipped" }]);
     expect(report?.orders).toMatchObject([{ outcome: "skipped", reason: "trigger_not_met" }]);
     expect(keysOf(noticesOf(test))).toContain("notice.skipped");
+  });
+
+  it("tells the skips it held as usual when its report fails", async () => {
+    const failing = { isOn: false };
+    const test = await startFillEngine({ orders: (store) => failingFills(store, failing) });
+    await activeOrder(test, testStopLoss({ worstPrice: 1n }));
+    await test.engine.downtime.alive(live);
+    await test.clock.advance(hourMs);
+
+    const restarted = test.restart();
+    const run = await restarted.downtime.started(live);
+    await restarted.seePrice(at(700_000n, test.clock.now()), live);
+    const held = keysOf(noticesOf(test)).includes("notice.skipped");
+    failing.isOn = true;
+    await test.clock.advance(20_000);
+    await expect(run?.reported).rejects.toThrow("store down");
+
+    expect(held).toBe(false);
+    expect(keysOf(noticesOf(test))).toContain("notice.skipped");
+    expect(resumedOf(test)).toStrictEqual([]);
   });
 
   it("only marks the engine alive at an install's first start", async () => {

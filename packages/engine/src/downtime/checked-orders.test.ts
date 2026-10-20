@@ -8,6 +8,7 @@ import type { OpenCheck, WatchedOrder } from "./downtime-check.js";
 
 const live = new AbortController().signal;
 const copy = idSchema("ord").parse("ord_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+const stop = idSchema("ord").parse("ord_0190f1c2-3a4b-7c5d-8e6f-000000000002");
 
 function row(
   n: number,
@@ -53,5 +54,21 @@ describe("what the report finds of each order", () => {
     );
 
     expect(found).toMatchObject([{ order: copy, outcome: "skipped", reason: "late" }]);
+  });
+
+  it("counts the skip the start's repair wrote before an order's first judgment", async () => {
+    const rows = [
+      row(3, { orderId: stop, outcome: "skipped", reason: "fill_failed", atMs: testNowMs + 1 }),
+    ];
+    const standing = { state: "skipped", reason: "trigger_not_met", atMs: testNowMs + 5 } as const;
+    const watched = { agentId: testAgent, kind: "stopLoss", standing } as const;
+
+    const found = await checkedOrdersOf(
+      { orders: storeOf(rows), rows: 12 },
+      openOf([[stop, watched]]),
+      live,
+    );
+
+    expect(found).toMatchObject([{ order: stop, outcome: "skipped", reason: "fill_failed" }]);
   });
 });

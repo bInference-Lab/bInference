@@ -2,5 +2,6 @@
   "kind": "{kind, select, limit {Limit order} takeProfit {Take-profit} stopLoss {Stop-loss} trailing {Trailing stop} dca {DCA} copy {Copy trade} other {Auto order}}",
   "resumedSkips": "{count} skipped: {reason}",
   "resumedOther": "{count} skipped for other reasons",
-  "underMinute": "under a minute"
+  "underMinute": "under a minute",
+  "resumedSent": "{count} sent and not settled yet"
 }
