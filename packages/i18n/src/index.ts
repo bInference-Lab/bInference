@@ -1,4 +1,4 @@
-export { cardLineText } from "./cards/card-text.js";
+export { assetText, cardLineText } from "./cards/card-text.js";
 export type { CardDisplay } from "./cards/card-text.js";
 export { addressPartOf, shortAddress } from "./cards/short-address.js";
 export { createFormatter } from "./format/create-formatter.js";

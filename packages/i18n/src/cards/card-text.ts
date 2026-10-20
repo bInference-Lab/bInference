@@ -61,7 +61,12 @@ function infoOf(asset: AssetRef, display: CardDisplay): AssetInfo {
   return info;
 }
 
-function assetText(asset: AssetRef, display: CardDisplay): string {
+/**
+ * An asset as a card names it: its symbol, cut past 16 characters and made visible, followed by
+ * its short address when it is not verified. Throws `engine.card_asset_unknown` when
+ * `display.assets` lacks it.
+ */
+export function assetText(asset: AssetRef, display: CardDisplay): string {
   const info = infoOf(asset, display);
   const symbol = displayOutsideText(info.symbol, symbolLength);
   return info.verified
