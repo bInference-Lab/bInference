@@ -19,13 +19,9 @@ import type { ChainWatch, LatestPrice } from "./chain-watch.js";
 import type { Closers } from "./closers.js";
 import { type DecimalsBook, decimalsBookOf } from "./decimals-book.js";
 import type { HealthSignal } from "./health-signals.js";
+import type { PauseFence, ReadHead } from "./pause-fence.js";
 import { isConfirmed, isUrgent } from "./price-confirmation.js";
-import {
-  type PriceTriggerLink,
-  seeOrdersAndAlerts,
-  type SleepFence,
-  startPriceTriggers,
-} from "./price-triggers.js";
+import { type PriceTriggerLink, seeOrdersAndAlerts, startPriceTriggers } from "./price-triggers.js";
 import { startRepeatingTimer } from "./repeating-timer.js";
 import type { ReadDecimals } from "./token-decimals.js";
 import { createWatchedOrders, type WatchedOrders } from "./watched-orders.js";
@@ -56,8 +52,8 @@ export interface ComposedPriceWatchers {
   readonly attach: (engine: Pick<Engine, "seePrice" | "alerts">) => void;
   /** Starts following the active orders, the lag checks and the cross-check. */
   readonly start: (closers: Closers, logger: Logger) => void;
-  /** Drops the prices a sleep of the machine left behind (decision 0268); none before `start`. */
-  readonly afterSleep: SleepFence["afterSleep"];
+  /** Drops the prices a pause of the engine left behind (decision 0268); none before `start`. */
+  readonly afterPause: () => void;
 }
 
 /** What the composed watchers read and where they report. */
@@ -79,6 +75,8 @@ export interface PriceWatchersOptions {
   };
   readonly clock: Clock;
   readonly publish: (push: EnginePush) => void;
+  /** Reads a chain's head after a pause of the engine (decision 0268). */
+  readonly readHead: ReadHead;
 }
 
 // The lag is read each second; the active orders every five seconds; the cross-check's sources
@@ -154,7 +152,7 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
   const orders: WatchedOrders = createWatchedOrders(options);
   const parts: { check?: PriceCrossCheck } = {};
   const triggers: PriceTriggerLink = {};
-  const sleeps: { fence?: SleepFence } = {};
+  const pauses: { fence?: Pick<PauseFence, "afterPause"> } = {};
   const watching: WatcherChecks = {
     lag: createWatcherLagAlerts({ publish: options.publish }),
     unpriced: createWatcherUnpricedAlerts({ publish: options.publish }),
@@ -176,7 +174,7 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
     attach(engine) {
       triggers.see = seeOrdersAndAlerts(engine);
     },
-    afterSleep: (asleepMs) => sleeps.fence?.afterSleep(asleepMs),
+    afterPause: () => pauses.fence?.afterPause(),
     start(closers, logger) {
       const check = crossCheckOf(options, decimals, logger);
       parts.check = check;
@@ -188,8 +186,8 @@ export function composePriceWatchers(options: PriceWatchersOptions): ComposedPri
       const checks = (): readonly PriceCheck[] => check.checks();
       const { watches, clock } = options;
       const known = decimals.known;
-      sleeps.fence = startPriceTriggers(
-        { watches, decimals: known, checks, clock, link: triggers },
+      pauses.fence = startPriceTriggers(
+        { watches, decimals: known, checks, clock, link: triggers, readHead: options.readHead },
         { closers, logger },
       );
       startWatcherTimers({ options, orders, watching, decimals }, { closers, logger });

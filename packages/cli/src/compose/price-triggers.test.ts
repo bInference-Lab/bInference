@@ -50,6 +50,9 @@ function fakeWatch() {
   return { watch, read, listeners };
 }
 
+// A chain head no test waits on.
+const anyHead = async () => Promise.resolve(0n);
+
 describe("the hand-off of watched prices to the price triggers", () => {
   it("hands on a confirmed price with its decimals, and whether a thin pool priced it", () => {
     const known = { checks: [], decimals, nowMs };
@@ -82,7 +85,10 @@ describe("the hand-off of watched prices to the price triggers", () => {
     const closers = createClosers();
     const watches = new Map([[chain, fake.watch]]);
     const clock = createManualClock(nowMs);
-    startPriceTriggers({ watches, decimals, checks: () => [], clock, link }, { closers, logger });
+    startPriceTriggers(
+      { watches, decimals, checks: () => [], clock, link, readHead: anyHead },
+      { closers, logger },
+    );
 
     fake.read(curve);
     fake.read({ ...curve, source: poolSource });
@@ -103,34 +109,68 @@ describe("the hand-off of watched prices to the price triggers", () => {
   });
 });
 
-describe("the hand-off after a sleep of the machine", () => {
-  it("drops every price of a block not past half the blocks the sleep lasted", async () => {
-    const fake = fakeWatch();
-    const seen: number[] = [];
-    const link = {
-      see: async (price: WatchedOrderPrice) => {
-        seen.push(price.readAtMs);
-        return Promise.resolve([]);
-      },
-    };
-    const logger = createMemoryLogger({ subsystem: "watcher" });
-    const closers = createClosers();
-    const watches = new Map([[chain, fake.watch]]);
-    const clock = createManualClock(nowMs);
-    const fence = startPriceTriggers(
-      { watches, decimals, checks: () => [], clock, link },
-      { closers, logger },
-    );
+// A hand-off whose engine records when each price's read was asked, after the test's start, and
+// whose chain head the test answers.
+function pausedHandOff() {
+  const fake = fakeWatch();
+  const seen: bigint[] = [];
+  const heads: ((head: bigint) => void)[] = [];
+  const isPaused = { now: false };
+  const link = {
+    see: async (_price: WatchedOrderPrice) => Promise.resolve([]),
+    pauses: () => isPaused.now,
+  };
+  const logger = createMemoryLogger({ subsystem: "watcher" });
+  const closers = createClosers();
+  const clock = createManualClock(nowMs);
+  const readHead = async () => new Promise<bigint>((resolve) => heads.push(resolve));
+  const fence = startPriceTriggers(
+    {
+      watches: new Map([[chain, fake.watch]]),
+      decimals,
+      checks: () => [],
+      clock,
+      link,
+      readHead,
+    },
+    { closers, logger },
+  );
+  link.see = async (price) => {
+    seen.push(BigInt(price.readAtMs - nowMs));
+    return Promise.resolve([]);
+  };
+  const read = (block: bigint, askedAtMs = clock.now()): void =>
+    fake.read({ ...curve, block, atMs: clock.now(), askedAtMs });
+  return { fence, read, seen, heads, isPaused, clock, closers };
+}
 
-    fake.read(curve);
-    // 90 seconds of 450 ms blocks: 200 blocks, so a block must pass 100 + 100.
-    fence.afterSleep(90_000);
-    fake.read({ ...curve, block: 101n, atMs: nowMs + 1, askedAtMs: nowMs + 1 });
-    fake.read({ ...curve, block: 200n, atMs: nowMs + 2, askedAtMs: nowMs + 2 });
-    fake.read({ ...curve, block: 201n, atMs: nowMs + 3, askedAtMs: nowMs + 3 });
-    await closers.closeAll(new AbortController().signal);
+describe("the hand-off around a pause of the engine", () => {
+  it("drops a price that finds a pause, and one whose read was asked a minute before or later", async () => {
+    const run = pausedHandOff();
+    run.isPaused.now = true;
+    run.read(100n);
+    run.isPaused.now = false;
+    await run.clock.advance(61_000);
+    run.read(101n, nowMs);
+    run.read(102n, run.clock.now() + 1);
+    run.read(103n);
+    await run.closers.closeAll(new AbortController().signal);
 
-    expect(seen).toStrictEqual([nowMs, nowMs + 3]);
+    expect(run.seen).toStrictEqual([61_000n]);
+  });
+
+  it("after a pause, drops every price until a head read after it answers, then those below it", async () => {
+    const run = pausedHandOff();
+    run.fence.afterPause();
+    run.read(500n);
+    await run.clock.advance(0);
+    run.heads[0]?.(600n);
+    await run.clock.advance(0);
+    run.read(599n);
+    run.read(600n);
+    await run.closers.closeAll(new AbortController().signal);
+
+    expect(run.seen).toStrictEqual([0n]);
   });
 });
 

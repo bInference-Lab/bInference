@@ -7,6 +7,7 @@ import {
   type EnginePush,
   type VenueHost,
 } from "@binference/engine";
+import { chainHeadReader } from "./chain-heads.js";
 import type { ChainReads } from "./chain-reads.js";
 import { composeChainWatches } from "./chain-watches.js";
 import { type ComposedPriceWatchers, composePriceWatchers } from "./compose-price-watchers.js";
@@ -104,6 +105,7 @@ export function composeWatching(
     sources,
     clock,
     publish: (push) => watcherPushes.publish(push),
+    readHead: chainHeadReader(reads),
   });
   const publish = (push: EnginePush): void => watcherPushes.publish(push);
   const logWatchers = composeLogWatchers(opened, { reads, host: venues, clock, publish });

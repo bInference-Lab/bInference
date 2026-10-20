@@ -87,6 +87,7 @@ function rig(
   const prices = new Map([[token, { numerator: options.dexscreenerUsd ?? 2n, denominator: 1n }]]);
   const decimalReads: (readonly AssetRef[])[] = [];
   const watchers = composePriceWatchers({
+    readHead: async () => Promise.resolve(0n),
     watches: new Map([[bsc, fake.watch]]),
     decimals: async (tokens) => {
       decimalReads.push(tokens);

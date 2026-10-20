@@ -153,13 +153,14 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   await executor.recover({ signal });
   // Before the repairs and the timers: the re-check counts the skips they record, and no price
   // reaches the triggers before it took the orders to check (decision 0267).
-  await startDowntimeTimer({
+  const pauses = await startDowntimeTimer({
     downtime: composed.downtime,
-    onPause: (offMs) => composed.priceWatchers.afterSleep(offMs),
+    onPause: () => composed.priceWatchers.afterPause(),
     clock: opening.host.clock,
     closers: opening.closers,
     logger: log.logger,
   });
+  composed.priceWatchers.triggers.pauses = pauses.check;
   await composed.repairPaperFills({ signal });
   await composed.repairOrderFills({ signal });
   await composed.checkPins({ signal, isRepair: true });

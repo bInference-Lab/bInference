@@ -6,11 +6,14 @@ import type { PriceCheck } from "@binference/engine/market";
 import type { WatchedOrderPrice } from "@binference/engine/orders";
 import type { ChainWatch, LatestPrice } from "./chain-watch.js";
 import type { Closers } from "./closers.js";
+import { createPauseFence, type PauseFence, type ReadHead } from "./pause-fence.js";
 import { isConfirmed, isThin } from "./price-confirmation.js";
 
 /** Where each confirmed price goes once the engine exists: its price triggers. */
 export interface PriceTriggerLink {
   see?: Engine["seePrice"];
+  /** The downtime timer's check for a pause, once the timer runs (decision 0266). */
+  pauses?: () => boolean;
 }
 
 /**
@@ -71,6 +74,8 @@ export interface PriceTriggerParts {
   readonly checks: () => readonly PriceCheck[];
   readonly clock: Clock;
   readonly link: PriceTriggerLink;
+  /** Reads a chain's head after a pause, which fences off the blocks before it. */
+  readonly readHead: ReadHead;
 }
 
 // The price as the chain watch kept it a moment before, with since when its plan priced it.
@@ -102,61 +107,25 @@ async function seeOnce(
   }
 }
 
-/** The hand-off's fence after a sleep of the machine (decision 0268). */
-export interface SleepFence {
-  /**
-   * Drops, on each chain, every price of a block not past the newest one handed on before the
-   * sleep by half the blocks the sleep lasted: a read or a new head answered before the sleep and
-   * handed on after it never reaches the triggers.
-   */
-  readonly afterSleep: (asleepMs: number) => void;
-}
-
-// The newest block each chain's hand-off passed, and the block its prices must pass after a sleep.
-function blockFence(watches: ReadonlyMap<ChainRef, ChainWatch>) {
-  const newest = new Map<ChainRef, bigint>();
-  const past = new Map<ChainRef, bigint>();
-  return {
-    passes(watch: ChainWatch, block: bigint): boolean {
-      const ref = watch.chain.ref;
-      if (block <= (past.get(ref) ?? -1n)) {
-        return false;
-      }
-      const seen = newest.get(ref);
-      if (seen === undefined || block > seen) {
-        newest.set(ref, block);
-      }
-      return true;
-    },
-    afterSleep(asleepMs: number): void {
-      for (const watch of watches.values()) {
-        const ref = watch.chain.ref;
-        const before = newest.get(ref);
-        const blocks = Math.floor(asleepMs / watch.chain.definition.blockTimeMs / 2);
-        if (before !== undefined) {
-          past.set(ref, before + BigInt(blocks));
-        }
-      }
-    },
-  };
-}
-
 /**
  * Hands each price a watcher reads to the engine's price triggers as it comes, in the block's own
- * processing, when it is confirmed (decision 0196), with the time the watcher read it. A hand-off
- * runs on its own; one that fails is logged as `engine.trigger_failed` with its code. After a
- * sleep of the machine, it drops what the sleep left behind (decision 0268). The shutdown stops
- * listening and aborts the hand-offs under way.
+ * processing, when it is confirmed (decision 0196), with the time the watcher asked for its read.
+ * A hand-off runs on its own; one that fails is logged as `engine.trigger_failed` with its code. A
+ * price that finds a pause, or that a pause left behind, never goes on (decision 0268). The
+ * shutdown stops listening and aborts the hand-offs under way.
  */
 export function startPriceTriggers(
   parts: PriceTriggerParts,
   runOn: { readonly closers: Closers; readonly logger: Logger },
-): SleepFence {
+): Pick<PauseFence, "afterPause"> {
   const stopping = new AbortController();
   const { signal } = stopping;
-  const fence = blockFence(parts.watches);
+  const pauses = {
+    check: () => parts.link.pauses?.() === true,
+  };
+  const fence = createPauseFence({ ...parts, pauses, signal, logger: runOn.logger });
   const handOn = (watch: ChainWatch, price: WatchedPrice): void => {
-    if (!fence.passes(watch, price.block)) {
+    if (!fence.passes(watch, price)) {
       return;
     }
     const latest = latestOf(watch, price);
@@ -180,5 +149,5 @@ export function startPriceTriggers(
     stopping.abort();
     return await Promise.resolve();
   });
-  return { afterSleep: (asleepMs) => fence.afterSleep(asleepMs) };
+  return { afterPause: () => fence.afterPause() };
 }

@@ -7,7 +7,7 @@ import type { Closers } from "./closers.js";
 export interface DowntimeTimerOptions {
   readonly downtime: Engine["downtime"];
   /** Told of each pause before the engine is: the price hand-off drops what the pause left. */
-  readonly onPause: (offMs: number) => void;
+  readonly onPause: () => void;
   readonly clock: Clock;
   /** Where the timer adds what stops it. */
   readonly closers: Closers;
@@ -111,7 +111,7 @@ export async function startDowntimeTimer(options: DowntimeTimerOptions): Promise
       return false;
     }
     Object.assign(times, { sleepFromMs: nowMs, aliveAtMs: nowMs });
-    options.onPause(pause.offMs);
+    options.onPause();
     logger.info(pause.cause === "wake" ? "engine.woke" : "engine.clock_back", {
       durationMs: pause.offMs,
     });
