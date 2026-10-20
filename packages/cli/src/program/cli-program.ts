@@ -141,6 +141,22 @@ function addInit(program: Command, options: ProgramOptions): void {
     );
 }
 
+// Commands on the install as a whole: its check, and its removal from this machine.
+function addInstallCommands(program: Command, options: ProgramOptions): void {
+  const { message, choose } = options;
+  withCommon(program.command("check").description(message("command.check")), message)
+    .option("--fix", message("option.fix"))
+    .action((flags: OptionValues) =>
+      choose({ name: "check", options: checkFlagsSchema.parse(flags) }),
+    );
+  withCommon(
+    program.command("uninstall").description(message("command.uninstall")),
+    message,
+  ).action((flags: OptionValues) =>
+    choose({ name: "uninstall", options: commonFlagsSchema.parse(flags) }),
+  );
+}
+
 function addCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   addInit(program, options);
@@ -183,11 +199,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addLimitCommands(program, options);
   addConfigCommands(program, options);
   addMcpCommands(program, options);
-  withCommon(program.command("check").description(message("command.check")), message)
-    .option("--fix", message("option.fix"))
-    .action((flags: OptionValues) =>
-      choose({ name: "check", options: checkFlagsSchema.parse(flags) }),
-    );
+  addInstallCommands(program, options);
 }
 
 /**

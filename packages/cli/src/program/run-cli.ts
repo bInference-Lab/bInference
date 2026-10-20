@@ -30,6 +30,7 @@ import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
 import { runRestart, runStop } from "../commands/stop-command.js";
 import { runTelegramPair } from "../commands/telegram-pair-command.js";
+import { runUninstall } from "../commands/uninstall-command.js";
 import { runUnlock } from "../commands/unlock-command.js";
 import { runWalletAddress, runWalletCreate, runWalletList } from "../commands/wallet-command.js";
 import { runWalletExport } from "../commands/wallet-export-command.js";
@@ -138,6 +139,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   limitSet: runLimitSet,
   limitCancel: runLimitCancel,
   check: runCheck,
+  uninstall: runUninstall,
   configGet: runConfigGet,
   configSet: runConfigSet,
   mcp: async (context, chosen) => runMcp(context, chosen.options),

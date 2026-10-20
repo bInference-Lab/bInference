@@ -64,6 +64,7 @@ export type ChosenCommand =
       readonly entry: ProtocolId<"addressBook">;
     }
   | { readonly name: "check"; readonly options: CheckFlags }
+  | { readonly name: "uninstall"; readonly options: CommonOptions }
   | { readonly name: "configGet"; readonly options: CommonOptions; readonly key?: string }
   | {
       readonly name: "configSet";

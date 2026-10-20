@@ -85,6 +85,7 @@ describe("the binference command tree", () => {
       "setup",
       "session",
       "check",
+      "uninstall",
     ]);
     for (const command of commands) {
       const flags = command.options.map((option) => option.long);

@@ -4,8 +4,8 @@ import type { CliOutput, ExitCode } from "../program/cli-output.js";
 import { isHomeMoved, type ServiceRun } from "./service-start-command.js";
 import { refuseLate, stopEngine, withStopRun } from "./stop-command.js";
 
-// Whether the OS removed the service; a folder `BINFERENCE_HOME` moves never has one.
-async function removeService(run: ServiceRun): Promise<boolean> {
+/** Whether the OS removed the service; a folder `BINFERENCE_HOME` moves never has one. */
+export async function removeService(run: ServiceRun): Promise<boolean> {
   if (isHomeMoved(run.host)) {
     return false;
   }
