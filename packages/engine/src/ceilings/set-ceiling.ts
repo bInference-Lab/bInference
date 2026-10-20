@@ -184,7 +184,13 @@ function kindOf(
   if (caps) {
     return "dayCaps";
   }
-  const venues = pairs.some(({ earlier, next }) => !isSameSet(earlier.contracts, next.contracts));
+  // A new function on the same contracts, such as a launchpad's create call, moves the venues'
+  // calls as much as a new contract does (decision 0271).
+  const venues = pairs.some(
+    ({ earlier, next }) =>
+      !isSameSet(earlier.contracts, next.contracts) ||
+      !isSameSet(earlier.functions, next.functions),
+  );
   const cap = pairs.some(({ earlier, next }) => earlier.perTxNativeBase !== next.perTxNativeBase);
   if (venues && cap) {
     return "both";

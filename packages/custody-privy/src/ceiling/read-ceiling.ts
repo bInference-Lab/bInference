@@ -42,6 +42,11 @@ export interface CeilingHeld {
    * and `approve` when it allows approvals of any spender (decision 0218). None for an agent wallet.
    */
   readonly launchCalls: readonly string[];
+  /**
+   * The functions its call rules let a call reach on their contracts, each once, on any chain: a
+   * change of them is a change of what the ceiling allows (decision 0271).
+   */
+  readonly functions: readonly string[];
 }
 
 const onChain = /, chain (\d{1,10})$/;
@@ -201,6 +206,9 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
     caps,
     isLaunch: read.some(isLaunchRule),
     launchCalls: [...new Set(read.flatMap(launchFunctionOf))],
+    functions: [
+      ...new Set(calls.map((rule) => rule.name.slice(callPrefix.length).replace(onChain, ""))),
+    ],
   };
 }
 

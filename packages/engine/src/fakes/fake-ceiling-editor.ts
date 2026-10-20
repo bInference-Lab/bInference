@@ -33,6 +33,8 @@ export interface FakeCalls {
   readonly dayCaps?: readonly DayCapView[];
   /** The functions a launch wallet's ceiling lets a call reach on any contract; none if absent. */
   readonly launchCalls?: readonly string[];
+  /** The functions its call rules let a call reach on their contracts; none if absent. */
+  readonly functions?: readonly string[];
 }
 
 /** A ceiling editor in memory, whose ceilings a test sets up and reads. */
@@ -131,15 +133,27 @@ function chainsOf(recipients: readonly AccountRef[]): readonly ChainRef[] {
 // A held ceiling as custody reads it: the chains of its recipients, and what its calls may do.
 function readOf(recipients: readonly AccountRef[], calls: FakeCalls): CeilingRead {
   const { contracts, perTxNativeBase } = calls;
+  // Each function rides in the policy as a JSON ABI entry with no inputs, as a call rule holds it.
   const policy = jsonValueSchema.parse({
     contracts: [...contracts],
     perTxNativeBase: String(perTxNativeBase),
     recipients: [...recipients],
+    functions: (calls.functions ?? []).map((name) => ({ type: "function", name, inputs: [] })),
   });
   const dayCaps = calls.dayCaps ?? [];
   const launchCalls = calls.launchCalls ?? [];
+  const functions = calls.functions ?? [];
   const chains = chainsOf(recipients);
-  return { chains, contracts, perTxNativeBase, recipients, dayCaps, launchCalls, policy };
+  return {
+    chains,
+    contracts,
+    perTxNativeBase,
+    recipients,
+    dayCaps,
+    launchCalls,
+    functions,
+    policy,
+  };
 }
 
 /** The ceilings and calls the fake holds, and the registry its venues' contracts come from. */
@@ -147,6 +161,7 @@ interface Held {
   readonly ceilings: Ceilings;
   readonly calls: Map<string, FakeCalls>;
   readonly chains?: ChainRegistry;
+  readonly functionsOf?: FakeCeilingEditorOptions["functionsOf"];
 }
 
 // A venue's contracts on a chain: the registry's, or without one the account named after it.
@@ -185,7 +200,7 @@ function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal>
     return err("bad_owner_key");
   }
   const changes = new Map<string, FakeCalls>();
-  for (const { ceiling, venues, perTxNativeBase, dayCapUsdMicros } of request.ceilings) {
+  for (const { ceiling, venues, perTxNativeBase, dayCapUsdMicros, isLaunch } of request.ceilings) {
     const recipients = held.ceilings.get(ceiling);
     if (recipients === undefined) {
       return err("not_found");
@@ -196,7 +211,8 @@ function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal>
     }
     const dayCaps = resized(held.calls.get(ceiling)?.dayCaps, dayCapUsdMicros);
     const kept = dayCaps === undefined ? {} : { dayCaps };
-    changes.set(ceiling, { contracts: each.flat(), perTxNativeBase, ...kept });
+    const functions = held.functionsOf?.(venues, { isLaunch: isLaunch === true }) ?? [];
+    changes.set(ceiling, { contracts: each.flat(), perTxNativeBase, ...kept, functions });
   }
   for (const [ceiling, calls] of changes) {
     held.calls.set(ceiling, calls);
@@ -212,6 +228,14 @@ export interface FakeCeilingEditorOptions {
    * on a chain is the account named after the venue.
    */
   readonly chains?: ChainRegistry;
+  /**
+   * The functions a ceiling's call rules hold once a change of calls writes it for the venues
+   * given, as custody writes them from the venues' declarations; none when absent.
+   */
+  readonly functionsOf?: (
+    venues: readonly string[],
+    ceiling: { readonly isLaunch: boolean },
+  ) => readonly string[];
 }
 
 /**
@@ -226,6 +250,7 @@ export function createFakeCeilingEditor(options: FakeCeilingEditorOptions): Fake
     ceilings,
     calls,
     ...(options.chains === undefined ? {} : { chains: options.chains }),
+    ...(options.functionsOf === undefined ? {} : { functionsOf: options.functionsOf }),
   };
   return {
     read: async (ceiling, call) =>

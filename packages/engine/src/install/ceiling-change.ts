@@ -92,6 +92,12 @@ export interface CeilingRead {
    * `buy` and `approve` (decision 0218); none for an agent wallet.
    */
   readonly launchCalls: readonly string[];
+  /**
+   * The functions its call rules let a call reach on the contracts they name, each once: a change
+   * of them, such as a launchpad's new create call, is a change of the venues' calls (decision
+   * 0271).
+   */
+  readonly functions: readonly string[];
   /** The ceiling as custody reports it, which a wallet's stored copy of its ceiling mirrors. */
   readonly policy: JsonValue;
 }

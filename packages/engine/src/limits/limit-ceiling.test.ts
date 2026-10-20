@@ -55,6 +55,7 @@ describe("a venue inside a ceiling", () => {
       recipients: [],
       dayCaps: [],
       launchCalls: [],
+      functions: [],
       policy: [],
     };
     expect(venuesIn(chains, read)).toStrictEqual(["fake-swap"]);

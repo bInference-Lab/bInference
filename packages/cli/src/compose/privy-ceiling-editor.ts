@@ -151,6 +151,7 @@ async function read(
     recipients: accountsOn(chains, rules.recipients),
     dayCaps: dayCapViewsOf(rules.caps, options.capAssetsOn),
     launchCalls: rules.launchCalls,
+    functions: rules.functions,
     policy: jsonValueSchema.parse(policy),
   });
 }

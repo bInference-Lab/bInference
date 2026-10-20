@@ -1,4 +1,5 @@
-import { accountRefSchema, assetRefSchema, chainRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, chainRefSchema, type Venue } from "@binference/chain";
+import { createFakeVenue } from "@binference/chain/testing";
 import { err, type Id, idSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import type { CeilingChanges } from "@binference/protocol";
@@ -94,6 +95,55 @@ async function storedCaps(test: TestEngine): Promise<readonly bigint[]> {
 
 function notices(test: TestEngine) {
   return test.pushes.filter((push) => push.topic === "notice").map((push) => push.data);
+}
+
+// A launchpad's create call that only a launch wallet makes, on the fake swap's router: an older
+// launch wallet's ceiling lacks it, and writing the ceiling again for the same venue adds it.
+const createAbi = { type: "function", name: "create", inputs: [] };
+const launchWallet = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c5"),
+  agentId: testAgent,
+  label: "launches",
+  createdAtMs: testNowMs - 500,
+  role: "launch",
+});
+
+async function startedWithOlderLaunchWallet(): Promise<TestEngine> {
+  const chains = testChains(["other-swap"]);
+  const base = createFakeVenue();
+  const calls = [
+    { contract: "router", abi: createAbi, walletInputs: [], isLaunchWalletOnly: true },
+  ];
+  const venue: Venue = {
+    ...base,
+    contracts: base.contracts.map((item) => Object.assign({}, item, { calls })),
+  };
+  const ceilings = createFakeCeilingEditor({
+    clock: createManualClock(testNowMs),
+    chains,
+    functionsOf: (_venues, ceiling) => (ceiling.isLaunch ? ["swap", "create"] : ["swap"]),
+  });
+  const custodyWallets = new Map([
+    [first.id, accountRefSchema.parse("fake:1:0x000000c1")],
+    [launchWallet.id, accountRefSchema.parse("fake:1:0x000000c5")],
+  ]);
+  const test = await startTestEngine({ chains, ceilings, venues: [venue], custodyWallets });
+  const held = { contracts: [swapRouter], perTxNativeBase: 5n, functions: ["swap"] };
+  for (const item of [first, launchWallet]) {
+    test.stores.install.addWallet(item);
+    ceilings.put(item.policyId, [owner], {
+      ...held,
+      launchCalls: item.role === "launch" ? ["buy"] : [],
+    });
+  }
+  return test;
+}
+
+async function missingCalls(test: TestEngine): Promise<readonly (readonly string[] | undefined)[]> {
+  const listed = expectOk(
+    await test.engine.handlers["wallet/list"](testCall({ agent: testAgent })),
+  );
+  return listed.items.map((item) => item.missingCalls);
 }
 
 const both: CeilingChanges = { venues: ["fake-swap", "other-swap"], perTxNative: 9n };
@@ -290,5 +340,23 @@ describe("changing the 24-hour caps with the owner key", () => {
     expectOk(await setCeiling(test, { dayCapUsdMicros: 1_000n }));
 
     expect(notices(test)).toStrictEqual([]);
+  });
+});
+
+describe("a launchpad's create call in a launch wallet's ceiling", () => {
+  it("writes a launchpad's new create call into an older launch wallet, and announces it", async () => {
+    const test = await startedWithOlderLaunchWallet();
+    expect(await missingCalls(test)).toStrictEqual([undefined, ["create"]]);
+
+    expectOk(await setCeiling(test, { venues: ["fake-swap"] }));
+
+    expect(await missingCalls(test)).toStrictEqual([undefined, undefined]);
+    expect(notices(test)).toStrictEqual([
+      {
+        key: "notice.ceilingChange",
+        agent: testAgent,
+        values: { agent: "main", surface: "cli", change: "venues" },
+      },
+    ]);
   });
 });
