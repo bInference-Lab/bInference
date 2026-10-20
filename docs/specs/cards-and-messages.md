@@ -290,16 +290,17 @@ The card's message is edited into its receipt; the buttons go away.
 
 `{reason}` comes from `reason.<code>` (section 6).
 
-A confirmed live intent's receipt says `receipt.confirmed` while it sends, and every copy turns
-into how it ended once it did: `receipt.filled` for a trade that reconciled, with what it sold and
-bought; `receipt.launched` for a token launch, with its new token (its symbol and short address)
-and what its first buy spent and got, or `receipt.launchedAlone` with no first buy; `receipt.landed` for any other intent that landed,
-such as a send or a rescue; `receipt.done` for one with nothing to send, such as an unfreeze;
-and `receipt.failed` for one that failed on chain. A confirmed intent that ends before anything
-is sent, such as one the queue's policy check refused or whose authorization lapsed, says
-`receipt.refused` with its reason, or `receipt.unsent` when it stored none; one whose send's fate
-is not known yet says `receipt.unknown` until it ends. `{explorerLink}` is its last transaction's page on
-the first block explorer the chain registry lists, shown whole.
+A confirmed live intent's receipt says `receipt.confirmed` while it sends, and every copy turns into
+how it ended once it did: `receipt.filled` for a trade that reconciled, with what it sold and
+bought; `receipt.launched` for a token launch, with its new token (its symbol and short address) and
+what its first buy spent and got, 0 of the token when it bought nothing, or `receipt.launchedAlone`
+when the launch asked for no first buy; `receipt.landed` for any other intent that landed, such as a
+send or a rescue; `receipt.done` for one with nothing to send, such as an unfreeze; and
+`receipt.failed` for one that failed on chain. A confirmed intent that ends before anything is sent,
+such as one the queue's policy check refused or whose authorization lapsed, says `receipt.refused`
+with its reason, or `receipt.unsent` when it stored none; one whose send's fate is not known yet
+says `receipt.unknown` until it ends. `{explorerLink}` is its last transaction's page on the first
+block explorer the chain registry lists, shown whole.
 
 <a id="section-3-6"></a>
 

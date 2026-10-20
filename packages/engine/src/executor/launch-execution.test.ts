@@ -111,7 +111,15 @@ async function feeOnlyLaunched() {
   return { feeOnly: await showings.settled(intent, live) };
 }
 
-async function benchOf(pad: { readonly noFirstBuyMin?: boolean } = {}): Promise<ExecutorBench> {
+// What a create call moved when its first buy, with no minimum, bought none of the token.
+const paidOnly = (sent: FakeSent): readonly AssetTransfer[] => launchTransfers(sent).slice(0, 1);
+
+async function benchOf(
+  pad: {
+    readonly noFirstBuyMin?: boolean;
+    readonly transfers?: (sent: FakeSent) => readonly AssetTransfer[];
+  } = {},
+): Promise<ExecutorBench> {
   const { venues, launcher } =
     pad.noFirstBuyMin === true
       ? launchpadOf(createFakeLauncher({ noFirstBuyMin: true }))
@@ -119,7 +127,7 @@ async function benchOf(pad: { readonly noFirstBuyMin?: boolean } = {}): Promise<
   const wallets = [testWallet, testLaunchWallet];
   const bench = await startExecutorBench({
     agent: { limits: { ...testLimits, venues: ["fake-swap", testPad] } },
-    network: { transfers: launchTransfers, nativeReceived: () => 0n },
+    network: { transfers: pad.transfers ?? launchTransfers, nativeReceived: () => 0n },
     engine: {
       chains,
       venues,
@@ -224,6 +232,26 @@ describe("a token launch in the wallet queue", () => {
     expect(ended?.live?.assets[token]).toMatchObject({ symbol: "MCAT", verified: false });
     expect(feeOnly?.live?.outcome).toMatchObject({ kind: "launched", token });
     expect(feeOnly?.live?.outcome).not.toHaveProperty("fill");
+  });
+
+  it("ends its receipt with a first buy that bought none of the token", async () => {
+    const bench = await benchOf({ noFirstBuyMin: true, transfers: paidOnly });
+    const intent = await tapped(bench, launch);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    const showings = createCardShowings({
+      ...bench.test.stores,
+      chains,
+      venues: { hasNoDeadline: () => false },
+    });
+    const ended = await showings.settled(intent, live);
+    expect(ended?.live?.outcome).toMatchObject({
+      kind: "launched",
+      token,
+      fill: {
+        amountIn: { asset: testCoin, base: 1_000_000n },
+        amountOut: { asset: token, base: 0n },
+      },
+    });
   });
 
   it("raises the owner's alarm when a first buy with no minimum settles below its simulation", async () => {

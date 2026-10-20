@@ -61,7 +61,8 @@ function reconciledOf(source: LiveReceiptSource): LiveReceipt | undefined {
 }
 
 // A launch's token, and its first buy: what the request names, which the create call pays exactly
-// (decision 0235), since the settled spend holds the launch fee too, and what it got.
+// (decision 0235), since the settled spend holds the launch fee too, and what it got, which is
+// none of the token when the buy bought nothing (Flap's first buy has no minimum, decision 0270).
 function launchedOf(
   record: IntentRecord,
   settled: { readonly amountOut: Amount; readonly explorerLink: string },
@@ -73,10 +74,11 @@ function launchedOf(
     record.quote === undefined
       ? amountOut.asset
       : tokenLaunchQuoteDocument.decode(record.quote).token;
-  const isBought = spend !== undefined && amountOut.asset === token && amountOut.base > 0n;
-  return isBought
-    ? { kind: "launched", token, fill: { amountIn: spend, amountOut }, explorerLink }
-    : { kind: "launched", token, explorerLink };
+  if (spend === undefined) {
+    return { kind: "launched", token, explorerLink };
+  }
+  const got = amountOut.asset === token ? amountOut : { asset: token, base: 0n };
+  return { kind: "launched", token, fill: { amountIn: spend, amountOut: got }, explorerLink };
 }
 
 // A live intent that reconciled with no trade to show, such as a send or a rescue, or a launch with
