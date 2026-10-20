@@ -4,7 +4,7 @@ import { limitsValuesOf } from "../agents/limits-record.js";
 import type { ModelUsageStore } from "../billing/ports.js";
 import type { QuestionStore } from "../chat/ports.js";
 import type { HeldWallet } from "../executor/held-wallets.js";
-import type { WalletRecord } from "../install/install-record.js";
+import type { InstallFacts } from "../install/install-record.js";
 import type { OrderStore } from "../orders/ports.js";
 import { readAllRows } from "../pnl/read-all-rows.js";
 import { limitsChanged } from "../policy/limit-change.js";
@@ -60,9 +60,13 @@ async function tradesOf(
 }
 
 // What waits for the owner: the agent's open cards, its question while it can be answered, the
-// looser limits that wait, and the wallets stuck steps hold.
-async function waitsOf(parts: SummaryFactsParts, window: SummaryWindow & Read) {
-  const { settings, nowMs, signal } = window;
+// looser limits and send level that wait, the install's new rescue address that waits, and the
+// wallets stuck steps hold.
+async function waitsOf(
+  parts: SummaryFactsParts,
+  window: SummaryWindow & Read & { readonly install: InstallFacts },
+): Promise<SummaryFacts["waits"]> {
+  const { settings, nowMs, signal, install } = window;
   const agentId = settings.agent.id;
   const states = ["awaiting_confirmation"] as const;
   const [cards, question] = await Promise.all([
@@ -70,6 +74,8 @@ async function waitsOf(parts: SummaryFactsParts, window: SummaryWindow & Read) {
     parts.questions.openOf(agentId, { signal }),
   ]);
   const { pending } = settings.limits;
+  const isWaiting = (wait: { readonly atMs: number } | undefined) =>
+    wait !== undefined && wait.atMs > nowMs;
   return {
     cards: cards.length,
     question: question?.state === "open" && question.closesAtMs > nowMs,
@@ -78,18 +84,9 @@ async function waitsOf(parts: SummaryFactsParts, window: SummaryWindow & Read) {
         ? 0
         : limitsChanged(limitsValuesOf(settings.limits), pending.values).length,
     heldWallets: parts.heldWallets().filter(({ agent }) => agent === agentId).length,
+    sendLevel: isWaiting(settings.sendLevel.pending),
+    rescueAddress: isWaiting(install.pendingRescue),
   };
-}
-
-// The agent's wallets: every one for its trades, which happened whatever came after, and those
-// not archived for what it holds now.
-async function walletsOf(
-  parts: SummaryFactsParts,
-  agentId: Id<"agt">,
-  call: Read,
-): Promise<readonly WalletRecord[]> {
-  const { wallets } = await parts.install.read(call);
-  return wallets.filter((wallet) => wallet.agentId === agentId);
 }
 
 /**
@@ -105,7 +102,9 @@ export async function summaryFactsOf(
 ): Promise<SummaryFacts> {
   const { settings, fromMs, nowMs, signal } = window;
   const agentId = settings.agent.id;
-  const wallets = await walletsOf(parts, agentId, { signal });
+  // Every wallet the agent had counts for its trades, which happened whatever came after.
+  const install = await parts.install.read({ signal });
+  const wallets = install.wallets.filter((wallet) => wallet.agentId === agentId);
   const ids = wallets.map(({ id }) => id);
   const open = ["active", "paused"] as const;
   const toMs = nowMs + 1;
@@ -116,7 +115,7 @@ export async function summaryFactsOf(
     parts.orders.fillCounts({ agentId, fromMs, toMs }, { signal }),
     parts.orders.list({ states: open, agentId, limit: countLimit }, { signal }),
     parts.usage.spent({ agent: agentId, fromMs, toMs }, { signal }),
-    waitsOf(parts, window),
+    waitsOf(parts, { ...window, install }),
   ]);
   return {
     live: { ...live, ...(totals.live === undefined ? {} : { totalUsdMicros: totals.live }) },

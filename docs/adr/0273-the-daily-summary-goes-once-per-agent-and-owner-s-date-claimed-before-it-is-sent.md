@@ -47,7 +47,10 @@ nothing to tell. Live and paper are never added together ([decision 0134](../DEC
   reason whose message names a cap's figures names the cap alone. Open orders are the active and
   paused ones. Model spend is the window's, beside the daily model budget. What waits for the owner
   is the open cards, the agent's question while it can be answered, the looser limits that wait,
-  and the wallets a stuck transaction holds, which the executor names while it watches them.
+  the wallets a stuck transaction holds, which the executor names while it watches them, and, as
+  the owner ruled on 2026-10-20, a looser send level of the agent and a new rescue address of the
+  install that wait for their 24 hours. A summary takes at most twelve lines, the owner kept on
+  2026-10-20: the skip reasons take what is left of them, at most four.
 - **Runs.** The engine runs the summaries every minute, locked or not: they only read and tell.
 
 ## Consequences

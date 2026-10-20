@@ -19,6 +19,10 @@ interface OwnerWaits {
   readonly limits: number;
   /** Wallets a stuck step holds. */
   readonly heldWallets: number;
+  /** Whether a looser send level of the agent waits for its 24 hours. */
+  readonly sendLevel: boolean;
+  /** Whether a new rescue address of the install waits for its 24 hours. */
+  readonly rescueAddress: boolean;
 }
 
 /** What one agent's daily summary tells: its last 24 hours, and what stands open now. */

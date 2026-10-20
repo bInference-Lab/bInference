@@ -51,6 +51,8 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
       question: "no",
       limits: "0",
       held: "0",
+      sendLevel: "no",
+      rescue: "no",
     },
     parts: {
       liveLine: {

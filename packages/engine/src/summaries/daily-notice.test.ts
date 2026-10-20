@@ -6,6 +6,7 @@ import type { SummaryFacts } from "./summary-facts.js";
 
 // The live and paper icons the card spec names.
 const liveIcon = String.fromCodePoint(0x1f534);
+const paperIcon = String.fromCodePoint(0x1f9ea);
 
 const nowMs = Date.UTC(2027, 0, 16, 1);
 const hourMs = 3_600_000;
@@ -19,7 +20,14 @@ const quiet: SummaryFacts = {
   openOrders: 0,
   spendUsdMicros: 0n,
   budgetUsdMicros: 3_000_000n,
-  waits: { cards: 0, question: false, limits: 0, heldWallets: 0 },
+  waits: {
+    cards: 0,
+    question: false,
+    limits: 0,
+    heldWallets: 0,
+    sendLevel: false,
+    rescueAddress: false,
+  },
 };
 
 function written(input: Partial<DailyNoticeInput>): readonly string[] {
@@ -90,6 +98,43 @@ describe("the daily summary's lines", () => {
     expect(
       written({ facts: { ...facts, fills: { filled: 0, skipped: skipped.slice(1) } } }).at(-1),
     ).toBe("1 skip: it could not start within a minute of its time, so it is not made up later");
+  });
+});
+
+describe("a daily summary with much to tell", () => {
+  it("takes at most twelve lines, the skip reasons in what is left of them", () => {
+    const skipped = [
+      { reason: "nothing_to_sell", count: 4 },
+      { reason: "worst_price", count: 2 },
+    ] as const;
+    const facts: SummaryFacts = {
+      ...quiet,
+      paper: { totalUsdMicros: 5_000_000n, realizedUsdMicros: 0n, trades: 0 },
+      fills: { filled: 1, skipped },
+      openOrders: 2,
+      waits: {
+        cards: 2,
+        question: true,
+        limits: 3,
+        heldWallets: 1,
+        sendLevel: true,
+        rescueAddress: true,
+      },
+    };
+    expect(written({ facts })).toStrictEqual([
+      "Daily summary for main, the last 24 hours",
+      `${liveIcon} Live: $80.00; realized P&L $0.00`,
+      `${paperIcon} Paper: $5.00; realized P&L $0.00`,
+      "Auto orders: 1 filled, 6 skipped, 2 open",
+      "Model spend: $0.00, against a daily model budget of $3.00",
+      "2 cards wait for your answer",
+      "The agent waits for your answer to its question",
+      "3 looser limits take effect within 24 hours",
+      "1 wallet waits behind a stuck transaction",
+      "A looser send level takes effect within 24 hours",
+      "A new rescue address takes effect within 24 hours",
+      "6 skips for other reasons",
+    ]);
   });
 });
 

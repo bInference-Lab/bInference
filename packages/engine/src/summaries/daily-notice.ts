@@ -16,8 +16,10 @@ const hourMs = 3_600_000;
 // a day across a change of the clocks is 23 or 25 hours long, and a summary may go out late.
 const changeFromMs = 20 * hourMs;
 const changeToMs = 28 * hourMs;
-// The notice's lines after it: at most four, the last of them for every other reason past three.
+// The notice's lines after it: at most four, the last of them for every other reason past what
+// fits; and the summary at most twelve lines in all (owner's ruling, 2026-10-20).
 const maxSkipLines = 4;
+const maxLines = 12;
 
 /** What one agent's daily summary is drawn from. */
 export interface DailyNoticeInput {
@@ -99,9 +101,10 @@ function reasonPart({ reason }: SkipCount): NoticePart {
   return { key: `reason.${reason}`, values: {} };
 }
 
-// One line per skip reason, the most frequent first; past four reasons, the rest in one line.
-function skipLines(skipped: readonly SkipCount[]): readonly NoticePart[] {
-  const shown = skipped.length > maxSkipLines ? skipped.slice(0, maxSkipLines - 1) : skipped;
+// One line per skip reason, the most frequent first, in at most `room` lines; past them, the rest
+// in one line.
+function skipLines(skipped: readonly SkipCount[], room: number): readonly NoticePart[] {
+  const shown = skipped.length > room ? skipped.slice(0, room - 1) : skipped;
   const lines = shown.map((skip) => ({
     key: "daily.skips",
     values: { count: String(skip.count) },
@@ -129,13 +132,40 @@ function ordersLine(facts: SummaryFacts): NoticePart | undefined {
   };
 }
 
+// The values that choose the notice's own lines: `yes` or a count above 0 shows a line.
+function lineValues(
+  facts: SummaryFacts,
+  told: { readonly live: boolean; readonly paper: boolean; readonly orders: boolean },
+): Readonly<Record<string, string>> {
+  const { waits } = facts;
+  return {
+    live: told.live ? showLine : hideLine,
+    paper: told.paper ? showLine : hideLine,
+    orders: told.orders ? showLine : hideLine,
+    cards: String(waits.cards),
+    question: waits.question ? showLine : hideLine,
+    limits: String(waits.limits),
+    held: String(waits.heldWallets),
+    sendLevel: waits.sendLevel ? showLine : hideLine,
+    rescue: waits.rescueAddress ? showLine : hideLine,
+  };
+}
+
+// The lines the notice's own message takes: its first line, the spend line, and one per value
+// that shows a line.
+function ownLines(values: Readonly<Record<string, string>>): number {
+  const shown = Object.values(values).filter((value) => value !== hideLine && value !== "0");
+  return 2 + shown.length;
+}
+
 /**
  * The owner's daily summary of one agent (spec 4, section 4): live and paper each on its own line
  * with its total now, its change since the summary 20 to 28 hours ago and what its trades realized,
  * never added together (decision 0134); the auto orders' fills, skips and open orders, each skip
  * reason on a line after it; the model spend against the daily budget; and what waits for the
- * owner. Dollars are written once, the same in both languages; the words follow the owner's
- * language as a surface writes them.
+ * owner, a looser send level and a new rescue address among it. It takes at most twelve lines, and
+ * the skip reasons at most four of them. Dollars are written once, the same in both languages;
+ * the words follow the owner's language as a surface writes them.
  */
 export function dailyNotice(input: DailyNoticeInput): Notice {
   const { agent, facts } = input;
@@ -148,21 +178,14 @@ export function dailyNotice(input: DailyNoticeInput): Notice {
     spend: dollars.usd(facts.spendUsdMicros),
     budget: dollars.usd(facts.budgetUsdMicros),
   };
-  const { waits } = facts;
-  const after = skipLines(facts.fills.skipped);
+  const told = { live: isLiveTold, paper: isPaperTold, orders: orders !== undefined };
+  const values = lineValues(facts, told);
+  const room = Math.min(maxSkipLines, maxLines - ownLines(values));
+  const after = skipLines(facts.fills.skipped, room);
   return {
     key: dailyNoticeKey,
     agent: agent.id,
-    values: {
-      agent: agent.name,
-      live: isLiveTold ? showLine : hideLine,
-      paper: isPaperTold ? showLine : hideLine,
-      orders: orders === undefined ? hideLine : showLine,
-      cards: String(waits.cards),
-      question: waits.question ? showLine : hideLine,
-      limits: String(waits.limits),
-      held: String(waits.heldWallets),
-    },
+    values: { agent: agent.name, ...values },
     parts: {
       ...(isLiveTold ? { liveLine: valueLine(facts.live, "live", liveBefore) } : {}),
       ...(isPaperTold ? { paperLine: valueLine(facts.paper, "paper", paperBefore) } : {}),
