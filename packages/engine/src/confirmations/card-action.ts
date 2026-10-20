@@ -207,7 +207,7 @@ const actionLines: ActionLines = {
     key: "card.launch.action",
     values: {
       symbol: text(action.symbol),
-      name: text(action.name),
+      tokenName: text(action.name),
       venue: text(action.venue),
       pair: asset(action.pair),
       firstBuy: amount(action.firstBuy),

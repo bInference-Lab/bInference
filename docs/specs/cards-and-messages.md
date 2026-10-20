@@ -152,7 +152,7 @@ Agent 说明  “按你的要求在 $625 止盈”
 | `bridge`           | `card.bridge.action`                       | Bridge {amount} to {chain} · to {recipient} · about {minutes} min                                                                             | 跨链 {amount} 到 {chain} · 收款地址 {recipient} · 约 {minutes} 分钟                                                            |
 | `cexOrder`         | `card.cex.action`                          | Binance {side} {size} {market} at {price}                                                                                                     | Binance {side} {size} {market}，价格 {price}                                                                                   |
 | `registerIdentity` | `card.identity.action`                     | Register {agent} on chain (ERC-8004)                                                                                                          | 在链上登记 {agent}（ERC-8004）                                                                                                 |
-| `launchToken`      | `card.launch.action`                       | Launch {symbol} ({name}) on {venue}, paired with {pair} · first buy {firstBuy}                                                                | 在 {venue} 发射 {symbol}（{name}），与 {pair} 配对交易 · 首笔买入 {firstBuy}                                                   |
+| `launchToken`      | `card.launch.action`                       | Launch {symbol} ({tokenName}) on {venue}, paired with {pair} · first buy {firstBuy}                                                           | 在 {venue} 发射 {symbol}（{tokenName}），与 {pair} 配对交易 · 首笔买入 {firstBuy}                                              |
 | rescue             | `card.rescue.action`                       | Move everything to your rescue address {address}: {count} tokens from {wallets} wallets, about {usd}                                          | 将全部资产转到你的紧急转出地址 {address}：{wallets} 个钱包中的 {count} 种代币，约 {usd}                                        |
 | unfreeze           | `card.unfreeze.agent`, `card.unfreeze.all` | Unfreeze {agent}: it trades again within its limits; for every agent: Unfreeze every agent: {count} frozen now, and new agents start unfrozen | 对 {agent} 解除冻结：它可以在交易限额内再次交易；全部：对全部 Agent 解除冻结：目前有 {count} 个已冻结，新建的 Agent 也不再冻结 |
 | auto order         | `card.order.action`                        | Approve {orderKind}: {summary} · up to {maxFills} fills until {expiry}                                                                        | 批准{orderKind}：{summary} · 最多成交 {maxFills} 次，截至 {expiry}                                                             |
@@ -198,7 +198,7 @@ signature ([decision 0279](../DECISIONS.md#d0279)).
 A launch draft ([section 8.5](#section-8-5)) shows the owner's photo with `card.launch.photo` before anything is
 uploaded; the launch's card then shows the picture line its launchpad's place calls for
 ([decision 0286](../DECISIONS.md#d0286)).
-A card cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200, and shows `{link}`
+A card shows a launch's `{tokenName}` whole, up to its 64 characters, and cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200, and shows `{link}`
 whole, up to its 512 bytes, as it shows a launch setting's `{address}` whole: an account a
 launch pays. A launchpad that takes its picture as a link uploads nothing, so its
 card shows neither the picture line nor the public one

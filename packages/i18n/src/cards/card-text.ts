@@ -39,6 +39,9 @@ const nameLength = 40;
 const textLengths: Readonly<Record<string, number>> = {
   reason: 200,
   symbol: symbolLength,
+  // A launch's token name shows whole, up to the 64 characters a launch takes, since it is
+  // published as written (spec 4, section 3.3).
+  tokenName: 64,
   description: 1_000,
   url: 200,
   uri: 200,

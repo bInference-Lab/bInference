@@ -27,6 +27,19 @@ describe("a token launch's card in English", () => {
     ]);
   });
 
+  it("shows a token name of 64 characters whole, as the create call publishes it", async () => {
+    const { test } = await testLaunchEngine();
+    const name = "Moon Cat Official Community Token 2026 | claim at scam.example!!";
+    const lines = await testCardText(
+      test,
+      await proposeIntent(test, { ...testSettledLaunch, name }),
+      "en",
+    );
+    expect(lines[1]).toBe(
+      `Launch MCAT (${name}) on fake-curve, paired with FAKE · first buy 0.000000000001 FAKE`,
+    );
+  });
+
   it("warns when the create call carries no minimum for the first buy", async () => {
     const { test } = await testLaunchEngine({ noFirstBuyMin: true });
     const lines = await testCardText(test, await proposeIntent(test, testSettledLaunch), "en");

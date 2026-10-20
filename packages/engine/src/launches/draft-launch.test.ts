@@ -62,6 +62,16 @@ describe("launch/draft", () => {
     );
   });
 
+  it("shows a token name of 64 characters whole", async () => {
+    const { test } = await testDraftEngine();
+    const name = "Moon Cat Official Community Token 2026 | claim at scam.example!!";
+    const drafted = expectOk(await draftOf(test, draftArgs({ launch: { ...draftTerms, name } })));
+    expect([name.length, draftText(test, drafted.draft, "en")[0]]).toStrictEqual([
+      64,
+      `Launch MCAT (${name}) on fake-curve, paired with FAKE · first buy 0.000000000001 FAKE`,
+    ]);
+  });
+
   it("refuses any caller but the runtime the engine runs now, and a turn that is not running", async () => {
     const { test } = await testDraftEngine();
     const stranger = {

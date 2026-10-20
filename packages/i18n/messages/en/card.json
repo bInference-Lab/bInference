@@ -18,7 +18,7 @@
   "bridge.action": "Bridge {amount} to {chain} · to {recipient} · about {minutes, number} min",
   "cex.action": "Binance {side, select, buy {buy} other {sell}} {size} {market} at {price}",
   "identity.action": "Register {agent} on chain (ERC-8004)",
-  "launch.action": "Launch {symbol} ({name}) on {venue}, paired with {pair} · first buy {firstBuy}",
+  "launch.action": "Launch {symbol} ({tokenName}) on {venue}, paired with {pair} · first buy {firstBuy}",
   "launch.token": "New token {token}",
   "launch.firstBuyMin": "First buy gets at least {minOut}",
   "launch.fee": "Launch fee {fee}",

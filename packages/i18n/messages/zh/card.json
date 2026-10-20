@@ -18,7 +18,7 @@
   "bridge.action": "跨链 {amount} 到 {chain} · 收款地址 {recipient} · 约 {minutes, number} 分钟",
   "cex.action": "Binance {side, select, buy {买入} other {卖出}} {size} {market}，价格 {price}",
   "identity.action": "在链上登记 {agent}（ERC-8004）",
-  "launch.action": "在 {venue} 发射 {symbol}（{name}），与 {pair} 配对交易 · 首笔买入 {firstBuy}",
+  "launch.action": "在 {venue} 发射 {symbol}（{tokenName}），与 {pair} 配对交易 · 首笔买入 {firstBuy}",
   "launch.token": "新代币 {token}",
   "launch.firstBuyMin": "首笔买入至少获得 {minOut}",
   "launch.fee": "发射手续费 {fee}",
