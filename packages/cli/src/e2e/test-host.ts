@@ -102,6 +102,12 @@ const noServices: ServiceManager = {
   uninstall: refusedService,
   status: refusedService,
 };
+// No test runs an OS program through the host: a test that does passes a recorder of its own.
+async function refusedProgram(): Promise<never> {
+  return Promise.reject(
+    new BinferenceError({ code: "platform.command_failed", message: "Tests run no programs." }),
+  );
+}
 
 /** What a test gives a host in place of the outside world and the person at the terminal. */
 export type HostParts = Partial<
@@ -112,6 +118,10 @@ export type HostParts = Partial<
     | "startSigner"
     | "startRuntime"
     | "serviceManager"
+    | "keychain"
+    | "runProgram"
+    | "entry"
+    | "system"
     | "homeDir"
     | "mcpStdio"
     | "chatTerminal"
@@ -145,6 +155,8 @@ export function hostWith(
       script: join(machine.folder, "bin", "binference.mjs"),
     },
     serviceManager: noServices,
+    runProgram: refusedProgram,
+    system: testSystem,
     // The runtime runs in the test's process, signed in at once, unless a test starts its own.
     startRuntime: async () => startInProcessRuntime(),
     out: (text) => {
@@ -160,7 +172,6 @@ export function hostWith(
     ...parts,
     signals: machine.signals,
     version: "2026.10.0-test",
-    system: testSystem,
     workerExecArgv,
     stdout: () => written.out,
     stderr: () => written.err,

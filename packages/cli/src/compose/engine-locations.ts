@@ -3,15 +3,19 @@ import { join } from "node:path";
 import { createPlatform, type IpcEndpoint, type Platform } from "@binference/platform";
 import type { CliHost } from "../program/cli-host.js";
 
-/** This OS's platform for the state folder the host names through `BINFERENCE_HOME`. */
-export function platformOf(host: Pick<CliHost, "env" | "homeDir">): Platform {
-  return createPlatform({
+/**
+ * This OS's platform for the state folder the host names through `BINFERENCE_HOME`, with the
+ * host's keychain when it passes one.
+ */
+export function platformOf(host: Pick<CliHost, "env" | "homeDir" | "keychain">): Platform {
+  const platform = createPlatform({
     binferenceHome: host.env["BINFERENCE_HOME"],
     xdgConfigHome: host.env["XDG_CONFIG_HOME"],
     display: host.env["DISPLAY"],
     waylandDisplay: host.env["WAYLAND_DISPLAY"],
     ...(host.homeDir === undefined ? {} : { homeDir: host.homeDir }),
   });
+  return host.keychain === undefined ? platform : { ...platform, keychain: host.keychain };
 }
 
 /**

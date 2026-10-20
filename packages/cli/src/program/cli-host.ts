@@ -1,7 +1,13 @@
 import type { AssetRef } from "@binference/chain";
-import type { Clock, Http, HttpDownload, Random } from "@binference/core";
+import type { Clock, Http, HttpDownload, Random, SecretStore } from "@binference/core";
 import type { Engine } from "@binference/engine";
-import type { ServiceManager, SignalEvents, SystemFacts } from "@binference/platform";
+import type {
+  ProgramExit,
+  RunWithinOptions,
+  ServiceManager,
+  SignalEvents,
+  SystemFacts,
+} from "@binference/platform";
 import type { ChatTerminal } from "@binference/tui";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
@@ -74,6 +80,20 @@ export interface CliHost {
    * fake, so no test touches the machine's login items.
    */
   readonly serviceManager?: ServiceManager;
+  /**
+   * The OS keychain, entries under the service `binference`; this OS's own when left out. Tests
+   * pass a store of their own.
+   */
+  readonly keychain?: SecretStore;
+  /**
+   * Runs an OS program, such as npm when `binference uninstall` removes the program;
+   * `runCommandWithin` of the platform when left out. Tests pass a recorder, so no test runs npm.
+   */
+  readonly runProgram?: (
+    file: string,
+    args: readonly string[],
+    options: RunWithinOptions,
+  ) => Promise<ProgramExit>;
   /**
    * The folder of the console's build, which the engine serves; when left out, or before the
    * console is built, the engine serves no console.
