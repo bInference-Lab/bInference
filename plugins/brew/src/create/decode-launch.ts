@@ -12,6 +12,7 @@ import { decodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { type Address, getAddress } from "viem";
 import { brewAssetOf } from "../brew-setups.js";
 import { type LaunchParams, readLaunchCall } from "../contracts/launch-call.js";
+import { distributorAddressOf } from "./brew-distributor.js";
 import { tokenAddressOf } from "./brew-token.js";
 import { type ReadMetadata, readLaunchMetadata } from "./launch-metadata.js";
 import {
@@ -66,6 +67,10 @@ function readCreate(draft: TxDraft, parts: LaunchParts): ReadCreate | undefined 
     return undefined;
   }
   const { from, to, value } = call.value;
+  // A launch call to any contract but the factory that built it is none of this venue's.
+  if (getAddress(to) !== getAddress(built.factory)) {
+    return undefined;
+  }
   const read = { chain, from, to, value, params, built };
   return isOurPool(read) ? { ...read, metadata } : undefined;
 }
@@ -96,25 +101,27 @@ function firstBuyOf(
       };
 }
 
-// The settings the call writes: the fee recipient or the holder rewards the kept build named, the
-// start the kept build's tick came from, and the pool's two words.
+// The settings the call writes: holder rewards when its fee recipient is the token's holder
+// distributor, worked out off line from the factories, else that fee recipient; the start the
+// kept build's tick came from, and the pool's two words.
 function optionsOf(
   read: ReadCreate,
-  account: (address: Address) => AccountRef,
+  on: { readonly token: Address; readonly account: (address: Address) => AccountRef },
 ): Readonly<Record<string, LaunchOptionValue>> {
   const { params, built } = read;
-  const isHolders =
-    built.distributor !== undefined &&
-    getAddress(params.creatorFeeRecipient) === getAddress(built.distributor);
+  const factories = { distributorFactory: built.distributorFactory, brewFactory: built.factory };
+  const recipient = getAddress(params.creatorFeeRecipient);
+  const isHolders = recipient === distributorAddressOf(factories, on.token);
   const options: Record<string, LaunchOptionValue> = {
     holderRewards: isHolders,
     startMarketCap: built.startMarketCap.toString(),
     poolFee: "onePercent",
     liquidity: "oneRange",
   };
+  const named = on.account(recipient);
   return isHolders
-    ? options
-    : { poolFeeRecipient: account(params.creatorFeeRecipient), ...options };
+    ? { ...options, holderDistributor: named }
+    : { poolFeeRecipient: named, ...options };
 }
 
 /**
@@ -144,15 +151,16 @@ export function decodeLaunch(
   const account = (address: Address) => accountRefSchema.parse(`${draft.chain}:${address}`);
   const { name, symbol, totalSupply, metadataURI } = params;
   const created = { factory: to, creator: from, name, symbol, totalSupply, metadataURI };
+  const token = tokenAddressOf(created, params.salt);
   return ok({
-    token: brewAssetOf(tokenAddressOf(created, params.salt), setup),
+    token: brewAssetOf(token, setup),
     name,
     symbol,
     picture: metadata.picture,
     pair,
     feeBase: params.maxLaunchFeeWei,
     ...firstBuyOf(params, { pair, account }),
-    options: optionsOf(read, account),
+    options: optionsOf(read, { token, account }),
     words: metadata.words,
   });
 }

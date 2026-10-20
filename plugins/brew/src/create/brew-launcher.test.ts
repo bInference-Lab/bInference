@@ -6,18 +6,19 @@ import {
 } from "@binference/plugin-sdk";
 import { encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { launcherContract, successOf } from "@binference/plugin-sdk/testing";
-import { getAddress, parseEther } from "viem";
+import { getAddress, parseEther, zeroAddress } from "viem";
 import { describe, expect, it } from "vitest";
 import {
   btcb,
+  type FactoryScript,
   launcherOver,
   launchSimulator,
   launchWallet,
-  testDistributor,
+  otherDistributor,
   testLaunch,
   usdt,
 } from "../testing/launch-fixtures.js";
-import { bnb } from "../testing/recorded-launches.js";
+import { bnb, bscChain } from "../testing/recorded-launches.js";
 
 const live = { signal: new AbortController().signal };
 const other = encodeEvmDraft({ from: launchWallet, to: launchWallet, value: 0n, data: "0x" });
@@ -114,6 +115,13 @@ describe("a Brew launch's build", () => {
     expect(built.steps).toHaveLength(1);
   });
 
+  // A build with holder rewards on, over a fake chain that answers as the script says.
+  const holdersOver = async (script: FactoryScript) => {
+    const { poolFeeRecipient: _recipient, ...kept } = bound.options;
+    const options = { ...kept, ...otherOptions };
+    return launcherOver(launchSimulator(), script).buildLaunch({ ...bound, options }, live);
+  };
+
   it("names the holder distributor as fee recipient with holder rewards on", async () => {
     const launcher = launcherOver();
     const { poolFeeRecipient: _recipient, ...kept } = bound.options;
@@ -122,8 +130,16 @@ describe("a Brew launch's build", () => {
       live,
     );
     const decoded = built.steps.map((step) => launcher.decodeLaunch(step));
-    expect(decoded).toMatchObject([{ ok: true, value: { options: { holderRewards: true } } }]);
-    expect(testDistributor).toMatch(/^0x/);
+    const distributor = built.settings?.["holderDistributor"];
+    expect(distributor).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    expect(decoded).toMatchObject([
+      {
+        ok: true,
+        value: {
+          options: { holderRewards: true, holderDistributor: `${bscChain}:${distributor}` },
+        },
+      },
+    ]);
   });
 
   it.each<[string, () => Promise<unknown>]>([
@@ -142,6 +158,14 @@ describe("a Brew launch's build", () => {
     [
       "a factory that predicts another token",
       async () => launcherOver(launchSimulator(), { predictsOther: true }).buildLaunch(bound, live),
+    ],
+    [
+      "a distributor factory that predicts another holder distributor",
+      async () => holdersOver({ predictsDistributor: otherDistributor }),
+    ],
+    [
+      "a distributor factory that predicts none",
+      async () => holdersOver({ predictsDistributor: zeroAddress }),
     ],
   ])("refuses %s", async (_case, build) => {
     await expect(build()).rejects.toThrow(expect.objectContaining({ code: "brew.no_route" }));

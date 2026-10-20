@@ -305,7 +305,8 @@ describe("a brew launch on a BSC fork", () => {
       const proposed = valueOf(await rig.engine.handlers["intent/propose"](call(request, signal)));
       expect(proposed).toMatchObject({ state: "awaiting_confirmation" });
       const { view, card, token, minted } = await readied(rig, proposed, signal);
-      expect(await cardText(rig, view, "en")).toStrictEqual(
+      const lines = await cardText(rig, view, "en");
+      expect(lines).toStrictEqual(
         expect.arrayContaining([
           "Starts at a market cap of about 5,000 USDT, rounded down to the pool's next price step",
         ]),
@@ -336,6 +337,9 @@ describe("a brew launch on a BSC fork", () => {
         }),
       ]);
       expect({ balance, allowance }).toStrictEqual({ balance: 0n, allowance: 0n });
+      // The card named that distributor whole.
+      const shown = `Creator fees from the pool go to the token's holder distributor, ${distributor}`;
+      expect(lines.map((line) => line.toLowerCase())).toContain(shown.toLowerCase());
       await expect(launchedOn(fork, token)).resolves.toMatchObject({
         recorded: token,
         quoteToken: usdt,

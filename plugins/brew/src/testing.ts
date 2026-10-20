@@ -14,7 +14,7 @@ export {
   launcherOver,
   launchSimulator,
   launchWallet,
-  testDistributor,
+  otherDistributor,
   testLaunch,
   testPicture,
   testRecipient,

@@ -6,7 +6,7 @@ import {
   type TxDraft,
 } from "@binference/plugin-sdk";
 import { findCreate2Salt } from "@binference/plugin-sdk/evm";
-import { type Address, getAddress, hexToBytes } from "viem";
+import { type Address, getAddress, hexToBytes, zeroAddress } from "viem";
 import { brewAssetOf } from "../brew-setups.js";
 import {
   addressAnswerOf,
@@ -14,9 +14,10 @@ import {
   predictTokenData,
 } from "../contracts/launch-call.js";
 import { readBrew } from "../contracts/read-brew.js";
+import { distributorAddressOf } from "./brew-distributor.js";
 import { saltPrefixOf, type TokenCreate, tokenInitCodeHash } from "./brew-token.js";
 import { launchMetadataOf } from "./launch-metadata.js";
-import { builtKeyOf, keepBuilt, type LaunchParts } from "./launch-parts.js";
+import { type BuiltLaunch, builtKeyOf, keepBuilt, type LaunchParts } from "./launch-parts.js";
 import { type BrewLaunchSettings, brewSettingsOf } from "./launch-settings.js";
 import {
   addressOf,
@@ -67,20 +68,27 @@ async function tokenOf(
   return found;
 }
 
-// The holder distributor the token will get, which the distributor factory predicts.
+// The holder distributor the token will get: its CREATE2 address worked out off line from the
+// registry's two factories, which the distributor factory's own `predict` must give too, and
+// never the zero address, which BrewFactory would read as the launch wallet.
 async function distributorOf(placed: PlacedLaunch, token: Address, signal: AbortSignal) {
+  const factories = { distributorFactory: placed.distributorFactory, brewFactory: placed.factory };
+  const address = distributorAddressOf(factories, token);
   const read = { rpc: placed.chain.rpc, signal };
   const data = predictDistributorData(token);
   const what = "the token's holder distributor";
-  return readBrew(read, { to: placed.distributorFactory, data, what }, addressAnswerOf);
+  const to = placed.distributorFactory;
+  const predicted = await readBrew(read, { to, data, what }, addressAnswerOf);
+  if (getAddress(predicted) !== address || address === zeroAddress) {
+    throw refuse(
+      "The distributor factory predicts another holder distributor than its creation code gives.",
+    );
+  }
+  return address;
 }
 
 // What the decoder reads of the call beyond its bytes, kept by the call itself.
-function keep(
-  parts: LaunchParts,
-  steps: readonly TxDraft[],
-  built: { readonly startMarketCap: bigint; readonly distributor?: Address },
-): void {
+function keep(parts: LaunchParts, steps: readonly TxDraft[], built: BuiltLaunch): void {
   const create = steps.at(-1);
   if (create !== undefined) {
     keepBuilt(parts, builtKeyOf(create), built);
@@ -120,7 +128,8 @@ function checkedOf(request: LaunchBuildRequest, parts: LaunchParts): CheckedBuil
  * Builds a Brew launch from the launch wallet (decision 0283): an exact approval of the factory
  * for a token first buy, then one `launch` call. It writes the card's words and the owner's
  * picture into the metadata address, a 1% pool with the whole supply in one range from the
- * starting price's tick, the owner's fee recipient or the token's holder distributor, the first
+ * starting price's tick, the owner's fee recipient or the token's holder distributor, which it
+ * names as the worked-out `holderDistributor` and holds to its off-line address, the first
  * buy for the wallet at the host's minimum, a salt found off line so the token's address ends in
  * 6666, and the quoted fee as both the call's fee and the most it consents to. A fee other than
  * the quoted one, paused launches, a first buy without a minimum, a missing picture, and a chain
@@ -158,7 +167,9 @@ export async function buildLaunch(
   const minimum = request.firstBuyMinOut === undefined ? {} : { minimum: request.firstBuyMinOut };
   const write = { fee: factory.fee, metadataURI, initialTick, feeRecipient, salt: found.salt };
   const steps = launchStepsOf(request, placed, { ...write, ...minimum });
-  const held = distributor === undefined ? {} : { distributor };
-  keep(parts, steps, { startMarketCap: settings.startMarketCap, ...held });
-  return { token: brewAssetOf(found.address, placed.chain.setup), steps };
+  const kept = { factory: placed.factory, distributorFactory: placed.distributorFactory };
+  keep(parts, steps, { startMarketCap: settings.startMarketCap, ...kept });
+  // The card shows the holder distributor whole, and the create call must name it.
+  const worked = distributor === undefined ? {} : { settings: { holderDistributor: distributor } };
+  return { token: brewAssetOf(found.address, placed.chain.setup), steps, ...worked };
 }

@@ -66,8 +66,12 @@ describe("the brew venue's options on BSC", () => {
       "startMarketCap",
       "poolFee",
       "liquidity",
+      "holderDistributor",
     ]);
-    expect(host.outsideOnlySettings("brew")).toStrictEqual(["poolFeeRecipient"]);
+    expect(host.outsideOnlySettings("brew")).toStrictEqual([
+      "poolFeeRecipient",
+      "holderDistributor",
+    ]);
     expect(venues.launchesOnly("brew")).toBe(true);
     expect(venues.launchWalletCalls(["brew"])).toHaveLength(1);
   });

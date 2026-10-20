@@ -45,10 +45,10 @@ async function builtCall() {
     throw new Error("The create call cannot be read.");
   }
   const kept = parts.built.get(builtKeyOf(create));
-  const changed = (data: Hex, value = call.value.value): TxDraft => {
+  const changed = (data: Hex, value = call.value.value, to = call.value.to): TxDraft => {
     const draft = encodeEvmDraft({
       from: create.from,
-      to: `${bscChain}:${call.value.to}` as TxDraft["from"],
+      to: `${bscChain}:${to}` as TxDraft["from"],
       value,
       data,
     });
@@ -86,6 +86,13 @@ describe("a Brew create call's decoder", () => {
     expect(successOf(decodeLaunch(draft, parts)).options).toMatchObject({
       poolFeeRecipient: `${bscChain}:${elsewhere}`,
     });
+  });
+
+  it("refuses the same call sent to another contract than the factory", async () => {
+    const { parts, params, changed } = await builtCall();
+    const elsewhere = getAddress("0xd765972dD6a09Fa9c743b4708198A820FC5D31EE");
+    const draft = changed(launchCallData(params), undefined, elsewhere);
+    expect(decodeLaunch(draft, parts)).toStrictEqual({ ok: false, error: "unknown_call" });
   });
 
   it("refuses a call it never built", async () => {

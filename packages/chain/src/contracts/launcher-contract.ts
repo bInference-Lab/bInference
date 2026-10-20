@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import type { ContractCheck } from "@binference/core/testing";
-import { accountRefParts } from "../caip/account-ref.js";
+import { accountRefParts, printAccountRef } from "../caip/account-ref.js";
 import { assetRefParts } from "../caip/asset-ref.js";
 import type { TxDraft } from "../transaction.js";
 import {
@@ -147,6 +147,27 @@ function checkMinOut(launcher: Launcher, minOut: bigint, request: LaunchBuildReq
 
 // The create call reads back as the launch it was built for: its token, words, pair, fee and every
 // setting, and a first buy for the wallet of its spend, at no less than its minimum. A launcher that
+// What a build worked out, each a setting it may work out (decision 0280), as the engine reads
+// it: an account's address as an account on the launch wallet's chain.
+function workedOutOf(
+  subject: LauncherSubject,
+  launch: BuiltLaunch,
+): Readonly<Record<string, LaunchOptionValue>> {
+  const chain = accountRefParts(launch.request.wallet).chain;
+  const named = Object.entries(launch.build.settings ?? {});
+  return Object.fromEntries(
+    named.map(([name, value]: readonly [string, LaunchOptionValue]) => {
+      const option = subject.launcher.launchOptions.find((item) => item.name === name);
+      assert.ok(option?.isWorkedOut === true || option?.isOptional === true);
+      const account =
+        option.type === "account" && typeof value === "string"
+          ? printAccountRef({ chain, address: value })
+          : undefined;
+      return [name, account?.ok === true ? account.value : value];
+    }),
+  );
+}
+
 // writes the words on chain names them as the request gives them, and one that writes the picture
 // into its create call names it by its type and digest (decision 0279).
 function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
@@ -166,7 +187,7 @@ function checkCreate(subject: LauncherSubject, launch: BuiltLaunch): void {
       pair: request.pair,
       feeBase: request.fee.base,
       // What the build worked out joins the request's settings, as the engine adds it.
-      options: { ...request.options, ...build.settings },
+      options: { ...request.options, ...workedOutOf(subject, launch) },
     },
   );
   const written = subject.launcher.wordLimits === undefined ? undefined : writtenWordsOf(request);

@@ -54,11 +54,20 @@ U.S. citizens (decision
   6666, which the factory's `predictTokenAddress` must give too.
 - **Its settings.** `poolFeeRecipient`, an outside-only account (decision 0277's rule: binference
   never claims), given exactly when `holderRewards` is off; `holderRewards`, off by default, which
-  names the distributor `predict` gives as fee recipient; `startMarketCap`, an optional amount of
-  the pair; and `poolFee` (`onePercent`) and `liquidity` (`oneRange`), one word each. The launcher
-  checks that the fee recipient and holder rewards go together. The card shows each; the decoder
-  reads each back from the call's bytes, the start through the tick the build that made the call
-  wrote, and refuses any other fee tier, supply, range or tick.
+  names the token's holder distributor as fee recipient; `startMarketCap`, an optional amount of
+  the pair; `poolFee` (`onePercent`) and `liquidity` (`oneRange`), one word each; and, with holder
+  rewards on, `holderDistributor`, an outside-only account only the build works out (decision
+  0280). The launcher checks that the fee recipient, holder rewards and the distributor go
+  together. The card shows each, the distributor whole; the decoder reads each back from the
+  call's bytes, the start through the tick the build that made the call wrote, takes a call sent
+  to that build's factory alone, and refuses any other fee tier, supply, range or tick.
+- **The holder distributor.** Its address is worked out off line: CREATE2 from the registry's
+  distributor factory, with the token's address as the salt and BrewHolderDistributor's creation
+  code with BrewFactory and the token as its arguments, as `BrewDistributorFactory.predict` reads
+  (its verified source). The build refuses a `predict` answer that differs, and the zero address,
+  which the factory would read as the launch wallet (`brew.no_route`); the engine refuses one of
+  the install's wallets (`own_wallet_recipient`). The decoder reads holder rewards as on exactly
+  when the call's fee recipient is that off-line address.
 - **The start.** The owner's starting market cap, else the pair's fixed start, else $5,000 at
   the pair's price, rounded down. The pool's starting tick is the highest on the 1% tier's
   spacing of 200 whose price is at most that market cap over the supply, worked out in integer
@@ -85,10 +94,11 @@ U.S. citizens (decision
 
 - A Brew launch runs through the engine's launch path from the launch wallet, with every setting,
   the written picture and the U.S. warning on its card.
-- BrewToken's creation code, as BrewFactory holds it, is part of the plugin, held to a real
-  launch's address by a unit test and to the factory's own prediction at each build.
-- The decoder knows a call's start and its holder distributor only from the build that made it,
-  in the same engine process; a call the venue never built is `unknown_call`.
+- BrewToken's creation code, as BrewFactory holds it, and BrewHolderDistributor's, as the
+  distributor factory holds it, are part of the plugin, each held to a real address by a unit test
+  and to its factory's own prediction at each build.
+- The decoder knows a call's start and its factories only from the build that made it, in the
+  same engine process; a call the venue never built is `unknown_call`.
 - The token's address rests on the call's words and salt, which the build fixes; a factory that
   is paused or charges another fee by the block makes the call revert, which the simulation
   before the card and the reconcile alarm catch.

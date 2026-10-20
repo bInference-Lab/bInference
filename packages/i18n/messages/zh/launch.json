@@ -12,6 +12,7 @@
   "option.creatorFeeRecipient": "每笔交易的创建者费用留在发射台，直到 {address} 领取；该地址买入时也不付狙击税",
   "option.poolFeeRecipient": "交易池的创建者费用存放在 Brew 的锁仓合约中，直到 {address} 领取",
   "option.holderRewards": "持有者奖励：{value, select, yes {开启：Brew 的持有者分配合约将交易池手续费中创建者的部分用于回购该代币，并永久销毁所得代币} other {关闭}}",
+  "option.holderDistributor": "交易池的创建者费用付给该代币的持有者分配合约 {address}",
   "option.startMarketCap": "起始市值约为 {value}，向下取整到交易池的下一个价格档位",
   "option.poolFee": "交易池手续费：{value, select, onePercent {每笔交易 1%；Brew 的锁仓合约销毁代币一侧，并为 Brew 保留配对资产一侧的最多一半} other {{value}}}",
   "option.liquidity": "流动性：{value, select, oneRange {全部 1,000,000,000 枚供应量置于从起始价格向上的一个区间内，永久锁定在 Brew 的锁仓合约中} other {{value}}}",

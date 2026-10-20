@@ -1,5 +1,6 @@
 import {
   type AccountRef,
+  accountRefParts,
   accountRefSchema,
   type Amount,
   type AssetRef,
@@ -30,6 +31,7 @@ import {
 import { z } from "zod";
 import { createBrewVenue } from "../brew-venue.js";
 import { readLaunchCall } from "../contracts/launch-call.js";
+import { distributorAddressOf } from "../create/brew-distributor.js";
 import { tokenAddressOf } from "../create/brew-token.js";
 import { bnb, bscChain, registryContracts, wbnb } from "./recorded-launches.js";
 
@@ -48,14 +50,19 @@ const at = (address: string): AccountRef => accountRefSchema.parse(`${bscChain}:
 /** The launch wallet of the tests. */
 export const launchWallet: AccountRef = at("0x00000000000000000000000000000000000000D9");
 
-/** The holder distributor the fake distributor factory predicts for every token. */
-export const testDistributor: Address = getAddress("0x00000000000000000000000000000000000d157b");
+/** A holder distributor no Brew token gets, which a lying distributor factory predicts. */
+export const otherDistributor: Address = getAddress("0x00000000000000000000000000000000000d157b");
 
 /** BrewFactory and the distributor factory as the host gives them for a launch. */
 export const launchContracts: Readonly<Record<string, AccountRef>> = {
   ...registryContracts,
   "distributor-factory": at("0xd765972dD6a09Fa9c743b4708198A820FC5D31EE"),
 };
+
+// BrewFactory's address, which a token's holder distributor takes.
+const brewFactory = getAddress(
+  accountRefParts(registryContracts["factory"] ?? launchWallet).address,
+);
 
 const readsAbi = parseAbi([
   "function launchFeeWei() view returns (uint256)",
@@ -64,11 +71,15 @@ const readsAbi = parseAbi([
   "function predict(address token) view returns (address)",
 ]);
 
-/** How the fake BrewFactory answers: its fee, its pause, and whether it predicts another token. */
+/**
+ * How the fake BrewFactory answers: its fee, its pause, whether it predicts another token, and
+ * the holder distributor the distributor factory predicts in place of the token's own.
+ */
 export interface FactoryScript {
   readonly feeBase?: bigint;
   readonly isPaused?: boolean;
   readonly predictsOther?: boolean;
+  readonly predictsDistributor?: Address;
 }
 
 const callSchema = z.tuple([z.object({ to: z.string(), data: z.string() }), z.literal("latest")]);
@@ -90,11 +101,12 @@ function answerOf(to: string, data: Hex, script: FactoryScript): Hex {
     return word(script.isPaused === true);
   }
   if (call.functionName === "predict") {
-    return word(testDistributor);
+    const factories = { distributorFactory: getAddress(to), brewFactory };
+    return word(script.predictsDistributor ?? distributorAddressOf(factories, call.args[0]));
   }
   const [creator, salt, name, symbol, totalSupply, metadataURI] = call.args;
   const create = { factory: getAddress(to), creator, name, symbol, totalSupply, metadataURI };
-  return word(script.predictsOther === true ? testDistributor : tokenAddressOf(create, salt));
+  return word(script.predictsOther === true ? otherDistributor : tokenAddressOf(create, salt));
 }
 
 /** A failover that answers BrewFactory's and the distributor factory's views as the script says. */

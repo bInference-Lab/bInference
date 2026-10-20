@@ -23,8 +23,10 @@ export interface LaunchChain {
 export interface BuiltLaunch {
   /** The starting market cap the call's tick comes from, in base units of the pair. */
   readonly startMarketCap: bigint;
-  /** The holder distributor the call names as fee recipient, with holder rewards on. */
-  readonly distributor?: Address;
+  /** BrewFactory, which the call must be sent to. */
+  readonly factory: Address;
+  /** The distributor factory a token's holder distributor's address follows from. */
+  readonly distributorFactory: Address;
 }
 
 /**

@@ -20,6 +20,9 @@ import type { Address } from "viem";
  *   may set it, else the quote works it out.
  * - `poolFee` and `liquidity`, each one word: a 1% pool, and the whole supply in one range from
  *   the starting price up.
+ * - `holderDistributor`, with holder rewards on, the token's holder distributor that receives the
+ *   creator's share in place of a fee recipient: only the build works it out, from the token's
+ *   address, and the card shows it whole.
  */
 export const brewLaunchOptions: readonly LaunchOption[] = [
   { name: "poolFeeRecipient", type: "account", isOutsideOnly: true, isOptional: true },
@@ -27,6 +30,7 @@ export const brewLaunchOptions: readonly LaunchOption[] = [
   { name: "startMarketCap", type: "amount", isOptional: true },
   { name: "poolFee", type: "choice", choices: ["onePercent"], default: "onePercent" },
   { name: "liquidity", type: "choice", choices: ["oneRange"], default: "oneRange" },
+  { name: "holderDistributor", type: "account", isWorkedOut: true, isOutsideOnly: true },
 ];
 
 /**
@@ -41,11 +45,18 @@ export const brewWordLimits: LaunchWordLimits = {
   linkBytes: 100,
 };
 
-/** Whether a launch names a fee recipient exactly when its holder rewards are off. */
+/**
+ * Whether a launch names a fee recipient exactly when its holder rewards are off, and a holder
+ * distributor only while they are on.
+ */
 export function brewOptionsGoTogether(
   options: Readonly<Record<string, LaunchOptionValue>>,
 ): boolean {
-  return (options["holderRewards"] === true) === (options["poolFeeRecipient"] === undefined);
+  const isHolders = options["holderRewards"] === true;
+  return (
+    isHolders === (options["poolFeeRecipient"] === undefined) &&
+    (isHolders || options["holderDistributor"] === undefined)
+  );
 }
 
 /** A Brew launch's settings, as its create call writes them. */
