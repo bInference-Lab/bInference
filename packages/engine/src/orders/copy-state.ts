@@ -59,6 +59,14 @@ export interface CopyTaking {
   readonly facts?: TokenFacts & { readonly verified: boolean };
 }
 
+/** A leader sale a copy order sells again: the trade, and when it may try again. */
+export interface CopyRetry extends Omit<CopyTaking, "take"> {
+  readonly dueAtMs: number;
+}
+
+/** The most leader sales a copy order waits to sell again. */
+export const maxRetries = 50;
+
 /** One copied buy the daily cap counts: when it filled and its value in micro-dollars. */
 interface CopyBuy {
   readonly atMs: number;
@@ -93,11 +101,35 @@ export interface CopyState {
     readonly asset: AssetRef;
   }[];
   readonly taking?: CopyTaking;
+  /**
+   * The leader sales it sells again, a minute after a passing failure, for an hour from the sale
+   * (the owner's choice, decision 0260), at most 50.
+   */
+  readonly retries: readonly CopyRetry[];
   readonly buys: readonly CopyBuy[];
   readonly held: readonly CopyHolding[];
   /** The hour its skips are told in: five, then one line for the rest (decision 0260). */
   readonly notices?: NoticeHour;
 }
+
+// A leader trade as a take or a retry keeps it.
+const tradeShape = {
+  id: z.int().positive(),
+  txHash: z.string().refine(isTxHash),
+  side: z.enum(["buy", "sell"]),
+  asset: assetRefSchema,
+  shareSoldBps: bpsSchema.exactOptional(),
+  atMs: epochMsSchema,
+  paid: amountSchema.exactOptional(),
+  facts: z
+    .strictObject({
+      symbol: z.string().max(200),
+      name: z.string().max(200),
+      decimals: z.int().min(0).max(255),
+      verified: z.boolean(),
+    })
+    .exactOptional(),
+};
 
 const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
   sinceMs: epochMsSchema,
@@ -112,26 +144,8 @@ const copyStateSchema: z.ZodType<CopyState> = z.strictObject({
       }),
     )
     .max(recentTakes),
-  taking: z
-    .strictObject({
-      id: z.int().positive(),
-      take: z.int().positive(),
-      txHash: z.string().refine(isTxHash),
-      side: z.enum(["buy", "sell"]),
-      asset: assetRefSchema,
-      shareSoldBps: bpsSchema.exactOptional(),
-      atMs: epochMsSchema,
-      paid: amountSchema.exactOptional(),
-      facts: z
-        .strictObject({
-          symbol: z.string().max(200),
-          name: z.string().max(200),
-          decimals: z.int().min(0).max(255),
-          verified: z.boolean(),
-        })
-        .exactOptional(),
-    })
-    .exactOptional(),
+  taking: z.strictObject({ ...tradeShape, take: z.int().positive() }).exactOptional(),
+  retries: z.array(z.strictObject({ ...tradeShape, dueAtMs: epochMsSchema })).max(maxRetries),
   buys: z.array(z.strictObject({ atMs: epochMsSchema, usdMicros: decimalStringSchema })),
   held: z.array(z.strictObject({ asset: assetRefSchema, base: decimalStringSchema })),
   notices: noticeHourSchema.exactOptional(),
@@ -151,7 +165,7 @@ export function copyStateOf(kept: JsonValue | undefined): CopyState | undefined 
 
 /** The state a copy order starts with as it becomes active at `nowMs`. */
 export function copyStartOf(nowMs: number): CopyState {
-  return { sinceMs: nowMs, through: 0, takes: 0, recent: [], buys: [], held: [] };
+  return { sinceMs: nowMs, through: 0, takes: 0, recent: [], retries: [], buys: [], held: [] };
 }
 
 /**
@@ -173,9 +187,15 @@ export function copiedHeldOf(state: CopyState, asset: AssetRef): bigint {
 export function takenState(state: CopyState, taking: Omit<CopyTaking, "take">): CopyState {
   const take = state.takes + 1;
   const through = taking.id > state.through ? taking.id : state.through;
+  const retries = state.retries.filter(({ id }) => id !== taking.id);
   const { txHash, side, asset } = taking;
-  const recent = [...state.recent, { txHash, side, asset }].slice(-recentTakes);
-  return { ...state, through, takes: take, recent, taking: { ...taking, take } };
+  const isKnown = state.recent.some(
+    (seen) => seen.txHash === txHash && seen.side === side && seen.asset === asset,
+  );
+  const recent = isKnown
+    ? state.recent
+    : [...state.recent, { txHash, side, asset }].slice(-recentTakes);
+  return { ...state, through, takes: take, recent, retries, taking: { ...taking, take } };
 }
 
 /** What a copy order's row names: the leader trade its take copies, and the take; none else. */
@@ -189,8 +209,21 @@ export function copyLinkOf(
 
 /** The state once the order passed over the leader's trades up to number `through`. */
 export function passedState(state: CopyState, through: number): CopyState {
-  const { taking: _taking, ...rest } = state;
-  return { ...rest, through };
+  return { ...state, through };
+}
+
+/**
+ * The state once the order's take ended: a filled, final or given-up take is done; a leader sale
+ * that failed for a passing reason waits, as a retry due at `dueAtMs`, to be sold again.
+ */
+export function endedState(state: CopyState, call: { readonly dueAtMs?: number } = {}): CopyState {
+  const { taking, ...rest } = state;
+  if (taking === undefined || call.dueAtMs === undefined || taking.side !== "sell") {
+    return rest;
+  }
+  const { take: _take, ...trade } = taking;
+  const others = state.retries.filter(({ id }) => id !== trade.id);
+  return { ...rest, retries: [...others, { ...trade, dueAtMs: call.dueAtMs }] };
 }
 
 /** What a copy order's fill traded, which its state counts as the fill records. */

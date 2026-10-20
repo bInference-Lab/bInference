@@ -1,5 +1,4 @@
 import type { StoredIntents } from "../intents/create-stored-intents.js";
-import { repairCopyTrades } from "../orders/copy-repair.js";
 import { repairDcaPeriods } from "../orders/dca-repair.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { repairOrderFills } from "../orders/repair-order-fills.js";
@@ -24,8 +23,8 @@ export function paperRepairOf(
 
 /**
  * The startup's repair of the order fills a stop left (decision 0197), then of the DCA periods a
- * stop cut off between keeping them and their buy (decision 0246), and of the leader trades a stop
- * cut off between a copy order's take and its fill (decision 0260).
+ * stop cut off between keeping them and their buy (decision 0246). A copy order's take a stop cut
+ * off is ended by the copy runner, by its rows (decision 0260).
  */
 export function orderRepairOf(
   options: EngineOptions,
@@ -39,7 +38,6 @@ export function orderRepairOf(
       call,
     );
     const dca = { orders: stores.orders, fills, intents: stores.intents, chains, clock };
-    const periods = await repairDcaPeriods(dca, call);
-    return repaired + periods + (await repairCopyTrades(dca, call));
+    return repaired + (await repairDcaPeriods(dca, call));
   };
 }

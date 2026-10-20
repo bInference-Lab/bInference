@@ -173,8 +173,8 @@ export const intentReasons: readonly IntentReason[] = [
  * still settling; `period_unreadable`, a DCA order whose period no longer reads, which ends it
  * (decision 0246); `share_unread`, a copy order's sale whose leader's share the leader watcher
  * could not read, `token_unreadable`, a copied trade of a token that answers no symbol or
- * decimals, and `leader_unpriced`, a copied buy whose leader's spend nothing values in dollars
- * (decision 0260). A copy order's trade past its minute is `late` too. A live order while
+ * decimals, `leader_unpriced`, a copied buy whose leader's spend nothing values in dollars, and
+ * `copy_sale_lapsed`, a mirrored sale not sold within an hour of the leader's (decision 0260). A copy order's trade past its minute is `late` too. A live order while
  * live fills are off skips with the fill reason `live_fills_off`, and a size in dollars with no USD
  * price with the policy's `no_price`. The skip is an `order_fills` row with its reason,
  * and its message is `reason.<code>` like an intent's.
@@ -193,6 +193,7 @@ export const orderSkipReasons = [
   "share_unread",
   "token_unreadable",
   "leader_unpriced",
+  "copy_sale_lapsed",
 ] as const;
 
 /** A reason an auto order skipped a fill before any intent was stored. */

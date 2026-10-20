@@ -34,6 +34,7 @@ describe("a copy order's creation", () => {
       through: 0,
       takes: 0,
       recent: [],
+      retries: [],
       buys: [],
       held: [],
     });

@@ -201,7 +201,8 @@ bought later ([decision 0246](../DECISIONS.md#d0246)); `late` too for a copy ord
 whose block time is more than 60 seconds old at the head of its agent's line, `share_unread`, a
 copy order's sale whose leader's share the leader watcher could not read, and `token_unreadable`,
 a copy order's trade of a token whose decimals neither the registry nor its contract gives, and
-`leader_unpriced`, a copy order's buy whose leader's spend nothing values in dollars
+`leader_unpriced`, a copy order's buy whose leader's spend nothing values in dollars, and
+`copy_sale_lapsed`, a copy order's sale not sold within an hour of its leader's
 ([decision 0260](../DECISIONS.md#d0260)); and `no_price`,
 a size in dollars whose asset has no USD price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk
@@ -282,7 +283,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
   watcher stored them, from the moment it became active, and keeps the last one it took in its
   trigger state before the trade's fill, so a trade is copied once per order, and once per
   transaction, side and token, only from a block at a confirmed depth behind the leader watcher; a stop between the
-  two records a buy as `missed` at the next start, and leaves a sale to be sold late. A buy more
+  two records a buy as `missed` at the next run, and leaves a sale to be sold again. A sale skipped
+  for a passing reason (`engine_locked`, `fill_waiting`, `no_route`, `venue_down`, `fill_failed`,
+  `fill_lapsed`) is sold again a minute later, for an hour from the leader's sale, then given up as
+  `copy_sale_lapsed`; a buy is never tried again. A buy more
   than 60 seconds late is never made; a late sale is still made, at the price then, and told with
   `fill.copySellLate`. It copies a buy of a token other than the
   chain's coin and what it spends, at the least of its `perBuyUsdMicros`, the agent's

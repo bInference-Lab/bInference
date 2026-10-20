@@ -11,10 +11,11 @@ import {
   copyStateDocument,
   copyStateOf,
   type CopyTaking,
+  endedState,
   passedState,
   takenState,
 } from "./copy-state.js";
-import { lostTakeOf } from "./copy-taken.js";
+import { isRetryLapsed, retryAtOf, type TakeEnd, takeEndOf } from "./copy-takes.js";
 import { confirmedBlockOf, isCopied } from "./copy-trade-filter.js";
 import { isLineHeld } from "./fill-faults.js";
 import type { OrderFills } from "./fill-orders.js";
@@ -163,17 +164,6 @@ async function copyOne(
   return fillTaken(parts, reading, { taking, signal });
 }
 
-// A leader sale a stop cut off between its take and its fill is still sold, late, once: taken
-// again now, as no row and no live fill shows it ran (decision 0260).
-async function sellLost(parts: CopyOrdersParts, reading: Reading, signal: AbortSignal) {
-  const lost = await lostTakeOf(parts, reading.order, signal);
-  if (lost?.side !== "sell") {
-    return true;
-  }
-  const { take: _take, ...taking } = lost;
-  return fillTaken(parts, reading, { taking, signal });
-}
-
 // The order as it stands now, with its state; none once it stopped being an active copy order.
 async function readingOf(
   parts: CopyOrdersParts,
@@ -184,6 +174,77 @@ async function readingOf(
   const order = read?.state === "active" ? asCopyOrder(read) : undefined;
   const state = copyStateOf(order?.triggerState);
   return order === undefined || state === undefined ? undefined : { order, state };
+}
+
+// The row a take that ended with none of its own still needs: a buy a stop cut off is `missed`, a
+// sale with no room to wait is `copy_sale_lapsed`.
+function endReasonOf(call: {
+  readonly taking: CopyTaking;
+  readonly end: TakeEnd;
+  readonly isUnsold: boolean;
+  readonly dueAtMs: number | undefined;
+}): "missed" | "copy_sale_lapsed" | undefined {
+  const { taking, end, isUnsold, dueAtMs } = call;
+  if (end.kind === "lost" && taking.side === "buy") {
+    return "missed";
+  }
+  return isUnsold && dueAtMs === undefined ? "copy_sale_lapsed" : undefined;
+}
+
+// Ends the order's current take as its rows say (decision 0260): a buy a stop cut off is recorded
+// as `missed`; a sale a stop cut off, or skipped for a passing reason, waits to be sold again, else
+// is given up with `copy_sale_lapsed`. Answers where the order stands, or none while its agent's
+// live fill runs or another write moved it.
+async function settleTake(
+  parts: CopyOrdersParts,
+  reading: Reading,
+  signal: AbortSignal,
+): Promise<Reading | undefined> {
+  const { order, state } = reading;
+  const { taking } = state;
+  if (taking === undefined) {
+    return reading;
+  }
+  const end = await takeEndOf(parts, { order, taking, signal });
+  if (end.kind === "open") {
+    return undefined;
+  }
+  const isUnsold = taking.side === "sell" && end.kind !== "done";
+  const dueAtMs = isUnsold ? retryAtOf(end, state, parts.clock.now()) : undefined;
+  const reason = endReasonOf({ taking, end, isUnsold, dueAtMs });
+  if (reason !== undefined) {
+    await parts.fills.skip({ order: order.id, reason }, { signal });
+  }
+  const ended = endedState(state, dueAtMs === undefined ? {} : { dueAtMs });
+  const kept = await keep(parts, order, { state: ended, signal });
+  return kept === undefined ? undefined : { order: kept, state: ended };
+}
+
+// Sells again each leader sale whose minute came, the oldest first, or gives up one past its hour
+// with `copy_sale_lapsed` (the owner's choice, decision 0260).
+async function sellAgain(
+  parts: CopyOrdersParts,
+  reading: Reading,
+  signal: AbortSignal,
+): Promise<Reading | undefined> {
+  const nowMs = parts.clock.now();
+  const due = reading.state.retries.find(({ dueAtMs }) => dueAtMs <= nowMs);
+  if (due === undefined) {
+    return reading;
+  }
+  const { dueAtMs: _due, ...taking } = due;
+  if (isRetryLapsed(due, nowMs)) {
+    const taken = takenState(reading.state, taking);
+    const kept = await keep(parts, reading.order, { state: taken, signal });
+    if (kept !== undefined) {
+      await parts.fills.skip({ order: kept.id, reason: "copy_sale_lapsed" }, { signal });
+    }
+  } else if (!(await fillTaken(parts, reading, { taking, signal }))) {
+    return undefined;
+  }
+  const next = await readingOf(parts, reading.order.id, signal);
+  const settled = next === undefined ? undefined : await settleTake(parts, next, signal);
+  return settled === undefined ? undefined : sellAgain(parts, settled, signal);
 }
 
 // Copies or passes over each trade in turn; answers where the order stands after the last, or
@@ -215,7 +276,8 @@ async function copyTrades(
   }
   const goesOn = await copyOne(parts, reading, { trade, asset: seen.asset, signal });
   const next = goesOn ? await readingOf(parts, reading.order.id, signal) : undefined;
-  return next === undefined ? undefined : copyTrades(parts, next, { ...call, trades: rest });
+  const settled = next === undefined ? undefined : await settleTake(parts, next, signal);
+  return settled === undefined ? undefined : copyTrades(parts, settled, { ...call, trades: rest });
 }
 
 // Copies the next trades of one read; answers whether another read may follow.
@@ -225,11 +287,6 @@ async function copyRead(
   signal: AbortSignal,
 ): Promise<boolean> {
   const { order, state } = start;
-  // While its agent's live fill settles, the order reads nothing: a leader sale of a token its own
-  // buy is still landing would find no holding and be passed over (decision 0260).
-  if (await isLineHeld(parts, order, signal)) {
-    return false;
-  }
   const query = {
     account: order.request.trigger.leader,
     afterId: state.through,
@@ -253,12 +310,17 @@ async function copyRead(
   return passed !== undefined && trades.length === tradesPerRead;
 }
 
-// Copies one order's trades, read after read, until none is left or it cannot go on; a sale a
-// stop cut off goes first.
+// Copies one order's trades, read after read, until none is left or it cannot go on: its last take
+// ends first, then the sales whose minute to be sold again came. While its agent's live fill
+// settles, the order reads nothing: a leader sale of a token its own buy is still landing would
+// find no holding and be passed over (decision 0260).
 async function copyOrder(parts: CopyOrdersParts, id: Id<"ord">, signal: AbortSignal) {
   const first = await readingOf(parts, id, signal);
-  const isSold = first !== undefined && (await sellLost(parts, first, signal));
-  const reading = isSold ? await readingOf(parts, id, signal) : undefined;
+  if (first === undefined || (await isLineHeld(parts, first.order, signal))) {
+    return;
+  }
+  const settled = await settleTake(parts, first, signal);
+  const reading = settled === undefined ? undefined : await sellAgain(parts, settled, signal);
   if (reading !== undefined && (await copyRead(parts, reading, signal))) {
     await copyOrder(parts, id, signal);
   }

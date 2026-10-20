@@ -31,7 +31,7 @@ Every order fill runs the money path with no card, held to its order's bounds
   copied at most once per order, across restarts. Each take has the order's next number, and every
   row of its fill names the take and the leader trade (migration 0045): a take with no row and no
   live fill of its agent on the way was cut off by a stop, which rows tell, never a clock. A buy so
-  cut off is recorded as `missed`; a sale so cut off is sold once, late. While a live fill of its
+  cut off is recorded as `missed`; a sale so cut off is sold again, as below, never twice. While a live fill of its
   agent settles, the order reads no trade: a leader sale of a token its own buy is still landing
   waits for that buy, then is sold, never passed over.
 - **What it copies.** A buy of a token that is neither the chain's coin nor what the order spends,
@@ -72,6 +72,15 @@ Every order fill runs the money path with no card, held to its order's bounds
   wallet holds: `min(copied, held) × share / 10,000`, rounded down, sold as an amount. What it sold
   leaves the order's holding. A sale whose share the watcher did not read is skipped with the new
   reason `share_unread` and reported: nothing guesses it.
+- **A sale that fails for a passing reason** (the owner's choice, 2026-10-20) is sold again a
+  minute after it failed, for an hour from the leader's sale: a locked engine (`engine_locked`),
+  another fill holding the line (`fill_waiting`), a quote no venue or route answered
+  (`venue_down`, `no_route`), a fill that threw or ran past its 30 s deadline (`fill_failed`), a
+  live fill whose grant ran out in its queue (`fill_lapsed`), and a sale a stop cut off, before or
+  after its confirmation. Each try is a new take of the same leader sale, with the same share rule,
+  never over what the order bought or the wallet holds; a fill ends the sale, once. Past the hour,
+  or with 50 sales already waiting, it is given up with the new reason `copy_sale_lapsed` and a
+  notice. Any other reason ends it. A buy is never tried again.
 - **Risk and caps as any fill.** Each buy runs the policy and the token risk check; a honeypot or a
   blocked token ends `risk_blocked` and is skipped, with a notice that names the leader's trade and
   its token. The per-trade and rolling caps hold as for any trade.

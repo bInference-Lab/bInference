@@ -9,6 +9,7 @@ import {
   copyStateAfterFill,
   copyStateDocument,
   copyStateOf,
+  endedState,
   passedState,
   takenState,
   usedInDayOf,
@@ -52,6 +53,7 @@ describe("a copy order's state", () => {
       through: 0,
       takes: 0,
       recent: [],
+      retries: [],
       buys: [],
       held: [],
     });
@@ -61,7 +63,7 @@ describe("a copy order's state", () => {
     expect(copyStateOf({ nextAtMs: 5 })).toBeUndefined();
   });
 
-  it("takes a trade with its number, and passes trades over with no trade under way", () => {
+  it("takes a trade with its number, and passes trades over keeping the take", () => {
     const taken = takenState(copyStartOf(5), taking);
     expect([taken.through, taken.takes, taken.taking]).toStrictEqual([
       7,
@@ -69,8 +71,19 @@ describe("a copy order's state", () => {
       { ...taking, take: 1 },
     ]);
     const passed = passedState(taken, 9);
-    expect(passed.through).toBe(9);
-    expect(passed).not.toHaveProperty("taking");
+    expect([passed.through, passed.taking]).toStrictEqual([9, taken.taking]);
+  });
+
+  it("ends a take, keeping a sale to sell again, and takes the sale again under a new number", () => {
+    const sale = { ...taking, side: "sell" as const };
+    const ended = endedState(takenState(copyStartOf(5), sale), { dueAtMs: 60 });
+    expect(ended).not.toHaveProperty("taking");
+    expect(ended.retries).toStrictEqual([{ ...sale, dueAtMs: 60 }]);
+    const again = takenState(ended, sale);
+    expect([again.takes, again.retries, again.recent]).toStrictEqual([2, [], ended.recent]);
+    expect(endedState(takenState(copyStartOf(5), taking), { dueAtMs: 60 }).retries).toStrictEqual(
+      [],
+    );
   });
 
   it("counts a buy's value for a day and adds what it bought to the token's holding", () => {

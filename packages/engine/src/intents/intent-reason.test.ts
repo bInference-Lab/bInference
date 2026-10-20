@@ -105,6 +105,7 @@ describe("intent reasons", () => {
       "share_unread",
       "token_unreadable",
       "leader_unpriced",
+      "copy_sale_lapsed",
     ]);
     expect(intentReasons.filter((code) => new Set<string>(orderSkipReasons).has(code))).toEqual([]);
   });

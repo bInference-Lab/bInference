@@ -52,6 +52,7 @@
   "share_unread": "无法读取带单钱包卖出的持仓比例",
   "token_unreadable": "该代币合约未返回其符号和小数位数",
   "leader_unpriced": "无法以美元估值带单钱包的这笔买入",
+  "copy_sale_lapsed": "在带单钱包卖出后一小时内未能跟随卖出；订单仍持有该代币",
   "engine_locked": "binference 已锁定，运行 `binference unlock` 之前不会成交任何订单",
   "live_fills_off": "实盘自动订单暂时不会成交，目前只有模拟订单会成交",
   "nothing_to_spend": "钱包中订单要花费的资产不足",
