@@ -73,8 +73,11 @@ export function timedWorkOf(
   return {
     tickOrders: async ({ signal }) =>
       tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
-    expireCards: async ({ signal }) =>
-      sooner(await expireDueCards(intents.cardTimer, signal), drafts.expire()),
+    // Drafts expire first, so a card timer that throws never keeps an ended draft's message open.
+    expireCards: async ({ signal }) => {
+      const nextDraft = drafts.expire();
+      return sooner(await expireDueCards(intents.cardTimer, signal), nextDraft);
+    },
     runSchedules: async ({ signal }) =>
       runQueue({ schedules: chat.schedules, dca: intents.dca, clock }, signal),
     runCopies: async (call) => intents.copies.run(call),
