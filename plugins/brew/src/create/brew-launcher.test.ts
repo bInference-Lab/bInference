@@ -83,7 +83,10 @@ describe("the brew launcher", () => {
     // BTCB at $100,000: 10^11 micro-dollars for 10^18 base units.
     const priced = { ...terms, pairUsdPrice: { numerator: 10n ** 11n, denominator: 10n ** 18n } };
     const quote = successOf(await launcherOver().quoteLaunch(priced, live));
-    expect(quote.settings).toStrictEqual({ startMarketCap: (5n * 10n ** 16n).toString() });
+    expect(quote.settings).toStrictEqual({
+      startMarketCap: (5n * 10n ** 16n).toString(),
+      startBasis: "usdPrice",
+    });
     await expect(launcherOver().quoteLaunch(terms, live)).resolves.toStrictEqual({
       ok: false,
       error: "start_unpriced",
@@ -130,6 +133,14 @@ describe("the brew launcher", () => {
 describe("a Brew launch's build", () => {
   const request = { ...testLaunch, picture: testLaunch.image, fee: { asset: bnb, base: 0n } };
   const bound = { ...request, firstBuyMinOut: parseEther("99") };
+
+  it("reads back a start worked out from the pair's USD price, for the card to say so", async () => {
+    const launcher = launcherOver();
+    const priced = { ...bound.options, startBasis: "usdPrice" };
+    const built = await launcher.buildLaunch({ ...bound, options: priced }, live);
+    const decoded = built.steps.map((step) => launcher.decodeLaunch(step));
+    expect(decoded).toMatchObject([{ ok: true, value: { options: { startBasis: "usdPrice" } } }]);
+  });
 
   it("names a token whose address ends in 6666", async () => {
     const built = await launcherOver().buildLaunch(bound, live);

@@ -14,6 +14,7 @@
   "option.holderRewards": "Holder rewards: {value, select, yes {on: Brew's holder distributor spends the creator's part of the pool fees on the token and burns what it gets, for good} other {off}}",
   "option.holderDistributor": "Creator fees from the pool go to the token's holder distributor, {address}",
   "option.startMarketCap": "Starts at a market cap of about {value}, rounded down to the pool's next price step",
+  "option.startBasis": "{value, select, usdPrice {That start is $5,000 at binference's USD price of the pair when quoted} other {{value}}}",
   "option.poolFee": "Pool fee: {value, select, onePercent {1% on every trade; Brew's locker burns the token's side and keeps up to half of the pair's side for Brew} other {{value}}}",
   "option.liquidity": "Liquidity: {value, select, oneRange {the whole supply of 1,000,000,000 in one range from the starting price up, locked in Brew's locker for good} other {{value}}}",
   "warn.notForUsCitizens": "⚠️ Brew's site says it is not available to U.S. citizens",

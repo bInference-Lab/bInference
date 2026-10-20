@@ -21,6 +21,8 @@ import type { Address } from "viem";
  *   may set it, else the quote works it out.
  * - `poolFee` and `liquidity`, each one word: a 1% pool, and the whole supply in one range from
  *   the starting price up.
+ * - `startBasis`, `usdPrice` when the quote worked the start out as $5,000 at binference's USD
+ *   price of the pair, so the card says so beside the amount; absent for any other start.
  * - `holderDistributor`, with holder rewards on, the token's holder distributor that receives the
  *   creator's share in place of a fee recipient: only the build works it out, from the token's
  *   address, and the card shows it whole.
@@ -31,6 +33,7 @@ export const brewLaunchOptions: readonly LaunchOption[] = [
   { name: "startMarketCap", type: "amount", isOptional: true },
   { name: "poolFee", type: "choice", choices: ["onePercent"], default: "onePercent" },
   { name: "liquidity", type: "choice", choices: ["oneRange"], default: "oneRange" },
+  { name: "startBasis", type: "choice", choices: ["usdPrice"], isWorkedOut: true },
   { name: "holderDistributor", type: "account", isWorkedOut: true, isOutsideOnly: true },
 ];
 
@@ -69,6 +72,8 @@ export interface BrewLaunchSettings {
   readonly holderRewards: boolean;
   /** The starting market cap, in base units of the pair. */
   readonly startMarketCap: bigint;
+  /** The quote worked the start out from binference's USD price of the pair. */
+  readonly isStartPriced: boolean;
 }
 
 function refuse(message: string): BinferenceError {
@@ -110,5 +115,6 @@ export function brewSettingsOf(
     ...(feeRecipient === undefined ? {} : { feeRecipient }),
     holderRewards,
     startMarketCap: BigInt(start),
+    isStartPriced: options["startBasis"] === "usdPrice",
   };
 }

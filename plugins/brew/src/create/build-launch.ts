@@ -168,7 +168,8 @@ export async function buildLaunch(
   const write = { fee: factory.fee, metadataURI, initialTick, feeRecipient, salt: found.salt };
   const steps = launchStepsOf(request, placed, { ...write, ...minimum });
   const kept = { factory: placed.factory, distributorFactory: placed.distributorFactory };
-  keep(parts, steps, { startMarketCap: settings.startMarketCap, ...kept });
+  const { startMarketCap, isStartPriced } = settings;
+  keep(parts, steps, { startMarketCap, isStartPriced, ...kept });
   // The card shows the holder distributor whole, and the create call must name it.
   const worked = distributor === undefined ? {} : { settings: { holderDistributor: distributor } };
   return { token: brewAssetOf(found.address, placed.chain.setup), steps, ...worked };

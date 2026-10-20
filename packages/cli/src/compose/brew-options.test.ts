@@ -66,6 +66,7 @@ describe("the brew venue's options on BSC", () => {
       "startMarketCap",
       "poolFee",
       "liquidity",
+      "startBasis",
       "holderDistributor",
     ]);
     expect(host.outsideOnlySettings("brew")).toStrictEqual([

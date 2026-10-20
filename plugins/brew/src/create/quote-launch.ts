@@ -3,6 +3,7 @@ import {
   accountRefParts,
   err,
   type LaunchQuote,
+  type LaunchOptionValue,
   type LaunchQuoteFailure,
   type LaunchTerms,
   ok,
@@ -113,11 +114,28 @@ async function firstBuyOutOf(
   return receivedOf(create, { wallet, token, pair: terms.pair });
 }
 
-/** A launch's start: its market cap, the pool's tick for it, and whether the quote worked it out. */
+/**
+ * A launch's start: its market cap, the pool's tick for it, and the settings the quote worked out
+ * for it: none for the owner's start, the market cap for the pair's fixed one, and its basis too
+ * for one from the pair's USD price.
+ */
 interface Start {
   readonly marketCap: bigint;
   readonly initialTick: number;
-  readonly isWorkedOut: boolean;
+  readonly settings: Readonly<Record<string, string>>;
+}
+
+// The settings the quote worked out for a start the owner did not set.
+function workedOutOf(
+  given: LaunchOptionValue | undefined,
+  marketCap: bigint,
+  placed: PlacedLaunch,
+): Readonly<Record<string, string>> {
+  if (typeof given === "string") {
+    return {};
+  }
+  const start = { startMarketCap: marketCap.toString() };
+  return placed.pair.startBase === undefined ? { ...start, startBasis: "usdPrice" } : start;
 }
 
 // The owner's start, else the pair's default (decision 0283): `start_unpriced` with neither, and
@@ -136,7 +154,7 @@ function startOf(
   const initialTick = startTickOf(start);
   return initialTick === undefined
     ? err("start_unreachable")
-    : ok({ marketCap, initialTick, isWorkedOut: typeof given !== "string" });
+    : ok({ marketCap, initialTick, settings: workedOutOf(given, marketCap, placed) });
 }
 
 /**
@@ -168,8 +186,9 @@ export async function quoteLaunch(
   }
   checkFirstBuy(terms);
   const fee = { asset: placed.chain.setup.nativeAsset, base: factory.fee };
-  const { marketCap, initialTick, isWorkedOut } = start.value;
-  const settings = isWorkedOut ? { settings: { startMarketCap: marketCap.toString() } } : {};
+  const { initialTick } = start.value;
+  const settings =
+    Object.keys(start.value.settings).length === 0 ? {} : { settings: start.value.settings };
   if (terms.firstBuy === undefined) {
     return ok({ fee, tokenDecimals, ...settings });
   }

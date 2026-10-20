@@ -72,7 +72,10 @@ U.S. citizens (decision
 - **The start.** The owner's starting market cap, else the pair's fixed start, else $5,000 at
   the pair's price, rounded down. The pool's starting tick is the highest on the 1% tier's
   spacing of 200 whose price is at most that market cap over the supply, worked out in integer
-  arithmetic. A pair with no start is `start_unpriced`, and a start no tick reaches
+  arithmetic. A start worked out from the pair's USD price also names `startBasis` (`usdPrice`),
+  a worked-out choice (decision 0280), so the card says it is $5,000 at binference's price beside
+  the amount in the pair, and the decoder reads it from the build that made the call. A pair with
+  no start is `start_unpriced`, and a start no tick reaches
   `start_unreachable` (decision
   [0284](0284-a-launchpad-names-why-it-refuses-a-launch.md)).
 - **The words and the picture.** The metadata address is the document Brew's own launches write:

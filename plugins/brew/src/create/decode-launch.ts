@@ -115,6 +115,7 @@ function optionsOf(
   const options: Record<string, LaunchOptionValue> = {
     holderRewards: isHolders,
     startMarketCap: built.startMarketCap.toString(),
+    ...(built.isStartPriced ? { startBasis: "usdPrice" } : {}),
     poolFee: "onePercent",
     liquidity: "oneRange",
   };
