@@ -11,6 +11,7 @@ import {
   type AlertWakeOutcome,
   canFire,
   maxAlertWakesPerHour,
+  replacesWaitingWake,
   wakeAnswerOf,
 } from "../alerts/alert-fire.js";
 import {
@@ -177,7 +178,7 @@ function wakeOf(
     return { outcome: "quiet" };
   }
   const waiting =
-    alert.lastMessageId === undefined
+    alert.lastMessageId === undefined || !replacesWaitingWake(alert)
       ? undefined
       : inbox.replaceNow(alert.lastMessageId, wake.payload);
   return waiting === undefined

@@ -948,9 +948,10 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   `alert/fired` goes out for every fire. A fire for an archived agent ends its alert, unheard.
 - **Limits on wake-ups.** At most 10 wake-ups an hour per agent, counted over the last 60 minutes.
   Past that, the alert still fires and notifies, but stores no inbox message; the count goes into
-  `wakeSkipped` of the next fire that wakes the agent. While a wake-up from one alert waits in the
-  agent inbox, untaken, a newer fire of the same alert replaces its data instead of adding a
-  message. The runtime skips a wake-up while the budget is spent or the agent is frozen
+  `wakeSkipped` of the next fire that wakes the agent. While a wake-up from a price or wallet alert
+  waits in the agent inbox, untaken, a newer fire of the same alert replaces its data instead of
+  adding a message; each fire of a launch alert stores its own, and the chat queue merges the
+  waiting ones into one turn ([decision 0274](../DECISIONS.md#d0274)). The runtime skips a wake-up while the budget is spent or the agent is frozen
   ([spec 8, section 3.3](runtime.md#section-3-3)); the notice has gone out already.
 
 <a id="section-9"></a>

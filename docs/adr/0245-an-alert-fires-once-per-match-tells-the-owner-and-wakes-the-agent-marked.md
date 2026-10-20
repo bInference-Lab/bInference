@@ -1,6 +1,6 @@
 # 0245. An alert fires once per match, tells the owner, and wakes the agent marked
 
-Status: Accepted
+Status: Amended by 0274
 
 Accepted by the owner on 2026-10-19.
 

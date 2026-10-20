@@ -106,13 +106,28 @@ async function startMachine() {
   // A turn ends at its proposal, so each wake-up's turn takes one answer: the swap.
   const swap = callsReply([{ name: "swap", args: swapTerms }]);
   const started: InProcessRuntime[] = [];
-  const supervisor = superviseRuntime(engine, {
-    turns,
-    script: { replies: [swap, swap] },
-    started,
-  });
-  stops.unshift(async () => supervisor.stop(AbortSignal.timeout(10_000)));
-  return { skeleton, chat: watchChat(skeleton.client, testAgent), started };
+  const startRuntime = (): void => {
+    const supervisor = superviseRuntime(engine, {
+      turns,
+      script: { replies: [swap, swap] },
+      started,
+    });
+    stops.unshift(async () => supervisor.stop(AbortSignal.timeout(10_000)));
+  };
+  return { skeleton, chat: watchChat(skeleton.client, testAgent), started, startRuntime };
+}
+
+// Sets the owner's launch alert that wakes the agent, from the CLI.
+async function setLaunchAlert(skeleton: Skeleton) {
+  const condition = { kind: "launch", filters } as const;
+  const args = { agent: testAgent, condition, wake: true };
+  return skeleton.client.call("alert/create", args, live());
+}
+
+// Which of the window's five launches the agent's model was told of.
+function toldOf(started: readonly InProcessRuntime[]): readonly boolean[] {
+  const asked = JSON.stringify(started.flatMap(({ transports }) => transports.main.requests));
+  return [1, 2, 3, 4, 5].map((n) => asked.includes(tokenOf(n)));
 }
 
 // Stores one block's launches as the launch feed does, and tells them to the launch alerts.
@@ -136,24 +151,16 @@ describe("launch alerts end to end", () => {
     "wake the agent for the two of five launches that pass, and each card warns",
     slow,
     async () => {
-      const { skeleton, chat, started } = await startMachine();
-      const condition = { kind: "launch", filters } as const;
-      const args = { agent: testAgent, condition, wake: true };
-      const created = await skeleton.client.call("alert/create", args, live());
+      const { skeleton, chat, started, startRuntime } = await startMachine();
+      const created = await setLaunchAlert(skeleton);
+      startRuntime();
       const [firstBlock = [], secondBlock = []] = blocks;
       await feedBlock(skeleton, firstBlock);
       await chat.turnsEnded(1);
       await feedBlock(skeleton, secondBlock);
       await chat.turnsEnded(2);
 
-      const asked = JSON.stringify(started.flatMap(({ transports }) => transports.main.requests));
-      expect([1, 2, 3, 4, 5].map((n) => asked.includes(tokenOf(n)))).toStrictEqual([
-        true,
-        false,
-        false,
-        false,
-        true,
-      ]);
+      expect(toldOf(started)).toStrictEqual([true, false, false, false, true]);
       const [listed] = (await skeleton.client.call("alert/list", { agent: testAgent }, live()))
         .items;
       expect(listed).toMatchObject({ alert: created.alert, fires: 2 });
@@ -164,6 +171,35 @@ describe("launch alerts end to end", () => {
         card: { outsideContent: true },
       };
       expect(items).toMatchObject([marked, marked]);
+    },
+  );
+
+  it(
+    "tell one turn of both launches that passed before the agent took the first",
+    slow,
+    async () => {
+      const { skeleton, chat, started, startRuntime } = await startMachine();
+      await setLaunchAlert(skeleton);
+      const [firstBlock = [], secondBlock = []] = blocks;
+      await feedBlock(skeleton, firstBlock);
+      await feedBlock(skeleton, secondBlock);
+      const waiting = await skeleton.parts.stores.agentInbox.untaken(
+        { agentId: testAgent, limit: 10 },
+        live(),
+      );
+      startRuntime();
+      await chat.turnsEnded(1);
+
+      expect(waiting.map(({ kind }) => kind)).toStrictEqual([
+        "inbox/alertFired",
+        "inbox/alertFired",
+      ]);
+      const [firstAsk] = started.flatMap(({ transports }) => transports.main.requests);
+      expect(toldOf(started)).toStrictEqual([true, false, false, false, true]);
+      expect(JSON.stringify(firstAsk?.messages)).toContain(tokenOf(1));
+      expect(JSON.stringify(firstAsk?.messages)).toContain(tokenOf(5));
+      const { items } = await skeleton.client.call("intent/list", { agent: testAgent }, live());
+      expect(items).toMatchObject([{ state: "awaiting_confirmation", outsideContent: true }]);
     },
   );
 });

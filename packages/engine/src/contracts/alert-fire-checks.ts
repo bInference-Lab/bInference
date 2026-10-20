@@ -109,6 +109,24 @@ async function wakesAndReplacesWhileWaiting(subject: AlertSubject): Promise<void
   assert.equal(third.value.alert.fires, 3);
 }
 
+// Each launch is its own: a launch alert's second fire stores a second wake-up while the first
+// waits untaken, and both reach the agent.
+async function wakesForEachLaunchWhileOneWaits(subject: AlertSubject): Promise<void> {
+  const { alerts, agentInbox, agentIds } = subject;
+  const condition: AlertCondition = { kind: "launch", filters: {} };
+  await created(subject, alertOf(subject, 1, { condition }));
+  const first = await alerts.fire(fireOf(1, 100), live());
+  const second = await alerts.fire(fireOf(1, 200, 1), live());
+  assert.ok(first.ok && second.ok);
+  assert.deepEqual([first.value.woke, second.value.woke], [true, true]);
+  assert.notEqual(second.value.message?.id, first.value.message?.id);
+  const untaken = await agentInbox.untaken({ agentId: agentIds[0], limit: 10 }, live());
+  assert.deepEqual(
+    untaken.map(({ payload }) => payload),
+    [{ fired: 100 }, { fired: 200 }],
+  );
+}
+
 // Ten alerts each wake the agent once; an eleventh fire in the hour is held back, and the next
 // wake-up after the hour counts it.
 async function holdsWakesToTenAnHour(subject: AlertSubject): Promise<void> {
@@ -186,6 +204,7 @@ export const alertFireChecks: readonly (readonly [
 ])[] = [
   ["fires a price alert once and stores no wake-up without wake", firesAPriceAlertOnce],
   ["wakes the agent once and replaces the wake-up while it waits", wakesAndReplacesWhileWaiting],
+  ["wakes the agent for each launch while an earlier one waits", wakesForEachLaunchWhileOneWaits],
   ["holds the agent's wake-ups to 10 an hour and counts those held back", holdsWakesToTenAnHour],
   ["records a skipped wake-up and skips while the inbox is full", recordsSkips],
   ["holds an alert's notices to five an hour and tells the rest once", holdsNoticesToFiveAnHour],

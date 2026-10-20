@@ -15,6 +15,7 @@ import {
   alertWakeWindowMs,
   canFire,
   maxAlertWakesPerHour,
+  replacesWaitingWake,
   wakeAnswerOf,
 } from "@binference/engine/orders";
 import {
@@ -30,14 +31,15 @@ import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { readAlert, writeAlert } from "./alert-rows.js";
 
-// Replaces the payload of the alert's last wake-up while it waits untaken, and reads it back.
+// Replaces the payload of the alert's last wake-up while it waits untaken, and reads it back; a
+// launch alert's never is.
 function replaceWaiting(
   database: DatabaseSync,
   alert: AlertRecord,
   wake: AlertWake,
 ): AgentInboxMessage | undefined {
   const { lastMessageId } = alert;
-  if (lastMessageId === undefined) {
+  if (lastMessageId === undefined || !replacesWaitingWake(alert)) {
     return undefined;
   }
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);

@@ -7,6 +7,7 @@ export {
   alertWakeWindowMs,
   canFire,
   maxAlertWakesPerHour,
+  replacesWaitingWake,
   wakeAnswerOf,
 } from "./alerts/alert-fire.js";
 export type {

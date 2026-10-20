@@ -120,6 +120,15 @@ export function alertFireOf(
   return { alert: after, notify: notice.notify, ...told };
 }
 
+/**
+ * Whether a fire of the alert replaces its wake-up while that waits untaken (decision 0274): a
+ * newer price or trade stands for the older one, but each launch is a token of its own, so every
+ * fire of a launch alert stores its own wake-up, within the hourly limit.
+ */
+export function replacesWaitingWake(alert: AlertRecord): boolean {
+  return alert.condition.kind !== "launch";
+}
+
 /** Whether an active alert may fire at `atMs` as the fire it expects: before its expiry. */
 export function canFire(alert: AlertRecord | undefined, draft: AlertFireDraft): boolean {
   return (
