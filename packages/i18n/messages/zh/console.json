@@ -108,5 +108,11 @@
   "portfolio.baseUnits": "{base} 个最小单位",
   "portfolio.noPrice": "暂无价格",
   "portfolio.total": "{mode, select, paper {模拟总计} other {实盘总计}}：{total}",
-  "portfolio.unpriced": "暂无价格的资产不计入总计。"
+  "portfolio.unpriced": "暂无价格的资产不计入总计。",
+  "portfolio.open": "持仓",
+  "portfolio.noOpen": "没有持仓。",
+  "portfolio.closed": "最近 7 天已清仓",
+  "portfolio.noClosed": "最近 7 天没有已清仓的持仓。",
+  "portfolio.cardTitle": "{token} · {agent}",
+  "portfolio.cardTitleClosed": "{token} · {agent} · 已清仓"
 }

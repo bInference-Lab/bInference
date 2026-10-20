@@ -1,5 +1,11 @@
-import { addressPartOf, assetText, displayOutsideText, shortAddress } from "@binference/i18n";
-import type { AssetInfos, BalanceView, WalletView } from "@binference/protocol";
+import {
+  addressPartOf,
+  assetText,
+  type CardDisplay,
+  displayOutsideText,
+  shortAddress,
+} from "@binference/i18n";
+import type { AssetInfos, BalanceView, PnlCardView, WalletView } from "@binference/protocol";
 import { useId } from "react";
 import {
   Table,
@@ -10,6 +16,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { useFormatter, useText, type Words } from "../i18n/console-text";
+import { PnlCard } from "./pnl-card";
 import type { HoldingSection, WalletHoldings } from "./portfolio-sections";
 
 // A wallet's label shows up to 64 characters, as on the limits screen.
@@ -86,6 +93,33 @@ function WalletTable(props: {
   );
 }
 
+function CardList(props: {
+  readonly title: string;
+  readonly empty: string;
+  readonly cards: readonly PnlCardView[];
+  readonly display: CardDisplay;
+}): React.JSX.Element {
+  const id = useId();
+  return (
+    <div className="flex flex-col gap-2">
+      <h4 id={id} className="text-sm text-muted-foreground">
+        {props.title}
+      </h4>
+      {props.cards.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{props.empty}</p>
+      ) : (
+        <ul aria-labelledby={id} className="grid gap-3 md:grid-cols-2">
+          {props.cards.map((card) => (
+            <li key={card.asset}>
+              <PnlCard card={card} display={props.display} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // The mode's own total, which leaves out a balance with no price and says so.
 function SectionTotal(props: { readonly section: HoldingSection }): React.JSX.Element {
   const { mode, totalUsdMicros, hasUnpriced } = props.section;
@@ -105,7 +139,8 @@ function SectionTotal(props: { readonly section: HoldingSection }): React.JSX.El
 
 /**
  * One mode's part of an agent's portfolio in its own section: each wallet's balances with their
- * USD value, or a word that a balance has no price, then the mode's own total.
+ * USD value, or a word that a balance has no price; the mode's own total; then its open positions
+ * and those closed in the last 7 days as P&L cards.
  */
 export function HoldingSectionView(props: {
   readonly section: HoldingSection;
@@ -114,7 +149,9 @@ export function HoldingSectionView(props: {
 }): React.JSX.Element {
   const { section, wallets, assets } = props;
   const text = useText();
+  const formatter = useFormatter();
   const id = useId();
+  const display = { formatter, assets };
   return (
     <section
       aria-labelledby={id}
@@ -131,7 +168,19 @@ export function HoldingSectionView(props: {
           assets={assets}
         />
       ))}
-      <SectionTotal section={section} />
+      {section.wallets.length === 0 ? null : <SectionTotal section={section} />}
+      <CardList
+        title={text("console.portfolio.open")}
+        empty={text("console.portfolio.noOpen")}
+        cards={section.open}
+        display={display}
+      />
+      <CardList
+        title={text("console.portfolio.closed")}
+        empty={text("console.portfolio.noClosed")}
+        cards={section.closed}
+        display={display}
+      />
     </section>
   );
 }

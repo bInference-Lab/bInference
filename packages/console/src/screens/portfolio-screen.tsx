@@ -53,8 +53,9 @@ function AgentPortfolioCard(props: { readonly agent: AgentView }): React.JSX.Ele
 }
 
 /**
- * Each agent's portfolio: its wallets' balances and their USD values, live and paper in separate
- * sections that are never added together. A ledger push loads it again.
+ * Each agent's portfolio: its wallets' balances and their USD values, its positions as P&L cards
+ * and those closed in the last 7 days, live and paper in separate sections that are never added
+ * together. A ledger push loads it again.
  */
 export function PortfolioScreen(): React.JSX.Element {
   const text = useText();

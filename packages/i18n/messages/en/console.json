@@ -108,5 +108,11 @@
   "portfolio.baseUnits": "{base} base units",
   "portfolio.noPrice": "No price now",
   "portfolio.total": "{mode, select, paper {Paper total} other {Live total}}: {total}",
-  "portfolio.unpriced": "Holdings with no price now are left out of the total."
+  "portfolio.unpriced": "Holdings with no price now are left out of the total.",
+  "portfolio.open": "Positions",
+  "portfolio.noOpen": "No open positions.",
+  "portfolio.closed": "Closed in the last 7 days",
+  "portfolio.noClosed": "Nothing closed in the last 7 days.",
+  "portfolio.cardTitle": "{token} · {agent}",
+  "portfolio.cardTitleClosed": "{token} · {agent} · closed"
 }

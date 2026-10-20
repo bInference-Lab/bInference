@@ -3,7 +3,7 @@ import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useLiveTopics } from "../connection/use-live-topics";
 import { fakeClient } from "../testing/fake-client";
-import { portfolioAnswer, portfolioAnswers } from "../testing/portfolio-fixture";
+import { fixture, portfolioAnswer, portfolioAnswers } from "../testing/portfolio-fixture";
 import { renderSignedIn, settle } from "../testing/render-signed-in";
 import { PortfolioScreen } from "./portfolio-screen";
 
@@ -22,6 +22,14 @@ function rowsOf(table: HTMLElement): readonly (readonly string[])[] {
       within(row)
         .queryAllByRole("cell")
         .map((cell) => cell.textContent),
+    );
+}
+
+function cardTexts(list: HTMLElement): readonly (readonly string[])[] {
+  return within(list)
+    .getAllByRole("listitem")
+    .map((item) =>
+      [...item.querySelectorAll("[data-slot=card-title], p")].map((each) => each.textContent),
     );
 }
 
@@ -69,6 +77,58 @@ describe("the portfolio screen", () => {
     expect(within(paper).queryByText(/no price/u)).toBeNull();
   });
 
+  it("draws each P&L card's lines as the engine drew them, open and closed apart", async () => {
+    const { client } = fakeClient(portfolioAnswers);
+    renderSignedIn(<PortfolioScreen />, { client });
+    await settle();
+    const live = screen.getByRole("region", { name: "Live holdings" });
+    expect(cardTexts(within(live).getByRole("list", { name: "Positions" }))).toStrictEqual([
+      [
+        "BNB · main",
+        "Holding 0.5 BNB · value $300.00",
+        "Average cost $550.00 · cost $275.00",
+        "P&L unrealized +$25.00 (+9.09%) · realized $0.00",
+        "Fees venue $1.50 · network $0.08",
+        "Since Oct 3, 2026, 04:00:00",
+      ],
+    ]);
+    expect(
+      cardTexts(within(live).getByRole("list", { name: "Closed in the last 7 days" })),
+    ).toStrictEqual([
+      [
+        "CAKE · main · closed",
+        "Bought for $200.00 · sold for $180.00",
+        "P&L realized -$20.00 (-10.00%)",
+        "Fees venue $1.50 · network $0.08",
+        "Held Oct 3, 2026, 04:00:00 → Oct 5, 2026, 04:00:00 (2 days)",
+      ],
+    ]);
+  });
+
+  it("marks a paper position's card with the Paper label", async () => {
+    const { client } = fakeClient(portfolioAnswers);
+    renderSignedIn(<PortfolioScreen />, { client });
+    await settle();
+    const paper = screen.getByRole("region", { name: "Paper holdings" });
+    const list = within(paper).getByRole("list", { name: "Positions" });
+    expect(cardTexts(list).map(([title]) => title)).toStrictEqual(["BNB · mainPaper"]);
+    expect(within(paper).getByText("Nothing closed in the last 7 days.")).toBeDefined();
+  });
+
+  it("asks for the open positions and those closed in the last 7 days", async () => {
+    vi.setSystemTime(1_791_600_000_000);
+    const { client, calls } = fakeClient(portfolioAnswers);
+    renderSignedIn(<PortfolioScreen />, { client });
+    await settle();
+    expect(calls.filter(({ op }) => op.startsWith("portfolio/"))).toStrictEqual([
+      { op: "portfolio/get", args: { agent: fixture.agent } },
+      {
+        op: "portfolio/pnl",
+        args: { agent: fixture.agent, from: 1_790_995_200_000, to: 1_791_600_000_000, cards: true },
+      },
+    ]);
+  });
+
   it("loads the portfolio again when the ledger moves, and never on a timer", async () => {
     let paperTotal = 1_100_000_000n;
     const engine = fakeClient({
@@ -84,6 +144,7 @@ describe("the portfolio screen", () => {
     engine.push("ledger", "ledger/entry", {});
     await settle();
     expect(calls.filter(({ op }) => op === "portfolio/get")).toHaveLength(2);
+    expect(calls.filter(({ op }) => op === "portfolio/pnl")).toHaveLength(2);
     expect(screen.getByText("Paper total: $1,200.00")).toBeDefined();
   });
 
@@ -91,6 +152,7 @@ describe("the portfolio screen", () => {
     const { client } = fakeClient({
       ...portfolioAnswers,
       "portfolio/get": () => ({ ...portfolioAnswer, balances: [], paperTotalUsdMicros: undefined }),
+      "portfolio/pnl": () => ({ positions: [], realizedUsdMicros: 0n, cards: [], assets: {} }),
     });
     renderSignedIn(<PortfolioScreen />, { client });
     await settle();
@@ -119,7 +181,7 @@ describe("the portfolio screen", () => {
     const refused = Object.assign(new Error("scope"), { code: "auth.scope" });
     const { client } = fakeClient({
       ...portfolioAnswers,
-      "portfolio/get": () => Promise.reject(refused),
+      "portfolio/pnl": () => Promise.reject(refused),
     });
     renderSignedIn(<PortfolioScreen />, { client });
     await settle();
