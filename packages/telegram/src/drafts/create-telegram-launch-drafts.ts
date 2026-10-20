@@ -112,9 +112,12 @@ type Closed = Extract<LaunchDraftPush, { readonly kind: "chat/launchDraftClosed"
 // The line a draft's message becomes once it ended.
 function endLine(parts: Parts, closed: Closed): string {
   const words = wordsOf(parts);
-  return closed.outcome === "failed"
+  if (closed.outcome !== "failed") {
+    return words(`telegram.draft.${closed.outcome}`);
+  }
+  return closed.reason === undefined
     ? words("telegram.draft.failed", { reason: words(`error.${closed.error ?? "internal.error"}`) })
-    : words(`telegram.draft.${closed.outcome}`);
+    : words("telegram.draft.ended", { reason: words(`reason.${closed.reason}`) });
 }
 
 // The draft's message loses its buttons and says how the draft ended.
@@ -143,7 +146,7 @@ async function show(
 // The press's notice: at most 200 characters, as Telegram's answer to a press holds.
 function noticeOf(parts: Parts, standing: LaunchDraftStanding): string {
   const words = wordsOf(parts);
-  return words(`telegram.draft.answer.${standing.status}`);
+  return words(`telegram.draft.answer.${standing.status === "ended" ? "failed" : standing.status}`);
 }
 
 async function press(parts: Parts, pressed: ButtonPress, call: Call): Promise<boolean> {

@@ -72,6 +72,11 @@ describe("the agent's launch drafts in Telegram", () => {
     ["replaced", {}, `${refused} A newer launch draft replaced this one. Nothing was uploaded.`],
     [
       "failed",
+      { intent: "int_0190f1c2-3a4b-7c5d-8e6f-000000000285", reason: "per_trade_cap" },
+      `${refused} The launch ended before its card: it is above your per-trade cap. Nothing was signed.`,
+    ],
+    [
+      "failed",
       { error: "intent.launch_waiting" },
       `${refused} The launch did not start: Another token launch of this agent is under way, waiting for its pin or the owner's confirmation. Let it finish, or deny its card, before starting the next.`,
     ],

@@ -717,8 +717,9 @@ launch ([spec 8, section 6.5](runtime.md#section-6-5)); a `launchToken` the runt
 - The draft lives in memory for 10 minutes; a new draft of the agent replaces the open one, and a
   restart forgets it. Nothing is uploaded, quoted or stored. `chat/launchDraft`
   `{ agent, draft, expiresAt }` tells the agent's chat topic, and `chat/launchDraftClosed`
-  `{ agent, draft, outcome: started | dropped | expired | replaced | failed, intent?, error? }`
-  how it ended.
+  `{ agent, draft, outcome: started | dropped | expired | replaced | failed, intent?, error?, reason? }`
+  how it ended: `started` only for a launch still on its way to its card, and `failed` with the
+  intent and its `reason` for one that ended before its card, such as one the policy refused.
 - Telegram shows it to the owner with Start launch and Drop
   ([spec 4, section 8.5](cards-and-messages.md#section-8-5)). The owner's Start proposes the
   draft's request through `intent/propose` as the owner on Telegram, with the photo put on the

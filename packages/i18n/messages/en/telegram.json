@@ -26,5 +26,6 @@
   "draft.answer.dropped": "Draft dropped.",
   "draft.answer.expired": "This draft has ended. Ask your agent to draft it again.",
   "draft.answer.failed": "The launch did not start. The draft says why.",
-  "draft.noPhoto": "⚠️ binference could not show the picture here, so this draft cannot start. Ask your agent to draft it again."
+  "draft.noPhoto": "⚠️ binference could not show the picture here, so this draft cannot start. Ask your agent to draft it again.",
+  "draft.ended": "❌ The launch ended before its card: {reason}. Nothing was signed."
 }

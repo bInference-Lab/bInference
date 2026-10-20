@@ -1,6 +1,6 @@
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { expectOk, testAgent } from "../intents/test-intents.js";
+import { expectOk, testAgent, testLimits } from "../intents/test-intents.js";
 import type { LaunchDraftStanding } from "../launches/launch-draft-desk.js";
 import { launchDraftOpenMs } from "../launches/launch-draft-shelf.js";
 import {
@@ -15,7 +15,7 @@ import {
   refOf,
   testDraftEngine,
 } from "../launches/test-launch-drafts.js";
-import { testCardText } from "../money-path/test-launches.js";
+import { testCardText, testPad } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import { createLaunchDraftPresses } from "./create-launch-draft-presses.js";
 
@@ -217,5 +217,16 @@ describe("the owner's presses of a launch draft", () => {
       await drafting.test.engine.handlers["intent/get"](testCall({ intent }, testCallers.cli)),
     );
     expect(view.state).toBe("awaiting_confirmation");
+  });
+
+  it("says why when the launch ended before its card, never that it started", async () => {
+    const limits = { ...testLimits, venues: ["fake-swap", testPad], perTradeUsdMicros: 1n };
+    const { drafting, draft, ref, presses } = await drafted({ options: { agent: { limits } } });
+    const standing = await presses.answer(start(ref), { signal: signal() });
+    expect(standing).toMatchObject({ status: "ended", reason: "per_trade_cap" });
+    expect(chatPushes(drafting.test, "chat/launchDraftClosed")).toMatchObject([
+      { agent: testAgent, draft, outcome: "failed", reason: "per_trade_cap" },
+    ]);
+    expect(drafting.launcher.uploads()).toStrictEqual([]);
   });
 });

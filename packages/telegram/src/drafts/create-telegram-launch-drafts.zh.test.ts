@@ -38,4 +38,14 @@ describe("the agent's launch drafts in Telegram, in Chinese", () => {
       `${refused} 此发射草稿已在 10 分钟后失效，没有上传任何内容。如需发射，请让 Agent 重新起草。`,
     ]);
   });
+
+  it("says in Chinese why a launch ended before its card", async () => {
+    const context = await setUpDrafts("zh");
+    await context.drafts.show(openedDraft, live);
+    const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000285";
+    await context.drafts.show(closedDraft("failed", { intent, reason: "per_trade_cap" }), live);
+    expect(context.botApi.messages()[0]?.text).toBe(
+      `${refused} 发射在确认卡片之前已结束：超过了你的单笔上限。没有签名任何交易。`,
+    );
+  });
 });

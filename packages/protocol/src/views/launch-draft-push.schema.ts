@@ -10,7 +10,8 @@ export const launchDraftIdSchema: z.ZodType<string> = z.string().regex(/^[\w-]{1
 /**
  * How a launch draft ended: `started`, its launch proposed by the owner's tap; `dropped` by the
  * owner; `expired` after 10 minutes; `replaced` by a newer draft of the agent; `failed`, the
- * owner's tap proposed nothing, with the code the proposal was refused with.
+ * owner's tap proposed nothing, with the code the proposal was refused with, or proposed a launch
+ * that ended before its card, with its intent and its reason.
  */
 type LaunchDraftOutcome = "started" | "dropped" | "expired" | "replaced" | "failed";
 
@@ -31,6 +32,8 @@ export type LaunchDraftPush =
       readonly intent?: ProtocolId<"intent">;
       /** Why the tap proposed nothing, once `failed`. */
       readonly error?: ErrorCode;
+      /** Why the launch the tap proposed ended before its card, once `failed` with an intent. */
+      readonly reason?: string;
     };
 
 const openedSchema = z.object({
@@ -44,6 +47,10 @@ const closedSchema = z.object({
   outcome: z.enum(["started", "dropped", "expired", "replaced", "failed"]),
   intent: protocolIdSchema("intent").exactOptional(),
   error: errorCodeSchema.exactOptional(),
+  reason: z
+    .string()
+    .regex(/^[a-z][a-z_]*$/)
+    .exactOptional(),
 });
 
 /**

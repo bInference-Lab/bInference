@@ -2,6 +2,8 @@ import type { ChainRegistry } from "@binference/chain";
 import type { Clock, ErrorCode, Id } from "@binference/core";
 import { type AssetInfos, noUploadImage } from "@binference/protocol";
 import type { CardLine } from "../confirmations/card-line.js";
+import { type IntentReason, intentReasons } from "../intents/intent-reason.js";
+import { isTerminalState } from "../intents/intent-state.js";
 import type { EngineCaller, EngineHandler } from "../operations/engine-call.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { ownerChatScopes } from "../surfaces/create-owner-calls.js";
@@ -30,7 +32,8 @@ export interface LaunchDraftShowing {
 /**
  * How a press of a launch draft's button stands. `started`: the launch was proposed, as its
  * intent. `dropped`: the owner dropped it. `expired`: its 10 minutes ran out before the press.
- * `failed`: the proposal was refused, with its code. `unknown`: no open draft has this reference;
+ * `failed`: the proposal was refused, with its code. `ended`: the launch was proposed and ended
+ * before its card, with its intent's reason. `unknown`: no open draft has this reference;
  * nothing happened.
  */
 export type LaunchDraftStanding =
@@ -38,6 +41,7 @@ export type LaunchDraftStanding =
   | { readonly status: "dropped" }
   | { readonly status: "expired" }
   | { readonly status: "failed"; readonly error: ErrorCode }
+  | { readonly status: "ended"; readonly intent: Id<"int">; readonly reason: IntentReason }
   | { readonly status: "unknown" };
 
 /** The engine's open launch drafts, as the owner's surfaces show them and the owner answers. */
@@ -98,6 +102,11 @@ function imageOf(options: LaunchDraftDeskOptions, draft: LaunchDraft, holder: st
   return received.ok ? received.value : undefined;
 }
 
+// An ended intent's reason as the engine stores it; one with none ended as a check failed.
+function reasonOf(stored: string | undefined): IntentReason {
+  return intentReasons.find((reason) => reason === stored) ?? "launch_unread";
+}
+
 // Proposes the draft's launch; a fault ends the draft's message as failed before it goes on, since
 // the draft already ended.
 async function proposeEnding(
@@ -130,7 +139,14 @@ async function startDraft(
     publishDraftClosed(options.publish, draft, { outcome: "failed", error: proposed.error });
     return { status: "failed", error: proposed.error };
   }
-  const { intent } = proposed.value;
+  // A launch the policy refused, or whose quote, upload or first pin read failed, ended before its
+  // card: the draft says why, never that the launch started.
+  const { intent, state } = proposed.value;
+  if (isTerminalState(state)) {
+    const reason = reasonOf(proposed.value.outcome?.reason);
+    publishDraftClosed(options.publish, draft, { outcome: "failed", intent, reason });
+    return { status: "ended", intent, reason };
+  }
   publishDraftClosed(options.publish, draft, { outcome: "started", intent });
   return { status: "started", intent };
 }

@@ -1016,10 +1016,12 @@ answer to a press is under 200 characters.
 | Ended after 10 minutes | `telegram.draft.expired`        | ❌ This launch draft ended after 10 minutes. Nothing was uploaded. Ask your agent to draft it again.                                                         | ❌ 此发射草稿已在 10 分钟后失效，没有上传任何内容。如需发射，请让 Agent 重新起草。                                 |
 | Replaced               | `telegram.draft.replaced`       | ❌ A newer launch draft replaced this one. Nothing was uploaded.                                                                                             | ❌ 较新的发射草稿已取代此草稿，没有上传任何内容。                                                                  |
 | Picture not shown      | `telegram.draft.noPhoto`        | ⚠️ binference could not show the picture here, so this draft cannot start. Ask your agent to draft it again.                                                 | ⚠️ binference 无法在此显示图片，因此该草稿无法开始。请让 Agent 重新起草。                                          |
+| Ended before its card  | `telegram.draft.ended`          | ❌ The launch ended before its card: {reason}. Nothing was signed.                                                                                           | ❌ 发射在确认卡片之前已结束：{reason}。没有签名任何交易。                                                          |
 | Refused                | `telegram.draft.failed`         | ❌ The launch did not start: {reason}                                                                                                                        | ❌ 发射未开始：{reason}                                                                                            |
 | Press answers          | `telegram.draft.answer.*`       | Launch started. Its card follows. · Draft dropped. · This draft has ended. Ask your agent to draft it again. · The launch did not start. The draft says why. | 发射已开始，确认卡片随后发送。· 草稿已放弃。· 此草稿已失效。请让 Agent 重新起草。· 发射未开始，原因见草稿消息。    |
 
-`{reason}` is the error message of the code the proposal was refused with.
+`{reason}` is the error message of the code the proposal was refused with, or for a launch that
+ended before its card, its intent's `reason.<code>`.
 
 <a id="section-9"></a>
 
