@@ -25,6 +25,7 @@ import { createCapGate } from "../confirmations/cap-gate.js";
 import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createDowntimeCheck, type DowntimeCheck } from "../downtime/downtime-check.js";
+import type { Downtime } from "../downtime/downtime.js";
 import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type {
@@ -80,7 +81,7 @@ import {
   engineChatOf,
   safetyHandlersOf,
 } from "./engine-parts.js";
-import { orderRepairOf, paperRepairOf } from "./engine-repairs.js";
+import { startupWorkOf } from "./engine-repairs.js";
 import { runQueue, tickAll } from "./engine-timers.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
@@ -170,6 +171,12 @@ export interface Engine {
    * price watchers call it with each price; it answers once the fills it started ended.
    */
   readonly seePrice: OrderTriggers["see"];
+  /**
+   * The downtime re-check (decisions 0266 to 0268): the composition root tells it of the start
+   * and of each wake from sleep, and marks the engine alive each minute; it re-checks every auto
+   * order once and sends one report.
+   */
+  readonly downtime: Downtime;
   /**
    * Asks the launchpad of each live token launch waiting in `quoted` whether it pinned the
    * launch's words and picture (decision 0234): a pinned launch goes on to its card, a failed pin
@@ -418,8 +425,7 @@ export function createEngineWithFills(given: EngineOptions): {
     answer: intents.answer,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
-    repairPaperFills: paperRepairOf(options, { stored: intents.stored, paper }),
-    repairOrderFills: orderRepairOf(options, { ...intents, fence: check }),
+    ...startupWorkOf(options, { ...intents, relay: chat.relay, check, paper }),
     ...timedWorkOf(options, { intents, chat }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),

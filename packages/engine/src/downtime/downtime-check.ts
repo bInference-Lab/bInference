@@ -23,14 +23,14 @@ type Standing =
   | { readonly state: "skipped"; readonly reason: CheckedSkipReason };
 
 /** One order a re-check took: its agent, its kind and, for a price order, where it stands. */
-interface WatchedOrder {
+export interface WatchedOrder {
   readonly agentId: Id<"agt">;
   readonly kind: OrderKind;
   readonly standing: Standing;
 }
 
 /** An open re-check as the report reads it: the resumes it joined and the orders it took. */
-interface OpenCheck {
+export interface OpenCheck {
   /** `start` once a start joined it, else `wake`. */
   readonly cause: "start" | "wake";
   readonly offFromMs: number;
@@ -54,7 +54,11 @@ interface Resume {
  * The reasons a DCA or copy order's skip row has in a re-check because it came during the
  * downtime (decisions 0246 and 0260): a missed period, a late buy, a sale past its hour.
  */
-const downtimeRowReasons: ReadonlySet<string> = new Set(["missed", "late", "copy_sale_lapsed"]);
+export const downtimeRowReasons: ReadonlySet<string> = new Set([
+  "missed",
+  "late",
+  "copy_sale_lapsed",
+]);
 
 /** The downtime re-check's state between resumes, which the fence answers from. */
 export interface DowntimeCheck extends ResumeFence {

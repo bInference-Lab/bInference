@@ -124,6 +124,13 @@ Rules for this package:
   prices are judged one at a time, in block order, and an order with fills left re-arms only once
   its condition stops holding (decision 0197). A change to a condition changes
   `price-triggers.property.test.ts` and `order-rearm.property.test.ts`.
+- The downtime re-check (`src/downtime/`, decisions 0266 to 0268) is told of each start and wake
+  by the composition root, and marks the engine alive in `AliveStore`, never while a re-check is
+  open. `downtime-check.ts` keeps the latest resume's instant: the triggers drop a price read
+  before it, and a fill whose price was read before it ends `price_stale` at its check. Each price
+  order active at a resume takes its outcome from its first fresh judgment and fill, a DCA or copy
+  order from its skip rows of the downtime; the skips it reports are marked announced unsent
+  (`orders/resume-fence.ts`).
 - The money path (`src/money-path/`) runs the steps of ARCHITECTURE.md section 7 in order and
   reports each outcome to the state machine as a trigger. Only the venues' quotes run before the
   policy, which prices a token without a feed from the first venue's quote; no venue builds until

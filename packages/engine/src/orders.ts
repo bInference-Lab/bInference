@@ -37,6 +37,9 @@ export type {
 } from "./alerts/alert-record.js";
 export type { AlertStore } from "./alerts/ports.js";
 export type { AliveStore } from "./downtime/ports.js";
+export type { Downtime, DowntimeRun } from "./downtime/downtime.js";
+export type { CheckedOrder, DowntimeReport } from "./downtime/downtime-report.js";
+export type { CheckedSkipReason } from "./downtime/downtime-check.js";
 export { activeAlerts } from "./alerts/alert-events.js";
 export { hasHeldToTell, noticeHourMs } from "./notices/notice-hour.js";
 export type { AlertFiring, WatchedLaunch, WatchedTrade } from "./alerts/fire-alerts.js";
