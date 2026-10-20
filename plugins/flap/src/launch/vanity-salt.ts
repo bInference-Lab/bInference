@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { setImmediate as nextTurn } from "node:timers/promises";
 import { BinferenceError, type Random } from "@binference/plugin-sdk";
 import {
   type Address,
@@ -52,9 +53,22 @@ export interface FoundSalt {
 }
 
 // One try in 65,536 ends in 7777, so 2^21 tries miss one with a chance of about 1 in 10^14. Node's
-// own Keccak-256 runs about 2 million tries a second: a search takes some 30 ms on average and at
-// most about a second, short enough to run in one go.
+// own Keccak-256 runs about 2 million tries a second, so a search takes some 30 ms on average and
+// at most about a second; it hands the event loop back, and reads its signal, every 65,536 tries.
 const mostTries = 2_097_152;
+const triesPerTurn = 65_536;
+
+// Node's Keccak-256 when its OpenSSL has it (3.2 and later), else viem's, which is slower.
+function keccakOf(): (input: Uint8Array) => Uint8Array {
+  try {
+    createHash("keccak-256");
+    return (input) => createHash("keccak-256").update(input).digest();
+  } catch {
+    return (input) => keccak256(input, "bytes");
+  }
+}
+
+const keccak = keccakOf();
 
 // Counts the salt's last 8 bytes up by one, in place.
 function countUp(salt: Uint8Array): void {
@@ -78,31 +92,53 @@ function inputOf(maker: TokenMaker, start: Uint8Array): Uint8Array {
   return input;
 }
 
-function endsInSuffix(hash: Buffer): boolean {
+function endsInSuffix(hash: Uint8Array): boolean {
   return hash[30] === suffix[0] && hash[31] === suffix[1];
 }
 
-/**
- * Finds a salt whose tax token ends in 7777, off line: it counts up from 32 random bytes and hashes
- * each candidate as CREATE2 does. None in {@link mostTries} tries, which does not happen in
- * practice, throws `flap.no_salt`; an aborted signal throws its reason before the search starts.
- */
-export function findTaxTokenSalt(
-  maker: TokenMaker,
-  options: { readonly random: Random; readonly signal: AbortSignal },
-): FoundSalt {
-  options.signal.throwIfAborted();
-  const input = inputOf(maker, options.random.bytes(32));
-  const salt = input.subarray(21, 53);
-  for (let tries = 0; tries < mostTries; tries += 1) {
-    const hash = createHash("keccak-256").update(input).digest();
+// One turn of the search: up to its tries from where the input stands; the salt it found, if any.
+function searchTurn(input: Uint8Array, salt: Uint8Array): FoundSalt | undefined {
+  for (let tries = 0; tries < triesPerTurn; tries += 1) {
+    const hash = keccak(input);
     if (endsInSuffix(hash)) {
       return { salt: bytesToHex(salt), token: getAddress(bytesToHex(hash.subarray(12))) };
     }
     countUp(salt);
   }
-  throw new BinferenceError({
-    code: "flap.no_salt",
-    message: "No salt gives a Flap tax token address ending in 7777; launch again.",
-  });
+  return undefined;
+}
+
+async function search(
+  input: Uint8Array,
+  turnsLeft: number,
+  signal: AbortSignal,
+): Promise<FoundSalt | undefined> {
+  signal.throwIfAborted();
+  const found = searchTurn(input, input.subarray(21, 53));
+  if (found !== undefined || turnsLeft <= 1) {
+    return found;
+  }
+  await nextTurn();
+  return search(input, turnsLeft - 1, signal);
+}
+
+/**
+ * Finds a salt whose tax token ends in 7777, off line: it counts up from 32 random bytes and hashes
+ * each candidate as CREATE2 does, handing the event loop back between turns. None in
+ * {@link mostTries} tries, which does not happen in practice, throws `flap.no_salt`; an aborted
+ * signal rejects with its reason at the next turn.
+ */
+export async function findTaxTokenSalt(
+  maker: TokenMaker,
+  options: { readonly random: Random; readonly signal: AbortSignal },
+): Promise<FoundSalt> {
+  const input = inputOf(maker, options.random.bytes(32));
+  const found = await search(input, mostTries / triesPerTurn, options.signal);
+  if (found === undefined) {
+    throw new BinferenceError({
+      code: "flap.no_salt",
+      message: "No salt gives a Flap tax token address ending in 7777; launch again.",
+    });
+  }
+  return found;
 }

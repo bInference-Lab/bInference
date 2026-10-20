@@ -14,17 +14,17 @@ describe("a Flap tax token's salt", () => {
     expect(tokenAddressOf(maker, salt)).toBe("0x01D47b3fDF1E9CaA63c69c6F0B08449a89417777");
   });
 
-  it("is found off line for an address that ends in 7777", () => {
+  it("is found off line for an address that ends in 7777", async () => {
     const signal = new AbortController().signal;
-    const found = findTaxTokenSalt(maker, { random: createSeededRandom(271), signal });
+    const found = await findTaxTokenSalt(maker, { random: createSeededRandom(271), signal });
     expect(found.token).toBe(tokenAddressOf(maker, found.salt));
     expect(isTaxTokenAddress(found.token)).toBe(true);
   });
 
-  it("does not start once its signal aborted", () => {
+  it("stops when its signal aborts", async () => {
     const reason = new Error("stopped");
     const signal = AbortSignal.abort(reason);
-    expect(() => findTaxTokenSalt(maker, { random: createSeededRandom(271), signal })).toThrow(
+    await expect(findTaxTokenSalt(maker, { random: createSeededRandom(271), signal })).rejects.toBe(
       reason,
     );
   });

@@ -54,7 +54,7 @@ export async function quoteLaunch(
     return err("no_route");
   }
   checkFirstBuy(terms);
-  const found = findTaxTokenSalt(placed.maker, { random: parts.random, signal });
+  const found = await findTaxTokenSalt(placed.maker, { random: parts.random, signal });
   // The metadata is uploaded only after the policy; the dry run names a stand-in no token uses.
   const meta = `binference-quote-${bytesToHex(parts.random.bytes(16)).slice(2)}`;
   const { token, steps } = launchStepsOf(terms, placed, { meta, salt: found.salt });

@@ -26,7 +26,7 @@ export async function buildLaunch(
       message: "Flap launches here only on its chains and pairs, with no launch fee.",
     });
   }
-  const found = findTaxTokenSalt(placed.maker, { random: parts.random, signal });
+  const found = await findTaxTokenSalt(placed.maker, { random: parts.random, signal });
   const written = { meta: request.metadataUri, salt: found.salt };
   const { token, steps } = launchStepsOf(request, placed, written);
   return { token: curveAssetOf(token, placed.chain.setup), steps };
