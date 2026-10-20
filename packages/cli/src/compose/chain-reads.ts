@@ -162,25 +162,36 @@ export function chainReadsOf(
   return found;
 }
 
+type SignalState = HealthSignal["state"];
+
+// A failover's state: failed while every endpoint rests after a failure, a warning while some do.
+function restingState(failover: RpcFailover, nowMs: number): SignalState {
+  const health = failover.health();
+  const resting = health.filter((endpoint) => (endpoint.restingUntilMs ?? 0) > nowMs).length;
+  if (resting === 0) {
+    return "ok";
+  }
+  return resting === health.length ? "fail" : "warn";
+}
+
+// A chain's state: its reads' state, and at least a warning while its log endpoints rest, since
+// quotes and sends still work while the leader watcher and the launch feed read nothing.
+function chainState({ rpc, logsRpc }: ChainReads, nowMs: number): SignalState {
+  const reads = restingState(rpc, nowMs);
+  if (reads === "fail" || restingState(logsRpc, nowMs) === "ok") {
+    return reads;
+  }
+  return "warn";
+}
+
 /**
- * The `rpc` health signal: failed while every endpoint of a chain rests after a failure, a
- * warning while some do, else ok; the worst chain decides.
+ * The `rpc` health signal (decision 0272): failed while every endpoint of a chain's reads rests
+ * after a failure, a warning while some do or while its log endpoints rest, else ok; the worst
+ * chain decides.
  */
-export function rpcHealthOf(
-  reads: ReadonlyMap<ChainRef, ChainReads>,
-  clock: Clock,
-): HealthSignal["state"] {
+export function rpcHealthOf(reads: ReadonlyMap<ChainRef, ChainReads>, clock: Clock): SignalState {
   const nowMs = clock.now();
-  const states = new Set(
-    [...reads.values()].map(({ rpc }) => {
-      const health = rpc.health();
-      const resting = health.filter((endpoint) => (endpoint.restingUntilMs ?? 0) > nowMs).length;
-      if (resting === 0) {
-        return "ok";
-      }
-      return resting === health.length ? "fail" : "warn";
-    }),
-  );
+  const states = new Set([...reads.values()].map((chain) => chainState(chain, nowMs)));
   if (states.has("fail")) {
     return "fail";
   }

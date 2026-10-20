@@ -1,6 +1,6 @@
 # 0252. Log queries go to 48 Club's public node until the owner names an RPC
 
-Status: Accepted
+Status: Amended by 0272
 
 Accepted by the owner on 2026-10-19.
 

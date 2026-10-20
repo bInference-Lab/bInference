@@ -138,6 +138,20 @@ describe("the chains' reads", () => {
     expect(rpcHealthOf(new Map(), clock)).toBe("ok");
   });
 
+  it("reads the rpc signal as a warning while only the log endpoints rest", async () => {
+    const clock = createManualClock();
+    const http = nodes((url) => url.includes("48.club"));
+    const unnamed = { ...config, rpc: {} };
+    const reads = composeChainReads({ chains: selfHostedChains(), config: unnamed, http, clock });
+    const { rpc, logsRpc } = chainReadsOf(reads, bscRef);
+    const call = { method: "eth_chainId", params: [], result: z.string(), signal };
+    await expect(logsRpc.request(call)).rejects.toMatchObject({ code: "chain.rpc_down" });
+    await expect(rpc.request(call)).resolves.toMatchObject({ kind: "result", value: "0x38" });
+    expect(rpcHealthOf(reads, clock)).toBe("warn");
+    await clock.advance(30_001);
+    expect(rpcHealthOf(reads, clock)).toBe("ok");
+  });
+
   it("asks the RPCs config names at each request, and keeps their health while they stay", async () => {
     const clock = createManualClock();
     const asked: string[] = [];
