@@ -74,6 +74,8 @@ export function leaderTrade(
     readonly shareSoldBps?: Bps;
     /** What a buy paid, or a sale received, of the coin; a tenth of a coin when absent. */
     readonly coinBase?: bigint;
+    /** The trade's log in its block, 0 when absent: another one stores the trade again. */
+    readonly logIndex?: number;
   },
 ): WalletActivity {
   const { side, atMs, asset = testToken, shareSoldBps, coinBase = 10n ** 17n } = call;
@@ -81,7 +83,7 @@ export function leaderTrade(
     account: testLeader,
     block: BigInt(n),
     txHash: txOf(BigInt(n)),
-    logIndex: 0,
+    logIndex: call.logIndex ?? 0,
     side,
     asset,
     amount: 1_000_000n,
