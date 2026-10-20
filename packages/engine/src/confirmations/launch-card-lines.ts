@@ -1,4 +1,5 @@
 import {
+  accountRefParts,
   accountRefSchema,
   type Amount,
   type AssetRef,
@@ -63,13 +64,19 @@ const settingValues: {
   count: (value) => ({ type: "count", count: numberOf(value) }),
   flag: (value) => choice(value === true ? "yes" : "no"),
   choice: (value) => choice(wordOf(value)),
-  account: (value) => ({ type: "account", account: accountRefSchema.parse(wordOf(value)) }),
+  account: (value) => text(accountRefParts(accountRefSchema.parse(wordOf(value))).address),
   link: (value) => text(wordOf(value)),
 };
 
 // A link setting's line names its value `link`, which a card shows whole, up to 512 characters
-// (decision 0276); every other setting's, `value`.
-const argumentOf = (type: LaunchSetting["type"]): string => (type === "link" ? "link" : "value");
+// (decision 0276); an account setting's `address`, which a card shows whole, since it receives
+// money the launch sends; every other setting's, `value`.
+const argumentOf = (type: LaunchSetting["type"]): string => {
+  if (type === "link") {
+    return "link";
+  }
+  return type === "account" ? "address" : "value";
+};
 
 function pictureLine(picture: NonNullable<LaunchDetails["picture"]>): CardLine {
   if ("upload" in picture) {

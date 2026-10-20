@@ -1,6 +1,6 @@
 /**
  * The Chinese lines a Genius.fun launch card shows for the fork test's settings: the launch fee,
- * the creator fees paid to `recipient` as a card shortens it, and the picture link whole.
+ * the creator fees paid to `recipient`, shown whole, and the picture link whole.
  */
 export function geniusfunSettingLinesZh(recipient: string, link: string): readonly string[] {
   return [

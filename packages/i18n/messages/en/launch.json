@@ -2,13 +2,13 @@
   "line": "{token} · {launchpad} · {age} ago · {curve} · tax {tax} · {insiders, plural, =0 {no insider wallets} one {# insider wallet} other {# insider wallets}} · creator's other launches in 30 days: {creatorLaunches}",
   "curve": "{graduated, select, yes {graduated} other {curve {progress}}}",
   "option.taxBps": "Tax on every trade: {value}",
-  "option.taxRecipient": "Tax paid to {value}",
+  "option.taxRecipient": "Tax paid to {address}",
   "option.buyback": "Buyback and burn: {value, select, yes {on} other {off}}",
   "option.buyTaxBps": "Tax on every buy: {value}",
   "option.sellTaxBps": "Tax on every sell: {value}",
   "option.burnShareBps": "Burned from the tax: {value}",
   "option.taxDays": "Tax lasts {value, plural, one {# day} other {# days}}",
   "option.pictureLink": "Picture at {link} (binference never opens it)",
-  "option.creatorFeeRecipient": "Creator fees from every trade go to {value}",
+  "option.creatorFeeRecipient": "Creator fees from every trade go to {address}",
   "age": "{unit, select, minute {{count} min} hour {{count} h} other {{count} d}}"
 }

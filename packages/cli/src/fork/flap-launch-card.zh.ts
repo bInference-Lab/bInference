@@ -1,6 +1,6 @@
 /**
  * The Chinese lines a Flap launch card shows for the fork test's settings: 3% on a buy, 5% on a
- * sale, paid to `recipient` as a card shortens it, 10% burned, for 365 days.
+ * sale, paid to `recipient`, shown whole, 10% burned, for 365 days.
  */
 export function flapSettingLinesZh(recipient: string): readonly string[] {
   return [

@@ -204,9 +204,6 @@ async function onFlapRig(signal: AbortSignal, test: (flap: FlapRig, fork: Fork) 
   });
 }
 
-// A card shows an address by its first 6 and last 4 characters.
-const shortened = (address: Address): string => `${address.slice(0, 6)}…${address.slice(-4)}`;
-
 describe("a Flap launch on a BSC fork", () => {
   it("makes a tax token with its first buy from the launch wallet, through the intent path", async () => {
     const signal = AbortSignal.timeout(110_000);
@@ -223,7 +220,8 @@ describe("a Flap launch on a BSC fork", () => {
         `https://funcs.flap.sh/api/v1/ipfs/pins?cid=${cid}`,
       ]);
       const { view, card, token, minted } = await readied(rig, proposed, signal);
-      const recipient = shortened(rig.rescue);
+      // A launch setting's account shows whole on the card.
+      const recipient = rig.rescue;
       expect(await cardText(rig, view, "en")).toStrictEqual(
         expect.arrayContaining([
           "Tax on every buy: 3.00%",

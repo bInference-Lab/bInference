@@ -166,6 +166,7 @@ A `launchToken` shows, right after its action line, each line below that has its
 | Picture, paper    | `card.launch.upload`        | Picture: upload {upload}                                                                        | 图片：上传 {upload}                                                 |
 | Picture link      | `launch.option.pictureLink` | Picture at {link} (binference never opens it)                                                   | 图片地址 {link}（binference 从不打开它）                            |
 | Setting, each     | `launch.option.<name>`      | One per launchpad setting, such as `launch.option.taxBps`: Tax on every trade: {value}          | 如 `launch.option.taxBps`：每笔交易的交易税：{value}                |
+| Account setting   | `launch.option.<name>`      | Such as `launch.option.taxRecipient`: Tax paid to {address}, the whole address                  | 如 `launch.option.taxRecipient`：交易税支付给 {address}，完整地址   |
 | Public already    | `card.launch.pinned`        | ⚠️ The picture and words are already public on {venue}'s storage, and stay public if you cancel | ⚠️ 图片和文字已在 {venue} 的存储中公开，即使取消也会保持公开        |
 
 A launch whose launchpad declares that its create call's first buy carries no minimum shows
@@ -175,7 +176,8 @@ the simulation before the card held the first buy to the least the card shows.
 
 `{digest}` is the first 16 hex digits of the picture's SHA-256; the terms hash binds all of it.
 A card cuts `{description}` at 1,000 characters and `{url}` and `{uri}` at 200, and shows `{link}`
-whole, up to its 512 bytes. A launchpad that takes its picture as a link uploads nothing, so its
+whole, up to its 512 bytes, as it shows a launch setting's `{address}` whole: an account a
+launch pays. A launchpad that takes its picture as a link uploads nothing, so its
 card shows neither the picture line nor the public one
 ([decision 0276](../DECISIONS.md#d0276)). A launchpad's
 setting names its own message, which must exist in both languages before the engine hosts the

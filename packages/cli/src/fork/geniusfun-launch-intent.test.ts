@@ -156,9 +156,6 @@ async function launchedOn(fork: Fork, token: Address) {
   };
 }
 
-// A card shows an address by its first 6 and last 4 characters.
-const shortened = (address: Address): string => `${address.slice(0, 6)}…${address.slice(-4)}`;
-
 describe("a geniusfun launch on a BSC fork", () => {
   it("makes a token with its first buy from the launch wallet, through the intent path", async () => {
     const signal = AbortSignal.timeout(110_000);
@@ -170,7 +167,8 @@ describe("a geniusfun launch on a BSC fork", () => {
       // Nothing to upload or pin: the card opens with the proposal.
       expect(proposed.state).toBe("awaiting_confirmation");
       const { view, card, token, minted } = await readied(rig, proposed, signal);
-      const recipient = shortened(rig.rescue);
+      // A launch setting's account shows whole on the card.
+      const recipient = rig.rescue;
       expect(await cardText(rig, view, "en")).toStrictEqual(
         expect.arrayContaining([
           "Launch fee 0.002 BNB",
