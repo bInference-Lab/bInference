@@ -40,7 +40,10 @@ export interface BotCalls {
    * shows the same already, counts as done.
    */
   edit(at: MessageAt, text: string, options: SendOptions): Promise<void>;
-  /** Answers a button press: with a short notice, or silently to stop the button's spinner. */
+  /**
+   * Answers a button press: with a short notice, or silently to stop the button's spinner. A
+   * notice over Telegram's 200 characters is cut and ends with `…`, so the press still gets it.
+   */
   answer(
     callbackId: string,
     notice: string | undefined,
@@ -77,6 +80,16 @@ function sendOptionsOf(target: ReplyTarget, options: SendOptions) {
   };
 }
 
+/** The most characters a press's notice holds (Bot API `answerCallbackQuery`). */
+const maxNoticeLength = 200;
+
+// Telegram refuses a longer notice, which would leave the button spinning with no word at all.
+function noticeOf(notice: string): string {
+  return notice.length <= maxNoticeLength
+    ? notice
+    : `${splitText(notice, maxNoticeLength - 1)[0] ?? ""}…`;
+}
+
 // The pieces of a long text go one at a time, so they reach the chat in order; the last one
 // carries the buttons.
 function sayWith(reply: BotCalls["reply"]): BotCalls["say"] {
@@ -110,7 +123,11 @@ export function createBotCalls(api: Api): BotCalls {
       ),
     answer: async (callbackId, notice, options) => {
       await callBotApi("answerCallbackQuery", options.signal, async (signal) =>
-        api.answerCallbackQuery(callbackId, notice === undefined ? {} : { text: notice }, signal),
+        api.answerCallbackQuery(
+          callbackId,
+          notice === undefined ? {} : { text: noticeOf(notice) },
+          signal,
+        ),
       );
     },
     deleteMessage: async (chatId, messageId, options) =>

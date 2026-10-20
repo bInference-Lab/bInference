@@ -39,7 +39,7 @@
   "pin_failed": "the launchpad could not pin the token's picture and words, so nothing was signed; propose the launch again",
   "pin_timeout": "the launchpad did not pin the token's picture and words within 5 minutes, so nothing was signed; propose the launch again",
   "upload_lost": "the launch stopped after it began sending the token's picture and words to the launchpad, before its pin wait; nothing was signed, but they may be public on the launchpad; propose the launch again",
-  "ceiling_lacks_call": "the launch wallet's ceiling does not allow this launchpad's create call yet, so nothing was uploaded: write its ceiling again with your owner key, `binference ceiling set --wallet ID --venues VENUES` with the wallet's id and the venues the agent uses, then launch again",
+  "ceiling_lacks_call": "the launch wallet's ceiling lacks this launchpad's create call, so nothing was uploaded: write it again with your owner key, `binference ceiling set --wallet ID --venues VENUES`, then launch again",
   "reverted": "the transaction reverted; only the network fee was spent",
   "stuck_cancelled": "the transaction was stuck and was cancelled; only the network fee was spent",
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",
