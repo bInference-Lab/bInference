@@ -39,8 +39,10 @@ export const brewLaunchOptions: readonly LaunchOption[] = [
 
 /**
  * The bytes a Brew launch's words take: the factory's 64 for a name and 32 for a symbol
- * (BrewFactory's verified source), and a description and links short enough that the words alone
- * always fit its 2,048-byte metadata address, leaving room for a small picture.
+ * (BrewFactory's verified source), and a description and links short enough to leave room for a
+ * small picture beside plain words in its 2,048-byte metadata address. Words that JSON escapes,
+ * such as quotes and backslashes, take more there and can leave no room, which
+ * `pictureBytesFor` then answers as 0.
  */
 export const brewWordLimits: LaunchWordLimits = {
   nameBytes: 64,

@@ -19,12 +19,15 @@ venue trades nothing itself (decision 0278).
 
 ## API
 
-| Export                     | What it does                                                 |
-| -------------------------- | ------------------------------------------------------------ |
-| `createBrewVenue`          | The `brew` venue on the chains given                         |
-| `brewDeclaration`          | What the venue declares on given chains, without reading any |
-| `BrewOptions`, `BrewChain` | The chains the venue serves, with each chain's wrapped coin  |
-| `@binference/brew/testing` | Launch logs recorded on BSC                                  |
+| Export                     | What it does                                                                      |
+| -------------------------- | --------------------------------------------------------------------------------- |
+| `createBrewVenue`          | The `brew` venue on the chains given                                              |
+| `brewDeclaration`          | What the venue declares on given chains, without reading any                      |
+| `BrewOptions`, `BrewChain` | The chains the venue serves, with each chain's wrapped coin, and its `launches`   |
+| `BrewLaunchOptions`        | What launches need: the salts' randomness and each chain it launches on           |
+| `BrewLaunchChain`          | One chain it launches on: its RPC failover, its simulator and its pairs           |
+| `BrewPair`                 | An asset a token may launch against, with its decimals and its fixed start if any |
+| `@binference/brew/testing` | Launch logs recorded on BSC, a fake factory chain and a launcher over it          |
 
 ## Example
 
@@ -33,6 +36,11 @@ import { createBrewVenue } from "@binference/brew";
 
 const brew = createBrewVenue({
   chains: [{ chain: bsc.ref, nativeAsset: bsc.nativeAsset, wrappedNative: wbnb }],
+  // Without `launches`, the venue reads launches and makes none.
+  launches: {
+    random,
+    chains: [{ chain: bsc.ref, rpc, simulator, pairs: [{ asset: bnb, decimals: 18, startBase }] }],
+  },
 });
 const host = createVenueHost({ venues: [brew], chains, clock, callTimeoutMs: 5_000 });
 ```

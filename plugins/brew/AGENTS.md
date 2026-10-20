@@ -5,8 +5,8 @@ The Brew launchpad: the tokens BrewFactory launches, read for the launch feed.
 The root [AGENTS.md](../../AGENTS.md) and [the plugin SDK's rules](../../packages/plugin-sdk/AGENTS.md)
 apply here. Rules for this plugin:
 
-- It imports `@binference/plugin-sdk`, viem and zod; its fork tests also import
-  `@binference/chain-evm/fork`. The package graph enforces it.
+- It imports `@binference/plugin-sdk`, viem and zod. The package graph enforces it. Its fork
+  tests live in `packages/cli/src/fork/`, which runs the venue in a composed engine.
 - Brew has no curve. A launch puts the token's whole supply into a PancakeSwap V3 pool, where the
   aggregators trade it from the first block, so the venue quotes, builds and decodes no trade of
   its own: its quote is `no_route`, its build throws `brew.no_trade`, its decoder answers every
@@ -22,17 +22,22 @@ apply here. Rules for this plugin:
   `InitialBuyExecuted` for that token as insiders. A Brew token reads as graduated, with no tax.
 - The launcher (decision 0283) lives in `src/create/`. It launches through BrewFactory's `launch`
   alone, from the launch wallet, against the coin (WBNB in the pool) or a registry token the
-  composition root gives, never the wrapped coin as a token. Every call writes a supply of
+  composition root names for Brew, never the wrapped coin as a token. Every call writes a supply of
   1,000,000,000, the 1% tier, no ranges of its own, the first buy for the wallet at the host's
   minimum (never 0), the quoted fee as both its fee and `maxLaunchFeeWei`, and a salt found off
   line so the token's address ends in 6666, which the factory's `predictTokenAddress` must give.
 - The metadata address carries the card's words and the owner's small picture in the document
   Brew's own launches write, 2,048 bytes in all; `pictureBytesFor` says what fits beside the words.
 - The fee recipient is outside binference (`isOutsideOnly`): Brew's locker pays it only on its
-  own claim. It is given exactly when holder rewards are off; with them on, the call names the
-  holder distributor the distributor factory predicts for the token.
+  own claim. It is given exactly when holder rewards are off; with them on, the build works out
+  the token's holder distributor off line, holds the distributor factory's `predict` to it, and
+  names it as `holderDistributor`, which the card shows whole. `checkOptions` names the step a
+  launch whose settings do not go together needs (decision 0284).
 - The start is the owner's `startMarketCap`, else the pair's fixed start, else $5,000 at
-  `pairUsdPrice`; its tick is worked out in integer arithmetic on the spacing of 200.
-- `src/create/brew-token.ts` holds BrewToken's creation code as BrewFactory's code holds it; its
-  test holds it to a real launch's address.
+  `pairUsdPrice`, named `startBasis` then; its tick is worked out in integer arithmetic on the
+  spacing of 200. A quote refuses with the reason that tells the owner's next step:
+  `launch_paused`, `start_unpriced`, `start_unreachable` or `dry_run_failed`.
+- `src/create/brew-token.ts` and `src/create/brew-distributor.ts` hold BrewToken's and
+  BrewHolderDistributor's creation code as their factories' code holds it; their tests hold each
+  to a real address.
 - Unit tests use the logs recorded in `src/testing/` and a fake factory there, never the network.

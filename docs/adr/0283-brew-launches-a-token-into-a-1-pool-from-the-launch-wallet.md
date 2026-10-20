@@ -84,7 +84,9 @@ U.S. citizens (decision
   `v` 1, the description, website, X and Telegram links the launch gives, and the picture as a
   `data:image/...;base64,` address, 2,048 bytes in all; the launcher tells the engine how many
   bytes of picture fit beside the words. The name takes 64 bytes and the symbol 32, as the factory
-  does, a description 600 and each link 100, so the words alone always fit.
+  does, a description 600 and each link 100, which leaves room for a small picture beside plain
+  words. Words that JSON escapes, such as quotes and backslashes, take more and can fill the
+  address; such a launch ends `picture_too_large`, whose words say to shorten the description.
 - **The quote.** It reads the launch fee and the pause, works out the start, and for a first buy
   runs the steps unsent from a wallet that holds only the fee and the first buy: the wallet's new
   tokens are the first buy's output; a run that fails, refunds part of the first buy or gets none
@@ -110,6 +112,16 @@ U.S. citizens (decision
 - The token's address rests on the call's words and salt, which the build fixes; a factory that
   is paused or charges another fee by the block makes the call revert, which the simulation
   before the card and the reconcile alarm catch.
+- `launch` names its first buy's recipient (`initialBuyRecipient`), which Flap's and Genius.fun's
+  create calls do not, and the launch wallet's Privy rule cannot pin it: Privy's calldata
+  conditions name a function's parameters (`launch.params`), and its docs name no way to reach a
+  member of a struct parameter. A stolen engine key could launch with a first buy for its own
+  address and sell it back into the pool. That is a new route for the launch wallet's coin, but no
+  larger a loss than decision
+  [0217](0217-a-launch-wallet-trades-on-launch-contracts-under-a-ceiling-of-its-own.md) accepts:
+  the key takes at most what the owner funded the launch wallet with, under its caps. The engine
+  writes the launch wallet as the recipient, and the decoder and the build check hold every call
+  to it.
 - A launch wallet's ceiling made before Brew joined lacks `launch`; `binference check` names it
   (`wallets.launch_calls`) and a launch ends `ceiling_lacks_call` before its build.
 
