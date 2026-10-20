@@ -121,12 +121,14 @@ describe("a card in Telegram HTML, in Chinese", () => {
         { kind: "filled", fill, explorerLink } as const,
         { kind: "launched", token, fill, explorerLink } as const,
         { kind: "launched", token, explorerLink } as const,
+        { kind: "landed", explorerLink } as const,
         { kind: "failed", reason: "reverted", explorerLink } as const,
       ].map((after) => textOf(receiptHtml(confirmed, display, after))),
     ).toStrictEqual([
       `${icons.done} 已完成：0.5 BNB → 313.95 USDT · ${explorerLink}`,
       `${icons.done} 已发射 USDT：首笔买入 0.5 BNB → 313.95 USDT · ${explorerLink}`,
       `${icons.done} 已发射 USDT · ${explorerLink}`,
+      `${icons.done} 已在链上完成 · ${explorerLink}`,
       expect.stringMatching(
         new RegExp(`^${icons.refused} 链上失败：.+ · ${explorerLink.replaceAll(".", "\\.")}$`, "u"),
       ),

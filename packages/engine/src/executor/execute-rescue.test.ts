@@ -5,7 +5,7 @@ import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { expectOk, testCoin, testToken, testWallet } from "../intents/test-intents.js";
-import { testAccount, testCall } from "../operations/test-engine.js";
+import { testAccount, testCall, testChains } from "../operations/test-engine.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { IntentStore } from "../ports.js";
 import {
@@ -20,6 +20,7 @@ import {
   testRescue,
   testReserveBase,
 } from "../safety/test-rescue.js";
+import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
   type BenchOptions,
@@ -27,6 +28,7 @@ import {
   eventsOf,
   type ExecutorBench,
   flush,
+  hashOf,
   startExecutorBench,
   stateOf,
 } from "./test-executor.js";
@@ -238,6 +240,23 @@ function sendOf(index: number): StepAction {
 }
 
 describe("a confirmed rescue on its wallets' queues", () => {
+  it("ends its card's receipt with the link of its last send", async () => {
+    const bench = await benchWithRescue();
+    const intent = await rescueConfirmed(bench);
+    await driveUntil(bench, intent, { states: ["reconciled"] });
+    const last = (await bench.test.stores.transactions.ofIntent(intent, live)).at(-1);
+    const showings = createCardShowings({
+      ...bench.test.stores,
+      chains: testChains(),
+      venues: { hasNoDeadline: () => false },
+    });
+    const ended = await showings.settled(intent, live);
+    expect(ended?.live?.outcome).toStrictEqual({
+      kind: "landed",
+      explorerLink: `https://scan.example.invalid/tx/${hashOf(last)}`,
+    });
+  });
+
   it("sends every move from its own wallet to the rescue address, then reconciles", async () => {
     const bench = await benchWithRescue();
     const intent = await rescueConfirmed(bench);

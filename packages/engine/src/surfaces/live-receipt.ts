@@ -78,6 +78,23 @@ function launchedOf(
     : { kind: "launched", token, explorerLink };
 }
 
+// A live intent that reconciled with no trade to show, such as a send or a rescue, or a launch with
+// none recorded: its last transaction's explorer link.
+async function landedOf(
+  source: LiveReceiptSource,
+  call: { readonly signal: AbortSignal },
+): Promise<LiveReceipt | undefined> {
+  const { record, transactions, chains } = source;
+  const last = (await transactions.ofIntent(record.id, call)).at(-1);
+  const explorerLink =
+    last === undefined
+      ? undefined
+      : explorerLinkOf(chains, accountRefParts(last.account).chain, last.hash);
+  return explorerLink === undefined
+    ? undefined
+    : { outcome: { kind: "landed", explorerLink }, assets: {} };
+}
+
 // A live intent that failed on chain: its reason, and its last transaction's explorer link.
 async function failedOf(
   source: LiveReceiptSource,
@@ -96,8 +113,8 @@ async function failedOf(
 
 /**
  * How a confirmed live intent ended on chain, once it did (spec 4, section 3.5): `reconciled`
- * with the trade it recorded, or `failed_onchain` with its reason, each with its last
- * transaction's explorer link. `undefined` for a paper intent, one still on its way, or one with
+ * with the trade it recorded, or as landed with none, or `failed_onchain` with its reason, each
+ * with its last transaction's explorer link. `undefined` for a paper intent, one still on its way, or one with
  * no transaction or explorer to name.
  */
 export async function liveReceiptOf(
@@ -109,7 +126,7 @@ export async function liveReceiptOf(
     return undefined;
   }
   if (record.state === "reconciled") {
-    return reconciledOf(source);
+    return reconciledOf(source) ?? landedOf(source, call);
   }
   return record.state === "failed_onchain" ? failedOf(source, call) : undefined;
 }

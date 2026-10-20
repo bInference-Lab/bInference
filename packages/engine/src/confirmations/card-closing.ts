@@ -36,7 +36,8 @@ export function receiptResult(fill: ReceiptFill): CardValue {
 /**
  * How a confirmed live intent ended on chain, as its receipt shows it (spec 4, section 3.5): a
  * trade that filled, with what it sold and bought; a token launch that landed, with its new token
- * and, with a first buy, what that sold and bought; or one that failed on chain, with its reason.
+ * and, with a first buy, what that sold and bought; any other intent that landed, such as a send
+ * or a rescue; or one that failed on chain, with its reason.
  * Each names its last transaction's explorer link.
  */
 export type LiveOutcome =
@@ -47,6 +48,7 @@ export type LiveOutcome =
       readonly fill?: ReceiptFill;
       readonly explorerLink: string;
     }
+  | { readonly kind: "landed"; readonly explorerLink: string }
   | { readonly kind: "failed"; readonly reason: IntentReason; readonly explorerLink: string };
 
 /** What followed a confirmation that the receipt shows: a paper fill, or a live outcome. */
@@ -76,6 +78,9 @@ function afterLine(after: ReceiptAfter): CardLine {
   const explorerLink = text(after.explorerLink);
   if (after.kind === "filled") {
     return { key: "receipt.filled", values: { result: receiptResult(after.fill), explorerLink } };
+  }
+  if (after.kind === "landed") {
+    return { key: "receipt.landed", values: { explorerLink } };
   }
   const reason: CardValue = { type: "line", line: { key: `reason.${after.reason}`, values: {} } };
   return { key: "receipt.failed", values: { reason, explorerLink } };

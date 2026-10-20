@@ -293,12 +293,14 @@ describe("a card in Telegram HTML", () => {
       receiptHtml(closing, display, { kind: "filled", fill, explorerLink }),
       receiptHtml(closing, display, { kind: "launched", token, fill, explorerLink }),
       receiptHtml(closing, display, { kind: "launched", token, explorerLink }),
+      receiptHtml(closing, display, { kind: "landed", explorerLink }),
       receiptHtml(closing, display, { kind: "failed", reason: "reverted", explorerLink }),
     ];
     expect(receipts.map((html) => shown(html).text)).toStrictEqual([
       `${icons.done} Done: 0.01 BNB → 31,395 PEPE (0x6982…1933) · ${explorerLink}`,
       `${icons.done} Launched PEPE (0x6982…1933): first buy 0.01 BNB → 31,395 PEPE (0x6982…1933) · ${explorerLink}`,
       `${icons.done} Launched PEPE (0x6982…1933) · ${explorerLink}`,
+      `${icons.done} Done on chain · ${explorerLink}`,
       `${icons.refused} Failed on chain: the transaction reverted; only the network fee was spent · ${explorerLink}`,
     ]);
   });

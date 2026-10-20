@@ -8,5 +8,6 @@
   "filled": "✅ Done: {result} · {explorerLink}",
   "launched": "✅ Launched {token}: first buy {result} · {explorerLink}",
   "launchedAlone": "✅ Launched {token} · {explorerLink}",
-  "failed": "❌ Failed on chain: {reason} · {explorerLink}"
+  "failed": "❌ Failed on chain: {reason} · {explorerLink}",
+  "landed": "✅ Done on chain · {explorerLink}"
 }

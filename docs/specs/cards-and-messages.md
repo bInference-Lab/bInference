@@ -277,6 +277,7 @@ The card's message is edited into its receipt; the buttons go away.
 | Filled                 | `receipt.filled`        | ✅ Done: {result} · {explorerLink}                       | ✅ 已完成：{result} · {explorerLink}                  |
 | Launched               | `receipt.launched`      | ✅ Launched {token}: first buy {result} · {explorerLink} | ✅ 已发射 {token}：首笔买入 {result} · {explorerLink} |
 | Launched, no first buy | `receipt.launchedAlone` | ✅ Launched {token} · {explorerLink}                     | ✅ 已发射 {token} · {explorerLink}                    |
+| Landed                 | `receipt.landed`        | ✅ Done on chain · {explorerLink}                        | ✅ 已在链上完成 · {explorerLink}                      |
 | Paper fill             | `receipt.paper`         | 🧪 Paper fill: {result}                                  | 🧪 模拟成交：{result}                                 |
 | Auto trade             | `receipt.auto`          | ⚡ Auto trade: {result} · {explorerLink}                 | ⚡ 自动交易：{result} · {explorerLink}                |
 | Cancelled              | `receipt.denied`        | ❌ Cancelled on {surface}                                | ❌ 已在 {surface} 取消                                |
@@ -290,8 +291,8 @@ The card's message is edited into its receipt; the buttons go away.
 A confirmed live intent's receipt says `receipt.confirmed` while it sends, and every copy turns
 into how it ended once it did: `receipt.filled` for a trade that reconciled, with what it sold and
 bought; `receipt.launched` for a token launch, with its new token (its symbol and short address)
-and what its first buy spent and got, or `receipt.launchedAlone` with no first buy; and
-`receipt.failed` for one that failed on chain. `{explorerLink}` is its last transaction's page on
+and what its first buy spent and got, or `receipt.launchedAlone` with no first buy; `receipt.landed` for any other intent that landed,
+such as a send or a rescue; and `receipt.failed` for one that failed on chain. `{explorerLink}` is its last transaction's page on
 the first block explorer the chain registry lists, shown whole.
 
 <a id="section-3-6"></a>
