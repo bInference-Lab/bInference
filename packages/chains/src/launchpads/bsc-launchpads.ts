@@ -60,10 +60,31 @@ const geniusfunLaunches = createContracts(
   "2026-10-20",
 );
 
+// Brew's single-pair factory, the locker its constructor made and its holder distributor factory,
+// from the contract list of Brew's docs. The factory's and the distributor factory's sources are
+// verified on Sourcify; neither is a proxy. One key owns the factory and can change its launch fee
+// (at most 5 BNB), its share of a pool's fees (at most half) and pause new launches, never a live
+// pool. The factory's `locker()` names the locker, whose `brewFactory()` names the factory, and both
+// name the PancakeSwap V3 position manager the registry lists; the distributor factory's
+// `brewFactory()` names the factory and has no owner. Brew's multi-pair factories are unverified
+// and left out, so their tokens are unknown to binference.
+const brew = createContracts(
+  "brew",
+  {
+    "https://brew.family/docs": {
+      factory: "0xeEa6C3bfb29Fd9a35380438956bae7B109c63d85",
+      locker: "0x3366e32702d6116B4FD2Cd3353dE2D5fF993F0d4",
+      "distributor-factory": "0xd765972dD6a09Fa9c743b4708198A820FC5D31EE",
+    },
+  },
+  "2026-10-20",
+);
+
 /** The contracts of the launchpads binference trades and launches on, on BSC. */
 export const bscLaunchpadContracts: readonly ContractDefinition[] = [
   ...fourmeme,
   ...flap,
   ...geniusfun,
   ...geniusfunLaunches,
+  ...brew,
 ];
