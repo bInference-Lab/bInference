@@ -6,7 +6,7 @@ import type { Shutdown, ShutdownStep } from "@binference/platform";
  * may use one opened earlier, so parts close in the reverse order.
  */
 export interface Closers {
-  /** Adds what closes a part, as soon as it opens. Throws `cli.too_many_parts` past 32. */
+  /** Adds what closes a part, as soon as it opens. Throws `cli.too_many_parts` past 64. */
   add(name: string, close: ShutdownStep): void;
   /** Closes every part opened so far, last first, when the start fails part way; never throws. */
   closeAll(signal: AbortSignal): Promise<void>;
@@ -19,7 +19,7 @@ interface Closer {
   readonly close: ShutdownStep;
 }
 
-const maxClosers = 32;
+const maxClosers = 64;
 
 /** Creates an empty list of closers. */
 export function createClosers(): Closers {

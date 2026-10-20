@@ -47,7 +47,7 @@ describe("the closers", () => {
 
   it("refuse a part past their bound", () => {
     const closers = createClosers();
-    Array.from({ length: 32 }, (_, index) =>
+    Array.from({ length: 64 }, (_, index) =>
       closers.add(`part${String(index)}`, async () => undefined),
     );
     expect(() => closers.add("one more", async () => undefined)).toThrow(
