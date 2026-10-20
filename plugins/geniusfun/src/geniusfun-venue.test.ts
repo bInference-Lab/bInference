@@ -6,6 +6,8 @@ import {
   type LaunchReader,
   type PriceReader,
   type TxDraft,
+  type VenueCall,
+  type VenueContracts,
 } from "@binference/plugin-sdk";
 import {
   curveReaderContract,
@@ -17,10 +19,9 @@ import {
   txBuilderContract,
   txDecoderContract,
 } from "@binference/plugin-sdk/testing";
-import { parseEther } from "viem";
+import { type AbiFunction, parseEther, toFunctionSelector } from "viem";
 import { describe, expect, it } from "vitest";
 import { tradeFunctionsJson } from "./contracts/genius-calls.js";
-import { createFunctionsJson } from "./contracts/launch-call.js";
 import { createGeniusfunVenue, geniusfunDeclaration } from "./geniusfun-venue.js";
 import { recordedCalls } from "./testing/recorded-answers.js";
 import { scriptedChain } from "./testing/recorded-chain.js";
@@ -102,6 +103,10 @@ function priceAnswers(): readonly string[] {
   });
 }
 
+// The calls a declaration marks as a launch wallet's alone; none for no declaration.
+const launchOnlyCallsOf = (contracts: VenueContracts | undefined): readonly VenueCall[] =>
+  (contracts?.calls ?? []).filter((call) => call.isLaunchWalletOnly === true);
+
 describe("the geniusfun venue", () => {
   it.each([
     ...quoterContract({
@@ -166,38 +171,55 @@ describe("the geniusfun venue", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("declares each stack's factory, each launch's curve, its buy and sell, its create calls for launch wallets alone, and no deadline", () => {
+  it("declares each stack's factory, each launch's curve, its buy and sell, and no deadline", () => {
     const declaration = geniusfunDeclaration([bscChain]);
     expect(declaration).toStrictEqual({
       id: "geniusfun",
       contracts: [
         {
           chain: bscChain,
-          names: ["factory-m4-2", "factory-m4-1", "router-m4-2"],
+          names: ["factory-m4-2", "factory-m4-1"],
           launchContracts: ["curve"],
           calls: [
             { contract: "curve", abi: tradeFunctionsJson.buy, walletInputs: ["recipient"] },
             { contract: "curve", abi: tradeFunctionsJson.sell, walletInputs: ["recipient"] },
-            {
-              contract: "router-m4-2",
-              abi: createFunctionsJson.launchAndBuy,
-              walletInputs: [],
-              isLaunchWalletOnly: true,
-            },
-            {
-              contract: "factory-m4-2",
-              abi: createFunctionsJson.launchToken,
-              walletInputs: [],
-              isLaunchWalletOnly: true,
-            },
           ],
           spenders: ["curve"],
-          launchWalletSpenders: ["router-m4-2"],
           noDeadline: true,
         },
       ],
     });
     expect(() => defineLaunchpad({ ...venueOver(scriptedChain()), ...declaration })).not.toThrow();
+  });
+
+  it("declares on a launch chain the router, every create overload for launch wallets alone, and the router as their spender", () => {
+    const [contracts] = geniusfunDeclaration([bscChain], [bscChain]).contracts;
+    const creates = launchOnlyCallsOf(contracts);
+    const selectorsOn = (contract: string) =>
+      creates
+        .filter((call) => call.contract === contract)
+        .map((call) => toFunctionSelector(call.abi as AbiFunction))
+        .toSorted();
+    expect(contracts?.names).toStrictEqual(["factory-m4-2", "factory-m4-1", "router-m4-2"]);
+    expect(contracts?.spenders).toStrictEqual(["curve"]);
+    expect(contracts?.launchWalletSpenders).toStrictEqual(["router-m4-2"]);
+    // Only the two it builds reach a ceiling; the six others are declared for the signer alone.
+    expect(
+      creates.filter((call) => call.isUnbuilt !== true).map((call) => call.contract),
+    ).toStrictEqual(["router-m4-2", "factory-m4-2"]);
+    // The selectors Genius.fun's ABIs ship for each create overload, 4.2.0.
+    expect(selectorsOn("router-m4-2")).toStrictEqual([
+      "0x71b27635",
+      "0x87ce0f83",
+      "0x8f9086b6",
+      "0xf85f8e41",
+    ]);
+    expect(selectorsOn("factory-m4-2")).toStrictEqual([
+      "0x944e67b7",
+      "0xa72101af",
+      "0xe78b4707",
+      "0xf35abbcf",
+    ]);
   });
 
   it.each([

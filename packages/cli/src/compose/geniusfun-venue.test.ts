@@ -151,7 +151,8 @@ describe("the geniusfun launchpad in the self-hosted venue host", () => {
       error: "bad_settings",
     });
     expect(host.takesUpload("geniusfun")).toBe(false);
-    // Its two create calls, and its curves' buy and sell, are a launch wallet's alone.
+    // Its two create calls, and its curves' buy and sell, are a launch wallet's ceiling's to allow;
+    // the overloads it never builds are not.
     const names = host.launchWalletCalls("geniusfun").map((abi) => JSON.stringify(abi));
     expect(names.map((abi) => /"name":"(\w+)"/u.exec(abi)?.[1])).toStrictEqual([
       "launchAndBuy",

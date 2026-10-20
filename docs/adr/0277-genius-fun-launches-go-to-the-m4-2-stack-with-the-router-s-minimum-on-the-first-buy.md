@@ -27,8 +27,8 @@ What they say:
 - **Two create calls.** The factory's `launchToken(TokenParams, configId, pairToken,
 toFoundation)` (0xe78b4707) makes a token and its curve. The router's `launchAndBuy(TokenParams,
 configId, pairToken, quoteIn, minimum, recipient, toFoundation)` (0x71b27635) makes them through
-  the factory and runs the first buy on the new curve in the same call; `minimum` binds the buy,
-  and the router appends the buy's recipient to the wallets the launch window's snipe tax spares.
+  the factory and runs the first buy on the new curve in the same call. It passes `minimum` to the
+  curve's `buy`, whose price bound takes even 0, and the router appends the buy's recipient to the wallets the launch window's snipe tax spares.
 - **The fee.** `msg.value` is the launch fee, plus the first buy for a launch against the coin.
   Against a token, the router pulls the first buy from its caller by `transferFrom`, after an
   approval of the router.
@@ -68,9 +68,11 @@ false and never offered; no wallet is exempted from the snipe tax.
   decoder refuses a call that chooses the Foundation or writes any other fixed value.
 - **The words.** The description, the website, X and Telegram links go into the create call, held
   to the launch deployer's byte limits (decision 0275).
-- **The first buy keeps its minimum.** The router binds it, so the launcher does not declare
-  `noFirstBuyMin`, the registry does not list Genius.fun among the launchpads whose first buy runs
-  unbound, and the host holds the call's minimum to the quote less the agent's slippage.
+- **The first buy keeps its minimum.** The router passes the minimum to the curve, which holds the
+  buy to it; the launcher refuses to build a first buy with a minimum of 0, and the host holds the
+  call's minimum to the quote less the agent's slippage. So the launcher does not declare
+  `noFirstBuyMin`, and the registry does not list Genius.fun among the launchpads whose first buy
+  runs unbound.
 - **The quote and the token.** The launcher reads the factory's fee, whether launches are open to
   the wallet, whether the pair is approved, and the economics digest, then runs the steps unsent
   on the chain's simulator from a wallet that holds only the fee and the first buy. The first buy's
@@ -81,9 +83,16 @@ false and never offered; no wallet is exempted from the snipe tax.
   every other field from the bytes. A fee other than the quoted one fails the build.
 - **Launch wallets alone.** `launchAndBuy` and `launchToken` are calls only a launch wallet makes
   (`isLaunchWalletOnly`, decision 0271): only a launch wallet's ceiling allows them, and the signer
-  refuses them from any other wallet. The router is a spender a launch wallet alone approves, for
-  a token first buy's exact approval: the venue declares it among its launch wallet spenders
-  (`launchWalletSpenders`), which only a launch wallet's ceiling lists.
+  refuses them from any other wallet. Every other create overload of the router and the factory,
+  the three of each with exemptions or without the Foundation choice, which the venue never
+  builds, is declared a launch wallet's alone too and marked `isUnbuilt`: the signer refuses each
+  from any other wallet by its selector, and no ceiling lists it, since Privy allows a call by its
+  function's name and reads it by one ABI, so custody refuses it from the launch wallet as well.
+  The venue declares the router, these calls and its launch wallet spender only on the chains it
+  launches on, so a chain whose registry lists the stacks but not the router keeps its curve
+  trades. The router is a spender a launch wallet alone approves, for a token first buy's exact
+  approval: the venue declares it among its launch wallet spenders (`launchWalletSpenders`), which
+  only a launch wallet's ceiling lists.
 - **No commission.** Nothing in the call pays anyone but the launch fee the factory charges.
 
 ## Consequences
@@ -95,7 +104,8 @@ false and never offered; no wallet is exempted from the snipe tax.
 - No agent wallet's ceiling lists the router. Its verified source takes a token only from the
   caller of `launchAndBuy`, by `transferFrom(msg.sender)`, and has no payer argument, no multicall
   and no proxy; a new router is read again for this before it joins the registry.
-- `VenueContracts` gains `launchWalletSpenders`, which a launch wallet's ceiling alone lists.
+- `VenueContracts` gains `launchWalletSpenders`, which a launch wallet's ceiling alone lists, and
+  `VenueCall` gains `isUnbuilt`, which no ceiling lists and no launch check asks a ceiling for.
 - The decoder knows a create call's token only from the build that made it, in the same engine
   process; a call the venue never built is `unknown_call`. The engine decodes a launch only at its
   build.

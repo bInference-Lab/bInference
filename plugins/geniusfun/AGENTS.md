@@ -46,11 +46,15 @@ apply here. Rules for this plugin:
   snipe tax, progress and `graduated()` and the token's words complete it through read calls the
   feed asks at the latest block; a read that fails leaves its fact out.
 - The launcher (decisions 0275 to 0277) lives in `src/create/`. It launches on the m4.2 stack
-  alone: with a first buy through the router's `launchAndBuy`, which binds the buy to its
-  minimum, without one through the factory's `launchToken`. Genius.fun has no metadata API: the
-  create call carries the words and the owner's `pictureLink`, so the launcher uploads nothing,
-  has no pin, reads no picture and never opens the link. Both create calls are a launch wallet's
-  alone (`isLaunchWalletOnly`).
+  alone: with a first buy through the router's `launchAndBuy`, which passes the minimum to the
+  curve, which holds the buy to it (the launcher refuses a minimum of 0), without one through the
+  factory's `launchToken`. Genius.fun has no metadata API: the create call carries the words and
+  the owner's `pictureLink`, so the launcher uploads nothing, has no pin, reads no picture and
+  never opens the link. Every create overload of the router and the factory is a launch wallet's
+  alone (`isLaunchWalletOnly`), and the router is a spender a launch wallet alone approves
+  (`launchWalletSpenders`); the venue declares them only on the chains it launches on.
+- The creator fee recipient is outside binference (`isOutsideOnly`): Genius.fun pays it only on
+  its own claim from the fee escrow, which binference never makes.
 - A create call is the venue's only when it would write the same bytes for what it reads: launch
   configuration 0, no creator tax, the buyback on, no Discord or Farcaster link, never
   `toFoundation`, and no snipe tax exemptions. The token comes from the dry run of the build that

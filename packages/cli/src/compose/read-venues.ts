@@ -25,7 +25,11 @@ import {
   type Random,
 } from "@binference/core";
 import { createFlapVenue, type FlapLaunchChain } from "@binference/flap";
-import { createGeniusfunVenue, type GeniusfunLaunchChain } from "@binference/geniusfun";
+import {
+  createGeniusfunVenue,
+  type GeniusfunLaunchChain,
+  geniusfunLaunchStack,
+} from "@binference/geniusfun";
 import { createKyberswapVenue, type KyberswapHook } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
 import type {
@@ -167,7 +171,7 @@ function geniusfunLaunchChainsOf(
   return chains.flatMap((chain) => {
     const read = reads.get(chain.ref);
     const isListed = chain.definition.contracts.some(
-      (item) => item.venue === "geniusfun" && item.name === "router-m4-2",
+      (item) => item.venue === "geniusfun" && item.name === geniusfunLaunchStack.router,
     );
     return read === undefined || !isListed
       ? []

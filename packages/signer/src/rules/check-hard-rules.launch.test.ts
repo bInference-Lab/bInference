@@ -135,3 +135,49 @@ describe("a call only a launch wallet makes", () => {
     expect(brokenHardRules(unread, context)).toStrictEqual([2]);
   });
 });
+
+// Genius.fun's router's 6-argument `launchAndBuy` (0x8f9086b6), a create overload the venue never
+// builds, which it still declares as a launch wallet's alone (decision 0277).
+const text = (name: string) => ({ type: "string", name });
+const sixArgumentLaunch = {
+  type: "function",
+  name: "launchAndBuy",
+  inputs: [
+    {
+      type: "tuple",
+      name: "params",
+      components: [
+        text("name"),
+        text("symbol"),
+        text("logo"),
+        text("description"),
+        {
+          type: "tuple",
+          name: "socials",
+          components: ["twitter", "telegram", "discord", "website", "farcaster"].map(text),
+        },
+        { type: "address", name: "creatorFeeRecipient" },
+        { type: "uint16", name: "creatorTaxBps" },
+        { type: "bool", name: "buybackEnabled" },
+        { type: "bytes32", name: "expectedEconomics" },
+        { type: "bytes32", name: "salt" },
+      ],
+    },
+    { type: "uint256", name: "launchConfigId" },
+    { type: "address", name: "pairToken" },
+    { type: "uint256", name: "quoteIn" },
+    { type: "uint256", name: "minTokensOut" },
+    { type: "address", name: "recipient" },
+  ],
+};
+const sixArgumentCall = {
+  ...withTransaction(call, { to: router, data: "0x8f9086b6" }),
+  allowed: { ...call.allowed, launchOnlyCalls: [sixArgumentLaunch] },
+};
+
+describe("a create overload a launchpad declares but never builds", () => {
+  it("signs it from the launch wallet alone, and refuses it from any other wallet as rule 2", () => {
+    expect(checkHardRules(fromLaunchWallet(sixArgumentCall), context)).toBeUndefined();
+    expect(brokenHardRules(sixArgumentCall, context)).toStrictEqual([2]);
+  });
+});

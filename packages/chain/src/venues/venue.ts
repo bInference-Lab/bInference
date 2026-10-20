@@ -27,6 +27,12 @@ export interface VenueCall {
    * wallet (decision 0271). A call on a launch's own contracts is a launch wallet's already.
    */
   readonly isLaunchWalletOnly?: boolean;
+  /**
+   * The venue never builds this call: it declares it, a launch wallet's alone, only so the signer
+   * refuses it from every other wallet, such as a launchpad's create overload it never uses. No
+   * ceiling lists it, a launch wallet's neither, and custody refuses it (decision 0277).
+   */
+  readonly isUnbuilt?: boolean;
 }
 
 /** The contracts a venue touches on one chain, by their names in that chain's registry entry. */
@@ -80,6 +86,7 @@ interface VenueCallWire {
   readonly abi: JsonValue;
   readonly walletInputs?: readonly string[] | undefined;
   readonly isLaunchWalletOnly?: boolean;
+  readonly isUnbuilt?: boolean;
 }
 
 /** A {@link VenueDeclaration} as a plugin's manifest writes it. */
@@ -100,15 +107,24 @@ function isUnique(values: readonly string[]): boolean {
   return new Set(values).size === values.length;
 }
 
-const callSchema: z.ZodType<VenueCall, VenueCallWire> = z.strictObject({
-  contract: kebabCaseSchema,
-  abi: z.json(),
-  walletInputs: z
-    .array(z.string().min(1))
-    .refine(isUnique, { message: "An input repeats." })
-    .default([]),
-  isLaunchWalletOnly: z.literal(true).exactOptional(),
-});
+// A call the venue never builds is declared for the signer's refusal, so it is a launch wallet's.
+const isUnbuiltShaped = (call: VenueCall): boolean =>
+  call.isUnbuilt !== true || call.isLaunchWalletOnly === true;
+
+const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
+  .strictObject({
+    contract: kebabCaseSchema,
+    abi: z.json(),
+    walletInputs: z
+      .array(z.string().min(1))
+      .refine(isUnique, { message: "An input repeats." })
+      .default([]),
+    isLaunchWalletOnly: z.literal(true).exactOptional(),
+    isUnbuilt: z.literal(true).exactOptional(),
+  })
+  .refine(isUnbuiltShaped, {
+    message: "A call the venue never builds is a launch wallet's alone.",
+  });
 
 // Every call and every spender names one of the chain's declared contracts, registry or launch,
 // a launch wallet's spender a registry one, and a spender once; a launch's contract shares no name

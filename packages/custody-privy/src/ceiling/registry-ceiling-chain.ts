@@ -50,9 +50,11 @@ function callsOf(
 ): Result<readonly CeilingCall[], RegistryCeilingProblem> {
   const { definition } = ceiling;
   const calls: CeilingCall[] = [];
+  // A call the venue never builds is declared only for the signer's refusal: no ceiling lists it.
   const listed = (declared.contracts.calls ?? []).filter(
     (call) =>
       isRegistryName(declared, call.contract) &&
+      call.isUnbuilt !== true &&
       (ceiling.isLaunch || call.isLaunchWalletOnly !== true),
   );
   for (const call of listed) {

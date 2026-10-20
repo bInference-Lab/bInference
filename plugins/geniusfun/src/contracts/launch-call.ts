@@ -38,6 +38,23 @@ const routerAbi = parseAbi([
   "function launchAndBuy(TokenParams params, uint256 configId, address pairToken, uint256 quoteIn, uint256 minimum, address recipient, bool toFoundation) payable returns (address token, address curve, uint256 tokensOut)",
 ]);
 
+// The create overloads this venue never builds: the router's `launchAndBuy` without the
+// Foundation choice, with exemptions, or with both, and the factory's `launchToken` likewise. Each
+// is a launch wallet's alone too, so no other wallet can make a token through them.
+const otherRouterCreates = parseAbi([
+  ...paramsTypes,
+  "function launchAndBuy(TokenParams params, uint256 launchConfigId, address pairToken, uint256 quoteIn, uint256 minTokensOut, address recipient) payable returns (address token, address curve, uint256 tokensOut)",
+  "function launchAndBuy(TokenParams params, uint256 launchConfigId, address pairToken, uint256 quoteIn, uint256 minTokensOut, address recipient, address[] snipeTaxExemptions) payable returns (address token, address curve, uint256 tokensOut)",
+  "function launchAndBuy(TokenParams params, uint256 configId, address pairToken, uint256 quoteIn, uint256 minimum, address recipient, bool toFoundation, address[] snipeTaxExemptions) payable returns (address token, address curve, uint256 tokensOut)",
+]);
+
+const otherFactoryCreates = parseAbi([
+  ...paramsTypes,
+  "function launchToken(TokenParams params, uint256 launchConfigId, address pairToken) payable returns (address token, address curve)",
+  "function launchToken(TokenParams params, uint256 launchConfigId, address pairToken, address[] snipeTaxExemptions) payable returns (address token, address curve)",
+  "function launchToken(TokenParams params, uint256 configId, address pairToken, bool toFoundation, address[] snipeTaxExemptions) payable returns (address token, address curve)",
+]);
+
 /** A launch's social links as the token keeps them. */
 interface TokenSocials {
   readonly twitter: string;
@@ -87,13 +104,23 @@ export type CreateCall =
       readonly recipient: Address;
     } & CreateBase);
 
-/** The create calls, each only a launch wallet makes, as JSON ABI entries. */
+const functionsOf = (abi: typeof otherRouterCreates | typeof otherFactoryCreates) =>
+  abi.filter((item) => item.type === "function").map((item) => callAbiJson(item));
+
+/**
+ * The create calls, each only a launch wallet makes, as JSON ABI entries: the two this venue
+ * builds, and every other create overload of the router and the factory, which it never builds.
+ */
 export const createFunctionsJson: {
   readonly launchToken: JsonValue;
   readonly launchAndBuy: JsonValue;
+  readonly otherRouterCreates: readonly JsonValue[];
+  readonly otherFactoryCreates: readonly JsonValue[];
 } = {
   launchToken: callAbiJson(getAbiItem({ abi: factoryLaunchAbi, name: "launchToken" })),
   launchAndBuy: callAbiJson(getAbiItem({ abi: routerAbi, name: "launchAndBuy" })),
+  otherRouterCreates: functionsOf(otherRouterCreates),
+  otherFactoryCreates: functionsOf(otherFactoryCreates),
 };
 
 /** The calldata of a create call. */

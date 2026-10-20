@@ -68,12 +68,19 @@ const swapper = declaredVenue("swapper", {
   spenders: ["router"],
 });
 
-// A venue whose second call only a launch wallet makes.
+// A venue whose second call only a launch wallet makes, and whose third it never builds.
 const launching = declaredVenue("swapper", {
   names: ["router", "permit2"],
   calls: [
     { contract: "router", abi: swapJson, walletInputs: [] },
     { contract: "router", abi: swapToJson, walletInputs: ["receiver"], isLaunchWalletOnly: true },
+    {
+      contract: "router",
+      abi: abiFunctionJson({ ...testRouterAbi.swapTo, name: "swapFor" }),
+      walletInputs: [],
+      isLaunchWalletOnly: true,
+      isUnbuilt: true,
+    },
   ],
 });
 
@@ -127,7 +134,7 @@ describe("registryCeilingChain", () => {
     });
   });
 
-  it("lists a call only a launch wallet makes in a launch wallet's ceiling alone", () => {
+  it("lists a call only a launch wallet makes in a launch wallet's ceiling alone, and one never built in none", () => {
     expect(launchingCalls({ isLaunch: false })).toStrictEqual([testRouterAbi.swap.name]);
     expect(launchingCalls({ isLaunch: true })).toStrictEqual([
       testRouterAbi.swap.name,

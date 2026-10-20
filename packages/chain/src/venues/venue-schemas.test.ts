@@ -176,6 +176,14 @@ describe("venue schemas", () => {
       },
     ],
     [
+      "a call never built that any wallet may make",
+      {
+        chain: "fake:1",
+        names: ["router"],
+        calls: [{ contract: "router", abi: {}, isUnbuilt: true }],
+      },
+    ],
+    [
       "a wallet input twice",
       {
         chain: "fake:1",

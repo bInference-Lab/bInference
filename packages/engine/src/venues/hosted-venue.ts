@@ -27,7 +27,8 @@ export interface HostedVenue {
   readonly launchCalls: readonly JsonValue[];
   /**
    * The JSON ABI entry of each call only a launch wallet makes on the venue (decision 0271): the
-   * calls it marks so, such as a launchpad's create call, and its launch calls.
+   * calls it marks so, such as a launchpad's create call, but those it never builds (decision
+   * 0277), and its launch calls.
    */
   readonly launchWalletCalls: readonly JsonValue[];
 }
@@ -91,7 +92,7 @@ function host(venue: Venue, chains: ChainRegistry): HostedVenue {
   );
   const marked = declaration.data.contracts.flatMap((declared) =>
     (declared.calls ?? [])
-      .filter((call) => call.isLaunchWalletOnly === true)
+      .filter((call) => call.isLaunchWalletOnly === true && call.isUnbuilt !== true)
       .map((call) => call.abi),
   );
   const launchWalletCalls = [...marked, ...launchCalls];

@@ -16,12 +16,13 @@ import { BinferenceError } from "@binference/core";
 import { z } from "zod";
 
 function frozenCall(call: VenueCall): VenueCall {
-  const { contract, abi, walletInputs, isLaunchWalletOnly } = call;
+  const { contract, abi, walletInputs, isLaunchWalletOnly, isUnbuilt } = call;
   return Object.freeze({
     contract,
     abi,
     walletInputs: Object.freeze([...walletInputs]),
     ...(isLaunchWalletOnly === true ? { isLaunchWalletOnly } : {}),
+    ...(isUnbuilt === true ? { isUnbuilt } : {}),
   });
 }
 
