@@ -62,6 +62,11 @@ const fillReasonCodes: ReadonlySet<string> = new Set<string>([
   ...orderSkipReasons,
 ]);
 
+/** Parses why a fill was skipped: an intent's reason code, or an order's own. */
+export const orderFillReasonSchema: z.ZodType<OrderFillReason, string> = z
+  .string()
+  .refine((code): code is OrderFillReason => fillReasonCodes.has(code));
+
 /** Parses one fill row. A skip carries a reason and a fill none. */
 export const orderFillRecordSchema: z.ZodType<OrderFillRecord> = z
   .strictObject({
@@ -69,10 +74,7 @@ export const orderFillRecordSchema: z.ZodType<OrderFillRecord> = z
     orderId: idSchema("ord"),
     intentId: idSchema("int").exactOptional(),
     outcome: z.enum(["filled", "skipped"]),
-    reason: z
-      .string()
-      .refine((code): code is OrderFillReason => fillReasonCodes.has(code))
-      .exactOptional(),
+    reason: orderFillReasonSchema.exactOptional(),
     atMs: epochMsSchema,
     notices: z.array(jsonValueSchema).min(1).exactOptional(),
     announcedAtMs: epochMsSchema.exactOptional(),

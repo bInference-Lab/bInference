@@ -26,6 +26,7 @@ import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
 import { copyBuysTask } from "./copy-buy-rows.js";
+import { fillCountsTask } from "./fill-count-rows.js";
 import {
   checkOrderFill,
   checkOwnFill,
@@ -233,4 +234,5 @@ export const orderTasks: readonly TaskRunner[] = [
   unannouncedFillsTask,
   markAnnouncedTask,
   copyBuysTask,
+  fillCountsTask,
 ];

@@ -1,4 +1,5 @@
 import type { Id, Result } from "@binference/core";
+import type { FillCountQuery, FillCounts } from "./fill-counts.js";
 import type {
   CopyBuyQuery,
   CopyBuyRecord,
@@ -82,6 +83,11 @@ export interface OrderStore {
   copyBuys(query: CopyBuyQuery, options: StoreCall): Promise<readonly CopyBuyRecord[]>;
   /** One order's fill rows, the newest first, then by id from the last. */
   fills(query: OrderFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
+  /**
+   * How many rows of the agent's orders, of any state or mode, filled and skipped in the range,
+   * the skips by reason, the most frequent first (the daily summary's counts).
+   */
+  fillCounts(query: FillCountQuery, options: StoreCall): Promise<FillCounts>;
   /**
    * The fill rows of every order whose notices were never announced, the oldest first, then by
    * id (decision 0197).

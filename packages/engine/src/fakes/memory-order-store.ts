@@ -16,9 +16,9 @@ import { isOrderEnded } from "../orders/order-states.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
-import { copyBuysOf } from "./memory-copy-buys.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryOrderFills, type MemoryOrderFills } from "./memory-order-fills.js";
+import { rowReadsOf } from "./memory-order-row-reads.js";
 import { createMemoryTracking, type MemoryTracking } from "./memory-tracking.js";
 
 /** An in-memory order store, whose moves another in-memory store's write can make. */
@@ -294,10 +294,7 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
   });
   return {
     ...fills,
-    copyBuys: async (query, call) =>
-      memoryCall(call, () =>
-        copyBuysOf({ orders, rows: fills.rowsNow(), intentNow: options.intentNow }, query),
-      ),
+    ...rowReadsOf({ orders, rowsNow: () => fills.rowsNow(), intentNow: options.intentNow }),
     checkWriteNow: (write) => {
       const checked = checkNow(orders, options, {
         moves: structuredClone(write.moves),

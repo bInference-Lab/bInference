@@ -43,6 +43,8 @@ export type { CheckedSkipReason, ResumeCause } from "./downtime/downtime-check.j
 export { activeAlerts } from "./alerts/alert-events.js";
 export { hasHeldToTell, noticeHourMs } from "./notices/notice-hour.js";
 export type { AlertFiring, WatchedLaunch, WatchedTrade } from "./alerts/fire-alerts.js";
+export { fillCountQuerySchema, fillCountsSchema } from "./orders/fill-counts.js";
+export type { FillCountQuery, FillCounts, SkipCount } from "./orders/fill-counts.js";
 export {
   copyBuyQuerySchema,
   copyBuyRecordSchema,

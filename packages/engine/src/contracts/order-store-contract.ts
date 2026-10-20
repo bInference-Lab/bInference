@@ -5,6 +5,7 @@ import type { FillSize } from "@binference/protocol";
 import { testCoin } from "../intents/test-intents.js";
 import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
 import { holdsTrackedWalletSlots, listsCopyBuys } from "./order-copy-checks.js";
+import { countsFillsAndSkips } from "./order-count-checks.js";
 import {
   announcesFillNotices,
   countsALandedFillOnce,
@@ -207,7 +208,7 @@ function liveFillChecks(create: () => Promise<OrderStoreSubject>): readonly Cont
  * The checks every {@link OrderStore} adapter passes: orders created once and kept exact past 64
  * bits, a buy's spent asset and size among them, moves all or nothing under their versions, the rules no move may break, an order active
  * only on its card's confirmation and never for a frozen agent, the freeze's own order moves,
- * listing by state, agent, wallet, mode and expiry page by page, fill rows, a fill's moves and row
+ * listing by state, agent, wallet, mode and expiry page by page, fill rows and their counts, a fill's moves and row
  * written with its intent's move, and aborted calls.
  */
 export function orderStoreContract(harness: OrderStoreHarness): readonly ContractCheck[] {
@@ -247,6 +248,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     checkOn("lists orders by state, agent, wallet, mode and expiry", create, listsByQuery),
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
     checkOn("keeps an order's skips, the newest first", create, recordsSkips),
+    checkOn("counts an agent's fills and skips in a range, by reason", create, countsFillsAndSkips),
     checkOn("writes a fill on its order with its intent's move", create, writesAFillWithItsIntent),
     ...liveFillChecks(create),
     checkOn("refuses fill calls on an aborted signal", create, refusesAbortedFills),
