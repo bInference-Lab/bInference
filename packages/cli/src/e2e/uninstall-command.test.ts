@@ -1,12 +1,13 @@
 import { join } from "node:path";
+import { BinferenceError, type SecretStore } from "@binference/core";
 import { createMemorySecretStore } from "@binference/core/testing";
 import type { ProgramExit } from "@binference/platform";
 import { fileSize, readTextFile, writePrivateFile } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
-import { type Home, onHome, setUpHome, startService } from "./home-fixtures.js";
-import { runOn, secretEnv } from "./init-fixtures.js";
+import { type Home, homeEnv, onHome, setUpHome, startService } from "./home-fixtures.js";
+import { type CliRun, runOn, secretEnv } from "./init-fixtures.js";
 import { seedSendingTrade } from "./state-fixtures.js";
 import type { HostParts } from "./test-host.js";
 import { isUnlocked, noPermissions, testSystem } from "./test-host.js";
@@ -58,6 +59,25 @@ async function npmFails(): Promise<ProgramExit> {
   return Promise.resolve({ exitCode: 1, stdout: "", stderr: "EACCES" });
 }
 
+// Runs `uninstall --state --yes` with the unlock settings the variables give and the keychain.
+async function removeStateIn(
+  home: Home,
+  env: Readonly<Record<string, string>>,
+  keychain: SecretStore,
+): Promise<CliRun> {
+  return runOn(home.machine, ["uninstall", "--state", "--yes"], {
+    env: { ...homeEnv(home.machine), ...env },
+    parts: { homeDir: home.home, serviceManager: home.services.manager, keychain },
+  });
+}
+
+// A keychain that does not answer a removal, as a locked one does.
+async function refusedDelete(): Promise<never> {
+  return Promise.reject(
+    new BinferenceError({ code: "platform.keychain_failed", message: "Locked." }),
+  );
+}
+
 async function serviceState(home: Home): Promise<string> {
   return (await home.services.manager.status("engine", signal())).state;
 }
@@ -85,6 +105,7 @@ describe("binference uninstall", () => {
         service: "removed",
         state: "kept",
         keychain: [],
+        agentKey: "kept",
         program: "removed",
       });
       await expect(serviceState(home)).resolves.toBe("not_installed");
@@ -116,7 +137,63 @@ describe("binference uninstall", () => {
     await expect(keychain.read("brave-search", signal())).resolves.toMatchObject({ ok: false });
     await expect(keychain.read("other-app", signal())).resolves.toMatchObject({ ok: true });
     await expect(serviceState(home)).resolves.toBe("not_installed");
+    expect(removed.stdout).toContain(
+      "The agent key was in the state folder, so it is gone with it.",
+    );
   });
+
+  it("removes the agent key from the keychain in the keychain unlock mode", slow, async () => {
+    const home = track(await setUpHome(folders));
+    const keychain = createMemorySecretStore({ "agent-key": "a key" });
+
+    const removed = await removeStateIn(
+      home,
+      { BINFERENCE_ENGINE__UNLOCK__MODE: "keychain" },
+      keychain,
+    );
+
+    expect(removed.stdout).toContain("The agent key is removed from the OS keychain.");
+    await expect(keychain.read("agent-key", signal())).resolves.toMatchObject({ ok: false });
+  });
+
+  it("says the agent key stays in a keychain that does not remove it", slow, async () => {
+    const home = track(await setUpHome(folders));
+    const refusing = { ...createMemorySecretStore({}), delete: refusedDelete };
+
+    const removed = await removeStateIn(
+      home,
+      { BINFERENCE_ENGINE__UNLOCK__MODE: "keychain" },
+      refusing,
+    );
+
+    expect(removed.code).toBe(0);
+    expect(removed.stdout).toContain(
+      "The OS keychain could not remove the agent key, so it stays in it under the service binference, entry agent-key.",
+    );
+  });
+
+  it(
+    "names only the program the command unlock mode reads the agent key through",
+    slow,
+    async () => {
+      const home = track(await setUpHome(folders));
+      const env = {
+        BINFERENCE_ENGINE__UNLOCK__MODE: "command",
+        BINFERENCE_ENGINE__UNLOCK__COMMAND: JSON.stringify({
+          fromCommand: ["/opt/vault/bin/op", "read", "op://vault/agent-item"],
+        }),
+      };
+
+      const removed = await removeStateIn(home, env, createMemorySecretStore({}));
+
+      expect(removed.code).toBe(0);
+      expect(removed.stdout).toContain(
+        "The agent key stays where your unlock command reads it, through op;",
+      );
+      expect(removed.stdout).not.toContain("op://vault");
+      expect(removed.stdout).not.toContain("/opt/vault");
+    },
+  );
 
   it("asks for the typed phrase at a terminal and goes on once it is typed", slow, async () => {
     const home = track(await setUpHome(folders));

@@ -25,7 +25,7 @@ export interface Home {
 }
 
 /** The variables of a run on the home's state folder: the secrets, and no `BINFERENCE_HOME`. */
-function homeEnv(machine: InitMachine): Readonly<Record<string, string>> {
+export function homeEnv(machine: InitMachine): Readonly<Record<string, string>> {
   return { ...secretEnv(machine), BINFERENCE_HOME: "" };
 }
 

@@ -36,6 +36,11 @@ program loads one (the keychain library).
   neither the home folder nor a folder that holds it. With it go the keychain entries of the
   install: each entry the config names as `{ fromKeychain }`, and the agent key in the `keychain`
   unlock mode; an entry the keychain does not answer for stays.
+- Then it says, in the owner's language, where the agent key is now (the lead's call,
+  2026-10-20): gone with the folder in the `file` and `manual` modes; removed from the OS keychain,
+  or still there under its entry when the keychain did not remove it, in the `keychain` mode; and
+  in the `command` mode still where the command reads it, named by the program's file name alone,
+  never its folder or arguments. No secret is printed.
 - The program is removed with `npm uninstall --global --prefix <prefix> binference`, the prefix read
   from where the running script sits. On Windows the command is printed for the owner to run once
   this one ends. A program that npm did not install, such as a checkout, is left as it is.
@@ -47,7 +52,7 @@ program loads one (the keychain library).
 - One command takes binference off a machine on every OS, and the machine keeps no key that signs
   for the wallets. The wallets still list this machine's agent key as their signer on Privy; no
   copy of it is left, and `binference init --attach` replaces it. In the `command` unlock mode the
-  agent key stays where the owner's command reads it, and the owner removes it there.
+  agent key stays where the owner's command reads it, and the owner is told to remove it there.
 - The CLI host can pass its own keychain and program runner, so tests never touch the OS keychain
   or run npm.
 - A Windows owner runs one more command.
