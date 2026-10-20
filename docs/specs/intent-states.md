@@ -179,7 +179,7 @@ and before any quote; `launch_unread` and `launch_moved` again when the wallet q
 launch wallet's curve trade whose launch it cannot read, or that left the curve
 ([decision 0218](../DECISIONS.md#d0218)); for a token launch, `needs_launch_wallet` from any wallet
 but the agent's live launch wallet, `image_unreadable` (its picture is no PNG, JPEG or WebP of at
-most 5 MiB), both before any upload, and `pin_failed` and `pin_timeout` from `quoted`
+most 5 MiB, on a launchpad that uploads one), both before any upload, and `pin_failed` and `pin_timeout` from `quoted`
 ([decision 0234](../DECISIONS.md#d0234)); `upload_lost` from `checked`, for a launch a fault or a
 stop cut short once its upload began ([decision 0237](../DECISIONS.md#d0237)); `ceiling_lacks_call`
 for a launch whose launch wallet's ceiling does not allow a call only a launch wallet makes on its
@@ -389,7 +389,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
 - **Token launch** ([decision 0082](../DECISIONS.md#d0082)): the image and metadata are uploaded and
   pinned through the launchpad's own API first; the intent waits in `quoted` until the launchpad
   reports the pin (a gateway read before that can break the image for good). Then the create
-  transaction, and the first buy when asked, run as steps of one intent.
+  transaction, and the first buy when asked, run as steps of one intent. A launchpad with no API
+  for them, such as Genius.fun, uploads nothing: its create call carries the words and a picture
+  link the owner hosts, nothing reads the picture or the link, and the launch passes `quoted` at
+  once, with no pin to wait for ([decision 0276](../DECISIONS.md#d0276)).
   - **In paper mode it is refused** (decided by the owner on 2026-10-10): the policy ends it
     `rejected_policy` with `paper_only` before any upload, pin, quote or signature. A launch
     publishes the token's name and picture for good, and a paper token would have no address to

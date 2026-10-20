@@ -25,7 +25,8 @@ type LaunchStop = NonNullable<IntentRecord["reason"]> | "engine_stopping";
 
 /**
  * Tells the owner that a launch stopped once its upload began, and why: nothing was signed, and
- * its picture and words may be public on the launchpad (decision 0237).
+ * its picture and words may be public on the launchpad (decision 0237), unless the launchpad
+ * uploads nothing (decision 0276).
  */
 function tellLaunchStopped(
   options: Pick<LaunchPathOptions, "launch">,
@@ -35,7 +36,9 @@ function tellLaunchStopped(
   const request = requestDocument.decode(record.request);
   const symbol = request.kind === "launchToken" ? request.symbol : "";
   const venue = request.kind === "launchToken" ? request.venue : "";
-  const values = { symbol, venue, reason };
+  // A launchpad that uploads nothing made nothing public (decision 0276).
+  const isPrivate = !options.launch.host.takesUpload(venue);
+  const values = { symbol, venue, reason, private: isPrivate ? "yes" : "no" };
   options.launch.publish(
     noticePush({ key: launchStoppedNoticeKey, agent: record.agentId, intent: record.id, values }),
   );

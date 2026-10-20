@@ -66,7 +66,15 @@ export interface LaunchHost {
     launch: HostedLaunch,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<LaunchQuote, VenueFailure>>;
-  /** Uploads the launch's words and picture; a launchpad that cannot is `venue_down`. */
+  /**
+   * Whether the launchpad uploads a launch's picture and words and pins them; one that does not
+   * takes its picture as a link setting (decision 0276).
+   */
+  takesUpload(venue: string): boolean;
+  /**
+   * Uploads the launch's words and picture; a launchpad that cannot, or uploads nothing, is
+   * `venue_down`.
+   */
   pin(
     launch: HostedLaunch,
     picture: UploadedPicture,
@@ -123,9 +131,13 @@ interface HostedLauncher {
 }
 
 // A launchpad's settings must pass their schema, however the venue reached the host, and have
-// their card lines and fitting defaults on each chain it serves.
+// their card lines and fitting defaults on each chain it serves; it pins with both its pin and its
+// pin status, or uploads nothing.
 function problemOf(item: HostedLauncher, chain: RegisteredChain): string | undefined {
-  const { launchOptions } = item.launcher;
+  const { launchOptions, pin, pinStatus } = item.launcher;
+  if ((pin === undefined) !== (pinStatus === undefined)) {
+    return "it gives a pin without a pin status, or a pin status without a pin.";
+  }
   return launchOptionsSchema.safeParse(launchOptions).success
     ? launchSettingsProblem(launchOptions, chain)
     : "its settings break the declaration's rules.";
@@ -210,11 +222,11 @@ async function readPin(
 ): Promise<PinStatus> {
   const { venue, pin } = asked;
   const launcher = parts.launchers.get(venue)?.launcher;
-  if (launcher === undefined) {
+  if (launcher?.pinStatus === undefined) {
     return "pending";
   }
   const answer = await callVenue(
-    async (stop) => launcher.pinStatus(pin, { signal: stop }),
+    async (stop) => launcher.pinStatus?.(pin, { signal: stop }),
     parts.callOf(signal),
   );
   const status = answer.ok ? pinStatusSchema.safeParse(answer.value) : undefined;
@@ -260,6 +272,7 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
       const limits = launcher?.wordLimits;
       return launcher !== undefined && (limits === undefined || fitsWordLimits(limits, launch));
     },
+    takesUpload: (venue) => parts.launchers.get(venue)?.launcher.pin !== undefined,
     launchWalletCalls: (venue) => parts.launchers.get(venue)?.hosted.launchWalletCalls ?? [],
     async quote(launch, { signal }) {
       signal.throwIfAborted();

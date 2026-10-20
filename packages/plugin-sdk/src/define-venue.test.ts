@@ -292,7 +292,7 @@ describe("defineVenue", () => {
     });
     const launchpad = defineLaunchpad(createFakeLaunchpad({ onCurve: [token], launcher }));
     expect(Object.isFrozen(launchpad.launcher?.launchOptions[0])).toBe(true);
-    await launchpad.launcher?.pinStatus(null, { signal: new AbortController().signal });
+    await launchpad.launcher?.pinStatus?.(null, { signal: new AbortController().signal });
     expect(launcher.statusReads()).toBe(1);
     expect(defineLaunchpad(createFakeLaunchpad({ onCurve: [token] })).launcher).toBeUndefined();
     const unbound = createFakeLauncher({ noFirstBuyMin: true });

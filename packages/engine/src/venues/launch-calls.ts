@@ -46,10 +46,11 @@ export interface HostedLaunch extends LaunchWords {
 /** The picture a launchpad uploads and pins for a launch, with the launch's words. */
 export type UploadedPicture = LaunchPinRequest["image"];
 
-/** What a launch is built from once its quote and its upload are in hand. */
+/** What a launch is built from once its quote and its upload, if any, are in hand. */
 export interface LaunchUpload {
   readonly quote: LaunchQuote;
-  readonly metadataUri: string;
+  /** The metadata address the upload gave; absent for a launchpad that uploads nothing. */
+  readonly metadataUri?: string;
   /** The least of the new token the first buy may accept; with a first buy alone. */
   readonly minOutBase?: bigint;
 }
@@ -125,9 +126,13 @@ export async function pinLaunch(
   picture: UploadedPicture,
   call: VenueCallOptions,
 ): Promise<Result<LaunchPin, "venue_down">> {
+  const { launcher } = context;
+  if (launcher.pin === undefined) {
+    return err("venue_down");
+  }
   const image = Object.freeze({ ...picture, bytes: Uint8Array.from(picture.bytes) });
   const request: LaunchPinRequest = Object.freeze({ ...context.terms, ...context.words, image });
-  const answer = await callVenue(async (signal) => context.launcher.pin(request, { signal }), call);
+  const answer = await callVenue(async (signal) => launcher.pin?.(request, { signal }), call);
   const pin = answer.ok ? ownCopy(launchPinSchema, answer.value) : undefined;
   return pin === undefined ? err("venue_down") : ok(pin);
 }
@@ -142,7 +147,7 @@ function boundsOf(context: LaunchContext, upload: LaunchUpload, token: AssetRef)
     ...terms,
     contracts: Object.values(terms.contracts),
     nativeAsset: nativeAssetOf(chain),
-    metadataUri: upload.metadataUri,
+    ...(upload.metadataUri === undefined ? {} : { metadataUri: upload.metadataUri }),
     words: writtenWordsOf(context.words),
     mustWriteWords: context.launcher.wordLimits !== undefined,
     fee: upload.quote.fee,
@@ -172,7 +177,8 @@ export async function buildLaunch(
   const { launcher, chain, terms, words } = context;
   const { quote, metadataUri, minOutBase } = upload;
   const minOut = minOutBase === undefined ? {} : { firstBuyMinOut: minOutBase };
-  const request = Object.freeze({ ...terms, ...words, metadataUri, fee: quote.fee, ...minOut });
+  const metadata = metadataUri === undefined ? {} : { metadataUri };
+  const request = Object.freeze({ ...terms, ...words, ...metadata, fee: quote.fee, ...minOut });
   const built = await callVenue(async (signal) => launcher.buildLaunch(request, { signal }), call);
   const answer = built.ok ? buildAnswerSchema.safeParse(built.value) : undefined;
   if (!built.ok || answer?.success !== true) {

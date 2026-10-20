@@ -21,7 +21,7 @@ import {
   writtenWordsOf,
   writtenWordsSchema,
 } from "../venues/launch-words.js";
-import type { Launcher } from "../venues/ports.js";
+import type { Launcher, UploadingLauncher } from "../venues/ports.js";
 import { fakeApprovalData, fakeCallOf, fakeDraft, isFakeUnsigned } from "./fake-draft.js";
 
 /** How a fake launchpad's pins go: pinned after some status reads, never, or failed. */
@@ -63,7 +63,7 @@ export interface FakeLauncherOptions {
 }
 
 /** A fake launcher, which tells a test what it uploaded and how often its pins were read. */
-export interface FakeLauncher extends Launcher {
+export interface FakeLauncher extends UploadingLauncher {
   /** Every upload it took, in order. */
   readonly uploads: () => readonly LaunchPinRequest[];
   /** How many times a pin's status was read. */
@@ -99,7 +99,7 @@ export function fakeLaunchData(launch: DecodedLaunch): string {
     launch.token,
     word(launch.name),
     word(launch.symbol),
-    word(launch.metadataUri),
+    word(launch.metadataUri ?? ""),
     launch.pair,
     launch.feeBase.toString(),
     firstBuy?.spend.base.toString() ?? "",
@@ -165,13 +165,14 @@ function launchOf(draft: TxDraft, words: readonly string[]): DecodedLaunch | und
   const bought = firstBuyOf(draft.from, pair.value, words.slice(6, 9));
   const options = optionsOf(wordAt(words, 9));
   const written = wordsOf(wordAt(words, 10));
+  const metadataUri = decodeURIComponent(wordAt(words, 3));
   return bought === undefined || options === undefined || written === undefined
     ? undefined
     : {
         token: token.value,
         name: decodeURIComponent(wordAt(words, 1)),
         symbol: decodeURIComponent(wordAt(words, 2)),
-        metadataUri: decodeURIComponent(wordAt(words, 3)),
+        ...(metadataUri === "" ? {} : { metadataUri }),
         pair: pair.value,
         feeBase: BigInt(fee),
         ...bought,
@@ -213,7 +214,7 @@ function buildSteps(request: LaunchBuildRequest, written: Written): readonly TxD
     token: written.token,
     name: request.name,
     symbol: request.symbol,
-    metadataUri: request.metadataUri,
+    ...(request.metadataUri === undefined ? {} : { metadataUri: request.metadataUri }),
     pair: request.pair,
     feeBase: request.fee.base,
     ...bought,
@@ -262,18 +263,66 @@ function statusOf(script: FakePinScript, reads: number): PinStatus {
   return reads >= script.pinnedAfterReads ? "pinned" : "pending";
 }
 
+/** How a fake launcher records an upload and a pin read, each answering its count so far. */
+interface PinRecord {
+  readonly upload: (request: LaunchPinRequest) => number;
+  readonly read: () => number;
+}
+
+// The fake's upload and pin status: an upload is kept and named, a pin goes as its script says.
+function pinsOf(
+  script: FakePinScript,
+  record: PinRecord,
+): Pick<UploadingLauncher, "pin" | "pinStatus"> {
+  return {
+    async pin(request, { signal }) {
+      signal.throwIfAborted();
+      const upload = record.upload(request);
+      return await Promise.resolve({
+        metadataUri: `ipfs://fake-${String(upload)}`,
+        pin: { upload },
+      });
+    },
+    async pinStatus(_pin: JsonValue, { signal }) {
+      signal.throwIfAborted();
+      return await Promise.resolve(statusOf(script, record.read()));
+    },
+  };
+}
+
 /**
  * Creates the launcher of a fake launchpad, for tests. It launches one token against one pair
  * through the launchpad's `router`, at a fixed fee and a fixed first-buy rate, uploads to nowhere
  * and pins as its script says. Its create call is a fake draft that {@link fakeLaunchData} writes.
  */
 export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLauncher {
-  const pair = options.pair ?? fakeCoin;
-  const token = options.token ?? fakeToken;
-  const tokensPerUnit = options.tokensPerUnit ?? 1000n;
   const script = options.pin ?? { pinnedAfterReads: 1 };
   const uploads: LaunchPinRequest[] = [];
   const counted = { reads: 0 };
+  const record = {
+    upload: (request: LaunchPinRequest) => uploads.push(request),
+    read: () => {
+      counted.reads += 1;
+      return counted.reads;
+    },
+  };
+  return {
+    ...createFakeLinkLauncher(options),
+    ...pinsOf(script, record),
+    uploads: () => [...uploads],
+    statusReads: () => counted.reads,
+  };
+}
+
+/**
+ * Creates the launcher of a fake launchpad that uploads nothing and has no pin, as one whose
+ * picture is a link setting the owner hosts (decision 0276). It launches as
+ * {@link createFakeLauncher} does, with no metadata address in its create call.
+ */
+export function createFakeLinkLauncher(options: FakeLauncherOptions = {}): Launcher {
+  const pair = options.pair ?? fakeCoin;
+  const token = options.token ?? fakeToken;
+  const tokensPerUnit = options.tokensPerUnit ?? 1000n;
   return {
     launchOptions: options.launchOptions ?? [],
     ...(options.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
@@ -289,20 +338,6 @@ export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLaunc
         terms.firstBuy === undefined ? {} : { firstBuyOut: terms.firstBuy.base * tokensPerUnit };
       return await Promise.resolve(ok({ fee, tokenDecimals: 18, ...out }));
     },
-    async pin(request, { signal }) {
-      signal.throwIfAborted();
-      uploads.push(request);
-      const upload = uploads.length;
-      return await Promise.resolve({
-        metadataUri: `ipfs://fake-${String(upload)}`,
-        pin: { upload },
-      });
-    },
-    async pinStatus(_pin: JsonValue, { signal }) {
-      signal.throwIfAborted();
-      counted.reads += 1;
-      return await Promise.resolve(statusOf(script, counted.reads));
-    },
     async buildLaunch(request, { signal }) {
       signal.throwIfAborted();
       return await Promise.resolve({
@@ -311,7 +346,5 @@ export function createFakeLauncher(options: FakeLauncherOptions = {}): FakeLaunc
       });
     },
     decodeLaunch,
-    uploads: () => [...uploads],
-    statusReads: () => counted.reads,
   };
 }

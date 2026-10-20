@@ -41,7 +41,8 @@ export interface LaunchBounds {
   readonly name: string;
   readonly symbol: string;
   readonly pair: AssetRef;
-  readonly metadataUri: string;
+  /** The metadata address the upload gave; absent for a launchpad that uploads nothing. */
+  readonly metadataUri?: string;
   /** The description and links the card shows, as a create call writes them on chain. */
   readonly words: WrittenWords;
   /** The launchpad writes the words into its create call, so its decoder must name them. */

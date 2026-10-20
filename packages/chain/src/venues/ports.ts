@@ -117,7 +117,9 @@ export interface PriceReader {
  * Launches a token on a launchpad: quotes it from the launchpad's contracts, uploads and pins its
  * words and picture through the launchpad's own API, builds its create call with the first buy,
  * and decodes that call back. It never signs or sends, and never reads the picture's gateway
- * address: a gateway read before the pin can break the picture for good.
+ * address: a gateway read before the pin can break the picture for good. A launchpad with no API
+ * for them leaves out `pin` and `pinStatus` together: it uploads nothing, its create call names
+ * the picture as a `link` setting the owner hosts, and nothing reads that link (decision 0276).
  */
 export interface Launcher {
   /** The settings the launchpad takes beyond those every launch has, such as a tax. */
@@ -150,16 +152,22 @@ export interface Launcher {
    * for the pin. A launchpad that cannot take them throws. Rejects with the signal's reason once
    * it aborts.
    */
-  pin(request: LaunchPinRequest, options: { readonly signal: AbortSignal }): Promise<LaunchPin>;
+  readonly pin?: (
+    request: LaunchPinRequest,
+    options: { readonly signal: AbortSignal },
+  ) => Promise<LaunchPin>;
   /**
    * Where the pin of an upload stands, as the launchpad reports it, from the handle `pin` gave. A
    * launchpad that cannot answer throws. Rejects with the signal's reason once it aborts.
    */
-  pinStatus(pin: JsonValue, options: { readonly signal: AbortSignal }): Promise<PinStatus>;
+  readonly pinStatus?: (
+    pin: JsonValue,
+    options: { readonly signal: AbortSignal },
+  ) => Promise<PinStatus>;
   /**
    * Builds the launch's steps from the launch wallet: an exact approval of the first buy's spend
    * when the launchpad needs one, then one create call that pays the quoted fee, names the
-   * metadata address and, with a first buy, buys for the wallet no less than its minimum, or with
+   * metadata address of an upload and, with a first buy, buys for the wallet no less than its minimum, or with
    * none when the launcher declares `noFirstBuyMin`. Every
    * step calls the launchpad's registry contracts. A launchpad that cannot build throws. Rejects
    * with the signal's reason once it aborts.
@@ -174,3 +182,6 @@ export interface Launcher {
    */
   decodeLaunch(draft: TxDraft): Result<DecodedLaunch, "unknown_call">;
 }
+
+/** A launcher that uploads and pins: it gives both `pin` and `pinStatus`. */
+export type UploadingLauncher = Launcher & Required<Pick<Launcher, "pin" | "pinStatus">>;

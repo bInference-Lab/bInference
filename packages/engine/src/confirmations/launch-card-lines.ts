@@ -40,8 +40,11 @@ export interface LaunchDetails {
   readonly fee?: Amount;
   readonly description?: string;
   readonly links: readonly LaunchLink[];
-  /** The uploaded picture, or the upload id of one not uploaded yet. */
-  readonly picture: LaunchPicture | { readonly upload: string };
+  /**
+   * The uploaded picture, or the upload id of one not uploaded yet; absent for a launchpad that
+   * takes its picture as a link setting and uploads nothing (decision 0276).
+   */
+  readonly picture?: LaunchPicture | { readonly upload: string };
   /** The launchpad's own settings, every one with its value, defaults filled. */
   readonly settings: readonly LaunchSetting[];
 }
@@ -61,9 +64,14 @@ const settingValues: {
   flag: (value) => choice(value === true ? "yes" : "no"),
   choice: (value) => choice(wordOf(value)),
   account: (value) => ({ type: "account", account: accountRefSchema.parse(wordOf(value)) }),
+  link: (value) => text(wordOf(value)),
 };
 
-function pictureLine(picture: LaunchDetails["picture"]): CardLine {
+// A link setting's line names its value `link`, which a card shows whole, up to 512 characters
+// (decision 0276); every other setting's, `value`.
+const argumentOf = (type: LaunchSetting["type"]): string => (type === "link" ? "link" : "value");
+
+function pictureLine(picture: NonNullable<LaunchDetails["picture"]>): CardLine {
   if ("upload" in picture) {
     return { key: "card.launch.upload", values: { upload: text(picture.upload) } };
   }
@@ -85,8 +93,9 @@ function optional<T>(value: T | undefined, draw: (value: T) => CardLine): readon
 
 /**
  * The lines a token launch's card shows under its action line (spec 4, section 3.3): the token it
- * makes, the first buy's minimum, the launch fee, the description, each link, the picture, each
- * launchpad setting, and, once the picture is uploaded, that it is public already.
+ * makes, the first buy's minimum, the launch fee, the description, each link, the picture when
+ * the launchpad takes one, each launchpad setting, and, once the picture is uploaded, that it is
+ * public already.
  */
 export function launchDetailLines(details: LaunchDetails): readonly CardLine[] {
   const { picture } = details;
@@ -111,12 +120,12 @@ export function launchDetailLines(details: LaunchDetails): readonly CardLine[] {
       key: "card.launch.link",
       values: { site: choice(link.site), url: text(link.url) },
     })),
-    pictureLine(picture),
+    ...optional(picture, pictureLine),
     ...details.settings.map((setting): CardLine => ({
       key: launchSettingKey(setting.name),
-      values: { value: settingValues[setting.type](setting.value) },
+      values: { [argumentOf(setting.type)]: settingValues[setting.type](setting.value) },
     })),
-    ...("upload" in picture
+    ...(picture === undefined || "upload" in picture
       ? []
       : [{ key: "card.launch.pinned", values: { venue: text(details.venue) } } as const]),
   ];

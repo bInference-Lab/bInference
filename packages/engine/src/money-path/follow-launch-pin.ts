@@ -153,7 +153,8 @@ export const followedStates = ["checked", "quoted", "assessed", "simulated"] as 
 
 /**
  * Asks a launch waiting in `quoted` whether its launchpad reported the pin (decision 0234): a
- * reported pin moves it on to its simulation and its card; a failed one, or the end of the pin
+ * reported pin, or a launch that uploaded nothing (decision 0276), moves it on to its simulation
+ * and its card; a failed one, or the end of the pin
  * wait, ends it with `pin_failed` or `pin_timeout`; no report yet leaves it waiting. A launch a
  * stop left in `checked` ends `upload_lost`, and one it left in `assessed` or `simulated` goes on
  * to its card unless it is too old to show (decision 0237). The owner hears of every launch that
@@ -180,6 +181,10 @@ export async function followLaunchPin(
   if (record.state !== "quoted") {
     return followPinned(run, snapshot, quote);
   }
+  // A launch that uploaded nothing waits for no pin: its picture is a link (decision 0276).
+  if (quote.pin === undefined) {
+    return reportPinned(run, snapshot, quote);
+  }
   if (options.clock.now() >= quote.pinWaitUntilMs) {
     return endOnPin(run, snapshot, "pin_timeout");
   }
@@ -189,9 +194,15 @@ export async function followLaunchPin(
   if (status === "failed") {
     return endOnPin(run, snapshot, "pin_failed");
   }
-  if (status !== "pinned") {
-    return snapshot;
-  }
+  return status === "pinned" ? reportPinned(run, snapshot, quote) : snapshot;
+}
+
+// The pin is in, or there was none to wait for: the launch moves on to its simulation and card.
+async function reportPinned(
+  run: PinRun,
+  snapshot: IntentSnapshot,
+  quote: TokenLaunchQuote,
+): Promise<IntentSnapshot> {
   const pinned = await advance(run, snapshot, { trigger: { type: "pin_reported" } });
   return pinned.record.state === "assessed" ? followPinned(run, pinned, quote) : pinned;
 }

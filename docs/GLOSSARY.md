@@ -209,7 +209,10 @@ new name here first, in the change that uses it.
   list only registry contracts, so until it exists only a paper agent uses such a venue.
 - **launcher**: the part of a launchpad's plugin that launches tokens: it quotes a launch from the
   launchpad's contracts, uploads its words and picture, reports their pin, and builds and decodes
-  the create call. It never signs.
+  the create call. A launchpad with no API for pictures uploads nothing and takes a picture link.
+  It never signs.
+- **picture link**: an `ipfs://` or `https://` address of a token's picture that the owner hosts,
+  which a launchpad's create call names. Nothing in binference opens it.
 - **pin**: a launchpad's report that it keeps a launch's picture and words on its storage. A token
   launch waits in `quoted` for it, at most 5 minutes, before its card opens.
 - **launch setting**: a setting a launchpad declares for its launches, such as a tax on every
@@ -619,6 +622,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | launch wallet                            | 发射钱包               | Trades on a launch's own curve   |
 | extra launch wallet                      | 额外的发射钱包         | Nothing trades from it           |
 | pin (a launch's picture and words)       | 固定                   | The launchpad's storage keeps it |
+| picture link                             | 图片地址               | The owner hosts it               |
 | launch fee                               | 发射手续费             | Paid with the create call        |
 | first buy                                | 首笔买入               | The launch wallet's own buy      |
 | owner key                                | 所有者密钥             | Shown once as a `bnok1` code     |

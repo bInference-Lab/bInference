@@ -49,11 +49,19 @@ export interface TokenLaunchQuote {
   /** The launchpad's fee, in the chain's coin. */
   readonly fee: Amount;
   readonly firstBuy?: LaunchFirstBuy;
-  readonly image: LaunchImage;
-  readonly metadataUri: string;
-  /** The launchpad's handle of the pin, which the engine gives back when it asks for it. */
-  readonly pin: JsonValue;
-  /** When the pin wait ends: a launch with no pin reported by then ends `pin_timeout`. */
+  /** The uploaded picture; absent for a launchpad that uploads nothing (decision 0276). */
+  readonly image?: LaunchImage;
+  /** The metadata address of the upload; absent with no upload. */
+  readonly metadataUri?: string;
+  /**
+   * The launchpad's handle of the pin, which the engine gives back when it asks for it; absent
+   * with no upload, which waits for no pin.
+   */
+  readonly pin?: JsonValue;
+  /**
+   * When the pin wait ends: a launch with no pin reported by then ends `pin_timeout`. With no
+   * upload, the time of the quote.
+   */
   readonly pinWaitUntilMs: number;
   readonly quotedAtMs: number;
 }
@@ -71,9 +79,13 @@ interface TokenLaunchQuoteWire {
     readonly minOut: string;
     readonly isUnbound?: true;
   };
-  readonly image: { readonly contentType: string; readonly bytes: number; readonly sha256: string };
-  readonly metadataUri: string;
-  readonly pin: JsonValue;
+  readonly image?: {
+    readonly contentType: string;
+    readonly bytes: number;
+    readonly sha256: string;
+  };
+  readonly metadataUri?: string;
+  readonly pin?: JsonValue;
   readonly pinWaitUntilMs: number;
   readonly quotedAtMs: number;
 }
@@ -98,13 +110,15 @@ const tokenLaunchQuoteSchema: z.ZodType<TokenLaunchQuote, TokenLaunchQuoteWire> 
       isUnbound: z.literal(true).exactOptional(),
     })
     .exactOptional(),
-  image: z.strictObject({
-    contentType: z.enum(["image/png", "image/jpeg", "image/webp"]),
-    bytes: z.int().positive(),
-    sha256: sha256HexSchema,
-  }),
-  metadataUri: z.string().min(1),
-  pin: z.json(),
+  image: z
+    .strictObject({
+      contentType: z.enum(["image/png", "image/jpeg", "image/webp"]),
+      bytes: z.int().positive(),
+      sha256: sha256HexSchema,
+    })
+    .exactOptional(),
+  metadataUri: z.string().min(1).exactOptional(),
+  pin: z.json().exactOptional(),
   pinWaitUntilMs: epochMsSchema,
   quotedAtMs: epochMsSchema,
 });

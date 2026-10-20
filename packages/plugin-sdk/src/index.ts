@@ -56,6 +56,7 @@ export type {
   TxDecoder,
   TxDraft,
   TxSimulator,
+  UploadingLauncher,
   Venue,
   VenueCall,
   VenueContracts,

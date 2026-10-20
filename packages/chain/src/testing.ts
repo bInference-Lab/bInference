@@ -52,7 +52,11 @@ export type { FakeSigner } from "./fakes/fake-signer.js";
 export { createFakeSigningScheme, signFake } from "./fakes/fake-signing-scheme.js";
 export { createFakeChainDefinition } from "./fakes/fake-chain.js";
 export { createFakeLaunchpad, fakeLaunchCallAbi, fakePriceAnswer } from "./fakes/fake-launchpad.js";
-export { createFakeLauncher, fakeLaunchData } from "./fakes/fake-launcher.js";
+export {
+  createFakeLauncher,
+  createFakeLinkLauncher,
+  fakeLaunchData,
+} from "./fakes/fake-launcher.js";
 export type { FakeLauncher, FakeLauncherOptions, FakePinScript } from "./fakes/fake-launcher.js";
 export type { FakeLaunchpad, FakeLaunchpadOptions } from "./fakes/fake-launchpad.js";
 export { createFakeVenue, fakeSwapData } from "./fakes/fake-venue.js";

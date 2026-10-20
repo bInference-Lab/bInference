@@ -42,6 +42,8 @@ const textLengths: Readonly<Record<string, number>> = {
   description: 1_000,
   url: 200,
   uri: 200,
+  // A launch's picture link is at most 512 bytes, so a card shows it whole (decision 0276).
+  link: 512,
 };
 const ratioDecimals = 2;
 

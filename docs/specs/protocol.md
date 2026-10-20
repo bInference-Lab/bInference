@@ -445,7 +445,11 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   its card, or ended; its card reaches the owner with `card/opened`. A `venue` that launches no
   token on the pair's chain fails with `quote.no_route`, and `venueOptions` its launchpad does not
   declare, or values that do not fit them, with `protocol.bad_args`; neither stores anything. Its
-  `image` is an upload id from `upload/start` ([decision 0234](../DECISIONS.md#d0234)). Only the
+  `image` is an upload id from `upload/start` ([decision 0234](../DECISIONS.md#d0234)). A
+  launchpad with no API for pictures takes the picture as a `link` setting in `venueOptions`, an
+  `ipfs://` or `https://` address of at most 512 bytes the owner hosts, which nothing opens; it
+  reads no upload, so its launch names any upload id while `image` stays required in this version
+  ([decision 0276](../DECISIONS.md#d0276)). Only the
   owner starts a launch: one the agent runtime or an MCP client proposes fails with
   `intent.owner_only` before anything is read, stored or uploaded, and a launch whose `image` the
   proposer's own credential did not upload ends `failed_check` with `image_unreadable`

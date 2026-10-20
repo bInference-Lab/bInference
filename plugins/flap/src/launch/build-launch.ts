@@ -20,14 +20,16 @@ export async function buildLaunch(
   signal.throwIfAborted();
   checkFirstBuy(request);
   const placed = placeOf(request, parts);
-  if (placed === undefined || request.fee.base !== 0n) {
+  const meta = request.metadataUri;
+  if (placed === undefined || request.fee.base !== 0n || meta === undefined) {
     throw new BinferenceError({
       code: "flap.no_route",
-      message: "Flap launches here only on its chains and pairs, with no launch fee.",
+      message:
+        "Flap launches here only on its chains and pairs, with no launch fee, once uploaded.",
     });
   }
   const found = await findTaxTokenSalt(placed.maker, { random: parts.random, signal });
-  const written = { meta: request.metadataUri, salt: found.salt };
+  const written = { meta, salt: found.salt };
   const { token, steps } = launchStepsOf(request, placed, written);
   return { token: curveAssetOf(token, placed.chain.setup), steps };
 }

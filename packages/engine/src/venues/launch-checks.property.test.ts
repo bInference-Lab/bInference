@@ -48,7 +48,7 @@ function verdictOf(
     token,
     name: bounds.name,
     symbol: bounds.symbol,
-    metadataUri: bounds.metadataUri,
+    metadataUri: "ipfs://fake-1",
     pair: coin,
     feeBase: 0n,
     firstBuy: { spend, minOut, recipient: wallet },

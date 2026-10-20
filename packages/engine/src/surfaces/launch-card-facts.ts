@@ -22,9 +22,24 @@ function linksOf(links: LaunchTokenRequest["links"]): readonly LaunchLink[] {
   });
 }
 
+// The picture the launch uploaded; none for a launchpad that takes it as a link (decision 0276).
+function pictureOf(quote: TokenLaunchQuote): Pick<LaunchDetails, "picture"> {
+  const { image, metadataUri } = quote;
+  if (image === undefined || metadataUri === undefined) {
+    return {};
+  }
+  const picture = {
+    format: formats[image.contentType],
+    kib: Math.ceil(image.bytes / 1024),
+    digest: image.sha256.slice(0, digestDigits),
+    uri: metadataUri,
+  };
+  return { picture };
+}
+
 // Every setting beyond the action line, from the request and the launch's quote (decision 0235).
 function detailsOf(request: LaunchTokenRequest, quote: TokenLaunchQuote): LaunchDetails {
-  const { image, firstBuy, token } = quote;
+  const { firstBuy, token } = quote;
   const { description } = request;
   return {
     venue: request.venue,
@@ -33,12 +48,7 @@ function detailsOf(request: LaunchTokenRequest, quote: TokenLaunchQuote): Launch
     fee: quote.fee,
     ...(description === undefined ? {} : { description }),
     links: linksOf(request.links),
-    picture: {
-      format: formats[image.contentType],
-      kib: Math.ceil(image.bytes / 1024),
-      digest: image.sha256.slice(0, digestDigits),
-      uri: quote.metadataUri,
-    },
+    ...pictureOf(quote),
     settings: quote.settings,
   };
 }

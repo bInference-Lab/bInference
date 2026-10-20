@@ -172,6 +172,7 @@ export type {
   Quoter,
   TxBuilder,
   TxDecoder,
+  UploadingLauncher,
 } from "./venues/ports.js";
 export type {
   PriceMiss,

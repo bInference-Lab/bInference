@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   proposeIntent,
   testCardText,
+  testLaunch,
   testLaunchEngine,
   testSettledLaunch,
 } from "./test-launches.js";
@@ -38,5 +39,15 @@ describe("a token launch's card in Chinese", () => {
     expect(boundLines).not.toContain(
       "⚠️ 首笔买入在链上没有最低数量：它在创建代币的同一笔调用中执行，早于任何其他交易，模拟结果至少为上面的数量",
     );
+  });
+
+  it("shows a picture link whole, with no picture sent and nothing public", async () => {
+    const { test } = await testLaunchEngine({ takesPictureLink: true });
+    const pictureLink = "https://pictures.example/cat.png";
+    const request = { ...testLaunch, venueOptions: { taxBps: 300, pictureLink } };
+    const lines = await testCardText(test, await proposeIntent(test, request), "zh");
+    expect(lines).toContain("图片地址 https://pictures.example/cat.png（binference 从不打开它）");
+    expect(lines.some((line) => line.startsWith("已发送图片"))).toBe(false);
+    expect(lines.some((line) => line.includes("即使取消也会保持公开"))).toBe(false);
   });
 });

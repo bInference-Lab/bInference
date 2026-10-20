@@ -21,7 +21,7 @@ const quote: TokenLaunchQuote = {
   image: {
     contentType: "image/png",
     bytes: 11,
-    sha256: "a".repeat(64) as TokenLaunchQuote["image"]["sha256"],
+    sha256: "a".repeat(64) as NonNullable<TokenLaunchQuote["image"]>["sha256"],
   },
   metadataUri: "ipfs://fake-1",
   pin: { upload: 1 },

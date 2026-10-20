@@ -3,10 +3,12 @@ import { z } from "zod";
 /**
  * How a launch setting a launchpad declares is checked and shown: `bps` and `count` are whole
  * numbers within the option's bounds, `bps` a share of at most 10,000; `flag` is a yes or no;
- * `choice` one of the option's words; `account` an address on the launch's chain. A `count` is
- * never an amount of money: an amount is base units in a `bigint`, which a setting cannot carry.
+ * `choice` one of the option's words; `account` an address on the launch's chain; `link` an
+ * `ipfs://` or `https://` address the owner hosts, of at most 512 bytes and no control character,
+ * which nothing in binference opens, fetches or reads (decision 0276). A `count` is never an amount
+ * of money: an amount is base units in a `bigint`, which a setting cannot carry.
  */
-export const launchOptionTypes = ["bps", "count", "flag", "choice", "account"] as const;
+export const launchOptionTypes = ["bps", "count", "flag", "choice", "account", "link"] as const;
 
 /** The type of a launch setting. */
 export type LaunchOptionType = (typeof launchOptionTypes)[number];

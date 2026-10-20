@@ -8,5 +8,6 @@
   "option.sellTaxBps": "Tax on every sell: {value}",
   "option.burnShareBps": "Burned from the tax: {value}",
   "option.taxDays": "Tax lasts {value, plural, one {# day} other {# days}}",
+  "option.pictureLink": "Picture at {link} (binference never opens it)",
   "age": "{unit, select, minute {{count} min} hour {{count} h} other {{count} d}}"
 }

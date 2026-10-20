@@ -4,11 +4,7 @@ import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { planDocument } from "../intents/intent-documents.schema.js";
 import type { QuoteFailure } from "../intents/intent-reason.js";
-import {
-  type LaunchImage,
-  type TokenLaunchQuote,
-  tokenLaunchQuoteDocument,
-} from "../intents/token-launch-quote.js";
+import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { statesBeforeSigning } from "../intents/transition-table.js";
 import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
@@ -17,8 +13,8 @@ import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
 import { pinWaitOf, toldIfEnded } from "./launch-ending.js";
-import { launchImageOf } from "./launch-image.js";
 import { launchSubjectOf } from "./launch-policy.js";
+import { type ReadPicture, readOwnPicture, uploadPicture } from "./launch-upload.js";
 import { liveIntentsIn } from "./live-intents.js";
 import { policyFactsOf } from "./policy-facts-of.js";
 import {
@@ -95,54 +91,37 @@ function firstBuyOf(run: LaunchRun, quote: LaunchQuote) {
   return { spend: firstBuy, expectedOut, minOut: minOutFloor(expectedOut, slippage) };
 }
 
-// The picture, read once: its bytes and what the quote keeps of it, else `undefined`. An upload
-// another credential made is read as none (decision 0236).
-async function readImage(
-  run: LaunchRun,
-): Promise<{ readonly bytes: Readonly<Uint8Array>; readonly image: LaunchImage } | undefined> {
-  const { images } = run.options.launch;
-  const uploaded = run.resolved.request.image;
-  const isOwn = run.credential !== undefined && images?.holderOf(uploaded) === run.credential;
-  const read =
-    images === undefined || !isOwn
-      ? undefined
-      : await images.read(uploaded, { signal: run.signal });
-  const image = read?.ok === true ? launchImageOf(read.value) : undefined;
-  return read?.ok === true && image !== undefined ? { bytes: read.value, image } : undefined;
-}
-
 /** What the launch stores once built: its quote document and its plan's drafts. */
 interface Built {
   readonly quote: TokenLaunchQuote;
   readonly drafts: readonly TxDraft[];
 }
 
-// The launchpad uploads the words and the picture and asks for the pin; the launch is built
-// against the metadata address it got back (decision 0234).
+// The launchpad uploads the words and the picture and asks for the pin, and the launch is built
+// against the metadata address it got back (decision 0234); a launchpad that uploads nothing builds
+// at once and waits for no pin (decision 0276).
 async function pinAndBuild(
   run: LaunchRun,
   quoted: Quoted,
-  picture: { readonly bytes: Readonly<Uint8Array>; readonly image: LaunchImage },
+  picture: ReadPicture | undefined,
 ): Promise<Result<Built, QuoteFailure>> {
   const { options, resolved, signal } = run;
   const { request } = resolved;
-  const { host } = options.launch;
   const hosted = hostedLaunchOf(resolved);
-  const { image } = picture;
-  const pin = await host.pin(
-    hosted,
-    { contentType: image.contentType, bytes: picture.bytes },
-    { signal },
-  );
-  if (!pin.ok) {
-    return pin;
+  const uploaded =
+    picture === undefined
+      ? ok(undefined)
+      : await uploadPicture(options, { hosted, picture }, signal);
+  if (!uploaded.ok) {
+    return uploaded;
   }
+  const sent = uploaded.value;
   const firstBuy = firstBuyOf(run, quoted.quote);
-  const { metadataUri } = pin.value;
   const minOut = firstBuy === undefined ? {} : { minOutBase: firstBuy.minOut };
-  const plan = await host.build(
+  const metadata = sent === undefined ? {} : { metadataUri: sent.metadataUri };
+  const plan = await options.launch.host.build(
     hosted,
-    { quote: quoted.quote, metadataUri, ...minOut },
+    { quote: quoted.quote, ...metadata, ...minOut },
     { signal },
   );
   if (!plan.ok) {
@@ -157,10 +136,8 @@ async function pinAndBuild(
     tokenDecimals: quoted.quote.tokenDecimals,
     fee: quoted.quote.fee,
     ...(firstBuy === undefined ? {} : { firstBuy: { ...firstBuy, ...unbound } }),
-    image,
-    metadataUri,
-    pin: pin.value.pin,
-    pinWaitUntilMs: nowMs + pinWaitOf(options),
+    ...sent,
+    pinWaitUntilMs: nowMs + (sent === undefined ? 0 : pinWaitOf(options)),
     quotedAtMs: nowMs,
   };
   return ok({ quote, drafts: plan.value.steps.map((step) => step.draft) });
@@ -170,7 +147,7 @@ async function pinAndBuild(
 async function uploadAndBuild(
   run: LaunchRun,
   quoted: Quoted,
-  picture: { readonly bytes: Readonly<Uint8Array>; readonly image: LaunchImage },
+  picture: ReadPicture | undefined,
 ): Promise<IntentSnapshot> {
   const built = await pinAndBuild(run, quoted, picture);
   if (!built.ok) {
@@ -203,11 +180,15 @@ async function loseUpload(run: LaunchRun, checked: IntentSnapshot): Promise<void
   toldIfEnded(run.options, await advanceIntent({ ...run.parts, signal }, now, { trigger }));
 }
 
-// The picture is read once; once its upload begins, the owner hears of any end before the pin
-// wait (decision 0237).
+// The picture is read once, by a launchpad that uploads one; once its upload begins, the owner
+// hears of any end before the pin wait (decision 0237). A launchpad that takes its picture as a
+// link reads none (decision 0276).
 async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
-  const picture = await readImage(run);
-  if (picture === undefined) {
+  const { options, resolved, credential, signal } = run;
+  const isUploaded = options.launch.host.takesUpload(resolved.request.venue);
+  const asked = { upload: resolved.request.image, credential };
+  const picture = isUploaded ? await readOwnPicture(options, asked, signal) : undefined;
+  if (isUploaded && picture === undefined) {
     return failQuote(run, quoted.checked, "image_unreadable");
   }
   try {

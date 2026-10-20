@@ -59,10 +59,11 @@ async function built(
 ): Promise<BuiltLaunch> {
   const { launcher } = subject;
   const quote = await quoted(launcher, launch);
-  const pin = await launcher.pin(launch, { signal: live() });
+  const pin = await launcher.pin?.(launch, { signal: live() });
   const minOut = quote.firstBuyOut === undefined ? {} : { firstBuyMinOut: quote.firstBuyOut };
+  const metadata = pin === undefined ? {} : { metadataUri: pin.metadataUri };
   const { image: _image, ...terms } = launch;
-  const request = { ...terms, metadataUri: pin.metadataUri, fee: quote.fee, ...minOut };
+  const request = { ...terms, ...metadata, fee: quote.fee, ...minOut };
   return { request, build: await launcher.buildLaunch(request, { signal: live() }) };
 }
 
@@ -104,13 +105,16 @@ function refusesOtherPair(harness: LauncherHarness): ContractCheck {
 
 function pinsUpload(harness: LauncherHarness): ContractCheck {
   return {
-    name: "pins an upload and says where its pin stands",
+    name: "pins an upload and says where its pin stands, or has neither",
     run: async () => {
       const { launcher, launch } = harness.create();
-      const pin = await launcher.pin(launch, { signal: live() });
-      assert.ok(launchPinSchema.safeParse(pin).success);
-      const status = await launcher.pinStatus(pin.pin, { signal: live() });
-      assert.ok(pinStatusSchema.safeParse(status).success);
+      const pin = await launcher.pin?.(launch, { signal: live() });
+      assert.equal(pin === undefined, launcher.pinStatus === undefined);
+      if (pin !== undefined) {
+        assert.ok(launchPinSchema.safeParse(pin).success);
+        const status = await launcher.pinStatus?.(pin.pin, { signal: live() });
+        assert.ok(pinStatusSchema.safeParse(status).success);
+      }
     },
   };
 }
@@ -203,8 +207,11 @@ function stopsOnAbort(harness: LauncherHarness): ContractCheck {
       const reason = new Error("stopped");
       const signal = AbortSignal.abort(reason);
       await assert.rejects(launcher.quoteLaunch(launch, { signal }), reason);
-      await assert.rejects(launcher.pin(launch, { signal }), reason);
-      await assert.rejects(launcher.pinStatus(null, { signal }), reason);
+      await assert.rejects(launcher.pin?.(launch, { signal }) ?? Promise.reject(reason), reason);
+      await assert.rejects(
+        launcher.pinStatus?.(null, { signal }) ?? Promise.reject(reason),
+        reason,
+      );
     },
   };
 }

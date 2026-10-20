@@ -1,4 +1,4 @@
-import type { Launcher } from "@binference/plugin-sdk";
+import type { UploadingLauncher } from "@binference/plugin-sdk";
 import { buildLaunch } from "./build-launch.js";
 import { decodeLaunch } from "./decode-launch.js";
 import type { LaunchParts } from "./launch-parts.js";
@@ -12,7 +12,7 @@ import { quoteLaunch } from "./quote-launch.js";
  * the create call, uploads the words and picture through Flap's own API, reads the pin from Flap's
  * pin status API, and never reads an IPFS gateway.
  */
-export function createFlapLauncher(parts: LaunchParts): Launcher {
+export function createFlapLauncher(parts: LaunchParts): UploadingLauncher {
   return {
     launchOptions: flapLaunchOptions,
     noFirstBuyMin: true,

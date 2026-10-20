@@ -11,6 +11,7 @@ import {
   createFakeFamily,
   createFakeLauncher,
   createFakeLaunchpad,
+  createFakeLinkLauncher,
   createFakeVenue,
   type FakeLauncher,
   type FakePinScript,
@@ -45,12 +46,15 @@ const settings: readonly LaunchOption[] = [
   { name: "taxBps", type: "bps", max: 1000, default: 0 },
   { name: "buyback", type: "flag", default: false },
 ];
+const pictureLinkSetting: LaunchOption = { name: "pictureLink", type: "link" };
 
 /**
  * What a launch's steps do on the fake chain, for a test's simulator: the create call's value
  * leaves the wallet for the launchpad, and the first buy's minimum of the token arrives.
  */
-export function testLaunchSimulator(launcher: FakeLauncher): Pick<TxSimulator, "simulate"> {
+export function testLaunchSimulator(
+  launcher: Pick<FakeLauncher, "decodeLaunch">,
+): Pick<TxSimulator, "simulate"> {
   const family = createFakeFamily();
   const reverted: SimulatedStep = { status: "reverted", gasUsed: 0n, transfers: [], approvals: [] };
   return {
@@ -108,13 +112,18 @@ export interface Launching {
    * wallet's ceiling holds or lacks; it marks none when absent.
    */
   readonly createCall?: { readonly isHeld: boolean };
+  /**
+   * The launchpad uploads nothing and takes its picture as a `pictureLink` setting, as a launchpad
+   * with no API for it (decision 0276); it uploads and pins when absent.
+   */
+  readonly takesPictureLink?: boolean;
 }
 
 // The create call a test launchpad marks as a launch wallet's alone.
 const testCreateAbi: JsonValue = { type: "function", name: "create", inputs: [] };
 
 // The fake launchpad, with a create call only a launch wallet makes when the test asks for one.
-function launchpadOf(launcher: FakeLauncher, launching: Launching): Venue {
+function launchpadOf(launcher: PadLauncher, launching: Launching): Venue {
   const pad = createFakeLaunchpad({ onCurve: [], launcher });
   if (launching.createCall === undefined) {
     return pad;
@@ -125,7 +134,10 @@ function launchpadOf(launcher: FakeLauncher, launching: Launching): Venue {
   return { ...pad, contracts: pad.contracts.map((item) => Object.assign({}, item, { calls })) };
 }
 
-/** A test engine for launches, with the fake launchpad's launcher. */
+/**
+ * A test engine for launches, with the fake launchpad's launcher: the one the launchpad uses, or,
+ * for a launchpad that takes its picture as a link, a fake that tells it was never asked to pin.
+ */
 export interface TestLaunchEngine {
   readonly test: TestEngine;
   readonly launcher: FakeLauncher;
@@ -136,7 +148,7 @@ export interface TestLaunchEngine {
 const never = async (): Promise<never> => new Promise<never>(() => undefined);
 
 // The fake launchpad's build as the script says.
-function buildOf(script: BuildScript): FakeLauncher["buildLaunch"] {
+function buildOf(script: BuildScript): PadLauncher["buildLaunch"] {
   if ("failsBuild" in script) {
     return async () => Promise.reject(new Error("The launchpad is down."));
   }
@@ -150,20 +162,40 @@ function buildOf(script: BuildScript): FakeLauncher["buildLaunch"] {
 }
 
 // The fake launcher with its build as the script says, and a promise that settles once it is asked.
-function scripted(launcher: FakeLauncher, script: BuildScript | undefined) {
+function scripted<T extends PadLauncher>(launcher: T, script: BuildScript | undefined) {
   const reached = { resolve: (): void => undefined };
   const asked = new Promise<void>((resolve) => {
     reached.resolve = resolve;
   });
-  const build: FakeLauncher["buildLaunch"] =
+  const build: PadLauncher["buildLaunch"] =
     script === undefined
       ? async (request, call) => launcher.buildLaunch(request, call)
       : buildOf(script);
-  const buildLaunch: FakeLauncher["buildLaunch"] = async (request, call) => {
+  const buildLaunch: PadLauncher["buildLaunch"] = async (request, call) => {
     reached.resolve();
     return build(request, call);
   };
   return { launcher: { ...launcher, buildLaunch }, built: asked };
+}
+
+/** The launcher a test launchpad uses, which may upload nothing. */
+type PadLauncher = Omit<FakeLauncher, "pin" | "pinStatus" | "uploads" | "statusReads">;
+
+// The fake launchers of a test: the uploading fake that counts uploads and pin reads, and the one
+// the launchpad uses, which is the link launcher for a launchpad that uploads nothing.
+function launchersOf(launching: Launching) {
+  const isLink = launching.takesPictureLink === true;
+  const fakeOptions = {
+    launchOptions: isLink ? [...settings, pictureLinkSetting] : settings,
+    ...(launching.pin === undefined ? {} : { pin: launching.pin }),
+    ...(launching.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
+  };
+  const counting = scripted(createFakeLauncher(fakeOptions), launching.launcher);
+  if (!isLink) {
+    return { ...counting, pad: counting.launcher };
+  }
+  const used = scripted(createFakeLinkLauncher(fakeOptions), launching.launcher);
+  return { launcher: counting.launcher, built: used.built, pad: used.launcher };
 }
 
 /**
@@ -171,20 +203,13 @@ function scripted(launcher: FakeLauncher, script: BuildScript | undefined) {
  * default, a launch wallet.
  */
 export async function testLaunchEngine(launching: Launching = {}): Promise<TestLaunchEngine> {
-  const { launcher, built } = scripted(
-    createFakeLauncher({
-      launchOptions: settings,
-      ...(launching.pin === undefined ? {} : { pin: launching.pin }),
-      ...(launching.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
-    }),
-    launching.launcher,
-  );
-  const venues = [createFakeVenue(), launchpadOf(launcher, launching)];
+  const { launcher, built, pad } = launchersOf(launching);
+  const venues = [createFakeVenue(), launchpadOf(pad, launching)];
   const { options = {}, hasLaunchWallet = true } = launching;
   const test = await startTestEngine({
     chains: testChains([testPad]),
     venues,
-    chainSimulator: (launching.simulator ?? ((real) => real))(testLaunchSimulator(launcher)),
+    chainSimulator: (launching.simulator ?? ((real) => real))(testLaunchSimulator(pad)),
     launchImages: createMemoryLaunchImages(
       new Map([["upl_moon", png]]),
       testCallers.cli.credential,

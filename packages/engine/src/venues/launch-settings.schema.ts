@@ -32,6 +32,24 @@ function accountOf(chain: RegisteredChain, text: string): string | undefined {
   return account?.ok === true ? account.value : undefined;
 }
 
+// A picture link the owner hosts (decision 0276): IPFS or HTTPS, at most 512 bytes, and no
+// control character a surface could hide. Nothing opens it.
+const linkMostBytes = 512;
+const linkSchemes = /^(?:ipfs|https):\/\/\S/u;
+// A C0 or C1 control character, or DEL.
+const isControl = (character: string): boolean => {
+  const code = character.codePointAt(0) ?? 0;
+  return code <= 0x1f || (code >= 0x7f && code <= 0x9f);
+};
+
+function isPictureLink(text: string): boolean {
+  return (
+    linkSchemes.test(text) &&
+    !Array.from(text).some(isControl) &&
+    new TextEncoder().encode(text).byteLength <= linkMostBytes
+  );
+}
+
 type ValueSchemaOf = (option: LaunchOption, chain: RegisteredChain) => z.ZodType<LaunchOptionValue>;
 
 // The schema a declared setting's value passes, by its type and bounds (decision 0235).
@@ -56,6 +74,7 @@ const valueSchemas: { readonly [T in LaunchOptionType]: ValueSchemaOf } = {
       .string()
       .refine((text) => accountOf(chain, text) !== undefined)
       .transform((text) => accountOf(chain, text) ?? text),
+  link: () => z.string().refine(isPictureLink),
 };
 
 function valueSchema(option: LaunchOption, chain: RegisteredChain): z.ZodType<LaunchOptionValue> {

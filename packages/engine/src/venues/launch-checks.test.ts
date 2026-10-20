@@ -46,7 +46,7 @@ const create: DecodedLaunch = {
   token,
   name: bounds.name,
   symbol: bounds.symbol,
-  metadataUri: bounds.metadataUri,
+  metadataUri: "ipfs://fake-1",
   pair: coin,
   feeBase: 2_000n,
   firstBuy: buy,

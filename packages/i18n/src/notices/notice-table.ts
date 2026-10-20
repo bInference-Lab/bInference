@@ -224,7 +224,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.launchUnsent": { key: "notice.launchUnsent", values: { reason: "launch_moved" } },
   "notice.launchStopped": {
     key: "notice.launchStopped",
-    values: { symbol: "MCAT", venue: "pad", reason: "pin_timeout" },
+    values: { symbol: "MCAT", venue: "pad", reason: "pin_timeout", private: "no" },
   },
   "notice.stepUnsent": { key: "notice.stepUnsent", values: {} },
   "notice.stepDropped": { key: "notice.stepDropped", values: {} },

@@ -102,7 +102,7 @@ describe("a token launch before its pin", () => {
     expect(notices(test)).toContainEqual(
       expect.objectContaining({
         key: "notice.launchStopped",
-        values: { symbol: "MCAT", venue: pad, reason: "pin_timeout" },
+        values: { symbol: "MCAT", venue: pad, reason: "pin_timeout", private: "no" },
       }),
     );
     expect(cardsOpened(test)).toStrictEqual([]);
@@ -155,7 +155,7 @@ describe("a token launch a stop left between its pin and its card", () => {
     expect(notices(test)).toContainEqual(
       expect.objectContaining({
         key: "notice.launchStopped",
-        values: { symbol: "MCAT", venue: pad, reason: "engine_stopping" },
+        values: { symbol: "MCAT", venue: pad, reason: "engine_stopping", private: "no" },
       }),
     );
     expect(cardsOpened(test)).toStrictEqual([]);
@@ -171,7 +171,7 @@ describe("a token launch a fault or a stop cut short once its upload began", () 
     expect(notices(test)).toContainEqual(
       expect.objectContaining({
         key: "notice.launchStopped",
-        values: { symbol: "MCAT", venue: pad, reason: "venue_down" },
+        values: { symbol: "MCAT", venue: pad, reason: "venue_down", private: "no" },
       }),
     );
   });
@@ -188,7 +188,7 @@ describe("a token launch a fault or a stop cut short once its upload began", () 
     expect(notices(test)).toContainEqual(
       expect.objectContaining({
         key: "notice.launchStopped",
-        values: { symbol: "MCAT", venue: pad, reason: "upload_lost" },
+        values: { symbol: "MCAT", venue: pad, reason: "upload_lost", private: "no" },
       }),
     );
   });
@@ -206,7 +206,7 @@ describe("a token launch a fault or a stop cut short once its upload began", () 
     expect(notices(test)).toContainEqual(
       expect.objectContaining({
         key: "notice.launchStopped",
-        values: { symbol: "MCAT", venue: pad, reason: "upload_lost" },
+        values: { symbol: "MCAT", venue: pad, reason: "upload_lost", private: "no" },
       }),
     );
   });
@@ -222,7 +222,7 @@ describe("a token launch's new token", () => {
     expect(notices(test)).toContainEqual(
       expect.objectContaining({
         key: "notice.launchStopped",
-        values: { symbol: "MCAT", venue: pad, reason: "effects_differ" },
+        values: { symbol: "MCAT", venue: pad, reason: "effects_differ", private: "no" },
       }),
     );
   });

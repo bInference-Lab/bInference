@@ -2,7 +2,7 @@ import {
   type AccountRef,
   accountRefSchema,
   assetRefSchema,
-  type LaunchpadVenue,
+  type UploadingLauncher,
   type LaunchPinRequest,
   type SimulatedStep,
   type TxSimulator,
@@ -96,7 +96,7 @@ export function launchPartsOver(
 export function launcherOver(
   http: FlapApiFake,
   simulator: Pick<TxSimulator, "simulate"> = dryRunSimulator(),
-): NonNullable<LaunchpadVenue["launcher"]> {
+): UploadingLauncher {
   const venue = createFlapVenue({
     chains: [
       { chain: bscChain, nativeAsset: bnb, quoteTokens: [usdt, usd1], rpc: scriptedPortal() },
@@ -107,10 +107,11 @@ export function launcherOver(
       chains: [{ chain: bscChain, simulator, taxTokenImplementation: taxImplementation }],
     },
   });
-  if (venue.launcher === undefined) {
-    throw new Error("The venue launches no token.");
+  const { launcher } = venue;
+  if (launcher?.pin === undefined || launcher.pinStatus === undefined) {
+    throw new Error("The venue launches no token, or uploads nothing.");
   }
-  return venue.launcher;
+  return { ...launcher, pin: launcher.pin, pinStatus: launcher.pinStatus };
 }
 
 /** The tax recipient of {@link testLaunch}. */

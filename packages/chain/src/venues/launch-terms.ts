@@ -70,7 +70,8 @@ export type PinStatus = "pending" | "pinned" | "failed";
  * launch's words, which a launchpad that keeps them on chain writes into its create call.
  */
 export interface LaunchBuildRequest extends LaunchTerms, LaunchWords {
-  readonly metadataUri: string;
+  /** The metadata address the upload gave; absent for a launchpad that uploads nothing. */
+  readonly metadataUri?: string;
   /** The launch fee the quote read, which the create call pays. */
   readonly fee: Amount;
   /** The least of the new token the first buy accepts, in base units; with a first buy alone. */
@@ -93,7 +94,8 @@ export interface DecodedLaunch {
   readonly token: AssetRef;
   readonly name: string;
   readonly symbol: string;
-  readonly metadataUri: string;
+  /** The metadata address the call names; absent for a launchpad that uploads nothing. */
+  readonly metadataUri?: string;
   readonly pair: AssetRef;
   /** The launch fee the call pays, in base units of the chain's coin. */
   readonly feeBase: bigint;
@@ -154,7 +156,7 @@ export interface DecodedLaunchWire {
   readonly token: string;
   readonly name: string;
   readonly symbol: string;
-  readonly metadataUri: string;
+  readonly metadataUri?: string;
   readonly pair: string;
   readonly feeBase: string;
   readonly firstBuy?: {
@@ -171,7 +173,7 @@ export const decodedLaunchSchema: z.ZodType<DecodedLaunch, DecodedLaunchWire> = 
   token: assetRefSchema,
   name: z.string(),
   symbol: z.string(),
-  metadataUri: z.string(),
+  metadataUri: z.string().exactOptional(),
   pair: assetRefSchema,
   feeBase: decimalStringSchema,
   firstBuy: z

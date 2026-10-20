@@ -6,6 +6,7 @@ import {
   type LaunchpadVenue,
   launchWordLimitsSchema,
   type PriceReader,
+  type UploadingLauncher,
   type Venue,
   type VenueCall,
   type VenueContracts,
@@ -140,6 +141,27 @@ export function defineVenue(definition: Venue): Venue {
   return Object.freeze(venue);
 }
 
+const isUploading = (launcher: Launcher): launcher is UploadingLauncher =>
+  launcher.pin !== undefined && launcher.pinStatus !== undefined;
+
+// A launcher uploads through both its pin and its pin status, or through neither (decision 0276).
+function pinOf(launcher: Launcher): Pick<Launcher, "pin" | "pinStatus"> {
+  if (isUploading(launcher)) {
+    return {
+      pin: async (request, call) => launcher.pin(request, call),
+      pinStatus: async (handle, call) => launcher.pinStatus(handle, call),
+    };
+  }
+  if (launcher.pin !== undefined || launcher.pinStatus !== undefined) {
+    throw new BinferenceError({
+      code: "plugin.bad_venue",
+      message:
+        "A launchpad that uploads gives both its pin and its pin status; one alone is wrong.",
+    });
+  }
+  return {};
+}
+
 // A launchpad's settings are checked as it loads; its launcher's methods are called on it.
 function launcherOf(launcher: Launcher): Launcher {
   const options = launchOptionsSchema.safeParse(launcher.launchOptions);
@@ -164,8 +186,7 @@ function launcherOf(launcher: Launcher): Launcher {
     ...(launcher.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
     ...(limits === undefined ? {} : { wordLimits: Object.freeze({ ...limits.data }) }),
     quoteLaunch: async (terms, call) => launcher.quoteLaunch(terms, call),
-    pin: async (request, call) => launcher.pin(request, call),
-    pinStatus: async (pin, call) => launcher.pinStatus(pin, call),
+    ...pinOf(launcher),
     buildLaunch: async (request, call) => launcher.buildLaunch(request, call),
     decodeLaunch: (draft) => launcher.decodeLaunch(draft),
   };
