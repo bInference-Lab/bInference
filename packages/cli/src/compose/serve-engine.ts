@@ -18,6 +18,7 @@ import { startPinTimer } from "./pin-timer.js";
 import { startScheduleTimer } from "./schedule-timer.js";
 import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
+import { startSummaryTimer } from "./summary-timer.js";
 import { startUnlockRetry } from "./unlock-retry.js";
 
 // Hands every part's closer to the one shutdown sequence, which stop signals and `engine/stop`
@@ -49,9 +50,9 @@ function isUnreachable(unlocked: Result<void, LockReason>): boolean {
 }
 
 // What runs while the engine serves: the settle timer, the gas check, the order and card timers,
-// the schedule queue, the copy orders, the price watchers, the nightly backup, the reload of
-// `config.json5` when it changes (decision 0118), and the retries of the signer step after a start
-// that found Privy out of reach (decision 0119).
+// the schedule queue, the copy orders, the daily summaries, the price watchers, the nightly
+// backup, the reload of `config.json5` when it changes (decision 0118), and the retries of the
+// signer step after a start that found Privy out of reach (decision 0119).
 function startTimers(
   opening: Opening,
   opened: Opened,
@@ -69,6 +70,8 @@ function startTimers(
   startScheduleTimer({ runSchedules: composed.runSchedules, ...timers });
   startCopyTimer({ runCopies: composed.runCopies, clock: host.clock, closers, logger });
   startPinTimer({ checkPins: composed.checkPins, clock: host.clock, closers, logger });
+  const { sendDailySummaries } = composed;
+  startSummaryTimer({ sendDailySummaries, clock: host.clock, closers, logger });
   composed.priceWatchers.start(closers, logger.child("watcher"));
   composed.leaderWatchers.start(closers, logger.child("watcher"));
   composed.launchFeeds.start(closers, logger.child("watcher"));

@@ -34,7 +34,8 @@ import { chainTokenReads } from "./token-facts.js";
  * The self-hosted engine, built and not yet listening, with the engine's timed work: the work that
  * waits for its time, such as a rescue address's ceiling change, the gas check, the auto orders
  * that wait for no price, the cards whose time is up, the schedules whose time came, the copy
- * orders' leader trades, and the token launches waiting for their launchpad's pin (decision 0234).
+ * orders' leader trades, the token launches waiting for their launchpad's pin (decision 0234), and
+ * the daily summaries (decision 0273).
  */
 export interface ComposedSelfHosted extends TimedWork {
   readonly server: ProtocolServer;
@@ -251,6 +252,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       random: host.random,
       logger: log.logger,
       executor: sending.executor,
+      heldWallets: () => sending.executor.heldWallets(),
       positions: parts.positions,
       paperBalances: parts.paperBalances,
       ...wiring.watchedParts,

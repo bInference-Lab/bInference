@@ -29,6 +29,7 @@ import {
   type RunningTurns,
   type UploadShelf,
 } from "@binference/engine/chat";
+import type { HeldWallet } from "@binference/engine/executor";
 import { isNoticeMutedFor } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
@@ -89,6 +90,8 @@ export interface ComposeEngineOptions {
   readonly wallets: WalletFactsSource;
   /** Takes each confirmed live intent onto its wallet's queue. */
   readonly executor: Executor;
+  /** The wallets the executor's stuck steps hold now, which the daily summary counts. */
+  readonly heldWallets?: () => readonly HeldWallet[];
   /** Executions, arrivals and positions, the paper portfolio's too. */
   readonly positions: PositionStore;
   /** What a paper portfolio starts with: config's `defaults.paper.balances`, resolved to assets. */
@@ -273,6 +276,7 @@ function engineOf(
     simulator: options.simulator,
     chainSimulator: options.risk.simulator,
     executor: options.executor,
+    ...(options.heldWallets === undefined ? {} : { heldWallets: options.heldWallets }),
     paperBalances: options.paperBalances,
     isLocked: options.isLocked ?? (() => false),
     canPrice: options.canPrice,
