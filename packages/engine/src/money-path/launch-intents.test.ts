@@ -1,8 +1,8 @@
-import { assetRefSchema } from "@binference/chain";
+import { type AssetTransfer, assetRefSchema, type TxSimulator } from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { expectOk, testNowMs, testWallet } from "../intents/test-intents.js";
+import { expectOk, testCoin, testNowMs, testWallet } from "../intents/test-intents.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import {
@@ -34,6 +34,27 @@ async function stateOf(test: TestEngine, view: IntentView): Promise<IntentView> 
 }
 
 const signal = { signal: new AbortController().signal };
+
+// A transfer of a token at half its amount; the coin's as it is.
+const halved = (transfer: AssetTransfer): AssetTransfer =>
+  transfer.amount.asset === testCoin
+    ? transfer
+    : Object.assign({}, transfer, {
+        amount: { asset: transfer.amount.asset, base: transfer.amount.base / 2n },
+      });
+
+// A simulator whose runs deliver half the tokens the real one gives, as a launchpad that changed
+// its curve would.
+function halvedTokens(real: Pick<TxSimulator, "simulate">): Pick<TxSimulator, "simulate"> {
+  return {
+    simulate: async (drafts, options) => {
+      const steps = await real.simulate(drafts, options);
+      return steps.map((step) =>
+        Object.assign({}, step, { transfers: step.transfers.map(halved) }),
+      );
+    },
+  };
+}
 const cardsOpened = (test: TestEngine) => test.pushes.filter((push) => push.kind === "card/opened");
 const notices = (test: TestEngine) =>
   test.pushes.filter((push) => push.kind === "notice/new").map((push) => push.data);
@@ -240,6 +261,19 @@ describe("a token launch refused before any upload", () => {
     ]);
     expect(lacking.launcher.uploads()).toStrictEqual([]);
     expect(held.launcher.uploads()).toHaveLength(1);
+  });
+
+  it("ends before any card when a first buy with no minimum simulates below its minimum", async () => {
+    const short = await engineOver({
+      noFirstBuyMin: true,
+      simulator: (real) => halvedTokens(real),
+    });
+    const view = await propose(short.test);
+    expect(await stateOf(short.test, view)).toMatchObject({
+      state: "failed_check",
+      outcome: { reason: "effects_differ" },
+    });
+    expect(cardsOpened(short.test)).toStrictEqual([]);
   });
 
   it("ends image_unreadable for an upload the engine does not hold", async () => {

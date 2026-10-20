@@ -3,12 +3,15 @@ import {
   accountRefParts,
   type AssetTransfer,
   assetRefSchema,
+  chainRefSchema,
   printAccountRef,
+  type Venue,
 } from "@binference/chain";
 import {
   createFakeLauncher,
   createFakeLaunchpad,
   createFakeVenue,
+  type FakeLauncher,
   type FakeSent,
 } from "@binference/chain/testing";
 import { createManualClock } from "@binference/core/testing";
@@ -40,20 +43,21 @@ import { driveUntil, type ExecutorBench, startExecutorBench, tapped } from "./te
 const live = { signal: new AbortController().signal };
 const chains = testChains([testPad]);
 const token = assetRefSchema.parse("fake:1/token:0x000000e1");
-const launcher = createFakeLauncher();
-const venues = [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launcher })];
-const curves = createVenueHost({
-  venues,
-  chains,
-  clock: createManualClock(testNowMs),
-  callTimeoutMs: 5_000,
-});
+// The launchpad of a launcher, and the venues the bench trades on with it.
+function launchpadOf(launcher: FakeLauncher) {
+  const venues = [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launcher })];
+  return { launcher, venues };
+}
+const launchpad = launchpadOf(createFakeLauncher());
+const curvesOf = (venues: readonly Venue[]) =>
+  createVenueHost({ venues, chains, clock: createManualClock(testNowMs), callTimeoutMs: 5_000 });
 // The test launch with no launchpad setting, which this launchpad declares none of.
 const { venueOptions: _settings, ...launch } = testLaunch;
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]);
 
 // What a fake create call moved once a block holds it: its value from the wallet to the
-// launchpad's router, and the first buy's minimum of the token back.
+// launchpad's router, and the first buy's minimum of the token back; a call that carries no
+// minimum gets half what its simulation showed, as a Portal changed in between would give.
 function launchTransfers(sent: FakeSent): readonly AssetTransfer[] {
   const [to = "", value = "0", data = ""] = sent.draftPayload.split("|");
   const words = data.split(",");
@@ -70,12 +74,25 @@ function launchTransfers(sent: FakeSent): readonly AssetTransfer[] {
   const got = {
     from: router.value,
     to: sent.account,
-    amount: { asset: token, base: BigInt(minOut) },
+    amount: { asset: token, base: settledOf(words[7] ?? "", minOut) },
   };
   return minOut === "" ? [paid] : [paid, got];
 }
 
-async function benchOf(): Promise<ExecutorBench> {
+// The first buy a block settles: its minimum, or half of the 1,000 a unit the fake simulation
+// shows for a call that carries no minimum.
+function settledOf(spend: string, minOut: string): bigint {
+  if (minOut === "") {
+    return 0n;
+  }
+  return minOut === "0" ? BigInt(spend) * 500n : BigInt(minOut);
+}
+
+async function benchOf(pad: { readonly noFirstBuyMin?: boolean } = {}): Promise<ExecutorBench> {
+  const { venues, launcher } =
+    pad.noFirstBuyMin === true
+      ? launchpadOf(createFakeLauncher({ noFirstBuyMin: true }))
+      : launchpad;
   const wallets = [testWallet, testLaunchWallet];
   const bench = await startExecutorBench({
     agent: { limits: { ...testLimits, venues: ["fake-swap", testPad] } },
@@ -88,12 +105,13 @@ async function benchOf(): Promise<ExecutorBench> {
         [testLaunchWallet, testLaunchAccount],
       ]),
       chainSimulator: testLaunchSimulator(launcher),
+      unboundFirstBuys: new Map([[chainRefSchema.parse("fake:1"), [testPad]]]),
       launchImages: createMemoryLaunchImages(
         new Map([["upl_moon", png]]),
         testCallers.cli.credential,
       ),
     },
-    launch: { venues, chains, wallets, curves },
+    launch: { venues, chains, wallets, curves: curvesOf(venues) },
   });
   const record = {
     id: testLaunchWallet,
@@ -156,6 +174,17 @@ describe("a token launch in the wallet queue", () => {
         feeBase: 2_000n,
         bought: { asset: token, base: 970_000_000n },
       },
+    ]);
+  });
+
+  it("raises the owner's alarm when a first buy with no minimum settles below its simulation", async () => {
+    const bench = await benchOf({ noFirstBuyMin: true });
+    const intent = await tapped(bench, launch);
+
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    const notices = bench.pushes.filter(({ kind }) => kind === "notice/new");
+    expect(notices.map(({ data }) => JSON.stringify(data))).toStrictEqual([
+      expect.stringContaining('"key":"notice.fillDiffers"'),
     ]);
   });
 
