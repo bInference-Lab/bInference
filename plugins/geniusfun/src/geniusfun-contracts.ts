@@ -8,6 +8,15 @@ import type { Address } from "viem";
  */
 export const stackFactoryNames: readonly string[] = ["factory-m4-2", "factory-m4-1"];
 
+/**
+ * The registry names of the stack launches go to, m4.2, the one genius.fun launches on now: its
+ * factory makes a launch alone, its router a launch with its first buy.
+ */
+export const launchStack: { readonly factory: string; readonly router: string } = {
+  factory: "factory-m4-2",
+  router: "router-m4-2",
+};
+
 /** The one contract each launch has of its own: its curve, which trades its token. */
 export const curveName = "curve";
 
@@ -60,4 +69,17 @@ export function curveAccountOf(contracts: Readonly<Record<string, AccountRef>>):
     throw noContract("launch's curve");
   }
   return curve;
+}
+
+/** The launch stack's factory and router among the contracts the host gave; one missing is a fault. */
+export function launchStackOf(contracts: Readonly<Record<string, AccountRef>>): {
+  readonly factory: AccountRef;
+  readonly router: AccountRef;
+} {
+  const factory = contracts[launchStack.factory];
+  const router = contracts[launchStack.router];
+  if (factory === undefined || router === undefined) {
+    throw noContract("launch stack's factory and router");
+  }
+  return { factory, router };
 }

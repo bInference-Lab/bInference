@@ -30,6 +30,11 @@ not add it.
   block.
 - **Insiders.** The wallets a launch exempted from its snipe tax, from the receipts of its launch
   second.
+- **Launches.** Given its launch options, a token on the m4.2 stack from the launch wallet, with
+  its first buy through the launch-and-buy router at the host's minimum, or alone through the
+  factory. The create call carries the words and the owner's picture link, with the creator fee
+  recipient the owner names; nothing is uploaded and the link is never opened (decisions 0275 to
+  0277).
 
 ## API
 
@@ -37,7 +42,8 @@ not add it.
 | ------------------------------- | ----------------------------------------------------------------- |
 | `createGeniusfunVenue`          | The `geniusfun` launchpad over each chain's RPC failover          |
 | `geniusfunDeclaration`          | What the venue declares on given chains, without reading any      |
-| `GeniusfunOptions`              | The chains the venue trades on, each a `CurveChain`               |
+| `GeniusfunOptions`              | The chains the venue trades on, and what its launches need        |
+| `GeniusfunLaunchOptions`        | The salts' randomness and each launch chain's simulator           |
 | `@binference/geniusfun/testing` | Answers recorded on BSC, a failover over them and a venue over it |
 
 ## Example
@@ -49,6 +55,7 @@ import { createGeniusfunVenue } from "@binference/geniusfun";
 
 const geniusfun = createGeniusfunVenue({
   chains: [{ chain: bsc.ref, nativeAsset: bsc.nativeAsset, quoteTokens: [usdt, usdc], rpc }],
+  launches: { random, chains: [{ chain: bsc.ref, simulator }] },
 });
 const host = createVenueHost({ venues: [geniusfun], chains, clock, callTimeoutMs: 5_000 });
 ```

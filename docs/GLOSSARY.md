@@ -219,6 +219,8 @@ new name here first, in the change that uses it.
   trade, with its type, bounds and default. Its card line is the message `launch.option.<name>`.
 - **launch fee**: what a launchpad charges for a launch, in the chain's coin, paid with the create
   call.
+- **creator fee recipient**: the account a launch names to receive the creator's part of every
+  trade's fee on the token, such as on Genius.fun, where it claims them from the launchpad.
 - **extra launch wallet**: a live launch wallet beyond the agent's launch wallet, which only a
   rebuild adopts. Nothing trades from it; `wallet list` and `binference check` name it so the
   owner rescues what it holds.
@@ -624,6 +626,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | pin (a launch's picture and words)       | 固定                   | The launchpad's storage keeps it |
 | picture link                             | 图片地址               | The owner hosts it               |
 | launch fee                               | 发射手续费             | Paid with the create call        |
+| creator fee recipient                    | 创建者费用接收地址     | Claims a launch's creator fees   |
 | first buy                                | 首笔买入               | The launch wallet's own buy      |
 | owner key                                | 所有者密钥             | Shown once as a `bnok1` code     |
 | balance                                  | 余额                   |                                  |

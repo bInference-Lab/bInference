@@ -1,2 +1,6 @@
-export type { GeniusfunOptions } from "./geniusfun-options.js";
+export type {
+  GeniusfunLaunchChain,
+  GeniusfunLaunchOptions,
+  GeniusfunOptions,
+} from "./geniusfun-options.js";
 export { createGeniusfunVenue, geniusfunDeclaration } from "./geniusfun-venue.js";

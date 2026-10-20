@@ -20,6 +20,7 @@ import {
 import { parseEther } from "viem";
 import { describe, expect, it } from "vitest";
 import { tradeFunctionsJson } from "./contracts/genius-calls.js";
+import { createFunctionsJson } from "./contracts/launch-call.js";
 import { createGeniusfunVenue, geniusfunDeclaration } from "./geniusfun-venue.js";
 import { recordedCalls } from "./testing/recorded-answers.js";
 import { scriptedChain } from "./testing/recorded-chain.js";
@@ -165,20 +166,32 @@ describe("the geniusfun venue", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("declares each stack's factory, each launch's curve, its buy and sell, and no deadline", () => {
+  it("declares each stack's factory, each launch's curve, its buy and sell, its create calls for launch wallets alone, and no deadline", () => {
     const declaration = geniusfunDeclaration([bscChain]);
     expect(declaration).toStrictEqual({
       id: "geniusfun",
       contracts: [
         {
           chain: bscChain,
-          names: ["factory-m4-2", "factory-m4-1"],
+          names: ["factory-m4-2", "factory-m4-1", "router-m4-2"],
           launchContracts: ["curve"],
           calls: [
             { contract: "curve", abi: tradeFunctionsJson.buy, walletInputs: ["recipient"] },
             { contract: "curve", abi: tradeFunctionsJson.sell, walletInputs: ["recipient"] },
+            {
+              contract: "router-m4-2",
+              abi: createFunctionsJson.launchAndBuy,
+              walletInputs: [],
+              isLaunchWalletOnly: true,
+            },
+            {
+              contract: "factory-m4-2",
+              abi: createFunctionsJson.launchToken,
+              walletInputs: [],
+              isLaunchWalletOnly: true,
+            },
           ],
-          spenders: ["curve"],
+          spenders: ["curve", "router-m4-2"],
           noDeadline: true,
         },
       ],

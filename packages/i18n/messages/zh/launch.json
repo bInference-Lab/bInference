@@ -9,5 +9,6 @@
   "option.burnShareBps": "交易税中销毁：{value}",
   "option.taxDays": "交易税持续 {value, plural, other {# 天}}",
   "option.pictureLink": "图片地址 {link}（binference 从不打开它）",
+  "option.creatorFeeRecipient": "每笔交易的创建者费用归 {value}",
   "age": "{unit, select, minute {{count} 分钟} hour {{count} 小时} other {{count} 天}}"
 }

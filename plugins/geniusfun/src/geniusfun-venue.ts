@@ -7,9 +7,12 @@ import {
 import { curveChainSetupsOf } from "@binference/plugin-sdk/evm";
 import { tradeFunctionsJson } from "./contracts/genius-calls.js";
 import { launchEventIds } from "./contracts/genius-launch-events.js";
+import { createFunctionsJson } from "./contracts/launch-call.js";
+import { createGeniusfunLauncher } from "./create/genius-launcher.js";
+import { launchPartsOf } from "./create/launch-parts.js";
 import { readCurvePrice } from "./curve/read-curve-price.js";
 import { readCurve } from "./curve/read-curve.js";
-import { curveName, stackFactoryNames } from "./geniusfun-contracts.js";
+import { curveName, launchStack, stackFactoryNames } from "./geniusfun-contracts.js";
 import type { GeniusfunOptions } from "./geniusfun-options.js";
 import { readInsiders } from "./insiders/read-insiders.js";
 import { createBoundedMemo } from "./launch/bounded-memo.js";
@@ -36,13 +39,25 @@ export function geniusfunDeclaration(chains: readonly ChainRef[]): VenueDeclarat
     id: "geniusfun",
     contracts: chains.map((chain) => ({
       chain,
-      names: [...stackFactoryNames],
+      names: [...stackFactoryNames, launchStack.router],
       launchContracts: [curveName],
       calls: [
         { contract: curveName, abi: tradeFunctionsJson.buy, walletInputs: ["recipient"] },
         { contract: curveName, abi: tradeFunctionsJson.sell, walletInputs: ["recipient"] },
+        {
+          contract: launchStack.router,
+          abi: createFunctionsJson.launchAndBuy,
+          walletInputs: [],
+          isLaunchWalletOnly: true,
+        },
+        {
+          contract: launchStack.factory,
+          abi: createFunctionsJson.launchToken,
+          walletInputs: [],
+          isLaunchWalletOnly: true,
+        },
       ],
-      spenders: [curveName],
+      spenders: [curveName, launchStack.router],
       noDeadline: true,
     })),
   };
@@ -60,6 +75,7 @@ export function geniusfunDeclaration(chains: readonly ChainRef[]): VenueDeclarat
  * 0254). Bad options are a fault (`geniusfun.bad_options`).
  */
 export function createGeniusfunVenue(options: GeniusfunOptions): LaunchpadVenue {
+  const { launches } = options;
   const parts: VenueParts = {
     setups: curveChainSetupsOf(options.chains, { id: "geniusfun", name: "Genius.fun" }),
     launches: createBoundedMemo(keptLaunches),
@@ -75,5 +91,8 @@ export function createGeniusfunVenue(options: GeniusfunOptions): LaunchpadVenue 
     insiders: async (request, { signal }) => readInsiders(request, parts, signal),
     launchEvents: launchEventIds,
     readLaunches: (request) => readGeniusLaunches(request, parts),
+    ...(launches === undefined
+      ? {}
+      : { launcher: createGeniusfunLauncher(launchPartsOf(launches, parts.setups)) }),
   });
 }
