@@ -134,4 +134,18 @@ describe("a card in Telegram HTML, in Chinese", () => {
       ),
     ]);
   });
+
+  it("draws a confirmed card that ended without sending in Chinese", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const confirmed = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    expect(
+      [{ kind: "unsent" } as const, { kind: "done" } as const, { kind: "unknown" } as const].map(
+        (after) => textOf(receiptHtml(confirmed, display, after)),
+      ),
+    ).toStrictEqual([
+      `${icons.refused} 未发送：在签名之前已结束`,
+      `${icons.done} 已完成，无需在链上发送`,
+      `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)} 已发送，结果待确认；正在检查链上记录`,
+    ]);
+  });
 });

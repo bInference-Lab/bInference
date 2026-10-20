@@ -9,5 +9,9 @@
   "launched": "✅ Launched {token}: first buy {result} · {explorerLink}",
   "launchedAlone": "✅ Launched {token} · {explorerLink}",
   "failed": "❌ Failed on chain: {reason} · {explorerLink}",
-  "landed": "✅ Done on chain · {explorerLink}"
+  "landed": "✅ Done on chain · {explorerLink}",
+  "refused": "❌ Not sent: {reason}",
+  "unknown": "⚠️ Sent, result not known yet; checking the chain",
+  "unsent": "❌ Not sent: it ended before it was signed",
+  "done": "✅ Done, with nothing to send on chain"
 }

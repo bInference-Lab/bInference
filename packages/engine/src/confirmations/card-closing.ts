@@ -37,8 +37,10 @@ export function receiptResult(fill: ReceiptFill): CardValue {
  * How a confirmed live intent ended on chain, as its receipt shows it (spec 4, section 3.5): a
  * trade that filled, with what it sold and bought; a token launch that landed, with its new token
  * and, with a first buy, what that sold and bought; any other intent that landed, such as a send
- * or a rescue; or one that failed on chain, with its reason.
- * Each names its last transaction's explorer link.
+ * or a rescue; one done with nothing to send; or one that failed on chain, with its reason. Each
+ * of those names its last transaction's explorer link. One that ended before anything was sent
+ * gives its reason when it stored one; one whose fate is not known yet says so.
+
  */
 export type LiveOutcome =
   | { readonly kind: "filled"; readonly fill: ReceiptFill; readonly explorerLink: string }
@@ -49,6 +51,10 @@ export type LiveOutcome =
       readonly explorerLink: string;
     }
   | { readonly kind: "landed"; readonly explorerLink: string }
+  | { readonly kind: "done" }
+  | { readonly kind: "refused"; readonly reason: IntentReason }
+  | { readonly kind: "unsent" }
+  | { readonly kind: "unknown" }
   | { readonly kind: "failed"; readonly reason: IntentReason; readonly explorerLink: string };
 
 /** What followed a confirmation that the receipt shows: a paper fill, or a live outcome. */
@@ -56,7 +62,7 @@ export type ReceiptAfter = { readonly kind: "paper"; readonly fill: ReceiptFill 
 
 const text = (value: string): CardValue => ({ type: "text", text: value });
 
-function launchedLine(outcome: Extract<LiveOutcome, { readonly kind: "launched" }>): CardLine {
+function launchedLine(outcome: AfterOf<"launched">): CardLine {
   const token: CardValue = { type: "asset", asset: outcome.token };
   const explorerLink = text(outcome.explorerLink);
   return outcome.fill === undefined
@@ -68,22 +74,39 @@ function launchedLine(outcome: Extract<LiveOutcome, { readonly kind: "launched" 
 }
 
 // The receipt of what followed a confirmation: the paper fill, or how the live intent ended.
-function afterLine(after: ReceiptAfter): CardLine {
-  if (after.kind === "paper") {
-    return paperFillLine(after.fill);
-  }
-  if (after.kind === "launched") {
-    return launchedLine(after);
-  }
-  const explorerLink = text(after.explorerLink);
-  if (after.kind === "filled") {
-    return { key: "receipt.filled", values: { result: receiptResult(after.fill), explorerLink } };
-  }
-  if (after.kind === "landed") {
-    return { key: "receipt.landed", values: { explorerLink } };
-  }
-  const reason: CardValue = { type: "line", line: { key: `reason.${after.reason}`, values: {} } };
-  return { key: "receipt.failed", values: { reason, explorerLink } };
+const reasonLine = (reason: IntentReason): CardValue => ({
+  type: "line",
+  line: { key: `reason.${reason}`, values: {} },
+});
+
+/** What follows a confirmation, by its kind. */
+type AfterOf<K extends ReceiptAfter["kind"]> = Extract<ReceiptAfter, { readonly kind: K }>;
+
+// The receipt line of each kind of what followed a confirmation.
+const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) => CardLine } = {
+  paper: (after) => paperFillLine(after.fill),
+  filled: (after) => ({
+    key: "receipt.filled",
+    values: { result: receiptResult(after.fill), explorerLink: text(after.explorerLink) },
+  }),
+  launched: (after) => launchedLine(after),
+  landed: (after) => ({
+    key: "receipt.landed",
+    values: { explorerLink: text(after.explorerLink) },
+  }),
+  failed: (after) => ({
+    key: "receipt.failed",
+    values: { reason: reasonLine(after.reason), explorerLink: text(after.explorerLink) },
+  }),
+  done: () => ({ key: "receipt.done", values: {} }),
+  refused: (after) => ({ key: "receipt.refused", values: { reason: reasonLine(after.reason) } }),
+  unsent: () => ({ key: "receipt.unsent", values: {} }),
+  unknown: () => ({ key: "receipt.unknown", values: {} }),
+};
+
+function afterLine<K extends ReceiptAfter["kind"]>(after: AfterOf<K>): CardLine {
+  const draw: (after: AfterOf<K>) => CardLine = afterLines[after.kind];
+  return draw(after);
 }
 
 /** The receipt of a paper fill, flagged as paper. */

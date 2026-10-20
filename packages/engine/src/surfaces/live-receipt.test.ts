@@ -3,13 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   driveUntil,
   type ExecutorBench,
+  flush,
   hashOf,
   startExecutorBench,
   tapped,
   transactionsOf,
 } from "../executor/test-executor.js";
-import { testCoin, testSwap, testToken } from "../intents/test-intents.js";
-import { testAccount, testChains } from "../operations/test-engine.js";
+import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
+import { testAccount, testCall, testCallers, testChains } from "../operations/test-engine.js";
 import { createCardShowings } from "./create-card-showings.js";
 
 const live = () => ({ signal: new AbortController().signal });
@@ -64,5 +65,27 @@ describe("the receipt of a confirmed live intent", () => {
       reason: "reverted",
       explorerLink: `https://scan.example.invalid/tx/${hashOf(approval)}`,
     });
+  });
+
+  it("says a confirmed trade whose confirmation lapsed before the queue was not sent", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const intent = await tapped(bench);
+    await bench.test.clock.advance(61_000);
+    await bench.release();
+    await flush();
+    const ended = await showingsOf(bench).settled(intent, live());
+    expect(ended?.live?.outcome).toStrictEqual({ kind: "unsent" });
+  });
+
+  it("says a confirmed trade a freeze cancelled before the queue was not sent", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const intent = await tapped(bench);
+    const frozen = await bench.test.engine.handlers["safety/freeze"](
+      testCall({ agent: testAgent }, testCallers.cli),
+    );
+    await bench.release();
+    await flush();
+    const ended = await showingsOf(bench).settled(intent, live());
+    expect([frozen.ok, ended?.live?.outcome]).toStrictEqual([true, { kind: "unsent" }]);
   });
 });

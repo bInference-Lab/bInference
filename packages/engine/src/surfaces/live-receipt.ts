@@ -12,6 +12,7 @@ import type { LiveOutcome } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import { type IntentHistory, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import type { IntentState } from "../intents/intent-state.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import type { TransactionStore } from "../ports.js";
@@ -95,6 +96,27 @@ async function landedOf(
     : { outcome: { kind: "landed", explorerLink }, assets: {} };
 }
 
+// The ends of a confirmed intent before anything was sent: a check or policy refusal at the queue,
+// a cancel, or an authorization that lapsed.
+const unsentStates: ReadonlySet<IntentState> = new Set<IntentState>([
+  "failed_check",
+  "rejected_policy",
+  "risk_blocked",
+  "cancelled",
+  "expired",
+]);
+
+// A confirmed intent that reconciled with nothing sent on chain, such as an unfreeze.
+const doneAlone: LiveReceipt = { outcome: { kind: "done" }, assets: {} };
+
+// A confirmed intent that ended before anything was sent: why, when it stored a reason.
+function unsentOf(record: IntentRecord): LiveReceipt {
+  const { reason } = record;
+  const outcome: LiveOutcome =
+    reason === undefined ? { kind: "unsent" } : { kind: "refused", reason };
+  return { outcome, assets: {} };
+}
+
 // A live intent that failed on chain: its reason, and its last transaction's explorer link.
 async function failedOf(
   source: LiveReceiptSource,
@@ -112,10 +134,11 @@ async function failedOf(
 }
 
 /**
- * How a confirmed live intent ended on chain, once it did (spec 4, section 3.5): `reconciled`
- * with the trade it recorded, or as landed with none, or `failed_onchain` with its reason, each
- * with its last transaction's explorer link. `undefined` for a paper intent, one still on its way, or one with
- * no transaction or explorer to name.
+ * How a confirmed live intent ended, once it did (spec 4, section 3.5): `reconciled` with the
+ * trade it recorded, as landed with none, or as done with nothing sent; `failed_onchain` with its
+ * reason; each with its last transaction's explorer link; an end before anything was sent, with
+ * its reason when it stored one; and `unknown_after_send` while the chain is read. `undefined`
+ * for a paper intent and one still on its way.
  */
 export async function liveReceiptOf(
   source: LiveReceiptSource,
@@ -126,7 +149,13 @@ export async function liveReceiptOf(
     return undefined;
   }
   if (record.state === "reconciled") {
-    return reconciledOf(source) ?? landedOf(source, call);
+    return reconciledOf(source) ?? (await landedOf(source, call)) ?? doneAlone;
   }
-  return record.state === "failed_onchain" ? failedOf(source, call) : undefined;
+  if (record.state === "failed_onchain") {
+    return failedOf(source, call);
+  }
+  if (record.state === "unknown_after_send") {
+    return { outcome: { kind: "unknown" }, assets: {} };
+  }
+  return unsentStates.has(record.state) ? unsentOf(record) : undefined;
 }

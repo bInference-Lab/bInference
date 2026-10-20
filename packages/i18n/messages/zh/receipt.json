@@ -9,5 +9,9 @@
   "launched": "✅ 已发射 {token}：首笔买入 {result} · {explorerLink}",
   "launchedAlone": "✅ 已发射 {token} · {explorerLink}",
   "failed": "❌ 链上失败：{reason} · {explorerLink}",
-  "landed": "✅ 已在链上完成 · {explorerLink}"
+  "landed": "✅ 已在链上完成 · {explorerLink}",
+  "refused": "❌ 未发送：{reason}",
+  "unknown": "⚠️ 已发送，结果待确认；正在检查链上记录",
+  "unsent": "❌ 未发送：在签名之前已结束",
+  "done": "✅ 已完成，无需在链上发送"
 }

@@ -99,6 +99,10 @@ export const cardKeys = [
   "receipt.launched",
   "receipt.launchedAlone",
   "receipt.landed",
+  "receipt.done",
+  "receipt.refused",
+  "receipt.unsent",
+  "receipt.unknown",
   "receipt.failed",
   "receipt.result",
   // The P&L card's lines (spec 4, section 3.7).

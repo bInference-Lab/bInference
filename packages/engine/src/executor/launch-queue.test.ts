@@ -16,6 +16,7 @@ import {
 } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import type { RiskCheck } from "../ports.js";
+import { createCardShowings } from "../surfaces/create-card-showings.js";
 import { createVenueHost, type VenueHost } from "../venues/venue-host.js";
 import {
   type BenchOptions,
@@ -133,6 +134,13 @@ describe("a launch wallet's curve trade in the wallet queue", () => {
 
     await expect(reasonOf(bench, intent)).resolves.toStrictEqual(["failed_check", "launch_unread"]);
     expect(bench.signed).toStrictEqual([]);
+    const showings = createCardShowings({
+      ...bench.test.stores,
+      chains: testChains(),
+      venues: { hasNoDeadline: () => false },
+    });
+    const ended = await showings.settled(intent, { signal: AbortSignal.timeout(5_000) });
+    expect(ended?.live?.outcome).toStrictEqual({ kind: "refused", reason: "launch_unread" });
     expect(noticesOf(bench)).toMatchObject([
       { key: "notice.launchUnsent", intent, values: { reason: "launch_unread" } },
     ]);

@@ -67,12 +67,18 @@ const openedSchema: z.ZodType<CardVersionRef> = z.object({
 const movedSchema = z.object({ intent: idSchema("int"), state: z.string().optional() });
 const storedNoticeSchema = z.object({ id: idSchema("ntc") });
 const deliverAll: RelayWork = { kind: "deliver" };
-// The moves after which a confirmed card's receipt shows more: a paper fill, and a live intent's
-// end on chain (spec 4, section 3.5).
+// The moves after which a confirmed card's receipt shows more: a paper fill, a live intent's end
+// on chain or before it sent anything, and a send whose fate is not known yet (spec 4, 3.5).
 const settlingStates: ReadonlySet<string> = new Set([
   "paper_filled",
   "reconciled",
   "failed_onchain",
+  "unknown_after_send",
+  "failed_check",
+  "rejected_policy",
+  "risk_blocked",
+  "cancelled",
+  "expired",
 ]);
 
 // Pushes wait in one line, in order; past this many waiting, a push is dropped and logged, and

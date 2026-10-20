@@ -278,6 +278,8 @@ The card's message is edited into its receipt; the buttons go away.
 | Launched               | `receipt.launched`      | ✅ Launched {token}: first buy {result} · {explorerLink} | ✅ 已发射 {token}：首笔买入 {result} · {explorerLink} |
 | Launched, no first buy | `receipt.launchedAlone` | ✅ Launched {token} · {explorerLink}                     | ✅ 已发射 {token} · {explorerLink}                    |
 | Landed                 | `receipt.landed`        | ✅ Done on chain · {explorerLink}                        | ✅ 已在链上完成 · {explorerLink}                      |
+| Done, nothing sent     | `receipt.done`          | ✅ Done, with nothing to send on chain                   | ✅ 已完成，无需在链上发送                             |
+| Not sent, no reason    | `receipt.unsent`        | ❌ Not sent: it ended before it was signed               | ❌ 未发送：在签名之前已结束                           |
 | Paper fill             | `receipt.paper`         | 🧪 Paper fill: {result}                                  | 🧪 模拟成交：{result}                                 |
 | Auto trade             | `receipt.auto`          | ⚡ Auto trade: {result} · {explorerLink}                 | ⚡ 自动交易：{result} · {explorerLink}                |
 | Cancelled              | `receipt.denied`        | ❌ Cancelled on {surface}                                | ❌ 已在 {surface} 取消                                |
@@ -292,7 +294,11 @@ A confirmed live intent's receipt says `receipt.confirmed` while it sends, and e
 into how it ended once it did: `receipt.filled` for a trade that reconciled, with what it sold and
 bought; `receipt.launched` for a token launch, with its new token (its symbol and short address)
 and what its first buy spent and got, or `receipt.launchedAlone` with no first buy; `receipt.landed` for any other intent that landed,
-such as a send or a rescue; and `receipt.failed` for one that failed on chain. `{explorerLink}` is its last transaction's page on
+such as a send or a rescue; `receipt.done` for one with nothing to send, such as an unfreeze;
+and `receipt.failed` for one that failed on chain. A confirmed intent that ends before anything
+is sent, such as one the queue's policy check refused or whose authorization lapsed, says
+`receipt.refused` with its reason, or `receipt.unsent` when it stored none; one whose send's fate
+is not known yet says `receipt.unknown` until it ends. `{explorerLink}` is its last transaction's page on
 the first block explorer the chain registry lists, shown whole.
 
 <a id="section-3-6"></a>

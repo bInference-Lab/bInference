@@ -304,4 +304,21 @@ describe("a card in Telegram HTML", () => {
       `${icons.refused} Failed on chain: the transaction reverted; only the network fee was spent · ${explorerLink}`,
     ]);
   });
+
+  it("draws a confirmed card that ended without sending, or whose send is not known yet", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const closing = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    const receipts = [
+      receiptHtml(closing, display, { kind: "refused", reason: "launch_unread" }),
+      receiptHtml(closing, display, { kind: "unsent" }),
+      receiptHtml(closing, display, { kind: "done" }),
+      receiptHtml(closing, display, { kind: "unknown" }),
+    ];
+    expect(receipts.map((html) => shown(html).text)).toStrictEqual([
+      expect.stringMatching(new RegExp(`^${icons.refused} Not sent: .+`, "u")),
+      `${icons.refused} Not sent: it ended before it was signed`,
+      `${icons.done} Done, with nothing to send on chain`,
+      `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)} Sent, result not known yet; checking the chain`,
+    ]);
+  });
 });
