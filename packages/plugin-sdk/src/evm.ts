@@ -17,6 +17,7 @@ export {
   decodeLog,
   encodeEvmApproval,
   encodeEvmDraft,
+  findCreate2Salt,
   parseEvmAddress,
 } from "@binference/chain-evm";
 export type {
@@ -25,6 +26,7 @@ export type {
   AggregatorPair,
   AggregatorTrade,
   CalldataProblem,
+  Create2Search,
   CurveChain,
   CurveChainSetup,
   CurveSide,
@@ -33,6 +35,7 @@ export type {
   EvmApproval,
   EvmCallRequest,
   EvmDraftCall,
+  FoundCreate2Salt,
   LogParts,
   RpcCall,
   RpcErrorReply,

@@ -125,6 +125,8 @@ export type {
   TrackedLeader,
 } from "./leaders/leader-watcher.js";
 export type { LogWatch, LogWatchState, WatchCursor } from "./watching/log-watch.js";
+export { findCreate2Salt } from "./launches/create2-salt.js";
+export type { Create2Search, FoundCreate2Salt } from "./launches/create2-salt.js";
 export { createLaunchWatcher } from "./launches/launch-watcher.js";
 export type { LaunchBook, LaunchWatcherOptions } from "./launches/launch-watcher.js";
 export type { FeedLaunch, FeedLaunchpad, LaunchRead } from "./launches/read-launch-span.js";
