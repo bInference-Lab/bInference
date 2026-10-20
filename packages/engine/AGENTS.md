@@ -225,6 +225,13 @@ Rules for this package:
   missed, and stores its `inbox/scheduleDue` in the same write as the run, unless the agent is
   archived, frozen or out of model budget, its last wake-up still waits, or its inbox is full;
   each run, sent or skipped, is recorded with its reason.
+- Daily summaries (`src/summaries/`, decision 0273) only read and tell: `createDailySummaries`
+  claims each agent's row of today's owner's date in `DailySummaryStore` before it publishes
+  `notice.daily`, and never claims a date at or before the latest, so a summary goes at most once
+  per date across a restart and a move of `owner.timezone`. Its due time follows the schedules'
+  wall clock rules (`summary-due.ts`); its facts (`summary-facts.ts`) keep live and paper apart and
+  read the holdings as `portfolio/get` does; `daily-notice.ts` draws the notice and judges an idle
+  agent, which gets none. Nothing there reaches an intent, an order or the agent inbox.
 - The address book lives in the agent's settings: the policy reads every live entry, on every
   chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers

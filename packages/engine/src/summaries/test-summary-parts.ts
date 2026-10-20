@@ -9,7 +9,7 @@ import { createPositions } from "../positions/create-positions.js";
 import type { SummaryFactsParts } from "./read-summary-facts.js";
 
 /** 2027-01-16 09:00 in Asia/Shanghai, 01:00 UTC: the fixture day's summary is due. */
-const fixtureDueMs: number = Date.UTC(2027, 0, 16, 1, 0);
+export const fixtureDueMs: number = Date.UTC(2027, 0, 16, 1, 0);
 
 /** The test engine's agent `main` with its wallet stored, and what its summary reads it through. */
 export interface DayRig {
