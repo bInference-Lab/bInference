@@ -11,8 +11,10 @@ import {
   createFakeChainDefinition,
   createFakeFamily,
   createFakeLaunchpad,
+  createFakeLinkLauncher,
   createFakeSigningScheme,
   createFakeVenue,
+  fakeLaunchCallAbi,
   fakePriceAnswer,
 } from "@binference/chain/testing";
 import { bpsSchema } from "@binference/core";
@@ -87,6 +89,38 @@ describe("which venues trade on a launch's own contracts", () => {
       host.hasLaunchContracts("no-such-venue"),
       plain.hasLaunchContracts("fake-curve"),
     ]).toStrictEqual([true, false, false, false]);
+  });
+});
+
+// A venue with a launcher whose only call is a launch wallet's, and no spender.
+const launching = (): Venue => {
+  const { curve: _curve, ...pad } = createFakeLaunchpad({
+    onCurve: [],
+    launcher: createFakeLinkLauncher(),
+  });
+  const calls = [
+    { contract: "router", abi: fakeLaunchCallAbi, walletInputs: [], isLaunchWalletOnly: true },
+  ] as const;
+  return {
+    ...pad,
+    contracts: pad.contracts.map(({ chain: on, names }) => ({ chain: on, names, calls })),
+  };
+};
+
+describe("which venues only launch tokens", () => {
+  it("names a venue with a launcher that asks nothing of a main wallet, and no other", () => {
+    const host = hostOf([createFakeVenue(), launching()]);
+    const trading = hostOf([
+      createFakeLaunchpad({ onCurve: [token], launcher: createFakeLinkLauncher() }),
+    ]);
+    const { launcher: _launcher, ...withoutLauncher } = launching();
+    expect([
+      host.launchesOnly("fake-curve"),
+      host.launchesOnly("fake-swap"),
+      host.launchesOnly("no-such-venue"),
+      trading.launchesOnly("fake-curve"),
+      hostOf([withoutLauncher]).launchesOnly("fake-curve"),
+    ]).toStrictEqual([true, false, false, false, false]);
   });
 });
 

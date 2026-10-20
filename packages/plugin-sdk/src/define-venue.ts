@@ -117,8 +117,10 @@ function launchReaderOf(definition: Venue): Partial<LaunchReader> {
  * block. A launchpad whose contracts favor some wallets on a token it launched may declare
  * `insiders`, which names them for the risk step. A launchpad whose launches the launch feed
  * records declares `launchEvents`, the events its launches write, and `readLaunches`, which reads
- * launches and curve changes from one transaction's logs. The engine decodes every transaction
- * the venue builds and refuses one whose terms differ.
+ * launches and curve changes from one transaction's logs. A venue that launches tokens holds its
+ * `launcher`, whose declared settings are checked at once, a launchpad with no curve among them
+ * (decision 0282). The engine decodes every transaction the venue builds and refuses one whose
+ * terms differ.
  *
  * The declaration is checked at once: a bad one is a fault (`plugin.bad_venue`), so the plugin
  * fails when it loads, never when it trades. The returned venue is frozen, and calls its methods
@@ -141,6 +143,7 @@ export function defineVenue(definition: Venue): Venue {
     ...priceReadOf(definition),
     ...insidersOf(definition),
     ...launchReaderOf(definition),
+    ...(definition.launcher === undefined ? {} : { launcher: launcherOf(definition.launcher) }),
   };
   return Object.freeze(venue);
 }
@@ -242,15 +245,13 @@ function launcherOf(launcher: Launcher): Launcher {
  * curve. It checks and freezes the declaration as {@link defineVenue} does, and keeps `curve`,
  * which must answer from the launchpad's own contracts at the latest block: a token on its curve
  * with the asset the curve trades it against, any other token as off its curve. A launchpad that
- * launches tokens keeps its `launcher`, whose declared settings are checked at once.
+ * launches tokens keeps its `launcher`, as {@link defineVenue} does.
  */
 export function defineLaunchpad(definition: LaunchpadVenue): LaunchpadVenue {
   const venue = defineVenue(definition);
-  const { launcher } = definition;
   const launchpad: LaunchpadVenue = {
     ...venue,
     curve: async (request, options) => definition.curve(request, options),
-    ...(launcher === undefined ? {} : { launcher: launcherOf(launcher) }),
   };
   return Object.freeze(launchpad);
 }

@@ -5,6 +5,7 @@ import {
   type ChainRef,
   type ChainRegistry,
   type Venue,
+  type VenueContracts,
   type VenueQuote,
   venueQuoteSchema,
 } from "@binference/chain";
@@ -154,6 +155,12 @@ export interface VenueHost {
    */
   hasLaunchContracts(venue: string): boolean;
   /**
+   * Whether the venue only launches tokens (decision 0282): it holds a launcher and no curve,
+   * every call it declares is a launch wallet's alone, and it names no spender a main wallet
+   * approves. No main wallet's ceiling lists it, so only a launch wallet can use it.
+   */
+  launchesOnly(venue: string): boolean;
+  /**
    * The JSON ABI entry of each call the venue declares on the contracts each launch has, on any
    * chain, or every hosted venue's when `venue` is absent: a launch wallet's ceiling must allow
    * each (decision 0218). None for a venue the host does not hold.
@@ -167,6 +174,24 @@ export interface VenueHost {
   launchWalletCalls(venues?: readonly string[]): HostedVenue["launchWalletCalls"];
   /** The launchpads that read their launches on the chain, with their contracts (decision 0256). */
   launchReaders(chain: ChainRef): readonly HostedLaunchReader[];
+}
+
+// The venue's contracts on a chain ask nothing of a main wallet: every call is a launch wallet's,
+// and no spender is a main wallet's.
+const isLaunchWalletOnly = (declared: VenueContracts): boolean =>
+  (declared.calls ?? []).every((call) => call.isLaunchWalletOnly === true) &&
+  (declared.spenders ?? []).length === 0;
+
+const isHostedLaunchpad = (hosted: HostedVenue | undefined): boolean =>
+  hosted !== undefined && isLaunchpad(hosted.venue);
+
+// A venue with a launcher and no curve, which asks nothing of a main wallet (decision 0282).
+function launchesOnlyIn(venue: Venue | undefined): boolean {
+  return (
+    venue?.launcher !== undefined &&
+    !isLaunchpad(venue) &&
+    venue.contracts.every(isLaunchWalletOnly)
+  );
 }
 
 /** What the host is made from. */
@@ -348,13 +373,11 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
       signal.throwIfAborted();
       return readInsiders(venues.get(venue), token, callOf(signal));
     },
-    isLaunchpad(venue) {
-      const hosted = venues.get(venue);
-      return hosted !== undefined && isLaunchpad(hosted.venue);
-    },
+    isLaunchpad: (venue) => isHostedLaunchpad(venues.get(venue)),
     hasNoDeadline(venue, chain) {
       return venues.get(venue)?.noDeadline.has(chain) === true;
     },
+    launchesOnly: (venue) => launchesOnlyIn(venues.get(venue)?.venue),
     hasLaunchContracts(venue) {
       const names = [...(venues.get(venue)?.launchNames.values() ?? [])];
       return names.some((declared) => declared.size > 0);

@@ -326,6 +326,19 @@ describe("defineVenue", () => {
     }
   });
 
+  it("keeps the launcher of a venue that is no launchpad, checked the same way", () => {
+    const launcher = createFakePictureLauncher({ mostBytes: 900 });
+    const { curve: _curve, ...venue } = createFakeLaunchpad({ onCurve: [], launcher });
+    expect(defineVenue(venue).launcher?.pictureBytesFor?.({})).toBe(900);
+    expect(defineVenue(createFakeVenue()).launcher).toBeUndefined();
+    const bad = createFakeLauncher({
+      launchOptions: [{ name: "taxBps", type: "bps", max: 20_000 }],
+    });
+    expect(() => defineVenue({ ...venue, launcher: bad })).toThrow(
+      expect.objectContaining({ code: "plugin.bad_venue" }),
+    );
+  });
+
   it("refuses a launchpad whose settings are wrong", () => {
     const launcher = createFakeLauncher({
       launchOptions: [{ name: "taxBps", type: "bps", max: 20_000 }],

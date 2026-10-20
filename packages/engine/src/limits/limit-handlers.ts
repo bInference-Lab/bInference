@@ -52,7 +52,7 @@ export interface LimitHandlersOptions {
   /** The wallets, whose ceilings bound the venues an agent may add. */
   readonly install: InstallStore;
   /** Which venues trade on contracts each launch has, which no ceiling can list. */
-  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchCalls">;
+  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchesOnly" | "launchCalls">;
   readonly journal: ConfigJournal;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
@@ -182,7 +182,7 @@ export function launchRefusal(
 }
 
 // A venue or chain the registry lacks is malformed. A venue that trades on a launch's own
-// contracts needs a launch wallet to trade live, whose ceiling allows the calls of every launchpad
+// contracts, or only launches tokens, needs a launch wallet to trade live, whose ceiling allows the calls of every launchpad
 // the install runs (decision 0217): a live agent without one cannot add it, one whose launch
 // wallet's ceiling lacks its launch calls waits for the owner key (decision 0218), and a paper
 // agent adds it with no ceiling to check. Any other venue a live
@@ -198,7 +198,10 @@ async function refusalOf(
   if (unknownChain || unknownVenues(options.chains, added).length > 0) {
     return "protocol.bad_args";
   }
-  const launched = added.filter((venue) => options.host.hasLaunchContracts(venue));
+  // A venue that only launches is a launch wallet's alone too (decision 0282).
+  const launched = added.filter(
+    (venue) => options.host.hasLaunchContracts(venue) || options.host.launchesOnly(venue),
+  );
   const { wallets } = await options.install.read({ signal: call.signal });
   const launchWallet = launchWalletIn(wallets, call.args.agent);
   if (launched.length > 0 && agent.mode === "live") {

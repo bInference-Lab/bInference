@@ -1,5 +1,10 @@
-import { accountRefSchema, assetRefSchema } from "@binference/chain";
-import { createFakeLaunchpad, createFakeVenue, fakeLaunchCallAbi } from "@binference/chain/testing";
+import { accountRefSchema, assetRefSchema, type Venue } from "@binference/chain";
+import {
+  createFakeLaunchpad,
+  createFakePictureLauncher,
+  createFakeVenue,
+  fakeLaunchCallAbi,
+} from "@binference/chain/testing";
 import { bpsSchema, err, idSchema, type JsonValue } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -103,6 +108,30 @@ async function besideLaunchCurves(mode: "paper" | "live"): Promise<TestEngine> {
   const test = await startTestEngine({
     chains: testChains(["fake-curve"]),
     venues: [createFakeVenue(), createFakeLaunchpad({ onCurve: [], launchCurve })],
+    agent: { mode, limits: { ...testLimits, venues: [] } },
+  });
+  test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: [] } });
+  return test;
+}
+
+// An agent in the mode, beside a launchpad that only launches tokens (decision 0282): a launcher,
+// and one call, a launch wallet's alone, with a live wallet whose ceiling names no contract.
+async function besideLaunchesOnly(mode: "paper" | "live"): Promise<TestEngine> {
+  const launcher = createFakePictureLauncher({ mostBytes: 1_000 });
+  const { curve: _curve, ...pad } = createFakeLaunchpad({ onCurve: [], launcher });
+  const launching: Venue = {
+    ...pad,
+    contracts: pad.contracts.map((item) => ({
+      chain: item.chain,
+      names: item.names,
+      calls: [
+        { contract: "router", abi: fakeLaunchCallAbi, walletInputs: [], isLaunchWalletOnly: true },
+      ],
+    })),
+  };
+  const test = await startTestEngine({
+    chains: testChains(["fake-curve"]),
+    venues: [createFakeVenue(), launching],
     agent: { mode, limits: { ...testLimits, venues: [] } },
   });
   test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: [] } });
@@ -381,6 +410,24 @@ describe("a venue added to the limits", () => {
     expect(await setLimits(test, { venues: ["fake-curve"] })).toStrictEqual(
       err("limit.over_ceiling"),
     );
+  });
+
+  it("needs a launch wallet, not a main wallet's ceiling, when it only launches tokens", async () => {
+    const test = await besideLaunchesOnly("live");
+    expect(await setLimits(test, { venues: ["fake-curve"] })).toStrictEqual(
+      err("limit.needs_launch_wallet"),
+    );
+    test.stores.install.addWallet(launchWalletWith([]));
+    const set = expectOk(await setLimits(test, { venues: ["fake-curve"] }));
+    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-curve"] }, effectiveAt });
+  });
+
+  it("needs no ceiling for a paper agent when it only launches tokens", async () => {
+    const test = await besideLaunchesOnly("paper");
+    expect(expectOk(await setLimits(test, { venues: ["fake-curve"] })).pending).toStrictEqual({
+      changes: { venues: ["fake-curve"] },
+      effectiveAt,
+    });
   });
 
   it("is malformed when the registry holds no contract of it, as is an unknown chain", async () => {
