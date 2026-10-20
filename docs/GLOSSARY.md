@@ -72,10 +72,10 @@ new name here first, in the change that uses it.
 - **fill**: one execution of an auto order or a webhook rule.
 - **watcher**: code that reads blocks, prices, leader wallets or launches and triggers fills. No
   model runs in it.
-- **downtime**: a span the engine did not run: stopped, crashed, or its machine asleep. A start
-  after it, or a jump of the wall clock while the engine runs, is a **resume**; the **downtime
-  re-check** then checks every auto order once on a price read after the resume and sends one
-  **resume report**.
+- **downtime**: a span the engine did not run: stopped, crashed, or paused while its machine slept.
+  A start after it, or a jump of the wall clock while the engine runs, forward or back, is a
+  **resume**; the **downtime re-check** then checks every auto order once on a price read after the
+  resume and sends one **resume report** when it checked one.
 - **price watcher**: the watcher that reads the price of every token with an active auto order at
   each new block, all in one batched call, and says how many blocks it trails the chain (its
   **lag**).

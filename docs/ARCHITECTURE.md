@@ -553,9 +553,9 @@ interface Signer {
   replayed; the next one runs on time. Missed schedules run once, not once per missed interval. The
   owner gets one report: how long the engine was off, and what was checked, filled and skipped.
   The engine finds a resume itself: a start after its last mark of a run, or a jump of its wall
-  clock while it runs ([decision 0266](DECISIONS.md#d0266)). The report counts the skips' reasons
-  and stands in for their own notices; each agent with checked orders gets it in its inbox
-  ([decision 0267](DECISIONS.md#d0267)). No fill runs on a price read before the latest resume
+  clock while it runs, forward or back ([decision 0266](DECISIONS.md#d0266)). The report counts
+  the skips' reasons and stands in for the notices of the skips it re-checked; each agent with
+  checked orders gets it in its inbox ([decision 0267](DECISIONS.md#d0267)). No fill runs on a price read before the latest resume
   ([decision 0268](DECISIONS.md#d0268)).
 - **The model wakes only when it adds value.** Examples: "every morning, review my portfolio", or
   "when a new Flap token passes these filters, tell me and propose a buy". Those are cron or event

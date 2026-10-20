@@ -186,7 +186,7 @@ price, or nothing values it), `trigger_unconfirmed` (a thin pool's price fired i
 own expected price does not meet the trigger), `daily_cap` (another confirmation took the
 rolling cap's room after its policy step), `live_fills_off` (a live fill while live fills are
 off, which the money path refuses on its own; [decision 0210](../DECISIONS.md#d0210)), and
-`price_stale` (its price was read before a resume that came while it ran, so the order waits for
+`price_stale` (its trigger fired before a resume that came while it ran, so the order waits for
 a price read after it; [decision 0268](../DECISIONS.md#d0268)).
 
 An auto order's own rules can skip a fill before any intent is stored: `copy_daily_cap`, a copy
