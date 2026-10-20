@@ -1,6 +1,7 @@
 import {
   accountRefParts,
   accountRefSchema,
+  BinferenceError,
   type AssetRef,
   type LaunchTerms,
   type TxDraft,
@@ -46,6 +47,16 @@ export function placeOf(terms: LaunchTerms, parts: LaunchParts): PlacedLaunch | 
   }
   const maker = { portal: portalOf(terms.contracts), implementation: chain.implementation };
   return { chain, maker, quoteToken };
+}
+
+/** A first buy that spends another asset than the pair is a fault of the caller. */
+export function checkFirstBuy(terms: LaunchTerms): void {
+  if (terms.firstBuy !== undefined && terms.firstBuy.asset !== terms.pair) {
+    throw new BinferenceError({
+      code: "flap.bad_launch",
+      message: "A Flap launch's first buy spends the asset its token trades against.",
+    });
+  }
 }
 
 /** The steps of a launch with its metadata and salt, and the token its create call makes. */

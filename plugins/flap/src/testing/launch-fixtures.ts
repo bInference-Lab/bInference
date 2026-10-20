@@ -1,13 +1,17 @@
 import {
   type AccountRef,
   accountRefSchema,
+  assetRefSchema,
   type LaunchPinRequest,
+  type SimulatedStep,
   type TxSimulator,
 } from "@binference/plugin-sdk";
-import { curveChainSetupsOf } from "@binference/plugin-sdk/evm";
+import { curveChainSetupsOf, decodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { createSeededRandom } from "@binference/plugin-sdk/testing";
 import { getAddress, parseEther } from "viem";
 import { type LaunchParts, launchPartsOf } from "../launch/launch-parts.js";
+import { tokenAddressOf } from "../launch/vanity-salt.js";
+import { newTokenArgsOf } from "../portal/launch-call.js";
 import { type FlapApiFake, flapApiFake } from "./flap-api-fake.js";
 import {
   bnb,
@@ -24,15 +28,58 @@ const implementation = getAddress("0x024f18294970B5c76c0691b87f138A0317156422");
 // Flap's Tax Token V3 implementation on BSC, as the registry lists it.
 const taxImplementation: AccountRef = accountRefSchema.parse(`${bscChain}:${implementation}`);
 
-// A simulator for tests that run nothing on it.
-const noRuns: Pick<TxSimulator, "simulate"> = {
-  simulate: async () => Promise.reject(new Error("This test runs nothing.")),
-};
+/**
+ * What a 0.1 BNB first buy of a token with a 3% buy tax got in a dry run of `newTokenV6` on BSC
+ * on 2026-10-20: about 17.04 million tokens, after the 1% curve fee and the tax.
+ */
+export const recordedFirstBuyOut = 17_042_259_171_263_630_532_392_559n;
 
-/** The launcher's parts on BSC over a fake of Flap's API and a simulator. */
+/**
+ * A simulator that runs a Flap launch's steps as the Portal does in the recorded dry run: every
+ * step succeeds, and the create call pays its caller `out` of the token its salt makes.
+ */
+export function dryRunSimulator(
+  out: bigint = recordedFirstBuyOut,
+): Pick<TxSimulator, "simulate"> & { readonly runs: () => number } {
+  const counted = { runs: 0 };
+  return {
+    async simulate(drafts, { signal }) {
+      signal.throwIfAborted();
+      counted.runs += 1;
+      return await Promise.resolve(
+        drafts.map((draft): SimulatedStep => {
+          const call = decodeEvmDraft(draft);
+          const args = call.ok ? newTokenArgsOf(call.value.data) : undefined;
+          if (!call.ok || args === undefined) {
+            return { status: "success", gasUsed: 46_000n, transfers: [], approvals: [] };
+          }
+          const maker = { portal: call.value.to, implementation };
+          const token = tokenAddressOf(maker, args.salt);
+          const transfers =
+            args.quoteAmt === 0n
+              ? []
+              : [
+                  {
+                    from: accountRefSchema.parse(`${bscChain}:${call.value.to}`),
+                    to: draft.from,
+                    amount: {
+                      asset: assetRefSchema.parse(`${bscChain}/erc20:${token}`),
+                      base: out,
+                    },
+                  },
+                ];
+          return { status: "success", gasUsed: 5_563_061n, transfers, approvals: [] };
+        }),
+      );
+    },
+    runs: () => counted.runs,
+  };
+}
+
+/** The launcher's parts on BSC over a fake of Flap's API and a dry-run simulator. */
 export function launchPartsOver(
   http: FlapApiFake = flapApiFake(),
-  simulator: Pick<TxSimulator, "simulate"> = noRuns,
+  simulator: Pick<TxSimulator, "simulate"> = dryRunSimulator(),
 ): LaunchParts {
   const setups = curveChainSetupsOf(
     [{ chain: bscChain, nativeAsset: bnb, quoteTokens: [usdt, usd1], rpc: scriptedPortal() }],
