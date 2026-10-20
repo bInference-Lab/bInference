@@ -43,12 +43,14 @@ export async function startLiveFills(
     readonly executorFills?: boolean;
     /** Wraps what the executor reads receipts, transfers and nonces through. */
     readonly receipts?: NonNullable<BenchOptions["receipts"]>;
+    /** The USD prices; the coin at $600 and the test token at $0.80 when absent. */
+    readonly prices?: typeof fillPrices;
   } = {},
 ): Promise<ExecutorBench> {
-  const { held, intents, executorFills = true, executorIntents, ...rest } = options;
+  const { held, intents, executorFills = true, executorIntents, prices, ...rest } = options;
   const engine = {
     liveOrderFills: true,
-    prices: fillPrices,
+    prices: prices ?? fillPrices,
     ...(held === undefined ? {} : { held }),
     ...(intents === undefined ? {} : { intents }),
   };

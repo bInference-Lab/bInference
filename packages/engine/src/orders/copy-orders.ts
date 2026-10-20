@@ -238,6 +238,11 @@ async function copyRead(
   signal: AbortSignal,
 ): Promise<boolean> {
   const { order, state } = start;
+  // While its agent's live fill settles, the order reads nothing: a leader sale of a token its own
+  // buy is still landing would find no holding and be passed over (decision 0260).
+  if (await isLineHeld(parts, order, signal)) {
+    return false;
+  }
   const query = {
     account: order.request.trigger.leader,
     afterId: state.through,

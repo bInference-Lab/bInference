@@ -31,7 +31,9 @@ Every order fill runs the money path with no card, held to its order's bounds
   copied at most once per order, across restarts. Each take has the order's next number, and every
   row of its fill names the take and the leader trade (migration 0045): a take with no row and no
   live fill of its agent on the way was cut off by a stop, which rows tell, never a clock. A buy so
-  cut off is recorded as `missed`; a sale so cut off is sold once, late.
+  cut off is recorded as `missed`; a sale so cut off is sold once, late. While a live fill of its
+  agent settles, the order reads no trade: a leader sale of a token its own buy is still landing
+  waits for that buy, then is sold, never passed over.
 - **What it copies.** A buy of a token that is neither the chain's coin nor what the order spends,
   and a sale of a token the order holds from its own buys. Every other trade is passed over with no
   row: it is not a trade the order follows.
