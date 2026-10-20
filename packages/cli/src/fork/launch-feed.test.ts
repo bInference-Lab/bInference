@@ -9,7 +9,12 @@ import type { StoredLaunch } from "@binference/engine/market";
 import { createFlapVenue } from "@binference/flap";
 import { createGeniusfunVenue } from "@binference/geniusfun";
 import { successOf } from "@binference/plugin-sdk/testing";
-import type { LaunchView } from "@binference/protocol";
+import {
+  type AlertFired,
+  type LaunchFilter,
+  type LaunchView,
+  launchFilterSchema,
+} from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { createClosers } from "../compose/closers.js";
 import { composeLaunchFeeds } from "../compose/launch-feeds.js";
@@ -21,7 +26,8 @@ import { cliCaller, fillAgent, type FillRig, onFillFork, xvs } from "./order-fil
 
 // The launch feed on a BSC fork, reading the fork's own blocks: two tokens launched on Flap's
 // Portal and two on Genius.fun's m4.2 stack by the fork's account, the second two while the feed's
-// endpoint is down. Nothing is reached but the fork.
+// endpoint is down; then two on Flap and three on Genius.fun under a launch alert that wakes the
+// agent. Nothing is reached but the fork.
 const waitMs = 250;
 const readTimeoutMs = 20_000;
 const firstBuy = 10n ** 16n;
@@ -159,6 +165,33 @@ function launchText(launch: StoredLaunch): string {
   return `${launch.launchpad} ${launch.token} at ${String(launch.block)}`;
 }
 
+// The launch each fire of an alert handed the agent, from the `alert/fired` pushes that woke it.
+function wokenBy(pushes: readonly EnginePush[]): readonly string[] {
+  return pushes
+    .filter(({ kind }) => kind === "alert/fired")
+    .flatMap(({ data }) => {
+      const fired = data as unknown as AlertFired;
+      return fired.woke && fired.fired.kind === "launch" ? [fired.fired.launch.token] : [];
+    });
+}
+
+// The data of the wake-ups waiting in the agent's inbox, as JSON; it takes them, as the runtime
+// takes each wake-up before the next one comes.
+async function takeWakeUps(rig: FillRig): Promise<readonly string[]> {
+  const call = { signal: AbortSignal.timeout(5_000) };
+  const untaken = await rig.stores.agentInbox.untaken({ agentId: fillAgent, limit: 10 }, call);
+  await rig.stores.agentInbox.take({ ids: untaken.map(({ id }) => id), atMs: Date.now() }, call);
+  return untaken.map(({ payload }) => JSON.stringify(payload));
+}
+
+// Of the test's launches, only Flap's pass this filter: Genius.fun's starting snipe tax is above
+// it. The rig's engine runs neither launchpad, so the filter names none.
+const flapOnly: LaunchFilter = launchFilterSchema.parse({
+  maxTaxBps: 500,
+  maxSnipeTaxBps: 1_000,
+  maxInsiders: 1,
+});
+
 describe("the launch feed on a BSC fork", () => {
   it("records each Flap and geniusfun launch once in block order, resumes after an outage with no gap and no double, and fires a launch alert", async ({
     signal,
@@ -225,6 +258,57 @@ describe("the launch feed on a BSC fork", () => {
           graduated: false,
           insiders: [evmAccountRef(fork.chain, fork.account)],
         });
+        await annotate(
+          `fork block ${String(fork.block)}: ${stored.toReversed().map(launchText).join("; ")}`,
+        );
+      } finally {
+        await closers.closeAll(AbortSignal.timeout(10_000));
+      }
+    }));
+
+  it("wakes the agent, marked, for the two of five launches that pass a launch alert's filter", async ({
+    signal,
+    annotate,
+  }) =>
+    onFillFork(signal, { token: xvs, flags: [] }, async (rig, fork) => {
+      const condition = { kind: "launch", filters: flapOnly } as const;
+      const created = await rig.engine.handlers["alert/create"]({
+        args: { agent: fillAgent, condition, wake: true },
+        caller: cliCaller,
+        signal,
+      });
+      const alert = successOf(created).alert;
+      await fork.call("evm_mine", []);
+      const pushes: EnginePush[] = [];
+      const closers = feedOn(fork, rig, { endpoint: switchableOf(fork), pushes });
+      try {
+        await until(readAndHead(rig, fork), isAtHead);
+        const [flapSalt, secondSalt] = saltsOf();
+        const token = (address: `0x${string}`) => erc20AssetRef(fork.chain, address);
+        const first = token(await launchOnFlap(fork, { ...flapSalt, firstBuy }));
+        await until(async () => rig.stores.alerts.get(alert, { signal }), firedAtLeast(1));
+        const firstWake = await takeWakeUps(rig);
+        await launchOnGeniusfun(fork);
+        await launchOnGeniusfun(fork);
+        const second = token(await launchOnFlap(fork, { ...secondSalt, firstBuy }));
+        await launchOnGeniusfun(fork);
+        await fork.call("evm_mine", []);
+        await until(readAndHead(rig, fork), isAtHead);
+        const stored = await until(storedOf(rig, fork), (rows) => rows.length >= 5);
+        const fired = await until(
+          async () => rig.stores.alerts.get(alert, { signal }),
+          firedAtLeast(2),
+        );
+        const secondWake = await takeWakeUps(rig);
+        expect(stored).toHaveLength(5);
+        expect(fired?.fires).toBe(2);
+        expect(wokenBy(rig.pushes)).toStrictEqual([first, second]);
+        expect([firstWake, secondWake].map((wakes) => wakes.length)).toStrictEqual([1, 1]);
+        expect(firstWake[0]).toContain(`"token":"${first}"`);
+        expect(secondWake[0]).toContain(`"token":"${second}"`);
+        expect(
+          [...firstWake, ...secondWake].map((wake) => wake.includes('"outsideContent":true')),
+        ).toStrictEqual([true, true]);
         await annotate(
           `fork block ${String(fork.block)}: ${stored.toReversed().map(launchText).join("; ")}`,
         );
