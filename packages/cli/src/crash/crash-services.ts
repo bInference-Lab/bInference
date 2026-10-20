@@ -1,5 +1,5 @@
 import { once } from "node:events";
-// oxlint-disable-next-line eslint/no-restricted-imports -- the crash suite serves Privy and KyberSwap on loopback; nothing ships a listener
+// oxlint-disable-next-line eslint/no-restricted-imports -- the crash suite serves its services on loopback; nothing ships a listener
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { text as readBody } from "node:stream/consumers";
 import type { HttpMethod, HttpResponse, JsonValue } from "@binference/core";
@@ -18,12 +18,15 @@ import {
   zeroAddress,
 } from "viem";
 import { z } from "zod";
+import { type CrashFlapApi, createCrashFlapApi } from "./crash-flap-api.js";
 import { crashExecutor, crashRouter, usdtPerWei } from "./crash-market.js";
 
-/** Privy and KyberSwap's API as the crash engines reach them, on loopback in the test process. */
+/** Privy, KyberSwap's and Flap's APIs as the crash engines reach them, on loopback. */
 export interface CrashServices {
-  /** Where they listen: Privy at `/privy`, KyberSwap's API at `/kyberswap`. */
+  /** Where they listen: `/privy`, `/kyberswap` and `/flap`. */
   readonly origin: string;
+  /** Flap's upload and pin status API, which a run's launch reaches. */
+  readonly flap: CrashFlapApi;
   /**
    * Makes the fake Privy app the services answer for from now on. Each run's install has an app of
    * its own, as each owner does: an app holds the aggregations of one install's ceiling.
@@ -240,10 +243,14 @@ function createSignatureBook(): SignatureBook {
 }
 
 // Answers one request; a signature the book holds is counted and left unanswered.
-function responderOf(served: () => FakePrivy | undefined, book: SignatureBook) {
+function responderOf(served: () => FakePrivy | undefined, book: SignatureBook, flap: CrashFlapApi) {
   return async (incoming: IncomingMessage, outgoing: ServerResponse): Promise<void> => {
     const body = await readBody(incoming);
     const path = incoming.url ?? "/";
+    if (path.startsWith("/flap/")) {
+      flap.respond({ path: path.slice("/flap".length), method: incoming.method, outgoing });
+      return;
+    }
     if (path.startsWith("/kyberswap/")) {
       const answer = kyberswapOf(path.slice("/kyberswap".length), body);
       outgoing.writeHead(answer.status, answer.headers).end(answer.body);
@@ -275,16 +282,16 @@ async function listen(server: Server): Promise<string> {
 }
 
 /**
- * Serves a fake Privy app and a KyberSwap API on loopback for the crash engines, which reach them
- * through their Http as they would reach the real services. Privy answers 503 until an app is
- * served. The KyberSwap API routes every buy and sale through one pool at {@link usdtPerWei} and
- * encodes the router's plain `swap` for the recipient and deadline asked; the crash chain's router
- * pays it out.
+ * Serves a fake Privy app, a KyberSwap API and Flap's API on loopback for the crash engines, which reach them through their Http as they would reach the real services. Privy
+ * answers 503 until an app is served. The KyberSwap API routes every buy and sale through one
+ * pool at {@link usdtPerWei} and encodes the router's plain `swap` for the recipient and deadline
+ * asked; the crash chain's router pays it out.
  */
 export async function serveCrashServices(): Promise<CrashServices> {
   const book = createSignatureBook();
+  const flap = createCrashFlapApi();
   const app: { privy?: FakePrivy } = {};
-  const respond = responderOf(() => app.privy, book);
+  const respond = responderOf(() => app.privy, book, flap);
   const server = createServer((incoming, outgoing) => {
     respond(incoming, outgoing).catch(() => {
       outgoing.writeHead(500).end();
@@ -293,6 +300,7 @@ export async function serveCrashServices(): Promise<CrashServices> {
   const origin = await listen(server);
   return {
     origin,
+    flap,
     serve: (privy) => {
       app.privy = privy;
     },
@@ -301,6 +309,7 @@ export async function serveCrashServices(): Promise<CrashServices> {
     holdNextRequest: book.armRequest,
     async close() {
       book.release();
+      flap.release();
       server.closeAllConnections();
       server.close();
       await once(server, "close");

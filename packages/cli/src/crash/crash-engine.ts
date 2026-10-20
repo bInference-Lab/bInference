@@ -13,9 +13,9 @@ import { startCrashSigner } from "./crash-signer.js";
 
 // The crash suite's engine process: `binference start --foreground` as `src/main.ts` runs it,
 // started as a program of its own so the test can kill it outright. Its outside world is the
-// test's: the chain and relays, Privy and KyberSwap's API on loopback, the signer's service with
-// its hard rules in this process, on the agent key the engine hands it, and, for a run of live order fills, the prices that fire
-// them. Like `main.ts`, it alone reads `process`.
+// test's: the chain and relays, Privy, KyberSwap's and Flap's APIs on loopback, the signer's
+// service with its hard rules in this process, on the agent key the engine hands it, and, for a
+// run of live order fills, the prices that fire them. Like `main.ts`, it alone reads `process`.
 const env = crashEnvSchema.parse(process.env);
 const version = "crash";
 const http = createSystemHttp({ version });

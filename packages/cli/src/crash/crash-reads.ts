@@ -3,7 +3,12 @@ import { evmAccountRef, evmChainOf } from "@binference/chain-evm";
 import { bsc } from "@binference/chains";
 import type { Id } from "@binference/core";
 import type { EngineStores } from "@binference/engine";
-import { createSqliteEngineStores, engineWorker, openDatabase } from "@binference/store";
+import {
+  createSqliteEngineStores,
+  engineWorker,
+  openDatabase,
+  type StoreHost,
+} from "@binference/store";
 import type { Address, Hex } from "viem";
 import { z } from "zod";
 import type { CrashChain, RelayedSend } from "./crash-chain.js";
@@ -40,7 +45,7 @@ export async function minedOf(chain: CrashChain, from: Address): Promise<number>
  */
 export async function withStore<T>(
   folder: string,
-  read: (stores: EngineStores, signal: AbortSignal) => Promise<T>,
+  read: (stores: EngineStores, signal: AbortSignal, database: StoreHost) => Promise<T>,
 ): Promise<T> {
   const signal = AbortSignal.timeout(30_000);
   const database = await openDatabase({
@@ -50,7 +55,7 @@ export async function withStore<T>(
     signal,
   });
   try {
-    return await read(createSqliteEngineStores(database), signal);
+    return await read(createSqliteEngineStores(database), signal, database);
   } finally {
     await database.close();
   }

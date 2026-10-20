@@ -129,37 +129,62 @@ const transferFrom: readonly Item[] = [
   ...logged(word(4), 0x24, 0x44),
 ];
 
+// mint(to, amount), for `minter` alone: adds to the holder's units and logs a Transfer from the
+// zero address, as a launch's token pays its first buy out.
+function mintFor(minter: Address): readonly Item[] {
+  return [
+    { mark: "mint" },
+    op.caller,
+    p(20, BigInt(minter)),
+    op.eq,
+    op.isZero,
+    { to: "fail" },
+    op.jumpI,
+    ...balanceSlot(4),
+    ...credit(0x24),
+    ...logged([p(1, 0n)], 4, 0x24),
+  ];
+}
+
 // Jumps to `mark` when the selector, kept under the top of the stack, is `selector`.
 function route(selector: bigint, mark: string): readonly Item[] {
   return [op.dup1, p(4, selector), op.eq, { to: mark }, op.jumpI];
 }
 
 /**
- * The runtime code of the crash chain's USDT: an ERC-20 with `balanceOf`, `transfer`, `approve`,
+ * The runtime code of an ERC-20 of the crash chain: `balanceOf`, `transfer`, `approve`,
  * `allowance` and `transferFrom`, each holder's units at {@link crashBalanceSlot} and each
  * allowance in the slot of the hash of its owner and spender, and a Transfer log per transfer, as
- * the simulator's transfer traces read them.
+ * the simulator's transfer traces read them. With a `minter`, as a launch's token behind a minimal
+ * proxy, also `mint(to, amount)` that only the minter, its launchpad, may call.
  */
-export const crashTokenCode: Hex = assemble([
-  p(1, 0n),
-  op.callDataLoad,
-  p(1, 0xe0n),
-  op.shr,
-  ...route(0x70a08231n, "balanceOf"),
-  ...route(0xa9059cbbn, "transfer"),
-  ...route(0x095ea7b3n, "approve"),
-  ...route(0xdd62ed3en, "allowance"),
-  ...route(0x23b872ddn, "transferFrom"),
-  p(1, 0n),
-  op.dup1,
-  op.revert,
-  { mark: "balanceOf" },
-  ...balanceSlot(4),
-  op.sload,
-  ...returnWord,
-  ...transfer,
-  ...approve,
-  ...allowance,
-  ...transferFrom,
-  ...fail,
-]);
+export function crashTokenCodeOf(minter?: Address): Hex {
+  return assemble([
+    p(1, 0n),
+    op.callDataLoad,
+    p(1, 0xe0n),
+    op.shr,
+    ...route(0x70a08231n, "balanceOf"),
+    ...route(0xa9059cbbn, "transfer"),
+    ...route(0x095ea7b3n, "approve"),
+    ...route(0xdd62ed3en, "allowance"),
+    ...route(0x23b872ddn, "transferFrom"),
+    ...(minter === undefined ? [] : route(0x40c10f19n, "mint")),
+    p(1, 0n),
+    op.dup1,
+    op.revert,
+    { mark: "balanceOf" },
+    ...balanceSlot(4),
+    op.sload,
+    ...returnWord,
+    ...transfer,
+    ...approve,
+    ...allowance,
+    ...transferFrom,
+    ...(minter === undefined ? [] : mintFor(minter)),
+    ...fail,
+  ]);
+}
+
+/** The runtime code of the crash chain's USDT: {@link crashTokenCodeOf} with no minter. */
+export const crashTokenCode: Hex = crashTokenCodeOf();

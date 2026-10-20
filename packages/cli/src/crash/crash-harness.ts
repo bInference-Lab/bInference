@@ -3,11 +3,13 @@ import { createSeededRandom } from "@binference/core/testing";
 import { createFakePrivy } from "@binference/custody-privy/testing";
 import { readLogLines } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
+import type { Address } from "viem";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import type { SourceProgram } from "../e2e/source-program.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { type KillPoint, serveCrashChain } from "./crash-chain.js";
 import type { CrashContext } from "./crash-context.js";
+import { installCrashFlap } from "./crash-flap.js";
 import { installCrashMarket } from "./crash-market.js";
 import { type CrashInstall, type CrashWorld, startCrashEngine } from "./crash-runs.js";
 import { serveCrashServices } from "./crash-services.js";
@@ -41,9 +43,10 @@ export interface CrashHarness {
 }
 
 /**
- * Sets up a crash test file: the suite's one anvil chain behind the test's relays and RPC, Privy
- * and KyberSwap's API on loopback, and the crash market, with wallet keys drawn from the file's
- * own seed; after each run, the engines that still run are killed and the run's folders removed.
+ * Sets up a crash test file: the suite's one anvil chain behind the test's relays and RPC, Privy,
+ * KyberSwap's and Flap's APIs on loopback, and the crash market and Flap, with wallet
+ * keys drawn from the file's own seed; after each run, the engines that still run are killed and
+ * the run's folders removed.
  */
 export function useCrashHarness(
   crash: CrashContext,
@@ -60,6 +63,7 @@ export function useCrashHarness(
     const newPrivyApp = () => createFakePrivy({ clock: createSystemClock(), random });
     const services = await serveCrashServices();
     await installCrashMarket(async (method, params) => chain.call(method, params));
+    await installCrashFlap(async (method, params) => chain.call(method, params));
     held.world = { chain, services, newPrivyApp };
   });
   afterEach(async () => {
@@ -124,10 +128,16 @@ function isChainPoint(point: RunKillPoint): point is Exclude<KillPoint, "signed"
   return point !== "asked" && point !== "signed";
 }
 
-// Settles once the engine reached the point: custody asked to sign, before it signs (`asked`),
-// custody signed and holds its answer (`signed`), or the chain's side saw the point on the send of
-// the nonce the kill waits for.
-async function reached(world: CrashWorld, at: RunKill, kill: () => Promise<void>): Promise<void> {
+/**
+ * Runs `kill` once the engine reached the point, and settles once it ran: custody asked to sign,
+ * before it signs (`asked`), custody signed and holds its answer (`signed`), or the chain's side
+ * saw the point on the send of the nonce the kill waits for.
+ */
+export async function killWhenReached(
+  world: CrashWorld,
+  at: RunKill,
+  kill: () => Promise<void>,
+): Promise<void> {
   const { point } = at;
   if (!isChainPoint(point)) {
     const held =
@@ -148,22 +158,34 @@ async function reached(world: CrashWorld, at: RunKill, kill: () => Promise<void>
 }
 
 /**
- * Arms the kill and resolves once the engine is dead; an engine that ends by itself first fails
- * the run.
+ * Arms a kill that `reach` runs once the engine got to the point it names, and resolves once the
+ * engine is dead; an engine that ends by itself first fails the run.
+ */
+export async function armKillWith(
+  engine: SourceProgram,
+  point: string,
+  reach: (kill: () => Promise<void>) => Promise<void>,
+): Promise<void> {
+  const { state, kill } = killerOf(engine);
+  const ended = (async () => {
+    await engine.program.exited;
+    if (!state.isKilled) {
+      throw new Error(`The engine ended before ${point}:\n${engine.lines().join("\n")}`);
+    }
+  })();
+  await Promise.all([reach(kill), ended]);
+}
+
+/**
+ * Arms the kill at a point of the money path and resolves once the engine is dead; an engine that
+ * ends by itself first fails the run.
  */
 export async function armKill(
   world: CrashWorld,
   engine: SourceProgram,
   at: RunKill,
 ): Promise<void> {
-  const { state, kill } = killerOf(engine);
-  const ended = (async () => {
-    await engine.program.exited;
-    if (!state.isKilled) {
-      throw new Error(`The engine ended before ${at.point}:\n${engine.lines().join("\n")}`);
-    }
-  })();
-  await Promise.all([reached(world, at, kill), ended]);
+  return armKillWith(engine, at.point, async (kill) => killWhenReached(world, at, kill));
 }
 
 /**
@@ -178,6 +200,8 @@ export async function restartWith<T>(
     readonly isMinedAfterResend: boolean;
     readonly fills: boolean;
     readonly settle: () => Promise<T>;
+    /** The wallet whose send the mining waits for; the install's own when absent. */
+    readonly from?: Address;
   },
 ): Promise<{ readonly engine: SourceProgram; readonly settled: T }> {
   const { chain } = harness.worldOf();
@@ -185,7 +209,7 @@ export async function restartWith<T>(
   const stopped = new Promise<void>((resolve) => {
     miner.signal.addEventListener("abort", () => resolve());
   });
-  const resent = Promise.race([chain.nextSend(install.from), stopped]);
+  const resent = Promise.race([chain.nextSend(run.from ?? install.from), stopped]);
   const start = run.isMinedAfterResend ? resent : Promise.resolve();
   const mining = start.then(async () => chain.mine(miner.signal));
   try {

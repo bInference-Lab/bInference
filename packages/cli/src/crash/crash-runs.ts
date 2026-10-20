@@ -29,7 +29,7 @@ import { crashUsdt, freshCrashFeeds, fundCrashUsdt } from "./crash-market.js";
 import { crashUsdtAsset } from "./crash-orders.js";
 import type { CrashServices } from "./crash-services.js";
 
-/** What every crash run shares: the chain with its relays, Privy and KyberSwap's API. */
+/** What every crash run shares: the chain with its relays and the outside services. */
 export interface CrashWorld {
   readonly chain: CrashChain;
   readonly services: CrashServices;
@@ -41,6 +41,8 @@ export interface CrashWorld {
 export interface CrashInstall {
   readonly machine: InitMachine;
   readonly from: Address;
+  /** The port each engine of the install listens on for HTTP, as `engine.port` sets it. */
+  readonly port: number;
 }
 
 const engineFile = fileURLToPath(new URL("./crash-engine.ts", import.meta.url));
@@ -95,7 +97,7 @@ export async function setUpCrashInstall(
   const from = getAddress(wallet.address);
   await world.chain.call("anvil_setBalance", [from, toHex(10n ** 18n)]);
   await freshCrashFeeds(async (method, params) => world.chain.call(method, params));
-  return { machine, from };
+  return { machine, from, port: await freePort() };
 }
 
 /**
@@ -117,7 +119,7 @@ export async function startCrashEngine(
       LANG: "en_US.UTF-8",
       CRASH_RELAYS: world.chain.relays,
       CRASH_SERVICES: world.services.origin,
-      CRASH_PORT: String(await freePort()),
+      CRASH_PORT: String(install.port),
       ...(run.fills === true ? { CRASH_FILLS: "1" } : {}),
       ...secretEnv(install.machine),
     },
@@ -127,8 +129,11 @@ export async function startCrashEngine(
   return engine;
 }
 
-// The install's one agent, gone live as `binference live` does.
-async function goneLive(client: ProtocolClient, call: { readonly signal: AbortSignal }) {
+/** The install's one agent, gone live as `binference live` does. */
+export async function goneLive(
+  client: ProtocolClient,
+  call: { readonly signal: AbortSignal },
+): Promise<{ readonly id: ProtocolId<"agent"> }> {
   const [agent] = (await client.call("engine/status", {}, call)).agents;
   if (agent === undefined) {
     throw new BinferenceError({ code: "crash.no_agent", message: "init made no agent." });

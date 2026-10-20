@@ -14,7 +14,12 @@ import {
   type KillOptions,
   type ReceivedSend,
 } from "./crash-chain-book.js";
-import { readChainReply, readChainRequest, signedBytesSchema } from "./crash-chain.schema.js";
+import {
+  type ChainRequest,
+  readChainReply,
+  readChainRequest,
+  signedBytesSchema,
+} from "./crash-chain.schema.js";
 import { multicallAnswer } from "./crash-multicall.js";
 import { asBscAnswer, refusalOf } from "./crash-relay-answers.js";
 
@@ -23,9 +28,10 @@ import { asBscAnswer, refusalOf } from "./crash-relay-answers.js";
  * after they are stored, before a relay has them (`stored`); after a relay passed them to the
  * chain, before the engine heard back (`relayed`); after the engine recorded the send, while the
  * transaction waits for a block (`sent`); after a block took it, before the engine read its
- * receipt (`included`).
+ * receipt (`included`); once the engine read its receipt, before the block is final (`receipt`),
+ * where the kill itself waits for what the engine stores of it.
  */
-export type KillPoint = "signed" | "stored" | "relayed" | "sent" | "included";
+export type KillPoint = "signed" | "stored" | "relayed" | "sent" | "included" | "receipt";
 
 /** One send of signed bytes that reached a relay of the test's chain. */
 export interface RelayedSend {
@@ -65,6 +71,11 @@ export interface CrashChain {
   acceptSends(): void;
   /** Drops a kill the engine never reached, so it cannot fire in a later run. */
   stopKilling(): void;
+  /**
+   * Holds the next RPC read `match` takes: it is never answered. Resolves once it came; a later
+   * {@link stopKilling} drops the hold and the read.
+   */
+  holdNextRead(match: (request: ChainRequest) => boolean): Promise<void>;
   /** Calls anvil itself, past the counting and the kills. */
   call(method: string, params: readonly JsonValue[]): Promise<JsonValue>;
   /** Mines 16 blocks every 150 ms, as BSC moves on, until the signal aborts. */
@@ -148,21 +159,41 @@ async function sendOf(book: ChainBook, upstream: Upstream, at: { relay: string; 
   return answer;
 }
 
-// The RPC kills at `sent` and `included` on the engine's first receipt read once a relay passed
-// the bytes on: the engine has recorded the send and waits for a block. At `included` a block
-// takes the transaction first.
-async function readOf(book: ChainBook, upstream: Upstream, text: string) {
+// The kill the engine's read reaches: the first receipt read once a relay passed the bytes on,
+// while the engine has recorded the send and waits for a block; `undefined` for any other read.
+function killReachedBy(book: ChainBook, request: ChainRequest | undefined): Armed | undefined {
   const armed = book.armed();
-  if (armed !== undefined && armed.isTaken()) {
-    await armed.done;
+  const isReceiptRead = request?.method === "eth_getTransactionReceipt";
+  return armed !== undefined && !armed.isTaken() && armed.hasRelayed() && isReceiptRead
+    ? armed
+    : undefined;
+}
+
+// The RPC kills at `sent` and `included` on that read. At `included` a block takes the
+// transaction first. At `receipt` a block takes it and the engine reads its receipt, then every
+// read goes through while the kill waits. A read while any other kill runs, and a held read, are
+// never answered.
+async function readOf(book: ChainBook, upstream: Upstream, text: string) {
+  const request = readChainRequest(text);
+  if (request !== undefined && (await book.isReadHeld(request))) {
     return undefined;
   }
-  const isReceiptRead = readChainRequest(text)?.method === "eth_getTransactionReceipt";
-  if (armed === undefined || !armed.hasRelayed() || !isReceiptRead) {
+  const running = book.armed();
+  if (running !== undefined && running.isTaken() && running.point !== "receipt") {
+    await running.done;
+    return undefined;
+  }
+  const armed = killReachedBy(book, request);
+  if (armed === undefined) {
     return (await multicallAnswer(text, upstream.call)) ?? upstream.forward(text);
   }
   armed.take();
   const mine = async () => upstream.call("evm_mine", []);
+  if (armed.point === "receipt") {
+    await mine();
+    armed.fire().catch(() => undefined);
+    return upstream.forward(text);
+  }
   await armed.fire(armed.point === "included" ? mine : undefined);
   return undefined;
 }
@@ -250,6 +281,7 @@ export async function serveCrashChain(anvilUrl: string): Promise<CrashChain> {
     nextSend: book.nextSend,
     killAt: book.arm,
     stopKilling: book.disarm,
+    holdNextRead: book.holdRead,
     refuseSends: book.refuse,
     acceptSends: book.accept,
     call: upstream.call,

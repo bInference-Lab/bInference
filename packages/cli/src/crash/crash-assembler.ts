@@ -62,9 +62,13 @@ export type OpName =
   | "caller"
   | "callValue"
   | "callDataLoad"
+  | "callDataCopy"
+  | "timestamp"
+  | "mload"
   | "mstore"
   | "sload"
   | "sstore"
+  | "jump"
   | "jumpI"
   | "gas"
   | "dup1"
@@ -72,8 +76,10 @@ export type OpName =
   | "dup3"
   | "dup5"
   | "swap1"
+  | "log1"
   | "log3"
   | "call"
+  | "create2"
   | "stop"
   | "return"
   | "revert";
@@ -94,9 +100,13 @@ export const op: Readonly<Record<OpName, Hex>> = {
   caller: "0x33",
   callValue: "0x34",
   callDataLoad: "0x35",
+  callDataCopy: "0x37",
+  timestamp: "0x42",
+  mload: "0x51",
   mstore: "0x52",
   sload: "0x54",
   sstore: "0x55",
+  jump: "0x56",
   jumpI: "0x57",
   gas: "0x5a",
   dup1: "0x80",
@@ -104,8 +114,10 @@ export const op: Readonly<Record<OpName, Hex>> = {
   dup3: "0x82",
   dup5: "0x84",
   swap1: "0x90",
+  log1: "0xa1",
   log3: "0xa3",
   call: "0xf1",
+  create2: "0xf5",
   stop: "0x00",
   return: "0xf3",
   revert: "0xfd",
@@ -117,3 +129,37 @@ export const transferTopic: bigint = BigInt(keccak256(toHex("Transfer(address,ad
 export const returnWord: readonly Item[] = [p(1, 0n), op.mstore, p(1, 32n), p(1, 0n), op.return];
 /** The `fail` label: reverts with no data. */
 export const fail: readonly Item[] = [{ mark: "fail" }, p(1, 0n), op.dup1, op.revert];
+
+/**
+ * Takes `amount` of `token` from the caller to this contract by `transferFrom`, through the
+ * allowance the caller left it, and jumps to `fail` when the call fails. Each pushes its word.
+ */
+export function pullFromCaller(token: readonly Item[], amount: readonly Item[]): readonly Item[] {
+  return [
+    p(4, 0x23b872ddn),
+    p(1, 0xe0n),
+    op.shl,
+    p(1, 0n),
+    op.mstore,
+    op.caller,
+    p(1, 4n),
+    op.mstore,
+    op.address,
+    p(1, 0x24n),
+    op.mstore,
+    ...amount,
+    p(1, 0x44n),
+    op.mstore,
+    p(1, 0x20n),
+    p(1, 0n),
+    p(1, 0x64n),
+    p(1, 0n),
+    p(1, 0n),
+    ...token,
+    op.gas,
+    op.call,
+    op.isZero,
+    { to: "fail" },
+    op.jumpI,
+  ];
+}

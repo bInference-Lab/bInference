@@ -7,6 +7,7 @@ import {
   type TransactionSerialized,
 } from "viem";
 import type { KillPoint, RelayedSend } from "./crash-chain.js";
+import type { ChainRequest } from "./crash-chain.schema.js";
 
 /** Which send a kill waits for. */
 export interface KillOptions {
@@ -46,6 +47,9 @@ export interface ChainBook {
   readonly armed: () => Armed | undefined;
   readonly arm: (point: Armed["point"], kill: () => Promise<void>, options?: KillOptions) => void;
   readonly disarm: () => void;
+  readonly holdRead: (match: (request: ChainRequest) => boolean) => Promise<void>;
+  /** Whether a hold takes the read: then it settles only once the holds are dropped. */
+  readonly isReadHeld: (request: ChainRequest) => Promise<boolean>;
   readonly isRefusing: () => boolean;
   readonly refuse: () => void;
   readonly accept: () => void;
@@ -117,12 +121,50 @@ function createMiningGate(): MiningGate {
   };
 }
 
+/** The read a hold waits for, and the reads it holds until the holds are dropped. */
+interface ReadHolds {
+  readonly take: (request: ChainRequest) => Promise<boolean>;
+  readonly arm: (match: (request: ChainRequest) => boolean) => Promise<void>;
+  readonly drop: () => void;
+}
+
+function createReadHolds(): ReadHolds {
+  const state: {
+    next?: { readonly match: (request: ChainRequest) => boolean; readonly came: () => void };
+    held: (() => void)[];
+  } = { held: [] };
+  return {
+    take: async (request) => {
+      const { next } = state;
+      if (next === undefined || !next.match(request)) {
+        return false;
+      }
+      delete state.next;
+      const dropped = new Promise<void>((resolve) => {
+        state.held.push(resolve);
+      });
+      next.came();
+      await dropped;
+      return true;
+    },
+    arm: async (match) =>
+      new Promise((resolve) => {
+        state.next = { match, came: resolve };
+      }),
+    drop: () => {
+      delete state.next;
+      state.held.splice(0).forEach((resolve) => resolve());
+    },
+  };
+}
+
 /** A new book: no send, no kill armed, relays that pass sends on, and mining that runs. */
 export function createChainBook(): ChainBook {
   const sends: RelayedSend[] = [];
   const waiters = new Set<{ readonly from: Address; readonly resolve: () => void }>();
   const current: { armed?: Armed; isRefusing: boolean } = { isRefusing: false };
   const mining = createMiningGate();
+  const reads = createReadHolds();
   const disarm = (): void => {
     delete current.armed;
     mining.resume();
@@ -149,7 +191,12 @@ export function createChainBook(): ChainBook {
       const fromNonce = options?.fromNonce ?? 0;
       current.armed = armedFor(point, kill, { fromNonce, onFired: disarm });
     },
-    disarm,
+    disarm: () => {
+      disarm();
+      reads.drop();
+    },
+    holdRead: reads.arm,
+    isReadHeld: reads.take,
     isRefusing: () => current.isRefusing,
     refuse: () => {
       current.isRefusing = true;
