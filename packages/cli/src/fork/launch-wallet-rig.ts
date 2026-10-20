@@ -168,7 +168,7 @@ async function fund(fork: Fork, wallets: readonly LaunchRigWallet[]): Promise<vo
 }
 
 /** The rig's live agent with its main wallet, its launch wallet and the rescue address in effect. */
-interface LaunchAgent {
+export interface LaunchAgent {
   readonly agent: Id<"agt">;
   readonly main: LaunchRigWallet;
   readonly launch: LaunchRigWallet;
@@ -180,7 +180,7 @@ interface LaunchAgent {
  * it: the live agent trading on the venues named, custody with the rescue address in effect, the
  * main wallet and the launch wallet, each holding the rig's BNB on the fork.
  */
-async function setUpLaunchAgent(
+export async function setUpLaunchAgent(
   parts: {
     readonly fork: Fork;
     readonly stores: MemoryEngineStores;

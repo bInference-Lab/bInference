@@ -1,5 +1,5 @@
 import { createBrewVenue } from "@binference/brew";
-import type { AssetRef, Signer, TokenRiskReport, Venue } from "@binference/chain";
+import type { AssetRef, Signer, TokenRiskReport, UsdPrice, Venue } from "@binference/chain";
 import {
   createEvmNonceSource,
   createEvmReceiptReader,
@@ -221,9 +221,15 @@ export interface RigParts {
   readonly covered: readonly AssetRef[];
   /** What token launches need, when the rig launches tokens. */
   readonly launching?: Pick<EngineOptions, "launchHost" | "launchTokenCode" | "launchImages">;
+  /** Where the executor's pushes go; nowhere when absent. */
+  readonly publish?: EngineOptions["publish"];
 }
 
-function executorOf(parts: RigParts) {
+/**
+ * The executor on the fork: the wallet queue over the fork's nonces, anvil as the one relay, the
+ * fork's receipts at the finalized tag, and the rig's prices. Its pushes go where `publish` says.
+ */
+export function executorOf(parts: RigParts): ReturnType<typeof createExecutor> {
   const { fork, stores } = parts;
   const { rpc, chain } = fork;
   const clock = createSystemClock();
@@ -248,7 +254,7 @@ function executorOf(parts: RigParts) {
     sending: new Map([[chain.ref, sending]]),
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(2171) }),
-    publish: () => undefined,
+    publish: parts.publish ?? (() => undefined),
     logger: createMemoryLogger({ subsystem: "engine" }),
   });
 }
@@ -276,8 +282,8 @@ function riskOn(parts: RigParts) {
   });
 }
 
-// The rig's prices in micro-dollars per base unit: BNB at $600, USDT at $1.
-function rigPrices(fork: Fork) {
+/** The rig's prices in micro-dollars per base unit: BNB at $600, USDT at $1. */
+export function rigPrices(fork: Fork): ReadonlyMap<AssetRef, UsdPrice> {
   const usdt = erc20AssetRef(fork.chain, bscToken("USDT"));
   return new Map([
     [fork.chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }],
