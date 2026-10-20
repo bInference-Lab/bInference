@@ -40,7 +40,7 @@ import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
 import type { ReadTokenCode } from "../money-path/token-code.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
-import { type CopyOrders, createCopyOrders } from "../orders/copy-orders.js";
+import type { CopyOrders } from "../orders/copy-orders.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import { createDcaOrders, type DcaOrders } from "../orders/dca-orders.js";
 import type { OrderFills } from "../orders/fill-orders.js";
@@ -72,7 +72,7 @@ import {
   storedIntentsOf,
 } from "./engine-intent-parts.js";
 import { moneyPathOf } from "./engine-money-path.js";
-import { cardTimerOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
+import { cardTimerOf, copyOrdersOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
 import {
   type EngineChat,
   type EngineChatHandlers,
@@ -321,16 +321,7 @@ function intentParts(
     clock,
     publish: options.publish,
   });
-  const copies = createCopyOrders({
-    orders: stores.orders,
-    fills,
-    trackedWallets: stores.trackedWallets,
-    intents: stores.intents,
-    chains,
-    quotes: options.quoteAssets ?? new Set(),
-    readTokenFacts: options.readTokenFacts,
-    clock,
-  });
+  const copies = copyOrdersOf(options, fills);
   const timed = { triggers, dca, copies };
   return { answer, stored, orders, fills, ...timed, handlers, lowGas, cardTimer, moneyPath };
 }

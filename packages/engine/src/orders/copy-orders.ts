@@ -6,6 +6,7 @@ import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import type { IntentStore } from "../ports.js";
 import { asCopyOrder, type CopyOrder } from "./copy-fills.js";
+import { copyOrdersIn } from "./copy-orders-in.js";
 import {
   type CopyState,
   copyStateDocument,
@@ -46,30 +47,8 @@ export interface CopyOrdersParts {
   readonly clock: Clock;
 }
 
-const pageSize = 1_000;
 // The leader trades one read of an order takes; the next read goes on from the last.
 const tradesPerRead = 50;
-
-/** Every copy order in the given states, page after page. */
-export async function copyOrdersIn(
-  orders: Pick<OrderStore, "list">,
-  call: {
-    readonly states: readonly ("active" | "paused")[];
-    readonly signal: AbortSignal;
-    readonly after?: { readonly createdAtMs: number; readonly id: Id<"ord"> };
-  },
-): Promise<readonly CopyOrder[]> {
-  const { states, signal, after } = call;
-  const base = { states, limit: pageSize };
-  const page = await orders.list(after === undefined ? base : { ...base, after }, { signal });
-  const last = page.at(-1);
-  const copies = page.flatMap((order) => asCopyOrder(order) ?? []);
-  if (last === undefined) {
-    return copies;
-  }
-  const cursor = { createdAtMs: last.createdAtMs, id: last.id };
-  return [...copies, ...(await copyOrdersIn(orders, { states, signal, after: cursor }))];
-}
 
 // The token's symbol, name and decimals: the registry's, else what its contract answers now;
 // none when it answers none.

@@ -6,6 +6,7 @@ import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import type { LaunchRouting } from "../money-path/launch-routing.js";
 import type { Holdings } from "../money-path/wallet-facts.js";
+import { type CopyOrders, createCopyOrders } from "../orders/copy-orders.js";
 import type { OrderParts } from "../orders/create-order.js";
 import { createFillEnd, type FillEnd } from "../orders/fill-ends.js";
 import { createFillOnPaper, type FillOnPaperParts } from "../orders/fill-on-paper.js";
@@ -87,6 +88,24 @@ export function orderFillsOf(
     clock,
     ids,
     publish,
+  });
+}
+
+/**
+ * The copy orders' runner (decision 0260) over the order fills: it reads the leader trades the
+ * leader watchers stored, and passes over buys of the quote assets.
+ */
+export function copyOrdersOf(options: EngineOptions, fills: OrderFills): CopyOrders {
+  const { stores, chains, clock } = options;
+  return createCopyOrders({
+    orders: stores.orders,
+    fills,
+    trackedWallets: stores.trackedWallets,
+    intents: stores.intents,
+    chains,
+    quotes: options.quoteAssets ?? new Set(),
+    readTokenFacts: options.readTokenFacts,
+    clock,
   });
 }
 
