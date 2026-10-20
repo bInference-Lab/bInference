@@ -146,12 +146,15 @@ async function closedReport(
   }
 }
 
-// Sends the report to the owner, when the re-check checked an order (the owner's choice, decision
-// 0267), marks the skips it told, tells each agent whose orders it names, then marks the engine
-// alive while no re-check is open: a stop before that leaves the earlier mark, so the next start
-// reports the span again.
+// Marks the engine alive while no re-check is open, so a stop or fault after it never reports the
+// span twice; then sends the report to the owner, when the re-check checked an order (the owner's
+// choice, decision 0267), marks the skips it told and tells each agent whose orders it names. A
+// stop between the mark and the marks of the skips leaves them for the next start to tell.
 async function report(parts: DowntimeParts, signal: AbortSignal): Promise<DowntimeReport> {
   const { report: done, held } = await closedReport(parts, signal);
+  if (parts.check.open() === undefined) {
+    await parts.alive.markAlive(parts.clock.now(), { signal });
+  }
   const { orders } = done;
   if (orders.length > 0) {
     parts.publish(noticePush(resumedNotice(done)));
@@ -164,9 +167,6 @@ async function report(parts: DowntimeParts, signal: AbortSignal): Promise<Downti
   for (const agent of agents) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one inbox write at a time
     await parts.tellAgent(agent, resumeReportPayload(done, agent), { signal });
-  }
-  if (parts.check.open() === undefined) {
-    await parts.alive.markAlive(parts.clock.now(), { signal });
   }
   return done;
 }

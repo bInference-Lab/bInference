@@ -81,6 +81,15 @@ function failingFills(store: OrderStore, failing: { readonly isOn: boolean }): O
   };
 }
 
+// The order store, marking its rows told failing while `failing.isOn`.
+function failingMarks(store: OrderStore, failing: { readonly isOn: boolean }): OrderStore {
+  return {
+    ...store,
+    markAnnounced: async (marks, call) =>
+      failing.isOn ? Promise.reject(new Error("store down")) : store.markAnnounced(marks, call),
+  };
+}
+
 describe("the downtime re-check", () => {
   it("re-checks each price order at a start on the first price read after it, and reports once", async () => {
     const test = await startFillEngine({ tokens: 2n * wholeToken });
@@ -316,6 +325,30 @@ describe("the downtime re-check", () => {
     expect(held).toBe(false);
     expect(keysOf(noticesOf(test))).toContain("notice.skipped");
     expect(resumedOf(test)).toStrictEqual([]);
+  });
+
+  it("marks the engine alive before its report, so a fault after it never reports the span twice", async () => {
+    const failing = { isOn: false };
+    const test = await startFillEngine({ orders: (store) => failingMarks(store, failing) });
+    await activeOrder(test, testStopLoss({ worstPrice: 1n }));
+    await test.engine.downtime.alive(live);
+    await test.clock.advance(hourMs);
+    const restarted = test.restart();
+    const run = await restarted.downtime.started(live);
+    await restarted.seePrice(at(700_000n, test.clock.now()), live);
+    failing.isOn = true;
+    await test.clock.advance(20_000);
+    await expect(run?.reported).rejects.toThrow("store down");
+    const reportedMs = test.clock.now();
+
+    failing.isOn = false;
+    await test.clock.advance(minuteMs);
+    const again = await test.restart().downtime.started(live);
+    await test.clock.advance(2 * minuteMs);
+    const second = await again?.reported;
+
+    expect(resumedOf(test)).toHaveLength(2);
+    expect(second?.offFromMs).toBe(reportedMs);
   });
 
   it("only marks the engine alive at an install's first start", async () => {

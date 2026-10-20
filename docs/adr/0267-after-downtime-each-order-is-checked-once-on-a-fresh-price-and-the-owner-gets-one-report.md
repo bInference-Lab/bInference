@@ -57,7 +57,9 @@ with `{checked}`, `{filled}` and `{skipped}`, and [spec 8](../specs/runtime.md) 
   is full gets none.
 - **A resume while a re-check is open joins it.** The span adds up, a start or a clock step names
   the report, and orders not yet judged wait for a price read after the new resume. The engine is
-  marked alive only once no re-check is open.
+  marked alive only once no re-check is open, and before the report goes out: a stop or a fault
+  after the mark never reports the span twice, and the skips the report held and could not mark
+  are told at the next start.
 
 ## Consequences
 
