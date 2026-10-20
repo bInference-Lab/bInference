@@ -10,6 +10,7 @@ import {
 import { ownerId, strangerId } from "../testing/update-fixtures.js";
 
 const done = String.fromCodePoint(0x2705);
+const waiting = String.fromCodePoint(0x1f7e1);
 const refused = String.fromCodePoint(0x274c);
 const warning = `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}`;
 
@@ -33,7 +34,7 @@ describe("the agent's launch drafts in Telegram", () => {
     ]);
   });
 
-  it("starts the draft on the owner's Start, and answers the press in under 200 characters", async () => {
+  it("starts the draft on the owner's Start, says it is starting and answers the press at once", async () => {
     const context = await setUpDrafts();
     await context.drafts.show(openedDraft, live);
     expect(await context.drafts.press(pressOf(context, `bnf1:s:y:${draftRef}`), live)).toBe(true);
@@ -41,7 +42,10 @@ describe("the agent's launch drafts in Telegram", () => {
       { ref: draftRef, start: true, presserId: ownerId },
     ]);
     const answers = context.botApi.answers().map((answer) => answer.text);
-    expect(answers).toStrictEqual(["Launch started. Its card follows."]);
+    expect(answers).toStrictEqual(["Starting the launch. The draft's message says how it goes."]);
+    expect(context.botApi.messages()).toMatchObject([
+      { text: `${waiting} Starting the launch. This message says how it ends.`, buttons: [] },
+    ]);
   });
 
   it("starts nothing and answers nothing for a stranger, and leaves other data alone", async () => {

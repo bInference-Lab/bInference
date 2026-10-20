@@ -721,8 +721,10 @@ launch ([spec 8, section 6.5](runtime.md#section-6-5)); a `launchToken` the runt
   how it ended: `started` only for a launch still on its way to its card, and `failed` with the
   intent and its `reason` for one that ended before its card, such as one the policy refused.
 - Telegram shows it to the owner with Start launch and Drop
-  ([spec 4, section 8.5](cards-and-messages.md#section-8-5)). The owner's Start proposes the
-  draft's request through `intent/propose` as the owner on Telegram, with the photo put on the
+  ([spec 4, section 8.5](cards-and-messages.md#section-8-5)). The owner's Start, checked against
+  the owner's numeric Telegram id by the engine itself, takes the draft and is answered at once;
+  the engine then proposes the draft's request in the background, within 2 minutes and stopped
+  at shutdown, through `intent/propose` as the owner on Telegram, with the photo put on the
   upload shelf under the owner's Telegram credential: the one proposal the owner's chat makes.
   The launch carries the outside-content mark of the turn that drafted it, so its card warns as
   that turn's own proposals would, and a draft from a clean turn carries none. The launch then

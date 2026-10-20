@@ -68,6 +68,7 @@ export function launchDraftsOf(
     chains,
     uploads,
     propose: parts.handlers["intent/propose"],
+    owners: stores.owners,
     clock,
     publish,
   });

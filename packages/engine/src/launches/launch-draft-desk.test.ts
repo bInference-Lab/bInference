@@ -12,7 +12,7 @@ import { createLaunchDraftShelf } from "./launch-draft-shelf.js";
 const ref = "d3Zr_x9-AbCdEfGh";
 
 describe("the launch draft desk", () => {
-  it("ends the draft as failed and passes the fault on when the proposal throws", async () => {
+  it("ends the draft as failed when the proposal behind a Start throws", async () => {
     const clock = createManualClock(testNowMs);
     const shelf = createLaunchDraftShelf();
     shelf.put({
@@ -26,24 +26,25 @@ describe("the launch draft desk", () => {
       expiresAtMs: testNowMs + 600_000,
     });
     const pushes: EnginePush[] = [];
-    const fault = new Error("The engine stopped.");
     const desk = createLaunchDraftDesk({
       shelf,
       host: { picturePlace: () => "link" },
       chains: testChains(),
       uploads: createUploadShelf({ clock, random: createSeededRandom(1) }),
-      propose: async () => Promise.reject(fault),
+      propose: async () => Promise.reject(new Error("The engine stopped.")),
+      owners: { get: async () => Promise.resolve({ userId: 7_012_345_678, pairedAtMs: 1 }) },
       clock,
       publish: (push) => pushes.push(push),
     });
     const signal = AbortSignal.timeout(5_000);
-    await expect(desk.start(ref, { userId: 7_012_345_678 }, { signal })).rejects.toBe(fault);
+    expect(await desk.start(ref, 7_012_345_678, { signal })).toStrictEqual({ status: "starting" });
+    await desk.idle();
     expect(pushes.map(({ kind, data }) => [kind, data])).toStrictEqual([
       [
         "chat/launchDraftClosed",
         { agent: testAgent, draft: "c2hvd24tb25jZS1h", outcome: "failed", error: "internal.error" },
       ],
     ]);
-    expect(desk.drop(ref)).toStrictEqual({ status: "unknown" });
+    expect(await desk.drop(ref, 7_012_345_678, { signal })).toStrictEqual({ status: "unknown" });
   });
 });

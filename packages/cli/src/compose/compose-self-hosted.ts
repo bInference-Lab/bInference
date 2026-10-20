@@ -282,6 +282,8 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     // As the bot's line: after the server, before the store it drops gone subscriptions from.
     opening.closers.add("web_push", async () => webPush.close());
   }
+  // The launches a draft's Start began stop before the bot's line, so their ends still reach it.
+  opening.closers.add("launch_drafts", async () => engine.launchDrafts.close());
   sending.pushes.publish = publish;
   locked.announce.publish = publish;
   wiring.jobs.publish = publish;

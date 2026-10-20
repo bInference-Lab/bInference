@@ -1,17 +1,16 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { Clock, ErrorCode, Id } from "@binference/core";
-import { type AssetInfos, noUploadImage } from "@binference/protocol";
+import type { Clock, Id } from "@binference/core";
+import type { AssetInfos } from "@binference/protocol";
 import type { CardLine } from "../confirmations/card-line.js";
-import { type IntentReason, intentReasons } from "../intents/intent-reason.js";
-import { isTerminalState } from "../intents/intent-state.js";
-import type { EngineCaller, EngineHandler } from "../operations/engine-call.js";
+import type { EngineHandler } from "../operations/engine-call.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { ownerChatScopes } from "../surfaces/create-owner-calls.js";
+import type { OwnerStore } from "../surfaces/ports.js";
 import type { UploadShelf } from "../uploads/upload-shelf.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import { publishDraftClosed } from "./launch-draft-closed.js";
 import { drawLaunchDraft } from "./launch-draft-lines.js";
 import type { LaunchDraft, LaunchDraftShelf } from "./launch-draft-shelf.js";
+import { createDraftStarts } from "./start-launch-draft.js";
 
 /** A launch draft as a surface shows it: whose it is, its buttons' reference and its lines. */
 export interface LaunchDraftShowing {
@@ -30,18 +29,15 @@ export interface LaunchDraftShowing {
 }
 
 /**
- * How a press of a launch draft's button stands. `started`: the launch was proposed, as its
- * intent. `dropped`: the owner dropped it. `expired`: its 10 minutes ran out before the press.
- * `failed`: the proposal was refused, with its code. `ended`: the launch was proposed and ended
- * before its card, with its intent's reason. `unknown`: no open draft has this reference;
- * nothing happened.
+ * How a press of a launch draft's button stands. `starting`: the owner's Start took the draft, and
+ * its launch is being proposed; `chat/launchDraftClosed` says how that went. `dropped`: the owner
+ * dropped it. `expired`: its 10 minutes ran out before the press. `unknown`: no open draft has
+ * this reference, or the presser is not the owner; nothing happened.
  */
 export type LaunchDraftStanding =
-  | { readonly status: "started"; readonly intent: Id<"int"> }
+  | { readonly status: "starting" }
   | { readonly status: "dropped" }
   | { readonly status: "expired" }
-  | { readonly status: "failed"; readonly error: ErrorCode }
-  | { readonly status: "ended"; readonly intent: Id<"int">; readonly reason: IntentReason }
   | { readonly status: "unknown" };
 
 /** The engine's open launch drafts, as the owner's surfaces show them and the owner answers. */
@@ -49,18 +45,27 @@ export interface LaunchDraftDesk {
   /** The open draft with this id, as its message shows it; `undefined` once it ended. */
   showing(id: string): LaunchDraftShowing | undefined;
   /**
-   * Starts the draft whose Start the owner pressed (decision 0285): it ends at once, so no other
-   * press starts it, and its request is proposed as the owner on Telegram with the owner's photo
-   * put on the upload shelf under the owner's Telegram credential (decision 0286). Call it only
-   * for a press the owner's numeric Telegram id made.
+   * Starts the draft whose Start the owner pressed (decision 0285), for the owner's numeric
+   * Telegram id alone: it ends at once, so no other press starts it, and answers `starting` while
+   * its request is proposed in the background, as the owner on Telegram with the owner's photo put
+   * on the upload shelf under the owner's Telegram credential (decision 0286), within its own
+   * time. `chat/launchDraftClosed` tells how the proposal went.
    */
   start(
     ref: string,
-    owner: { readonly userId: number },
+    presserId: number,
     options: { readonly signal: AbortSignal },
   ): Promise<LaunchDraftStanding>;
-  /** Drops the draft whose Drop the owner pressed. Call it only for the owner's press. */
-  drop(ref: string): LaunchDraftStanding;
+  /** Drops the draft whose Drop the owner pressed, for the owner's numeric Telegram id alone. */
+  drop(
+    ref: string,
+    presserId: number,
+    options: { readonly signal: AbortSignal },
+  ): Promise<LaunchDraftStanding>;
+  /** Resolves once every launch Start began has been proposed or stopped. */
+  idle(): Promise<void>;
+  /** Stops the launches Start began that are still being proposed, and waits for them. */
+  close(): Promise<void>;
   /** Ends every draft whose time is up, and answers when the next one's is. */
   expire(): number | undefined;
 }
@@ -73,82 +78,12 @@ export interface LaunchDraftDeskOptions {
   /** The owner's uploads, which the launch from a draft reads its picture from. */
   readonly uploads: Pick<UploadShelf, "ticket" | "receive">;
   readonly propose: EngineHandler<"intent/propose">;
+  /** The owner's numeric Telegram id, which alone starts or drops a draft. */
+  readonly owners: Pick<OwnerStore, "get">;
   readonly clock: Clock;
   readonly publish: PublishPush;
-}
-
-// The owner on Telegram, as the one proposal the owner's chat makes runs (decision 0285), with
-// the outside-content mark of the agent's turn that drafted it, so its card warns as the turn's
-// own proposals would.
-function ownerOnTelegram(userId: number, draft: LaunchDraft): EngineCaller {
-  return {
-    credential: `tg:${String(userId)}`,
-    client: { kind: "telegram" },
-    scopes: ownerChatScopes,
-    turn: { hasOutsideContent: draft.hasOutsideContent },
-  };
-}
-
-// The draft's photo on the upload shelf, held by the owner's Telegram credential, or `none` for a
-// launchpad that takes a link: the bytes the draft showed, never a new read (decision 0286).
-function imageOf(options: LaunchDraftDeskOptions, draft: LaunchDraft, holder: string) {
-  const { picture } = draft;
-  if (picture === undefined) {
-    return noUploadImage;
-  }
-  const plan = { contentType: picture.image.contentType, bytes: picture.image.bytes };
-  const { ticket } = options.uploads.ticket(plan, holder);
-  const received = options.uploads.receive(ticket, picture.bytes);
-  return received.ok ? received.value : undefined;
-}
-
-// An ended intent's reason as the engine stores it; one with none ended as a check failed.
-function reasonOf(stored: string | undefined): IntentReason {
-  return intentReasons.find((reason) => reason === stored) ?? "launch_unread";
-}
-
-// Proposes the draft's launch; a fault ends the draft's message as failed before it goes on, since
-// the draft already ended.
-async function proposeEnding(
-  options: LaunchDraftDeskOptions,
-  draft: LaunchDraft,
-  call: Parameters<LaunchDraftDeskOptions["propose"]>[0],
-): ReturnType<LaunchDraftDeskOptions["propose"]> {
-  try {
-    return await options.propose(call);
-  } catch (fault) {
-    publishDraftClosed(options.publish, draft, { outcome: "failed", error: "internal.error" });
-    throw fault;
-  }
-}
-
-async function startDraft(
-  options: LaunchDraftDeskOptions,
-  draft: LaunchDraft,
-  call: { readonly userId: number; readonly signal: AbortSignal },
-): Promise<LaunchDraftStanding> {
-  const caller = ownerOnTelegram(call.userId, draft);
-  const image = imageOf(options, draft, caller.credential);
-  if (image === undefined) {
-    publishDraftClosed(options.publish, draft, { outcome: "failed", error: "image.unreadable" });
-    return { status: "failed", error: "image.unreadable" };
-  }
-  const args = { ...draft.request, image };
-  const proposed = await proposeEnding(options, draft, { args, caller, signal: call.signal });
-  if (!proposed.ok) {
-    publishDraftClosed(options.publish, draft, { outcome: "failed", error: proposed.error });
-    return { status: "failed", error: proposed.error };
-  }
-  // A launch the policy refused, or whose quote, upload or first pin read failed, ended before its
-  // card: the draft says why, never that the launch started.
-  const { intent, state } = proposed.value;
-  if (isTerminalState(state)) {
-    const reason = reasonOf(proposed.value.outcome?.reason);
-    publishDraftClosed(options.publish, draft, { outcome: "failed", intent, reason });
-    return { status: "ended", intent, reason };
-  }
-  publishDraftClosed(options.publish, draft, { outcome: "started", intent });
-  return { status: "started", intent };
+  /** How long one launch Start began may take to be proposed: 2 minutes when absent. */
+  readonly startTimeoutMs?: number;
 }
 
 // Takes the draft a press names; one whose time is up ends as expired.
@@ -164,12 +99,24 @@ function pressed(options: LaunchDraftDeskOptions, ref: string): LaunchDraft | La
   return { status: "expired" };
 }
 
+// The draft a press names, taken only for a press of the owner's numeric Telegram id.
+async function pressedByOwner(
+  options: LaunchDraftDeskOptions,
+  press: { readonly ref: string; readonly presserId: number },
+  call: { readonly signal: AbortSignal },
+): Promise<LaunchDraft | LaunchDraftStanding> {
+  call.signal.throwIfAborted();
+  const owner = await options.owners.get(call);
+  return owner?.userId === press.presserId ? pressed(options, press.ref) : { status: "unknown" };
+}
+
 const isStanding = (taken: LaunchDraft | LaunchDraftStanding): taken is LaunchDraftStanding =>
   "status" in taken;
 
 /** Creates the {@link LaunchDraftDesk} over the engine's open drafts. */
 export function createLaunchDraftDesk(options: LaunchDraftDeskOptions): LaunchDraftDesk {
   const { shelf, host, chains, clock, publish } = options;
+  const starts = createDraftStarts(options);
   return {
     showing(id) {
       const draft = shelf.byId(id);
@@ -182,19 +129,24 @@ export function createLaunchDraftDesk(options: LaunchDraftDeskOptions): LaunchDr
       const photo = draft.picture === undefined ? {} : { photo: draft.request.image };
       return { agent, agentName, ref, lines, assets, expiresAtMs, ...photo };
     },
-    async start(ref, owner, { signal }) {
-      signal.throwIfAborted();
-      const taken = pressed(options, ref);
-      return isStanding(taken) ? taken : startDraft(options, taken, { ...owner, signal });
+    async start(ref, presserId, call) {
+      const taken = await pressedByOwner(options, { ref, presserId }, call);
+      if (isStanding(taken)) {
+        return taken;
+      }
+      starts.run(taken, presserId);
+      return { status: "starting" };
     },
-    drop(ref) {
-      const taken = pressed(options, ref);
+    async drop(ref, presserId, call) {
+      const taken = await pressedByOwner(options, { ref, presserId }, call);
       if (isStanding(taken)) {
         return taken;
       }
       publishDraftClosed(publish, taken, { outcome: "dropped" });
       return { status: "dropped" };
     },
+    idle: async () => starts.idle(),
+    close: async () => starts.close(),
     expire() {
       shelf.takeDue(clock.now()).forEach((draft) => {
         publishDraftClosed(publish, draft, { outcome: "expired" });

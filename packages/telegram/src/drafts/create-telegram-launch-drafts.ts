@@ -145,8 +145,17 @@ async function show(
 
 // The press's notice: at most 200 characters, as Telegram's answer to a press holds.
 function noticeOf(parts: Parts, standing: LaunchDraftStanding): string {
-  const words = wordsOf(parts);
-  return words(`telegram.draft.answer.${standing.status === "ended" ? "failed" : standing.status}`);
+  return wordsOf(parts)(`telegram.draft.answer.${standing.status}`);
+}
+
+// A Start the engine took: the pressed message loses its buttons and says the launch is starting,
+// until the draft's closing push says how it went.
+async function starting(parts: Parts, pressed: ButtonPress, call: Call): Promise<void> {
+  const { chatId, messageId } = pressed;
+  if (chatId !== undefined && messageId !== undefined) {
+    const line = wordsOf(parts)("telegram.draft.starting");
+    await parts.bot.edit({ chatId, messageId }, line, { signal: call.signal });
+  }
 }
 
 async function press(parts: Parts, pressed: ButtonPress, call: Call): Promise<boolean> {
@@ -157,6 +166,9 @@ async function press(parts: Parts, pressed: ButtonPress, call: Call): Promise<bo
   const asked = { ...callback.data, presserId: pressed.sender.id };
   const standing = await parts.options.answers.answer(asked, call);
   // A press the engine did not take for the owner's gets no answer, as a card's does.
+  if (standing.status === "starting") {
+    await starting(parts, pressed, call);
+  }
   if (standing.status !== "unknown") {
     const notice = noticeOf(parts, standing);
     await answerPress(

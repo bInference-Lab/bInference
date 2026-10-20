@@ -34,7 +34,7 @@ describe("the agent's launch drafts in Telegram, in Chinese", () => {
     await context.drafts.press(pressOf(context, `bnf1:s:y:${draftRef}`), live);
     await context.drafts.show(closedDraft("expired"), live);
     expect([context.botApi.answers()[0]?.text, context.botApi.messages()[0]?.text]).toStrictEqual([
-      "发射已开始，确认卡片随后发送。",
+      "正在开始发射，草稿消息会显示进展。",
       `${refused} 此发射草稿已在 10 分钟后失效，没有上传任何内容。如需发射，请让 Agent 重新起草。`,
     ]);
   });

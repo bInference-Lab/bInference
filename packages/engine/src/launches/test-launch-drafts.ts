@@ -92,6 +92,10 @@ export async function testDraftEngine(
   const botImages = createMemoryOwnerImages(new Map([[photoName, photoPng]]));
   const options = { uploads, launchImages: uploads, botImages, ...launching.options };
   const launch = await testLaunchEngine({ ...launching, options });
+  await launch.test.stores.owners.bind(
+    { userId: draftOwnerId, pairedAtMs: 1 },
+    { signal: AbortSignal.timeout(5_000) },
+  );
   const start = {
     agent: testAgent,
     session: draftSession,

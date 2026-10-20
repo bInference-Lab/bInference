@@ -16,20 +16,11 @@ describe("fake launch draft answers", () => {
           ref,
           ownerId,
           started: async () => Promise.resolve(answers.started().length),
+          settled: async () => Promise.resolve(),
         });
       },
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
-  });
-
-  it("answers a Start with the standing the test gives", async () => {
-    const answers = createFakeLaunchDraftAnswers({ ownerId });
-    answers.open(ref, { status: "failed", error: "intent.launch_waiting" });
-    const live = { signal: new AbortController().signal };
-    expect(await answers.answer({ ref, start: true, presserId: ownerId }, live)).toStrictEqual({
-      status: "failed",
-      error: "intent.launch_waiting",
-    });
   });
 });

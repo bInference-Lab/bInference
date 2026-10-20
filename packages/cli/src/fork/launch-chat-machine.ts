@@ -34,7 +34,7 @@ import {
   skeletonSecrets,
 } from "../compose/test-skeleton.js";
 import { chainTokenCode } from "../compose/token-facts.js";
-import { ownerBot } from "../e2e/runtime-machine.js";
+import { ownerBot, ownerId } from "../e2e/runtime-machine.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { flapOn } from "./flap-launch-parts.js";
 import { forkTokenFacts } from "./fork-trading.js";
@@ -197,7 +197,11 @@ export async function startLaunchChatMachine(
   const custody = await custodyOn(fork, run.entry, signal);
   const venues = [flapOn(fork, run.api)];
   const maker = walletMakerOf(custody, { stores, venues });
-  const { botApi, telegram } = await ownerBot();
+  const bot = await ownerBot();
+  const { botApi } = bot;
+  // One owner record, as the self-hosted engine keeps it: the bot's and the engine's draft desk's.
+  await stores.owners.bind({ userId: ownerId, pairedAtMs: 1 }, { signal });
+  const telegram = { ...bot.telegram, owners: stores.owners };
   const turns = createRunningTurns();
   const logger = createMemoryLogger({ subsystem: "engine" });
   const made = { fork, stores, custody, venues, maker, telegram, turns, logger };

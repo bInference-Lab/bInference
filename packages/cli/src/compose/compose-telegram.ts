@@ -256,10 +256,10 @@ function questionsOf(
   return { questions, questionAnswers };
 }
 
-// The agent's launch drafts in the owner's chat, whose Start and Drop the engine answers for the
-// owner's numeric Telegram id alone (decision 0285).
+// The agent's launch drafts in the owner's chat, whose Start and Drop the engine's desk answers for
+// the owner's numeric Telegram id alone (decision 0285).
 function draftsOf(parts: TelegramParts, wiring: TelegramWiring, display: OwnerDisplay) {
-  const answers = createLaunchDraftPresses({ desk: wiring.drafts, ownerId: answersOwner(parts) });
+  const answers = createLaunchDraftPresses({ desk: wiring.drafts });
   return createTelegramLaunchDrafts({
     api: parts.api,
     owners: parts.owners,

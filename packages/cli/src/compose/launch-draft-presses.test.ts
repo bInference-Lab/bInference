@@ -10,7 +10,6 @@ import { launchDraftAnswersContract } from "@binference/telegram/testing";
 import { describe, expect, it } from "vitest";
 
 const signal = (): AbortSignal => AbortSignal.timeout(5_000);
-const ownerId = async (): Promise<number> => Promise.resolve(draftOwnerId);
 
 // The engine's presses of a launch draft, as the bot's composition makes them, on a live engine
 // with one draft of the agent open.
@@ -20,7 +19,7 @@ async function drafted() {
   if (!answer.ok) {
     throw new Error(`Expected a draft, got ${answer.error}.`);
   }
-  const answers = createLaunchDraftPresses({ desk: drafting.test.engine.launchDrafts, ownerId });
+  const answers = createLaunchDraftPresses({ desk: drafting.test.engine.launchDrafts });
   const started = async () => {
     const listed = await drafting.test.engine.handlers["intent/list"]({
       args: { agent: testAgent },
@@ -29,7 +28,14 @@ async function drafted() {
     });
     return listed.ok ? listed.value.items.length : -1;
   };
-  return { answers, ref: refOf(drafting.test, answer.value.draft), ownerId: draftOwnerId, started };
+  const settled = async () => drafting.test.engine.launchDrafts.idle();
+  return {
+    answers,
+    ref: refOf(drafting.test, answer.value.draft),
+    ownerId: draftOwnerId,
+    started,
+    settled,
+  };
 }
 
 describe("the engine's presses of a launch draft", () => {

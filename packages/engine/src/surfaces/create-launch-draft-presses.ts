@@ -1,5 +1,4 @@
 import type { LaunchDraftDesk, LaunchDraftStanding } from "../launches/launch-draft-desk.js";
-import { type OwnerIdOf, pressedByOwner } from "./pressed-by-owner.js";
 
 /** A press of a launch draft's button in Telegram, as the engine receives it (decision 0285). */
 export interface LaunchDraftPress {
@@ -23,25 +22,21 @@ export interface LaunchDraftPresses {
 /** What {@link createLaunchDraftPresses} answers through. */
 export interface LaunchDraftPressesOptions {
   readonly desk: Pick<LaunchDraftDesk, "start" | "drop">;
-  /** The owner's numeric Telegram id, or `undefined` before the owner pairs. */
-  readonly ownerId: OwnerIdOf;
 }
 
 /**
  * Creates the {@link LaunchDraftPresses}, the engine's adapter of Telegram's `LaunchDraftAnswers`
- * port. A press by anyone but the owner answers `unknown` and changes nothing; the owner's Start
- * proposes the draft's launch as the owner on Telegram, the one proposal the owner's chat makes
- * (decision 0285), and Drop ends it.
+ * port. The desk answers a press by anyone but the owner `unknown` and changes nothing; the
+ * owner's Start answers at once and proposes the draft's launch as the owner on Telegram in the
+ * background, the one proposal the owner's chat makes (decision 0285), and Drop ends it.
  */
 export function createLaunchDraftPresses(options: LaunchDraftPressesOptions): LaunchDraftPresses {
   return {
-    async answer(press, { signal }) {
-      if (!(await pressedByOwner(options.ownerId, press.presserId, signal))) {
-        return { status: "unknown" };
-      }
+    async answer(press, call) {
+      const { ref, presserId } = press;
       return press.start
-        ? options.desk.start(press.ref, { userId: press.presserId }, { signal })
-        : options.desk.drop(press.ref);
+        ? options.desk.start(ref, presserId, call)
+        : options.desk.drop(ref, presserId, call);
     },
   };
 }
