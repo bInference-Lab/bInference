@@ -213,6 +213,30 @@ export async function planCopyFill(
   return planBuy(parts, { order, state, settings, taking, decimals, signal });
 }
 
+/** The least a copy buy spends: smaller ones skip as `copy_too_small` (the owner's choice). */
+const leastBuyUsdMicros = 5_000_000n;
+/** The most copy buys one order makes in an hour: more skip as `copy_hourly` (the owner's choice). */
+const mostBuysAnHour = 10;
+const hourMs = 3_600_000;
+
+// Why a buy skips before its caps: its leader's buy has no value, it would spend under $5, or the
+// order bought 10 times in the last hour (decision 0260).
+function floorOf(call: {
+  readonly dollars: bigint | undefined;
+  readonly state: CopyState;
+  readonly nowMs: number;
+}): "leader_unpriced" | "copy_too_small" | "copy_hourly" | undefined {
+  const { dollars, state, nowMs } = call;
+  if (dollars === undefined) {
+    return "leader_unpriced";
+  }
+  if (dollars < leastBuyUsdMicros) {
+    return "copy_too_small";
+  }
+  const lastHour = state.buys.filter(({ atMs }) => atMs > nowMs - hourMs).length;
+  return lastHour >= mostBuysAnHour ? "copy_hourly" : undefined;
+}
+
 // A buy of the least of its dollars per buy and the leader's own buy, within the daily caps.
 async function planBuy(
   parts: CopyFillParts,
@@ -227,14 +251,17 @@ async function planBuy(
 ): Promise<CopyFillPlan> {
   const { order, state, settings, taking, decimals, signal } = call;
   const dollars = await buyDollarsOf(parts, { order, settings, taking, signal });
-  if (dollars === undefined) {
-    return { kind: "skip", reason: "leader_unpriced" };
+  const nowMs = parts.clock.now();
+  const floor = floorOf({ dollars, state, nowMs });
+  if (floor !== undefined) {
+    return { kind: "skip", reason: floor };
   }
-  const cap = await passedCapOf(parts, { order, state, settings, perBuy: dollars, signal });
+  const usdMicros = dollars ?? 0n;
+  const cap = await passedCapOf(parts, { order, state, settings, perBuy: usdMicros, signal });
   if (cap !== undefined) {
     return { kind: "skip", reason: "copy_daily_cap", cap };
   }
-  const size = { usdMicros: dollars };
+  const size = { usdMicros };
   const request = { ...order.request, token: taking.asset, side: "buy" as const, size };
   return { kind: "fill", order: { ...order, request }, price: { decimals } };
 }

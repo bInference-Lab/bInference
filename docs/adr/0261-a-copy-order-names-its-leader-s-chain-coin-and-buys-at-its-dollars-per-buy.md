@@ -24,7 +24,8 @@ it may follow.
 - **It buys.** `side` is `buy`; its sales follow the leader's
   ([decision 0260](0260-a-copy-order-copies-each-leader-trade-once-at-its-own-size-inside-its-caps.md)).
   A `sell` is `protocol.bad_args`.
-- **One number per buy.** `size` is `{ usdMicros }` and equals `perBuyUsdMicros`, above zero, as a
+- **One number per buy.** `size` is `{ usdMicros }` and equals `perBuyUsdMicros`, at least $5, the
+  least a copy buy spends ([decision 0260](0260-a-copy-order-copies-each-leader-trade-once-at-its-own-size-inside-its-caps.md)), as a
   DCA order's `count` and `maxFills` must agree; `dailyUsdMicros` holds at least one buy. A worst
   price would hold one token's price for every token, so a copy order names none.
 - **What it spends** is the chain's coin, or a token the registry lists on that chain, as for any

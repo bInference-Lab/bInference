@@ -128,6 +128,23 @@ describe("a copy order's fill plan", () => {
     });
   });
 
+  it("skips a buy under $5, and the eleventh buy of an hour", async () => {
+    const dust = { ...buy, paid: { asset: testCoin, base: 10n ** 15n } };
+    const busy = Array.from({ length: 10 }, () => 0).reduce(
+      (state) => boughtFor(state, 20_000_000n),
+      copyStartOf(0),
+    );
+
+    expect(await plan(copyOrder(takenState(copyStartOf(0), dust)))).toStrictEqual({
+      kind: "skip",
+      reason: "copy_too_small",
+    });
+    expect(await plan(copyOrder(takenState(busy, buy)))).toStrictEqual({
+      kind: "skip",
+      reason: "copy_hourly",
+    });
+  });
+
   it("sells the leader's share however late, and skips a sale whose share is unknown", async () => {
     const sale = { ...buy, side: "sell" as const, shareSoldBps: bpsSchema.parse(4_000) };
     const { shareSoldBps: _share, ...unshared } = sale;

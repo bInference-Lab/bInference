@@ -60,7 +60,7 @@ const steps: fc.Arbitrary<Step> = fc.oneof(
 
 /** The order's dollars per buy and a day, and the agent's copy limits, in whole dollars. */
 const terms = fc.record({
-  perBuy: fc.integer({ min: 1, max: 30 }),
+  perBuy: fc.integer({ min: 5, max: 30 }),
   days: fc.integer({ min: 1, max: 6 }),
   agentPerBuy: fc.integer({ min: 1, max: 30 }),
   agentDay: fc.integer({ min: 5, max: 120 }),

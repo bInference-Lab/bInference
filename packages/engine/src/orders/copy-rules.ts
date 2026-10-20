@@ -20,6 +20,10 @@ export interface CheckedCopy {
 
 const badArgs = err("protocol.bad_args" as const);
 
+// The least dollars per buy a copy order names: a copy buy under $5 is skipped (decision 0260), so
+// an order of less could never buy.
+const leastPerBuyUsdMicros = 5_000_000n;
+
 // What its buys spend: the leader's chain's coin when it names none, else a token the registry
 // lists on that chain (decision 0190).
 function spendOf(
@@ -51,7 +55,7 @@ function areTermsValid(request: CopyOrderRequest): boolean {
     worstPrice === undefined &&
     "usdMicros" in size &&
     size.usdMicros === perBuy &&
-    perBuy > 0n &&
+    perBuy >= leastPerBuyUsdMicros &&
     trigger.dailyUsdMicros >= perBuy
   );
 }
@@ -59,7 +63,7 @@ function areTermsValid(request: CopyOrderRequest): boolean {
 /**
  * Checks a copy order request (decision 0261): a leader on a chain the registry holds, in its
  * canonical form; its `token` the coin of that chain, which names the chain whose every token the
- * order copies; a buy whose size is `{ usdMicros }` equal to `perBuyUsdMicros`, above zero; a daily
+ * order copies; a buy whose size is `{ usdMicros }` equal to `perBuyUsdMicros`, at least $5; a daily
  * cap of at least one buy; no worst price; and what its buys spend, the chain's coin by default.
  * Anything else is `protocol.bad_args`.
  */

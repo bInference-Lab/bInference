@@ -202,7 +202,8 @@ whose block time is more than 60 seconds old at the head of its agent's line, `s
 copy order's sale whose leader's share the leader watcher could not read, and `token_unreadable`,
 a copy order's trade of a token whose decimals neither the registry nor its contract gives, and
 `leader_unpriced`, a copy order's buy whose leader's spend nothing values in dollars, and
-`copy_sale_lapsed`, a copy order's sale not sold within an hour of its leader's
+`copy_sale_lapsed`, a copy order's sale not sold within an hour of its leader's, `copy_too_small`,
+a copy buy under $5, and `copy_hourly`, a copy order's eleventh buy within an hour
 ([decision 0260](../DECISIONS.md#d0260)); and `no_price`,
 a size in dollars whose asset has no USD price. The skip is an
 `order_fills` row with its reason, reported as `notice.skipped`, like a fill that policy or risk

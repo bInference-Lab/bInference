@@ -49,6 +49,10 @@ describe("a copy order's creation", () => {
       { side: "sell" },
       { token: testToken },
       { size: { usdMicros: 10_000_000n } },
+      {
+        size: { usdMicros: 4_000_000n },
+        trigger: { ...trigger, perBuyUsdMicros: 4_000_000n },
+      },
       { worstPrice: 1_000_000n },
       { trigger: { ...trigger, dailyUsdMicros: 10_000_000n } },
       { trigger: { ...trigger, leader: accountRefSchema.parse("fake:2:0x00000009") } },

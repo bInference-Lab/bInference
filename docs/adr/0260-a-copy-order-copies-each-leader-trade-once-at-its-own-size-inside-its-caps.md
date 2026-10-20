@@ -60,6 +60,10 @@ Every order fill runs the money path with no card, held to its order's bounds
   buy that nothing values is skipped with the new reason `leader_unpriced` and reported: nothing
   guesses it. The fill bounds hold the quote to that amount, and the value the policy judged it at
   must not pass it (`fill_bounds`).
+- **A floor and an hourly most** (the owner's choice, 2026-10-20). A copy buy whose dollars come
+  to under $5 is skipped with `copy_too_small`, and a copy order's eleventh buy within an hour with
+  `copy_hourly`, both before any intent and told as any copy skip is: a leader's flood of dust
+  buys spends no gas, no risk source quota and no place in the agent's line.
 - **The daily cap.** Each buy that filled counts at the value the policy judged it at, the value
   the rolling cap counts ([decision 0136](0136-the-24-hour-cap-counts-each-confirmation-at-its-judged-value.md)),
   else its order's dollars per buy. A buy whose dollars would take the order's buys of the last 24

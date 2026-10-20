@@ -820,7 +820,7 @@ sends one; another client may leave it out.
 
 **Copy orders** ([decision 0261](../DECISIONS.md#d0261)). A `copy` order copies every token its
 leader trades on the leader's chain: its `token` is that chain's coin, its `side` is `buy`, its
-`size` is `{ usdMicros }` equal to `perBuyUsdMicros`, above zero, and `dailyUsdMicros` is at least
+`size` is `{ usdMicros }` equal to `perBuyUsdMicros`, at least $5, and `dailyUsdMicros` is at least
 that; it names no `worstPrice`. Its fills are one per leader trade it copies, with no limit unless
 it names `maxFills`. Each buy spends the least of `perBuyUsdMicros`, the agent's `copy.perBuyUsd`
 and the leader's own buy, valued as the policy values it, of what it spends; a sale sells the leader's share of what the order bought of the token, never more

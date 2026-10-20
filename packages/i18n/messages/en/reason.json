@@ -53,6 +53,8 @@
   "token_unreadable": "the token's contract did not give its symbol and decimals",
   "leader_unpriced": "the leader's buy could not be valued in dollars",
   "copy_sale_lapsed": "the leader's sale could not be mirrored within an hour of it; the order still holds the token",
+  "copy_too_small": "the copy would buy less than $5",
+  "copy_hourly": "this copy order bought 10 times in the last hour",
   "engine_locked": "binference is locked, so nothing fills until you run `binference unlock`",
   "live_fills_off": "live auto orders do not fill yet; only paper ones do",
   "nothing_to_spend": "the wallet holds too little of what the order spends",
