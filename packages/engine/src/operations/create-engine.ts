@@ -22,7 +22,7 @@ import type { ModelBudgetParts } from "../billing/model-budget.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
-import { type CardTimerParts, expireDueCards } from "../confirmations/card-timer.js";
+import type { CardTimerParts } from "../confirmations/card-timer.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
 import { createDowntimeCheck, type DowntimeCheck } from "../downtime/downtime-check.js";
 import type { Downtime } from "../downtime/downtime.js";
@@ -77,15 +77,10 @@ import {
 } from "./engine-intent-parts.js";
 import { moneyPathOf } from "./engine-money-path.js";
 import { cardTimerOf, copyOrdersOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
-import {
-  type EngineChat,
-  type EngineChatHandlers,
-  engineChatOf,
-  safetyHandlersOf,
-} from "./engine-parts.js";
+import { type EngineChatHandlers, engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { startupWorkOf } from "./engine-repairs.js";
 import { dailySummariesOf } from "./engine-summaries.js";
-import { runQueue, tickAll } from "./engine-timers.js";
+import { timedWorkOf } from "./engine-timers.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
 import { type SettingsHandlers, settingsHandlers } from "./settings-handlers.js";
@@ -350,23 +345,6 @@ function intentParts(
   return { answer, stored, orders, fills, ...timed, handlers, lowGas, cardTimer, moneyPath };
 }
 
-// The engine's work a timer of the composition root runs: the orders and alerts that wait for no
-// price, the cards whose time is up, the schedule queue and the copy orders' leader trades.
-function timedWorkOf(
-  options: EngineOptions,
-  parts: { readonly intents: IntentParts; readonly chat: EngineChat },
-): Pick<Engine, "tickOrders" | "expireCards" | "runSchedules" | "runCopies"> {
-  const { intents, chat } = parts;
-  return {
-    tickOrders: async ({ signal }) =>
-      tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
-    expireCards: async ({ signal }) => expireDueCards(intents.cardTimer, signal),
-    runSchedules: async ({ signal }) =>
-      runQueue({ schedules: chat.schedules, dca: intents.dca, clock: options.clock }, signal),
-    runCopies: async (call) => intents.copies.run(call),
-  };
-}
-
 // What the rescue address, the address book and the settings operations each read and push.
 function sharedParts(options: EngineOptions) {
   const { stores, ceilings, chains, clock, publish } = options;
@@ -438,7 +416,7 @@ export function createEngineWithFills(given: EngineOptions): {
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     ...startupWorkOf(options, { ...intents, relay: chat.relay, check, paper }),
-    ...timedWorkOf(options, { intents, chat }),
+    ...timedWorkOf({ intents, chat, clock: options.clock }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,
