@@ -1107,6 +1107,10 @@
     "0277": {
       "status": "Accepted",
       "sha256": "bba1c57428be3c82809647b2e5b0f1e78af6b3f77530b6c7e0a7f207c1e922cb"
+    },
+    "0278": {
+      "status": "Accepted",
+      "sha256": "6b831c6b251c731865b9ffbf140b3518720c91322d70c44b99b94465f4796c21"
     }
   }
 }

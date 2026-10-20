@@ -9208,6 +9208,8 @@
         "packages/telegram/src/index.ts",
         "packages/telegram/src/testing.ts",
         "packages/tui/src/index.ts",
+        "plugins/brew/src/index.ts",
+        "plugins/brew/src/testing.ts",
         "plugins/dexscreener/src/index.ts",
         "plugins/dexscreener/src/testing.ts",
         "plugins/flap/src/index.ts",
