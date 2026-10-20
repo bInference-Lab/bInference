@@ -17,13 +17,16 @@ describe("core venues", () => {
     expect(venues.map((venue) => venue.id)).toStrictEqual(["kyberswap", "flap"]);
   });
 
-  it("installs Flap with the Portal's swap as its one call and the Portal as spender", () => {
+  it("installs Flap with the Portal's swap and create calls and the Portal as spender", () => {
     const [, flap] = coreVenues(http, { keys: {}, kyberClientId: "binference" });
     expect(flap?.contracts).toMatchObject([
       {
         chain: "eip155:56",
         names: ["portal"],
-        calls: [{ contract: "portal", abi: { name: "swapExactInput" }, walletInputs: [] }],
+        calls: [
+          { contract: "portal", abi: { name: "swapExactInput" }, walletInputs: [] },
+          { contract: "portal", abi: { name: "newTokenV6" }, walletInputs: [] },
+        ],
         spenders: ["portal"],
       },
     ]);

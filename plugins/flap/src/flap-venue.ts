@@ -10,6 +10,7 @@ import { readCurve } from "./curve/read-curve.js";
 import { portalName } from "./flap-assets.js";
 import type { FlapOptions } from "./flap-options.js";
 import { readFlapLaunches } from "./launches/read-launches.js";
+import { newTokenFunctionJson } from "./portal/launch-call.js";
 import { swapFunctionJson } from "./portal/portal-calls.js";
 import { portalEventIds } from "./portal/portal-events.js";
 import { quoteTrade } from "./quote/quote-trade.js";
@@ -17,10 +18,11 @@ import { buildSwap } from "./router/build-swap.js";
 import { decodeSwap } from "./router/decode-swap.js";
 
 /**
- * What the `flap` launchpad declares on each chain it trades on: the registry's Portal, its one
- * trade call `swapExactInput`, which pays the calling wallet and so pins no input, the Portal as
- * the one spender, and no deadline. It reads no chain, so the composition root can list the
- * venue's contracts, such as for a wallet's ceiling, before it opens any RPC.
+ * What the `flap` launchpad declares on each chain it trades on: the registry's Portal, its trade
+ * call `swapExactInput` and its create call `newTokenV6`, which both pay the calling wallet and so
+ * pin no input, the Portal as the one spender, and no deadline. It reads no chain, so the
+ * composition root can list the venue's contracts, such as for a wallet's ceiling, before it opens
+ * any RPC.
  */
 export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
   return {
@@ -28,7 +30,10 @@ export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
     contracts: chains.map((chain) => ({
       chain,
       names: [portalName],
-      calls: [{ contract: portalName, abi: swapFunctionJson, walletInputs: [] }],
+      calls: [
+        { contract: portalName, abi: swapFunctionJson, walletInputs: [] },
+        { contract: portalName, abi: newTokenFunctionJson, walletInputs: [] },
+      ],
       spenders: [portalName],
       noDeadline: true,
     })),

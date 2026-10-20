@@ -19,6 +19,7 @@ import {
 import { parseEther } from "viem";
 import { describe, expect, it } from "vitest";
 import { createFlapVenue, flapDeclaration } from "./flap-venue.js";
+import { newTokenFunctionJson } from "./portal/launch-call.js";
 import { stateCallData, swapFunctionJson } from "./portal/portal-calls.js";
 import {
   bnb,
@@ -191,12 +192,15 @@ describe("the flap venue", () => {
     );
   });
 
-  it("declares the Portal's swap as its one call, the Portal as spender, and no deadline", () => {
+  it("declares the Portal's swap and create calls, the Portal as spender, and no deadline", () => {
     expect(venueOver(scriptedPortal()).contracts).toStrictEqual([
       {
         chain: bscChain,
         names: ["portal"],
-        calls: [{ contract: "portal", abi: swapFunctionJson, walletInputs: [] }],
+        calls: [
+          { contract: "portal", abi: swapFunctionJson, walletInputs: [] },
+          { contract: "portal", abi: newTokenFunctionJson, walletInputs: [] },
+        ],
         spenders: ["portal"],
         noDeadline: true,
       },
