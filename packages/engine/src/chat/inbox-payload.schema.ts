@@ -97,13 +97,13 @@ export const alertFiredPayloadSchema: z.ZodType<AlertFiredPayload> = z.strictObj
 interface ResumeReportOrderPayload {
   readonly order: Id<"ord">;
   readonly kind: "limit" | "takeProfit" | "stopLoss" | "trailing" | "dca" | "copy";
-  readonly outcome: "filled" | "skipped";
+  readonly outcome: "filled" | "sent" | "skipped";
   readonly reason?: string;
 }
 
 /** A resume report: the downtime's kind and span, the agent's counts and each order's outcome. */
 export interface ResumeReportPayload {
-  readonly cause: "start" | "wake";
+  readonly cause: "start" | "wake" | "clock";
   readonly offFrom: number;
   readonly offMs: number;
   readonly checked: number;
@@ -116,7 +116,7 @@ const countSchema = z.int().nonnegative();
 
 /** Parses a resume report's payload. */
 export const resumeReportPayloadSchema: z.ZodType<ResumeReportPayload> = z.strictObject({
-  cause: z.enum(["start", "wake"]),
+  cause: z.enum(["start", "wake", "clock"]),
   offFrom: epochMsSchema,
   offMs: countSchema,
   checked: countSchema,
@@ -127,7 +127,7 @@ export const resumeReportPayloadSchema: z.ZodType<ResumeReportPayload> = z.stric
       z.strictObject({
         order: idSchema("ord"),
         kind: z.enum(["limit", "takeProfit", "stopLoss", "trailing", "dca", "copy"]),
-        outcome: z.enum(["filled", "skipped"]),
+        outcome: z.enum(["filled", "sent", "skipped"]),
         reason: z.string().min(1).exactOptional(),
       }),
     )

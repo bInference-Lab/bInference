@@ -31001,7 +31001,8 @@
                         "type": "string",
                         "enum": [
                           "start",
-                          "wake"
+                          "wake",
+                          "clock"
                         ]
                       },
                       "offFrom": {
@@ -31054,6 +31055,7 @@
                               "type": "string",
                               "enum": [
                                 "filled",
+                                "sent",
                                 "skipped"
                               ]
                             },

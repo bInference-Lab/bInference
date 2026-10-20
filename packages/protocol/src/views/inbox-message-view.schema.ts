@@ -86,11 +86,14 @@ interface InboxAlertFired extends InboxMessageBase {
   readonly outsideContent: boolean;
 }
 
-/** One auto order the downtime re-check checked: filled, or skipped and why. */
+/**
+ * One auto order the downtime re-check checked: filled, a live fill sent and not settled yet, or
+ * skipped and why.
+ */
 interface ResumeReportOrder {
   readonly order: ProtocolId<"autoOrder">;
   readonly kind: OrderView["kind"];
-  readonly outcome: "filled" | "skipped";
+  readonly outcome: "filled" | "sent" | "skipped";
   /** The skip's reason code, whose message is `reason.<code>`. */
   readonly reason?: string;
 }
@@ -101,13 +104,16 @@ interface ResumeReportOrder {
  */
 interface InboxResumeReport extends InboxMessageBase {
   readonly kind: "inbox/resumeReport";
-  /** `start` when the engine started again, `wake` when the machine woke from sleep. */
-  readonly cause: "start" | "wake";
+  /**
+   * `start` when the engine started again, `wake` when it found a pause, as after a sleep of the
+   * machine, `clock` when the wall clock was set back.
+   */
+  readonly cause: "start" | "wake" | "clock";
   /** When the engine last ran before it. */
   readonly offFrom: number;
-  /** How long the engine was off or asleep. */
+  /** How long the engine was off or paused, or how far the clock went back. */
   readonly offMs: number;
-  /** The agent's own orders: checked is filled plus skipped. */
+  /** The agent's own orders: checked counts the sent ones too. */
   readonly checked: number;
   readonly filled: number;
   readonly skipped: number;
@@ -181,7 +187,7 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
   z.object({
     ...base,
     kind: z.literal("inbox/resumeReport"),
-    cause: z.enum(["start", "wake"]),
+    cause: z.enum(["start", "wake", "clock"]),
     offFrom: epochMsSchema,
     offMs: z.int().nonnegative(),
     checked: z.int().nonnegative(),
@@ -192,7 +198,7 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
         z.object({
           order: protocolIdSchema("autoOrder"),
           kind: z.enum(["limit", "takeProfit", "stopLoss", "trailing", "dca", "copy"]),
-          outcome: z.enum(["filled", "skipped"]),
+          outcome: z.enum(["filled", "sent", "skipped"]),
           reason: z
             .string()
             .regex(/^[a-z][a-z_]*$/)
