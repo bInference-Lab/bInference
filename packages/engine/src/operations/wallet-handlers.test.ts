@@ -65,9 +65,8 @@ function twoChains() {
 const createCall = { type: "function", name: "create", inputs: [] };
 const buyCall = { type: "function", name: "buy", inputs: [] };
 const launchHost = {
-  launchCalls: () => [],
-  launchWalletCalls: (venues: readonly string[]) =>
-    venues.includes("fake-swap") ? [createCall, buyCall] : [],
+  launchWalletCalls: (venues?: readonly string[]) =>
+    venues?.includes("fake-swap") === true ? [createCall, buyCall] : [],
 };
 
 async function walletList(

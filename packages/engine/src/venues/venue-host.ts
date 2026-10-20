@@ -163,12 +163,11 @@ export interface VenueHost {
    */
   launchCalls(venue?: string): HostedVenue["launchCalls"];
   /**
-   * The JSON ABI entry of each call a launch wallet makes on the venues named: every call of a
-   * launchpad that launches tokens, its create call among them, else each venue's launch calls. A
-   * launch wallet's ceiling must allow each (decision 0271). None for a venue the host does not
-   * hold.
+   * The JSON ABI entry of each call only a launch wallet makes on the venues named, or on every
+   * hosted venue when none are named: a launchpad's create call and its launch calls. A launch
+   * wallet's ceiling must allow each (decision 0271).
    */
-  launchWalletCalls(venues: readonly string[]): HostedVenue["launchWalletCalls"];
+  launchWalletCalls(venues?: readonly string[]): HostedVenue["launchWalletCalls"];
   /** The launchpads that read their launches on the chain, with their contracts (decision 0256). */
   launchReaders(chain: ChainRef): readonly HostedLaunchReader[];
 }

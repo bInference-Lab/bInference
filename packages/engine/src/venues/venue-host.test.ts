@@ -13,7 +13,6 @@ import {
   createFakeChainDefinition,
   createFakeFamily,
   createFakeSigningScheme,
-  createFakeLauncher,
   createFakeVenue,
   type FakeCall,
   fakeApprovalData,
@@ -82,6 +81,16 @@ function hostOf(venue: Venue = createFakeVenue(), clock = createManualClock(nowM
     signingSchemes: [createFakeSigningScheme()],
   });
   return createVenueHost({ venues: [venue], chains, clock, callTimeoutMs: 5_000 });
+}
+
+const createAbi = { type: "function", name: "create", inputs: [] };
+
+// The fake venue with a create call on its router, marked as a launch wallet's or not.
+function venueWithCreate(call: { readonly isLaunchWalletOnly: boolean }): Venue {
+  const base = createFakeVenue();
+  const marked = call.isLaunchWalletOnly ? { isLaunchWalletOnly: true } : {};
+  const calls = [{ contract: "router", abi: createAbi, walletInputs: [], ...marked }];
+  return { ...base, contracts: base.contracts.map((item) => Object.assign({}, item, { calls })) };
 }
 
 // A venue that never answers a quote and ignores its signal.
@@ -167,19 +176,12 @@ describe("venue host", () => {
     ]).toStrictEqual([true, false, false, false]);
   });
 
-  it("names the calls a launch wallet makes: every call of a venue that launches tokens", () => {
-    const createAbi = { type: "function", name: "create", inputs: [] };
-    const base = createFakeVenue();
-    const calls = [{ contract: "router", abi: createAbi, walletInputs: [] }];
-    const declared: Venue = {
-      ...base,
-      contracts: base.contracts.map((item) => Object.assign({}, item, { calls })),
-    };
-    const launching = { ...declared, launcher: createFakeLauncher() } as Venue;
-    expect(hostOf(launching).launchWalletCalls(["fake-swap", "other-swap"])).toStrictEqual([
-      createAbi,
-    ]);
-    expect(hostOf(declared).launchWalletCalls(["fake-swap"])).toStrictEqual([]);
+  it("names the calls only a launch wallet makes: the ones a venue marks so", () => {
+    const marked = hostOf(venueWithCreate({ isLaunchWalletOnly: true }));
+    expect(marked.launchWalletCalls(["fake-swap", "other-swap"])).toStrictEqual([createAbi]);
+    expect(marked.launchWalletCalls()).toStrictEqual([createAbi]);
+    const plain = hostOf(venueWithCreate({ isLaunchWalletOnly: false }));
+    expect(plain.launchWalletCalls(["fake-swap"])).toStrictEqual([]);
   });
 
   it("quotes a trade without building it, then builds that quote with its own time", async () => {

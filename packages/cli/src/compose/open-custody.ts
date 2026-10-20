@@ -168,6 +168,7 @@ function callsOn(
           definition: registered.definition,
           venues,
           perTxNativeCapBase: calls.perTxNativeBase,
+          isLaunch: calls.isLaunch === true,
         });
   if (built?.ok !== true) {
     throw new BinferenceError({

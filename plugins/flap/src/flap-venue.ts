@@ -22,7 +22,8 @@ import { decodeSwap } from "./router/decode-swap.js";
 /**
  * What the `flap` launchpad declares on each chain it trades on: the registry's Portal, its trade
  * call `swapExactInput` and its create call `newTokenV6`, which both pay the calling wallet and so
- * pin no input, the Portal as the one spender, and no deadline. It reads no chain, so the
+ * pin no input, the create call a launch wallet's alone (decision 0271), the Portal as the one
+ * spender, and no deadline. It reads no chain, so the
  * composition root can list the venue's contracts, such as for a wallet's ceiling, before it opens
  * any RPC.
  */
@@ -34,7 +35,12 @@ export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
       names: [portalName],
       calls: [
         { contract: portalName, abi: swapFunctionJson, walletInputs: [] },
-        { contract: portalName, abi: newTokenFunctionJson, walletInputs: [] },
+        {
+          contract: portalName,
+          abi: newTokenFunctionJson,
+          walletInputs: [],
+          isLaunchWalletOnly: true,
+        },
       ],
       spenders: [portalName],
       noDeadline: true,

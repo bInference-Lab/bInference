@@ -25,7 +25,11 @@ export function ceilingChainsOf(
   wallet: { readonly venues: readonly string[]; readonly isLaunch: boolean },
 ): Pick<CeilingDraft, "chains" | "capPlans"> {
   const named = options.venues.filter((venue) => wallet.venues.includes(venue.id));
-  const request = ceilingRequestOf(options.chains, options.config, { venues: named, rescue: "" });
+  const request = ceilingRequestOf(options.chains, options.config, {
+    venues: named,
+    rescue: "",
+    isLaunch: wallet.isLaunch,
+  });
   if (!request.ok) {
     throw new BinferenceError({
       code: "cli.ceiling_unbuilt",

@@ -68,6 +68,26 @@ const swapper = declaredVenue("swapper", {
   spenders: ["router"],
 });
 
+// A venue whose second call only a launch wallet makes.
+const launching = declaredVenue("swapper", {
+  names: ["router", "permit2"],
+  calls: [
+    { contract: "router", abi: swapJson, walletInputs: [] },
+    { contract: "router", abi: swapToJson, walletInputs: ["receiver"], isLaunchWalletOnly: true },
+  ],
+});
+
+// The functions a ceiling of that venue lets a call reach, for a launch wallet or another.
+function launchingCalls(wallet: { readonly isLaunch: boolean }) {
+  const built = registryCeilingChain({
+    definition,
+    venues: [launching],
+    perTxNativeCapBase: oneBnbWei,
+    isLaunch: wallet.isLaunch,
+  });
+  return built.ok ? built.value.calls.map((call) => call.abi.name) : built.error;
+}
+
 describe("registryCeilingChain", () => {
   it("lists the calls and spenders each enabled venue declares on the chain, and only those", () => {
     const chain = registryCeilingChain({
@@ -87,6 +107,14 @@ describe("registryCeilingChain", () => {
         perTxNativeCapBase: oneBnbWei,
       },
     });
+  });
+
+  it("lists a call only a launch wallet makes in a launch wallet's ceiling alone", () => {
+    expect(launchingCalls({ isLaunch: false })).toStrictEqual([testRouterAbi.swap.name]);
+    expect(launchingCalls({ isLaunch: true })).toStrictEqual([
+      testRouterAbi.swap.name,
+      testRouterAbi.swapTo.name,
+    ]);
   });
 
   it("lets a venue that declares no call or spender add nothing, nor one on another chain", () => {

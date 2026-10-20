@@ -26,8 +26,8 @@ export interface HostedVenue {
   /** The JSON ABI entry of each call the venue declares on a launch's own contracts, any chain. */
   readonly launchCalls: readonly JsonValue[];
   /**
-   * The JSON ABI entry of each call a launch wallet makes on the venue: every call a launchpad
-   * that launches tokens declares, its create call among them, else its launch calls alone.
+   * The JSON ABI entry of each call only a launch wallet makes on the venue (decision 0271): the
+   * calls it marks so, such as a launchpad's create call, and its launch calls.
    */
   readonly launchWalletCalls: readonly JsonValue[];
 }
@@ -89,11 +89,12 @@ function host(venue: Venue, chains: ChainRegistry): HostedVenue {
       .filter((call) => declared.launchContracts?.includes(call.contract) === true)
       .map((call) => call.abi),
   );
-  const declaredCalls = declaration.data.contracts.flatMap((declared) =>
-    (declared.calls ?? []).map((call) => call.abi),
+  const marked = declaration.data.contracts.flatMap((declared) =>
+    (declared.calls ?? [])
+      .filter((call) => call.isLaunchWalletOnly === true)
+      .map((call) => call.abi),
   );
-  const launches = "launcher" in venue && venue.launcher !== undefined;
-  const launchWalletCalls = launches ? declaredCalls : launchCalls;
+  const launchWalletCalls = [...marked, ...launchCalls];
   return {
     venue,
     contracts: new Map(contracts),
@@ -136,15 +137,16 @@ export function launchCallsOf(
 }
 
 /**
- * The JSON ABI entry of each call a launch wallet makes on each venue named (decision 0271): every
- * call of a launchpad that launches tokens, else each venue's launch calls. A venue not hosted
- * gives none.
+ * The JSON ABI entry of each call only a launch wallet makes on the venues named, or on every
+ * hosted venue when none are named (decision 0271). A venue not hosted gives none.
  */
 export function launchWalletCallsOf(
   venues: ReadonlyMap<string, HostedVenue>,
-  named: readonly string[],
+  named?: readonly string[],
 ): readonly JsonValue[] {
-  return named.flatMap((venue) => venues.get(venue)?.launchWalletCalls ?? []);
+  const hosted =
+    named === undefined ? [...venues.values()] : named.map((venue) => venues.get(venue));
+  return hosted.flatMap((item) => item?.launchWalletCalls ?? []);
 }
 
 /** A launchpad that reads its launches on one chain, with its contracts there. */

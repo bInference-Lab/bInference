@@ -21,6 +21,12 @@ export interface VenueCall {
   readonly abi: JsonValue;
   /** The function's inputs that must name the wallet that signs, such as a swap's receiver. */
   readonly walletInputs: readonly string[];
+  /**
+   * Only a launch wallet makes this call, such as a launchpad's create call on a registry
+   * contract: only a launch wallet's ceiling allows it, and the signer refuses it from any other
+   * wallet (decision 0271). A call on a launch's own contracts is a launch wallet's already.
+   */
+  readonly isLaunchWalletOnly?: boolean;
 }
 
 /** The contracts a venue touches on one chain, by their names in that chain's registry entry. */
@@ -66,6 +72,7 @@ interface VenueCallWire {
   readonly contract: string;
   readonly abi: JsonValue;
   readonly walletInputs?: readonly string[] | undefined;
+  readonly isLaunchWalletOnly?: boolean;
 }
 
 /** A {@link VenueDeclaration} as a plugin's manifest writes it. */
@@ -92,6 +99,7 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z.strictObject({
     .array(z.string().min(1))
     .refine(isUnique, { message: "An input repeats." })
     .default([]),
+  isLaunchWalletOnly: z.literal(true).exactOptional(),
 });
 
 // Every call and every spender names one of the chain's declared contracts, registry or launch,

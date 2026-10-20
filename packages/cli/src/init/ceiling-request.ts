@@ -162,7 +162,11 @@ export function capPlanOf(definition: ChainDefinition, dayUsdMicros: bigint): Ch
 function ceilingChainOf(
   registry: ChainRegistry,
   config: Pick<BinferenceConfig, "chains" | "defaults">,
-  request: { readonly chain: string; readonly venues: readonly VenueDeclaration[] },
+  request: {
+    readonly chain: string;
+    readonly venues: readonly VenueDeclaration[];
+    readonly isLaunch: boolean;
+  },
 ): InitStep<{ readonly plan: CeilingChainPlan; readonly caps: ChainCapPlan }> {
   const registered = registry.list().find((item) => item.ref === request.chain);
   if (registered === undefined) {
@@ -178,6 +182,7 @@ function ceilingChainOf(
     definition,
     venues: request.venues,
     perTxNativeCapBase: cap,
+    isLaunch: request.isLaunch,
   });
   if (!chain.ok) {
     // A venue that names a contract its chain's registry lacks is a fault of this build.
@@ -199,12 +204,18 @@ function ceilingChainOf(
 export function ceilingRequestOf(
   registry: ChainRegistry,
   config: Pick<BinferenceConfig, "chains" | "defaults">,
-  ceiling: { readonly venues: readonly VenueDeclaration[]; readonly rescue: string },
+  ceiling: {
+    readonly venues: readonly VenueDeclaration[];
+    readonly rescue: string;
+    /** A launch wallet's, which also allows the calls only a launch wallet makes; absent, not. */
+    readonly isLaunch?: boolean;
+  },
 ): InitStep<CeilingDraft> {
   const chains: CeilingChainPlan[] = [];
   const capPlans: ChainCapPlan[] = [];
   for (const chain of config.chains.enabled) {
-    const made = ceilingChainOf(registry, config, { chain, venues: ceiling.venues });
+    const isLaunch = ceiling.isLaunch === true;
+    const made = ceilingChainOf(registry, config, { chain, venues: ceiling.venues, isLaunch });
     if (!made.ok) {
       return made;
     }

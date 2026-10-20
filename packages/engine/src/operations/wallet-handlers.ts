@@ -5,7 +5,6 @@ import { z } from "zod";
 import type { WalletRecord } from "../install/install-record.js";
 import { launchWalletIn } from "../install/launch-wallet.js";
 import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
-import type { VenueHost } from "../venues/venue-host.js";
 import { type AgentListHandlers, createAgentListHandlers } from "./agent-list-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
@@ -29,8 +28,6 @@ export interface WalletHandlersOptions
   extends MakeWalletOptions, ExportWalletOptions, RevokeSignerOptions {
   readonly custody: Signer;
   readonly chains: ChainRegistry;
-  /** The launch calls of every launchpad, and the calls a launch wallet makes on each venue. */
-  readonly host: Pick<VenueHost, "launchCalls" | "launchWalletCalls">;
 }
 
 const abiNameSchema = z.object({ name: z.string().min(1) });

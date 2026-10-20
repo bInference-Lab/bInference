@@ -192,14 +192,19 @@ describe("the flap venue", () => {
     );
   });
 
-  it("declares the Portal's swap and create calls, the Portal as spender, and no deadline", () => {
+  it("declares the swap and the launch wallet's create call, the Portal as spender, no deadline", () => {
     expect(venueOver(scriptedPortal()).contracts).toStrictEqual([
       {
         chain: bscChain,
         names: ["portal"],
         calls: [
           { contract: "portal", abi: swapFunctionJson, walletInputs: [] },
-          { contract: "portal", abi: newTokenFunctionJson, walletInputs: [] },
+          {
+            contract: "portal",
+            abi: newTokenFunctionJson,
+            walletInputs: [],
+            isLaunchWalletOnly: true,
+          },
         ],
         spenders: ["portal"],
         noDeadline: true,

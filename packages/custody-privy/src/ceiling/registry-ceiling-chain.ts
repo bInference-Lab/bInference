@@ -19,6 +19,11 @@ export interface RegistryCeilingRequest {
   readonly venues: readonly VenueDeclaration[];
   /** The most native coin, in base units, one contract call may send. */
   readonly perTxNativeCapBase: bigint;
+  /**
+   * The ceiling is a launch wallet's: it also allows the calls only a launch wallet makes, such
+   * as a launchpad's create call (decision 0271). Absent, an agent wallet's.
+   */
+  readonly isLaunch?: boolean;
 }
 
 /**
@@ -41,11 +46,14 @@ function isRegistryName(declared: Declared, name: string): boolean {
 
 function callsOf(
   declared: Declared,
-  definition: ChainDefinition,
+  ceiling: { readonly definition: ChainDefinition; readonly isLaunch: boolean },
 ): Result<readonly CeilingCall[], RegistryCeilingProblem> {
+  const { definition } = ceiling;
   const calls: CeilingCall[] = [];
-  const listed = (declared.contracts.calls ?? []).filter((call) =>
-    isRegistryName(declared, call.contract),
+  const listed = (declared.contracts.calls ?? []).filter(
+    (call) =>
+      isRegistryName(declared, call.contract) &&
+      (ceiling.isLaunch || call.isLaunchWalletOnly !== true),
   );
   for (const call of listed) {
     const contract = declaredAddress(declared.venue, { definition }, call.contract);
@@ -82,7 +90,8 @@ function spendersOf(
 /**
  * The ceiling's view of one chain from the registry (decision 0149), before its 24-hour caps:
  * the functions each enabled venue declares its trades call, on the contracts it names, and the
- * contracts it names as spenders, each read from the chain definition by name. A venue that declares nothing on the
+ * contracts it names as spenders, each read from the chain definition by name. A call only a launch
+ * wallet makes is in a launch wallet's ceiling alone (decision 0271). A venue that declares nothing on the
  * chain adds nothing. A name the definition does not hold, or a call that is no JSON ABI entry,
  * is an expected failure, so a ceiling never allows less, or more, than the venues use. A call
  * or a spender on a contract each launch makes, such as a launchpad's curve, adds nothing: no
@@ -101,7 +110,8 @@ export function registryCeilingChain(
     }
     const contracts = venue.contracts.find((item) => item.chain === chain.ref);
     const declared = contracts === undefined ? undefined : { venue, contracts };
-    const venueCalls = declared === undefined ? ok([]) : callsOf(declared, request.definition);
+    const ceiling = { definition: request.definition, isLaunch: request.isLaunch === true };
+    const venueCalls = declared === undefined ? ok([]) : callsOf(declared, ceiling);
     const venueSpenders =
       declared === undefined ? ok([]) : spendersOf(declared, request.definition);
     if (!venueCalls.ok) {

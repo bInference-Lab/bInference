@@ -28,8 +28,8 @@ import type { EngineCall } from "./engine-call.js";
 /** What making a wallet reads, writes, journals and asks custody through. */
 export interface MakeWalletOptions extends RescueCeilingsOptions {
   readonly maker: WalletMaker;
-  /** The launch calls the install's launchpads declare, which a launch wallet's ceiling allows. */
-  readonly host: Pick<VenueHost, "launchCalls">;
+  /** The calls only a launch wallet makes on the install's launchpads, which its ceiling allows. */
+  readonly host: Pick<VenueHost, "launchWalletCalls">;
   readonly journal: ConfigJournal;
   readonly ids: IdSource;
 }
@@ -59,12 +59,13 @@ async function recipientsOf(
   return ok([...new Set([rescueAddress, ...waiting, ...saved])]);
 }
 
-// A launch wallet needs a launchpad that declares launch calls, and an agent holds one at most.
+// A launch wallet needs a launchpad that declares a call only a launch wallet makes, such as a
+// create call or a launch call (decision 0271), and an agent holds one at most.
 async function launchRefusal(
   options: MakeWalletOptions,
   call: EngineCall<"wallet/create">,
 ): Promise<ProtocolErrorCode | undefined> {
-  if (options.host.launchCalls().length === 0) {
+  if (options.host.launchWalletCalls().length === 0) {
     return "wallet.no_launch_calls";
   }
   const held = await launchWalletOf(options.install, call.args.agent, { signal: call.signal });
