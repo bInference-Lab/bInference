@@ -17,3 +17,11 @@ export interface SystemFacts {
 export function readSystemFacts(): SystemFacts {
   return { node: process.version, os: platform(), osRelease: release(), cpu: arch() };
 }
+
+/**
+ * Whether the OS keeps a running program's own files from removal: Windows does while a native
+ * module of the program is loaded, so such a program is removed after it exits.
+ */
+export function holdsRunningFiles(system: Pick<SystemFacts, "os">): boolean {
+  return system.os === "win32";
+}
