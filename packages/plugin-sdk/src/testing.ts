@@ -34,7 +34,11 @@ export type {
   TxDecoderHarness,
   TxDecoderSubject,
 } from "@binference/chain/testing";
-export { createManualClock, createScriptedHttp } from "@binference/core/testing";
+export {
+  createManualClock,
+  createScriptedHttp,
+  createSeededRandom,
+} from "@binference/core/testing";
 export type {
   ContractCheck,
   ManualClock,
