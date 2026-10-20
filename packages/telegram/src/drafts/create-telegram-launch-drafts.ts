@@ -43,12 +43,19 @@ interface SentDraft {
   readonly messageId: number;
 }
 
+// The drafts' messages the bot remembers, to turn each into how it ended: one per agent is open
+// at a time, so this many is far past what an install holds.
+const mostSent = 64;
+
 /** What the drafts work with once made. */
 interface Parts {
   readonly options: TelegramLaunchDraftsOptions;
   readonly bot: BotCalls;
   readonly formatter: () => ReturnType<ReturnType<typeof createOwnerFormatters>>;
-  /** Each open draft's message, by the draft's id; a restart forgets them, as it does drafts. */
+  /**
+   * Each open draft's message, by the draft's id, at most {@link mostSent}; a restart forgets
+   * them, as it does drafts.
+   */
   readonly sent: Map<string, SentDraft>;
 }
 
@@ -81,6 +88,11 @@ async function drafted(parts: Parts, draft: string, call: Call): Promise<void> {
     call.signal,
   );
   parts.sent.set(draft, { chatId: owner.userId, messageId });
+  // A Map keeps its keys in the order they came: past the most, the oldest message goes first,
+  // and keeps its buttons, which still reach the engine.
+  for (const oldest of [...parts.sent.keys()].slice(0, Math.max(0, parts.sent.size - mostSent))) {
+    parts.sent.delete(oldest);
+  }
 }
 
 type Closed = Extract<LaunchDraftPush, { readonly kind: "chat/launchDraftClosed" }>;
