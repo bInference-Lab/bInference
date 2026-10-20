@@ -44,14 +44,10 @@ interface LaunchRigWallet {
  * on Genius.fun with the main wallet init made and the launch wallet the owner key made with
  * `wallet/create`, and the owner's rescue address in effect.
  */
-export interface LaunchRig {
+export interface LaunchRig extends LaunchAgent {
   readonly engine: Engine;
   readonly stores: MemoryEngineStores;
   readonly positions: PositionStore;
-  readonly agent: Id<"agt">;
-  readonly main: LaunchRigWallet;
-  readonly launch: LaunchRigWallet;
-  readonly rescue: Address;
   /** Each step the signer refused, as it reported it. */
   readonly refusals: readonly SignerRefusalNotice[];
   /** Stops the signer process. */
@@ -143,7 +139,11 @@ async function setUpInstall(
 }
 
 // The agent's launch wallet, made as `binference wallet create --launch` makes it.
-async function createLaunchWallet(engine: Engine, custody: RigCustody, signal: AbortSignal) {
+async function createLaunchWallet(
+  engine: Pick<Engine, "handlers">,
+  custody: RigCustody,
+  signal: AbortSignal,
+) {
   const args = { agent, label: "curves", ownerKey: custody.ownerKey, launch: true } as const;
   const created = await engine.handlers["wallet/create"]({ args, caller: rigOwner, signal });
   if (!created.ok) {
@@ -165,6 +165,38 @@ async function fund(fork: Fork, wallets: readonly LaunchRigWallet[]): Promise<vo
     ),
     fork.call("anvil_setBalance", [rescue, "0x0"]),
   ]);
+}
+
+/** The rig's live agent with its main wallet, its launch wallet and the rescue address in effect. */
+interface LaunchAgent {
+  readonly agent: Id<"agt">;
+  readonly main: LaunchRigWallet;
+  readonly launch: LaunchRigWallet;
+  readonly rescue: Address;
+}
+
+/**
+ * Sets the rig's install up on an engine as init and `binference wallet create --launch` leave
+ * it: the live agent trading on the venues named, custody with the rescue address in effect, the
+ * main wallet and the launch wallet, each holding the rig's BNB on the fork.
+ */
+async function setUpLaunchAgent(
+  parts: {
+    readonly fork: Fork;
+    readonly stores: MemoryEngineStores;
+    readonly maker: WalletMaker;
+    readonly engine: Pick<Engine, "handlers">;
+    readonly custody: RigCustody;
+    readonly venues: readonly string[];
+  },
+  signal: AbortSignal,
+): Promise<LaunchAgent> {
+  const { fork, stores, maker, engine, custody, venues } = parts;
+  await storeAgent(stores, { fork, venues }, signal);
+  const main = await setUpInstall({ fork, stores, maker, venues }, custody, signal);
+  const launch = await createLaunchWallet(engine, custody, signal);
+  await fund(fork, [main, launch]);
+  return { agent, main, launch, rescue };
 }
 
 /** A launchpad the rig also launches tokens on, and the owner's pictures, by upload id. */
@@ -224,13 +256,11 @@ export async function launchRigOf(
   const engine = engineOf({ ...parts, ...launching }, maker);
   const ids = venues.map((venue) => venue.id);
   try {
-    await storeAgent(stores, { fork, venues: ids }, signal);
-    const main = await setUpInstall({ fork, stores, maker, venues: ids }, custody, signal);
-    const launch = await createLaunchWallet(engine, custody, signal);
-    await fund(fork, [main, launch]);
+    const install = { fork, stores, maker, engine, custody, venues: ids };
+    const agentSet = await setUpLaunchAgent(install, signal);
     const { refusals } = custody;
     const stop = async () => custody.signer.stop(AbortSignal.timeout(5_000));
-    return { engine, stores, positions, agent, main, launch, rescue, refusals, stop };
+    return { engine, stores, positions, ...agentSet, refusals, stop };
   } catch (error) {
     await custody.signer.stop(AbortSignal.abort());
     throw error;

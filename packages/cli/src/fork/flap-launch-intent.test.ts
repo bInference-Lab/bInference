@@ -1,18 +1,15 @@
-import { randomBytes } from "node:crypto";
 import { setTimeout as wait } from "node:timers/promises";
-import { createEvmTxSimulator, erc20AssetRef, evmAccountRef } from "@binference/chain-evm";
-import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
+import { bscContract, type Fork, withFork } from "@binference/chain-evm/fork";
 import { BinferenceError, type Id } from "@binference/core";
-import { createFlapVenue } from "@binference/flap";
 import { apiAnswer, type FlapApiFake, flapApiFake, pinAnswer } from "@binference/flap/testing";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import type { CardView, IntentView, LaunchTokenRequest } from "@binference/protocol";
 import { type Address, getAddress, parseAbi } from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bundle.js";
-import { createSystemRandom } from "../runtime/system-random.js";
 import { startMining } from "./executor-rig.js";
 import { flapSettingLinesZh, unboundFirstBuyZh } from "./flap-launch-card.zh.js";
+import { flapOn, freshCid, onePixelPng } from "./flap-launch-parts.js";
 import { type LaunchRig, launchRigOf, rigOwner } from "./launch-wallet-rig.js";
 import { heldOn } from "./rescue-rig.js";
 
@@ -23,14 +20,6 @@ import { heldOn } from "./rescue-rig.js";
 // under the ceiling binference builds for it. The token and its first buy land on the fork.
 const built: { bundle?: SignerBundle } = {};
 const firstBuy = 10n ** 16n;
-// The smallest PNG: its signature and a 1x1 image.
-const png = Uint8Array.from(
-  Buffer.from(
-    "89504e470d0a1a0a0000000d4948445200000001000000010806000000" +
-      "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082",
-    "hex",
-  ),
-);
 const portal = bscContract("flap", "portal");
 const portalAbi = parseAbi([
   "struct TokenStateV8Safe { uint8 status; uint256 reserve; uint256 circulatingSupply; uint256 price; uint8 tokenVersion; uint256 r; uint256 h; uint256 k; uint256 dexSupplyThresh; address quoteTokenAddress; bool nativeToQuoteSwapEnabled; bytes32 extensionID; uint256 buyTaxRate; uint256 sellTaxRate; address pool; uint256 progress; uint8 lpFeeTier; uint8 dexId; }",
@@ -44,35 +33,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await built.bundle?.remove();
 }, 60_000);
-
-// A raw CIDv1 no launch used: every Flap token's metadata is its own.
-function freshCid(): string {
-  const letters = "abcdefghijklmnopqrstuvwxyz234567";
-  return `bafkrei${[...randomBytes(52)].map((byte) => letters[byte % 32]).join("")}`;
-}
-
-// Flap on the fork, launching through a fake of Flap's API that reports the pin on its second read.
-function flapOn(fork: Fork, api: FlapApiFake) {
-  const { ref: chain, nativeAsset } = fork.chain;
-  const quoteTokens = [bscToken("USDT"), bscToken("USD1")].map((token) =>
-    erc20AssetRef(fork.chain, token),
-  );
-  const implementation = bscContract("flap", "tax-token-v3-implementation");
-  return createFlapVenue({
-    chains: [{ chain, nativeAsset, quoteTokens, rpc: fork.rpc }],
-    launches: {
-      http: api,
-      random: createSystemRandom(),
-      chains: [
-        {
-          chain,
-          simulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),
-          taxTokenImplementation: evmAccountRef(fork.chain, implementation),
-        },
-      ],
-    },
-  });
-}
 
 function call<Args>(args: Args, signal: AbortSignal) {
   return { args, caller: rigOwner, signal };
@@ -189,7 +149,7 @@ async function onFlapRig(signal: AbortSignal, test: (flap: FlapRig, fork: Fork) 
     const cid = freshCid();
     const pins = [pinAnswer("processing", cid), pinAnswer("pinned", cid)];
     const api = flapApiFake(pins, apiAnswer(200, { data: { create: cid } }));
-    const images = new Map([["upl_fork_cat", png]]);
+    const images = new Map([["upl_fork_cat", onePixelPng]]);
     const launcher = { venue: flapOn(fork, api), images };
     const rig = await launchRigOf(fork, { entry: built.bundle?.entry ?? "", launcher }, signal);
     const miner = new AbortController();
