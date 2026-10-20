@@ -67,28 +67,54 @@ const valueSchemas: { readonly [T in LaunchOptionType]: ValueSchemaOf } = {
       .refine((text) => accountOf(chain, text) !== undefined)
       .transform((text) => accountOf(chain, text) ?? text),
   link: () => z.string().refine(isPictureLink),
+  // Base units of the launch's pair, above 0, as a decimal string (decision 0280).
+  amount: () => z.string().regex(/^[1-9][0-9]{0,77}$/),
 };
 
 function valueSchema(option: LaunchOption, chain: RegisteredChain): z.ZodType<LaunchOptionValue> {
   return valueSchemas[option.type](option, chain);
 }
 
-// Each declared setting by name; one with a default takes it, parsed like a given value.
+// A declared setting's schema in a request: one with a default takes it, parsed like a given
+// value, and an optional one may be left out (decision 0280).
+function requestSchemaOf(option: LaunchOption, chain: RegisteredChain) {
+  const schema = valueSchema(option, chain);
+  if (option.default !== undefined) {
+    return schema.prefault(option.default);
+  }
+  return option.isOptional === true ? schema.optional() : schema;
+}
+
+// Each declared setting by name.
 function settingsSchema(options: readonly LaunchOption[], chain: RegisteredChain) {
   const shape = Object.fromEntries(
-    options.map((option) => {
-      const schema = valueSchema(option, chain);
-      return [option.name, option.default === undefined ? schema : schema.prefault(option.default)];
-    }),
+    options.map((option) => [option.name, requestSchemaOf(option, chain)]),
   );
   return z.strictObject(shape);
 }
 
 /**
+ * A value a launchpad worked out at its quote for one of its optional settings (decision 0280),
+ * checked as a request's value would be: an account in its canonical form. A value that does not
+ * fit its setting, or a setting that is not optional, is `undefined`.
+ */
+export function quotedSettingOf(
+  option: LaunchOption,
+  value: LaunchOptionValue,
+  chain: RegisteredChain,
+): LaunchSetting | undefined {
+  const parsed = valueSchema(option, chain).safeParse(value);
+  return option.isOptional === true && parsed.success
+    ? { name: option.name, type: option.type, value: parsed.data }
+    : undefined;
+}
+
+/**
  * A launch's launchpad settings from a request's `venueOptions` (decision 0235), checked by the
  * schema the launchpad's declaration makes: every setting it declares, in its order, with the
- * request's value or else its default. A name the launchpad does not declare, a value outside its
- * type or bounds, or a setting with no default the request leaves out is `bad_settings`.
+ * request's value or else its default, an optional one left out when the request leaves it out. A
+ * name the launchpad does not declare, a value outside its type or bounds, or a setting that is
+ * neither optional nor has a default the request leaves out is `bad_settings`.
  */
 export function launchSettingsOf(
   options: readonly LaunchOption[],
@@ -99,7 +125,7 @@ export function launchSettingsOf(
   if (!parsed.success) {
     return err("bad_settings");
   }
-  const values: Readonly<Record<string, LaunchOptionValue>> = parsed.data;
+  const values: Readonly<Record<string, LaunchOptionValue | undefined>> = parsed.data;
   return ok(
     options.flatMap((option) => {
       const value = values[option.name];

@@ -129,6 +129,11 @@ export interface Launching {
    * writes when it lies about it (decision 0279); it uploads and pins when absent.
    */
   readonly writesPicture?: { readonly mostBytes: number; readonly sha256?: string };
+  /**
+   * The launchpad declares an optional amount setting, `sellTaxBps` for its card line, whose value
+   * its quote works out as this when a launch leaves it out (decision 0280).
+   */
+  readonly quotesAmount?: string;
 }
 
 // The create call a test launchpad marks as a launch wallet's alone.
@@ -210,8 +215,12 @@ function uploadlessOf(launching: Launching, fakeOptions: FakeLauncherOptions): P
 // picture into its create call.
 function launchersOf(launching: Launching) {
   const isLink = launching.takesPictureLink === true;
+  const quoted = launching.quotesAmount;
+  const optional: readonly LaunchOption[] =
+    quoted === undefined ? [] : [{ name: "sellTaxBps", type: "amount", isOptional: true }];
   const fakeOptions = {
-    launchOptions: isLink ? [...settings, pictureLinkSetting] : settings,
+    launchOptions: [...settings, ...optional, ...(isLink ? [pictureLinkSetting] : [])],
+    ...(quoted === undefined ? {} : { quotesSettings: { sellTaxBps: quoted } }),
     ...(launching.pin === undefined ? {} : { pin: launching.pin }),
     ...(launching.noFirstBuyMin === true ? { noFirstBuyMin: true } : {}),
   };

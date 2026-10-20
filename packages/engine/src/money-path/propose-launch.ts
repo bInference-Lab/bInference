@@ -10,32 +10,18 @@ import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import { minOutFloor } from "../venues/build-checks.js";
 import type { LaunchUpload } from "../venues/launch-calls.js";
-import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
+import { advanceIntent } from "./advance-intent.js";
 import type { Proposer } from "./create-money-path.js";
 import { followLaunchPin } from "./follow-launch-pin.js";
 import { pinWaitOf, toldIfEnded } from "./launch-ending.js";
 import { launchSubjectOf } from "./launch-policy.js";
+import { type LaunchRun, quotedRunOf } from "./launch-run.js";
 import { type ReadPicture, readOwnPicture, uploadPicture } from "./launch-upload.js";
 import { liveIntentsIn } from "./live-intents.js";
 import { policyFactsOf } from "./policy-facts-of.js";
-import {
-  hostedLaunchOf,
-  type LaunchPathOptions,
-  type ResolvedLaunch,
-  resolveLaunch,
-} from "./resolve-launch.js";
+import { hostedLaunchOf, type LaunchPathOptions, resolveLaunch } from "./resolve-launch.js";
 import { nativeAssetOf } from "./resolve-proposal.js";
 import { startProposal, storeProposed } from "./store-proposed.js";
-
-/** One launch the money path runs: its ports, what moves its intent, and the resolved launch. */
-interface LaunchRun {
-  readonly options: LaunchPathOptions;
-  readonly parts: AdvanceParts;
-  readonly resolved: ResolvedLaunch;
-  /** The credential the owner proposed with, whose upload the picture must be. */
-  readonly credential: string | undefined;
-  readonly signal: AbortSignal;
-}
 
 /** The owner's launch proposal, and the credential the owner proposed with. */
 export interface LaunchProposal {
@@ -254,11 +240,9 @@ async function isCeilingLacking(run: LaunchRun): Promise<boolean> {
 
 // A paper launch is refused by the policy with nothing read; a live one is quoted first, so the
 // policy judges its fee too, and then runs from the launch wallet alone (decision 0234).
-async function runLaunch(run: LaunchRun, proposed: IntentSnapshot): Promise<IntentSnapshot> {
+async function runLaunch(given: LaunchRun, proposed: IntentSnapshot): Promise<IntentSnapshot> {
+  const { run, quote } = await quotedRunOf(given);
   const { resolved, options, signal } = run;
-  const quote = resolved.isPaper
-    ? undefined
-    : await options.launch.host.quote(hostedLaunchOf(resolved), { signal });
   const verdict = await policyVerdict(run, proposed.stored.status, quote);
   if (!verdict.ok) {
     const refused = { type: "policy_refused", reason: verdict.error } as const;

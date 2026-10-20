@@ -5,10 +5,19 @@ import { z } from "zod";
  * numbers within the option's bounds, `bps` a share of at most 10,000; `flag` is a yes or no;
  * `choice` one of the option's words; `account` an address on the launch's chain; `link` an
  * `ipfs://` or `https://` address the owner hosts, of at most 512 bytes and no control character,
- * which nothing in binference opens, fetches or reads (decision 0276). A `count` is never an amount
- * of money: an amount is base units in a `bigint`, which a setting cannot carry.
+ * which nothing in binference opens, fetches or reads (decision 0276); `amount` base units of the
+ * launch's pair above 0, as a decimal string, which a card shows as an amount of the pair
+ * (decision 0280). A `count` is never an amount of money: an amount is an `amount`.
  */
-export const launchOptionTypes = ["bps", "count", "flag", "choice", "account", "link"] as const;
+export const launchOptionTypes = [
+  "bps",
+  "count",
+  "flag",
+  "choice",
+  "account",
+  "link",
+  "amount",
+] as const;
 
 /** The type of a launch setting. */
 export type LaunchOptionType = (typeof launchOptionTypes)[number];
@@ -40,8 +49,17 @@ export interface LaunchOption {
   readonly min?: number;
   /** The most a `bps` or a `count` takes; 10,000 for a `bps` and no bound for a `count` when absent. */
   readonly max?: number;
-  /** The value when a request leaves the setting out; absent, every request must give it. */
+  /**
+   * The value when a request leaves the setting out; absent, every request must give it, unless
+   * the setting is optional.
+   */
   readonly default?: LaunchOptionValue;
+  /**
+   * A request may leave the setting out (decision 0280): the launchpad's quote then names its
+   * value (`LaunchQuote.settings`), which the card shows and the create call writes, or the
+   * launch runs without it. Given for a setting with no default alone.
+   */
+  readonly isOptional?: true;
   /**
    * An `account` that must be outside the install: the launchpad pays it only when that account
    * claims from the launchpad itself, which binference never does, so none of the install's own
@@ -73,9 +91,11 @@ function isShaped(option: LaunchOption): boolean {
   );
 }
 
-// The outside rule belongs to an account alone.
+// The outside rule belongs to an account alone, and an optional setting has no default.
 const isOutsideShaped = (option: LaunchOption): boolean =>
   option.isOutsideOnly !== true || option.type === "account";
+const isOptionalShaped = (option: LaunchOption): boolean =>
+  option.isOptional !== true || option.default === undefined;
 
 /**
  * Checks one launch setting a launchpad declares: a camelCase name of at most 32 characters, words
@@ -95,9 +115,11 @@ export const launchOptionSchema: z.ZodType<LaunchOption> = z
     max: z.int().nonnegative().exactOptional(),
     default: z.union([z.number(), z.boolean(), z.string()]).exactOptional(),
     isOutsideOnly: z.literal(true).exactOptional(),
+    isOptional: z.literal(true).exactOptional(),
   })
   .refine(isShaped, { message: "Bounds or choices do not fit the setting's type." })
-  .refine(isOutsideShaped, { message: "Only an account may be outside the install." });
+  .refine(isOutsideShaped, { message: "Only an account may be outside the install." })
+  .refine(isOptionalShaped, { message: "An optional setting has no default." });
 
 /** Checks a launchpad's settings: each as {@link launchOptionSchema} says, each name once. */
 export const launchOptionsSchema: z.ZodType<readonly LaunchOption[]> = z

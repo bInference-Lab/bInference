@@ -5,7 +5,7 @@ import {
   type AssetRef,
   type LaunchOptionValue,
 } from "@binference/chain";
-import { bpsSchema } from "@binference/core";
+import { bpsSchema, decimalStringSchema } from "@binference/core";
 import { type LaunchSetting, launchSettingKey } from "../venues/launch-settings.schema.js";
 import type { CardLine, CardValue } from "./card-line.js";
 
@@ -46,6 +46,8 @@ export interface LaunchLink {
 export interface LaunchDetails {
   /** The launchpad's name, as the action line names it. */
   readonly venue: string;
+  /** The asset the token launches against, which an `amount` setting is an amount of. */
+  readonly pair: AssetRef;
   /** The token the create call makes; absent before the launch is built. */
   readonly token?: AssetRef;
   /** The least of the token the first buy accepts; absent with no first buy or no quote. */
@@ -71,7 +73,7 @@ const wordOf = (value: LaunchOptionValue): string => (typeof value === "string" 
 
 // A setting's value as its type shows it: a share as a percent, a flag as yes or no.
 const settingValues: {
-  readonly [T in LaunchSetting["type"]]: (value: LaunchOptionValue) => CardValue;
+  readonly [T in LaunchSetting["type"]]: (value: LaunchOptionValue, pair: AssetRef) => CardValue;
 } = {
   bps: (value) => ({ type: "percent", bps: bpsSchema.parse(numberOf(value)) }),
   count: (value) => ({ type: "count", count: numberOf(value) }),
@@ -79,6 +81,10 @@ const settingValues: {
   choice: (value) => choice(wordOf(value)),
   account: (value) => text(accountRefParts(accountRefSchema.parse(wordOf(value))).address),
   link: (value) => text(wordOf(value)),
+  amount: (value, pair) => ({
+    type: "amount",
+    amount: { asset: pair, base: decimalStringSchema.parse(wordOf(value)) },
+  }),
 };
 
 // A link setting's line names its value `link`, which a card shows whole, up to 512 characters
@@ -162,7 +168,9 @@ export function launchDetailLines(details: LaunchDetails): readonly CardLine[] {
     ...optional(picture, pictureLine),
     ...details.settings.map((setting): CardLine => ({
       key: launchSettingKey(setting.name),
-      values: { [argumentOf(setting.type)]: settingValues[setting.type](setting.value) },
+      values: {
+        [argumentOf(setting.type)]: settingValues[setting.type](setting.value, details.pair),
+      },
     })),
     ...(picture !== undefined && "uri" in picture
       ? [{ key: "card.launch.pinned", values: { venue: text(details.venue) } } as const]

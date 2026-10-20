@@ -444,7 +444,11 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 - A `launchToken` answers once it waits in `quoted` for its launchpad's pin, or has passed it to
   its card, or ended; its card reaches the owner with `card/opened`. A `venue` that launches no
   token on the pair's chain fails with `quote.no_route`, and `venueOptions` its launchpad does not
-  declare, or values that do not fit them, with `protocol.bad_args`; neither stores anything. Its
+  declare, values that do not fit them, or settings the launchpad does not take together, with
+  `protocol.bad_args`; neither stores anything. A setting the launchpad declares optional may be
+  left out: the launchpad's quote may then work out its value, which the card shows like any
+  other, and an `amount` setting is base units of `pairWith` as a decimal string
+  ([decision 0280](../DECISIONS.md#d0280)). Its
   `image` is an upload id from `upload/start` ([decision 0234](../DECISIONS.md#d0234)). A
   launchpad with no API for pictures takes the picture as a `link` setting in `venueOptions`, an
   `ipfs://` or `https://` address of at most 512 bytes the owner hosts, which nothing opens. It

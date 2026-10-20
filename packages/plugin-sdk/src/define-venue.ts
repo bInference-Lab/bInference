@@ -173,12 +173,16 @@ function pinOf(launcher: Launcher): Pick<Launcher, "pin" | "pinStatus"> {
   return {};
 }
 
-// A launchpad that writes the picture into its create call keeps that limit, called on it.
-function pictureBytesOf(launcher: Launcher): Pick<Launcher, "pictureBytesFor"> {
-  const { pictureBytesFor } = launcher;
-  return pictureBytesFor === undefined
-    ? {}
-    : { pictureBytesFor: (words) => pictureBytesFor(words) };
+// A launchpad that writes the picture into its create call keeps that limit, and one that checks
+// its settings together keeps that check, each called on it.
+function pictureBytesOf(launcher: Launcher): Pick<Launcher, "pictureBytesFor" | "checkOptions"> {
+  const { pictureBytesFor, checkOptions } = launcher;
+  return {
+    ...(pictureBytesFor === undefined
+      ? {}
+      : { pictureBytesFor: (words) => pictureBytesFor(words) }),
+    ...(checkOptions === undefined ? {} : { checkOptions: (options) => checkOptions(options) }),
+  };
 }
 
 // A launchpad's settings are checked as it loads; its launcher's methods are called on it.

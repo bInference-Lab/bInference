@@ -1,7 +1,11 @@
 import { chainRefSchema, type LaunchOption } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { testChains } from "../operations/test-engine.js";
-import { launchSettingsOf, launchSettingsProblem } from "./launch-settings.schema.js";
+import {
+  launchSettingsOf,
+  launchSettingsProblem,
+  quotedSettingOf,
+} from "./launch-settings.schema.js";
 
 const chain = (() => {
   const found = testChains().get(chainRefSchema.parse("fake:1"));
@@ -16,6 +20,37 @@ const settings: readonly LaunchOption[] = [
   { name: "taxRecipient", type: "account" },
   { name: "buyback", type: "flag", default: false },
 ];
+
+const start: LaunchOption = { name: "startMarketCap", type: "amount", isOptional: true };
+
+describe("a launch's optional and amount settings", () => {
+  it("leaves out an optional setting the request leaves out, and takes one it gives", () => {
+    expect(launchSettingsOf([start], {}, chain)).toStrictEqual({ ok: true, value: [] });
+    expect(launchSettingsOf([start], { startMarketCap: "8000" }, chain)).toStrictEqual({
+      ok: true,
+      value: [{ name: "startMarketCap", type: "amount", value: "8000" }],
+    });
+  });
+
+  it.each([["0"], ["08"], ["1.5"], ["-1"], [8]])("refuses the amount %s", (value) => {
+    expect(launchSettingsOf([start], { startMarketCap: value }, chain)).toStrictEqual({
+      ok: false,
+      error: "bad_settings",
+    });
+  });
+
+  it("takes a quoted value of an optional setting only, fit to it", () => {
+    expect(quotedSettingOf(start, "5000", chain)).toStrictEqual({
+      name: "startMarketCap",
+      type: "amount",
+      value: "5000",
+    });
+    expect(quotedSettingOf(start, "0", chain)).toBeUndefined();
+    expect(quotedSettingOf({ name: "taxRecipient", type: "account" }, "0x0000000c", chain)).toBe(
+      undefined,
+    );
+  });
+});
 
 describe("a launch's launchpad settings", () => {
   it("fills each default, in the declared order, and writes an account canonically", () => {

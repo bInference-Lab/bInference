@@ -8,11 +8,13 @@ import {
   type LaunchPin,
   type LaunchPinRequest,
   launchPinSchema,
+  type LaunchOptionValue,
   type LaunchQuote,
   launchQuoteSchema,
   type LaunchTerms,
   type LaunchWords,
   type RegisteredChain,
+  type UsdPrice,
   writtenPictureSchema,
   writtenWordsOf,
 } from "@binference/chain";
@@ -28,7 +30,7 @@ import {
   type LaunchStep,
   readLaunchSteps,
 } from "./launch-checks.js";
-import type { LaunchSetting } from "./launch-settings.schema.js";
+import { type LaunchSetting, quotedSettingOf } from "./launch-settings.schema.js";
 import type { VenueFailure } from "./venue-host.js";
 
 /**
@@ -43,6 +45,8 @@ export interface HostedLaunch extends LaunchWords {
   readonly pair: AssetRef;
   readonly firstBuy?: Amount;
   readonly settings: readonly LaunchSetting[];
+  /** binference's USD price of the pair when the launch is quoted; absent when it has none. */
+  readonly pairUsdPrice?: UsdPrice;
 }
 
 /** The picture a launchpad uploads and pins for a launch, or writes into its create call. */
@@ -107,6 +111,25 @@ function isQuoteShaped(quote: LaunchQuote, context: LaunchContext): boolean {
   );
 }
 
+// The quote's values for optional settings the terms leave out, each fit to its declaration and
+// in its canonical form (decision 0280); `undefined` when one is not.
+function quotedSettingsOf(
+  quote: LaunchQuote,
+  context: LaunchContext,
+): Readonly<Record<string, LaunchOptionValue>> | undefined {
+  const named = Object.entries(quote.settings ?? {});
+  const fitted = named.flatMap(([name, value]: readonly [string, LaunchOptionValue]) => {
+    const option = context.launcher.launchOptions.find((item) => item.name === name);
+    const isLeftOut = context.terms.options[name] === undefined;
+    const setting =
+      option === undefined || !isLeftOut
+        ? undefined
+        : quotedSettingOf(option, value, context.chain);
+    return setting === undefined ? [] : [[setting.name, setting.value] as const];
+  });
+  return fitted.length === named.length ? Object.fromEntries(fitted) : undefined;
+}
+
 /** Asks a launch's launchpad for its quote, and checks its shape. */
 export async function quoteLaunch(
   context: LaunchContext,
@@ -121,7 +144,12 @@ export async function quoteLaunch(
   if (!quote.ok) {
     return quote;
   }
-  return isQuoteShaped(quote.value, context) ? ok(quote.value) : err("decode_mismatch");
+  const settings = quotedSettingsOf(quote.value, context);
+  if (!isQuoteShaped(quote.value, context) || settings === undefined) {
+    return err("decode_mismatch");
+  }
+  const { settings: _settings, ...rest } = quote.value;
+  return ok(Object.keys(settings).length === 0 ? rest : { ...rest, settings });
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   type ChainRegistry,
   fitsWordLimits,
   type Launcher,
+  type LaunchOption,
   launchOptionsSchema,
   type LaunchPin,
   type LaunchQuote,
@@ -44,8 +45,9 @@ import type { VenueFailure } from "./venue-host.js";
 export interface LaunchHost {
   /**
    * The launchpad's settings for a request: each it declares, with the request's value or its
-   * default. A venue that launches no token on the chain is `no_launchpad`; a request's settings
-   * that do not fit are `bad_settings`.
+   * default, an optional one the request leaves out absent. A venue that launches no token on the
+   * chain is `no_launchpad`; a request's settings that do not fit, or that the launchpad does not
+   * take together (decision 0280), are `bad_settings`.
    */
   settingsOf(
     venue: string,
@@ -57,16 +59,20 @@ export interface LaunchHost {
    * takes, when it writes them on chain; a launchpad the host does not hold takes none.
    */
   fitsWords(venue: string, launch: WordsOfLaunch): boolean;
+  /** The settings the launchpad declares; none for a venue the host does not hold. */
+  launchOptions(venue: string): readonly LaunchOption[];
   /**
    * The names of the launchpad's `account` settings that must be outside the install, which none
    * of its own wallets may be (decision 0277); none for a venue the host does not hold.
    */
   outsideOnlySettings(venue: string): readonly string[];
   /**
-   * The launch fee and the first buy's output, read from the launchpad's contracts. A pair it does
-   * not launch against is `no_route`; a launchpad that throws, times out or answers outside its
-   * types is `venue_down`; a fee in another asset than the chain's coin, or a first buy's output
-   * that the terms do not ask for or that is nothing, is `decode_mismatch`.
+   * The launch fee and the first buy's output, read from the launchpad's contracts, and the values
+   * it worked out for optional settings the launch leaves out, each in its canonical form. A pair
+   * it does not launch against is `no_route`; a launchpad that throws, times out or answers
+   * outside its types is `venue_down`; a fee in another asset than the chain's coin, a first buy's
+   * output that the terms do not ask for or that is nothing, or a value for a setting that is not
+   * an optional one the launch left out, or that does not fit it, is `decode_mismatch`.
    */
   quote(
     launch: HostedLaunch,
@@ -283,10 +289,28 @@ function settingsOn(
   if (item === undefined || !chain.ok || !item.hosted.contracts.has(chainRef)) {
     return err("no_launchpad");
   }
-  return launchSettingsOf(item.launcher.launchOptions, given, chain.value);
+  const settings = launchSettingsOf(item.launcher.launchOptions, given, chain.value);
+  return settings.ok && !goTogether(item.launcher, settings.value) ? err("bad_settings") : settings;
+}
+
+// Whether the launchpad takes the settings together (decision 0280); launchpad code that throws or
+// answers anything but a yes refuses them.
+function goTogether(launcher: Launcher, settings: readonly LaunchSetting[]): boolean {
+  if (launcher.checkOptions === undefined) {
+    return true;
+  }
+  const options = Object.freeze(
+    Object.fromEntries(settings.map((setting) => [setting.name, setting.value])),
+  );
+  try {
+    return goTogetherSchema.safeParse(launcher.checkOptions(options)).success;
+  } catch {
+    return false;
+  }
 }
 
 const pictureBytesSchema = z.int().positive();
+const goTogetherSchema = z.literal(true);
 
 // Launchpad code may throw or answer outside its type: no picture fits then.
 function pictureBytesOn(parts: LaunchParts, venue: string, words: LaunchWords): number | undefined {
@@ -326,6 +350,7 @@ export function createLaunchHost(options: LaunchHostOptions): LaunchHost {
       const limits = launcher?.wordLimits;
       return launcher !== undefined && (limits === undefined || fitsWordLimits(limits, launch));
     },
+    launchOptions: (venue) => parts.launchers.get(venue)?.launcher.launchOptions ?? [],
     outsideOnlySettings: (venue) =>
       (parts.launchers.get(venue)?.launcher.launchOptions ?? [])
         .filter((option) => option.isOutsideOnly === true)

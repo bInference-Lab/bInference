@@ -52,6 +52,7 @@ function detailsOf(request: LaunchTokenRequest, quote: TokenLaunchQuote): Launch
   const { description } = request;
   return {
     venue: request.venue,
+    pair: request.pairWith,
     token,
     ...(firstBuy === undefined ? {} : { firstBuyMinOut: { asset: token, base: firstBuy.minOut } }),
     fee: quote.fee,

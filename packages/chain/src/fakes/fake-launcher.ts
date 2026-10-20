@@ -67,6 +67,11 @@ export interface FakeLauncherOptions {
    * launchpad that lies would; a fake that writes the picture into its create call only.
    */
   readonly writesPictureSha256?: string;
+  /**
+   * Values its quote works out for optional settings a launch leaves out (decision 0280), each
+   * named only when the terms leave it out; none when absent.
+   */
+  readonly quotesSettings?: Readonly<Record<string, LaunchOptionValue>>;
 }
 
 /** A fake launcher, which tells a test what it uploaded and how often its pins were read. */
@@ -352,7 +357,11 @@ export function createFakeLinkLauncher(options: FakeLauncherOptions = {}): Launc
       }
       const out =
         terms.firstBuy === undefined ? {} : { firstBuyOut: terms.firstBuy.base * tokensPerUnit };
-      return await Promise.resolve(ok({ fee, tokenDecimals: 18, ...out }));
+      const quoted = Object.entries(options.quotesSettings ?? {}).filter(
+        ([name]: readonly [string, LaunchOptionValue]) => terms.options[name] === undefined,
+      );
+      const settings = quoted.length === 0 ? {} : { settings: Object.fromEntries(quoted) };
+      return await Promise.resolve(ok({ fee, tokenDecimals: 18, ...out, ...settings }));
     },
     async buildLaunch(request, { signal }) {
       signal.throwIfAborted();

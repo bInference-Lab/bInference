@@ -123,6 +123,92 @@ describe("a launchpad that uploads nothing", () => {
   });
 });
 
+// A host over a launchpad that checks its settings together as `checkOptions` does.
+const taking = (checkOptions: NonNullable<Launcher["checkOptions"]>) =>
+  hostOf({ ...createFakeLauncher({ launchOptions: settings }), checkOptions });
+
+describe("a launchpad's optional settings and its own check of them", () => {
+  // An optional amount, under a name whose card line every language has.
+  const start: LaunchOption = { name: "sellTaxBps", type: "amount", isOptional: true };
+  const optional: readonly LaunchOption[] = [...settings, start];
+  const given = { taxRecipient: "0x0000000c" };
+
+  it("refuses settings the launchpad does not take together, or whose check throws", () => {
+    expect(taking(() => true).settingsOf(pad, chain, given)).toMatchObject({ ok: true });
+    expect(taking(() => false).settingsOf(pad, chain, given)).toStrictEqual({
+      ok: false,
+      error: "bad_settings",
+    });
+    const broken = taking(() => {
+      throw new Error("broken");
+    });
+    expect(broken.settingsOf(pad, chain, given)).toStrictEqual({
+      ok: false,
+      error: "bad_settings",
+    });
+  });
+
+  it("keeps the values a quote works out for optional settings the launch leaves out", async () => {
+    const host = fake({ launchOptions: optional, quotesSettings: { sellTaxBps: "8000" } });
+    await expect(host.quote(launch, live)).resolves.toMatchObject({
+      ok: true,
+      value: { settings: { sellTaxBps: "8000" } },
+    });
+    expect(host.launchOptions(pad)).toHaveLength(4);
+    expect(host.launchOptions("other-pad")).toStrictEqual([]);
+  });
+
+  it.each<[string, FakeLauncherOptions]>([
+    [
+      "a setting that is not optional",
+      { launchOptions: optional, quotesSettings: { buyback: true } },
+    ],
+    ["a setting it does not declare", { launchOptions: optional, quotesSettings: { mystery: 1 } }],
+    ["a value that does not fit", { launchOptions: optional, quotesSettings: { sellTaxBps: "0" } }],
+  ])("refuses a quote that names %s", async (_case, options) => {
+    await expect(fake(options).quote(launch, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+    });
+  });
+
+  it("refuses a quote that names a value for an optional setting the launch gives", async () => {
+    const host = fake({ launchOptions: optional, quotesSettings: { sellTaxBps: "8000" } });
+    const giving: HostedLaunch = {
+      ...launch,
+      settings: [{ name: "sellTaxBps", type: "amount", value: "100" }],
+    };
+    const lying = hostOf({
+      ...createFakeLauncher({ launchOptions: optional }),
+      quoteLaunch: async () =>
+        Promise.resolve({
+          ok: true,
+          value: { fee, firstBuyOut: 1n, tokenDecimals: 18, settings: { sellTaxBps: "8" } },
+        }),
+    });
+    await expect(host.quote(giving, live)).resolves.toMatchObject({ ok: true });
+    await expect(lying.quote(giving, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+    });
+  });
+
+  it("gives the launchpad binference's USD price of the pair with the terms", async () => {
+    const seen: unknown[] = [];
+    const launcher = createFakeLauncher();
+    const host = hostOf({
+      ...launcher,
+      quoteLaunch: async (terms, call) => {
+        seen.push(terms.pairUsdPrice);
+        return launcher.quoteLaunch(terms, call);
+      },
+    });
+    const price = { numerator: 600n, denominator: 10n ** 12n };
+    await host.quote({ ...launch, pairUsdPrice: price }, live);
+    expect(seen).toStrictEqual([price]);
+  });
+});
+
 describe("a launchpad that writes the picture into its create call", () => {
   const words = { description: "A cat" };
 

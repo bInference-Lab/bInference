@@ -3,6 +3,7 @@ import {
   accountRefSchema,
   assetRefParts,
   type ChainRegistry,
+  type PriceSource,
   type RegisteredChain,
   type Signer,
   type TxSimulator,
@@ -49,6 +50,8 @@ export interface LaunchPathOptions {
   readonly custody: Pick<Signer, "account">;
   readonly chains: ChainRegistry;
   readonly policy: PolicyCheck;
+  /** The USD prices a launch's pair is quoted with, for a launchpad that works from it. */
+  readonly prices: Pick<PriceSource, "usdPrice">;
   /** The install's wallets, which name the agent's launch wallet; without them it has none. */
   readonly install?: Pick<InstallStore, "read">;
   /** Whether the engine is locked; a launch's card says so while it is. */

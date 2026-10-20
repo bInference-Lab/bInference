@@ -3,6 +3,7 @@ import { z } from "zod";
 import { type Amount, type AmountWire, amountSchema } from "../amount.js";
 import { type AccountRef, accountRefSchema } from "../caip/account-ref.js";
 import { type AssetRef, assetRefSchema } from "../caip/asset-ref.js";
+import type { UsdPrice } from "../ports.js";
 import type { TxDraft } from "../transaction.js";
 import { type LaunchOptionValue, launchOptionValuesSchema } from "./launch-option.js";
 import { type LaunchWords, type WrittenWords, writtenWordsSchema } from "./launch-words.js";
@@ -21,9 +22,14 @@ export interface LaunchTerms {
   readonly pair: AssetRef;
   /** What the first buy spends, in `pair`; absent for a launch with no first buy. */
   readonly firstBuy?: Amount;
-  /** Each setting the launchpad declares, by name, its default filled in. */
+  /** Each setting the launchpad declares, by name, its default filled in; an optional one left out may be absent. */
   readonly options: Readonly<Record<string, LaunchOptionValue>>;
   readonly contracts: Readonly<Record<string, AccountRef>>;
+  /**
+   * binference's USD price of the pair when the launch is quoted (decision 0280), for a launchpad
+   * that works out a setting from it, such as a starting price; absent when it has none.
+   */
+  readonly pairUsdPrice?: UsdPrice;
 }
 
 /**
@@ -40,6 +46,12 @@ export interface LaunchQuote {
   readonly firstBuyOut?: bigint;
   /** The new token's decimals, which its amounts are written in. */
   readonly tokenDecimals: number;
+  /**
+   * The values the launchpad worked out for optional settings the terms leave out (decision
+   * 0280), such as a starting price: the card shows them, and the create call must write them.
+   * Each names an optional setting the launchpad declares; left out, none.
+   */
+  readonly settings?: Readonly<Record<string, LaunchOptionValue>>;
 }
 
 /** The owner's picture of a launch: its type (`image/png`, `image/jpeg` or `image/webp`) and its bytes. */
@@ -153,6 +165,7 @@ export interface LaunchQuoteWire {
   readonly fee: AmountWire;
   readonly firstBuyOut?: string;
   readonly tokenDecimals: number;
+  readonly settings?: Readonly<Record<string, LaunchOptionValue>>;
 }
 
 /** Decodes a launch quote from JSON, and encodes it back with `z.encode`. */
@@ -160,6 +173,7 @@ export const launchQuoteSchema: z.ZodType<LaunchQuote, LaunchQuoteWire> = z.stri
   fee: amountSchema,
   firstBuyOut: decimalStringSchema.exactOptional(),
   tokenDecimals: z.int().min(0).max(36),
+  settings: launchOptionValuesSchema.exactOptional(),
 });
 
 // A pin's handle is stored in the launch's quote and hashed with its terms, so it stays small.

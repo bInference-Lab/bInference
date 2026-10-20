@@ -14,6 +14,7 @@ describe("a launchpad's settings", () => {
     ],
     ["a picture link", { name: "pictureLink", type: "link" }],
     ["a flag", { name: "buyback", type: "flag", default: false }],
+    ["an optional amount", { name: "startMarketCap", type: "amount", isOptional: true }],
   ])("takes %s", (_case, option) => {
     expect(launchOptionSchema.safeParse(option).success).toBe(true);
   });
@@ -27,6 +28,7 @@ describe("a launchpad's settings", () => {
     ["words on a share", { ...tax, choices: ["low"] }],
     ["a word twice", { name: "feeTier", type: "choice", choices: ["low", "low"] }],
     ["the outside rule on a share", { ...tax, isOutsideOnly: true }],
+    ["an optional setting with a default", { ...tax, isOptional: true }],
   ])("refuses %s", (_case, option) => {
     expect(launchOptionSchema.safeParse(option).success).toBe(false);
   });

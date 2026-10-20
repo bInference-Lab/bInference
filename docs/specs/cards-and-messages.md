@@ -175,6 +175,10 @@ A launch whose launchpad declares that its create call's first buy carries no mi
 show ([decision 0270](../adr/0270-a-launch-s-first-buy-may-carry-no-minimum-when-it-runs-inside-the-create-call.md)):
 the simulation before the card held the first buy to the least the card shows.
 
+An `amount` setting's `{value}` is an amount of the launch's pair, and an optional setting its
+launchpad worked out at its quote shows like one the owner gave
+([decision 0280](../DECISIONS.md#d0280)).
+
 `{digest}` is the first 16 hex digits of the picture's SHA-256; the terms hash binds all of it.
 A launchpad that writes the picture into its create call shows `card.launch.writtenPicture` in
 place of `card.launch.picture`, and no `card.launch.pinned`: nothing is public before the

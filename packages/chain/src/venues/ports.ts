@@ -5,7 +5,7 @@ import type { BuildRequest } from "./build-request.js";
 import type { CurveHolding, CurveRequest } from "./curve-holding.js";
 import type { DecodedEffect } from "./decoded-effect.js";
 import type { LaunchesFound, LaunchLogsRequest } from "./launch-logs.js";
-import type { LaunchOption } from "./launch-option.js";
+import type { LaunchOption, LaunchOptionValue } from "./launch-option.js";
 import type {
   DecodedLaunch,
   LaunchBuild,
@@ -146,6 +146,13 @@ export interface Launcher {
    * out, the launchpad writes no picture into its create call.
    */
   readonly pictureBytesFor?: (words: LaunchWords) => number;
+  /**
+   * Whether a launch's settings go together as the launchpad takes them (decision 0280), such as
+   * a fee recipient only while holder rewards are off: each is already checked against its
+   * declaration. A launch whose settings do not is refused before anything is stored. Left out,
+   * any settings that pass their declarations go together.
+   */
+  readonly checkOptions?: (options: Readonly<Record<string, LaunchOptionValue>>) => boolean;
   /**
    * The launch fee and the first buy's output, read from the launchpad's contracts at the latest
    * block, nothing uploaded. A pair the launchpad does not launch against is `no_route`; a
