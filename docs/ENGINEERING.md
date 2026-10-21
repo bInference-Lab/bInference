@@ -693,7 +693,8 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   Enforcer: `vitest.replay.config.ts`, the replay exclusion in `vitest.fork.config.ts`, and
   `prepareDayReplay` in `chain-evm`.
 - **Rule:** crash tests live in a package's `src/crash/` and run in the crash suite
-  (`pnpm test:crash`, nightly in CI on Linux, macOS and Windows, 100 runs on each), never in
+  (`pnpm test:crash`, nightly in CI on Linux, macOS and Windows, 20 runs at each kill point on
+  each, in four parts per OS, [decision 0290](adr/0290-the-nightly-crash-suite-runs-in-four-parts-on-each-os.md)), never in
   `pnpm check`. Each run kills an engine process outright at a kill point (`SIGKILL`, or
   `TerminateProcess` on Windows), starts it again on the same state folder, and counts what
   reached the chain at the test's relays and in anvil, never what the engine reports. anvil runs a

@@ -1,9 +1,10 @@
 name: Crash suite
 
 # The crash suite on Linux, macOS and Windows, every night and on demand: each run kills an engine
-# process at a point between signing and receipt, SIGKILL or TerminateProcess, starts it again and
-# counts what reached the chain. It runs against anvil on a chain of its own, so the job reaches
-# no network beyond its installs and holds no key.
+# process at a point of a swap, a live order fill or a token launch, SIGKILL or TerminateProcess,
+# starts it again and counts what reached the chain. It runs against anvil on a chain of its own,
+# so the job reaches no network beyond its installs and holds no key. The kill points run in four
+# parts on each OS (decision 0290), so 20 runs at each fit a job's time.
 on:
   schedule:
     - cron: "23 4 * * *"
@@ -27,12 +28,30 @@ env:
 
 jobs:
   crash:
-    name: Crash suite (${{ matrix.os }})
+    name: Crash suite (${{ matrix.os }}, ${{ matrix.part.name }})
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    # The longest part, the live fills, takes about 42 minutes at 20 runs a point on a laptop.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        # Each part's files, and the kill points among them it runs.
+        part:
+          - name: swaps and chat launches
+            files: >-
+              packages/cli/src/crash/crash-suite.test.ts packages/cli/src/crash/crash-http.test.ts
+              packages/cli/src/crash/crash-launch-chat.test.ts
+            points: ""
+          - name: live fills
+            files: packages/cli/src/crash/crash-fills.test.ts
+            points: ""
+          - name: coin launches
+            files: packages/cli/src/crash/crash-launch.test.ts
+            points: against the coin
+          - name: token pair launches
+            files: packages/cli/src/crash/crash-launch.test.ts
+            points: against the usdt
         # Foundry's release archive for each runner, checked against its published digest.
         include:
           - os: ubuntu-latest
@@ -98,9 +117,19 @@ jobs:
           & (Join-Path $tools "anvil.exe") --version
           Add-Content -Path $env:GITHUB_PATH -Value $tools
 
-      # 20 runs at each of the five kill points: 100 runs on each OS. Vitest writes the results to
-      # the job summary.
+      # 20 runs at each kill point of the part on each OS. Vitest writes the results to the job
+      # summary.
       - name: Crash suite
+        shell: bash
         env:
           BINFERENCE_CRASH_RUNS: ${{ inputs.runs || '20' }}
-        run: pnpm test:crash
+          CRASH_FILES: ${{ matrix.part.files }}
+          CRASH_POINTS: ${{ matrix.part.points }}
+        run: |
+          set -euo pipefail
+          read -r -a files <<< "$CRASH_FILES"
+          if [ -n "$CRASH_POINTS" ]; then
+            pnpm test:crash "${files[@]}" -t "$CRASH_POINTS"
+          else
+            pnpm test:crash "${files[@]}"
+          fi
