@@ -226,6 +226,15 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     key: "notice.launchStopped",
     values: { symbol: "MCAT", venue: "pad", reason: "pin_timeout", private: "no" },
   },
+  "notice.launchNotSigned": {
+    key: "notice.launchNotSigned",
+    values: { symbol: "MCAT", venue: "pad", private: "no" },
+  },
+  "notice.launchStepUnsent": {
+    key: "notice.launchStepUnsent",
+    values: { symbol: "MCAT", venue: "pad", private: "no" },
+    amounts: { approved: coinAmount(6_000n) },
+  },
   "notice.stepUnsent": { key: "notice.stepUnsent", values: {} },
   "notice.stepDropped": { key: "notice.stepDropped", values: {} },
   "notice.stepDroppedPartWay": { key: "notice.stepDroppedPartWay", values: {} },

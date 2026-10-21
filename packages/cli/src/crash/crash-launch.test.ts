@@ -256,7 +256,7 @@ const unsigned = {
   sent: 0,
   isResent: false,
   isTappedAfter: false,
-  notices: ["notice.notSigned"],
+  notices: ["notice.launchNotSigned"],
 } as const;
 // A token pair's launch stopped between its approval and its create call: recovery follows the
 // approval to its block, never signs the create call, and ends the launch `step_unsent`.
@@ -267,7 +267,7 @@ const approvalOnly = {
   sent: 1,
   signatures: { beforeKill: 1, afterRestart: 0 },
   isTappedAfter: false,
-  notices: ["notice.stepUnsent"],
+  notices: ["notice.launchStepUnsent"],
 } as const;
 // A token pair's launch whose create call was signed after its approval landed.
 const createFollowed = {

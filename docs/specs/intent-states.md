@@ -584,7 +584,10 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 | `failed_onchain`, `unknown_after_send`            | ✓            | `intent/changed` | Always                                                                     |
 
 A move to `cancelled` on a step never signed has no card to close; the owner gets
-`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)). A move from `confirmed` to
+`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)). A token launch gets words of
+its own: `notice.launchNotSigned` in place of `notice.notSigned`, and `notice.launchStepUnsent`,
+which names the exact approval that still stands, in place of `notice.stepUnsent`
+([decision 0289](../DECISIONS.md#d0289)). A move from `confirmed` to
 `expired` at recovery has none either; the owner gets `notice.confirmationLapsed`
 ([decision 0120](../DECISIONS.md#d0120)). A dropped step's notice is
 `notice.stepDropped`, or `notice.stepDroppedPartWay` once an earlier step landed

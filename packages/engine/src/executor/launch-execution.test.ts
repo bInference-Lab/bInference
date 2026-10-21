@@ -14,6 +14,7 @@ import {
   type FakeLauncher,
   type FakeSent,
 } from "@binference/chain/testing";
+import { err } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createMemoryLaunchImages } from "../fakes/memory-launch-images.js";
@@ -34,10 +35,12 @@ import {
   testPad,
 } from "../money-path/test-launches.js";
 import { testCallers, testChains } from "../operations/test-engine.js";
+import type { TransactionStore } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
+  type BenchOptions,
   driveUntil,
   type ExecutorBench,
   hashOf,
@@ -118,6 +121,7 @@ async function benchOf(
   pad: {
     readonly noFirstBuyMin?: boolean;
     readonly transfers?: (sent: FakeSent) => readonly AssetTransfer[];
+    readonly transactions?: BenchOptions["transactions"];
   } = {},
 ): Promise<ExecutorBench> {
   const { venues, launcher } =
@@ -143,6 +147,7 @@ async function benchOf(
       ),
     },
     launch: { venues, chains, wallets, curves: curvesOf(venues) },
+    ...(pad.transactions === undefined ? {} : { transactions: pad.transactions }),
   });
   const record = {
     id: testLaunchWallet,
@@ -153,6 +158,12 @@ async function benchOf(
   bench.test.stores.install.addWallet(testWalletRecord({ ...record, role: "launch" }));
   return bench;
 }
+
+// A store that finds the nonce taken, which stops a step before it is signed.
+const nonceTaken = (store: TransactionStore): TransactionStore => ({
+  ...store,
+  saveSigned: async () => Promise.resolve(err("nonce_taken")),
+});
 
 // What the transactions paid for gas, from their receipts.
 function gasPaid(stored: readonly TransactionRecord[]): bigint {
@@ -284,5 +295,21 @@ describe("a token launch in the wallet queue", () => {
     expect(held.map(({ asset, quantityBase }) => [asset, quantityBase])).toStrictEqual([
       [testCoin, 10n ** 18n - 2_000n - gas],
     ]);
+  });
+
+  it("tells the owner in a launch's own words when it ends before its create call is signed", async () => {
+    const bench = await benchOf({ transactions: nonceTaken });
+    const intent = await tapped(bench, launch);
+    await expect(driveUntil(bench, intent, { states: ["cancelled"] })).resolves.toBe("cancelled");
+    const notices = bench.pushes.filter(({ kind }) => kind === "notice/new");
+    expect(notices.map(({ data }) => data)).toStrictEqual([
+      {
+        key: "notice.launchNotSigned",
+        agent: testAgent,
+        intent,
+        values: { symbol: launch.symbol, venue: testPad, private: "no" },
+      },
+    ]);
+    expect(bench.network.sends()).toBe(0);
   });
 });

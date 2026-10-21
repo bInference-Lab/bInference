@@ -79,6 +79,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.launchUnsent": `${warning} 一笔在发射项目联合曲线上的交易未发送：发射台已不在该联合曲线上持有此代币，例如代币已毕业。未签名任何内容。`,
   "notice.launchStopped": `${warning} MCAT 在 pad 的发射已停止：发射台未在 5 分钟内固定其图片和文字。未签名任何内容，但其图片和文字可能已在发射台公开。如仍需要，请重新发起发射。`,
   "notice.stepUnsent": `${warning} 一笔交易中途停止：前面的步骤已上链，但后面的步骤从未签名。请检查钱包。`,
+  "notice.launchNotSigned": `${warning} MCAT 在 pad 的发射在你确认后停止：binference 在签名发射之前停止了，停止后也不会再签名。没有创建代币，也没有发送任何交易。其图片和文字可能已在发射台公开。如仍需要，请重新发起发射。`,
+  "notice.launchStepUnsent": `${warning} MCAT 在 pad 的发射中途停止：其授权已上链，但 binference 在签名创建调用之前停止了，停止后也不会再签名。没有创建代币。在新的发射重新设置该授权之前，发射台仍可从发射钱包动用 6 FAKE。其图片和文字可能已在发射台公开。如仍需要，请重新发起发射。`,
   "notice.stepDropped": `${warning} 一笔交易长时间未上链，没有完成。没有任何资产变动，钱包已可再次使用。`,
   "notice.stepDroppedPartWay": `${warning} 一笔交易中途停止：前面的步骤已上链，但后面的步骤长时间未上链，没有完成。钱包已可再次使用。请检查钱包。`,
   "notice.droppedLanded": `${red} 一笔 binference 报告为长时间未上链的交易最终还是上链了。binference 已把它计入你的限额和持仓。请检查钱包。`,
