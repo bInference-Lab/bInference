@@ -1,6 +1,8 @@
 # 0287. The crash suite launches Flap tokens on stand-ins of the bare chain
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the tech lead on 2026-10-21.
 
 ## Context
 
