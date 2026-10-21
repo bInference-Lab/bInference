@@ -31,6 +31,8 @@ export interface NewIntent {
    * proposal; absent when it names none.
    */
   readonly assets?: AssetInfos;
+  /** The launch draft whose Start proposed it (decision 0288); absent for any other intent. */
+  readonly draftRef?: string;
 }
 
 function requestOf(
@@ -76,6 +78,7 @@ export function draftOf(intent: NewIntent, ids: IdSource): IntentDraft {
       ? {}
       : { authorizedBy: authorizationDocument.encode(status.authorizedBy) }),
     ...(intent.assets === undefined ? {} : { assets: assetsDocument.encode(intent.assets) }),
+    ...(intent.draftRef === undefined ? {} : { draftRef: intent.draftRef }),
     atMs: event.atMs,
     cause,
     ...(event.hasLedgerEntry ? { ledger } : {}),

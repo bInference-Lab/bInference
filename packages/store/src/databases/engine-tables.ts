@@ -153,6 +153,8 @@ export interface IntentsTable {
   outside_content: number;
   paper: number;
   proposer: string;
+  /** The launch draft whose Start proposed it, unique where set (migration 0049). */
+  draft_ref: string | null;
   created_at: number;
   changed_at: number;
   version: number;

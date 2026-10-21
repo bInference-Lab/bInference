@@ -36,6 +36,8 @@ export interface LaunchProposal {
   readonly proposer: Proposer;
   /** Absent, no upload is the proposer's and the launch reads no picture. */
   readonly credential: string | undefined;
+  /** The launch draft whose Start proposed it, which the stored launch keeps (decision 0288). */
+  readonly draftRef?: string;
 }
 
 async function failQuote(
@@ -350,7 +352,8 @@ export async function proposeLaunch(
   if (!resolved.ok) {
     return resolved;
   }
-  const intent = { request, proposer, step, wallet: resolved.value.wallet, assets: {} };
+  const draft = call.draftRef === undefined ? {} : { draftRef: call.draftRef };
+  const intent = { request, proposer, step, wallet: resolved.value.wallet, assets: {}, ...draft };
   const created = await storeProposed(options, intent, signal);
   const parts = { stored: options.stored, machine, signal };
   const run = { options, parts, resolved: resolved.value, credential, signal };

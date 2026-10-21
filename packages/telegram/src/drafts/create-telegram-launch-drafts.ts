@@ -161,21 +161,41 @@ async function show(
 
 // The press's notice: at most 200 characters, as Telegram's answer to a press holds.
 function noticeOf(parts: Parts, standing: LaunchDraftStanding): string {
+  if (standing.status === "launched") {
+    const status = standing.endedBeforeCard === undefined ? "launched" : "ended";
+    return wordsOf(parts)(`telegram.draft.answer.${status}`);
+  }
   const status = standing.status === "unknown" ? "gone" : standing.status;
   return wordsOf(parts)(`telegram.draft.answer.${status}`);
 }
 
-// The pressed message loses its buttons and says where the draft went: starting, once the engine
-// took a Start, until the draft's closing push says how it went; or gone, for a draft the engine
-// no longer holds after a restart or past the messages the bot remembers.
+// The line a pressed draft's message becomes: starting, once the engine took a Start, until the
+// draft's closing push says how it went; where the launch a forgotten draft started stands
+// (decision 0288); or gone, for a draft the engine no longer holds and that started nothing.
+// Dropped and expired drafts say so through their closing push.
+function pressedLine(parts: Parts, standing: LaunchDraftStanding): string | undefined {
+  const words = wordsOf(parts);
+  if (standing.status === "launched") {
+    const reason = standing.endedBeforeCard;
+    return reason === undefined
+      ? words("telegram.draft.launched")
+      : words("telegram.draft.ended", { reason: words(`reason.${reason}`) });
+  }
+  if (standing.status === "starting") {
+    return words("telegram.draft.starting");
+  }
+  return standing.status === "unknown" ? words("telegram.draft.gone") : undefined;
+}
+
+// The pressed message loses its buttons and says where the draft went.
 async function settlePressed(
   parts: Parts,
-  settled: { readonly pressed: ButtonPress; readonly status: "starting" | "gone" },
+  settled: { readonly pressed: ButtonPress; readonly standing: LaunchDraftStanding },
   call: Call,
 ): Promise<void> {
   const { chatId, messageId } = settled.pressed;
-  if (chatId !== undefined && messageId !== undefined) {
-    const line = wordsOf(parts)(`telegram.draft.${settled.status}`);
+  const line = pressedLine(parts, settled.standing);
+  if (chatId !== undefined && messageId !== undefined && line !== undefined) {
     await parts.bot.edit({ chatId, messageId }, line, { signal: call.signal });
   }
 }
@@ -197,12 +217,7 @@ async function press(parts: Parts, pressed: ButtonPress, call: Call): Promise<bo
   if (standing.status === "unknown" && !(await isOwners(parts, pressed, call))) {
     return true;
   }
-  if (standing.status === "starting") {
-    await settlePressed(parts, { pressed, status: "starting" }, call);
-  }
-  if (standing.status === "unknown") {
-    await settlePressed(parts, { pressed, status: "gone" }, call);
-  }
+  await settlePressed(parts, { pressed, standing }, call);
   const notice = noticeOf(parts, standing);
   const { logger } = parts.options;
   await answerPress(

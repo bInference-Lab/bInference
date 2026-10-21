@@ -90,12 +90,20 @@ export interface IntentRecord extends IntentFields {
   /** The intent fills at its quote and never signs. */
   readonly isPaper: boolean;
   readonly proposer: IntentProposerRef;
+  /**
+   * The reference of the launch draft whose Start proposed it (decision 0288); absent for any
+   * other intent. No two intents share one.
+   */
+  readonly draftRef?: string;
   readonly createdAtMs: number;
   /** When the intent last moved: the time of its newest event. */
   readonly changedAtMs: number;
   /** 0 when proposed and one more with each move; a move names the version it read. */
   readonly version: number;
 }
+
+// A launch draft's reference: 12 random bytes in base64url (decision 0285).
+const launchDraftRefSchema: z.ZodType<string> = z.string().regex(/^[\w-]{16}$/u);
 
 const identityShape = {
   id: idSchema("int"),
@@ -108,6 +116,7 @@ const identityShape = {
   hasOutsideContent: z.boolean(),
   isPaper: z.boolean(),
   proposer: intentProposerRefSchema,
+  draftRef: launchDraftRefSchema.exactOptional(),
 };
 
 /** Parses an intent record. */

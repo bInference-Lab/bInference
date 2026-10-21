@@ -1,10 +1,10 @@
 import { err, type Result } from "@binference/core";
 import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol";
 import { checkLaunchDraft } from "./check-launch-draft.js";
-import type { MoneyPath } from "./create-money-path.js";
+import type { MoneyPath, Proposer } from "./create-money-path.js";
 import type { PinFollow } from "./follow-launch-pin.js";
 import { followLaunchPins } from "./follow-launch-pins.js";
-import { proposeLaunch } from "./propose-launch.js";
+import { type LaunchProposal, proposeLaunch } from "./propose-launch.js";
 import type { LaunchPathOptions, ResolvedLaunch } from "./resolve-launch.js";
 
 /** The money path with token launches (decision 0234), and the pin follow that moves them. */
@@ -22,6 +22,17 @@ export interface LaunchingMoneyPath extends MoneyPath {
     request: LaunchTokenRequest,
     signal: AbortSignal,
   ): Promise<Result<ResolvedLaunch, ProtocolErrorCode>>;
+}
+
+// The owner's launch as its path takes it: the credential whose uploads it reads, and the draft
+// whose Start proposed it, when one did.
+function launchProposalOf(
+  request: LaunchTokenRequest,
+  proposer: Proposer,
+  call: { readonly credential?: string; readonly draftRef?: string },
+): LaunchProposal {
+  const draft = call.draftRef === undefined ? {} : { draftRef: call.draftRef };
+  return { request, proposer, credential: call.credential, ...draft };
 }
 
 /**
@@ -45,7 +56,7 @@ export function withLaunches(
       }
       return launch === undefined
         ? path.propose(request, proposer, call)
-        : proposeLaunch(launch, { request, proposer, credential: call.credential }, call.signal);
+        : proposeLaunch(launch, launchProposalOf(request, proposer, call), call.signal);
     },
     followPins: async (call) => (launch === undefined ? 0 : followLaunchPins(launch, call)),
     checkDraft: async (request, signal) =>

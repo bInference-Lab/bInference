@@ -1,3 +1,4 @@
+import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import {
   closedDraft,
@@ -9,6 +10,7 @@ import {
 } from "../testing/draft-fixtures.js";
 
 const refused = String.fromCodePoint(0x274c);
+const done = String.fromCodePoint(0x2705);
 
 describe("the agent's launch drafts in Telegram, in Chinese", () => {
   it("sends the draft's header, buttons and end in the owner's language", async () => {
@@ -56,6 +58,18 @@ describe("the agent's launch drafts in Telegram, in Chinese", () => {
     expect([context.botApi.answers()[0]?.text, context.botApi.messages()[0]?.text]).toStrictEqual([
       "binference 已不再保留此草稿。请让 Agent 重新起草。",
       `${refused} binference 已不再保留此发射草稿（重启后或已有较新的草稿）。请让 Agent 重新起草。`,
+    ]);
+  });
+
+  it("says in Chinese that a forgotten draft already started its launch", async () => {
+    const context = await setUpDrafts("zh");
+    await context.drafts.show(openedDraft, live);
+    const intent = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000288");
+    context.answers.launched("BBBBBBBBBBBBBBBB", { status: "launched", intent });
+    await context.drafts.press(pressOf(context, "bnf1:s:y:BBBBBBBBBBBBBBBB"), live);
+    expect([context.botApi.answers()[0]?.text, context.botApi.messages()[0]?.text]).toStrictEqual([
+      "此草稿已开始发射，请查看其确认卡片了解进展。",
+      `${done} 此草稿已开始发射，本对话中的确认卡片会显示其进展。此草稿不会再开始新的发射。`,
     ]);
   });
 });

@@ -47,6 +47,8 @@ interface ProposeOptions {
    * 0236); absent, a launch reads no picture.
    */
   readonly credential?: string;
+  /** The launch draft whose Start the owner pressed, which the launch it stores keeps. */
+  readonly draftRef?: string;
 }
 
 /**

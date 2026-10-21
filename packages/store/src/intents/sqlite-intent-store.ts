@@ -11,6 +11,7 @@ import {
   getIntentTask,
   intentCardsTask,
   intentConfirmationTask,
+  intentByDraftRefTask,
   intentEventsTask,
   listIntentsTask,
   moveIntentTask,
@@ -38,5 +39,6 @@ export function createSqliteIntentStore(host: StoreHost): IntentStore {
     cards: bindTask(host, intentCardsTask),
     confirmation: bindTask(host, intentConfirmationTask),
     cardByRef: bindTask(host, cardByRefTask),
+    byDraftRef: bindTask(host, intentByDraftRefTask),
   };
 }

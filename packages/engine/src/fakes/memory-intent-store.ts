@@ -90,6 +90,13 @@ function create(
     return err("exists");
   }
   const { atMs, cause, ledger: ledgerDraft, ...fields } = draft;
+  // A draft's reference starts one intent, as the store's unique index holds.
+  if (
+    draft.draftRef !== undefined &&
+    tables.intents().some((it) => it.draftRef === draft.draftRef)
+  ) {
+    throw constraintFault(`draft reference ${draft.draftRef} is taken`);
+  }
   const ledgerEntry = appendTo(ledger, ledgerDraft);
   const intent: IntentRecord = { ...fields, createdAtMs: atMs, changedAtMs: atMs, version: 0 };
   tables.saveIntent(intent);
@@ -330,5 +337,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
       ),
     confirmation: async (id, call) => memoryCall(call, () => tables.confirmation(id)),
     cardByRef: async (callbackRef, call) => memoryCall(call, () => tables.cardByRef(callbackRef)),
+    byDraftRef: async (draftRef, call) =>
+      memoryCall(call, () => tables.intents().find((intent) => intent.draftRef === draftRef)),
   };
 }

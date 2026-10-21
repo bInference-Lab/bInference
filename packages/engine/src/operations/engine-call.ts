@@ -48,6 +48,12 @@ export interface EngineCaller {
    * client with `agent` counts as outside content.
    */
   readonly turn?: TurnMark;
+  /**
+   * The reference of the launch draft whose Start the owner pressed, set only for the one
+   * proposal that press makes (decision 0288); the protocol server never sets it. The launch it
+   * stores keeps it, so a later press of the same draft finds the launch.
+   */
+  readonly draftRef?: string;
 }
 
 /** One call the protocol server checked and routed to the engine. */

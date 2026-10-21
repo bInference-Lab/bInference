@@ -2,7 +2,10 @@ import type { ChainRegistry } from "@binference/chain";
 import type { Clock, Id } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
 import type { CardLine } from "../confirmations/card-line.js";
+import type { IntentReason } from "../intents/intent-reason.js";
+import { isTerminalState } from "../intents/intent-state.js";
 import type { EngineHandler } from "../operations/engine-call.js";
+import type { IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { OwnerStore } from "../surfaces/ports.js";
 import type { UploadShelf } from "../uploads/upload-shelf.js";
@@ -31,11 +34,20 @@ export interface LaunchDraftShowing {
 /**
  * How a press of a launch draft's button stands. `starting`: the owner's Start took the draft, and
  * its launch is being proposed; `chat/launchDraftClosed` says how that went. `dropped`: the owner
- * dropped it. `expired`: its 10 minutes ran out before the press. `unknown`: no open draft has
- * this reference, or the presser is not the owner; nothing happened.
+ * dropped it. `expired`: its 10 minutes ran out before the press. `launched`: the engine holds no
+ * draft of this reference, which a restart forgets, but its Start proposed a launch (decision
+ * 0288), which goes on from its card, or ended before it with `endedBeforeCard`. `unknown`: no
+ * open draft has this reference and it started nothing, or the presser is not the owner; nothing
+ * happened.
  */
 export type LaunchDraftStanding =
   | { readonly status: "starting" }
+  | {
+      readonly status: "launched";
+      readonly intent: Id<"int">;
+      /** Why the launch ended before its card opened; absent while it goes on or once carded. */
+      readonly endedBeforeCard?: IntentReason;
+    }
   | { readonly status: "dropped" }
   | { readonly status: "expired" }
   | { readonly status: "unknown" };
@@ -78,6 +90,8 @@ export interface LaunchDraftDeskOptions {
   /** The owner's uploads, which the launch from a draft reads its picture from. */
   readonly uploads: Pick<UploadShelf, "ticket" | "receive" | "drop">;
   readonly propose: EngineHandler<"intent/propose">;
+  /** The stored launches, which a press of a draft no longer held finds by its reference. */
+  readonly intents: Pick<IntentStore, "byDraftRef" | "cards">;
   /** The owner's numeric Telegram id, which alone starts or drops a draft. */
   readonly owners: Pick<OwnerStore, "get">;
   readonly clock: Clock;
@@ -85,6 +99,9 @@ export interface LaunchDraftDeskOptions {
   /** How long one launch Start began may take to be proposed: 2 minutes when absent. */
   readonly startTimeoutMs?: number;
 }
+
+const isStanding = (taken: LaunchDraft | LaunchDraftStanding): taken is LaunchDraftStanding =>
+  "status" in taken;
 
 // Takes the draft a press names; one whose time is up ends as expired.
 function pressed(options: LaunchDraftDeskOptions, ref: string): LaunchDraft | LaunchDraftStanding {
@@ -99,7 +116,26 @@ function pressed(options: LaunchDraftDeskOptions, ref: string): LaunchDraft | La
   return { status: "expired" };
 }
 
-// The draft a press names, taken only for a press of the owner's numeric Telegram id.
+// Where the launch a draft's Start proposed stands, for a draft the engine no longer holds: a
+// reference that started nothing is `unknown`.
+async function launchedBy(
+  options: LaunchDraftDeskOptions,
+  ref: string,
+  call: { readonly signal: AbortSignal },
+): Promise<LaunchDraftStanding> {
+  const launch = await options.intents.byDraftRef(ref, call);
+  if (launch === undefined) {
+    return { status: "unknown" };
+  }
+  const isEnded = isTerminalState(launch.state);
+  const cards = isEnded ? await options.intents.cards(launch.id, call) : [];
+  const reason = isEnded && cards.length === 0 ? launch.reason : undefined;
+  const ended = reason === undefined ? {} : { endedBeforeCard: reason };
+  return { status: "launched", intent: launch.id, ...ended };
+}
+
+// The draft a press names, taken only for a press of the owner's numeric Telegram id; one the
+// engine no longer holds answers where the launch it started stands.
 async function pressedByOwner(
   options: LaunchDraftDeskOptions,
   press: { readonly ref: string; readonly presserId: number },
@@ -107,11 +143,14 @@ async function pressedByOwner(
 ): Promise<LaunchDraft | LaunchDraftStanding> {
   call.signal.throwIfAborted();
   const owner = await options.owners.get(call);
-  return owner?.userId === press.presserId ? pressed(options, press.ref) : { status: "unknown" };
+  if (owner?.userId !== press.presserId) {
+    return { status: "unknown" };
+  }
+  const taken = pressed(options, press.ref);
+  return isStanding(taken) && taken.status === "unknown"
+    ? launchedBy(options, press.ref, call)
+    : taken;
 }
-
-const isStanding = (taken: LaunchDraft | LaunchDraftStanding): taken is LaunchDraftStanding =>
-  "status" in taken;
 
 /** Creates the {@link LaunchDraftDesk} over the engine's open drafts. */
 export function createLaunchDraftDesk(options: LaunchDraftDeskOptions): LaunchDraftDesk {

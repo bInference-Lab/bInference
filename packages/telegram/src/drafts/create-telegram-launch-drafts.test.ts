@@ -1,3 +1,4 @@
+import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import {
   closedDraft,
@@ -139,6 +140,35 @@ describe("the agent's launch drafts in Telegram", () => {
       },
     ]);
   });
+
+  it.each([
+    {
+      stands: "goes on",
+      ended: {},
+      answer: "This draft already started its launch. Its card shows where it stands.",
+      line: `${done} This draft already started its launch. Its card in this chat shows where it stands. Nothing more starts from this draft.`,
+    },
+    {
+      stands: "ended before its card",
+      ended: { endedBeforeCard: "upload_lost" },
+      answer: "The launch this draft started has ended. Its message says why.",
+      line: `${refused} The launch ended before its card: the launch stopped after it began sending the token's picture and words to the launchpad, before its pin wait; nothing was signed, but they may be public on the launchpad; propose the launch again. Nothing was signed.`,
+    },
+  ] as const)(
+    "says where a launch a forgotten draft started stands when it $stands, and invites no new draft",
+    async ({ ended, answer, line }) => {
+      const context = await setUpDrafts();
+      await context.drafts.show(openedDraft, live);
+      const intent = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000288");
+      context.answers.launched("BBBBBBBBBBBBBBBB", { status: "launched", intent, ...ended });
+      expect(await context.drafts.press(pressOf(context, "bnf1:s:y:BBBBBBBBBBBBBBBB"), live)).toBe(
+        true,
+      );
+      expect(context.botApi.answers().map(({ text }) => text)).toStrictEqual([answer]);
+      expect(context.botApi.messages()).toMatchObject([{ text: line, buttons: [] }]);
+      expect(context.answers.started()).toStrictEqual([]);
+    },
+  );
 
   it("splits a draft past one message's 4,096 characters, the buttons on the last", async () => {
     const context = await setUpDrafts("en", { description: "\u200B".repeat(1000) });

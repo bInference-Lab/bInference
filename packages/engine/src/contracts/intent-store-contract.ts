@@ -7,6 +7,7 @@ import {
   closesWithMoves,
   confirmsAgain,
   findsCardsByRef,
+  findsIntentsByDraftRef,
   refusesClosedCard,
   refusesTakenVersion,
 } from "./intent-card-checks.js";
@@ -296,6 +297,11 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     checkOn("links one late landing to an intent it leaves as it is", create, recordsLateLandings),
     checkOn("opens, replaces and closes card versions with the moves", create, closesWithMoves),
     checkOn("finds a card version by its callback reference", create, findsCardsByRef),
+    checkOn(
+      "finds the intent a launch draft started by its reference",
+      create,
+      findsIntentsByDraftRef,
+    ),
     checkOn("keeps one confirmation, a later card version's in its place", create, confirmsAgain),
     checkOn("refuses to close a card version that is not open", create, refusesClosedCard),
     checkOn("refuses a card version the intent already has", create, refusesTakenVersion),

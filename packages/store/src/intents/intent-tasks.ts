@@ -185,6 +185,21 @@ export const cardByRefTask: StoreTask<string, CardRecord | undefined> = defineTa
   },
 });
 
+/** Reads the intent a launch draft's Start proposed, by the draft's reference; the column is unique. */
+export const intentByDraftRefTask: StoreTask<string, IntentRecord | undefined> = defineTask({
+  name: "intents.byDraftRef",
+  access: "read",
+  input: z.string().min(1).max(64),
+  output: intentRecordSchema.optional(),
+  run(database, draftRef) {
+    const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+    const row = takeFirst(
+      kysely.selectFrom("intents").selectAll().where("draft_ref", "=", draftRef),
+    );
+    return row === undefined ? undefined : toIntentRecord(row);
+  },
+});
+
 /** Reads an intent's confirmation. */
 export const intentConfirmationTask: StoreTask<
   Id<"int">,
@@ -218,4 +233,5 @@ export const intentTasks: readonly TaskRunner[] = [
   intentCardsTask,
   intentConfirmationTask,
   cardByRefTask,
+  intentByDraftRefTask,
 ];

@@ -35,10 +35,12 @@ export async function storeProposed(
     readonly step: IntentStep;
     readonly wallet: Id<"wal">;
     readonly assets: AssetInfos;
+    readonly draftRef?: string;
   },
   signal: AbortSignal,
 ): Promise<IntentSnapshot> {
   const { request, proposer, step, wallet, assets } = intent;
+  const draft = intent.draftRef === undefined ? {} : { draftRef: intent.draftRef };
   const id = options.ids.next("int");
   const unlisted = Object.keys(assets).length === 0 ? {} : { assets };
   const created = await options.stored.create(
@@ -50,6 +52,7 @@ export async function storeProposed(
       proposerRef: proposer.ref,
       step,
       ...unlisted,
+      ...draft,
     },
     { signal },
   );

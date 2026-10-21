@@ -29,6 +29,7 @@ function ownerOnTelegram(userId: number, draft: LaunchDraft): EngineCaller {
     client: { kind: "telegram" },
     scopes: ownerChatScopes,
     turn: { hasOutsideContent: draft.hasOutsideContent },
+    draftRef: draft.ref,
   };
 }
 

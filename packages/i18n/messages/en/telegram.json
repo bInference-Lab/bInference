@@ -29,5 +29,8 @@
   "draft.answer.gone": "binference no longer holds this draft. Ask your agent to draft it again.",
   "draft.gone": "❌ binference no longer holds this launch draft, after a restart or a newer draft. Ask your agent to draft it again.",
   "draft.answer.starting": "Starting the launch. The draft's message says how it goes.",
-  "draft.starting": "🟡 Starting the launch. This message says how it ends."
+  "draft.starting": "🟡 Starting the launch. This message says how it ends.",
+  "draft.launched": "✅ This draft already started its launch. Its card in this chat shows where it stands. Nothing more starts from this draft.",
+  "draft.answer.launched": "This draft already started its launch. Its card shows where it stands.",
+  "draft.answer.ended": "The launch this draft started has ended. Its message says why."
 }

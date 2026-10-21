@@ -29,5 +29,8 @@
   "draft.answer.gone": "binference 已不再保留此草稿。请让 Agent 重新起草。",
   "draft.gone": "❌ binference 已不再保留此发射草稿（重启后或已有较新的草稿）。请让 Agent 重新起草。",
   "draft.answer.starting": "正在开始发射，草稿消息会显示进展。",
-  "draft.starting": "🟡 正在开始发射，此消息会显示结果。"
+  "draft.starting": "🟡 正在开始发射，此消息会显示结果。",
+  "draft.launched": "✅ 此草稿已开始发射，本对话中的确认卡片会显示其进展。此草稿不会再开始新的发射。",
+  "draft.answer.launched": "此草稿已开始发射，请查看其确认卡片了解进展。",
+  "draft.answer.ended": "此草稿开始的发射已结束，草稿消息会说明原因。"
 }

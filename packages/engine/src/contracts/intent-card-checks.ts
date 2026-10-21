@@ -67,6 +67,25 @@ export async function findsCardsByRef(subject: IntentStoreSubject): Promise<void
   assert.equal(await store.cardByRef("ZZZZZZZZZZZZZZZZ", live()), undefined);
 }
 
+/**
+ * An intent a launch draft's Start proposed is found by the draft's reference, through its moves;
+ * a second intent with the same reference is refused, and an unknown reference finds none.
+ */
+export async function findsIntentsByDraftRef(subject: IntentStoreSubject): Promise<void> {
+  const { store } = subject;
+  const draftRef = "AbCdEfGh-_123456";
+  await store.create({ ...intentDraft(subject, 1), kind: "launchToken", draftRef }, live());
+  await store.create(intentDraft(subject, 2), live());
+  assert.ok((await store.transition(intentMove(1, 0, "checked"), live())).ok);
+  const found = await store.byDraftRef(draftRef, live());
+  assert.deepEqual([found?.id, found?.state, found?.draftRef], [intentId, "checked", draftRef]);
+  await assert.rejects(store.create({ ...intentDraft(subject, 3), draftRef }, live()), {
+    code: "store.constraint",
+  });
+  assert.equal(await store.byDraftRef("ZZZZZZZZZZZZZZZZ", live()), undefined);
+  assert.equal((await store.get(fixtureId("int", 2), live()))?.draftRef, undefined);
+}
+
 /** The move to `confirmed` records the owner's one confirmation. */
 async function confirmsOnce(subject: IntentStoreSubject): Promise<void> {
   const { store } = subject;

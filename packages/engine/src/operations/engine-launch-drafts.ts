@@ -68,6 +68,7 @@ export function launchDraftsOf(
     chains,
     uploads,
     propose: parts.handlers["intent/propose"],
+    intents: stores.intents,
     owners: stores.owners,
     clock,
     publish,

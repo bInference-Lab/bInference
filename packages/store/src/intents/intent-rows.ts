@@ -37,6 +37,7 @@ export function toIntentRecord(row: Selectable<IntentsTable>): IntentRecord {
     hasOutsideContent: row.outside_content === 1,
     isPaper: row.paper === 1,
     proposer: row.proposer,
+    ...field("draftRef", row.draft_ref),
     createdAtMs: row.created_at,
     changedAtMs: row.changed_at,
     version: row.version,

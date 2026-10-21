@@ -69,6 +69,7 @@ async function crashChatOnce(point: ChatKillPoint) {
     // The messages the bot sent after the restart, and the draft's message as it reads now.
     afterRestart: bot.sent().slice(sentAtKill),
     draft: bot.messages().find(({ messageId }) => messageId === draft.messageId),
+    answers: bot.answers().flatMap(({ text }) => (text === undefined ? [] : [text])),
     // The cards the bot sent after the restart: each names the launch's action line.
     cards: bot
       .sent()
@@ -99,7 +100,10 @@ describe("an engine killed after the owner's Start, before the launch is stored"
     expect([outcome.hashes, outcome.mined, outcome.uploads]).toStrictEqual([[], 0, 0]);
     expect(outcome.afterRestart).toStrictEqual([]);
     // The press Telegram hands the restarted bot again finds no draft, and proposes nothing.
-    expect(outcome.draft?.text).toBe(english.message("telegram.draft.gone"));
+    expect([outcome.draft?.text, outcome.answers]).toStrictEqual([
+      english.message("telegram.draft.gone"),
+      [english.message("telegram.draft.answer.gone")],
+    ]);
     expect(outcome.restartExit).toBe(0);
   });
 });
@@ -123,7 +127,12 @@ describe("an engine killed once a launch from the chat began its upload", () => 
       expect([outcome.hashes, outcome.mined, outcome.uploads]).toStrictEqual([[], 0, 1]);
       const told = outcome.afterRestart.map(({ text }) => text);
       expect(told).toStrictEqual([expect.stringContaining("The launch of CCAT on flap stopped")]);
-      expect(outcome.draft?.text).toBe(english.message("telegram.draft.gone"));
+      // The press Telegram hands the restarted bot again finds the launch it started, which ended.
+      const reason = english.message("reason.upload_lost");
+      expect([outcome.draft?.text, outcome.answers]).toStrictEqual([
+        english.message("telegram.draft.ended", { reason }),
+        [english.message("telegram.draft.answer.ended")],
+      ]);
       expect(outcome.restartExit).toBe(0);
     },
   );
@@ -153,7 +162,12 @@ describe("an engine killed while a launch from the chat waits for its pin", () =
       1,
       true,
     ]);
-    expect(outcome.draft?.text).toBe(english.message("telegram.draft.gone"));
+    // The press Telegram hands the restarted bot again finds the launch it started, and never
+    // invites a second draft.
+    expect([outcome.draft?.text, outcome.answers]).toStrictEqual([
+      english.message("telegram.draft.launched"),
+      [english.message("telegram.draft.answer.launched")],
+    ]);
     expect(outcome.restartExit).toBe(0);
   });
 });

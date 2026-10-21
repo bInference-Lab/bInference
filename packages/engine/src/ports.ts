@@ -237,6 +237,11 @@ export interface IntentStore extends LandedLate, StoredAssetsRead {
    * when no card version has it.
    */
   cardByRef(callbackRef: string, options: StoreCall): Promise<CardRecord | undefined>;
+  /**
+   * The intent a launch draft's Start proposed, by the draft's reference (decision 0288), or
+   * `undefined` when no intent has it.
+   */
+  byDraftRef(draftRef: string, options: StoreCall): Promise<IntentRecord | undefined>;
 }
 
 /**

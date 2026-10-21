@@ -1,6 +1,6 @@
 # 0285. The agent drafts a token launch and the owner starts it in Telegram
 
-Status: Accepted
+Status: Amended by 0288
 
 Accepted by the owner on 2026-10-20.
 
