@@ -1,9 +1,9 @@
-import type { AssetRef, ChainRegistry } from "@binference/chain";
+import type { ChainRegistry } from "@binference/chain";
 import { BinferenceError, type Id, idSchema } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { CardClosing } from "../confirmations/card-closing.js";
-import type { CardLine, CardValue } from "../confirmations/card-line.js";
+import { assetsOfLine } from "../confirmations/card-line.js";
 import { type Card, drawCard } from "../confirmations/draw-card.js";
 import { isFirstLiveCard } from "../confirmations/first-live-card.js";
 import { launchWalletOf } from "../install/launch-wallet.js";
@@ -11,6 +11,7 @@ import type { CardCloseReason, CardRecord } from "../intents/card-record.js";
 import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
+import type { OrderStore } from "../orders/ports.js";
 import type {
   AccessStore,
   AgentStore,
@@ -22,6 +23,7 @@ import type { VenueHost } from "../venues/venue-host.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { type LiveReceipt, liveReceiptOf } from "./live-receipt.js";
 import { type PaperReceipt, paperReceiptOf } from "./paper-receipt.js";
+import { type WrittenReceipt, writtenReceiptOf } from "./written-receipt.js";
 
 /** One card version, named by its intent and its id, as `card/opened` names it. */
 export interface CardVersionRef {
@@ -58,6 +60,8 @@ export interface CardSettling {
   readonly paper?: PaperReceipt;
   /** How a confirmed live intent ended on chain, once it did, which its receipt shows. */
   readonly live?: LiveReceipt;
+  /** What a confirmed intent with nothing to send took effect as, which its receipt shows. */
+  readonly written?: WrittenReceipt;
 }
 
 /** Reads card versions as button surfaces show them, from open card to receipt. */
@@ -81,9 +85,10 @@ export interface CardShowings {
   ): Promise<DrawnCard | undefined>;
   /**
    * The receipt of the intent's newest card version that an answer or the timer closed. A
-   * confirmed paper intent settles once it recorded its fill, with the fill, and a confirmed live
-   * one settles again once it ended on chain, with how. `undefined` before a paper fill, for an
-   * intent with no such version, and for a version without a callback reference.
+   * confirmed paper intent settles once it recorded its fill, with the fill, a confirmed live
+   * one settles again once it ended on chain, with how, and an unfreeze or an auto order's card
+   * once it took effect, with what. `undefined` before a paper fill, for an intent with no such
+   * version, and for a version without a callback reference.
    */
   settled(
     intent: Id<"int">,
@@ -107,6 +112,8 @@ export const maxWaitingCards = 20;
 export interface CardShowingsOptions {
   readonly intents: IntentStore;
   readonly agents: AgentStore;
+  /** The auto orders, whose receipt says whether the order a card confirmed became active. */
+  readonly orders: Pick<OrderStore, "byIntent">;
   /** Each intent's transactions, whose last one a live receipt links to. */
   readonly transactions: Pick<TransactionStore, "ofIntent">;
   /** The client tokens and console devices, whose labels name who proposed an intent. */
@@ -125,20 +132,6 @@ interface Call {
 }
 
 const withReceipt: ReadonlySet<CardCloseReason> = new Set(["confirmed", "denied", "expired"]);
-
-function assetsOfValue(value: CardValue): readonly AssetRef[] {
-  if (value.type === "amount") {
-    return [value.amount.asset];
-  }
-  if (value.type === "asset") {
-    return [value.asset];
-  }
-  return value.type === "line" ? assetsOfLine(value.line) : [];
-}
-
-function assetsOfLine(line: CardLine): readonly AssetRef[] {
-  return Object.values(line.values).flatMap(assetsOfValue);
-}
 
 async function versionOf(
   options: CardShowingsOptions,
@@ -276,7 +269,11 @@ async function settled(
   if (paper !== undefined) {
     return { ref: card.callbackRef, closing, paper };
   }
-  const { transactions } = options;
+  const { orders, agents, transactions } = options;
+  const written = await writtenReceiptOf({ record, orders, agents, chains }, call);
+  if (written !== undefined) {
+    return { ref: card.callbackRef, closing, written };
+  }
   const live = await liveReceiptOf({ record, history, transactions, chains }, call);
   if (live !== undefined) {
     return { ref: card.callbackRef, closing, live };
@@ -304,7 +301,7 @@ async function waiting(options: CardShowingsOptions, call: Call): Promise<readon
  * Creates the {@link CardShowings} over the intent and agent stores: each card version is drawn
  * from the stored intent with the info of the assets it names, the registry's or what the intent
  * stored of an unlisted token at its proposal (decision 0199), and a closed version
- * settles with the intent's closing and its paper fill.
+ * settles with the intent's closing and what followed it.
  */
 export function createCardShowings(options: CardShowingsOptions): CardShowings {
   return {

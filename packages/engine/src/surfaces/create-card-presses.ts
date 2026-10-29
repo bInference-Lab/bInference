@@ -1,8 +1,7 @@
-import type { ChainRegistry } from "@binference/chain";
 import type { AnswerCard, AnsweredCard } from "../operations/answer-card.js";
 import type { IntentStore } from "../ports.js";
 import type { CardPress, CardStanding } from "./card-press.js";
-import { paperReceiptOf } from "./paper-receipt.js";
+import type { CardShowings } from "./create-card-showings.js";
 import { type OwnerIdOf, pressedByOwner } from "./pressed-by-owner.js";
 
 /**
@@ -26,15 +25,20 @@ export interface CardPressesOptions {
   readonly answer: AnswerCard;
   /** The owner's numeric Telegram id, or `undefined` before the owner pairs. */
   readonly ownerId: OwnerIdOf;
-  /** The registry the assets of a paper receipt are named from. */
-  readonly chains: ChainRegistry;
+  /** What followed the card's closing, which the pressed copy's receipt shows. */
+  readonly showings: Pick<CardShowings, "settled">;
 }
 
 const unknown: CardStanding = { status: "unknown" };
 
 // A card that closed without a closing, as a cancel closes it, has no receipt to show. A paper
-// intent filled at once when confirmed, so its receipt shows the fill.
-function standingOf({ outcome, intent }: AnsweredCard, chains: ChainRegistry): CardStanding {
+// intent filled at once when confirmed, and an unfreeze or an auto order's card took effect, so
+// its receipt shows what followed.
+async function standingOf(
+  options: CardPressesOptions,
+  { outcome, intent }: AnsweredCard,
+  signal: AbortSignal,
+): Promise<CardStanding> {
   if (outcome.verdict === "requote_failed") {
     return { status: "open", reason: outcome.reason };
   }
@@ -45,11 +49,15 @@ function standingOf({ outcome, intent }: AnsweredCard, chains: ChainRegistry): C
     return { status: "open" };
   }
   const { closing } = intent.stored;
-  const paper = paperReceiptOf(intent, chains);
   if (closing === undefined) {
     return unknown;
   }
-  return paper === undefined ? { status: "closed", closing } : { status: "closed", closing, paper };
+  const settled = await options.showings.settled(intent.record.id, { signal });
+  if (settled === undefined) {
+    return { status: "closed", closing };
+  }
+  const { ref: _ref, ...after } = settled;
+  return { ...after, status: "closed" };
 }
 
 /**
@@ -76,7 +84,7 @@ export function createCardPresses(options: CardPressesOptions): CardPresses {
         },
         { signal },
       );
-      return answered.ok ? standingOf(answered.value, options.chains) : unknown;
+      return answered.ok ? standingOf(options, answered.value, signal) : unknown;
     },
   };
 }

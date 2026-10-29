@@ -190,3 +190,25 @@ export async function createOrder(test: Bot, request: OrderRequest): Promise<voi
     never();
   }
 }
+
+/** Freezes the test agent from the CLI, then asks for its unfreeze, which opens a card. */
+export async function frozenThenUnfreezing(test: Bot): Promise<void> {
+  const { handlers } = test.composed.engine;
+  const call = { args: { agent }, caller: callers.cli, ...live };
+  const frozen = await handlers["safety/freeze"](call);
+  const unfreezing = await handlers["safety/unfreeze"](call);
+  if (!frozen.ok || !unfreezing.ok) {
+    never();
+  }
+}
+
+/** The owner taps Confirm on the newest card in the chat, through the bot's update intake. */
+export async function tapConfirm(test: Bot): Promise<void> {
+  await test.telegram.idle();
+  const card = test.botApi.messages().findLast((message) => message.buttons.length > 0);
+  const data = card?.buttons[0]?.[0]?.data ?? never();
+  const messageId = card?.messageId ?? never();
+  const tap = test.botApi.press({ from: ownerId, data, messageId });
+  await test.telegram.ingress.receive(tap, live);
+  await test.telegram.idle();
+}

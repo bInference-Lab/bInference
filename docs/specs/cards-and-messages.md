@@ -271,22 +271,26 @@ proposed, or Telegram. A card of an agent in manual mode shows no such line.
 
 The card's message is edited into its receipt; the buttons go away.
 
-| Outcome                | Key                     | English                                                  | 中文                                                  |
-| ---------------------- | ----------------------- | -------------------------------------------------------- | ----------------------------------------------------- |
-| Confirmed              | `receipt.confirmed`     | ✅ Confirmed on {surface} at {time} · sending            | ✅ 已于 {time} 在 {surface} 确认 · 发送中             |
-| Filled                 | `receipt.filled`        | ✅ Done: {result} · {explorerLink}                       | ✅ 已完成：{result} · {explorerLink}                  |
-| Launched               | `receipt.launched`      | ✅ Launched {token}: first buy {result} · {explorerLink} | ✅ 已发射 {token}：首笔买入 {result} · {explorerLink} |
-| Launched, no first buy | `receipt.launchedAlone` | ✅ Launched {token} · {explorerLink}                     | ✅ 已发射 {token} · {explorerLink}                    |
-| Landed                 | `receipt.landed`        | ✅ Done on chain · {explorerLink}                        | ✅ 已在链上完成 · {explorerLink}                      |
-| Done, nothing sent     | `receipt.done`          | ✅ Done, with nothing to send on chain                   | ✅ 已完成，无需在链上发送                             |
-| Not sent, no reason    | `receipt.unsent`        | ❌ Not sent: it ended before it was signed               | ❌ 未发送：在签名之前已结束                           |
-| Paper fill             | `receipt.paper`         | 🧪 Paper fill: {result}                                  | 🧪 模拟成交：{result}                                 |
-| Auto trade             | `receipt.auto`          | ⚡ Auto trade: {result} · {explorerLink}                 | ⚡ 自动交易：{result} · {explorerLink}                |
-| Cancelled              | `receipt.denied`        | ❌ Cancelled on {surface}                                | ❌ 已在 {surface} 取消                                |
-| Expired                | `receipt.expired`       | ❌ Expired with no reply                                 | ❌ 未回复，已过期                                     |
-| Refused                | `receipt.refused`       | ❌ Not sent: {reason}                                    | ❌ 未发送：{reason}                                   |
-| Failed on chain        | `receipt.failed`        | ❌ Failed on chain: {reason} · {explorerLink}            | ❌ 链上失败：{reason} · {explorerLink}                |
-| Unknown                | `receipt.unknown`       | ⚠️ Sent, result not known yet; checking the chain        | ⚠️ 已发送，结果待确认；正在检查链上记录               |
+| Outcome                | Key                      | English                                                                       | 中文                                                                      |
+| ---------------------- | ------------------------ | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Confirmed              | `receipt.confirmed`      | ✅ Confirmed on {surface} at {time} · sending                                 | ✅ 已于 {time} 在 {surface} 确认 · 发送中                                 |
+| Filled                 | `receipt.filled`         | ✅ Done: {result} · {explorerLink}                                            | ✅ 已完成：{result} · {explorerLink}                                      |
+| Launched               | `receipt.launched`       | ✅ Launched {token}: first buy {result} · {explorerLink}                      | ✅ 已发射 {token}：首笔买入 {result} · {explorerLink}                     |
+| Launched, no first buy | `receipt.launchedAlone`  | ✅ Launched {token} · {explorerLink}                                          | ✅ 已发射 {token} · {explorerLink}                                        |
+| Landed                 | `receipt.landed`         | ✅ Done on chain · {explorerLink}                                             | ✅ 已在链上完成 · {explorerLink}                                          |
+| Done, nothing sent     | `receipt.done`           | ✅ Done, with nothing to send on chain                                        | ✅ 已完成，无需在链上发送                                                 |
+| Unfrozen, one agent    | `receipt.unfrozenAgent`  | ✅ Unfrozen: {agent} trades again within its limits                           | ✅ 已解除冻结：{agent} 可以在交易限额内再次交易                           |
+| Unfrozen, every agent  | `receipt.unfrozenAll`    | ✅ Unfrozen: every agent ({count} were frozen), and new agents start unfrozen | ✅ 已对全部 Agent 解除冻结（{count} 个曾被冻结），新建的 Agent 也不再冻结 |
+| Auto order active      | `receipt.orderActive`    | ✅ Auto order active: {orderKind}, {summary} · until {expiry}                 | ✅ 自动订单已生效：{orderKind}，{summary}，截至 {expiry}                  |
+| Auto order not started | `receipt.orderUnstarted` | ❌ Auto order not started: {why}                                              | ❌ 自动订单未生效：{why}                                                  |
+| Not sent, no reason    | `receipt.unsent`         | ❌ Not sent: it ended before it was signed                                    | ❌ 未发送：在签名之前已结束                                               |
+| Paper fill             | `receipt.paper`          | 🧪 Paper fill: {result}                                                       | 🧪 模拟成交：{result}                                                     |
+| Auto trade             | `receipt.auto`           | ⚡ Auto trade: {result} · {explorerLink}                                      | ⚡ 自动交易：{result} · {explorerLink}                                    |
+| Cancelled              | `receipt.denied`         | ❌ Cancelled on {surface}                                                     | ❌ 已在 {surface} 取消                                                    |
+| Expired                | `receipt.expired`        | ❌ Expired with no reply                                                      | ❌ 未回复，已过期                                                         |
+| Refused                | `receipt.refused`        | ❌ Not sent: {reason}                                                         | ❌ 未发送：{reason}                                                       |
+| Failed on chain        | `receipt.failed`         | ❌ Failed on chain: {reason} · {explorerLink}                                 | ❌ 链上失败：{reason} · {explorerLink}                                    |
+| Unknown                | `receipt.unknown`        | ⚠️ Sent, result not known yet; checking the chain                             | ⚠️ 已发送，结果待确认；正在检查链上记录                                   |
 
 `{reason}` comes from `reason.<code>` (section 6).
 
@@ -295,12 +299,23 @@ how it ended once it did: `receipt.filled` for a trade that reconciled, with wha
 bought; `receipt.launched` for a token launch, with its new token (its symbol and short address) and
 what its first buy spent and got, 0 of the token when it bought nothing, or `receipt.launchedAlone`
 when the launch asked for no first buy; `receipt.landed` for any other intent that landed, such as a
-send or a rescue; `receipt.done` for one with nothing to send, such as an unfreeze; and
-`receipt.failed` for one that failed on chain. A confirmed intent that ends before anything is sent,
+send or a rescue; `receipt.done` for any other with nothing to show; and `receipt.failed` for one
+that failed on chain. A confirmed intent that ends before anything is sent,
 such as one the queue's policy check refused or whose authorization lapsed, says `receipt.refused`
 with its reason, or `receipt.unsent` when it stored none; one whose send's fate is not known yet
 says `receipt.unknown` until it ends. `{explorerLink}` is its last transaction's page on the first
 block explorer the chain registry lists, from that explorer's `txUrl` page template, shown whole.
+
+A confirmed intent that sends nothing on chain ends with what took effect, in paper mode and live,
+instead of staying at `receipt.confirmed`. An unfreeze
+([decision 0128](../DECISIONS.md#d0128)) says `receipt.unfrozenAgent` with the agent's name, or
+`receipt.unfrozenAll` with how many agents its card found frozen. An auto order's card
+([decision 0189](../DECISIONS.md#d0189)) says `receipt.orderActive` once its order became active:
+`{orderKind}` and `{summary}` are its card's (section 3.8), `{expiry}` the order's, and a paper
+order starts "🧪 Paper auto order active" / 「🧪 模拟自动订单已生效」 instead. An order that ended
+before the tap says `receipt.orderUnstarted`, `{why}` "it expired before the confirmation" /
+「确认之前它已过期」 or "it was cancelled first" / 「它已先被取消」. The copy whose button was pressed
+shows it at once, and every other copy once the intent reconciles.
 
 <a id="section-3-6"></a>
 

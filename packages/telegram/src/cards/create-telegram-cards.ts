@@ -46,8 +46,9 @@ export interface TelegramCards {
     options: { readonly signal: AbortSignal },
   ): Promise<Result<CardCopy, "no_owner">>;
   /**
-   * Edits every Telegram copy of a card version into the receipt of its closing, or of its paper
-   * fill, and removes the buttons: for an answer on another surface, the card timer, or an answer
+   * Edits every Telegram copy of a card version into the receipt of its closing, or of what
+   * followed it (a paper fill, what an unfreeze or an auto order took effect as, how a live intent
+   * ended on chain), and removes the buttons: for an answer on another surface, the card timer, or an answer
    * here.
    */
   settle(settling: CardSettling, options: { readonly signal: AbortSignal }): Promise<void>;
@@ -194,10 +195,10 @@ async function settle(context: CardsContext, settling: Settling, call: Call): Pr
   const kept: readonly MessageAt[] = await context.options.copies.find(settling.ref, call);
   const isKept = pressed === undefined || kept.some((copy) => sameMessage(copy, pressed));
   const extra = isKept ? [] : [pressed];
-  const { closing, paper, live } = settling;
+  const { closing, paper, written, live } = settling;
   const after: ReceiptAfter | undefined =
-    paper === undefined ? live?.outcome : { kind: "paper", fill: paper.fill };
-  const assets = { ...live?.assets, ...paper?.assets };
+    paper === undefined ? (written ?? live)?.outcome : { kind: "paper", fill: paper.fill };
+  const assets = { ...live?.assets, ...written?.assets, ...paper?.assets };
   const html = receiptHtml(closing, context.displayOf(assets), after);
   await Promise.all(
     [...kept, ...extra].map(async (copy) => context.calls.receipt(copy, html, call)),
@@ -250,8 +251,8 @@ async function press(context: CardsContext, pressed: ButtonPress, call: Call): P
     const { chatId, messageId } = pressed;
     const at =
       chatId === undefined || messageId === undefined ? {} : { pressed: { chatId, messageId } };
-    const { closing, paper } = standing;
-    await settle(context, { ref, closing, ...(paper === undefined ? {} : { paper }), ...at }, call);
+    const { status: _status, ...after } = standing;
+    await settle(context, { ...after, ref, ...at }, call);
   }
 }
 

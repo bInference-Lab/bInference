@@ -280,15 +280,15 @@ function draftsOf(parts: TelegramParts, wiring: TelegramWiring, display: OwnerDi
 export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): ComposedTelegram {
   const { stores, chains, logger } = wiring;
   const display = displayOf(wiring);
+  const locked = wiring.isLocked === undefined ? {} : { isLocked: wiring.isLocked };
+  const showings = createCardShowings({ ...stores, chains, venues: wiring.venues, ...locked });
   const answers = createCardPresses({
     intents: stores.intents,
     answer: wiring.answer,
     ownerId: answersOwner(parts),
-    chains,
+    showings,
   });
   const cards = createTelegramCards({ ...parts, answers, clock: wiring.clock, logger, display });
-  const locked = wiring.isLocked === undefined ? {} : { isLocked: wiring.isLocked };
-  const showings = createCardShowings({ ...stores, chains, venues: wiring.venues, ...locked });
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
   const commands = commandsOf(parts, wiring, { calls, cards, showings, display });
   const { questions, questionAnswers } = questionsOf(parts, wiring, { calls, display });

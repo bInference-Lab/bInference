@@ -13,5 +13,9 @@
   "refused": "❌ Not sent: {reason}",
   "unknown": "⚠️ Sent, result not known yet; checking the chain",
   "unsent": "❌ Not sent: it ended before it was signed",
-  "done": "✅ Done, with nothing to send on chain"
+  "done": "✅ Done, with nothing to send on chain",
+  "unfrozenAgent": "✅ Unfrozen: {agent} trades again within its limits",
+  "unfrozenAll": "✅ Unfrozen: every agent ({count, plural, one {# was frozen} other {# were frozen}}), and new agents start unfrozen",
+  "orderActive": "{mode, select, paper {🧪 Paper auto order active} other {✅ Auto order active}}: {orderKind}, {summary} · until {expiry}",
+  "orderUnstarted": "❌ Auto order not started: {why, select, expired {it expired before the confirmation} other {it was cancelled first}}"
 }

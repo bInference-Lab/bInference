@@ -13,5 +13,9 @@
   "refused": "❌ 未发送：{reason}",
   "unknown": "⚠️ 已发送，结果待确认；正在检查链上记录",
   "unsent": "❌ 未发送：在签名之前已结束",
-  "done": "✅ 已完成，无需在链上发送"
+  "done": "✅ 已完成，无需在链上发送",
+  "unfrozenAgent": "✅ 已解除冻结：{agent} 可以在交易限额内再次交易",
+  "unfrozenAll": "✅ 已对全部 Agent 解除冻结（{count, plural, other {# 个曾被冻结}}），新建的 Agent 也不再冻结",
+  "orderActive": "{mode, select, paper {🧪 模拟自动订单已生效} other {✅ 自动订单已生效}}：{orderKind}，{summary}，截至 {expiry}",
+  "orderUnstarted": "❌ 自动订单未生效：{why, select, expired {确认之前它已过期} other {它已先被取消}}"
 }

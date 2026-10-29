@@ -10,6 +10,7 @@ import {
   pepeBuyFacts,
   refs,
   swapFacts,
+  takeProfitAction,
 } from "../testing/card-fixtures.js";
 import { parseFakeHtml } from "../testing/fake-html.js";
 import { type CardDisplay, cardHtml, receiptHtml } from "./card-html.js";
@@ -319,6 +320,30 @@ describe("a card in Telegram HTML", () => {
       `${icons.refused} Not sent: it ended before it was signed`,
       `${icons.done} Done, with nothing to send on chain`,
       `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)} Sent, result not known yet; checking the chain`,
+    ]);
+  });
+
+  it("draws what a confirmed unfreeze or auto order took effect as, never sending", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const closing = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    const order = takeProfitAction;
+    const receipts = [
+      receiptHtml(closing, display, { kind: "unfrozen", scope: "agent", agent: "<b>main</b>" }),
+      receiptHtml(closing, display, { kind: "unfrozen", scope: "install", agentCount: 2 }),
+      receiptHtml(closing, display, { kind: "orderActive", order, isPaper: false }),
+      receiptHtml(closing, display, { kind: "orderActive", order, isPaper: true }),
+      receiptHtml(closing, display, { kind: "orderUnstarted", why: "expired" }),
+      receiptHtml(closing, display, { kind: "orderUnstarted", why: "cancelled" }),
+    ];
+    const summary = "Take-profit, sell all your PEPE (0x6982…1933) when the price reaches $3.10";
+    const until = english.dateTime(order.expiresAtMs);
+    expect(receipts.map((html) => shown(html).text)).toStrictEqual([
+      `${icons.done} Unfrozen: <b>main</b> trades again within its limits`,
+      `${icons.done} Unfrozen: every agent (2 were frozen), and new agents start unfrozen`,
+      `${icons.done} Auto order active: ${summary} · until ${until}`,
+      `${icons.paper} Paper auto order active: ${summary} · until ${until}`,
+      `${icons.refused} Auto order not started: it expired before the confirmation`,
+      `${icons.refused} Auto order not started: it was cancelled first`,
     ]);
   });
 });

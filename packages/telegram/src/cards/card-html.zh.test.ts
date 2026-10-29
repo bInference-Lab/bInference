@@ -8,6 +8,7 @@ import {
   pepeBuyFacts,
   refs,
   swapFacts,
+  takeProfitAction,
 } from "../testing/card-fixtures.js";
 import { parseFakeHtml } from "../testing/fake-html.js";
 import { type CardDisplay, cardHtml, receiptHtml } from "./card-html.js";
@@ -146,6 +147,31 @@ describe("a card in Telegram HTML, in Chinese", () => {
       `${icons.refused} 未发送：在签名之前已结束`,
       `${icons.done} 已完成，无需在链上发送`,
       `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)} 已发送，结果待确认；正在检查链上记录`,
+    ]);
+  });
+
+  it("draws what a confirmed unfreeze or auto order took effect as in Chinese", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const confirmed = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    const order = takeProfitAction;
+    const summary = "止盈，当价格达到 $3.10 时，卖出你持有的全部 PEPE（0x6982…1933）";
+    const until = display.formatter.dateTime(order.expiresAtMs);
+    expect(
+      [
+        { kind: "unfrozen", scope: "agent", agent: "main" } as const,
+        { kind: "unfrozen", scope: "install", agentCount: 2 } as const,
+        { kind: "orderActive", order, isPaper: false } as const,
+        { kind: "orderActive", order, isPaper: true } as const,
+        { kind: "orderUnstarted", why: "expired" } as const,
+        { kind: "orderUnstarted", why: "cancelled" } as const,
+      ].map((after) => textOf(receiptHtml(confirmed, display, after))),
+    ).toStrictEqual([
+      `${icons.done} 已解除冻结：main 可以在交易限额内再次交易`,
+      `${icons.done} 已对全部 Agent 解除冻结（2 个曾被冻结），新建的 Agent 也不再冻结`,
+      `${icons.done} 自动订单已生效：${summary}，截至 ${until}`,
+      `${icons.paper} 模拟自动订单已生效：${summary}，截至 ${until}`,
+      `${icons.refused} 自动订单未生效：确认之前它已过期`,
+      `${icons.refused} 自动订单未生效：它已先被取消`,
     ]);
   });
 });

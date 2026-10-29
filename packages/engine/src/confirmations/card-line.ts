@@ -1,3 +1,4 @@
+import type { AssetRef } from "@binference/chain";
 import type { CardValueView } from "@binference/protocol";
 import type { IntentReason } from "../intents/intent-reason.js";
 
@@ -101,6 +102,10 @@ export const cardKeys = [
   "receipt.launchedAlone",
   "receipt.landed",
   "receipt.done",
+  "receipt.unfrozenAgent",
+  "receipt.unfrozenAll",
+  "receipt.orderActive",
+  "receipt.orderUnstarted",
   "receipt.refused",
   "receipt.unsent",
   "receipt.unknown",
@@ -152,4 +157,19 @@ export type CardValue =
 export interface CardLine {
   readonly key: CardKey;
   readonly values: Readonly<Record<string, CardValue>>;
+}
+
+function assetsOfValue(value: CardValue): readonly AssetRef[] {
+  if (value.type === "amount") {
+    return [value.amount.asset];
+  }
+  if (value.type === "asset") {
+    return [value.asset];
+  }
+  return value.type === "line" ? assetsOfLine(value.line) : [];
+}
+
+/** Every asset a card line names, in its nested lines too, which a surface needs the info of. */
+export function assetsOfLine(line: CardLine): readonly AssetRef[] {
+  return Object.values(line.values).flatMap(assetsOfValue);
 }

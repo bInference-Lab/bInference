@@ -1,5 +1,5 @@
 import { bpsSchema, BinferenceError, type Id, idSchema } from "@binference/core";
-import type { CardFacts, CardValue } from "@binference/engine";
+import type { CardAction, CardFacts, CardValue } from "@binference/engine";
 import { type AssetInfo, type AssetInfos, assetInfosSchema } from "@binference/protocol";
 
 type AssetRef = Extract<CardValue, { readonly type: "asset" }>["asset"];
@@ -97,4 +97,20 @@ export const pepeBuyFacts: CardFacts = {
     token: refs.pepe,
     isTokenVerified: false,
   },
+};
+
+/** A take-profit that sells all the unverified token at $3.10, active until a day after the card. */
+export const takeProfitAction: CardAction<"autoOrder"> = {
+  kind: "autoOrder",
+  request: {
+    kind: "takeProfit",
+    agent: idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
+    token: refs.pepe,
+    side: "sell",
+    size: { percentBps: bpsSchema.parse(10_000) },
+    trigger: { price: 3_100_000n },
+    reason: "Take profit as you asked",
+  },
+  maxFills: 1,
+  expiresAtMs: cardExpiresAtMs + 86_400_000,
 };

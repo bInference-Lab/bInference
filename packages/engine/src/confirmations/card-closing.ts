@@ -1,5 +1,6 @@
 import type { Amount, AssetRef } from "@binference/chain";
 import type { IntentReason } from "../intents/intent-reason.js";
+import { type CardAction, type CardActionFacts, orderTermsOf } from "./card-action.js";
 import type { Answerer } from "./card-answer.js";
 import type { CardLine, CardValue } from "./card-line.js";
 
@@ -57,10 +58,31 @@ export type LiveOutcome =
   | { readonly kind: "unknown" }
   | { readonly kind: "failed"; readonly reason: IntentReason; readonly explorerLink: string };
 
-/** What followed a confirmation that the receipt shows: a paper fill, or a live outcome. */
-export type ReceiptAfter = { readonly kind: "paper"; readonly fill: ReceiptFill } | LiveOutcome;
+/**
+ * What a confirmed intent with nothing to send took effect as (spec 4, section 3.5): an unfreeze,
+ * with the agents its card named; an auto order's card, with the order it made active, or why the
+ * order did not start, as when it expired before the tap.
+ */
+export type WrittenOutcome =
+  | ({ readonly kind: "unfrozen" } & CardActionFacts["unfreeze"])
+  | {
+      readonly kind: "orderActive";
+      readonly order: CardAction<"autoOrder">;
+      readonly isPaper: boolean;
+    }
+  | { readonly kind: "orderUnstarted"; readonly why: "expired" | "cancelled" };
+
+/**
+ * What followed a confirmation that the receipt shows: a paper fill, a live outcome, or what an
+ * intent with nothing to send took effect as.
+ */
+export type ReceiptAfter =
+  | { readonly kind: "paper"; readonly fill: ReceiptFill }
+  | LiveOutcome
+  | WrittenOutcome;
 
 const text = (value: string): CardValue => ({ type: "text", text: value });
+const choice = (value: string): CardValue => ({ type: "choice", choice: value });
 
 function launchedLine(outcome: AfterOf<"launched">): CardLine {
   const token: CardValue = { type: "asset", asset: outcome.token };
@@ -102,6 +124,22 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
   refused: (after) => ({ key: "receipt.refused", values: { reason: reasonLine(after.reason) } }),
   unsent: () => ({ key: "receipt.unsent", values: {} }),
   unknown: () => ({ key: "receipt.unknown", values: {} }),
+  unfrozen: (after) =>
+    after.scope === "agent"
+      ? { key: "receipt.unfrozenAgent", values: { agent: text(after.agent) } }
+      : {
+          key: "receipt.unfrozenAll",
+          values: { count: { type: "count", count: after.agentCount } },
+        },
+  orderActive: ({ order, isPaper }) => ({
+    key: "receipt.orderActive",
+    values: {
+      mode: choice(isPaper ? "paper" : "live"),
+      ...orderTermsOf(order),
+      expiry: { type: "dateTime", atMs: order.expiresAtMs },
+    },
+  }),
+  orderUnstarted: ({ why }) => ({ key: "receipt.orderUnstarted", values: { why: choice(why) } }),
 };
 
 function afterLine<K extends ReceiptAfter["kind"]>(after: AfterOf<K>): CardLine {
@@ -116,8 +154,9 @@ export function paperFillLine(fill: ReceiptFill): CardLine {
 
 /**
  * The receipt line a card becomes when it closes (spec 4, section 3.5). A confirmed intent passes
- * what followed: a paper intent its paper fill, flagged as paper, and a live intent how it ended
- * on chain, once it did; until then a confirmed card says it is sending.
+ * what followed: a paper intent its paper fill, flagged as paper, a live intent how it ended on
+ * chain, once it did, and an intent with nothing to send what it took effect as; until then a
+ * confirmed card says it is sending.
  */
 export function receiptLine(closing: CardClosing, after?: ReceiptAfter): CardLine {
   if (closing.outcome === "expired") {

@@ -12,6 +12,7 @@ import {
 } from "../operations/test-engine.js";
 import type { CardPress } from "./card-press.js";
 import { type CardPresses, createCardPresses } from "./create-card-presses.js";
+import { createCardShowings } from "./create-card-showings.js";
 import { downAfterFirstQuote, worseAfterFirstQuote } from "./test-venues.js";
 
 const live = { signal: new AbortController().signal };
@@ -25,6 +26,15 @@ interface Pressing {
   readonly intent: Id<"int">;
   /** The callback reference of the intent's first card version. */
   readonly ref: string;
+}
+
+// The card versions as the engine's composition draws and settles them.
+function showingsOf(test: TestEngine) {
+  return createCardShowings({
+    ...test.stores,
+    chains: testChains(),
+    venues: { hasNoDeadline: () => false },
+  });
 }
 
 async function refsOf(test: TestEngine, intent: Id<"int">): Promise<readonly string[]> {
@@ -42,7 +52,7 @@ async function pressing(options: TestEngineOptions = {}, owner?: number): Promis
     intents: test.stores.intents,
     answer: test.engine.answer,
     ownerId: async () => Promise.resolve(owner ?? ownerId),
-    chains: testChains(),
+    showings: showingsOf(test),
   });
   const [ref = ""] = await refsOf(test, view.intent);
   return { test, presses, intent: view.intent, ref };
@@ -115,7 +125,7 @@ describe("the card presses", () => {
       intents: subject.test.stores.intents,
       answer: subject.test.engine.answer,
       ownerId: async () => Promise.resolve(undefined),
-      chains: testChains(),
+      showings: showingsOf(subject.test),
     });
     const fromOwner = press(subject.ref, "confirm");
     expect(await unpaired.answer(fromOwner, live)).toStrictEqual({ status: "unknown" });
@@ -173,7 +183,7 @@ describe("the card presses", () => {
       intents: subject.test.stores.intents,
       answer: cancelled,
       ownerId: async () => Promise.resolve(ownerId),
-      chains: testChains(),
+      showings: showingsOf(subject.test),
     });
     expect(await presses.answer(press(subject.ref, "confirm"), live)).toStrictEqual({
       status: "unknown",
@@ -182,7 +192,7 @@ describe("the card presses", () => {
       intents: subject.test.stores.intents,
       answer: lost,
       ownerId: async () => Promise.resolve(ownerId),
-      chains: testChains(),
+      showings: showingsOf(subject.test),
     });
     expect(await forLost.answer(press(subject.ref, "confirm"), live)).toStrictEqual({
       status: "unknown",

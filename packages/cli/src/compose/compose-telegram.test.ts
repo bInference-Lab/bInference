@@ -11,16 +11,19 @@ import {
   bot,
   buyUnlisted,
   createOrder,
+  frozenThenUnfreezing,
   inAutoMode,
   never,
   ownerId,
   propose,
   stopLossUnlisted,
+  tapConfirm,
 } from "./test-bot.js";
 
 const live = { signal: new AbortController().signal };
 const icons = {
   paper: String.fromCodePoint(0x1f9ea),
+  done: String.fromCodePoint(0x2705),
   refused: String.fromCodePoint(0x274c),
 };
 const runtimeToken = idSchema("tok").parse("tok_0190f1c2-3a4b-7c5d-8e6f-000000000021");
@@ -235,6 +238,28 @@ describe("the bot joined to the engine", () => {
       /^Approve Stop-loss: sell all your XVS \(0x0000000f\) when the price falls to \$0\.80 · /,
     );
     expect(test.logger.records().filter((record) => record.level !== "info")).toStrictEqual([]);
+  });
+
+  it("turns an auto order's card into the order it made active once the owner taps Confirm", async () => {
+    const test = await bot({ knowsUnlisted: true });
+    await createOrder(test, stopLossUnlisted);
+    await tapConfirm(test);
+    const [receipt] = test.botApi.messages();
+    expect(receipt).toMatchObject({ buttons: [] });
+    expect(receipt?.text).toMatch(
+      /^.+ Paper auto order active: Stop-loss, sell all your XVS \(0x0000000f\) when the price falls to \$0\.80 · until .+$/u,
+    );
+    expect(receipt?.text.startsWith(icons.paper)).toBe(true);
+  });
+
+  it("turns an unfreeze's card into the agent it unfroze once the owner taps Confirm", async () => {
+    const test = await bot();
+    await frozenThenUnfreezing(test);
+    await tapConfirm(test);
+    const receipts = test.botApi.messages().filter(({ text }) => text.includes("Unfrozen"));
+    expect(receipts).toMatchObject([
+      { text: `${icons.done} Unfrozen: main trades again within its limits`, buttons: [] },
+    ]);
   });
 
   it("shows a buy card for a token the registry does not list, then its receipt", async () => {

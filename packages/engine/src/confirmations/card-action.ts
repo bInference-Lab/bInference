@@ -229,25 +229,31 @@ const actionLines: ActionLines = {
   autoOrder: (action) => ({
     key: "card.order.action",
     values: {
-      orderKind: {
-        type: "line",
-        line: {
-          key: "order.kind",
-          values: { kind: { type: "choice", choice: action.request.kind } },
-        },
-      },
-      summary: {
-        type: "line",
-        line: orderSummaryLine(action.request, {
-          ...(action.firstRunsAtMs === undefined ? {} : { firstRuns: action.firstRunsAtMs }),
-          ...(action.leaderLabel === undefined ? {} : { leaderLabel: action.leaderLabel }),
-        }),
-      },
+      ...orderTermsOf(action),
       maxFills: count(action.maxFills ?? 0),
       expiry: { type: "dateTime", atMs: action.expiresAtMs },
     },
   }),
 };
+
+/**
+ * An auto order's kind and its summary (spec 4, section 3.8), as its card's action line and its
+ * receipt name them.
+ */
+export function orderTermsOf(action: CardAction<"autoOrder">): {
+  readonly orderKind: CardValue;
+  readonly summary: CardValue;
+} {
+  const kind: CardValue = { type: "choice", choice: action.request.kind };
+  const summary = orderSummaryLine(action.request, {
+    ...(action.firstRunsAtMs === undefined ? {} : { firstRuns: action.firstRunsAtMs }),
+    ...(action.leaderLabel === undefined ? {} : { leaderLabel: action.leaderLabel }),
+  });
+  return {
+    orderKind: { type: "line", line: { key: "order.kind", values: { kind } } },
+    summary: { type: "line", line: summary },
+  };
+}
 
 /** The action line of a card (spec 4, section 3.3): its kind's message key and values. */
 export function actionLine<K extends CardActionKind>(action: CardAction<K>): CardLine {

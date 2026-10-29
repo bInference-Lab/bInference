@@ -34,10 +34,11 @@ import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { tradeSlippageBps } from "../money-path/swap-trade.js";
 import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
-import { firstRunsOf } from "../orders/dca-period.js";
 import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { launchCardFacts } from "./launch-card-facts.js";
+import { orderActionOf } from "./order-action-of.js";
+import { unfreezeActionOf } from "./unfreeze-action-of.js";
 
 function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
   const chain = chains.get(assetRefParts(asset).chain);
@@ -241,11 +242,7 @@ function rescueFacts(quote: RescueQuote, source: CardSource): CardFacts {
 // whole install (decision 0128). The owner asked for it, so no agent's reason shows.
 function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
   const { record, card, settings } = source;
-  const [only] = quote.agents;
-  const action =
-    quote.isWholeInstall || only === undefined
-      ? ({ kind: "unfreeze", scope: "install", agentCount: quote.agents.length } as const)
-      : ({ kind: "unfreeze", scope: "agent", agent: only.name } as const);
+  const action = unfreezeActionOf(quote);
   return {
     agentName: settings.agent.name,
     isPaper: record.isPaper,
@@ -256,36 +253,13 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
   };
 }
 
-// An auto order's action line: its terms with every default filled, a DCA order's first two runs
-// (decision 0246), and a copy order's leader's label in the agent's address book (decision 0261).
-function orderActionOf(
-  quote: AutoOrderQuote,
-  source: Pick<CardSource, "settings">,
-): CardFacts["action"] | undefined {
-  const { request, maxFills, expiresAtMs } = quote;
-  const firstRuns = request.kind === "dca" ? firstRunsOf(request, quote.quotedAtMs) : undefined;
-  if (request.kind === "dca" && firstRuns === undefined) {
-    return undefined;
-  }
-  const leader = request.kind === "copy" ? request.trigger.leader : undefined;
-  const entry = source.settings.addressBook.find(({ account }) => account === leader);
-  return {
-    kind: "autoOrder",
-    request,
-    ...(maxFills === undefined ? {} : { maxFills }),
-    expiresAtMs,
-    ...(firstRuns === undefined ? {} : { firstRunsAtMs: firstRuns }),
-    ...(entry === undefined ? {} : { leaderLabel: entry.label }),
-  };
-}
-
 // An auto order's card: its action line, the agent's reason, the launch wallet that holds it
 // (decision 0217), and the line on linked exits when its position holds another active exit order
 // (decision 0189).
 function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | undefined {
   const { record, card, settings, launchWallet } = source;
   const { request, hasLinkedExits } = quote;
-  const action = orderActionOf(quote, source);
+  const action = orderActionOf(quote, settings);
   if (action === undefined) {
     return undefined;
   }

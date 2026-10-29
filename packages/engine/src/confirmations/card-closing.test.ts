@@ -1,5 +1,6 @@
 import { assetRefSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
+import { testStopLoss } from "../orders/test-orders.js";
 import { receiptLine } from "./card-closing.js";
 
 const answeredBy = { surface: "console", by: "dev_1" } as const;
@@ -75,6 +76,45 @@ describe("receipt line", () => {
     expect([lines[1]?.values["token"], lines[3]?.values["reason"]]).toStrictEqual([
       { type: "asset", asset: amountOut.asset },
       { type: "line", line: { key: "reason.reverted", values: {} } },
+    ]);
+  });
+
+  it("becomes what a confirmed unfreeze or auto order took effect as, its mode named", () => {
+    const confirmed = { outcome: "confirmed", answeredBy, atMs: 5_000 } as const;
+    const order = {
+      kind: "autoOrder",
+      request: testStopLoss(),
+      maxFills: 1,
+      expiresAtMs: 9_000,
+    } as const;
+    const lines = [
+      receiptLine(confirmed, { kind: "unfrozen", scope: "agent", agent: "main" }),
+      receiptLine(confirmed, { kind: "unfrozen", scope: "install", agentCount: 2 }),
+      receiptLine(confirmed, { kind: "orderActive", order, isPaper: true }),
+      receiptLine(confirmed, { kind: "orderActive", order, isPaper: false }),
+      receiptLine(confirmed, { kind: "orderUnstarted", why: "expired" }),
+    ];
+    expect(lines.map(({ key }) => key)).toStrictEqual([
+      "receipt.unfrozenAgent",
+      "receipt.unfrozenAll",
+      "receipt.orderActive",
+      "receipt.orderActive",
+      "receipt.orderUnstarted",
+    ]);
+    expect([
+      lines[0]?.values["agent"],
+      lines[1]?.values["count"],
+      lines[2]?.values["mode"],
+      lines[3]?.values["mode"],
+    ]).toStrictEqual([
+      { type: "text", text: "main" },
+      { type: "count", count: 2 },
+      { type: "choice", choice: "paper" },
+      { type: "choice", choice: "live" },
+    ]);
+    expect([lines[2]?.values["expiry"], lines[4]?.values["why"]]).toStrictEqual([
+      { type: "dateTime", atMs: 9_000 },
+      { type: "choice", choice: "expired" },
     ]);
   });
 

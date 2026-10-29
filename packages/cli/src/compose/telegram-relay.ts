@@ -115,11 +115,12 @@ function cardWorkOf(push: EnginePush): RelayWork | undefined {
 }
 
 // A Confirm or Cancel pressed in Telegram turns the pressed card into its receipt itself; how a
-// live intent ended on chain comes later, so every copy shows it.
+// live intent ended on chain, or what an unfreeze or an auto order took effect as, can come after
+// the press read it, so every copy shows it.
 function isTelegramAnswer(settling: CardSettling): boolean {
   const { closing } = settling;
   const isAnswered = closing.outcome !== "expired" && closing.answeredBy.surface === "telegram";
-  return isAnswered && settling.live === undefined;
+  return isAnswered && settling.live === undefined && settling.written === undefined;
 }
 
 async function show(context: TelegramRelayContext, ref: CardVersionRef, call: Call) {

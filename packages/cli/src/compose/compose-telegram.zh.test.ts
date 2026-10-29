@@ -4,9 +4,11 @@ import {
   bot,
   buyUnlisted,
   createOrder,
+  frozenThenUnfreezing,
   inAutoMode,
   propose,
   stopLossUnlisted,
+  tapConfirm,
 } from "./test-bot.js";
 
 const chinese = () => ({ locale: "zh", timezone: "UTC" }) as const;
@@ -20,6 +22,30 @@ describe("the bot joined to the engine, in Chinese", () => {
     expect(card).toMatch(
       /^批准止损：当价格跌至 \$0\.80 时，卖出你持有的全部 XVS（0x0000000f） · /u,
     );
+  });
+
+  it("turns an auto order's card into the order it made active once the owner taps Confirm", async () => {
+    const test = await bot({ owner: chinese, knowsUnlisted: true });
+    await createOrder(test, stopLossUnlisted);
+    await tapConfirm(test);
+    const [receipt] = test.botApi.messages();
+    expect(receipt).toMatchObject({ buttons: [] });
+    expect(receipt?.text).toMatch(
+      /^.+ 模拟自动订单已生效：止损，当价格跌至 \$0\.80 时，卖出你持有的全部 XVS（0x0000000f），截至 .+$/u,
+    );
+  });
+
+  it("turns an unfreeze's card into the agent it unfroze once the owner taps Confirm", async () => {
+    const test = await bot({ owner: chinese });
+    await frozenThenUnfreezing(test);
+    await tapConfirm(test);
+    const receipts = test.botApi.messages().filter(({ text }) => text.includes("已解除冻结"));
+    expect(receipts).toMatchObject([
+      {
+        text: `${String.fromCodePoint(0x2705)} 已解除冻结：main 可以在交易限额内再次交易`,
+        buttons: [],
+      },
+    ]);
   });
 
   it("says on the card why auto mode asks, naming the MCP client that proposed", async () => {
