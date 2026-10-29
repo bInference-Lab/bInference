@@ -5,6 +5,7 @@ import { endpointModelChain } from "@binference/runtime";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { createSystemHttp } from "../runtime/system-http.js";
 import { evaluationEnvSchema } from "./evaluation-env.schema.js";
+import { createEvaluationHttp } from "./evaluation-http.js";
 import { reportLines } from "./evaluation-report.js";
 import { loadScenarios, scenarioFolder } from "./load-scenarios.js";
 import { type EvaluatedModel, runEvaluation } from "./run-evaluation.js";
@@ -25,7 +26,8 @@ import { standInChain } from "./stand-in-models.js";
 // --timeout-sec bounds each scenario's run, 300 seconds unless given; a run past it has no score.
 //
 // Without --stand-in it runs every scenario on each model of BINFERENCE_EVAL_MODELS at the
-// OpenAI-compatible endpoint BINFERENCE_EVAL_BASE_URL, with BINFERENCE_EVAL_API_KEY. The key goes
+// OpenAI-compatible endpoint BINFERENCE_EVAL_BASE_URL, with BINFERENCE_EVAL_API_KEY: one on the
+// internet, or on this machine's loopback (127.0.0.1, ::1, localhost), never another private address. The key goes
 // only into the requests' header: nothing prints, logs or writes it. With --stand-in it runs the
 // scenarios' own scripted answers instead, right or wrong, and reaches no network. Like
 // `src/main.ts`, it alone reads `process`. It exits 0 when every model meets the bar, 1 when one
@@ -89,7 +91,10 @@ function endpointModels(): {
     .map((model) => ({
       name: model,
       chain: () =>
-        endpointModelChain({ baseUrl, model, ...apiKey }, { http, clock, timeoutMs: modelIdleMs }),
+        endpointModelChain(
+          { baseUrl, model, ...apiKey },
+          { http: createEvaluationHttp(http), clock, timeoutMs: modelIdleMs },
+        ),
     }));
   return { models, close: async () => http.close() };
 }
