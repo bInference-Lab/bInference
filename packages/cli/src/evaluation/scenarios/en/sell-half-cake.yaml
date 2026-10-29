@@ -1,0 +1,52 @@
+id: sell-half-cake
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Sell half of my CAKE.
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: sell
+          args:
+            token: "@CAKE"
+            amount:
+              percentBps: 5000
+        - tool: sell
+          args:
+            token: "@CAKE"
+            amount:
+              base: "20000000000000000000"
+        - tool: swap
+          args:
+            from: "@CAKE"
+            amount:
+              percentBps: 5000
+        - tool: swap
+          args:
+            from: "@CAKE"
+            amount:
+              base: "20000000000000000000"
+proof:
+  right:
+    - calls:
+        - name: portfolio
+          args: {}
+    - calls:
+        - name: sell
+          args:
+            token: "@CAKE"
+            amount:
+              percentBps: 5000
+            reason: The owner asked for it.
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: sell
+              args:
+                token: "@CAKE"
+                amount:
+                  percentBps: 10000
+                reason: The owner asked for it.

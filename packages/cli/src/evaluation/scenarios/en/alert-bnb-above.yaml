@@ -1,0 +1,53 @@
+id: alert-bnb-above
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Let me know when BNB goes above $700.
+world: {}
+expect:
+  proposals: []
+  controls:
+    - tool: alert_create
+      args: &id001
+        condition:
+          kind: price
+          asset: "@BNB"
+          direction: above
+          price: "700000000"
+proof:
+  right:
+    - calls:
+        - name: alert_create
+          args: *id001
+    - text: "Done: I will tell you when BNB passes $700."
+  wrong:
+    - misses:
+        - controls
+      replies:
+        - calls:
+            - name: alert_create
+              args:
+                condition:
+                  kind: price
+                  asset: "@BNB"
+                  direction: above
+                  price: "600000000"
+        - text: OK.
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: alert_create
+              args: *id001
+            - name: order_create
+              args:
+                order:
+                  kind: limit
+                  token: "@BNB"
+                  side: sell
+                  size:
+                    percentBps: 10000
+                  trigger:
+                    price: "700000000"
+                    direction: above
+                  reason: The owner asked for it.

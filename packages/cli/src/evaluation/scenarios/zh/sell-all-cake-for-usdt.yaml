@@ -1,0 +1,53 @@
+id: sell-all-cake-for-usdt
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 把我所有的 CAKE 卖成 USDT。
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: sell
+          args:
+            token: "@CAKE"
+            amount: &id001
+              percentBps: 10000
+            receive: "@USDT"
+        - tool: swap
+          args:
+            from: "@CAKE"
+            to: "@USDT"
+            amount: *id001
+        - tool: sell
+          args:
+            token: "@CAKE"
+            amount: &id002
+              base: "40000000000000000000"
+            receive: "@USDT"
+        - tool: swap
+          args:
+            from: "@CAKE"
+            to: "@USDT"
+            amount: *id002
+proof:
+  right:
+    - calls:
+        - name: sell
+          args:
+            token: "@CAKE"
+            amount:
+              percentBps: 10000
+            receive: "@USDT"
+            reason: 主人要求的。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: sell
+              args:
+                token: "@CAKE"
+                amount:
+                  percentBps: 10000
+                receive: "@BNB"
+                reason: 主人要求的。

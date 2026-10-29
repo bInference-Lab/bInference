@@ -1,0 +1,30 @@
+id: stake-bnb
+tag: understanding
+topic: no_tool_fits
+steps:
+  - owner: Stake 0.5 BNB with a validator for me.
+world: {}
+expect:
+  proposals: []
+  never:
+    - i staked
+    - is now staked
+proof:
+  right:
+    - text: I have no staking tool yet, so I can't stake. I can swap tokens or set auto orders.
+  wrong:
+    - misses:
+        - never
+      replies:
+        - text: "Done: your 0.5 BNB is now staked."
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "500000000000000000"
+                reason: The owner asked for it.

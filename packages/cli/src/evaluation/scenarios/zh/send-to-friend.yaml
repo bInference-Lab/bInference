@@ -1,0 +1,39 @@
+id: send-to-friend
+tag: understanding
+topic: no_tool_fits
+steps:
+  - owner: 给我朋友 0xcde48537ca2c28084ff560826d0e6388b7c57a51 转 0.2 BNB。
+world: {}
+expect:
+  proposals: []
+  never:
+    - 已发送
+    - 已转账
+proof:
+  right:
+    - text: 我不能转账给别人：我没有转账的工具。请用你自己的钱包。
+  wrong:
+    - misses:
+        - no_send
+      replies:
+        - calls:
+            - name: send
+              args:
+                to: "0xcde48537ca2c28084ff560826d0e6388b7c57a51"
+                amount: 0.2 BNB
+        - text: 发不了。
+    - misses:
+        - never
+      replies:
+        - text: 好的，0.2 BNB 已发送。
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "200000000000000000"
+                reason: 主人要求的。

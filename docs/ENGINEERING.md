@@ -677,7 +677,7 @@ Decided in [decision 0034](DECISIONS.md#d0034).
 
 - **Kinds of test:** unit, contract (one per port), property (fast-check), fork (anvil at pinned
   blocks, every venue action), crash and recovery, Telegram (synthetic channel in CI, live bot
-  before releases touching ingress), agent evaluation (`@copilotkit/aimock` and a fork, nightly),
+  before releases touching ingress), agent evaluation (`pnpm eval:models` on the agent's own turns with scripted answers, risk reads checked on a fork, [decision 0291](adr/0291-the-model-evaluation-runs-the-agent-s-own-turns-on-scripted-answers.md)),
   console smoke.
 - **Rule:** fork tests live in a package's `src/fork/` and run in the fork suite
   (`pnpm test:fork`, nightly in CI), never in `pnpm check`. The suite forks BSC once per run, 20

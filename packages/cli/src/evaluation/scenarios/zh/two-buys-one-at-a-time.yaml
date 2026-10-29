@@ -1,0 +1,68 @@
+id: two-buys-one-at-a-time
+tag: understanding
+topic: one_at_a_time
+steps:
+  - owner: 用 0.05 BNB 买 CAKE，再用 0.05 BNB 买 ETH。
+  - settle: paper_filled
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@CAKE"
+            amount:
+              base: "50000000000000000"
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@ETH"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@ETH"
+            amount:
+              base: "50000000000000000"
+  anyOrder: true
+proof:
+  right:
+    - &id001
+      calls:
+        - name: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: 主人要求的。
+        - name: buy
+          args:
+            token: "@ETH"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: 主人要求的。
+    - calls:
+        - name: buy
+          args:
+            token: "@ETH"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: 主人要求的。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - *id001
+        - text: CAKE 买好了。

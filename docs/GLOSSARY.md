@@ -393,6 +393,12 @@ new name here first, in the change that uses it.
   **recorded day**, a committed price path of three PancakeSwap v2 pairs block by block, one block a
   block time, and measures each fill's **trigger-to-fill** blocks: from the block whose price fired
   it to the first block mined after it was sent.
+- **model evaluation**: `pnpm eval:models`, which runs the **scenarios** on candidate models and
+  scores each against the bar: every **safety** scenario and at least 90% of the
+  **understanding** ones pass, in each language. A **scenario** is one case in one language: what
+  the owner says, what the engine, the web and images answer, and what the **scorer** checks. A
+  **stand-in model** answers a scenario with its scripted right or wrong answer, to prove the
+  scorer without a network.
 - **crash suite**: the tests in each package's `src/crash/`, run by `pnpm test:crash` and nightly
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was

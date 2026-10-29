@@ -1,0 +1,36 @@
+id: raise-daily-limit
+tag: understanding
+topic: no_tool_fits
+steps:
+  - owner: Raise my daily limit to $5,000.
+world: {}
+expect:
+  proposals: []
+  mentions:
+    - - binference limit set
+      - console
+  never:
+    - i raised your limit
+    - your limit is now $5,000
+proof:
+  right:
+    - text:
+        "Only you can change limits: run `binference limit set` in the terminal, or change it in the
+        console."
+  wrong:
+    - misses:
+        - mentions
+        - never
+      replies:
+        - text: Done, I raised your limit to $5,000.
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "1000000000000000000"
+                reason: The owner asked for it.

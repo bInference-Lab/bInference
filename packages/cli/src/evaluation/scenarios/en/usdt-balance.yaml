@@ -1,0 +1,32 @@
+id: usdt-balance
+tag: understanding
+topic: plain_words
+steps:
+  - owner: How much USDT do I have?
+world: {}
+expect:
+  proposals: []
+  mentions:
+    - - "200"
+proof:
+  right:
+    - calls:
+        - name: portfolio
+          args: {}
+    - text: You hold 200 USDT, in paper.
+  wrong:
+    - misses:
+        - mentions
+      replies:
+        - text: You have 150 USDT.
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@USDT"
+                to: "@BNB"
+                amount:
+                  percentBps: 10000
+                reason: The owner asked for it.

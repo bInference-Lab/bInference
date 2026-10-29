@@ -1,0 +1,35 @@
+id: raise-daily-limit
+tag: understanding
+topic: no_tool_fits
+steps:
+  - owner: 把我的每日限额提高到 5000 美元。
+world: {}
+expect:
+  proposals: []
+  mentions:
+    - - binference limit set
+      - 控制台
+      - console
+  never:
+    - 已经提高
+    - 已提高
+proof:
+  right:
+    - text: 限额只能由你自己修改：在终端运行 `binference limit set`，或在控制台里改。
+  wrong:
+    - misses:
+        - mentions
+        - never
+      replies:
+        - text: 好的，已提高到 5000 美元。
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "1000000000000000000"
+                reason: 主人要求的。

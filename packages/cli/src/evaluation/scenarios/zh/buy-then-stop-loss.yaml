@@ -1,0 +1,67 @@
+id: buy-then-stop-loss
+tag: understanding
+topic: one_at_a_time
+steps:
+  - owner: 用 0.05 BNB 买 CAKE，然后在 2 美元设止损。
+  - settle: paper_filled
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@CAKE"
+            amount:
+              base: "50000000000000000"
+    - tool: order_create
+      args:
+        order:
+          kind: stopLoss
+          token: "@CAKE"
+          trigger:
+            price: "2000000"
+proof:
+  right:
+    - calls:
+        - name: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: 主人要求的。
+    - calls:
+        - name: order_create
+          args:
+            order: &id001
+              kind: stopLoss
+              token: "@CAKE"
+              side: sell
+              size:
+                percentBps: 10000
+              trigger:
+                price: "2000000"
+              reason: 主人要求的。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: order_create
+              args:
+                order: *id001
+        - calls:
+            - name: buy
+              args:
+                token: "@CAKE"
+                spend:
+                  asset: "@BNB"
+                  base: "50000000000000000"
+                reason: 主人要求的。

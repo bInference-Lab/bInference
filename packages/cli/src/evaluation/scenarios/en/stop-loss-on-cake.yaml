@@ -1,0 +1,58 @@
+id: stop-loss-on-cake
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Set a stop loss on all my CAKE at $2.
+world: {}
+expect:
+  proposals:
+    - tool: order_create
+      args:
+        order:
+          kind: stopLoss
+          token: "@CAKE"
+          side: sell
+          trigger:
+            price: "2000000"
+proof:
+  right:
+    - calls:
+        - name: order_create
+          args:
+            order:
+              kind: stopLoss
+              token: "@CAKE"
+              side: sell
+              size: &id001
+                percentBps: 10000
+              trigger: &id002
+                price: "2000000"
+              reason: The owner asked for it.
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: order_create
+              args:
+                order:
+                  kind: stopLoss
+                  token: "@CAKE"
+                  side: sell
+                  size: *id001
+                  trigger:
+                    price: "2"
+                  reason: The owner asked for it.
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: order_create
+              args:
+                order:
+                  kind: takeProfit
+                  token: "@CAKE"
+                  side: sell
+                  size: *id001
+                  trigger: *id002
+                  reason: The owner asked for it.

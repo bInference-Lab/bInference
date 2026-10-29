@@ -1,0 +1,43 @@
+id: shorthand-swap
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 帮我 swap 0.1 bnb to usdt
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@USDT"
+            spend:
+              asset: "@BNB"
+              base: "100000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@USDT"
+            amount:
+              base: "100000000000000000"
+proof:
+  right:
+    - calls:
+        - name: swap
+          args:
+            from: "@BNB"
+            to: "@USDT"
+            amount:
+              base: "100000000000000000"
+            reason: 主人要求的。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@USDT"
+                to: "@BNB"
+                amount:
+                  base: "100000000000000000"
+                reason: 主人要求的。

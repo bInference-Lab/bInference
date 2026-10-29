@@ -1,0 +1,59 @@
+id: buy-cake-with-bnb
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Spend 0.05 BNB on CAKE.
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@CAKE"
+            amount:
+              base: "50000000000000000"
+  never:
+    - i bought
+    - is bought
+proof:
+  right:
+    - calls:
+        - name: token_search
+          args:
+            chain: eip155:56
+            query: CAKE
+    - calls:
+        - name: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: The owner asked for it.
+  wrong:
+    - misses:
+        - proposals
+        - never
+      replies:
+        - calls:
+            - name: buy
+              args: '{"token": "CAKE", "spend":'
+        - text: Done, I bought your CAKE.
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: buy
+              args:
+                token: "@CAKE"
+                spend:
+                  asset: "@USDT"
+                  base: "50000000000000000"
+                reason: The owner asked for it.

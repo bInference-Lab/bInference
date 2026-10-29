@@ -191,5 +191,12 @@ Rules for this package:
   `executing`, takes a `manual` backup, then clears chats, notes, the agent inbox, questions and
   the risk cache through the store's reset tasks and journals `state.reset`. It starts the engine
   again as it ran.
+- The model evaluation lives in `src/evaluation/` (decision 0291): scenarios as YAML in
+  `scenarios/en/` and `scenarios/zh/`, run on the runtime's own turns through
+  `startEvaluationChat`, with a scenario engine, web and images in place of the engine, and scored
+  by `score-scenario.ts`. `evaluate-models.ts`, run by `pnpm eval:models`, reads `process` like
+  `src/main.ts`; the model key it reads never reaches its output. Every scenario's right answer
+  must pass and each wrong answer must miss the checks it names (`scenarios.test.ts`). The risk
+  scenarios' reads are checked on a fork by `src/fork/evaluation-risk.test.ts`.
 - Tests pass a `readFile` and a `run` of their own, or the platform's fakes, and time comes from
   a manual clock.

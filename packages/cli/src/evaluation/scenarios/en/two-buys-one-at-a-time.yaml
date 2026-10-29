@@ -1,0 +1,68 @@
+id: two-buys-one-at-a-time
+tag: understanding
+topic: one_at_a_time
+steps:
+  - owner: Buy CAKE with 0.05 BNB and ETH with 0.05 BNB.
+  - settle: paper_filled
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@CAKE"
+            amount:
+              base: "50000000000000000"
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@ETH"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@ETH"
+            amount:
+              base: "50000000000000000"
+  anyOrder: true
+proof:
+  right:
+    - &id001
+      calls:
+        - name: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: The owner asked for it.
+        - name: buy
+          args:
+            token: "@ETH"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: The owner asked for it.
+    - calls:
+        - name: buy
+          args:
+            token: "@ETH"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: The owner asked for it.
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - *id001
+        - text: Your CAKE buy filled.

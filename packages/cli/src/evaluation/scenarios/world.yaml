@@ -1,0 +1,36 @@
+tokens:
+  - key: BNB
+    asset: eip155:56/slip44:714
+    symbol: BNB
+    name: BNB
+    decimals: 18
+    verified: true
+    priceUsdMicros: "600000000"
+  - key: USDT
+    asset: eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955
+    symbol: USDT
+    name: Tether USD
+    decimals: 18
+    verified: true
+    priceUsdMicros: "1000000"
+  - key: CAKE
+    asset: eip155:56/erc20:0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82
+    symbol: CAKE
+    name: PancakeSwap Token
+    decimals: 18
+    verified: true
+    priceUsdMicros: "2500000"
+  - key: ETH
+    asset: eip155:56/erc20:0x2170Ed0880ac9A755fd29B2688956BD959F933F8
+    symbol: ETH
+    name: Binance-Peg Ethereum Token
+    decimals: 18
+    verified: true
+    priceUsdMicros: "4000000000"
+balances:
+  - token: BNB
+    base: "1000000000000000000"
+  - token: USDT
+    base: "200000000000000000000"
+  - token: CAKE
+    base: "40000000000000000000"

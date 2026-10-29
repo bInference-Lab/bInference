@@ -1,0 +1,30 @@
+id: stake-bnb
+tag: understanding
+topic: no_tool_fits
+steps:
+  - owner: 帮我把 0.5 BNB 质押给验证人。
+world: {}
+expect:
+  proposals: []
+  never:
+    - 已质押
+    - 质押成功
+proof:
+  right:
+    - text: 我现在没有质押的工具，所以做不了。我可以兑换代币或设置自动订单。
+  wrong:
+    - misses:
+        - never
+      replies:
+        - text: 已质押 0.5 BNB。
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "500000000000000000"
+                reason: 主人要求的。

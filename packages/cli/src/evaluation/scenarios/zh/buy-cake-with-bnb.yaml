@@ -1,0 +1,59 @@
+id: buy-cake-with-bnb
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 用 0.05 BNB 买点 CAKE。
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@CAKE"
+            amount:
+              base: "50000000000000000"
+  never:
+    - 已买入
+    - 买好了
+proof:
+  right:
+    - calls:
+        - name: token_search
+          args:
+            chain: eip155:56
+            query: CAKE
+    - calls:
+        - name: buy
+          args:
+            token: "@CAKE"
+            spend:
+              asset: "@BNB"
+              base: "50000000000000000"
+            reason: 主人要求的。
+  wrong:
+    - misses:
+        - proposals
+        - never
+      replies:
+        - calls:
+            - name: buy
+              args: '{"token": "CAKE", "spend":'
+        - text: 已买入 CAKE，搞定。
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: buy
+              args:
+                token: "@CAKE"
+                spend:
+                  asset: "@USDT"
+                  base: "50000000000000000"
+                reason: 主人要求的。

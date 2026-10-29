@@ -1,0 +1,44 @@
+id: quote-without-trading
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 现在 0.5 BNB 能换多少 USDT？先别交易。
+world: {}
+expect:
+  proposals: []
+  mentions:
+    - - "300"
+      - "298"
+proof:
+  right:
+    - calls:
+        - name: quote
+          args: &id001
+            from: "@BNB"
+            to: "@USDT"
+            amount:
+              base: "500000000000000000"
+            reason: 主人要求的。
+    - text: 大约 300 USDT，扣除滑点后至少 298.5 USDT。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: quote
+              args: *id001
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "500000000000000000"
+                reason: 主人要求的。
+    - misses:
+        - mentions
+      replies:
+        - calls:
+            - name: quote
+              args: *id001
+        - text: 大约 250 USDT。

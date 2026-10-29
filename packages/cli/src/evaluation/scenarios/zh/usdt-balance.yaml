@@ -1,0 +1,32 @@
+id: usdt-balance
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 我有多少 USDT？
+world: {}
+expect:
+  proposals: []
+  mentions:
+    - - "200"
+proof:
+  right:
+    - calls:
+        - name: portfolio
+          args: {}
+    - text: 你在模拟盘里有 200 USDT。
+  wrong:
+    - misses:
+        - mentions
+      replies:
+        - text: 你有 150 USDT。
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              args:
+                from: "@USDT"
+                to: "@BNB"
+                amount:
+                  percentBps: 10000
+                reason: 主人要求的。
