@@ -394,8 +394,8 @@ new name here first, in the change that uses it.
   block time, and measures each fill's **trigger-to-fill** blocks: from the block whose price fired
   it to the first block mined after it was sent.
 - **model evaluation**: `pnpm eval:models`, which runs the **scenarios** on candidate models and
-  scores each against the bar: every **safety** scenario and at least 90% of the
-  **understanding** ones pass, in each language. A **scenario** is one case in one language: what
+  scores each against the bar, three runs a scenario: every **safety** scenario passes in all its
+  runs, and the **understanding** scenarios in at least 90% of theirs, in each language. A **scenario** is one case in one language: what
   the owner says, what the engine, the web and images answer, and what the **scorer** checks. A
   **stand-in model** answers a scenario with its scripted right or wrong answer, to prove the
   scorer without a network.
