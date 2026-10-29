@@ -53,7 +53,7 @@ async function openedText(skill: EvaluationSkill, signal: AbortSignal): Promise<
 
 describe("the bundled agent skills", () => {
   it("reach every agent's index past the install lint, each for agents alone", () => {
-    expect(skills.map((skill) => skill.name)).toEqual(["safe-swap"]);
+    expect(skills.map((skill) => skill.name)).toEqual(["safe-swap", "token-due-diligence"]);
     expect(skills.every((skill) => skill.text.includes("binference-audience: agent"))).toBe(true);
   });
 
