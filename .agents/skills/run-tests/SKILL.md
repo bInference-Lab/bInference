@@ -53,6 +53,11 @@ BINFERENCE_CRASH_RUNS=1 pnpm test:crash packages/cli/src/crash
 
 - Keep `--maxWorkers=2` on a laptop that others share. One test command at a time; never two
   Vitest runs side by side.
+- A crash pass prints its runs per kill point, its kill points, its estimated time and its
+  results file in `reports/crash/`, which gets each run's result as the run ends: read it while a
+  long pass runs, or after one was stopped. A part estimated over 120 minutes is refused. After a
+  change to a kill point's speed or a new kill point, refresh the times: run the changed file at
+  `BINFERENCE_CRASH_RUNS=1`, then `pnpm crash:times reports/crash/<file>.jsonl`.
 - The fork and crash suites need `anvil` on the `PATH`. The fork suite also reads public BSC
   nodes, which refuse bursts for a while: a 403 there is the network, not your code.
 - A test command that runs past a minute is a finding. Stop it and find out why before running it

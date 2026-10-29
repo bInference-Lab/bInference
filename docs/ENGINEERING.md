@@ -715,6 +715,16 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   chain of its own with BSC's chain id and no fork, so no run reaches the network. Enforcer:
   `vitest.crash.config.ts` with its global setup, `BINFERENCE_CRASH_RUNS` for the runs per kill
   point, and the `src/crash/` exclusion in `vitest.config.ts`.
+- **Rule:** a crash pass is sized before it starts and leaves its results as it goes. Its reporter
+  prints the runs per kill point, the kill points and the estimated time, and refuses a part
+  estimated over 120 minutes with what to lower. The estimate comes from the measured times in
+  `config/vitest/crash-times.generated.json`: each kill point's mean run, each file's setup and the
+  suite's own start, measured on the maintainers' laptop. The reporter appends each test's result to
+  a JSON-lines file in `reports/crash/` as the test ends, so a pass stopped from outside keeps every
+  finished run; the nightly job uploads that folder even when it fails. After a change that makes
+  runs slower or faster, or adds a kill point, a pass at one run per kill point and
+  `pnpm crash:times reports/crash/<file>.jsonl` refresh the times in the same change. Enforcer:
+  `config/vitest/crash-reporter.ts`, `scripts/crash-times.mts`, and `crash.yml`'s upload step.
 - **Rule:** image tests live in a package's `src/image/` and run in the image suite
   (`pnpm test:image`, nightly in CI on Linux amd64,
   [decision 0293](adr/0293-a-nightly-job-builds-and-runs-the-docker-image-on-linux-amd64.md)),

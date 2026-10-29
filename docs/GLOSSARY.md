@@ -407,6 +407,9 @@ new name here first, in the change that uses it.
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was
   recorded, after a block took it) and starts it again, against anvil on a chain of its own.
+  A **crash pass** is one run of the suite over a **part**, a set of its files and kill points; it
+  writes each run's result to a **results file** in `reports/crash/` as the run ends, and is sized
+  before it starts from the **measured times** in `config/vitest/crash-times.generated.json`.
 
 ### Files, commands and tools
 

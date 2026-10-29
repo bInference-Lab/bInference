@@ -27,6 +27,7 @@
     "check:tsconfig": "node --import tsx scripts/check-tsconfig.mts",
     "check:tsdoc": "node --import tsx scripts/check-tsdoc.mts",
     "commitlint": "commitlint",
+    "crash:times": "node --import tsx scripts/crash-times.mts",
     "deadcode": "knip --no-progress",
     "dup:check": "jscpd .",
     "eval:models": "node --conditions=@binference/source --import tsx packages/cli/src/evaluation/evaluate-models.ts",

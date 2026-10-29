@@ -133,6 +133,7 @@ Node 26.1 or later. pnpm switches itself to the version in `package.json`.
 | `pnpm test:fork`                   | The fork suite on an anvil fork of BSC; needs anvil and the network  |
 | `pnpm test:replay`                 | Replays a recorded day on the fork at the chain's pace; needs anvil  |
 | `pnpm test:crash`                  | The crash suite: kills and restarts the engine; needs anvil          |
+| `pnpm crash:times <results>`       | Refreshes the crash suite's measured times from a pass's results     |
 | `pnpm test:image`                  | Builds and runs the Docker image with a paper trade; needs Docker    |
 | `pnpm test:console`                | Builds the console and runs its headless Playwright smoke test       |
 | `pnpm build`                       | tsdown for each package, ESM and `.d.ts`                             |

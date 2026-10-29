@@ -118,11 +118,13 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value $tools
 
       # 20 runs at each kill point of the part on each OS. Vitest writes the results to the job
-      # summary.
+      # summary; the suite's reporter refuses a part its measured times put over 120 minutes and
+      # writes each run's result to reports/crash/ as it ends.
       - name: Crash suite
         shell: bash
         env:
           BINFERENCE_CRASH_RUNS: ${{ inputs.runs || '20' }}
+          BINFERENCE_CRASH_PART: ${{ matrix.part.name }}
           CRASH_FILES: ${{ matrix.part.files }}
           CRASH_POINTS: ${{ matrix.part.points }}
         run: |
@@ -133,3 +135,13 @@ jobs:
           else
             pnpm test:crash "${files[@]}"
           fi
+
+      # Every finished run's result, also when the job fails or reaches its time limit.
+      - name: Upload the crash results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: crash-results-${{ matrix.os }}-${{ strategy.job-index }}
+          path: reports/crash/
+          if-no-files-found: warn
+          retention-days: 30
