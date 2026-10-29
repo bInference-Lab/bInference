@@ -79,26 +79,29 @@ interface CardEngine {
   readonly close: () => void;
 }
 
-// An engine with one card that waits: it lists the card until it is answered or closed.
-function cardEngine(): CardEngine {
+// An engine with one card that waits: it lists the card until it is answered or closed. A Confirm
+// answers the intent as `confirmedAs` leaves it, a paper fill by default.
+function cardEngine(confirmedAs: object = { state: "paper_filled" }): CardEngine {
   const listed = { items: [waitingIntent] };
   const close = (): void => {
     listed.items = [];
   };
-  const answered = (state: string) => (): object => {
+  const answered = (state: object) => (): object => {
     close();
-    return { ...waitingIntent, state };
+    return { ...waitingIntent, ...state };
   };
   return {
     answers: {
       "intent/list": () => ({ items: listed.items }),
       "intent/card": () => drawnCard,
-      "intent/confirm": answered("paper_filled"),
-      "intent/deny": answered("denied"),
+      "intent/confirm": answered(confirmedAs),
+      "intent/deny": answered({ state: "denied" }),
     },
     close,
   };
 }
+
+const order = "ord_0190f1c2-3a4b-7c5d-8e6f-000000000005";
 
 describe("terminal chat", () => {
   it("opens with its keys, the line about images and the newest messages of the session", async () => {
@@ -215,6 +218,49 @@ describe("terminal chat", () => {
     await chat.settle();
     expect(opsOf(chat, "intent/confirm")).toStrictEqual([{ intent, card, cardVersion: 1 }]);
     expect(chat.rows().slice(-2)).toStrictEqual(["Confirmed. It fills on paper.", "› "]);
+  });
+
+  it("says what a confirmed unfreeze did, never that it is sending", async () => {
+    const unfrozen = { state: "reconciled", request: { kind: "unfreeze", agent: harnessAgent } };
+    const chat = await opened(cardEngine(unfrozen).answers);
+    chat.press(ctrlY);
+    await chat.settle();
+    chat.push("intent", "intent/changed", { intent });
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual([
+      "Unfrozen. The agent trades again within its limits.",
+      "› ",
+    ]);
+  });
+
+  it("says whether a confirmed auto order became active, from the order as it stands", async () => {
+    const confirmed = { state: "reconciled", request: { kind: "autoOrder", order } };
+    const outcomes = await Promise.all(
+      [{ state: "active" }, { state: "expired" }, { state: "cancelled" }].map(async (stored) => {
+        const engine = cardEngine(confirmed);
+        const chat = await opened({ ...engine.answers, "order/get": () => stored });
+        chat.press(ctrlY);
+        await chat.settle();
+        chat.push("intent", "intent/changed", { intent });
+        await chat.settle();
+        return [opsOf(chat, "order/get"), chat.rows().at(-2)];
+      }),
+    );
+    expect(outcomes).toStrictEqual([
+      [[{ order }], "Confirmed. The auto order is active."],
+      [[{ order }], "Confirmed. The auto order did not start: it expired before the confirmation."],
+      [[{ order }], "Confirmed. The auto order did not start: it was cancelled first."],
+    ]);
+  });
+
+  it("keeps a confirmed auto order confirmed when its order cannot be read", async () => {
+    const confirmed = { state: "reconciled", request: { kind: "autoOrder", order } };
+    const chat = await opened(cardEngine(confirmed).answers);
+    chat.press(ctrlY);
+    await chat.settle();
+    chat.push("intent", "intent/changed", { intent });
+    await chat.settle();
+    expect(chat.rows().at(-2)).toBe("Confirmed. The auto order's state could not be read now.");
   });
 
   it("cancels the card with Ctrl+N, and a second key on it does nothing", async () => {

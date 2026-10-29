@@ -1,4 +1,4 @@
-import type { IntentView, ProtocolId } from "@binference/protocol";
+import type { IntentView, OrderState, ProtocolId } from "@binference/protocol";
 import { callOptions, type ChatContext } from "./chat-context.js";
 import { cardLines, failureText } from "./chat-lines.js";
 import { type OpenCard, secondsLeft } from "./chat-state.js";
@@ -17,8 +17,36 @@ function hasCard(intent: IntentView): intent is Listed {
   return intent.card !== undefined;
 }
 
+// The order states that say an auto order's card made it active, though it may have moved on.
+const startedOrders: ReadonlySet<OrderState> = new Set(["active", "paused", "filled", "ended"]);
+
+// What a confirmed card that sends nothing took effect as: an unfreeze, or the auto order it made
+// active, or why that order did not start.
+async function writtenText(context: ChatContext, view: IntentView): Promise<string | undefined> {
+  const { request } = view;
+  if (request.kind === "unfreeze") {
+    const scope = request.agent === undefined ? "install" : "agent";
+    return context.words("tui.card.unfrozen", { scope });
+  }
+  if (request.kind !== "autoOrder") {
+    return undefined;
+  }
+  const args = { order: request.order };
+  const read = context.client.call("order/get", args, callOptions(context));
+  // The card is confirmed by now: a failed read leaves the order's state unsaid, never unanswered.
+  const outcome = await read.then(
+    ({ state }) => (startedOrders.has(state) ? "started" : state),
+    () => "unread",
+  );
+  return context.words("tui.card.orderConfirmed", { outcome });
+}
+
 // The answer's line: confirmed, or a worse re-quote that opened the next version, or cancelled.
-function answeredText(context: ChatContext, shown: OpenCard, view: IntentView): string {
+async function answeredText(
+  context: ChatContext,
+  shown: OpenCard,
+  view: IntentView,
+): Promise<string> {
   const { words } = context;
   if (view.state === "awaiting_confirmation" && (view.card?.version ?? 0) > shown.shown.version) {
     return words("tui.card.requoted");
@@ -26,7 +54,8 @@ function answeredText(context: ChatContext, shown: OpenCard, view: IntentView): 
   if (view.state === "denied" || view.state === "cancelled") {
     return words("tui.card.cancelled");
   }
-  return words("tui.card.confirmed", { paper: view.paper ? "yes" : "no" });
+  const written = view.state === "reconciled" ? await writtenText(context, view) : undefined;
+  return written ?? words("tui.card.confirmed", { paper: view.paper ? "yes" : "no" });
 }
 
 async function opened(context: ChatContext, intent: Listed): Promise<OpenCard> {
@@ -90,7 +119,7 @@ async function answerCard(
           { intent, card: shown.card },
           callOptions(context),
         );
-  context.print([{ text: answeredText(context, card, view), tone: "dim" }]);
+  context.print([{ text: await answeredText(context, card, view), tone: "dim" }]);
   return view;
 }
 

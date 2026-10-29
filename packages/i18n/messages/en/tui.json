@@ -20,6 +20,8 @@
   "card.expired": "Expired",
   "card.more": "{count, plural, one {# more card waits} other {# more cards wait}} after this one",
   "card.confirmed": "Confirmed. {paper, select, yes {It fills on paper.} other {binference is sending it on chain.}}",
+  "card.unfrozen": "Unfrozen. {scope, select, install {Every agent trades again within its limits, and new agents start unfrozen.} other {The agent trades again within its limits.}}",
+  "card.orderConfirmed": "Confirmed. {outcome, select, started {The auto order is active.} expired {The auto order did not start: it expired before the confirmation.} unread {The auto order's state could not be read now.} other {The auto order did not start: it was cancelled first.}}",
   "card.requoted": "The price moved, so binference opened a new card version. Check it, then confirm again.",
   "card.cancelled": "Cancelled. Nothing was sent.",
   "card.closed": "{state, select, expired {The card expired. Nothing was sent.} denied {The card was cancelled elsewhere. Nothing was sent.} cancelled {The card was cancelled elsewhere. Nothing was sent.} other {The card was confirmed elsewhere.}}",

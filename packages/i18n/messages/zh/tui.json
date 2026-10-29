@@ -20,6 +20,8 @@
   "card.expired": "已过期",
   "card.more": "{count, plural, other {之后还有 # 张卡片等待回复}}",
   "card.confirmed": "已确认。{paper, select, yes {它将以模拟方式成交。} other {binference 正在把它发送上链。}}",
+  "card.unfrozen": "已解除冻结。{scope, select, install {全部 Agent 可以在交易限额内再次交易，新建的 Agent 也不再冻结。} other {该 Agent 可以在交易限额内再次交易。}}",
+  "card.orderConfirmed": "已确认。{outcome, select, started {自动订单已生效。} expired {自动订单未生效：确认之前它已过期。} unread {暂时无法读取自动订单的状态。} other {自动订单未生效：它已先被取消。}}",
   "card.requoted": "价格已变动，binference 打开了新版本的卡片。请查看后再次确认。",
   "card.cancelled": "已取消，未发送任何交易。",
   "card.closed": "{state, select, expired {卡片已过期，未发送任何交易。} denied {卡片已在其他地方取消，未发送任何交易。} cancelled {卡片已在其他地方取消，未发送任何交易。} other {卡片已在其他地方确认。}}",
