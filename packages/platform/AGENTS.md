@@ -13,7 +13,8 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   (`@binference/platform/testing`). Every export carries TSDoc.
 - Every interface in `ports.ts` has a contract suite in `src/contracts/`, and each adapter's test
   runs it. A Windows adapter's test runs only on Windows (`describe.runIf`); a POSIX one skips
-  Windows (`describe.skipIf`). CI runs all three OSes, so each path is proven where it runs.
+  Windows (`describe.skipIf`). CI runs all three OSes on each push to `master`, after the merge, so
+  a change to one OS's path runs its tests on that OS before the merge.
 - Child processes go through `runCommand` (execa, an argument array, no shell, a time limit).
 - The IPC address is not a security boundary: every connection authenticates through
   `openIpcChannel`. Node cannot set a named pipe's access list.

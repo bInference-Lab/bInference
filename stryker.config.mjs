@@ -27,8 +27,8 @@ function hashOf(text) {
   return hash;
 }
 
-// MUTATE_FILES (comma-separated paths) narrows the run to those files: a pull request mutates only
-// the source files it changes.
+// MUTATE_FILES (comma-separated paths) narrows the run to those files: a push to master mutates
+// only the source files it changes.
 const changed = new Set(
   (process.env.MUTATE_FILES ?? "").split(",").filter((path) => path.length > 0),
 );

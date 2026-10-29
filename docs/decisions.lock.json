@@ -1171,6 +1171,10 @@
     "0293": {
       "status": "Accepted",
       "sha256": "6b7193e908cb0a08010947d2f919660e33054c64312b31d2048195357e82d488"
+    },
+    "0294": {
+      "status": "Accepted",
+      "sha256": "1dd64acaa006762b3428778c5d46faed65c9cb9942621e5410ae8da7e083ea52"
     }
   }
 }

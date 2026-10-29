@@ -173,4 +173,5 @@ Skills live in `.agents/skills/`. Run the first two on every change, in this ord
 1. The behavior is tested at the cheapest layer that proves it.
 2. Public exports carry TSDoc; new user-facing words exist in English and Chinese.
 3. A config change has its migration; a load-bearing decision has its ADR.
-4. `pnpm check` passes. CI runs it on Linux, macOS and Windows.
+4. `pnpm check` passes. CI runs it on Linux, macOS and Windows on each push to `master`, never on a
+   branch or pull request, so prove a Windows-specific path on Windows before the merge.

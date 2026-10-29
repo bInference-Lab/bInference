@@ -225,8 +225,10 @@ Rules:
 - **OS-5** No dependency that compiles native code at install. Prebuilt binaries only. Enforcer:
   pnpm `allowBuilds` (a reviewed list) with `strictDepBuilds: true`; `CODEOWNERS` on
   `pnpm-workspace.yaml`.
-- **OS-6** Every CI check runs on Linux, macOS and Windows. Enforcer: the CI matrix; the `master`
-  ruleset requires each OS job.
+- **OS-6** Every CI check runs on Linux, macOS and Windows. CI runs on each push to `master`, never
+  on a branch or pull request ([decision 0294](DECISIONS.md#d0294)), so a change to OS-specific
+  code runs its tests on that OS before the merge: CI by hand on the branch, or a machine of that
+  OS. Enforcer: the CI matrix; a red `master` run stops every other merge until it is green.
 
 <a id="section-2-6"></a>
 
@@ -585,8 +587,8 @@ The rules in [ARCHITECTURE.md](ARCHITECTURE.md#rules) set the product rules. In 
   parser, never coerced through `number`. Enforcer: a test over every tool schema (money fields use
   the shared decimal-string schema); `review-money-path`.
 - **Rule:** a PR touching `engine`, `signer`, `chain`, `chain-evm`, `chains` or `protocol` runs the
-  `review-money-path` skill and pastes its checklist into the PR. Enforcer: `check:pr` (the
-  checklist is present and ticked when those paths change).
+  `review-money-path` skill and pastes its checklist into the PR. Enforcer: `check:pr` with the PR
+  body before the merge (the checklist is present and ticked when those paths change).
 
 <a id="section-13"></a>
 
@@ -733,10 +735,11 @@ These rules cover docs, UI messages, comments, commit messages and PR titles:
 - Short sentences in active voice and the present tense. Enforcer: `clean-diff` (no tool judges
   voice or tense).
 
-`pnpm check:style` scans tracked text files, the PR's commit messages and its title; CI fails on a
-hit. It skips its own word lists in `config/style/` and the prose words inside Markdown code, which
-is why this file writes the banned words as code. The `clean-diff` skill runs on the diff before
-`review-diff`.
+`pnpm check:style` scans tracked text files, commit messages and the PR title: `check:pr` runs it
+on the branch's commits and the title before the merge, and CI on every commit a push to `master`
+carries; each fails on a hit. It skips its own word lists in `config/style/` and the prose words
+inside Markdown code, which is why this file writes the banned words as code. The `clean-diff`
+skill runs on the diff before `review-diff`.
 
 <a id="section-17"></a>
 
@@ -783,26 +786,27 @@ Decided in [decision 0033](DECISIONS.md#d0033).
 
 ## 18. Tooling and `pnpm check`
 
-| Gate        | Tool                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Format      | oxfmt: width 100, double quotes, trailing commas, LF, sorted imports and `package.json`                                                                                                                                                                                                                                                                                            |
-| Lint        | Oxlint with type-aware rules (tsgolint): the rules named in sections 2 to 15 and the suppression rule below                                                                                                                                                                                                                                                                        |
-| Lint plugin | `guards`, binference's own Oxlint JS plugin, one file of AST rules loaded through `jsPlugins`: `no-boolean-param`, `no-argless-date`, `no-class`, `no-reexport-file`, `no-interface-prefix`, `type-pascal-case`, `require-abort-signal`                                                                                                                                            |
-| Types       | `tsc` from the `typescript@7` package, the native compiler; it has no JS API, so tools that need one are configured around it                                                                                                                                                                                                                                                      |
-| Tests       | Vitest with coverage thresholds                                                                                                                                                                                                                                                                                                                                                    |
-| Mutation    | Stryker on the money core (PRs: changed files; nightly in 20 shards that keep their results between runs in Stryker's incremental mode, every mutant again on Sundays), through its command runner (its Vitest runner predates Vitest 5), each run on two Vitest workers that stop at the first failure, and with `tsconfigFile` pointed at no file (it needs TypeScript's JS API) |
-| Dead code   | knip                                                                                                                                                                                                                                                                                                                                                                               |
-| Duplicates  | jscpd                                                                                                                                                                                                                                                                                                                                                                              |
-| Style       | `check:style` (section 16)                                                                                                                                                                                                                                                                                                                                                         |
-| Languages   | `check:i18n` (section 14)                                                                                                                                                                                                                                                                                                                                                          |
-| Repo checks | `.mts` scripts in `scripts/`: `check:package-graph`, `check:tsconfig`, `check:layout`, `check:suppressions`, `check:deps-policy`, `check:tsdoc`, `check:adr`, `check:docs`, `check:contract-suites`, `check:chain-literals`, `check:model-clients`, `check:protocol-compat`, `check:config-schema`, `check:store`; `check:pr` runs in CI only                                      |
-| Commits     | commitlint on commit messages and the PR title (section 19.1)                                                                                                                                                                                                                                                                                                                      |
-| Docs        | markdownlint                                                                                                                                                                                                                                                                                                                                                                       |
-| Security    | OpenGrep, `pnpm audit`                                                                                                                                                                                                                                                                                                                                                             |
-| Build       | tsdown (ESM and `.d.ts`), orchestrated and cached by Turborepo                                                                                                                                                                                                                                                                                                                     |
+| Gate        | Tool                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Format      | oxfmt: width 100, double quotes, trailing commas, LF, sorted imports and `package.json`                                                                                                                                                                                                                                                                                                                                                                     |
+| Lint        | Oxlint with type-aware rules (tsgolint): the rules named in sections 2 to 15 and the suppression rule below                                                                                                                                                                                                                                                                                                                                                 |
+| Lint plugin | `guards`, binference's own Oxlint JS plugin, one file of AST rules loaded through `jsPlugins`: `no-boolean-param`, `no-argless-date`, `no-class`, `no-reexport-file`, `no-interface-prefix`, `type-pascal-case`, `require-abort-signal`                                                                                                                                                                                                                     |
+| Types       | `tsc` from the `typescript@7` package, the native compiler; it has no JS API, so tools that need one are configured around it                                                                                                                                                                                                                                                                                                                               |
+| Tests       | Vitest with coverage thresholds                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Mutation    | Stryker on the money core (each push to `master`: the 12 changed files with the most changed lines, 45 minutes at most; nightly in 20 shards that keep their results between runs in Stryker's incremental mode, every mutant again on Sundays), through its command runner (its Vitest runner predates Vitest 5), each run on two Vitest workers that stop at the first failure, and with `tsconfigFile` pointed at no file (it needs TypeScript's JS API) |
+| Dead code   | knip                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Duplicates  | jscpd                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Style       | `check:style` (section 16)                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Languages   | `check:i18n` (section 14)                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Repo checks | `.mts` scripts in `scripts/`: `check:package-graph`, `check:tsconfig`, `check:layout`, `check:suppressions`, `check:deps-policy`, `check:tsdoc`, `check:adr`, `check:docs`, `check:contract-suites`, `check:chain-literals`, `check:model-clients`, `check:protocol-compat`, `check:config-schema`, `check:store`; `check:pr` runs on a branch's range before the merge, outside `pnpm check`                                                               |
+| Commits     | commitlint on commit messages and the PR title (section 19.1)                                                                                                                                                                                                                                                                                                                                                                                               |
+| Docs        | markdownlint                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Security    | OpenGrep, `pnpm audit`                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Build       | tsdown (ESM and `.d.ts`), orchestrated and cached by Turborepo                                                                                                                                                                                                                                                                                                                                                                                              |
 
-`pnpm check` runs every gate. CI runs it on Linux, macOS and Windows. A red `master` is an
-emergency.
+`pnpm check` runs every gate. CI runs it on Linux, macOS and Windows on each push to `master` and
+never on a pull request ([decision 0294](DECISIONS.md#d0294)). A red `master` is an emergency: it
+stops the line, and nothing else is pushed until it is green.
 
 - **Rule:** a lint suppression names its rule and a reason:
   `// oxlint-disable-next-line <rule> -- <reason>`. Blanket and unused suppressions fail. A
@@ -819,13 +823,13 @@ emergency.
 
 Decided in decisions [0035](DECISIONS.md#d0035) and [0036](DECISIONS.md#d0036).
 
-- `master` is protected and always releasable. Enforcer: the `master` ruleset (PR required, required
-  checks, no force push).
+- `master` is protected and always releasable. Enforcer: the `master` ruleset (PR required, no
+  force push); `pnpm check` and `check:pr` before each merge; CI on each push to `master`.
 - Branches live a few days; unfinished work ships behind a config switch. Enforcer: `review-diff`
   and `shape-commit`.
 - Squash merge. The PR title becomes the commit subject on `master` and follows section 19.1.
   Enforcer: the ruleset (squash only, the PR title as the default message); commitlint on the PR
-  title.
+  title (`check:pr --title`).
 - One approval per PR. `CODEOWNERS` routes review. Enforcer: the ruleset (one required approval,
   code owner review).
 - A PR changes about 400 lines at most, tests and generated files excluded. Enforcer: `check:pr`
@@ -876,7 +880,8 @@ Conventional Commits with plain, specific descriptions.
 | `refactor(policy): move cap checks into one rule list`                | `fix(engine,telegram): cards and caps`             |
 | `feat(protocol)!: rename intent/list to intent/find`                  | `feat(orders): add DCA and fix nonce gaps`         |
 
-Enforcer: commitlint on every commit message and on the PR title (`check:pr` runs it on the title):
+Enforcer: commitlint on every commit message and on the PR title (`check:pr --title` runs it on the
+title; CI on `master` runs it on every pushed commit):
 
 - the subject: `type-enum` (the ten types), `scope-enum` (built from the folders) with the local
   rule `scope-single`, `header-max-length` 72 (a subject on `master` may end in `(#N)` after a
@@ -908,8 +913,8 @@ A commit on `master` is one squashed PR: one issue or topic, within the size lim
   Enforcer: `check:tsdoc`, `check:i18n`, `check:config-schema`, `check:docs` and the coverage
   thresholds; `shape-commit`.
 - **Green on its own.** Every commit on `master` passes `pnpm check` on the three OSes and can be
-  reverted alone without breaking the build. Enforcer: the required checks on every PR; squash
-  merge.
+  reverted alone without breaking the build. Enforcer: `pnpm check` before each merge and CI on
+  each push to `master`; squash merge.
 - **The cutover is in the same commit.** A change moves every caller and deletes the old path in
   that commit (principle 6). No dead code waiting for a follow-up. Enforcer: knip (`deadcode`);
   `review-diff`.
@@ -993,7 +998,7 @@ Rules:
   (SSH or GPG) and show as verified; the `master` ruleset requires it.
 - **Merging:** squash only, with the PR title as the subject. The merger adds a body only when a
   reviewer must know something, and always for a breaking change. Enforcer: the ruleset (squash
-  only); CI on `master` runs commitlint on the merged commit, so a breaking change without its
+  only); CI on `master` runs commitlint on every pushed commit, so a breaking change without its
   `Breaking:` paragraph fails there.
 - **Secrets:** GitHub secret scanning with push protection is on; a blocked push is fixed by
   removing the secret, never by bypassing. Enforcer: push protection; a bypass event is reviewed in
@@ -1049,8 +1054,9 @@ A change is done when:
 
 Enforcers, by item: (1) the coverage thresholds and `review-diff`; (2) `check:tsdoc`; (3)
 `check:i18n`; (4) `check:docs` (every English page has a Chinese twin in Starlight's `zh-cn/` folder), and `review-diff` for
-whether the page exists; (5) `check:config-schema`; (6) `write-adr` and `review-diff`; (7) the
-required checks; (8) knip (`deadcode`) and `review-diff`.
+whether the page exists; (5) `check:config-schema`; (6) `write-adr` and `review-diff`; (7)
+`pnpm check` before the merge and CI on each push to `master`; (8) knip (`deadcode`) and
+`review-diff`.
 
 <a id="section-22"></a>
 

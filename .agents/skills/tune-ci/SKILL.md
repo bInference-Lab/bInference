@@ -5,24 +5,28 @@ description: Changes the GitHub workflows without making CI slower, costlier or 
 
 # Tune CI
 
-CI runs on GitHub-hosted runners only. Every job a change adds runs on each push to every pull
-request, often on three operating systems. Count before you add.
+CI runs on GitHub-hosted runners only, on pushes to `master` and each night, never on a branch push
+or a pull request (decision 0294). Every job a change adds runs on each push to `master`, often on
+three operating systems. Count before you add.
 
 ## 1. Know what runs
 
-| Workflow       | When                                    | Jobs                                                                                   |
-| -------------- | --------------------------------------- | -------------------------------------------------------------------------------------- |
-| `ci.yml`       | each pull request push, each `master`   | `pnpm check`, OS adapters and the service smoke on 3 OSes; `check:pr`; audit and scans |
-| `mutation.yml` | a pull request touching engine, signer  | Stryker on the changed files                                                           |
-| `fork.yml`     | nightly 03:41 UTC, by hand              | the fork suite on Linux                                                                |
-| `crash.yml`    | nightly 04:23 UTC, by hand              | the crash suite on 3 OSes, `BINFERENCE_CRASH_RUNS` runs per kill point                 |
-| `image.yml`    | nightly 01:13 UTC, by hand              | the Docker image suite on Linux amd64                                                  |
-| `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday | Stryker in 20 shards with saved results                                                |
+| Workflow       | When                                             | Jobs                                                                                        |
+| -------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `ci.yml`       | each push to `master`, by hand                   | `pnpm check`, OS adapters and the service smoke on 3 OSes; commit messages; audit and scans |
+| `mutation.yml` | a `master` push touching engine, signer; by hand | Stryker on up to 12 changed files, 45 minutes at most                                       |
+| `fork.yml`     | nightly 03:41 UTC, by hand                       | the fork suite on Linux                                                                     |
+| `crash.yml`    | nightly 04:23 UTC, by hand                       | the crash suite on 3 OSes, `BINFERENCE_CRASH_RUNS` runs per kill point                      |
+| `image.yml`    | nightly 01:13 UTC, by hand                       | the Docker image suite on Linux amd64                                                       |
+| `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday          | Stryker in 20 shards with saved results                                                     |
 
-A pull request push starts 11 jobs, 12 with the mutation job. A newer push cancels the older run
-of the same pull request (`cancel-in-progress`); runs on `master` and the nightly suites never
-cancel each other. The nightly workflows start at different times so their jobs do not queue
-behind each other.
+A push to `master` starts 11 jobs, 12 with the mutation job; a night starts 34. Each pushed commit
+has its own concurrency group, so runs on `master` never cancel or replace each other, and the
+nightly suites never cancel either. The nightly workflows start at different times so their jobs
+do not queue behind each other.
+
+`check:pr` is no CI job: the merger runs it on the branch's range before the merge, as
+`pnpm check:pr master..<branch>`, with `--title` and `--body <file>` for a squash merge.
 
 ## 2. Find the bottleneck first
 
@@ -35,7 +39,7 @@ gh run view <run-id> --log-failed
 ```
 
 - **Queued, no runner yet:** the account's concurrent job limit is full, often with nightly shards
-  or several pull requests. Fewer parallel rows help; a bigger timeout does not.
+  or several pushes to `master`. Fewer parallel rows help; a bigger timeout does not.
 - **Started late:** a `needs:` dependency held it, or the cache restore was slow.
 - **One step dominates:** usually `pnpm check`'s tests. Read Turborepo's summary for a cache miss,
   then use `speed-up-tests` on the slow files.
@@ -55,8 +59,11 @@ gh run view <run-id> --log-failed
 - No secret reaches a job that runs code from a pull request. The fork and crash suites hold no
   key and must stay that way.
 - `pnpm check` and the OS jobs run on Linux, macOS and Windows (rule OS-6 of
-  `docs/ENGINEERING.md`). A job that reads no OS behavior, such as a scan or `check:pr`, runs on
+  `docs/ENGINEERING.md`). A job that reads no OS behavior, such as a scan or the commit message check, runs on
   Linux alone: macOS and Windows minutes cost more.
+- A change to Windows-specific code runs CI by hand on its branch (`workflow_dispatch`), or its
+  tests on Windows, before the push that merges it: CI on `master` sees it only after the merge.
+- A red `master` run stops the line: nothing else is pushed until the fix is.
 - A new shard count, a new nightly job or a new required check is load-bearing: run `write-adr`
   with the job count per push and per night, and the time it saves.
 - Run `actionlint` on the changed workflow. CI runs it, with OpenGrep and the audit.

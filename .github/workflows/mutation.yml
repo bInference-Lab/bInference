@@ -1,27 +1,41 @@
 name: Mutation
 
-# The packages here are the rows that config/package-graph.json marks for mutation testing.
+# Pushes to master that touch the money core, and runs by hand (decision 0294). The packages here
+# are the rows that config/package-graph.json marks for mutation testing.
 on:
-  pull_request:
+  push:
+    branches: [master]
     paths:
       - packages/engine/**
       - packages/signer/**
       - stryker.config.mjs
+  workflow_dispatch:
+    inputs:
+      base:
+        description: Mutate the source files changed since this commit
+        required: false
+        default: HEAD~1
 
 permissions: read-all
 
+# One group per commit: each push mutates its own changes, so a newer push never cancels it.
 concurrency:
-  group: mutation-${{ github.ref }}
-  cancel-in-progress: true
+  group: mutation-${{ github.sha }}
+  cancel-in-progress: false
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   DO_NOT_TRACK: "1"
+  # A push can carry many branches. Stryker mutates at most this many of the changed files, those
+  # with the most changed lines, and stops at STRYKER_MINUTES; the nightly covers what is left.
+  MUTATE_MAX_FILES: "12"
+  STRYKER_MINUTES: "45"
 
 jobs:
   stryker:
     name: Stryker
     runs-on: ubuntu-latest
+    # Stryker's 45 minutes, 5 more for it to stop and save, and about 10 to set up and report.
     timeout-minutes: 60
     steps:
       - name: Check out
@@ -42,20 +56,51 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # Only the source files this pull request changes are mutated; the nightly covers the rest.
+      - name: The pushed range's base
+        id: base
+        uses: ./.github/actions/pushed-base
+        with:
+          before: ${{ github.event_name == 'push' && github.event.before || inputs.base }}
+
+      # Only the source files the push changes are mutated, never a whole package: without a base
+      # nothing is, and the nightly covers every file.
       - name: Changed source files
         id: changed
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE: ${{ steps.base.outputs.base }}
         run: |
-          files="$(git diff --name-only --diff-filter=AMR "$BASE_SHA" HEAD -- 'packages/engine/src/*.ts' 'packages/signer/src/*.ts' | grep -v '\.test\.ts$' | paste -sd, - || true)"
+          set -euo pipefail
+          if [ -z "$BASE" ]; then
+            echo "files=" >> "$GITHUB_OUTPUT"
+            printf '## Mutation testing\n\nThe push names no earlier commit in this history (a first or forced push), so this job mutates nothing; the nightly run covers every source file.\n' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          ranked="$(git diff --numstat --no-renames --diff-filter=AM "$BASE" HEAD -- 'packages/engine/src/*.ts' 'packages/signer/src/*.ts' |
+            awk -F '\t' '$3 !~ /\.test\.ts$/ { print $1 + $2 "\t" $3 }' | sort -t "$(printf '\t')" -k1,1nr -k2,2)"
+          files="$(printf '%s\n' "$ranked" | sed -n "1,${MUTATE_MAX_FILES}p" | cut -f2 | paste -sd, -)"
+          left="$(printf '%s\n' "$ranked" | sed -n "$((MUTATE_MAX_FILES + 1)),\$p" | cut -f2)"
           echo "files=$files" >> "$GITHUB_OUTPUT"
+          if [ -z "$files" ]; then
+            printf '## Mutation testing\n\nThe push changes no source file of engine or signer, so nothing is mutated.\n' >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$left" ]; then
+            {
+              printf '## Files left to the nightly run\n\nStryker mutates the %s changed files with the most changed lines. The nightly run covers these:\n\n' "$MUTATE_MAX_FILES"
+              printf '%s\n' "$left" | sed 's/^/- /'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Stryker
         if: steps.changed.outputs.files != ''
         env:
           MUTATE_FILES: ${{ steps.changed.outputs.files }}
-        run: pnpm mutation
+        run: |
+          status=0
+          timeout --signal=INT --kill-after=5m "${STRYKER_MINUTES}m" node_modules/.bin/stryker run || status=$?
+          if [ "$status" -eq 124 ]; then
+            echo "::warning::Stryker stopped at $STRYKER_MINUTES minutes; the nightly run covers the mutants it did not reach."
+            exit 0
+          fi
+          exit "$status"
 
       - name: Summary
         if: always() && steps.changed.outputs.files != ''

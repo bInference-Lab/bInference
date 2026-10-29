@@ -1,7 +1,7 @@
 import process from "node:process";
 import { runCommand } from "./run-command.mjs";
 
-// CI sets BASE_REF to the pull request's base; locally the remote master, else the local one.
+// CI sets BASE_REF to master before the push; locally the remote master, else the local one.
 function baseRef(root: string): string {
   const fromEnv = process.env["BASE_REF"];
   if (fromEnv !== undefined && fromEnv.length > 0) {

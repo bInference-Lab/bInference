@@ -7,7 +7,8 @@ description: Reviews a change that can move funds or decide whether they move. U
 
 Money code fails closed: when policy, risk, simulation or signing is in doubt, the action is
 refused. Run this after `review-diff` on any change to `engine`, `signer`, `chain`, `chain-evm`,
-`chains` or `protocol`. CI refuses such a pull request without the ticked checklist.
+`chains` or `protocol`. `check:pr` refuses such a branch before the merge when its PR body lacks
+the ticked checklist.
 
 ## 1. Gather
 

@@ -1,0 +1,35 @@
+name: Pushed range base
+description: >-
+  The commit a push started from, when the checkout's history holds it as an ancestor of HEAD.
+  Empty for a first push, a forced push or a run by hand with no commit given. The checkout needs
+  its full history (fetch-depth 0).
+
+inputs:
+  before:
+    description: The commit the range starts after; the push's own by default.
+    required: false
+    default: ${{ github.event.before }}
+
+outputs:
+  base:
+    description: The full SHA of that commit, or empty.
+    value: ${{ steps.base.outputs.base }}
+
+runs:
+  using: composite
+  steps:
+    # A first push names the zero SHA, and a forced push names a commit the history no longer
+    # holds; neither starts a range, so both give an empty base.
+    - id: base
+      shell: bash
+      env:
+        BEFORE: ${{ inputs.before }}
+      run: |
+        base=""
+        if [ -n "$BEFORE" ] && sha="$(git rev-parse --verify --quiet "${BEFORE}^{commit}")" &&
+          git merge-base --is-ancestor "$sha" HEAD; then
+          base="$sha"
+        else
+          echo "::notice::The push names no earlier commit in this history (a first or forced push, or a run by hand)."
+        fi
+        echo "base=$base" >> "$GITHUB_OUTPUT"

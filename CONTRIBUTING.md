@@ -17,8 +17,8 @@ pnpm check
 - `pnpm install` installs the exact versions in the lockfile.
 - `pnpm setup` links `.claude/skills` to `.agents/skills`, so coding agents find the skills.
 - `pnpm check` runs every gate: format, lint, types, tests, the style guard and the repository
-  checks. CI runs the same command on Linux, macOS and Windows, and all three must pass before a
-  pull request merges.
+  checks. Run it before you ask for a merge. CI runs the same command on Linux, macOS and Windows
+  on each push to `master`, never on a pull request, so a pull request shows no CI result.
 
 ## How a change flows
 
@@ -31,8 +31,14 @@ pnpm check
    ticked; a change to dependencies keeps the dependency section.
 5. A change ships complete: tests, TSDoc on public exports, every new word in English and Chinese,
    and a decision record for a load-bearing decision ([docs/DECISIONS.md](docs/DECISIONS.md)).
-6. One approval merges it. Pull requests are squash-merged, and the title becomes the commit
+6. A change to code that behaves differently on Windows, such as paths, the keychain or the
+   background service, shows a Windows run of its tests in the evidence: CI on `master` first sees
+   it after the merge.
+7. One approval merges it. Before the merge, a maintainer runs
+   `pnpm check:pr master..<branch> --title "<title>" --body <file>` on the branch, with the pull
+   request's title and body. Pull requests are squash-merged, and the title becomes the commit
    subject on `master`.
+8. A red CI run on `master` stops the line: nothing else merges until the fix is pushed.
 
 ## Write commit subjects
 
