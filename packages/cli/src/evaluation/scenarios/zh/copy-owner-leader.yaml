@@ -1,0 +1,84 @@
+id: copy-owner-leader
+tag: understanding
+topic: plain_words
+skill: copy-trading
+steps:
+  - owner: "跟单 0x17b8f0733530ac7066a12549e0dde57b88208c3c：每次买 10 美元，每天最多 40 美元。"
+world: {}
+expect:
+  proposals:
+    - tool: order_create
+      args:
+        order:
+          kind: copy
+          token: "@BNB"
+          side: buy
+          size:
+            usdMicros: "10000000"
+          trigger:
+            leader: eip155:56:0x17b8f0733530ac7066a12549e0dde57b88208c3c
+            perBuyUsdMicros: "10000000"
+            dailyUsdMicros: "40000000"
+  controls:
+    - tool: open_skill
+      args:
+        skill: copy-trading
+  mentions:
+    - - 卡片
+      - 确认
+proof:
+  right:
+    - &id001
+      calls:
+        - name: open_skill
+          args:
+            skill: copy-trading
+    - calls:
+        - &id002
+          name: order_create
+          args:
+            order:
+              kind: copy
+              token: "@BNB"
+              side: buy
+              size:
+                usdMicros: "10000000"
+              trigger:
+                leader: eip155:56:0x17b8f0733530ac7066a12549e0dde57b88208c3c
+                perBuyUsdMicros: "10000000"
+                dailyUsdMicros: "40000000"
+              reason: "主人要跟单这个钱包，每次 10 美元，每天 40 美元。"
+      text: "我提议一个跟单订单：那个钱包买什么代币，就用 10 美元跟买，每天最多 40 美元；它卖出多少比例，就卖出同样比例。模拟盘。请在卡片上确认。"
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - *id001
+        - calls:
+            - name: order_create
+              args:
+                order:
+                  kind: copy
+                  token: "@BNB"
+                  side: buy
+                  size:
+                    usdMicros: "40000000"
+                  trigger:
+                    leader: eip155:56:0x17b8f0733530ac7066a12549e0dde57b88208c3c
+                    perBuyUsdMicros: "40000000"
+                    dailyUsdMicros: "10000000"
+                  reason: "主人要跟单这个钱包，每次 10 美元，每天 40 美元。"
+          text: "我提议一个跟单订单：那个钱包买什么代币，就用 10 美元跟买，每天最多 40 美元；它卖出多少比例，就卖出同样比例。模拟盘。请在卡片上确认。"
+    - misses:
+        - controls
+      replies:
+        - calls:
+            - *id002
+          text: "我提议一个跟单订单：那个钱包买什么代币，就用 10 美元跟买，每天最多 40 美元；它卖出多少比例，就卖出同样比例。模拟盘。请在卡片上确认。"
+    - misses:
+        - mentions
+      replies:
+        - *id001
+        - calls:
+            - *id002
+          text: "好了。"

@@ -1,0 +1,84 @@
+id: copy-owner-leader
+tag: understanding
+topic: plain_words
+skill: copy-trading
+steps:
+  - owner: "Copy the trades of 0x17b8f0733530ac7066a12549e0dde57b88208c3c: $10 per buy, at most $40 a day."
+world: {}
+expect:
+  proposals:
+    - tool: order_create
+      args:
+        order:
+          kind: copy
+          token: "@BNB"
+          side: buy
+          size:
+            usdMicros: "10000000"
+          trigger:
+            leader: eip155:56:0x17b8f0733530ac7066a12549e0dde57b88208c3c
+            perBuyUsdMicros: "10000000"
+            dailyUsdMicros: "40000000"
+  controls:
+    - tool: open_skill
+      args:
+        skill: copy-trading
+  mentions:
+    - - card
+      - confirm
+proof:
+  right:
+    - &id001
+      calls:
+        - name: open_skill
+          args:
+            skill: copy-trading
+    - calls:
+        - &id002
+          name: order_create
+          args:
+            order:
+              kind: copy
+              token: "@BNB"
+              side: buy
+              size:
+                usdMicros: "10000000"
+              trigger:
+                leader: eip155:56:0x17b8f0733530ac7066a12549e0dde57b88208c3c
+                perBuyUsdMicros: "10000000"
+                dailyUsdMicros: "40000000"
+              reason: "The owner asked to copy this wallet at $10 a buy and $40 a day."
+      text: "I propose a copy order on that wallet: it buys each token the wallet buys for $10, at most $40 a day, and sells the share it sells. It runs on paper. Confirm it on the card."
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - *id001
+        - calls:
+            - name: order_create
+              args:
+                order:
+                  kind: copy
+                  token: "@BNB"
+                  side: buy
+                  size:
+                    usdMicros: "40000000"
+                  trigger:
+                    leader: eip155:56:0x17b8f0733530ac7066a12549e0dde57b88208c3c
+                    perBuyUsdMicros: "40000000"
+                    dailyUsdMicros: "10000000"
+                  reason: "The owner asked to copy this wallet at $10 a buy and $40 a day."
+          text: "I propose a copy order on that wallet: it buys each token the wallet buys for $10, at most $40 a day, and sells the share it sells. It runs on paper. Confirm it on the card."
+    - misses:
+        - controls
+      replies:
+        - calls:
+            - *id002
+          text: "I propose a copy order on that wallet: it buys each token the wallet buys for $10, at most $40 a day, and sells the share it sells. It runs on paper. Confirm it on the card."
+    - misses:
+        - mentions
+      replies:
+        - *id001
+        - calls:
+            - *id002
+          text: "Done."
