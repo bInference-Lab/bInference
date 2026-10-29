@@ -702,7 +702,9 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   `vitest.crash.config.ts` with its global setup, `BINFERENCE_CRASH_RUNS` for the runs per kill
   point, and the `src/crash/` exclusion in `vitest.config.ts`.
 - **Rule:** image tests live in a package's `src/image/` and run in the image suite
-  (`pnpm test:image`), never in `pnpm check`. They build the Docker image from the checkout, run it
+  (`pnpm test:image`, nightly in CI on Linux amd64,
+  [decision 0293](adr/0293-a-nightly-job-builds-and-runs-the-docker-image-on-linux-amd64.md)),
+  never in `pnpm check`. They build the Docker image from the checkout, run it
   with a read-only root, set it up with `binference init --yes`, trade on paper and stop it with
   `docker stop`, then remove every container, volume, network and image they made. Privy,
   Telegram and the model provider are the e2e fakes behind an HTTPS edge on the test's Docker

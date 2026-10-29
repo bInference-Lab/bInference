@@ -16,6 +16,7 @@ request, often on three operating systems. Count before you add.
 | `mutation.yml` | a pull request touching engine, signer  | Stryker on the changed files                                                           |
 | `fork.yml`     | nightly 03:41 UTC, by hand              | the fork suite on Linux                                                                |
 | `crash.yml`    | nightly 04:23 UTC, by hand              | the crash suite on 3 OSes, `BINFERENCE_CRASH_RUNS` runs per kill point                 |
+| `image.yml`    | nightly 01:13 UTC, by hand              | the Docker image suite on Linux amd64                                                  |
 | `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday | Stryker in 20 shards with saved results                                                |
 
 A pull request push starts 11 jobs, 12 with the mutation job. A newer push cancels the older run
