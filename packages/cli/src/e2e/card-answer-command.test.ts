@@ -1,5 +1,6 @@
 import type { Venue } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
+import { bpsSchema } from "@binference/core";
 import {
   testAgent as agent,
   testCoin as coin,
@@ -8,7 +9,7 @@ import {
   testWallet as wallet,
 } from "@binference/engine/testing";
 import { createFormatter, messages } from "@binference/i18n";
-import { type IntentView, operations } from "@binference/protocol";
+import { type IntentView, operations, type ProtocolId } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { skeletonCompositions } from "../compose/test-skeleton.js";
 import { runCli } from "../program/run-cli.js";
@@ -36,6 +37,26 @@ const swap = (base: bigint) =>
     to: token,
     amount: { base },
   }) as const;
+
+// A stop-loss that sells all the test token at $0.80, which opens a card.
+const stopLoss = {
+  kind: "stopLoss",
+  agent,
+  token,
+  side: "sell",
+  size: { percentBps: bpsSchema.parse(10_000) },
+  trigger: { price: 800_000n },
+  reason: "Protect the position",
+} as const;
+
+// The intent of a new stop-loss's card.
+async function openedOrder(skeleton: ServedSkeleton): Promise<ProtocolId<"intent">> {
+  const { intent } = await skeleton.client.call("order/create", stopLoss, live());
+  if (intent === undefined) {
+    throw new Error("Expected the order to open a card.");
+  }
+  return intent;
+}
 
 // The fake venue at 2 tokens a coin, until `worsen` drops it to 1.
 function movingVenue(): { readonly venue: Venue; readonly worsen: () => void } {
@@ -91,6 +112,22 @@ describe.each(skeletonCompositions)(
       expect(skeleton.executor.taken()).toStrictEqual([]);
       const again = await runOn(machine, ["confirm", proposed.intent, "--json", "--yes"]);
       expect(again).toMatchObject({ code: 1, stdout: '{"error":{"code":"intent.wrong_state"}}\n' });
+    });
+
+    it("says an auto order is active once its card is confirmed, never sending", slow, async () => {
+      const { machine, skeleton } = await servedMachine();
+      const first = await openedOrder(skeleton);
+      const second = await openedOrder(skeleton);
+      const inEnglish = await runOn(machine, ["confirm", first, "--yes"]);
+      const inChinese = await runOn(machine, ["confirm", second, "--yes"], {
+        LANG: "zh_CN.UTF-8",
+      });
+      expect([inEnglish.code, inChinese.code]).toStrictEqual([0, 0]);
+      expect(inEnglish.stdout).toContain(`\nConfirmed ${first}. The auto order is active.\n`);
+      const activeInZh = inZh.message("cli.confirm.order", { intent: second, state: "active" });
+      expect(inChinese.stdout).toContain(`\n${activeInZh}\n`);
+      const orders = await skeleton.client.call("order/list", { agent, limit: 10 }, live());
+      expect(orders.items.map(({ state }) => state)).toStrictEqual(["active", "active"]);
     });
 
     it("shows why auto mode asks, in the owner's language", slow, async () => {

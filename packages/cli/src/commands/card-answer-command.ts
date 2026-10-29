@@ -2,11 +2,14 @@ import type { Amount } from "@binference/chain";
 import { jsonValueSchema } from "@binference/core";
 import { cardLineText, displayOutsideText, type Formatter } from "@binference/i18n";
 import {
+  type AutoOrderRequest,
   type CardLinesView,
   type CardView,
   type IntentView,
   operations,
+  type OrderView,
   type ProtocolId,
+  type UnfreezeRequest,
 } from "@binference/protocol";
 import { z } from "zod";
 import type { CommonOptions } from "../program/cli-flags.schema.js";
@@ -21,6 +24,9 @@ export interface CardAnswerRequest {
   readonly options: CommonOptions;
   readonly intent: ProtocolId<"intent">;
 }
+
+/** The request of an intent whose confirmation sends nothing on chain. */
+type Written = UnfreezeRequest | AutoOrderRequest;
 
 // As a card shows a token's symbol: set by whoever deployed the token, so cut and made visible.
 const symbolLength = 16;
@@ -59,14 +65,35 @@ function reportUnfrozen(
   return 0;
 }
 
-function reportConfirmed(run: CommandRun, view: IntentView): ExitCode {
+// What a confirmed card that sends nothing took effect as: an unfreeze, or the order an auto
+// order's card confirmed, as it stands after the tap, active or ended before it; `undefined` when
+// that order could not be read.
+function reportWritten(
+  output: CliOutput,
+  view: { readonly intent: ProtocolId<"intent">; readonly request: Written },
+  order: OrderView | undefined,
+): ExitCode {
+  const { intent, request } = view;
+  if (request.kind === "unfreeze") {
+    return reportUnfrozen(output, intent, request.agent);
+  }
+  output.say("confirm.order", { intent, state: order?.state ?? "unread" });
+  return 0;
+}
+
+function reportConfirmed(
+  run: CommandRun,
+  view: IntentView,
+  order: OrderView | undefined,
+): ExitCode {
   const { output, formatter } = run;
   printView(output, view);
   if (view.state === "awaiting_confirmation" && view.card !== undefined) {
     return reportReopened(run, view, view.card);
   }
-  if (view.request.kind === "unfreeze") {
-    return reportUnfrozen(output, view.intent, view.request.agent);
+  const { intent, request } = view;
+  if (request.kind === "unfreeze" || request.kind === "autoOrder") {
+    return reportWritten(output, { intent, request }, order);
   }
   const [fill] = view.outcome?.executions ?? [];
   if (view.paper && fill !== undefined) {
@@ -161,7 +188,14 @@ async function confirm(run: CommandRun, request: CardAnswerRequest): Promise<Exi
   const { card, version } = drawn.value;
   return withEngine(run.host, run.output, async (client, signal) => {
     const args = { intent, card, cardVersion: version };
-    return reportConfirmed(run, await client.call("intent/confirm", args, { signal }));
+    const view = await client.call("intent/confirm", args, { signal });
+    const asked = view.request;
+    // The card is confirmed by now: a failed read of its order leaves the order's state unsaid.
+    const order =
+      asked.kind === "autoOrder"
+        ? await client.call("order/get", { order: asked.order }, { signal }).catch(() => undefined)
+        : undefined;
+    return reportConfirmed(run, view, order);
   });
 }
 
@@ -171,7 +205,8 @@ async function confirm(run: CommandRun, request: CardAnswerRequest): Promise<Exi
  * line by line as the engine draws it through `intent/card`, and asks yes or no unless `--yes`
  * says yes before; without `--yes` it needs someone at the terminal, so `--json` alone is
  * refused. It then confirms that version through `intent/confirm`; a confirmed paper intent shows
- * its paper fill, and a confirmed unfreeze what it unfroze; a worse re-quote opens the next card
+ * its paper fill, a confirmed unfreeze what it unfroze, and an auto order's card whether its order
+ * became active, read through `order/get`; a worse re-quote opens the next card
  * version and exits 1 with its terms, to be checked and confirmed again. Deny cancels through
  * `intent/deny` at once. An intent with no open card, or a card that changed, is refused with the
  * engine's code. With `--json` it prints the intent after the answer.
