@@ -129,6 +129,7 @@ Node 26.1 or later. pnpm switches itself to the version in `package.json`.
 | `pnpm lint`                        | Oxlint with the type-aware rules and the `guards` plugin             |
 | `pnpm typecheck`                   | TypeScript 7 over packages and repo scripts                          |
 | `pnpm test`                        | Vitest with coverage bars by package tier                            |
+| `pnpm test:after-merge [<range>]`  | After each merge: changed and dependent packages, tables, checks     |
 | `pnpm test:fork`                   | The fork suite on an anvil fork of BSC; needs anvil and the network  |
 | `pnpm test:replay`                 | Replays a recorded day on the fork at the chain's pace; needs anvil  |
 | `pnpm test:crash`                  | The crash suite: kills and restarts the engine; needs anvil          |

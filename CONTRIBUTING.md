@@ -38,7 +38,13 @@ pnpm check
    `pnpm check:pr master..<branch> --title "<title>" --body <file>` on the branch, with the pull
    request's title and body. Pull requests are squash-merged, and the title becomes the commit
    subject on `master`.
-8. A red CI run on `master` stops the line: nothing else merges until the fix is pushed.
+8. After each merge, the maintainer who merged runs `pnpm test:after-merge` on `master`. It runs the
+   tests of every package the merge changed and of every package that depends on one, the table
+   tests that read every notice key, card key and reason code, and the repository checks two merged
+   branches can break together, such as decision and migration numbers, and `check:gates` when a
+   gate's script or config changed. It prints what it chose and why. Without a range it tests
+   `ORIG_HEAD..HEAD`; give `<base>..<head>` for another range.
+9. A red CI run on `master` stops the line: nothing else merges until the fix is pushed.
 
 ## Write commit subjects
 

@@ -399,6 +399,10 @@ new name here first, in the change that uses it.
   the owner says, what the engine, the web and images answer, and what the **scorer** checks. A
   **stand-in model** answers a scenario with its scripted right or wrong answer, to prove the
   scorer without a network.
+- **after-merge set**: `pnpm test:after-merge`, which the merger runs after each merge: the tests of
+  every package the merge changed and of the packages that depend on them, the **table tests**
+  (tests that read every key of a catalog another package owns, such as the notice tables of each
+  surface) and the repo checks two merged branches can break together.
 - **crash suite**: the tests in each package's `src/crash/`, run by `pnpm test:crash` and nightly
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was

@@ -681,6 +681,18 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   blocks, every venue action), crash and recovery, Telegram (synthetic channel in CI, live bot
   before releases touching ingress), agent evaluation (`pnpm eval:models` on the agent's own turns with scripted answers, risk reads checked on a fork, [decision 0291](adr/0291-the-model-evaluation-runs-the-agent-s-own-turns-on-scripted-answers.md)),
   console smoke.
+- **Rule:** after each merge to `master`, the merger runs `pnpm test:after-merge` on the range the
+  merge brought (`ORIG_HEAD..HEAD` by default). It runs the tests of each package with a changed
+  file other than its Markdown and of every package that depends on one, through the workspace
+  dependencies of each `package.json` (every package when the shared test setup or the lockfile
+  changed), `check:gates` when a gate's script or config changed, the table tests that read a whole
+  catalog another package owns (the notice tables of Telegram, the console and terminal chat, the
+  card keys, the intent reasons and states, auto mode's reasons, the protocol operations), and the
+  repo checks two branches can break together (`check:adr`, `check:store`, `check:config-schema`,
+  `check:protocol-compat`, `check:chain-literals`, `check:i18n`, `check:contract-suites`), on half
+  the cores. A branch that adds a key without its rows in another package's table passes its own
+  tests and fails here. Enforcer: `scripts/test-after-merge.mts`, its list of table tests in
+  `scripts/after-merge/`.
 - **Rule:** fork tests live in a package's `src/fork/` and run in the fork suite
   (`pnpm test:fork`, nightly in CI), never in `pnpm check`. The suite forks BSC once per run, 20
   blocks behind the head; each test clears the test account's EIP-7702 code, waits for receipts

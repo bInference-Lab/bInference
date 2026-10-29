@@ -61,6 +61,23 @@ export function runCommand(command: readonly string[], options: CommandOptions):
   return { status: result.status ?? -1, output: `${result.stdout}\n${result.stderr}` };
 }
 
+/**
+ * Runs node, pnpm, git or opengrep without a shell, its output shown in the terminal as it
+ * comes, and returns its exit status.
+ */
+export function runCommandShown(command: readonly string[], options: CommandOptions): number {
+  const [file, ...args] = resolveCommand(command);
+  if (file === undefined) {
+    throw new Error("A gate command is empty.");
+  }
+  const result = spawnSync(file, args, {
+    cwd: options.cwd,
+    stdio: "inherit",
+    env: { ...process.env, ...options.env },
+  });
+  return result.status ?? -1;
+}
+
 /** Runs node, pnpm, git or opengrep without a shell, without blocking, and captures its output. */
 export function runCommandAsync(
   command: readonly string[],

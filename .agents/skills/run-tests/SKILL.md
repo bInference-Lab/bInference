@@ -58,7 +58,24 @@ BINFERENCE_CRASH_RUNS=1 pnpm test:crash packages/cli/src/crash
 - A test command that runs past a minute is a finding. Stop it and find out why before running it
   again (see `speed-up-tests`).
 
-## 4. When a test fails
+## 4. After a merge
+
+The merger runs the after-merge set on `master` after each merge:
+
+```sh
+pnpm test:after-merge                  # what the last merge brought, ORIG_HEAD..HEAD
+pnpm test:after-merge master@{1}..master
+pnpm test:after-merge <base>..<head> --list
+```
+
+It runs the tests of every package the range changed and of every package that depends on one, the
+table tests that read every notice key, card key and reason code (a key added without its rows in
+another package's table fails only here), the repo checks two merged branches can break together, on
+half the cores, and `check:gates` when a gate's script or config changed. `--list` prints what it
+chose and why without running it. A new test that reads a whole catalog of another package joins its
+list in `scripts/after-merge/after-merge-plan.mts`.
+
+## 5. When a test fails
 
 1. Read the assertion and the first stack frame in our code. Run that one test alone.
 2. Decide which side is wrong: the code, the test, a fake that drifted from its contract, or the
@@ -67,7 +84,7 @@ BINFERENCE_CRASH_RUNS=1 pnpm test:crash packages/cli/src/crash
 3. Fix the cause. Never add a retry, a longer timeout, a sleep or a looser assertion to get green.
 4. Run the failing test, then its folder, then `pnpm check` once at the end.
 
-## 5. Rules every test keeps
+## 6. Rules every test keeps
 
 - Names are sentences in lowercase with no period: `rejects a swap above the daily cap`.
 - No network (a refusing dispatcher is installed), no real timers, no sleeps, no polling. Time
@@ -75,6 +92,6 @@ BINFERENCE_CRASH_RUNS=1 pnpm test:crash packages/cli/src/crash
 - No conditional tests or expects, no `.only` or `.skip`, every `expect` awaited.
 - The 30-second test timeout catches a hang. Never raise it for a slow test; make the test faster.
 
-## 6. Report
+## 7. Report
 
 Name the tests you added or changed, the commands you ran and what they showed.
