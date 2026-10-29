@@ -17,6 +17,9 @@ const config: UserConfig[] = defineConfig([
     tsconfig: "tsconfig.json",
     clean: false,
     deps: { alwaysBundle: [/./], onlyBundle: false },
+    // A dynamic import, such as the model SDKs' lazy loads, would become a chunk of its own that
+    // the permission model refuses to read.
+    outputOptions: { codeSplitting: false },
   },
   // A build of its own, so it shares no chunk with the entry: each file stands alone.
   {
