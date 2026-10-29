@@ -29,6 +29,9 @@ export type {
   RuntimeSettingsWire,
 } from "./control/runtime-settings.schema.js";
 export { checkModel, checkModelImages } from "./providers/model-check.js";
+export { endpointModelChain } from "./providers/endpoint-model-chain.js";
+export type { EndpointChainParts, ModelEndpoint } from "./providers/endpoint-model-chain.js";
+export type { ModelChain } from "./loop/ports.js";
 export type {
   ModelCheckParts,
   ModelCheckProblem,

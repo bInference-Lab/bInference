@@ -1,5 +1,7 @@
 export { createByteChannel } from "./testing/byte-channel.js";
 export type { ByteChannel } from "./testing/byte-channel.js";
+export { startEvaluationChat } from "./testing/evaluation-chat.js";
+export type { EvaluationChat, EvaluationChatOptions } from "./testing/evaluation-chat.js";
 export { startInProcessRuntime } from "./testing/in-process-runtime.js";
 export type { InProcessRuntime, InProcessRuntimeOptions } from "./testing/in-process-runtime.js";
 export {
@@ -38,6 +40,7 @@ export { runNodeRuntime } from "./process/node-runtime.js";
 export { agentToolBox, agentTools } from "./tools/agent-tools.js";
 export type { AgentToolParts, ToolClient } from "./tools/tool-client.js";
 export type { WebToolParts } from "./tools/web-tools.js";
+export type { ContextSource, OwnerImageReader } from "./relay/ports.js";
 export type { TestTool, TestTurn, TestTurnOptions } from "./loop/test-turns.js";
 export type { OwnerMessage } from "./loop/model-message.js";
 export type { StreamingHttp } from "./providers/ports.js";
