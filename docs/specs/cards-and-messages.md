@@ -301,8 +301,9 @@ what its first buy spent and got, 0 of the token when it bought nothing, or `rec
 when the launch asked for no first buy; `receipt.landed` for any other intent that landed, such as a
 send or a rescue; `receipt.done` for any other with nothing to show; and `receipt.failed` for one
 that failed on chain. A confirmed intent that ends before anything is sent,
-such as one the queue's policy check refused or whose authorization lapsed, says `receipt.refused`
-with its reason, or `receipt.unsent` when it stored none; one whose send's fate is not known yet
+such as one the queue's policy check refused or whose authorization lapsed, or a paper sale its
+paper holding no longer covers, says `receipt.refused` with its reason, or `receipt.unsent` when it
+stored none; one whose send's fate is not known yet
 says `receipt.unknown` until it ends. `{explorerLink}` is its last transaction's page on the first
 block explorer the chain registry lists, from that explorer's `txUrl` page template, shown whole.
 

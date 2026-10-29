@@ -387,6 +387,29 @@ describe("the card showings", () => {
     expect(await waiting.settled(confirmed.intent, live)).toBe(undefined);
   });
 
+  it("settle a confirmed paper sale its holding no longer covers with why, never sending", async () => {
+    const test = await startTestEngine();
+    const spendMost = testSwap({ amount: { base: 6n * 10n ** 17n } });
+    const opened = async (): Promise<Shown> => {
+      const view = expectOk(
+        await test.engine.handlers["intent/propose"](testCall(spendMost, testCallers.mcp)),
+      );
+      const [card] = await test.stores.intents.cards(view.intent, live);
+      return { test, intent: view.intent, card: present(card) };
+    };
+    const first = await opened();
+    const second = await opened();
+    await answer(first, "confirm");
+    await answer(second, "confirm");
+    const settling = await showingsOf(test).settled(second.intent, live);
+    expect((await recordOf(second)).state).toBe("failed_check");
+    expect([settling?.closing.outcome, settling?.paper, settling?.live]).toStrictEqual([
+      "confirmed",
+      undefined,
+      { outcome: { kind: "refused", reason: "nothing_to_sell" }, assets: {} },
+    ]);
+  });
+
   it("settle a denied or expired version, and a live one confirmed, with the closing", async () => {
     const denied = await proposed();
     await answer(denied, "deny");

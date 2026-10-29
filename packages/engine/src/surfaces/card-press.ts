@@ -14,10 +14,10 @@ export interface CardPress {
  * How a card stands after a press. `closed`: this press or an earlier answer, or the timer,
  * closed it; every copy becomes the receipt of `closing`, or of what followed a confirmation as
  * the press found it: `paper` once a paper intent recorded its fill, `written` once an unfreeze
- * or an auto order's card took effect, `live` once a live intent ended. `open`: the card waits
- * for another answer, with the reason when a re-quote or its simulation failed. `locked`: a
- * Confirm of a live intent while the engine is locked; the card waits, and the presser is told to
- * run `binference unlock`. `over_cap`: a Confirm that would take the agent past its rolling
+ * or an auto order's card took effect, `live` once a live intent ended, or any intent ended
+ * before it sent or filled. `open`: the card waits for another answer, with the reason when a
+ * re-quote or its simulation failed. `locked`: a Confirm of a live intent while the engine is
+ * locked; the card waits, and the presser is told to run `binference unlock`. `over_cap`: a Confirm that would take the agent past its rolling
  * 24-hour cap (decision 0136); the card waits, and the presser is told why. `unknown`: no card
  * has this reference, the presser is not the owner, or the card closed without a receipt, as a
  * cancel closes it; nothing was answered.

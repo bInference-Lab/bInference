@@ -100,7 +100,7 @@ async function landedOf(
 }
 
 // The ends of a confirmed intent before anything was sent: a check or policy refusal at the queue,
-// a cancel, or an authorization that lapsed.
+// a paper sale its holding no longer covers, a cancel, or an authorization that lapsed.
 const unsentStates: ReadonlySet<IntentState> = new Set<IntentState>([
   "failed_check",
   "rejected_policy",
@@ -140,14 +140,18 @@ async function failedOf(
  * How a confirmed live intent ended, once it did (spec 4, section 3.5): `reconciled` with the
  * trade it recorded, as landed with none, or as done with nothing sent; `failed_onchain` with its
  * reason; each with its last transaction's explorer link; an end before anything was sent, with
- * its reason when it stored one; and `unknown_after_send` while the chain is read. `undefined`
- * for a paper intent and one still on its way.
+ * its reason when it stored one, which a paper intent that ended before its fill gives too; and
+ * `unknown_after_send` while the chain is read. `undefined` for any other paper intent and one
+ * still on its way.
  */
 export async function liveReceiptOf(
   source: LiveReceiptSource,
   call: { readonly signal: AbortSignal },
 ): Promise<LiveReceipt | undefined> {
   const { record } = source;
+  if (unsentStates.has(record.state)) {
+    return unsentOf(record);
+  }
   if (record.isPaper) {
     return undefined;
   }
@@ -157,8 +161,7 @@ export async function liveReceiptOf(
   if (record.state === "failed_onchain") {
     return failedOf(source, call);
   }
-  if (record.state === "unknown_after_send") {
-    return { outcome: { kind: "unknown" }, assets: {} };
-  }
-  return unsentStates.has(record.state) ? unsentOf(record) : undefined;
+  return record.state === "unknown_after_send"
+    ? { outcome: { kind: "unknown" }, assets: {} }
+    : undefined;
 }

@@ -58,7 +58,10 @@ export interface CardSettling {
   readonly closing: CardClosing;
   /** The fill of a confirmed paper intent, which its receipt shows. */
   readonly paper?: PaperReceipt;
-  /** How a confirmed live intent ended on chain, once it did, which its receipt shows. */
+  /**
+   * How a confirmed live intent ended on chain, once it did, or how a confirmed intent, paper too,
+   * ended before anything was sent or filled, which its receipt shows.
+   */
   readonly live?: LiveReceipt;
   /** What a confirmed intent with nothing to send took effect as, which its receipt shows. */
   readonly written?: WrittenReceipt;

@@ -1,8 +1,13 @@
 import { idSchema } from "@binference/core";
 import type { EngineCaller } from "@binference/engine";
 import { createRunningTurns } from "@binference/engine/chat";
-import { testAgent as agent } from "@binference/engine/testing";
-import type { OwnerInfo } from "@binference/protocol";
+import {
+  testAgent as agent,
+  testCoin as coin,
+  testToken as token,
+  testWallet as wallet,
+} from "@binference/engine/testing";
+import type { IntentRequest, OwnerInfo } from "@binference/protocol";
 import { cardAnswersContract } from "@binference/telegram/testing";
 import { describe, expect, it } from "vitest";
 import {
@@ -259,6 +264,27 @@ describe("the bot joined to the engine", () => {
     const receipts = test.botApi.messages().filter(({ text }) => text.includes("Unfrozen"));
     expect(receipts).toMatchObject([
       { text: `${icons.done} Unfrozen: main trades again within its limits`, buttons: [] },
+    ]);
+  });
+
+  it("ends a paper swap's card with why it did not fill once its coin is spent", async () => {
+    const test = await bot();
+    const spendMost: IntentRequest = {
+      kind: "swap",
+      agent,
+      wallet,
+      reason: "Rotate into the token",
+      from: coin,
+      to: token,
+      amount: { base: 6n * 10n ** 17n },
+    };
+    const first = await propose(test, spendMost);
+    await propose(test, spendMost);
+    await answerInCli(test, first.intent, "confirm");
+    await tapConfirm(test);
+    expect(test.botApi.messages().map(({ text }) => text)).toStrictEqual([
+      expect.stringMatching(/ Paper fill: 0\.6 FAKE → /u),
+      `${icons.refused} Not sent: the wallet holds too little of this token`,
     ]);
   });
 
