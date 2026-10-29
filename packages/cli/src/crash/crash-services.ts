@@ -18,6 +18,7 @@ import {
   zeroAddress,
 } from "viem";
 import { z } from "zod";
+import { headersOf } from "../e2e/incoming-headers.js";
 import { type CrashFlapApi, createCrashFlapApi } from "./crash-flap-api.js";
 import { crashExecutor, crashRouter, usdtPerWei } from "./crash-market.js";
 import { type CrashTelegram, createCrashTelegram } from "./crash-telegram.js";
@@ -154,14 +155,6 @@ function kyberswapOf(path: string, body: string): HttpResponse {
   return url.pathname.endsWith("/api/v1/route/build")
     ? buildOf(body)
     : json(404, { code: 4040, message: "not found" });
-}
-
-function headersOf(incoming: IncomingMessage): Readonly<Record<string, string>> {
-  return Object.fromEntries(
-    Object.entries(incoming.headers).flatMap(([name, value]) =>
-      typeof value === "string" ? [[name, value]] : [],
-    ),
-  );
 }
 
 function isSigningRequest(path: string, body: string): boolean {
