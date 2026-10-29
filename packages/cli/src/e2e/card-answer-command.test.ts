@@ -8,7 +8,7 @@ import {
   testToken as token,
   testWallet as wallet,
 } from "@binference/engine/testing";
-import { createFormatter, messages } from "@binference/i18n";
+import { createFormatter, messages, unsentReceiptText } from "@binference/i18n";
 import { type IntentView, operations, type ProtocolId } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { skeletonCompositions } from "../compose/test-skeleton.js";
@@ -112,6 +112,27 @@ describe.each(skeletonCompositions)(
       expect(skeleton.executor.taken()).toStrictEqual([]);
       const again = await runOn(machine, ["confirm", proposed.intent, "--json", "--yes"]);
       expect(again).toMatchObject({ code: 1, stdout: '{"error":{"code":"intent.wrong_state"}}\n' });
+    });
+
+    it("says a paper swap it could not fill was not sent, and why", slow, async () => {
+      const { machine, skeleton } = await servedMachine();
+      const spendMost = swap(6n * 10n ** 17n);
+      const first = await skeleton.client.call("intent/propose", spendMost, live());
+      const second = await skeleton.client.call("intent/propose", spendMost, live());
+      const third = await skeleton.client.call("intent/propose", spendMost, live());
+      await runOn(machine, ["confirm", first.intent, "--yes"]);
+      const inEnglish = await runOn(machine, ["confirm", second.intent, "--yes"]);
+      const inChinese = await runOn(machine, ["confirm", third.intent, "--yes"], {
+        LANG: "zh_CN.UTF-8",
+      });
+      expect([inEnglish.code, inChinese.code]).toStrictEqual([1, 1]);
+      expect(inEnglish.stderr).toBe(
+        `Confirmed ${second.intent}. ${String.fromCodePoint(0x274c)} Not sent: the wallet ` +
+          "holds too little of this token\n",
+      );
+      const receiptInZh = unsentReceiptText(inZh, "nothing_to_sell");
+      expect(inChinese.stderr).toContain(receiptInZh);
+      expect(`${inEnglish.stdout}${inChinese.stdout}`).not.toContain("fills on paper");
     });
 
     it("says an auto order is active once its card is confirmed, never sending", slow, async () => {

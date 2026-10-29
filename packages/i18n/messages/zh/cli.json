@@ -216,6 +216,7 @@
   "confirm.reopened": "价格已变动，binference 打开了第 {version} 版卡片：{sold} → 至少 {bought}。请查看后再次运行 `binference confirm {intent}`。",
   "confirm.unfrozen": "已确认 {intent}。{scope, select, install {所有 Agent 都已解除冻结} other {{agent} 已解除冻结}}。",
   "confirm.order": "已确认 {intent}。{state, select, active {自动订单已生效。} expired {自动订单未生效：确认之前它已过期。} cancelled {自动订单未生效：它已先被取消。} awaiting_confirmation {自动订单未生效：它已先被取消。} unread {暂时无法读取自动订单的状态。} other {自动订单已生效。}}",
+  "confirm.unsent": "已确认 {intent}。{receipt}",
   "confirm.ask": "确认此卡片吗？输入 是 确认，或输入 否 保留卡片",
   "confirm.yes": "是",
   "confirm.no": "否",

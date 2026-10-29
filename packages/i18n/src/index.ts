@@ -1,6 +1,7 @@
 export { assetText, cardLineText } from "./cards/card-text.js";
 export type { CardDisplay } from "./cards/card-text.js";
 export { addressPartOf, shortAddress } from "./cards/short-address.js";
+export { unsentReceiptText } from "./cards/unsent-receipt-text.js";
 export { createFormatter } from "./format/create-formatter.js";
 export { limitLines, limitUnits } from "./limits/limit-lines.js";
 export type {

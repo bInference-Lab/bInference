@@ -1,6 +1,11 @@
 import type { Amount } from "@binference/chain";
 import { jsonValueSchema } from "@binference/core";
-import { cardLineText, displayOutsideText, type Formatter } from "@binference/i18n";
+import {
+  cardLineText,
+  displayOutsideText,
+  type Formatter,
+  unsentReceiptText,
+} from "@binference/i18n";
 import {
   type AutoOrderRequest,
   type CardLinesView,
@@ -10,6 +15,7 @@ import {
   type OrderView,
   type ProtocolId,
   type UnfreezeRequest,
+  unsentEndStates,
 } from "@binference/protocol";
 import { z } from "zod";
 import type { CommonOptions } from "../program/cli-flags.schema.js";
@@ -81,6 +87,24 @@ function reportWritten(
   return 0;
 }
 
+// A confirmed intent that will send or fill nothing: why it ended before, on standard error with
+// exit 1, or what it took effect as; `undefined` for one still on its way.
+function reportEnded(
+  run: CommandRun,
+  view: IntentView,
+  order: OrderView | undefined,
+): ExitCode | undefined {
+  const { intent, request } = view;
+  if (unsentEndStates.has(view.state)) {
+    const receipt = unsentReceiptText(run.formatter, view.outcome?.reason);
+    run.output.explain("confirm.unsent", { intent, receipt });
+    return 1;
+  }
+  return request.kind === "unfreeze" || request.kind === "autoOrder"
+    ? reportWritten(run.output, { intent, request }, order)
+    : undefined;
+}
+
 function reportConfirmed(
   run: CommandRun,
   view: IntentView,
@@ -91,9 +115,9 @@ function reportConfirmed(
   if (view.state === "awaiting_confirmation" && view.card !== undefined) {
     return reportReopened(run, view, view.card);
   }
-  const { intent, request } = view;
-  if (request.kind === "unfreeze" || request.kind === "autoOrder") {
-    return reportWritten(output, { intent, request }, order);
+  const ended = reportEnded(run, view, order);
+  if (ended !== undefined) {
+    return ended;
   }
   const [fill] = view.outcome?.executions ?? [];
   if (view.paper && fill !== undefined) {
@@ -206,7 +230,9 @@ async function confirm(run: CommandRun, request: CardAnswerRequest): Promise<Exi
  * says yes before; without `--yes` it needs someone at the terminal, so `--json` alone is
  * refused. It then confirms that version through `intent/confirm`; a confirmed paper intent shows
  * its paper fill, a confirmed unfreeze what it unfroze, and an auto order's card whether its order
- * became active, read through `order/get`; a worse re-quote opens the next card
+ * became active, read through `order/get`; one that ended before it sent or filled, such as a paper
+ * sale its holding no longer covers, says why on standard error and exits 1; a worse re-quote
+ * opens the next card
  * version and exits 1 with its terms, to be checked and confirmed again. Deny cancels through
  * `intent/deny` at once. An intent with no open card, or a card that changed, is refused with the
  * engine's code. With `--json` it prints the intent after the answer.

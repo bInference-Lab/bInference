@@ -1,4 +1,10 @@
-import type { IntentView, OrderState, ProtocolId } from "@binference/protocol";
+import { unsentReceiptText } from "@binference/i18n";
+import {
+  type IntentView,
+  type OrderState,
+  type ProtocolId,
+  unsentEndStates,
+} from "@binference/protocol";
 import { callOptions, type ChatContext } from "./chat-context.js";
 import { cardLines, failureText } from "./chat-lines.js";
 import { type OpenCard, secondsLeft } from "./chat-state.js";
@@ -41,7 +47,17 @@ async function writtenText(context: ChatContext, view: IntentView): Promise<stri
   return context.words("tui.card.orderConfirmed", { outcome });
 }
 
-// The answer's line: confirmed, or a worse re-quote that opened the next version, or cancelled.
+// What a confirmed intent that will send or fill nothing ended as: why it ended before, or what
+// it took effect as; `undefined` for one still on its way.
+async function endedText(context: ChatContext, view: IntentView): Promise<string | undefined> {
+  if (unsentEndStates.has(view.state)) {
+    return unsentReceiptText(context.formatter, view.outcome?.reason);
+  }
+  return view.state === "reconciled" ? writtenText(context, view) : undefined;
+}
+
+// The answer's line: confirmed, or a worse re-quote that opened the next version, cancelled, or
+// ended before it sent or filled.
 async function answeredText(
   context: ChatContext,
   shown: OpenCard,
@@ -54,8 +70,8 @@ async function answeredText(
   if (view.state === "denied" || view.state === "cancelled") {
     return words("tui.card.cancelled");
   }
-  const written = view.state === "reconciled" ? await writtenText(context, view) : undefined;
-  return written ?? words("tui.card.confirmed", { paper: view.paper ? "yes" : "no" });
+  const ended = await endedText(context, view);
+  return ended ?? words("tui.card.confirmed", { paper: view.paper ? "yes" : "no" });
 }
 
 async function opened(context: ChatContext, intent: Listed): Promise<OpenCard> {

@@ -74,6 +74,13 @@ describe("a confirmed card that sends nothing, in Chinese", () => {
     ]);
   });
 
+  it("says a paper sale that could not fill was not sent, and why", async () => {
+    const short = { state: "failed_check", outcome: { reason: "nothing_to_sell" } };
+    expect(await confirmedIn(short)).toBe(
+      `${String.fromCodePoint(0x274c)} 未发送：钱包中这种代币不足`,
+    );
+  });
+
   it("says whether the auto order became active", async () => {
     const confirmed = { state: "reconciled", request: { kind: "autoOrder", order } };
     const active = await confirmedIn(confirmed, { "order/get": () => ({ state: "active" }) });

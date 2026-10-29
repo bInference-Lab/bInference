@@ -216,6 +216,7 @@
   "confirm.reopened": "The price moved, so binference opened card version {version}: {sold} → at least {bought}. Check it, then run `binference confirm {intent}` again.",
   "confirm.unfrozen": "Confirmed {intent}. {scope, select, install {Every agent is unfrozen} other {{agent} is unfrozen}}.",
   "confirm.order": "Confirmed {intent}. {state, select, active {The auto order is active.} expired {The auto order did not start: it expired before the confirmation.} cancelled {The auto order did not start: it was cancelled first.} awaiting_confirmation {The auto order did not start: it was cancelled first.} unread {The auto order's state could not be read now.} other {The auto order started.}}",
+  "confirm.unsent": "Confirmed {intent}. {receipt}",
   "confirm.ask": "Confirm this card? Type yes to confirm, or no to leave it open",
   "confirm.yes": "yes",
   "confirm.no": "no",

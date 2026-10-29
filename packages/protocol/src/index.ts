@@ -234,7 +234,7 @@ export type {
 export type { ChatSurface, InboxMessageView } from "./views/inbox-message-view.schema.js";
 export { intentKindSchema } from "./views/intent-kind.schema.js";
 export type { IntentKind } from "./views/intent-kind.schema.js";
-export { intentStates, intentStateSchema } from "./views/intent-state.schema.js";
+export { intentStates, intentStateSchema, unsentEndStates } from "./views/intent-state.schema.js";
 export type { IntentState } from "./views/intent-state.schema.js";
 export { intentViewSchema } from "./views/intent-view.schema.js";
 export type {

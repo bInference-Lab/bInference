@@ -220,6 +220,18 @@ describe("terminal chat", () => {
     expect(chat.rows().slice(-2)).toStrictEqual(["Confirmed. It fills on paper.", "› "]);
   });
 
+  it("says a confirmed paper sale that could not fill was not sent, and why", async () => {
+    const short = { state: "failed_check", outcome: { reason: "nothing_to_sell" } };
+    const chat = await opened(cardEngine(short).answers);
+    chat.press(ctrlY);
+    await chat.settle();
+    chat.push("intent", "intent/changed", { intent });
+    await chat.settle();
+    expect(chat.rows().at(-2)).toBe(
+      `${String.fromCodePoint(0x274c)} Not sent: the wallet holds too little of this token`,
+    );
+  });
+
   it("says what a confirmed unfreeze did, never that it is sending", async () => {
     const unfrozen = { state: "reconciled", request: { kind: "unfreeze", agent: harnessAgent } };
     const chat = await opened(cardEngine(unfrozen).answers);

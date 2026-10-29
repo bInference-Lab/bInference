@@ -7,12 +7,11 @@ import {
   type ChainRegistry,
   type TxHash,
 } from "@binference/chain";
-import type { AssetInfos } from "@binference/protocol";
+import { type AssetInfos, unsentEndStates } from "@binference/protocol";
 import type { LiveOutcome } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import { type IntentHistory, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import type { IntentState } from "../intents/intent-state.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import type { TransactionStore } from "../ports.js";
@@ -99,16 +98,6 @@ async function landedOf(
     : { outcome: { kind: "landed", explorerLink }, assets: {} };
 }
 
-// The ends of a confirmed intent before anything was sent: a check or policy refusal at the queue,
-// a paper sale its holding no longer covers, a cancel, or an authorization that lapsed.
-const unsentStates: ReadonlySet<IntentState> = new Set<IntentState>([
-  "failed_check",
-  "rejected_policy",
-  "risk_blocked",
-  "cancelled",
-  "expired",
-]);
-
 // A confirmed intent that reconciled with nothing sent on chain, such as an unfreeze.
 const doneAlone: LiveReceipt = { outcome: { kind: "done" }, assets: {} };
 
@@ -149,7 +138,7 @@ export async function liveReceiptOf(
   call: { readonly signal: AbortSignal },
 ): Promise<LiveReceipt | undefined> {
   const { record } = source;
-  if (unsentStates.has(record.state)) {
+  if (unsentEndStates.has(record.state)) {
     return unsentOf(record);
   }
   if (record.isPaper) {
