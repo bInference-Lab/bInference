@@ -1,6 +1,7 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
+import { parseArgs } from "node:util";
 import { parse } from "yaml";
 import { z } from "zod";
 import { loadGraph } from "./package-graph/graph.mjs";
@@ -13,11 +14,13 @@ import {
 import { runCommand } from "./run-command.mjs";
 
 interface PullRequest {
-  readonly title: string;
-  readonly body: string;
-  readonly branch: string;
   readonly base: string;
   readonly head: string;
+  readonly branch: string;
+  /** The squash commit's subject, when the merge squashes; else each commit lands as it is. */
+  readonly title: string | undefined;
+  /** The PR body, when a file holds it; without one the body is not checked. */
+  readonly body: string | undefined;
 }
 
 const sizeLimit = 400;
@@ -32,20 +35,9 @@ const manifestFields = [
 ];
 const workspaceFields = ["catalog", "overrides", "allowBuilds", "minimumReleaseAgeExclude"];
 
-function read(name: string): string {
-  return process.env[name] ?? "";
-}
-
-// CI passes the pull request through the environment, never through the command line.
-function readPullRequest(): PullRequest {
-  return {
-    title: read("PR_TITLE"),
-    body: read("PR_BODY"),
-    branch: read("PR_BRANCH"),
-    base: read("PR_BASE_SHA"),
-    head: read("PR_HEAD_SHA"),
-  };
-}
+const usage =
+  "Usage: pnpm check:pr <base>..<branch> [--title <subject>] [--body <file>], such as " +
+  "master..fix/stop.";
 
 function git(root: string, args: readonly string[]): string {
   const result = runCommand(["git", ...args], { cwd: root });
@@ -55,11 +47,51 @@ function git(root: string, args: readonly string[]): string {
   return result.output.trim();
 }
 
+function isCommit(root: string, ref: string): boolean {
+  return (
+    runCommand(["git", "rev-parse", "--verify", "--quiet", `${ref}^{commit}`], { cwd: root })
+      .status === 0
+  );
+}
+
+// The range names the branch to merge as its head, so the branch name comes from git.
+function readPullRequest(root: string): PullRequest | string {
+  const { values, positionals } = parseArgs({
+    options: { title: { type: "string" }, body: { type: "string" } },
+    allowPositionals: true,
+  });
+  const [base = "", head = ""] = positionals.length === 1 ? (positionals[0] ?? "").split("..") : [];
+  if ([base, head].some((ref) => ref.length === 0 || ref.startsWith("."))) {
+    return usage;
+  }
+  const unknown = [base, head].find((ref) => !isCommit(root, ref));
+  if (unknown !== undefined) {
+    return `${unknown} is not a commit here; fetch it or check the name. ${usage}`;
+  }
+  if (values.body !== undefined && !existsSync(values.body)) {
+    return `The body file ${values.body} does not exist. ${usage}`;
+  }
+  const name = runCommand(["git", "rev-parse", "--symbolic-full-name", head], { cwd: root });
+  return {
+    base,
+    head,
+    branch: name.output.trim().replace(/^refs\/heads\//, ""),
+    title: values.title,
+    body: values.body === undefined ? undefined : readFileSync(values.body, "utf8"),
+  };
+}
+
 function commandProblems(root: string, pr: PullRequest): string[] {
   const range = `${pr.base}..${pr.head}`;
+  const titleChecks: readonly [string, readonly string[], string | undefined][] =
+    pr.title === undefined
+      ? []
+      : [
+          ["the title fails commitlint", ["pnpm", "exec", "commitlint"], `${pr.title}\n`],
+          ["the title fails check:style", ["pnpm", "check:style", "--text", pr.title], undefined],
+        ];
   const checks: readonly [string, readonly string[], string | undefined][] = [
-    ["the title fails commitlint", ["pnpm", "exec", "commitlint"], `${pr.title}\n`],
-    ["the title fails check:style", ["pnpm", "check:style", "--text", pr.title], undefined],
+    ...titleChecks,
     [
       "a commit fails commitlint",
       ["pnpm", "exec", "commitlint", "--from", pr.base, "--to", pr.head],
@@ -114,6 +146,9 @@ function dependenciesChanged(root: string, pr: PullRequest, changed: readonly st
 }
 
 function bodyProblems(root: string, pr: PullRequest, changed: readonly string[]): string[] {
+  if (pr.body === undefined) {
+    return [];
+  }
   const graph = loadGraph(root);
   const moneyFolders = Object.entries(graph.packages)
     .filter(([, row]) => row.money === true)
@@ -132,26 +167,36 @@ function bodyProblems(root: string, pr: PullRequest, changed: readonly string[])
 }
 
 const root = process.cwd();
-const pr = readPullRequest();
+const read = readPullRequest(root);
+if (typeof read === "string") {
+  console.error(read);
+  process.exit(2);
+}
+const pr = read;
 const changed = git(root, ["diff", "--name-only", `${pr.base}...${pr.head}`]).split("\n");
 const problems = [
   ...(branchPattern.test(pr.branch)
     ? []
-    : [`The branch ${pr.branch} is not named <type>/<short-name>, such as fix/trailing-stop.`]),
+    : [
+        `The head ${pr.head} is not a branch named <type>/<short-name>, such as fix/trailing-stop.`,
+      ]),
   ...bodyProblems(root, pr, changed),
   ...commandProblems(root, pr),
 ];
 const lines = changedLines(root, pr);
 if (lines > sizeLimit) {
   console.log(
-    `::warning::This PR changes ${String(lines)} lines outside tests and generated files; ` +
+    `check:pr: the branch changes ${String(lines)} lines outside tests and generated files; ` +
       `split it into a stack of PRs under about ${String(sizeLimit)} lines each.`,
   );
 }
 for (const problem of problems) {
   console.error(`check:pr: ${problem}`);
 }
+if (pr.body === undefined) {
+  console.log("check:pr: no --body file given, so the PR body was not checked.");
+}
 if (problems.length === 0) {
-  console.log(`check:pr: the PR is ready for review (${String(lines)} lines counted).`);
+  console.log(`check:pr: the branch is ready to merge (${String(lines)} lines counted).`);
 }
 process.exitCode = problems.length === 0 ? 0 : 1;

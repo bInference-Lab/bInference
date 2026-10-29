@@ -6,7 +6,8 @@ interface PrCase {
   readonly name: string;
   readonly files: Readonly<Record<string, string>>;
   readonly commit: string;
-  readonly body: string;
+  /** The PR body, given with the commit as the title; without one, neither is passed. */
+  readonly body?: string;
   readonly branch?: string;
   readonly expect: "pass" | "fail";
   readonly output: RegExp;
@@ -34,23 +35,22 @@ function moneyChecklist(repo: string): string {
   return template.slice(start, end).replaceAll("- [ ]", "- [x]");
 }
 
+// The planted commit sits on the sandbox's master; a branch at it makes the range's head.
 function prCase(item: PrCase): GateCase {
+  const branch = item.branch ?? "docs/notes";
+  const body = item.body === undefined ? [] : ["--body", ".gates/body.md"];
+  const title = item.body === undefined ? [] : ["--title", item.commit];
   return {
     name: item.name,
     files: item.files,
     commitAs: item.commit,
     steps: [
+      { command: ["git", "branch", "--force", branch, "HEAD"], expect: "pass" },
       {
-        command: ["pnpm", "check:pr"],
+        command: ["pnpm", "check:pr", `HEAD~1..${branch}`, ...title, ...body],
+        files: item.body === undefined ? {} : { ".gates/body.md": item.body },
         expect: item.expect,
         output: [item.output],
-        env: {
-          PR_TITLE: item.commit,
-          PR_BODY: item.body,
-          PR_BRANCH: item.branch ?? "docs/notes",
-          PR_BASE_SHA: "HEAD~1",
-          PR_HEAD_SHA: "HEAD",
-        },
       },
     ],
   };
@@ -68,7 +68,7 @@ function bodyCases(repo: string): readonly GateCase[] {
       commit: "docs: add notes about the gates",
       body: filled,
       expect: "pass",
-      output: /ready for review/,
+      output: /ready to merge/,
     }),
     prCase({
       name: "an empty evidence section fails check:pr",
@@ -94,15 +94,29 @@ function bodyCases(repo: string): readonly GateCase[] {
       body: `${filled}\n${moneyChecklist(repo)}`,
       branch: "feat/first-rule",
       expect: "pass",
-      output: /ready for review/,
+      output: /ready to merge/,
     }),
   ];
 }
 
-/** Cases for check:pr, which CI runs on the title, body, branch and commits of a PR. */
+/** Cases for check:pr, which the merger runs on a branch's range, commits and PR body. */
 export function prCases(repo: string): readonly GateCase[] {
   return [
     ...bodyCases(repo),
+    prCase({
+      name: "a branch range with no body file passes check:pr and says the body went unchecked",
+      files: notes,
+      commit: "docs: add notes about the gates",
+      expect: "pass",
+      output: /PR body was not checked[\s\S]*ready to merge/,
+    }),
+    prCase({
+      name: "a commit with a bad subject in the range fails check:pr",
+      files: notes,
+      commit: "docs: Added notes.",
+      expect: "fail",
+      output: /a commit fails commitlint/,
+    }),
     prCase({
       name: "a branch not named <type>/<short-name> fails check:pr",
       files: notes,
@@ -110,7 +124,7 @@ export function prCases(repo: string): readonly GateCase[] {
       body: filled,
       branch: "notes",
       expect: "fail",
-      output: /not named <type>\/<short-name>/,
+      output: /not a branch named <type>\/<short-name>/,
     }),
     prCase({
       name: "a dependency change without a dependencies section fails check:pr",
@@ -132,7 +146,7 @@ export function prCases(repo: string): readonly GateCase[] {
       commit: "docs: add notes about the gates",
       body: filled,
       expect: "pass",
-      output: /::warning::This PR changes \d+ lines/,
+      output: /the branch changes \d+ lines/,
     }),
   ];
 }

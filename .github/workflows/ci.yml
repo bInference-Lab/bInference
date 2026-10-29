@@ -257,6 +257,7 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # check:pr reads the branch name from the range's head, so the head gets a local branch.
       - name: check:pr
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -264,7 +265,10 @@ jobs:
           PR_BRANCH: ${{ github.head_ref }}
           PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: pnpm check:pr
+        run: |
+          git branch --force "$PR_BRANCH" "$PR_HEAD_SHA"
+          printf '%s\n' "$PR_BODY" > "$RUNNER_TEMP/pr-body.md"
+          pnpm check:pr "$PR_BASE_SHA..$PR_BRANCH" --title "$PR_TITLE" --body "$RUNNER_TEMP/pr-body.md"
 
   commit:
     name: commit message on master
