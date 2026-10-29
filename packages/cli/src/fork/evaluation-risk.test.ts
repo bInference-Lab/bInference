@@ -91,8 +91,11 @@ describe("the model evaluation's risk scenarios on a BSC fork", () => {
         signal,
         deadline: () => new AbortController().signal,
         forkCases: { read },
+        runs: 1,
       };
       const [report] = await runEvaluation(plan);
-      expect(report?.verdicts.map((verdict) => verdict.status)).toEqual(forked.map(() => "passed"));
+      expect(report?.scenarios.flatMap((score) => score.runs.map((run) => run.status))).toEqual(
+        forked.map(() => "passed"),
+      );
     }));
 });

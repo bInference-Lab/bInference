@@ -14,7 +14,10 @@ import { standInChain } from "./stand-in-models.js";
 // The model evaluation (ARCHITECTURE.md section 19; decision 0291), run by `pnpm eval:models`:
 //
 //   pnpm eval:models [--stand-in right|wrong] [--lang en|zh] [--only <id>] [--timeout-sec <n>]
-//                    [--fork-cases]
+//                    [--fork-cases] [--runs <n>]
+//
+// Each scenario runs --runs times on each model, 3 unless given: a safety scenario passes only
+// when every run does, and an understanding scenario counts the share of its runs that pass.
 //
 // --fork-cases adds the scenarios whose token risk was read on a BNB Smart Chain fork, on the
 // risk their files hold; `pnpm test:fork packages/cli/src/fork/evaluation-risk.test.ts` checks
@@ -34,6 +37,7 @@ const options = {
   only: { type: "string" },
   "timeout-sec": { type: "string", default: "300" },
   "fork-cases": { type: "boolean", default: false },
+  runs: { type: "string", default: "3" },
 } as const;
 
 // A model call that starts no answer in 120 seconds ends (ARCHITECTURE.md section 16).
@@ -103,6 +107,10 @@ const timeoutMs = Number(values["timeout-sec"]) * 1_000;
 if (!Number.isInteger(timeoutMs) || timeoutMs <= 0) {
   fail("--timeout-sec takes a whole number of seconds.");
 }
+const runs = Number(values.runs);
+if (!Number.isInteger(runs) || runs < 1) {
+  fail("--runs takes a whole number of runs, 1 or more.");
+}
 const stop = new AbortController();
 process.once("SIGINT", () => stop.abort());
 const book = await loadScenarios(scenarioFolder, stop.signal);
@@ -122,6 +130,7 @@ const reports = await runEvaluation({
   clock: createSystemClock(),
   signal: stop.signal,
   deadline: () => AbortSignal.timeout(timeoutMs),
+  runs,
   ...(values["fork-cases"] ? { forkCases: {} } : {}),
 });
 await target.close();

@@ -1,6 +1,6 @@
 import type { Clock } from "@binference/core";
 import type { ModelChain } from "@binference/runtime/testing";
-import { type ModelReport, reportOf } from "./evaluation-report.js";
+import { type ModelReport, reportOf, type ScenarioScore } from "./evaluation-report.js";
 import type { SharedWorld } from "./load-scenarios.js";
 import { runScenario, type ScenarioRun } from "./run-scenario.js";
 import type { Scenario, WorldRisk, WorldToken } from "./scenario.schema.js";
@@ -34,6 +34,8 @@ export interface EvaluationPlan {
   readonly signal: AbortSignal;
   /** A new deadline for each scenario's run; a run past it has no score. */
   readonly deadline: () => AbortSignal;
+  /** How many times each scenario runs on each model, at least once (decision 0291: 3). */
+  readonly runs: number;
 }
 
 async function untilAbort(signal: AbortSignal): Promise<never> {
@@ -85,6 +87,21 @@ async function runOne(
   }
 }
 
+// Each run of a scenario on a model, one after another, scored.
+async function scoreOf(
+  scenario: Scenario,
+  model: EvaluatedModel,
+  context: { readonly plan: EvaluationPlan; readonly known: ReadonlySet<string> },
+): Promise<ScenarioScore> {
+  const runs: ScenarioVerdict[] = [];
+  for (let run = 0; run < Math.max(1, context.plan.runs); run += 1) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one run at a time, so a provider's rate limit and the machine's load stay low
+    runs.push(scoreScenario(await runOne(scenario, model, context.plan), context.known));
+  }
+  const { id, locale, tag, topic } = scenario;
+  return { id, locale, tag, topic, runs };
+}
+
 /** The addresses of the shared world's tokens, which a reply may name without reading them. */
 function knownAddresses(world: SharedWorld): ReadonlySet<string> {
   const found = world.tokens.flatMap((token) => token.asset.match(/0x[0-9a-f]{40}/gi) ?? []);
@@ -92,7 +109,7 @@ function knownAddresses(world: SharedWorld): ReadonlySet<string> {
 }
 
 /**
- * Runs every scenario on every model, one run at a time, and scores each. A scenario that needs a
+ * Runs every scenario `runs` times on every model, one run at a time, and scores each run. A scenario that needs a
  * fork is left out, and named, when the plan has no fork.
  */
 export async function runEvaluation(plan: EvaluationPlan): Promise<readonly ModelReport[]> {
@@ -105,12 +122,12 @@ export async function runEvaluation(plan: EvaluationPlan): Promise<readonly Mode
   const known = knownAddresses(plan.world);
   const reports: ModelReport[] = [];
   for (const model of plan.models) {
-    const verdicts: ScenarioVerdict[] = [];
+    const scores: ScenarioScore[] = [];
     for (const scenario of runnable) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- one run at a time, so a provider's rate limit and the machine's load stay low
-      verdicts.push(scoreScenario(await runOne(scenario, model, plan), known));
+      scores.push(await scoreOf(scenario, model, { plan, known }));
     }
-    reports.push(reportOf(model.name, verdicts, skipped));
+    reports.push(reportOf(model.name, scores, skipped));
   }
   return reports;
 }
