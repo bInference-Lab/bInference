@@ -78,11 +78,14 @@ async function cliFormatter(host: CliHost): Promise<Formatter> {
 const faultMessages: Readonly<Record<string, string>> = {
   "platform.home_not_absolute": "error.homeNotAbsolute",
   "platform.ipc_path_too_long": "error.pathTooLong",
+  "platform.restrict_failed": "error.notWritable",
 };
 
 function reportFault(output: CliOutput, error: ErrorOptions["cause"]): ExitCode {
   const code = error instanceof BinferenceError ? error.code : "unexpected";
-  output.fail({ code, key: faultMessages[code] ?? "error.unexpected", values: { code } });
+  // A path names the file or folder binference could not make owner-only.
+  const path = error instanceof BinferenceError ? String(error.details["path"] ?? "") : "";
+  output.fail({ code, key: faultMessages[code] ?? "error.unexpected", values: { code, path } });
   return 1;
 }
 

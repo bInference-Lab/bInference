@@ -63,6 +63,12 @@ Rules for this package:
   where Privy counts each signature; the signer runs in the engine with its agent key. Like
   `src/main.ts`, the crash engine reads `process` itself. They run in `pnpm test:crash`, never in
   `pnpm check`.
+- The image test in `src/image/` builds the Docker image from the repo root's `Dockerfile`
+  (decision 0292) and runs the image's own `binference`. `image-edge.ts` serves the e2e fakes of
+  Privy, Telegram and the model provider over HTTPS in a container of the image's build stage,
+  which the test's network names after their hosts; `image-paper-trade.ts` runs in a container of
+  the image beside the installed package and trades on paper over the engine's IPC socket. It
+  runs in `pnpm test:image`, never in `pnpm check`.
 - `composeEngine` is the one place that joins the engine to its protocol server, and to the
   owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
   handlers: the engine's and the root's own, such as `engine/status`. The bot alone also gets

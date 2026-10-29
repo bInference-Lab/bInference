@@ -14,10 +14,16 @@
       "entry": ["src/**/*.worker.ts"],
       "project": ["src/**/*.ts"],
     },
-    // The recorded run's MCP server starts by its path, from scripts/skill-run.mts, and the
-    // console's smoke engine from the console's Playwright config.
+    // The recorded run's MCP server starts by its path, from scripts/skill-run.mts, the console's
+    // smoke engine from the console's Playwright config, and the image smoke test's edge and paper
+    // trade inside its containers.
     "packages/cli": {
-      "entry": ["src/skill-run/skill-run-server.ts", "src/console-smoke/smoke-engine.ts"],
+      "entry": [
+        "src/skill-run/skill-run-server.ts",
+        "src/console-smoke/smoke-engine.ts",
+        "src/image/image-edge.ts",
+        "src/image/image-paper-trade.ts",
+      ],
       "project": ["src/**/*.ts"],
     },
     // The console is a Vite app: index.html loads its entry and its stylesheet. Its shadcn

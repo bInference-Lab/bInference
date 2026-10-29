@@ -284,6 +284,7 @@
   "check.rpcPushed": "{count, plural, one {An active live auto order waits} other {# active live auto orders wait}} on new blocks polled over HTTP, which can come a block late, so a fill can land two blocks after its trigger. Add your RPC's `wss:` URL as `ws` under `chains.rpc` in config.json5, so each new block reaches binference as it is made.",
   "error.homeNotAbsolute": "BINFERENCE_HOME is not an absolute path. Set it to a full path, or unset it to use the state folder in your home folder.",
   "error.pathTooLong": "The state folder's path is too long for a local socket. Set BINFERENCE_HOME to a shorter folder.",
+  "error.notWritable": "binference cannot write to {path}. The user binference runs as must own its state folder and be able to write to it, and a container must not mount it read-only.",
   "error.unexpected": "binference stopped on an error ({code}). Run `binference logs` to see what happened.",
   "option.privyAppId": "Your Privy app ID",
   "option.privyAppSecret": "The Privy app secret's source, written as in config.json5",

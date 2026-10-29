@@ -32,6 +32,8 @@ function packageFolders(): readonly string[] {
 const forkFolders = "**/src/fork/**";
 // Crash tests need anvil and kill processes: they run in the crash suite (vitest.crash.config.ts).
 const crashFolders = "**/src/crash/**";
+// Image tests build and run the Docker image: they run in the image suite (vitest.image.config.ts).
+const imageFolders = "**/src/image/**";
 // The console's smoke test and its engine run in Playwright (`pnpm test:console`), never here.
 const smokeFolders = ["**/src/smoke/**", "**/src/console-smoke/**"];
 
@@ -67,7 +69,7 @@ function project(
     test: {
       name,
       include: members.map((folder) => `${folder}/src/**/*.test.ts`),
-      exclude: [...configDefaults.exclude, forkFolders, crashFolders],
+      exclude: [...configDefaults.exclude, forkFolders, crashFolders, imageFolders],
       isolate: name === "isolated",
     },
   };
@@ -136,6 +138,7 @@ const config: ViteUserConfig = defineConfig({
         "**/*.test.{ts,tsx}",
         forkFolders,
         crashFolders,
+        imageFolders,
         ...smokeFolders,
         `${consoleFolder}/src/components/ui/**`,
         `${consoleFolder}/src/main.tsx`,

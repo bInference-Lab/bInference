@@ -19,9 +19,12 @@ and the full `pnpm check` once, when the change is complete.
 | End to end | `src/e2e/`: a real process or the composed engine | `pnpm vitest run <path>`        |
 | Fork       | `src/fork/`: anvil on a fork of BSC               | `pnpm test:fork <path>`         |
 | Crash      | `src/crash/`: kills and restarts an engine        | `pnpm test:crash <path>`        |
+| Image      | `src/image/`: builds and runs the Docker image    | `pnpm test:image`               |
 | Mutation   | Stryker over `engine` and `signer`                | CI only; never in a task's loop |
 
-`pnpm check` and `pnpm test` skip the fork and crash folders. Those suites run each night in CI.
+`pnpm check` and `pnpm test` skip the fork, crash and image folders. The fork and crash suites run
+each night in CI; the image suite needs Docker and runs by hand, alone, after a change to the
+Dockerfile, `.dockerignore` or how the `binference` package is built.
 
 ## 2. Pick the proof
 

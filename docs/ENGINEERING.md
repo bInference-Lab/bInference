@@ -701,6 +701,13 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   chain of its own with BSC's chain id and no fork, so no run reaches the network. Enforcer:
   `vitest.crash.config.ts` with its global setup, `BINFERENCE_CRASH_RUNS` for the runs per kill
   point, and the `src/crash/` exclusion in `vitest.config.ts`.
+- **Rule:** image tests live in a package's `src/image/` and run in the image suite
+  (`pnpm test:image`), never in `pnpm check`. They build the Docker image from the checkout, run it
+  with a read-only root, set it up with `binference init --yes`, trade on paper and stop it with
+  `docker stop`, then remove every container, volume, network and image they made. Privy,
+  Telegram and the model provider are the e2e fakes behind an HTTPS edge on the test's Docker
+  network ([decision 0292](adr/0292-the-docker-image-runs-binference-as-its-own-user-on-a-state-volume.md)).
+  Enforcer: `vitest.image.config.ts` and the `src/image/` exclusion in `vitest.config.ts`.
 
 <a id="section-16"></a>
 
@@ -1163,7 +1170,7 @@ Enforcer: Oxlint `eslint/no-restricted-globals` (`Intl`) and `eslint/no-restrict
 
 Enforcer: `check:package-graph` (the third-party packages each package may use); a test over the
 commander tree for `--json` and `--yes`, and exit code tests; an image smoke test for Docker
-(`docker inspect` shows the non-root user and the healthcheck).
+(`pnpm test:image`: `docker inspect` shows the non-root user and the healthcheck).
 
 <a id="section-24-6"></a>
 

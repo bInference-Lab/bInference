@@ -284,6 +284,7 @@
   "check.rpcPushed": "{count, plural, other {# 个生效中的实盘自动订单}}依赖通过 HTTP 轮询获取的新区块，可能晚到一个区块，成交可能在触发后第二个区块才上链。请在 config.json5 的 `chains.rpc` 中把 RPC 的 `wss:` 地址填为 `ws`，让每个新区块一产生就送达 binference。",
   "error.homeNotAbsolute": "BINFERENCE_HOME 不是绝对路径。请把它设为完整路径，或取消设置以使用你主文件夹中的状态文件夹。",
   "error.pathTooLong": "状态文件夹的路径太长，无法用于本地套接字。请把 BINFERENCE_HOME 设为更短的文件夹。",
+  "error.notWritable": "binference 无法写入 {path}。运行 binference 的用户必须拥有它的状态文件夹并能写入，容器也不能以只读方式挂载它。",
   "error.unexpected": "binference 因错误而停止（{code}）。请运行 `binference logs` 查看发生了什么。",
   "option.privyAppId": "你的 Privy 应用 ID",
   "option.privyAppSecret": "Privy 应用密钥的密钥来源，按 config.json5 的写法",

@@ -1,0 +1,33 @@
+# The image builds from an allow list: the workspace's manifests, the packages, the plugins, the
+# bundled skills and the license files. Nothing else reaches the build, so no `.env` file, key,
+# keystore, state folder, local note or git history can land in a layer.
+*
+!.npmrc
+!LICENSE
+!NOTICES.md
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!tsconfig.base.json
+!tsconfig.json
+!turbo.json
+!packages/
+!plugins/
+!skills/
+
+# Built and installed files are made again inside the build.
+**/node_modules
+**/dist
+**/coverage
+**/.turbo
+packages/cli/skills
+
+# Secrets and keys, should one sit inside an allowed folder.
+**/.env
+**/.env.*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.keystore
+**/keystore*
+**/.binference
