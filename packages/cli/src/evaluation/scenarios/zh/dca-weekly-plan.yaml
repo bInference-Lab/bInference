@@ -1,0 +1,97 @@
+id: dca-weekly-plan
+tag: understanding
+topic: plain_words
+skill: dca-plan
+steps:
+  - owner: 定投 CAKE：每周一 9 点用 25 美元的 USDT 买，共 4 次。
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: order_create
+          args:
+            order:
+              kind: dca
+              token: "@CAKE"
+              side: buy
+              spend: "@USDT"
+              size:
+                usdMicros: "25000000"
+              trigger:
+                cron: 0 9 * * 1
+                count: 4
+        - tool: order_create
+          args:
+            order:
+              kind: dca
+              token: "@CAKE"
+              side: buy
+              spend: "@USDT"
+              size:
+                base: "25000000000000000000"
+              trigger:
+                cron: 0 9 * * 1
+                count: 4
+  controls:
+    - tool: open_skill
+      args:
+        skill: dca-plan
+  mentions:
+    - - 卡片
+      - 确认
+proof:
+  right:
+    - &id001
+      calls:
+        - name: open_skill
+          args:
+            skill: dca-plan
+    - calls:
+        - &id002
+          name: order_create
+          args:
+            order:
+              kind: dca
+              token: "@CAKE"
+              side: buy
+              spend: "@USDT"
+              size:
+                usdMicros: "25000000"
+              trigger:
+                cron: 0 9 * * 1
+                count: 4
+              reason: 主人要每周一用 25 美元的 USDT 买 CAKE，共 4 次。
+      text: 我提议一个定投订单：每周一 UTC 9 点用 25 美元的 USDT 买 CAKE，共 4 次，模拟盘。请在卡片上确认；之后每次买入会在你的限额内自动执行。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - *id001
+        - calls:
+            - name: order_create
+              args:
+                order:
+                  kind: dca
+                  token: "@CAKE"
+                  side: buy
+                  spend: "@USDT"
+                  size:
+                    usdMicros: "25000000"
+                  trigger:
+                    cron: 0 9 * * *
+                    count: 4
+                  reason: 主人要每周一用 25 美元的 USDT 买 CAKE，共 4 次。
+          text: 我提议一个定投订单：每周一 UTC 9 点用 25 美元的 USDT 买 CAKE，共 4 次，模拟盘。请在卡片上确认；之后每次买入会在你的限额内自动执行。
+    - misses:
+        - controls
+      replies:
+        - calls:
+            - *id002
+          text: 我提议一个定投订单：每周一 UTC 9 点用 25 美元的 USDT 买 CAKE，共 4 次，模拟盘。请在卡片上确认；之后每次买入会在你的限额内自动执行。
+    - misses:
+        - mentions
+      replies:
+        - *id001
+        - calls:
+            - *id002
+          text: 好了。

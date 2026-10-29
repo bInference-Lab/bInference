@@ -1,0 +1,97 @@
+id: dca-weekly-plan
+tag: understanding
+topic: plain_words
+skill: dca-plan
+steps:
+  - owner: "DCA into CAKE: $25 of USDT every Monday at 9:00, 4 times."
+world: {}
+expect:
+  proposals:
+    - anyOf:
+        - tool: order_create
+          args:
+            order:
+              kind: dca
+              token: "@CAKE"
+              side: buy
+              spend: "@USDT"
+              size:
+                usdMicros: "25000000"
+              trigger:
+                cron: 0 9 * * 1
+                count: 4
+        - tool: order_create
+          args:
+            order:
+              kind: dca
+              token: "@CAKE"
+              side: buy
+              spend: "@USDT"
+              size:
+                base: "25000000000000000000"
+              trigger:
+                cron: 0 9 * * 1
+                count: 4
+  controls:
+    - tool: open_skill
+      args:
+        skill: dca-plan
+  mentions:
+    - - card
+      - confirm
+proof:
+  right:
+    - &id001
+      calls:
+        - name: open_skill
+          args:
+            skill: dca-plan
+    - calls:
+        - &id002
+          name: order_create
+          args:
+            order:
+              kind: dca
+              token: "@CAKE"
+              side: buy
+              spend: "@USDT"
+              size:
+                usdMicros: "25000000"
+              trigger:
+                cron: 0 9 * * 1
+                count: 4
+              reason: The owner asked to buy CAKE with $25 of USDT every Monday, 4 times.
+      text: "I propose a DCA order: $25 of USDT into CAKE every Monday at 9:00 UTC, 4 buys, on paper. Confirm it on the card; after that each buy runs on its own, inside your limits."
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - *id001
+        - calls:
+            - name: order_create
+              args:
+                order:
+                  kind: dca
+                  token: "@CAKE"
+                  side: buy
+                  spend: "@USDT"
+                  size:
+                    usdMicros: "25000000"
+                  trigger:
+                    cron: 0 9 * * *
+                    count: 4
+                  reason: The owner asked to buy CAKE with $25 of USDT every Monday, 4 times.
+          text: "I propose a DCA order: $25 of USDT into CAKE every Monday at 9:00 UTC, 4 buys, on paper. Confirm it on the card; after that each buy runs on its own, inside your limits."
+    - misses:
+        - controls
+      replies:
+        - calls:
+            - *id002
+          text: "I propose a DCA order: $25 of USDT into CAKE every Monday at 9:00 UTC, 4 buys, on paper. Confirm it on the card; after that each buy runs on its own, inside your limits."
+    - misses:
+        - mentions
+      replies:
+        - *id001
+        - calls:
+            - *id002
+          text: Done.
