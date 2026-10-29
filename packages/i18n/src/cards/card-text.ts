@@ -53,6 +53,8 @@ const textLengths: Readonly<Record<string, number>> = {
   explorerLink: 200,
 };
 const ratioDecimals = 2;
+// A receipt's transaction hash shows short, as an address does: `0xabab…cdcd`.
+const hashLength = 128;
 
 function say(formatter: Formatter, key: string, values?: MessageValues): string {
   return formatter.message(key, values);
@@ -118,7 +120,10 @@ const formats: ValueFormats = {
   dateTime: ({ atMs }, { display }) => display.formatter.dateTime(atMs),
   count: ({ count }) => count,
   choice: ({ choice }) => choice,
-  text: ({ text }, { argument }) => displayOutsideText(text, textLengths[argument] ?? nameLength),
+  text: ({ text }, { argument }) =>
+    argument === "txHash"
+      ? shortAddress(displayOutsideText(text, hashLength))
+      : displayOutsideText(text, textLengths[argument] ?? nameLength),
   route: (value, { display }) => routeText(value, display),
   line: ({ line }, { display }) => cardLineText(line, display),
   usdChange: ({ usdMicros }) => formatUsdChange(usdMicros),

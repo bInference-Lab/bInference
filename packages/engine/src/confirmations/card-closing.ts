@@ -1,4 +1,4 @@
-import type { Amount, AssetRef } from "@binference/chain";
+import type { Amount, AssetRef, TxHash } from "@binference/chain";
 import type { IntentReason } from "../intents/intent-reason.js";
 import { type CardAction, type CardActionFacts, orderTermsOf } from "./card-action.js";
 import type { Answerer } from "./card-answer.js";
@@ -35,28 +35,33 @@ export function receiptResult(fill: ReceiptFill): CardValue {
 }
 
 /**
+ * Where a receipt points for the last transaction an intent sent: its page on the first block
+ * explorer the chain registry lists, or its hash when the registry lists none for the chain.
+ */
+export type ReceiptTx = { readonly explorerLink: string } | { readonly hash: TxHash };
+
+/**
  * How a confirmed live intent ended on chain, as its receipt shows it (spec 4, section 3.5): a
  * trade that filled, with what it sold and bought; a token launch that landed, with its new token
  * and, with a first buy, what that sold and bought; any other intent that landed, such as a send
- * or a rescue; one done with nothing to send; or one that failed on chain, with its reason. Each
- * of those names its last transaction's explorer link. One that ended before anything was sent
- * gives its reason when it stored one; one whose fate is not known yet says so.
-
+ * or a rescue; one that failed on chain, with its reason; each with its last transaction. One that
+ * reconciled with nothing sent is done; one that ended before anything was sent gives its reason
+ * when it stored one; one whose fate is not known yet says so.
  */
 export type LiveOutcome =
-  | { readonly kind: "filled"; readonly fill: ReceiptFill; readonly explorerLink: string }
+  | { readonly kind: "filled"; readonly fill: ReceiptFill; readonly tx: ReceiptTx }
   | {
       readonly kind: "launched";
       readonly token: AssetRef;
       readonly fill?: ReceiptFill;
-      readonly explorerLink: string;
+      readonly tx: ReceiptTx;
     }
-  | { readonly kind: "landed"; readonly explorerLink: string }
+  | { readonly kind: "landed"; readonly tx: ReceiptTx }
   | { readonly kind: "done" }
   | { readonly kind: "refused"; readonly reason: IntentReason }
   | { readonly kind: "unsent" }
   | { readonly kind: "unknown" }
-  | { readonly kind: "failed"; readonly reason: IntentReason; readonly explorerLink: string };
+  | { readonly kind: "failed"; readonly reason: IntentReason; readonly tx: ReceiptTx };
 
 /**
  * What a confirmed intent with nothing to send took effect as (spec 4, section 3.5): an unfreeze,
@@ -82,11 +87,18 @@ export type ReceiptAfter =
   | WrittenOutcome;
 
 const text = (value: string): CardValue => ({ type: "text", text: value });
+
+// The `{explorerLink}` of a receipt: the explorer page whole, or `receipt.tx` with the hash.
+function txValue(tx: ReceiptTx): CardValue {
+  return "explorerLink" in tx
+    ? text(tx.explorerLink)
+    : { type: "line", line: { key: "receipt.tx", values: { txHash: text(tx.hash) } } };
+}
 const choice = (value: string): CardValue => ({ type: "choice", choice: value });
 
 function launchedLine(outcome: AfterOf<"launched">): CardLine {
   const token: CardValue = { type: "asset", asset: outcome.token };
-  const explorerLink = text(outcome.explorerLink);
+  const explorerLink = txValue(outcome.tx);
   return outcome.fill === undefined
     ? { key: "receipt.launchedAlone", values: { token, explorerLink } }
     : {
@@ -109,16 +121,16 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
   paper: (after) => paperFillLine(after.fill),
   filled: (after) => ({
     key: "receipt.filled",
-    values: { result: receiptResult(after.fill), explorerLink: text(after.explorerLink) },
+    values: { result: receiptResult(after.fill), explorerLink: txValue(after.tx) },
   }),
   launched: (after) => launchedLine(after),
   landed: (after) => ({
     key: "receipt.landed",
-    values: { explorerLink: text(after.explorerLink) },
+    values: { explorerLink: txValue(after.tx) },
   }),
   failed: (after) => ({
     key: "receipt.failed",
-    values: { reason: reasonLine(after.reason), explorerLink: text(after.explorerLink) },
+    values: { reason: reasonLine(after.reason), explorerLink: txValue(after.tx) },
   }),
   done: () => ({ key: "receipt.done", values: {} }),
   refused: (after) => ({ key: "receipt.refused", values: { reason: reasonLine(after.reason) } }),

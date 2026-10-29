@@ -1,4 +1,6 @@
+import type { ChainRegistry, RegisteredChain } from "@binference/chain";
 import { fakeApprovalData, fakeDraft } from "@binference/chain/testing";
+import { ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import {
   driveUntil,
@@ -21,13 +23,31 @@ const saleApproval = fakeDraft(testAccount, {
   data: fakeApprovalData("0x0000000b", 1_000_000n),
 });
 
-// The card receipts of the bench's stores, as the owner's surfaces read them.
-function showingsOf(bench: ExecutorBench) {
+// The card receipts of the bench's stores, as the owner's surfaces read them, on the test chains
+// or on given ones.
+function showingsOf(bench: ExecutorBench, chains: ChainRegistry = testChains()) {
   return createCardShowings({
     ...bench.test.stores,
-    chains: testChains(),
+    chains,
     venues: { hasNoDeadline: () => false },
   });
+}
+
+// A registered chain with no block explorer listed.
+function bare(chain: RegisteredChain): RegisteredChain {
+  return { ...chain, definition: { ...chain.definition, explorers: [] } };
+}
+
+// The test chains with no block explorer listed for any of them.
+function withoutExplorers(): ChainRegistry {
+  const chains = testChains();
+  return {
+    get: (ref) => {
+      const found = chains.get(ref);
+      return found.ok ? ok(bare(found.value)) : found;
+    },
+    list: () => chains.list().map(bare),
+  };
 }
 
 describe("the receipt of a confirmed live intent", () => {
@@ -46,11 +66,27 @@ describe("the receipt of a confirmed live intent", () => {
         amountIn: { asset: testCoin, base: 1_000_000n },
         amountOut: { asset: testToken, base: 2_000_000n },
       },
-      explorerLink: `https://scan.example.invalid/tx/${hashOf(swap)}`,
+      tx: { explorerLink: `https://scan.example.invalid/tx/${hashOf(swap)}` },
     });
     expect(ended?.live?.assets).toMatchObject({
       [testCoin]: { symbol: "FAKE" },
       [testToken]: { symbol: "TKN" },
+    });
+  });
+
+  it("names the last transaction's hash on a chain with no block explorer, never nothing sent", async () => {
+    const bench = await startExecutorBench();
+    const intent = await tapped(bench);
+    await driveUntil(bench, intent, { states: ["reconciled"] });
+    const [swap] = await transactionsOf(bench);
+    const ended = await showingsOf(bench, withoutExplorers()).settled(intent, live());
+    expect(ended?.live?.outcome).toStrictEqual({
+      kind: "filled",
+      fill: {
+        amountIn: { asset: testCoin, base: 1_000_000n },
+        amountOut: { asset: testToken, base: 2_000_000n },
+      },
+      tx: { hash: hashOf(swap) },
     });
   });
 
@@ -63,7 +99,7 @@ describe("the receipt of a confirmed live intent", () => {
     expect(ended?.live?.outcome).toStrictEqual({
       kind: "failed",
       reason: "reverted",
-      explorerLink: `https://scan.example.invalid/tx/${hashOf(approval)}`,
+      tx: { explorerLink: `https://scan.example.invalid/tx/${hashOf(approval)}` },
     });
   });
 

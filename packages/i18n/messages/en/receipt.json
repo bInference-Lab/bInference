@@ -5,6 +5,7 @@
   "paper": "🧪 Paper fill: {result}",
   "auto": "⚡ Auto trade: {result} · {explorerLink}",
   "result": "{sold} → {bought}",
+  "tx": "transaction {txHash}",
   "filled": "✅ Done: {result} · {explorerLink}",
   "launched": "✅ Launched {token}: first buy {result} · {explorerLink}",
   "launchedAlone": "✅ Launched {token} · {explorerLink}",

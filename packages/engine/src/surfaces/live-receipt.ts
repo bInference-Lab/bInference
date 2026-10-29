@@ -8,7 +8,7 @@ import {
   type TxHash,
 } from "@binference/chain";
 import { type AssetInfos, unsentEndStates } from "@binference/protocol";
-import type { LiveOutcome } from "../confirmations/card-closing.js";
+import type { LiveOutcome, ReceiptTx } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import { type IntentHistory, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -31,11 +31,13 @@ export interface LiveReceiptSource {
 }
 
 // A transaction's page on the chain's first block explorer, from the page template the registry
-// lists for it.
-function explorerLinkOf(chains: ChainRegistry, chain: ChainRef, hash: TxHash): string | undefined {
+// lists for it, or its hash when the registry lists no explorer for the chain.
+function txOf(chains: ChainRegistry, chain: ChainRef, hash: TxHash): ReceiptTx {
   const registered = chains.get(chain);
   const explorer = registered.ok ? registered.value.definition.explorers[0] : undefined;
-  return explorer?.txUrl.replace("{hash}", hash);
+  return explorer === undefined
+    ? { hash }
+    : { explorerLink: explorer.txUrl.replace("{hash}", hash) };
 }
 
 // A trade that reconciled: what it sold and bought; a launch: its token, and its first buy's.
@@ -47,16 +49,13 @@ function reconciledOf(source: LiveReceiptSource): LiveReceipt | undefined {
     return undefined;
   }
   const { amountIn, amountOut } = settled;
-  const explorerLink = explorerLinkOf(chains, assetRefParts(amountIn.asset).chain, hash);
-  if (explorerLink === undefined) {
-    return undefined;
-  }
+  const tx = txOf(chains, assetRefParts(amountIn.asset).chain, hash);
   const fill = { amountIn, amountOut };
   const assets = intentAssetInfos(chains, record, [amountIn.asset, amountOut.asset]);
   if (record.kind !== "launchToken") {
-    return { outcome: { kind: "filled", fill, explorerLink }, assets };
+    return { outcome: { kind: "filled", fill, tx }, assets };
   }
-  const outcome = launchedOf(record, { amountOut, explorerLink });
+  const outcome = launchedOf(record, { amountOut, tx });
   return { outcome, assets: { ...assets, ...intentAssetInfos(chains, record, [outcome.token]) } };
 }
 
@@ -65,9 +64,9 @@ function reconciledOf(source: LiveReceiptSource): LiveReceipt | undefined {
 // none of the token when the buy bought nothing (Flap's first buy has no minimum, decision 0270).
 function launchedOf(
   record: IntentRecord,
-  settled: { readonly amountOut: Amount; readonly explorerLink: string },
+  settled: { readonly amountOut: Amount; readonly tx: ReceiptTx },
 ): Extract<LiveOutcome, { readonly kind: "launched" }> {
-  const { amountOut, explorerLink } = settled;
+  const { amountOut, tx } = settled;
   const request = requestDocument.decode(record.request);
   const spend = request.kind === "launchToken" ? request.firstBuy : undefined;
   const token: AssetRef =
@@ -75,30 +74,33 @@ function launchedOf(
       ? amountOut.asset
       : tokenLaunchQuoteDocument.decode(record.quote).token;
   if (spend === undefined) {
-    return { kind: "launched", token, explorerLink };
+    return { kind: "launched", token, tx };
   }
   const got = amountOut.asset === token ? amountOut : { asset: token, base: 0n };
-  return { kind: "launched", token, fill: { amountIn: spend, amountOut: got }, explorerLink };
+  return { kind: "launched", token, fill: { amountIn: spend, amountOut: got }, tx };
 }
 
 // A live intent that reconciled with no trade to show, such as a send or a rescue, or a launch with
-// none recorded: its last transaction's explorer link.
+// none recorded: its last transaction. `undefined` when it sent none.
 async function landedOf(
   source: LiveReceiptSource,
   call: { readonly signal: AbortSignal },
 ): Promise<LiveReceipt | undefined> {
   const { record, transactions, chains } = source;
   const last = (await transactions.ofIntent(record.id, call)).at(-1);
-  const explorerLink =
-    last === undefined
-      ? undefined
-      : explorerLinkOf(chains, accountRefParts(last.account).chain, last.hash);
-  return explorerLink === undefined
+  return last === undefined
     ? undefined
-    : { outcome: { kind: "landed", explorerLink }, assets: {} };
+    : {
+        outcome: {
+          kind: "landed",
+          tx: txOf(chains, accountRefParts(last.account).chain, last.hash),
+        },
+        assets: {},
+      };
 }
 
-// A confirmed intent that reconciled with nothing sent on chain, such as an unfreeze.
+// A confirmed intent that reconciled with nothing sent on chain, such as an auto order's card
+// whose order can no longer be drawn.
 const doneAlone: LiveReceipt = { outcome: { kind: "done" }, assets: {} };
 
 // A confirmed intent that ended before anything was sent: why, when it stored a reason.
@@ -109,7 +111,7 @@ function unsentOf(record: IntentRecord): LiveReceipt {
   return { outcome, assets: {} };
 }
 
-// A live intent that failed on chain: its reason, and its last transaction's explorer link.
+// A live intent that failed on chain: its reason, and its last transaction.
 async function failedOf(
   source: LiveReceiptSource,
   call: { readonly signal: AbortSignal },
@@ -119,16 +121,15 @@ async function failedOf(
   if (last === undefined || record.reason === undefined) {
     return undefined;
   }
-  const explorerLink = explorerLinkOf(chains, accountRefParts(last.account).chain, last.hash);
-  return explorerLink === undefined
-    ? undefined
-    : { outcome: { kind: "failed", reason: record.reason, explorerLink }, assets: {} };
+  const tx = txOf(chains, accountRefParts(last.account).chain, last.hash);
+  return { outcome: { kind: "failed", reason: record.reason, tx }, assets: {} };
 }
 
 /**
  * How a confirmed live intent ended, once it did (spec 4, section 3.5): `reconciled` with the
  * trade it recorded, as landed with none, or as done with nothing sent; `failed_onchain` with its
- * reason; each with its last transaction's explorer link; an end before anything was sent, with
+ * reason; each with its last transaction's explorer link, or its hash on a chain the registry
+ * lists no explorer for; an end before anything was sent, with
  * its reason when it stored one, which a paper intent that ended before its fill gives too; and
  * `unknown_after_send` while the chain is read. `undefined` for any other paper intent and one
  * still on its way.

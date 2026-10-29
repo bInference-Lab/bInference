@@ -291,6 +291,7 @@ The card's message is edited into its receipt; the buttons go away.
 | Refused                | `receipt.refused`        | ❌ Not sent: {reason}                                                         | ❌ 未发送：{reason}                                                       |
 | Failed on chain        | `receipt.failed`         | ❌ Failed on chain: {reason} · {explorerLink}                                 | ❌ 链上失败：{reason} · {explorerLink}                                    |
 | Unknown                | `receipt.unknown`        | ⚠️ Sent, result not known yet; checking the chain                             | ⚠️ 已发送，结果待确认；正在检查链上记录                                   |
+| Transaction            | `receipt.tx`             | transaction {txHash}                                                          | 交易 {txHash}                                                             |
 
 `{reason}` comes from `reason.<code>` (section 6).
 
@@ -299,13 +300,15 @@ how it ended once it did: `receipt.filled` for a trade that reconciled, with wha
 bought; `receipt.launched` for a token launch, with its new token (its symbol and short address) and
 what its first buy spent and got, 0 of the token when it bought nothing, or `receipt.launchedAlone`
 when the launch asked for no first buy; `receipt.landed` for any other intent that landed, such as a
-send or a rescue; `receipt.done` for any other with nothing to show; and `receipt.failed` for one
-that failed on chain. A confirmed intent that ends before anything is sent,
+send or a rescue; `receipt.done` only for one that reconciled with nothing sent on chain; and
+`receipt.failed` for one that failed on chain. A confirmed intent that ends before anything is sent,
 such as one the queue's policy check refused or whose authorization lapsed, or a paper sale its
 paper holding no longer covers, says `receipt.refused` with its reason, or `receipt.unsent` when it
 stored none; one whose send's fate is not known yet
 says `receipt.unknown` until it ends. `{explorerLink}` is its last transaction's page on the first
 block explorer the chain registry lists, from that explorer's `txUrl` page template, shown whole.
+On a chain the registry lists no explorer for, `{explorerLink}` is `receipt.tx` instead, its
+`{txHash}` the transaction's hash shortened as a card shortens an address (`0xcdcd…cdcd`).
 
 A confirmed intent that sends nothing on chain ends with what took effect, in paper mode and live,
 instead of staying at `receipt.confirmed`. An unfreeze

@@ -111,6 +111,7 @@ export const cardKeys = [
   "receipt.unknown",
   "receipt.failed",
   "receipt.result",
+  "receipt.tx",
   // The P&L card's lines (spec 4, section 3.7).
   "pnl.header",
   "pnl.headerClosed",

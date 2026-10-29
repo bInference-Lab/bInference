@@ -238,7 +238,7 @@ describe("a token launch in the wallet queue", () => {
         amountIn: { asset: testCoin, base: 1_000_000n },
         amountOut: { asset: token, base: 970_000_000n },
       },
-      explorerLink: `https://scan.example.invalid/tx/${hashOf(created)}`,
+      tx: { explorerLink: `https://scan.example.invalid/tx/${hashOf(created)}` },
     });
     expect(ended?.live?.assets[token]).toMatchObject({ symbol: "MCAT", verified: false });
     expect(feeOnly?.live?.outcome).toMatchObject({ kind: "launched", token });

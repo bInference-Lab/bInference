@@ -6,6 +6,7 @@ import {
   assetsWith,
   cardExpiresAtMs,
   pepeBuyFacts,
+  receiptTxHash,
   refs,
   swapFacts,
   takeProfitAction,
@@ -119,11 +120,11 @@ describe("a card in Telegram HTML, in Chinese", () => {
     const token = refs.usdt;
     expect(
       [
-        { kind: "filled", fill, explorerLink } as const,
-        { kind: "launched", token, fill, explorerLink } as const,
-        { kind: "launched", token, explorerLink } as const,
-        { kind: "landed", explorerLink } as const,
-        { kind: "failed", reason: "reverted", explorerLink } as const,
+        { kind: "filled", fill, tx: { explorerLink } } as const,
+        { kind: "launched", token, fill, tx: { explorerLink } } as const,
+        { kind: "launched", token, tx: { explorerLink } } as const,
+        { kind: "landed", tx: { explorerLink } } as const,
+        { kind: "failed", reason: "reverted", tx: { explorerLink } } as const,
       ].map((after) => textOf(receiptHtml(confirmed, display, after))),
     ).toStrictEqual([
       `${icons.done} 已完成：0.5 BNB → 313.95 USDT · ${explorerLink}`,
@@ -134,6 +135,15 @@ describe("a card in Telegram HTML, in Chinese", () => {
         new RegExp(`^${icons.refused} 链上失败：.+ · ${explorerLink.replaceAll(".", "\\.")}$`, "u"),
       ),
     ]);
+  });
+
+  it("names the transaction by its short hash on a chain with no block explorer", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const confirmed = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    const tx = { hash: receiptTxHash };
+    expect(textOf(receiptHtml(confirmed, display, { kind: "landed", tx }))).toBe(
+      `${icons.done} 已在链上完成 · 交易 0xcdcd…cdcd`,
+    );
   });
 
   it("draws a confirmed card that ended without sending in Chinese", () => {

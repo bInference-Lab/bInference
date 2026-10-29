@@ -5,6 +5,7 @@
   "paper": "🧪 模拟成交：{result}",
   "auto": "⚡ 自动交易：{result} · {explorerLink}",
   "result": "{sold} → {bought}",
+  "tx": "交易 {txHash}",
   "filled": "✅ 已完成：{result} · {explorerLink}",
   "launched": "✅ 已发射 {token}：首笔买入 {result} · {explorerLink}",
   "launchedAlone": "✅ 已发射 {token} · {explorerLink}",

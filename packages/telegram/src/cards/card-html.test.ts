@@ -8,6 +8,7 @@ import {
   assetsWith,
   cardExpiresAtMs,
   pepeBuyFacts,
+  receiptTxHash,
   refs,
   swapFacts,
   takeProfitAction,
@@ -291,11 +292,11 @@ describe("a card in Telegram HTML", () => {
     };
     const token = refs.pepe;
     const receipts = [
-      receiptHtml(closing, display, { kind: "filled", fill, explorerLink }),
-      receiptHtml(closing, display, { kind: "launched", token, fill, explorerLink }),
-      receiptHtml(closing, display, { kind: "launched", token, explorerLink }),
-      receiptHtml(closing, display, { kind: "landed", explorerLink }),
-      receiptHtml(closing, display, { kind: "failed", reason: "reverted", explorerLink }),
+      receiptHtml(closing, display, { kind: "filled", fill, tx: { explorerLink } }),
+      receiptHtml(closing, display, { kind: "launched", token, fill, tx: { explorerLink } }),
+      receiptHtml(closing, display, { kind: "launched", token, tx: { explorerLink } }),
+      receiptHtml(closing, display, { kind: "landed", tx: { explorerLink } }),
+      receiptHtml(closing, display, { kind: "failed", reason: "reverted", tx: { explorerLink } }),
     ];
     expect(receipts.map((html) => shown(html).text)).toStrictEqual([
       `${icons.done} Done: 0.01 BNB → 31,395 PEPE (0x6982…1933) · ${explorerLink}`,
@@ -303,6 +304,26 @@ describe("a card in Telegram HTML", () => {
       `${icons.done} Launched PEPE (0x6982…1933) · ${explorerLink}`,
       `${icons.done} Done on chain · ${explorerLink}`,
       `${icons.refused} Failed on chain: the transaction reverted; only the network fee was spent · ${explorerLink}`,
+    ]);
+  });
+
+  it("names the transaction by its short hash on a chain with no block explorer", () => {
+    const answeredBy = { surface: "telegram", by: "tg:1" } as const;
+    const closing = { outcome: "confirmed", answeredBy, atMs: 0 } as const;
+    const tx = { hash: receiptTxHash };
+    const fill = {
+      amountIn: { asset: refs.bnb, base: 10n ** 16n },
+      amountOut: { asset: refs.usdt, base: 6n * 10n ** 18n },
+    };
+    const receipts = [
+      receiptHtml(closing, display, { kind: "landed", tx }),
+      receiptHtml(closing, display, { kind: "filled", fill, tx }),
+      receiptHtml(closing, display, { kind: "failed", reason: "reverted", tx }),
+    ];
+    expect(receipts.map((html) => shown(html).text)).toStrictEqual([
+      `${icons.done} Done on chain · transaction 0xcdcd…cdcd`,
+      `${icons.done} Done: 0.01 BNB → 6 USDT · transaction 0xcdcd…cdcd`,
+      `${icons.refused} Failed on chain: the transaction reverted; only the network fee was spent · transaction 0xcdcd…cdcd`,
     ]);
   });
 

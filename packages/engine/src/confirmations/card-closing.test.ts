@@ -55,11 +55,12 @@ describe("receipt line", () => {
     const explorerLink = "https://scan.example.invalid/tx/0xab";
     const confirmed = { outcome: "confirmed", answeredBy, atMs: 5_000 } as const;
     const link = { type: "text", text: explorerLink };
+    const tx = { explorerLink };
     const lines = [
-      receiptLine(confirmed, { kind: "filled", fill, explorerLink }),
-      receiptLine(confirmed, { kind: "launched", token: amountOut.asset, fill, explorerLink }),
-      receiptLine(confirmed, { kind: "launched", token: amountOut.asset, explorerLink }),
-      receiptLine(confirmed, { kind: "failed", reason: "reverted", explorerLink }),
+      receiptLine(confirmed, { kind: "filled", fill, tx }),
+      receiptLine(confirmed, { kind: "launched", token: amountOut.asset, fill, tx }),
+      receiptLine(confirmed, { kind: "launched", token: amountOut.asset, tx }),
+      receiptLine(confirmed, { kind: "failed", reason: "reverted", tx }),
     ];
     expect(lines.map(({ key }) => key)).toStrictEqual([
       "receipt.filled",

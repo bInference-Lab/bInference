@@ -253,7 +253,7 @@ describe("a confirmed rescue on its wallets' queues", () => {
     const ended = await showings.settled(intent, live);
     expect(ended?.live?.outcome).toStrictEqual({
       kind: "landed",
-      explorerLink: `https://scan.example.invalid/tx/${hashOf(last)}`,
+      tx: { explorerLink: `https://scan.example.invalid/tx/${hashOf(last)}` },
     });
   });
 

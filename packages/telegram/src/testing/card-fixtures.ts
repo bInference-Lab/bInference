@@ -1,3 +1,4 @@
+import { isTxHash, type TxHash } from "@binference/chain";
 import { bpsSchema, BinferenceError, type Id, idSchema } from "@binference/core";
 import type { CardAction, CardFacts, CardValue } from "@binference/engine";
 import { type AssetInfo, type AssetInfos, assetInfosSchema } from "@binference/protocol";
@@ -114,3 +115,13 @@ export const takeProfitAction: CardAction<"autoOrder"> = {
   maxFills: 1,
   expiresAtMs: cardExpiresAtMs + 86_400_000,
 };
+
+/** A transaction hash for a receipt, on a chain the fixture registry may list no explorer for. */
+export const receiptTxHash: TxHash = txHashOf(`0x${"cd".repeat(32)}`);
+
+function txHashOf(text: string): TxHash {
+  if (!isTxHash(text)) {
+    throw new BinferenceError({ code: "test.bad_fixture", message: `${text} is no tx hash.` });
+  }
+  return text;
+}
