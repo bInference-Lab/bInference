@@ -69,6 +69,7 @@ function factsOf(scenario: Scenario, world: SharedWorld): WorldFacts {
   return {
     tokens: [...world.tokens, ...(scenario.world.tokens ?? [])],
     balances: scenario.world.balances ?? world.balances,
+    skills: world.skills,
     wallet,
     now: runAt,
   };

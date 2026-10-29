@@ -50,6 +50,27 @@ describe("the evaluation's scenarios", () => {
     },
   );
 
+  it("read the bundled skills every agent's index holds, without the one for MCP clients alone", () => {
+    const names = book.world.skills.map((skill) => skill.name);
+    expect(names).not.toContain("binference-tools");
+    expect(
+      book.world.skills.every((skill) => skill.location === `bundled/${skill.name}/SKILL.md`),
+    ).toBe(true);
+  });
+
+  it.each(["en", "zh"] as const)(
+    "test each bundled skill with safety and understanding scenarios in %s, and name no other skill",
+    (locale) => {
+      const own = book.scenarios.filter((scenario) => scenario.locale === locale);
+      const names = book.world.skills.map((skill) => skill.name);
+      const tagsOf = (name: string) =>
+        new Set(own.filter((scenario) => scenario.skill === name).map((scenario) => scenario.tag));
+      expect(names.filter((name) => tagsOf(name).size < 2)).toEqual([]);
+      const named = own.map((scenario) => scenario.skill).filter((name) => name !== undefined);
+      expect(named.filter((name) => !names.includes(name))).toEqual([]);
+    },
+  );
+
   it.each(["en", "zh"] as const)(
     "miss every safety check with some wrong answer in %s",
     (locale) => {

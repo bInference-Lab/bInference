@@ -12,6 +12,8 @@ import { standInChain } from "./stand-in-models.js";
 const book = await loadScenarios(scenarioFolder, AbortSignal.timeout(10_000));
 const clock = createManualClock(1_767_261_600_000);
 const english = book.scenarios.filter((scenario) => scenario.locale === "en");
+// The seed set's scenarios, whose counts these tests name; the skills' scenarios come on top.
+const seed = english.filter((scenario) => scenario.skill === undefined);
 
 function plan(
   models: readonly EvaluatedModel[],
@@ -82,7 +84,7 @@ function flaky(wrongRuns: ReadonlyMap<string, ReadonlySet<number>>): EvaluatedMo
   };
 }
 
-const understanding = english.filter((scenario) => scenario.tag === "understanding");
+const understanding = seed.filter((scenario) => scenario.tag === "understanding");
 
 describe("runEvaluation", () => {
   it("passes the right answers in both languages and leaves the fork scenarios out by name", async ({
@@ -162,7 +164,7 @@ describe("runEvaluation", () => {
   it("fails a model that misses four understanding scenarios in 17, though its safety holds", async ({
     signal,
   }) => {
-    const report = await reportOf(plan([weak], english, signal));
+    const report = await reportOf(plan([weak], seed, signal));
     expect(report.tallies).toContainEqual(
       expect.objectContaining({ locale: "en", tag: "understanding", passed: 13, total: 17 }),
     );

@@ -1,4 +1,5 @@
 import { BinferenceError, type JsonValue } from "@binference/core";
+import type { EvaluationSkill } from "./bundled-skills.js";
 import type { WorldBalance, WorldToken } from "./scenario.schema.js";
 
 // The engine's computed answers in a scenario's world, as JSON carries them: tokens, balances in
@@ -21,10 +22,12 @@ export function objectOf(value: JsonValue | undefined): WireObject {
   return value;
 }
 
-/** The tokens and balances one scenario's run reads, and its time. */
+/** The tokens, balances and skills one scenario's run reads, and its time. */
 export interface WorldFacts {
   readonly tokens: readonly WorldToken[];
   readonly balances: readonly WorldBalance[];
+  /** The bundled skills the agent's index holds. */
+  readonly skills: readonly EvaluationSkill[];
   readonly wallet: string;
   readonly now: number;
 }

@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { BinferenceError, type JsonValue, jsonValueSchema } from "@binference/core";
 import { listFolderFiles, readTextFile } from "@binference/platform";
 import { parse } from "yaml";
+import { type EvaluationSkill, loadBundledSkills } from "./bundled-skills.js";
 import {
   type Scenario,
   scenarioSchema,
@@ -13,10 +14,11 @@ import {
 } from "./scenario.schema.js";
 import { objectOf } from "./world-answers.js";
 
-/** The world every scenario starts from: its tokens and the agent's balances. */
+/** The world every scenario starts from: its tokens, the agent's balances and bundled skills. */
 export interface SharedWorld {
   readonly tokens: readonly WorldToken[];
   readonly balances: readonly WorldBalance[];
+  readonly skills: readonly EvaluationSkill[];
 }
 
 /** The evaluation's scenarios in both languages, and the world they share. */
@@ -77,11 +79,15 @@ function withAssets(
   return value;
 }
 
-function sharedWorldOf(world: ScenarioWorld, file: string): SharedWorld {
+function sharedWorldOf(
+  world: ScenarioWorld,
+  file: string,
+  skills: readonly EvaluationSkill[],
+): SharedWorld {
   if (world.tokens === undefined || world.balances === undefined) {
     throw unreadable(file, "the shared world names its tokens and balances.");
   }
-  return { tokens: world.tokens, balances: world.balances };
+  return { tokens: world.tokens, balances: world.balances, skills };
 }
 
 async function readScenario(
@@ -102,14 +108,16 @@ async function readScenario(
 
 /**
  * Reads the shared world and every scenario under `folder`, each language's from its own folder,
- * in file name order. A string that is exactly `@KEY` reads as the asset of the token with that
- * key. A file that does not parse throws, naming it.
+ * in file name order, and the bundled skills every agent's index holds. A string that is exactly
+ * `@KEY` reads as the asset of the token with that key. A file that does not parse throws, naming
+ * it.
  */
 export async function loadScenarios(folder: string, signal: AbortSignal): Promise<ScenarioBook> {
   const worldFile = join(folder, "world.yaml");
   const world = sharedWorldOf(
     scenarioWorldSchema.parse(await readYaml(worldFile, signal)),
     worldFile,
+    await loadBundledSkills(signal),
   );
   const files = (await listFolderFiles(folder, signal)).filter((file) =>
     /^(?:en|zh)[\\/][^\\/]+\.yaml$/.test(file),

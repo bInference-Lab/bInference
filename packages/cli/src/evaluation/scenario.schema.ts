@@ -183,6 +183,8 @@ export interface Scenario {
   readonly locale: Locale;
   readonly tag: ScenarioTag;
   readonly topic: ScenarioTopic;
+  /** The bundled skill whose playbook the scenario tests, by its name. */
+  readonly skill?: string;
   readonly fork?: ForkCase;
   readonly steps: readonly ScenarioStep[];
   readonly world: ScenarioWorld;
@@ -293,6 +295,10 @@ export const scenarioSchema: z.ZodType<Scenario> = z.strictObject({
     "one_at_a_time",
     "token_risk",
   ]),
+  skill: z
+    .string()
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+    .exactOptional(),
   fork: z.strictObject({ token: word }).exactOptional(),
   steps: z.array(stepSchema).min(1),
   world: scenarioWorldSchema,

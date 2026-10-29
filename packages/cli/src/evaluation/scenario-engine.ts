@@ -76,6 +76,21 @@ function riskRefusal(args: WireObject, facts: WorldFacts): RefusedProposal | und
     : undefined;
 }
 
+// A bundled skill's `SKILL.md`, as the engine's `skill/read` answers it; the evaluation reads no
+// other file of a skill.
+function skillTextOf(args: WireObject, facts: WorldFacts): JsonValue {
+  const file = field(args, "file") ?? "SKILL.md";
+  const skill = facts.skills.find(({ name }) => name === field(args, "skill"));
+  if (skill === undefined || file !== "SKILL.md") {
+    throw new BinferenceError({
+      code: "skill.not_found",
+      message: "No skill in this agent's index holds that file.",
+    });
+  }
+  const { name, location, text } = skill;
+  return { skill: name, place: "bundled", location, file, text };
+}
+
 function intentOf(
   args: WireObject,
   parts: ScenarioEngineParts,
@@ -146,6 +161,7 @@ const answers: Partial<Readonly<Record<ToolOperation, Answer>>> = {
     }),
     assets: assetInfosOf(facts.tokens.filter((token) => world.trending?.includes(token.key))),
   }),
+  "skill/read": (args, { facts }) => skillTextOf(args, facts),
   "order/list": empty,
   "notes/search": empty,
   "schedule/list": empty,
