@@ -14,10 +14,14 @@ import { describe, expect, it } from "vitest";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { createFeeTokenVenue } from "./fee-token-venue.js";
+import { placeRefusingToken } from "./refusing-token.js";
 
-// The fixtures, each a live BSC token checked on chain and with GoPlus and honeypot.is on
+// The live fixtures, each a BSC token checked on chain and with GoPlus and honeypot.is on
 // 2026-10-09. SPA has traded on its PancakeSwap v2 pair with USDT since 2025-06-28 and holds about
-// $70,000 there, yet most of its 68,000 holders' sales fail: a sale reverts in TransferHelper. WebKey
+// $70,000 there, yet most of its 68,000 holders' sales fail: a sale reverts in TransferHelper, and
+// since late October a buyer's transfer to another wallet reverts too, so which leg the round trip
+// sees refused follows the token, not the test. The refusing tokens of `refusing-token.ts` hold
+// each leg's refusal fixed. WebKey
 // DAO 2.0 (wkeyDAO2) trades on its v2 pair with USDT, about $39 million deep, and takes 40% of
 // every sale (buys and transfers are free); a scan of about 800 active v2 pairs that day found no
 // token at 30% that sells, so the test holds it to a maximum of 30% as well. Venus (XVS) is a
@@ -96,14 +100,43 @@ async function subjectOf(
 const unreachable: Http = createScriptedHttp([]);
 
 describe("token risk on a BSC fork", () => {
-  it("blocks a honeypot whose test sale reverts, though its sources find it clean", async ({
+  it("blocks a token whose test sale reverts, though its sources find it clean", async ({
+    signal,
+  }) =>
+    withFork(signal, async (fork) => {
+      const token = await placeRefusingToken(fork, "sale");
+      const bench = benchOf(fork, cleanSources(fork, [token]));
+      const assessment = await bench.check.assess(await subjectOf(bench, token), { signal });
+      expect(assessment.refusal).toBe("cannot_sell");
+      expect(assessment.view.flags).toContainEqual({ code: "cannot_sell", source: "simulation" });
+    }));
+
+  it("blocks a token its buyer cannot pass on, though its sources find it clean", async ({
+    signal,
+  }) =>
+    withFork(signal, async (fork) => {
+      const token = await placeRefusingToken(fork, "transfer");
+      const bench = benchOf(fork, cleanSources(fork, [token]));
+      const assessment = await bench.check.assess(await subjectOf(bench, token), { signal });
+      expect(assessment.refusal).toBe("blacklisted");
+      expect(assessment.view.flags).toContainEqual({
+        code: "transfer_blocked",
+        source: "simulation",
+      });
+    }));
+
+  it("blocks SPA, a live honeypot, by its round trip, though its sources find it clean", async ({
     signal,
   }) =>
     withFork(signal, async (fork) => {
       const bench = benchOf(fork, cleanSources(fork, [honeypot]));
       const assessment = await bench.check.assess(await subjectOf(bench, honeypot), { signal });
-      expect(assessment.refusal).toBe("cannot_sell");
-      expect(assessment.view.flags).toContainEqual({ code: "cannot_sell", source: "simulation" });
+      const simulated = assessment.view.flags.filter((flag) => flag.source === "simulation");
+      expect(assessment.view.verdict).toBe("block");
+      expect([assessment.refusal, simulated.map((flag) => flag.code)]).toBeOneOf([
+        ["cannot_sell", ["cannot_sell"]],
+        ["blacklisted", ["transfer_blocked"]],
+      ]);
     }));
 
   it("measures a 40% sell tax its sources miss, and blocks it above a 10% or a 30% maximum", async ({

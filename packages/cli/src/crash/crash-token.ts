@@ -87,15 +87,47 @@ function logged(from: readonly Item[], toAt: number, amountAt: number): readonly
   ];
 }
 
+/**
+ * A rule every move of a {@link crashTokenCodeOf} token keeps: no units move `into` the address,
+ * as a honeypot keeps every sale out of its pool, or units move `onlyFrom` the address, as a token
+ * whose buyers cannot pass on what they bought.
+ */
+export type CrashTokenRefusal =
+  | { readonly kind: "into"; readonly address: Address }
+  | { readonly kind: "onlyFrom"; readonly address: Address };
+
+// Jumps to `fail` when a move breaks the refusal: its recipient is the refused address, or its
+// sender is not the one address that may move units.
+function refused(
+  refusal: CrashTokenRefusal | undefined,
+  move: { readonly sender: readonly Item[]; readonly recipient: readonly Item[] },
+): readonly Item[] {
+  if (refusal === undefined) {
+    return [];
+  }
+  const isInto = refusal.kind === "into";
+  return [
+    ...(isInto ? move.recipient : move.sender),
+    p(20, BigInt(refusal.address)),
+    op.eq,
+    ...(isInto ? [] : [op.isZero]),
+    { to: "fail" },
+    op.jumpI,
+  ];
+}
+
 // transfer(to, amount): moves the caller's units, logs Transfer, answers true.
-const transfer: readonly Item[] = [
-  { mark: "transfer" },
-  ...balanceSlot("caller"),
-  ...debit(0x24),
-  ...balanceSlot(4),
-  ...credit(0x24),
-  ...logged([op.caller], 4, 0x24),
-];
+function transferUnder(refusal: CrashTokenRefusal | undefined): readonly Item[] {
+  return [
+    { mark: "transfer" },
+    ...refused(refusal, { sender: [op.caller], recipient: word(4) }),
+    ...balanceSlot("caller"),
+    ...debit(0x24),
+    ...balanceSlot(4),
+    ...credit(0x24),
+    ...logged([op.caller], 4, 0x24),
+  ];
+}
 
 // approve(spender, amount): sets what the caller lets the spender move, answers true.
 const approve: readonly Item[] = [
@@ -118,16 +150,19 @@ const allowance: readonly Item[] = [
 
 // transferFrom(from, to, amount): moves units the owner let the caller move, logs Transfer,
 // answers true.
-const transferFrom: readonly Item[] = [
-  { mark: "transferFrom" },
-  ...allowanceSlot(4, "caller"),
-  ...debit(0x44),
-  ...balanceSlot(4),
-  ...debit(0x44),
-  ...balanceSlot(0x24),
-  ...credit(0x44),
-  ...logged(word(4), 0x24, 0x44),
-];
+function transferFromUnder(refusal: CrashTokenRefusal | undefined): readonly Item[] {
+  return [
+    { mark: "transferFrom" },
+    ...refused(refusal, { sender: word(4), recipient: word(0x24) }),
+    ...allowanceSlot(4, "caller"),
+    ...debit(0x44),
+    ...balanceSlot(4),
+    ...debit(0x44),
+    ...balanceSlot(0x24),
+    ...credit(0x44),
+    ...logged(word(4), 0x24, 0x44),
+  ];
+}
 
 // mint(to, amount), for `minter` alone: adds to the holder's units and logs a Transfer from the
 // zero address, as a launch's token pays its first buy out.
@@ -156,9 +191,10 @@ function route(selector: bigint, mark: string): readonly Item[] {
  * `allowance` and `transferFrom`, each holder's units at {@link crashBalanceSlot} and each
  * allowance in the slot of the hash of its owner and spender, and a Transfer log per transfer, as
  * the simulator's transfer traces read them. With a `minter`, as a launch's token behind a minimal
- * proxy, also `mint(to, amount)` that only the minter, its launchpad, may call.
+ * proxy, also `mint(to, amount)` that only the minter, its launchpad, may call. With a `refusal`,
+ * every `transfer` and `transferFrom` that breaks it reverts.
  */
-export function crashTokenCodeOf(minter?: Address): Hex {
+export function crashTokenCodeOf(minter?: Address, refusal?: CrashTokenRefusal): Hex {
   return assemble([
     p(1, 0n),
     op.callDataLoad,
@@ -177,10 +213,10 @@ export function crashTokenCodeOf(minter?: Address): Hex {
     ...balanceSlot(4),
     op.sload,
     ...returnWord,
-    ...transfer,
+    ...transferUnder(refusal),
     ...approve,
     ...allowance,
-    ...transferFrom,
+    ...transferFromUnder(refusal),
     ...(minter === undefined ? [] : mintFor(minter)),
     ...fail,
   ]);
