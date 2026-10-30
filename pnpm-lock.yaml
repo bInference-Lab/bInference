@@ -364,12 +364,21 @@ importers:
 
   .:
     devDependencies:
+      '@binference/chain':
+        specifier: workspace:*
+        version: link:packages/chain
       '@binference/chain-evm':
         specifier: workspace:*
         version: link:packages/chain-evm
+      '@binference/chain-solana':
+        specifier: workspace:*
+        version: link:packages/chain-solana
       '@binference/chains':
         specifier: workspace:*
         version: link:packages/chains
+      '@binference/core':
+        specifier: workspace:*
+        version: link:packages/core
       '@binference/i18n':
         specifier: workspace:*
         version: link:packages/i18n
@@ -430,6 +439,9 @@ importers:
       undici:
         specifier: 'catalog:'
         version: 8.11.2
+      viem:
+        specifier: 'catalog:'
+        version: 2.57.1(typescript@7.0.2)(zod@4.6.5)
       vitest:
         specifier: 'catalog:'
         version: 5.0.2(@types/node@26.6.3)(@vitest/coverage-v8@5.0.2)(jsdom@30.1.1(@noble/hashes@2.4.0))(vite@8.3.2(@types/node@26.6.3)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))

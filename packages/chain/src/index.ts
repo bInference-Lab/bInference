@@ -53,6 +53,7 @@ export type {
 export { canonicalAsset } from "./registry/canonical-asset.js";
 export { createChainRegistry } from "./registry/create-chain-registry.js";
 export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
+export type { BridgeRouteDefinition } from "./registry/bridge-route-definition.js";
 export type { PoolHookDefinition } from "./registry/pool-hook-definition.js";
 export type { PriceFeedDefinition } from "./registry/price-feed-definition.js";
 export type { CeilingCapsDefinition, CeilingCapToken } from "./registry/ceiling-caps-definition.js";

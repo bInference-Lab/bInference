@@ -7,6 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "turbo run build",
+    "chains:read": "node --conditions=@binference/source --import tsx scripts/read-bridge-chains.mts",
     "check": "turbo run build format:check lint typecheck check:package-graph check:tsconfig check:style check:layout check:suppressions check:deps-policy check:tsdoc check:contract-suites check:chain-literals check:model-clients check:protocol-compat check:store check:config-schema check:i18n check:adr check:docs lint:docs deadcode dup:check test check:gates --output-logs=errors-only",
     "check:adr": "node --import tsx scripts/check-adr.mts",
     "check:chain-literals": "node --import tsx scripts/check-chain-literals.mts",
@@ -54,8 +55,11 @@
     "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p packages/console/tsconfig.json"
   },
   "devDependencies": {
+    "@binference/chain": "workspace:*",
     "@binference/chain-evm": "workspace:*",
+    "@binference/chain-solana": "workspace:*",
     "@binference/chains": "workspace:*",
+    "@binference/core": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@commitlint/cli": "catalog:",
@@ -76,6 +80,7 @@
     "turbo": "catalog:",
     "typescript": "catalog:",
     "undici": "catalog:",
+    "viem": "catalog:",
     "vitest": "catalog:",
     "yaml": "catalog:",
     "zod": "catalog:"
