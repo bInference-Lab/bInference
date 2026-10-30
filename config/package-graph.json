@@ -164,8 +164,13 @@
     "cli": {
       "name": "binference",
       "imports": ["*"],
-      "publish": true,
-      "compositionRoot": true
+      "compositionRoot": true,
+      "publish": true
+    },
+    "chain-solana": {
+      "imports": ["core", "chain", "@solana/kit"],
+      "money": true,
+      "coverage": 95
     }
   },
   "plugins": {
