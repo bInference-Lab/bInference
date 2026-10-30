@@ -79,6 +79,11 @@ export type {
   RelaySenderHarness,
   RelaySenderSubject,
 } from "./contracts/relay-sender-contract.js";
+export { deliveryReaderContract } from "./contracts/delivery-reader-contract.js";
+export type {
+  DeliveryReaderHarness,
+  DeliveryReaderSubject,
+} from "./contracts/delivery-reader-contract.js";
 export { receiptReaderContract } from "./contracts/receipt-reader-contract.js";
 export type {
   ReceiptReaderHarness,

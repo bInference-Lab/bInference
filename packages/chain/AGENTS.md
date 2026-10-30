@@ -43,3 +43,7 @@ Rules for this package:
   finality rule, what a mined transaction moved, an account's nonce as of a block, and the native
   coin an account received in a block (decision 0108). Their fake, `createFakeNetwork`, mines only
   when a test says so.
+- `DeliveryReader` (`src/delivery/ports.ts`) reads, on a chain a bridge delivers to, an
+  account's holding of an asset and what one transaction brought it in one asset, with its block
+  and whether that block is final. It only reads, so a family that never signs, such as Solana's,
+  fills it too.

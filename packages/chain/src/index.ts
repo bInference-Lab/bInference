@@ -226,6 +226,8 @@ export type {
   RelayRefused,
   RelaySilent,
 } from "./sending/relay-answer.js";
+export type { Delivery, DeliveryRequest } from "./delivery/delivery.js";
+export type { DeliveryReader } from "./delivery/ports.js";
 export type { ReceiptReader, RelaySender, TxPreparer } from "./sending/ports.js";
 export { leastReplacementFee } from "./sending/least-replacement-fee.js";
 export type {

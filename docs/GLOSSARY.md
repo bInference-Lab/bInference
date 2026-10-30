@@ -203,6 +203,9 @@ new name here first, in the change that uses it.
   chain's head: its latest block and its final block by the chain's finality rule. It also reads
   what a mined transaction moved, how many transactions of an account the blocks up to one block
   hold, and the native coin an account received in a block without a log.
+- **delivery reader**: the port a chain family fills to read, on a chain a bridge delivers to, an
+  account's holding of an asset and what one transaction brought it, with its block and whether
+  that block is final. It only reads; the Solana family fills it too.
 - **tracing RPC**: an RPC node of the owner's that answers `debug_traceTransaction`, named per
   chain in config. Reconciliation asks it what a trade received only once the other RPCs dropped
   the block's state.

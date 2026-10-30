@@ -2,6 +2,8 @@ export { readEvmBalances } from "./balances/read-balances.js";
 export type { BalancesRequest } from "./balances/read-balances.js";
 export { callAbiJson } from "./decoding/call-abi-json.js";
 export { decodeCall } from "./decoding/decode-call.js";
+export { createEvmDeliveryReader } from "./delivery/create-evm-delivery-reader.js";
+export type { EvmDeliveryReaderOptions } from "./delivery/create-evm-delivery-reader.js";
 export { decodeLog } from "./decoding/decode-log.js";
 export type { LogParts } from "./decoding/decode-log.js";
 export { encodeEvmApproval } from "./drafts/evm-approval.js";
