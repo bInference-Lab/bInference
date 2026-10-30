@@ -14,13 +14,15 @@ three operating systems. Count before you add.
 | Workflow       | When                                             | Jobs                                                                                        |
 | -------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
 | `ci.yml`       | each push to `master`, by hand                   | `pnpm check`, OS adapters and the service smoke on 3 OSes; commit messages; audit and scans |
+| `codeql.yml`   | each push to `master`, Monday 05:37 UTC, by hand | CodeQL's security queries on the TypeScript and JavaScript sources, on Linux                |
 | `mutation.yml` | a `master` push touching engine, signer; by hand | Stryker on up to 12 changed files, 45 minutes at most                                       |
 | `fork.yml`     | nightly 03:41 UTC, by hand                       | the fork suite on Linux                                                                     |
 | `crash.yml`    | nightly 04:23 UTC, by hand                       | the crash suite on 3 OSes, `BINFERENCE_CRASH_RUNS` runs per kill point                      |
 | `image.yml`    | nightly 01:13 UTC, by hand                       | the Docker image suite on Linux amd64                                                       |
 | `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday          | Stryker in 20 shards with saved results                                                     |
 
-A push to `master` starts 11 jobs, 12 with the mutation job; a night starts 34. Each pushed commit
+A push to `master` starts 12 jobs, 13 with the mutation job; a night starts 34, and Monday adds
+the weekly CodeQL run. Each pushed commit
 has its own concurrency group, so runs on `master` never cancel or replace each other, and the
 nightly suites never cancel either. The nightly workflows start at different times so their jobs
 do not queue behind each other.
@@ -52,7 +54,8 @@ gh run view <run-id> --log-failed
 
 - Every job sets `timeout-minutes` close to its slowest normal run plus a margin, never the
   default six hours.
-- Every workflow sets `permissions: read-all` or less, and a `concurrency` group.
+- Every workflow sets `permissions: contents: read` and a `concurrency` group. A job that needs
+  more names it at the job, with a comment, as CodeQL does for `security-events: write`.
 - Actions are pinned to a full commit SHA with the version in a comment. A downloaded tool is
   pinned by version and checked against its published SHA-256.
 - `actions/checkout` keeps `persist-credentials: false`.
@@ -66,7 +69,8 @@ gh run view <run-id> --log-failed
 - A red `master` run stops the line: nothing else is pushed until the fix is.
 - A new shard count, a new nightly job or a new required check is load-bearing: run `write-adr`
   with the job count per push and per night, and the time it saves.
-- Run `actionlint` on the changed workflow. CI runs it, with OpenGrep and the audit.
+- Run `actionlint` and `zizmor --offline .github/` on the changed workflow. CI runs both, with
+  OpenGrep and the audit; `.github/zizmor.yml` says why each disabled audit is off.
 
 ## 4. Check the effect
 

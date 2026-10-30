@@ -16,7 +16,8 @@ on:
         required: false
         default: HEAD~1
 
-permissions: read-all
+permissions:
+  contents: read
 
 # One group per commit: each push mutates its own changes, so a newer push never cancels it.
 concurrency:

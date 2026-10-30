@@ -15,7 +15,8 @@ on:
         required: false
         default: "20"
 
-permissions: read-all
+permissions:
+  contents: read
 
 concurrency:
   group: crash-suite

@@ -8,7 +8,8 @@ on:
     branches: [master]
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 # One group per commit: a run on master never cancels or replaces another, and a run by hand on
 # the same commit waits for the first.
@@ -280,7 +281,7 @@ jobs:
           pnpm check:style --commits "$BASE..HEAD"
 
   security:
-    name: audit, OpenGrep and actionlint
+    name: audit, OpenGrep, actionlint and zizmor
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -305,12 +306,14 @@ jobs:
         run: pnpm security:audit
 
       # Release binaries, pinned by version and checked against their published digests.
-      - name: Install OpenGrep and actionlint
+      - name: Install OpenGrep, actionlint and zizmor
         env:
           OPENGREP_VERSION: v1.30.0
           OPENGREP_SHA256: 35779bdd72e92129c8df2a77f0c55e8c08356801ea92591ef32108d6b28d564c
           ACTIONLINT_VERSION: 1.7.12
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+          ZIZMOR_VERSION: 1.31.1
+          ZIZMOR_SHA256: d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99
         run: |
           set -euo pipefail
           tools="$RUNNER_TEMP/tools"
@@ -323,6 +326,10 @@ jobs:
             "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
           echo "${ACTIONLINT_SHA256}  $tools/actionlint.tar.gz" | sha256sum --check
           tar -xzf "$tools/actionlint.tar.gz" -C "$tools" actionlint
+          curl -fsSL --retry 3 -o "$tools/zizmor.tar.gz" \
+            "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/zizmor-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${ZIZMOR_SHA256}  $tools/zizmor.tar.gz" | sha256sum --check
+          tar -xzf "$tools/zizmor.tar.gz" -C "$tools" zizmor
           echo "$tools" >> "$GITHUB_PATH"
 
       - name: OpenGrep rules fire
@@ -333,3 +340,8 @@ jobs:
 
       - name: actionlint
         run: actionlint
+
+      # Offline: the audits that read the repository's own files, with no token. Settings and
+      # the reason for each disabled audit are in .github/zizmor.yml.
+      - name: zizmor
+        run: zizmor --offline .github/

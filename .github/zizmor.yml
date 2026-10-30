@@ -1,0 +1,6 @@
+# zizmor's settings for this repository's workflows. Each disabled audit says why.
+rules:
+  # The self-repository syntax (`$/...`) is newer than the pinned actionlint, which refuses it;
+  # the workflows keep `./.github/actions/...` until actionlint accepts the new form.
+  self-repository:
+    disable: true

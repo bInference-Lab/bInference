@@ -7,7 +7,8 @@ on:
     - cron: "41 3 * * *"
   workflow_dispatch:
 
-permissions: read-all
+permissions:
+  contents: read
 
 concurrency:
   group: fork-suite
