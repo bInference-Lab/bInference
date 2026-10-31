@@ -164,7 +164,11 @@ describe("a card in Telegram HTML", () => {
       { ...pepeSale, share: bpsSchema.parse(10_000) },
       "Sell all your PEPE (0x6982…1933) (1 PEPE (0x6982…1933)) → at least 1 USDT · on the Flap curve",
     ],
-    ["send", { kind: "send", amount: oneUsdt, recipient }, "Send 1 USDT to 0xAbCd…Ef12"],
+    [
+      "send",
+      { kind: "send", amount: oneUsdt, recipient },
+      "Send 1 USDT to 0xAbCdEf0123456789aBcDeF0123456789AbCdEf12",
+    ],
     [
       "revokeApproval",
       { kind: "revokeApproval", token: refs.usdt, spender: recipient },

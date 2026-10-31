@@ -33,6 +33,11 @@ const actions: readonly (readonly [CardAction, string, string])[] = [
     "sell",
   ],
   [{ kind: "send", amount: half, recipient: wallet }, "card.send.action", "send"],
+  [
+    { kind: "send", amount: half, recipient: wallet, name: { name: "alice.bnb", resolvedAtMs: 1 } },
+    "card.send.name",
+    "send",
+  ],
   [{ kind: "revokeApproval", token, spender: wallet }, "card.revoke.action", "revoke"],
   [{ kind: "stake", action: "stake", amount: half, validator }, "card.stake.stake", "stake"],
   [
@@ -116,7 +121,8 @@ describe("action lines", () => {
       ["amount", "amount", "line"],
       ["amount", "amount", "line", "asset", "percent"],
       ["amount", "amount", "text", "asset"],
-      ["amount", "account"],
+      ["amount", "text"],
+      ["amount", "text", "text"],
       ["account", "asset"],
       ["amount", "account"],
       ["amount", "account", "count"],

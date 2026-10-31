@@ -7,6 +7,7 @@ import { launchWarningKey } from "../venues/launch-settings.schema.js";
 import { actionLine, actionVerb, type CardAction } from "./card-action.js";
 import type { CardKey, CardLine, CardValue } from "./card-line.js";
 import { launchDetailLines } from "./launch-card-lines.js";
+import { reverseDiffersLine, sendNameLines } from "./send-card-lines.js";
 
 /** The route line: the venue that quoted, its legs with their shares, the impact and the limit. */
 export interface CardRoute {
@@ -79,6 +80,11 @@ export interface CardWarnings {
   readonly worstPrice?: bigint;
   /** A launch's launchpad warnings, by name, each on a line of its own (decision 0281). */
   readonly launchWarnings?: readonly string[];
+  /**
+   * A send by name whose address's reverse record names another name: the name and that other
+   * name, unconfirmed text. Absent shows no warning, as for a reverse record that names none.
+   */
+  readonly reverseDiffers?: { readonly name: string; readonly other: string };
 }
 
 /**
@@ -216,8 +222,9 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
       [facts.hasOutsideContent, "card.warn.outsideContent"],
       [warnings.hasUnusualName, "card.warn.unusualName"],
       [warnings.isNewAddress, "card.warn.newAddress"],
-      [facts.check?.isTokenVerified === false, "card.warn.unverified"],
     ]),
+    ...optional(warnings.reverseDiffers, reverseDiffersLine),
+    ...shown([[facts.check?.isTokenVerified === false, "card.warn.unverified"]]),
     ...taxLines(warnings.taxBps),
     ...poolFeeLines(warnings.poolFees),
     ...shown([[facts.card.version > 1, "card.warn.requoted"]]),
@@ -255,7 +262,8 @@ const roleWalletKeys: Readonly<Record<WalletRole, CardKey>> = {
 
 /**
  * Draws one card version from its facts (spec 4, section 3): the header, the action, a token
- * launch's every other setting, the launch or bridge wallet it runs from, the route, the fees, the check,
+ * launch's every other setting or a send by name's name read, the launch or bridge wallet it runs
+ * from, the route, the fees, the check,
  * the warnings, what the agent says and the expiry, in that order. Lines without facts are left
  * out.
  */
@@ -266,6 +274,7 @@ export function drawCard(facts: CardFacts): Card {
     ...(facts.action.kind === "launchToken" && facts.action.details !== undefined
       ? launchDetailLines(facts.action.details)
       : []),
+    ...(facts.action.kind === "send" ? sendNameLines(facts.action) : []),
     ...optional(facts.roleWallet, ({ role, label }) => ({
       key: roleWalletKeys[role],
       values: { wallet: { type: "text", text: label } },

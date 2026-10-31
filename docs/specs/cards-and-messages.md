@@ -505,6 +505,7 @@ such as Base or Robinhood Chain, in both languages.
 | ---------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Send by name           | `card.send.name`           | Send {amount} to {name} ({address})                                                                              | 向 {name}（{address}）转账 {amount}                                                         |
 | Name read              | `card.send.resolved`       | {name} points to {address}, read at {time}; binference reads it again before it signs                            | {name} 指向 {address}，读取于 {time}；签名前 binference 会再次读取                          |
+| Smart-account wallet   | `card.send.smartAccount`   | {name} is a smart-account wallet                                                                                 | {name} 是智能账户钱包                                                                       |
 | Reverse record differs | `card.warn.reverseDiffers` | ⚠️ This address's reverse record names {other}, not {name}                                                       | ⚠️ 此地址的反向记录指向 {other}，而不是 {name}                                              |
 | Validator              | `card.stake.validator`     | Validator {validator} · commission {commission}                                                                  | 验证者 {validator} · 佣金 {commission}                                                      |
 | Stake for slisBNB      | `card.stake.liquid`        | Stake {amount} with Lista for at least {minOut}                                                                  | 在 Lista 质押 {amount}，至少获得 {minOut}                                                   |
@@ -522,8 +523,11 @@ such as Base or Robinhood Chain, in both languages.
 | Address book room      | `address.room`             | {used} of {most} addresses on other chains saved, the most the ceiling holds                                     | 已保存 {used} 个其他链上的地址，上限可容纳 {most} 个                                        |
 
 - A send by name ([spec 1, section 8.1](protocol.md#section-8-1)) shows `card.send.name` in place
-  of `card.send.action`, then `card.send.resolved`; `card.warn.reverseDiffers` shows among the
-  warnings when the reverse record names another name, and nothing when it names none.
+  of `card.send.action`, then `card.send.resolved`, then `card.send.smartAccount` when its address
+  is a smart-account wallet ([decision 0306](../DECISIONS.md#d0306));
+  `card.warn.reverseDiffers` shows among the warnings, after the new-address warning, when the
+  reverse record names another name, and nothing when it names none. Its `{other}` is set by
+  whoever controls the address: surfaces escape it and cut it as a name.
 - A StakeHub stake, unstake or claim shows `card.stake.validator` right after its action line. An
   unstake, on either venue, then shows `card.stake.unbonding`, `{readyAt}` the date and time in
   the owner's timezone and `{days}` whole days, rounded up. A stake's card names no cap: a stake

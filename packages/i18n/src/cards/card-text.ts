@@ -47,8 +47,10 @@ const textLengths: Readonly<Record<string, number>> = {
   uri: 200,
   // A launch's picture link is at most 512 bytes, so a card shows it whole (decision 0276).
   link: 512,
-  // A launch setting's account, such as a tax recipient, shows whole: it receives money.
+  // A launch setting's account, such as a tax recipient, and a send's address show whole: each
+  // receives money.
   address: 128,
+  recipient: 128,
   // A receipt's link to its transaction on a block explorer shows whole.
   explorerLink: 200,
 };

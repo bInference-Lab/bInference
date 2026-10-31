@@ -3,6 +3,7 @@ import { type Bps, bpsPerWhole } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
 import type { LaunchDetails } from "./launch-card-lines.js";
 import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
+import { type CardSentName, sendActionLine } from "./send-card-lines.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
 export type TradePlace = { readonly curve: string } | { readonly pool: string };
@@ -36,7 +37,12 @@ export interface CardActionFacts {
     readonly place: TradePlace;
     readonly share?: Bps;
   };
-  readonly send: { readonly amount: Amount; readonly recipient: AccountRef };
+  /** A send by name names the name its card shows beside the address (decision 0308). */
+  readonly send: {
+    readonly amount: Amount;
+    readonly recipient: AccountRef;
+    readonly name?: CardSentName;
+  };
   readonly revokeApproval: { readonly token: AssetRef; readonly spender: AccountRef };
   readonly stake: StakeMove;
   readonly bridge: {
@@ -157,10 +163,7 @@ const actionLines: ActionLines = {
     },
   }),
   sell: sellLine,
-  send: (action) => ({
-    key: "card.send.action",
-    values: { amount: amount(action.amount), recipient: account(action.recipient) },
-  }),
+  send: sendActionLine,
   revokeApproval: (action) => ({
     key: "card.revoke.action",
     values: { spender: account(action.spender), token: asset(action.token) },

@@ -39,6 +39,7 @@ import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { launchCardFacts } from "./launch-card-facts.js";
 import { orderActionOf } from "./order-action-of.js";
+import { transferCardFacts } from "./transfer-card-facts.js";
 import { unfreezeActionOf } from "./unfreeze-action-of.js";
 
 function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
@@ -298,6 +299,8 @@ const ownQuoteFacts: ReadonlyMap<
     (quote, source) =>
       launchCardFacts(tokenLaunchQuoteDocument.decode(quote), source, baseWarnings(source)),
   ],
+  ["send", (quote, source) => transferCardFacts(quote, source, baseWarnings(source))],
+  ["revokeApproval", (quote, source) => transferCardFacts(quote, source, baseWarnings(source))],
 ]);
 
 /**
@@ -306,9 +309,10 @@ const ownQuoteFacts: ReadonlyMap<
  * deadline, the simulation's check (or that a paper
  * sale's fill is an estimate), the highest tax the risk step measured and the agent's reason; for
  * a rescue, its address, what it moves and their value; for an unfreeze, what it unfreezes; for an
- * auto order, its terms; for a token launch, every setting it runs with (decision 0235). The money
- * path quotes trades, rescues, unfreezes, auto orders and launches only, so an intent of another
- * kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
+ * auto order, its terms; for a token launch, every setting it runs with (decision 0235); for a send
+ * or an approval revoke, its target or spender and a send by name's name. The money path quotes
+ * trades, rescues, unfreezes, auto orders, launches, sends and revokes only, so an intent of
+ * another kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
  * no source marks unusual names yet.
  */
 export function cardFactsOf(source: CardSource): CardFacts | undefined {

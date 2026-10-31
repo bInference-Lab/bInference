@@ -207,6 +207,33 @@ describe("drawing a card", () => {
     ]);
   });
 
+  it("shows a send by name's read and smart account under its action, and its reverse among the warnings", () => {
+    const byName: CardFacts = {
+      ...send,
+      action: {
+        kind: "send",
+        amount: { asset: usdt, base: 10n ** 18n },
+        recipient: saved,
+        name: { name: "alice.bnb", resolvedAtMs: 0, smartAccount: true },
+      },
+      warnings: {
+        hasUnusualName: false,
+        isNewAddress: true,
+        reverseDiffers: { name: "alice.bnb", other: "mallory.bnb" },
+      },
+    };
+    expect(drawCard(byName).lines.map((line) => line.key)).toStrictEqual([
+      "card.header",
+      "card.send.name",
+      "card.send.resolved",
+      "card.send.smartAccount",
+      "card.warn.newAddress",
+      "card.warn.reverseDiffers",
+      "card.warn.paper",
+      "card.expiry",
+    ]);
+  });
+
   it("orders the warnings as spec 4 lists them", () => {
     const keys = drawCard(flagged).lines.map((line) => line.key);
     expect(keys.filter((key) => key.includes(".warn."))).toStrictEqual([

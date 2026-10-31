@@ -1,4 +1,4 @@
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, type JsonValue } from "@binference/core";
 import type { CardClosing } from "../confirmations/card-closing.js";
 import { autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
 import type { CardRecord } from "./card-record.js";
@@ -10,9 +10,12 @@ import {
 } from "./event-cause.schema.js";
 import type { IntentEventRecord } from "./intent-change.js";
 import { authorizationDocument, quoteDocument } from "./intent-documents.schema.js";
+import type { IntentKind } from "./intent-kind.js";
 import type { IntentRecord } from "./intent-record.js";
 import type { CardTerms, IntentStatus, QuoteTerms } from "./intent-status.js";
 import { rescueQuoteDocument } from "./rescue-quote.js";
+import { revokeQuoteDocument } from "./revoke-quote.js";
+import { sendQuoteDocument } from "./send-quote.js";
 import { tokenLaunchQuoteDocument } from "./token-launch-quote.js";
 import { unfreezeQuoteDocument } from "./unfreeze-quote.js";
 
@@ -26,24 +29,26 @@ function causes(history: IntentHistory): readonly EventCause[] {
   return history.events.map((event) => readEventCause(event.cause));
 }
 
-// A rescue's quote values what it moves, an unfreeze's names its agents and an auto order's holds
-// its terms: none has a minimum out (decisions 0044, 0128 and 0189).
+// When each kind whose quote is a document of its own was quoted. A rescue's quote values what it
+// moves, an unfreeze's names its agents, an auto order's holds its terms, a send's names its target
+// and a revoke's its spender: none has a minimum out (decisions 0044, 0128, 0189 and 0309). A
+// launch's first buy is the first trade of its token, so a tap never quotes it again.
+const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new Map([
+  ["rescue", (quote) => rescueQuoteDocument.decode(quote).quotedAtMs],
+  ["unfreeze", (quote) => unfreezeQuoteDocument.decode(quote).quotedAtMs],
+  ["autoOrder", (quote) => autoOrderQuoteDocument.decode(quote).quotedAtMs],
+  ["launchToken", (quote) => tokenLaunchQuoteDocument.decode(quote).quotedAtMs],
+  ["send", (quote) => sendQuoteDocument.decode(quote).quotedAtMs],
+  ["revokeApproval", (quote) => revokeQuoteDocument.decode(quote).quotedAtMs],
+]);
+
 function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
   if (record.quote === undefined) {
     return undefined;
   }
-  if (record.kind === "rescue") {
-    return { quotedAtMs: rescueQuoteDocument.decode(record.quote).quotedAtMs };
-  }
-  if (record.kind === "unfreeze") {
-    return { quotedAtMs: unfreezeQuoteDocument.decode(record.quote).quotedAtMs };
-  }
-  if (record.kind === "autoOrder") {
-    return { quotedAtMs: autoOrderQuoteDocument.decode(record.quote).quotedAtMs };
-  }
-  // A launch's first buy is the first trade of its token, so a tap never quotes it again.
-  if (record.kind === "launchToken") {
-    return { quotedAtMs: tokenLaunchQuoteDocument.decode(record.quote).quotedAtMs };
+  const quotedAt = ownQuoteTimes.get(record.kind);
+  if (quotedAt !== undefined) {
+    return { quotedAtMs: quotedAt(record.quote) };
   }
   const quote = quoteDocument.decode(record.quote);
   const terms = { quotedAtMs: quote.quotedAt, minOutBase: quote.minOut.base };

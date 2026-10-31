@@ -19,6 +19,7 @@ import {
 import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
+import { sendQuoteDocument } from "../intents/send-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
@@ -49,9 +50,13 @@ function launchAssetsOf(record: IntentRecord, request: LaunchTokenRequest): read
     : [request.pairWith, tokenLaunchQuoteDocument.decode(quote).token];
 }
 
-// The money path routes trades, whose quote names what it spends and buys; a rescue lists what it
-// moves; other kinds list their assets once it runs them, and an unfreeze moves none.
-function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] {
+// A kind whose quote is a document of its own: a rescue lists what it moves, an auto order its
+// token and a launch its pair and token; a send names what it sends and a revoke the token it
+// frees. `undefined` for a trade and the kinds the money path does not route.
+function ownAssetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] | undefined {
+  if (request.kind === "send") {
+    return [request.amount.asset];
+  }
   if (request.kind === "rescue") {
     const quote = record.quote === undefined ? undefined : rescueQuoteDocument.decode(record.quote);
     return [...new Set(quote?.moves.map(({ amount }) => amount.asset) ?? [])];
@@ -61,8 +66,18 @@ function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[
       ? []
       : [autoOrderQuoteDocument.decode(record.quote).request.token];
   }
-  if (request.kind === "launchToken") {
-    return launchAssetsOf(record, request);
+  if (request.kind === "revokeApproval") {
+    return [request.token];
+  }
+  return request.kind === "launchToken" ? launchAssetsOf(record, request) : undefined;
+}
+
+// A trade's quote names what it spends and buys; other kinds list their assets once the money path
+// runs them, and an unfreeze moves none.
+function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] {
+  const own = ownAssetsOf(record, request);
+  if (own !== undefined) {
+    return own;
   }
   const asked = tradeAssetsOf(request);
   if (asked.length === 0 || record.quote === undefined) {
@@ -85,6 +100,8 @@ function requestOf(record: IntentRecord): AnyRequest {
 
 // Only a trade's quote is a `QuoteView`.
 const ownQuoteKinds: ReadonlySet<string> = new Set([
+  "send",
+  "revokeApproval",
   "rescue",
   "unfreeze",
   "autoOrder",
@@ -128,17 +145,29 @@ function outcomeOf(snapshot: IntentSnapshot): IntentOutcome | undefined {
   return { ...(reason === undefined ? {} : { reason }), ...execution };
 }
 
+// A send by name's name and the address its card showed, from its quote (decision 0308).
+function resolvedNameOf(record: IntentRecord): IntentView["resolvedName"] {
+  if (record.kind !== "send" || record.quote === undefined) {
+    return undefined;
+  }
+  const { name, recipient } = sendQuoteDocument.decode(record.quote);
+  return name === undefined
+    ? undefined
+    : { name: name.name, address: recipient, resolvedAt: name.resolvedAtMs };
+}
+
 /**
  * An intent as every surface draws it (protocol spec, section 8.3): the stored record, its quote,
  * risk check and simulation, its newest card version, its outcome with the paper fill or the
- * settled trade as its execution, and the info of the assets it names: the registry's, or what the
- * intent stored of an unlisted token at its proposal.
+ * settled trade as its execution, the info of the assets it names: the registry's, or what the
+ * intent stored of an unlisted token at its proposal, and a send by name's resolved name.
  */
 export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): IntentView {
   const { record } = snapshot;
   const request = requestOf(record);
   const card = cardViewOf(snapshot);
   const outcome = outcomeOf(snapshot);
+  const resolvedName = resolvedNameOf(record);
   return {
     intent: record.id,
     agent: record.agentId,
@@ -160,5 +189,6 @@ export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): I
     createdAt: record.createdAtMs,
     changedAt: record.changedAtMs,
     assets: intentAssetInfos(chains, record, assetsOf(record, request)),
+    ...(resolvedName === undefined ? {} : { resolvedName }),
   };
 }

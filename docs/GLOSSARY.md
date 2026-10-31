@@ -677,6 +677,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | refund (a bridge's)                                | 退回                         | Paid back to the agent's wallet         |
 | .bnb name                                          | .bnb 域名                    | SPACE ID                                |
 | resolve (a name), reverse record                   | 解析, 反向记录               |                                         |
+| smart-account wallet                               | 智能账户钱包                 |                                         |
 | on-chain identity, identity registry               | 链上身份, 身份注册表         | ERC-8004                                |
 | registration file                                  | 注册文件                     | An identity's data URI                  |
 | private send                                       | 私密发送                     |                                         |
