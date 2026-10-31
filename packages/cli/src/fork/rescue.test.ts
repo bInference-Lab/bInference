@@ -100,7 +100,7 @@ async function frozenAtStrictest(rig: RescueRig, signal: AbortSignal): Promise<v
 }
 
 describe("a rescue on the BSC fork", () => {
-  it("moves every token and the BNB above the reserve of three frozen wallets to the rescue address", async ({
+  it("moves every token and the BNB above the reserve of three frozen wallets, a bridge wallet among them, to the rescue address", async ({
     signal,
   }) => {
     await withFork(signal, async (fork) => {

@@ -53,6 +53,7 @@ export type {
   FakeCeilingEditorOptions,
 } from "./fakes/fake-ceiling-editor.js";
 export { createFakeWalletMaker } from "./fakes/fake-wallet-maker.js";
+export { fixtureId } from "./contracts/store-fixtures.js";
 export {
   createFakeSeal,
   createFakeWalletExporter,

@@ -9,7 +9,7 @@ import {
   evmAccountRef,
 } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
-import { createIdSource, err, type Id, idSchema } from "@binference/core";
+import { createIdSource, err, type Id } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import {
   createEngine,
@@ -29,6 +29,7 @@ import {
   createFakeWalletFacts,
   createMemoryEngineStores,
   createMemoryPositionStore,
+  fixtureId,
   type MemoryEngineStores,
 } from "@binference/engine/testing";
 import { createWalletQueue } from "@binference/engine/wallet-queue";
@@ -55,6 +56,8 @@ interface RescueRigWallet {
   readonly agent: Id<"agt">;
   readonly key: Hex;
   readonly address: Address;
+  /** `bridge` for the first agent's bridge wallet (decision 0307); absent for a main wallet. */
+  readonly role?: "bridge";
 }
 
 /** The rescue rig's engine on the fork, its stores, wallets and the owner's rescue address. */
@@ -67,24 +70,26 @@ export interface RescueRig {
   readonly signatures: () => number;
 }
 
-function idOf<P extends string>(prefix: P, n: number): Id<P> {
-  return idSchema(prefix).parse(
-    `${prefix}_0190f1c2-3a4b-7c5d-8e6f-${n.toString(16).padStart(12, "0")}`,
-  );
-}
-
-/** The rig's two agents: the first live with two wallets, the second on paper with one. */
-export const rescueAgents: readonly Id<"agt">[] = [idOf("agt", 0x61), idOf("agt", 0x62)];
+/**
+ * The rig's two agents: the first live with two wallets, its second its bridge wallet, the second
+ * on paper with one.
+ */
+export const rescueAgents: readonly Id<"agt">[] = [fixtureId("agt", 0x61), fixtureId("agt", 0x62)];
 
 function walletOf(n: number, agent: Id<"agt">): RescueRigWallet {
   const key = keccak256(toHex(`binference rescue fork wallet ${String(n)}`));
-  return { wallet: idOf("wal", 0x60 + n), agent, key, address: privateKeyToAccount(key).address };
+  return {
+    wallet: fixtureId("wal", 0x60 + n),
+    agent,
+    key,
+    address: privateKeyToAccount(key).address,
+  };
 }
 
-const [firstAgent = idOf("agt", 0), secondAgent = idOf("agt", 0)] = rescueAgents;
+const [firstAgent = fixtureId("agt", 0), secondAgent = fixtureId("agt", 0)] = rescueAgents;
 const rigWallets: readonly RescueRigWallet[] = [
   walletOf(1, firstAgent),
-  walletOf(2, firstAgent),
+  { ...walletOf(2, firstAgent), role: "bridge" },
   walletOf(3, secondAgent),
 ];
 
@@ -162,6 +167,7 @@ function walletRecord(item: RescueRigWallet, atMs: number): WalletRecord {
     address: item.address,
     label: tag,
     createdAtMs: atMs,
+    ...(item.role === undefined ? {} : { role: item.role }),
     ceiling: {
       policyId: `privy-policy-${tag}`,
       policy: [],
@@ -231,7 +237,8 @@ async function storeAgents(stores: MemoryEngineStores, fork: Fork, atMs: number)
 
 /**
  * The rescue rig on a fork: an engine and its executor on memory stores and the fork's BSC, with
- * two agents, three wallets whose keys sign here, and the owner's rescue address in effect.
+ * two agents, three wallets whose keys sign here, a bridge wallet among them, and the owner's
+ * rescue address in effect.
  */
 export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
   const clock = createSystemClock();
