@@ -2,7 +2,7 @@ import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from
 import type { ProtocolErrorCode } from "@binference/protocol";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { RescueMove } from "../install/rescue-record.js";
-import { roleOfWalletAccount } from "../install/role-wallet.js";
+import { walletAddressRefusal } from "../install/role-wallet.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
@@ -92,8 +92,9 @@ async function setRescue(
   }
   const { signal } = call;
   const { wallets } = await options.install.read({ signal });
-  if (roleOfWalletAccount(wallets, address.value, options.chains) === "launch") {
-    return err("address.launch_wallet");
+  const refusal = walletAddressRefusal(wallets, address.value, options.chains);
+  if (refusal !== undefined) {
+    return err(refusal);
   }
   await settleRescueCeilings(options, signal);
   const facts = await options.install.read({ signal });
@@ -151,7 +152,8 @@ async function cancelChange(
  * cancelled. The new address is announced with its time; asking for the address in effect drops
  * one that waits and answers now. An address on a chain the registry lacks, or one its family
  * cannot read, is `protocol.bad_args`; a launch wallet of the install, which no ceiling may list,
- * `address.launch_wallet` (decision 0218); a missing or wrong owner key `wallet.bad_owner_key`; a
+ * `address.launch_wallet` (decision 0218), and a bridge wallet `address.bridge_wallet` (decision
+ * 0307); a missing or wrong owner key `wallet.bad_owner_key`; a
  * call over WS `auth.local_only`. `safety/cancelRescueChange` drops the address that waits and sends
  * the change that leaves it out of the ceilings. Each change is journaled, pushed as
  * `config/changed` and announced. Both first send a change whose time has come.

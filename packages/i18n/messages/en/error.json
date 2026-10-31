@@ -51,6 +51,7 @@
   "wallet.no_bridge_calls": "No venue this binference runs marks a deposit as a bridge wallet's, so a bridge wallet would allow nothing. Enable a bridge venue such as Relay in config.json5, then try again.",
   "address.not_found": "This address book entry does not exist or was removed. Check the address book in the console.",
   "address.launch_wallet": "This address is a launch wallet of this binference, and no wallet may pay one: fund a launch wallet from outside, such as from the rescue address's wallet.",
+  "address.bridge_wallet": "This address is a bridge wallet of this binference, and no wallet may pay one: fund a bridge wallet from outside, such as from the rescue address's wallet.",
   "rescue.no_address": "Set a rescue address first: run `binference rescue set` with your own wallet's address.",
   "rescue.nothing_to_move": "No agent wallet holds anything to rescue.",
   "signer.not_found": "No wallet lists this signer. Check the signer ID that `binference init --attach` printed, or the key quorums on Privy's dashboard.",

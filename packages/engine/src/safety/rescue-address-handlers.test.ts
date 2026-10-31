@@ -76,6 +76,15 @@ const launchWallet = testWalletRecord({
   role: "launch",
 });
 
+// Another wallet of the agent, its bridge wallet, which no ceiling may list (decision 0307).
+const bridgeWallet = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c4"),
+  agentId: testAgent,
+  label: "bridge",
+  createdAtMs: testNowMs - 2 * looseningWaitMs,
+  role: "bridge",
+});
+
 async function rescueNow(test: TestEngine) {
   return rescueAt(await test.stores.install.read(live), test.clock.now());
 }
@@ -256,6 +265,19 @@ describe("a change of the rescue address", () => {
     const launch = accountRefSchema.parse("fake:1:0x000000C3");
 
     expect(await setRescue(test, launch)).toStrictEqual(err("address.launch_wallet"));
+    expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
+    expect(test.pushes).toStrictEqual([]);
+  });
+
+  it("refuses a bridge wallet of the install, and changes nothing", async () => {
+    const test = await withRescue();
+    test.stores.install.addWallet(bridgeWallet);
+    test.ceilings.put(bridgeWallet.policyId, [owner]);
+
+    const bridge = accountRefSchema.parse("fake:1:0x000000C4");
+
+    expect(await setRescue(test, bridge)).toStrictEqual(err("address.bridge_wallet"));
     expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
     expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
     expect(test.pushes).toStrictEqual([]);

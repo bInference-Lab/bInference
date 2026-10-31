@@ -11,7 +11,7 @@ import {
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
-import { roleOfWalletAccount } from "../install/role-wallet.js";
+import { walletAddressRefusal } from "../install/role-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall } from "../operations/engine-call.js";
@@ -119,8 +119,9 @@ async function storeEntry(
  * was saved (decision 0111). An address the book holds already is answered as it is, and nothing
  * changes. The owner key reaches this call over IPC only, as the protocol server keeps it; a wrong
  * one is `wallet.bad_owner_key`, an address its chain cannot read `protocol.bad_args`, a launch
- * wallet of the install `address.launch_wallet`, which no ceiling may list (decision 0218), and a
- * ceiling custody does not hold `wallet.not_found`.
+ * wallet of the install `address.launch_wallet` and a bridge wallet `address.bridge_wallet`, which
+ * no ceiling may list (decisions 0218 and 0307), and a ceiling custody does not hold
+ * `wallet.not_found`.
  */
 export async function addAddress(
   options: AddAddressOptions,
@@ -136,8 +137,9 @@ export async function addAddress(
     return account;
   }
   const { wallets } = await options.install.read({ signal });
-  if (roleOfWalletAccount(wallets, account.value, options.chains) === "launch") {
-    return err("address.launch_wallet");
+  const refusal = walletAddressRefusal(wallets, account.value, options.chains);
+  if (refusal !== undefined) {
+    return err(refusal);
   }
   const saved = found.value.addressBook.find((entry) => entry.account === account.value);
   if (saved !== undefined) {

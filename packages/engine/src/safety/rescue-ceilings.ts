@@ -62,8 +62,8 @@ async function walletCeilings(
   const books = new Map(
     await Promise.all(agents.map(async (agent) => savedOf(options.agents, agent, signal))),
   );
-  // A launch wallet's address never reaches a ceiling, though a book restored from a backup may
-  // hold it (decision 0218).
+  // A launch or bridge wallet's address never reaches a ceiling, though a book restored from a
+  // backup may hold it (decisions 0218 and 0307).
   const payable = (account: AccountRef) =>
     roleOfWalletAccount(facts.wallets, account, options.chains) === undefined;
   return live.map((wallet) => ({

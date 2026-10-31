@@ -5,6 +5,7 @@ import {
   type WalletRole,
 } from "@binference/chain";
 import type { Id } from "@binference/core";
+import type { ProtocolErrorCode } from "@binference/protocol";
 import type { InstallStore } from "../ports.js";
 import type { WalletRecord } from "./install-record.js";
 
@@ -73,6 +74,27 @@ export function roleOfWalletAccount(
     (wallet) => wallet.role !== undefined && wallet.archivedAtMs === undefined,
   );
   return found?.role;
+}
+
+// Why an address may not be saved or made the rescue address, by the role of the wallet it is.
+const roleAddressRefusals: Readonly<Record<WalletRole, ProtocolErrorCode>> = {
+  launch: "address.launch_wallet",
+  bridge: "address.bridge_wallet",
+};
+
+/**
+ * Why the account may not be saved in an address book or made the rescue address: it is a live
+ * launch wallet of the install (`address.launch_wallet`, decision 0218) or a live bridge wallet
+ * (`address.bridge_wallet`, decision 0307), which the owner funds from outside only. `undefined`
+ * for any other account.
+ */
+export function walletAddressRefusal(
+  wallets: readonly WalletRecord[],
+  account: AccountRef,
+  chains: ChainRegistry,
+): ProtocolErrorCode | undefined {
+  const role = roleOfWalletAccount(wallets, account, chains);
+  return role === undefined ? undefined : roleAddressRefusals[role];
 }
 
 /**

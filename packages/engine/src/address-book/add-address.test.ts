@@ -31,6 +31,15 @@ const launchWallet = testWalletRecord({
   role: "launch",
 });
 const launchAccount: AccountRef = accountRefSchema.parse(`fake:1:${launchWallet.address}`);
+// Another agent's bridge wallet, which the owner funds from outside only (decision 0307).
+const bridgeWallet = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c4"),
+  agentId: secondAgent,
+  label: "bridge",
+  createdAtMs: testNowMs - 3 * looseningWaitMs,
+  role: "bridge",
+});
+const bridgeAccount: AccountRef = accountRefSchema.parse(`fake:1:${bridgeWallet.address}`);
 // Another agent's wallet: an address saved for the test agent never reaches its ceiling.
 const otherWallet = testWalletRecord({
   id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c2"),
@@ -207,6 +216,28 @@ describe("saving an address with the owner key", () => {
       await test.engine.handlers["address/list"](testCall({ agent: testAgent })),
     );
     expect(listed.items).toStrictEqual([]);
+  });
+
+  it("refuses a bridge wallet of the install, and changes no ceiling and no book", async () => {
+    const test = await withCeilings();
+    test.stores.install.addWallet(bridgeWallet);
+
+    expect(await add(test, { address: "0x000000C4" })).toStrictEqual(err("address.bridge_wallet"));
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
+    const listed = expectOk(
+      await test.engine.handlers["address/list"](testCall({ agent: testAgent })),
+    );
+    expect(listed.items).toStrictEqual([]);
+  });
+
+  it("leaves a bridge wallet a restored book holds out of every ceiling", async () => {
+    const test = await withCeilings();
+    test.stores.install.addWallet(bridgeWallet);
+    await saveTestAddress(test, { ...testSaved, account: bridgeAccount });
+
+    expectOk(await add(test));
+
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner, cold]);
   });
 
   it("leaves a launch wallet a restored book holds out of every ceiling", async () => {
