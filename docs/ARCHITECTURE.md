@@ -804,12 +804,39 @@ Also:
 - the Docker image and the hardened setup run plugins as their own OS user, the only thing that
   stops a plugin from signalling the engine.
 
-Installs are protected three ways:
+**The plugin host ([decision 0300](DECISIONS.md#d0300)).** The engine part that runs community
+plugins starts each in a Node process of its own, with the grants above, a heap of at most
+256 MiB, no secret in its environment, and its data folder as its working folder.
 
-- **Pinned.** Each install is pinned by hash in a lockfile.
-- **Consent on widening.** An update whose manifest widens the declared surface asks for consent
-  again.
-- **Signatures checked.** Publisher signatures are verified locally.
+- **One channel.** A plugin talks only over the IPC channel the host opens, in JSON messages of at
+  most 1 MiB that each side checks. The host sends `start` (the plugin's config values and declared
+  hosts), `call` (one tool call or data read with its deadline) and `fetched`; the plugin sends
+  `ready` (its tools, which must match its manifest), `result`, `fetch` and `log`. Any other
+  message stops it. It never reaches the protocol, the store, the signer or another plugin.
+- **Fetches.** The host fetches HTTPS URLs on the plugin's declared hosts only, through the
+  engine's URL guard and outbound proxy: 8 at a time, 15 seconds and 1 MiB each. Another host is
+  refused, and the owner hears of it once per plugin and host a day.
+- **Calls.** A call ends in 30 seconds; its output must parse with the tool's declared schema, and
+  it marks the agent's turn as outside content ([rule 13](#rule-13)). A community plugin's tools
+  only read.
+- **Crashes.** A plugin that exits starts again after 1 second, the wait doubling up to 5 minutes;
+  after 5 crashes in 10 minutes it is turned off and the owner is told.
+- **A check first.** Before any community plugin starts, the host runs a probe that tries every act
+  the sandbox refuses. If one succeeds, no community plugin runs on that machine, and
+  `binference check` says why. While plugins run as the owner's OS user, `check` warns that a
+  plugin could signal the engine.
+
+Installs (`binference plugin add`, `list`, `enable`, `disable`, `remove`) are protected three ways:
+
+- **Pinned.** Each install is pinned by hash in the plugin lock (`plugins/lock.json`); the engine
+  refuses to start a plugin whose files no longer match. Symlinks in a plugin are refused.
+- **Reviewed.** The permission review shows the plugin's kinds, declared hosts, tools and config
+  keys, its publisher and whether npm provenance backs it ([spec 4, section 3.10](specs/cards-and-messages.md#section-3-10));
+  a plugin without provenance installs only after the owner types its name. An update that
+  declares more waits for a new review, the old version running meanwhile.
+- **Braking at once.** `plugin disable` takes the plugin's tools out of the agent's index at once;
+  `plugin enable` and `plugin add` need the CLI. Publisher signatures arrive with the Verified tier
+  and its registry in v2.
 
 **MCP server.** `binference mcp` is a stdio MCP server that connects to the engine with a `read` and
 `propose` token. Claude Code, Codex, Cursor or any MCP client can then quote, check risk and
