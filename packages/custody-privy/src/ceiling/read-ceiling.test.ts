@@ -2,10 +2,7 @@ import { chainRefSchema } from "@binference/chain";
 import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import {
-  stakingAddresses,
-  testBridgeWalletCeilingRequest,
-} from "../testing/bridge-target-fixtures.js";
+import { stakingAddresses } from "../testing/bridge-target-fixtures.js";
 import {
   oneBnbWei,
   testAddresses,
@@ -16,6 +13,7 @@ import {
   testLaunch,
   testLaunchCeilingRequest,
 } from "../testing/custody-fixtures.js";
+import { testBridgeWalletCeilingRequest } from "../testing/relay-fixtures.js";
 import { buildCeiling } from "./build-ceiling.js";
 import type { CeilingRequest } from "./ceiling.js";
 import { type PolicyRule, policyRuleJson } from "./policy-rule.js";

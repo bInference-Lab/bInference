@@ -6,10 +6,7 @@ import type { Ceiling, ChainCaps } from "../ceiling/ceiling.js";
 import { policyRuleJson } from "../ceiling/policy-rule.js";
 import { readCeiling } from "../ceiling/read-ceiling.js";
 import { callData } from "../testing/bridge-fixtures.js";
-import {
-  stakingAddresses,
-  testBridgeWalletCeilingRequest,
-} from "../testing/bridge-target-fixtures.js";
+import { stakingAddresses } from "../testing/bridge-target-fixtures.js";
 import {
   approveData,
   oneBnbWei,
@@ -17,6 +14,7 @@ import {
   testAddresses,
   transferData,
 } from "../testing/custody-fixtures.js";
+import { testBridgeWalletCeilingRequest } from "../testing/relay-fixtures.js";
 import { readBackWallet } from "../wallets/read-back.js";
 import { hexOf, privyRefuses, privySigns } from "./bridge-staking-checks.js";
 import {
