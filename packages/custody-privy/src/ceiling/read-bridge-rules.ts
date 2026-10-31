@@ -114,7 +114,8 @@ export function heldTargetsOf(
 
 /**
  * Each chain the bridge rules leave from, with its bridge targets as {@link heldTargetsOf} reads
- * them, in the order the rules name the chains. Undefined when a chain's bridge rules cannot be read.
+ * them, in the order the rules name the chains. Undefined when a chain's bridge rules cannot be
+ * read.
  */
 export function heldBridgeChainsOf(
   read: readonly HeldRule[],

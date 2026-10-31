@@ -307,12 +307,12 @@ export function callRules(
  * launch wallet's chain also allows each launch call, by `function_name` on any contract, its
  * pinned inputs the wallet itself, and an `approve` with no native coin naming any spender, each
  * under the same caps (decision 0217). A bridge deposit an enabled venue declares pays, on each
- * destination, the addresses `bridged` names there that are also the rescue address or a saved one
- * (decision 0302). It lets the owner, never a signer, export the key. Privy denies everything else, typed data,
- * `personal_sign` and every EIP-7702 authorization among it: no rule names that method, and Privy
- * refuses a rule without conditions for it (seen on a Privy app, 2026-10-11). It holds no `DENY` rule on
- * calldata: Privy denies every transaction whose calldata such a rule cannot decode, plain sends
- * among them (seen on a Privy app, 2026-10-07).
+ * destination, the addresses `bridged` names there that are also the rescue address or a saved
+ * one (decision 0302). It lets the owner, never a signer, export the key. Privy denies everything
+ * else, typed data, `personal_sign` and every EIP-7702 authorization among it: no rule names that
+ * method, and Privy refuses a rule without conditions for it (seen on a Privy app, 2026-10-11). It
+ * holds no `DENY` rule on calldata: Privy denies every transaction whose calldata such a rule
+ * cannot decode, plain sends among them (seen on a Privy app, 2026-10-07).
  */
 export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingProblem> {
   const recipients = addressList([request.rescue, ...request.saved]);

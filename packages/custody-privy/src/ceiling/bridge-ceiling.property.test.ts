@@ -61,7 +61,8 @@ interface Ceiling {
 // Decisions 0091, 0297 and 0302, read directly and apart from the builder: a deposit is safe when
 // it pays an address saved for its destination that is still the rescue address or a saved one,
 // refunds the wallet, carries no coin, and moves one of that destination's routes as its pair of
-// tokens. Its message is the signer's to check: Privy takes no condition for an empty `bytes` value.
+// tokens. Its message is the signer's to check: Privy takes no condition for an empty `bytes`
+// value.
 function isSafe(ceiling: Ceiling, deposit: Deposit): boolean {
   const place = ceiling.destinations.find((item) => item.chain === deposit.chain);
   const sendable = [rescue, ...ceiling.saved].some((item) => same(item, deposit.recipient));

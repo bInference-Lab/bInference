@@ -75,8 +75,10 @@ Across relayers are permissionless: a fill pays the recipient the deposit's `out
 - What a stolen machine can still do through a bridge rule, within decision 0149's promise: deposit
   with an `outputAmount` near nothing, fill it as a relayer to the saved recipient, and keep the
   input. The 24-hour approval caps bound it for capped tokens, as a swap at a bad price.
-- The signer, not Privy, refuses a non-empty message; a thief who holds every key can send one. A
-  fill to a wallet with a message reverts, and the deposit refunds the depositor, the wallet itself.
+- The signer, not Privy, refuses a non-empty message; a thief who holds every key can send one.
+  Across calls a message's handler only when the recipient holds code: a fill to a plain saved
+  wallet pays it and ignores the message, and a saved contract without the handler makes the fill
+  revert, so the deposit refunds the depositor, the wallet itself.
 - A route whose deposit names its recipient only inside a struct, or only in an off-chain order,
   gives no rule here; decision 0303 says where Relay goes.
 
