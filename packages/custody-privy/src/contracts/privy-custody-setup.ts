@@ -19,7 +19,7 @@ import type { Ceiling, ChainCaps } from "../ceiling/ceiling.js";
 import { policyRuleJson } from "../ceiling/policy-rule.js";
 import { readCeiling } from "../ceiling/read-ceiling.js";
 import type { PrivyApi } from "../privy/privy-api.js";
-import { isPrivyId } from "../privy/privy-records.js";
+import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
 import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
 import { privyTransaction } from "../signing/privy-transaction.js";
 import {
@@ -34,6 +34,7 @@ import { createAgentWallet } from "../wallets/create-agent-wallet.js";
 import { createDayCaps } from "../wallets/create-day-caps.js";
 import type { WalletExpectation } from "../wallets/read-back.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
+import { removeCapRules } from "./cap-rules-cleanup.js";
 
 /** A Privy app under test, with the keys the suite makes a wallet for. */
 export interface PrivyCustodySubject {
@@ -126,6 +127,7 @@ async function walletUnder(
   );
   assert.ok(created.ok, `The read-back failed: ${created.ok ? "" : created.error}`);
   const wallet = created.value;
+  madeWallets.set(subject, [...(madeWallets.get(subject) ?? []), wallet.id]);
   const signer = createPrivyOwnerSigner({
     api,
     signerProcess,
@@ -168,16 +170,21 @@ async function makeLaunchWallet(subject: PrivyCustodySubject): Promise<CustodySe
 const setups = new WeakMap<PrivyCustodySubject, Promise<CustodySetup>>();
 // The aggregations each subject's setup made, which the cleanup deletes: an app keeps 10.
 const madeCaps = new WeakMap<PrivyCustodySubject, readonly string[]>();
+// The wallets each subject's checks made, whose rules that compare a cap the cleanup takes out.
+const madeWallets = new WeakMap<PrivyCustodySubject, readonly PrivyId[]>();
 
 // How long a cleanup's delete stays valid on Privy once the owner signs it.
 const removalLifetimeMs = 5 * 60_000;
 
 /**
  * Deletes the aggregations the suite made for a subject, once its checks are done, so runs on a
- * live app never use up its 10. The owner key the suite made owns each one, so it signs each
+ * live app never use up its 10: first the rules of the suite's wallets that compare them, which
+ * Privy requires before a delete. The owner key the suite made owns each one, so it signs each
  * delete. An aggregation already gone is no fault; a delete Privy refuses is.
  */
 export async function tearDown(subject: PrivyCustodySubject): Promise<void> {
+  await removeCapRules(subject, madeWallets.get(subject) ?? []);
+  madeWallets.delete(subject);
   for (const aggregation of madeCaps.get(subject) ?? []) {
     assert.ok(isPrivyId(aggregation));
     const removal = {

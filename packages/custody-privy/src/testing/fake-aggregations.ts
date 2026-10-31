@@ -50,11 +50,25 @@ export function createAggregation(state: FakePrivyState, body: JsonValue): HttpR
   return answer(200, aggregationJson(made));
 }
 
-/** Answers `GET` or `DELETE /v1/aggregations/<id>`; a deleted one is gone with its sums. */
+// Whether a rule of any policy compares the aggregation's sum.
+function isReferenced(state: FakePrivyState, id: string): boolean {
+  const field = `aggregation.${id}`;
+  return [...state.policies.values()].some((policy) =>
+    policy.rules.some((rule) => rule.conditions.some((condition) => condition.field === field)),
+  );
+}
+
+/**
+ * Answers `GET` or `DELETE /v1/aggregations/<id>`; a deleted one is gone with its sums. As on Privy
+ * since late October 2026, a delete while a policy's rule still compares the sum is a 409.
+ */
 export function answerAggregation(state: FakePrivyState, method: string, id: string): HttpResponse {
   const held = state.aggregations.get(id);
   if (held === undefined) {
     return failure(404, "not_found", "Not found.");
+  }
+  if (method === "DELETE" && isReferenced(state, id)) {
+    return failure(409, "conflict", "A policy rule still references the aggregation.");
   }
   if (method === "DELETE") {
     state.aggregations.delete(id);

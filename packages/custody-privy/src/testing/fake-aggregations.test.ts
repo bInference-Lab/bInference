@@ -1,4 +1,4 @@
-import { err, ok } from "@binference/core";
+import { err } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -130,23 +130,20 @@ describe("the ceiling's 24-hour native cap on the fake", () => {
     expect((await askPrivy(setup, { call })).ok).toBe(true);
   });
 
-  it("refuses every venue call once its aggregation is deleted", async () => {
+  it("keeps an aggregation a rule still compares, as Privy does since late October 2026", async () => {
     const subject = createFakeCustodySubject(6);
     const setup = await setUp(subject);
     const call = { to: router, valueWei: 0n, data: swapData(5n) };
-    expect((await askPrivy(setup, { call })).ok).toBe(true);
 
     const id = nativeAggregationOf(setup.expected.ceiling);
     expect(isPrivyId(id)).toBe(true);
     const removal = removalOf(subject, id as PrivyId);
     const live = { signal: AbortSignal.timeout(5_000) };
-    await expect(subject.api.deleteAggregation(removal, live)).resolves.toStrictEqual(
-      ok(undefined),
-    );
-    await expect(subject.api.deleteAggregation(removal, live)).resolves.toStrictEqual(
-      err("not_found"),
-    );
-    expect(await askPrivy(setup, { call })).toStrictEqual(err("refused"));
+    await expect(subject.api.deleteAggregation(removal, live)).rejects.toMatchObject({
+      code: "custody.privy_refused",
+      details: { status: 409 },
+    });
+    expect((await askPrivy(setup, { call })).ok).toBe(true);
   });
 
   it("deletes an aggregation only with its owner's signature, before the request expires", async () => {
