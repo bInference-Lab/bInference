@@ -63,17 +63,19 @@ function twoChains() {
 }
 
 // The calls a launch wallet makes on the test agent's one venue, `fake-swap`: a create call and a
-// buy; and the deposit a bridge wallet makes there.
+// buy; and the deposit a bridge wallet makes on `fake-bridge`, a venue the agent does not use.
 const createCall = { type: "function", name: "create", inputs: [] };
 const buyCall = { type: "function", name: "buy", inputs: [] };
 const depositCall = { type: "function", name: "deposit", inputs: [] };
-const roleCalls: Readonly<Record<WalletRole, readonly JsonValue[]>> = {
-  launch: [createCall, buyCall],
-  bridge: [depositCall],
+const roleCalls: Readonly<Record<WalletRole, readonly [string, readonly JsonValue[]]>> = {
+  launch: ["fake-swap", [createCall, buyCall]],
+  bridge: ["fake-bridge", [depositCall]],
 };
 const launchHost = {
-  roleWalletCalls: (role: WalletRole, venues?: readonly string[]) =>
-    venues?.includes("fake-swap") === true ? roleCalls[role] : [],
+  roleWalletCalls: (role: WalletRole, venues?: readonly string[]) => {
+    const [venue, calls] = roleCalls[role];
+    return venues === undefined || venues.includes(venue) ? calls : [];
+  },
 };
 
 async function walletList(

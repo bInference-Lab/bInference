@@ -32,9 +32,10 @@ export interface WalletHandlersOptions
 
 const abiNameSchema = z.object({ name: z.string().min(1) });
 
-// The functions of the calls the agent's venues mark as a wallet of the role's alone that the
-// wallet's ceiling does not allow (decision 0271); none for a wallet of an agent the store no
-// longer holds.
+// The functions of the calls the venues mark as a wallet of the role's alone that the wallet's
+// ceiling does not allow (decision 0271): the agent's venues' for a launch wallet; every hosted
+// venue's for a bridge wallet, whose ceiling holds every bridge venue's deposits (decision 0307).
+// None for a wallet of an agent the store no longer holds.
 async function missingCallsOf(
   options: WalletHandlersOptions,
   held: { readonly wallet: WalletRecord; readonly role: WalletRole },
@@ -42,7 +43,8 @@ async function missingCallsOf(
 ): Promise<readonly string[]> {
   const { wallet, role } = held;
   const agent = await options.agents.get(wallet.agentId, { signal });
-  const calls = options.host.roleWalletCalls(role, agent?.limits.venues ?? []);
+  const named = agent?.limits.venues ?? [];
+  const calls = options.host.roleWalletCalls(role, role === "bridge" ? undefined : named);
   const names = callsOutsideCeiling(wallet, calls).flatMap((abi) => {
     const parsed = abiNameSchema.safeParse(abi);
     return parsed.success ? [parsed.data.name] : [];

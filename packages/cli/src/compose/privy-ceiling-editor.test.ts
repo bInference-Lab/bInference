@@ -1,4 +1,9 @@
-import { type AccountRef, accountRefSchema, assetRefSchema } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  assetRefSchema,
+  type WalletRole,
+} from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   buildCeiling,
@@ -28,13 +33,19 @@ const accounts = [accountOf(rescue), accountOf(saved), accountOf(unsaved)] as co
 const spokePool = "0x4e8E101924eDE233C13e2D8622DC8aED2872d505";
 
 // The test venue "swap" calls the router on the test chain, and "bridge" only approves its spoke
-// pool; no other venue has a contract.
+// pool; no other venue has a contract. The install runs no venue a bridge wallet uses, so a bridge
+// wallet's ceiling gets none (decision 0307).
 function callsOn(
   chain: unknown,
-  calls: { readonly venues: readonly string[]; readonly perTxNativeBase: bigint },
+  calls: {
+    readonly venues: readonly string[];
+    readonly perTxNativeBase: bigint;
+    readonly role?: WalletRole;
+  },
 ): CeilingChainPlan {
-  const swap = calls.venues.includes("swap");
-  const bridge = calls.venues.includes("bridge");
+  const isMain = calls.role !== "bridge";
+  const swap = isMain && calls.venues.includes("swap");
+  const bridge = isMain && calls.venues.includes("bridge");
   return {
     chain: testChain,
     calls: swap ? testCalls : [],

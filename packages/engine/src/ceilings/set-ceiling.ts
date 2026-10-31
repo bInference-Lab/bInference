@@ -45,6 +45,7 @@ const refusalCodes: Readonly<Record<CallsRefusal, ProtocolErrorCode>> = {
   bad_owner_key: "wallet.bad_owner_key",
   not_found: "wallet.not_found",
   no_calls: "protocol.bad_args",
+  no_bridge_calls: "wallet.no_bridge_calls",
   too_large: "wallet.ceiling_too_large",
   bad_bridge: "wallet.ceiling_bad_bridge",
   uncapped_token: "wallet.ceiling_uncapped",

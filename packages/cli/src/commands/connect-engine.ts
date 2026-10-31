@@ -176,6 +176,7 @@ const policyCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "limit.venue_in_use",
   "limit.needs_launch_wallet",
   "limit.needs_bridge_wallet",
+  "limit.bridge_ceiling",
   "wallet.ceiling_too_large",
   "wallet.ceiling_bad_bridge",
   "wallet.ceiling_uncapped",

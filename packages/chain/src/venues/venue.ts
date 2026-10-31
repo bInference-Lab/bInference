@@ -186,6 +186,16 @@ function namesDeclared(item: Omit<VenueContracts, "chain">): boolean {
   );
 }
 
+// A chain that marks a call as a bridge wallet's marks every call so and names no spender a main
+// wallet approves: only a bridge wallet uses a bridge venue there (decision 0307).
+function isBridgeAlone(item: Omit<VenueContracts, "chain">): boolean {
+  const calls = item.calls ?? [];
+  const marked = calls.filter((call) => call.onlyWallet === "bridge");
+  return (
+    marked.length === 0 || (marked.length === calls.length && (item.spenders ?? []).length === 0)
+  );
+}
+
 // A contract whose `approve` is refused is a registry one, and no spender (decision 0304).
 function unapprovedDeclared(
   item: Omit<VenueContracts, "chain">,
@@ -200,7 +210,8 @@ function unapprovedDeclared(
  * Checks a venue's declaration: a kebab-case id of at most 32 characters, at least one chain, each
  * chain once, and at least one contract name on each, each name once. A launch's contracts have
  * names of their own, each once. A call or a spender names one of the chain's contracts, registry
- * or launch, each spender once.
+ * or launch, each spender once. A chain that marks a call as a bridge wallet's marks every call so
+ * and names no spender a main wallet approves (decision 0307).
  */
 export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclarationWire> = z.object({
   id: kebabCaseSchema.max(32),
@@ -226,7 +237,11 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
           noDeadline: z.boolean().exactOptional(),
           unapproved: z.array(kebabCaseSchema).exactOptional(),
         })
-        .refine(namesDeclared, { message: "A call or a spender names no declared contract." }),
+        .refine(namesDeclared, { message: "A call or a spender names no declared contract." })
+        .refine(isBridgeAlone, {
+          message:
+            "A chain that marks a bridge wallet's call marks every call so, with no spender.",
+        }),
     )
     .min(1)
     .refine((items: readonly VenueContracts[]) => isUnique(items.map((item) => item.chain)), {

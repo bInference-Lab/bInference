@@ -465,7 +465,7 @@ describe("a venue added to the limits", () => {
     );
     test.stores.install.addWallet(bridgeWalletWith([]));
     expect(await setLimits(test, { venues: ["fake-bridge"] })).toStrictEqual(
-      err("limit.over_ceiling"),
+      err("limit.bridge_ceiling"),
     );
   });
 

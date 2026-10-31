@@ -1,4 +1,9 @@
-import type { ChainRegistry, VenueDeclaration, WalletRole } from "@binference/chain";
+import {
+  type ChainRegistry,
+  isBridgeVenue,
+  type VenueDeclaration,
+  type WalletRole,
+} from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { type HeldCaps, readCeiling } from "@binference/custody-privy";
 import type { InstallStore } from "@binference/engine/install";
@@ -16,15 +21,29 @@ export interface WalletCeilingOptions {
 }
 
 /**
- * A new wallet's ceiling on each enabled chain, as init builds the first one, for the venues named
- * that this install runs; a launch wallet's with the launch rules of every launchpad it runs too
- * (decision 0217). A config init would refuse is a fault here.
+ * The venues a wallet's ceiling is planned from, among those this install runs: a bridge wallet's
+ * every bridge venue, whichever venues the agent uses, so its ceiling always holds their deposits
+ * (decision 0307); any other wallet's the venues named.
+ */
+export function ceilingVenuesOf(
+  installed: readonly VenueDeclaration[],
+  wallet: { readonly venues: readonly string[]; readonly role?: WalletRole | undefined },
+): readonly VenueDeclaration[] {
+  return wallet.role === "bridge"
+    ? installed.filter(isBridgeVenue)
+    : installed.filter((venue) => wallet.venues.includes(venue.id));
+}
+
+/**
+ * A new wallet's ceiling on each enabled chain, as init builds the first one, for the venues
+ * {@link ceilingVenuesOf} gives; a launch wallet's with the launch rules of every launchpad it runs
+ * too (decision 0217). A config init would refuse is a fault here.
  */
 export function ceilingChainsOf(
   options: WalletCeilingOptions,
   wallet: { readonly venues: readonly string[]; readonly role?: WalletRole },
 ): Pick<CeilingDraft, "chains" | "capPlans"> {
-  const named = options.venues.filter((venue) => wallet.venues.includes(venue.id));
+  const named = ceilingVenuesOf(options.venues, wallet);
   const request = ceilingRequestOf(options.chains, options.config, {
     venues: named,
     rescue: "",

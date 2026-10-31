@@ -140,6 +140,23 @@ async function refusesOtherCalls(subject: CeilingEditorSubject): Promise<void> {
   assert.deepEqual(await editor.read(subject.ceiling, live()), before);
 }
 
+// The subject's install runs no bridge venue, so a bridge wallet's ceiling would allow nothing.
+async function refusesABridgeCeilingWithoutDeposits(subject: CeilingEditorSubject): Promise<void> {
+  const { editor, ceiling, ownerKey } = subject;
+  const before = await editor.read(ceiling, live());
+  const asked = {
+    ceiling,
+    venues: [subject.venues.known],
+    perTxNativeBase: 7n,
+    role: "bridge",
+  } as const;
+  assert.deepEqual(
+    await editor.setCalls({ ownerKey, ceilings: [asked] }, live()),
+    err("no_bridge_calls"),
+  );
+  assert.deepEqual(await editor.read(ceiling, live()), before);
+}
+
 // The size of every cap after the resize: $2,000 at each floor price.
 const dayCapUsdMicros = 2_000_000_000n;
 
@@ -199,6 +216,11 @@ export function ceilingEditorContract(harness: CeilingEditorHarness): readonly C
       "refuses calls by another key, on an unknown ceiling or with no contract",
       create,
       refusesOtherCalls,
+    ),
+    checkOn(
+      "refuses a bridge wallet's ceiling when no venue the install runs gives it a deposit",
+      create,
+      refusesABridgeCeilingWithoutDeposits,
     ),
     checkOn(
       "resizes every 24-hour cap with the owner key, each still counting what it did",

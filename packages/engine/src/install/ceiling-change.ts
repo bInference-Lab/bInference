@@ -122,12 +122,14 @@ export type CeilingRefusal =
  * Why the owner key's change of what contract calls may do was not made: `bad_owner_key`,
  * `not_found` and `too_large` as for recipients, `no_calls` for venues that give a chain a ceiling
  * enables no contract to call, `bad_bridge` for a bridge deposit a venue declares that no ceiling
- * can hold, and `uncapped_token` for a bridge route whose token has no 24-hour cap custody could
- * make (decision 0305). Nothing was changed.
+ * can hold, `uncapped_token` for a bridge route whose token has no 24-hour cap custody could
+ * make (decision 0305), and `no_bridge_calls` for a bridge wallet's ceiling no venue the install
+ * runs gives a deposit, which would leave it allowing nothing (decision 0307). Nothing was changed.
  */
 export type CallsRefusal =
   | Exclude<CeilingRefusal, "bad_recipients">
   | "no_calls"
+  | "no_bridge_calls"
   | "bad_bridge"
   | "uncapped_token";
 

@@ -1,5 +1,6 @@
 import { type AccountRef, accountRefSchema, type WalletRole } from "@binference/chain";
-import { type Http, type Id, idSchema } from "@binference/core";
+import { bscVenueCalls } from "@binference/chains";
+import { type Http, type Id, idSchema, type Result } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   createPrivyApi,
@@ -20,7 +21,12 @@ import { walletMakerContract } from "@binference/engine/testing";
 import { createP256KeyPair, formatOwnerKeyCode } from "@binference/signer";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { currentConfigVersion } from "../config/migrations/config-migrations.js";
+import { configSchema } from "../config/schema/config.schema.js";
+import type { CeilingDraft } from "../init/ceiling-request.js";
+import { selfHostedChains } from "./open-engine-parts.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
+import { ceilingChainsOf } from "./wallet-ceilings.js";
 
 const live = { signal: new AbortController().signal };
 const accountOf = (address: string): AccountRef => accountRefSchema.parse(`eip155:56:${address}`);
@@ -47,6 +53,26 @@ const draft = {
 const launchDraft = {
   chains: testLaunchCeilingRequest().chains.map(({ caps: _caps, ...plan }) => plan),
   capPlans: [testCapPlan],
+};
+
+// A bridge wallet's ceiling as the CLI plans it, for an install that runs Relay beside KyberSwap.
+const bridgePlans = {
+  chains: selfHostedChains(),
+  config: configSchema.parse({
+    version: currentConfigVersion,
+    telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },
+  }),
+  venues: [{ id: "relay", contracts: [bscVenueCalls["relay"]].flatMap((item) => item ?? []) }],
+};
+
+const roleDrafts: Readonly<
+  Record<
+    WalletRole,
+    (wallet: { readonly venues: readonly string[] }) => Pick<CeilingDraft, "chains" | "capPlans">
+  >
+> = {
+  launch: () => launchDraft,
+  bridge: (wallet) => ceilingChainsOf(bridgePlans, { ...wallet, role: "bridge" }),
 };
 
 interface Counted {
@@ -115,8 +141,8 @@ async function subject() {
     api,
     clock,
     custody: async () => Promise.resolve(custody),
-    ceilingChains: (wallet: { readonly role?: WalletRole }) =>
-      wallet.role === "launch" ? launchDraft : draft,
+    ceilingChains: (wallet: { readonly venues: readonly string[]; readonly role?: WalletRole }) =>
+      wallet.role === undefined ? draft : roleDrafts[wallet.role](wallet),
     heldCaps: counted.heldCaps,
     onMade: (wallet, made) => signedFor.set(wallet, made),
   });
@@ -141,6 +167,12 @@ async function subject() {
       const held = isPrivyId(policyId) ? await api.policy(policyId, live) : undefined;
       return held?.ok === true && readCeiling(held.value.rules)?.isLaunch === true;
     },
+    // The rules Privy holds for a made wallet's ceiling.
+    rulesOf: async (made: Result<{ readonly record: { readonly policyId: string } }, string>) => {
+      const policyId = made.ok ? made.value.record.policyId : "";
+      const held = isPrivyId(policyId) ? await api.policy(policyId, live) : undefined;
+      return held?.ok === true ? held.value.rules : [];
+    },
     made: counted.made,
     aggregations: counted.aggregations,
     signedFor,
@@ -148,6 +180,23 @@ async function subject() {
 }
 
 describe("the Privy wallet maker", () => {
+  it("makes a bridge wallet whose stored ceiling allows Relay's deposits, whatever its venues", async () => {
+    const made = await subject();
+    const { ownerKey, venues } = made;
+    const request = {
+      ownerKey,
+      venues,
+      recipients,
+      role: "bridge",
+      wallet: made.nextWallet(),
+    } as const;
+
+    const answer = await made.maker.make(request, live);
+
+    const rules = await made.rulesOf(answer);
+    expect(readCeiling(rules)?.functions).toStrictEqual(["depositErc20", "depositNative"]);
+  });
+
   it.each(walletMakerContract({ create: subject }))(
     "follows the wallet maker contract: $name",
     async ({ run }) => {

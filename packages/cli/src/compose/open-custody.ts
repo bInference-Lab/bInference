@@ -44,7 +44,7 @@ import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
 import { signedWalletsOf } from "./signed-wallets.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
-import { ceilingChainsOf, heldCapsOf } from "./wallet-ceilings.js";
+import { ceilingChainsOf, ceilingVenuesOf, heldCapsOf } from "./wallet-ceilings.js";
 
 /**
  * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker, its
@@ -151,8 +151,8 @@ async function startCheckedSigner(
   return err("signer_failed");
 }
 
-// What a contract call may do on a chain a ceiling enables, for the venues named that this install
-// runs, under the cap given, and on a launch wallet's what its launch rules allow. A chain the
+// What a contract call may do on a chain a ceiling enables, for the venues `ceilingVenuesOf` gives,
+// under the cap given, and on a launch wallet's what its launch rules allow. A chain the
 // registry lacks is a fault here.
 function callsOn(
   options: OpenCustodyOptions,
@@ -160,7 +160,7 @@ function callsOn(
   calls: Omit<CeilingCalls, "ceiling">,
 ): CeilingChainPlan {
   const registered = options.chains.list().find((item) => item.ref === chain);
-  const venues = options.venues.filter((venue) => calls.venues.includes(venue.id));
+  const venues = ceilingVenuesOf(options.venues, calls);
   const built =
     registered === undefined
       ? undefined

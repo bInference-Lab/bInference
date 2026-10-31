@@ -207,6 +207,7 @@ export type {
 export { curveHoldingSchema } from "./venues/curve-holding.js";
 export type { CurveHolding, CurveHoldingWire, CurveRequest } from "./venues/curve-holding.js";
 export { declaredAddress, declaredContracts } from "./venues/declared-contracts.js";
+export { isBridgeEntry, isBridgeVenue } from "./venues/bridge-venue.js";
 export { venueDeclarationSchema } from "./venues/venue.js";
 export type {
   BridgeCallInputs,

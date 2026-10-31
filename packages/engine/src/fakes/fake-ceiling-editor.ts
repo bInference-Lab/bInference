@@ -4,6 +4,7 @@ import {
   accountRefSchema,
   type ChainRef,
   type ChainRegistry,
+  isBridgeVenue,
   roleMakesMainCalls,
   type VenueContracts,
   type VenueDeclaration,
@@ -195,7 +196,13 @@ function contractsOn(
   chain: ChainRef,
   ceiling: { readonly venues: readonly string[]; readonly role: WalletRole | undefined },
 ): readonly AccountRef[] {
-  const { venues, role } = ceiling;
+  const { role } = ceiling;
+  // A bridge wallet's ceiling holds every bridge venue's deposits, whichever venues are asked
+  // (decision 0307).
+  const venues =
+    role === "bridge"
+      ? (held.venues ?? []).filter(isBridgeVenue).map((venue) => venue.id)
+      : ceiling.venues;
   const listed = held.chains?.list().find((item) => item.ref === chain)?.definition.contracts;
   const counts = (venue: string, name: string): boolean => {
     const entries = held.venues?.find((item) => item.id === venue)?.contracts ?? [];
@@ -227,25 +234,45 @@ function resized(
   });
 }
 
-// Each ceiling's calls, all checked before any changes: on each of its chains, a contract or more.
+// Why a ceiling whose venues give a chain no contract is refused, by its wallet's role.
+const emptyRefusals: Readonly<Record<WalletRole | "main", CallsRefusal>> = {
+  main: "no_calls",
+  launch: "no_calls",
+  bridge: "no_bridge_calls",
+};
+
+// One ceiling's calls: on each of its chains, a contract or more.
+function callsFor(
+  held: Held,
+  asked: CallsRequest["ceilings"][number],
+): Result<FakeCalls, CallsRefusal> {
+  const { ceiling, venues, perTxNativeBase, dayCapUsdMicros, role } = asked;
+  const recipients = held.ceilings.get(ceiling);
+  if (recipients === undefined) {
+    return err("not_found");
+  }
+  const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, { venues, role }));
+  if (each.some((contracts) => contracts.length === 0)) {
+    return err(emptyRefusals[role ?? "main"]);
+  }
+  const dayCaps = resized(held.calls.get(ceiling)?.dayCaps, dayCapUsdMicros);
+  const kept = dayCaps === undefined ? {} : { dayCaps };
+  const functions = held.functionsOf?.(venues, { role }) ?? [];
+  return ok({ contracts: each.flat(), perTxNativeBase, ...kept, functions });
+}
+
+// Each ceiling's calls, all checked before any changes.
 function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal> {
   if (!isOwner(request.ownerKey)) {
     return err("bad_owner_key");
   }
   const changes = new Map<string, FakeCalls>();
-  for (const { ceiling, venues, perTxNativeBase, dayCapUsdMicros, role } of request.ceilings) {
-    const recipients = held.ceilings.get(ceiling);
-    if (recipients === undefined) {
-      return err("not_found");
+  for (const asked of request.ceilings) {
+    const calls = callsFor(held, asked);
+    if (!calls.ok) {
+      return calls;
     }
-    const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, { venues, role }));
-    if (each.some((contracts) => contracts.length === 0)) {
-      return err("no_calls");
-    }
-    const dayCaps = resized(held.calls.get(ceiling)?.dayCaps, dayCapUsdMicros);
-    const kept = dayCaps === undefined ? {} : { dayCaps };
-    const functions = held.functionsOf?.(venues, { role }) ?? [];
-    changes.set(ceiling, { contracts: each.flat(), perTxNativeBase, ...kept, functions });
+    changes.set(asked.ceiling, calls.value);
   }
   for (const [ceiling, calls] of changes) {
     held.calls.set(ceiling, calls);

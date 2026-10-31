@@ -185,10 +185,13 @@ owner funds that launch wallet no more.
 
 **A bridge wallet's ceiling** ([decisions 0303](../DECISIONS.md#d0303) and
 [0307](../DECISIONS.md#d0307)). An agent may hold one bridge wallet, made with the owner key by
-`binference wallet create --bridge` and funded from outside only. Its ceiling holds the calls bridge
-venues mark as a bridge wallet's alone: Relay's depository deposits, its depositor the wallet
-itself, and approvals naming the depository, under the same 24-hour caps; the sends to the rescue
-and saved addresses; and the cancel. It holds no other venue's call, spender or bridge deposit, so
+`binference wallet create --bridge` and funded from outside only. Its ceiling holds the calls every
+bridge venue the install runs marks as a bridge wallet's alone, whichever venues the agent uses:
+Relay's depository deposits, its depositor the wallet itself, and approvals naming the depository,
+under the same 24-hour caps; the sends to the rescue and saved addresses; and the cancel. A
+ceiling change keeps those deposits whatever venues it names, and one that would leave the bridge
+wallet none, as when the install no longer runs a bridge venue, is refused as
+`wallet.no_bridge_calls`. It holds no other venue's call, spender or bridge deposit, so
 the bridge wallet cannot swap. A Relay deposit names only an order id, so a thief with this
 machine's keys can take what the bridge wallet holds; no other wallet's ceiling lists a Relay call,
 and the signer refuses one from any other wallet. No ceiling lists a bridge wallet as a recipient:

@@ -1,5 +1,5 @@
 import { accountRefSchema, assetRefSchema, chainRefSchema, type Venue } from "@binference/chain";
-import { createFakeVenue } from "@binference/chain/testing";
+import { createFakeBridgeVenue, createFakeVenue } from "@binference/chain/testing";
 import { err, type Id, idSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import type { CeilingChanges } from "@binference/protocol";
@@ -19,6 +19,8 @@ import {
 
 const owner = accountRefSchema.parse("fake:1:0x000000a1");
 const swapRouter = accountRefSchema.parse("fake:1:0x0000000b");
+// The router of every venue the tests add to the fake chain, a Relay-like bridge's among them.
+const relayRouter = accountRefSchema.parse("fake:1:0x0000000d");
 const otherAgent = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000009");
 
 function wallet(n: number, agentId: Id<"agt"> = testAgent, archivedAtMs?: number): WalletRecord {
@@ -376,13 +378,20 @@ describe("a launchpad's create call in a launch wallet's ceiling", () => {
   });
 });
 
-// A bridge venue on the fake chain: a deposit whose recipient and chain the ceiling binds, and one
-// only a bridge wallet makes (decisions 0302 and 0303).
+// A bridge venue on the fake chain as Across: a deposit whose recipient and chain the ceiling binds,
+// on a contract that is its spender (decision 0302); and a bridge venue as Relay, whose deposit
+// only a bridge wallet makes (decisions 0303 and 0307).
 const depositAbi = { type: "function", name: "depositV3", inputs: [] };
-const orderedAbi = { type: "function", name: "depositErc20", inputs: [] };
+const bridgeWallet = testWalletRecord({
+  id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c6"),
+  agentId: testAgent,
+  label: "relays",
+  createdAtMs: testNowMs - 400,
+  role: "bridge",
+});
 
 async function startedWithBridge(): Promise<TestEngine> {
-  const chains = testChains(["fake-bridge"]);
+  const chains = testChains(["fake-across", "fake-bridge"]);
   const base = createFakeVenue();
   const bridgeInputs = {
     recipient: "recipient",
@@ -393,40 +402,40 @@ async function startedWithBridge(): Promise<TestEngine> {
   };
   const calls = [
     { contract: "router", abi: depositAbi, walletInputs: ["depositor"], bridge: bridgeInputs },
-    { contract: "router", abi: orderedAbi, walletInputs: ["depositor"], onlyWallet: "bridge" },
   ];
-  const bridge: Venue = {
+  const across: Venue = {
     ...base,
-    id: "fake-bridge",
-    // As Across: a bridge deposit and a bridge wallet's call on its contract, which is its spender.
+    id: "fake-across",
     contracts: base.contracts.map((item) =>
       Object.assign({}, item, { calls, spenders: ["router"] }),
     ),
   };
-  const test = await startTestEngine({ chains, venues: [base, bridge] });
-  for (const item of [first, second, launchWallet]) {
+  const relay = createFakeBridgeVenue();
+  const test = await startTestEngine({ chains, venues: [base, across, relay] });
+  for (const item of [first, second, launchWallet, bridgeWallet]) {
     test.stores.install.addWallet(item);
     test.ceilings.put(item.policyId, [owner], { contracts: [swapRouter], perTxNativeBase: 5n });
   }
   return test;
 }
 
-async function contractCountOf(test: TestEngine, policyId: string): Promise<number | undefined> {
+async function contractsOf(test: TestEngine, policyId: string): Promise<readonly string[]> {
   const read = await test.ceilings.read(policyId, { signal: new AbortController().signal });
-  return read.ok ? read.value.contracts.length : undefined;
+  return read.ok ? read.value.contracts : [];
 }
 
 describe("a bridge venue in the ceilings", () => {
-  it("reaches every live wallet of the agent, the launch wallet's too, and is announced", async () => {
+  it("reaches every live wallet of the agent but the bridge wallet, and is announced", async () => {
     const test = await startedWithBridge();
 
-    const view = expectOk(await setCeiling(test, { venues: ["fake-swap", "fake-bridge"] }));
+    const view = expectOk(await setCeiling(test, { venues: ["fake-swap", "fake-across"] }));
 
-    expect(view.venues).toStrictEqual(["fake-swap", "fake-bridge"]);
-    const venues = await Promise.all(
-      [first, second, launchWallet].map(async (item) => contractCountOf(test, item.policyId)),
+    // The bridge wallet's ceiling keeps the Relay-like bridge, so the view names it too.
+    expect(view.venues).toStrictEqual(["fake-swap", "fake-across", "fake-bridge"]);
+    const held = await Promise.all(
+      [first, second, launchWallet].map(async (item) => contractsOf(test, item.policyId)),
     );
-    expect(venues).toStrictEqual([2, 2, 2]);
+    expect(held.map((contracts) => contracts.length)).toStrictEqual([2, 2, 2]);
     expect(notices(test)).toStrictEqual([
       {
         key: "notice.ceilingChange",
@@ -436,6 +445,15 @@ describe("a bridge venue in the ceilings", () => {
     ]);
     const changed = test.pushes.find((push) => push.kind === "config/changed");
     expect(changed?.data).toMatchObject({ path: "agents.main.ceiling", surface: "cli" });
+  });
+
+  it("keeps the bridge wallet's deposits whatever venues the change names", async () => {
+    const test = await startedWithBridge();
+
+    expectOk(await setCeiling(test, { venues: ["fake-swap"] }));
+
+    expect(await contractsOf(test, bridgeWallet.policyId)).toStrictEqual([relayRouter]);
+    expect(await contractsOf(test, first.policyId)).not.toContain(relayRouter);
   });
 });
 

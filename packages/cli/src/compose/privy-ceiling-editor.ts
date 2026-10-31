@@ -296,7 +296,7 @@ async function planOne(
   const refs = held.value.rules.chainIds.map((id) => chainRefSchema.parse(`eip155:${id}`));
   const plans = refs.map((chain) => options.callsOn(chain, calls));
   if (plans.some((plan) => plan.calls.length === 0)) {
-    return err("no_calls");
+    return err(calls.role === "bridge" ? "no_bridge_calls" : "no_calls");
   }
   const capped = await cappedChains(options, { held: held.value, plans }, signal);
   const dayUsdMicros = calls.dayCapUsdMicros;
