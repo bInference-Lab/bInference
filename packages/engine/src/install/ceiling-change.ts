@@ -76,7 +76,11 @@ export interface CallsRequest {
 export interface CeilingRead {
   /** The chains it enables. */
   readonly chains: readonly ChainRef[];
-  /** Each contract a call may reach, on each chain it enables. */
+  /**
+   * Each contract its rules name, on each chain it enables: one a call may reach, a spender a
+   * token may approve, or one a bridge deposit may reach. A venue is in the ceiling when one of
+   * its registry contracts is here.
+   */
   readonly contracts: readonly AccountRef[];
   /** The most native coin, in base units, one contract call may send; 0 when none may. */
   readonly perTxNativeBase: bigint;
@@ -93,9 +97,9 @@ export interface CeilingRead {
    */
   readonly launchCalls: readonly string[];
   /**
-   * The functions its call rules let a call reach on the contracts they name, each once: a change
-   * of them, such as a launchpad's new create call, is a change of the venues' calls (decision
-   * 0271).
+   * The functions its call and bridge rules let a call reach on the contracts they name, each
+   * once: a change of them, such as a launchpad's new create call, is a change of the venues'
+   * calls (decision 0271).
    */
   readonly functions: readonly string[];
   /** The ceiling as custody reports it, which a wallet's stored copy of its ceiling mirrors. */

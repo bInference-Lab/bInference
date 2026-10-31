@@ -311,7 +311,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
   const pushes: EnginePush[] = [];
   const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
-  const ceilings = createFakeCeilingEditor({ clock, chains });
+  const ceilings = createFakeCeilingEditor({ clock, chains, venues });
   const walletMaker = createFakeWalletMaker({
     clock,
     chain: chainRefSchema.parse("fake:1"),

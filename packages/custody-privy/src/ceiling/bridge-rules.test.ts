@@ -310,6 +310,13 @@ describe("reading bridge rules back", () => {
     expect(isBuiltCeiling(rules)).toBe(true);
   });
 
+  it("counts the spoke pool among the contracts and the deposit among the functions", () => {
+    expect(readCeiling(rules)).toMatchObject({
+      contracts: [testAddresses.router, spokePool],
+      functions: ["swap", "swapTo", "depositV3"],
+    });
+  });
+
   it.each([
     [
       "the depositor pin dropped",

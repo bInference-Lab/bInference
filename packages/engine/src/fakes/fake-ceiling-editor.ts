@@ -4,6 +4,8 @@ import {
   accountRefSchema,
   type ChainRef,
   type ChainRegistry,
+  type VenueContracts,
+  type VenueDeclaration,
 } from "@binference/chain";
 import { type Clock, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { DayCapView } from "@binference/protocol";
@@ -161,20 +163,46 @@ interface Held {
   readonly ceilings: Ceilings;
   readonly calls: Map<string, FakeCalls>;
   readonly chains?: ChainRegistry;
+  readonly venues?: readonly VenueDeclaration[];
   readonly functionsOf?: FakeCeilingEditorOptions["functionsOf"];
 }
 
-// A venue's contracts on a chain: the registry's, or without one the account named after it.
+// The names a venue's entry on a chain puts in a ceiling, as custody's read-back counts them: each
+// contract a plain call or a call of the wallet's role reaches, and each spender of the role. A
+// bridge deposit is left out: it holds a rule only once a destination has a saved address, which
+// the fake never has. An entry that declares no calls puts all its names in.
+function namesIn(entry: VenueContracts, role: "launch" | undefined): readonly string[] {
+  if (entry.calls === undefined) {
+    return entry.names;
+  }
+  const called = entry.calls
+    .filter((call) => call.bridge === undefined)
+    .filter((call) => call.onlyWallet === undefined || call.onlyWallet === role)
+    .map((call) => call.contract);
+  const roleSpenders = role === undefined ? [] : (entry.onlyWalletSpenders?.[role] ?? []);
+  return [...called, ...(entry.spenders ?? []), ...roleSpenders];
+}
+
+// A venue's contracts on a chain: the registry's that its declaration puts in a ceiling, or without
+// a registry the account named after it.
 function contractsOn(
   held: Held,
   chain: ChainRef,
-  venues: readonly string[],
+  ceiling: { readonly venues: readonly string[]; readonly isLaunch: boolean },
 ): readonly AccountRef[] {
+  const { venues, isLaunch } = ceiling;
   const listed = held.chains?.list().find((item) => item.ref === chain)?.definition.contracts;
+  const counts = (venue: string, name: string): boolean => {
+    const entries = held.venues?.find((item) => item.id === venue)?.contracts ?? [];
+    const entry = entries.find((item) => item.chain === chain);
+    return entry === undefined || namesIn(entry, isLaunch ? "launch" : undefined).includes(name);
+  };
   const addresses =
     listed === undefined
       ? venues
-      : listed.filter((item) => venues.includes(item.venue)).map((item) => item.address);
+      : listed
+          .filter((item) => venues.includes(item.venue) && counts(item.venue, item.name))
+          .map((item) => item.address);
   return [...new Set(addresses)].map((address) => accountRefSchema.parse(`${chain}:${address}`));
 }
 
@@ -205,7 +233,8 @@ function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal>
     if (recipients === undefined) {
       return err("not_found");
     }
-    const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, venues));
+    const at = { venues, isLaunch: isLaunch === true };
+    const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, at));
     if (each.some((contracts) => contracts.length === 0)) {
       return err("no_calls");
     }
@@ -229,6 +258,11 @@ export interface FakeCeilingEditorOptions {
    */
   readonly chains?: ChainRegistry;
   /**
+   * The venues' declarations, so a venue counts on a chain only through the contracts custody's
+   * read-back names; without them, every registry contract of a venue counts.
+   */
+  readonly venues?: readonly VenueDeclaration[];
+  /**
    * The functions a ceiling's call rules hold once a change of calls writes it for the venues
    * given, as custody writes them from the venues' declarations; none when absent.
    */
@@ -250,6 +284,7 @@ export function createFakeCeilingEditor(options: FakeCeilingEditorOptions): Fake
     ceilings,
     calls,
     ...(options.chains === undefined ? {} : { chains: options.chains }),
+    ...(options.venues === undefined ? {} : { venues: options.venues }),
     ...(options.functionsOf === undefined ? {} : { functionsOf: options.functionsOf }),
   };
   return {

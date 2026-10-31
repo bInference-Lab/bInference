@@ -24,16 +24,21 @@ const { rescue, saved, unsaved, router } = testAddresses;
 const accountOf = (address: string): AccountRef => accountRefSchema.parse(`eip155:56:${address}`);
 const accounts = [accountOf(rescue), accountOf(saved), accountOf(unsaved)] as const;
 
-// The test venue "swap" calls the router on the test chain; no other venue has a contract.
+// A contract the test venue "bridge" names only as its spender, as Across names its spoke pool.
+const spokePool = "0x4e8E101924eDE233C13e2D8622DC8aED2872d505";
+
+// The test venue "swap" calls the router on the test chain, and "bridge" only approves its spoke
+// pool; no other venue has a contract.
 function callsOn(
   chain: unknown,
   calls: { readonly venues: readonly string[]; readonly perTxNativeBase: bigint },
 ): CeilingChainPlan {
   const swap = calls.venues.includes("swap");
+  const bridge = calls.venues.includes("bridge");
   return {
     chain: testChain,
     calls: swap ? testCalls : [],
-    spenders: swap ? [router] : [],
+    spenders: [...(swap ? [router] : []), ...(bridge ? [spokePool] : [])],
     perTxNativeCapBase: calls.perTxNativeBase,
   };
 }
@@ -151,6 +156,24 @@ describe("the Privy ceiling editor", () => {
         ],
       },
     });
+  });
+
+  it("reads a venue it names only as a spender among the contracts, until it is taken out", async () => {
+    const made = await subject();
+    const calls = (venues: readonly string[]) => ({
+      ownerKey: made.ownerKey,
+      ceilings: [{ ceiling: made.ceiling, venues, perTxNativeBase: 7n }],
+    });
+    const contracts = async () => made.editor.read(made.ceiling, live);
+
+    await made.editor.setCalls(calls(["swap", "bridge"]), live);
+    const withBridge = await contracts();
+    await made.editor.setCalls(calls(["swap"]), live);
+
+    expect(withBridge).toMatchObject({
+      value: { contracts: [accountOf(router), accountOf(spokePool)] },
+    });
+    expect(await contracts()).toMatchObject({ value: { contracts: [accountOf(router)] } });
   });
 
   it("refuses every owner key before the install holds one", async () => {

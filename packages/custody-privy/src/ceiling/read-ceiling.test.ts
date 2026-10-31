@@ -88,12 +88,12 @@ describe("readCeiling", () => {
     });
   });
 
-  it("reads a cap of nothing, and no 24-hour caps, from a ceiling that allows no call", () => {
+  it("reads a cap of nothing, no 24-hour caps and its spender from a ceiling that allows no call", () => {
     const chain = { ...testChainLists, calls: [] };
     const request = { ...testCeilingRequest(), chains: [chain] };
 
     expect(readCeiling(rulesOf(request))).toMatchObject({
-      contracts: [],
+      contracts: [testAddresses.router],
       perTxNativeCapBase: 0n,
       caps: [],
     });

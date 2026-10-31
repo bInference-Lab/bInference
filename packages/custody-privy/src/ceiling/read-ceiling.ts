@@ -14,7 +14,12 @@ import {
   valuesOf,
 } from "./held-rules.schema.js";
 import { policyRuleJson } from "./policy-rule.js";
-import { type HeldBridge, heldBridgesOf, heldTargetsOf } from "./read-bridge-rules.js";
+import {
+  type HeldBridge,
+  heldBridgesOf,
+  heldTargetsOf,
+  isBridgeRuleName,
+} from "./read-bridge-rules.js";
 
 /** The 24-hour caps a ceiling names on one chain whose rules allow calls. */
 export interface HeldCaps {
@@ -27,7 +32,11 @@ export interface HeldCaps {
 export interface CeilingHeld {
   /** The EIP-155 id of each chain the ceiling names, in the order its rules name them. */
   readonly chainIds: readonly string[];
-  /** The contracts a call may reach, each once. */
+  /**
+   * The contracts its rules name, each once: those a call rule lets a call reach, the spenders an
+   * approval rule lets a token approve, and those a bridge rule lets a deposit reach. A venue is in
+   * the ceiling when one of its contracts is here, whichever rule names it.
+   */
   readonly contracts: readonly string[];
   /**
    * The most native coin, in base units, one contract call may send on the first chain that
@@ -46,8 +55,8 @@ export interface CeilingHeld {
    */
   readonly launchCalls: readonly string[];
   /**
-   * The functions its call rules let a call reach on their contracts, each once, on any chain: a
-   * change of them is a change of what the ceiling allows (decision 0271).
+   * The functions its call and bridge rules let a call reach on their contracts, each once, on any
+   * chain: a change of them is a change of what the ceiling allows (decision 0271).
    */
   readonly functions: readonly string[];
   /** Each bridge rule's target, in the order the rules name them (decision 0302). */
@@ -212,6 +221,8 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
     return undefined;
   }
   const calls = read.filter((rule) => isCallRule(rule));
+  const bridges = read.filter((rule) => isBridgeRuleName(rule.name));
+  const approvalRules = read.filter((rule) => rule.name.startsWith("Approvals, chain "));
   const sends = read.filter((rule) => rule.name.startsWith("Native sends, chain "));
   const perTxNativeCapBase = capOf(anyCallRules(read));
   if (perTxNativeCapBase === undefined) {
@@ -230,14 +241,22 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
   });
   return {
     chainIds,
-    contracts: [...new Set(calls.flatMap((rule) => valuesOf(rule, "to", "in")))],
+    contracts: [
+      ...new Set([
+        ...[...calls, ...bridges].flatMap((rule) => valuesOf(rule, "to", "in")),
+        ...approvalRules.flatMap((rule) => valuesOf(rule, "approve.spender", "in")),
+      ]),
+    ],
     perTxNativeCapBase,
     recipients: [...new Set(sends.flatMap((rule) => valuesOf(rule, "to", "in")))],
     caps,
     isLaunch: read.some(isLaunchRule),
     launchCalls: [...new Set(read.flatMap(launchFunctionOf))],
     functions: [
-      ...new Set(calls.map((rule) => rule.name.slice(callPrefix.length).replace(onChain, ""))),
+      ...new Set([
+        ...calls.map((rule) => rule.name.slice(callPrefix.length).replace(onChain, "")),
+        ...bridges.flatMap((rule) => callIn(rule)?.abi.name ?? []),
+      ]),
     ],
     bridges: heldBridgesOf(read, chainIds),
   };

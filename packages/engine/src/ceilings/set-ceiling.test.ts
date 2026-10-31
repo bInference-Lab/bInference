@@ -381,7 +381,10 @@ async function startedWithBridge(): Promise<TestEngine> {
   const bridge: Venue = {
     ...base,
     id: "fake-bridge",
-    contracts: base.contracts.map((item) => Object.assign({}, item, { calls })),
+    // As Across: a bridge deposit and a bridge wallet's call on its contract, which is its spender.
+    contracts: base.contracts.map((item) =>
+      Object.assign({}, item, { calls, spenders: ["router"] }),
+    ),
   };
   const test = await startTestEngine({ chains, venues: [base, bridge] });
   for (const item of [first, second, launchWallet]) {
