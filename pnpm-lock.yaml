@@ -379,9 +379,15 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:packages/core
+      '@binference/custody-privy':
+        specifier: workspace:*
+        version: link:packages/custody-privy
       '@binference/i18n':
         specifier: workspace:*
         version: link:packages/i18n
+      '@binference/platform':
+        specifier: workspace:*
+        version: link:packages/platform
       '@binference/protocol':
         specifier: workspace:*
         version: link:packages/protocol

@@ -12,7 +12,7 @@ Rules for this package:
   its own SDK client whose `fetch` rides on the core `Http` port and stops with the call's signal;
   the SDK's retries and logs stay off. The exceptions are `POST /v1/aggregations` and
   `DELETE /v1/aggregations/<id>`, which the SDK does not offer: `src/privy/aggregations.ts` sends
-  them on the same port, as Privy's recipe does (decision 0149). Only the custody suite's cleanup
+  them on the same port, as Privy's recipe does (decision 0149). Only the custody suite's sweep
   deletes one, signed by the key quorum that owns it over the payload `authorizationPayload`
   writes, as the SDK's own deletes are. Remove them once the SDK has the calls. A signing request is sent once; a lost answer is
   `custody.sign_unknown`, and the engine decides what follows.
@@ -50,3 +50,12 @@ Rules for this package:
 - `src/testing/` holds the Privy fake, the fake signer and the fixtures; only it imports viem. The
   custody contract in `src/contracts/` runs against the fake in `pnpm check` and against the Privy
   test app when `BINFERENCE_PRIVY_TESTS=1` and the app's id and secret are in the environment.
+- The live suite keeps its owner key and the ids of every key quorum, policy and aggregation it
+  makes in the OS keychain (`leftoverKeychainService`) before it makes anything, since Privy lists
+  no aggregations and deletes an owned one only with its owner's signature. It sweeps what earlier
+  runs left before it starts and its own leftovers at the end; `pnpm privy:sweep [--dry-run]` runs
+  the same sweep by hand. A record and its key go only once every policy and aggregation it names
+  is gone. Two live runs never run at once: a sweep removes what any kept record names, a running
+  suite's too. The removals the sweep sends (a wallet's policies, a policy, a key quorum) live in
+  `src/testing/` and never in the runtime code; `platform` is imported in `src/contracts/` only,
+  for the keychain.

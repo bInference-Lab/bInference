@@ -725,6 +725,12 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   runs slower or faster, or adds a kill point, a pass at one run per kill point and
   `pnpm crash:times reports/crash/<file>.jsonl` refresh the times in the same change. Enforcer:
   `config/vitest/crash-reporter.ts`, `scripts/crash-times.mts`, and `crash.yml`'s upload step.
+- **Rule:** a live suite against an outside service's test app keeps what its cleanup needs
+  before it makes anything, so a run that dies leaves nothing it cannot remove. The Privy suite
+  (`BINFERENCE_PRIVY_TESTS=1`) keeps its owner key and the ids it makes in the OS keychain, sweeps
+  what earlier runs left before it starts and its own leftovers at the end, and `pnpm privy:sweep`
+  runs that sweep by hand. Enforcer: `sweepLeftovers` in custody-privy's test tooling;
+  `review-diff`.
 - **Rule:** image tests live in a package's `src/image/` and run in the image suite
   (`pnpm test:image`, nightly in CI on Linux amd64,
   [decision 0293](adr/0293-a-nightly-job-builds-and-runs-the-docker-image-on-linux-amd64.md)),
