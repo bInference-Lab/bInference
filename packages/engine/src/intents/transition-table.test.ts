@@ -17,6 +17,7 @@ const beforeSigning: readonly IntentState[] = [
 const expected: readonly (readonly [IntentState, string, IntentState])[] = [
   ["proposed", "policy_passed", "checked"],
   ["proposed", "policy_refused", "rejected_policy"],
+  ["proposed", "name_refused", "failed_check"],
   ["checked", "quote_built", "quoted"],
   ["checked", "quote_failed", "failed_check"],
   ["quoted", "risk_passed", "assessed"],
@@ -40,6 +41,7 @@ const expected: readonly (readonly [IntentState, string, IntentState])[] = [
   ["confirmed", "paper_fill_recorded", "paper_filled"],
   ["confirmed", "paper_holding_short", "failed_check"],
   ["confirmed", "launch_read_failed", "failed_check"],
+  ["confirmed", "name_moved", "failed_check"],
   ["confirmed", "queue_took", "executing"],
   ["executing", "steps_included", "included"],
   ["executing", "step_reverted", "failed_onchain"],

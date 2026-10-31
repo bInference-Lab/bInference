@@ -66,7 +66,12 @@ export type RiskReason = (typeof riskReasons)[number];
  * 0271); `own_wallet_recipient` one whose launchpad worked out, at its quote or its build, an
  * outside-only setting that names one of the install's own wallets (decisions 0277 and 0280);
  * `launch_paused`, `start_unpriced`, `start_unreachable` and `dry_run_failed` one whose launchpad
- * could not quote it for that reason, each before any upload (decision 0284).
+ * could not quote it for that reason, each before any upload (decision 0284). `name_unresolved`
+ * is a send whose `.bnb` name points to no address and `name_contract` one whose name points to a
+ * contract, both at the resolve step; `name_moved` a send by name whose name, read again as the
+ * wallet queue takes it, points elsewhere than its card or nowhere (spec 6, section 5);
+ * `spender_unlisted` an approval revoke whose spender the chain registry does not list, so no
+ * approval binference makes can name it (decision 0309).
  */
 export const checkReasons = [
   "no_route",
@@ -91,6 +96,10 @@ export const checkReasons = [
   "start_unpriced",
   "start_unreachable",
   "dry_run_failed",
+  "name_unresolved",
+  "name_contract",
+  "name_moved",
+  "spender_unlisted",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */
@@ -99,8 +108,16 @@ export type CheckReason = (typeof checkReasons)[number];
 /** A check reason of the quote and build step. */
 export type QuoteFailure = Exclude<
   CheckReason,
-  "simulation_reverted" | "effects_differ" | "launch_moved" | PinFailure
+  | "simulation_reverted"
+  | "effects_differ"
+  | "launch_moved"
+  | PinFailure
+  | NameFailure
+  | "name_moved"
 >;
+
+/** Why a send's `.bnb` name ended it at the resolve step: no address, or a contract's. */
+export type NameFailure = Extract<CheckReason, "name_unresolved" | "name_contract">;
 
 /** Why a token launch's pin never came: the launchpad reported a failure, or the wait ran out. */
 export type PinFailure = Extract<CheckReason, "pin_failed" | "pin_timeout">;

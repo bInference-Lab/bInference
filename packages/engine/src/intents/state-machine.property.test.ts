@@ -86,20 +86,17 @@ function cardVersion(facts: Facts, status: IntentStatus): number {
   return (status.card?.version ?? 1) + facts.versionOffset;
 }
 
+const lapsing = (facts: Facts, at: At) => ({ expiresAtMs: at.nowMs + facts.confirmationTtlMs });
+
 function queueFacts(facts: Facts, at: At): QueueFacts {
   const base = {
     isAgentLive: facts.isAgentLive,
     hasPolicyPassed: facts.hasPolicyPassed,
     isAuthorizationValid: facts.isAuthorizationValid,
   };
-  const confirmation = {
-    cardVersion: cardVersion(facts, at.status),
-    expiresAtMs: at.nowMs + facts.confirmationTtlMs,
-  };
+  const confirmation = { cardVersion: cardVersion(facts, at.status), ...lapsing(facts, at) };
   return facts.hasConfirmation ? { ...base, confirmation } : base;
 }
-
-const lapsing = (facts: Facts, at: At) => ({ expiresAtMs: at.nowMs + facts.confirmationTtlMs });
 
 const builders: Builders = {
   policy_passed: () => ({ type: "policy_passed" }),
@@ -143,6 +140,8 @@ const builders: Builders = {
   paper_fill_recorded: () => ({ type: "paper_fill_recorded" }),
   paper_holding_short: () => ({ type: "paper_holding_short" }),
   launch_read_failed: () => ({ type: "launch_read_failed", reason: "launch_unread" }),
+  name_refused: () => ({ type: "name_refused", reason: "name_unresolved" }),
+  name_moved: () => ({ type: "name_moved" }),
   queue_took: (facts, at) => ({ type: "queue_took", ...queueFacts(facts, at) }),
   steps_included: () => ({ type: "steps_included" }),
   step_reverted: () => ({ type: "step_reverted" }),

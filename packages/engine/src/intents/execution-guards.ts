@@ -62,6 +62,19 @@ export function failLaunchRead({
   return status.isPaper ? err("paper_intent") : ok({ reason: trigger.reason });
 }
 
+/**
+ * `confirmed` to `failed_check` with `name_moved`: the wallet queue read a live send's name again
+ * and found it pointing elsewhere than its card (spec 6, section 5); nothing was signed.
+ */
+export function failMovedName({
+  status,
+}: GuardInput<"name_moved">): Result<IntentChange, TransitionProblem> {
+  if (status.kind !== "send") {
+    return err("not_send");
+  }
+  return status.isPaper ? err("paper_intent") : ok({ reason: "name_moved" });
+}
+
 // A tapped intent needs the confirmation of its current card version, unexpired; a fill or an
 // auto-mode intent needs its authorization to still hold.
 function approvalProblem(

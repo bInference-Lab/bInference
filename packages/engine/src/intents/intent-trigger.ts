@@ -3,6 +3,7 @@ import type { CardRules } from "./card-rules.js";
 import type {
   FillBreach,
   LaunchReadFailure,
+  NameFailure,
   PinFailure,
   PolicyRejection,
   QuoteFailure,
@@ -37,6 +38,8 @@ export const triggerTypes = [
   "paper_fill_recorded",
   "paper_holding_short",
   "launch_read_failed",
+  "name_refused",
+  "name_moved",
   "queue_took",
   "steps_included",
   "step_reverted",
@@ -168,6 +171,13 @@ export interface TriggerFacts {
    * the read failed, or the launchpad no longer holds the token on that curve (decision 0218).
    */
   readonly launch_read_failed: { readonly reason: LaunchReadFailure };
+  /** A send's `.bnb` name, resolved before anything was quoted, points to no person's address. */
+  readonly name_refused: { readonly reason: NameFailure };
+  /**
+   * The wallet queue, taking a send by name, read its name again and found it pointing elsewhere
+   * than its card, or nowhere: nothing is signed.
+   */
+  readonly name_moved: NoFacts;
   readonly queue_took: QueueFacts;
   /** Every step's receipt has status 1; for a rescue, every step has its last outcome. */
   readonly steps_included: NoFacts;

@@ -174,7 +174,8 @@ counted once, [decision 0215](../DECISIONS.md#d0215), on a token with no buy tax
 Check reasons for `failed_check`: `name_unresolved` and `name_contract` at the resolve step, and
 `name_moved` when the queue takes a send by name; `nothing_to_claim` (a claim with nothing ready)
 and `below_min_stake` (a stake under the venue's least) at the venue's quote, before any card;
-`no_route`, `venue_down`, `decode_mismatch`,
+`spender_unlisted` (an approval revoke whose spender the chain registry does not list,
+[decision 0309](../DECISIONS.md#d0309)) at its quote, before any card; `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
 token the wallet holds none of, or whose share rounds to zero; or a paper sale or swap whose paper
 portfolio holds less of its input at the fill than its confirmed quote spends), `balance_unread` (a

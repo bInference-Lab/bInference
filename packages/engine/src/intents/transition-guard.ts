@@ -39,7 +39,8 @@ export type TransitionProblem =
   | "not_auto_order"
   | "no_steps"
   | "pin_missing"
-  | "not_launch";
+  | "not_launch"
+  | "not_send";
 
 /** What a transition writes besides the new state. */
 export interface IntentChange {

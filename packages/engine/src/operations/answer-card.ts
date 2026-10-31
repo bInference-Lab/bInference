@@ -156,6 +156,7 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   start_unpriced: "quote.no_route",
   start_unreachable: "quote.no_route",
   dry_run_failed: "quote.no_route",
+  spender_unlisted: "quote.no_route",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

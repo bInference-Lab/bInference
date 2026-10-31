@@ -4,6 +4,7 @@ import {
   bridgeDeliveryWaitMs,
   cancelIntent,
   cancelUnsent,
+  failMovedName,
   failOnchain,
   failUnsent,
   fillOnPaper,
@@ -159,6 +160,27 @@ describe("the wallet queue taking an intent", () => {
       lapsed,
     );
     expect(takeIntoQueue(queue({ ...live }, filled))).toStrictEqual(lapsed);
+  });
+});
+
+function moved(status: IntentStatus): GuardInput<"name_moved"> {
+  return { status, trigger: { type: "name_moved" }, nowMs: 0 };
+}
+
+describe("a send whose name moved before the queue took it", () => {
+  it("ends a live send with name_moved and nothing signed", () => {
+    expect(failMovedName(moved({ ...confirmed, kind: "send" }))).toStrictEqual({
+      ok: true,
+      value: { reason: "name_moved" },
+    });
+  });
+
+  it("refuses any other kind, and a paper send, which never reaches a queue", () => {
+    expect(failMovedName(moved(confirmed))).toStrictEqual({ ok: false, error: "not_send" });
+    expect(failMovedName(moved({ ...confirmed, kind: "send", isPaper: true }))).toStrictEqual({
+      ok: false,
+      error: "paper_intent",
+    });
   });
 });
 

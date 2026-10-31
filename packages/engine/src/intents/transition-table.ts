@@ -12,6 +12,7 @@ import {
   cancelIntent,
   cancelUnsent,
   failLaunchRead,
+  failMovedName,
   failOnchain,
   failUnsent,
   fillOnPaper,
@@ -86,6 +87,14 @@ function failPin(input: GuardInput<"pin_failed">): Result<IntentChange, Transiti
   return input.status.kind === "launchToken" ? storeReason(input) : err("not_launch");
 }
 
+// Only a send names a `.bnb` name, which its resolve step reads before anything is quoted.
+function refuseName({
+  status,
+  trigger,
+}: GuardInput<"name_refused">): Result<IntentChange, TransitionProblem> {
+  return status.kind === "send" ? ok({ reason: trigger.reason }) : err("not_send");
+}
+
 /**
  * The intent state machine's transition table (spec 6, section 3). Rows beyond the spec's table
  * come from its text: a reorg moves `included` back to `executing` (section 3), and reconciliation
@@ -95,6 +104,7 @@ function failPin(input: GuardInput<"pin_failed">): Result<IntentChange, Transiti
 export const transitionTable: TransitionTable = {
   policy_passed: [{ from: ["proposed"], to: "checked", guard: pass }],
   policy_refused: [{ from: ["proposed"], to: "rejected_policy", guard: storeReason }],
+  name_refused: [{ from: ["proposed"], to: "failed_check", guard: refuseName }],
   quote_built: [
     { from: ["checked"], to: "quoted", guard: ({ trigger }) => ok({ quote: trigger.quote }) },
   ],
@@ -125,6 +135,7 @@ export const transitionTable: TransitionTable = {
   paper_fill_recorded: [{ from: ["confirmed"], to: "paper_filled", guard: fillOnPaper }],
   paper_holding_short: [{ from: ["confirmed"], to: "failed_check", guard: shortOnPaper }],
   launch_read_failed: [{ from: ["confirmed"], to: "failed_check", guard: failLaunchRead }],
+  name_moved: [{ from: ["confirmed"], to: "failed_check", guard: failMovedName }],
   queue_took: [{ from: ["confirmed"], to: "executing", guard: takeIntoQueue }],
   steps_included: [{ from: ["executing"], to: "included", guard: pass }],
   step_reverted: [{ from: ["executing"], to: "failed_onchain", guard: failOnchain("reverted") }],

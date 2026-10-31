@@ -286,6 +286,19 @@ describe("moving an intent", () => {
     ]);
   });
 
+  it("ends a send whose name points to no person at the resolve step, and only a send", () => {
+    const trigger = { type: "name_refused", reason: "name_contract" } as const;
+    const send = unwrap(machineAt(0).apply(statusAt("proposed", { kind: "send" }), trigger));
+    expect([send.status.state, send.status.reason]).toStrictEqual([
+      "failed_check",
+      "name_contract",
+    ]);
+    expect(machineAt(0).apply(statusAt("proposed"), trigger)).toStrictEqual({
+      ok: false,
+      error: "not_send",
+    });
+  });
+
   it("records why an intent was cancelled on its event", () => {
     const trigger: IntentTrigger = {
       type: "cancel_requested",

@@ -35,9 +35,16 @@ import { type ButtonPress, chatUpdateSchema } from "../updates/chat-update.schem
 import { createTelegramCards } from "./create-telegram-cards.js";
 
 const live = { signal: new AbortController().signal };
-// A re-quote fails for every check reason but the queue's own read of a launch (decision 0218).
+// A re-quote fails for every check reason but the queue's own reads of a launch (decision 0218)
+// and of a send's name, and the resolve step's read of that name (decision 0308).
+const unquoted: ReadonlySet<string> = new Set([
+  "launch_moved",
+  "name_unresolved",
+  "name_contract",
+  "name_moved",
+]);
 const requoteReasons = checkReasons.filter(
-  (reason): reason is QuoteFailure | SimulationFailure => reason !== "launch_moved",
+  (reason): reason is QuoteFailure | SimulationFailure => !unquoted.has(reason),
 );
 const display = () => ({ locale: "en", timeZone: "UTC" }) as const;
 const ref = "q3Zr_x9-AbCdEfGh";
