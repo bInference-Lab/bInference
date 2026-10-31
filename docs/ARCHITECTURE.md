@@ -991,10 +991,14 @@ Decided in decisions [0022](DECISIONS.md#d0022) and [0023](DECISIONS.md#d0023).
   ordering). A chain is a data file in `@binference/chains` that names its family.
 - **What changes where.**
   - Another EVM chain (Base, opBNB): a file in `chains`, its venue addresses and its fork tests.
-  - Solana: a `chain-solana` package that passes the family contract suites.
+  - Solana: a `chain-solana` package. In v1 it is read-only: its address codec and its delivery
+    reader pass their contract suites, and it signs nothing
+    ([decision 0298](DECISIONS.md#d0298)).
   - Neither touches `engine`, `signer` or `protocol`.
-- **v1 enables BSC only.** The engine, the signer and the policy never contain a chain literal; a
-  check script enforces it.
+- **v1 trades on BSC only.** Bridges deliver to Ethereum, Base, Arbitrum, Robinhood Chain and
+  Solana, which binference reads to see a delivery arrive and never signs on
+  ([decision 0297](DECISIONS.md#d0297)). The engine, the signer and the policy never contain a
+  chain literal; a check script enforces it.
 
 <a id="section-22"></a>
 

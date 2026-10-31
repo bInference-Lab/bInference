@@ -6,13 +6,22 @@ operations follow spec 5 ([decision 0085](../DECISIONS.md#d0085)); amended by de
 [0104](../DECISIONS.md#d0104), [0125](../DECISIONS.md#d0125), [0128](../DECISIONS.md#d0128),
 [0133](../DECISIONS.md#d0133), [0134](../DECISIONS.md#d0134), [0155](../DECISIONS.md#d0155),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0182](../DECISIONS.md#d0182),
-[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0246](../DECISIONS.md#d0246), [0247](../DECISIONS.md#d0247), [0248](../DECISIONS.md#d0248), [0255](../DECISIONS.md#d0255), [0256](../DECISIONS.md#d0256), [0285](../DECISIONS.md#d0285), [0286](../DECISIONS.md#d0286) and [0296](../DECISIONS.md#d0296); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
+[0183](../DECISIONS.md#d0183), [0184](../DECISIONS.md#d0184), [0185](../DECISIONS.md#d0185), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0207](../DECISIONS.md#d0207), [0208](../DECISIONS.md#d0208), [0220](../DECISIONS.md#d0220), [0243](../DECISIONS.md#d0243), [0244](../DECISIONS.md#d0244), [0245](../DECISIONS.md#d0245), [0246](../DECISIONS.md#d0246), [0247](../DECISIONS.md#d0247), [0248](../DECISIONS.md#d0248), [0255](../DECISIONS.md#d0255), [0256](../DECISIONS.md#d0256), [0285](../DECISIONS.md#d0285), [0286](../DECISIONS.md#d0286), [0296](../DECISIONS.md#d0296), [0297](../DECISIONS.md#d0297), [0298](../DECISIONS.md#d0298) and [0299](../DECISIONS.md#d0299); the agent runtime's operations follow [spec 8](runtime.md) (accepted 2026-10-11). Accepted by the owner on
 2026-10-12: the market reads `market/scan`, `market/chart`, `wallet/activity` and `launch/list`;
 the agent's questions (`turn/ask`, `chat/answer`); alert conditions and wake-ups, and the cap on
 tracked wallets (section 8.4); the pushes `launch/new`, `inbox/alertFired`, `chat/question` and
 `chat/questionClosed`; `QuoteView.place`, the P&L fields of `PnlView`, `OrderView.endReason`, the
 alert state `ended`, `update/check`'s `releaseNotes`; the id prefix `qst_`; the error areas
 `question`, `alert` and `market`, and `wallet.track_limit`.
+
+Accepted by the owner on 2026-10-30: accounts on other chains, Solana's among them
+(section 1); the webhook listener's body and rate (section 2.2); `staking/options`, `bridge/quote`
+and what `name/resolve` answers and refuses (section 7.3); webhook rules' bounds (section 7.5);
+saved addresses on other chains (section 7.6); the permission review of `plugin/add`
+(section 7.8); the `remote/*` results and `identity/register`'s description (section 7.9); sends,
+stakes and bridges (section 8.1); the staking, bridge and delivery views and the portfolio's
+staking and in-transit parts (section 8.3); and the new error codes (section 10). Each is an
+addition to protocol v1.
 
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
@@ -25,18 +34,18 @@ is a client with scopes, and none of them can confirm a transaction unless its s
 These follow [ENGINEERING.md section 24.1](../ENGINEERING.md#section-24-1) and hold everywhere
 below.
 
-| Thing          | Rule                                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------- |
-| Encoding       | UTF-8 JSON, one object per WebSocket text message                                                       |
-| Amounts        | `{ asset: AssetRef, base: string }`; `base` is a decimal string of base units (`"1500000000000000000"`) |
-| USD            | `usdMicros: string`, a decimal string of micro-dollars (`"123450000"` is $123.45)                       |
-| Rates          | Integers in basis points (`slippageBps: 50` is 0.5%)                                                    |
-| Times          | Epoch milliseconds in UTC, as numbers, in fields ending `At`                                            |
-| Ids            | UUIDv7 strings with a type prefix (section 1.1)                                                         |
-| Chain ids      | CAIP-2 `ChainRef` (`eip155:56`), CAIP-10 `AccountRef`, CAIP-19 `AssetRef`                               |
-| Optional       | A missing optional field is absent, never `null`                                                        |
-| Unknown fields | Clients ignore fields they do not know; the engine rejects unknown fields in `args`                     |
-| Paging         | Args `{ cursor?: string, limit?: number }` (default 50, at most 200); result `{ items, next?: string }` |
+| Thing          | Rule                                                                                                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Encoding       | UTF-8 JSON, one object per WebSocket text message                                                                                                                                                                            |
+| Amounts        | `{ asset: AssetRef, base: string }`; `base` is a decimal string of base units (`"1500000000000000000"`)                                                                                                                      |
+| USD            | `usdMicros: string`, a decimal string of micro-dollars (`"123450000"` is $123.45)                                                                                                                                            |
+| Rates          | Integers in basis points (`slippageBps: 50` is 0.5%)                                                                                                                                                                         |
+| Times          | Epoch milliseconds in UTC, as numbers, in fields ending `At`                                                                                                                                                                 |
+| Ids            | UUIDv7 strings with a type prefix (section 1.1)                                                                                                                                                                              |
+| Chain ids      | CAIP-2 `ChainRef` (`eip155:56`), CAIP-10 `AccountRef`, CAIP-19 `AssetRef`; Solana is `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`, its accounts base58 and its tokens `…/token:<mint>` ([decision 0298](../DECISIONS.md#d0298)) |
+| Optional       | A missing optional field is absent, never `null`                                                                                                                                                                             |
+| Unknown fields | Clients ignore fields they do not know; the engine rejects unknown fields in `args`                                                                                                                                          |
+| Paging         | Args `{ cursor?: string, limit?: number }` (default 50, at most 200); result `{ items, next?: string }`                                                                                                                      |
 
 <a id="section-1-1"></a>
 
@@ -123,8 +132,13 @@ by default, which Tailscale `funnel` publishes. It serves one route and nothing 
 - `POST /hook/:ruleId/:secret` with a JSON body of at most 16 KiB.
 - `202` when the alert is accepted, `404` for an unknown rule or wrong secret (the same answer for
   both), `409` for a repeat, `429` above the rule's rate.
-- A repeat is the same `id` field in the body, or the same body hash, within 10 minutes.
+- A repeat is the same `id` field in the body, or the same body hash, within 10 minutes. `id` is a
+  string of at most 128 characters; nothing else in the body is read: the rule's bounds decide
+  every fill ([decision 0299](../DECISIONS.md#d0299)).
+- A rule's rate is the alerts it accepts in any 60 seconds, its `ratePerMinute`.
 - The secret is 32 random bytes in base64url; only its SHA-256 is stored.
+- A rule's URL answers only while the rule is `active`: before its card's Confirm, and after it is
+  deleted or rotated, the old URL gets the same `404`.
 
 <a id="section-3"></a>
 
@@ -341,21 +355,23 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 
 ### 7.3 Market reads
 
-| Operation              | Scope            | Args → result                                                                                                                       |
-| ---------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag; live before paper, each with its own total, never summed  |
-| `portfolio/pnl`        | `read`           | `{ agent, from, to, cards? }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137)); P&L cards (below)   |
-| `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                       |
-| `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                      |
-| `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)         |
-| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071))                                       |
-| `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                       |
-| `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                            |
-| `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                 |
-| `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, priceScale?, source }` (below) |
-| `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }` of a tracked wallet (below)       |
-| `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                  |
-| `launchpad/list`       | `read`           | `{ chain }` → `{ items: [LaunchpadView] }`: each launchpad the engine runs on the chain, where it takes the picture, its settings   |
+| Operation              | Scope            | Args → result                                                                                                                                                   |
+| ---------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `portfolio/get`        | `read`           | `{ agent?, wallet? }` → balances, USD values, positions, P&L, paper flag; live before paper, each with its own total, never summed                              |
+| `portfolio/pnl`        | `read`           | `{ agent, from, to, cards? }` → P&L by position, live and paper apart ([decision 0137](../DECISIONS.md#d0137)); P&L cards (below)                               |
+| `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                                                   |
+| `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                                                  |
+| `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)                                     |
+| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt, reverse? }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071)); below                                                  |
+| `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                                                   |
+| `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                                                        |
+| `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                                             |
+| `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, priceScale?, source }` (below)                             |
+| `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }` of a tracked wallet (below)                                   |
+| `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                                              |
+| `launchpad/list`       | `read`           | `{ chain }` → `{ items: [LaunchpadView] }`: each launchpad the engine runs on the chain, where it takes the picture, its settings                               |
+| `staking/options`      | `read`           | `{ chain, agent?, venue?: stakehub \| slisbnb }` → `{ items: [StakingOptionView], positions?: [StakingPositionView], assets }` (below)                          |
+| `bridge/quote`         | `read`           | `{ agent, wallet?, amount: Amount, toChain: ChainRef, to?: { entry } \| { rescue: true } }` → `{ items: [BridgeRouteView], assets }`; creates no intent (below) |
 
 - `asset/search` reads the chain registry and the positions store, never the web. A query the
   chain's family reads as an address names that token: `items` holds it with the registry's
@@ -428,6 +444,33 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   `ActivityItem` is
   `{ at, block, tx, side: buy | sell, asset, amount, counterAsset, counterAmount, valueUsdMicros?, shareSoldBps?, venue? }`;
   `shareSoldBps` is the share of the account's holding a sale took, as the watcher saw it.
+- `name/resolve` takes a `.bnb` name, normalized as SPACE ID normalizes names before it hashes
+  them; a name that does not end in `.bnb` or does not normalize is `protocol.bad_args`. The
+  engine reads SPACE ID's registry and the name's resolver on BNB Smart Chain at the latest block,
+  every call, and caches nothing. It answers the address record as a CAIP-10 account of BNB Smart
+  Chain. `reverse` says what the address's reverse record names: `matches` (this name), `differs`
+  (another name) or `none`. It fails `name.not_found` for a name with no resolver, no address
+  record, the zero address or an expired registration; `name.contract` for an address that holds
+  code, since a send by name pays a person, never a contract; and `name.resolver_down`, retryable,
+  when the chain does not answer. A send by name resolves the same way when it is proposed and again
+  when its wallet's queue takes it (section 8.1, spec 6).
+- `staking/options` reads each staking venue the agent's venues allow on `chain`, or `venue`
+  alone. A `StakingOptionView` is
+  `{ venue: stakehub, validator: AccountRef, name, commissionBps, aprBps?, jailed, unbondingSeconds, minAmount? }`
+  for each validator StakeHub lists at the latest block, or
+  `{ venue: slisbnb, rate, unbondingSeconds?, minAmount? }`, `rate` the BNB one slisBNB is worth, a
+  decimal string from Lista's stake manager. `aprBps` is absent when the venue gives none. `name`
+  is the validator's moniker, set by its operator: clients escape it, the card cuts it to 32
+  characters, and the `staking_options` tool marks its turn ([rule 13](../ARCHITECTURE.md#rule-13)).
+  With `agent`, `positions` holds the agent's staking positions in its mode, live or paper
+  (section 8.3). A venue that does not answer fails `quote.venue_down`, retryable.
+- `bridge/quote` reads each bridge route the chain registry lists from the wallet's chain to
+  `toChain` for `amount.asset`, at each bridge venue the agent's venues allow
+  ([decision 0297](../DECISIONS.md#d0297)), best `minOut` first, as `BridgeRouteView`s
+  (section 8.3). `to`, when given, names the recipient the route is priced for, checked as
+  section 8.1 checks a bridge's. A `toChain` the registry lists as no destination is
+  `protocol.bad_args`; no route answers `quote.no_route`, and a venue that does not answer
+  `quote.venue_down`. Paper agents quote too: a quote moves nothing.
 - Names and symbols in `assets` of these results are set by whoever deployed each token
   ([rule 3](../ARCHITECTURE.md#rule-3)); an agent tool that returns them marks its turn
   ([spec 8, section 5.4](runtime.md#section-5-4)).
@@ -532,6 +575,28 @@ filter naming a launchpad the engine does not run, and an `expiresAt` not ahead;
 default. `alert/list` pages oldest first, in every state unless one is named. A client with
 `propose` alone deletes only the alerts it set (`auth.scope`).
 
+Webhook rules follow [decision 0299](../DECISIONS.md#d0299):
+
+- `WebhookRuleRequest` is an auto order's bounds (section 8.2) without a trigger:
+  `{ agent, wallet?, name, token, side, size, spend?, worstPrice?, maxSlippageBps?, expiresAt?, maxFills?, ratePerMinute? }`.
+  `name` is the alert's name, 1 to 64 characters, shown on its card. `size` and `spend` are a buy
+  order's or a sell order's (section 8.2). `ratePerMinute` is 1 to 60, default 1. `expiresAt`
+  defaults to 30 days ahead. With no `maxFills` a rule fills until it expires or is deleted.
+- `webhookRule/create` stores the rule `awaiting_confirmation` and a `webhookRule` intent
+  (`{ kind: "webhookRule", rule }`) whose one card shows its bounds and rate, and answers the rule
+  with its URL, shown this once. The rule is `active` only on the Confirm of that card; Cancel, the
+  card's timer or a freeze ends it as `deleted`. Its URL is `<webhook base>/hook/<rule>/<secret>`,
+  the base `remote/status`'s `webhookUrl`, else the loopback listener's.
+- It refuses, storing nothing, what `order/create` refuses for a buy or sell order of the same
+  token (section 7.5, auto orders), `order.live_fills_off` for a live agent while live webhook
+  fills are off, `protocol.bad_args` for a rate outside 1 to 60 or a `name` that is empty or too
+  long, and `webhook.too_many` for an agent's 21st rule active or awaiting its card.
+- Each accepted alert becomes a fill intent authorized by the rule
+  (`authorizedBy: { webhookRule, alertId }`), through the fill path of an auto order (spec 6,
+  section 5). `webhookRule/delete` and `webhookRule/rotateUrl` of a rule that is not active or
+  awaiting its card fail `webhook.not_found`; a rotation answers the new URL once, and the old
+  one gets `404` at once. `WebhookRuleView` gains `ratePerMinute` and `lastAlertAt?`.
+
 Schedules follow decisions [0231](../DECISIONS.md#d0231) to [0233](../DECISIONS.md#d0233):
 
 - `when.cron` is five fields, `minute hour day month weekday`: numbers, `*`, lists, ranges and
@@ -619,6 +684,18 @@ Auto orders follow [decision 0189](../DECISIONS.md#d0189):
 | `address/list`            | `read`                                               |       | `{ agent }` → entries with `usableAt`, and `room?: { used, most }`: the saved addresses on other chains and the most the ceiling's rule limit holds ([decision 0297](../DECISIONS.md#d0297)) |
 | `address/add`             | `admin`, local                                       | ✓     | `{ agent, chain, address, label, ownerKey }` → entry; also saved in the ceiling ([decision 0091](../DECISIONS.md#d0091)); a launch wallet of the install is `address.launch_wallet`          |
 | `address/remove`          | `confirm`                                            | ✓     | `{ entry }` → `{}`                                                                                                                                                                           |
+
+**Saved addresses on other chains** ([decisions 0297](../DECISIONS.md#d0297) and
+[0298](../DECISIONS.md#d0298)). `address/add`'s `chain` is a chain of the agent's wallets or a
+destination chain the registry lists; any other is `protocol.bad_args`. `address` is written as
+its chain's family writes it: a checksummed hex address on an `eip155` chain, a base58 address on
+Solana. The family's address codec checks it and gives its recipient bytes, 20 or 32, which the
+owner key saves into every ceiling of the agent with the chain's id; a text the codec refuses,
+such as a base58 string that is not 32 bytes, is `protocol.bad_args`. On Solana the engine reads
+the account first: an executable program, or an account another program than the System Program
+owns, is `address.not_wallet`. The entry's `address` is a CAIP-10 account of its chain, and a
+send or a bridge pays it only on that chain. Clients show the address whole, never shortened,
+since a Solana address carries no checksum.
 
 The engine decides what is stricter, and only a clearly stricter change applies at once: a lower
 cap, slippage, impact, tax or time, a higher liquidity floor, fewer venues, an
@@ -754,7 +831,7 @@ refuses) is `image.unreadable`; Telegram out of reach is `telegram.unreachable`
 | `model/list`     | `read`    |       |       | `{ agent? }` → configured models by role, with prices when known; with `agent`, `current: true` marks the model its next turn uses for each role ([decision 0204](../DECISIONS.md#d0204))                                                 |
 | `model/set`      | `confirm` | ✓     |       | `{ agent, role, model }` → the agent's models (`/ai`); a model not configured is `protocol.bad_args`, and the role's own configured model clears the pick                                                                                 |
 | `plugin/list`    | `read`    |       |       | → installed plugins, tiers, permissions, state                                                                                                                                                                                            |
-| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; asks for permission review                                                                                                                                                                                |
+| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash, accepted? }` → `{ job }`; the permission review (below)                                                                                                                                                                  |
 | `plugin/enable`  | `admin`   | ✓     |       | `{ plugin }` → plugin                                                                                                                                                                                                                     |
 | `plugin/disable` | `confirm` | ✓     |       | `{ plugin }` → plugin (braking)                                                                                                                                                                                                           |
 | `plugin/remove`  | `admin`   | ✓     |       | `{ plugin }` → `{}`                                                                                                                                                                                                                       |
@@ -762,6 +839,17 @@ refuses) is `image.unreadable`; Telegram out of reach is `telegram.unreachable`
 | `skill/read`     | `read`    |       |       | `{ agent, skill, file? }` → `{ skill, place, location, file, text }`: one file of a skill `skill/list` gives the agent, `SKILL.md` unless `file` names another; fails `skill.not_found`, and a path outside the skill `protocol.bad_args` |
 | `skill/add`      | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; the install lint runs first                                                                                                                                                                               |
 | `skill/remove`   | `admin`   | ✓     |       | `{ skill }` → `{}`                                                                                                                                                                                                                        |
+
+**The permission review** ([ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14)). A
+`plugin/add` without `accepted` reads the plugin's manifest and ends its job with
+`plugin.review_needed`, whose `details.review` is
+`{ plugin, version, source, hash, publisher?, provenance: verified | none, kinds, hosts, tools, configKeys, digest, widens?: { from, added } }`:
+what the plugin declares, `digest` the SHA-256 of those declarations. The same call with
+`accepted` set to that `digest` installs it; a `digest` that no longer matches is
+`plugin.review_needed` again. An update of an installed plugin is a `plugin/add` of its newer
+version: one that declares nothing more installs with the old acceptance, and one that declares
+more (`widens`: the hosts, tools, kinds or config keys it adds) waits for its own `accepted`, the
+old version running meanwhile.
 
 <a id="section-7-9"></a>
 
@@ -793,11 +881,11 @@ refuses) is `image.unreadable`; Telegram out of reach is `telegram.unreachable`
 | `report/create`      | `admin`                    | ✓     |       | `{}` → `{ job }`; unserved in v1 ([decision 0263](../DECISIONS.md#d0263)): `binference report` writes the redacted support bundle in the CLI, so it exists while the engine is stopped                                                                                                                                                                                                                                                                                                                                  |
 | `log/follow`         | `admin`                    |       |       | `{ level? }` → `{}`; lines arrive on topic `log`                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `log/unfollow`       | `admin`                    |       |       | `{}` → `{}`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| `remote/status`      | `read`                     |       |       | → Tailscale state, the Mini App and webhook URLs                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| `remote/enable`      | `admin`                    | ✓     | ✓     | `{ mini?, webhooks? }` → `{ job }`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `remote/disable`     | `confirm`                  | ✓     |       | `{}` → `{}` (braking)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `identity/get`       | `read`                     |       |       | `{ agent }` → the ERC-8004 registration, if any                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `identity/register`  | `propose`                  | ✓     |       | `{ agent }` → `IntentView` awaiting a tap ([decision 0071](../DECISIONS.md#d0071))                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `remote/status`      | `read`                     |       |       | → `RemoteView` (below)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `remote/enable`      | `admin`                    | ✓     | ✓     | `{ mini?, webhooks? }` → `{ job }`; the job ends with the `RemoteView` after the change (below)                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `remote/disable`     | `confirm`                  | ✓     |       | `{}` → `{}` (braking): removes what binference published, the engine's port stays on loopback                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `identity/get`       | `read`                     |       |       | `{ agent }` → `{ registration? }`: the agent's ERC-8004 registration, `{ registry: AccountRef, agentId, file, tx, registeredAt }`, absent when it has none                                                                                                                                                                                                                                                                                                                                                              |
+| `identity/register`  | `propose`                  | ✓     |       | `{ agent, description? }` → `IntentView` awaiting a tap ([decision 0071](../DECISIONS.md#d0071)); below                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `cex/status`         | `read`                     |       |       | → the Binance connection state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `cex/connect`        | `admin`                    | ✓     | ✓     | `{}` → `{ authorizeUrl }`; the OAuth flow returns to `127.0.0.1`                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `cex/disconnect`     | `confirm`                  | ✓     |       | `{}` → `{}`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
@@ -813,6 +901,27 @@ registered browser a push through its push service (RFC 8030), encrypted to the 
 the card, never an amount, an address or a name; the console shows the card from the engine, and
 a Confirm still needs the device's signed connection. A push service that answers 404 or 410
 drops the subscription ([decision 0158](../DECISIONS.md#d0158)).
+
+**Remote access** ([decision 0051](../DECISIONS.md#d0051)). `RemoteView` is
+`{ tailscale: absent | stopped | running, miniUrl?, webhookUrl?, published?: { mini, webhooks }, problems?: [code], checkedAt? }`.
+`miniUrl` is the `serve` address of the Mini App, `remote.publicUrl`; `webhookUrl` the `funnel`
+base of the webhook path, on a port of its own, never the Mini App's. `problems` names what
+`binference check` also fails: `logged_out` (Tailscale is not signed in), `https_off` (the
+tailnet has no HTTPS certificates), `funnel_denied` (the tailnet's policy does not let this
+machine use `funnel`), `funnel_extra` (`funnel` publishes more than the webhook path),
+`engine_exposed` (the engine's port answers on an address beyond loopback) and `serve_changed`
+(`serve` at the Mini App's address points somewhere binference did not set). `remote/enable`
+sets `serve` for `mini` and `funnel` for `webhooks`, writes `remote.publicUrl` and
+`remote.webhooks` through the config journal, and its job fails `remote.tailscale_missing`,
+`remote.logged_out`, `remote.https_off` or `remote.funnel_denied`, changing nothing.
+
+**Identity** ([decision 0071](../DECISIONS.md#d0071)). `identity/register` stores a
+`registerIdentity` intent whose one step registers the agent in the ERC-8004 identity registry
+the chain registry lists. Its registration file, stored on chain as a data URI, holds the agent's
+name, `description` (at most 280 characters, the owner's words, none when absent), the
+addresses of its live wallets and binference's version; its card shows every field. A paper agent's
+ends `rejected_policy` with `paper_only`, and an agent that has a registration fails
+`intent.identity_exists`, storing nothing.
 
 The owner's Telegram chat may run `config/change` past its `admin` scope for one patch alone,
 `{ owner: { locale } }`, which a `/lang` button sends ([decision 0134](../DECISIONS.md#d0134)).
@@ -851,13 +960,13 @@ Every request carries `agent`, an optional `wallet` (default: the agent's first 
 | `swap`             | `from: AssetRef`, `to: AssetRef`, `amount: { base } \| { percentBps }`, `maxSlippageBps?`                                                                                                                                                                                                   |
 | `buy`              | `token: AssetRef`, `spend: Amount` (BNB or a stablecoin), `maxSlippageBps?`; curve or pool chosen by the engine                                                                                                                                                                             |
 | `sell`             | `token: AssetRef`, `amount: { base } \| { percentBps }`, `receive?: AssetRef`, `maxSlippageBps?`                                                                                                                                                                                            |
-| `send`             | `amount: Amount`, `to: { address } \| { name } \| { entry }`                                                                                                                                                                                                                                |
+| `send`             | `amount: Amount`, `to: { address } \| { name } \| { entry }` (below)                                                                                                                                                                                                                        |
 | `revokeApproval`   | `token: AssetRef`, `spender: AccountRef`                                                                                                                                                                                                                                                    |
 | `lend`             | Not served: lending left v1 ([decision 0296](../DECISIONS.md#d0296)). v1 keeps the shape, `action: supply \| withdraw \| borrow \| repay`, `venue`, `amount: Amount`, and the engine refuses it with `intent.kind_unavailable`, storing nothing                                             |
-| `stake`            | `action: stake \| unstake \| claim`, `venue: stakehub \| slisbnb`, `validator?`, `amount?: Amount`                                                                                                                                                                                          |
-| `bridge`           | `amount: Amount`, `toChain: ChainRef`, `to: { entry } \| { rescue: true }` ([decision 0067](../DECISIONS.md#d0067))                                                                                                                                                                         |
+| `stake`            | `action: stake \| unstake \| claim`, `venue: stakehub \| slisbnb`, `validator?`, `amount?: Amount` (below)                                                                                                                                                                                  |
+| `bridge`           | `amount: Amount`, `toChain: ChainRef`, `to: { entry } \| { rescue: true }` ([decisions 0067](../DECISIONS.md#d0067) and [0297](../DECISIONS.md#d0297)); below                                                                                                                               |
 | `cexOrder`         | `market`, `side`, `type: market \| limit`, `size`, `price?` (plugin)                                                                                                                                                                                                                        |
-| `registerIdentity` | (none beyond `agent`)                                                                                                                                                                                                                                                                       |
+| `registerIdentity` | `description?` (created by `identity/register`, section 7.9)                                                                                                                                                                                                                                |
 | `launchToken`      | `venue: flap \| fourmeme \| geniusfun \| brew`, `name`, `symbol`, `image` (an upload id), `description?`, `links?`, `pairWith: AssetRef`, `firstBuy?: Amount`, `venueOptions?` (each venue's own settings, such as a tax, validated by its plugin) ([decision 0082](../DECISIONS.md#d0082)) |
 
 `buy` and `sell` name no venue: the engine picks the place, the token's launchpad curve or the
@@ -867,10 +976,37 @@ built, rounded down, never more than the wallet holds; `10000` sells all of it. 
 to the curve's quote token on a curve, and to the chain's coin in the pools. A `launchToken` in
 paper mode ends `rejected_policy` with `paper_only` (spec 6, section 4).
 
+**Sends.** `to.address` is a CAIP-10 account on the wallet's chain, and `to.entry` an address
+book entry on it; either must be the rescue address or a saved address, else the intent ends
+`rejected_policy` with `unsaved_address` ([decision 0091](../DECISIONS.md#d0091)). `to.name` is a
+`.bnb` name, resolved as `name/resolve` resolves it when the intent is proposed: its refusals end
+the intent `failed_check` with `name_unresolved` or `name_contract`, and its address must be saved
+as any other. The intent keeps the name and the address it resolved to (`IntentView.resolvedName`),
+the card shows both, and the address book keeps only the address. A send's card is drawn from what
+the engine resolved, never from the model's words.
+
+**Stakes** ([decision 0296](../DECISIONS.md#d0296)). On `stakehub`, `validator` is the
+validator's operator account and every action names it; on `slisbnb` none does. A `stake` names
+`amount` in the chain's coin; an `unstake` names it in BNB on `stakehub`, or in slisBNB on
+`slisbnb`; a `claim` names none and claims everything its venue lets the wallet claim now. A stake
+counts its USD value against the per-trade and 24-hour caps; an unstake and a claim count against
+neither. Every staking move pays only the agent's own wallet. Spec 6 holds their checks and auto
+mode.
+
+**Bridges** ([decision 0297](../DECISIONS.md#d0297)). `toChain` is a destination chain the
+registry lists; `to.entry` is an address book entry on `toChain`; `to.rescue` is allowed only on
+an EVM destination chain while the rescue address holds no code on the wallet's chain or on
+`toChain`. Anything else is `protocol.bad_args`. The engine takes the route with the best minimum
+received, as `bridge/quote` orders them; its quote names the delivered token, which may differ
+from the token sent. A bridge's `IntentView.delivery` follows it until the delivery or a refund is
+read.
+
 `rescue` intents are created only by `safety/rescue`, `unfreeze` intents only by `safety/unfreeze`
 (`{ kind: "unfreeze", agent? }`), `autoOrder` intents only by `order/create`
-(`{ kind: "autoOrder", order }`, [decision 0189](../DECISIONS.md#d0189)), and fill intents only by
-the engine for an auto order or webhook rule.
+(`{ kind: "autoOrder", order }`, [decision 0189](../DECISIONS.md#d0189)), `webhookRule` intents
+only by `webhookRule/create` (`{ kind: "webhookRule", rule }`,
+[decision 0299](../DECISIONS.md#d0299)), and fill intents only by the engine for an auto order or
+webhook rule.
 
 <a id="section-8-2"></a>
 
@@ -947,9 +1083,30 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   the balances of the agent's mode, its active and paused orders (at most 50), and its outflows of
   the last 24 hours against the caps in effect.
 - `IntentView`:
-  `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets }`.
+  `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets, resolvedName?, delivery? }`.
+  `resolvedName` is `{ name, address, resolvedAt }` for a send by name. `delivery` is a bridge's
+  `DeliveryView`; a change of it pushes `intent/changed`.
+- `StakingPositionView`:
+  `{ wallet, venue, validator?, staked: Amount, stakedValue?: Amount, unbonding: [{ amount, readyAt }], claimable: Amount, paper }`:
+  `staked` in the venue's own receipt token (a validator's credit shares on StakeHub, slisBNB on
+  Lista), `stakedValue` what it is worth in BNB now, `unbonding` what an unstake took out with when
+  each part can be claimed, `claimable` what a claim would take now.
+- `BridgeRouteView`:
+  `{ venue, toChain, sentAsset, deliveredAsset, amountIn, expectedOut, minOut, fees: [{ kind: bridge | relayer | gas, amount }], gas: Amount, etaSeconds, quotedAt, expiresAt }`:
+  `deliveredAsset` is a CAIP-19 asset of `toChain`, which may differ from `sentAsset`, and
+  `expectedOut` and `minOut` are amounts of it.
+- `DeliveryView`:
+  `{ state: in_transit | late | delivered | refunded, toChain, recipient: AccountRef, deliveredAsset, minOut, received?: Amount, fillTx?, refundTx?, statusUrl?, sentAt, lateAt?, settledAt? }`:
+  `in_transit` from the deposit's final block, `late` 2 hours after it, `delivered` only once the
+  destination chain's read found the payment (`fillTx`, `received`), `refunded` once the source
+  chain's read found the bridge paying the wallet back (`refundTx`). `statusUrl` is the venue's own
+  page for the deposit.
 - `PortfolioView`:
-  `{ balances: [{ wallet, amount, usdMicros?, paper }], positions: [{ wallet, asset, quantity, costUsdMicros, realizedUsdMicros, unrealizedUsdMicros?, paper }], totalUsdMicros, paperTotalUsdMicros?, assets }`.
+  `{ balances: [{ wallet, amount, usdMicros?, paper }], positions: [{ wallet, asset, quantity, costUsdMicros, realizedUsdMicros, unrealizedUsdMicros?, paper }], totalUsdMicros, paperTotalUsdMicros?, assets, staking?: [StakingPositionView], inTransit?: [{ intent, wallet, amount, usdMicros?, toChain, recipient, late }] }`.
+  A staked position counts once, at its `stakedValue`, its unbonding and claimable amounts beside
+  it. A bridge in transit counts once, at the value its units left their position with, until its
+  delivery read, when it leaves the agent, or its refund, which arrives back at its value
+  ([decision 0297](../DECISIONS.md#d0297)).
   Live holdings come first, then paper ones. `totalUsdMicros` sums the live balances with a known
   price, never a paper one; `paperTotalUsdMicros` sums the paper balances beside it, absent when
   the view holds none. The two are never added together.
@@ -1057,6 +1214,14 @@ every field given must hold, and an empty filter passes every launch. `launch/li
     (section 7.5). A client that meets a state it does not know treats the schedule as no longer
     active. `ScheduleView.outsideContent` is a new optional field, which the engine always sends:
     the schedule is marked, so its prompt may hold outside content.
+  - An `AccountRef` may name a chain of another family: a saved address on Solana is
+    `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:<base58>`. A client never assumes an address is hex,
+    and shows one it cannot read as it came.
+  - An intent's `kind` has a new value, `webhookRule`, the card of a webhook rule. A client that
+    meets a kind it does not know shows the card's lines from `intent/card`.
+  - `IntentView.resolvedName` and `IntentView.delivery`, `PortfolioView.staking` and
+    `PortfolioView.inTransit`, `WebhookRuleView.ratePerMinute` and `lastAlertAt`, and `address/list`'s
+    `room` are new optional fields.
   - `AlertView.state` has a new value, `ended`, beside `active`, `fired` and `deleted`: an alert
     whose `expiresAt` passed (section 8.4). It is a new value of an existing field, which this
     version allows as an addition. An alert in `ended` fires no more, like `fired` and `deleted`; a
@@ -1071,43 +1236,46 @@ every field given must hold, and an empty filter passes every launch. `launch/li
 owner: surfaces map `code` to an i18n message. `retryable` says whether the same call may succeed
 later unchanged.
 
-| Area       | Codes                                                                                                                                                                                                                                                     |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `protocol` | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`                                                                                                                                                           |
-| `auth`     | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`                                                                                                                                                               |
-| `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                                                                                                                                                                               |
-| `runtime`  | `unavailable`                                                                                                                                                                                                                                             |
-| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`, `file_missing`, `file_untrusted`                                                                                                                                                 |
-| `question` | `not_found`, `closed`                                                                                                                                                                                                                                     |
-| `image`    | `not_found`, `too_large`, `format`, `unreadable`                                                                                                                                                                                                          |
-| `alert`    | `not_found`, `too_many`                                                                                                                                                                                                                                   |
-| `market`   | `no_data`, `source_down`, `no_launch_feed`                                                                                                                                                                                                                |
-| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`, `launch_exists`, `no_launch_calls`                                                                                                                                               |
-| `address`  | `not_found`, `launch_wallet`                                                                                                                                                                                                                              |
-| `rescue`   | `no_address`, `nothing_to_move`                                                                                                                                                                                                                           |
-| `signer`   | `not_found`, `last_signer`, `own_key`                                                                                                                                                                                                                     |
-| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`, `own_wallet_recipient`, `launch_recipient_needed`, `launch_recipient_unused`, `launch_wallet_missing`, `launch_picture_too_large`, `kind_unavailable` |
-| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                                                                                                                                                                        |
-| `schedule` | `not_found`, `bad_when`, `too_many`                                                                                                                                                                                                                       |
-| `note`     | `not_found`                                                                                                                                                                                                                                               |
-| `asset`    | `not_found`, `bad_address`, `unreadable`                                                                                                                                                                                                                  |
-| `name`     | `not_found`, `resolver_down`                                                                                                                                                                                                                              |
-| `quote`    | `no_route`, `venue_down`                                                                                                                                                                                                                                  |
-| `chain`    | `rpc_down`, `simulation_failed`                                                                                                                                                                                                                           |
-| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`                                                                                                                                                                                         |
-| `config`   | `invalid`, `secret_inline`                                                                                                                                                                                                                                |
-| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                                                                                                                                                                             |
-| `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                                                                                                                                                                          |
-| `job`      | `not_found`                                                                                                                                                                                                                                               |
-| `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                                                                                                                                                                          |
-| `telegram` | `not_running`, `unreachable`                                                                                                                                                                                                                              |
-| `token`    | `not_found`                                                                                                                                                                                                                                               |
-| `internal` | `error` (with a `details.ref` to find the log line)                                                                                                                                                                                                       |
+| Area       | Codes                                                                                                                                                                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `protocol` | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`                                                                                                                                                                              |
+| `auth`     | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`                                                                                                                                                                                  |
+| `engine`   | `starting`, `stopping`, `locked`, `timeout`                                                                                                                                                                                                                                  |
+| `runtime`  | `unavailable`                                                                                                                                                                                                                                                                |
+| `agent`    | `not_found`, `archived`, `frozen`, `paper_only`, `disclaimer`, `budget`, `file_missing`, `file_untrusted`                                                                                                                                                                    |
+| `question` | `not_found`, `closed`                                                                                                                                                                                                                                                        |
+| `image`    | `not_found`, `too_large`, `format`, `unreadable`                                                                                                                                                                                                                             |
+| `alert`    | `not_found`, `too_many`                                                                                                                                                                                                                                                      |
+| `market`   | `no_data`, `source_down`, `no_launch_feed`                                                                                                                                                                                                                                   |
+| `wallet`   | `not_found`, `unfunded`, `bad_owner_key`, `custody_down`, `track_limit`, `launch_exists`, `no_launch_calls`                                                                                                                                                                  |
+| `address`  | `not_found`, `launch_wallet`, `not_wallet`                                                                                                                                                                                                                                   |
+| `rescue`   | `no_address`, `nothing_to_move`                                                                                                                                                                                                                                              |
+| `signer`   | `not_found`, `last_signer`, `own_key`                                                                                                                                                                                                                                        |
+| `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`, `own_wallet_recipient`, `launch_recipient_needed`, `launch_recipient_unused`, `launch_wallet_missing`, `launch_picture_too_large`, `kind_unavailable`, `identity_exists` |
+| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                                                                                                                                                                                           |
+| `schedule` | `not_found`, `bad_when`, `too_many`                                                                                                                                                                                                                                          |
+| `webhook`  | `not_found`, `too_many`                                                                                                                                                                                                                                                      |
+| `note`     | `not_found`                                                                                                                                                                                                                                                                  |
+| `asset`    | `not_found`, `bad_address`, `unreadable`                                                                                                                                                                                                                                     |
+| `name`     | `not_found`, `resolver_down`, `contract`                                                                                                                                                                                                                                     |
+| `quote`    | `no_route`, `venue_down`                                                                                                                                                                                                                                                     |
+| `chain`    | `rpc_down`, `simulation_failed`                                                                                                                                                                                                                                              |
+| `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`                                                                                                                                                                                                            |
+| `config`   | `invalid`, `secret_inline`                                                                                                                                                                                                                                                   |
+| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                                                                                                                                                                                                |
+| `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                                                                                                                                                                                             |
+| `job`      | `not_found`                                                                                                                                                                                                                                                                  |
+| `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                                                                                                                                                                                             |
+| `telegram` | `not_running`, `unreachable`                                                                                                                                                                                                                                                 |
+| `remote`   | `tailscale_missing`, `logged_out`, `https_off`, `funnel_denied`                                                                                                                                                                                                              |
+| `token`    | `not_found`                                                                                                                                                                                                                                                                  |
+| `internal` | `error` (with a `details.ref` to find the log line)                                                                                                                                                                                                                          |
 
 Policy and risk refusals are intent states with reasons, not errors (section 7.4). Their reason
 codes (`daily_cap`, `per_trade_cap`, `gas_reserve`, `slippage`, `price_impact`, `tax`,
 `low_liquidity`, `venue_off`, `token_denied`, `send_level`, `frozen`, `outside_content_send`,
-`honeypot`, `cannot_sell`, `sources_down`, `no_price`) are listed with their states in spec 6.
+`honeypot`, `cannot_sell`, `sources_down`, `no_price`, `unsaved_address`, `validator_jailed`) are
+listed with their states in spec 6.
 
 <a id="section-11"></a>
 
@@ -1116,15 +1284,17 @@ codes (`daily_cap`, `per_trade_cap`, `gas_reserve`, `slippage`, `price_impact`, 
 `binference mcp` is a stdio MCP server and a protocol client with `read` and `propose`. Its tools
 carry the `binference_` prefix and map one to one onto operations:
 
-| Tool                      | Operation       | Tool                       | Operation        |
-| ------------------------- | --------------- | -------------------------- | ---------------- |
-| `binference_agents`       | `agent/list`    | `binference_propose`       | `intent/propose` |
-| `binference_token_search` | `asset/search`  | `binference_intent_status` | `intent/get`     |
-| `binference_portfolio`    | `portfolio/get` | `binference_order_create`  | `order/create`   |
-| `binference_token_info`   | `asset/get`     | `binference_order_cancel`  | `order/cancel`   |
-| `binference_token_risk`   | `risk/check`    | `binference_alert_create`  | `alert/create`   |
-| `binference_quote`        | `quote/get`     | `binference_ledger`        | `ledger/list`    |
-| `binference_orders`       | `order/list`    | `binference_resolve_name`  | `name/resolve`   |
+| Tool                         | Operation         | Tool                       | Operation        |
+| ---------------------------- | ----------------- | -------------------------- | ---------------- |
+| `binference_agents`          | `agent/list`      | `binference_propose`       | `intent/propose` |
+| `binference_token_search`    | `asset/search`    | `binference_intent_status` | `intent/get`     |
+| `binference_portfolio`       | `portfolio/get`   | `binference_order_create`  | `order/create`   |
+| `binference_token_info`      | `asset/get`       | `binference_order_cancel`  | `order/cancel`   |
+| `binference_token_risk`      | `risk/check`      | `binference_alert_create`  | `alert/create`   |
+| `binference_quote`           | `quote/get`       | `binference_ledger`        | `ledger/list`    |
+| `binference_orders`          | `order/list`      | `binference_resolve_name`  | `name/resolve`   |
+| `binference_staking_options` | `staking/options` | `binference_bridge_quote`  | `bridge/quote`   |
+| `binference_addresses`       | `address/list`    |                            |                  |
 
 Each tool's input schema is the operation's args schema from `engine/describe`. A proposal answers
 with the intent and "waiting for the owner's confirmation in Telegram or the console". A client
