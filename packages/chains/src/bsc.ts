@@ -153,10 +153,12 @@ const erc8004 = createContracts("erc8004", {
   },
 });
 
-// Only the registry is fixed: each name's resolver is read from it at the time of use.
+// Only the registry and the `.bnb` base registrar are fixed: each name's resolver is read from the
+// registry at the time of use, and the registrar answers when a name's registration ends.
 const spaceid = createContracts("spaceid", {
   "https://www.npmjs.com/package/@web3-name-sdk/core": {
     registry: "0x08CEd32a7f3eeC915Ba84415e9C07a7286977956",
+    "base-registrar": "0xE3b1D32e43Ce8d658368e2CBFF95D57Ef39Be8a6",
   },
 });
 
