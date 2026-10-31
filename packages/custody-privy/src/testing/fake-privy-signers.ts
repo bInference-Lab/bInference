@@ -6,8 +6,10 @@ import { answer, failure, walletJson } from "./fake-privy-answers.js";
 import { expired, signaturesOf, signedHeaders } from "./fake-privy-rpc.js";
 import type { FakePrivyState, FakeWallet } from "./fake-privy-state.js";
 
-// A wallet update that changes only the added signers, the one update binference sends.
+// A wallet update of its added signers, the one update binference sends, and of its policy, which
+// the test tooling's sweep sends as well to detach a policy before deleting it.
 const signersBodySchema = z.strictObject({
+  policy_ids: z.array(z.string().min(1)).max(1).optional(),
   additional_signers: z.array(
     z.strictObject({
       signer_id: z.string().min(1),
@@ -15,6 +17,30 @@ const signersBodySchema = z.strictObject({
     }),
   ),
 });
+
+// Whether every signer is a key quorum and every policy named a policy the app holds.
+function namesHeld(state: FakePrivyState, body: z.infer<typeof signersBodySchema>): boolean {
+  const policies = [
+    ...(body.policy_ids ?? []),
+    ...body.additional_signers.flatMap((item) => item.override_policy_ids ?? []),
+  ];
+  return (
+    body.additional_signers.every((item) => state.quorums.has(item.signer_id)) &&
+    policies.every((id) => state.policies.has(id))
+  );
+}
+
+// The wallet with the body's signers in place of its own, and the body's policy when it names one.
+function changedWallet(wallet: FakeWallet, body: z.infer<typeof signersBodySchema>): FakeWallet {
+  return {
+    ...wallet,
+    policyIds: body.policy_ids ?? wallet.policyIds,
+    signers: body.additional_signers.map((item) => ({
+      signerId: item.signer_id,
+      overridePolicyIds: item.override_policy_ids,
+    })),
+  };
+}
 
 // Only the wallet's owner updates it; a wallet with no owner takes the app secret alone.
 function ownerSigned(
@@ -36,8 +62,9 @@ function ownerSigned(
 }
 
 /**
- * Answers `PATCH /v1/wallets/<wallet>` with added signers as Privy's wallet update does: the
- * wallet must exist, every signer must be a key quorum and every override a policy the app holds,
+ * Answers `PATCH /v1/wallets/<wallet>` with added signers, and its policy when the body names one,
+ * as Privy's wallet update does: the wallet must exist, every signer must be a key quorum and
+ * every override or wallet policy a policy the app holds,
  * the expiry must not have passed, and the wallet's owner must have signed the RFC 8785 payload;
  * an added signer's signature changes nothing. The signers given replace every one the wallet had,
  * so a signer left out signs nothing from then on.
@@ -52,13 +79,7 @@ export function answerSignersChange(
     return failure(404, "not_found", "Wallet not found.");
   }
   const parsed = signersBodySchema.safeParse(ids.body);
-  const signers = parsed.data?.additional_signers ?? [];
-  const known = signers.every(
-    (item) =>
-      state.quorums.has(item.signer_id) &&
-      (item.override_policy_ids ?? []).every((id) => state.policies.has(id)),
-  );
-  if (!parsed.success || !known) {
+  if (!parsed.success || !namesHeld(state, parsed.data)) {
     return failure(400, "invalid_data", "The request body does not match the schema.");
   }
   if (expired(state, signedHeaders(request))) {
@@ -69,13 +90,7 @@ export function answerSignersChange(
       ? failure(401, "missing_or_empty_authorization_header", "No authorization signature.")
       : failure(401, "zero_correct_authorization_signatures", "No valid authorization signature.");
   }
-  const changed: FakeWallet = {
-    ...wallet,
-    signers: signers.map((item) => ({
-      signerId: item.signer_id,
-      overridePolicyIds: item.override_policy_ids,
-    })),
-  };
+  const changed = changedWallet(wallet, parsed.data);
   state.wallets.set(wallet.id, changed);
   return answer(200, walletJson(changed));
 }

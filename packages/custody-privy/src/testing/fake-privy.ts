@@ -13,6 +13,7 @@ import {
 import { answerAggregation, createAggregation } from "./fake-aggregations.js";
 import { answer, failure, policyJson, quorumJson, walletJson } from "./fake-privy-answers.js";
 import { createPolicy, createQuorum, createWallet } from "./fake-privy-creates.js";
+import { answerResourceDelete } from "./fake-privy-deletes.js";
 import { answerExport, exportOf } from "./fake-privy-export.js";
 import { parseJsonText } from "./fake-privy-request.schema.js";
 import { answerSignTransaction } from "./fake-privy-rpc.js";
@@ -140,8 +141,8 @@ function answerPatch(
   return wallet === undefined ? undefined : answerSignersChange(state, request, { wallet, body });
 }
 
-// A `DELETE` of an aggregation or of a policy's rule; undefined for any other request. As on
-// Privy, the key quorum that owns an aggregation signs its delete, with an empty body.
+// A `DELETE` of an aggregation, a policy, a key quorum or a policy's rule; undefined for any other
+// request. As on Privy, the key quorum that owns an aggregation signs its delete, with an empty body.
 function answerDelete(
   state: FakePrivyState,
   request: HttpRequest,
@@ -153,6 +154,10 @@ function answerDelete(
     const refused =
       held === undefined ? undefined : unsignedByOwner(state, held.ownerId, { request, body: {} });
     return refused ?? answerAggregation(state, "DELETE", aggregation);
+  }
+  const removed = answerResourceDelete(state, request, path);
+  if (removed !== undefined) {
+    return removed;
   }
   const rule = ruleChangeOf(request, path, "DELETE");
   return rule === undefined ? undefined : answerRuleRemoval(state, request, rule);
@@ -222,7 +227,8 @@ function answerCreate(
  * and secret; request bodies as strict as Privy's OpenAPI document; P-256 authorization signatures
  * over RFC 8785 payloads from the wallet's owner or an added signer; the request expiry; the
  * policy that binds the signing party, with Privy's semantics; a change of a policy rule, signed
- * by the policy's owner; a change of a wallet's added signers, signed by its owner; a wallet's
+ * by the policy's owner; a change of a wallet's added signers or policy, signed by its owner; the
+ * delete of a policy or a key quorum no wallet still holds, signed by its owner; a wallet's
  * export, signed by its owner and sealed with HPKE; and aggregations, at most 10, whose rolling
  * sums the policies' reference conditions read and each signed request adds to. Wallet
  * keys are secp256k1 keys the fake holds and signs with. It supports Ethereum wallets and
