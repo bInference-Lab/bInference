@@ -43,17 +43,15 @@ function approvalReaches(
   );
 }
 
-// A call only a launch wallet makes, by its selector, from any other wallet (decision 0271). An
-// entry whose selector cannot be read refuses every call, so the rule fails closed.
-function isLaunchOnlyCall(view: RuleView): boolean {
+// A call only a wallet of another role makes, by its selector, such as a launch wallet's create call
+// from any other wallet (decision 0271). An entry whose selector cannot be read refuses every call
+// from a wallet of another role, so the rule fails closed.
+function isOtherRolesCall(view: RuleView): boolean {
   const { wallet, allowed } = view.input;
-  if (wallet.role === "launch") {
-    return false;
-  }
   const selector = view.transaction.data.slice(2, 10);
-  return (allowed.launchOnlyCalls ?? []).some((abi) => {
-    const launchOnly = callSelectorOf(abi);
-    return launchOnly === undefined || launchOnly === selector;
+  return (allowed.walletOnlyCalls ?? []).some(({ role, abi }) => {
+    const onlyFor = callSelectorOf(abi);
+    return wallet.role !== role && (onlyFor === undefined || onlyFor === selector);
   });
 }
 
@@ -73,7 +71,7 @@ export function targetHolds(view: RuleView): boolean {
   const { action } = step;
   if (action.kind === "call") {
     const contracts = [...allowed.contracts, ...launchTargets(view.input)];
-    return listsAccount(contracts, step.chain, view.transaction.to) && !isLaunchOnlyCall(view);
+    return listsAccount(contracts, step.chain, view.transaction.to) && !isOtherRolesCall(view);
   }
   return action.kind === "approve" ? approvalReaches(view, action) : sendReaches(view, action);
 }

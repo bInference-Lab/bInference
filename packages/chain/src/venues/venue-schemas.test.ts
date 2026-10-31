@@ -163,7 +163,7 @@ describe("venue schemas", () => {
         chain: "fake:1",
         names: ["router"],
         spenders: ["router"],
-        launchWalletSpenders: ["router"],
+        onlyWalletSpenders: { launch: ["router"] },
       },
     ],
     [
@@ -172,7 +172,7 @@ describe("venue schemas", () => {
         chain: "fake:1",
         names: ["router"],
         launchContracts: ["curve"],
-        launchWalletSpenders: ["curve"],
+        onlyWalletSpenders: { launch: ["curve"] },
       },
     ],
     [

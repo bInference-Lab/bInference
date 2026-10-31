@@ -9,6 +9,7 @@ import {
   termsHashSchema,
 } from "./sign-authorization.js";
 import { type SignStep, signStepSchema, type SignStepWire } from "./sign-step.js";
+import { type WalletRole, walletRoleSchema } from "./wallet-role.js";
 
 /** The agent wallet a signature is for. */
 export interface SignerWallet {
@@ -21,7 +22,14 @@ export interface SignerWallet {
    * `launch` for the agent's launch wallet, the one wallet a call to a launch contract or an
    * approval naming one may come from (decision 0217); absent for an agent wallet.
    */
-  readonly role?: "launch";
+  readonly role?: WalletRole;
+}
+
+/** A call only a wallet of one role makes, such as a launchpad's create call (decision 0271). */
+export interface WalletOnlyCall {
+  readonly role: WalletRole;
+  /** The function as its JSON ABI entry. */
+  readonly abi: JsonValue;
 }
 
 /**
@@ -37,11 +45,11 @@ export interface AllowedTargets {
   /** The launch's own contracts, read from its launchpad right before signing; none when absent. */
   readonly launch?: readonly AccountRef[];
   /**
-   * The calls only a launch wallet makes on the step's venues, each as its JSON ABI entry, such as
-   * a launchpad's create call (decision 0271): the signer refuses one from any other wallet. None
-   * when absent.
+   * The calls only a wallet of one role makes on the step's venues, such as a launchpad's create
+   * call, a launch wallet's alone (decision 0271): the signer refuses one from a wallet of any
+   * other role. None when absent.
    */
-  readonly launchOnlyCalls?: readonly JsonValue[];
+  readonly walletOnlyCalls?: readonly WalletOnlyCall[];
 }
 
 /**
@@ -66,7 +74,7 @@ export interface AuthorizeInputWire {
     readonly id: string;
     readonly custodyId: string;
     readonly account: string;
-    readonly role?: "launch";
+    readonly role?: WalletRole;
   };
   readonly request: PrivyRequest;
   readonly intent: string;
@@ -78,7 +86,7 @@ export interface AuthorizeInputWire {
     readonly spenders: readonly string[];
     readonly recipients: readonly string[];
     readonly launch?: readonly string[];
-    readonly launchOnlyCalls?: readonly JsonValue[];
+    readonly walletOnlyCalls?: readonly WalletOnlyCall[];
   };
 }
 
@@ -91,7 +99,7 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
     id: idSchema("wal"),
     custodyId: z.string().regex(/^[A-Za-z0-9_-]{1,128}$/),
     account: accountRefSchema,
-    role: z.literal("launch").exactOptional(),
+    role: walletRoleSchema.exactOptional(),
   }),
   request: privyRequestSchema,
   intent: idSchema("int"),
@@ -103,6 +111,9 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
     spenders: targetsSchema,
     recipients: targetsSchema,
     launch: targetsSchema.exactOptional(),
-    launchOnlyCalls: z.array(z.json()).max(64).exactOptional(),
+    walletOnlyCalls: z
+      .array(z.strictObject({ role: walletRoleSchema, abi: z.json() }))
+      .max(64)
+      .exactOptional(),
   }),
 });

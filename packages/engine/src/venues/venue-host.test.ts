@@ -86,9 +86,9 @@ function hostOf(venue: Venue = createFakeVenue(), clock = createManualClock(nowM
 const createAbi = { type: "function", name: "create", inputs: [] };
 
 // The fake venue with a create call on its router, marked as a launch wallet's or not.
-function venueWithCreate(call: { readonly isLaunchWalletOnly: boolean }): Venue {
+function venueWithCreate(call: { readonly onlyWallet?: "launch" }): Venue {
   const base = createFakeVenue();
-  const marked = call.isLaunchWalletOnly ? { isLaunchWalletOnly: true } : {};
+  const marked = call.onlyWallet === undefined ? {} : { onlyWallet: call.onlyWallet };
   const calls = [{ contract: "router", abi: createAbi, walletInputs: [], ...marked }];
   return { ...base, contracts: base.contracts.map((item) => Object.assign({}, item, { calls })) };
 }
@@ -177,10 +177,10 @@ describe("venue host", () => {
   });
 
   it("names the calls only a launch wallet makes: the ones a venue marks so", () => {
-    const marked = hostOf(venueWithCreate({ isLaunchWalletOnly: true }));
+    const marked = hostOf(venueWithCreate({ onlyWallet: "launch" }));
     expect(marked.launchWalletCalls(["fake-swap", "other-swap"])).toStrictEqual([createAbi]);
     expect(marked.launchWalletCalls()).toStrictEqual([createAbi]);
-    const plain = hostOf(venueWithCreate({ isLaunchWalletOnly: false }));
+    const plain = hostOf(venueWithCreate({}));
     expect(plain.launchWalletCalls(["fake-swap"])).toStrictEqual([]);
   });
 

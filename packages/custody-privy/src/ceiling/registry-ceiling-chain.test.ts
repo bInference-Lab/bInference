@@ -73,12 +73,12 @@ const launching = declaredVenue("swapper", {
   names: ["router", "permit2"],
   calls: [
     { contract: "router", abi: swapJson, walletInputs: [] },
-    { contract: "router", abi: swapToJson, walletInputs: ["receiver"], isLaunchWalletOnly: true },
+    { contract: "router", abi: swapToJson, walletInputs: ["receiver"], onlyWallet: "launch" },
     {
       contract: "router",
       abi: abiFunctionJson({ ...testRouterAbi.swapTo, name: "swapFor" }),
       walletInputs: [],
-      isLaunchWalletOnly: true,
+      onlyWallet: "launch",
       isUnbuilt: true,
     },
   ],
@@ -90,7 +90,7 @@ function launchingCalls(wallet: { readonly isLaunch: boolean }) {
     definition,
     venues: [launching],
     perTxNativeCapBase: oneBnbWei,
-    isLaunch: wallet.isLaunch,
+    ...(wallet.isLaunch ? { role: "launch" as const } : {}),
   });
   return built.ok ? built.value.calls.map((call) => call.abi.name) : built.error;
 }
@@ -99,7 +99,7 @@ function launchingCalls(wallet: { readonly isLaunch: boolean }) {
 const pulling = declaredVenue("swapper", {
   names: ["router", "permit2"],
   spenders: ["permit2"],
-  launchWalletSpenders: ["router"],
+  onlyWalletSpenders: { launch: ["router"] },
 });
 
 // The spenders a ceiling of that venue allows, for a launch wallet or another.
@@ -108,7 +108,7 @@ function spendersFor(wallet: { readonly isLaunch: boolean }) {
     definition,
     venues: [pulling],
     perTxNativeCapBase: oneBnbWei,
-    isLaunch: wallet.isLaunch,
+    ...(wallet.isLaunch ? { role: "launch" as const } : {}),
   });
   return built.ok ? built.value.spenders : built.error;
 }

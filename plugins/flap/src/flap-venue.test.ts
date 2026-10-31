@@ -203,7 +203,7 @@ describe("the flap venue", () => {
             contract: "portal",
             abi: newTokenFunctionJson,
             walletInputs: [],
-            isLaunchWalletOnly: true,
+            onlyWallet: "launch",
           },
         ],
         spenders: ["portal"],

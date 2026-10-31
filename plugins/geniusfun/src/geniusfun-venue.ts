@@ -49,7 +49,7 @@ const createOn = (contract: string, abi: JsonValue): VenueCall => ({
   contract,
   abi,
   walletInputs: [],
-  isLaunchWalletOnly: true,
+  onlyWallet: "launch",
 });
 
 // A create overload the venue never builds, declared so the signer refuses it from every other
@@ -73,7 +73,7 @@ function launchingOn(trading: VenueContracts): VenueContracts {
     ...trading,
     names: [...trading.names, router],
     calls: [...(trading.calls ?? []), ...creates],
-    launchWalletSpenders: [router],
+    onlyWalletSpenders: { launch: [router] },
   };
 }
 

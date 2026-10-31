@@ -131,7 +131,11 @@ describe("the self-hosted venues", () => {
     });
     const brew = venues.find((venue) => venue.id === "brew");
     expect(brew?.contracts).toMatchObject([
-      { chain: bsc, names: ["factory", "distributor-factory"], launchWalletSpenders: ["factory"] },
+      {
+        chain: bsc,
+        names: ["factory", "distributor-factory"],
+        onlyWalletSpenders: { launch: ["factory"] },
+      },
     ]);
     expect(brew?.launcher?.cardWarnings).toStrictEqual(["notForUsCitizens"]);
     const found = brew?.readLaunches?.({

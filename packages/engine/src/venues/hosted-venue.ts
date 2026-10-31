@@ -92,7 +92,7 @@ function host(venue: Venue, chains: ChainRegistry): HostedVenue {
   );
   const marked = declaration.data.contracts.flatMap((declared) =>
     (declared.calls ?? [])
-      .filter((call) => call.isLaunchWalletOnly === true && call.isUnbuilt !== true)
+      .filter((call) => call.onlyWallet === "launch" && call.isUnbuilt !== true)
       .map((call) => call.abi),
   );
   const launchWalletCalls = [...marked, ...launchCalls];

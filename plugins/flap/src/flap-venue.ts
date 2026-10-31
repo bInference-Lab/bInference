@@ -39,7 +39,7 @@ export function flapDeclaration(chains: readonly ChainRef[]): VenueDeclaration {
           contract: portalName,
           abi: newTokenFunctionJson,
           walletInputs: [],
-          isLaunchWalletOnly: true,
+          onlyWallet: "launch",
         },
       ],
       spenders: [portalName],

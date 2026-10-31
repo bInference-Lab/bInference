@@ -16,14 +16,24 @@ import { BinferenceError } from "@binference/core";
 import { z } from "zod";
 
 function frozenCall(call: VenueCall): VenueCall {
-  const { contract, abi, walletInputs, isLaunchWalletOnly, isUnbuilt } = call;
+  const { contract, abi, walletInputs, onlyWallet, isUnbuilt } = call;
   return Object.freeze({
     contract,
     abi,
     walletInputs: Object.freeze([...walletInputs]),
-    ...(isLaunchWalletOnly === true ? { isLaunchWalletOnly } : {}),
+    ...(onlyWallet === undefined ? {} : { onlyWallet }),
     ...(isUnbuilt === true ? { isUnbuilt } : {}),
   });
+}
+
+function frozenSpenders(
+  spenders: NonNullable<VenueContracts["onlyWalletSpenders"]>,
+): NonNullable<VenueContracts["onlyWalletSpenders"]> {
+  return Object.freeze(
+    Object.fromEntries(
+      Object.entries(spenders).map(([role, names]) => [role, Object.freeze([...names])]),
+    ),
+  );
 }
 
 function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueContracts[] {
@@ -34,9 +44,9 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
         names: Object.freeze([...item.names]),
         ...(item.calls === undefined ? {} : { calls: Object.freeze(item.calls.map(frozenCall)) }),
         ...(item.spenders === undefined ? {} : { spenders: Object.freeze([...item.spenders]) }),
-        ...(item.launchWalletSpenders === undefined
+        ...(item.onlyWalletSpenders === undefined
           ? {}
-          : { launchWalletSpenders: Object.freeze([...item.launchWalletSpenders]) }),
+          : { onlyWalletSpenders: frozenSpenders(item.onlyWalletSpenders) }),
         ...(item.launchContracts === undefined
           ? {}
           : { launchContracts: Object.freeze([...item.launchContracts]) }),

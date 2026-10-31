@@ -174,11 +174,13 @@ function allowedTargetsOf(
   const contracts: readonly AccountRef[] = [...new Set(addresses)].map((address) =>
     accountRefSchema.parse(`${chain.ref}:${address}`),
   );
-  const launchOnlyCalls = usedVenues
+  const walletOnlyCalls = usedVenues
     .flatMap((venue) => venue.contracts.filter((item) => item.chain === chain.ref))
-    .flatMap((item) => (item.calls ?? []).filter((call) => call.isLaunchWalletOnly === true))
-    .map((call) => call.abi);
-  const marked = launchOnlyCalls.length === 0 ? {} : { launchOnlyCalls };
+    .flatMap((item) => item.calls ?? [])
+    .flatMap(({ onlyWallet, abi }) =>
+      onlyWallet === undefined ? [] : [{ role: onlyWallet, abi }],
+    );
+  const marked = walletOnlyCalls.length === 0 ? {} : { walletOnlyCalls };
   return { contracts, spenders: contracts, recipients: [], ...marked };
 }
 

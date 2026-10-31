@@ -51,8 +51,8 @@ apply here. Rules for this plugin:
   factory's `launchToken`. Genius.fun has no metadata API: the create call carries the words and
   the owner's `pictureLink`, so the launcher uploads nothing, has no pin, reads no picture and
   never opens the link. Every create overload of the router and the factory is a launch wallet's
-  alone (`isLaunchWalletOnly`), and the router is a spender a launch wallet alone approves
-  (`launchWalletSpenders`); the venue declares them only on the chains it launches on.
+  alone (`onlyWallet: "launch"`), and the router is a spender a launch wallet alone approves
+  (`onlyWalletSpenders.launch`); the venue declares them only on the chains it launches on.
 - The creator fee recipient is outside binference (`isOutsideOnly`): Genius.fun pays it only on
   its own claim from the fee escrow, which binference never makes.
 - A create call is the venue's only when it would write the same bytes for what it reads: launch

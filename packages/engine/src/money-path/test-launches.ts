@@ -161,7 +161,7 @@ function launchpadOf(launcher: PadLauncher, launching: Launching): Venue {
     return pad;
   }
   const calls = [
-    { contract: "router", abi: testCreateAbi, walletInputs: [], isLaunchWalletOnly: true },
+    { contract: "router", abi: testCreateAbi, walletInputs: [], onlyWallet: "launch" },
   ];
   return { ...pad, contracts: pad.contracts.map((item) => Object.assign({}, item, { calls })) };
 }

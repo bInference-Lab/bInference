@@ -111,9 +111,7 @@ const launchWallet = testWalletRecord({
 async function startedWithOlderLaunchWallet(): Promise<TestEngine> {
   const chains = testChains(["other-swap"]);
   const base = createFakeVenue();
-  const calls = [
-    { contract: "router", abi: createAbi, walletInputs: [], isLaunchWalletOnly: true },
-  ];
+  const calls = [{ contract: "router", abi: createAbi, walletInputs: [], onlyWallet: "launch" }];
   const venue: Venue = {
     ...base,
     contracts: base.contracts.map((item) => Object.assign({}, item, { calls })),

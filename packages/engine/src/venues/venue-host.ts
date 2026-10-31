@@ -178,8 +178,8 @@ export interface VenueHost {
 
 // The venue's contracts on a chain ask nothing of a main wallet: every call is a launch wallet's,
 // and no spender is a main wallet's.
-const isLaunchWalletOnly = (declared: VenueContracts): boolean =>
-  (declared.calls ?? []).every((call) => call.isLaunchWalletOnly === true) &&
+const isLaunchWalletsAlone = (declared: VenueContracts): boolean =>
+  (declared.calls ?? []).every((call) => call.onlyWallet === "launch") &&
   (declared.spenders ?? []).length === 0;
 
 const isHostedLaunchpad = (hosted: HostedVenue | undefined): boolean =>
@@ -190,7 +190,7 @@ function launchesOnlyIn(venue: Venue | undefined): boolean {
   return (
     venue?.launcher !== undefined &&
     !isLaunchpad(venue) &&
-    venue.contracts.every(isLaunchWalletOnly)
+    venue.contracts.every(isLaunchWalletsAlone)
   );
 }
 

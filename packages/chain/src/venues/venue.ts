@@ -2,6 +2,7 @@ import type { JsonValue } from "@binference/core";
 import { z } from "zod";
 import { type ChainRef, chainRefSchema } from "../caip/chain-ref.js";
 import { kebabCaseSchema } from "../registry/chain-definition.js";
+import { type WalletRole, walletRoleSchema } from "../signing/wallet-role.js";
 import type {
   CurveReader,
   InsiderReader,
@@ -22,11 +23,12 @@ export interface VenueCall {
   /** The function's inputs that must name the wallet that signs, such as a swap's receiver. */
   readonly walletInputs: readonly string[];
   /**
-   * Only a launch wallet makes this call, such as a launchpad's create call on a registry
-   * contract: only a launch wallet's ceiling allows it, and the signer refuses it from any other
-   * wallet (decision 0271). A call on a launch's own contracts is a launch wallet's already.
+   * Only a wallet of this role makes this call, such as a launchpad's create call on a registry
+   * contract, a launch wallet's alone: only that role's ceiling allows it, and the signer refuses it
+   * from any other wallet (decision 0271). A call on a launch's own contracts is a launch wallet's
+   * already.
    */
-  readonly isLaunchWalletOnly?: boolean;
+  readonly onlyWallet?: WalletRole;
   /**
    * The venue never builds this call: it declares it, a launch wallet's alone, only so the signer
    * refuses it from every other wallet, such as a launchpad's create overload it never uses. No
@@ -51,12 +53,12 @@ export interface VenueContracts {
    */
   readonly spenders?: readonly string[];
   /**
-   * The names among `names` a launch wallet's token approval alone may name as its spender, such
-   * as a launchpad's router that pulls a token first buy: only a launch wallet's ceiling allows
-   * them, as it alone allows a call marked `isLaunchWalletOnly`. Each differs from `spenders`; left
-   * out, none.
+   * By wallet role, the names among `names` only that role's token approval may name as its
+   * spender, such as a launchpad's router that pulls a token first buy, a launch wallet's alone:
+   * only that role's ceiling allows them, as it alone allows a call marked `onlyWallet` with the
+   * role. Each differs from `spenders`; left out, none.
    */
-  readonly launchWalletSpenders?: readonly string[];
+  readonly onlyWalletSpenders?: Readonly<Partial<Record<WalletRole, readonly string[]>>>;
   /**
    * The contracts each launch of the venue has of its own on this chain, by name, such as a
    * launchpad's curve for each token, which no registry can list. The launchpad's curve read
@@ -85,7 +87,7 @@ interface VenueCallWire {
   readonly contract: string;
   readonly abi: JsonValue;
   readonly walletInputs?: readonly string[] | undefined;
-  readonly isLaunchWalletOnly?: boolean;
+  readonly onlyWallet?: WalletRole;
   readonly isUnbuilt?: boolean;
 }
 
@@ -97,7 +99,7 @@ export interface VenueDeclarationWire {
     readonly names: readonly string[];
     readonly calls?: readonly VenueCallWire[];
     readonly spenders?: readonly string[];
-    readonly launchWalletSpenders?: readonly string[];
+    readonly onlyWalletSpenders?: Readonly<Partial<Record<WalletRole, readonly string[]>>>;
     readonly launchContracts?: readonly string[];
     readonly noDeadline?: boolean;
   }[];
@@ -109,7 +111,7 @@ function isUnique(values: readonly string[]): boolean {
 
 // A call the venue never builds is declared for the signer's refusal, so it is a launch wallet's.
 const isUnbuiltShaped = (call: VenueCall): boolean =>
-  call.isUnbuilt !== true || call.isLaunchWalletOnly === true;
+  call.isUnbuilt !== true || call.onlyWallet === "launch";
 
 const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
   .strictObject({
@@ -119,7 +121,7 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
       .array(z.string().min(1))
       .refine(isUnique, { message: "An input repeats." })
       .default([]),
-    isLaunchWalletOnly: z.literal(true).exactOptional(),
+    onlyWallet: walletRoleSchema.exactOptional(),
     isUnbuilt: z.literal(true).exactOptional(),
   })
   .refine(isUnbuiltShaped, {
@@ -127,13 +129,13 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
   });
 
 // Every call and every spender names one of the chain's declared contracts, registry or launch,
-// a launch wallet's spender a registry one, and a spender once; a launch's contract shares no name
+// a wallet role's spender a registry one, and a spender once; a launch's contract shares no name
 // with a registry one.
 function namesDeclared(item: Omit<VenueContracts, "chain">): boolean {
   const launch = item.launchContracts ?? [];
   const named = (name: string) => item.names.includes(name) || launch.includes(name);
   const spenders = item.spenders ?? [];
-  const launchSpenders = item.launchWalletSpenders ?? [];
+  const launchSpenders = Object.values(item.onlyWalletSpenders ?? {}).flat();
   const calls = item.calls ?? [];
   const isApart = launch.every((name) => !item.names.includes(name));
   return (
@@ -161,7 +163,9 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
           names: z.array(kebabCaseSchema).min(1).refine(isUnique, { message: "A name repeats." }),
           calls: z.array(callSchema).exactOptional(),
           spenders: z.array(kebabCaseSchema).exactOptional(),
-          launchWalletSpenders: z.array(kebabCaseSchema).exactOptional(),
+          onlyWalletSpenders: z
+            .strictObject({ launch: z.array(kebabCaseSchema).exactOptional() })
+            .exactOptional(),
           launchContracts: z
             .array(kebabCaseSchema)
             .min(1)

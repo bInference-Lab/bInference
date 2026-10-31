@@ -168,7 +168,7 @@ function callsOn(
           definition: registered.definition,
           venues,
           perTxNativeCapBase: calls.perTxNativeBase,
-          isLaunch: calls.isLaunch === true,
+          ...(calls.isLaunch === true ? { role: "launch" as const } : {}),
         });
   if (built?.ok !== true) {
     throw new BinferenceError({

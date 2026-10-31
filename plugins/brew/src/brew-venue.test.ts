@@ -75,8 +75,8 @@ describe("the brew venue", () => {
     expect(launching).toMatchObject({
       chain: bscChain,
       names: ["factory", "distributor-factory"],
-      calls: [{ contract: "factory", walletInputs: [], isLaunchWalletOnly: true }],
-      launchWalletSpenders: ["factory"],
+      calls: [{ contract: "factory", walletInputs: [], onlyWallet: "launch" }],
+      onlyWalletSpenders: { launch: ["factory"] },
     });
     expect(launching).not.toHaveProperty("spenders");
     expect(launcherOver().cardWarnings).toStrictEqual(["notForUsCitizens"]);

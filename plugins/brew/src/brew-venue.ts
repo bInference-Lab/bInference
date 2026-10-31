@@ -28,10 +28,10 @@ function launchingOn(chain: ChainRef): VenueContracts {
         contract: factoryName,
         abi: launchFunctionJson,
         walletInputs: [],
-        isLaunchWalletOnly: true,
+        onlyWallet: "launch",
       },
     ],
-    launchWalletSpenders: [factoryName],
+    onlyWalletSpenders: { launch: [factoryName] },
   };
 }
 

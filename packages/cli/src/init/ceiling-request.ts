@@ -182,7 +182,7 @@ function ceilingChainOf(
     definition,
     venues: request.venues,
     perTxNativeCapBase: cap,
-    isLaunch: request.isLaunch,
+    ...(request.isLaunch ? { role: "launch" as const } : {}),
   });
   if (!chain.ok) {
     // A venue that names a contract its chain's registry lacks is a fault of this build.

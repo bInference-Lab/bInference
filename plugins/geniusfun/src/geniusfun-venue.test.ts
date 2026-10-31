@@ -104,8 +104,8 @@ function priceAnswers(): readonly string[] {
 }
 
 // The calls a declaration marks as a launch wallet's alone; none for no declaration.
-const launchOnlyCallsOf = (contracts: VenueContracts | undefined): readonly VenueCall[] =>
-  (contracts?.calls ?? []).filter((call) => call.isLaunchWalletOnly === true);
+const launchWalletCallsOf = (contracts: VenueContracts | undefined): readonly VenueCall[] =>
+  (contracts?.calls ?? []).filter((call) => call.onlyWallet === "launch");
 
 describe("the geniusfun venue", () => {
   it.each([
@@ -194,7 +194,7 @@ describe("the geniusfun venue", () => {
 
   it("declares on a launch chain the router, every create overload for launch wallets alone, and the router as their spender", () => {
     const [contracts] = geniusfunDeclaration([bscChain], [bscChain]).contracts;
-    const creates = launchOnlyCallsOf(contracts);
+    const creates = launchWalletCallsOf(contracts);
     const selectorsOn = (contract: string) =>
       creates
         .filter((call) => call.contract === contract)
@@ -202,7 +202,7 @@ describe("the geniusfun venue", () => {
         .toSorted();
     expect(contracts?.names).toStrictEqual(["factory-m4-2", "factory-m4-1", "router-m4-2"]);
     expect(contracts?.spenders).toStrictEqual(["curve"]);
-    expect(contracts?.launchWalletSpenders).toStrictEqual(["router-m4-2"]);
+    expect(contracts?.onlyWalletSpenders?.launch).toStrictEqual(["router-m4-2"]);
     // Only the two it builds reach a ceiling; the six others are declared for the signer alone.
     expect(
       creates.filter((call) => call.isUnbuilt !== true).map((call) => call.contract),

@@ -117,7 +117,7 @@ const createAbi = {
 };
 const createCall = {
   ...withTransaction(call, { to: router, data: "0x59bee192" }),
-  allowed: { ...call.allowed, launchOnlyCalls: [createAbi] },
+  allowed: { ...call.allowed, walletOnlyCalls: [{ role: "launch" as const, abi: createAbi }] },
 };
 
 describe("a call only a launch wallet makes", () => {
@@ -131,7 +131,13 @@ describe("a call only a launch wallet makes", () => {
   });
 
   it("refuses every call from another wallet when an entry's selector cannot be read", () => {
-    const unread = { ...call, allowed: { ...call.allowed, launchOnlyCalls: [{ name: "x" }] } };
+    const unread = {
+      ...call,
+      allowed: {
+        ...call.allowed,
+        walletOnlyCalls: [{ role: "launch" as const, abi: { name: "x" } }],
+      },
+    };
     expect(brokenHardRules(unread, context)).toStrictEqual([2]);
   });
 });
@@ -172,7 +178,10 @@ const sixArgumentLaunch = {
 };
 const sixArgumentCall = {
   ...withTransaction(call, { to: router, data: "0x8f9086b6" }),
-  allowed: { ...call.allowed, launchOnlyCalls: [sixArgumentLaunch] },
+  allowed: {
+    ...call.allowed,
+    walletOnlyCalls: [{ role: "launch" as const, abi: sixArgumentLaunch }],
+  },
 };
 
 describe("a create overload a launchpad declares but never builds", () => {

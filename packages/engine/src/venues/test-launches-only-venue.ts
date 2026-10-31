@@ -18,7 +18,7 @@ export function testLaunchesOnlyVenue(): Venue {
       chain: item.chain,
       names: item.names,
       calls: [
-        { contract: "router", abi: fakeLaunchCallAbi, walletInputs: [], isLaunchWalletOnly: true },
+        { contract: "router", abi: fakeLaunchCallAbi, walletInputs: [], onlyWallet: "launch" },
       ],
     })),
   };

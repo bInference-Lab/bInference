@@ -34,7 +34,7 @@ apply here. Rules for this plugin:
   `src/upload/`: the upload and the pin status. Nothing reads an IPFS gateway, ever: a read of a
   fresh CID through Flap's gateway before Flap holds it breaks the token's picture for good. The
   API fake in `src/testing/` throws on any other URL.
-- Flap's create call `newTokenV6` is a launch wallet's alone (`isLaunchWalletOnly`): only a launch
+- Flap's create call `newTokenV6` is a launch wallet's alone (`onlyWallet: "launch"`): only a launch
   wallet's ceiling allows it, and the signer refuses it from any other wallet.
 - A create call is Flap's only when the venue would write the same bytes for what it reads and its
   settings are ones `flapSettingsOf` takes, so the decoder refuses every fixed value and every

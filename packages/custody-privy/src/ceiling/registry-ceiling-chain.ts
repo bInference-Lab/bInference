@@ -5,6 +5,7 @@ import {
   declaredContracts,
   type VenueContracts,
   type VenueDeclaration,
+  type WalletRole,
 } from "@binference/chain";
 import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
@@ -20,10 +21,11 @@ export interface RegistryCeilingRequest {
   /** The most native coin, in base units, one contract call may send. */
   readonly perTxNativeCapBase: bigint;
   /**
-   * The ceiling is a launch wallet's: it also allows the calls only a launch wallet makes, such
-   * as a launchpad's create call (decision 0271). Absent, an agent wallet's.
+   * The role of the wallet whose ceiling this is: it also allows the calls only a wallet of that
+   * role makes, such as a launchpad's create call, a launch wallet's (decision 0271). Absent, an
+   * agent wallet's.
    */
-  readonly isLaunch?: boolean;
+  readonly role?: WalletRole;
 }
 
 /**
@@ -46,7 +48,7 @@ function isRegistryName(declared: Declared, name: string): boolean {
 
 function callsOf(
   declared: Declared,
-  ceiling: { readonly definition: ChainDefinition; readonly isLaunch: boolean },
+  ceiling: { readonly definition: ChainDefinition; readonly role: WalletRole | undefined },
 ): Result<readonly CeilingCall[], RegistryCeilingProblem> {
   const { definition } = ceiling;
   const calls: CeilingCall[] = [];
@@ -55,7 +57,7 @@ function callsOf(
     (call) =>
       isRegistryName(declared, call.contract) &&
       call.isUnbuilt !== true &&
-      (ceiling.isLaunch || call.isLaunchWalletOnly !== true),
+      (call.onlyWallet === undefined || call.onlyWallet === ceiling.role),
   );
   for (const call of listed) {
     const contract = declaredAddress(declared.venue, { definition }, call.contract);
@@ -71,15 +73,16 @@ function callsOf(
   return ok(calls);
 }
 
-// The spenders a ceiling allows: a launch wallet's also those only it may approve (decision 0277).
+// The spenders a ceiling allows: a role's wallet also those only it may approve (decision 0277).
 function spendersOf(
   declared: Declared,
-  ceiling: { readonly definition: ChainDefinition; readonly isLaunch: boolean },
+  ceiling: { readonly definition: ChainDefinition; readonly role: WalletRole | undefined },
 ): Result<readonly string[], "unknown_contract"> {
   const { definition } = ceiling;
   const spenders: string[] = [];
-  const launchOnly = ceiling.isLaunch ? (declared.contracts.launchWalletSpenders ?? []) : [];
-  const listed = [...(declared.contracts.spenders ?? []), ...launchOnly].filter((name) =>
+  const roleOnly =
+    ceiling.role === undefined ? [] : (declared.contracts.onlyWalletSpenders?.[ceiling.role] ?? []);
+  const listed = [...(declared.contracts.spenders ?? []), ...roleOnly].filter((name) =>
     isRegistryName(declared, name),
   );
   for (const name of listed) {
@@ -115,7 +118,7 @@ export function registryCeilingChain(
     }
     const contracts = venue.contracts.find((item) => item.chain === chain.ref);
     const declared = contracts === undefined ? undefined : { venue, contracts };
-    const ceiling = { definition: request.definition, isLaunch: request.isLaunch === true };
+    const ceiling = { definition: request.definition, role: request.role };
     const venueCalls = declared === undefined ? ok([]) : callsOf(declared, ceiling);
     const venueSpenders = declared === undefined ? ok([]) : spendersOf(declared, ceiling);
     if (!venueCalls.ok) {

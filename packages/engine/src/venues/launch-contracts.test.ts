@@ -99,7 +99,7 @@ const launching = (): Venue => {
     launcher: createFakeLinkLauncher(),
   });
   const calls = [
-    { contract: "router", abi: fakeLaunchCallAbi, walletInputs: [], isLaunchWalletOnly: true },
+    { contract: "router", abi: fakeLaunchCallAbi, walletInputs: [], onlyWallet: "launch" },
   ] as const;
   return {
     ...pad,
