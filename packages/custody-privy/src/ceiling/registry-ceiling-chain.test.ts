@@ -175,6 +175,26 @@ describe("registryCeilingChain", () => {
     });
   });
 
+  it("lists none of a main wallet's calls or spenders in a bridge wallet's ceiling", () => {
+    const built = registryCeilingChain({
+      definition,
+      venues: [swapper, ordered],
+      perTxNativeCapBase: oneBnbWei,
+      role: "bridge",
+    });
+    expect(built).toStrictEqual({
+      ok: true,
+      value: {
+        chain: testChain,
+        calls: [
+          { contract: testAddresses.router, abi: testRouterAbi.swapTo, walletInputs: ["receiver"] },
+        ],
+        spenders: [testAddresses.router],
+        perTxNativeCapBase: oneBnbWei,
+      },
+    });
+  });
+
   it("lists a spender only a launch wallet approves in a launch wallet's ceiling alone", () => {
     expect(spendersFor({ isLaunch: false })).toStrictEqual([testAddresses.permit2]);
     expect(spendersFor({ isLaunch: true })).toStrictEqual([

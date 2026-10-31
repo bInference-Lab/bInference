@@ -164,6 +164,18 @@ describe("bridge deposits from the registry", () => {
     expect(depositsOf(undefined)).toBeUndefined();
   });
 
+  it("makes no deposit, call or spender of a main wallet's bridge in a bridge wallet's ceiling", () => {
+    const chain = registryCeilingChain({
+      definition: source,
+      venues: [across],
+      perTxNativeCapBase: oneBnbWei,
+      role: "bridge",
+      bridges: { routes, destinations: [base, robinhood] },
+    });
+    expect(chain).toMatchObject({ ok: true, value: { calls: [], spenders: [] } });
+    expect(chain).not.toHaveProperty("value.bridges");
+  });
+
   it("refuses a route whose token a chain does not list", () => {
     expect(
       depositsOf({ routes: [route("USDT", "base-mainnet", "USDT")], destinations: [base] }),

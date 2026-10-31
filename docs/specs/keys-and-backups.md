@@ -50,7 +50,8 @@ any signature outside the policy, whatever the machine asks.
 5. Init reads the wallet back from Privy and refuses to finish unless the owner, the signer and the
    policy are exactly what it asked for.
 
-More wallets (`binference wallet create`, and `--launch` for the agent's launch wallet, section 4)
+More wallets (`binference wallet create`, `--launch` for the agent's launch wallet and `--bridge`
+for its bridge wallet, section 4)
 and policy changes need the owner key again: the CLI asks for the code, uses it for that one
 request, and forgets it.
 
@@ -182,12 +183,17 @@ sales and sales through the pools pay the launch wallet, so its proceeds stay th
 takes them back; an allowance a stolen key grants from it outlives a rescue, so after a theft the
 owner funds that launch wallet no more.
 
-**A bridge wallet's ceiling** ([decision 0303](../DECISIONS.md#d0303)). An agent's bridge wallet,
-funded from outside only, holds every rule above and the calls bridge venues mark as a bridge
-wallet's alone: Relay's depository deposits, its depositor the wallet itself, and approvals naming
-the depository, under the same 24-hour caps. A Relay deposit names only an order id, so a thief with
-this machine's keys can take what the bridge wallet holds; no other wallet's ceiling lists a Relay
-call, and the signer refuses one from any other wallet.
+**A bridge wallet's ceiling** ([decisions 0303](../DECISIONS.md#d0303) and
+[0307](../DECISIONS.md#d0307)). An agent may hold one bridge wallet, made with the owner key by
+`binference wallet create --bridge` and funded from outside only. Its ceiling holds the calls bridge
+venues mark as a bridge wallet's alone: Relay's depository deposits, its depositor the wallet
+itself, and approvals naming the depository, under the same 24-hour caps; the sends to the rescue
+and saved addresses; and the cancel. It holds no other venue's call, spender or bridge deposit, so
+the bridge wallet cannot swap. A Relay deposit names only an order id, so a thief with this
+machine's keys can take what the bridge wallet holds; no other wallet's ceiling lists a Relay call,
+and the signer refuses one from any other wallet. No ceiling lists a bridge wallet as a recipient:
+saving its address, or making it the rescue address, is refused as `address.bridge_wallet`. A
+rescue empties it with the agent's other wallets.
 
 **What it promises** ([decision 0149](../DECISIONS.md#d0149)). A machine whose keys are stolen
 cannot send BNB or a token to an address the owner did not save, cannot call a contract or a

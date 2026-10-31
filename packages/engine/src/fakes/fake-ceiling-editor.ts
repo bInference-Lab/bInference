@@ -4,6 +4,7 @@ import {
   accountRefSchema,
   type ChainRef,
   type ChainRegistry,
+  roleMakesMainCalls,
   type VenueContracts,
   type VenueDeclaration,
   type WalletRole,
@@ -169,19 +170,22 @@ interface Held {
 }
 
 // The names a venue's entry on a chain puts in a ceiling, as custody's read-back counts them: each
-// contract a plain call or a call of the wallet's role reaches, and each spender of the role. A
+// contract a plain call or a call of the wallet's role reaches, and each spender of the role, but no
+// plain call or spender for a role that makes no main wallet's calls (decision 0307). A
 // bridge deposit is left out: it holds a rule only once a destination has a saved address, which
 // the fake never has. An entry that declares no calls puts all its names in.
 function namesIn(entry: VenueContracts, role: WalletRole | undefined): readonly string[] {
+  const makesMain = role === undefined || roleMakesMainCalls[role];
   if (entry.calls === undefined) {
-    return entry.names;
+    return makesMain ? entry.names : [];
   }
   const called = entry.calls
     .filter((call) => call.bridge === undefined)
-    .filter((call) => call.onlyWallet === undefined || call.onlyWallet === role)
+    .filter((call) => (call.onlyWallet === undefined ? makesMain : call.onlyWallet === role))
     .map((call) => call.contract);
+  const plainSpenders = makesMain ? (entry.spenders ?? []) : [];
   const roleSpenders = role === undefined ? [] : (entry.onlyWalletSpenders?.[role] ?? []);
-  return [...called, ...(entry.spenders ?? []), ...roleSpenders];
+  return [...called, ...plainSpenders, ...roleSpenders];
 }
 
 // A venue's contracts on a chain: the registry's that its declaration puts in a ceiling, or without

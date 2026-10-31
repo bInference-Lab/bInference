@@ -5,6 +5,7 @@ import {
   declaredContracts,
   type VenueCall,
   type VenueContracts,
+  roleMakesMainCalls,
   type VenueDeclaration,
   type WalletRole,
 } from "@binference/chain";
@@ -47,6 +48,10 @@ interface Declared {
   readonly contracts: VenueContracts;
 }
 
+// Whether the ceiling of a wallet of the role holds a main wallet's calls: a main wallet's does.
+const makesMainCalls = (role: WalletRole | undefined): boolean =>
+  role === undefined || roleMakesMainCalls[role];
+
 // A launch's contracts are made per launch, so no list can hold them: they add nothing here
 // (decision 0212).
 function isRegistryName(declared: Declared, name: string): boolean {
@@ -65,7 +70,9 @@ function callsOf(
       isRegistryName(declared, call.contract) &&
       call.isUnbuilt !== true &&
       call.bridge === undefined &&
-      (call.onlyWallet === undefined || call.onlyWallet === ceiling.role),
+      (call.onlyWallet === undefined
+        ? makesMainCalls(ceiling.role)
+        : call.onlyWallet === ceiling.role),
   );
   for (const call of listed) {
     const contract = declaredAddress(declared.venue, { definition }, call.contract);
@@ -90,9 +97,8 @@ function spendersOf(
   const spenders: string[] = [];
   const roleOnly =
     ceiling.role === undefined ? [] : (declared.contracts.onlyWalletSpenders?.[ceiling.role] ?? []);
-  const listed = [...(declared.contracts.spenders ?? []), ...roleOnly].filter((name) =>
-    isRegistryName(declared, name),
-  );
+  const plain = makesMainCalls(ceiling.role) ? (declared.contracts.spenders ?? []) : [];
+  const listed = [...plain, ...roleOnly].filter((name) => isRegistryName(declared, name));
   for (const name of listed) {
     const address = declaredAddress(declared.venue, { definition }, name);
     if (!address.ok) {
@@ -131,8 +137,10 @@ function venuePartsOf(
   if (!calls.ok) {
     return calls;
   }
+  // A bridge deposit with a bound recipient is a main wallet's call (decision 0302).
+  const deposits = makesMainCalls(request.role) ? (contracts.calls ?? []) : [];
   return spenders.ok
-    ? ok({ calls: calls.value, spenders: spenders.value, declared: contracts.calls ?? [] })
+    ? ok({ calls: calls.value, spenders: spenders.value, declared: deposits })
     : spenders;
 }
 
@@ -141,7 +149,9 @@ function venuePartsOf(
  * the functions each enabled venue declares its trades call, on the contracts it names, and the
  * contracts it names as spenders, each read from the chain definition by name. A call only a launch
  * wallet makes is in a launch wallet's ceiling alone (decision 0271), as is a spender only it
- * approves (decision 0277). A venue that declares nothing on the chain adds nothing. A name the definition does not hold, or a call that is no JSON ABI entry,
+ * approves (decision 0277); a bridge wallet's holds only its role's calls and spenders, and no
+ * main wallet's call, spender or bridge deposit (decision 0307). A venue that declares nothing on
+ * the chain adds nothing. A name the definition does not hold, or a call that is no JSON ABI entry,
  * is an expected failure, so a ceiling never allows less, or more, than the venues use. A call
  * or a spender on a contract each launch makes, such as a launchpad's curve, adds nothing: no
  * address list can hold one, so such trades stay outside every ceiling (decision 0212). A bridge

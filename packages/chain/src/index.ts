@@ -71,7 +71,7 @@ export type {
   WalletOnlyCall,
   WalletOnlySpender,
 } from "./signing/authorize-input.js";
-export { walletRoleSchema } from "./signing/wallet-role.js";
+export { roleMakesMainCalls, walletRoleSchema } from "./signing/wallet-role.js";
 export type { WalletRole } from "./signing/wallet-role.js";
 export {
   approvalModeNowSchema,
