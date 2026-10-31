@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "@binference/core";
 import { isPrivyId } from "../privy/privy-records.js";
 import { addressList } from "./address-list.js";
-import { bridgeRule, checkedTargets } from "./bridge-rules.js";
+import { bridgeRules, checkedTargets } from "./bridge-rules.js";
 import {
   type CallRuleLists,
   callListsOf,
@@ -136,7 +136,7 @@ function callRulesOf(lists: CeilingChainLists): readonly PolicyRule[] {
   ]);
   return [
     ...lists.calls.map((call) => callRule(lists, call)),
-    ...(lists.bridges ?? []).map((target) => bridgeRule(target, chainId)),
+    ...(lists.bridges ?? []).flatMap((target) => bridgeRules(target, chainId)),
     ...(lists.spenders.length > 0 ? [approvals] : []),
     ...launchRulesOf(lists),
   ];

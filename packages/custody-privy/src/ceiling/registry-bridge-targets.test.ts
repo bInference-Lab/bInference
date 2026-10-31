@@ -152,15 +152,13 @@ describe("bridge targets from the registry", () => {
         call: { ...testBridgeCall },
         destinationChainId: "8453",
         recipients: [bridgeAddresses.baseSaved],
-        tokensIn: [bridgeAddresses.bscUsdc],
-        tokensOut: [bridgeAddresses.baseUsdc],
+        routes: [{ tokenIn: bridgeAddresses.bscUsdc, tokenOut: bridgeAddresses.baseUsdc }],
       },
       {
         call: { ...testBridgeCall },
         destinationChainId: "4663",
         recipients: [bridgeAddresses.robinhoodSaved],
-        tokensIn: [bridgeAddresses.bscEth],
-        tokensOut: [bridgeAddresses.robinhoodWeth],
+        routes: [{ tokenIn: bridgeAddresses.bscEth, tokenOut: bridgeAddresses.robinhoodWeth }],
       },
     ]);
   });

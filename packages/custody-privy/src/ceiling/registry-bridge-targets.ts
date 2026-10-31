@@ -8,7 +8,7 @@ import {
 import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 import { abiFunctionSchema } from "./abi-function.schema.js";
-import type { BridgeInputs, BridgeTarget } from "./ceiling.js";
+import type { BridgeInputs, BridgeRoute, BridgeTarget } from "./ceiling.js";
 
 // The inputs a ceiling binds: a declared empty input is the signer's alone (decision 0302).
 function bridgeInputsOf(bridge: NonNullable<VenueCall["bridge"]>): BridgeInputs {
@@ -37,33 +37,31 @@ export interface BridgePlan {
 /** Why the registry gives no bridge target: a route names a token its chain does not list. */
 export type BridgeTargetProblem = "unknown_token" | "unknown_contract" | "bad_call";
 
-function known(list: readonly (string | undefined)[]): readonly string[] {
-  return list.flatMap((item) => (item === undefined ? [] : [item]));
-}
-
 function tokenAddress(definition: ChainDefinition, symbol: string): string | undefined {
   return definition.tokens.find((token) => token.symbol === symbol)?.address;
 }
 
-// The tokens the venue's routes to one destination take and deliver, each once.
-function routeTokens(
+// The venue's routes to one destination as token pairs; a route whose token a chain does not list
+// is `unknown_token`.
+function routePairs(
   source: ChainDefinition,
   destination: ChainDefinition,
   routes: readonly BridgeRouteDefinition[],
-): Result<
-  { readonly tokensIn: readonly string[]; readonly tokensOut: readonly string[] },
-  "unknown_token"
-> {
-  const tokensIn = routes.map((route) => tokenAddress(source, route.leaves));
-  const tokensOut = routes.map((route) => tokenAddress(destination, route.arrives));
-  if (known(tokensIn).length !== routes.length || known(tokensOut).length !== routes.length) {
-    return err("unknown_token");
+): Result<readonly BridgeRoute[], "unknown_token"> {
+  const pairs: BridgeRoute[] = [];
+  for (const route of routes) {
+    const tokenIn = tokenAddress(source, route.leaves);
+    const tokenOut = tokenAddress(destination, route.arrives);
+    if (tokenIn === undefined || tokenOut === undefined) {
+      return err("unknown_token");
+    }
+    pairs.push({ tokenIn, tokenOut });
   }
-  return ok({ tokensIn: [...new Set(known(tokensIn))], tokensOut: [...new Set(known(tokensOut))] });
+  return ok(pairs);
 }
 
-// One venue's bridge call's targets: one per EVM destination with a saved address and a route of the
-// venue; a destination of another family, such as Solana, holds no 20-byte recipient.
+// One venue's bridge call's targets: one per EVM destination with a saved address and a route of
+// the venue; a destination of another family, such as Solana, holds no 20-byte recipient.
 function targetsOf(
   venue: VenueDeclaration,
   call: VenueCall & { readonly bridge: NonNullable<VenueCall["bridge"]> },
@@ -87,16 +85,16 @@ function targetsOf(
     if (target.family !== "evm" || routes.length === 0 || destination.recipients.length === 0) {
       continue;
     }
-    const tokens = routeTokens(definition, target, routes);
-    if (!tokens.ok) {
-      return tokens;
+    const pairs = routePairs(definition, target, routes);
+    if (!pairs.ok) {
+      return pairs;
     }
     const bridgeCall = { contract: contract.value, abi: abi.data, walletInputs: call.walletInputs };
     targets.push({
       call: { ...bridgeCall, bridge: bridgeInputsOf(call.bridge) },
       destinationChainId: String(evmChainOf(target).chainId),
       recipients: destination.recipients,
-      ...tokens.value,
+      routes: pairs.value,
     });
   }
   return ok(targets);

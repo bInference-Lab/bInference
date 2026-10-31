@@ -76,15 +76,14 @@ const baseTarget: BridgeTarget = firstTarget ?? {
   call: testBridgeCall,
   destinationChainId: "8453",
   recipients: [],
-  tokensIn: [],
-  tokensOut: [],
+  routes: [],
 };
 
 // The ceiling's rules with the Base target's conditions edited.
 function tampered(edit: (conditions: readonly JsonValue[]) => readonly JsonValue[]) {
   return rules.map((rule) => {
     const named = rule as { readonly name: string; readonly conditions: readonly JsonValue[] };
-    return named.name === "Bridge depositV3, chain 56 to 8453"
+    return named.name === "Bridge depositV3, chain 56 to 8453, 1"
       ? Object.assign({}, named, { conditions: edit(named.conditions) })
       : rule;
   });
@@ -104,8 +103,8 @@ function ruleNamed(name: string): JsonValue {
 
 describe("a bridge deposit's rule", () => {
   it("binds the depositor, the recipient and the chain together, and the tokens", () => {
-    expect(ruleNamed("Bridge depositV3, chain 56 to 8453")).toStrictEqual({
-      name: "Bridge depositV3, chain 56 to 8453",
+    expect(ruleNamed("Bridge depositV3, chain 56 to 8453, 1")).toStrictEqual({
+      name: "Bridge depositV3, chain 56 to 8453, 1",
       method: "eth_signTransaction",
       action: "ALLOW",
       conditions: [
@@ -130,13 +129,13 @@ describe("a bridge deposit's rule", () => {
         }),
         expect.objectContaining({
           field: "depositV3.inputToken",
-          operator: "in",
-          value: [bscUsdc],
+          operator: "eq",
+          value: bscUsdc,
         }),
         expect.objectContaining({
           field: "depositV3.outputToken",
-          operator: "in",
-          value: [baseUsdc],
+          operator: "eq",
+          value: baseUsdc,
         }),
       ],
     });

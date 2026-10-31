@@ -16,7 +16,7 @@ and that it can sell any token the caps do not name at any price.
 
 A bridge deposit through Across names its `outputAmount`, and Across's relayers are
 permissionless: a thief can deposit with an `outputAmount` near nothing, fill it as a relayer to
-the saved recipient, and be repaid the input ([decision 0302](0302-a-bridge-deposit-binds-its-depositor-recipient-and-chain-in-one-rule-per-destination.md)).
+the saved recipient, and be repaid the input ([decision 0302](0302-a-bridge-deposit-binds-its-depositor-recipient-chain-and-tokens-in-one-rule-per-route.md)).
 Across's ETH routes from BSC take Binance-Peg ETH (`0x2170...F933F8`), a BEP-20 token no cap
 names, so a deposit of it could empty the ETH the wallet holds.
 

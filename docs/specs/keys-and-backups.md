@@ -137,11 +137,11 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    native coin the wallets sent in the last 24 hours stays within the chain's cap. No rule names an
    executor, a token or a Permit2.
 3. **Bridge deposits** ([decision 0302](../DECISIONS.md#d0302)): a deposit an enabled bridge venue
-   declares, one rule per destination chain (`Bridge <function>, chain <id> to <destination>`):
-   the function on its contract with no native coin, its depositor the wallet itself, its
-   recipient one of the addresses saved for that destination (and the rescue address where it is
-   a plain wallet on both chains), the destination chain's id, and the tokens the venue's routes
-   there take and deliver. A destination with no saved address has no rule. The deposit's message
+   declares, one rule per route of each destination chain
+   (`Bridge <function>, chain <id> to <destination>, <n>`): the function on its contract with no
+   native coin, its depositor the wallet itself, its recipient one of the addresses saved for that
+   destination (and the rescue address where it is a plain wallet on both chains), the destination
+   chain's id, and the route's token that leaves with its token that arrives, as a pair. A destination with no saved address has no rule. The deposit's message
    must be empty, which the signer checks: Privy takes no condition for an empty value.
 4. **Approvals:** `approve(spender, amount)` on any token, only when `spender` is a contract an
    enabled venue declares as its spender, and only while each capped token's approvals in the last

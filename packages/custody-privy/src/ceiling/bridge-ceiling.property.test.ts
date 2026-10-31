@@ -1,107 +1,178 @@
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { depositV3Data } from "../testing/bridge-fixtures.js";
-import { bridgeAddresses, testBridgeCeilingRequest } from "../testing/bridge-target-fixtures.js";
+import {
+  bridgeAddresses,
+  testBridgeCall,
+  testBridgeCeilingRequest,
+} from "../testing/bridge-target-fixtures.js";
 import { testAddresses } from "../testing/custody-fixtures.js";
 import { evaluatePolicy } from "../testing/fake-policy-engine.js";
-import { fakePolicyBodySchema } from "../testing/fake-privy-request.schema.js";
+import { fakePolicyBodySchema, type FakeRule } from "../testing/fake-privy-request.schema.js";
 import { buildCeiling } from "./build-ceiling.js";
+import type { BridgeTarget } from "./ceiling.js";
 import { policyRuleJson } from "./policy-rule.js";
 
-const wallet = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
-const { spokePool, bscUsdc, bscEth, baseUsdc, ethereumUsdc, robinhoodWeth } = bridgeAddresses;
-const { baseSaved, robinhoodSaved, rescue } = bridgeAddresses;
-const { unsaved, unlisted, token } = testAddresses;
+type Hex = `0x${string}`;
 
-// Decisions 0091, 0297 and 0302, read directly and apart from the builder: on each destination the
-// owner named, the addresses saved for it and the tokens its routes take and deliver.
-const destinations: ReadonlyMap<
-  bigint,
-  {
-    readonly saved: readonly string[];
-    readonly tokensIn: readonly string[];
-    readonly tokensOut: readonly string[];
-  }
-> = new Map([
-  [8453n, { saved: [baseSaved], tokensIn: [bscUsdc], tokensOut: [baseUsdc] }],
-  [4663n, { saved: [robinhoodSaved], tokensIn: [bscEth], tokensOut: [robinhoodWeth] }],
-  [1n, { saved: [rescue], tokensIn: [bscUsdc], tokensOut: [ethereumUsdc] }],
-]);
+const wallet: Hex = "0x6B175474E89094C44Da98b954EedeAC495271d0F";
+const { spokePool, bscUsdc, bscEth, baseUsdc, ethereumUsdc, ethereumWeth, robinhoodWeth } =
+  bridgeAddresses;
+const { baseSaved, robinhoodSaved, rescue } = bridgeAddresses;
+const { unsaved, unlisted } = testAddresses;
+
+const people: readonly Hex[] = [baseSaved, robinhoodSaved, rescue, unsaved, wallet];
+const tokens: readonly Hex[] = [
+  bscUsdc,
+  bscEth,
+  baseUsdc,
+  ethereumUsdc,
+  ethereumWeth,
+  robinhoodWeth,
+];
+const chains: readonly bigint[] = [8453n, 4663n, 1n, 10n, 56n];
+
+/** A destination the generated ceiling serves, as the oracle reads it. */
+interface Destination {
+  readonly chain: bigint;
+  readonly saved: readonly Hex[];
+  readonly pairs: readonly (readonly [Hex, Hex])[];
+}
 
 interface Deposit {
   readonly to: string;
   readonly valueWei: bigint;
-  readonly depositor: string;
-  readonly recipient: string;
+  readonly depositor: Hex;
+  readonly recipient: Hex;
   readonly chain: bigint;
-  readonly tokenIn: string;
-  readonly tokenOut: string;
-  readonly message: `0x${string}`;
+  readonly tokenIn: Hex;
+  readonly tokenOut: Hex;
+  readonly message: Hex;
 }
 
-// A deposit is safe when it pays an address saved for its destination, refunds the wallet, carries
-// no coin and moves a token a route to that destination moves. Its message is the signer's to
-// check: Privy takes no condition for an empty `bytes` value.
-function isSafe(deposit: Deposit): boolean {
-  const target = destinations.get(deposit.chain);
+const same = (left: string, right: string): boolean => left.toLowerCase() === right.toLowerCase();
+
+// Decisions 0091, 0297 and 0302, read directly and apart from the builder: a deposit is safe when
+// it pays an address saved for its destination, refunds the wallet, carries no coin, and moves one
+// of that destination's routes as its pair of tokens. Its message is the signer's to check: Privy
+// takes no condition for an empty `bytes` value.
+function isSafe(destinations: readonly Destination[], deposit: Deposit): boolean {
+  const place = destinations.find((item) => item.chain === deposit.chain);
   return (
-    target !== undefined &&
-    deposit.to === spokePool &&
+    place !== undefined &&
+    same(deposit.to, spokePool) &&
     deposit.valueWei === 0n &&
-    deposit.depositor === wallet &&
-    target.saved.includes(deposit.recipient) &&
-    target.tokensIn.includes(deposit.tokenIn) &&
-    target.tokensOut.includes(deposit.tokenOut)
+    same(deposit.depositor, wallet) &&
+    place.saved.some((address) => same(address, deposit.recipient)) &&
+    place.pairs.some(
+      ([tokenIn, tokenOut]) => same(tokenIn, deposit.tokenIn) && same(tokenOut, deposit.tokenOut),
+    )
   );
 }
 
-const accounts = fc.constantFrom(baseSaved, robinhoodSaved, rescue, unsaved, wallet, spokePool);
-const tokens = fc.constantFrom(bscUsdc, bscEth, baseUsdc, ethereumUsdc, robinhoodWeth, token);
+// An address as the owner may have typed it: in its checksum or all in lowercase.
+const anyCase = (address: Hex) => fc.constantFrom(address, address.toLowerCase() as Hex);
+
+const destinations: fc.Arbitrary<readonly Destination[]> = fc.uniqueArray(
+  fc.record({
+    chain: fc.constantFrom(8453n, 4663n, 1n),
+    saved: fc.uniqueArray(fc.constantFrom(...people), { minLength: 1, maxLength: 3 }),
+    pairs: fc.uniqueArray(fc.tuple(fc.constantFrom(...tokens), fc.constantFrom(...tokens)), {
+      minLength: 1,
+      maxLength: 2,
+      selector: ([tokenIn, tokenOut]) => `${tokenIn}${tokenOut}`,
+    }),
+  }),
+  { maxLength: 3, selector: (place) => place.chain },
+);
+
+// The fake's rules for a ceiling with these destinations, each address typed in the case given.
+function rulesFor(
+  chosen: readonly Destination[],
+  typed: (address: Hex) => string,
+): readonly FakeRule[] {
+  const targets: readonly BridgeTarget[] = chosen.map((place) => ({
+    call: testBridgeCall,
+    destinationChainId: String(place.chain),
+    recipients: place.saved.map(typed),
+    routes: place.pairs.map(([tokenIn, tokenOut]) => ({
+      tokenIn: typed(tokenIn),
+      tokenOut: typed(tokenOut),
+    })),
+  }));
+  const request = testBridgeCeilingRequest();
+  const built = buildCeiling({
+    ...request,
+    chains: request.chains.map((chain) => Object.assign({}, chain, { bridges: targets })),
+  });
+  if (!built.ok) {
+    throw new Error(built.error);
+  }
+  return fakePolicyBodySchema.parse({
+    version: "1.0",
+    name: "binference ceiling",
+    chain_type: "ethereum",
+    rules: built.value.rules.map(policyRuleJson),
+  }).rules;
+}
+
+// Addresses typed as given, or all in lowercase.
+const typings: Readonly<Record<"asGiven" | "lowercase", (address: Hex) => string>> = {
+  asGiven: (address) => address,
+  lowercase: (address) => address.toLowerCase(),
+};
+
 const deposits: fc.Arbitrary<Deposit> = fc.record({
   to: fc.constantFrom(spokePool, spokePool, unlisted),
   valueWei: fc.constantFrom(0n, 0n, 1n),
   depositor: fc.constantFrom(wallet, wallet, unsaved),
-  recipient: accounts,
-  chain: fc.constantFrom(8453n, 4663n, 1n, 10n, 56n, 42161n, 34_268_394_551_451n),
-  tokenIn: tokens,
-  tokenOut: tokens,
-  message: fc.constantFrom<`0x${string}`>("0x", "0x", "0x01"),
+  recipient: fc.constantFrom(...people).chain(anyCase),
+  chain: fc.constantFrom(...chains),
+  tokenIn: fc.constantFrom(...tokens),
+  tokenOut: fc.constantFrom(...tokens),
+  message: fc.constantFrom<Hex>("0x", "0x", "0x01"),
 });
 
-const built = buildCeiling(testBridgeCeilingRequest());
-const rules = built.ok
-  ? fakePolicyBodySchema.parse({
-      version: "1.0",
-      name: "binference ceiling",
-      chain_type: "ethereum",
-      rules: built.value.rules.map(policyRuleJson),
-    }).rules
-  : [];
+function verdictOf(rules: readonly FakeRule[], deposit: Deposit): boolean {
+  const data = depositV3Data({
+    depositor: deposit.depositor,
+    recipient: deposit.recipient,
+    inputToken: deposit.tokenIn,
+    outputToken: deposit.tokenOut,
+    destinationChainId: deposit.chain,
+    message: deposit.message,
+  });
+  const input = { method: "eth_signTransaction", to: deposit.to, valueWei: deposit.valueWei };
+  const request = { ...input, chainId: 56n, data, walletAddress: wallet };
+  return evaluatePolicy(rules, request) === "ALLOW";
+}
 
-describe("bridge deposits under the ceiling", () => {
-  it("allows a deposit exactly when it pays an address saved for its chain, on a route", () => {
-    expect(built.ok).toBe(true);
+describe("bridge deposits under any ceiling of saved addresses and routes", () => {
+  it("allows a deposit exactly when it pays an address saved for its chain, on one route", () => {
+    const typing = fc.constantFrom("asGiven" as const, "lowercase" as const);
     fc.assert(
-      fc.property(deposits, (deposit) => {
-        const data = depositV3Data({
-          depositor: deposit.depositor as `0x${string}`,
-          recipient: deposit.recipient as `0x${string}`,
-          inputToken: deposit.tokenIn as `0x${string}`,
-          outputToken: deposit.tokenOut as `0x${string}`,
-          destinationChainId: deposit.chain,
-          message: deposit.message,
-        });
-        const verdict = evaluatePolicy(rules, {
-          method: "eth_signTransaction",
-          to: deposit.to,
-          valueWei: deposit.valueWei,
-          chainId: 56n,
-          data,
-          walletAddress: wallet,
-        });
-        expect(verdict === "ALLOW").toBe(isSafe(deposit));
+      fc.property(destinations, typing, deposits, (chosen, typed, deposit) => {
+        expect(verdictOf(rulesFor(chosen, typings[typed]), deposit)).toBe(isSafe(chosen, deposit));
       }),
-      { numRuns: 3_000 },
+      { numRuns: 2_000 },
     );
+  });
+
+  it("never pays a mixed pair: a token that leaves on one route with the token of another", () => {
+    const pairs = [
+      [bscUsdc, ethereumUsdc],
+      [bscEth, ethereumWeth],
+    ] as const;
+    const rules = rulesFor([{ chain: 1n, saved: [rescue], pairs }], (address) => address);
+    const base = {
+      to: spokePool,
+      valueWei: 0n,
+      depositor: wallet,
+      recipient: rescue,
+      chain: 1n,
+      message: "0x" as Hex,
+    };
+    expect(verdictOf(rules, { ...base, tokenIn: bscEth, tokenOut: ethereumWeth })).toBe(true);
+    expect(verdictOf(rules, { ...base, tokenIn: bscEth, tokenOut: ethereumUsdc })).toBe(false);
   });
 });

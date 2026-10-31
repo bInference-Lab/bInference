@@ -4,7 +4,7 @@ import { addressList } from "./address-list.js";
 import { checkedTargets } from "./bridge-rules.js";
 import { type CeilingChainLists, ceilingRules } from "./build-ceiling.js";
 import { type CallRuleLists, launchListsOf } from "./call-lists.js";
-import type { BridgeTarget, ChainCaps } from "./ceiling.js";
+import type { ChainCaps } from "./ceiling.js";
 import {
   callIn,
   capsIn,
@@ -14,23 +14,13 @@ import {
   valuesOf,
 } from "./held-rules.schema.js";
 import { policyRuleJson } from "./policy-rule.js";
+import { type HeldBridge, heldBridgesOf, heldTargetsOf } from "./read-bridge-rules.js";
 
 /** The 24-hour caps a ceiling names on one chain whose rules allow calls. */
 export interface HeldCaps {
   /** The EIP-155 chain id as decimal text. */
   readonly chainId: string;
   readonly caps: ChainCaps;
-}
-
-/** The addresses a ceiling's bridge rule lets a deposit from one chain pay on one destination. */
-export interface HeldBridge {
-  /** The EIP-155 id of the chain the deposit leaves, as decimal text. */
-  readonly chainId: string;
-  /** The EIP-155 id of the destination chain, as decimal text. */
-  readonly destinationChainId: string;
-  /** The deposit function the rule allows. */
-  readonly function: string;
-  readonly recipients: readonly string[];
 }
 
 /** A ceiling as Privy holds it now, read from its rules. Addresses are as the rules list them. */
@@ -67,7 +57,6 @@ export interface CeilingHeld {
 const onChain = /, chain (\d{1,10})$/;
 const callPrefix = "Call ";
 const launchCallPrefix = "Launch call ";
-const bridgeName = /^Bridge ([A-Za-z_$][\w$]*), chain (\d{1,10}) to (\d{1,20})$/;
 
 // The function a launch rule lets a call reach on any contract: a launch call's, or `approve`.
 function launchFunctionOf(rule: HeldRule): readonly string[] {
@@ -161,75 +150,18 @@ function heldLaunchOf(
     : undefined;
 }
 
-// A bridge rule's target as it names it: the conditions after its pins are, in order, the recipient,
-// the destination, the token that leaves and the token that arrives. Undefined when the rule cannot
-// be read so.
-function targetIn(rule: HeldRule): BridgeTarget | undefined {
-  const named = bridgeName.exec(rule.name);
-  const call = callIn(rule);
-  if (named === null || call === undefined) {
-    return undefined;
-  }
-  const prefix = `${call.abi.name}.`;
-  const bound = rule.conditions.filter(
-    (item) => item.field.startsWith(prefix) && item.value !== "{{wallet.address}}",
-  );
-  const [recipient, destination, tokenIn, tokenOut, ...rest] = bound;
-  if (
-    tokenOut === undefined ||
-    recipient === undefined ||
-    destination === undefined ||
-    rest.length > 0
-  ) {
-    return undefined;
-  }
-  const input = (item: { readonly field: string }) => item.field.slice(prefix.length);
-  const [contract] = call.contracts;
-  return contract === undefined || tokenIn === undefined
-    ? undefined
-    : {
-        call: {
-          contract,
-          abi: call.abi,
-          walletInputs: call.walletInputs,
-          bridge: {
-            recipient: input(recipient),
-            destinationChain: input(destination),
-            tokenIn: input(tokenIn),
-            tokenOut: input(tokenOut),
-          },
-        },
-        destinationChainId: named[3] ?? "",
-        recipients: listIn(recipient),
-        tokensIn: listIn(tokenIn),
-        tokensOut: listIn(tokenOut),
-      };
-}
-
-function listIn(item: { readonly value: string | readonly string[] }): readonly string[] {
-  return typeof item.value === "string" ? [item.value] : item.value;
-}
-
-function bridgeRulesOf(read: readonly HeldRule[], chainId?: string): readonly HeldRule[] {
-  return read.filter((rule) => {
-    const named = bridgeName.exec(rule.name);
-    return named !== null && (chainId === undefined || named[2] === chainId);
-  });
-}
-
 // A chain's bridge targets as its rules name them; undefined when a bridge rule cannot be read, or
 // reads as a target no ceiling is built with.
 function extrasOf(
   read: readonly HeldRule[],
   chainId: string,
 ): Pick<CeilingChainLists, "bridges"> | undefined {
-  const targets = bridgeRulesOf(read, chainId).map(targetIn);
-  const parsed = targets.flatMap((target) => (target === undefined ? [] : [target]));
-  const checked = checkedTargets(parsed, chainId);
-  if (parsed.length !== targets.length || !checked.ok) {
+  const targets = heldTargetsOf(read, chainId);
+  const checked = targets === undefined ? undefined : checkedTargets(targets, chainId);
+  if (checked?.ok !== true) {
     return undefined;
   }
-  return parsed.length === 0 ? {} : { bridges: checked.value };
+  return checked.value.length === 0 ? {} : { bridges: checked.value };
 }
 
 // The lists of one chain as its rules name them, checksummed; undefined when one cannot be read.
@@ -307,20 +239,7 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
     functions: [
       ...new Set(calls.map((rule) => rule.name.slice(callPrefix.length).replace(onChain, ""))),
     ],
-    bridges: bridgeRulesOf(read).flatMap((rule): readonly HeldBridge[] => {
-      const named = bridgeName.exec(rule.name);
-      const target = targetIn(rule);
-      return named === null || target === undefined
-        ? []
-        : [
-            {
-              chainId: named[2] ?? "",
-              destinationChainId: target.destinationChainId,
-              function: target.call.abi.name,
-              recipients: target.recipients,
-            },
-          ];
-    }),
+    bridges: heldBridgesOf(read, chainIds),
   };
 }
 

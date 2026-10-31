@@ -26,8 +26,7 @@ const baseTarget: BridgeTarget = firstTarget ?? {
   call: testBridgeCall,
   destinationChainId: "8453",
   recipients: [],
-  tokensIn: [],
-  tokensOut: [],
+  routes: [],
 };
 
 function bytesOf(request: CeilingRequest): number | string {

@@ -85,19 +85,24 @@ export interface BridgeCall extends CeilingCall {
   readonly bridge: BridgeInputs;
 }
 
+/** One route of a bridge: the token that leaves and the token that arrives, as a pair. */
+export interface BridgeRoute {
+  readonly tokenIn: string;
+  readonly tokenOut: string;
+}
+
 /**
  * What a bridge deposit to one destination chain may name (decision 0302): the deposit function,
  * the destination's EIP-155 id, the addresses the owner saved for that chain (the rescue address
- * among them where it is a plain wallet on both chains), and the tokens the bridge's routes to it
- * take and deliver. Addresses are EVM addresses in any case.
+ * among them where it is a plain wallet on both chains), and the routes the bridge serves to it,
+ * each a pair of tokens. Addresses are EVM addresses in any case.
  */
 export interface BridgeTarget {
   readonly call: BridgeCall;
   /** The destination chain's EIP-155 id as decimal text. */
   readonly destinationChainId: string;
   readonly recipients: readonly string[];
-  readonly tokensIn: readonly string[];
-  readonly tokensOut: readonly string[];
+  readonly routes: readonly BridgeRoute[];
 }
 
 /** A chain's ceiling before its 24-hour caps are attached, as the registry gives it. */

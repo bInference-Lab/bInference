@@ -16,12 +16,13 @@ export const bridgeAddresses = {
   bscEth: "0x2170Ed0880ac9A755fd29B2688956BD959F933F8",
   baseUsdc: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
   ethereumUsdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  ethereumWeth: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
   robinhoodWeth: "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
   /** Saved for Base only: the tests' saved address. */
   baseSaved: "0xeA6F82DbD6C87DE5E542eFbd1f9964879828e4e7",
   /** Saved for Robinhood Chain only. */
   robinhoodSaved: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
-  /** The tests' rescue address, a plain wallet on BSC and on Ethereum, so a target there lists it. */
+  /** The tests' rescue address, plain on BSC and on Ethereum, so a target there lists it. */
   rescue: "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB",
 } as const;
 
@@ -38,32 +39,32 @@ export const testBridgeCall: BridgeCall = {
   },
 };
 
-/** Targets to Base (USDC), Robinhood Chain (ETH to WETH) and Ethereum (USDC, to the rescue address). */
+/** Targets to Base (USDC), Robinhood Chain (ETH to WETH) and Ethereum (USDC and ETH, to rescue). */
 export const testTargets: readonly BridgeTarget[] = [
   {
     call: testBridgeCall,
     destinationChainId: "8453",
     recipients: [bridgeAddresses.baseSaved],
-    tokensIn: [bridgeAddresses.bscUsdc],
-    tokensOut: [bridgeAddresses.baseUsdc],
+    routes: [{ tokenIn: bridgeAddresses.bscUsdc, tokenOut: bridgeAddresses.baseUsdc }],
   },
   {
     call: testBridgeCall,
     destinationChainId: "4663",
     recipients: [bridgeAddresses.robinhoodSaved],
-    tokensIn: [bridgeAddresses.bscEth],
-    tokensOut: [bridgeAddresses.robinhoodWeth],
+    routes: [{ tokenIn: bridgeAddresses.bscEth, tokenOut: bridgeAddresses.robinhoodWeth }],
   },
   {
     call: testBridgeCall,
     destinationChainId: "1",
     recipients: [bridgeAddresses.rescue],
-    tokensIn: [bridgeAddresses.bscUsdc],
-    tokensOut: [bridgeAddresses.ethereumUsdc],
+    routes: [
+      { tokenIn: bridgeAddresses.bscUsdc, tokenOut: bridgeAddresses.ethereumUsdc },
+      { tokenIn: bridgeAddresses.bscEth, tokenOut: bridgeAddresses.ethereumWeth },
+    ],
   },
 ];
 
-/** The test ceiling request with the bridge targets and the SpokePool as a spender beside the router. */
+/** The test ceiling request with the bridge targets and the SpokePool as a spender. */
 export function testBridgeCeilingRequest(caps: ChainCaps = testCaps): CeilingRequest {
   const request = testCeilingRequest(caps);
   const chains = request.chains.map((chain) =>
