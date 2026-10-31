@@ -146,8 +146,10 @@ function changeLines(context: InitContext, changes: RestoreChanges, sinceMs: num
       : words("restore.changes.history", { since, last: dateTime(last) }),
     ...changes.agentsGone.map((name) => words("restore.changes.agentGone", { name })),
     ...changes.agentsBack.map((name) => words("restore.changes.agentBack", { name })),
-    ...changes.walletsGone.map(({ label, address }) =>
-      words("restore.changes.walletGone", { label, address }),
+    ...changes.walletsGone.map(({ label, address, role }) =>
+      role === undefined
+        ? words("restore.changes.walletGone", { label, address })
+        : words("restore.changes.roleWalletGone", { label, address, role }),
     ),
     ...changes.walletsBack.map(({ label, address }) =>
       words("restore.changes.walletBack", { label, address }),

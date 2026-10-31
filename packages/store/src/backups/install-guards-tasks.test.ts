@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { restoreChanges } from "@binference/engine/backups";
 import { testAgent, testAgentDraft, testLimits, testNowMs } from "@binference/engine/testing";
 import { afterAll, describe, expect, it } from "vitest";
 import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
@@ -147,5 +148,35 @@ describe("the guards a restore carries into the restored database", () => {
       options,
     );
     expect(counted.map((intent) => intent.valueUsdMicros)).toStrictEqual([2_000_000n]);
+  });
+
+  it("names a bridge wallet made after the backup, with its role, among the wallets that leave", async () => {
+    const restored = await installWith({});
+    const current = await installWith({});
+    const now = kyselyOf(current.database);
+    now.execute(
+      now.kysely.insertInto("wallets").values({
+        id: "wal_0190f1c2-3a4b-7c5d-8e6f-000000000007",
+        agent_id: testAgent,
+        family: "evm",
+        custody: "privy",
+        custody_wallet_id: "custody-bridge",
+        policy_id: "policy-bridge",
+        signer_id: "signer",
+        address: `0x${"7".padStart(40, "0")}`,
+        label: "relays",
+        created_at: testNowMs,
+        archived_at: null,
+        role: "bridge",
+      }),
+    );
+
+    const changes = restoreChanges(
+      await createRestoreGuards(current.host).read(testNowMs, options),
+      await createRestoreGuards(restored.host).read(testNowMs, options),
+      testNowMs,
+    );
+
+    expect(changes.walletsGone).toMatchObject([{ label: "relays", role: "bridge" }]);
   });
 });

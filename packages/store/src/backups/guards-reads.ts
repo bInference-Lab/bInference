@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { walletRoleSchema } from "@binference/chain";
 import { idSchema } from "@binference/core";
 import {
   type AccessRows,
@@ -95,26 +96,30 @@ function safetyOf(database: DatabaseSync): SafetyGuards {
   };
 }
 
-function walletOf(
-  row: Pick<Selectable<WalletsTable>, "id" | "agent_id" | "address" | "label" | "archived_at">,
-): WalletFacts {
+// A backup made before migration 0038 has no role column, so its rows read with none.
+function walletOf(row: Partial<Selectable<WalletsTable>> & WalletRow): WalletFacts {
+  const role = walletRoleSchema.safeParse(row.role);
   return {
     id: walletId.parse(row.id),
     agentId: agentId.parse(row.agent_id),
     address: row.address,
     label: row.label,
     ...field("archivedAtMs", row.archived_at),
+    ...(role.success ? { role: role.data } : {}),
   };
 }
+
+type WalletRow = Pick<
+  Selectable<WalletsTable>,
+  "id" | "agent_id" | "address" | "label" | "archived_at"
+>;
 
 /** Reads what a restore must never loosen, and what it shows, from one `engine.sqlite`. */
 export function readGuards(database: DatabaseSync, nowMs: number): InstallGuards {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const owner = takeFirst(kysely.selectFrom("telegram_owner").selectAll().where("id", "=", 1));
   const agents = agentsOf(database);
-  const wallets = execute(
-    kysely.selectFrom("wallets").select(["id", "agent_id", "address", "label", "archived_at"]),
-  ).rows;
+  const wallets = execute(kysely.selectFrom("wallets").selectAll()).rows;
   const last = takeFirst(
     kysely.selectFrom("intents").select(({ fn }) => fn.max("changed_at").as("at")),
   );

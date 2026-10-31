@@ -124,6 +124,7 @@
   "restore.changes.agentGone": "Agent {name} 创建于备份之后，恢复后将不再存在。",
   "restore.changes.agentBack": "Agent {name} 会按备份中的状态回来。",
   "restore.changes.walletGone": "钱包 {label}（{address}）添加于备份之后，将离开 binference。其中的资产不会移动。",
+  "restore.changes.roleWalletGone": "{role, select, launch {发射钱包} other {跨链钱包}} {label}（{address}）创建于备份之后，将离开 binference，此后 binference 不再紧急转出它，也不再拒绝向它付款。请在恢复之前用 `binference rescue` 将其中的资产紧急转出。",
   "restore.changes.walletBack": "钱包 {label}（{address}）会回来。",
   "restore.changes.frozen": "备份中的 binference 处于冻结状态，因此恢复后仍保持冻结。",
   "restore.changes.guard": "{guard, select, frozen {冻结} archived {已归档} paper {模拟模式} manual {手动模式} sendLevel {转账级别} other {一项设置}}",

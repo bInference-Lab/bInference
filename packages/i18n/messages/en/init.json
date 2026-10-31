@@ -124,6 +124,7 @@
   "restore.changes.agentGone": "Agent {name} was made after the backup and goes.",
   "restore.changes.agentBack": "Agent {name} comes back as the backup holds it.",
   "restore.changes.walletGone": "Wallet {label} ({address}) was added after the backup and leaves binference. Nothing in it moves.",
+  "restore.changes.roleWalletGone": "{role, select, launch {Launch wallet} other {Bridge wallet}} {label} ({address}) was made after the backup and leaves binference, which then no longer rescues it or refuses it as a payee. Rescue what it holds with `binference rescue` before you restore.",
   "restore.changes.walletBack": "Wallet {label} ({address}) comes back.",
   "restore.changes.frozen": "The backup holds binference frozen, so it stays frozen after the restore.",
   "restore.changes.guard": "{guard, select, frozen {frozen} archived {archived} paper {paper mode} manual {manual mode} sendLevel {send level} other {a setting}}",

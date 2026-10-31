@@ -1,3 +1,4 @@
+import { type WalletRole, walletRoleSchema } from "@binference/chain";
 import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
 import type { AgentMode, AgentSettings } from "../agents/agent-record.js";
@@ -71,6 +72,8 @@ export interface WalletFacts {
   readonly address: string;
   readonly label: string;
   readonly archivedAtMs?: number;
+  /** `launch` or `bridge` for a launch or bridge wallet (decision 0307); absent for a main one. */
+  readonly role?: WalletRole;
 }
 
 /**
@@ -165,6 +168,7 @@ const walletSchema: z.ZodType<WalletFacts> = z.strictObject({
   address: z.string().min(1),
   label: z.string(),
   archivedAtMs: epochMsSchema.exactOptional(),
+  role: walletRoleSchema.exactOptional(),
 });
 
 /** Parses an {@link InstallGuards} as it crosses the store worker's boundary. */

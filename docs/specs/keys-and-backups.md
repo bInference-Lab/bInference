@@ -495,7 +495,10 @@ prompt and never travels to the engine, and protocol v1 serves no `backup/restor
    stops the restore.
 6. Show what the restore changes and ask to go on ([decision 0162](../DECISIONS.md#d0162)): what
    it keeps as it is now, where the history ends, the agents and wallets that come or go, and the
-   backup's stricter guards that stay. The owner types the backup's day to go on.
+   backup's stricter guards that stay. A launch or bridge wallet made after the backup is named as
+   such, with the step to rescue what it holds first, since the restored install no longer rescues
+   it or refuses it as a payee ([decision 0307](../DECISIONS.md#d0307)). The owner types the
+   backup's day to go on.
 7. Stop the engine; under the engine lock, carry the guards of the state it replaces into the
    restored `engine.sqlite` (below) and keep the sealing key's public half there when its custody
    has none; move the current state aside (kept 7 days) and put the restored files in place, all or
