@@ -9669,7 +9669,9 @@
         "plugins/kyberswap/src/index.ts",
         "plugins/kyberswap/src/testing.ts",
         "plugins/okx/src/index.ts",
-        "plugins/okx/src/testing.ts"
+        "plugins/okx/src/testing.ts",
+        "plugins/spaceid/src/index.ts",
+        "plugins/spaceid/src/testing.ts"
       ],
       "rules": {"oxc/no-barrel-file": "off", "guards/no-reexport-file": "off"}
     }
