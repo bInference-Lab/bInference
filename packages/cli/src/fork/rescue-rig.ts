@@ -1,4 +1,4 @@
-import { accountRefParts, assetRefParts, type Signer } from "@binference/chain";
+import { accountRefParts, assetRefParts, type NameResolver, type Signer } from "@binference/chain";
 import {
   createEvmNonceSource,
   createEvmReceiptReader,
@@ -17,7 +17,7 @@ import {
   type Engine,
   type WalletFactsSource,
 } from "@binference/engine";
-import { createExecutor } from "@binference/engine/executor";
+import { createExecutor, type ExecutorOptions } from "@binference/engine/executor";
 import type { WalletRecord } from "@binference/engine/install";
 import { createSourceMarketReads } from "@binference/engine/market";
 import {
@@ -177,10 +177,10 @@ function walletRecord(item: RescueRigWallet, atMs: number): WalletRecord {
   };
 }
 
-function executorOn(
-  fork: Fork,
-  parts: { readonly stores: MemoryEngineStores; readonly custody: Signer },
-) {
+/** What the rig's executor shares with its engine: stores, custody, prices and name resolvers. */
+type RigShared = Pick<ExecutorOptions, "stores" | "custody" | "prices" | "nameResolvers">;
+
+function executorOn(fork: Fork, parts: RigShared) {
   const { rpc, chain } = fork;
   const clock = createSystemClock();
   const relays = [{ name: "anvil", url: fork.rpcUrl }];
@@ -196,7 +196,7 @@ function executorOn(
     queue: createWalletQueue({ transactions: parts.stores.transactions, nonces, clock }),
     custody: parts.custody,
     wallets: forkWalletFacts(fork),
-    prices: createFakePriceSource(new Map()),
+    prices: parts.prices,
     chains: selfHostedChains(),
     venues: [],
     sending: new Map([[chain.ref, sending]]),
@@ -204,6 +204,7 @@ function executorOn(
     ids: createIdSource({ clock, random: createSeededRandom(61) }),
     publish: () => undefined,
     logger: createMemoryLogger({ subsystem: "engine" }),
+    ...(parts.nameResolvers === undefined ? {} : { nameResolvers: parts.nameResolvers }),
   });
 }
 
@@ -238,9 +239,13 @@ async function storeAgents(stores: MemoryEngineStores, fork: Fork, atMs: number)
 /**
  * The rescue rig on a fork: an engine and its executor on memory stores and the fork's BSC, with
  * two agents, three wallets whose keys sign here, a bridge wallet among them, and the owner's
- * rescue address in effect.
+ * rescue address in effect. Its executor checks a send again at the engine's prices, and both read
+ * a send's name through `nameResolvers`, none when absent.
  */
-export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
+export async function rescueRigOf(
+  fork: Fork,
+  nameResolvers: readonly NameResolver[] = [],
+): Promise<RescueRig> {
   const clock = createSystemClock();
   const stores = createMemoryEngineStores();
   const custody = rigCustody(fork);
@@ -257,13 +262,15 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     [fork.chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }],
     [erc20AssetRef(fork.chain, bscToken("USDT")), { numerator: 1n, denominator: 10n ** 12n }],
   ]);
+  const priceSource = createFakePriceSource(prices);
+  const shared = { stores, custody, prices: priceSource, nameResolvers };
   const engine = createEngine({
     stores,
     positions: createMemoryPositionStore(),
     custody,
     ceilings: createFakeCeilingEditor({ clock }),
     walletMaker: createFakeWalletMaker({ clock, chain: fork.chain.ref, family: "evm" }),
-    prices: createFakePriceSource(prices),
+    prices: priceSource,
     wallets: forkWalletFacts(fork),
     // The rig rescues on a fork; it reads no market data.
     marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
@@ -271,7 +278,8 @@ export async function rescueRigOf(fork: Fork): Promise<RescueRig> {
     risk: createFakeRiskCheck({ chains, clock }),
     simulator: createFakeSimulator(new Map()),
     chainSimulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),
-    executor: executorOn(fork, { stores, custody }),
+    executor: executorOn(fork, shared),
+    nameResolvers,
     ...forkEngineBasics(fork, 62),
   });
   return { engine, stores, wallets: rigWallets, rescue, signatures: custody.signatures };
