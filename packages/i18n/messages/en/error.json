@@ -52,6 +52,7 @@
   "address.not_found": "This address book entry does not exist or was removed. Check the address book in the console.",
   "address.launch_wallet": "This address is a launch wallet of this binference, and no wallet may pay one: fund a launch wallet from outside, such as from the rescue address's wallet.",
   "address.bridge_wallet": "This address is a bridge wallet of this binference, and no wallet may pay one: fund a bridge wallet from outside, such as from the rescue address's wallet.",
+  "address.venue_contract": "Save the wallet you want paid instead: this address is a contract a venue uses, such as Relay's depository, and a send to it can pay whoever the venue's order names.",
   "rescue.no_address": "Set a rescue address first: run `binference rescue set` with your own wallet's address.",
   "rescue.nothing_to_move": "No agent wallet holds anything to rescue.",
   "signer.not_found": "No wallet lists this signer. Check the signer ID that `binference init --attach` printed, or the key quorums on Privy's dashboard.",

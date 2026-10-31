@@ -230,6 +230,14 @@ describe("saving an address with the owner key", () => {
     expect(listed.items).toStrictEqual([]);
   });
 
+  it("refuses a contract the registry lists for a venue, such as a bridge's depository", async () => {
+    const test = await withCeilings();
+
+    // The fake chain's router, which the registry lists for the fake swap venue.
+    expect(await add(test, { address: "0x0000000B" })).toStrictEqual(err("address.venue_contract"));
+    expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
+  });
+
   it("leaves a bridge wallet a restored book holds out of every ceiling", async () => {
     const test = await withCeilings();
     test.stores.install.addWallet(bridgeWallet);

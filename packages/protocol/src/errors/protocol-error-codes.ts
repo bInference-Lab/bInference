@@ -56,6 +56,7 @@ export const protocolErrorCodes = [
   "address.not_found",
   "address.launch_wallet",
   "address.bridge_wallet",
+  "address.venue_contract",
   "rescue.no_address",
   "rescue.nothing_to_move",
   "signer.not_found",

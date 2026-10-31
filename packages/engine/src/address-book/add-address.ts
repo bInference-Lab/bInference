@@ -11,7 +11,6 @@ import {
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
-import { walletAddressRefusal } from "../install/role-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall } from "../operations/engine-call.js";
@@ -23,6 +22,7 @@ import {
   saveInCeilings,
   settleRescueCeilings,
 } from "../safety/rescue-ceilings.js";
+import { payeeRefusal } from "./payee-refusal.js";
 
 /** What saving an address reads, writes and journals through. */
 export interface AddAddressOptions extends RescueCeilingsOptions {
@@ -120,8 +120,8 @@ async function storeEntry(
  * changes. The owner key reaches this call over IPC only, as the protocol server keeps it; a wrong
  * one is `wallet.bad_owner_key`, an address its chain cannot read `protocol.bad_args`, a launch
  * wallet of the install `address.launch_wallet` and a bridge wallet `address.bridge_wallet`, which
- * no ceiling may list (decisions 0218 and 0307), and a ceiling custody does not hold
- * `wallet.not_found`.
+ * no ceiling may list (decisions 0218 and 0307), a contract the registry lists for a venue
+ * `address.venue_contract`, and a ceiling custody does not hold `wallet.not_found`.
  */
 export async function addAddress(
   options: AddAddressOptions,
@@ -137,7 +137,7 @@ export async function addAddress(
     return account;
   }
   const { wallets } = await options.install.read({ signal });
-  const refusal = walletAddressRefusal(wallets, account.value, options.chains);
+  const refusal = payeeRefusal(wallets, account.value, options.chains);
   if (refusal !== undefined) {
     return err(refusal);
   }

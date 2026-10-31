@@ -166,6 +166,7 @@ const policyCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "wallet.no_bridge_calls",
   "address.launch_wallet",
   "address.bridge_wallet",
+  "address.venue_contract",
   "intent.own_wallet_recipient",
   "intent.bridge_wallet_missing",
   "intent.bridge_wallet_only",

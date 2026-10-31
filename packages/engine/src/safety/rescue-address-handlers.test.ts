@@ -283,6 +283,16 @@ describe("a change of the rescue address", () => {
     expect(test.pushes).toStrictEqual([]);
   });
 
+  it("refuses a contract the registry lists for a venue, and changes nothing", async () => {
+    const test = await withRescue();
+
+    const router = accountRefSchema.parse("fake:1:0x0000000b");
+
+    expect(await setRescue(test, router)).toStrictEqual(err("address.venue_contract"));
+    expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
+    expect(test.pushes).toStrictEqual([]);
+  });
+
   it("changes nothing when nothing waits to be cancelled", async () => {
     const test = await withRescue();
 
