@@ -5,6 +5,7 @@ import { createManualClock } from "@binference/core/testing";
 import type { CeilingChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { createFakeCeilingEditor, fakeOwnerKeyCode } from "../fakes/fake-ceiling-editor.js";
+import type { CallsRefusal } from "../install/ceiling-change.js";
 import type { WalletRecord } from "../install/install-record.js";
 import type { CeilingEditor } from "../install/ports.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
@@ -58,13 +59,15 @@ async function started(): Promise<TestEngine> {
 }
 
 // The agent's two live wallets under ceilings custody holds, and custody that then refuses every
-// change of calls as a ceiling it no longer holds.
-async function startedOverRefusingCustody(): Promise<TestEngine> {
+// change of calls, as a ceiling it no longer holds unless another refusal is given.
+async function startedOverRefusingCustody(
+  refusal: CallsRefusal = "not_found",
+): Promise<TestEngine> {
   const chains = testChains(["other-swap"]);
   const held = createFakeCeilingEditor({ clock: createManualClock(testNowMs), chains });
   const refusing: CeilingEditor = {
     ...held,
-    setCalls: async () => Promise.resolve(err("not_found")),
+    setCalls: async () => Promise.resolve(err(refusal)),
   };
   const test = await startTestEngine({ chains, ceilings: refusing });
   for (const item of [first, second]) {
@@ -276,6 +279,20 @@ describe("changing a ceiling with the owner key", () => {
     expect(notices(test)).toStrictEqual([]);
     expect(await storedCaps(test)).toStrictEqual([5n, 5n]);
   });
+
+  it.each([
+    ["too_large", "wallet.ceiling_too_large"],
+    ["bad_bridge", "wallet.ceiling_bad_bridge"],
+    ["uncapped_token", "wallet.ceiling_uncapped"],
+  ] as const)(
+    "answers a ceiling custody cannot build, %s, with its own code",
+    async (refusal, code) => {
+      const test = await startedOverRefusingCustody(refusal);
+
+      expect(await setCeiling(test, both)).toStrictEqual(err(code));
+      expect(notices(test)).toStrictEqual([]);
+    },
+  );
 });
 
 describe("changing the 24-hour caps with the owner key", () => {

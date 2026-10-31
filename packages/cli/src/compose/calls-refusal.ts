@@ -3,14 +3,21 @@ import type { CallsRefusal as PrivyCallsRefusal } from "@binference/custody-priv
 import type { CallsRefusal } from "@binference/engine/install";
 
 /**
- * What the engine hears when custody refuses a change of calls: the owner key's refusal, or no such
- * ceiling. Any other refusal means binference built a ceiling Privy cannot take, a fault.
+ * What the engine hears when custody refuses a change of calls: the owner key's refusal, no such
+ * ceiling, a ceiling past what Privy keeps, a bridge deposit no ceiling holds, or a bridge route
+ * with no cap on its token. Any other refusal means binference built a ceiling Privy cannot take,
+ * a fault.
  */
 export function callsRefusalOf(error: PrivyCallsRefusal): CallsRefusal {
   if (error === "refused") {
     return "bad_owner_key";
   }
-  if (error === "not_found") {
+  if (
+    error === "not_found" ||
+    error === "too_large" ||
+    error === "bad_bridge" ||
+    error === "uncapped_token"
+  ) {
     return error;
   }
   // The registry's contracts and a cap the engine checked are a ceiling Privy takes.

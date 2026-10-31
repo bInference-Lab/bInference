@@ -7,7 +7,14 @@ import type { PrivyId } from "../privy/privy-records.js";
 import type { PolicyRuleRef } from "../privy/privy-wire.schema.js";
 import { readRuleRefs } from "../privy/privy-wire.schema.js";
 import { bridgeRecipientEdits } from "./bridge-recipient-edits.js";
-import { editRules, type OwnerAuthorize, type RulePlan, type RuleEdits } from "./rule-plans.js";
+import {
+  editRules,
+  editsFit,
+  type OwnerAuthorize,
+  type PlannedEdits,
+  type RulePlan,
+  type RuleEdits,
+} from "./rule-plans.js";
 
 /**
  * A ceiling, every address its send rules let a send pay on each chain it enables, and the
@@ -28,7 +35,9 @@ export type RecipientsRefusal =
    */
   | "not_found"
   /** The owner key did not sign, or Privy did not take its signature as the policy owner's. */
-  | "refused";
+  | "refused"
+  /** The policy, once edited, would be past what Privy keeps. */
+  | "too_large";
 
 const sendRuleName = /^(?:Native|Token) sends, chain (\d{1,10})$/;
 
@@ -64,7 +73,8 @@ function sendPlansOf(
  * What a change of a ceiling's recipients edits (decision 0302): each send rule rebuilt to list
  * exactly the recipients, checksummed, and each bridge rule rebuilt to pay only the addresses still
  * among them, a destination left with none taken out. Removing a saved address, or replacing the
- * rescue address, so takes it out of every destination in the same change.
+ * rescue address, so takes it out of every destination in the same change. A policy past what
+ * Privy keeps once edited is `too_large`.
  */
 export function recipientEditsOf(
   refs: readonly PolicyRuleRef[],
@@ -82,7 +92,22 @@ export function recipientEditsOf(
     return bridges;
   }
   const { writes, adds, removes } = bridges.value;
-  return ok({ writes: [...sendPlansOf(refs, listed.value), ...writes], adds, removes });
+  const edits = { writes: [...sendPlansOf(refs, listed.value), ...writes], adds, removes };
+  return editsFit(refs, edits) ? ok(edits) : err("too_large");
+}
+
+/**
+ * Plans a change of a ceiling's recipients as {@link recipientEditsOf} works it out, sending
+ * nothing, so every ceiling of a change is planned before any is written.
+ */
+export async function planCeilingRecipients(
+  api: PrivyApi,
+  target: PolicyRecipients,
+  options: CallOptions,
+): Promise<Result<PlannedEdits, RecipientsRefusal>> {
+  const refs = await recipientRulesOf(api, target.policy, options);
+  const edits = refs.ok ? recipientEditsOf(refs.value, target) : refs;
+  return edits.ok ? ok({ policy: target.policy, edits: edits.value }) : edits;
 }
 
 /**
@@ -96,7 +121,6 @@ export async function setCeilingRecipients(
   target: PolicyRecipients,
   input: CallOptions & { readonly authorize: OwnerAuthorize; readonly expiresAtMs: number },
 ): Promise<Result<void, RecipientsRefusal>> {
-  const refs = await recipientRulesOf(api, target.policy, input);
-  const edits = refs.ok ? recipientEditsOf(refs.value, target) : refs;
-  return edits.ok ? editRules(api, { policy: target.policy, edits: edits.value }, input) : edits;
+  const planned = await planCeilingRecipients(api, target, input);
+  return planned.ok ? editRules(api, planned.value, input) : planned;
 }

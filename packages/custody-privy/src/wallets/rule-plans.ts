@@ -1,5 +1,6 @@
 import type { PrivyRequest } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
+import { maxCeilingBytes } from "../ceiling/ceiling-size.js";
 import { type PolicyRule, policyRuleJson } from "../ceiling/policy-rule.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import type { PrivyId } from "../privy/privy-records.js";
@@ -32,6 +33,29 @@ export interface RuleEdits {
   readonly writes: readonly RulePlan[];
   readonly adds: readonly PolicyRule[];
   readonly removes: readonly PolicyRuleRef[];
+}
+
+/** A policy and the edits to make to it, planned before any is sent. */
+export interface PlannedEdits {
+  readonly policy: PrivyId;
+  readonly edits: RuleEdits;
+}
+
+/**
+ * Whether a policy still fits what Privy keeps once the edits are made: its rules as Privy holds
+ * them, each written over, added or taken out, within {@link maxCeilingBytes} as JSON.
+ */
+export function editsFit(refs: readonly PolicyRuleRef[], edits: RuleEdits): boolean {
+  const written = new Map(edits.writes.map((plan) => [plan.ref.id, plan.body]));
+  const removed = new Set(edits.removes.map((ref) => ref.id));
+  const kept = refs
+    .filter((ref) => !removed.has(ref.id))
+    .map((ref) => {
+      const body = written.get(ref.id);
+      return body === undefined ? ref.json : policyRuleJson(body);
+    });
+  const rules = [...kept, ...edits.adds.map(policyRuleJson)];
+  return JSON.stringify(rules).length <= maxCeilingBytes;
 }
 
 /**

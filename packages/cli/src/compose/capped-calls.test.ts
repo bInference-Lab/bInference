@@ -40,10 +40,16 @@ function depositsOf({ withEth }: { readonly withEth: boolean }): readonly Bridge
 function callsOnWith(routes: { readonly withEth: boolean }) {
   return (
     chain: unknown,
-    calls: { readonly venues: readonly string[]; readonly perTxNativeBase: bigint },
+    calls: {
+      readonly venues: readonly string[];
+      readonly perTxNativeBase: bigint;
+      readonly isLaunch?: true;
+    },
   ): CeilingChainPlan => ({
     chain: testChain,
-    calls: testCalls,
+    // A launch wallet's ceiling here also calls the deposit as a plain call, which no ceiling holds.
+    calls:
+      calls.isLaunch === true ? [...testCalls, { ...testBridgeCall, walletInputs: [] }] : testCalls,
     spenders: [router, ...(calls.venues.includes("across") ? [spokePool] : [])],
     perTxNativeCapBase: calls.perTxNativeBase,
     ...(calls.venues.includes("across") ? { bridges: depositsOf(routes) } : {}),
@@ -130,8 +136,28 @@ async function oldInstall(extra = 0) {
       perTxNativeBase: 10n ** 18n,
     })),
   };
-  return { editor, held, names, request: change };
+  // The same change with the second ceiling a launch wallet's.
+  const launching = {
+    ...change,
+    ceilings: change.ceilings.map((calls, index) =>
+      index === 1 ? { ...calls, isLaunch: true as const } : calls,
+    ),
+  };
+  return { editor, held, names, request: change, launching };
 }
+
+describe("a change of calls one ceiling of which cannot be built", () => {
+  it("writes no ceiling, the ones planned before it neither", async () => {
+    const install = await oldInstall();
+    const before = await install.names(0);
+
+    expect(await install.editor.setCalls(install.launching, live)).toStrictEqual({
+      ok: false,
+      error: "bad_bridge",
+    });
+    expect(await install.names(0)).toStrictEqual(before);
+  });
+});
 
 describe("a change of calls that adds a bridge route for ETH", () => {
   it("adds ETH's 24-hour cap to every ceiling of an old install in the same change", async () => {
@@ -151,8 +177,9 @@ describe("a change of calls that adds a bridge route for ETH", () => {
   it("adds no ETH route when its cap cannot be made", async () => {
     const install = await oldInstall(9);
 
-    await expect(install.editor.setCalls(install.request, live)).rejects.toMatchObject({
-      code: "cli.ceiling_unbuilt",
+    expect(await install.editor.setCalls(install.request, live)).toStrictEqual({
+      ok: false,
+      error: "uncapped_token",
     });
 
     const first = await install.held(0);

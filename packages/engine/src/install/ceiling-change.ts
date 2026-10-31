@@ -113,14 +113,22 @@ export type CeilingRefusal =
   /** An account is malformed for the ceiling, or there are more than a ceiling lists. */
   | "bad_recipients"
   /** Custody holds no such ceiling, or it lists no recipients to change. */
-  | "not_found";
+  | "not_found"
+  /** A ceiling, once changed, would be past what custody keeps; nothing was changed. */
+  | "too_large";
 
 /**
- * Why the owner key's change of what contract calls may do was not made: `bad_owner_key` and
- * `not_found` as for recipients, and `no_calls` for venues that give a chain a ceiling enables no
- * contract to call.
+ * Why the owner key's change of what contract calls may do was not made: `bad_owner_key`,
+ * `not_found` and `too_large` as for recipients, `no_calls` for venues that give a chain a ceiling
+ * enables no contract to call, `bad_bridge` for a bridge deposit a venue declares that no ceiling
+ * can hold, and `uncapped_token` for a bridge route whose token has no 24-hour cap custody could
+ * make (decision 0305). Nothing was changed.
  */
-export type CallsRefusal = Exclude<CeilingRefusal, "bad_recipients"> | "no_calls";
+export type CallsRefusal =
+  | Exclude<CeilingRefusal, "bad_recipients">
+  | "no_calls"
+  | "bad_bridge"
+  | "uncapped_token";
 
 /**
  * Why a change signed ahead was not sent: a ceiling lists other recipients than it did when the

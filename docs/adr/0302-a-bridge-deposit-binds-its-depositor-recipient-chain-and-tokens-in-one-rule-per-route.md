@@ -58,6 +58,10 @@ Across relayers are permissionless: a fill pays the recipient the deposit's `out
   whose declared empty inputs are not empty.
 - **The room.** A destination's rules list at most 100 addresses, and a ceiling's rules take at
   most 480,000 bytes, a margin under what Privy took. A ceiling past it is refused as `too_large`.
+  A change builds and measures every wallet's new ceiling before it writes any, so a launch
+  wallet's larger ceiling never fails after the main wallets changed; the owner reads
+  `wallet.ceiling_too_large`, or `wallet.ceiling_bad_bridge` for a deposit no ceiling holds, each
+  with its next step.
 - **The read-back.** A ceiling reads back as built only when each bridge rule pins a wallet input
   and names its recipient, chain and token pair in that order, and the rules of one destination
   count from 1 with the same recipients.

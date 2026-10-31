@@ -6,7 +6,13 @@ import { readCeiling } from "../ceiling/read-ceiling.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import type { PrivyId } from "../privy/privy-records.js";
 import { type PolicyRuleRef, readRuleRefs } from "../privy/privy-wire.schema.js";
-import { editRules, type OwnerAuthorize, type RuleEdits } from "./rule-plans.js";
+import {
+  editRules,
+  editsFit,
+  type OwnerAuthorize,
+  type PlannedEdits,
+  type RuleEdits,
+} from "./rule-plans.js";
 
 /**
  * A ceiling, what a contract call may do on each chain whose rules change, and the addresses a
@@ -85,26 +91,24 @@ function editsOf(
 }
 
 /**
- * Sets what a contract call may do under a ceiling now, signed by the owner key (decision 0149):
- * on each chain given, one rule per function its venues call, on their contracts, with the cap in
- * native coin and the chain's 24-hour caps, and the approval rule for their spenders; on a launch
- * wallet's chain, its launch rules too, and on any other chain none (decision 0217). A rule that
- * holds its body already is left alone, so setting the same calls twice is safe; a rule a new
- * function needs is added, and one no function needs any more is taken out, after the others. A
- * chain the policy does not enable is `not_found`. Each request expires at `expiresAtMs`.
+ * Plans what a contract call may do under a ceiling (decision 0149), sending nothing: on each
+ * chain given, one rule per function its venues call, on their contracts, with the cap in native
+ * coin and the chain's 24-hour caps, and the approval rule for their spenders; on a launch
+ * wallet's chain, its launch rules too, and on any other chain none (decision 0217); and the
+ * bridge rules, paying the addresses its bridge rules pay now unless others are given (decision
+ * 0302). A rule that holds its body already is left alone; a rule a new function needs is added,
+ * and one no function needs any more is taken out. A chain the policy does not enable is
+ * `not_found`, and a policy past what Privy keeps once edited is `too_large`.
  */
-export async function setCeilingCalls(
+export async function planCeilingCalls(
   api: PrivyApi,
   target: PolicyCalls,
-  input: CallOptions & { readonly authorize: OwnerAuthorize; readonly expiresAtMs: number },
-): Promise<Result<void, CallsRefusal>> {
-  const found = await api.policy(target.policy, input);
+  options: CallOptions,
+): Promise<Result<PlannedEdits, CallsRefusal>> {
+  const found = await api.policy(target.policy, options);
   const rules = found.ok ? readRuleRefs(found.value.rules) : undefined;
-  if (rules === undefined) {
-    return err("not_found");
-  }
-  const held = readCeiling(rules.map((rule) => rule.json));
-  if (held === undefined) {
+  const held = rules === undefined ? undefined : readCeiling(rules.map((rule) => rule.json));
+  if (rules === undefined || held === undefined) {
     return err("not_found");
   }
   const addresses = {
@@ -112,5 +116,38 @@ export async function setCeilingCalls(
     bridged: target.bridged ?? bridgedOf(held.bridges),
   };
   const edits = editsOf(rules, { chains: target.chains, addresses });
-  return edits.ok ? editRules(api, { policy: target.policy, edits: edits.value }, input) : edits;
+  if (!edits.ok) {
+    return edits;
+  }
+  return editsFit(rules, edits.value)
+    ? ok({ policy: target.policy, edits: edits.value })
+    : err("too_large");
+}
+
+/**
+ * Makes the edits {@link planCeilingCalls} or {@link planCeilingRecipients} planned, signed by the
+ * owner key, one request at a time: rules written over, then added, then taken out, each request
+ * expiring at `expiresAtMs`. Planning every ceiling of a change before writing any keeps a refusal
+ * from leaving an agent's wallets under different ceilings.
+ */
+export async function writePlannedEdits(
+  api: PrivyApi,
+  planned: PlannedEdits,
+  input: CallOptions & { readonly authorize: OwnerAuthorize; readonly expiresAtMs: number },
+): Promise<Result<void, "not_found" | "refused">> {
+  return editRules(api, planned, input);
+}
+
+/**
+ * Sets what a contract call may do under a ceiling now, signed by the owner key, as
+ * {@link planCeilingCalls} plans it. A rule that holds its body already is left alone, so setting
+ * the same calls twice is safe. Each request expires at `expiresAtMs`.
+ */
+export async function setCeilingCalls(
+  api: PrivyApi,
+  target: PolicyCalls,
+  input: CallOptions & { readonly authorize: OwnerAuthorize; readonly expiresAtMs: number },
+): Promise<Result<void, CallsRefusal>> {
+  const planned = await planCeilingCalls(api, target, input);
+  return planned.ok ? writePlannedEdits(api, planned.value, input) : planned;
 }

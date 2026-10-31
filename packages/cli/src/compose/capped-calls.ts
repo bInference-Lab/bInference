@@ -7,11 +7,11 @@ import {
   type CeilingChain,
   type ChainCaps,
   type ChainCapPlan,
-  type OwnerAuthorize,
-  type PrivyApi,
   isPrivyId,
+  planCeilingCalls,
+  type PlannedEdits,
+  type PrivyApi,
   type PrivyId,
-  setCeilingCalls,
 } from "@binference/custody-privy";
 
 /** The caps a change of calls made on each chain, by chain id, for the next ceilings it writes. */
@@ -25,11 +25,9 @@ export interface CappedCallsTarget {
   readonly owner: string | null;
 }
 
-/** How a change of calls writes the ceiling, and where it finds and keeps the caps it makes. */
+/** How a change of calls plans the ceiling, and where it finds and keeps the caps it makes. */
 export interface CappedCallsInput {
   readonly api: PrivyApi;
-  readonly authorize: OwnerAuthorize;
-  readonly expiresAtMs: number;
   readonly signal: AbortSignal;
   /** The plan of a chain's 24-hour caps, as init sizes them. */
   readonly capPlanOn: (chain: ChainRef) => ChainCapPlan;
@@ -71,26 +69,25 @@ async function grownChains(
 }
 
 /**
- * Writes a ceiling's calls with each token cap named by its place in the plan. When custody
- * refuses a bridge route whose token has no 24-hour cap (decision 0305), as a ceiling made before
- * that token's cap joined the plan does, it makes the caps the plan names past those the ceiling
- * holds and writes again, so the change that first adds such a route adds its cap too, or adds
- * neither. The caps it makes serve every later ceiling of the same change.
+ * Plans a ceiling's calls with each token cap named by its place in the plan, writing no rule.
+ * When custody refuses a bridge route whose token has no 24-hour cap (decision 0305), as a ceiling
+ * made before that token's cap joined the plan does, it makes the caps the plan names past those
+ * the ceiling holds and plans again, so the change that first adds such a route adds its cap too,
+ * or adds neither. The caps it makes serve every later ceiling of the same change.
  */
-export async function setCappedCalls(
+export async function planCappedCalls(
   target: CappedCallsTarget,
   input: CappedCallsInput,
-): Promise<Result<void, CallsRefusal>> {
-  const { api, authorize, expiresAtMs, signal } = input;
-  const options = { authorize, expiresAtMs, signal };
+): Promise<Result<PlannedEdits, CallsRefusal>> {
+  const { api, signal } = input;
   const chains = named(target.chains, input);
-  const set = await setCeilingCalls(api, { policy: target.policy, chains }, options);
+  const planned = await planCeilingCalls(api, { policy: target.policy, chains }, { signal });
   const { owner } = target;
-  if (set.ok || set.error !== "uncapped_token" || owner === null || !isPrivyId(owner)) {
-    return set;
+  if (planned.ok || planned.error !== "uncapped_token" || owner === null || !isPrivyId(owner)) {
+    return planned;
   }
   const grown = await grownChains({ chains, owner }, input);
   return grown === undefined
     ? err("uncapped_token")
-    : setCeilingCalls(api, { policy: target.policy, chains: grown }, options);
+    : planCeilingCalls(api, { policy: target.policy, chains: grown }, { signal });
 }

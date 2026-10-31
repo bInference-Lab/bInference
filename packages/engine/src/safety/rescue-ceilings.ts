@@ -37,6 +37,7 @@ const refusalCodes: Readonly<Record<CeilingRefusal, ProtocolErrorCode>> = {
   bad_owner_key: "wallet.bad_owner_key",
   bad_recipients: "protocol.bad_args",
   not_found: "wallet.not_found",
+  too_large: "wallet.ceiling_too_large",
 };
 
 async function savedOf(

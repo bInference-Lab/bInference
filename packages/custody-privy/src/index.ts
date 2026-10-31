@@ -71,10 +71,10 @@ export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
 export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner-signer.js";
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
-export { setCeilingCalls } from "./wallets/ceiling-calls.js";
+export { planCeilingCalls, setCeilingCalls, writePlannedEdits } from "./wallets/ceiling-calls.js";
 export { addPlannedCaps, capsWithTokens, createDayCaps } from "./wallets/create-day-caps.js";
 export type { CallsRefusal, PolicyCalls } from "./wallets/ceiling-calls.js";
-export { setCeilingRecipients } from "./wallets/ceiling-recipients.js";
+export { planCeilingRecipients, setCeilingRecipients } from "./wallets/ceiling-recipients.js";
 export type { PolicyRecipients, RecipientsRefusal } from "./wallets/ceiling-recipients.js";
 export {
   sendSignedRecipients,
@@ -86,7 +86,7 @@ export type {
   SignedRecipientsRefusal,
   SignedRuleChange,
 } from "./wallets/signed-recipients.js";
-export type { OwnerAuthorize } from "./wallets/rule-plans.js";
+export type { OwnerAuthorize, PlannedEdits } from "./wallets/rule-plans.js";
 export { findOwnedWallets } from "./wallets/owned-wallets.js";
 export type { OwnedWallet } from "./wallets/owned-wallets.js";
 export { removeSigner, swapSigner } from "./wallets/signer-moves.js";

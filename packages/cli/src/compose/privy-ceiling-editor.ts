@@ -21,14 +21,14 @@ import {
   createDayCaps,
   type HeldCaps,
   isPrivyId,
-  type OwnerAuthorize,
   readCeiling,
   type PrivyApi,
   type PrivyId,
   type PrivyPolicy,
   type RecipientsRefusal,
   sendSignedRecipients,
-  setCeilingRecipients,
+  planCeilingRecipients,
+  type PlannedEdits,
   signCeilingRecipients,
   signedRecipientsSchema,
   type SignedRecipients,
@@ -48,9 +48,10 @@ import type {
 import { z } from "zod";
 import type { CapAssets } from "../init/ceiling-request.js";
 import { callsRefusalOf } from "./calls-refusal.js";
-import { type GrownCaps, setCappedCalls } from "./capped-calls.js";
+import { type GrownCaps, planCappedCalls } from "./capped-calls.js";
 import { dayCapViewsOf } from "./day-cap-views.js";
 import { ownerAuthorize, type OwnerKeyHolder } from "./owner-authorize.js";
+import { writeEveryPlan } from "./planned-writes.js";
 import { withDayCaps } from "./resized-caps.js";
 
 /** What the Privy ceiling editor reaches Privy with, and the owner key it takes. */
@@ -90,6 +91,9 @@ function policyOf(ceiling: string): Result<PrivyId, "not_found"> {
 function refusalOf(error: RecipientsRefusal): CeilingRefusal {
   if (error === "malformed_address" || error === "too_many_addresses") {
     return "bad_recipients";
+  }
+  if (error === "too_large") {
+    return error;
   }
   return error === "refused" ? "bad_owner_key" : "not_found";
 }
@@ -165,22 +169,24 @@ async function setRecipients(
   if (!authorize.ok) {
     return authorize;
   }
+  const planned: PlannedEdits[] = [];
   for (const { ceiling, recipients } of ceilings) {
     const policy = policyOf(ceiling);
     if (!policy.ok) {
       return policy;
     }
+    const target = { policy: policy.value, recipients: addressesOf(recipients) };
     // oxlint-disable-next-line eslint/no-await-in-loop -- one ceiling at a time: a refusal stops the rest
-    const set = await setCeilingRecipients(
-      options.api,
-      { policy: policy.value, recipients: addressesOf(recipients) },
-      { authorize: authorize.value, expiresAtMs: options.clock.now() + nowExpiryMs, signal },
-    );
-    if (!set.ok) {
-      return err(refusalOf(set.error));
+    const one = await planCeilingRecipients(options.api, target, { signal });
+    if (!one.ok) {
+      return err(refusalOf(one.error));
     }
+    planned.push(one.value);
   }
-  return ok(undefined);
+  const expiresAtMs = options.clock.now() + nowExpiryMs;
+  const input = { authorize: authorize.value, expiresAtMs, signal };
+  const written = await writeEveryPlan(options.api, planned, input);
+  return written.ok ? written : err(refusalOf(written.error));
 }
 
 async function signRecipients(
@@ -273,16 +279,12 @@ async function cappedChains(
 
 // One ceiling's calls on each chain it enables now; a chain the venues give no contract stops it.
 // The caps a ceiling of the change made serve the next ones.
-async function setOne(
+async function planOne(
   options: Options,
-  change: {
-    readonly calls: CeilingCalls;
-    readonly authorize: OwnerAuthorize;
-    readonly grown: GrownCaps;
-  },
+  change: { readonly calls: CeilingCalls; readonly grown: GrownCaps },
   signal: AbortSignal,
-): Promise<Result<void, CallsRefusal>> {
-  const { calls, authorize, grown } = change;
+): Promise<Result<PlannedEdits, CallsRefusal>> {
+  const { calls, grown } = change;
   const policy = policyOf(calls.ceiling);
   if (!policy.ok) {
     return policy;
@@ -299,12 +301,10 @@ async function setOne(
   const capped = await cappedChains(options, { held: held.value, plans }, signal);
   const dayUsdMicros = calls.dayCapUsdMicros;
   const chains = withDayCaps(capped, { dayUsdMicros, capPlanOn: options.capPlanOn });
-  const expiresAtMs = options.clock.now() + nowExpiryMs;
   const target = { policy: policy.value, chains, owner: held.value.policy.ownerId };
   const capPlanOn = (chain: ChainRef) => options.capPlanOn(chain, dayUsdMicros);
-  const input = { api: options.api, authorize, expiresAtMs, signal, capPlanOn, grown };
-  const set = await setCappedCalls(target, input);
-  return set.ok ? set : err(callsRefusalOf(set.error));
+  const planned = await planCappedCalls(target, { api: options.api, signal, capPlanOn, grown });
+  return planned.ok ? planned : err(callsRefusalOf(planned.error));
 }
 
 async function setCalls(
@@ -317,14 +317,19 @@ async function setCalls(
     return authorize;
   }
   const grown: GrownCaps = new Map();
+  const planned: PlannedEdits[] = [];
   for (const calls of ceilings) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one ceiling at a time: a refusal stops the rest
-    const set = await setOne(options, { calls, authorize: authorize.value, grown }, signal);
-    if (!set.ok) {
-      return set;
+    const one = await planOne(options, { calls, grown }, signal);
+    if (!one.ok) {
+      return one;
     }
+    planned.push(one.value);
   }
-  return ok(undefined);
+  const expiresAtMs = options.clock.now() + nowExpiryMs;
+  const input = { authorize: authorize.value, expiresAtMs, signal };
+  const written = await writeEveryPlan(options.api, planned, input);
+  return written.ok ? written : err(callsRefusalOf(written.error));
 }
 
 /**
