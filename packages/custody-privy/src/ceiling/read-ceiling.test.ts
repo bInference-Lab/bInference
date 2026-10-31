@@ -3,6 +3,10 @@ import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
+  stakingAddresses,
+  testBridgeWalletCeilingRequest,
+} from "../testing/bridge-target-fixtures.js";
+import {
   oneBnbWei,
   testAddresses,
   testCalls,
@@ -268,6 +272,17 @@ describe("isBuiltCeiling", () => {
     expect(isBuiltCeiling(changed(launch, movedToChain97))).toBe(false);
     expect(isBuiltCeiling(changed(launch, payingRescue))).toBe(false);
     expect(isBuiltCeiling(changed(launch, pinless))).toBe(false);
+  });
+
+  it("holds for a bridge wallet's ceiling, which names only Relay's depository", () => {
+    const bridge = rulesOf(testBridgeWalletCeilingRequest());
+
+    expect(isBuiltCeiling(bridge)).toBe(true);
+    expect(readCeiling(bridge)).toMatchObject({
+      contracts: [stakingAddresses.depository],
+      isLaunch: false,
+      functions: ["depositErc20", "depositNative"],
+    });
   });
 
   it("fails a launch rule that names a contract or a spender", () => {
