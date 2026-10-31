@@ -7,13 +7,18 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0185](../DECISIONS.md#d0185),
 [0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190),
-[0243](../DECISIONS.md#d0243) and [0296](../DECISIONS.md#d0296).
+[0243](../DECISIONS.md#d0243), [0296](../DECISIONS.md#d0296), [0297](../DECISIONS.md#d0297),
+[0298](../DECISIONS.md#d0298) and [0299](../DECISIONS.md#d0299).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
 (section 4.3); the glossary rows they need (section 7); the chat's status lines, the agent's
 questions and the first chat (section 8); and the disclaimer and privacy statement as version 2,
 which owners accept again (section 9).
+Accepted by the owner on 2026-10-30: the lines of sends by name, staking, bridges,
+identity and webhook rules (section 3.9), the plugin permission review (section 3.10), their
+notices (section 4.4), `/positions`' staking and in-transit sections (section 5), their reasons and
+errors (section 6) and the glossary rows they need (section 7).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -254,7 +259,9 @@ paper fill uses the quote. A live trade always needs its simulation.
 "the network fee is above your cap" / 「网络费高于你设定的上限」
 ([decision 0102](../DECISIONS.md#d0102)), `autoAsks.locked` "binference is locked; run
 `binference unlock` on the machine" / 「binference 已锁定；请在本机运行 `binference unlock`」
-([decision 0103](../DECISIONS.md#d0103)). The codes are those of the auto test in spec 6, section 5.
+([decision 0103](../DECISIONS.md#d0103)), `autoAsks.unstake` "an unstake locks the funds while they
+unbond" / 「解除质押后资金在解绑期内锁定」 ([decision 0296](../DECISIONS.md#d0296)). The codes are
+those of the auto test in spec 6, section 5.
 Every card auto mode opens instead of filling its intent shows the line, last among the warnings:
 the card version keeps the code (`cards.auto_ask`), each later version of the card keeps it too,
 the line shows only while its reason holds (none once the agent is in manual mode, and
@@ -481,6 +488,111 @@ for a buy's, and `{condition}` is "at or above {price}" or "at or below {price}"
   active exit order, so the owner knows a full sale by one ends the others
   ([spec 6, section 5](intent-states.md#section-5)).
 
+<a id="section-3-9"></a>
+
+### 3.9 Sends, staking, bridges, identity and webhook rules
+
+A recipient on a send or a bridge card is `{label} ({address})`, its address book label and its
+address whole, never shortened, in its chain's own form: checksummed hex, or base58 on Solana
+([decision 0298](../DECISIONS.md#d0298)). The rescue address shows as "your rescue address" /
+「你的紧急转出地址」 before it. A validator is `{name} ({address})`, its moniker escaped as a token
+name is and cut to 32 characters, then its short address. `{chain}` is the chain registry's name,
+such as Base or Robinhood Chain, in both languages.
+
+| Line                   | Key                        | English                                                                                                          | 中文                                                                                        |
+| ---------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Send by name           | `card.send.name`           | Send {amount} to {name} ({address})                                                                              | 向 {name}（{address}）转账 {amount}                                                         |
+| Name read              | `card.send.resolved`       | {name} points to {address}, read at {time}; binference reads it again before it signs                            | {name} 指向 {address}，读取于 {time}；签名前 binference 会再次读取                          |
+| Reverse record differs | `card.warn.reverseDiffers` | ⚠️ This address's reverse record names {other}, not {name}                                                       | ⚠️ 此地址的反向记录指向 {other}，而不是 {name}                                              |
+| Validator              | `card.stake.validator`     | Validator {validator} · commission {commission}                                                                  | 验证者 {validator} · 佣金 {commission}                                                      |
+| Stake for slisBNB      | `card.stake.liquid`        | Stake {amount} with Lista for at least {minOut}                                                                  | 在 Lista 质押 {amount}，至少获得 {minOut}                                                   |
+| Unstake slisBNB        | `card.stake.unstakeLiquid` | Unstake {amount} from Lista                                                                                      | 从 Lista 解除质押 {amount}                                                                  |
+| Unbonding time         | `card.stake.unbonding`     | Locked while it unbonds: you can claim it from {readyAt}, in about {days} days, and not sooner                   | 解绑期内锁定：{readyAt} 起可领取，约 {days} 天后，在此之前无法取回                          |
+| Claim from Lista       | `card.stake.claimLiquid`   | Claim {amount} from your Lista unstake                                                                           | 领取你在 Lista 解除质押的 {amount}                                                          |
+| Bridge arrives         | `card.bridge.arrives`      | {recipient} receives at least {minOut} on {chain}                                                                | {recipient} 在 {chain} 至少收到 {minOut}                                                    |
+| Another token arrives  | `card.bridge.otherToken`   | ⚠️ {sent} arrives on {chain} as {received}, a different token                                                    | ⚠️ {sent} 在 {chain} 以另一种代币 {received} 到账                                           |
+| Bridge fees            | `card.bridge.fees`         | Bridge fees {fees} · through {venue}                                                                             | 跨链费用 {fees} · 通过 {venue}                                                              |
+| Solana address         | `card.bridge.solana`       | A Solana address has no checksum: check every character                                                          | Solana 地址没有校验码：请逐字核对                                                           |
+| Delivery read          | `card.bridge.read`         | binference reads {chain} to see it arrive, and tells you if it is late                                           | binference 会读取 {chain} 确认到账，延迟时会通知你                                          |
+| Identity, public       | `card.identity.file`       | Public on chain for good: name {agentName}, description {description}, accounts {accounts}, binference {version} | 永久公开在链上：名称 {agentName}，简介 {description}，账户 {accounts}，binference {version} |
+| Identity, warning      | `card.identity.public`     | ⚠️ Anyone can link these accounts to this agent, and the record cannot be deleted                                | ⚠️ 任何人都可以把这些账户与此 Agent 关联，且该记录无法删除                                  |
+| Alert rule URL         | `card.webhookRule.url`     | Its URL works once you confirm; anyone who has it can fire this rule inside its bounds                           | 确认后其地址才会生效；任何持有该地址的人都可以在规则范围内触发此规则                        |
+| Address book room      | `address.room`             | {used} of {most} addresses on other chains saved, the most the ceiling holds                                     | 已保存 {used} 个其他链上的地址，上限可容纳 {most} 个                                        |
+
+- A send by name ([spec 1, section 8.1](protocol.md#section-8-1)) shows `card.send.name` in place
+  of `card.send.action`, then `card.send.resolved`; `card.warn.reverseDiffers` shows among the
+  warnings when the reverse record names another name, and nothing when it names none.
+- A StakeHub stake, unstake or claim shows `card.stake.validator` right after its action line. An
+  unstake, on either venue, then shows `card.stake.unbonding`, `{readyAt}` the date and time in
+  the owner's timezone and `{days}` whole days, rounded up. A stake's card names no cap: a stake
+  over a cap never reaches its card.
+- A bridge shows, after `card.bridge.action`, `card.bridge.arrives`, `card.bridge.fees` and
+  `card.bridge.read`, and `card.bridge.solana` when the recipient is on Solana.
+  `card.bridge.otherToken` shows among the warnings when the delivered token differs from the
+  token sent, such as USDC arriving on Robinhood Chain as USDG
+  ([decision 0297](../DECISIONS.md#d0297)); `{minOut}` is always in the delivered token.
+- An identity registration shows `card.identity.file`, every field of the registration file, then
+  `card.identity.public` among the warnings. `{accounts}` lists each address whole.
+- A webhook rule's card (`card.webhookRule.action`) shows its summary as an auto order's does
+  (section 3.8), then `card.webhookRule.url`.
+- `address list` in the CLI and the console's address book show `address.room` while the agent
+  has saved addresses on other chains, from `address/list`'s `room`
+  ([decision 0297](../DECISIONS.md#d0297)).
+
+Receipts ([section 3.5](#section-3-5)) for these kinds:
+
+| Outcome             | Key                         | English                                                                             | 中文                                                                           |
+| ------------------- | --------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Bridge on its way   | `receipt.bridgeSent`        | ✅ Left {fromChain} · arrives on {chain} in about {minutes} min · {explorerLink}    | ✅ 已从 {fromChain} 发出 · 约 {minutes} 分钟后在 {chain} 到账 · {explorerLink} |
+| Bridge delivered    | `receipt.bridgeDelivered`   | ✅ Delivered on {chain}: {recipient} received {received} · {explorerLink}           | ✅ 已在 {chain} 到账：{recipient} 收到 {received} · {explorerLink}             |
+| Bridge paid back    | `receipt.bridgeRefunded`    | ⚠️ Not delivered: {venue} paid {amount} back to {wallet} · {explorerLink}           | ⚠️ 未到账：{venue} 已将 {amount} 退回 {wallet} · {explorerLink}                |
+| Unstaked            | `receipt.unstaked`          | ✅ Unstaked {amount}: claim it from {readyAt} · {explorerLink}                      | ✅ 已解除质押 {amount}：{readyAt} 起可领取 · {explorerLink}                    |
+| Identity registered | `receipt.identity`          | ✅ Registered as agent {agentId} in the ERC-8004 identity registry · {explorerLink} | ✅ 已在 ERC-8004 身份注册表中登记为 Agent {agentId} · {explorerLink}           |
+| Alert rule active   | `receipt.webhookRuleActive` | ✅ Alert rule "{name}" active: {summary} · until {expiry}                           | ✅ 提醒规则“{name}”已生效：{summary}，截至 {expiry}                            |
+
+A bridge's receipt says `receipt.bridgeSent` once its deposit is final, with the deposit's link,
+then `receipt.bridgeDelivered` with the link of the transaction that paid the recipient, on the
+destination chain's explorer, or `receipt.bridgeRefunded`. A webhook rule's card says
+`receipt.webhookRuleActive` once its rule is active, and `receipt.orderUnstarted` if the rule
+ended before the tap.
+
+These kinds add no button: their cards use Confirm, Cancel and Details, and their press answers are
+section 2's. Every press answer goes through the cutter at Telegram's 200 characters, and the
+table tests render the longest card of each kind, a bridge to a Solana address among them, in
+both languages.
+
+<a id="section-3-10"></a>
+
+### 3.10 The plugin permission review
+
+The CLI (`binference plugin add`) and the console show it before a community plugin installs,
+and again when an update widens what it declares (spec 1, section 7.8). It is drawn from the
+plugin's manifest, never from its own words; the plugin's name and descriptions are escaped as
+token names are.
+
+| Line               | Key                       | English                                                                                                            | 中文                                                                                 |
+| ------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Title              | `plugin.review.title`     | Add {plugin} {version} from {source}?                                                                              | 添加来自 {source} 的 {plugin} {version}？                                            |
+| Pinned             | `plugin.review.hash`      | Pinned to SHA-256 {hash}                                                                                           | 按 SHA-256 {hash} 锁定版本                                                           |
+| Publisher          | `plugin.review.publisher` | Publisher {publisher} · npm provenance {provenance, select, verified {checked} other {none}}                       | 发布者 {publisher} · npm 来源证明 {provenance, select, verified {已核验} other {无}} |
+| Hosts              | `plugin.review.hosts`     | It may reach: {hosts}                                                                                              | 它可以访问：{hosts}                                                                  |
+| Tools              | `plugin.review.tools`     | It adds tools: {tools}                                                                                             | 它会添加工具：{tools}                                                                |
+| Kinds              | `plugin.review.kinds`     | Kinds: {kinds}                                                                                                     | 类型：{kinds}                                                                        |
+| Settings           | `plugin.review.config`    | It reads these settings: {keys}                                                                                    | 它会读取这些设置：{keys}                                                             |
+| What it never does | `plugin.review.never`     | A community plugin only reads: it never signs, holds a key, proposes a trade or reaches a host it does not declare | 社区插件只能读取：它不会签名、持有密钥、发起交易提议，也不会访问未声明的主机         |
+| No provenance      | `plugin.review.typeName`  | ⚠️ No npm provenance: type the plugin's name to add it                                                             | ⚠️ 没有 npm 来源证明：请输入插件名称以添加                                           |
+| Widening           | `plugin.widen.title`      | {plugin} {version} asks for more than {previous}                                                                   | {plugin} {version} 申请的权限超出 {previous}                                         |
+| What it adds       | `plugin.widen.added`      | New: {added}                                                                                                       | 新增：{added}                                                                        |
+| Add                | `plugin.review.accept`    | Add it                                                                                                             | 添加                                                                                 |
+| Do not add         | `plugin.review.decline`   | Do not add it                                                                                                      | 不添加                                                                               |
+| Allow the update   | `plugin.widen.accept`     | Allow the update                                                                                                   | 允许更新                                                                             |
+| Keep the old one   | `plugin.widen.decline`    | Keep {previous}                                                                                                    | 保留 {previous}                                                                      |
+
+- A line with nothing to list is left out. A widening shows `plugin.widen.title` and
+  `plugin.widen.added`, then the lines of everything it declares.
+- `plugin.review.typeName` shows for a plugin without npm provenance, and the CLI and the console
+  then add it only after the owner types its name.
+
 <a id="section-4"></a>
 
 ## 4. Notices
@@ -555,15 +667,15 @@ model spend in the 24 hours, no open order and nothing waiting. Live and paper e
 nothing to tell is left out, and each skip reason, the most frequent first, follows on a line of
 its own, at most four. A summary takes at most twelve lines; the skip reasons take what is left.
 
-| Line                | Key                               | English                                                                                                                                                                                                                                                                              | Chinese                                                                                                                                                                                     |
-| ------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| First line          | `notice.daily`                    | Daily summary for {agent}, the last 24 hours                                                                                                                                                                                                                                         | {agent} 的每日摘要（过去 24 小时）                                                                                                                                                          |
-| Live, paper         | `daily.value`                     | 🔴 Live: {value}, {change} in 24 hours; realized P&L {realized} · 🧪 Paper: … · 🔴 Live: the balances could not be read now; realized P&L {realized}                                                                                                                                 | 🔴 实盘：{value}，24 小时变化 {change}；已实现盈亏 {realized} · 🧪 模拟：… · 🔴 实盘：暂时无法读取余额；已实现盈亏 {realized}                                                               |
-| Auto orders         | `daily.orders`                    | Auto orders: {filled} filled, {skipped} skipped, {open} open                                                                                                                                                                                                                         | 自动订单：已成交 {filled} 次，跳过 {skipped} 次，挂单 {open} 个                                                                                                                             |
-| Model spend         | `daily.spend`                     | Model spend: {spend}, against a daily model budget of {budget}                                                                                                                                                                                                                       | 模型花费：{spend}，每日模型预算 {budget}                                                                                                                                                    |
-| Waiting for you     | `notice.daily`                    | {n} cards wait for your answer · The agent waits for your answer to its question · {n} looser limits take effect within 24 hours · {n} wallets wait behind stuck transactions · A looser send level takes effect within 24 hours · A new rescue address takes effect within 24 hours | {n} 张卡片等你回复 · Agent 在等你回答它的问题 · {n} 项放宽的限额将在 24 小时内生效 · {n} 个钱包因链上交易卡住而等待 · 放宽的转账级别将在 24 小时内生效 · 新的紧急转出地址将在 24 小时内生效 |
-| Skips, by reason    | `daily.skips`, `daily.skipsOther` | {count} skips: {reason} · {count} skips for other reasons                                                                                                                                                                                                                            | 跳过 {count} 次：{reason} · 因其他原因跳过 {count} 次                                                                                                                                       |
-| A cap's skip reason | `daily.overCap`                   | it would pass your 24-hour cap · it would pass a leader's daily cap                                                                                                                                                                                                                  | 将超过你的 24 小时上限 · 将超过该带单钱包的每日上限                                                                                                                                         |
+| Line                | Key                               | English                                                                                                                                                                                                                                                                                                                                       | Chinese                                                                                                                                                                                                                                 |
+| ------------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| First line          | `notice.daily`                    | Daily summary for {agent}, the last 24 hours                                                                                                                                                                                                                                                                                                  | {agent} 的每日摘要（过去 24 小时）                                                                                                                                                                                                      |
+| Live, paper         | `daily.value`                     | 🔴 Live: {value}, {change} in 24 hours; realized P&L {realized} · 🧪 Paper: … · 🔴 Live: the balances could not be read now; realized P&L {realized}                                                                                                                                                                                          | 🔴 实盘：{value}，24 小时变化 {change}；已实现盈亏 {realized} · 🧪 模拟：… · 🔴 实盘：暂时无法读取余额；已实现盈亏 {realized}                                                                                                           |
+| Auto orders         | `daily.orders`                    | Auto orders: {filled} filled, {skipped} skipped, {open} open                                                                                                                                                                                                                                                                                  | 自动订单：已成交 {filled} 次，跳过 {skipped} 次，挂单 {open} 个                                                                                                                                                                         |
+| Model spend         | `daily.spend`                     | Model spend: {spend}, against a daily model budget of {budget}                                                                                                                                                                                                                                                                                | 模型花费：{spend}，每日模型预算 {budget}                                                                                                                                                                                                |
+| Waiting for you     | `notice.daily`                    | {n} cards wait for your answer · The agent waits for your answer to its question · {n} looser limits take effect within 24 hours · {n} wallets wait behind stuck transactions · A looser send level takes effect within 24 hours · A new rescue address takes effect within 24 hours · {n} bridges are late · {n} unstakes are ready to claim | {n} 张卡片等你回复 · Agent 在等你回答它的问题 · {n} 项放宽的限额将在 24 小时内生效 · {n} 个钱包因链上交易卡住而等待 · 放宽的转账级别将在 24 小时内生效 · 新的紧急转出地址将在 24 小时内生效 · {n} 笔跨链已延迟 · {n} 笔解除质押可以领取 |
+| Skips, by reason    | `daily.skips`, `daily.skipsOther` | {count} skips: {reason} · {count} skips for other reasons                                                                                                                                                                                                                                                                                     | 跳过 {count} 次：{reason} · 因其他原因跳过 {count} 次                                                                                                                                                                                   |
+| A cap's skip reason | `daily.overCap`                   | it would pass your 24-hour cap · it would pass a leader's daily cap                                                                                                                                                                                                                                                                           | 将超过你的 24 小时上限 · 将超过该带单钱包的每日上限                                                                                                                                                                                     |
 
 **On by default.** A new agent gets [decision 0057](../DECISIONS.md#d0057)'s set, and, accepted by
 the owner on 2026-10-12, every notice of sections 4.2 and 4.3 as well: the alert notices (price,
@@ -573,7 +685,7 @@ release notes and the rollback. `defaults.notifications` ([spec 2](config.md#sec
 the set, and each kind can be turned off per agent.
 
 **Muting** ([decision 0185](../DECISIONS.md#d0185)). An agent may mute `fill`, `skipped`,
-`lowGas`, `orderExpiring`, `daily`, the alert notices (`alertPrice`, `alertWallet`,
+`lowGas`, `orderExpiring`, `daily`, `claimReady`, the alert notices (`alertPrice`, `alertWallet`,
 `alertLaunch`, `alertHeld`), the exit order notices (`ordersEnded`, `exitEnded`) and the update notices
 (`update`, `updateBare`, `updated`, `updatedBare`) with `notice/setSettings`. Every other notice
 always goes: it tells of a security event, of a trade or money that needs a look, of the engine
@@ -705,6 +817,37 @@ is never verified, so its short address always follows its symbol.
   `{creatorLaunches}` is a number.
 - The console's launch list shows each launch with the launch feed line.
 
+<a id="section-4-4"></a>
+
+### 4.4 Bridges, staking, names, webhook rules and plugins
+
+| Notice                    | Key                        | English                                                                                                                               | 中文                                                                                                                     |
+| ------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Bridge late               | `notice.bridgeLate`        | ⚠️ Your bridge of {amount} to {chain} has not arrived after 2 hours. binference keeps checking. {venue}'s status: {statusUrl}         | ⚠️ 你跨链到 {chain} 的 {amount} 2 小时后仍未到账。binference 会继续检查。{venue} 的状态页：{statusUrl}                   |
+| Late bridge arrived       | `notice.bridgeArrived`     | ✅ Your late bridge to {chain} arrived: {recipient} received {received}                                                               | ✅ 你延迟的跨链已在 {chain} 到账：{recipient} 收到 {received}                                                            |
+| Bridge paid back          | `notice.bridgeRefunded`    | ⚠️ {venue} did not deliver your bridge to {chain} and paid {amount} back to {wallet}                                                  | ⚠️ {venue} 未完成你到 {chain} 的跨链，已将 {amount} 退回 {wallet}                                                        |
+| Name moved                | `notice.nameMoved`         | ⚠️ A send to {name} was not signed: the name now points to {address}, not {confirmed} as on its card. Nothing was sent.               | ⚠️ 向 {name} 的转账未签名：该域名现在指向 {address}，而不是卡片上的 {confirmed}。未发送任何内容。                        |
+| Ready to claim            | `notice.claimReady`        | {amount} you unstaked from {validator} can be claimed now                                                                             | 你从 {validator} 解除质押的 {amount} 现在可以领取                                                                        |
+| Alert rule URL changed    | `notice.webhookRotated`    | The URL of alert rule "{name}" changed from {surface}; the old one no longer works. Not you? Delete the rule now.                     | {surface} 更改了提醒规则“{name}”的地址，旧地址已失效。不是你操作？请立即删除该规则。                                     |
+| Plugin asks for more      | `notice.pluginWidened`     | {plugin} {version} asks for more than you accepted: {added}. It stays on {previous} until you review it with `binference plugin add`. | {plugin} {version} 申请的权限超出你已批准的范围：{added}。在你用 `binference plugin add` 审核之前，它仍保持 {previous}。 |
+| Plugin host refused       | `notice.pluginHostRefused` | ⚠️ Plugin {plugin} tried to reach {host}, which it does not declare. binference refused it.                                           | ⚠️ 插件 {plugin} 试图访问未声明的主机 {host}，binference 已拒绝。                                                        |
+| Plugin stopped            | `notice.pluginStopped`     | 🔴 Plugin {plugin} crashed 5 times in 10 minutes, so binference turned it off. Turn it on with `binference plugin enable {plugin}`.   | 🔴 插件 {plugin} 在 10 分钟内崩溃 5 次，binference 已将其停用。可运行 `binference plugin enable {plugin}` 重新启用。     |
+| Plugins cannot run        | `notice.pluginSandboxOff`  | 🔴 Community plugins cannot run on this machine: {reason}. Run `binference check` to see the fix.                                     | 🔴 社区插件无法在本机运行：{reason}。请运行 `binference check` 查看修复方法。                                            |
+| Alert rule, as order kind | `fill.webhookRule`         | Alert rule "{name}"                                                                                                                   | 提醒规则“{name}”                                                                                                         |
+
+- `notice.bridgeLate` goes once per bridge, 2 hours after its deposit is final; `notice.bridgeArrived`
+  goes only for a bridge that was late, since its receipt tells the rest
+  ([decision 0297](../DECISIONS.md#d0297)).
+- `notice.nameMoved` goes when the wallet queue finds a send's name pointing elsewhere than its
+  card (spec 6, section 5).
+- `notice.claimReady` goes once per unstake, when its funds can be claimed; it may be muted.
+- A webhook rule's fills and skips are `notice.fill` and `notice.skipped`, `{orderKind}` from
+  `fill.webhookRule`. Alerts the listener drops as repeats or over the rate are recorded, never
+  told one by one.
+- `notice.pluginHostRefused` goes once per plugin and host a day; `notice.pluginStopped` and
+  `notice.pluginSandboxOff` follow the plugin host's rules
+  ([ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14)).
+
 <a id="section-5"></a>
 
 ## 5. Fast commands
@@ -743,6 +886,20 @@ first under `cmd.positions.section`, "🔴 Live positions" / 「🔴 实盘持�
 "🧪 Paper positions" / 「🧪 模拟持仓」, never added together ([decision 0134](../DECISIONS.md#d0134)).
 Cards are separated by a blank line, and a message holds as many whole cards as fit in 4,096 characters,
 so no card is split. With none: "No positions yet." / 「还没有持仓。」
+
+After them, each mode's staking and its bridges in transit, from `portfolio/get`
+([spec 1, section 8.3](protocol.md#section-8-3)), each counted once:
+
+| Line               | Key                       | English                                                                                  | 中文                                                                                        |
+| ------------------ | ------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Staking section    | `cmd.positions.staking`   | Staking                                                                                  | 质押                                                                                        |
+| Staked             | `positions.staked`        | {amount} staked with {validator} · worth {value}                                         | 在 {validator} 质押 {amount} · 市值 {value}                                                 |
+| Unbonding          | `positions.unbonding`     | {amount} unbonding, claimable from {readyAt}                                             | {amount} 解绑中，{readyAt} 起可领取                                                         |
+| Claimable          | `positions.claimable`     | {amount} ready to claim                                                                  | {amount} 可以领取                                                                           |
+| In transit section | `cmd.positions.inTransit` | 🟡 In transit                                                                            | 🟡 在途                                                                                     |
+| Bridge in transit  | `positions.bridge`        | {amount} to {recipient} on {chain} · since {since}{late, select, yes { · late} other {}} | {amount} 跨链到 {chain} 的 {recipient} · 自 {since}{late, select, yes { · 已延迟} other {}} |
+
+`{validator}` on Lista is "Lista" / 「Lista」.
 
 A `/limits` button halves the per-trade cap, the 24-hour cap, or the slippage limit on verified or
 other tokens, rounding down: "Halve the per-trade cap" / 「单笔上限减半」. Half is always stricter,
@@ -786,6 +943,28 @@ address, and binference has none yet. Publish binference's port over HTTPS, …"
   `error.engine.locked`: "binference is locked. Run `binference unlock` on the machine."
   / 「binference 已锁定。请在本机运行 `binference unlock`。」
 - A code without a message fails the i18n check in CI.
+
+Reasons and errors of sends by name, staking, identity, webhook rules and remote access (spec 6,
+section 4; spec 1, section 10):
+
+| Key                              | English                                                                                                                                 | 中文                                                                                                    |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `reason.validator_jailed`        | the validator {validator} is jailed, so it earns nothing                                                                                | 验证者 {validator} 已被监禁，不会产生收益                                                               |
+| `reason.below_min_stake`         | the venue takes at least {min}                                                                                                          | 该平台最少需要 {min}                                                                                    |
+| `reason.nothing_to_claim`        | nothing is ready to claim yet{readyAt, select, none {} other {; the next part is ready at {readyAt}}}                                   | 还没有可领取的金额{readyAt, select, none {} other {；下一笔将于 {readyAt} 可领取}}                      |
+| `reason.name_unresolved`         | {name} does not point to an address                                                                                                     | {name} 未指向任何地址                                                                                   |
+| `reason.name_contract`           | {name} points to a contract, and a send by name pays only a person's address                                                            | {name} 指向一个合约，按域名转账只能付给个人地址                                                         |
+| `reason.name_moved`              | {name} now points to another address than the one on the card                                                                           | {name} 现在指向的地址与卡片上的不同                                                                     |
+| `error.intent.kind_unavailable`  | binference does not lend or borrow. Ask for a swap, a stake or a bridge instead.                                                        | binference 不提供借贷。请改为兑换、质押或跨链。                                                         |
+| `error.intent.identity_exists`   | This agent already has an on-chain identity. Run `binference agent identity` to see it.                                                 | 此 Agent 已有链上身份。运行 `binference agent identity` 查看。                                          |
+| `error.name.contract`            | That name points to a contract. Send to a person's address or a saved address.                                                          | 该域名指向合约。请转账到个人地址或已保存的地址。                                                        |
+| `error.address.not_wallet`       | That Solana address is a program or a token account, not a wallet. Ask the recipient for their wallet address.                          | 该 Solana 地址是程序或代币账户，不是钱包。请向收款人索取钱包地址。                                      |
+| `error.webhook.not_found`        | No active alert rule has that id. List the rules in the console.                                                                        | 没有该 ID 的生效提醒规则。请在控制台中查看规则列表。                                                    |
+| `error.webhook.too_many`         | This agent has 20 alert rules. Delete one before you add another.                                                                       | 此 Agent 已有 20 条提醒规则。请先删除一条再添加。                                                       |
+| `error.remote.tailscale_missing` | Tailscale is not installed. Install it from tailscale.com, then run `binference expose` again.                                          | 未安装 Tailscale。请从 tailscale.com 安装后再次运行 `binference expose`。                               |
+| `error.remote.logged_out`        | Tailscale is not signed in. Run `tailscale up`, then `binference expose` again.                                                         | Tailscale 未登录。请运行 `tailscale up`，然后再次运行 `binference expose`。                             |
+| `error.remote.https_off`         | Your tailnet has no HTTPS certificates. Turn HTTPS on in Tailscale's admin console, then run `binference expose` again.                 | 你的 tailnet 没有 HTTPS 证书。请在 Tailscale 管理后台开启 HTTPS，然后再次运行 `binference expose`。     |
+| `error.remote.funnel_denied`     | Your tailnet's policy does not allow Funnel on this machine. Allow it in Tailscale's admin console, then run `binference expose` again. | 你的 tailnet 策略不允许本机使用 Funnel。请在 Tailscale 管理后台允许，然后再次运行 `binference expose`。 |
 
 <a id="section-7"></a>
 
@@ -845,6 +1024,12 @@ after it is there ([ENGINEERING.md section 14](../ENGINEERING.md#section-14)):
 | insider wallets, creator (of a token)              | 内部钱包, 创建者             |
 | trending (tokens), chart, candle                   | 热门, K 线图, K 线           |
 | leader wallet, tracked wallet                      | 带单钱包, 关注的钱包         |
+| validator, commission, jailed                      | 验证者, 佣金, 被监禁         |
+| unbonding, unbonding time                          | 解绑中, 解绑期               |
+| destination chain, delivered, in transit           | 目标链, 已到账, 在途         |
+| .bnb name, reverse record                          | .bnb 域名, 反向记录          |
+| on-chain identity, identity registry               | 链上身份, 身份注册表         |
+| permission review, npm provenance                  | 权限审核, npm 来源证明       |
 
 <a id="section-8"></a>
 

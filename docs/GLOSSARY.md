@@ -596,6 +596,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | release notes                               | 更新说明               |                              |
 | plugin host                                 | 插件进程               | One process per plugin       |
 | permission review                           | 权限审核               | Before a plugin runs         |
+| npm provenance                              | npm 来源证明           | Shown on the review          |
 | widening (of a plugin's permissions)        | 权限扩大               | Asks for a new review        |
 | remote access                               | 远程访问               | `binference expose`          |
 | roll back (an update)                       | 回退                   | Not 回滚, which is a revert  |
@@ -655,6 +656,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | health factor                                      | 健康因子                     | Not in v1; for messages still in code   |
 | bridge (verb)                                      | 跨链                         |                                         |
 | validator                                          | 验证者                       | Native BNB staking                      |
+| commission (a validator's), jailed                 | 佣金, 被监禁                 | A jailed validator earns nothing        |
 | unbonding, unbonding time                          | 解绑中, 解绑期               | After an unstake, before a claim        |
 | destination chain                                  | 目标链                       | Where a bridge delivers                 |
 | delivery, delivered (a bridge's)                   | 到账, 已到账                 |                                         |
