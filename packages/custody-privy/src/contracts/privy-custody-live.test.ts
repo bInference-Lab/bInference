@@ -1,26 +1,28 @@
+import assert from "node:assert/strict";
 import { generateKeyPairSync } from "node:crypto";
-// oxlint-disable-next-line eslint/no-restricted-imports -- the live suite reaches Privy's API itself; no Http adapter exists in the packages yet
-import { request as httpsRequest } from "node:https";
-import {
-  BinferenceError,
-  type Clock,
-  createSecret,
-  type Http,
-  type HttpRequest,
-  type HttpResponse,
-} from "@binference/core";
-import { afterAll, describe, expect, it } from "vitest";
+import { createSecret } from "@binference/core";
+import { createKeychainSecretStore } from "@binference/platform";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { checkPrivyApp } from "../privy/check-privy-app.js";
 import { createPrivyApi } from "../privy/privy-api.js";
+import type { PrivyApiOptions } from "../privy/privy-client.js";
 import { createFakeSignerProcess } from "../testing/fake-signer-process.js";
+import { createKeepingPrivyApi } from "../testing/keeping-privy-api.js";
+import { createLeftoverBook, leftoverKeychainService } from "../testing/leftover-book.js";
+import { type SweepCounts, sweepLeftovers } from "../testing/leftover-sweep.js";
+import { liveHttps } from "../testing/live-https.js";
 import { ownerSigner } from "../testing/owner-signer.js";
+import { realClock } from "../testing/real-clock.js";
 import { privyCustodyContract } from "./privy-custody-contract.js";
-import { type PrivyCustodySubject, tearDown } from "./privy-custody-setup.js";
+import type { PrivyCustodySubject } from "./privy-custody-setup.js";
 
 // The live half of the custody contract: it runs against the Privy test app only when this switch
 // is set, with the app's id and secret in the environment, never in the repository. It makes key
-// quorums, the caps' aggregations, one policy and one wallet on the app, signs without
-// broadcasting, and deletes the aggregations at the end, as the app keeps at most 10.
+// quorums, the caps' aggregations, policies and wallets on the app, and signs without
+// broadcasting. Its owner key and every id it makes are kept in the OS keychain first, so a sweep
+// with that key removes what a run that died left: the app keeps at most 10 aggregations, and only
+// their owner deletes one. The suite sweeps what earlier runs left before it starts, and its own
+// leftovers at the end.
 // oxlint-disable-next-line node/no-process-env -- the switch and the test app's credentials, read only here
 const environment = process.env;
 const {
@@ -30,89 +32,64 @@ const {
 } = environment;
 const liveTests = switchOn === "1" && appId !== "" && secret !== "";
 
-function send(request: HttpRequest): Promise<HttpResponse> {
-  return new Promise((resolve, reject) => {
-    const outgoing = httpsRequest(
-      request.url,
-      { method: request.method, headers: request.headers, signal: request.signal },
-      (incoming) => {
-        const parts: Buffer[] = [];
-        incoming.on("data", (part: Buffer) => parts.push(part));
-        incoming.on("error", reject);
-        incoming.on("end", () => {
-          const headers = Object.fromEntries(
-            Object.entries(incoming.headers).map(([name, value]) => [name, String(value)]),
-          );
-          resolve({
-            status: incoming.statusCode ?? 0,
-            headers,
-            body: Buffer.concat(parts).toString("utf8"),
-          });
-        });
-      },
-    );
-    outgoing.on("error", (cause) => {
-      reject(
-        request.signal.aborted
-          ? request.signal.reason
-          : new BinferenceError({
-              code: "http.unreachable",
-              message: "Privy gave no answer.",
-              retryable: true,
-              cause,
-            }),
-      );
-    });
-    outgoing.end(request.body);
-  });
-}
-
-const https: Http = { request: async (request) => send(request) };
-
-// Unit tests run on fake timers; the live suite needs the real time Privy checks expiries against.
-const realClock: Clock = {
-  now: () => Math.round(performance.timeOrigin + performance.now()),
-  sleep: async (delayMs, signal) =>
-    new Promise((resolve, reject) => {
-      AbortSignal.timeout(delayMs).addEventListener("abort", () => {
-        resolve();
-      });
-      signal.addEventListener("abort", () => {
-        reject(signal.reason);
-      });
-    }),
+const privy: PrivyApiOptions = {
+  http: liveHttps,
+  clock: realClock,
+  appId,
+  appSecret: createSecret(secret),
+  timeoutMs: 30_000,
 };
+const book = createLeftoverBook(createKeychainSecretStore({ service: leftoverKeychainService }));
 
-function liveSubject(): PrivyCustodySubject {
+// A sweep sends one request at a time, each within 30 seconds.
+const sweepTimeoutMs = 600_000;
+
+let subject: PrivyCustodySubject | undefined;
+let kept: string | undefined;
+
+// A subject whose owner key the keychain holds before anything is made with it.
+async function keptSubject(signal: AbortSignal): Promise<PrivyCustodySubject> {
   const owner = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const ownerKey = owner.publicKey.export({ format: "der", type: "spki" }).toString("base64");
+  const name = await book.keep(owner.privateKey, signal);
+  kept = name;
   return {
-    api: createPrivyApi({
-      http: https,
-      clock: realClock,
-      appId,
-      appSecret: createSecret(secret),
-      timeoutMs: 30_000,
-    }),
+    api: createKeepingPrivyApi(createPrivyApi(privy), { book, name, ownerKey }),
     signerProcess: createFakeSignerProcess(),
     strangerProcess: createFakeSignerProcess(),
-    ownerKey: owner.publicKey.export({ format: "der", type: "spki" }).toString("base64"),
+    ownerKey,
     ownerAuthorize: ownerSigner(owner.privateKey),
     clock: realClock,
   };
 }
 
-let subject: PrivyCustodySubject | undefined;
-
 // One subject for every check, so the suite makes one wallet on the app in all.
 function sharedSubject(): PrivyCustodySubject {
-  subject ??= liveSubject();
+  assert.ok(subject !== undefined, "The live suite's setup made no subject.");
   return subject;
 }
 
+function report(when: string, counts: SweepCounts): void {
+  // oxlint-disable-next-line no-console -- what the sweep removed is the suite's output
+  console.info(`Privy test app sweep ${when}: ${JSON.stringify(counts)}`);
+}
+
 describe.runIf(liveTests)("the Privy test app", () => {
+  beforeAll(async () => {
+    const signal = AbortSignal.timeout(sweepTimeoutMs);
+    report("before the run", await sweepLeftovers({ privy, book }, signal));
+    subject = await keptSubject(signal);
+  }, sweepTimeoutMs);
+
   afterAll(async () => {
-    await (subject === undefined ? Promise.resolve() : tearDown(subject));
-  }, 120_000);
+    assert.ok(kept !== undefined, "The live suite kept no owner key.");
+    const swept = await sweepLeftovers(
+      { privy, book, only: kept },
+      AbortSignal.timeout(sweepTimeoutMs),
+    );
+    report("after the run", swept);
+    assert.equal(swept.recordsCleared, 1, "Privy kept a policy or an aggregation of the run.");
+  }, sweepTimeoutMs);
 
   it.each(privyCustodyContract({ create: sharedSubject }))(
     "follows the custody contract: $name",
@@ -125,7 +102,7 @@ describe.runIf(liveTests)("the Privy test app", () => {
 
 describe.runIf(liveTests)("the Privy test app's id and secret", () => {
   it("passes the check with one read, and another secret is rejected", async () => {
-    const options = { http: https, clock: realClock, appId, timeoutMs: 30_000 };
+    const options = { http: liveHttps, clock: realClock, appId, timeoutMs: 30_000 };
     const call = { signal: AbortSignal.timeout(60_000) };
     await expect(
       checkPrivyApp({ ...options, appSecret: createSecret(secret) }, call),

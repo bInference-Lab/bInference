@@ -65,12 +65,14 @@
         "core",
         "chain",
         "chain-evm",
+        "platform",
         "@privy-io/node",
         "viem",
         "@hpke/core",
         "@hpke/chacha20poly1305"
       ],
       "only": {
+        "@binference/platform": "src/contracts",
         "viem": "src/testing",
         "@hpke/core": "src/testing",
         "@hpke/chacha20poly1305": "src/testing"

@@ -32,5 +32,8 @@
     "@privy-io/node": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@binference/platform": "workspace:*"
   }
 }

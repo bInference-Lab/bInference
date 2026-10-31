@@ -2,10 +2,8 @@ import { err } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import type { Ceiling, DayCap } from "../ceiling/ceiling.js";
-import { policyRuleJson } from "../ceiling/policy-rule.js";
-import { readCeiling } from "../ceiling/read-ceiling.js";
-import { askPrivy, type CustodySetup, setUp, tearDown } from "../contracts/privy-custody-setup.js";
+import type { Ceiling } from "../ceiling/ceiling.js";
+import { askPrivy, setUp } from "../contracts/privy-custody-setup.js";
 import type { AggregationRemoval } from "../privy/aggregations.js";
 import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
 import { oneBnbWei, swapData, testAddresses, testCapPlan } from "./custody-fixtures.js";
@@ -164,28 +162,5 @@ describe("the ceiling's 24-hour native cap on the fake", () => {
     ).rejects.toMatchObject({ code: "custody.request_expired" });
     const call = { to: router, valueWei: 0n, data: swapData(5n) };
     expect((await askPrivy(setup, { call })).ok).toBe(true);
-  });
-});
-
-// The aggregations the suite's wallet names in its ceiling.
-function capsOf(setup: CustodySetup): readonly DayCap[] {
-  const [held] = readCeiling(setup.expected.ceiling.rules.map(policyRuleJson))?.caps ?? [];
-  return held === undefined ? [] : [held.caps.native, ...held.caps.approvals];
-}
-
-describe("the custody suite's cleanup", () => {
-  it("deletes every aggregation its setup made, so a live app never fills up", async () => {
-    const subject = createFakeCustodySubject(7);
-    const ids = capsOf(await setUp(subject));
-    expect(ids).toHaveLength(1 + testCapPlan.approvals.length);
-    await tearDown(subject);
-    const live = { signal: AbortSignal.timeout(5_000) };
-    const again = await Promise.all(
-      ids.map(async ({ aggregation }) =>
-        subject.api.deleteAggregation(removalOf(subject, aggregation as PrivyId), live),
-      ),
-    );
-    expect(again).toStrictEqual(ids.map(() => err("not_found")));
-    await expect(tearDown(subject)).resolves.toBeUndefined();
   });
 });

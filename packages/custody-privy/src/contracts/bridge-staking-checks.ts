@@ -23,7 +23,6 @@ import {
   type CustodySetup,
   heldCapsOf,
   live,
-  noteMadeCaps,
   type PrivyCustodyHarness,
   type PrivyCustodySubject,
   setUp,
@@ -66,7 +65,7 @@ const routeCapPlan: ChainCapPlan = {
   ],
 };
 
-// The routes' token caps, made once on the subject's app and noted for the cleanup.
+// The routes' token caps, made once on the subject's app.
 async function routeCapsOn(subject: PrivyCustodySubject): Promise<ChainCaps["approvals"]> {
   const { api, ownerKey } = subject;
   const owner = await api.createKeyQuorum(
@@ -81,7 +80,6 @@ async function routeCapsOn(subject: PrivyCustodySubject): Promise<ChainCaps["app
     // oxlint-disable-next-line eslint/no-await-in-loop -- one write at a time, as every write
     ids.push(await api.createAggregation({ definition, owner: owner.id }, live()));
   }
-  noteMadeCaps(subject, ids);
   return routeCapPlan.approvals.map((item, index) => ({
     aggregation: ids[index] ?? "",
     limitBase: item.limitBase,

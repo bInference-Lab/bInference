@@ -7,6 +7,12 @@ import {
   readLeftoverRecord,
 } from "./leftover-record.schema.js";
 
+/**
+ * The keychain service that holds the Privy test app's leftover owner keys: each live run's owner
+ * key and what it made, until its cleanup confirms them gone.
+ */
+export const leftoverKeychainService = "binference-privy-test-app-leftover-owner-keys";
+
 /** What a run made with its owner key, as a {@link LeftoverRecord} lists it. */
 export type LeftoverKind = "quorums" | "policies" | "aggregations";
 
