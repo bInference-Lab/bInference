@@ -7,10 +7,10 @@ import type { CommandRun } from "../program/command-run.js";
 import { accessFindings } from "./access-findings.js";
 import type { CheckFinding } from "./check-finding.js";
 import { configFinding, engineFinding, unlockFinding } from "./install-findings.js";
-import { launchWalletFindings } from "./launch-wallet-finding.js";
 import { modelImagesFinding } from "./model-images-finding.js";
 import { modelPriceFinding } from "./model-price-finding.js";
 import { modelReachFinding } from "./model-reach-finding.js";
+import { roleWalletFindings } from "./role-wallet-findings.js";
 import { rpcFindings } from "./rpc-keyed-finding.js";
 
 // Reading files and one engine call take moments; past this the check gives up.
@@ -82,18 +82,8 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
   const images = modelImagesFinding(config.config);
   const engine = await engineFinding({ host, platform, signal });
   const rpc = await rpcFindings({ host, platform, signal }, config.config);
-  const launch = await launchWalletFindings({ host, platform, signal });
-  return [
-    config.finding,
-    ...access,
-    ...unlock,
-    ...prices,
-    reach,
-    images,
-    engine,
-    ...rpc,
-    ...launch,
-  ];
+  const roles = await roleWalletFindings({ host, platform, signal });
+  return [config.finding, ...access, ...unlock, ...prices, reach, images, engine, ...rpc, ...roles];
 }
 
 /**
@@ -105,13 +95,14 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
  * main model, decision 0221), `models.images` (where the owner's images go, decision 0228; its
  * notes print after the warnings), `engine.reachable`, `rpc.keyed` (a warning while live auto orders
  * watch prices over public RPCs only), `rpc.pushed` (a warning while they wait on blocks polled
- * over HTTP, with no `wss:` URL, decision 0209), `wallets.extra_launch` (a warning naming each
- * extra launch wallet a rebuild adopted, decision 0218) and `wallets.launch_calls` (a warning
- * naming each launch wallet whose ceiling lacks calls its launchpads need, with the owner key's
- * fix, decision 0271). `--fix` makes owner-only every path
- * others can open, the one fix the config spec names for it. It then says what the wallets'
- * ceiling promises against a machine whose keys are stolen (decision 0149), and that a launch
- * wallet is the one exception (decisions 0217 and 0218). Exits 1 while a problem remains, else
+ * over HTTP, with no `wss:` URL, decision 0209), `wallets.extra_launch` and `wallets.extra_bridge`
+ * (a warning naming each extra launch or bridge wallet a rebuild adopted, decisions 0218 and 0307)
+ * and `wallets.launch_calls` and `wallets.bridge_calls` (a warning naming each launch or bridge
+ * wallet whose ceiling lacks calls its venues need, with the owner key's fix, decisions 0271 and
+ * 0307). `--fix` makes owner-only every path others can open, the one fix the config spec names
+ * for it. It then says what the wallets' ceiling promises against a machine whose keys are stolen
+ * (decision 0149), and that a launch wallet and a bridge wallet are the exceptions (decisions
+ * 0217, 0218 and 0307). Exits 1 while a problem remains, else
  * 0; warnings do not fail it. With `--json` it prints every finding.
  */
 export async function runCheck(
