@@ -3,6 +3,7 @@ import {
   baseMainnet,
   bsc,
   bscBridgeRoutes,
+  bscCeilingCaps,
   bscVenueCalls,
   robinhood,
   solana,
@@ -18,6 +19,15 @@ const venues: readonly VenueDeclaration[] = Object.entries(bscVenueCalls).map(
   }),
 );
 const saved = "0xeA6F82DbD6C87DE5E542eFbd1f9964879828e4e7";
+// The install's caps with each capped token BSC's data names, as init makes them.
+const caps = {
+  ...testCaps,
+  approvals: bscCeilingCaps.tokens.map((item, index) => ({
+    aggregation: `testcaproute${String(index).padStart(13, "0")}`,
+    limitBase: 1_000n,
+    token: bsc.tokens.find((token) => token.symbol === item.symbol)?.address ?? "",
+  })),
+};
 const rescue = "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
 
 function planFor(role: "bridge" | undefined) {
@@ -42,7 +52,7 @@ function rulesFor(role: "bridge" | undefined): readonly string[] {
   if (!plan.ok) {
     return [plan.error];
   }
-  const built = buildCeiling({ chains: [{ ...plan.value, caps: testCaps }], rescue, saved: [] });
+  const built = buildCeiling({ chains: [{ ...plan.value, caps }], rescue, saved: [] });
   return built.ok ? built.value.rules.map((rule) => rule.name) : [built.error];
 }
 

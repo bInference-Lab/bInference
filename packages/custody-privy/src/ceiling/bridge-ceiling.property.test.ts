@@ -6,7 +6,7 @@ import {
   testBridgeCall,
   testBridgeCeilingRequest,
 } from "../testing/bridge-target-fixtures.js";
-import { testAddresses } from "../testing/custody-fixtures.js";
+import { testAddresses, testCaps } from "../testing/custody-fixtures.js";
 import { evaluatePolicy } from "../testing/fake-policy-engine.js";
 import { fakePolicyBodySchema, type FakeRule } from "../testing/fake-privy-request.schema.js";
 import { buildCeiling } from "./build-ceiling.js";
@@ -100,7 +100,13 @@ function rulesFor(
       tokenOut: typed(tokenOut),
     })),
   }));
-  const request = testBridgeCeilingRequest();
+  // Every token of the pools carries a cap, so the routes' tokens always have one.
+  const routeCaps = tokens.map((token, index) => ({
+    aggregation: `testcaproute${String(index).padStart(13, "0")}`,
+    limitBase: 1_000n,
+    token,
+  }));
+  const request = testBridgeCeilingRequest(testCaps, routeCaps);
   const built = buildCeiling({
     ...request,
     chains: request.chains.map((chain) => Object.assign({}, chain, { bridges: targets })),

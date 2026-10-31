@@ -29,18 +29,23 @@ names, so a deposit of it could empty the ETH the wallet holds.
   a floor of $1,000 per ETH, rounded up. With the default $500 day that is 1 ETH.
 - **The resize** of decision 0151 reaches it: `binference ceiling set --day-cap-usd` sizes it with
   the others.
+- **Custody enforces it.** A ceiling never holds a bridge route whose token that leaves has no
+  24-hour approval cap on its chain: the builder refuses such a ceiling (`uncapped_token`), so a
+  route and its token's cap always land in the same policy. The check runs in custody, under the
+  owner key's signature, never in a venue plugin on the engine's side.
 - **Ceilings made before.** Caps are matched by their place in the chain's list, ETH last, so an
   install made before this decision keeps its three token caps and a resize sizes those; its
   approval rule names no ETH cap until a ceiling with one is made with the owner key.
 
 ## Consequences
 
-- A machine whose keys are all stolen can lose through ETH approvals at most the ETH cap a day, as
-  for WBNB and the stablecoins: a bad-price fill inside the cap, as decision 0149 accepts for
-  trades. Spec 5 and ARCHITECTURE section 8 name ETH among the capped tokens.
+- A machine whose keys are all stolen can lose through ETH approvals at most the ETH cap a day,
+  counted in ETH (1 ETH by default, whatever ETH is worth that day), as for WBNB and the
+  stablecoins: a bad-price fill inside the cap, as decision 0149 accepts for trades. Spec 5 and ARCHITECTURE section 8 name ETH among the capped tokens.
 - Init makes 5 of Privy's 10 aggregations.
-- An install whose ceilings name no ETH cap must not offer ETH bridges: Across's plugin reads the
-  held caps and answers `no_route` for an ETH route when the ceiling names none.
+- An install whose ceilings name no ETH cap holds no ETH route: custody refuses the ceiling until
+  the cap is in it. Across's plugin answering `no_route` for such a route is a courtesy to the
+  owner, not the wall.
 - Any other uncapped token a later venue moves keeps decision 0149's wording: it can be sold at any
   price.
 
@@ -50,4 +55,5 @@ names, so a deposit of it could empty the ETH the wallet holds.
 - **Bind the output amount.** Privy compares a field with a constant only; the signer checks it,
   which a thief holding every key passes by.
 - **Size the cap at the day's ETH price.** A ceiling is built before any price is read and the price
-  moves; a floor makes a cap tighter in dollars, never looser, as decision 0149 sizes BNB.
+  moves. The floor fixes the cap in ETH: at least the nominal dollars while ETH trades above $1,000,
+  and more in dollars as ETH rises, as decision 0149 sizes BNB.

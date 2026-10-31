@@ -91,6 +91,7 @@ export function capsOf(plan: ChainCapPlan, ids: readonly string[]): ChainCaps | 
     approvals: plan.approvals.map((item, index) => ({
       aggregation: approvals[index] ?? "",
       limitBase: item.limitBase,
+      token: item.token,
     })),
   };
 }

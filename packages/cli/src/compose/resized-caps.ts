@@ -18,10 +18,9 @@ function resizedCaps(chain: CeilingChain, sized: ChainCapPlan): CeilingChain {
     ...chain,
     caps: {
       native: { aggregation: native.aggregation, limitBase: sized.nativeLimitBase },
-      approvals: approvals.map((cap, index) => ({
-        aggregation: cap.aggregation,
-        limitBase: sized.approvals[index]?.limitBase ?? cap.limitBase,
-      })),
+      approvals: approvals.map((cap, index) =>
+        Object.assign({}, cap, { limitBase: sized.approvals[index]?.limitBase ?? cap.limitBase }),
+      ),
     },
   };
 }

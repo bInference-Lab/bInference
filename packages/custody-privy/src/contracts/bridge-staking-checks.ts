@@ -3,6 +3,7 @@ import { idSchema } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import { buildCeiling } from "../ceiling/build-ceiling.js";
 import type { Ceiling, ChainCaps } from "../ceiling/ceiling.js";
+import { aggregationsOf, type ChainCapPlan } from "../ceiling/day-caps.js";
 import {
   approveTo,
   callData,
@@ -17,14 +18,16 @@ import {
   testStakingCeilingRequest,
   testTargets,
 } from "../testing/bridge-target-fixtures.js";
-import { oneBnbWei, testAddresses } from "../testing/custody-fixtures.js";
+import { oneBnbWei, testAddresses, testChain } from "../testing/custody-fixtures.js";
 import { setCeilingCalls } from "../wallets/ceiling-calls.js";
 import {
   askPrivy,
   type CustodySetup,
   heldCapsOf,
   live,
+  noteMadeCaps,
   type PrivyCustodyHarness,
+  type PrivyCustodySubject,
   policyOf,
   setUp,
   type TestCall,
@@ -50,13 +53,52 @@ function hexOf(address: string): Hex {
 interface Wallets {
   readonly main: CustodySetup;
   readonly bridge: CustodySetup;
+  /** The caps both wallets were made with: the suite's, then the routes' tokens'. */
+  readonly caps: ChainCaps;
+  readonly routeCaps: ChainCaps["approvals"];
+}
+
+// The 24-hour caps of the routes' tokens: 1,000 base units of BSC's USDC and of its ETH each.
+const routeCapPlan: ChainCapPlan = {
+  chain: testChain,
+  nativeLimitBase: 1n,
+  approvals: [
+    { token: bscUsdc, limitBase: 1_000n },
+    { token: bscEth, limitBase: 1_000n },
+  ],
+};
+
+// The routes' token caps, made once on the subject's app and noted for the cleanup.
+async function routeCapsOn(subject: PrivyCustodySubject): Promise<ChainCaps["approvals"]> {
+  const { api, ownerKey } = subject;
+  const owner = await api.createKeyQuorum(
+    { publicKey: ownerKey, displayName: "binference test owner" },
+    live(),
+  );
+  const listed = aggregationsOf(routeCapPlan);
+  assert.ok(listed.ok);
+  const [, ...approvals] = listed.value;
+  const ids: string[] = [];
+  for (const definition of approvals) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one write at a time, as every write
+    ids.push(await api.createAggregation({ definition, owner: owner.id }, live()));
+  }
+  noteMadeCaps(subject, ids);
+  return routeCapPlan.approvals.map((item, index) => ({
+    aggregation: ids[index] ?? "",
+    limitBase: item.limitBase,
+    token: item.token,
+  }));
 }
 
 const made = new WeakMap<object, Promise<Wallets>>();
 
-function ceilingOf(wallet: "main" | "bridge"): (caps: ChainCaps) => Ceiling {
+function ceilingOf(
+  kind: "main" | "bridge",
+  routeCaps: ChainCaps["approvals"],
+): (caps: ChainCaps) => Ceiling {
   return (caps) => {
-    const built = buildCeiling(testStakingCeilingRequest(caps, wallet));
+    const built = buildCeiling(testStakingCeilingRequest(caps, { kind, routeCaps }));
     assert.ok(built.ok);
     return built.value;
   };
@@ -69,9 +111,18 @@ const id = (n: string) => idSchema("wal").parse(`wal_0190f1c2-3b4c-7d5e-8f60-718
 async function makeWallets(harness: PrivyCustodyHarness): Promise<Wallets> {
   const subject = harness.create();
   const caps = heldCapsOf(await setUp(subject));
-  const main = await walletUnder(subject, { ceiling: ceilingOf("main"), caps, id: id("1") });
-  const bridge = await walletUnder(subject, { ceiling: ceilingOf("bridge"), caps, id: id("2") });
-  return { main, bridge };
+  const routeCaps = await routeCapsOn(subject);
+  const main = await walletUnder(subject, {
+    ceiling: ceilingOf("main", routeCaps),
+    caps,
+    id: id("1"),
+  });
+  const bridge = await walletUnder(subject, {
+    ceiling: ceilingOf("bridge", routeCaps),
+    caps,
+    id: id("2"),
+  });
+  return { main, bridge, caps, routeCaps };
 }
 
 function bridgeCheck(
@@ -119,11 +170,14 @@ const call = (to: string, data: Hex, valueWei = 0n): TestCall => ({ to, valueWei
 // The Base lane's recipients written with the owner key, then asked again every half second for up
 // to 15 seconds, until a deposit to `probe` signs or not as expected.
 async function baseRecipientsBecome(
-  setup: CustodySetup,
+  wallets: Wallets,
   change: { readonly recipients: readonly string[]; readonly probe: Hex; readonly signs: boolean },
 ): Promise<boolean> {
-  const caps = heldCapsOf(setup);
-  const request = testStakingCeilingRequest(caps);
+  const setup = wallets.main;
+  const request = testStakingCeilingRequest(wallets.caps, {
+    kind: "main",
+    routeCaps: wallets.routeCaps,
+  });
   const chains = request.chains.map((chain) =>
     Object.assign({}, chain, {
       bridges: testTargets.map((target) =>
@@ -170,6 +224,14 @@ function acceptChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
       );
       await privySigns(main, call(bscUsdc, approveTo(spokePool, 5n)));
     }),
+    bridgeCheck(
+      harness,
+      "signs an ETH approval within its 24-hour cap, none past it",
+      async (w) => {
+        await privySigns(w.main, call(bscEth, approveTo(spokePool, 1_000n)));
+        await privyRefuses(w.main, call(bscEth, approveTo(spokePool, 1_001n)));
+      },
+    ),
     bridgeCheck(harness, "signs staking that credits the wallet itself", async ({ main }) => {
       await privySigns(main, call(stakeHub, callData.delegate(validator), oneBnbWei));
       await privySigns(main, call(stakeHub, callData.undelegate(validator)));
@@ -239,10 +301,10 @@ function changeChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
       async (w) => {
         const added = [baseSaved, secondBase];
         assert.ok(
-          await baseRecipientsBecome(w.main, { recipients: added, probe: secondBase, signs: true }),
+          await baseRecipientsBecome(w, { recipients: added, probe: secondBase, signs: true }),
         );
         assert.ok(
-          await baseRecipientsBecome(w.main, {
+          await baseRecipientsBecome(w, {
             recipients: [baseSaved],
             probe: secondBase,
             signs: false,

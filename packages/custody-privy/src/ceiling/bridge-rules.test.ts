@@ -5,6 +5,7 @@ import {
   bridgeAddresses,
   testBridgeCall,
   testBridgeCeilingRequest,
+  testRouteCaps,
   testTargets,
 } from "../testing/bridge-target-fixtures.js";
 import { testAddresses, testCaps } from "../testing/custody-fixtures.js";
@@ -224,6 +225,24 @@ describe("building bridge targets", () => {
     expect(buildCeiling(withTargets([{ ...baseTarget, recipients: many }]))).toStrictEqual({
       ok: false,
       error: "too_many_addresses",
+    });
+  });
+});
+
+describe("a bridge route's 24-hour cap", () => {
+  it("refuses a route whose token that leaves has no approval cap on the chain", () => {
+    const refused = { ok: false, error: "uncapped_token" };
+    const usdcOnly = testRouteCaps.slice(0, 1);
+    expect(buildCeiling(testBridgeCeilingRequest(testCaps, []))).toStrictEqual(refused);
+    expect(buildCeiling(testBridgeCeilingRequest(testCaps, usdcOnly))).toStrictEqual(refused);
+    expect(buildCeiling(testBridgeCeilingRequest(testCaps, testRouteCaps)).ok).toBe(true);
+  });
+
+  it("refuses a cap read back from a policy, which names no token, for a route", () => {
+    const named = testRouteCaps.map(({ aggregation, limitBase }) => ({ aggregation, limitBase }));
+    expect(buildCeiling(testBridgeCeilingRequest(testCaps, named))).toStrictEqual({
+      ok: false,
+      error: "uncapped_token",
     });
   });
 });

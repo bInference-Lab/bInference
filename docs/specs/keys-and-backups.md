@@ -141,7 +141,9 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    (`Bridge <function>, chain <id> to <destination>, <n>`): the function on its contract with no
    native coin, its depositor the wallet itself, its recipient one of the addresses saved for that
    destination (and the rescue address where it is a plain wallet on both chains), the destination
-   chain's id, and the route's token that leaves with its token that arrives, as a pair. A destination with no saved address has no rule. The deposit's message
+   chain's id, and the route's token that leaves with its token that arrives, as a pair. A route
+   whose token that leaves has no 24-hour approval cap on the chain is refused, so a deposit loses
+   at most that cap ([decision 0305](../DECISIONS.md#d0305)). A destination with no saved address has no rule. The deposit's message
    must be empty, which the signer checks: Privy takes no condition for an empty value.
 4. **Approvals:** `approve(spender, amount)` on any token, only when `spender` is a contract an
    enabled venue declares as its spender, and only while each capped token's approvals in the last

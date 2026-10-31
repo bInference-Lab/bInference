@@ -58,7 +58,7 @@ describe("capsOf", () => {
   it("pairs the ids Privy gave with the plan's limits, in order, and nothing for another count", () => {
     expect(capsOf(testCapPlan, ["n", "t"])).toStrictEqual({
       native: { aggregation: "n", limitBase: testCapPlan.nativeLimitBase },
-      approvals: [{ aggregation: "t", limitBase: 1_000n }],
+      approvals: [{ aggregation: "t", limitBase: 1_000n, token: testAddresses.token }],
     });
     expect(capsOf(testCapPlan, ["n"])).toBeUndefined();
   });

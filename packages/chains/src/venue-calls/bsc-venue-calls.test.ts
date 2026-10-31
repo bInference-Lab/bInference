@@ -1,6 +1,7 @@
 import { declaredContracts, venueDeclarationSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
-import { bsc } from "../bsc.js";
+import { bsc, bscCeilingCaps } from "../bsc.js";
+import { bscBridgeRoutes } from "../routes/bsc-bridge-routes.js";
 import { bscVenueCalls } from "./bsc-venue-calls.js";
 
 interface AbiInput {
@@ -111,6 +112,12 @@ describe("the staking, bridge and identity calls on bsc", () => {
       undefined,
       { bridge: ["depository"] },
     ]);
+  });
+
+  it("caps every token a bridge route takes from bsc, so no deposit passes the 24-hour caps", () => {
+    const capped = new Set(bscCeilingCaps.tokens.map((item) => item.symbol));
+    const uncapped = bscBridgeRoutes.filter((route) => !capped.has(route.leaves));
+    expect(uncapped).toStrictEqual([]);
   });
 
   it("keeps every approval away from the identity registry", () => {

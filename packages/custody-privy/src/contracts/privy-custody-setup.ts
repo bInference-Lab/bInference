@@ -204,6 +204,11 @@ export async function tearDown(subject: PrivyCustodySubject): Promise<void> {
   madeCaps.delete(subject);
 }
 
+/** Notes aggregations a check made for a subject, so the cleanup deletes them with the setup's. */
+export function noteMadeCaps(subject: PrivyCustodySubject, aggregations: readonly string[]): void {
+  madeCaps.set(subject, [...(madeCaps.get(subject) ?? []), ...aggregations]);
+}
+
 /** The suite's wallet for a subject, made on first use. */
 export async function setUp(subject: PrivyCustodySubject): Promise<CustodySetup> {
   const known = setups.get(subject);

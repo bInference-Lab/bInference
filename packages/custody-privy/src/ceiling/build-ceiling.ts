@@ -188,7 +188,9 @@ function launchOf(
 }
 
 // A chain's bridge targets, checked; absent when none. A target's function may not also be a plain
-// call rule's, which would let it pay anyone.
+// call rule's, which would let it pay anyone, and every route's token that leaves has a 24-hour
+// approval cap on the chain, so a stolen key loses through a deposit at most that cap (decision
+// 0305).
 function bridgesOf(
   chain: CeilingChain,
   chainId: string,
@@ -201,6 +203,11 @@ function bridgesOf(
   const plain = new Set(calls.map((call) => call.abi.name));
   if (targets.value.some((target) => plain.has(target.call.abi.name))) {
     return err("bad_bridge");
+  }
+  const capped = new Set(chain.caps.approvals.flatMap((cap) => cap.token?.toLowerCase() ?? []));
+  const routes = targets.value.flatMap((target) => target.routes);
+  if (routes.some((route) => !capped.has(route.tokenIn.toLowerCase()))) {
+    return err("uncapped_token");
   }
   return ok(targets.value.length === 0 ? {} : { bridges: targets.value });
 }

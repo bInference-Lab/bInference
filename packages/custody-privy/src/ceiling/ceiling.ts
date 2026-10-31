@@ -35,6 +35,11 @@ export interface DayCap {
   readonly aggregation: string;
   /** The most the sum may reach, in base units, the request being signed included. */
   readonly limitBase: bigint;
+  /**
+   * For an approval cap, the token whose approvals it sums. A cap read back from a policy names
+   * none, as its rules hold only the aggregation; a bridge route needs its token named here.
+   */
+  readonly token?: string;
 }
 
 /** The most aggregations Privy keeps for one app ("Stateful policies", docs.privy.io). */
@@ -134,8 +139,9 @@ export interface Ceiling {
  * or whose wallet input is no address input, or a launch call that pins none; two calls of one
  * name that differ; a cap whose aggregation is no Privy id; more aggregations than Privy keeps for
  * an app; a bridge target whose inputs are not the function's, that repeats a destination, names no
- * recipient or token, or whose rule name passes Privy's 50 characters; rules past the bytes one
- * Privy policy holds.
+ * recipient or token, or whose rule name passes Privy's 50 characters; a bridge route whose token
+ * that leaves has no 24-hour approval cap on its chain; rules past the bytes one Privy policy
+ * holds.
  */
 export type CeilingProblem =
   | "no_chain"
@@ -148,4 +154,5 @@ export type CeilingProblem =
   | "bad_cap"
   | "too_many_caps"
   | "bad_bridge"
+  | "uncapped_token"
   | "too_large";

@@ -64,9 +64,21 @@ export const testTargets: readonly BridgeTarget[] = [
   },
 ];
 
-/** The test ceiling request with the bridge targets and the SpokePool as a spender. */
-export function testBridgeCeilingRequest(caps: ChainCaps = testCaps): CeilingRequest {
-  const request = testCeilingRequest(caps);
+/** The approval caps of the tokens the test routes take: BSC's USDC and ETH, 1,000 base units each. */
+export const testRouteCaps: ChainCaps["approvals"] = [
+  { aggregation: "testcapbscusdc00000000000", limitBase: 1_000n, token: bridgeAddresses.bscUsdc },
+  { aggregation: "testcapbsceth000000000000", limitBase: 1_000n, token: bridgeAddresses.bscEth },
+];
+
+/**
+ * The test ceiling request with the bridge targets, the SpokePool as a spender, and the caps of the
+ * routes' tokens after the ones given.
+ */
+export function testBridgeCeilingRequest(
+  caps: ChainCaps = testCaps,
+  routeCaps: ChainCaps["approvals"] = testRouteCaps,
+): CeilingRequest {
+  const request = testCeilingRequest({ ...caps, approvals: [...caps.approvals, ...routeCaps] });
   const chains = request.chains.map((chain) =>
     Object.assign({}, chain, {
       spenders: [...chain.spenders, bridgeAddresses.spokePool],
@@ -112,11 +124,13 @@ const testRelayCalls: readonly CeilingCall[] = ["depositErc20", "depositNative"]
  */
 export function testStakingCeilingRequest(
   caps: ChainCaps = testCaps,
-  wallet: "main" | "bridge" = "main",
+  wallet: { readonly kind: "main" | "bridge"; readonly routeCaps?: ChainCaps["approvals"] } = {
+    kind: "main",
+  },
 ): CeilingRequest {
-  const request = testBridgeCeilingRequest(caps);
-  const relayCalls = wallet === "bridge" ? testRelayCalls : [];
-  const relaySpenders = wallet === "bridge" ? [stakingAddresses.depository] : [];
+  const request = testBridgeCeilingRequest(caps, wallet.routeCaps);
+  const relayCalls = wallet.kind === "bridge" ? testRelayCalls : [];
+  const relaySpenders = wallet.kind === "bridge" ? [stakingAddresses.depository] : [];
   const chains = request.chains.map((chain) =>
     Object.assign({}, chain, {
       calls: [...chain.calls, ...testStakingCalls, ...relayCalls],
