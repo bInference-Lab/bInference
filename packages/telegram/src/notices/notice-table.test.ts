@@ -80,6 +80,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.confirmationLapsed": `${warning} A trade was not sent: its confirmation ran out before it could go out. Nothing was signed.`,
   "notice.feeAboveCap": `${warning} A trade waited because the network fee was above your cap, and its confirmation ran out. Confirm it again on its new card, or cancel it.`,
   "notice.launchUnsent": `${warning} A trade on a launch's curve was not sent: the launchpad no longer holds the token on that curve, as after its graduation. Nothing was signed.`,
+  "notice.nameMoved": `${warning} A send to alice.bnb was not signed: the name now points to 0x2bA6…3c71, not 0x71C7…976F as on its card. Nothing was sent. Check the name, then propose the send again.`,
   "notice.launchStopped": `${warning} The launch of MCAT on pad stopped: the launchpad did not pin its picture and words within 5 minutes. Nothing was signed, but its picture and words may be public on the launchpad. Propose the launch again if you still want it.`,
   "notice.stepUnsent": `${warning} A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.`,
   "notice.launchNotSigned": `${warning} The launch of MCAT on pad stopped after you confirmed it: binference stopped before it signed the launch, and it never signs after a stop. No token was made and nothing was sent. Its picture and words may already be public on the launchpad. Propose the launch again if you still want it.`,

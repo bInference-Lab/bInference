@@ -2,6 +2,7 @@ import {
   type AccountRef,
   type AllowedTargets,
   accountRefSchema,
+  type ChainRegistry,
   checkAutoModeGrant,
   declaredContracts,
   type RegisteredChain,
@@ -29,6 +30,7 @@ import { declaredTargetsOf } from "./declared-calls.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
 import { launchQuoteOf, recheckLaunch } from "./launch-queue-check.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
+import { recheckTransfer, transferQuoteOf, transferTargetsOf } from "./transfer-queue-check.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
 export interface SigningTerms {
@@ -86,6 +88,9 @@ async function recheckPolicy(
   const { record, settings, stored } = snapshot;
   if (record.kind === "launchToken") {
     return recheckLaunch(snapshot, parts, signal);
+  }
+  if (record.kind === "send" || record.kind === "revokeApproval") {
+    return recheckTransfer(snapshot, parts, signal);
   }
   const request = { ...requestDocument.decode(record.request), wallet: record.walletId };
   const resolving = { request, settings, signal, intent: record.id };
@@ -159,9 +164,17 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
  */
 function allowedTargetsOf(
   snapshot: IntentSnapshot,
-  context: { readonly chain: RegisteredChain; readonly venues: readonly VenueDeclaration[] },
+  context: {
+    readonly chain: RegisteredChain;
+    readonly chains: ChainRegistry;
+    readonly venues: readonly VenueDeclaration[];
+  },
 ): AllowedTargets {
   const { chain } = context;
+  const transfer = transferQuoteOf(snapshot.record);
+  if (transfer !== undefined) {
+    return transferTargetsOf(transfer, context);
+  }
   const launch = launchQuoteOf(snapshot.record);
   const quote =
     launch !== undefined || snapshot.record.quote === undefined
@@ -270,7 +283,7 @@ export async function recoveredFillTerms(
     return undefined;
   }
   const { grant, current } = granted;
-  const allowed = allowedTargetsOf(snapshot, { chain, venues: parts.venues });
+  const allowed = allowedTargetsOf(snapshot, { chain, chains: parts.chains, venues: parts.venues });
   return { authorization: { kind: "order", grant, current }, termsHash: grant.termsHash, allowed };
 }
 
@@ -298,7 +311,11 @@ export async function checkForQueue(
     ...(authorizedBy === undefined ? {} : { isAuthorizationValid: terms !== undefined }),
   };
   const isAuto = authorizedBy !== undefined && !isFillAuthorization(authorizedBy);
-  const registry = allowedTargetsOf(snapshot, { chain, venues: parts.venues });
+  const registry = allowedTargetsOf(snapshot, {
+    chain,
+    chains: parts.chains,
+    venues: parts.venues,
+  });
   const launch = await launchTargetsOf(snapshot.record, parts, signal);
   const failure = launch.kind === "failed" ? { launchFailure: launch.reason } : {};
   const allowed = launch.kind === "read" ? { ...registry, launch: launch.launch } : registry;

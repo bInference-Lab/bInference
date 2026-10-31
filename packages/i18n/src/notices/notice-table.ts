@@ -7,7 +7,7 @@ export interface TableNotice extends WrittenNotice {
   readonly agent?: ProtocolId<"agent">;
 }
 
-const { tableAgent, at, agent, coinAmount, orderKind, sale, launch } = noticeTableParts;
+const { tableAgent, at, agent, coinAmount, orderKind, sale, launch, movedName } = noticeTableParts;
 
 /**
  * One notice of each key of spec 4, section 4, with its sections 4.2 and 4.3, as the engine
@@ -224,9 +224,10 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.blockShared": { key: "notice.blockShared", values: { wallet: "Main" } },
   "notice.fillUnknown": { key: "notice.fillUnknown", values: {} },
   "notice.notSigned": { key: "notice.notSigned", values: {} },
-  "notice.confirmationLapsed": { key: "notice.confirmationLapsed", values: {} },
+  "notice.confirmationLapsed": { key: "notice.confirmationLapsed", values: { kind: "trade" } },
   "notice.feeAboveCap": { key: "notice.feeAboveCap", values: {} },
   "notice.launchUnsent": { key: "notice.launchUnsent", values: { reason: "launch_moved" } },
+  "notice.nameMoved": { key: "notice.nameMoved", values: movedName },
   "notice.launchStopped": {
     key: "notice.launchStopped",
     values: { symbol: "MCAT", venue: "pad", reason: "pin_timeout", private: "no" },

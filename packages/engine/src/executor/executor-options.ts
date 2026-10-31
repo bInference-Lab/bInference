@@ -1,6 +1,7 @@
 import type {
   ChainRef,
   ChainRegistry,
+  NameResolver,
   PriceSource,
   ReceiptReader,
   RelaySender,
@@ -71,6 +72,11 @@ export interface ExecutorOptions {
    * again right before signing (decision 0217). Without them, no step reaches a launch contract.
    */
   readonly curves?: Pick<VenueHost, "curves">;
+  /**
+   * The name resolvers a send by name is read again through before it signs (decision 0308);
+   * without one for its suffix, a send by name waits and never signs.
+   */
+  readonly nameResolvers?: readonly NameResolver[];
   /**
    * Each chain's sending parts. An intent run reads its chain's once, when it reads its plan, and
    * keeps them to its end: a settings reload reaches the runs that start after it (decision 0230).

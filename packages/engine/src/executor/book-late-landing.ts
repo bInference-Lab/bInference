@@ -9,9 +9,11 @@ import type { OrderFillWrite } from "../orders/order-fill.js";
 import { orderPush } from "../orders/order-view-of.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
+import { departLateTransfer } from "./reconcile-finalized.js";
 import { type BookedTrade, bookTrade } from "./reconcile-trade.js";
 import { currentSteps } from "./recover-steps.js";
 import { recordReceipt } from "./run-step.js";
+import { transferQuoteOf } from "./transfer-queue-check.js";
 
 /** A dropped step's transaction a block holds after all, with its receipt. */
 export interface Landed {
@@ -157,8 +159,8 @@ async function announceCount(
  * the intent again at once. An order's fill whose whole trade is in blocks counts on its order in
  * that same write, once (decision 0211). Once every step of the plan is in a block and those
  * blocks are final, the trade goes into the positions and realized P&L as a reconciliation books
- * it; a trade whose steps did not all land, or whose block a reorg moved, is logged and left out
- * of the positions.
+ * it, and a send's or a revoke's as its departure; a trade whose steps did not all land, or whose
+ * block a reorg moved, is logged and left out of the positions.
  */
 export async function bookLateLanding(
   run: ExecutionRun,
@@ -176,6 +178,11 @@ export async function bookLateLanding(
   await linkLanding(run, { dropped, landing, isWhole, left: linkAttempts });
   if (!isWhole || !(await finalizeSteps(run, steps))) {
     parts.log.warn("executor.landed_late_unbooked", { intentId });
+    return;
+  }
+  // A send or a revoke books no trade: what its step took out leaves the positions instead.
+  if (transferQuoteOf(dropped.record) !== undefined) {
+    await departLateTransfer(run, dropped);
     return;
   }
   const booked = await bookAgain(run, { snapshot: dropped, atMs });

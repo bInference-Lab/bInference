@@ -46,7 +46,7 @@ import type { VenueHost } from "../venues/venue-host.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { createWalletQueue } from "../wallet-queue/wallet-queue.js";
 import { createExecutor, type RunningExecutor } from "./create-executor.js";
-import type { ExecutorLimits } from "./executor-options.js";
+import type { ExecutorLimits, ExecutorOptions } from "./executor-options.js";
 import { swapCoinReceived, swapTransfers } from "./test-swap-transfers.js";
 
 /** The fake chain the test engine trades on. */
@@ -234,7 +234,14 @@ export function executorOf(
     logger,
     ...(options.limits === undefined ? {} : { limits: options.limits }),
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
+    ...nameResolversOf(options),
   });
+}
+
+// The name resolvers the bench's engine reads, which its executor reads a send by name again with.
+function nameResolversOf(options: BenchOptions): Pick<ExecutorOptions, "nameResolvers"> {
+  const resolvers = options.engine?.nameResolvers;
+  return resolvers === undefined ? {} : { nameResolvers: resolvers };
 }
 
 /** Starts an engine with a live agent, whose executor sends on a fake network. */

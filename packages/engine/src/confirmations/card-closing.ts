@@ -58,7 +58,12 @@ export type LiveOutcome =
     }
   | { readonly kind: "landed"; readonly tx: ReceiptTx }
   | { readonly kind: "done" }
-  | { readonly kind: "refused"; readonly reason: IntentReason }
+  | {
+      readonly kind: "refused";
+      readonly reason: IntentReason;
+      /** The name of a send by name, which its reason's words name (decision 0308). */
+      readonly name?: string;
+    }
   | { readonly kind: "unsent" }
   | { readonly kind: "unknown" }
   | { readonly kind: "failed"; readonly reason: IntentReason; readonly tx: ReceiptTx };
@@ -108,9 +113,9 @@ function launchedLine(outcome: AfterOf<"launched">): CardLine {
 }
 
 // The receipt of what followed a confirmation: the paper fill, or how the live intent ended.
-const reasonLine = (reason: IntentReason): CardValue => ({
+const reasonLine = (reason: IntentReason, name?: string): CardValue => ({
   type: "line",
-  line: { key: `reason.${reason}`, values: {} },
+  line: { key: `reason.${reason}`, values: name === undefined ? {} : { name: text(name) } },
 });
 
 /** What follows a confirmation, by its kind. */
@@ -133,7 +138,10 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
     values: { reason: reasonLine(after.reason), explorerLink: txValue(after.tx) },
   }),
   done: () => ({ key: "receipt.done", values: {} }),
-  refused: (after) => ({ key: "receipt.refused", values: { reason: reasonLine(after.reason) } }),
+  refused: (after) => ({
+    key: "receipt.refused",
+    values: { reason: reasonLine(after.reason, after.name) },
+  }),
   unsent: () => ({ key: "receipt.unsent", values: {} }),
   unknown: () => ({ key: "receipt.unknown", values: {} }),
   unfrozen: (after) =>

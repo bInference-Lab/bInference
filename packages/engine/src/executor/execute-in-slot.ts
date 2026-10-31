@@ -9,6 +9,7 @@ import { endDropped } from "./end-dropped.js";
 import { endRefusedFill } from "./end-refused-fill.js";
 import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
+import { takeSendName } from "./name-queue-check.js";
 import { checkForQueue, type QueueCheck, type SigningTerms } from "./queue-check.js";
 import { resetApproval } from "./reset-approval.js";
 import { type PreparedStep, prepareStep, type SignStop, signAndStore } from "./run-step.js";
@@ -70,12 +71,14 @@ async function endUnread(
 }
 
 // The queue's check of a confirmed intent with what signs it; `undefined` when nothing does. A
-// fill it refuses ends at once (decision 0211), and a launch wallet's curve trade whose launch
-// cannot be read ends with its own reason before anything signs (decision 0218).
+// fill it refuses ends at once (decision 0211), a launch wallet's curve trade whose launch cannot
+// be read ends with its own reason before anything signs (decision 0218), and a send by name signs
+// only while its name still points to its card's address, waiting a block while the name cannot be
+// read (decision 0308).
 async function checkedForQueue(
   run: ExecutionRun,
   snapshot: IntentSnapshot,
-): Promise<(QueueCheck & { readonly terms: SigningTerms }) | undefined> {
+): Promise<(QueueCheck & { readonly terms: SigningTerms }) | Retry | undefined> {
   const intent = snapshot.record.id;
   const check = await checkForQueue(
     snapshot,
@@ -90,9 +93,31 @@ async function checkedForQueue(
   if (terms === undefined) {
     return notTaken(run, intent, "no_authorization");
   }
-  return check.launchFailure === undefined
-    ? { ...check, terms }
-    : endUnread(run, snapshot, check.launchFailure);
+  if (check.launchFailure !== undefined) {
+    return endUnread(run, snapshot, check.launchFailure);
+  }
+  const named = await takeSendName(run, snapshot);
+  if (named === "go") {
+    return { ...check, terms };
+  }
+  return named === "unread" ? "unprepared" : undefined;
+}
+
+// The first step, prepared before the move to `executing`: one whose fee per gas is above the
+// network fee cap, or that no node could prepare, waits for a later block; one that would fail
+// ends the take.
+async function firstStepOf(
+  run: ExecutionRun,
+  slot: WalletSlot,
+  intent: Id<"int">,
+): Promise<PreparedStep | Retry | undefined> {
+  const first = await prepareStep(run, slot, { index: 0, draft: run.plan.steps[0] });
+  if (!first.ok || first.value.prepared.isAboveFeeCap) {
+    const problem = first.ok ? "over_fee_cap" : first.error;
+    notTaken(run, intent, problem);
+    return problem === "would_fail" ? undefined : problem;
+  }
+  return first.value;
 }
 
 // Everything that can refuse runs before the move to `executing`: an intent that stays
@@ -103,20 +128,18 @@ async function takeIn(
   slot: WalletSlot,
   intent: Id<"int">,
 ): Promise<Taken | Retry | undefined> {
-  const { parts, plan, signal } = run;
+  const { parts, signal } = run;
   const snapshot = await parts.stored.snapshot(intent, { signal });
   if (snapshot?.record.state !== "confirmed") {
     return notTaken(run, intent, "not_confirmed");
   }
   const check = await checkedForQueue(run, snapshot);
-  if (check === undefined) {
-    return undefined;
+  if (check === undefined || typeof check === "string") {
+    return check;
   }
-  const first = await prepareStep(run, slot, { index: 0, draft: plan.steps[0] });
-  if (!first.ok || first.value.prepared.isAboveFeeCap) {
-    const problem = first.ok ? "over_fee_cap" : first.error;
-    notTaken(run, intent, problem);
-    return problem === "would_fail" ? undefined : problem;
+  const first = await firstStepOf(run, slot, intent);
+  if (first === undefined || typeof first === "string") {
+    return first;
   }
   // An intent the engine's stop meets here stays `confirmed`, with nothing signed.
   if (run.stopping.aborted) {
@@ -127,7 +150,7 @@ async function takeIn(
     return undefined;
   }
   parts.log.info("executor.took", { intentId: intent });
-  return { snapshot: executing, terms: check.terms, first: first.value };
+  return { snapshot: executing, terms: check.terms, first };
 }
 
 // A step no stuck rule can move leaves the intent `executing`, handed over at this seam.
@@ -260,7 +283,9 @@ export async function finishFill(
 /**
  * The work of one confirmed intent on its wallet's queue (ARCHITECTURE.md section 7, step 8): the
  * `queue_took` check, which ends a launch wallet's curve trade whose launch it cannot read with
- * `launch_unread` or `launch_moved` and `notice.launchUnsent` (decision 0218), then each step signed, stored before any send, sent to the relays and
+ * `launch_unread` or `launch_moved` and `notice.launchUnsent` (decision 0218) and a send by name
+ * whose name moved with `name_moved` and `notice.nameMoved`, and retries one whose name cannot be
+ * read (decision 0308), then each step signed, stored before any send, sent to the relays and
  * watched until a block holds it. It answers the included steps once every step is in a block,
  * so the slot frees the wallet before finality, a retry when the first step's fee per gas is
  * above the network fee cap or no node answered as it was prepared, which leaves the intent

@@ -55,7 +55,9 @@ export async function expireIfLapsed(
     return true;
   }
   parts.log.warn("executor.lapsed", { intentId: record.id });
-  const notice = { key: lapsedNoticeKey, agent: record.agentId, intent: record.id, values: {} };
+  // A send that waited on its name, or on anything else, is told as a send (decision 0308).
+  const values = { kind: record.kind === "send" ? "send" : "trade" };
+  const notice = { key: lapsedNoticeKey, agent: record.agentId, intent: record.id, values };
   parts.publish(noticePush(notice));
   return false;
 }

@@ -61,6 +61,11 @@ const approve = withStep(
     action: { kind: "approve", token: accountOn(token), spender: accountOn(router), amount: 1000n },
   },
 );
+// An approval revoke sets the spender's allowance back to zero (decision 0309).
+const revoke = withStep(
+  withTransaction(call, { to: token, value: "0x0", data: approveCalldata(router, 0n) }),
+  { action: { kind: "approve", token: accountOn(token), spender: accountOn(router), amount: 0n } },
+);
 const nativeSend = withStep(withTransaction(call, { to: saved, value: 5, data: "0x" }), {
   action: { kind: "send", recipient: accountOn(saved), amount: 5n },
 });
@@ -157,6 +162,7 @@ const overCap = { max_fee_per_gas: "0x3b9aca01" };
 const bases: readonly (readonly [string, AuthorizeInput])[] = [
   ["a venue call", call],
   ["an exact approval", approve],
+  ["an approval revoke to zero", revoke],
   ["a native send", nativeSend],
   ["a token send", tokenSend],
   ["a cancel", cancel],
@@ -259,6 +265,11 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
     3,
     "an approval above the step's amount",
     withTransaction(approve, { to: token, value: "0x0", data: approveCalldata(router, 1001n) }),
+  ],
+  [
+    3,
+    "a revoke whose calldata approves 1 instead of zero",
+    withTransaction(revoke, { to: token, value: "0x0", data: approveCalldata(router, 1n) }),
   ],
   [
     3,

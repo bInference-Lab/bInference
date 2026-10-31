@@ -4,7 +4,7 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import type { IntentState } from "../intents/intent-state.js";
 import type { ExecutionRun, ExecutorParts } from "./executor-run.js";
 import { type IntentPlan, intentPlanOf } from "./intent-plan.js";
-import { reconcileTrade } from "./reconcile-trade.js";
+import { reconcileFinalized } from "./reconcile-finalized.js";
 import { currentSteps, recoverSteps } from "./recover-steps.js";
 import { settleIncluded } from "./settle-included.js";
 import { type DroppedStep, droppedWatchEndsAt, watchDropped } from "./watch-dropped.js";
@@ -96,7 +96,7 @@ export async function recoverIntent(run: ExecutionRun, unsettled: Unsettled): Pr
   const intent = snapshot.record.id;
   const { state } = snapshot.record;
   if (state === "finalized") {
-    return reconcileTrade(run, snapshot);
+    return reconcileFinalized(run, snapshot);
   }
   if (state === "included") {
     const stored = await parts.stores.transactions.ofIntent(intent, { signal });

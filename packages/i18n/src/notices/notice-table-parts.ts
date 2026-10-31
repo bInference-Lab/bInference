@@ -23,6 +23,8 @@ export interface NoticeTableParts {
   readonly sale: NoticePartView;
   /** A new token launch. */
   readonly launch: NoticePartView;
+  /** A send by name's name, what it points to now, and the address its card showed. */
+  readonly movedName: Readonly<Record<string, string>>;
 }
 
 const coinAmount = (thousandths: bigint): Amount => ({
@@ -55,5 +57,11 @@ export const noticeTableParts: NoticeTableParts = {
       curve: { key: "launch.curve", values: { graduated: "no", progress: "42%" } },
       age: { key: "launch.age", values: { unit: "minute", count: "3" } },
     },
+  },
+  movedName: {
+    name: "alice.bnb",
+    now: "address",
+    address: "0x2bA6…3c71",
+    confirmed: "0x71C7…976F",
   },
 };

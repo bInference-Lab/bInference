@@ -51,7 +51,7 @@ async function writtenText(context: ChatContext, view: IntentView): Promise<stri
 // it took effect as; `undefined` for one still on its way.
 async function endedText(context: ChatContext, view: IntentView): Promise<string | undefined> {
   if (unsentEndStates.has(view.state)) {
-    return unsentReceiptText(context.formatter, view.outcome?.reason);
+    return unsentReceiptText(context.formatter, view.outcome?.reason, view.resolvedName?.name);
   }
   return view.state === "reconciled" ? writtenText(context, view) : undefined;
 }

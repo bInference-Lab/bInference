@@ -12,6 +12,7 @@ import type { LiveOutcome, ReceiptTx } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import { type IntentHistory, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { sendQuoteDocument } from "../intents/send-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import type { TransactionStore } from "../ports.js";
@@ -103,12 +104,17 @@ async function landedOf(
 // whose order can no longer be drawn.
 const doneAlone: LiveReceipt = { outcome: { kind: "done" }, assets: {} };
 
-// A confirmed intent that ended before anything was sent: why, when it stored a reason.
+// A confirmed intent that ended before anything was sent: why, when it stored a reason, with a send
+// by name's name, which a name's reasons name.
 function unsentOf(record: IntentRecord): LiveReceipt {
-  const { reason } = record;
-  const outcome: LiveOutcome =
-    reason === undefined ? { kind: "unsent" } : { kind: "refused", reason };
-  return { outcome, assets: {} };
+  const { reason, kind, quote } = record;
+  if (reason === undefined) {
+    return { outcome: { kind: "unsent" }, assets: {} };
+  }
+  const name =
+    kind === "send" && quote !== undefined ? sendQuoteDocument.decode(quote).name?.name : undefined;
+  const refused = { kind: "refused", reason } as const;
+  return { outcome: name === undefined ? refused : { ...refused, name }, assets: {} };
 }
 
 // A live intent that failed on chain: its reason, and its last transaction.

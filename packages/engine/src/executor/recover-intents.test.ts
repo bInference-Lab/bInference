@@ -350,7 +350,7 @@ describe("a confirmed intent whose confirmation ran out while the engine was sto
     expect([restarted.recovered, restarted.signed.length]).toStrictEqual([0, 0]);
     const notices = restarted.pushes.filter((push) => push.kind === "notice/new");
     expect(notices.map((push) => push.data)).toStrictEqual([
-      { key: "notice.confirmationLapsed", agent: testAgent, values: {}, intent },
+      { key: "notice.confirmationLapsed", agent: testAgent, values: { kind: "trade" }, intent },
     ]);
     await expect(restarted.executor.takeConfirmed(live())).resolves.toBe(0);
   });
