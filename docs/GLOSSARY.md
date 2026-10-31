@@ -143,8 +143,16 @@ new name here first, in the change that uses it.
 - **rescue address**: the owner's own wallet, where a rescue sends everything. Changing it takes 24
   hours.
 - **saved address**: an address saved in the ceiling with the owner key. Sends go only to saved
-  addresses and the rescue address.
+  addresses and the rescue address. It names its chain: a CAIP-10 account, such as an `eip155`
+  address on Base or a `solana` address, so a bridge pays it only on that chain.
 - **address book**: the agent's saved addresses with their labels.
+- **address codec**: a chain family's check of an address and its conversion between the form
+  people write (a checksummed hex address, a base58 Solana address) and its **recipient bytes**, the
+  20 or 32 bytes the ceiling compares a recipient with.
+- **`.bnb` name**: a SPACE ID name on BNB Smart Chain, such as `alice.bnb`. A send may name one; the
+  engine resolves it when the card opens and again before it signs, the card shows the name and the
+  address, and the address book keeps only the address. Its **reverse record** is the name an
+  address's own record points back to.
 - **send level**: from 0 (Open) to 3 (Locked), where sends may go among the saved addresses.
 - **freeze**: stops an agent or the whole install at once; an agent created while the install is
   frozen starts frozen. Unfreezing is asked for in the CLI, the console or the Mini App, and takes
@@ -201,6 +209,30 @@ new name here first, in the change that uses it.
   the simulation must match the intent: exactly the input leaves, at least the minimum out arrives,
   no other asset leaves or arrives, and no allowance is set but the plan's own approval.
 - **registry**: the verified contract addresses in `@binference/chains`.
+- **chain family**: how binference reads and writes the accounts of one kind of chain: `evm` for the
+  `eip155` chains, and `solana`, which binference reads but never signs on. Each family fills the
+  address codec and the reader ports; core code never names one.
+- **staking**: putting the agent's BNB to work: native BNB staking with a **validator** through
+  StakeHub, or slisBNB through Lista. Its moves are a **stake**, an **unstake** and a **claim**.
+- **staking position**: what a wallet holds with one staking venue, and one validator on StakeHub,
+  as the venue's own receipt token, with its amounts waiting to be claimed.
+- **unbonding**: the funds an unstake took out, which wait for the **unbonding time** the venue sets
+  before a claim can take them back to the wallet.
+- **bridge route**: one venue's way from BNB Smart Chain to a destination chain for one token,
+  with the token it delivers.
+- **destination chain**: where a bridge delivers: Ethereum, Base, Arbitrum, Robinhood Chain or
+  Solana in v1.
+- **delivered token**: the token a bridge route pays the recipient on the destination chain. It may
+  differ from the token sent, as USDC arrives on Robinhood Chain as USDG.
+- **delivery read**: reading the destination chain, through its chain family's reader, for the
+  transfer that pays a bridge's recipient. The bridge's own status says where to look; only the
+  read says the funds arrived.
+- **in transit**: a bridge whose deposit is final and whose delivery has not been read. Past 2 hours
+  it is **late**, and the owner is told once. A **refund** is the bridge paying the deposit back
+  to the agent's wallet instead.
+- **identity**: an agent's opt-in entry in the ERC-8004 identity registry, made with one tapped
+  transaction. Its **registration file** (the agent's name, description, accounts and binference
+  version) is stored on chain as a data URI.
 - **launch contract**: a contract a launchpad makes with each launch, such as a token's own curve.
   No registry lists one: the launchpad's curve read names it for a token it holds, and only that
   token's trades and price reads call it.
@@ -323,6 +355,16 @@ new name here first, in the change that uses it.
   **Community** (anyone; read-only, in a sandbox).
 - **permission review**: the consent step when a plugin is added or an update widens what it
   declares.
+- **plugin host**: the engine part that runs each community plugin in a Node process of its own
+  under Node's permission model, hands it the fetches its declared hosts allow, and starts it again
+  after a crash.
+- **declared hosts**: the hosts a plugin's manifest names; the plugin host fetches no other for it.
+- **widening**: an update of a plugin that declares more than the version the owner accepted: a
+  host, a tool, a kind or a config key. It waits for a new permission review.
+- **plugin lock**: `plugins/lock.json` in the state folder: each installed plugin's source, version,
+  hash and the permissions the owner accepted.
+- **remote access**: the Mini App published over Tailscale `serve` and the webhook path over
+  `funnel`, which `binference expose` sets up and `remote/status` reports.
 - **secret sources**: how config names a secret without its value: `{ fromKeychain }`,
   `{ fromEnv }`, `{ fromFile }` and `{ fromCommand }`.
 - **config migration**: what `binference check --fix` runs to move older config or data to the
@@ -419,14 +461,19 @@ new name here first, in the change that uses it.
   `deny`, `wallet list`, `wallet address`, `wallet create`, `wallet create --launch`, `wallet export`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
-  `limit cancel`, `telegram pair`, `unlock`, `expose`, `uninstall`, `uninstall --state`, `reset`.
+  `limit cancel`, `telegram pair`, `unlock`, `expose`, `uninstall`, `uninstall --state`, `reset`,
+  `agent identity`, `plugin add`, `plugin list`, `plugin enable`, `plugin disable`,
+  `plugin remove`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
   `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
   `notes_write`, `workspace_write` (the owner's strategy and persona), `first_chat_end`,
-  `alert_create`, `schedule_list`, `schedule_create`, `schedule_cancel`.
+  `alert_create`, `schedule_list`, `schedule_create`, `schedule_cancel`; for staking, bridges and
+  sends the propose tools `send`, `approval_revoke`, `stake`, `unstake`, `claim` and `bridge`, and
+  the read tools `staking_options` and `bridge_quote`.
 - **MCP tools**: the MCP server's read and propose tools, one per operation and named
-  `binference_`, such as `binference_propose` for `intent/propose`.
+  `binference_`, such as `binference_propose` for `intent/propose`, `binference_staking_options`
+  for `staking/options` and `binference_bridge_quote` for `bridge/quote`.
 - **request id**: the optional `requestId` an MCP client gives a propose tool, sent as the call's
   idempotency key: a retry with the same id returns the first intent and its card, not a new one.
 - **coding-agent skills**: `clean-diff`, `review-diff`, `shape-commit`, `review-money-path`,
@@ -444,8 +491,9 @@ it. Write Chinese the way Binance's own Chinese docs do:
   kind.
 - Write numbers and money exactly as in English: `$1.20`, `0.005 BNB`, `1.2M`.
 - Keep product, chain, protocol and token names in English: binference, bInference, Binance, Binance
-  Agent OS, BNB Chain, BSC, PancakeSwap, Flap, MCP, BNB, USDT. Code, field names, error codes and
-  commands stay as they are.
+  Agent OS, BNB Chain, BSC, PancakeSwap, Flap, MCP, BNB, USDT, Ethereum, Base, Arbitrum, Robinhood
+  Chain, Solana, StakeHub, Lista, slisBNB, USDG, SPACE ID, Across, Relay, ERC-8004, Tailscale. Code,
+  field names, error codes and commands stay as they are.
 
 ### The agent and chat
 
@@ -545,6 +593,10 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | log in (to the computer)                    | 登录                   |                              |
 | client token                                | 访问令牌               | A `bnt_` sign-in token       |
 | release notes                               | 更新说明               |                              |
+| plugin host                                 | 插件进程               | One process per plugin       |
+| permission review                           | 权限审核               | Before a plugin runs         |
+| widening (of a plugin's permissions)        | 权限扩大               | Asks for a new review        |
+| remote access                               | 远程访问               | `binference expose`          |
 | roll back (an update)                       | 回退                   | Not 回滚, which is a revert  |
 | key (on the keyboard), number key           | 按键, 数字键           | Terminal chat: Ctrl+Y, Esc   |
 
@@ -601,6 +653,16 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | supply, withdraw, borrow, repay (lending)          | 存入, 取出, 借款, 还款       |                                         |
 | health factor                                      | 健康因子                     |                                         |
 | bridge (verb)                                      | 跨链                         |                                         |
+| validator                                          | 验证者                       | Native BNB staking                      |
+| unbonding, unbonding time                          | 解绑中, 解绑期               | After an unstake, before a claim        |
+| destination chain                                  | 目标链                       | Where a bridge delivers                 |
+| delivery, delivered (a bridge's)                   | 到账, 已到账                 |                                         |
+| in transit (a bridge)                              | 在途                         |                                         |
+| refund (a bridge's)                                | 退回                         | Paid back to the agent's wallet         |
+| .bnb name                                          | .bnb 域名                    | SPACE ID                                |
+| resolve (a name), reverse record                   | 解析, 反向记录               |                                         |
+| on-chain identity, identity registry               | 链上身份, 身份注册表         | ERC-8004                                |
+| registration file                                  | 注册文件                     | An identity's data URI                  |
 | private send                                       | 私密发送                     |                                         |
 | private execution                                  | 私密执行                     |                                         |
 | chain access                                       | 链上访问                     |                                         |
