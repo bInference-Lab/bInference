@@ -68,3 +68,29 @@ describe("a call's inputs under the checks the engine passes", () => {
     expect(brokenHardRules(input, context)).toStrictEqual([rule]);
   });
 });
+
+// The deposit's calldata with one 32-byte word replaced, by its place after the selector, and
+// `trailing` zero words appended.
+function withWord(place: number, hex: string, trailing = 0): AuthorizeInput {
+  const data = `${bridgeDepositCalldata(fixtureDeposit)}${"0".repeat(64 * trailing)}`;
+  const at = 10 + place * 64;
+  const changed = `${data.slice(0, at)}${hex.padStart(64, "0")}${data.slice(at + 64)}`;
+  return { ...deposit, ...withTransaction(deposit, { data: changed }), allowed: deposit.allowed };
+}
+
+describe("a deposit written in a form the ABI does not write", () => {
+  it("refuses a recipient with bits set above its 20 bytes, as rule 2", () => {
+    expect(
+      brokenHardRules(withWord(1, `ff${"0".repeat(22)}${saved.slice(2)}`), context),
+    ).toStrictEqual([2]);
+  });
+
+  it("refuses a message whose offset is not on a word, or past the calldata, as rule 2", () => {
+    expect(brokenHardRules(withWord(4, (5n * 32n + 1n).toString(16)), context)).toStrictEqual([2]);
+    expect(brokenHardRules(withWord(4, (64n * 32n).toString(16)), context)).toStrictEqual([2]);
+  });
+
+  it("reads a message whose offset points at a zero word as empty, as Solidity does", () => {
+    expect(checkHardRules(withWord(4, (6n * 32n).toString(16), 1), context)).toBeUndefined();
+  });
+});
