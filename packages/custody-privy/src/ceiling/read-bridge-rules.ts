@@ -113,6 +113,27 @@ export function heldTargetsOf(
 }
 
 /**
+ * Each chain the bridge rules leave from, with its bridge targets as {@link heldTargetsOf} reads
+ * them, in the order the rules name the chains. Undefined when a chain's bridge rules cannot be read.
+ */
+export function heldBridgeChainsOf(
+  read: readonly HeldRule[],
+): readonly { readonly chainId: string; readonly targets: readonly BridgeTarget[] }[] | undefined {
+  const chainIds = [
+    ...new Set(bridgeRulesOf(read).map((rule) => bridgeName.exec(rule.name)?.[2] ?? "")),
+  ];
+  const chains = chainIds.map((chainId) => ({ chainId, targets: heldTargetsOf(read, chainId) }));
+  return chains.every((chain) => chain.targets !== undefined)
+    ? chains.map(({ chainId, targets }) => ({ chainId, targets: targets ?? [] }))
+    : undefined;
+}
+
+/** Whether a rule's name is a bridge rule's (decision 0302). */
+export function isBridgeRuleName(name: string): boolean {
+  return bridgeName.test(name);
+}
+
+/**
  * Each chain's bridge targets as the held bridges a ceiling's read-back names; a chain whose bridge
  * rules cannot be read gives none.
  */

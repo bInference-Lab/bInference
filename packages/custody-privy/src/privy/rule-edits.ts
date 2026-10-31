@@ -7,7 +7,7 @@ import { callAsOwner, ownerSignFn } from "./owner-signing.js";
 import type { PrivySettings } from "./privy-client.js";
 import type { PrivyId } from "./privy-records.js";
 import { readRuleAnswer, readSuccess } from "./privy-wire.schema.js";
-import { type RuleRefusal, ruleOutcome } from "./rule-update.js";
+import { type RuleAuthorization, type RuleRefusal, ruleOutcome } from "./rule-update.js";
 import { sdkRule } from "./sdk-rule.js";
 
 /** A rule to add to a policy, by the time Privy must handle the request. */
@@ -40,7 +40,7 @@ function additionRequest(settings: PrivySettings, addition: RuleAddition): Privy
 }
 
 /** The request removing a rule sends, as the owner's signature covers it: an empty body. */
-function removalRequest(settings: PrivySettings, removal: RuleRemoval): PrivyRequest {
+export function ruleRemovalRequest(settings: PrivySettings, removal: RuleRemoval): PrivyRequest {
   return {
     method: "DELETE",
     url: `${settings.origin}/v1/policies/${removal.policy}/rules/${removal.rule}`,
@@ -76,15 +76,17 @@ export async function addRule(
 }
 
 /**
- * Takes one rule out of a policy, once, signed now by the policy's owner, through the SDK's
- * `deleteRule`. Outcomes as for a rule change.
+ * Takes one rule out of a policy, once, through the SDK's `deleteRule`, as the policy's owner
+ * authorizes: signing now, or with a signature made earlier over {@link ruleRemovalRequest} of the
+ * same removal. Outcomes as for a rule change.
  */
 export async function removeRule(
   settings: PrivySettings,
   removal: RuleRemoval,
-  input: { readonly authorize: OwnerAuthorize; readonly signal: AbortSignal },
+  input: { readonly authorization: RuleAuthorization; readonly signal: AbortSignal },
 ): Promise<Result<void, RuleRefusal>> {
-  const meant = removalRequest(settings, removal);
+  const meant = ruleRemovalRequest(settings, removal);
+  const { authorization } = input;
   const call = {
     kind: "write" as const,
     path: `/v1/policies/${removal.policy}/rules/${removal.rule}`,
@@ -92,9 +94,10 @@ export async function removeRule(
       client.policies().deleteRule(removal.rule, {
         policy_id: removal.policy,
         request_expiry: removal.expiresAtMs,
-        authorization_context: {
-          sign_fns: [ownerSignFn({ meant, authorize: input.authorize, signal })],
-        },
+        authorization_context:
+          authorization.kind === "signed"
+            ? { signatures: [authorization.signature] }
+            : { sign_fns: [ownerSignFn({ meant, authorize: authorization.authorize, signal })] },
       }),
   };
   return ruleOutcome(call, await callAsOwner(settings, call, input.signal), readSuccess);

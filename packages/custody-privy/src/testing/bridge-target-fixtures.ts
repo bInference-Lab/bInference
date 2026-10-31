@@ -1,6 +1,7 @@
 import type {
   BridgeCall,
-  BridgeTarget,
+  BridgeDeposit,
+  BridgedAddresses,
   CeilingCall,
   CeilingRequest,
   ChainCaps,
@@ -22,7 +23,7 @@ export const bridgeAddresses = {
   baseSaved: "0xeA6F82DbD6C87DE5E542eFbd1f9964879828e4e7",
   /** Saved for Robinhood Chain only. */
   robinhoodSaved: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
-  /** The tests' rescue address, plain on BSC and on Ethereum, so a target there lists it. */
+  /** The tests' rescue address, plain on BSC and on Ethereum, so a deposit there may pay it. */
   rescue: "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB",
 } as const;
 
@@ -39,29 +40,33 @@ export const testBridgeCall: BridgeCall = {
   },
 };
 
-/** Targets to Base (USDC), Robinhood Chain (ETH to WETH) and Ethereum (USDC and ETH, to rescue). */
-export const testTargets: readonly BridgeTarget[] = [
+/** Deposits to Base (USDC), Robinhood Chain (ETH to WETH) and Ethereum (USDC, and ETH to WETH). */
+export const testDeposits: readonly BridgeDeposit[] = [
   {
     call: testBridgeCall,
     destinationChainId: "8453",
-    recipients: [bridgeAddresses.baseSaved],
     routes: [{ tokenIn: bridgeAddresses.bscUsdc, tokenOut: bridgeAddresses.baseUsdc }],
   },
   {
     call: testBridgeCall,
     destinationChainId: "4663",
-    recipients: [bridgeAddresses.robinhoodSaved],
     routes: [{ tokenIn: bridgeAddresses.bscEth, tokenOut: bridgeAddresses.robinhoodWeth }],
   },
   {
     call: testBridgeCall,
     destinationChainId: "1",
-    recipients: [bridgeAddresses.rescue],
     routes: [
       { tokenIn: bridgeAddresses.bscUsdc, tokenOut: bridgeAddresses.ethereumUsdc },
       { tokenIn: bridgeAddresses.bscEth, tokenOut: bridgeAddresses.ethereumWeth },
     ],
   },
+];
+
+/** The addresses saved per destination: one on Base, one on Robinhood Chain, the rescue on Ethereum. */
+export const testBridged: readonly BridgedAddresses[] = [
+  { chainId: "8453", addresses: [bridgeAddresses.baseSaved] },
+  { chainId: "4663", addresses: [bridgeAddresses.robinhoodSaved] },
+  { chainId: "1", addresses: [bridgeAddresses.rescue] },
 ];
 
 /** The approval caps of the tokens the test routes take: BSC's USDC and ETH, 1,000 base units each. */
@@ -71,7 +76,8 @@ export const testRouteCaps: ChainCaps["approvals"] = [
 ];
 
 /**
- * The test ceiling request with the bridge targets, the SpokePool as a spender, and the caps of the
+ * The test ceiling request with the bridge deposits and the addresses saved per destination, the
+ * Robinhood Chain address among the saved ones, the SpokePool as a spender, and the caps of the
  * routes' tokens after the ones given.
  */
 export function testBridgeCeilingRequest(
@@ -82,10 +88,11 @@ export function testBridgeCeilingRequest(
   const chains = request.chains.map((chain) =>
     Object.assign({}, chain, {
       spenders: [...chain.spenders, bridgeAddresses.spokePool],
-      bridges: testTargets,
+      bridges: testDeposits,
     }),
   );
-  return { ...request, chains };
+  const saved = [...request.saved, bridgeAddresses.robinhoodSaved];
+  return { ...request, chains, saved, bridged: testBridged };
 }
 
 /** BSC's staking contracts, the slisBNB token and Relay's depository. */

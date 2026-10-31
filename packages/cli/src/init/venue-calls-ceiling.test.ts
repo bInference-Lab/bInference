@@ -38,11 +38,7 @@ function planFor(role: "bridge" | undefined) {
     ...(role === undefined ? {} : { role }),
     bridges: {
       routes: bscBridgeRoutes,
-      destinations: [
-        { definition: baseMainnet, recipients: [saved] },
-        { definition: robinhood, recipients: [saved] },
-        { definition: solana, recipients: [saved] },
-      ],
+      destinations: [baseMainnet, robinhood, solana],
     },
   });
 }
@@ -52,7 +48,13 @@ function rulesFor(role: "bridge" | undefined): readonly string[] {
   if (!plan.ok) {
     return [plan.error];
   }
-  const built = buildCeiling({ chains: [{ ...plan.value, caps }], rescue, saved: [] });
+  const bridged = ["8453", "4663"].map((chainId) => ({ chainId, addresses: [saved] }));
+  const built = buildCeiling({
+    chains: [{ ...plan.value, caps }],
+    rescue,
+    saved: [saved],
+    bridged,
+  });
   return built.ok ? built.value.rules.map((rule) => rule.name) : [built.error];
 }
 

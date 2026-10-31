@@ -1,15 +1,21 @@
 import { err, ok, type Result } from "@binference/core";
+import { bridgedOf, type CeilingAddresses } from "../ceiling/bridge-recipients.js";
 import { callRules } from "../ceiling/build-ceiling.js";
-import type { CeilingChain, CeilingProblem } from "../ceiling/ceiling.js";
+import type { BridgedAddresses, CeilingChain, CeilingProblem } from "../ceiling/ceiling.js";
+import { readCeiling } from "../ceiling/read-ceiling.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import type { PrivyId } from "../privy/privy-records.js";
 import { type PolicyRuleRef, readRuleRefs } from "../privy/privy-wire.schema.js";
 import { editRules, type OwnerAuthorize, type RuleEdits } from "./rule-plans.js";
 
-/** A ceiling, and what a contract call may do on each chain whose rules change. */
+/**
+ * A ceiling, what a contract call may do on each chain whose rules change, and the addresses a
+ * bridge may pay on each destination; absent, the ones its bridge rules pay now.
+ */
 export interface PolicyCalls {
   readonly policy: PrivyId;
   readonly chains: readonly CeilingChain[];
+  readonly bridged?: readonly BridgedAddresses[];
 }
 
 /** Why a ceiling's contract calls cannot change. */
@@ -36,10 +42,11 @@ function isCallsRule(name: string, chainId: string): boolean {
 // the policy sends nothing on is one it never enabled.
 function chainEdits(
   rules: readonly PolicyRuleRef[],
-  chain: CeilingChain,
+  target: { readonly chain: CeilingChain; readonly addresses: CeilingAddresses },
 ): Result<RuleEdits, CallsRefusal> {
+  const { chain, addresses } = target;
   const chainId = String(chain.chain.chainId);
-  const bodies = callRules(chain);
+  const bodies = callRules(chain, addresses);
   if (!bodies.ok) {
     return bodies;
   }
@@ -60,11 +67,11 @@ function chainEdits(
 
 function editsOf(
   rules: readonly PolicyRuleRef[],
-  chains: readonly CeilingChain[],
+  target: { readonly chains: readonly CeilingChain[]; readonly addresses: CeilingAddresses },
 ): Result<RuleEdits, CallsRefusal> {
   const each: RuleEdits[] = [];
-  for (const chain of chains) {
-    const edits = chainEdits(rules, chain);
+  for (const chain of target.chains) {
+    const edits = chainEdits(rules, { chain, addresses: target.addresses });
     if (!edits.ok) {
       return edits;
     }
@@ -96,6 +103,14 @@ export async function setCeilingCalls(
   if (rules === undefined) {
     return err("not_found");
   }
-  const edits = editsOf(rules, target.chains);
+  const held = readCeiling(rules.map((rule) => rule.json));
+  if (held === undefined) {
+    return err("not_found");
+  }
+  const addresses = {
+    recipients: held.recipients,
+    bridged: target.bridged ?? bridgedOf(held.bridges),
+  };
+  const edits = editsOf(rules, { chains: target.chains, addresses });
   return edits.ok ? editRules(api, { policy: target.policy, edits: edits.value }, input) : edits;
 }

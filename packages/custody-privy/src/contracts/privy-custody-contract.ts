@@ -17,6 +17,7 @@ import {
   transferData,
 } from "../testing/custody-fixtures.js";
 import { readBackWallet, type WalletExpectation } from "../wallets/read-back.js";
+import { bridgeChangeChecks } from "./bridge-change-checks.js";
 import { bridgeStakingChecks } from "./bridge-staking-checks.js";
 import { recipientChecks } from "./ceiling-recipients-checks.js";
 import { launchWalletChecks } from "./launch-wallet-checks.js";
@@ -225,5 +226,6 @@ export function privyCustodyContract(harness: PrivyCustodyHarness): readonly Con
     ...signerChecks(harness),
     ...launchWalletChecks(harness),
     ...bridgeStakingChecks(harness),
+    ...bridgeChangeChecks(harness),
   ];
 }

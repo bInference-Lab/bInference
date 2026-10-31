@@ -68,8 +68,8 @@ export interface CeilingChain {
   readonly caps: ChainCaps;
   /** What a launch wallet's ceiling adds on the chain; absent on every agent wallet's. */
   readonly launch?: LaunchCeiling;
-  /** The bridge deposits a call may make from the chain, one target per destination; none if absent. */
-  readonly bridges?: readonly BridgeTarget[];
+  /** The bridge deposits a call may make from the chain, one per destination; none if absent. */
+  readonly bridges?: readonly BridgeDeposit[];
 }
 
 /**
@@ -97,17 +97,35 @@ export interface BridgeRoute {
 }
 
 /**
- * What a bridge deposit to one destination chain may name (decision 0302): the deposit function,
- * the destination's EIP-155 id, the addresses the owner saved for that chain (the rescue address
- * among them where it is a plain wallet on both chains), and the routes the bridge serves to it,
- * each a pair of tokens. Addresses are EVM addresses in any case.
+ * A bridge deposit a venue's routes reach one destination chain with (decision 0302): the deposit
+ * function and the routes the bridge serves there, each a pair of tokens. Who it may pay comes
+ * from the ceiling's addresses, never from the venue.
  */
-export interface BridgeTarget {
+export interface BridgeDeposit {
   readonly call: BridgeCall;
   /** The destination chain's EIP-155 id as decimal text. */
   readonly destinationChainId: string;
-  readonly recipients: readonly string[];
   readonly routes: readonly BridgeRoute[];
+}
+
+/**
+ * A bridge deposit with the addresses it may pay on its destination: those saved for that chain
+ * (the rescue address among them where it is a plain wallet on both chains). Addresses are EVM
+ * addresses in any case.
+ */
+export interface BridgeTarget extends BridgeDeposit {
+  readonly recipients: readonly string[];
+}
+
+/**
+ * The addresses a bridge may pay on one destination chain (decision 0302): the entries saved for
+ * that chain, and the rescue address where it is a plain wallet on both chains. Each must also be
+ * a ceiling recipient, so taking one out of the recipients takes it out of every destination.
+ */
+export interface BridgedAddresses {
+  /** The destination chain's EIP-155 id as decimal text. */
+  readonly chainId: string;
+  readonly addresses: readonly string[];
 }
 
 /** A chain's ceiling before its 24-hour caps are attached, as the registry gives it. */
@@ -121,6 +139,11 @@ export interface CeilingRequest {
   readonly rescue: string;
   /** The addresses the owner saved with the owner key (decision 0091). */
   readonly saved: readonly string[];
+  /**
+   * Per destination chain, the addresses among the rescue address and the saved ones a bridge may
+   * pay there (decision 0302); none if absent, so no bridge deposit is allowed.
+   */
+  readonly bridged?: readonly BridgedAddresses[];
 }
 
 /**

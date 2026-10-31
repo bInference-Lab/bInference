@@ -8,7 +8,7 @@ import {
 import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 import { abiFunctionSchema } from "./abi-function.schema.js";
-import type { BridgeInputs, BridgeRoute, BridgeTarget } from "./ceiling.js";
+import type { BridgeDeposit, BridgeInputs, BridgeRoute } from "./ceiling.js";
 
 // The inputs a ceiling binds: a declared empty input is the signer's alone (decision 0302).
 function bridgeInputsOf(bridge: NonNullable<VenueCall["bridge"]>): BridgeInputs {
@@ -16,26 +16,16 @@ function bridgeInputsOf(bridge: NonNullable<VenueCall["bridge"]>): BridgeInputs 
   return { recipient, destinationChain, tokenIn, tokenOut };
 }
 
-/** A destination chain, and the addresses the owner saved for it (decision 0302). */
-export interface BridgeDestination {
-  /** The destination chain as the registry defines it. */
-  readonly definition: ChainDefinition;
-  /**
-   * The 20-byte addresses a deposit may pay there: the entries saved for this chain, and the
-   * rescue address where it is a plain wallet on both chains (decision 0297).
-   */
-  readonly recipients: readonly string[];
-}
-
-/** What the ceiling takes from the registry and the address book for a chain's bridges. */
+/** What the ceiling takes from the registry for a chain's bridges. */
 export interface BridgePlan {
   /** The routes the bridges serve from the chain, as the registry lists them. */
   readonly routes: readonly BridgeRouteDefinition[];
-  readonly destinations: readonly BridgeDestination[];
+  /** The chains the routes may reach, as the registry defines them. */
+  readonly destinations: readonly ChainDefinition[];
 }
 
-/** Why the registry gives no bridge target: a route names a token its chain does not list. */
-export type BridgeTargetProblem = "unknown_token" | "unknown_contract" | "bad_call";
+/** Why the registry gives no bridge deposit: a route names a token its chain does not list. */
+export type BridgeDepositProblem = "unknown_token" | "unknown_contract" | "bad_call";
 
 function tokenAddress(definition: ChainDefinition, symbol: string): string | undefined {
   return definition.tokens.find((token) => token.symbol === symbol)?.address;
@@ -60,13 +50,13 @@ function routePairs(
   return ok(pairs);
 }
 
-// One venue's bridge call's targets: one per EVM destination with a saved address and a route of
-// the venue; a destination of another family, such as Solana, holds no 20-byte recipient.
-function targetsOf(
+// One venue's bridge call's deposits: one per EVM destination a route of the venue reaches; a
+// destination of another family, such as Solana, holds no 20-byte recipient.
+function depositsOf(
   venue: VenueDeclaration,
   call: VenueCall & { readonly bridge: NonNullable<VenueCall["bridge"]> },
   source: { readonly definition: ChainDefinition; readonly plan: BridgePlan },
-): Result<readonly BridgeTarget[], BridgeTargetProblem> {
+): Result<readonly BridgeDeposit[], BridgeDepositProblem> {
   const { definition, plan } = source;
   const contract = declaredAddress(venue, { definition }, call.contract);
   const abi = abiFunctionSchema.safeParse(call.abi);
@@ -76,13 +66,12 @@ function targetsOf(
   if (!abi.success) {
     return err("bad_call");
   }
-  const targets: BridgeTarget[] = [];
-  for (const destination of plan.destinations) {
-    const target = destination.definition;
+  const deposits: BridgeDeposit[] = [];
+  for (const target of plan.destinations) {
     const routes = plan.routes.filter(
       (route) => route.venue === venue.id && route.to === target.key,
     );
-    if (target.family !== "evm" || routes.length === 0 || destination.recipients.length === 0) {
+    if (target.family !== "evm" || routes.length === 0) {
       continue;
     }
     const pairs = routePairs(definition, target, routes);
@@ -90,42 +79,41 @@ function targetsOf(
       return pairs;
     }
     const bridgeCall = { contract: contract.value, abi: abi.data, walletInputs: call.walletInputs };
-    targets.push({
+    deposits.push({
       call: { ...bridgeCall, bridge: bridgeInputsOf(call.bridge) },
       destinationChainId: String(evmChainOf(target).chainId),
-      recipients: destination.recipients,
       routes: pairs.value,
     });
   }
-  return ok(targets);
+  return ok(deposits);
 }
 
 /**
- * The bridge targets of one chain from the registry and the address book (decision 0302): for each
- * bridge deposit an enabled venue declares on the chain, one target per EVM destination the venue's
- * routes reach and the owner saved an address for, with the tokens those routes take and deliver.
- * No saved address, no route or a destination of another family adds none, so a ceiling never
- * lets a deposit pay where nothing binds it. A route whose token a chain does not list, or a call
- * that is no JSON ABI entry, is an expected failure.
+ * The bridge deposits of one chain from the registry (decision 0302): for each bridge deposit an
+ * enabled venue declares on the chain, one per EVM destination the venue's routes reach, with
+ * those routes' token pairs. Who it may pay comes from the ceiling's addresses when the ceiling is
+ * written, so a destination with no saved address gets no rule. No route or a destination of
+ * another family adds none. A route whose token a chain does not list, or a call that is no JSON
+ * ABI entry, is an expected failure.
  */
-export function registryBridgeTargets(
+export function registryBridgeDeposits(
   definition: ChainDefinition,
   venues: readonly { readonly venue: VenueDeclaration; readonly calls: readonly VenueCall[] }[],
   plan: BridgePlan,
-): Result<readonly BridgeTarget[], BridgeTargetProblem> {
-  const targets: BridgeTarget[] = [];
+): Result<readonly BridgeDeposit[], BridgeDepositProblem> {
+  const deposits: BridgeDeposit[] = [];
   for (const { venue, calls } of venues) {
     for (const call of calls) {
       const { bridge } = call;
       if (bridge === undefined) {
         continue;
       }
-      const made = targetsOf(venue, { ...call, bridge }, { definition, plan });
+      const made = depositsOf(venue, { ...call, bridge }, { definition, plan });
       if (!made.ok) {
         return made;
       }
-      targets.push(...made.value);
+      deposits.push(...made.value);
     }
   }
-  return ok(targets);
+  return ok(deposits);
 }

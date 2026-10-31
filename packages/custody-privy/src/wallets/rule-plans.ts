@@ -57,7 +57,10 @@ export async function editRules(
     ),
     ...edits.removes.map(
       (ref) => async () =>
-        api.removeRule({ policy, rule: ref.id, expiresAtMs }, { authorize, signal }),
+        api.removeRule(
+          { policy, rule: ref.id, expiresAtMs },
+          { authorization: { kind: "sign", authorize }, signal },
+        ),
     ),
   ];
   for (const request of requests) {
@@ -75,7 +78,7 @@ export async function editRules(
  * that holds its body already is left alone, so writing the same plans twice is safe. A refusal
  * stops the rest. Each change expires at `expiresAtMs`.
  */
-export async function writeRules(
+async function writeRules(
   api: PrivyApi,
   target: { readonly policy: PrivyId; readonly plans: readonly RulePlan[] },
   input: CallOptions & { readonly authorize: OwnerAuthorize; readonly expiresAtMs: number },

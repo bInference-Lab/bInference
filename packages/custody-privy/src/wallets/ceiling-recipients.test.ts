@@ -7,13 +7,13 @@ import {
   createFakeCustodySubject,
   type FakeCustodySubject,
 } from "../testing/fake-custody-subject.js";
+import { setCeilingRecipients } from "./ceiling-recipients.js";
+import type { OwnerAuthorize } from "./rule-plans.js";
 import {
   sendSignedRecipients,
-  setCeilingRecipients,
   signCeilingRecipients,
   signedRecipientsSchema,
-} from "./ceiling-recipients.js";
-import type { OwnerAuthorize } from "./rule-plans.js";
+} from "./signed-recipients.js";
 
 const live = { signal: new AbortController().signal };
 const { rescue, saved, unsaved } = testAddresses;

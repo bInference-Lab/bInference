@@ -12,7 +12,7 @@ import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 import { abiFunctionSchema } from "./abi-function.schema.js";
 import type { CeilingCall, CeilingChainPlan, LaunchCall, LaunchCeiling } from "./ceiling.js";
-import { type BridgePlan, registryBridgeTargets } from "./registry-bridge-targets.js";
+import { type BridgePlan, registryBridgeDeposits } from "./registry-bridge-deposits.js";
 
 /** What the ceiling takes from the registry for one chain. */
 export interface RegistryCeilingRequest {
@@ -167,7 +167,7 @@ export function registryCeilingChain(
   const targets =
     request.bridges === undefined
       ? ok([])
-      : registryBridgeTargets(request.definition, bridging, request.bridges);
+      : registryBridgeDeposits(request.definition, bridging, request.bridges);
   if (!targets.ok) {
     return targets;
   }

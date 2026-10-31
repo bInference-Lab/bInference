@@ -6,7 +6,7 @@ import {
 } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { bridgeAddresses, testBridgeCall } from "../testing/bridge-target-fixtures.js";
-import { oneBnbWei, testAddresses } from "../testing/custody-fixtures.js";
+import { oneBnbWei } from "../testing/custody-fixtures.js";
 import { abiFunctionJson } from "./policy-rule.js";
 import { registryCeilingChain } from "./registry-ceiling-chain.js";
 
@@ -119,8 +119,8 @@ function chainWith(bridges: Parameters<typeof registryCeilingChain>[0]["bridges"
   });
 }
 
-// The plan's targets, or the refusal.
-function targetsOf(bridges: Parameters<typeof registryCeilingChain>[0]["bridges"]) {
+// The plan's deposits, or the refusal.
+function depositsOf(bridges: Parameters<typeof registryCeilingChain>[0]["bridges"]) {
   const chain = chainWith(bridges);
   return chain.ok ? chain.value.bridges : chain.error;
 }
@@ -137,51 +137,36 @@ const routes = [
   { ...route("USDC", "solana", "USDC"), venue: "relay" },
 ];
 
-describe("bridge targets from the registry", () => {
-  it("makes one target per destination with a route and a saved address, and no plain call", () => {
-    const plan = {
-      routes,
-      destinations: [
-        { definition: base, recipients: [bridgeAddresses.baseSaved] },
-        { definition: robinhood, recipients: [bridgeAddresses.robinhoodSaved] },
-      ],
-    };
+describe("bridge deposits from the registry", () => {
+  it("makes one deposit per destination a route reaches, and no plain call", () => {
+    const plan = { routes, destinations: [base, robinhood] };
     expect(restOf(plan)).toStrictEqual([]);
-    expect(targetsOf(plan)).toStrictEqual([
+    expect(depositsOf(plan)).toStrictEqual([
       {
         call: { ...testBridgeCall },
         destinationChainId: "8453",
-        recipients: [bridgeAddresses.baseSaved],
         routes: [{ tokenIn: bridgeAddresses.bscUsdc, tokenOut: bridgeAddresses.baseUsdc }],
       },
       {
         call: { ...testBridgeCall },
         destinationChainId: "4663",
-        recipients: [bridgeAddresses.robinhoodSaved],
         routes: [{ tokenIn: bridgeAddresses.bscEth, tokenOut: bridgeAddresses.robinhoodWeth }],
       },
     ]);
   });
 
-  it("makes no target where nothing binds a deposit: no saved address, no route, or no 20-byte address", () => {
-    const targets = targetsOf({
-      routes,
-      destinations: [
-        { definition: base, recipients: [] },
-        { definition: robinhood, recipients: [bridgeAddresses.robinhoodSaved] },
-        { definition: solana, recipients: [testAddresses.saved] },
-      ],
+  it("makes no deposit where no route of the venue goes, or no 20-byte address is paid", () => {
+    const deposits = depositsOf({
+      routes: routes.filter((item) => item.to !== "base-mainnet"),
+      destinations: [base, robinhood, solana],
     });
-    expect(targets).toMatchObject([{ destinationChainId: "4663" }]);
-    expect(targetsOf(undefined)).toBeUndefined();
+    expect(deposits).toMatchObject([{ destinationChainId: "4663" }]);
+    expect(depositsOf(undefined)).toBeUndefined();
   });
 
   it("refuses a route whose token a chain does not list", () => {
     expect(
-      targetsOf({
-        routes: [route("USDT", "base-mainnet", "USDT")],
-        destinations: [{ definition: base, recipients: [bridgeAddresses.baseSaved] }],
-      }),
+      depositsOf({ routes: [route("USDT", "base-mainnet", "USDT")], destinations: [base] }),
     ).toBe("unknown_token");
   });
 });

@@ -2,6 +2,8 @@ export { buildCeiling } from "./ceiling/build-ceiling.js";
 export { maxAggregations } from "./ceiling/ceiling.js";
 export type {
   BridgeCall,
+  BridgeDeposit,
+  BridgedAddresses,
   BridgeInputs,
   BridgeTarget,
   Ceiling,
@@ -31,7 +33,7 @@ export type {
 export { readCeiling } from "./ceiling/read-ceiling.js";
 export type { HeldBridge } from "./ceiling/read-bridge-rules.js";
 export type { CeilingHeld, HeldCaps } from "./ceiling/read-ceiling.js";
-export type { BridgeDestination, BridgePlan } from "./ceiling/registry-bridge-targets.js";
+export type { BridgePlan } from "./ceiling/registry-bridge-deposits.js";
 export { launchCeilingOf, registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
 export type {
   RegistryCeilingProblem,
@@ -72,19 +74,18 @@ export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
 export { setCeilingCalls } from "./wallets/ceiling-calls.js";
 export { createDayCaps } from "./wallets/create-day-caps.js";
 export type { CallsRefusal, PolicyCalls } from "./wallets/ceiling-calls.js";
+export { setCeilingRecipients } from "./wallets/ceiling-recipients.js";
+export type { PolicyRecipients, RecipientsRefusal } from "./wallets/ceiling-recipients.js";
 export {
   sendSignedRecipients,
-  setCeilingRecipients,
   signCeilingRecipients,
   signedRecipientsSchema,
-} from "./wallets/ceiling-recipients.js";
+} from "./wallets/signed-recipients.js";
 export type {
-  PolicyRecipients,
-  RecipientsRefusal,
   SignedRecipients,
   SignedRecipientsRefusal,
   SignedRuleChange,
-} from "./wallets/ceiling-recipients.js";
+} from "./wallets/signed-recipients.js";
 export type { OwnerAuthorize } from "./wallets/rule-plans.js";
 export { findOwnedWallets } from "./wallets/owned-wallets.js";
 export type { OwnedWallet } from "./wallets/owned-wallets.js";

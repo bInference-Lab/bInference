@@ -38,19 +38,26 @@ Across relayers are permissionless: a fill pays the recipient the deposit's `out
   chain the owner saved an address for and the venue's routes reach, the ceiling holds one rule
   per route, `Bridge <function>, chain <id> to <destination>, <n>`: the function on its contract,
   no native coin, each wallet input `{{wallet.address}}`, the recipient `in` the addresses saved
-  for that chain (and the rescue address where it is a plain wallet on both chains), the
-  destination chain id in decimal, and the route's token that leaves `eq` with its token that
+  for that chain, the destination chain id in decimal, and the route's token that leaves `eq` with its token that
   arrives `eq`. The chain id and the recipient sit in one rule, so an address saved for Base is
   never paid on Ethereum; the tokens sit in pairs, so ETH never leaves for USDC on arrival. No saved
   address, no route or a destination with no 20-byte address gives no rule.
+- **Every ceiling write derives the recipients.** Who a destination's rules pay is worked out on
+  every write from the addresses the write already carries: the addresses named for that
+  destination that are still the rescue address or a saved address. A change of the calls keeps
+  the addresses the rules pay now; a change of the recipients narrows every destination's rules to
+  them and takes out a destination left with none, in the same owner-signed change, a change
+  signed ahead included. Removing a saved address, or replacing the rescue address, so stops every
+  bridge paying it at once. The address book per chain feeds the addresses named per destination
+  through this same input; until it exists, the rescue address goes to a destination only where
+  that input names it, after the check decision 0297 asks for.
 - **Across uses `depositV3`.** The plugin re-encodes the API's `deposit` values as `depositV3`, the
   form whose every bound input Privy reads. `deposit`, `depositNow`, `unsafeDeposit`, the
   periphery's swaps and `speedUpDeposit` are in no ceiling.
 - **The empty message is the signer's.** Privy cannot bind it, so the signer refuses a deposit
   whose declared empty inputs are not empty.
 - **The room.** A destination's rules list at most 100 addresses, and a ceiling's rules take at
-  most 480,000 bytes, a margin under what Privy took. A ceiling past it is refused as `too_large`,
-  and `bridgeRoom` gives how many more addresses a destination's rules can list.
+  most 480,000 bytes, a margin under what Privy took. A ceiling past it is refused as `too_large`.
 - **The read-back.** A ceiling reads back as built only when each bridge rule pins a wallet input
   and names its recipient, chain and token pair in that order, and the rules of one destination
   count from 1 with the same recipients.
@@ -59,7 +66,8 @@ Across relayers are permissionless: a fill pays the recipient the deposit's `out
 
 - Decision 0297's consequence "one rule per saved address" becomes one rule per route of each
   destination chain and deposit function. Across's routes from BSC make at most ten rules; adding
-  a saved address rewrites that destination's rules with the owner key, as a send recipient does.
+  or removing a saved address rewrites that destination's rules with the owner key, in the same
+  change as the send rules.
 - What a stolen machine can still do through a bridge rule, within decision 0149's promise: deposit
   with an `outputAmount` near nothing, fill it as a relayer to the saved recipient, and keep the
   input. The 24-hour approval caps bound it for capped tokens, as a swap at a bad price.
@@ -67,7 +75,6 @@ Across relayers are permissionless: a fill pays the recipient the deposit's `out
   fill to a wallet with a message reverts, and the deposit refunds the depositor, the wallet itself.
 - A route whose deposit names its recipient only inside a struct, or only in an off-chain order,
   gives no rule here; decision 0303 says where Relay goes.
-- The address book shows the room per destination from `bridgeRoom`.
 
 ## Alternatives
 

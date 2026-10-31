@@ -50,7 +50,7 @@ export async function removeCapRules(
         };
         // oxlint-disable-next-line eslint/no-await-in-loop -- one rule at a time
         const removed = await api.removeRule(removal, {
-          authorize: subject.ownerAuthorize,
+          authorization: { kind: "sign", authorize: subject.ownerAuthorize },
           ...live(),
         });
         assert.ok(removed.ok || removed.error === "not_found", `Privy kept rule ${ref.name}.`);

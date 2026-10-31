@@ -20,7 +20,13 @@ import {
   readWalletList,
   type WalletListPage,
 } from "./privy-wire.schema.js";
-import { addRule, removeRule, type RuleAddition, type RuleRemoval } from "./rule-edits.js";
+import {
+  addRule,
+  removeRule,
+  type RuleAddition,
+  type RuleRemoval,
+  ruleRemovalRequest,
+} from "./rule-edits.js";
 import {
   changeRule,
   type RuleAuthorization,
@@ -146,11 +152,16 @@ export interface PrivyApi {
     addition: RuleAddition,
     options: CallOptions & { readonly authorize: OwnerAuthorize },
   ): Promise<Result<void, RuleRefusal>>;
-  /** Takes one rule out of a policy, once, signed now by the policy's owner. */
+  /**
+   * Takes one rule out of a policy, once, as the policy's owner authorizes: signing now, or with a
+   * signature made earlier over {@link PrivyApi.ruleRemovalRequest} of the same removal.
+   */
   removeRule(
     removal: RuleRemoval,
-    options: CallOptions & { readonly authorize: OwnerAuthorize },
+    options: CallOptions & { readonly authorization: RuleAuthorization },
   ): Promise<Result<void, RuleRefusal>>;
+  /** The request a rule removal sends, for the owner to sign now and Privy to read later. */
+  ruleRemovalRequest(removal: RuleRemoval): PrivyRequest;
   /**
    * Sets a wallet's added signers, once, in place of the ones it has, signed now by the wallet's
    * owner; answers the wallet as Privy reports it after the change.
@@ -304,8 +315,9 @@ export function createPrivyApi(options: PrivyApiOptions): PrivyApi {
     ruleChangeRequest: (change) => ruleChangeRequest(settings, change),
     addRule: async (addition, { authorize, signal }) =>
       addRule(settings, addition, { authorize, signal }),
-    removeRule: async (removal, { authorize, signal }) =>
-      removeRule(settings, removal, { authorize, signal }),
+    removeRule: async (removal, { authorization, signal }) =>
+      removeRule(settings, removal, { authorization, signal }),
+    ruleRemovalRequest: (removal) => ruleRemovalRequest(settings, removal),
     exportWallet: async (request, { signal }) => exportWallet(settings, request, signal),
     setSigners: async (change, { authorize, signal }) =>
       setWalletSigners(settings, change, { authorize, signal }),

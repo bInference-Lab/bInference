@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   testBridgeCall,
   testBridgeCeilingRequest,
-  testTargets,
+  testDeposits,
 } from "../testing/bridge-target-fixtures.js";
 import { buildCeiling } from "./build-ceiling.js";
 import { ceilingBytes, maxCeilingBytes } from "./ceiling-size.js";
-import type { BridgeTarget, CeilingRequest } from "./ceiling.js";
+import type { BridgeDeposit, CeilingRequest } from "./ceiling.js";
 
 function addresses(count: number, from = 1): readonly string[] {
   return Array.from(
@@ -15,17 +15,10 @@ function addresses(count: number, from = 1): readonly string[] {
   );
 }
 
-function withTargets(targets: readonly BridgeTarget[]): CeilingRequest {
-  const request = testBridgeCeilingRequest();
-  const chains = request.chains.map((chain) => Object.assign({}, chain, { bridges: targets }));
-  return { ...request, chains };
-}
-
-const [firstTarget] = testTargets;
-const baseTarget: BridgeTarget = firstTarget ?? {
+const [firstDeposit] = testDeposits;
+const baseDeposit: BridgeDeposit = firstDeposit ?? {
   call: testBridgeCall,
   destinationChainId: "8453",
-  recipients: [],
   routes: [],
 };
 
@@ -40,12 +33,20 @@ describe("the bytes a ceiling holds", () => {
   });
 
   it("refuses a ceiling past the bytes one Privy policy holds", () => {
-    const targets = Array.from({ length: 60 }, (_, index) =>
-      Object.assign({}, baseTarget, {
-        destinationChainId: String(1_000 + index),
-        recipients: addresses(100, index * 100 + 1),
-      }),
+    const saved = addresses(99);
+    const deposits = Array.from({ length: 200 }, (_, index) =>
+      Object.assign({}, baseDeposit, { destinationChainId: String(1_000 + index) }),
     );
-    expect(buildCeiling(withTargets(targets))).toStrictEqual({ ok: false, error: "too_large" });
+    const request = testBridgeCeilingRequest();
+    const wide: CeilingRequest = {
+      ...request,
+      saved,
+      chains: request.chains.map((chain) => Object.assign({}, chain, { bridges: deposits })),
+      bridged: deposits.map((deposit) => ({
+        chainId: deposit.destinationChainId,
+        addresses: saved,
+      })),
+    };
+    expect(buildCeiling(wide)).toStrictEqual({ ok: false, error: "too_large" });
   });
 });

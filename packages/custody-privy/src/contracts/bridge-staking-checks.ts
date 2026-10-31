@@ -16,10 +16,8 @@ import {
   bridgeAddresses,
   stakingAddresses,
   testStakingCeilingRequest,
-  testTargets,
 } from "../testing/bridge-target-fixtures.js";
 import { oneBnbWei, testAddresses, testChain } from "../testing/custody-fixtures.js";
-import { setCeilingCalls } from "../wallets/ceiling-calls.js";
 import {
   askPrivy,
   type CustodySetup,
@@ -28,7 +26,6 @@ import {
   noteMadeCaps,
   type PrivyCustodyHarness,
   type PrivyCustodySubject,
-  policyOf,
   setUp,
   type TestCall,
   walletUnder,
@@ -39,10 +36,10 @@ const { baseSaved, robinhoodSaved, rescue, identity } = bridgeAddresses;
 const { stakeHub, stakeManager, slisBnb, depository } = stakingAddresses;
 const { unsaved } = testAddresses;
 const validator: Hex = "0x85e99B4093C337A9d5EF478bE8E95d2632a638DD";
-const secondBase: Hex = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359";
 const refused = { ok: false, error: "refused" };
 
-type Hex = `0x${string}`;
+/** A 0x-prefixed hex string. */
+export type Hex = `0x${string}`;
 
 // A wallet's address as the calldata helpers take it; Privy answers checksummed hex.
 function hexOf(address: string): Hex {
@@ -50,7 +47,8 @@ function hexOf(address: string): Hex {
   return `0x${address.slice(2)}`;
 }
 
-interface Wallets {
+/** The bridge checks' wallets: one that bridges, stakes and registers, and a bridge wallet. */
+export interface Wallets {
   readonly main: CustodySetup;
   readonly bridge: CustodySetup;
   /** The caps both wallets were made with: the suite's, then the routes' tokens'. */
@@ -125,7 +123,8 @@ async function makeWallets(harness: PrivyCustodyHarness): Promise<Wallets> {
   return { main, bridge, caps, routeCaps };
 }
 
-function bridgeCheck(
+/** A check run on the bridge checks' wallets, made once per subject. */
+export function bridgeCheck(
   harness: PrivyCustodyHarness,
   name: string,
   run: (wallets: Wallets) => Promise<void>,
@@ -141,19 +140,27 @@ function bridgeCheck(
   };
 }
 
-async function signs(setup: CustodySetup, call: TestCall): Promise<boolean> {
+/** Whether Privy signs the call from the wallet. */
+export async function signs(setup: CustodySetup, call: TestCall): Promise<boolean> {
   return (await askPrivy(setup, { call })).ok;
 }
 
-async function privySigns(setup: CustodySetup, call: TestCall): Promise<void> {
+/** Fails unless Privy signs the call from the wallet. */
+export async function privySigns(setup: CustodySetup, call: TestCall): Promise<void> {
   assert.ok(await signs(setup, call), `Privy refused a call inside the ceiling to ${call.to}.`);
 }
 
-async function privyRefuses(setup: CustodySetup, call: TestCall): Promise<void> {
+/** Fails unless Privy refuses the call from the wallet as outside its ceiling. */
+export async function privyRefuses(setup: CustodySetup, call: TestCall): Promise<void> {
   assert.deepEqual(await askPrivy(setup, { call }), refused);
 }
 
-function depositCall(setup: CustodySetup, args: Partial<DepositArgs>, valueWei = 0n): TestCall {
+/** An Across `depositV3` from the wallet, by default of USDC to the address saved for Base. */
+export function depositCall(
+  setup: CustodySetup,
+  args: Partial<DepositArgs>,
+  valueWei = 0n,
+): TestCall {
   const data = depositV3Data({
     depositor: hexOf(setup.wallet.address),
     recipient: baseSaved,
@@ -166,48 +173,6 @@ function depositCall(setup: CustodySetup, args: Partial<DepositArgs>, valueWei =
 }
 
 const call = (to: string, data: Hex, valueWei = 0n): TestCall => ({ to, valueWei, data });
-
-// The Base lane's recipients written with the owner key, then asked again every half second for up
-// to 15 seconds, until a deposit to `probe` signs or not as expected.
-async function baseRecipientsBecome(
-  wallets: Wallets,
-  change: { readonly recipients: readonly string[]; readonly probe: Hex; readonly signs: boolean },
-): Promise<boolean> {
-  const setup = wallets.main;
-  const request = testStakingCeilingRequest(wallets.caps, {
-    kind: "main",
-    routeCaps: wallets.routeCaps,
-  });
-  const chains = request.chains.map((chain) =>
-    Object.assign({}, chain, {
-      bridges: testTargets.map((target) =>
-        target.destinationChainId === "8453"
-          ? Object.assign({}, target, { recipients: change.recipients })
-          : target,
-      ),
-    }),
-  );
-  const written = await setCeilingCalls(
-    setup.subject.api,
-    { policy: await policyOf(setup), chains },
-    {
-      ...live(),
-      authorize: setup.subject.ownerAuthorize,
-      expiresAtMs: setup.subject.clock.now() + 60_000,
-    },
-  );
-  assert.ok(written.ok);
-  const probe = depositCall(setup, { recipient: change.probe });
-  for (let tries = 0; tries < 30; tries += 1) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- the live app may answer before every request sees the change
-    if ((await signs(setup, probe)) === change.signs) {
-      return true;
-    }
-    // oxlint-disable-next-line eslint/no-await-in-loop -- half a second between asks
-    await setup.subject.clock.sleep(500, live().signal);
-  }
-  return false;
-}
 
 function acceptChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [
@@ -293,34 +258,11 @@ function refuseChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   ];
 }
 
-function changeChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
-  return [
-    bridgeCheck(
-      harness,
-      "pays a Base address once the owner saves it, and no more after",
-      async (w) => {
-        const added = [baseSaved, secondBase];
-        assert.ok(
-          await baseRecipientsBecome(w, { recipients: added, probe: secondBase, signs: true }),
-        );
-        assert.ok(
-          await baseRecipientsBecome(w, {
-            recipients: [baseSaved],
-            probe: secondBase,
-            signs: false,
-          }),
-        );
-      },
-    ),
-  ];
-}
-
 /**
  * The bridge, staking and identity rules on Privy (decisions 0302 to 0304): deposits to addresses
  * saved for each chain and staking that credits the wallet signed, every deposit to another
- * address or chain refused, Relay's deposits signed from a bridge wallet alone, and a saved address
- * added and taken out with the owner key within 15 seconds.
+ * address or chain refused, and Relay's deposits signed from a bridge wallet alone.
  */
 export function bridgeStakingChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
-  return [...acceptChecks(harness), ...refuseChecks(harness), ...changeChecks(harness)];
+  return [...acceptChecks(harness), ...refuseChecks(harness)];
 }

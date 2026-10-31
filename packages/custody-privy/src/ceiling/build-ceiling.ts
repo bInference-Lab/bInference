@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "@binference/core";
 import { isPrivyId } from "../privy/privy-records.js";
 import { addressList } from "./address-list.js";
+import { bridgeTargetsOf, type CeilingAddresses } from "./bridge-recipients.js";
 import { bridgeRules, checkedTargets } from "./bridge-rules.js";
 import {
   type CallRuleLists,
@@ -193,10 +194,14 @@ function launchOf(
 // 0305).
 function bridgesOf(
   chain: CeilingChain,
-  chainId: string,
-  calls: readonly CallRuleLists[],
+  lists: {
+    readonly chainId: string;
+    readonly calls: readonly CallRuleLists[];
+    readonly addresses: CeilingAddresses;
+  },
 ): Result<Pick<CeilingChainLists, "bridges">, CeilingProblem> {
-  const targets = checkedTargets(chain.bridges ?? [], chainId);
+  const { chainId, calls, addresses } = lists;
+  const targets = checkedTargets(bridgeTargetsOf(chain.bridges ?? [], addresses), chainId);
   if (!targets.ok) {
     return targets;
   }
@@ -212,7 +217,10 @@ function bridgesOf(
   return ok(targets.value.length === 0 ? {} : { bridges: targets.value });
 }
 
-function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProblem> {
+function chainLists(
+  chain: CeilingChain,
+  addresses: CeilingAddresses,
+): Result<CeilingChainLists, CeilingProblem> {
   if (chain.perTxNativeCapBase < 0n) {
     return err("negative_cap");
   }
@@ -229,7 +237,7 @@ function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProbl
   if (!launch.ok) {
     return launch;
   }
-  const extras = bridgesOf(chain, chainId, calls.value);
+  const extras = bridgesOf(chain, { chainId, calls: calls.value, addresses });
   if (!extras.ok) {
     return extras;
   }
@@ -250,6 +258,7 @@ function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProbl
 
 function eachChain(
   chains: readonly CeilingChain[],
+  addresses: CeilingAddresses,
 ): Result<readonly CeilingChainLists[], CeilingProblem> {
   if (chains.length === 0) {
     return err("no_chain");
@@ -259,7 +268,7 @@ function eachChain(
   }
   const lists: CeilingChainLists[] = [];
   for (const chain of chains) {
-    const checked = chainLists(chain);
+    const checked = chainLists(chain, addresses);
     if (!checked.ok) {
       return checked;
     }
@@ -274,12 +283,16 @@ function eachChain(
  * The rules of one chain that name what a contract call may do: call each listed function on its
  * contracts with at most the cap in native coin while the 24-hour native cap holds, and approve
  * only the listed spenders while each token's 24-hour cap holds, and on a launch wallet's chain its
- * launch rules (decision 0217). Changing a ceiling's venues or cap changes these rules and nothing
- * else. No call gives no call rule and no spender no approval rule; a malformed address, call or
- * cap is refused.
+ * launch rules (decision 0217), and its bridge rules, each paying the addresses `addresses` lets a
+ * bridge pay there (decision 0302). Changing a ceiling's venues, cap or bridge recipients changes
+ * these rules and nothing else. No call gives no call rule and no spender no approval rule; a
+ * malformed address, call or cap is refused.
  */
-export function callRules(chain: CeilingChain): Result<readonly PolicyRule[], CeilingProblem> {
-  const lists = chainLists(chain);
+export function callRules(
+  chain: CeilingChain,
+  addresses: CeilingAddresses,
+): Result<readonly PolicyRule[], CeilingProblem> {
+  const lists = chainLists(chain, addresses);
   return lists.ok ? ok(callRulesOf(lists.value)) : lists;
 }
 
@@ -293,20 +306,23 @@ export function callRules(chain: CeilingChain): Result<readonly PolicyRule[], Ce
  * saved address; a zero-value transfer to the wallet itself, which cancels a stuck transaction. A
  * launch wallet's chain also allows each launch call, by `function_name` on any contract, its
  * pinned inputs the wallet itself, and an `approve` with no native coin naming any spender, each
- * under the same caps (decision 0217). It lets the owner, never a signer, export the key. Privy denies everything else, typed data,
+ * under the same caps (decision 0217). A bridge deposit an enabled venue declares pays, on each
+ * destination, the addresses `bridged` names there that are also the rescue address or a saved one
+ * (decision 0302). It lets the owner, never a signer, export the key. Privy denies everything else, typed data,
  * `personal_sign` and every EIP-7702 authorization among it: no rule names that method, and Privy
  * refuses a rule without conditions for it (seen on a Privy app, 2026-10-11). It holds no `DENY` rule on
  * calldata: Privy denies every transaction whose calldata such a rule cannot decode, plain sends
  * among them (seen on a Privy app, 2026-10-07).
  */
 export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingProblem> {
-  const lists = eachChain(request.chains);
-  if (!lists.ok) {
-    return lists;
-  }
   const recipients = addressList([request.rescue, ...request.saved]);
   if (!recipients.ok) {
     return recipients;
+  }
+  const bridged = request.bridged ?? [];
+  const lists = eachChain(request.chains, { recipients: recipients.value, bridged });
+  if (!lists.ok) {
+    return lists;
   }
   const rules = ceilingRules(lists.value, recipients.value);
   if (ceilingBytes(rules) > maxCeilingBytes) {

@@ -5,12 +5,9 @@ import { err, ok } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import { testAddresses } from "../testing/custody-fixtures.js";
 import { ownerSigner } from "../testing/owner-signer.js";
-import {
-  sendSignedRecipients,
-  setCeilingRecipients,
-  signCeilingRecipients,
-} from "../wallets/ceiling-recipients.js";
+import { setCeilingRecipients } from "../wallets/ceiling-recipients.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
+import { sendSignedRecipients, signCeilingRecipients } from "../wallets/signed-recipients.js";
 import {
   askPrivy,
   check,
