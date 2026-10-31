@@ -1,4 +1,11 @@
-import { type Amount, amountSchema, isTxHash, type TxHash } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  type Amount,
+  amountSchema,
+  isTxHash,
+  type TxHash,
+} from "@binference/chain";
 import { decimalStringSchema } from "@binference/core";
 import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
@@ -79,6 +86,16 @@ export interface IntentView {
   readonly createdAt: number;
   readonly changedAt: number;
   readonly assets: AssetInfos;
+  /**
+   * A send by name's `.bnb` name in its normalized form, the address it pointed to when the send
+   * was proposed, which the card shows and the send pays, and when it was read; absent for any
+   * other intent.
+   */
+  readonly resolvedName?: {
+    readonly name: string;
+    readonly address: AccountRef;
+    readonly resolvedAt: number;
+  };
 }
 
 const usdMicros = decimalStringSchema.exactOptional();
@@ -131,4 +148,7 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
   createdAt: epochMsSchema,
   changedAt: epochMsSchema,
   assets: assetInfosSchema,
+  resolvedName: z
+    .object({ name: z.string().min(1), address: accountRefSchema, resolvedAt: epochMsSchema })
+    .exactOptional(),
 });

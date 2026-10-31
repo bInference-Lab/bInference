@@ -6668,6 +6668,28 @@
                   "verified"
                 ]
               }
+            },
+            "resolvedName": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "address": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "resolvedAt"
+              ]
             }
           },
           "required": [
@@ -13246,6 +13268,28 @@
                   "verified"
                 ]
               }
+            },
+            "resolvedName": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "address": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "resolvedAt"
+              ]
             }
           },
           "required": [
@@ -14588,6 +14632,28 @@
                   "verified"
                 ]
               }
+            },
+            "resolvedName": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "address": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "resolvedAt"
+              ]
             }
           },
           "required": [
@@ -16465,6 +16531,28 @@
                         "verified"
                       ]
                     }
+                  },
+                  "resolvedName": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "address": {
+                        "type": "string"
+                      },
+                      "resolvedAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "address",
+                      "resolvedAt"
+                    ]
                   }
                 },
                 "required": [
@@ -17829,6 +17917,28 @@
                   "verified"
                 ]
               }
+            },
+            "resolvedName": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "address": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "resolvedAt"
+              ]
             }
           },
           "required": [
@@ -19177,6 +19287,28 @@
                   "verified"
                 ]
               }
+            },
+            "resolvedName": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "address": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "resolvedAt"
+              ]
             }
           },
           "required": [
@@ -20524,6 +20656,28 @@
                   "verified"
                 ]
               }
+            },
+            "resolvedName": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "address": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "resolvedAt"
+              ]
             }
           },
           "required": [
@@ -30962,6 +31116,28 @@
                                 "verified"
                               ]
                             }
+                          },
+                          "resolvedName": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "address": {
+                                "type": "string"
+                              },
+                              "resolvedAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "name",
+                              "address",
+                              "resolvedAt"
+                            ]
                           }
                         },
                         "required": [
