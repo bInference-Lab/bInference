@@ -184,6 +184,14 @@ describe("venue schemas", () => {
       },
     ],
     [
+      "a contract kept from approvals that is also a spender",
+      { chain: "fake:1", names: ["router"], spenders: ["router"], unapproved: ["router"] },
+    ],
+    [
+      "a contract kept from approvals that no name declares",
+      { chain: "fake:1", names: ["router"], unapproved: ["registry"] },
+    ],
+    [
       "a wallet input twice",
       {
         chain: "fake:1",

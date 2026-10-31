@@ -49,6 +49,7 @@ function approvalTargetOk(m: Model, action: Approve): boolean {
   const { data, stepChain: chain } = m;
   return (
     sameAccount(action.token, chain, m.to) &&
+    !listed(m.unapproved ?? [], chain, m.to) &&
     data.kind === "approve" &&
     sameAccount(action.spender, chain, data.account) &&
     listed([...m.spenders, ...launchTargets(m)], chain, data.account)
@@ -540,6 +541,8 @@ const change: fc.Arbitrary<Change> = fc.oneof(
   ),
   accounts.map((contracts): Change => (m) => ({ ...m, contracts })),
   accounts.map((spenders): Change => (m) => ({ ...m, spenders })),
+  // Decision 0304: a contract no approval may reach, such as an identity registry.
+  accounts.map((unapproved): Change => (m) => ({ ...m, unapproved })),
   accounts.map((recipients): Change => (m) => ({ ...m, recipients })),
   fc.constantFrom(...hashes).map((termsHash): Change => (m) => ({ ...m, termsHash })),
   time.map((now): Change => (m) => ({ ...m, nowMs: now })),

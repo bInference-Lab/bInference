@@ -223,6 +223,11 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
   ],
   [
     2,
+    "an approval sent to a contract no approval may reach, such as an identity registry",
+    { ...approve, allowed: { ...approve.allowed, unapproved: [accountOn(token)] } },
+  ],
+  [
+    2,
     "an approval sent to another token",
     withTransaction(approve, { to: router, value: "0x0", data: approveCalldata(router, 10n) }),
   ],

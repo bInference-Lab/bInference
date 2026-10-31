@@ -93,6 +93,12 @@ export interface VenueContracts {
    * every trade call must carry a deadline.
    */
   readonly noDeadline?: boolean;
+  /**
+   * The names among `names` whose own `approve` no ceiling allows and the signer refuses, such as
+   * a registry of ERC-721 tokens, whose `approve` shares ERC-20's selector (decision 0304). Left
+   * out, none.
+   */
+  readonly unapproved?: readonly string[];
 }
 
 /** What a venue declares about itself: its id and the contracts it touches on each chain. */
@@ -115,15 +121,10 @@ interface VenueCallWire {
 /** A {@link VenueDeclaration} as a plugin's manifest writes it. */
 export interface VenueDeclarationWire {
   readonly id: string;
-  readonly contracts: readonly {
+  readonly contracts: readonly (Omit<VenueContracts, "chain" | "calls"> & {
     readonly chain: string;
-    readonly names: readonly string[];
     readonly calls?: readonly VenueCallWire[];
-    readonly spenders?: readonly string[];
-    readonly onlyWalletSpenders?: Readonly<Partial<Record<WalletRole, readonly string[]>>>;
-    readonly launchContracts?: readonly string[];
-    readonly noDeadline?: boolean;
-  }[];
+  })[];
 }
 
 function isUnique(values: readonly string[]): boolean {
@@ -173,7 +174,18 @@ function namesDeclared(item: Omit<VenueContracts, "chain">): boolean {
     isUnique([...spenders, ...launchSpenders]) &&
     spenders.every(named) &&
     launchSpenders.every((name) => item.names.includes(name)) &&
-    calls.every((call) => named(call.contract))
+    calls.every((call) => named(call.contract)) &&
+    unapprovedDeclared(item, spenders)
+  );
+}
+
+// A contract whose `approve` is refused is a registry one, and no spender (decision 0304).
+function unapprovedDeclared(
+  item: Omit<VenueContracts, "chain">,
+  spenders: readonly string[],
+): boolean {
+  return (item.unapproved ?? []).every(
+    (name) => item.names.includes(name) && !spenders.includes(name),
   );
 }
 
@@ -205,6 +217,7 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
             .refine(isUnique, { message: "A launch's contract name repeats." })
             .exactOptional(),
           noDeadline: z.boolean().exactOptional(),
+          unapproved: z.array(kebabCaseSchema).exactOptional(),
         })
         .refine(namesDeclared, { message: "A call or a spender names no declared contract." }),
     )

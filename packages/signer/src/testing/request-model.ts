@@ -123,6 +123,8 @@ export interface Model {
   readonly launch?: readonly Account[];
   /** Whether the wallet is a launch wallet (decision 0217). */
   readonly isLaunchWallet?: boolean;
+  /** Contracts an approval is never sent to (decision 0304). */
+  readonly unapproved?: readonly Account[];
   readonly authorization: Authorization;
   readonly termsHash: string;
   readonly nowMs: number;
@@ -309,6 +311,7 @@ export function render(m: Model): AuthorizeInput {
       spenders: m.spenders.map(account),
       recipients: m.recipients.map(account),
       ...(m.launch === undefined ? {} : { launch: m.launch.map(account) }),
+      ...(m.unapproved === undefined ? {} : { unapproved: m.unapproved.map(account) }),
     },
   };
 }

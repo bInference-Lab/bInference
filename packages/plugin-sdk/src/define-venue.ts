@@ -56,6 +56,9 @@ function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueCo
           ? {}
           : { launchContracts: Object.freeze([...item.launchContracts]) }),
         ...(item.noDeadline === undefined ? {} : { noDeadline: item.noDeadline }),
+        ...(item.unapproved === undefined
+          ? {}
+          : { unapproved: Object.freeze([...item.unapproved]) }),
       }),
     ),
   );

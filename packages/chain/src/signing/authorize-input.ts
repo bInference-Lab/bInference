@@ -50,6 +50,12 @@ export interface AllowedTargets {
    * other role. None when absent.
    */
   readonly walletOnlyCalls?: readonly WalletOnlyCall[];
+  /**
+   * Contracts an approval is never sent to, such as an ERC-8004 registry whose ERC-721 `approve`
+   * shares ERC-20's selector (decision 0304): the signer refuses an `approve` to one. None when
+   * absent.
+   */
+  readonly unapproved?: readonly AccountRef[];
 }
 
 /**
@@ -87,6 +93,7 @@ export interface AuthorizeInputWire {
     readonly recipients: readonly string[];
     readonly launch?: readonly string[];
     readonly walletOnlyCalls?: readonly WalletOnlyCall[];
+    readonly unapproved?: readonly string[];
   };
 }
 
@@ -115,5 +122,6 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
       .array(z.strictObject({ role: walletRoleSchema, abi: z.json() }))
       .max(64)
       .exactOptional(),
+    unapproved: targetsSchema.exactOptional(),
   }),
 });

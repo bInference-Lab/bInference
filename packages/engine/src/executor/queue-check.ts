@@ -28,6 +28,7 @@ import type { IntentStore } from "../ports.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
 import { launchQuoteOf, recheckLaunch } from "./launch-queue-check.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
+import { unapprovedTargetsOf } from "./unapproved-targets.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
 export interface SigningTerms {
@@ -150,8 +151,9 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
  * The registry's set for the intent's steps: the contracts the venues of its quote's route, or a
  * token launch's launchpad (decision 0234), declare on the chain, read from the registry by name
  * as the ceiling reads them, which are also the spenders an approval may name, and the calls
- * those venues mark as a launch wallet's alone (decision 0271). A venue no declaration names, or
- * one that names a contract the registry lacks, adds none. A swap sends to no one.
+ * those venues mark as a launch wallet's alone (decision 0271), and the contracts any enabled venue
+ * keeps every approval from (decision 0304). A venue no declaration names, or one that names a
+ * contract the registry lacks, adds none. A swap sends to no one.
  */
 function allowedTargetsOf(
   snapshot: IntentSnapshot,
@@ -181,7 +183,9 @@ function allowedTargetsOf(
       onlyWallet === undefined ? [] : [{ role: onlyWallet, abi }],
     );
   const marked = walletOnlyCalls.length === 0 ? {} : { walletOnlyCalls };
-  return { contracts, spenders: contracts, recipients: [], ...marked };
+  const unapproved = unapprovedTargetsOf(chain, context.venues);
+  const kept = unapproved.length === 0 ? {} : { unapproved };
+  return { contracts, spenders: contracts, recipients: [], ...marked, ...kept };
 }
 
 /** What the owner's confirmation of the intent lets the signer check, once it is stored. */

@@ -272,7 +272,9 @@ says without checking it:
 
 1. The chain is enabled and is the transaction's chain.
 2. `to` is in `allowed`: the venue's declared contracts, a token for an exact approval to a registry
-   spender, or the confirmed recipient of a send, bridge or rescue. From a launch wallet
+   spender, or the confirmed recipient of a send, bridge or rescue. An approval is never sent to a
+   contract `allowed.unapproved` lists, such as the ERC-8004 identity registry, whose `approve`
+   shares ERC-20's selector ([decision 0304](../DECISIONS.md#d0304)). From a launch wallet
    (`wallet.role` is `launch`), a call may also go to, and an approval name, a contract of the
    launch the step trades on (`allowed.launch`), which the engine reads from the launchpad as the
    wallet queue takes the intent and again before each later step and speed-up, and an approval

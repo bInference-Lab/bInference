@@ -37,6 +37,7 @@ function approvalReaches(
   const spenders = [...allowed.spenders, ...launchTargets(view.input)];
   return (
     isAccount(action.token, step.chain, view.transaction.to) &&
+    !listsAccount(allowed.unapproved ?? [], step.chain, view.transaction.to) &&
     call.kind === "approve" &&
     isAccount(action.spender, step.chain, call.spender) &&
     listsAccount(spenders, step.chain, call.spender)
@@ -57,7 +58,8 @@ function isOtherRolesCall(view: RuleView): boolean {
 
 /**
  * Rule 2: `to` is in `allowed`. A call goes to one of the venue's declared contracts; an approval
- * goes to the step's token and names a registry spender; from a launch wallet, a call may also go
+ * goes to the step's token, never to a contract `allowed.unapproved` lists (decision 0304), and
+ * names a registry spender; from a launch wallet, a call may also go
  * to, and an approval name, a contract of the launch the step trades on (decision 0217), and only
  * a launch wallet makes a call `allowed` names as a launch wallet's alone (decision 0271); a send
  * pays the confirmed recipient, in the native coin with no calldata or by the token's `transfer`.

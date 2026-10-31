@@ -205,6 +205,33 @@ describe("the queue check", () => {
     expect(undeclared.terms?.allowed.contracts).toStrictEqual([]);
   });
 
+  it("keeps every approval from a contract any enabled venue marks so, used by the route or not", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const snapshot = await tappedSnapshot(bench);
+    const registry = { venue: "fake-identity", name: "registry", address: "0x0000000f" };
+    const listed = fakeChain.definition.contracts;
+    const contracts = [
+      ...listed,
+      ...listed.slice(0, 1).map((item) => Object.assign({}, item, registry)),
+    ];
+    const chain = { ...fakeChain, definition: { ...fakeChain.definition, contracts } };
+    const identity = {
+      id: "fake-identity",
+      contracts: [{ chain: fakeChain.ref, names: ["registry"], unapproved: ["registry"] }],
+    };
+    const parts = checkPartsOf(bench);
+    const venues = [...parts.venues, identity];
+
+    const check = await checkForQueue(
+      snapshot,
+      { parts: { ...parts, venues }, chain },
+      live().signal,
+    );
+
+    expect(check.terms?.allowed.unapproved).toStrictEqual(["fake:1:0x0000000f"]);
+    expect(check.terms?.allowed.contracts).toStrictEqual(["fake:1:0x0000000b"]);
+  });
+
   it("fails the policy and the auto grant when the wallet no longer resolves", async () => {
     const bench = await startExecutorBench({ hold: true });
     const auto = withStatus(await tappedSnapshot(bench), { approvalMode: "auto", modeVersion: 0 });
