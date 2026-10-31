@@ -27,9 +27,9 @@ Hermes Agent、Meta 的 Muse 和 OpenClaw 是面向日常生活的 AI Agent。bI
 
 在 PancakeSwap、KyberSwap 和 OKX 之间寻找最优价格。限价单、止盈、止损、追踪止损、定投和跟单，批准后由代码执行。
 
-### 收益与跨链 <img src=".github/assets/logos/venus.png" width="18" height="18" alt="Venus">&nbsp;<img src=".github/assets/logos/lista.png" width="18" height="18" alt="Lista">&nbsp;<img src=".github/assets/logos/aave.png" width="18" height="18" alt="Aave">&nbsp;<img src=".github/assets/logos/bnb.png" width="18" height="18" alt="BNB">&nbsp;<img src=".github/assets/logos/across.png" width="18" height="18" alt="Across">&nbsp;<img src=".github/assets/logos/relay.png" width="18" height="18" alt="Relay">&nbsp;<img src=".github/assets/logos/lifi.png" width="18" height="18" alt="LI.FI">
+### 收益与跨链 <img src=".github/assets/logos/lista.png" width="18" height="18" alt="Lista">&nbsp;<img src=".github/assets/logos/bnb.png" width="18" height="18" alt="BNB">&nbsp;<img src=".github/assets/logos/across.png" width="18" height="18" alt="Across">&nbsp;<img src=".github/assets/logos/relay.png" width="18" height="18" alt="Relay">&nbsp;<img src=".github/assets/logos/lifi.png" width="18" height="18" alt="LI.FI">
 
-在 Venus、Lista 和 Aave 上借贷，质押 BNB，并通过 Across、Relay 和 LI.FI 跨链到其他网络。
+向验证者质押 BNB，或在 Lista 上质押获得 slisBNB，并通过 Across、Relay 和 LI.FI 跨链到其他网络。
 
 ### 调研 <img src=".github/assets/logos/x.png" width="18" height="18" alt="X">&nbsp;<img src=".github/assets/logos/binance.png" width="18" height="18" alt="Binance Square">&nbsp;<img src=".github/assets/logos/web.png" width="18" height="18" alt="Any web page">
 

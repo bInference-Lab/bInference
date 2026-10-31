@@ -27,9 +27,9 @@ Launch your own token, catch new launches, trade the bonding curve and follow ea
 
 The best price across PancakeSwap, KyberSwap and OKX. Limit, take-profit, stop-loss, trailing stop, DCA and copy trading, run by code once you approve them.
 
-### Earn and bridge <img src=".github/assets/logos/venus.png" width="18" height="18" alt="Venus">&nbsp;<img src=".github/assets/logos/lista.png" width="18" height="18" alt="Lista">&nbsp;<img src=".github/assets/logos/aave.png" width="18" height="18" alt="Aave">&nbsp;<img src=".github/assets/logos/bnb.png" width="18" height="18" alt="BNB">&nbsp;<img src=".github/assets/logos/across.png" width="18" height="18" alt="Across">&nbsp;<img src=".github/assets/logos/relay.png" width="18" height="18" alt="Relay">&nbsp;<img src=".github/assets/logos/lifi.png" width="18" height="18" alt="LI.FI">
+### Earn and bridge <img src=".github/assets/logos/lista.png" width="18" height="18" alt="Lista">&nbsp;<img src=".github/assets/logos/bnb.png" width="18" height="18" alt="BNB">&nbsp;<img src=".github/assets/logos/across.png" width="18" height="18" alt="Across">&nbsp;<img src=".github/assets/logos/relay.png" width="18" height="18" alt="Relay">&nbsp;<img src=".github/assets/logos/lifi.png" width="18" height="18" alt="LI.FI">
 
-Lend on Venus, Lista and Aave, stake BNB, and bridge to other chains with Across, Relay and LI.FI.
+Stake BNB with a validator or for slisBNB on Lista, and bridge to other chains with Across, Relay and LI.FI.
 
 ### Research <img src=".github/assets/logos/x.png" width="18" height="18" alt="X">&nbsp;<img src=".github/assets/logos/binance.png" width="18" height="18" alt="Binance Square">&nbsp;<img src=".github/assets/logos/web.png" width="18" height="18" alt="Any web page">
 

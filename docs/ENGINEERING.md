@@ -893,14 +893,14 @@ Conventional Commits with plain, specific descriptions.
   work.
 - The same rules apply to PR titles; PR descriptions follow section 16.
 
-| Good                                                                  | Not allowed                                        |
-| --------------------------------------------------------------------- | -------------------------------------------------- |
-| `fix(orders): stop a trailing stop from firing twice after a restart` | `fix: improve order handling`                      |
-| `feat(venus): add supply and borrow with a health-factor floor`       | `feat(lending): seamless robust Venus integration` |
-| `perf(store): batch position reads for the portfolio card`            | `refactor: misc changes`                           |
-| `fix(telegram): show the resolved address under a .bnb name`          | `feat: task T12 .bnb names done`                   |
-| `refactor(policy): move cap checks into one rule list`                | `fix(engine,telegram): cards and caps`             |
-| `feat(protocol)!: rename intent/list to intent/find`                  | `feat(orders): add DCA and fix nonce gaps`         |
+| Good                                                                  | Not allowed                                       |
+| --------------------------------------------------------------------- | ------------------------------------------------- |
+| `fix(orders): stop a trailing stop from firing twice after a restart` | `fix: improve order handling`                     |
+| `feat(stakehub): stake BNB with a validator and claim it back`        | `feat(staking): seamless robust StakeHub support` |
+| `perf(store): batch position reads for the portfolio card`            | `refactor: misc changes`                          |
+| `fix(telegram): show the resolved address under a .bnb name`          | `feat: task T12 .bnb names done`                  |
+| `refactor(policy): move cap checks into one rule list`                | `fix(engine,telegram): cards and caps`            |
+| `feat(protocol)!: rename intent/list to intent/find`                  | `feat(orders): add DCA and fix nonce gaps`        |
 
 Enforcer: commitlint on every commit message and on the PR title (`check:pr --title` runs it on the
 title; CI on `master` runs it on every pushed commit):
@@ -990,7 +990,7 @@ The scope is the single most specific owner of the change, from one closed list:
 - a package folder name: `core`, `chain`, `chain-evm`, `chains`, `platform`, `protocol`, `client`,
   `engine`, `server`, `signer`, `store`, `telegram`, `runtime`, `console`, `tui`, `mcp`,
   `plugin-sdk`, `i18n`, `cli`;
-- a plugin folder name: `pancakeswap`, `kyberswap`, `venus`, `flap`, and so on;
+- a plugin folder name: `pancakeswap`, `kyberswap`, `stakehub`, `flap`, and so on;
 - a feature folder of `engine` or `runtime` (section 2.2), such as `orders`, `policy`, `ledger`,
   `intents`; it is preferred to `engine` when the change stays inside it;
 - a fixed area: `deps`, `skills` (bundled skills), `dev-skills` (`.agents/skills/`), `docs`,

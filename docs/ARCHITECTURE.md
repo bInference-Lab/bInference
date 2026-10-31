@@ -2,7 +2,7 @@
 
 binference is an open-source AI agent for BNB Smart Chain. It runs on the owner's machine or a
 server, talks to the owner on Telegram, in a web console and in the terminal, and does on chain what
-a human trader does: swaps, launchpad trades, auto orders, lending, staking, bridges, and trades on
+a human trader does: swaps, launchpad trades, auto orders, staking, bridges, and trades on
 Binance through Binance Agent OS. Any MCP client, such as Claude Code or Codex, can use the same
 engine through its MCP server.
 
@@ -49,8 +49,8 @@ Every part of binference follows these rules. A rule changes only through a new 
 9. <a id="rule-9"></a>**No blind signatures.** No `personal_sign`, no arbitrary EIP-712 and no
    EIP-7702 authorization. The only exceptions are named typed-data domains a venue needs: Permit2
    towards an allowlisted spender now, and Aster and Predict.fun orders later.
-10. <a id="rule-10"></a>**Contract addresses come only from the registry.** Routers, pools, lending
-    markets and bridges are read from `@binference/chain`'s registry, and each was checked on chain
+10. <a id="rule-10"></a>**Contract addresses come only from the registry.** Routers, pools, staking
+    contracts and bridges are read from `@binference/chain`'s registry, and each was checked on chain
     before it was added. A token address the owner pastes is allowed, and goes through the risk
     check. A contract each launch makes, such as a token's own curve, comes from its launchpad's
     curve read of its registry contracts, for that token alone
@@ -177,8 +177,8 @@ binference/                         MIT, pnpm + Turborepo, Node 26.1+, TypeScrip
     plugin-sdk/   @binference/plugin-sdk manifest types, defineVenue / defineData / defineTool
     i18n/         @binference/i18n       en + zh messages, glossary, formatters, checks
     cli/          binference             the `binference` command and the composition root
-  plugins/        first-party venues and data: pancakeswap, kyberswap, okx, flap, fourmeme, venus,
-                  lista, aave, stakehub, across, relay, lifi, binance-agent-os, goplus, honeypot-is,
+  plugins/        first-party venues and data: pancakeswap, kyberswap, okx, flap, fourmeme, lista,
+                  stakehub, across, relay, lifi, binance-agent-os, goplus, honeypot-is,
                   dexscreener, geckoterminal, codex, spaceid, erc8004, geniusfun, brew,
                   binance-agents
   skills/         bundled SKILL.md playbooks (section 5)
@@ -298,7 +298,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
     when a task matches.
   - Skills are text: they cannot add tools or widen policy.
   - Bundled skills: `safe-swap`, `token-due-diligence`, `meme-hunting`, `dca-plan`, `copy-trading`,
-    `lending-safety`, `staking`, `bridge-checklist`, `portfolio-review`, `failed-tx-postmortem`, and
+    `staking`, `bridge-checklist`, `portfolio-review`, `failed-tx-postmortem`, and
     `binance-cex` (when the plugin is on).
   - The same skills, with a short `binference-tools` skill, teach Claude Code, Codex and other MCP
     clients how to use the engine.
@@ -322,7 +322,6 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `market_scan`                         | Trending tokens, new launches (Flap and four.meme events on chain), Binance Alpha listings |
 | `chart`                               | OHLCV for a token                                                                          |
 | `wallet_activity`                     | A tracked wallet's trades; the agent's own get `wallet.not_found`                          |
-| `lending_markets`, `lending_position` | Rates, collateral factors, the agent's health factor                                       |
 | `staking_options`                     | Validators (APR, commission, jail status), the slisBNB rate                                |
 | `bridge_quote`                        | Routes, fees and times to and from other chains                                            |
 | `tx_status`, `orders`                 | A transaction's state; the agent's auto orders                                             |
@@ -333,17 +332,16 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 
 **Propose tools** (each creates an intent in the engine and a card; none signs):
 
-| Tool                                     | Covers                                                                                                                           |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `swap`                                   | Any token pair, exact input or a percent of a position                                                                           |
-| `buy`, `sell`                            | Launchpad-aware: the Flap Portal and four.meme while on the curve, pools after migration                                         |
-| `send`                                   | BNB or BEP-20 to an address or a `.bnb` name, subject to the send level                                                          |
-| `approval_revoke`                        | Revoke old allowances                                                                                                            |
-| `order_create`                           | An auto order: limit, TP/SL, trailing, DCA or a copy-trade rule ([decision 0004](DECISIONS.md#d0004))                            |
-| `lend` (supply, withdraw, borrow, repay) | Venus Core, Lista Lending, Aave v3, with a minimum health factor                                                                 |
-| `stake`, `unstake`, `claim`              | Native BNB staking (StakeHub), slisBNB                                                                                           |
-| `bridge`                                 | Across, Relay, LI.FI, as a cross-chain send to an address-book entry or the rescue address ([decision 0067](DECISIONS.md#d0067)) |
-| `cex_order` (plugin)                     | Binance spot and convert orders through Agent OS; futures and margin off by default                                              |
+| Tool                        | Covers                                                                                                                           |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `swap`                      | Any token pair, exact input or a percent of a position                                                                           |
+| `buy`, `sell`               | Launchpad-aware: the Flap Portal and four.meme while on the curve, pools after migration                                         |
+| `send`                      | BNB or BEP-20 to an address or a `.bnb` name, subject to the send level                                                          |
+| `approval_revoke`           | Revoke old allowances                                                                                                            |
+| `order_create`              | An auto order: limit, TP/SL, trailing, DCA or a copy-trade rule ([decision 0004](DECISIONS.md#d0004))                            |
+| `stake`, `unstake`, `claim` | Native BNB staking (StakeHub), slisBNB                                                                                           |
+| `bridge`                    | Across, Relay, LI.FI, as a cross-chain send to an address-book entry or the rescue address ([decision 0067](DECISIONS.md#d0067)) |
+| `cex_order` (plugin)        | Binance spot and convert orders through Agent OS; futures and margin off by default                                              |
 
 **Control tools:** `order_cancel` (braking, so no confirmation), `notes_write` (labelled memory),
 `workspace_write` and `first_chat_end` (the owner's strategy and persona, and the first chat's end;
@@ -594,10 +592,12 @@ default) or `auto` mode.
 
 - **Manual:** every transaction outside a confirmed auto order needs one tap on Telegram or one
   click in the console. One tap is enough for any amount ([decision 0015](DECISIONS.md#d0015)).
-- **Auto:** buys, sells and swaps, and moves inside the agent's own lending and staking positions,
+- **Auto:** buys, sells and swaps, and inside the agent's own staking positions a stake and a claim,
   run without a tap when they fit the per-trade and daily caps. A receipt follows each one.
-- **Always a tap, in both modes:** sends, withdrawals, bridges, token launches, approvals to a
-  spender outside the registry, anything over a cap, a sale of a token on the deny list
+  binference does not lend or borrow in v1 ([decision 0296](DECISIONS.md#d0296)).
+- **Always a tap, in both modes:** sends, withdrawals, unstakes (the funds stay locked while they
+  unbond), bridges, token launches, approvals to a spender outside the registry, anything over a
+  cap, a sale of a token on the deny list
   ([decision 0101](DECISIONS.md#d0101)), a fee per gas above the chain's network fee cap
   ([decision 0102](DECISIONS.md#d0102)), any intent from an outside-content turn
   ([rule 13](#rule-13)), and every proposal from an MCP client.
@@ -637,8 +637,7 @@ Since [decision 0091](DECISIONS.md#d0091), every send goes to the rescue address
 - maximum tax and maximum slippage;
 - allowed venues;
 - token allow and deny lists (a token on the deny list may still be sold, with a tap,
-  [decision 0101](DECISIONS.md#d0101));
-- a minimum health factor.
+  [decision 0101](DECISIONS.md#d0101)).
 
 **Kill switch.** `/freeze` in Telegram (no LLM involved), a console button or `binference freeze`.
 In one transaction, it:
@@ -767,7 +766,7 @@ interface Venue extends Quoter, TxBuilder, TxDecoder {
   quote(req: QuoteRequest, opts: { signal }): Promise<Result<VenueQuote, "no_route">>;
   build(req: BuildRequest, opts: { signal }): Promise<TxDraft[]>; // terms set by the host
   decode(draft: TxDraft): Result<DecodedEffect, "unknown_call">; // checked by the host
-  positions?(wallet: AccountRef): Promise<Position[]>; // lending venues, later
+  positions?(wallet: AccountRef): Promise<Position[]>; // staking venues
 }
 ```
 
@@ -932,7 +931,7 @@ Agent runtime tables: `agents`, `sessions`, `transcript_events`, `memory_items`,
 | Forged callbacks and webhooks                                  | Opaque callback refs, presser authorized in the engine, constant-time webhook secret                                                                                                                                                                                                                                                                                                   |
 | A seed or key pasted into chat                                 | Deleted at once, never stored; redaction patterns for `0x` + 64 hex and BIP-39 phrases in every log                                                                                                                                                                                                                                                                                    |
 | An exposed engine                                              | Loopback by default; refuses to start beyond loopback without auth; scoped tokens; device pairing                                                                                                                                                                                                                                                                                      |
-| A bad venue (exploits, malicious hooks)                        | Venue allowlist, PancakeSwap Infinity hooks allowlisted, health-factor floor, per-venue switches                                                                                                                                                                                                                                                                                       |
+| A bad venue (exploits, malicious hooks)                        | Venue allowlist, PancakeSwap Infinity hooks allowlisted, per-venue switches                                                                                                                                                                                                                                                                                                            |
 
 `binference check security` lists its findings with stable check ids. It checks, among other things:
 
@@ -1227,7 +1226,6 @@ onboarding shows the caps for the owner to confirm:
 | Maximum price impact          | 3%                                                                                           |
 | Maximum token tax             | 10%                                                                                          |
 | Unknown-token liquidity floor | $10,000 in the pool; tokens still on a launchpad curve skip it but pass simulation and tax   |
-| Minimum health factor         | 1.5                                                                                          |
 | Gas reserve                   | 0.002 BNB, low-gas alert below 0.004 BNB ([decision 0045](DECISIONS.md#d0045))               |
 | Card expiry                   | 60 s for trades, 10 min for sends and DeFi                                                   |
 | Re-quote at the tap           | When the quote is older than 10 s; a new card if the minimum out worsened by more than 0.5%  |

@@ -6,8 +6,8 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0117](../DECISIONS.md#d0117), [0118](../DECISIONS.md#d0118), [0119](../DECISIONS.md#d0119),
 [0120](../DECISIONS.md#d0120), [0128](../DECISIONS.md#d0128), [0134](../DECISIONS.md#d0134),
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0185](../DECISIONS.md#d0185),
-[0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190) and
-[0243](../DECISIONS.md#d0243).
+[0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190),
+[0243](../DECISIONS.md#d0243) and [0296](../DECISIONS.md#d0296).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
@@ -142,10 +142,6 @@ Agent 说明  “按你的要求在 $625 止盈”
 | `sell`             | `card.sell.action`                         | Sell {amount} → at least {minOut} · on {place}                                                                                                | 卖出 {amount} → 至少收到 {minOut} · 在 {place}                                                                                 |
 | `send`             | `card.send.action`                         | Send {amount} to {recipient}                                                                                                                  | 向 {recipient} 转账 {amount}                                                                                                   |
 | `revokeApproval`   | `card.revoke.action`                       | Remove {spender}'s approval for {token}                                                                                                       | 撤销 {spender} 对 {token} 的授权                                                                                               |
-| `lend` supply      | `card.lend.supply`                         | Supply {amount} to {venue} · health factor {hf}                                                                                               | 向 {venue} 存入 {amount} · 健康因子 {hf}                                                                                       |
-| `lend` withdraw    | `card.lend.withdraw`                       | Withdraw {amount} from {venue} · health factor {hf}                                                                                           | 从 {venue} 取出 {amount} · 健康因子 {hf}                                                                                       |
-| `lend` borrow      | `card.lend.borrow`                         | Borrow {amount} from {venue} · health factor {hf}                                                                                             | 从 {venue} 借款 {amount} · 健康因子 {hf}                                                                                       |
-| `lend` repay       | `card.lend.repay`                          | Repay {amount} to {venue} · health factor {hf}                                                                                                | 向 {venue} 还款 {amount} · 健康因子 {hf}                                                                                       |
 | `stake` stake      | `card.stake.stake`                         | Stake {amount} with {validator}                                                                                                               | 向 {validator} 质押 {amount}                                                                                                   |
 | `stake` unstake    | `card.stake.unstake`                       | Unstake {amount} from {validator} · ready in {days} days                                                                                      | 从 {validator} 解除质押 {amount} · {days} 天后可领取                                                                           |
 | `stake` claim      | `card.stake.claim`                         | Claim {amount} from {validator}                                                                                                               | 从 {validator} 领取 {amount}                                                                                                   |
@@ -816,8 +812,6 @@ after it is there ([ENGINEERING.md section 14](../ENGINEERING.md#section-14)):
 | gas reserve                                        | 网络费预留                   |
 | per-trade cap, 24-hour cap                         | 单笔上限, 24 小时上限        |
 | outside content                                    | 外部内容                     |
-| health factor                                      | 健康因子                     |
-| supply, withdraw, borrow, repay                    | 存入, 取出, 借款, 还款       |
 | bridge (verb)                                      | 跨链                         |
 | revert (a transaction fails on chain)              | 回滚                         |
 | route, minimum received                            | 路由, 至少收到               |

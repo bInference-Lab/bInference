@@ -183,7 +183,8 @@ new name here first, in the change that uses it.
   balance, valued in USD when they arrive. It opens a position at that value.
 - **position**: what one wallet holds of one asset at average cost: the quantity, its cost with
   fees and gas, and the realized profit or loss. Paper and live keep separate positions.
-- **venue**: a protocol the agent trades, lends or stakes on, such as PancakeSwap or Venus.
+- **venue**: a protocol the agent trades or stakes on, such as PancakeSwap or StakeHub. binference
+  does not lend or borrow in v1.
 - **venue host**: the engine part that runs venue code. It sets each trade's terms, and checks
   every transaction a venue builds against them before anything is signed.
 - **transaction draft**: a transaction a venue built, before the wallet queue gives it its nonce
@@ -650,8 +651,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | filled, cancelled                                  | 已成交, 已取消               |                                         |
 | open orders, order history                         | 挂单, 订单记录               |                                         |
 | stake, unstake, claim                              | 质押, 解除质押, 领取         |                                         |
-| supply, withdraw, borrow, repay (lending)          | 存入, 取出, 借款, 还款       |                                         |
-| health factor                                      | 健康因子                     |                                         |
+| supply, withdraw, borrow, repay (lending)          | 存入, 取出, 借款, 还款       | Not in v1; for messages still in code   |
+| health factor                                      | 健康因子                     | Not in v1; for messages still in code   |
 | bridge (verb)                                      | 跨链                         |                                         |
 | validator                                          | 验证者                       | Native BNB staking                      |
 | unbonding, unbonding time                          | 解绑中, 解绑期               | After an unstake, before a claim        |
@@ -699,7 +700,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | price scale                                        | 价格单位                     | Prices per 10^n tokens                  |
 | leader wallet (of a copy trade)                    | 带单钱包                     |                                         |
 | tracked wallet                                     | 关注的钱包                   |                                         |
-| venue (where the agent trades, lends or stakes)    | 平台                         | PancakeSwap, Venus                      |
+| venue (where the agent trades or stakes)           | 平台                         | PancakeSwap, StakeHub                   |
 
 ### Wallets and safety
 

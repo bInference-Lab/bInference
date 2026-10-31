@@ -9,12 +9,12 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), [0157](../DECISIONS.md#d0157)
-[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195), [0210](../DECISIONS.md#d0210), [0211](../DECISIONS.md#d0211) and [0234](../DECISIONS.md#d0234). Accepted by the owner on 2026-10-12: a token launch refused in
+[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195), [0210](../DECISIONS.md#d0210), [0211](../DECISIONS.md#d0211), [0234](../DECISIONS.md#d0234) and [0296](../DECISIONS.md#d0296). Accepted by the owner on 2026-10-12: a token launch refused in
 paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
 whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
 to 13.
 
-An intent is one action the owner may confirm: a swap, a send, a lend, a rescue, an unfreeze, an
+An intent is one action the owner may confirm: a swap, a send, a stake, a rescue, an unfreeze, an
 order fill. It
 moves through fixed states under one owner, the module `engine/src/intents/state-machine.ts`. No
 other code writes an intent's state ([ENGINEERING.md principle 2](../ENGINEERING.md#section-1)).
@@ -156,7 +156,6 @@ The reason stored with `rejected_policy` is one of:
 | `send_level`           | The send target is not allowed at the current send level                                                                                                                                                        |
 | `unsaved_address`      | The send target is neither the rescue address nor a saved address ([decision 0091](../DECISIONS.md#d0091)); saving one needs the owner key                                                                      |
 | `outside_content_send` | A send or bridge proposed in a turn with the outside-content mark, to an address not in the address book                                                                                                        |
-| `health_factor`        | A borrow or withdraw would leave the health factor below the minimum                                                                                                                                            |
 | `no_price`             | No USD value could be found ([decision 0059](../DECISIONS.md#d0059))                                                                                                                                            |
 
 Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `snipe_tax` (a buy
@@ -325,7 +324,7 @@ and `step_unsent` (a step never signed after an earlier one landed,
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when
   all of these hold at `simulated`: the agent's mode is `auto`; the engine is not locked, or the
   intent is a paper one ([decision 0103](../DECISIONS.md#d0103)); the kind is `swap`,
-  `buy`, `sell`, or a `lend` or `stake` move inside the agent's own positions; it sells no token on
+  `buy`, `sell`, or a `stake` move inside the agent's own positions; it sells no token on
   the deny list ([decision 0101](../DECISIONS.md#d0101)); it fits the per-trade and rolling-day
   caps; its fee per gas is at most the chain's network fee cap
   ([decision 0102](../DECISIONS.md#d0102)); any approval goes to a registry spender; the proposing

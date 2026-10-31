@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225) and [0230](../DECISIONS.md#d0230);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225), [0230](../DECISIONS.md#d0230) and [0296](../DECISIONS.md#d0296);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -181,7 +181,7 @@ from them at start ([decision 0230](../DECISIONS.md#d0230)).
 | `defaults.limits.priceImpactBps`          | `300`                                                                                                                                                                                                                                                  |
 | `defaults.limits.taxBps`                  | `1000`                                                                                                                                                                                                                                                 |
 | `defaults.limits.liquidityFloorUsd`       | `"10000"`                                                                                                                                                                                                                                              |
-| `defaults.limits.minHealthFactor`         | `1.5`                                                                                                                                                                                                                                                  |
+| `defaults.limits.minHealthFactor`         | `1.5`, unused: lending left v1 ([decision 0296](../DECISIONS.md#d0296)), and a config migration removes the key                                                                                                                                        |
 | `defaults.limits.gasReserve`              | `{ "eip155:56": "0.002" }` (in the native coin)                                                                                                                                                                                                        |
 | `defaults.limits.venues`                  | every installed core venue                                                                                                                                                                                                                             |
 | `defaults.limits.allowTokens`             | `[]` (empty: all, after risk)                                                                                                                                                                                                                          |
