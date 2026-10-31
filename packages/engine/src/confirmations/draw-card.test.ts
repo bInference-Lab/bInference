@@ -159,6 +159,17 @@ describe("drawing a card", () => {
     ]);
   });
 
+  it("names the launch or bridge wallet an intent runs from right after its action line", () => {
+    const fromBridge = rendered({ ...send, roleWallet: { role: "bridge", label: "relays" } });
+    const fromLaunch = rendered({ ...send, roleWallet: { role: "launch", label: "curves" } });
+
+    expect([fromBridge[2], fromLaunch[2]]).toStrictEqual([
+      "From your bridge wallet relays",
+      "From your launch wallet curves",
+    ]);
+    expect(rendered(send)).not.toContain("From your bridge wallet relays");
+  });
+
   it("drops the private send without a private relay and names an unverified token's checks", () => {
     const plain = { ...flagged, fees: { networkFeeUsdMicros: 30_000n, isPrivateSend: false } };
     expect(rendered(plain)).toStrictEqual(

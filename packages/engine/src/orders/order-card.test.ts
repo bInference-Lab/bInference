@@ -1,5 +1,5 @@
 import { accountRefSchema, assetRefSchema } from "@binference/chain";
-import { bpsSchema } from "@binference/core";
+import { bpsSchema, err, type Id } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -196,5 +196,40 @@ describe("an auto order held by the agent's launch wallet", () => {
       key: "card.launchWallet",
       values: { wallet: { type: "text", text: "curves" } },
     });
+  });
+});
+
+describe("an auto order that names a wallet of a role", () => {
+  it("is refused for the bridge wallet or an extra launch wallet, and no order is stored", async () => {
+    const launch = fixtureId("wal", 217);
+    const extra = fixtureId("wal", 218);
+    const bridge = fixtureId("wal", 307);
+    const accounts = [launch, extra, bridge].map(
+      (wallet, index) =>
+        [wallet, accountRefSchema.parse(`fake:1:0x000000e${String(index)}`)] as const,
+    );
+    const test = await startOrderEngine({
+      wallets: [testWallet, launch, extra, bridge],
+      custodyWallets: new Map(accounts),
+    });
+    const roled = [
+      { id: launch, role: "launch" },
+      { id: extra, role: "launch" },
+      { id: bridge, role: "bridge" },
+    ] as const;
+    for (const [index, { id, role }] of roled.entries()) {
+      const createdAtMs = testNowMs + index;
+      test.stores.install.addWallet(
+        testWalletRecord({ id, agentId: testAgent, label: role, createdAtMs, role }),
+      );
+    }
+    const create = (wallet: Id<"wal">) =>
+      test.engine.handlers["order/create"](testCall(testStopLoss({ wallet })));
+
+    expect(await create(bridge)).toStrictEqual(err("intent.bridge_wallet_only"));
+    expect(await create(extra)).toStrictEqual(err("intent.extra_wallet"));
+    expect(expectOk(await test.engine.handlers["order/list"](testCall({}))).items).toStrictEqual(
+      [],
+    );
   });
 });

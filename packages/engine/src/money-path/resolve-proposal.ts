@@ -9,7 +9,8 @@ import {
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
-import { roleWalletOf } from "../install/role-wallet.js";
+import type { WalletRecord } from "../install/install-record.js";
+import { defaultWalletIn, namedWalletRefusal, roleWalletIn } from "../install/role-wallet.js";
 import type { WalletFactsSource } from "../ports.js";
 import { type LaunchRouting, routedWalletOf } from "./launch-routing.js";
 import { type TradeAsk, tradeAskOf, tradeChainOf } from "./swap-trade.js";
@@ -73,22 +74,32 @@ interface WalletPick {
 
 type Picking = Resolving & { readonly ask: TradeAsk; readonly chain: RegisteredChain };
 
-async function launchIdOf(
+/** The agent's wallets as the money path picks among them, and its launch wallet. */
+interface AgentWallets {
+  /** The agent's live wallets, oldest first. */
+  readonly owned: readonly Id<"wal">[];
+  /** The install's wallets, which name each one's role; none without launch routing. */
+  readonly records: readonly WalletRecord[];
+  readonly launchWallet?: Id<"wal">;
+}
+
+async function agentWalletsOf(
   options: ResolveOptions,
   agent: Id<"agt">,
   signal: AbortSignal,
-): Promise<Id<"wal"> | undefined> {
+): Promise<AgentWallets> {
+  const owned = await options.wallets.wallets(agent, { signal });
   const { launches } = options;
-  return launches === undefined
-    ? undefined
-    : (await roleWalletOf(launches.install, { agent, role: "launch" }, { signal }))?.id;
+  const records = launches === undefined ? [] : (await launches.install.read({ signal })).wallets;
+  const launchWallet = roleWalletIn(records, agent, "launch")?.id;
+  return launchWallet === undefined ? { owned, records } : { owned, records, launchWallet };
 }
 
 // A routing read that failed holds the intent on the default wallet, to end it (decision 0218).
 async function routedPick(
   options: ResolveOptions,
   resolving: Picking,
-  agentWallets: { readonly owned: readonly Id<"wal">[]; readonly launchWallet?: Id<"wal"> },
+  agentWallets: AgentWallets,
 ): Promise<WalletPick | undefined> {
   const { request, signal, ask, chain } = resolving;
   const { owned, launchWallet } = agentWallets;
@@ -99,7 +110,7 @@ async function routedPick(
   const routed = await routedWalletOf(options.launches, { ...trade, ...placed, ...sold }, signal);
   const launch: LaunchFacts = launchWallet === undefined ? {} : { launchWallet };
   if (!routed.ok) {
-    const fallback = owned.find((wallet) => wallet !== launchWallet);
+    const fallback = defaultWalletIn(agentWallets.records, owned);
     return fallback === undefined
       ? undefined
       : { wallet: fallback, launch: { ...launch, launchUnread: true } };
@@ -107,21 +118,28 @@ async function routedPick(
   return routed.value === undefined ? undefined : { wallet: routed.value, launch };
 }
 
-// The request's wallet must be one of the agent's; without one, the trade routes to the agent's
-// launch wallet or its default wallet (decision 0217).
+// The request's wallet must be one of the agent's, and neither its bridge wallet nor an extra one
+// of a role (decision 0307); without one, the trade routes to the agent's launch wallet or its
+// default wallet (decision 0217).
 async function walletOf(
   options: ResolveOptions,
   resolving: Picking,
-): Promise<WalletPick | undefined> {
+): Promise<Result<WalletPick, ProtocolErrorCode>> {
   const { request, signal } = resolving;
-  const owned = await options.wallets.wallets(request.agent, { signal });
-  const launchWallet = await launchIdOf(options, request.agent, signal);
+  const agentWallets = await agentWalletsOf(options, request.agent, signal);
+  const { owned, records, launchWallet } = agentWallets;
   if (request.wallet === undefined) {
-    const agentWallets = launchWallet === undefined ? { owned } : { owned, launchWallet };
-    return routedPick(options, resolving, agentWallets);
+    const routed = await routedPick(options, resolving, agentWallets);
+    return routed === undefined ? err("wallet.not_found") : ok(routed);
+  }
+  const refusal = namedWalletRefusal(records, { agent: request.agent, wallet: request.wallet });
+  if (refusal !== undefined) {
+    return err(refusal);
   }
   const launch: LaunchFacts = launchWallet === undefined ? {} : { launchWallet };
-  return owned.includes(request.wallet) ? { wallet: request.wallet, launch } : undefined;
+  return owned.includes(request.wallet)
+    ? ok({ wallet: request.wallet, launch })
+    : err("wallet.not_found");
 }
 
 /**
@@ -129,8 +147,10 @@ async function walletOf(
  * chain, the trade asked for and the wallet's facts. A request that names no wallet runs from the
  * agent's launch wallet when its trade calls a launch's own contracts or sells what that wallet
  * holds, and from its default wallet otherwise (decision 0217); when the curve read that picks it
- * fails, from its default wallet, marked to end `launch_unread` (decision 0218). A wallet that is
- * not the agent's, or that the custodian does not hold, is `wallet.not_found`; an asset with no canonical form on a chain the
+ * fails, from its default wallet, marked to end `launch_unread` (decision 0218). A request that
+ * names the agent's bridge wallet is `intent.bridge_wallet_only`, and one that names an extra
+ * launch or bridge wallet `intent.extra_wallet` (decision 0307). A wallet that is not the agent's,
+ * or that the custodian does not hold, is `wallet.not_found`; an asset with no canonical form on a chain the
  * registry holds, or a buy that spends neither the chain's coin nor a registry token, is
  * `protocol.bad_args`; a request the money path cannot route yet is `quote.no_route`. None stores
  * anything.
@@ -148,12 +168,13 @@ export async function resolveProposal(
   if (!ask.ok) {
     return err(ask.error === "no_route" ? "quote.no_route" : ask.error);
   }
-  const pick = await walletOf(options, { ...resolving, ask: ask.value, chain });
-  const account =
-    pick === undefined
-      ? undefined
-      : await options.custody.account(pick.wallet, chain.ref, { signal });
-  if (pick === undefined || account?.ok !== true) {
+  const picked = await walletOf(options, { ...resolving, ask: ask.value, chain });
+  if (!picked.ok) {
+    return picked;
+  }
+  const pick = picked.value;
+  const account = await options.custody.account(pick.wallet, chain.ref, { signal });
+  if (!account.ok) {
     return err("wallet.not_found");
   }
   const { wallet } = pick;

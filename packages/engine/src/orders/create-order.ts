@@ -13,7 +13,7 @@ import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Proposer } from "../money-path/create-money-path.js";
-import { type LaunchRouting, routedWalletOf } from "../money-path/launch-routing.js";
+import type { LaunchRouting } from "../money-path/launch-routing.js";
 import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { AgentStore, IntentStore, WalletFactsSource } from "../ports.js";
@@ -29,6 +29,7 @@ import {
 } from "./order-record.js";
 import { checkOrderRequest, type CheckedOrder } from "./order-rules.js";
 import { orderPush } from "./order-view-of.js";
+import { orderWalletOf } from "./order-wallet-of.js";
 import type { OrderStore } from "./ports.js";
 
 /** What the orders use cases read and write through, and where their pushes go. */
@@ -103,40 +104,6 @@ function liveRefusal(
   return isLive && !parts.liveFills ? "order.live_fills_off" : undefined;
 }
 
-// The request's wallet, or the one its trades route to: the agent's launch wallet for a token on
-// a launch's curve or one it holds, else its default wallet (decision 0217); with an account in
-// custody on the token's chain. A curve read that failed picks none: the launchpad did not answer
-// (decision 0218).
-async function walletOf(
-  parts: Pick<OrderParts, "wallets" | "custody" | "launches">,
-  asked: CheckedOrder & { readonly isPaper: boolean },
-  signal: AbortSignal,
-): Promise<Result<Id<"wal">, ProtocolErrorCode>> {
-  const { request, chain } = asked;
-  const owned = await parts.wallets.wallets(request.agent, { signal });
-  const sold = request.side === "sell" ? { sold: request.token } : {};
-  const trade = {
-    agent: request.agent,
-    chain,
-    isPaper: asked.isPaper,
-    owned,
-    placed: request.token,
-  };
-  const routed =
-    request.wallet === undefined
-      ? await routedWalletOf(parts.launches, { ...trade, ...sold }, signal)
-      : ok(request.wallet);
-  if (!routed.ok) {
-    return err("quote.venue_down");
-  }
-  const wallet = routed.value;
-  if (wallet === undefined || !owned.includes(wallet)) {
-    return err("wallet.not_found");
-  }
-  const account = await parts.custody.account(wallet, chain.ref, { signal });
-  return account.ok ? ok(wallet) : err("wallet.not_found");
-}
-
 /** The wallet that holds a new order, and what its unlisted tokens answered on chain. */
 interface Holder {
   readonly wallet: Id<"wal">;
@@ -148,12 +115,12 @@ interface Holder {
 async function holderOf(
   parts: Pick<
     OrderParts,
-    "wallets" | "custody" | "canPrice" | "chains" | "readTokenFacts" | "launches"
+    "wallets" | "custody" | "canPrice" | "chains" | "readTokenFacts" | "launches" | "install"
   >,
   checked: CheckedOrder & { readonly isPaper: boolean },
   signal: AbortSignal,
 ): Promise<Result<Holder, ProtocolErrorCode>> {
-  const holder = await walletOf(parts, checked, signal);
+  const holder = await orderWalletOf(parts, checked, signal);
   if (!holder.ok) {
     return holder;
   }

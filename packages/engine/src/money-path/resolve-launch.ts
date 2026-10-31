@@ -15,7 +15,7 @@ import {
   type ProtocolErrorCode,
 } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
-import { isInstallWalletAccount, roleWalletOf } from "../install/role-wallet.js";
+import { defaultWalletIn, isInstallWalletAccount, roleWalletIn } from "../install/role-wallet.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { AgentStore, InstallStore, WalletFactsSource } from "../ports.js";
@@ -114,14 +114,11 @@ async function walletOf(
 ): Promise<{ readonly wallet: Id<"wal">; readonly isLaunchWallet: boolean } | undefined> {
   const { request, isPaper, signal } = resolving;
   const owned = await options.wallets.wallets(request.agent, { signal });
-  const { install } = options;
-  const launch =
-    install === undefined
-      ? undefined
-      : await roleWalletOf(install, { agent: request.agent, role: "launch" }, { signal });
+  const records =
+    options.install === undefined ? [] : (await options.install.read({ signal })).wallets;
+  const launch = roleWalletIn(records, request.agent, "launch");
   const named = request.wallet;
-  const picked =
-    named ?? (isPaper ? undefined : launch?.id) ?? owned.find((wallet) => wallet !== launch?.id);
+  const picked = named ?? (isPaper ? undefined : launch?.id) ?? defaultWalletIn(records, owned);
   return picked === undefined || !owned.includes(picked)
     ? undefined
     : { wallet: picked, isLaunchWallet: picked === launch?.id };

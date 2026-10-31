@@ -109,3 +109,45 @@ export function isInstallWalletAccount(
 ): boolean {
   return walletsAt(wallets, { account, chains }, () => true).length > 0;
 }
+
+/**
+ * The agent's default wallet among `owned`, its live wallets oldest first: the first with no role,
+ * never a launch or bridge wallet, which a request that names none falls back to (decisions 0217
+ * and 0307); `undefined` when every wallet has a role.
+ */
+export function defaultWalletIn(
+  wallets: readonly WalletRecord[],
+  owned: readonly Id<"wal">[],
+): Id<"wal"> | undefined {
+  const withRole = new Set(
+    wallets.filter((wallet) => wallet.role !== undefined).map((wallet) => wallet.id),
+  );
+  return owned.find((wallet) => !withRole.has(wallet));
+}
+
+/**
+ * Why a trade or an auto order may not run from the wallet its request names, before anything is
+ * stored: the agent's bridge wallet makes only the deposits bridge venues mark as its own
+ * (`intent.bridge_wallet_only`, decision 0307), and a live launch or bridge wallet beyond the
+ * agent's wallet of that role runs nothing (`intent.extra_wallet`, decision 0218). `undefined` for
+ * any other wallet, which the caller still checks is the agent's.
+ */
+export function namedWalletRefusal(
+  wallets: readonly WalletRecord[],
+  named: { readonly agent: Id<"agt">; readonly wallet: Id<"wal"> },
+): ProtocolErrorCode | undefined {
+  const record = wallets.find(
+    (wallet) =>
+      wallet.id === named.wallet &&
+      wallet.agentId === named.agent &&
+      wallet.archivedAtMs === undefined,
+  );
+  const role = record?.role;
+  if (role === undefined) {
+    return undefined;
+  }
+  if (roleWalletIn(wallets, named.agent, role)?.id !== named.wallet) {
+    return "intent.extra_wallet";
+  }
+  return role === "bridge" ? "intent.bridge_wallet_only" : undefined;
+}

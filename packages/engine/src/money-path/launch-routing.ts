@@ -1,6 +1,6 @@
 import type { AssetRef, ChainRegistry, RegisteredChain, Signer } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
-import { roleWalletIn } from "../install/role-wallet.js";
+import { defaultWalletIn, roleWalletIn } from "../install/role-wallet.js";
 import type { InstallStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { assetInfoOf } from "./asset-infos.js";
@@ -100,12 +100,7 @@ export async function routedWalletOf(
   }
   const { wallets } = await routing.install.read({ signal });
   const launch = roleWalletIn(wallets, trade.agent, "launch");
-  // No trade falls back to a wallet with a role: an extra launch wallet runs nothing, and a bridge
-  // wallet's ceiling allows no trade (decision 0307).
-  const withRole = new Set(
-    wallets.filter((wallet) => wallet.role !== undefined).map((wallet) => wallet.id),
-  );
-  const fallback = trade.owned.find((wallet) => !withRole.has(wallet));
+  const fallback = defaultWalletIn(wallets, trade.owned);
   if (launch === undefined || trade.isPaper) {
     return ok(fallback);
   }

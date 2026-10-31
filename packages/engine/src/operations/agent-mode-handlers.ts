@@ -5,6 +5,7 @@ import type { AgentView, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
 import type { LimitsRecord } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import { defaultWalletIn } from "../install/role-wallet.js";
 import { roleVenuesRefusal } from "../limits/limit-handlers.js";
 import type { AgentStore, ConfigJournal, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -55,13 +56,16 @@ interface Switching {
 // Another write to the agent's row, such as a rename, makes a switch read the agent again.
 const switchAttempts = 3;
 
-// Funded: the agent's default wallet holds some of the native coin on a chain the registry holds.
+// Funded: the agent's default wallet, never a launch or bridge wallet, holds some of the native
+// coin on a chain the registry holds.
 async function isFunded(
   options: AgentModeHandlersOptions,
   agent: Id<"agt">,
   signal: AbortSignal,
 ): Promise<boolean> {
-  const [wallet] = await options.wallets.wallets(agent, { signal });
+  const owned = await options.wallets.wallets(agent, { signal });
+  const { wallets } = await options.install.read({ signal });
+  const wallet = defaultWalletIn(wallets, owned);
   if (wallet === undefined) {
     return false;
   }

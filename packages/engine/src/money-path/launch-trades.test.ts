@@ -10,6 +10,7 @@ import {
   createFakeVenue,
   type FakeLaunchpad,
 } from "@binference/chain/testing";
+import { err, type Id } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it, vi } from "vitest";
@@ -182,6 +183,32 @@ async function withLaunchWallet(options: TestEngineOptions = {}): Promise<TestEn
   return test;
 }
 
+// The agent's bridge wallet, listed before its other wallets, and an extra launch wallet a rebuild
+// adopted, beside the launch wallet (decisions 0218 and 0307).
+const bridgeWallet = fixtureId("wal", 307);
+const extraLaunch = fixtureId("wal", 308);
+
+async function withRoleWallets(): Promise<TestEngine> {
+  const test = await withLaunchWallet({
+    wallets: [bridgeWallet, testWallet, launchWallet, extraLaunch],
+    custodyWallets: new Map([
+      [launchWallet, launchAccount],
+      [bridgeWallet, accountRefSchema.parse("fake:1:0x000000da")],
+      [extraLaunch, accountRefSchema.parse("fake:1:0x000000db")],
+    ]),
+  });
+  const roled = [
+    { id: bridgeWallet, label: "relays", role: "bridge" },
+    { id: extraLaunch, label: "old curves", role: "launch" },
+  ] as const;
+  for (const { id, label, role } of roled) {
+    test.stores.install.addWallet(
+      testWalletRecord({ id, agentId: testAgent, label, createdAtMs: testNowMs + 1, role }),
+    );
+  }
+  return test;
+}
+
 const { wallet: _named, ...unnamedBuy } = buy;
 const swapOut: IntentRequest = {
   kind: "swap",
@@ -216,34 +243,23 @@ describe("a trade routed to the agent's launch wallet", () => {
     expect(registry.state).toBe("awaiting_confirmation");
   });
 
-  it("runs a trade from a wallet with no role, and names a bridge wallet asked for on the card", async () => {
-    const bridgeWallet = fixtureId("wal", 307);
-    const test = await withLaunchWallet({
-      wallets: [bridgeWallet, testWallet, launchWallet],
-      custodyWallets: new Map([
-        [launchWallet, launchAccount],
-        [bridgeWallet, accountRefSchema.parse("fake:1:0x000000da")],
-      ]),
-    });
-    test.stores.install.addWallet(
-      testWalletRecord({
-        id: bridgeWallet,
-        agentId: testAgent,
-        label: "relays",
-        createdAtMs: testNowMs,
-        role: "bridge",
-      }),
-    );
+  it("runs a trade that names no wallet from one with no role, never a bridge wallet listed first", async () => {
+    const test = await withRoleWallets();
 
     const registry = await propose(test, { ...unnamedBuy, token: testToken });
-    const named = await propose(test, { ...unnamedBuy, token: testToken, wallet: bridgeWallet });
 
     expect(registry.wallet).toBe(testWallet);
-    const card = await test.engine.handlers["intent/card"](testCall({ intent: named.intent }));
-    expect(expectOk(card).lines[2]).toStrictEqual({
-      key: "card.bridgeWallet",
-      values: { wallet: { type: "text", text: "relays" } },
-    });
+  });
+
+  it("refuses a trade that names the bridge wallet or an extra launch wallet, storing nothing", async () => {
+    const test = await withRoleWallets();
+    const named = (wallet: Id<"wal">) =>
+      test.engine.handlers["intent/propose"](testCall({ ...unnamedBuy, token: testToken, wallet }));
+
+    expect(await named(bridgeWallet)).toStrictEqual(err("intent.bridge_wallet_only"));
+    expect(await named(extraLaunch)).toStrictEqual(err("intent.extra_wallet"));
+    const listed = await test.engine.handlers["intent/list"](testCall({ agent: testAgent }));
+    expect(expectOk(listed).items).toStrictEqual([]);
   });
 
   it("ends a live curve trade that names another wallet, before any card", async () => {
