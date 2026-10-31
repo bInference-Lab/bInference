@@ -4,6 +4,7 @@ import type {
   ChainDefinition,
   ChainRegistry,
   VenueDeclaration,
+  WalletRole,
 } from "@binference/chain";
 import { erc20AssetRef, evmChainOf, parseEvmAddress } from "@binference/chain-evm";
 import { bsc, bscCeilingCaps } from "@binference/chains";
@@ -165,7 +166,7 @@ function ceilingChainOf(
   request: {
     readonly chain: string;
     readonly venues: readonly VenueDeclaration[];
-    readonly isLaunch: boolean;
+    readonly role: WalletRole | undefined;
   },
 ): InitStep<{ readonly plan: CeilingChainPlan; readonly caps: ChainCapPlan }> {
   const registered = registry.list().find((item) => item.ref === request.chain);
@@ -182,7 +183,7 @@ function ceilingChainOf(
     definition,
     venues: request.venues,
     perTxNativeCapBase: cap,
-    ...(request.isLaunch ? { role: "launch" as const } : {}),
+    ...(request.role === undefined ? {} : { role: request.role }),
   });
   if (!chain.ok) {
     // A venue that names a contract its chain's registry lacks is a fault of this build.
@@ -207,15 +208,18 @@ export function ceilingRequestOf(
   ceiling: {
     readonly venues: readonly VenueDeclaration[];
     readonly rescue: string;
-    /** A launch wallet's, which also allows the calls only a launch wallet makes; absent, not. */
-    readonly isLaunch?: boolean;
+    /**
+     * The role of the wallet whose ceiling it is, which also allows the calls only a wallet of
+     * that role makes; absent, a main wallet's.
+     */
+    readonly role?: WalletRole;
   },
 ): InitStep<CeilingDraft> {
   const chains: CeilingChainPlan[] = [];
   const capPlans: ChainCapPlan[] = [];
   for (const chain of config.chains.enabled) {
-    const isLaunch = ceiling.isLaunch === true;
-    const made = ceilingChainOf(registry, config, { chain, venues: ceiling.venues, isLaunch });
+    const { venues, role } = ceiling;
+    const made = ceilingChainOf(registry, config, { chain, venues, role });
     if (!made.ok) {
       return made;
     }

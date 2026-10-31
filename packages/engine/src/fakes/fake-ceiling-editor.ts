@@ -6,6 +6,7 @@ import {
   type ChainRegistry,
   type VenueContracts,
   type VenueDeclaration,
+  type WalletRole,
 } from "@binference/chain";
 import { type Clock, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { DayCapView } from "@binference/protocol";
@@ -171,7 +172,7 @@ interface Held {
 // contract a plain call or a call of the wallet's role reaches, and each spender of the role. A
 // bridge deposit is left out: it holds a rule only once a destination has a saved address, which
 // the fake never has. An entry that declares no calls puts all its names in.
-function namesIn(entry: VenueContracts, role: "launch" | undefined): readonly string[] {
+function namesIn(entry: VenueContracts, role: WalletRole | undefined): readonly string[] {
   if (entry.calls === undefined) {
     return entry.names;
   }
@@ -188,14 +189,14 @@ function namesIn(entry: VenueContracts, role: "launch" | undefined): readonly st
 function contractsOn(
   held: Held,
   chain: ChainRef,
-  ceiling: { readonly venues: readonly string[]; readonly isLaunch: boolean },
+  ceiling: { readonly venues: readonly string[]; readonly role: WalletRole | undefined },
 ): readonly AccountRef[] {
-  const { venues, isLaunch } = ceiling;
+  const { venues, role } = ceiling;
   const listed = held.chains?.list().find((item) => item.ref === chain)?.definition.contracts;
   const counts = (venue: string, name: string): boolean => {
     const entries = held.venues?.find((item) => item.id === venue)?.contracts ?? [];
     const entry = entries.find((item) => item.chain === chain);
-    return entry === undefined || namesIn(entry, isLaunch ? "launch" : undefined).includes(name);
+    return entry === undefined || namesIn(entry, role).includes(name);
   };
   const addresses =
     listed === undefined
@@ -228,19 +229,18 @@ function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal>
     return err("bad_owner_key");
   }
   const changes = new Map<string, FakeCalls>();
-  for (const { ceiling, venues, perTxNativeBase, dayCapUsdMicros, isLaunch } of request.ceilings) {
+  for (const { ceiling, venues, perTxNativeBase, dayCapUsdMicros, role } of request.ceilings) {
     const recipients = held.ceilings.get(ceiling);
     if (recipients === undefined) {
       return err("not_found");
     }
-    const at = { venues, isLaunch: isLaunch === true };
-    const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, at));
+    const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, { venues, role }));
     if (each.some((contracts) => contracts.length === 0)) {
       return err("no_calls");
     }
     const dayCaps = resized(held.calls.get(ceiling)?.dayCaps, dayCapUsdMicros);
     const kept = dayCaps === undefined ? {} : { dayCaps };
-    const functions = held.functionsOf?.(venues, { isLaunch: isLaunch === true }) ?? [];
+    const functions = held.functionsOf?.(venues, { role }) ?? [];
     changes.set(ceiling, { contracts: each.flat(), perTxNativeBase, ...kept, functions });
   }
   for (const [ceiling, calls] of changes) {
@@ -268,7 +268,7 @@ export interface FakeCeilingEditorOptions {
    */
   readonly functionsOf?: (
     venues: readonly string[],
-    ceiling: { readonly isLaunch: boolean },
+    ceiling: { readonly role: WalletRole | undefined },
   ) => readonly string[];
 }
 

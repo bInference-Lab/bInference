@@ -1,4 +1,4 @@
-import type { AccountRef } from "@binference/chain";
+import type { AccountRef, WalletRole } from "@binference/chain";
 import type { Id, Secret } from "@binference/core";
 import type { WalletDraft } from "./install-record.js";
 
@@ -13,10 +13,11 @@ export interface WalletRequest {
   /** Every account a send from the wallet may pay: the rescue address and the saved addresses. */
   readonly recipients: readonly AccountRef[];
   /**
-   * The wallet is the agent's launch wallet: its ceiling also allows the calls the install's
-   * launchpads declare on each launch's own contracts (decision 0217).
+   * The wallet's role beside the agent's main wallets: `launch` for its launch wallet, whose
+   * ceiling also allows the calls the install's launchpads declare on each launch's own contracts
+   * (decision 0217). Absent, a main wallet.
    */
-  readonly isLaunch: boolean;
+  readonly role?: WalletRole;
 }
 
 /** A wallet custody made and read back. */

@@ -1,4 +1,4 @@
-import type { ChainRegistry, VenueDeclaration } from "@binference/chain";
+import type { ChainRegistry, VenueDeclaration, WalletRole } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { type HeldCaps, readCeiling } from "@binference/custody-privy";
 import type { InstallStore } from "@binference/engine/install";
@@ -22,13 +22,13 @@ export interface WalletCeilingOptions {
  */
 export function ceilingChainsOf(
   options: WalletCeilingOptions,
-  wallet: { readonly venues: readonly string[]; readonly isLaunch: boolean },
+  wallet: { readonly venues: readonly string[]; readonly role?: WalletRole },
 ): Pick<CeilingDraft, "chains" | "capPlans"> {
   const named = options.venues.filter((venue) => wallet.venues.includes(venue.id));
   const request = ceilingRequestOf(options.chains, options.config, {
     venues: named,
     rescue: "",
-    isLaunch: wallet.isLaunch,
+    ...(wallet.role === undefined ? {} : { role: wallet.role }),
   });
   if (!request.ok) {
     throw new BinferenceError({
@@ -38,7 +38,8 @@ export function ceilingChainsOf(
     });
   }
   const { chains, capPlans } = request.value;
-  return { chains: wallet.isLaunch ? launchPlansOf(chains, options.venues) : chains, capPlans };
+  const isLaunch = wallet.role === "launch";
+  return { chains: isLaunch ? launchPlansOf(chains, options.venues) : chains, capPlans };
 }
 
 const storedPolicy = z.object({ rules: z.array(z.json()) });

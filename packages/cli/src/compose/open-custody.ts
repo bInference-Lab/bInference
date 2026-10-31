@@ -168,7 +168,7 @@ function callsOn(
           definition: registered.definition,
           venues,
           perTxNativeCapBase: calls.perTxNativeBase,
-          ...(calls.isLaunch === true ? { role: "launch" as const } : {}),
+          ...(calls.role === undefined ? {} : { role: calls.role }),
         });
   if (built?.ok !== true) {
     throw new BinferenceError({
@@ -177,7 +177,7 @@ function callsOn(
       details: { chain },
     });
   }
-  const [plan] = calls.isLaunch === true ? launchPlansOf([built.value], options.venues) : [];
+  const [plan] = calls.role === "launch" ? launchPlansOf([built.value], options.venues) : [];
   return plan ?? built.value;
 }
 

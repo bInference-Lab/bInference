@@ -21,7 +21,6 @@ export type {
   SealKeyRecord,
   WalletDraft,
   WalletRecord,
-  WalletRole,
 } from "./install/install-record.js";
 export type { InstallStore } from "./ports.js";
 export { disclaimerAcceptanceSchema } from "./install/disclaimer-record.js";

@@ -1,3 +1,4 @@
+import type { WalletRole } from "@binference/chain";
 import { createIdSource, type Id, jsonValueSchema, ok } from "@binference/core";
 import type { AccessStore, AgentDraft, AgentStore } from "@binference/engine";
 import {
@@ -5,7 +6,6 @@ import {
   type InstallStore,
   makeAgentWorkspace,
   type WalletDraft,
-  type WalletRole,
 } from "@binference/engine/install";
 import { issueStartCode, type StartCode } from "@binference/telegram";
 import { stateWorkspace } from "../compose/state-workspace.js";

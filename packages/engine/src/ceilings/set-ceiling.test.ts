@@ -122,7 +122,7 @@ async function startedWithOlderLaunchWallet(): Promise<TestEngine> {
   const ceilings = createFakeCeilingEditor({
     clock: createManualClock(testNowMs),
     chains,
-    functionsOf: (_venues, ceiling) => (ceiling.isLaunch ? ["swap", "create"] : ["swap"]),
+    functionsOf: (_venues, ceiling) => (ceiling.role === "launch" ? ["swap", "create"] : ["swap"]),
   });
   const custodyWallets = new Map([
     [first.id, accountRefSchema.parse("fake:1:0x000000c1")],

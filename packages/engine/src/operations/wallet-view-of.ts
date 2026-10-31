@@ -38,6 +38,6 @@ export async function walletViewOf(
         label: wallet.label,
         createdAt: wallet.createdAtMs,
         ...(wallet.archivedAtMs === undefined ? {} : { archivedAt: wallet.archivedAtMs }),
-        ...(wallet.role === undefined ? {} : { role: wallet.role }),
+        ...(wallet.role === "launch" ? { role: wallet.role } : {}),
       };
 }

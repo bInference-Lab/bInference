@@ -46,7 +46,7 @@ export interface PrivyWalletMakerOptions {
    * install runs (decision 0217).
    */
   readonly ceilingChains: (
-    wallet: Pick<WalletRequest, "venues" | "isLaunch">,
+    wallet: Pick<WalletRequest, "venues" | "role">,
   ) => Pick<CeilingDraft, "chains" | "capPlans">;
   /** The 24-hour caps the install's live ceilings name now, which a new ceiling names too. */
   readonly heldCaps: (signal: AbortSignal) => Promise<readonly HeldCaps[]>;
@@ -190,7 +190,8 @@ async function make(
     });
   }
   const policy = await walletPolicyOf(options.api, made.value, signal);
-  options.onMade(request.wallet, request.isLaunch ? { ...made.value, role: "launch" } : made.value);
+  const { role } = request;
+  options.onMade(request.wallet, role === undefined ? made.value : { ...made.value, role });
   return ok(madeOf(options, { wallet: made.value, policy, agent }, first));
 }
 

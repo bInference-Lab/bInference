@@ -119,7 +119,6 @@ async function setUpInstall(
     ownerKey: createSecret(custody.ownerKey),
     venues: parts.venues,
     recipients: [rescueAddress],
-    isLaunch: false,
   };
   const made = await parts.maker.make(request, { signal });
   if (!made.ok) {

@@ -1,4 +1,4 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefSchema, type WalletRole } from "@binference/chain";
 import { type Http, type Id, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
@@ -115,8 +115,8 @@ async function subject() {
     api,
     clock,
     custody: async () => Promise.resolve(custody),
-    ceilingChains: (wallet: { readonly isLaunch: boolean }) =>
-      wallet.isLaunch ? launchDraft : draft,
+    ceilingChains: (wallet: { readonly role?: WalletRole }) =>
+      wallet.role === "launch" ? launchDraft : draft,
     heldCaps: counted.heldCaps,
     onMade: (wallet, made) => signedFor.set(wallet, made),
   });
@@ -160,7 +160,7 @@ describe("the Privy wallet maker", () => {
     const wallet = made.nextWallet();
 
     const answer = await made.maker.make(
-      { wallet, ownerKey: made.ownerKey, venues: made.venues, recipients, isLaunch: false },
+      { wallet, ownerKey: made.ownerKey, venues: made.venues, recipients },
       live,
     );
 
@@ -170,7 +170,7 @@ describe("the Privy wallet maker", () => {
 
   it("makes the caps' aggregations once, and names them in every later ceiling", async () => {
     const made = await subject();
-    const request = { ownerKey: made.ownerKey, venues: made.venues, recipients, isLaunch: false };
+    const request = { ownerKey: made.ownerKey, venues: made.venues, recipients };
 
     const first = await made.maker.make({ ...request, wallet: made.nextWallet() }, live);
     const second = await made.maker.make({ ...request, wallet: made.nextWallet() }, live);
@@ -199,7 +199,6 @@ describe("the Privy wallet maker", () => {
       ownerKey: made.ownerKey,
       venues: [],
       recipients,
-      isLaunch: false,
     };
 
     expect(await bare.make(request, live)).toStrictEqual({ ok: false, error: "bad_owner_key" });

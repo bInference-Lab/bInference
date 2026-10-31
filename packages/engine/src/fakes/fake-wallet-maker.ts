@@ -57,7 +57,7 @@ function madeWallet(
         policy: jsonValueSchema.parse({
           venues: [...request.venues],
           recipients,
-          isLaunch: request.isLaunch,
+          ...(request.role === undefined ? {} : { role: request.role }),
         }),
         perTxNativeBase: 10n ** 18n,
         readAtMs: options.clock.now(),

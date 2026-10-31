@@ -1,5 +1,6 @@
+import type { WalletRole } from "@binference/chain";
 import type { Id } from "@binference/core";
-import type { WalletRecord, WalletRole } from "./install-record.js";
+import type { WalletRecord } from "./install-record.js";
 
 /** What a test names of a wallet; the rest of the record follows from its id. */
 export interface TestWallet {

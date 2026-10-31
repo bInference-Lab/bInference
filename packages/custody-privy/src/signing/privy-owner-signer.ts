@@ -9,6 +9,7 @@ import {
   type Signer,
   type SignerProcess,
   type SignRequest,
+  type WalletRole,
 } from "@binference/chain";
 import {
   createEvmSigningScheme,
@@ -29,8 +30,11 @@ export interface PrivyWallet {
   readonly address: string;
   /** The chains its ceiling enables. */
   readonly chains: readonly ChainRef[];
-  /** `launch` for the agent's launch wallet (decision 0217); absent for an agent wallet. */
-  readonly role?: "launch";
+  /**
+   * The wallet's role: `launch` for the agent's launch wallet (decision 0217), `bridge` for its
+   * bridge wallet (decision 0303); absent for a main wallet.
+   */
+  readonly role?: WalletRole;
 }
 
 /** What the `privy-owner` adapter is built from. */

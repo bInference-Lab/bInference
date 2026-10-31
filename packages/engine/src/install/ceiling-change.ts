@@ -1,4 +1,4 @@
-import type { AccountRef, ChainRef } from "@binference/chain";
+import type { AccountRef, ChainRef, WalletRole } from "@binference/chain";
 import { type JsonValue, jsonValueSchema, type Secret } from "@binference/core";
 import type { DayCapView } from "@binference/protocol";
 import { z } from "zod";
@@ -59,10 +59,11 @@ export interface CeilingCalls {
    */
   readonly dayCapUsdMicros?: bigint;
   /**
-   * The ceiling is a launch wallet's: it also allows the calls the install's launchpads declare
-   * on each launch's own contracts (decision 0217), written again with the rest.
+   * The role of the wallet whose ceiling it is: a launch wallet's also allows the calls the
+   * install's launchpads declare on each launch's own contracts (decision 0217), written again with
+   * the rest. Absent, a main wallet's.
    */
-  readonly isLaunch?: true;
+  readonly role?: WalletRole;
 }
 
 /** What contract calls may do under each ceiling, with the owner key that owns every ceiling. */

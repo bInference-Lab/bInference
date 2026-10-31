@@ -33,11 +33,11 @@ export interface WalletMakerHarness {
 
 function requestOf(subject: WalletMakerSubject, ownerKey: Secret = subject.ownerKey) {
   const { venues, recipients } = subject;
-  return { wallet: subject.nextWallet(), ownerKey, venues, recipients, isLaunch: false };
+  return { wallet: subject.nextWallet(), ownerKey, venues, recipients };
 }
 
 async function makesALaunchWallet(subject: WalletMakerSubject): Promise<void> {
-  const launch = await subject.maker.make({ ...requestOf(subject), isLaunch: true }, live());
+  const launch = await subject.maker.make({ ...requestOf(subject), role: "launch" }, live());
   const agentWallet = await subject.maker.make(requestOf(subject), live());
   assert.ok(launch.ok && agentWallet.ok);
   assert.equal(await subject.isLaunchCeiling(launch.value), true);

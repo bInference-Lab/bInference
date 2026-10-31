@@ -159,7 +159,7 @@ describe("making a wallet with the owner key", () => {
 
     const stored = await newWallet(test);
     expect([view.role, stored.role]).toStrictEqual(["launch", "launch"]);
-    expect(JSON.stringify(stored.ceiling.policy)).toContain('"isLaunch":true');
+    expect(JSON.stringify(stored.ceiling.policy)).toContain('"role":"launch"');
     expect(await create(test, { launch: true })).toStrictEqual(err("wallet.launch_exists"));
     expect(test.walletMaker.count()).toBe(1);
     const listed = expectOk(await test.engine.handlers["agent/list"](testCall({})));

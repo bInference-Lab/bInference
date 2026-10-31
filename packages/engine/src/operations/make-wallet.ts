@@ -124,7 +124,8 @@ export async function makeWallet(
   const ownerKey = createSecret(args.ownerKey);
   const wallet = options.ids.next("wal");
   const venues = found.value.limits.venues;
-  const request = { wallet, ownerKey, venues, recipients: recipients.value, isLaunch };
+  const role = isLaunch ? { role: "launch" as const } : {};
+  const request = { wallet, ownerKey, venues, recipients: recipients.value, ...role };
   const made = await options.maker.make(request, { signal });
   if (!made.ok) {
     return err(refusalCodes[made.error]);

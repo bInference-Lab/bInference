@@ -1,4 +1,4 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefSchema, type WalletRole } from "@binference/chain";
 import { type Id, idSchema, type JsonValue, jsonValueSchema, type Result } from "@binference/core";
 import { z } from "zod";
 import type { RescueState } from "../policy/rescue-change.js";
@@ -135,9 +135,6 @@ export interface WalletDraft {
    */
   readonly role?: WalletRole;
 }
-
-/** What a wallet is for beyond an agent wallet's trades: `launch`, a launch wallet. */
-export type WalletRole = "launch";
 
 /** A wallet as the store keeps it; an archived wallet is one the install no longer uses. */
 export interface WalletRecord extends WalletDraft {

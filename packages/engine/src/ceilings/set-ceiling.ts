@@ -123,7 +123,7 @@ function refusalOf(
 }
 
 // What each ceiling's calls become: the venues, cap and 24-hour caps asked, else the ones it holds;
-// a launch wallet's keeps its launch rules (decision 0217).
+// a wallet with a role keeps that role's rules, as a launch wallet its launch rules (decision 0217).
 function callsOf(
   options: SetCeilingOptions,
   changes: CeilingChanges,
@@ -142,7 +142,7 @@ function callsOf(
         perTxNativeBase: changes.perTxNative ?? read.perTxNativeBase,
       },
       resize,
-      wallet.role === "launch" ? { isLaunch: true as const } : {},
+      wallet.role === undefined ? {} : { role: wallet.role },
     ),
   );
 }

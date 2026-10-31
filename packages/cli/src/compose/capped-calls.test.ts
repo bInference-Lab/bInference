@@ -1,4 +1,4 @@
-import { assetRefSchema } from "@binference/chain";
+import { assetRefSchema, type WalletRole } from "@binference/chain";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   type BridgeDeposit,
@@ -43,13 +43,13 @@ function callsOnWith(routes: { readonly withEth: boolean }) {
     calls: {
       readonly venues: readonly string[];
       readonly perTxNativeBase: bigint;
-      readonly isLaunch?: true;
+      readonly role?: WalletRole;
     },
   ): CeilingChainPlan => ({
     chain: testChain,
     // A launch wallet's ceiling here also calls the deposit as a plain call, which no ceiling holds.
     calls:
-      calls.isLaunch === true ? [...testCalls, { ...testBridgeCall, walletInputs: [] }] : testCalls,
+      calls.role === "launch" ? [...testCalls, { ...testBridgeCall, walletInputs: [] }] : testCalls,
     spenders: [router, ...(calls.venues.includes("across") ? [spokePool] : [])],
     perTxNativeCapBase: calls.perTxNativeBase,
     ...(calls.venues.includes("across") ? { bridges: depositsOf(routes) } : {}),
@@ -140,7 +140,7 @@ async function oldInstall(extra = 0) {
   const launching = {
     ...change,
     ceilings: change.ceilings.map((calls, index) =>
-      index === 1 ? { ...calls, isLaunch: true as const } : calls,
+      index === 1 ? { ...calls, role: "launch" as const } : calls,
     ),
   };
   return { editor, held, names, request: change, launching };
