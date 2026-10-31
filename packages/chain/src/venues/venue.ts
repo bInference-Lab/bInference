@@ -135,6 +135,10 @@ function isUnique(values: readonly string[]): boolean {
 const isUnbuiltShaped = (call: VenueCall): boolean =>
   call.isUnbuilt !== true || call.onlyWallet === "launch";
 
+// A bridge deposit's rules reach every wallet's ceiling, so it is no role's alone and is built.
+const isBridgeShaped = (call: VenueCall): boolean =>
+  call.bridge === undefined || (call.onlyWallet === undefined && call.isUnbuilt !== true);
+
 const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
   .strictObject({
     contract: kebabCaseSchema,
@@ -157,6 +161,9 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
   })
   .refine(isUnbuiltShaped, {
     message: "A call the venue never builds is a launch wallet's alone.",
+  })
+  .refine(isBridgeShaped, {
+    message: "A bridge deposit is every wallet's call, and one the venue builds.",
   });
 
 // Every call and every spender names one of the chain's declared contracts, registry or launch,

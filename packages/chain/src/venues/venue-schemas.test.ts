@@ -15,6 +15,14 @@ const declaration: VenueDeclarationWire = {
 const hookFee = { maker: "Genius.fun", feeBps: 200, hooks: ["fake:1:0x000000a1"] } as const;
 const hookedQuote = { expectedOut: { asset: token, base: "2" }, priceImpactBps: 230 };
 
+const testBridgeInputs = {
+  recipient: "recipient",
+  destinationChain: "destinationChainId",
+  tokenIn: "inputToken",
+  tokenOut: "outputToken",
+  emptyInputs: [],
+};
+
 describe("venue schemas", () => {
   it("decodes a draft, a quote and an effect from JSON and encodes them back", () => {
     const draft = { chain: "fake:1", from: "fake:1:0x0000000c", payload: "0x0000000b|1|swap" };
@@ -181,6 +189,30 @@ describe("venue schemas", () => {
         chain: "fake:1",
         names: ["router"],
         calls: [{ contract: "router", abi: {}, isUnbuilt: true }],
+      },
+    ],
+    [
+      "a bridge deposit only one wallet role makes",
+      {
+        chain: "fake:1",
+        names: ["router"],
+        calls: [{ contract: "router", abi: {}, onlyWallet: "bridge", bridge: testBridgeInputs }],
+      },
+    ],
+    [
+      "a bridge deposit the venue never builds",
+      {
+        chain: "fake:1",
+        names: ["router"],
+        calls: [
+          {
+            contract: "router",
+            abi: {},
+            onlyWallet: "launch",
+            isUnbuilt: true,
+            bridge: testBridgeInputs,
+          },
+        ],
       },
     ],
     [
