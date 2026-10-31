@@ -192,6 +192,10 @@ describe("venue host", () => {
     const marked = hostOf(venueWithCreate({ onlyWallet: "bridge" }));
     expect(marked.roleWalletCalls("bridge", ["fake-swap"])).toStrictEqual([createAbi]);
     expect(marked.roleWalletCalls("launch", ["fake-swap"])).toStrictEqual([]);
+    expect(marked.bridgesOnly("fake-swap")).toBe(true);
+    expect(hostOf(venueWithCreate({ onlyWallet: "launch" })).bridgesOnly("fake-swap")).toBe(false);
+    expect(hostOf(venueWithCreate({})).bridgesOnly("fake-swap")).toBe(false);
+    expect(hostOf().bridgesOnly("fake-swap")).toBe(false);
   });
 
   it("quotes a trade without building it, then builds that quote with its own time", async () => {

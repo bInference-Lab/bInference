@@ -100,6 +100,7 @@
   "wallet.ceiling_bad_bridge": "某个平台声明的跨链存款无法放入任何上限，因此没有任何更改。请从上限中移除该跨链平台，然后运行 `binference report` 告诉我们。",
   "wallet.ceiling_uncapped": "某条跨链路由需要为其代币设置 24 小时上限，但 binference 无法创建，因此没有任何更改。请从上限中移除该跨链平台，或运行 `binference check` 查看上限。",
   "limit.needs_launch_wallet": "在发射项目自身的联合曲线上实盘交易需要发射钱包。请用 `binference wallet create --launch` 创建发射钱包并充值，然后再试。",
+  "limit.needs_bridge_wallet": "通过存入不指定收款人的平台（如 Relay）实盘跨链需要跨链钱包。请用 `binference wallet create --bridge` 创建跨链钱包，并从外部为它充值，然后再试。",
   "config.invalid": "配置有误。请运行 `binference check` 查看出错位置和修复方法。",
   "config.secret_inline": "配置文件中有明文密钥。请运行 `binference check --fix`。",
   "plugin.not_found": "此插件未安装。请在控制台查看插件列表。",

@@ -104,6 +104,7 @@ export const protocolErrorCodes = [
   "wallet.ceiling_bad_bridge",
   "wallet.ceiling_uncapped",
   "limit.needs_launch_wallet",
+  "limit.needs_bridge_wallet",
   "config.invalid",
   "config.secret_inline",
   "plugin.not_found",

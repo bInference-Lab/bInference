@@ -1,5 +1,11 @@
 import { accountRefSchema } from "@binference/chain";
-import { createFakeLaunchpad, createFakeVenue, fakeLaunchCallAbi } from "@binference/chain/testing";
+import {
+  createFakeBridgeVenue,
+  createFakeLaunchpad,
+  createFakeVenue,
+  fakeDepositAbi,
+  fakeLaunchCallAbi,
+} from "@binference/chain/testing";
 import { err, type Id, type JsonValue } from "@binference/core";
 import { disclaimerVersion } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
@@ -157,6 +163,30 @@ describe("the live switch", () => {
         role: "launch",
       }),
     );
+    expect(expectOk(await test.engine.handlers["agent/goLive"](testCall(accepted))).mode).toBe(
+      "live",
+    );
+  });
+
+  it("refuses to go live while its venues hold one only a bridge wallet uses, until it has one", async () => {
+    const test = await startTestEngine({
+      chains: testChains(["fake-bridge"]),
+      venues: [createFakeVenue(), createFakeBridgeVenue()],
+      agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-bridge"] } },
+    });
+    await expect(test.engine.handlers["agent/goLive"](testCall(accepted))).resolves.toStrictEqual(
+      err("limit.needs_bridge_wallet"),
+    );
+    await expect(modeOf(test)).resolves.toBe("paper");
+    const bridge = testWalletRecord({
+      id: fixtureId("wal", 78),
+      agentId: testAgent,
+      label: "relays",
+      createdAtMs: testNowMs,
+      role: "bridge",
+    });
+    const policy = [{ abi: [fakeDepositAbi] }];
+    test.stores.install.addWallet({ ...bridge, ceiling: { ...bridge.ceiling, policy } });
     expect(expectOk(await test.engine.handlers["agent/goLive"](testCall(accepted))).mode).toBe(
       "live",
     );

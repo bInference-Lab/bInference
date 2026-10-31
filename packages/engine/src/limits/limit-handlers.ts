@@ -3,6 +3,7 @@ import {
   BinferenceError,
   type Clock,
   err,
+  type Id,
   jsonValueSchema,
   ok,
   type Result,
@@ -31,6 +32,7 @@ import {
 import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import { bridgeVenueRefusal } from "./bridge-venue-refusal.js";
 import {
   launchVenuesOutsideCeiling,
   unknownVenues,
@@ -51,8 +53,14 @@ export interface LimitHandlersOptions {
   readonly agents: AgentStore;
   /** The wallets, whose ceilings bound the venues an agent may add. */
   readonly install: InstallStore;
-  /** Which venues trade on contracts each launch has, which no ceiling can list. */
-  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchesOnly" | "launchCalls">;
+  /**
+   * Which venues trade on contracts each launch has, which no ceiling can list, and which only a
+   * bridge wallet uses, with the calls it makes.
+   */
+  readonly host: Pick<
+    VenueHost,
+    "hasLaunchContracts" | "launchesOnly" | "launchCalls" | "bridgesOnly" | "roleWalletCalls"
+  >;
   readonly journal: ConfigJournal;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
@@ -164,22 +172,18 @@ async function move(
   return move(options, { call, decide, attemptsLeft: attemptsLeft - 1 });
 }
 
-/**
- * Whether a venue is a launch wallet's alone: it trades on a launch's own contracts (decision
- * 0217), or it only launches tokens (decision 0282).
- */
-export function needsLaunchWallet(
+// Whether a venue is a launch wallet's alone: it trades on a launch's own contracts (decision
+// 0217), or it only launches tokens (decision 0282).
+function needsLaunchWallet(
   host: Pick<VenueHost, "hasLaunchContracts" | "launchesOnly">,
   venue: string,
 ): boolean {
   return host.hasLaunchContracts(venue) || host.launchesOnly(venue);
 }
 
-/**
- * Why a live agent cannot use venues that trade on a launch's own contracts (decisions 0217 and
- * 0218): it has no live launch wallet, or that wallet's ceiling lacks one of their launch calls.
- */
-export function launchRefusal(
+// Why a live agent cannot use venues that trade on a launch's own contracts (decisions 0217 and
+// 0218): it has no live launch wallet, or that wallet's ceiling lacks one of their launch calls.
+function launchRefusal(
   options: { readonly host: Pick<VenueHost, "launchCalls"> },
   check: { readonly venues: readonly string[]; readonly launchWallet: WalletRecord | undefined },
 ): ProtocolErrorCode | undefined {
@@ -190,6 +194,27 @@ export function launchRefusal(
   const launchCalls = (venue: string) => options.host.launchCalls(venue);
   const outside = launchVenuesOutsideCeiling({ venues, launchWallet, launchCalls });
   return outside.length > 0 ? "limit.over_ceiling" : undefined;
+}
+
+/**
+ * Why a live agent cannot use venues only a wallet of a role uses: a launch wallet's, when it has
+ * no live launch wallet (`limit.needs_launch_wallet`) or that wallet's ceiling lacks one of their
+ * launch calls (`limit.over_ceiling`, decisions 0217 and 0218), or a bridge wallet's (see
+ * {@link bridgeVenueRefusal}); `undefined` when it may.
+ */
+export function roleVenuesRefusal(
+  options: Pick<LimitHandlersOptions, "host">,
+  check: {
+    readonly venues: readonly string[];
+    readonly wallets: readonly WalletRecord[];
+    readonly agent: Id<"agt">;
+  },
+): ProtocolErrorCode | undefined {
+  const launched = check.venues.filter((venue) => needsLaunchWallet(options.host, venue));
+  const launchWallet = roleWalletIn(check.wallets, check.agent, "launch");
+  const launchFailure =
+    launched.length === 0 ? undefined : launchRefusal(options, { venues: launched, launchWallet });
+  return launchFailure ?? bridgeVenueRefusal(options.host, check);
 }
 
 // A venue or chain the registry lacks is malformed. A venue that trades on a launch's own
@@ -212,16 +237,17 @@ async function refusalOf(
   if (unknownChain || unknownVenues(options.chains, added).length > 0) {
     return "protocol.bad_args";
   }
-  const launched = added.filter((venue) => needsLaunchWallet(options.host, venue));
   const { wallets } = await options.install.read({ signal: call.signal });
-  const launchWallet = roleWalletIn(wallets, call.args.agent, "launch");
-  if (launched.length > 0 && agent.mode === "live") {
-    const refusal = launchRefusal(options, { venues: launched, launchWallet });
-    if (refusal !== undefined) {
-      return refusal;
-    }
+  const roleRefusal =
+    agent.mode === "live"
+      ? roleVenuesRefusal(options, { venues: added, wallets, agent: call.args.agent })
+      : undefined;
+  if (roleRefusal !== undefined) {
+    return roleRefusal;
   }
-  const ceilinged = added.filter((venue) => !launched.includes(venue));
+  const ceilinged = added.filter(
+    (venue) => !needsLaunchWallet(options.host, venue) && !options.host.bridgesOnly(venue),
+  );
   if (ceilinged.length === 0) {
     return undefined;
   }

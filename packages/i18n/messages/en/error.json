@@ -100,6 +100,7 @@
   "wallet.ceiling_bad_bridge": "A venue declares a bridge deposit no ceiling can hold, so nothing changed. Remove that bridge venue from the ceiling, then run `binference report` to tell us.",
   "wallet.ceiling_uncapped": "A bridge route needs a 24-hour cap on its token that binference could not make, so nothing changed. Remove the bridge venue from the ceiling, or run `binference check` to see the caps.",
   "limit.needs_launch_wallet": "Live trades on a launch's own curve need a launch wallet. Make one with `binference wallet create --launch`, fund it, then try again.",
+  "limit.needs_bridge_wallet": "Live bridges through a venue whose deposit names no recipient, such as Relay, need a bridge wallet. Make one with `binference wallet create --bridge`, fund it from outside, then try again.",
   "config.invalid": "The config has an error. Run `binference check` to see where and how to fix it.",
   "config.secret_inline": "A secret is written as plain text in config. Run `binference check --fix`.",
   "plugin.not_found": "This plugin is not installed. Check the list of plugins in the console.",

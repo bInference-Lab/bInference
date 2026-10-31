@@ -5,8 +5,7 @@ import type { AgentView, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
 import type { LimitsRecord } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
-import { roleWalletOf } from "../install/role-wallet.js";
-import { launchRefusal, needsLaunchWallet } from "../limits/limit-handlers.js";
+import { roleVenuesRefusal } from "../limits/limit-handlers.js";
 import type { AgentStore, ConfigJournal, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { VenueHost } from "../venues/venue-host.js";
@@ -30,9 +29,12 @@ export interface AgentModeHandlersOptions {
   readonly chains: ChainRegistry;
   /**
    * Which venues trade on contracts each launch has, or only launch tokens, which only a launch
-   * wallet may do.
+   * wallet may do, and which only a bridge wallet uses.
    */
-  readonly host: Pick<VenueHost, "hasLaunchContracts" | "launchesOnly" | "launchCalls">;
+  readonly host: Pick<
+    VenueHost,
+    "hasLaunchContracts" | "launchesOnly" | "launchCalls" | "bridgesOnly" | "roleWalletCalls"
+  >;
   /**
    * The install's wallets, among them the agent's launch wallet, and the disclaimer its owner
    * accepted.
@@ -79,24 +81,17 @@ async function isFunded(
 // Why the agent cannot go live with its venues, in effect or waiting: one trades on a launch's own
 // contracts or only launches tokens (decision 0282) while the agent has no live launch wallet,
 // which alone may call them (decision 0217), or while that wallet's ceiling lacks one of its
-// launch calls (decision 0218).
-async function launchVenueRefusal(
+// launch calls (decision 0218); or one only a bridge wallet uses while the agent has no live
+// bridge wallet, or that wallet's ceiling lacks one of its calls (decision 0307).
+async function roleVenueRefusal(
   options: AgentModeHandlersOptions,
   found: { readonly agent: AgentRecord; readonly limits: LimitsRecord },
   signal: AbortSignal,
 ): Promise<ProtocolErrorCode | undefined> {
   const { limits } = found;
-  const named = [...limits.venues, ...(limits.pending?.values.venues ?? [])];
-  const venues = named.filter((venue) => needsLaunchWallet(options.host, venue));
-  if (venues.length === 0) {
-    return undefined;
-  }
-  const launchWallet = await roleWalletOf(
-    options.install,
-    { agent: found.agent.id, role: "launch" },
-    { signal },
-  );
-  return launchRefusal(options, { venues, launchWallet });
+  const venues = [...limits.venues, ...(limits.pending?.values.venues ?? [])];
+  const { wallets } = await options.install.read({ signal });
+  return roleVenuesRefusal(options, { venues, wallets, agent: found.agent.id });
 }
 
 // The owner accepts the current disclaimer once (decision 0220): a call that carries its version
@@ -149,7 +144,7 @@ async function switchMode(
   }
   const { agent } = found.value;
   const launchFailure =
-    mode === "live" ? await launchVenueRefusal(options, found.value, call.signal) : undefined;
+    mode === "live" ? await roleVenueRefusal(options, found.value, call.signal) : undefined;
   if (launchFailure !== undefined) {
     return err(launchFailure);
   }
@@ -183,7 +178,8 @@ async function switchMode(
  * (`agent.disclaimer` before, decision 0220), the agent's default wallet holds funds
  * (`wallet.unfunded` before) and its venues, in effect or waiting, hold none that trades on a
  * launch's own contracts unless it has a live launch wallet (`limit.needs_launch_wallet`,
- * decisions 0212 and 0217). `agent/goPaper` brakes from any surface with `confirm`. Each switch keeps the intents already proposed as they
+ * decisions 0212 and 0217), and none only a bridge wallet uses unless it has a live bridge wallet
+ * (`limit.needs_bridge_wallet`, decision 0307). `agent/goPaper` brakes from any surface with `confirm`. Each switch keeps the intents already proposed as they
  * were stored, so a paper card still fills on paper; it is journaled and announced. Switching to
  * the mode an agent is in changes nothing.
  */

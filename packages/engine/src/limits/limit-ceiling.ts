@@ -1,4 +1,4 @@
-import type { ChainRegistry } from "@binference/chain";
+import { type ChainRegistry, roleMakesMainCalls } from "@binference/chain";
 import { type Id, type JsonValue, stableJson } from "@binference/core";
 import type { WalletRecord } from "../install/install-record.js";
 
@@ -43,14 +43,20 @@ export function unknownVenues(chains: ChainRegistry, venues: readonly string[]):
 }
 
 /**
- * The venues a live wallet of the agent cannot use because its ceiling, as last read back from
+ * The venues a live wallet of the agent that makes main wallet calls cannot use because its
+ * ceiling, as last read back from
  * custody, names none of the venue's registry contracts (decisions 0111 and 0149): a ceiling
  * lists the contracts a venue's trades call and approve, never the ones only those reach. Only
  * the owner key adds a venue to a ceiling, so `limit/set` refuses them with `limit.over_ceiling`.
  */
 export function venuesOutsideCeiling(check: VenueCheck): readonly string[] {
+  // A wallet whose role makes no main wallet's call, as a bridge wallet, lists no such venue
+  // (decision 0307).
   const live = check.wallets.filter(
-    (wallet) => wallet.agentId === check.agent && wallet.archivedAtMs === undefined,
+    (wallet) =>
+      wallet.agentId === check.agent &&
+      wallet.archivedAtMs === undefined &&
+      (wallet.role === undefined || roleMakesMainCalls[wallet.role]),
   );
   return check.venues.filter((venue) =>
     live.some((wallet) => {

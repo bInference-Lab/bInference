@@ -170,6 +170,12 @@ export interface VenueHost {
    */
   launchesOnly(venue: string): boolean;
   /**
+   * Whether only a bridge wallet uses the venue (decision 0307): it declares a call, every call it
+   * declares is a bridge wallet's alone, and it names no spender a main wallet approves, as Relay.
+   * No main wallet's ceiling lists it.
+   */
+  bridgesOnly(venue: string): boolean;
+  /**
    * The JSON ABI entry of each call the venue declares on the contracts each launch has, on any
    * chain, or every hosted venue's when `venue` is absent: a launch wallet's ceiling must allow
    * each (decision 0218). None for a venue the host does not hold.
@@ -186,11 +192,20 @@ export interface VenueHost {
   launchReaders(chain: ChainRef): readonly HostedLaunchReader[];
 }
 
-// The venue's contracts on a chain ask nothing of a main wallet: every call is a launch wallet's,
-// and no spender is a main wallet's.
-const isLaunchWalletsAlone = (declared: VenueContracts): boolean =>
-  (declared.calls ?? []).every((call) => call.onlyWallet === "launch") &&
-  (declared.spenders ?? []).length === 0;
+// The venue's contracts on a chain ask nothing of a main wallet: every call is a wallet of the
+// role's, and no spender is a main wallet's.
+const isRoleWalletsAlone =
+  (role: WalletRole) =>
+  (declared: VenueContracts): boolean =>
+    (declared.calls ?? []).every((call) => call.onlyWallet === role) &&
+    (declared.spenders ?? []).length === 0;
+
+// A venue that declares a call, each a bridge wallet's alone (decision 0307).
+function bridgesOnlyIn(venue: Venue | undefined): boolean {
+  const contracts = venue?.contracts ?? [];
+  const declares = contracts.some((declared) => (declared.calls ?? []).length > 0);
+  return declares && contracts.every(isRoleWalletsAlone("bridge"));
+}
 
 const isHostedLaunchpad = (hosted: HostedVenue | undefined): boolean =>
   hosted !== undefined && isLaunchpad(hosted.venue);
@@ -200,7 +215,7 @@ function launchesOnlyIn(venue: Venue | undefined): boolean {
   return (
     venue?.launcher !== undefined &&
     !isLaunchpad(venue) &&
-    venue.contracts.every(isLaunchWalletsAlone)
+    venue.contracts.every(isRoleWalletsAlone("launch"))
   );
 }
 
@@ -388,6 +403,7 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
       return venues.get(venue)?.noDeadline.has(chain) === true;
     },
     launchesOnly: (venue) => launchesOnlyIn(venues.get(venue)?.venue),
+    bridgesOnly: (venue) => bridgesOnlyIn(venues.get(venue)?.venue),
     hasLaunchContracts(venue) {
       const names = [...(venues.get(venue)?.launchNames.values() ?? [])];
       return names.some((declared) => declared.size > 0);

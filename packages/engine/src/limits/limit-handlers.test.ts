@@ -1,5 +1,11 @@
 import { accountRefSchema, assetRefSchema } from "@binference/chain";
-import { createFakeLaunchpad, createFakeVenue, fakeLaunchCallAbi } from "@binference/chain/testing";
+import {
+  createFakeBridgeVenue,
+  createFakeLaunchpad,
+  createFakeVenue,
+  fakeDepositAbi,
+  fakeLaunchCallAbi,
+} from "@binference/chain/testing";
 import { bpsSchema, err, idSchema, type JsonValue } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -120,6 +126,30 @@ async function besideLaunchesOnly(mode: "paper" | "live"): Promise<TestEngine> {
   });
   test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: [] } });
   return test;
+}
+
+// An agent in the mode, beside a bridge whose deposit only a bridge wallet makes (decision 0307),
+// with a live wallet whose ceiling names the main venue's contracts.
+async function besideBridges(mode: "paper" | "live"): Promise<TestEngine> {
+  const test = await startTestEngine({
+    chains: testChains(["fake-bridge"]),
+    venues: [createFakeVenue(), createFakeBridgeVenue()],
+    agent: { mode, limits: { ...testLimits, venues: [] } },
+  });
+  test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: swapCeiling } });
+  return test;
+}
+
+// The agent's bridge wallet, whose stored ceiling holds the policy given.
+function bridgeWalletWith(policy: JsonValue): WalletRecord {
+  return {
+    ...wallet,
+    id: fixtureId("wal", 78),
+    custodyWalletId: "privy-wallet-bridge",
+    address: "0x000000d8",
+    role: "bridge",
+    ceiling: { ...wallet.ceiling, policy },
+  };
 }
 
 // The agent's launch wallet, whose stored ceiling holds the policy given.
@@ -426,6 +456,43 @@ describe("a venue added to the limits", () => {
       changes: { venues: ["fake-curve"] },
       effectiveAt,
     });
+  });
+
+  it("needs a bridge wallet whose ceiling holds its deposit when only a bridge wallet uses it", async () => {
+    const test = await besideBridges("live");
+    expect(await setLimits(test, { venues: ["fake-bridge"] })).toStrictEqual(
+      err("limit.needs_bridge_wallet"),
+    );
+    test.stores.install.addWallet(bridgeWalletWith([]));
+    expect(await setLimits(test, { venues: ["fake-bridge"] })).toStrictEqual(
+      err("limit.over_ceiling"),
+    );
+  });
+
+  it("lets a live agent add it once its bridge wallet's ceiling holds the deposit", async () => {
+    const test = await besideBridges("live");
+    test.stores.install.addWallet(bridgeWalletWith([{ abi: [fakeDepositAbi] }]));
+
+    const set = expectOk(await setLimits(test, { venues: ["fake-bridge"] }));
+
+    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-bridge"] }, effectiveAt });
+  });
+
+  it("needs no bridge wallet for a paper agent", async () => {
+    const test = await besideBridges("paper");
+
+    const set = expectOk(await setLimits(test, { venues: ["fake-bridge"] }));
+
+    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-bridge"] }, effectiveAt });
+  });
+
+  it("never checks a bridge wallet's ceiling for a main wallet's venue", async () => {
+    const test = await besideBridges("live");
+    test.stores.install.addWallet(bridgeWalletWith([{ abi: [fakeDepositAbi] }]));
+
+    const set = expectOk(await setLimits(test, { venues: ["fake-swap"] }));
+
+    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-swap"] }, effectiveAt });
   });
 
   it("is malformed when the registry holds no contract of it, as is an unknown chain", async () => {
