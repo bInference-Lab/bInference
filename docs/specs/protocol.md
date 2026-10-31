@@ -452,7 +452,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   (another name) or `none`. `smartAccount: true` marks an address whose only code is an EIP-7702
   delegation designator, a smart-account wallet, which counts as a person
   ([decision 0306](../DECISIONS.md#d0306)). It fails `name.not_found` for a name with no resolver,
-  no address record, the zero address or an expired registration;
+  no address record, the zero address or an expired registration, its grace period included;
   `name.contract` for an address that holds any other code, since a send by name pays a person,
   never a contract; and `name.resolver_down`, retryable,
   when the chain does not answer. A send by name resolves the same way when it is proposed and again

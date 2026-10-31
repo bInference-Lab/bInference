@@ -18,8 +18,9 @@ apply here. Rules for this plugin:
 - `src/registry/` is the one folder that knows SPACE ID's ABIs and calls the chain. One resolution
   reads the latest block, then every record at that block number, through the chain's RPC
   failover with the caller's signal. It caches nothing.
-- A name is not found when its second-level registration ended by the block's time, it has no
-  resolver, its resolver answers no address, or the address is zero.
+- A name is not found when its second-level registration ended by the block's time, its grace
+  period included (decision 0306), it has no resolver, its resolver answers no address, or the
+  address is zero.
   An address whose code is exactly an EIP-7702 delegation designator (`0xef0100` and 20 bytes) is
   a smart-account wallet, a person (`smartAccount: true`); any other code is a contract
   (`src/registry/code-kind.ts`).

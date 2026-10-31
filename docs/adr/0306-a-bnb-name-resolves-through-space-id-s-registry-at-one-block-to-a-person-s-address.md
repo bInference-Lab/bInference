@@ -1,6 +1,8 @@
 # 0306. A .bnb name resolves through SPACE ID's registry at one block to a person's address
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-10-31.
 
 ## Context
 
@@ -34,8 +36,8 @@ the send. The specs leave open how the client is built and how each rule is read
   number: the base registrar's `nameExpires` of the second-level label, the registry's
   `resolver(node)`, that resolver's `addr(node)`, the address's code, and its reverse record
   through the resolver the registry names for `<address>.addr.reverse`.
-- The name is not found when its registration ended at or before the block's time (the grace
-  period counts as ended), the registry names no resolver, the resolver reverts or answers no
+- The name is not found when its registration ended at or before the block's time, the grace
+  period included (the owner chose this on 2026-10-31), the registry names no resolver, the resolver reverts or answers no
   address, or the address is zero. A subname ends with its second-level name.
 - An address whose code is exactly an EIP-7702 delegation designator (`0xef0100` followed by 20
   bytes) is a smart-account wallet: the name resolves to it as to a person, and `name/resolve`
@@ -67,6 +69,6 @@ the send. The specs leave open how the client is built and how each rule is read
 - **Read the base registrar from the registry at each call.** It trusts the same registry and adds
   a read. Lost.
 - **Resolve a name in its grace period.** The spec counts it as expired, and its holder may lose it
-  at any time. Lost.
+  at any time. Lost (owner).
 - **Refuse every address with code, a delegation's included.** It refuses SPACE ID's own name and
   every owner whose wallet became a smart account. Lost (owner).
