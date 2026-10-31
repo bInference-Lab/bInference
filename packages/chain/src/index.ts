@@ -66,8 +66,10 @@ export type {
   AuthorizeInput,
   AuthorizeInputWire,
   CallInputCheck,
+  DeclaredCall,
   SignerWallet,
   WalletOnlyCall,
+  WalletOnlySpender,
 } from "./signing/authorize-input.js";
 export { walletRoleSchema } from "./signing/wallet-role.js";
 export type { WalletRole } from "./signing/wallet-role.js";

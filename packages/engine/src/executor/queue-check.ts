@@ -25,11 +25,10 @@ import type { OrderFillReason } from "../orders/order-fill.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck, PolicyVerdict } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
-import { callInputChecksOf } from "./call-input-checks.js";
+import { declaredTargetsOf } from "./declared-calls.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
 import { launchQuoteOf, recheckLaunch } from "./launch-queue-check.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
-import { unapprovedTargetsOf } from "./unapproved-targets.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
 export interface SigningTerms {
@@ -154,7 +153,8 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
  * as the ceiling reads them, which are also the spenders an approval may name, and the calls
  * those venues mark as a launch wallet's alone (decision 0271), and the contracts any enabled venue
  * keeps every approval from (decision 0304), and the inputs those venues pin to the wallet or keep
- * empty (decision 0302). A venue no declaration names, or one that names a contract the registry
+ * empty, the functions they declare on their contracts (decision 0302) and the spenders of one
+ * role (decision 0303). A venue no declaration names, or one that names a contract the registry
  * lacks, adds none. A swap sends to no one.
  */
 function allowedTargetsOf(
@@ -178,20 +178,8 @@ function allowedTargetsOf(
   const contracts: readonly AccountRef[] = [...new Set(addresses)].map((address) =>
     accountRefSchema.parse(`${chain.ref}:${address}`),
   );
-  const walletOnlyCalls = usedVenues
-    .flatMap((venue) => venue.contracts.filter((item) => item.chain === chain.ref))
-    .flatMap((item) => item.calls ?? [])
-    .flatMap(({ onlyWallet, abi }) =>
-      onlyWallet === undefined ? [] : [{ role: onlyWallet, abi }],
-    );
-  const marked = walletOnlyCalls.length === 0 ? {} : { walletOnlyCalls };
-  const unapproved = unapprovedTargetsOf(chain, context.venues);
-  const callInputs = callInputChecksOf(chain, usedVenues);
-  const kept = {
-    ...(unapproved.length === 0 ? {} : { unapproved }),
-    ...(callInputs.length === 0 ? {} : { callInputs }),
-  };
-  return { contracts, spenders: contracts, recipients: [], ...marked, ...kept };
+  const declarations = declaredTargetsOf(chain, { used: usedVenues, all: context.venues });
+  return { contracts, spenders: contracts, recipients: [], ...declarations };
 }
 
 /** What the owner's confirmation of the intent lets the signer check, once it is stored. */

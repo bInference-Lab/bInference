@@ -29,12 +29,25 @@ function equals(call: CallHeads, name: string, expected: string): boolean {
     : numberOf(word) === BigInt(expected);
 }
 
+// A bridge deposit's check names its recipient and destination chain and its least output from the
+// confirmed plan; one that does not refuses the call (decision 0302).
+function isBound(check: CallInputCheck): boolean {
+  const { bridge } = check;
+  return (
+    bridge === undefined ||
+    (check.equal[bridge.recipient] !== undefined &&
+      check.equal[bridge.destinationChain] !== undefined &&
+      Object.keys(check.atLeast).length > 0)
+  );
+}
+
 function targetsHold(call: CallHeads, check: CallInputCheck, wallet: string): boolean {
   const pinned = check.wallet.every(
     (name) => call.types.get(name) === "address" && addressOf(call.words.get(name)) === wallet,
   );
   const equal = Object.entries(check.equal).every(([name, value]) => equals(call, name, value));
-  return pinned && equal && check.empty.every((name) => lengthOf(call, name) === 0n);
+  const empty = check.empty.every((name) => lengthOf(call, name) === 0n);
+  return pinned && equal && empty && isBound(check);
 }
 
 function amountsHold(call: CallHeads, check: CallInputCheck): boolean {
@@ -50,7 +63,8 @@ function amountsHold(call: CallHeads, check: CallInputCheck): boolean {
 
 /**
  * Whether a call's inputs keep every check of `allowed.callInputs` whose function it calls
- * (decision 0302): `who` its pinned, equal and empty inputs, as rule 2 reads them; `amounts` its
+ * (decision 0302): `who` its pinned, equal and empty inputs, and a bridge deposit's recipient,
+ * chain and least output named, as rule 2 reads them; `amounts` its
  * least amounts, as rule 3 does. A check whose selector cannot be read, or whose inputs the
  * calldata cannot hold, breaks `who`, so rule 2 fails closed. A call no check names keeps them.
  */

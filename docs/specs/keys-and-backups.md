@@ -277,12 +277,18 @@ says without checking it:
 
 1. The chain is enabled and is the transaction's chain.
 2. `to` is in `allowed`: the venue's declared contracts, a token for an exact approval to a registry
-   spender, or the confirmed recipient of a send, bridge or rescue. An approval is never sent to a
+   spender, or the confirmed recipient of a send, bridge or rescue. A call to a contract whose
+   functions the venues declare (`allowed.calls`) calls one of them, so a sibling such as Across's
+   `fillRelay` or StakeHub's `redelegate` breaks this rule. An approval is never sent to a
    contract `allowed.unapproved` lists, such as the ERC-8004 identity registry, whose `approve`
-   shares ERC-20's selector ([decision 0304](../DECISIONS.md#d0304)). A call's inputs are what
-   `allowed.callInputs` says, read from its calldata: each input a venue pins is the wallet itself,
-   each a bridge deposit binds equals the confirmed plan's recipient and chain, and each it keeps
-   empty, such as a deposit's message, is empty ([decision 0302](../DECISIONS.md#d0302)). From a launch wallet
+   shares ERC-20's selector ([decision 0304](../DECISIONS.md#d0304)), and never names a spender
+   only a wallet of another role may approve (`allowed.walletOnlySpenders`, such as Relay's
+   depository, a bridge wallet's alone, [decision 0303](../DECISIONS.md#d0303)). A call's inputs
+   are what `allowed.callInputs` says, read from its calldata: each input a venue pins is the wallet
+   itself, each a bridge deposit binds equals the confirmed plan's recipient and chain, and each it
+   keeps empty, such as a deposit's message, is empty ([decision 0302](../DECISIONS.md#d0302)). A
+   bridge deposit whose check does not name the plan's recipient, chain and least output breaks
+   this rule. From a launch wallet
    (`wallet.role` is `launch`), a call may also go to, and an approval name, a contract of the
    launch the step trades on (`allowed.launch`), which the engine reads from the launchpad as the
    wallet queue takes the intent and again before each later step and speed-up, and an approval

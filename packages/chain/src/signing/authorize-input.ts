@@ -33,6 +33,23 @@ export interface WalletOnlyCall {
 }
 
 /**
+ * A function a venue declares on one of its contracts (decision 0302): a contract the step's venues
+ * declare functions on takes a call to no other.
+ */
+export interface DeclaredCall {
+  /** The contract; absent for a call on the contracts of the launch the step trades on. */
+  readonly contract?: AccountRef;
+  /** The function as its JSON ABI entry. */
+  readonly abi: JsonValue;
+}
+
+/** A spender only a wallet of one role may approve, such as a bridge wallet's depository. */
+export interface WalletOnlySpender {
+  readonly role: WalletRole;
+  readonly spender: AccountRef;
+}
+
+/**
  * What one call's top-level inputs must be, which the signer reads from its calldata (decision
  * 0302): it applies to a call with the function's selector.
  */
@@ -47,6 +64,12 @@ export interface CallInputCheck {
   readonly empty: readonly string[];
   /** Number inputs that must be at least these, in decimal, such as a deposit's output. */
   readonly atLeast: Readonly<Record<string, string>>;
+  /**
+   * The inputs of a bridge deposit that name its recipient and its destination chain: the signer
+   * refuses the call unless `equal` names both, from the confirmed plan, and `atLeast` names its
+   * least output. Absent for any other call.
+   */
+  readonly bridge?: { readonly recipient: string; readonly destinationChain: string };
 }
 
 /**
@@ -79,6 +102,16 @@ export interface AllowedTargets {
    * least output from the confirmed plan. None when absent.
    */
   readonly callInputs?: readonly CallInputCheck[];
+  /**
+   * The functions the step's venues declare on their contracts: the signer refuses a call to a
+   * contract that has declared functions unless it calls one of them. None when absent.
+   */
+  readonly calls?: readonly DeclaredCall[];
+  /**
+   * The spenders only a wallet of one role may approve: the signer refuses an approval naming one
+   * from a wallet of any other role. None when absent.
+   */
+  readonly walletOnlySpenders?: readonly WalletOnlySpender[];
 }
 
 /**
@@ -118,6 +151,11 @@ export interface AuthorizeInputWire {
     readonly walletOnlyCalls?: readonly WalletOnlyCall[];
     readonly unapproved?: readonly string[];
     readonly callInputs?: readonly CallInputCheck[];
+    readonly calls?: readonly { readonly contract?: string; readonly abi: JsonValue }[];
+    readonly walletOnlySpenders?: readonly {
+      readonly role: WalletRole;
+      readonly spender: string;
+    }[];
   };
 }
 
@@ -128,6 +166,7 @@ const callInputCheckSchema: z.ZodType<CallInputCheck, CallInputCheck> = z.strict
   equal: z.record(inputName, z.string().regex(/^(?:0x[0-9a-fA-F]{40}|\d{1,78})$/)),
   empty: z.array(inputName).max(16),
   atLeast: z.record(inputName, z.string().regex(/^\d{1,78}$/)),
+  bridge: z.strictObject({ recipient: inputName, destinationChain: inputName }).exactOptional(),
 });
 
 // The registry's sets are small; a longer list is a fault on the engine's side.
@@ -157,5 +196,13 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
       .exactOptional(),
     unapproved: targetsSchema.exactOptional(),
     callInputs: z.array(callInputCheckSchema).max(64).exactOptional(),
+    calls: z
+      .array(z.strictObject({ contract: accountRefSchema.exactOptional(), abi: z.json() }))
+      .max(256)
+      .exactOptional(),
+    walletOnlySpenders: z
+      .array(z.strictObject({ role: walletRoleSchema, spender: accountRefSchema }))
+      .max(64)
+      .exactOptional(),
   }),
 });

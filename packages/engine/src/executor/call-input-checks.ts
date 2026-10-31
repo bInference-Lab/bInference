@@ -4,8 +4,9 @@ import type { CallInputCheck, RegisteredChain, VenueDeclaration } from "@binfere
  * What the inputs of the calls the route's venues declare on a chain must be, as the venues
  * declare it (decision 0302): each input pinned to the wallet, such as a swap's receiver or a
  * deposit's depositor, and each `bytes` input a bridge deposit keeps empty. A call that pins and
- * empties nothing adds no check. A bridge deposit's recipient, chain and least output come from the
- * confirmed plan, which the bridge intent adds.
+ * empties nothing adds no check. A bridge deposit's check is marked with its recipient and chain
+ * inputs, whose values and least output the confirmed plan names; until the bridge intent adds
+ * them, the signer refuses every deposit.
  */
 export function callInputChecksOf(
   chain: RegisteredChain,
@@ -16,8 +17,11 @@ export function callInputChecksOf(
     .flatMap((item) => item.calls ?? [])
     .flatMap(({ abi, walletInputs, bridge }): readonly CallInputCheck[] => {
       const empty = bridge?.emptyInputs ?? [];
-      return walletInputs.length === 0 && empty.length === 0
-        ? []
-        : [{ abi, wallet: walletInputs, equal: {}, empty, atLeast: {} }];
+      const check = { abi, wallet: walletInputs, equal: {}, empty, atLeast: {} };
+      if (bridge !== undefined) {
+        const { recipient, destinationChain } = bridge;
+        return [{ ...check, bridge: { recipient, destinationChain } }];
+      }
+      return walletInputs.length === 0 && empty.length === 0 ? [] : [check];
     });
 }
