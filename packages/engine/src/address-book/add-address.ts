@@ -11,7 +11,7 @@ import {
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
-import { isLaunchWalletAccount } from "../install/launch-wallet.js";
+import { roleOfWalletAccount } from "../install/role-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall } from "../operations/engine-call.js";
@@ -136,7 +136,7 @@ export async function addAddress(
     return account;
   }
   const { wallets } = await options.install.read({ signal });
-  if (isLaunchWalletAccount(wallets, account.value, options.chains)) {
+  if (roleOfWalletAccount(wallets, account.value, options.chains) === "launch") {
     return err("address.launch_wallet");
   }
   const saved = found.value.addressBook.find((entry) => entry.account === account.value);

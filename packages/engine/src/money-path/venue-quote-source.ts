@@ -1,7 +1,7 @@
 import type { ChainRegistry, PriceSource, RegisteredChain, Signer } from "@binference/chain";
 import { type Clock, err, type Id, ok, type Result } from "@binference/core";
 import type { BuiltQuote } from "../confirmations/stored-intent.js";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { roleWalletOf } from "../install/role-wallet.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { QuoteFailure } from "../intents/intent-reason.js";
@@ -70,7 +70,11 @@ async function requote(
   const facts = await options.wallets.facts(query, { signal });
   const nativeAsset = nativeAssetOf(chain);
   const placing = { limits, account: account.value, chains, host, nativeAsset, holdings };
-  const launch = await launchWalletOf(options.install, record.agentId, { signal });
+  const launch = await roleWalletOf(
+    options.install,
+    { agent: record.agentId, role: "launch" },
+    { signal },
+  );
   const launchWallet = launch === undefined ? {} : { launchWallet: launch.id };
   const placed = await placeTrade(ask, { ...placing, ...launchWallet, wallet, isPaper, signal });
   if (placed.refusal !== undefined) {

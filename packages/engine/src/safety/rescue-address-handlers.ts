@@ -1,8 +1,8 @@
 import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
-import { isLaunchWalletAccount } from "../install/launch-wallet.js";
 import type { RescueMove } from "../install/rescue-record.js";
+import { roleOfWalletAccount } from "../install/role-wallet.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
@@ -92,7 +92,7 @@ async function setRescue(
   }
   const { signal } = call;
   const { wallets } = await options.install.read({ signal });
-  if (isLaunchWalletAccount(wallets, address.value, options.chains)) {
+  if (roleOfWalletAccount(wallets, address.value, options.chains) === "launch") {
     return err("address.launch_wallet");
   }
   await settleRescueCeilings(options, signal);

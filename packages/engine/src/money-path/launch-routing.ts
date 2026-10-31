@@ -1,6 +1,6 @@
 import type { AssetRef, ChainRegistry, RegisteredChain, Signer } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { roleWalletOf } from "../install/role-wallet.js";
 import type { InstallStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { assetInfoOf } from "./asset-infos.js";
@@ -98,7 +98,11 @@ export async function routedWalletOf(
   if (routing === undefined) {
     return ok(trade.owned[0]);
   }
-  const launch = await launchWalletOf(routing.install, trade.agent, { signal });
+  const launch = await roleWalletOf(
+    routing.install,
+    { agent: trade.agent, role: "launch" },
+    { signal },
+  );
   const fallback = trade.owned.find((wallet) => wallet !== launch?.id);
   if (launch === undefined || trade.isPaper) {
     return ok(fallback);

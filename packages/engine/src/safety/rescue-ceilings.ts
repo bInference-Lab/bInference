@@ -3,9 +3,9 @@ import { type Clock, err, type Id, ok, type Result, type Secret } from "@binfere
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CeilingRefusal } from "../install/ceiling-change.js";
 import type { InstallFacts } from "../install/install-record.js";
-import { isLaunchWalletAccount } from "../install/launch-wallet.js";
 import type { CeilingEditor } from "../install/ports.js";
 import type { RescueCeiling } from "../install/rescue-record.js";
+import { roleOfWalletAccount } from "../install/role-wallet.js";
 import { type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { AgentStore, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -65,7 +65,7 @@ async function walletCeilings(
   // A launch wallet's address never reaches a ceiling, though a book restored from a backup may
   // hold it (decision 0218).
   const payable = (account: AccountRef) =>
-    !isLaunchWalletAccount(facts.wallets, account, options.chains);
+    roleOfWalletAccount(facts.wallets, account, options.chains) === undefined;
   return live.map((wallet) => ({
     agent: wallet.agentId,
     ceiling: wallet.policyId,

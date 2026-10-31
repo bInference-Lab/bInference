@@ -3,7 +3,7 @@ import { err, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
 import { z } from "zod";
 import type { WalletRecord } from "../install/install-record.js";
-import { launchWalletIn } from "../install/launch-wallet.js";
+import { roleWalletIn } from "../install/role-wallet.js";
 import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import { type AgentListHandlers, createAgentListHandlers } from "./agent-list-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
@@ -58,7 +58,7 @@ async function listedView(
   const { wallet, wallets } = listed;
   const view = await walletViewOf(options, wallet, signal);
   const isLive = wallet.role === "launch" && wallet.archivedAtMs === undefined;
-  const isExtra = isLive && launchWalletIn(wallets, wallet.agentId)?.id !== wallet.id;
+  const isExtra = isLive && roleWalletIn(wallets, wallet.agentId, "launch")?.id !== wallet.id;
   if (view === undefined || !isLive) {
     return view;
   }

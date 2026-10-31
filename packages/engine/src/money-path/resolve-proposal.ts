@@ -9,7 +9,7 @@ import {
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { roleWalletOf } from "../install/role-wallet.js";
 import type { WalletFactsSource } from "../ports.js";
 import { type LaunchRouting, routedWalletOf } from "./launch-routing.js";
 import { type TradeAsk, tradeAskOf, tradeChainOf } from "./swap-trade.js";
@@ -81,7 +81,7 @@ async function launchIdOf(
   const { launches } = options;
   return launches === undefined
     ? undefined
-    : (await launchWalletOf(launches.install, agent, { signal }))?.id;
+    : (await roleWalletOf(launches.install, { agent, role: "launch" }, { signal }))?.id;
 }
 
 // A routing read that failed holds the intent on the default wallet, to end it (decision 0218).

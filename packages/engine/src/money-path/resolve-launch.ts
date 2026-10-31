@@ -15,7 +15,7 @@ import {
   type ProtocolErrorCode,
 } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
-import { isInstallWalletAccount, launchWalletOf } from "../install/launch-wallet.js";
+import { isInstallWalletAccount, roleWalletOf } from "../install/role-wallet.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { AgentStore, InstallStore, WalletFactsSource } from "../ports.js";
@@ -116,7 +116,9 @@ async function walletOf(
   const owned = await options.wallets.wallets(request.agent, { signal });
   const { install } = options;
   const launch =
-    install === undefined ? undefined : await launchWalletOf(install, request.agent, { signal });
+    install === undefined
+      ? undefined
+      : await roleWalletOf(install, { agent: request.agent, role: "launch" }, { signal });
   const named = request.wallet;
   const picked =
     named ?? (isPaper ? undefined : launch?.id) ?? owned.find((wallet) => wallet !== launch?.id);

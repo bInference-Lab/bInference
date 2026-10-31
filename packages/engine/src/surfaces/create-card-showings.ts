@@ -6,7 +6,7 @@ import type { CardClosing } from "../confirmations/card-closing.js";
 import { assetsOfLine } from "../confirmations/card-line.js";
 import { type Card, drawCard } from "../confirmations/draw-card.js";
 import { isFirstLiveCard } from "../confirmations/first-live-card.js";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { roleWalletOf } from "../install/role-wallet.js";
 import type { CardCloseReason, CardRecord } from "../intents/card-record.js";
 import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -193,7 +193,11 @@ async function drawOpen(
   const cards = card.version > 1 ? await intents.cards(record.id, call) : [];
   const previous = cards.find((each) => each.version === card.version - 1);
   const client = card.autoAsk === "mcp" ? await clientOf(options, record, call) : "";
-  const launch = await launchWalletOf(options.install, record.agentId, call);
+  const launch = await roleWalletOf(
+    options.install,
+    { agent: record.agentId, role: "launch" },
+    call,
+  );
   const named = launch?.id === record.walletId ? { launchWallet: launch.label } : {};
   const locked = options.isLocked === undefined ? {} : { isLocked: options.isLocked() };
   const source = {

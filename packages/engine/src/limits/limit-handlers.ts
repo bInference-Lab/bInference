@@ -18,7 +18,7 @@ import type { AgentMode, AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { WalletRecord } from "../install/install-record.js";
-import { launchWalletIn } from "../install/launch-wallet.js";
+import { roleWalletIn } from "../install/role-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
 import {
@@ -214,7 +214,7 @@ async function refusalOf(
   }
   const launched = added.filter((venue) => needsLaunchWallet(options.host, venue));
   const { wallets } = await options.install.read({ signal: call.signal });
-  const launchWallet = launchWalletIn(wallets, call.args.agent);
+  const launchWallet = roleWalletIn(wallets, call.args.agent, "launch");
   if (launched.length > 0 && agent.mode === "live") {
     const refusal = launchRefusal(options, { venues: launched, launchWallet });
     if (refusal !== undefined) {

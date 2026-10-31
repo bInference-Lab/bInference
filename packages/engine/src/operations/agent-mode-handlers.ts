@@ -5,7 +5,7 @@ import type { AgentView, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentMode, AgentRecord } from "../agents/agent-record.js";
 import type { LimitsRecord } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { roleWalletOf } from "../install/role-wallet.js";
 import { launchRefusal, needsLaunchWallet } from "../limits/limit-handlers.js";
 import type { AgentStore, ConfigJournal, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -91,7 +91,11 @@ async function launchVenueRefusal(
   if (venues.length === 0) {
     return undefined;
   }
-  const launchWallet = await launchWalletOf(options.install, found.agent.id, { signal });
+  const launchWallet = await roleWalletOf(
+    options.install,
+    { agent: found.agent.id, role: "launch" },
+    { signal },
+  );
   return launchRefusal(options, { venues, launchWallet });
 }
 

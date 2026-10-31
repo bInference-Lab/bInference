@@ -11,8 +11,8 @@ import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { WalletDraft } from "../install/install-record.js";
-import { isLaunchWalletAccount, launchWalletOf } from "../install/launch-wallet.js";
 import type { WalletMaker } from "../install/ports.js";
+import { roleOfWalletAccount, roleWalletOf } from "../install/role-wallet.js";
 import type { WalletRefusal } from "../install/wallet-request.js";
 import { rescueAt } from "../policy/rescue-change.js";
 import type { ConfigJournal } from "../ports.js";
@@ -54,7 +54,7 @@ async function recipientsOf(
   const saved = settings.addressBook
     .filter((entry) => entry.inCeilingAtMs !== undefined)
     .map((entry) => entry.account)
-    .filter((account) => !isLaunchWalletAccount(facts.wallets, account, options.chains));
+    .filter((account) => roleOfWalletAccount(facts.wallets, account, options.chains) === undefined);
   const waiting = pendingRescue === undefined ? [] : [pendingRescue.address];
   return ok([...new Set([rescueAddress, ...waiting, ...saved])]);
 }
@@ -68,7 +68,11 @@ async function launchRefusal(
   if (options.host.launchWalletCalls().length === 0) {
     return "wallet.no_launch_calls";
   }
-  const held = await launchWalletOf(options.install, call.args.agent, { signal: call.signal });
+  const held = await roleWalletOf(
+    options.install,
+    { agent: call.args.agent, role: "launch" },
+    { signal: call.signal },
+  );
   return held === undefined ? undefined : "wallet.launch_exists";
 }
 

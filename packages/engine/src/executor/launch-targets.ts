@@ -1,5 +1,5 @@
 import type { AccountRef } from "@binference/chain";
-import { launchWalletOf } from "../install/launch-wallet.js";
+import { roleWalletOf } from "../install/role-wallet.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
 import type { LaunchReadFailure } from "../intents/intent-reason.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -57,7 +57,11 @@ export async function launchTargetsOf(
   if (curves === undefined || stores === undefined || trade === undefined) {
     return none;
   }
-  const launch = await launchWalletOf(stores.install, record.agentId, { signal });
+  const launch = await roleWalletOf(
+    stores.install,
+    { agent: record.agentId, role: "launch" },
+    { signal },
+  );
   if (launch?.id !== record.walletId) {
     return none;
   }
