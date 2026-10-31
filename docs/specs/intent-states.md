@@ -9,10 +9,12 @@ to 0126 ([0121](../DECISIONS.md#d0121), [0122](../DECISIONS.md#d0122), [0123](..
 [0127](../DECISIONS.md#d0127), [0128](../DECISIONS.md#d0128), 0143 to 0147
 ([0143](../DECISIONS.md#d0143), [0144](../DECISIONS.md#d0144), [0145](../DECISIONS.md#d0145),
 [0146](../DECISIONS.md#d0146), [0147](../DECISIONS.md#d0147)), [0157](../DECISIONS.md#d0157)
-[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195), [0210](../DECISIONS.md#d0210), [0211](../DECISIONS.md#d0211), [0234](../DECISIONS.md#d0234) and [0296](../DECISIONS.md#d0296). Accepted by the owner on 2026-10-12: a token launch refused in
+[0179](../DECISIONS.md#d0179), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190), [0195](../DECISIONS.md#d0195), [0210](../DECISIONS.md#d0210), [0211](../DECISIONS.md#d0211), [0234](../DECISIONS.md#d0234), [0296](../DECISIONS.md#d0296), [0297](../DECISIONS.md#d0297) and [0299](../DECISIONS.md#d0299). Accepted by the owner on 2026-10-12: a token launch refused in
 paper mode (section 4), the place of a `buy` or `sell`, exit orders on one position, including one
 whose position another sale emptied, and a copy order's own skip (section 5), and invariants 11
-to 13.
+to 13. Accepted by the owner on 2026-10-30: sends by name, staking with its caps and
+auto mode, bridges with their delivery read, and webhook rule cards (sections 3 to 5), and
+invariants 18 to 20.
 
 An intent is one action the owner may confirm: a swap, a send, a stake, a rescue, an unfreeze, an
 order fill. It
@@ -77,6 +79,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | (none)                       | `proposed`              | `intent/propose`, an order fill, a webhook alert, `safety/rescue`, `safety/unfreeze`, `order/create` | args valid; agent exists and is not archived; a rescue is stored live in either mode ([decision 0100](../DECISIONS.md#d0100)), and so is an unfreeze ([decision 0128](../DECISIONS.md#d0128))                                                                                                          |
 | `proposed`                   | `checked`               | resolve and policy                                                                                   | every policy rule passes (section 4)                                                                                                                                                                                                                                                                   |
 | `proposed`                   | `rejected_policy`       | resolve and policy                                                                                   | a policy rule fails; the reason is stored                                                                                                                                                                                                                                                              |
+| `proposed`                   | `failed_check`          | resolve                                                                                              | a send's `.bnb` name does not resolve (`name_unresolved`) or resolves to a contract (`name_contract`); nothing is quoted ([spec 1, section 7.3](protocol.md#section-7-3))                                                                                                                              |
 | `checked`                    | `quoted`                | venue quote and build                                                                                | decode matches: `to` among the venue's declared contracts, recipient is the agent's own wallet (or the confirmed send target), amounts match, minimum out at least the policy's, deadline at most 60 s                                                                                                 |
 | `checked`                    | `failed_check`          | venue quote and build                                                                                | no route, venue down, or decode mismatch; for a token launch a fault or a stop once its upload began, `upload_lost` with `notice.launchStopped`, at once or at the startup's repair ([decision 0237](../DECISIONS.md#d0237))                                                                           |
 | `quoted`                     | `assessed`              | risk check                                                                                           | token verified, or every risk source passes ([decision 0112](../DECISIONS.md#d0112))                                                                                                                                                                                                                   |
@@ -92,16 +95,17 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `awaiting_confirmation`      | `awaiting_confirmation` | tap with a stale quote                                                                               | quote older than 10 s: re-quote and re-simulate; a minimum out worse by more than 0.5% opens card version n+1                                                                                                                                                                                          |
 | `awaiting_confirmation`      | `confirmed`             | tap Confirm, `intent/confirm`                                                                        | the card version tapped is the current one; the card has not expired; the rolling cap still holds ([decision 0136](../DECISIONS.md#d0136))                                                                                                                                                             |
 | `awaiting_confirmation`      | `denied`                | tap Cancel, `intent/deny`                                                                            |                                                                                                                                                                                                                                                                                                        |
-| `awaiting_confirmation`      | `expired`               | card timer                                                                                           | 60 s for trades and CEX orders; 10 min for sends, DeFi, bridges, rescue, unfreezes, auto orders, identity, token launches and approval revokes                                                                                                                                                         |
+| `awaiting_confirmation`      | `expired`               | card timer                                                                                           | 60 s for trades and CEX orders; 10 min for sends, staking, bridges, rescue, unfreezes, auto orders, identity, token launches and approval revokes                                                                                                                                                      |
 | `confirmed`                  | `expired`               | the executor finds its authorization ran out                                                         | the confirmation, the auto grant or a fill's grant expired before a queue took it, so nothing was signed; the owner gets `notice.confirmationLapsed` ([decision 0120](../DECISIONS.md#d0120))                                                                                                          |
 | `confirmed`                  | `awaiting_confirmation` | the fee wait outlasted the confirmation                                                              | a tapped intent held while the fee per gas was above the cap, its confirmation run out: card version n+1, and `notice.feeAboveCap` ([decision 0143](../DECISIONS.md#d0143))                                                                                                                            |
 | any state before `executing` | `cancelled`             | `intent/cancel`, freeze, engine stopping                                                             | not yet signed; a freeze leaves a rescue alone ([decision 0099](../DECISIONS.md#d0099)); a token launch a stop left in `assessed` or `simulated` once its pin wait and a card's life have passed is cancelled as engine stopping, with `notice.launchStopped` ([decision 0237](../DECISIONS.md#d0237)) |
 | `confirmed`                  | `paper_filled`          | paper mode                                                                                           | a paper intent, which a rescue never is ([decision 0100](../DECISIONS.md#d0100))                                                                                                                                                                                                                       |
 | `confirmed`                  | `failed_check`          | paper mode, at the fill                                                                              | the paper portfolio holds less of a sale's or a swap's input than its confirmed quote spends; the reason `nothing_to_sell` is stored, and nothing moves                                                                                                                                                |
 | `confirmed`                  | `failed_check`          | wallet queue takes it                                                                                | a launch wallet's curve trade whose launch its launchpad cannot read now (`launch_unread`), or whose launchpad no longer holds the token on that curve (`launch_moved`); nothing is signed and the owner gets `notice.launchUnsent` ([decision 0218](../DECISIONS.md#d0218))                           |
+| `confirmed`                  | `failed_check`          | wallet queue takes it                                                                                | a send by name whose name, read again, points elsewhere than its card or nowhere (`name_moved`); nothing is signed and the owner gets `notice.nameMoved`                                                                                                                                               |
 | `confirmed`                  | `executing`             | wallet queue takes it                                                                                | the agent is live, or the intent is a rescue; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                                                                                                                     |
 | `confirmed`                  | `reconciled`            | the unfreeze is written                                                                              | an unfreeze: the agents its card named, and the install for a whole-install unfreeze, are unfrozen in the same write ([decision 0128](../DECISIONS.md#d0128))                                                                                                                                          |
-| `confirmed`                  | `reconciled`            | the auto order is written                                                                            | an `autoOrder`: its order moved to `active`, or ended, in its own write ([decision 0189](../DECISIONS.md#d0189))                                                                                                                                                                                       |
+| `confirmed`                  | `reconciled`            | the auto order is written                                                                            | an `autoOrder`: its order moved to `active`, or ended, in its own write ([decision 0189](../DECISIONS.md#d0189)); a `webhookRule` the same for its rule ([decision 0299](../DECISIONS.md#d0299))                                                                                                       |
 | `executing`                  | `included`              | every step's receipt seen                                                                            | every receipt has status 1                                                                                                                                                                                                                                                                             |
 | `executing`                  | `failed_onchain`        | a step's receipt has status 0, or a step was cancelled (section 6)                                   | the reason `reverted` or `stuck_cancelled` is stored; later steps are not sent                                                                                                                                                                                                                         |
 | `executing`                  | `unknown_after_send`    | startup finds a sent step with no known fate                                                         |                                                                                                                                                                                                                                                                                                        |
@@ -112,7 +116,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `executing`                  | `failed_onchain`        | a step taken was never signed, and nothing will sign it                                              | an earlier step landed; the reason `step_unsent` is stored and the owner gets `notice.stepUnsent` ([decision 0109](../DECISIONS.md#d0109)); a rescue retries instead                                                                                                                                   |
 | `included`                   | `finalized`             | finality                                                                                             | the last step's block is final                                                                                                                                                                                                                                                                         |
 | `included`                   | `executing`             | a reorg removes a step's block before it is final                                                    |                                                                                                                                                                                                                                                                                                        |
-| `finalized`                  | `reconciled`            | reconciliation                                                                                       | fills decoded and compared with the simulation; a difference above 1% raises an alarm notice but still reconciles                                                                                                                                                                                      |
+| `finalized`                  | `reconciled`            | reconciliation; for a bridge, its delivery or refund read (section 5)                                | fills decoded and compared with the simulation; a difference above 1% raises an alarm notice but still reconciles                                                                                                                                                                                      |
 
 The deadline check of `checked → quoted` passes a trade call that carries no deadline only from a
 venue that declares its calls on the chain carry none, such as a launchpad's curve call; its
@@ -143,8 +147,8 @@ The reason stored with `rejected_policy` is one of:
 | Reason                 | When                                                                                                                                                                                                            |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `frozen`               | The agent or the install is frozen                                                                                                                                                                              |
-| `paper_only`           | A live-only action (a send, a bridge, a CEX order, identity, a token launch) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))                       |
-| `per_trade_cap`        | USD value above the per-trade cap                                                                                                                                                                               |
+| `paper_only`           | A live-only action (a send, an approval revoke, a bridge, a CEX order, identity, a token launch) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))   |
+| `per_trade_cap`        | USD value above the per-trade cap; a stake counts at its value, an unstake and a claim never ([decision 0296](../DECISIONS.md#d0296))                                                                           |
 | `ceiling`              | Above the wallet's Privy policy, which only the owner can raise ([decision 0085](../DECISIONS.md#d0085), spec 5)                                                                                                |
 | `daily_cap`            | The rolling 24 hours would pass the cap ([decision 0046](../DECISIONS.md#d0046)), each confirmation counted at its judged value ([decision 0136](../DECISIONS.md#d0136))                                        |
 | `gas_reserve`          | The wallet would drop below its reserve ([decision 0045](../DECISIONS.md#d0045))                                                                                                                                |
@@ -156,6 +160,7 @@ The reason stored with `rejected_policy` is one of:
 | `send_level`           | The send target is not allowed at the current send level                                                                                                                                                        |
 | `unsaved_address`      | The send target is neither the rescue address nor a saved address ([decision 0091](../DECISIONS.md#d0091)); saving one needs the owner key                                                                      |
 | `outside_content_send` | A send or bridge proposed in a turn with the outside-content mark, to an address not in the address book                                                                                                        |
+| `validator_jailed`     | A stake names a validator StakeHub lists as jailed; an unstake or a claim from one passes                                                                                                                       |
 | `no_price`             | No USD value could be found ([decision 0059](../DECISIONS.md#d0059))                                                                                                                                            |
 
 Risk reasons for `risk_blocked`: `honeypot`, `cannot_sell`, `hidden_owner`, `snipe_tax` (a buy
@@ -166,7 +171,10 @@ counted once, [decision 0215](../DECISIONS.md#d0215), on a token with no buy tax
 `high_tax_with_pool_fee` (the same with the token's buy tax and the fee together,
 [decision 0216](../DECISIONS.md#d0216)), `low_liquidity`, `sources_down`, `blacklisted`.
 
-Check reasons for `failed_check`: `no_route`, `venue_down`, `decode_mismatch`,
+Check reasons for `failed_check`: `name_unresolved` and `name_contract` at the resolve step, and
+`name_moved` when the queue takes a send by name; `nothing_to_claim` (a claim with nothing ready)
+and `below_min_stake` (a stake under the venue's least) at the venue's quote, before any card;
+`no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
 token the wallet holds none of, or whose share rounds to zero; or a paper sale or swap whose paper
 portfolio holds less of its input at the fill than its confirmed quote spends), `balance_unread` (a
@@ -319,12 +327,12 @@ and `step_unsent` (a step never signed after an earlier one landed,
   copy orders of that leader in any state, is
   skipped with `copy_daily_cap`; each buy that filled counts at the value the policy judged it at.
   A copy order waits after skips only once its fills failed on chain, as a DCA order does.
-- **Webhook rule fills** work the same way with `authorizedBy: { webhookRule, alertId }`.
 - **Auto mode** ([decision 0088](../DECISIONS.md#d0088)): an intent gets
   `authorizedBy: { approvalMode: "auto", modeVersion }` and skips `awaiting_confirmation` only when
   all of these hold at `simulated`: the agent's mode is `auto`; the engine is not locked, or the
   intent is a paper one ([decision 0103](../DECISIONS.md#d0103)); the kind is `swap`,
-  `buy`, `sell`, or a `stake` move inside the agent's own positions; it sells no token on
+  `buy`, `sell`, or a `stake` that stakes within the caps or claims, inside the agent's own
+  positions ([decision 0296](../DECISIONS.md#d0296)); it sells no token on
   the deny list ([decision 0101](../DECISIONS.md#d0101)); it fits the per-trade and rolling-day
   caps; its fee per gas is at most the chain's network fee cap
   ([decision 0102](../DECISIONS.md#d0102)); any approval goes to a registry spender; the proposing
@@ -335,10 +343,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
   runtime carries the mark, so no client can clear it.
   Anything else opens a card. A receipt is sent when it settles. The test checks these conditions in
   this order and names the first that fails: `manual` (the agent is in manual mode), `locked` (the
-  engine is locked and the intent is live), `send`, `kind`, `deniedToken` (it sells a token on the
-  deny list), `overCap`, `overFeeCap` (its fee per gas is above the network fee cap), `spender` (an
-  approval to a spender outside the registry), `outside` or `mcp`. The card shows each code but
-  `manual` with its `autoAsks` message (spec 4, section 3.4).
+  engine is locked and the intent is live), `send`, `kind`, `unstake` (an unstake), `deniedToken`
+  (it sells a token on the deny list), `overCap`, `overFeeCap` (its fee per gas is above the network
+  fee cap), `spender` (an approval to a spender outside the registry), `outside` or `mcp`. The card
+  shows each code but `manual` with its `autoAsks` message (spec 4, section 3.4).
 - **A token on the deny list** ([decision 0101](../DECISIONS.md#d0101)) may leave the wallet, by a
   sale, a swap or a send, but never enter it. The policy passes such an intent with the mark
   `sellsDeniedToken`, which the auto test reads, so it always opens a card.
@@ -392,9 +400,64 @@ and `step_unsent` (a step never signed after an earlier one landed,
   and no step: it reaches its card at once, which never passes the auto test and lasts 10 minutes.
   On the tap, one write unfreezes what the card named and moves it to `reconciled`; the executor
   never takes it. A freeze cancels it like any unsigned intent.
-- **Bridges** ([decision 0067](../DECISIONS.md#d0067)) end in `reconciled` when the source
-  transaction is final and the bridge reports delivery, or after 2 hours with the delivery marked
-  unknown and a notice.
+- **Sends** ([decision 0091](../DECISIONS.md#d0091)). A send pays the rescue address or a saved
+  address on the wallet's chain, under the send level; anything else ends `rejected_policy` with
+  `unsaved_address` or `send_level`. A send by `.bnb` name resolves it at the resolve step and
+  keeps the name and the address, which its card shows; the address must be saved as any other.
+  When the wallet queue takes it, the engine reads the name again: an address that differs from
+  the card's, or none, ends it `failed_check` with `name_moved` before anything is signed, and the
+  owner gets `notice.nameMoved`. A send never runs in auto mode (`send`).
+- **Staking** ([decision 0296](../DECISIONS.md#d0296)). A `stake` intent stakes, unstakes or
+  claims through its venue. The checks:
+  - **Caps.** A stake counts its USD value, its BNB at the price
+    [decision 0059](../DECISIONS.md#d0059) gives, against the per-trade cap and the rolling 24-hour
+    cap, and is refused over either as a trade is; it never spends the gas reserve. An unstake and
+    a claim store no value, so neither cap counts them.
+  - **Own wallet only.** The quote step's decode holds every argument that names who is paid or
+    credited (a delegator, a beneficiary, a recipient) to the agent's own wallet; the ceiling binds
+    the same arguments.
+  - **Venue checks.** A stake to a jailed validator ends `rejected_policy` with
+    `validator_jailed`, one below the venue's least `failed_check` with `below_min_stake`, and a
+    claim with nothing ready `failed_check` with `nothing_to_claim`, each before any card.
+  - **Auto mode.** A stake within the caps and a claim may pass the auto test; an unstake never
+    does (`unstake`): it locks the funds for the unbonding time.
+  - **Unbonding.** An unstake's card and receipt say when its funds can be claimed, read from the
+    venue at the quote and again at reconciliation, which stores the venue's own request
+    ([spec 3, section 2.3](database.md#section-2-3)). The owner gets `notice.claimReady` once
+    they can be claimed.
+  - **Paper mode.** A paper stake moves paper BNB into a paper staking position at the venue's
+    quote; a paper unstake waits the venue's unbonding time before a paper claim can take it back.
+- **Bridges** ([decisions 0067](../DECISIONS.md#d0067) and [0297](../DECISIONS.md#d0297)). A bridge
+  is a cross-chain send: it pays an address book entry on its destination chain, or the rescue
+  address on an EVM destination chain while that address holds no code on either chain, under
+  the send level. It counts its USD value against both caps, never runs in auto mode, and ends
+  `rejected_policy` with `paper_only` in paper mode.
+  - **One deposit.** Its plan is an exact approval when the token needs one, then one deposit. The
+    quote step decodes the deposit: its recipient bytes, through the address codec of the
+    recipient's chain family, equal the entry's; its destination chain is the entry's; its
+    depositor is the wallet; its message is empty. A deposit is never signed again once a
+    transaction used its nonce.
+  - **Delivery.** `finalized` means the deposit is final and the bridge is in transit. From there,
+    the destination chain family's reader reads the transaction the venue's status names for the
+    fill, at that chain's final commitment, and finds the payment to the recipient in the
+    delivered token, at least the quote's minimum: an `eip155` chain's receipt and its transfer
+    logs (or the native value) to the recipient, Solana's transaction at `finalized` commitment
+    and the recipient's change of the delivered mint
+    ([decision 0298](../DECISIONS.md#d0298)). Only that read moves the intent to `reconciled`, its
+    delivery `delivered`. A status that says filled while the read finds nothing changes nothing.
+  - **Refund.** A refund the venue pays back to the wallet, read on the source chain the same way,
+    moves the intent to `reconciled` with its delivery `refunded`, and the units come back as an
+    arrival.
+  - **Late.** Two hours after the deposit is final, an undelivered bridge's delivery is marked
+    `late` once, and the owner gets `notice.bridgeLate`. No timer ends it: it waits in
+    `finalized` until a delivery or a refund is read, and the daily summary counts it.
+- **Webhook rule cards** ([decision 0299](../DECISIONS.md#d0299)): `webhookRule/create` stores a
+  `webhookRule` intent in the agent's mode, as `order/create` stores an `autoOrder` one: its quote
+  is the rule's bounds, it passes policy, quote, risk and simulation with nothing to check, never
+  passes the auto test (`kind`), and opens one card. On the Confirm the rule becomes `active` in one
+  write that checks the confirmation; a card that ends otherwise ends the rule. Each accepted alert
+  of an active rule is a fill with `authorizedBy: { webhookRule, alertId }`, run as an auto order's
+  fill, and a live one follows the live fills switch.
 - **Identity registration** ([decision 0071](../DECISIONS.md#d0071)) is a single step to the
   ERC-8004 registry.
 - **Token launch** ([decision 0082](../DECISIONS.md#d0082)): the image and metadata are uploaded and
@@ -582,15 +645,17 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 | `reconciled`, `paper_filled`                      | ✓            | `intent/changed` | Every fill                                                                 |
 | `failed_onchain`, `unknown_after_send`            | ✓            | `intent/changed` | Always                                                                     |
 
-A move to `cancelled` on a step never signed has no card to close; the owner gets
-`notice.notSigned` instead ([decision 0109](../DECISIONS.md#d0109)). A token launch gets words of
-its own: `notice.launchNotSigned` in place of `notice.notSigned`, and `notice.launchStepUnsent`,
-which names the exact approval that still stands, in place of `notice.stepUnsent`
-([decision 0289](../DECISIONS.md#d0289)). A move from `confirmed` to
-`expired` at recovery has none either; the owner gets `notice.confirmationLapsed`
-([decision 0120](../DECISIONS.md#d0120)). A dropped step's notice is
-`notice.stepDropped`, or `notice.stepDroppedPartWay` once an earlier step landed
-([decision 0115](../DECISIONS.md#d0115)).
+A bridge's `finalized` move pushes `intent/changed` and edits its receipt to `receipt.bridgeSent`;
+its delivery's `late` mark pushes `intent/changed` with `notice.bridgeLate`, and its `reconciled`
+move tells a late bridge's arrival with `notice.bridgeArrived` and a refund with
+`notice.bridgeRefunded` ([decision 0297](../DECISIONS.md#d0297)). A move to `cancelled` on a step
+never signed has no card to close; the owner gets `notice.notSigned` instead
+([decision 0109](../DECISIONS.md#d0109)). A token launch gets words of its own: `notice.launchNotSigned` in
+place of `notice.notSigned`, and `notice.launchStepUnsent`, which names the exact approval that
+still stands, in place of `notice.stepUnsent` ([decision 0289](../DECISIONS.md#d0289)). A move from
+`confirmed` to `expired` at recovery has none either; the owner gets `notice.confirmationLapsed`
+([decision 0120](../DECISIONS.md#d0120)). A dropped step's notice is `notice.stepDropped`, or
+`notice.stepDroppedPartWay` once an earlier step landed ([decision 0115](../DECISIONS.md#d0115)).
 
 Every other transition pushes `intent/changed` without a ledger entry. The ledger entry records the
 state, who or what caused it (surface, device or token), and the hashes involved; a paper intent's
@@ -630,12 +695,12 @@ Property tests (fast-check) hold these for every generated history:
 6. Two steps never hold the same nonce in `signed` or `sent` for one wallet, except a step and its
    `superseded` predecessor.
 7. Every terminal state has exactly one ledger entry, and the ledger's hash chain verifies.
-8. An auto-authorized intent is never a send, withdrawal, bridge, launch or new-spender approval,
-   never exceeds a cap, never sells a token on the deny list, never pays a fee per gas above the
-   network fee cap, and never comes from an outside-content turn or an MCP client. A fill is held
-   to the same, but for the outside-content mark its order's confirmed card carried: it is a buy or
-   a sell of its order's token in its order's wallet and mode, inside its order's bounds, and is
-   confirmed only on a fill check that names no breach ([decision 0195](../DECISIONS.md#d0195)).
+8. An auto-authorized intent is never a send, withdrawal, unstake, bridge, launch or new-spender
+   approval, never exceeds a cap, never sells a token on the deny list, never pays a fee per gas
+   above the network fee cap, and never comes from an outside-content turn or an MCP client. A fill
+   is held to the same, but for the outside-content mark its order's confirmed card carried: it is a
+   buy or a sell of its order's token in its order's wallet and mode, inside its order's bounds, and
+   is confirmed only on a fill check that names no breach ([decision 0195](../DECISIONS.md#d0195)).
 9. A send's target is always the rescue address or a saved address
    ([decision 0091](../DECISIONS.md#d0091)).
 10. No 24-hour window holds confirmations of one agent in one mode whose values together pass its
@@ -654,3 +719,11 @@ Property tests (fast-check) hold these for every generated history:
     ([decision 0210](../DECISIONS.md#d0210)).
 17. A token launch never reaches `assessed`, its card, `confirmed` or `executing` before its
     launchpad reports the pin ([decision 0234](../DECISIONS.md#d0234)).
+18. No stake passes the per-trade or the rolling 24-hour cap, and no unstake or claim counts against
+    either ([decision 0296](../DECISIONS.md#d0296)).
+19. A staking move pays or credits no account but the agent's own wallet, and a bridge pays no
+    recipient but the rescue address or an address book entry of its destination chain
+    ([decision 0297](../DECISIONS.md#d0297)).
+20. A bridge reaches `reconciled` only after a read of its destination chain found the payment to
+    its recipient, or a read of its source chain found the refund; a send by name signs only to the
+    address its card showed.
