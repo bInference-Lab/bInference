@@ -16,3 +16,4 @@ export type {
   DepartureRecord,
   DepartureWrite,
 } from "./positions/departure-record.js";
+export { recheckName, type CardName, type NameRecheck } from "./names/recheck-name.js";
