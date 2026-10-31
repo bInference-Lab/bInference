@@ -133,3 +133,58 @@ export function withTransaction(
     request: { ...input.request, body: { method: "eth_signTransaction", params: { transaction } } },
   };
 }
+
+/**
+ * A bridge deposit's function in the shape the signer reads, as its JSON ABI entry: two addresses,
+ * two amounts and a message, like Across's deposit with fewer inputs.
+ */
+export const bridgeDepositAbi: JsonValue = {
+  type: "function",
+  name: "deposit",
+  inputs: [
+    { type: "address", name: "depositor" },
+    { type: "address", name: "recipient" },
+    { type: "uint256", name: "outputAmount" },
+    { type: "uint256", name: "destinationChainId" },
+    { type: "bytes", name: "message" },
+  ],
+};
+
+/** What a bridge deposit the fixtures write names. */
+export interface FixtureDeposit {
+  readonly depositor: string;
+  readonly recipient: string;
+  readonly destinationChainId: bigint;
+  readonly outputAmount: bigint;
+  /** The message's bytes as hex, without `0x`; empty for none. */
+  readonly message: string;
+}
+
+/**
+ * The calldata of {@link bridgeDepositAbi} (selector `0x71b8dc69`), written word by word apart from
+ * the signer's reader: five heads, the message's offset among them, then its length and bytes.
+ */
+export function bridgeDepositCalldata(deposit: FixtureDeposit): string {
+  const hex = (value: bigint): string => word(value.toString(16));
+  const length = BigInt(deposit.message.length / 2);
+  const padded = deposit.message.padEnd(Math.ceil(deposit.message.length / 64) * 64, "0");
+  return [
+    "0x71b8dc69",
+    word(deposit.depositor.slice(2)),
+    word(deposit.recipient.slice(2)),
+    hex(deposit.outputAmount),
+    hex(deposit.destinationChainId),
+    hex(5n * 32n),
+    hex(length),
+    padded,
+  ].join("");
+}
+
+/** A deposit to the saved address on chain 8453 with 19,900,000 out and no message. */
+export const fixtureDeposit: FixtureDeposit = {
+  depositor: fixtureAddresses.wallet,
+  recipient: fixtureAddresses.saved,
+  destinationChainId: 8453n,
+  outputAmount: 19_900_000n,
+  message: "",
+};

@@ -24,6 +24,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   rule moves its test that breaks only that rule and the oracle of
   `check-hard-rules.property.test.ts` in the same commit; the oracle is written apart from the
   rules and must stay that way. Stryker's 80% bar applies to them.
+- Rules 2 and 3 read a call's inputs where `allowed.callInputs` names its function (decision
+  0302): `src/rules/abi-heads.schema.ts` reads each top-level head from the calldata as the ABI
+  encodes it, and a check whose function or heads it cannot read refuses the call as rule 2.
 - Rule 5 refuses a fee per gas above the chain's cap in the settings' `networkFeeCaps`, whatever
   the authorization, and everything on a chain with no cap there (decision 0143). It refuses
   everything after an authorization expired but a cancel of the confirmed intent, for 60 seconds

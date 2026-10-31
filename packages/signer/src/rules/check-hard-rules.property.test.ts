@@ -5,6 +5,12 @@ import { createP256KeyPair } from "../keys/p256-key-pair.js";
 import { createSignerService } from "../process/signer-service.js";
 import { formatSignerRequest } from "../requests/signer-message.schema.js";
 import {
+  depositAmountOk,
+  depositChecks,
+  deposits,
+  depositWhoOk,
+} from "../testing/deposit-model.js";
+import {
   type Account,
   type Action,
   type Address,
@@ -76,7 +82,8 @@ function sendTargetOk(m: Model, action: Send): boolean {
 function targetOk(m: Model): boolean {
   const { action } = m;
   if (action.kind === "call") {
-    return listed([...m.contracts, ...launchTargets(m)], m.stepChain, m.to);
+    const deposit = depositWhoOk(m.data, m.depositCheck);
+    return listed([...m.contracts, ...launchTargets(m)], m.stepChain, m.to) && deposit;
   }
   return action.kind === "approve" ? approvalTargetOk(m, action) : sendTargetOk(m, action);
 }
@@ -94,7 +101,8 @@ const pays = (m: Model, action: Send): boolean =>
 function valueOk(m: Model): boolean {
   const { action } = m;
   if (action.kind === "call") {
-    return m.value === action.nativeValue && (m.data.kind === "none" || m.data.kind === "router");
+    const untouched = ["none", "router", "deposit"].includes(m.data.kind);
+    return m.value === action.nativeValue && untouched && depositAmountOk(m.data, m.depositCheck);
   }
   return action.kind === "approve" ? grants(m, action) : pays(m, action);
 }
@@ -295,6 +303,19 @@ const fillAuthorization: Fill = {
 };
 const valid: readonly Model[] = [
   routerCall,
+  // A bridge deposit whose inputs keep the checks the engine passes (decision 0302).
+  {
+    ...routerCall,
+    data: {
+      kind: "deposit",
+      depositor: wallet,
+      recipient: saved,
+      chain: 8453n,
+      outputAmount: 900n,
+      message: "",
+    },
+    depositCheck: { recipient: saved, chain: 8453n, outputAmount: 900n },
+  },
   // A launch wallet's call to the launch's curve, which no registry list holds (decision 0217).
   { ...routerCall, to: stranger, contracts: [], launch: [on(stranger)], isLaunchWallet: true },
   {
@@ -391,6 +412,7 @@ const data: fc.Arbitrary<Data> = fc.oneof(
   fc.constant({ kind: "transferFrom" as const }),
   fc.record({ kind: fc.constant("approve" as const), account: address, amount }),
   fc.record({ kind: fc.constant("transfer" as const), account: address, amount }),
+  deposits,
 );
 const accounts = fc.array(someAccount, { maxLength: 3 });
 const time = fc.constantFrom(
@@ -543,6 +565,8 @@ const change: fc.Arbitrary<Change> = fc.oneof(
   accounts.map((spenders): Change => (m) => ({ ...m, spenders })),
   // Decision 0304: a contract no approval may reach, such as an identity registry.
   accounts.map((unapproved): Change => (m) => ({ ...m, unapproved })),
+  // Decision 0302: the checks the engine passes for a bridge deposit's inputs.
+  depositChecks.map((depositCheck): Change => (m) => ({ ...m, depositCheck })),
   accounts.map((recipients): Change => (m) => ({ ...m, recipients })),
   fc.constantFrom(...hashes).map((termsHash): Change => (m) => ({ ...m, termsHash })),
   time.map((now): Change => (m) => ({ ...m, nowMs: now })),

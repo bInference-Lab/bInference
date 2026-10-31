@@ -33,6 +33,23 @@ export interface WalletOnlyCall {
 }
 
 /**
+ * What one call's top-level inputs must be, which the signer reads from its calldata (decision
+ * 0302): it applies to a call with the function's selector.
+ */
+export interface CallInputCheck {
+  /** The function as its JSON ABI entry. */
+  readonly abi: JsonValue;
+  /** Address inputs that must name the signing wallet, such as a swap's receiver. */
+  readonly wallet: readonly string[];
+  /** Inputs that must equal these: an address as hex in any case, a number in decimal. */
+  readonly equal: Readonly<Record<string, string>>;
+  /** `bytes` inputs that must be empty, such as a bridge deposit's message. */
+  readonly empty: readonly string[];
+  /** Number inputs that must be at least these, in decimal, such as a deposit's output. */
+  readonly atLeast: Readonly<Record<string, string>>;
+}
+
+/**
  * The registry's set for one step (keys spec, section 5.2, rule 2): the venue's declared
  * contracts a call may go to, the registry spenders an approval may name, the confirmed
  * recipient of a send, a bridge or a rescue, and the contracts of the launch the step trades on,
@@ -56,6 +73,12 @@ export interface AllowedTargets {
    * absent.
    */
   readonly unapproved?: readonly AccountRef[];
+  /**
+   * What the inputs of the step's calls must be: the inputs a venue pins to the wallet and the
+   * inputs that must be empty, from its declaration, and a bridge deposit's recipient, chain and
+   * least output from the confirmed plan. None when absent.
+   */
+  readonly callInputs?: readonly CallInputCheck[];
 }
 
 /**
@@ -94,8 +117,18 @@ export interface AuthorizeInputWire {
     readonly launch?: readonly string[];
     readonly walletOnlyCalls?: readonly WalletOnlyCall[];
     readonly unapproved?: readonly string[];
+    readonly callInputs?: readonly CallInputCheck[];
   };
 }
+
+const inputName = z.string().regex(/^[A-Za-z_$][\w$]{0,63}$/);
+const callInputCheckSchema: z.ZodType<CallInputCheck, CallInputCheck> = z.strictObject({
+  abi: z.json(),
+  wallet: z.array(inputName).max(16),
+  equal: z.record(inputName, z.string().regex(/^(?:0x[0-9a-fA-F]{40}|\d{1,78})$/)),
+  empty: z.array(inputName).max(16),
+  atLeast: z.record(inputName, z.string().regex(/^\d{1,78}$/)),
+});
 
 // The registry's sets are small; a longer list is a fault on the engine's side.
 const targetsSchema = z.array(accountRefSchema).max(256);
@@ -123,5 +156,6 @@ export const authorizeInputSchema: z.ZodType<AuthorizeInput, AuthorizeInputWire>
       .max(64)
       .exactOptional(),
     unapproved: targetsSchema.exactOptional(),
+    callInputs: z.array(callInputCheckSchema).max(64).exactOptional(),
   }),
 });

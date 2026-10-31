@@ -25,6 +25,7 @@ import type { OrderFillReason } from "../orders/order-fill.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck, PolicyVerdict } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
+import { callInputChecksOf } from "./call-input-checks.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
 import { launchQuoteOf, recheckLaunch } from "./launch-queue-check.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
@@ -152,8 +153,9 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
  * token launch's launchpad (decision 0234), declare on the chain, read from the registry by name
  * as the ceiling reads them, which are also the spenders an approval may name, and the calls
  * those venues mark as a launch wallet's alone (decision 0271), and the contracts any enabled venue
- * keeps every approval from (decision 0304). A venue no declaration names, or one that names a
- * contract the registry lacks, adds none. A swap sends to no one.
+ * keeps every approval from (decision 0304), and the inputs those venues pin to the wallet or keep
+ * empty (decision 0302). A venue no declaration names, or one that names a contract the registry
+ * lacks, adds none. A swap sends to no one.
  */
 function allowedTargetsOf(
   snapshot: IntentSnapshot,
@@ -184,7 +186,11 @@ function allowedTargetsOf(
     );
   const marked = walletOnlyCalls.length === 0 ? {} : { walletOnlyCalls };
   const unapproved = unapprovedTargetsOf(chain, context.venues);
-  const kept = unapproved.length === 0 ? {} : { unapproved };
+  const callInputs = callInputChecksOf(chain, usedVenues);
+  const kept = {
+    ...(unapproved.length === 0 ? {} : { unapproved }),
+    ...(callInputs.length === 0 ? {} : { callInputs }),
+  };
   return { contracts, spenders: contracts, recipients: [], ...marked, ...kept };
 }
 

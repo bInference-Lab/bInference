@@ -7,7 +7,9 @@ import {
   type SignAuthorization,
 } from "@binference/chain";
 import { type Id, idSchema, type JsonValue } from "@binference/core";
-import { approveCalldata, fixtureAddresses, transferCalldata } from "./sign-fixtures.js";
+import { type DepositCheck, type DepositData, depositCheckOf } from "./deposit-model.js";
+import { calldata } from "./model-calldata.js";
+import { fixtureAddresses } from "./sign-fixtures.js";
 
 // A model of a request, written apart from the signer's code: the oracle below decides from the
 // model alone whether a request keeps the hard rules, and the signer reads the request rendered
@@ -23,7 +25,8 @@ export type Data =
   | { readonly kind: "router" }
   | { readonly kind: "approve"; readonly account: Address; readonly amount: bigint }
   | { readonly kind: "transfer"; readonly account: Address; readonly amount: bigint }
-  | { readonly kind: "transferFrom" };
+  | { readonly kind: "transferFrom" }
+  | DepositData;
 export type Action =
   | { readonly kind: "call"; readonly nativeValue: bigint }
   | {
@@ -125,6 +128,8 @@ export interface Model {
   readonly isLaunchWallet?: boolean;
   /** Contracts an approval is never sent to (decision 0304). */
   readonly unapproved?: readonly Account[];
+  /** What a bridge deposit's inputs must be (decision 0302): its recipient, chain and least output. */
+  readonly depositCheck?: DepositCheck;
   readonly authorization: Authorization;
   readonly termsHash: string;
   readonly nowMs: number;
@@ -156,22 +161,8 @@ export const unlimited: bigint = 2n ** 256n - 1n;
 export const on = (address: Address, chain: string = c56): Account => ({ chain, address });
 
 // Rendering a model as the request the engine would send.
-const fixedCalldata: Readonly<Record<"none" | "router" | "transferFrom", string>> = {
-  none: "0x",
-  router: "0x7ff36ab5",
-  transferFrom: `0x23b872dd${"0".repeat(192)}`,
-};
-
-function calldata(data: Data): string {
-  if (data.kind === "approve") {
-    return approveCalldata(data.account, data.amount);
-  }
-  return data.kind === "transfer"
-    ? transferCalldata(data.account, data.amount)
-    : fixedCalldata[data.kind];
-}
-
 const account = (a: Account) => accountRefSchema.parse(`${a.chain}:${a.address}`);
+
 const id = <P extends string>(prefix: P): Id<P> =>
   idSchema(prefix).parse(`${prefix}_0192f3a4-5b6c-7d8e-9f00-112233445566`);
 
@@ -312,6 +303,7 @@ export function render(m: Model): AuthorizeInput {
       recipients: m.recipients.map(account),
       ...(m.launch === undefined ? {} : { launch: m.launch.map(account) }),
       ...(m.unapproved === undefined ? {} : { unapproved: m.unapproved.map(account) }),
+      ...(m.depositCheck === undefined ? {} : { callInputs: [depositCheckOf(m.depositCheck)] }),
     },
   };
 }

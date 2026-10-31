@@ -65,6 +65,7 @@ export type {
   AllowedTargets,
   AuthorizeInput,
   AuthorizeInputWire,
+  CallInputCheck,
   SignerWallet,
   WalletOnlyCall,
 } from "./signing/authorize-input.js";

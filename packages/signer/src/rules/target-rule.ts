@@ -1,4 +1,5 @@
 import type { AccountRef, AuthorizeInput, StepAction } from "@binference/chain";
+import { callInputsHold } from "./call-inputs.js";
 import { callSelectorOf } from "./call-selector.schema.js";
 import { isAccount, listsAccount, type RuleView } from "./hard-rule.js";
 import { readTokenCall } from "./token-call.js";
@@ -61,7 +62,8 @@ function isOtherRolesCall(view: RuleView): boolean {
  * goes to the step's token, never to a contract `allowed.unapproved` lists (decision 0304), and
  * names a registry spender; from a launch wallet, a call may also go
  * to, and an approval name, a contract of the launch the step trades on (decision 0217), and only
- * a launch wallet makes a call `allowed` names as a launch wallet's alone (decision 0271); a send
+ * a launch wallet makes a call `allowed` names as a launch wallet's alone (decision 0271), and a
+ * call's pinned, equal and empty inputs are what `allowed.callInputs` says (decision 0302); a send
  * pays the confirmed recipient, in the native coin with no calldata or by the token's `transfer`.
  * A cancel is rule 6's.
  */
@@ -73,7 +75,11 @@ export function targetHolds(view: RuleView): boolean {
   const { action } = step;
   if (action.kind === "call") {
     const contracts = [...allowed.contracts, ...launchTargets(view.input)];
-    return listsAccount(contracts, step.chain, view.transaction.to) && !isOtherRolesCall(view);
+    return (
+      listsAccount(contracts, step.chain, view.transaction.to) &&
+      !isOtherRolesCall(view) &&
+      callInputsHold(view, "who")
+    );
   }
   return action.kind === "approve" ? approvalReaches(view, action) : sendReaches(view, action);
 }

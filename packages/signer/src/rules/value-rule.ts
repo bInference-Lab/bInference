@@ -1,4 +1,5 @@
 import type { StepAction } from "@binference/chain";
+import { callInputsHold } from "./call-inputs.js";
 import type { RuleView } from "./hard-rule.js";
 import { readTokenCall } from "./token-call.js";
 
@@ -29,7 +30,8 @@ function approvalGrants(view: RuleView, action: Extract<StepAction, { kind: "app
 
 /**
  * Rule 3: the value and amounts are the plan's for the step. A call sends exactly the planned
- * native value and moves or approves no token; an approval is never above the step's amount and
+ * native value, moves or approves no token, and names at least the amounts `allowed.callInputs`
+ * sets (decision 0302); an approval is never above the step's amount and
  * never unlimited; a send pays exactly the planned amount. A cancel is rule 6's.
  */
 export function valueHolds(view: RuleView): boolean {
@@ -41,7 +43,8 @@ export function valueHolds(view: RuleView): boolean {
   if (action.kind === "call") {
     return (
       view.transaction.value === action.nativeValue &&
-      readTokenCall(view.transaction.data).kind === "notTokenCall"
+      readTokenCall(view.transaction.data).kind === "notTokenCall" &&
+      callInputsHold(view, "amounts")
     );
   }
   return action.kind === "approve" ? approvalGrants(view, action) : sendPays(view, action);
