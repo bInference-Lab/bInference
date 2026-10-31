@@ -1,7 +1,6 @@
 import {
   type AccountRef,
   type Amount,
-  isSameAccount,
   type RegisteredChain,
   type SimulatedStep,
   type TxDraft,
@@ -10,6 +9,7 @@ import {
 import type { Clock } from "@binference/core";
 import type { SimulationView } from "@binference/protocol";
 import type { RescueMove } from "../intents/rescue-quote.js";
+import { checkTransfer } from "../simulation/check-transfer.js";
 
 /** What a rescue's simulation runs on: the chain's simulator, the chain and the time. */
 export interface RescueCheckParts {
@@ -35,32 +35,16 @@ interface Passed extends Planned {
   readonly received: Amount;
 }
 
-function sumOf(amounts: readonly Amount[]): bigint {
-  return amounts.reduce((sum, { base }) => sum + base, 0n);
-}
-
-// Each step's only outflow from its wallet is its move, whole; the rescue address gets some of
-// it, a token's own transfer tax aside; and no allowance is set.
+// A move passes when its step ran as its send was planned, to the rescue address.
 function ranAsPlanned(
   step: SimulatedStep | undefined,
   planned: Planned,
   context: { readonly rescue: AccountRef; readonly chain: RegisteredChain },
 ): Passed | undefined {
-  const { move } = planned;
-  const { asset } = move.amount;
-  const { family } = context.chain;
-  if (step?.status !== "success" || step.approvals.length > 0) {
-    return undefined;
-  }
-  const out = step.transfers.filter(({ from }) => isSameAccount(from, move.from, family));
-  const arrived = step.transfers.filter(
-    ({ to, amount }) => isSameAccount(to, context.rescue, family) && amount.asset === asset,
-  );
-  const received = { asset, base: sumOf(arrived.map(({ amount }) => amount)) };
-  const isWhole =
-    out.every(({ amount }) => amount.asset === asset) &&
-    sumOf(out.map(({ amount }) => amount)) === move.amount.base;
-  return isWhole && received.base > 0n ? { ...planned, received } : undefined;
+  const { from, amount } = planned.move;
+  const transfer = { from, to: context.rescue, amount };
+  const received = checkTransfer(step, transfer, context.chain.family);
+  return received === undefined ? undefined : { ...planned, received };
 }
 
 // The moves of one wallet run in their order on the chain's latest state, unsent.

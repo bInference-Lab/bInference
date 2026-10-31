@@ -1,26 +1,8 @@
-import { type AccountRef, accountRefParts, type ChainRegistry } from "@binference/chain";
+import type { AccountRef, ChainRegistry } from "@binference/chain";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
 import { walletAddressRefusal } from "../install/role-wallet.js";
-
-// Whether the account is a contract the registry lists for a venue on its chain, such as Relay's
-// depository or receiver, in any letter case its family reads.
-function isVenueContract(account: AccountRef, chains: ChainRegistry): boolean {
-  const { chain, address } = accountRefParts(account);
-  const registered = chains.get(chain);
-  if (!registered.ok) {
-    return false;
-  }
-  const { family, definition } = registered.value;
-  const typed = family.parseAddress(address);
-  return (
-    typed.ok &&
-    definition.contracts.some((contract) => {
-      const listed = family.parseAddress(contract.address);
-      return listed.ok && listed.value === typed.value;
-    })
-  );
-}
+import { isRegistryContract } from "../operations/is-registry-contract.js";
 
 /**
  * Why the account may not be saved in an address book or made the rescue address: a live launch
@@ -38,5 +20,5 @@ export function payeeRefusal(
   if (refusal !== undefined) {
     return refusal;
   }
-  return isVenueContract(account, chains) ? "address.venue_contract" : undefined;
+  return isRegistryContract(account, chains) ? "address.venue_contract" : undefined;
 }

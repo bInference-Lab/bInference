@@ -2,6 +2,7 @@ import type { NameResolution, NameResolver } from "@binference/chain";
 import { type Clock, err, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { EngineHandler } from "../operations/engine-call.js";
+import { readName } from "./read-name.js";
 
 /** The handler of `name/resolve` (protocol spec, section 7.3). */
 export interface NameHandlers {
@@ -42,19 +43,8 @@ async function resolveName(
   name: string,
   signal: AbortSignal,
 ): Promise<Result<ResultOf<"name/resolve">, ProtocolErrorCode>> {
-  const lower = name.toLowerCase();
-  const resolver = options.resolvers.find((each) => lower.endsWith(each.suffix));
-  if (resolver === undefined) {
-    return err("protocol.bad_args");
-  }
-  try {
-    return answerOf(await resolver.resolve(name, { signal }), options.clock.now());
-  } catch {
-    // A call its caller stopped ends as the caller asked; any other fault is the chain not
-    // answering, which a later call may get past.
-    signal.throwIfAborted();
-    return err("name.resolver_down");
-  }
+  const answer = await readName(options.resolvers, name, signal);
+  return answer.ok ? answerOf(answer.value, options.clock.now()) : answer;
 }
 
 /**
