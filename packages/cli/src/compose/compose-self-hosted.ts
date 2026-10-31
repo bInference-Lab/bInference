@@ -94,6 +94,7 @@ function composeSending(
     random: host.random,
     publish: (push) => pushes.publish(push),
     logger: log.logger,
+    nameResolvers: chainNameResolvers(parts.reads),
     ...(host.testOrders === undefined ? {} : { liveOrderFills: true }),
   });
   // The executor finishes a signature or a send under way within the shutdown's budget.

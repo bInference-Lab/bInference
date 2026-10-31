@@ -3,6 +3,7 @@ import {
   accountRefParts,
   type ChainRef,
   type ChainRegistry,
+  type NameResolver,
   type NonceSource,
   type PriceSource,
   type RegisteredChain,
@@ -81,6 +82,8 @@ export interface ComposeExecutorOptions {
   readonly logger: Logger;
   /** Whether live order fills may sign: only a test host turns them on (decision 0211). */
   readonly liveOrderFills?: boolean;
+  /** The name resolvers a send by name is read again through before it signs (decision 0308). */
+  readonly nameResolvers?: readonly NameResolver[];
 }
 
 // A node rests 30 s after a failure; a relay gets 3 s, several BSC blocks, to take a transaction.
@@ -255,6 +258,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     publish: options.publish,
     logger: options.logger,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
+    ...(options.nameResolvers === undefined ? {} : { nameResolvers: options.nameResolvers }),
   });
   return { executor, health: () => health.state() };
 }
