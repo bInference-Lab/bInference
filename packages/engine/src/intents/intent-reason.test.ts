@@ -28,7 +28,6 @@ describe("intent reasons", () => {
       "send_level",
       "unsaved_address",
       "outside_content_send",
-      "health_factor",
       "no_price",
     ]);
   });
@@ -96,7 +95,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(58);
+    expect(intentReasons).toHaveLength(57);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {

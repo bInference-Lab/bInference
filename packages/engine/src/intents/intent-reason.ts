@@ -19,7 +19,6 @@ export const policyReasons = [
   "send_level",
   "unsaved_address",
   "outside_content_send",
-  "health_factor",
   "no_price",
 ] as const;
 

@@ -78,7 +78,6 @@ const limits = {
   priceImpactBps: 500,
   taxBps: 1_000,
   liquidityFloorUsdMicros: 0n,
-  minHealthFactorBp: 15_000,
   gasReserve: [{ chain: "fake:1", reserveBase: 5n }],
   venues: [],
   allowTokens: [],

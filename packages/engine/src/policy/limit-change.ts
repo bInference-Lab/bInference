@@ -69,8 +69,8 @@ function narrowsAllowList(before: readonly AssetRef[], after: readonly AssetRef[
   return after.length > 0 && (before.length === 0 || isSubset(after, before));
 }
 
-// How each limit compares (decision 0111): a cap, a rate or a time is stricter lower, a floor and
-// a health factor higher; fewer venues, a smaller allow list that is not empty, a larger deny list
+// How each limit compares (decision 0111): a cap, a rate or a time is stricter lower, a floor
+// higher; fewer venues, a smaller allow list that is not empty, a larger deny list
 // and a larger gas reserve are stricter.
 const comparisons: { readonly [N in LimitName]: Comparison } = {
   perTradeUsdMicros: lowerIsStricter((v) => v.perTradeUsdMicros),
@@ -80,7 +80,6 @@ const comparisons: { readonly [N in LimitName]: Comparison } = {
   priceImpactBps: lowerIsStricter((v) => v.priceImpactBps),
   taxBps: lowerIsStricter((v) => v.taxBps),
   liquidityFloorUsdMicros: higherIsStricter((v) => v.liquidityFloorUsdMicros),
-  minHealthFactorBp: higherIsStricter((v) => v.minHealthFactorBp),
   gasReserve: {
     isSame: (before, after) =>
       reservesAtLeast(before.gasReserve, after.gasReserve) &&

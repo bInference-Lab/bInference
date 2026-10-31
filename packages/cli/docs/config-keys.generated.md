@@ -2,7 +2,7 @@
 
 This file is generated from the config schema by `pnpm check:config-schema --write`. Change the schema in `packages/cli/src/config/schema/`, never this file.
 
-This binference reads `config.json5` version 10. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 11. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -82,7 +82,6 @@ What each new agent starts with; copied into its rows once, at creation.
 - `defaults.limits.priceImpactBps`: The largest price impact allowed, in basis points. Takes a number from 0 to 10000. Default: `300`. Variable: `BINFERENCE_DEFAULTS__LIMITS__PRICE_IMPACT_BPS`.
 - `defaults.limits.taxBps`: The largest token tax allowed, in basis points. Takes a number from 0 to 10000. Default: `1000`. Variable: `BINFERENCE_DEFAULTS__LIMITS__TAX_BPS`.
 - `defaults.limits.liquidityFloorUsd`: The least pool liquidity a trade needs, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"10000"`. Variable: `BINFERENCE_DEFAULTS__LIMITS__LIQUIDITY_FLOOR_USD`.
-- `defaults.limits.minHealthFactor`: The lowest lending health factor a move may leave. Takes a number of at least 1. Default: `1.5`. Variable: `BINFERENCE_DEFAULTS__LIMITS__MIN_HEALTH_FACTOR`.
 - `defaults.limits.gasReserve.<chain>`: The native coin kept for gas, per chain. Takes a decimal number in quotes, such as "0.002". Default: `{"eip155:56":"0.002"}`. Variable: `BINFERENCE_DEFAULTS__LIMITS__GAS_RESERVE__<CHAIN>`. Keys: a chain id such as eip155:56.
 - `defaults.limits.venues`: The venues allowed. Takes a list in which each item is text. Default: every installed core venue. Variable: `BINFERENCE_DEFAULTS__LIMITS__VENUES`.
 - `defaults.limits.allowTokens`: Tokens allowed; empty allows every token that passes the risk check. Takes a list in which each item is text. Default: `[]`. Variable: `BINFERENCE_DEFAULTS__LIMITS__ALLOW_TOKENS`.

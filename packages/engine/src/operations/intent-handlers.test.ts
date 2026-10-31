@@ -4,7 +4,15 @@ import { err, type Id, stableJson } from "@binference/core";
 import type { IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { expectOk, testCoin, testNowMs, testSwap, testToken } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testNowMs,
+  testSwap,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import { sha256Hex } from "../records/sha256-hex.js";
 import {
   startTestEngine,
@@ -99,6 +107,29 @@ describe("the intent handlers", () => {
       ),
     );
     expect(surfaces.map((stored) => stored?.bySurface)).toStrictEqual(["console", "mini"]);
+  });
+
+  it("refuses a lend from every caller as unavailable and stores nothing", async () => {
+    const test = await startTestEngine({ agent: { approvalMode: "auto" } });
+    const lend = {
+      agent: testAgent,
+      wallet: testWallet,
+      reason: "Earn interest",
+      kind: "lend",
+      action: "supply",
+      venue: "fake-swap",
+      amount: { asset: testCoin, base: 1_000_000n },
+    } as const;
+
+    const answers = await Promise.all(
+      Object.values(testCallers).map(async (caller) =>
+        test.engine.handlers["intent/propose"](testCall(lend, caller)),
+      ),
+    );
+
+    expect(answers).toStrictEqual([1, 2, 3].map(() => err("intent.kind_unavailable")));
+    const listed = await test.engine.handlers["intent/list"](testCall({ agent: testAgent }));
+    expect(expectOk(listed).items).toStrictEqual([]);
   });
 
   it("cancels the intent on deny and closes its card", async () => {

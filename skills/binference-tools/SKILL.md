@@ -126,7 +126,7 @@ Reasons in `outcome.reason`:
 
 - **Policy** (`rejected_policy`): `frozen`, `paper_only`, `per_trade_cap`, `ceiling`, `daily_cap`,
   `gas_reserve`, `slippage`, `venue_off`, `token_denied`, `send_level`, `unsaved_address`,
-  `outside_content_send`, `health_factor`, `no_price`. These are the owner's limits and settings.
+  `outside_content_send`, `no_price`. These are the owner's limits and settings.
 - **Risk** (`risk_blocked`): `honeypot`, `cannot_sell`, `hidden_owner`, `high_tax`,
   `low_liquidity`, `sources_down`, `blacklisted`. Do not offer a way around them.
 - **Checks** (`failed_check`): `no_route`, `venue_down`, `decode_mismatch`, `simulation_reverted`,

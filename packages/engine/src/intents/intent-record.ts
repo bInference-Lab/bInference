@@ -6,11 +6,11 @@ import {
   type JsonValue,
   jsonValueSchema,
 } from "@binference/core";
-import { type AssetInfos, intentKindSchema, intentStateSchema } from "@binference/protocol";
+import { type AssetInfos, intentStateSchema } from "@binference/protocol";
 import { z } from "zod";
 import { type LedgerDraft, ledgerDraftSchema } from "../ledger/ledger-entry.js";
 import { epochMsSchema, rowVersionSchema } from "../records/record-fields.js";
-import type { IntentKind } from "./intent-kind.js";
+import { type IntentKind, intentKinds } from "./intent-kind.js";
 import { type IntentReason, intentReasons } from "./intent-reason.js";
 import type { IntentState } from "./intent-state.js";
 
@@ -109,7 +109,7 @@ const identityShape = {
   id: idSchema("int"),
   agentId: idSchema("agt"),
   walletId: idSchema("wal"),
-  kind: intentKindSchema,
+  kind: z.enum(intentKinds),
   state: intentStateSchema,
   ...fieldsShape,
   request: jsonValueSchema,

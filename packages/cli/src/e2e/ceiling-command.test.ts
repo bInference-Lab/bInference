@@ -246,7 +246,7 @@ describe("binference ceiling set", () => {
       const refused = await ceilingSet(machine, ["--per-tx", "0.5"], wrong);
       const added = await ceilingSet(machine, ["--venues", "pancakeswap"]);
       const named = await runOn(machine, ["limit", "set", "limits.venues=fake-swap,pancakeswap"]);
-      const removed = await ceilingSet(machine, ["--venues", "venus"]);
+      const removed = await ceilingSet(machine, ["--venues", "stakehub"]);
 
       expect([refused.code, added.code, named.code]).toStrictEqual([1, 0, 0]);
       expect(refused.stderr).toContain(en("ownerKey.wrongEnd"));

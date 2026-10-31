@@ -181,7 +181,6 @@ from them at start ([decision 0230](../DECISIONS.md#d0230)).
 | `defaults.limits.priceImpactBps`          | `300`                                                                                                                                                                                                                                                  |
 | `defaults.limits.taxBps`                  | `1000`                                                                                                                                                                                                                                                 |
 | `defaults.limits.liquidityFloorUsd`       | `"10000"`                                                                                                                                                                                                                                              |
-| `defaults.limits.minHealthFactor`         | `1.5`, unused: lending left v1 ([decision 0296](../DECISIONS.md#d0296)), and a config migration removes the key                                                                                                                                        |
 | `defaults.limits.gasReserve`              | `{ "eip155:56": "0.002" }` (in the native coin)                                                                                                                                                                                                        |
 | `defaults.limits.venues`                  | every installed core venue                                                                                                                                                                                                                             |
 | `defaults.limits.allowTokens`             | `[]` (empty: all, after risk)                                                                                                                                                                                                                          |
@@ -258,7 +257,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 10,
+  version: 11,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

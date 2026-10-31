@@ -64,7 +64,8 @@ export interface MoneyPath {
    * Stores a proposal and runs it until it waits for the owner or ends. A refusal by policy,
    * venue, risk or simulation is the intent's state, not an error. A request that cannot become
    * an intent, such as one for an unknown agent or another agent's wallet, is a protocol error
-   * code and stores nothing.
+   * code and stores nothing; a `lend` is `intent.kind_unavailable`, since binference does not
+   * lend or borrow (decision 0296).
    */
   propose(
     request: IntentRequest,
@@ -336,7 +337,10 @@ async function propose(
   signal: AbortSignal,
 ): Promise<Result<IntentSnapshot, ProtocolErrorCode>> {
   const { request, proposer, fill } = call;
-  const started = await startProposal(options, call, signal);
+  if (request.kind === "lend") {
+    return err("intent.kind_unavailable");
+  }
+  const started = await startProposal(options, { ...call, request }, signal);
   if (!started.ok) {
     return started;
   }

@@ -45,7 +45,6 @@ export interface LimitsTable {
   price_impact_bps: number;
   tax_bps: number;
   liquidity_floor_usd_micros: string;
-  min_health_factor_bp: number;
   gas_reserve: string;
   venues: string;
   allow_tokens: string;

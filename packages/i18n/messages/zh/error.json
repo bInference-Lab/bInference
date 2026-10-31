@@ -67,6 +67,7 @@
   "intent.launch_recipient_unused": "在这些设置下，发射台会把费用付往别处，例如通过持有者奖励，因此你填写的手续费接收方永远不会收到款项。请不要填写手续费接收方，或关闭该设置。",
   "intent.launch_wallet_missing": "代币发射从 Agent 的发射钱包进行，而该 Agent 还没有发射钱包。请用 `binference wallet create --launch` 创建一个，并从外部为它充值，然后重新起草这次发射。",
   "intent.launch_picture_too_large": "该发射台会把图片和代币一起写到链上，只接受很小的图片，例如约 1 KB 的 64 x 64 WebP。请让所有者以文件形式发送一张更小的图片。",
+  "intent.kind_unavailable": "binference 不提供借贷。请改为兑换、质押或跨链。",
   "order.not_found": "此自动订单不存在。请在控制台查看你的自动订单。",
   "order.wrong_state": "此自动订单已结束或已变化。请刷新查看当前状态。",
   "order.kind_unavailable": "暂不支持这类自动订单。请使用限价单、止盈、止损或追踪止损。",

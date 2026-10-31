@@ -83,7 +83,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   limits: names(
     "agent_id per_trade_usd_micros rolling_day_usd_micros slippage_registry_bps " +
       "slippage_other_bps price_impact_bps tax_bps liquidity_floor_usd_micros " +
-      "min_health_factor_bp gas_reserve venues allow_tokens deny_tokens model_budget_usd_micros " +
+      "gas_reserve venues allow_tokens deny_tokens model_budget_usd_micros " +
       "card_trade_expiry_s card_other_expiry_s requote_after_s requote_tolerance_bps " +
       "order_expiry_days copy_per_buy_usd_micros copy_per_leader_day_usd_micros changed_at " +
       "version pending pending_at",

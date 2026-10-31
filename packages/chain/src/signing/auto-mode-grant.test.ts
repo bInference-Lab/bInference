@@ -94,8 +94,8 @@ describe("the auto grant", () => {
     const allowed = autoModeKinds.filter(
       (kind) => autoModeGrantSchema.safeParse({ ...(json as object), kind }).success,
     );
-    expect(allowed).toStrictEqual(["swap", "buy", "sell", "lend", "stake"]);
-    const kinds = ["send", "bridge", "launchToken", "revokeApproval", "rescue", "cexOrder"];
+    expect(allowed).toStrictEqual(["swap", "buy", "sell", "stake"]);
+    const kinds = ["send", "bridge", "launchToken", "revokeApproval", "rescue", "cexOrder", "lend"];
     expect(
       kinds.filter((kind) => autoModeGrantSchema.safeParse({ ...grant, kind }).success),
     ).toStrictEqual([]);

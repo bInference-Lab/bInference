@@ -20,7 +20,6 @@ describe("card expiry", () => {
       sell: 61_000,
       send: 601_000,
       revokeApproval: 601_000,
-      lend: 601_000,
       stake: 601_000,
       bridge: 601_000,
       cexOrder: 61_000,

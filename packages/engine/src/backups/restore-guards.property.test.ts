@@ -38,7 +38,6 @@ const limitsValues: fc.Arbitrary<LimitsValues> = fc.record({
   priceImpactBps: bps,
   taxBps: bps,
   liquidityFloorUsdMicros: usd,
-  minHealthFactorBp: fc.integer({ min: 10_000, max: 30_000 }),
   gasReserve: fc
     .option(fc.bigInt({ min: 0n, max: 100n }), { nil: undefined })
     .map((base) => (base === undefined ? [] : [{ chain, reserveBase: base }])),

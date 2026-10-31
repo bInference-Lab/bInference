@@ -409,7 +409,7 @@ function fitsAutoCaps(auto: AutoModeFacts): boolean {
 function isAutoKind(status: IntentStatus, auto: AutoModeFacts): boolean {
   return (
     ["swap", "buy", "sell"].includes(status.kind) ||
-    (["lend", "stake"].includes(status.kind) && auto.isInsideOwnPositions)
+    (status.kind === "stake" && auto.isInsideOwnPositions)
   );
 }
 

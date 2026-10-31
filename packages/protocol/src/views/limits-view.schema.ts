@@ -14,7 +14,10 @@ export interface LimitSettings {
   readonly priceImpactBps: Bps;
   readonly taxBps: Bps;
   readonly liquidityFloorUsdMicros: bigint;
-  /** The lowest health factor a borrow or withdraw may leave, in basis points: 1.5 is 15000. */
+  /**
+   * Holds nothing: binference does not lend or borrow (decision 0296). The engine always answers
+   * 15000, and `limit/set` refuses a change that names it. The next protocol version drops it.
+   */
   readonly minHealthFactorBps: number;
   /** The base units of the native asset each chain's wallets keep for gas. */
   readonly gasReserve: Readonly<Record<ChainRef, bigint>>;

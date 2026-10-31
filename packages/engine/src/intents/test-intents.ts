@@ -31,7 +31,6 @@ export const testLimits: LimitsValues = {
   priceImpactBps: bpsSchema.parse(500),
   taxBps: bpsSchema.parse(1_000),
   liquidityFloorUsdMicros: 0n,
-  minHealthFactorBp: 15_000,
   gasReserve: [{ chain: chainRefSchema.parse("fake:1"), reserveBase: 10n ** 15n }],
   venues: ["fake-swap"],
   allowTokens: [],

@@ -7,7 +7,7 @@ export interface CardRules {
   /** How long the card of a trade or a CEX order stays open: 60 s by default. */
   readonly tradeExpiryMs: number;
   /**
-   * How long the card of any other kind stays open, such as a send, a DeFi move, a bridge, a rescue,
+   * How long the card of any other kind stays open, such as a send, a stake move, a bridge, a rescue,
    * an unfreeze, an auto order, an identity registration, a token launch or an approval revoke: 10
    * min by default.
    */
@@ -22,7 +22,6 @@ export interface CardRules {
 const longCardKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
   "send",
   "revokeApproval",
-  "lend",
   "stake",
   "bridge",
   "registerIdentity",

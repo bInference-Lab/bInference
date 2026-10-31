@@ -17,7 +17,7 @@ export interface AutoModeFacts {
    * the owner unlocks (spec 5, section 3). A paper intent signs nothing and is never locked.
    */
   readonly isLocked: boolean;
-  /** A lend or stake move stays inside the agent's own positions. */
+  /** A stake move stays inside the agent's own positions. */
   readonly isInsideOwnPositions: boolean;
   /** The policy's mark: the intent moves a token on the deny list out of the wallet. */
   readonly sellsDeniedToken: boolean;
@@ -45,13 +45,12 @@ export type AutoModeSubject = Pick<IntentStatus, "kind" | "proposer" | "hasOutsi
 
 const sendKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(["send", "bridge", "rescue"]);
 const tradeKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(["swap", "buy", "sell"]);
-const positionKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(["lend", "stake"]);
 
 function kindRefusal(kind: IntentKind, facts: AutoModeFacts): AutoModeRefusal | undefined {
   if (sendKinds.has(kind)) {
     return "send";
   }
-  if (tradeKinds.has(kind) || (positionKinds.has(kind) && facts.isInsideOwnPositions)) {
+  if (tradeKinds.has(kind) || (kind === "stake" && facts.isInsideOwnPositions)) {
     return undefined;
   }
   return "kind";
@@ -99,7 +98,7 @@ function autoModeRefusal(
 
 /**
  * The auto test of spec 6, section 5. It passes only when the agent is in auto mode, the engine is
- * not locked for the intent, the kind is a swap, buy or sell or a lend or stake move inside the
+ * not locked for the intent, the kind is a swap, buy or sell or a stake move inside the
  * agent's own positions, it sells no token on the deny list, the value fits the per-trade and
  * rolling-day caps, the fee per gas is at most the network fee cap, every approval goes to a
  * registry spender, the turn read no outside content, and the agent runtime proposed it. Anything

@@ -18,8 +18,6 @@ export interface LimitsValues {
   readonly priceImpactBps: Bps;
   readonly taxBps: Bps;
   readonly liquidityFloorUsdMicros: bigint;
-  /** The lowest health factor a lending move may leave, in basis points of 1: 1.5 is 15,000. */
-  readonly minHealthFactorBp: number;
   readonly gasReserve: readonly GasReserve[];
   /** The venues the agent may use. */
   readonly venues: readonly string[];
@@ -47,7 +45,6 @@ const valuesShape = {
   priceImpactBps: bpsSchema,
   taxBps: bpsSchema,
   liquidityFloorUsdMicros: usdMicros,
-  minHealthFactorBp: z.int().nonnegative(),
   gasReserve: z.array(
     z.strictObject({ chain: chainRefSchema, reserveBase: z.bigint().nonnegative() }),
   ),

@@ -3,6 +3,7 @@ import type { ConfigMigration } from "./migrate-config.js";
 import { usdAsText } from "./usd-as-text.js";
 
 const searchProvider: readonly string[] = ["search", "provider"];
+const minHealthFactor: readonly string[] = ["defaults", "limits", "minHealthFactor"];
 
 /**
  * Every config migration, oldest first: the one at index `n` reads version `n + 1`. A change to
@@ -61,6 +62,16 @@ export const configMigrations: readonly ConfigMigration[] = [
       "Lets defaults.notifications mute alertHeld, the line that tells an alert's matches its " +
       "notice hour held back; no file names it yet.",
     edits: () => [],
+  },
+  {
+    from: 10,
+    summary:
+      "Removes defaults.limits.minHealthFactor: binference does not lend or borrow, so no limit " +
+      "holds a health factor.",
+    edits: (file) =>
+      valueAt(file, minHealthFactor) === undefined
+        ? []
+        : [{ kind: "remove", path: minHealthFactor }],
   },
 ];
 

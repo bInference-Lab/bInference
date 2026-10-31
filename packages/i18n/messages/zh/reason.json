@@ -13,7 +13,6 @@
   "send_level": "你的转账级别不允许向此地址转账",
   "unsaved_address": "该地址既不是你的紧急转出地址，也不是你保存的地址；保存地址需要你的所有者密钥",
   "outside_content_send": "它在读取外部内容后，要向地址簿以外的地址转账",
-  "health_factor": "将使健康因子低于你设定的下限",
   "no_price": "binference 找不到此代币的美元价格",
   "honeypot": "该代币疑似貔貅盘：你可能无法卖出",
   "cannot_sell": "该代币的模拟卖出失败，你可能无法卖出",

@@ -241,10 +241,14 @@ function callerOf(c: Case): EngineCaller {
 }
 
 // The refusal a request the money path does not route meets: a launch the agent or an MCP client
-// proposes is the owner's alone (decision 0236), and every other has no route.
+// proposes is the owner's alone (decision 0236), a lend is never served (decision 0296), and every
+// other has no route.
 function refusalOf(c: Case): string {
-  const isOwnerOnly = requestOf(c).kind === "launchToken" && c.caller !== "cli";
-  return isOwnerOnly ? "intent.owner_only" : "quote.no_route";
+  const { kind } = requestOf(c);
+  if (kind === "lend") {
+    return "intent.kind_unavailable";
+  }
+  return kind === "launchToken" && c.caller !== "cli" ? "intent.owner_only" : "quote.no_route";
 }
 
 async function outcomeOf(c: Case): Promise<Outcome> {

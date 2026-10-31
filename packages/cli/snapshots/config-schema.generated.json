@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 11,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -409,12 +409,6 @@
                 "type": "string",
                 "pattern": "^(?:0|[1-9]\\d{0,11})(?:\\.\\d{1,6})?$",
                 "valueFormat": "usd"
-              },
-              "minHealthFactor": {
-                "description": "The lowest lending health factor a move may leave.",
-                "default": 1.5,
-                "type": "number",
-                "minimum": 1
               },
               "gasReserve": {
                 "description": "The native coin kept for gas, per chain.",

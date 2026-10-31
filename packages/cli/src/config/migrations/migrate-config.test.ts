@@ -154,10 +154,35 @@ describe("migrate config", () => {
 
   it("moves a version 9 file to version 10 without a change, so alertHeld may be muted", () => {
     const ninth: JsonObject = { version: 9, defaults: { notifications: { muted: ["fill"] } } };
-    expect(migrateConfig(ninth, configMigrations)).toMatchObject({
+    expect(migrateConfig(ninth, configMigrations.slice(0, 9))).toMatchObject({
       ok: true,
       file: { ...ninth, version: 10 },
       steps: [{ from: 9, to: 10, edits: [] }],
+    });
+  });
+
+  it("moves a version 10 file to version 11 without the health factor, saying why", () => {
+    const limits = { perTradeUsd: "50", minHealthFactor: 1.8 };
+    const tenth: JsonObject = { version: 10, defaults: { limits } };
+    const migrated = migrateConfig(tenth, configMigrations);
+    expect(migrated).toStrictEqual({
+      ok: true,
+      file: { version: 11, defaults: { limits: { perTradeUsd: "50" } } },
+      steps: [
+        {
+          from: 10,
+          to: 11,
+          summary:
+            "Removes defaults.limits.minHealthFactor: binference does not lend or borrow, so no " +
+            "limit holds a health factor.",
+          edits: [{ kind: "remove", path: ["defaults", "limits", "minHealthFactor"] }],
+        },
+      ],
+    });
+    const without: JsonObject = { version: 10, defaults: { limits: { perTradeUsd: "50" } } };
+    expect(migrateConfig(without, configMigrations)).toMatchObject({
+      ok: true,
+      steps: [{ from: 10, to: 11, edits: [] }],
     });
   });
 

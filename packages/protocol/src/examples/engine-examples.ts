@@ -216,13 +216,13 @@ export const walletExamples: { readonly [N in keyof WalletOperationShapes]: Wire
   "ceiling/set": {
     args: {
       wallet: ids.wallet,
-      changes: { venues: ["fake-swap", "fake-lend"], perTxNative: "2000000000000000000" },
+      changes: { venues: ["fake-swap", "fake-stake"], perTxNative: "2000000000000000000" },
       ownerKey,
     },
     result: {
       wallet: ids.wallet,
       chains: [refs.chain],
-      venues: ["fake-swap", "fake-lend"],
+      venues: ["fake-swap", "fake-stake"],
       perTxNative: "2000000000000000000",
       recipients: [],
       readAt: at,

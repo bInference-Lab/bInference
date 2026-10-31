@@ -67,6 +67,7 @@
   "intent.launch_recipient_unused": "With these settings the launchpad pays its fees elsewhere, such as through holder rewards, so the fee recipient you named would never be paid. Leave the fee recipient out, or switch that setting off.",
   "intent.launch_wallet_missing": "A token launch runs from the agent's launch wallet, and this agent has none. Make one with `binference wallet create --launch` and fund it from outside, then draft the launch again.",
   "intent.launch_picture_too_large": "This launchpad writes the picture on chain with the token and takes only a small one, such as a 64 by 64 WebP of about 1 KB. Ask the owner to send a smaller picture as a file.",
+  "intent.kind_unavailable": "binference does not lend or borrow. Ask for a swap, a stake or a bridge instead.",
   "order.not_found": "This auto order does not exist. Check your auto orders in the console.",
   "order.wrong_state": "This auto order already ended or changed. Refresh to see where it stands.",
   "order.kind_unavailable": "This kind of auto order is not available yet. Use a limit, take-profit, stop-loss or trailing stop order.",

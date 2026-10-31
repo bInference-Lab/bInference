@@ -13,7 +13,6 @@
   "send_level": "your send level does not allow this address",
   "unsaved_address": "the address is neither your rescue address nor one you saved; saving one needs your owner key",
   "outside_content_send": "it sends to an address outside your address book after reading outside content",
-  "health_factor": "it would leave the health factor below your minimum",
   "no_price": "binference found no USD price for this token",
   "honeypot": "the token looks like a honeypot: you might not be able to sell it",
   "cannot_sell": "a test sale of the token failed, so you might not be able to sell it",

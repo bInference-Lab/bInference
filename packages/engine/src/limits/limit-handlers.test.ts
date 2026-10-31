@@ -208,10 +208,9 @@ describe("a stricter limit", () => {
     );
   });
 
-  it("takes the health factor, card expiries and re-quote wait by their protocol names", async () => {
+  it("takes the card expiries and re-quote wait by their protocol names", async () => {
     const test = await startTestEngine();
     const changes = {
-      minHealthFactorBps: 16_000,
       cardTradeExpirySeconds: 30,
       cardOtherExpirySeconds: 300,
       requoteAfterSeconds: 5,
@@ -222,6 +221,21 @@ describe("a stricter limit", () => {
     expect(set).toMatchObject(changes);
     expect(set.pending).toBeUndefined();
     expect(await getLimits(test)).toMatchObject(changes);
+  });
+
+  it("refuses a health factor, which no limit holds, and changes nothing", async () => {
+    const test = await startTestEngine();
+    const before = await getLimits(test);
+
+    const set = await setLimits(
+      test,
+      { minHealthFactorBps: 16_000, taxBps: bpsSchema.parse(1) },
+      braking,
+    );
+
+    expect(set).toStrictEqual(err("protocol.bad_args"));
+    expect(await getLimits(test)).toStrictEqual(before);
+    expect(notices(test)).toStrictEqual([]);
   });
 
   it("changes a gas reserve only on the chain it names", async () => {

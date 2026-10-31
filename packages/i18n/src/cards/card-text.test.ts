@@ -39,12 +39,12 @@ describe("a card line as plain text", () => {
   });
 
   it("names an unverified token by its short address, and routes, shares and ratios", () => {
-    const supply: CardLineView = {
-      key: "card.lend.supply",
+    // No message takes a ratio since lending left v1, but protocol v1 keeps the value type.
+    const send: CardLineView = {
+      key: "card.send.action",
       values: {
         amount: { type: "amount", amount: { asset: pepe, base: one } },
-        venue: { type: "text", text: "Venus" },
-        hf: { type: "ratio", ratio: { numerator: 3n, denominator: 2n } },
+        recipient: { type: "ratio", ratio: { numerator: 3n, denominator: 2n } },
       },
     };
     const route: CardLineView = {
@@ -62,8 +62,8 @@ describe("a card line as plain text", () => {
         slippage: { type: "percent", bps: bpsSchema.parse(50) },
       },
     };
-    expect([text(supply), text(route)]).toStrictEqual([
-      "Supply 1 PEPE (0x6982…1933) to Venus · health factor 1.5",
+    expect([text(send), text(route)]).toStrictEqual([
+      "Send 1 PEPE (0x6982…1933) to 1.5",
       "Route  KyberSwap: pancakeswap 90.00%, uniswap 10.00% · impact 0.08% · max slippage 0.50%",
     ]);
   });

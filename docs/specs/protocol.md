@@ -1217,6 +1217,10 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   - An `AccountRef` may name a chain of another family: a saved address on Solana is
     `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:<base58>`. A client never assumes an address is hex,
     and shows one it cannot read as it came.
+  - `LimitsView.minHealthFactorBps` holds no limit, since binference does not lend or borrow
+    ([decision 0296](../DECISIONS.md#d0296)): the engine always answers `15000`, and a
+    `limit/set` whose changes name it is `protocol.bad_args` and changes nothing. The next version
+    drops the field.
   - An intent's `kind` has a new value, `webhookRule`, the card of a webhook rule. A client that
     meets a kind it does not know shows the card's lines from `intent/card`.
   - `IntentView.resolvedName` and `IntentView.delivery`, `PortfolioView.staking` and

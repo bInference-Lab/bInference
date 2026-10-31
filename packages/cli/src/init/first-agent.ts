@@ -17,7 +17,6 @@ import { type InitStep, refused } from "./init-context.js";
 const firstAgentName = "main";
 
 // A health factor of 1.5 is 15,000 basis points of 1.
-const bpPerOne = 10_000;
 
 function gasReserveOf(
   registry: ChainRegistry,
@@ -74,7 +73,6 @@ function limitsOf(
     priceImpactBps: limits.priceImpactBps,
     taxBps: limits.taxBps,
     liquidityFloorUsdMicros: limits.liquidityFloorUsd,
-    minHealthFactorBp: Math.round(limits.minHealthFactor * bpPerOne),
     gasReserve: lists.gasReserve,
     venues,
     allowTokens: lists.allow,

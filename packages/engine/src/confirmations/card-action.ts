@@ -1,5 +1,5 @@
 import type { AccountRef, Amount, AssetRef, ChainRef } from "@binference/chain";
-import { type Bps, bpsPerWhole, type Ratio } from "@binference/core";
+import { type Bps, bpsPerWhole } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
 import type { LaunchDetails } from "./launch-card-lines.js";
 import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
@@ -38,13 +38,6 @@ export interface CardActionFacts {
   };
   readonly send: { readonly amount: Amount; readonly recipient: AccountRef };
   readonly revokeApproval: { readonly token: AssetRef; readonly spender: AccountRef };
-  readonly lend: {
-    readonly action: "supply" | "withdraw" | "borrow" | "repay";
-    readonly amount: Amount;
-    readonly venue: string;
-    /** The health factor after the move, as the venue reports it. */
-    readonly healthFactor: Ratio;
-  };
   readonly stake: StakeMove;
   readonly bridge: {
     readonly amount: Amount;
@@ -172,14 +165,6 @@ const actionLines: ActionLines = {
     key: "card.revoke.action",
     values: { spender: account(action.spender), token: asset(action.token) },
   }),
-  lend: (action) => ({
-    key: `card.lend.${action.action}`,
-    values: {
-      amount: amount(action.amount),
-      venue: text(action.venue),
-      hf: { type: "ratio", ratio: action.healthFactor },
-    },
-  }),
   stake: stakeLine,
   bridge: (action) => ({
     key: "card.bridge.action",
@@ -261,7 +246,7 @@ export function actionLine<K extends CardActionKind>(action: CardAction<K>): Car
   return draw(action);
 }
 
-const verbs: { readonly [K in Exclude<CardActionKind, "lend" | "stake">]: string } = {
+const verbs: { readonly [K in Exclude<CardActionKind, "stake">]: string } = {
   swap: "swap",
   buy: "buy",
   sell: "sell",
@@ -276,7 +261,7 @@ const verbs: { readonly [K in Exclude<CardActionKind, "lend" | "stake">]: string
   autoOrder: "autoOrder",
 };
 
-/** The verb the card's header confirms: the kind, or a lend or stake move such as `supply`. */
+/** The verb the card's header confirms: the kind, or a stake move such as `unstake`. */
 export function actionVerb(action: CardAction): string {
-  return action.kind === "lend" || action.kind === "stake" ? action.action : verbs[action.kind];
+  return action.kind === "stake" ? action.action : verbs[action.kind];
 }

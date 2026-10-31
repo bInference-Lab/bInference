@@ -171,17 +171,6 @@ describe("a card in Telegram HTML", () => {
       "Remove 0xAbCd…Ef12's approval for USDT",
     ],
     [
-      "lend",
-      {
-        kind: "lend",
-        action: "supply",
-        amount: oneUsdt,
-        venue: "Venus",
-        healthFactor: { numerator: 37n, denominator: 20n },
-      },
-      "Supply 1 USDT to Venus · health factor 1.85",
-    ],
-    [
       "stake",
       { kind: "stake", action: "unstake", amount: oneUsdt, validator: recipient, readyInDays: 7 },
       "Unstake 1 USDT from 0xAbCd…Ef12 · ready in 7 days",

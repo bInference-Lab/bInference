@@ -135,7 +135,6 @@ describe("opening the first card", () => {
       "send",
       "rescue",
       "registerIdentity",
-      "lend",
       "stake",
       "bridge",
       "launchToken",

@@ -12,7 +12,6 @@ const wallet = "fake:1:saved" as AccountRef;
 const validator = "fake:1:validator" as AccountRef;
 const half = { asset: coin, base: 5n * 10n ** 17n };
 const out = { asset: token, base: 312_400_000n };
-const hf = { numerator: 185n, denominator: 100n };
 
 // One action of every kind and move, with the key and the verb each one shows.
 const actions: readonly (readonly [CardAction, string, string])[] = [
@@ -35,16 +34,6 @@ const actions: readonly (readonly [CardAction, string, string])[] = [
   ],
   [{ kind: "send", amount: half, recipient: wallet }, "card.send.action", "send"],
   [{ kind: "revokeApproval", token, spender: wallet }, "card.revoke.action", "revoke"],
-  [
-    { kind: "lend", action: "supply", amount: half, venue: "Venus", healthFactor: hf },
-    "card.lend.supply",
-    "supply",
-  ],
-  [
-    { kind: "lend", action: "repay", amount: half, venue: "Venus", healthFactor: hf },
-    "card.lend.repay",
-    "repay",
-  ],
   [{ kind: "stake", action: "stake", amount: half, validator }, "card.stake.stake", "stake"],
   [
     { kind: "stake", action: "unstake", amount: half, validator, readyInDays: 7 },
@@ -129,8 +118,6 @@ describe("action lines", () => {
       ["amount", "amount", "text", "asset"],
       ["amount", "account"],
       ["account", "asset"],
-      ["amount", "text", "ratio"],
-      ["amount", "text", "ratio"],
       ["amount", "account"],
       ["amount", "account", "count"],
       ["amount", "account"],
@@ -144,7 +131,7 @@ describe("action lines", () => {
     ]);
   });
 
-  it("names the verb of each kind and of each lend or stake move", () => {
+  it("names the verb of each kind and of each stake move", () => {
     expect(actions.map(([action]) => actionVerb(action))).toStrictEqual(
       actions.map(([, , verb]) => verb),
     );

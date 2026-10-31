@@ -47,7 +47,6 @@ describe("the auto test", () => {
       sell: "passes",
       send: "send",
       revokeApproval: "kind",
-      lend: "passes",
       stake: "passes",
       bridge: "send",
       cexOrder: "kind",
@@ -59,8 +58,7 @@ describe("the auto test", () => {
     });
   });
 
-  it("asks for a lend or stake move that leaves the agent's own positions", () => {
-    expect(refusalOf({ ...swap, kind: "lend" }, { isInsideOwnPositions: false })).toBe("kind");
+  it("asks for a stake move that leaves the agent's own positions", () => {
     expect(refusalOf({ ...swap, kind: "stake" }, { isInsideOwnPositions: false })).toBe("kind");
   });
 
@@ -193,7 +191,7 @@ function fitsEveryCap(given: AutoModeFacts): boolean {
 function isAllowedBySpec(subject: AutoModeSubject, given: AutoModeFacts): boolean {
   const isAutoKind =
     ["swap", "buy", "sell"].includes(subject.kind) ||
-    (["lend", "stake"].includes(subject.kind) && given.isInsideOwnPositions);
+    (subject.kind === "stake" && given.isInsideOwnPositions);
   return (
     given.approvalMode === "auto" &&
     !given.isLocked &&

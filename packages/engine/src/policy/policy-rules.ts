@@ -209,8 +209,7 @@ function asksTooMuchSlippage({ subject, facts }: PolicyInput): boolean {
 }
 
 /**
- * The rules of spec 6, section 4, in its order. `price_impact` is checked after the quote, and
- * `health_factor` once a lending venue reads positions. No rule stores `tax`: a token's tax is
+ * The rules of spec 6, section 4, in its order. `price_impact` is checked after the quote. No rule stores `tax`: a token's tax is
  * measured only by the risk step's round trip (decision 0113), which refuses with `high_tax`.
  */
 const intentRules: readonly PolicyRule[] = [

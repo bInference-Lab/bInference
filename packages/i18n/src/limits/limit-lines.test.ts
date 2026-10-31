@@ -36,7 +36,7 @@ function lines(changes: LimitChanges) {
 }
 
 describe("an agent's limits as people read them", () => {
-  it("reads dollars, rates, times and health factors in the order every surface lists them", () => {
+  it("reads dollars, rates and times in the order every surface lists them, never a health factor", () => {
     const changes: LimitChanges = {
       orderExpiryDays: 30,
       perTradeUsdMicros: 250_000_000n,
@@ -48,7 +48,6 @@ describe("an agent's limits as people read them", () => {
     expect(lines(changes)).toStrictEqual([
       "Per-trade cap: $250.00",
       "Slippage limit on verified tokens: 0.50%",
-      "Lowest health factor: 1.5",
       "How long a trade card waits: 1 second",
       "How long other cards wait: 600 seconds",
       "How long an auto order lasts: 30 days",

@@ -69,7 +69,11 @@ export interface RevokeApprovalRequest extends RequestBase {
   readonly spender: AccountRef;
 }
 
-/** Supplies to, withdraws from, borrows from or repays a lending venue. */
+/**
+ * A lending move. v1 keeps its shape, and the engine refuses every one with
+ * `intent.kind_unavailable` before it stores anything: binference does not lend or borrow
+ * (decision 0296). The next protocol version drops it.
+ */
 export interface LendRequest extends RequestBase {
   readonly kind: "lend";
   readonly action: "supply" | "withdraw" | "borrow" | "repay";

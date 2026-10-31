@@ -1,8 +1,8 @@
 import { decimalStringSchema, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import { z } from "zod";
 
-/** Every kind the auto mode may authorize: trades, and lend or stake moves in own positions. */
-export const autoModeKinds = ["swap", "buy", "sell", "lend", "stake"] as const;
+/** Every kind the auto mode may authorize: trades, and stake moves in own positions. */
+export const autoModeKinds = ["swap", "buy", "sell", "stake"] as const;
 
 /** A kind the auto mode may authorize. */
 export type AutoModeKind = (typeof autoModeKinds)[number];

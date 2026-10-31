@@ -7,7 +7,12 @@ import {
   ok,
   type Result,
 } from "@binference/core";
-import type { AssetInfos, IntentRequest, ProtocolErrorCode } from "@binference/protocol";
+import type {
+  AssetInfos,
+  IntentRequest,
+  LendRequest,
+  ProtocolErrorCode,
+} from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import {
@@ -68,7 +73,7 @@ export async function storeProposed(
  */
 function proposalOf(
   call: {
-    readonly request: IntentRequest;
+    readonly request: Exclude<IntentRequest, LendRequest>;
     readonly proposer: Proposer;
     readonly fill?: FillProposal;
   },
@@ -101,7 +106,7 @@ export interface StartedProposal {
 export async function startProposal(
   options: { readonly agents: AgentStore; readonly clock: Clock },
   call: {
-    readonly request: IntentRequest;
+    readonly request: Exclude<IntentRequest, LendRequest>;
     readonly proposer: Proposer;
     readonly fill?: FillProposal;
   },

@@ -204,6 +204,9 @@ async function refusalOf(
   agent: { readonly venues: readonly string[]; readonly mode: AgentMode },
 ): Promise<ProtocolErrorCode | undefined> {
   const { changes } = call.args;
+  if (changes.minHealthFactorBps !== undefined) {
+    return "protocol.bad_args";
+  }
   const added = (changes.venues ?? []).filter((venue) => !agent.venues.includes(venue));
   const unknownChain = reservesAsked(changes).some((item) => !options.chains.get(item.chain).ok);
   if (unknownChain || unknownVenues(options.chains, added).length > 0) {

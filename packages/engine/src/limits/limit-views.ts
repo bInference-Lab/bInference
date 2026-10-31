@@ -8,6 +8,10 @@ import {
   limitsChanged,
 } from "../policy/limit-change.js";
 
+// Protocol v1 still shows a lowest health factor, which no limit holds since binference does not
+// lend or borrow (decision 0296): every view answers 1.5, the value every agent had.
+const shownHealthFactorBps = 15_000;
+
 /** Each limit by the name the protocol gives it. */
 export const wireNames: { readonly [N in LimitName]: keyof LimitSettings } = {
   perTradeUsdMicros: "perTradeUsdMicros",
@@ -17,7 +21,6 @@ export const wireNames: { readonly [N in LimitName]: keyof LimitSettings } = {
   priceImpactBps: "priceImpactBps",
   taxBps: "taxBps",
   liquidityFloorUsdMicros: "liquidityFloorUsdMicros",
-  minHealthFactorBp: "minHealthFactorBps",
   gasReserve: "gasReserve",
   venues: "venues",
   allowTokens: "allowTokens",
@@ -33,8 +36,7 @@ export const wireNames: { readonly [N in LimitName]: keyof LimitSettings } = {
 };
 
 function settingsOf(values: LimitsValues): LimitSettings {
-  const { minHealthFactorBp, gasReserve, cardTradeExpiryS, cardOtherExpiryS, requoteAfterS } =
-    values;
+  const { gasReserve, cardTradeExpiryS, cardOtherExpiryS, requoteAfterS } = values;
   return {
     perTradeUsdMicros: values.perTradeUsdMicros,
     rollingDayUsdMicros: values.rollingDayUsdMicros,
@@ -43,7 +45,7 @@ function settingsOf(values: LimitsValues): LimitSettings {
     priceImpactBps: values.priceImpactBps,
     taxBps: values.taxBps,
     liquidityFloorUsdMicros: values.liquidityFloorUsdMicros,
-    minHealthFactorBps: minHealthFactorBp,
+    minHealthFactorBps: shownHealthFactorBps,
     gasReserve: Object.fromEntries(
       gasReserve.map(({ chain, reserveBase }) => [chain, reserveBase]),
     ),
@@ -110,10 +112,13 @@ export function reservesAsked(changes: WireChanges): readonly GasReserve[] {
   );
 }
 
-/** A `limit/set`'s changes by the engine's names, judged against the limits in effect. */
+/**
+ * A `limit/set`'s changes by the engine's names, judged against the limits in effect. A health
+ * factor names no limit; the handler refuses a change that holds one before it gets here.
+ */
 export function limitChangesOf(changes: WireChanges, current: LimitsValues): LimitChanges {
   const {
-    minHealthFactorBps,
+    minHealthFactorBps: _healthFactor,
     gasReserve,
     cardTradeExpirySeconds,
     cardOtherExpirySeconds,
@@ -122,7 +127,6 @@ export function limitChangesOf(changes: WireChanges, current: LimitsValues): Lim
   } = changes;
   return {
     ...same,
-    ...(minHealthFactorBps === undefined ? {} : { minHealthFactorBp: minHealthFactorBps }),
     ...(gasReserve === undefined
       ? {}
       : { gasReserve: reservesWith(current.gasReserve, reservesAsked(changes)) }),

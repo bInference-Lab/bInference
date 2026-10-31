@@ -9,7 +9,6 @@ describe("limitChangesOf", () => {
     const sets = [
       "limits.perTradeUsd=50.5",
       "limits.slippageBps.other=300",
-      "limits.minHealthFactor=1.8",
       "cards.tradeExpirySec=30",
       "orders.expiryDays=7",
       "limits.venues=kyberswap, okx",
@@ -22,7 +21,6 @@ describe("limitChangesOf", () => {
       value: {
         perTradeUsdMicros: 50_500_000n,
         slippageOtherBps: 300,
-        minHealthFactorBps: 18_000,
         cardTradeExpirySeconds: 30,
         orderExpiryDays: 7,
         venues: ["kyberswap", "okx"],
@@ -51,10 +49,7 @@ describe("limitChangesOf", () => {
       { kind: "bad_value", key: "limits.perTradeUsd", value: "0.0000001" },
     ],
     ["limits.taxBps=20000", { kind: "bad_value", key: "limits.taxBps", value: "20000" }],
-    [
-      "limits.minHealthFactor=0.5",
-      { kind: "bad_value", key: "limits.minHealthFactor", value: "0.5" },
-    ],
+    ["limits.minHealthFactor=1.5", { kind: "bad_set", set: "limits.minHealthFactor=1.5" }],
     ["cards.tradeExpirySec=0", { kind: "bad_value", key: "cards.tradeExpirySec", value: "0" }],
     ["limits.denyTokens=TKN", { kind: "bad_value", key: "limits.denyTokens", value: "TKN" }],
     [

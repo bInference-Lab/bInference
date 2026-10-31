@@ -23,7 +23,6 @@ export interface LimitsConfig {
   readonly priceImpactBps: Bps;
   readonly taxBps: Bps;
   readonly liquidityFloorUsd: bigint;
-  readonly minHealthFactor: number;
   /** The native coin kept for gas on each chain, as decimal text such as `"0.002"`. */
   readonly gasReserve: Readonly<Record<ChainRef, string>>;
   /** The venues a new agent may use; left out, every installed core venue. */
@@ -87,11 +86,6 @@ const limitsSchema = z
     priceImpactBps: bps(300, "The largest price impact allowed, in basis points."),
     taxBps: bps(1000, "The largest token tax allowed, in basis points."),
     liquidityFloorUsd: usd("10000", "The least pool liquidity a trade needs, in US dollars."),
-    minHealthFactor: z
-      .number()
-      .min(1)
-      .prefault(1.5)
-      .describe("The lowest lending health factor a move may leave."),
     gasReserve: z
       .record(chainSchema, decimalSchema)
       .prefault({ [bsc.id]: "0.002" })

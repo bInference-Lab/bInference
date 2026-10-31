@@ -68,7 +68,7 @@ describe("the auto grant of a stored intent", () => {
     const granted = intentKinds.filter((kind) =>
       autoModeGrantOf({ ...snapshot, record: { ...snapshot.record, kind } }, chain),
     );
-    expect(granted).toStrictEqual(["swap", "buy", "sell", "lend", "stake"]);
+    expect(granted).toStrictEqual(["swap", "buy", "sell", "stake"]);
     const events = snapshot.history.events.filter((event) => event.toState !== "confirmed");
     const unconfirmed = { ...snapshot, history: { ...snapshot.history, events } };
     expect(autoModeGrantOf(unconfirmed, chain)).toBeUndefined();

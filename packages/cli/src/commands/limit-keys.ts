@@ -14,7 +14,6 @@ export const limitConfigKeys: Readonly<Record<LimitField, string>> = {
   priceImpactBps: "limits.priceImpactBps",
   taxBps: "limits.taxBps",
   liquidityFloorUsdMicros: "limits.liquidityFloorUsd",
-  minHealthFactorBps: "limits.minHealthFactor",
   venues: "limits.venues",
   allowTokens: "limits.allowTokens",
   denyTokens: "limits.denyTokens",
@@ -36,7 +35,7 @@ interface LimitKey {
 }
 
 // Every limit but the gas reserve, by the key `defaults` gives it in config.json5 and in the same
-// units: dollars, basis points, seconds, days, a health factor, or a comma-separated list. The gas
+// units: dollars, basis points, seconds, days, or a comma-separated list. The gas
 // reserve of a chain is `limits.gasReserve.<chain>`, in its native coin.
 const limitKeys: readonly LimitKey[] = limitUnits.map(({ field, unit }) => ({
   key: limitConfigKeys[field],
@@ -57,9 +56,7 @@ export type LimitSetOutcome =
   | { readonly ok: true; readonly value: LimitChanges }
   | { readonly ok: false; readonly problem: LimitSetProblem };
 
-const decimal = /^(?:0|[1-9]\d*)(?:\.\d+)?$/;
 const whole = /^(?:0|[1-9]\d{0,9})$/;
-const bpPerOne = 10_000;
 
 function usdWire(text: string): JsonValue | undefined {
   const micros = usdSchema.safeParse(text);
@@ -68,10 +65,6 @@ function usdWire(text: string): JsonValue | undefined {
 
 function wholeWire(text: string): JsonValue | undefined {
   return whole.test(text) ? Number(text) : undefined;
-}
-
-function healthFactorWire(text: string): JsonValue | undefined {
-  return decimal.test(text) ? Math.round(Number(text) * bpPerOne) : undefined;
 }
 
 function listWire(text: string): JsonValue {
@@ -85,7 +78,6 @@ const wireOf: Readonly<Record<LimitUnit, (text: string) => JsonValue | undefined
   bps: wholeWire,
   seconds: wholeWire,
   days: wholeWire,
-  healthFactor: healthFactorWire,
   list: listWire,
 };
 

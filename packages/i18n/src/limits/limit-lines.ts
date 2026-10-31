@@ -4,10 +4,13 @@ import type { LimitChanges, LimitSettings } from "@binference/protocol";
 import type { Formatter } from "../format/create-formatter.js";
 
 /** The unit a limit is set in, which decides how it reads and how a person types it. */
-export type LimitUnit = "usd" | "bps" | "seconds" | "days" | "healthFactor" | "list";
+export type LimitUnit = "usd" | "bps" | "seconds" | "days" | "list";
 
-/** A limit other than the gas reserve, which each chain sets on its own. */
-export type LimitField = Exclude<keyof LimitSettings, "gasReserve">;
+/**
+ * A limit other than the gas reserve, which each chain sets on its own, and the health factor,
+ * which protocol v1 still carries though binference does not lend or borrow (decision 0296).
+ */
+export type LimitField = Exclude<keyof LimitSettings, "gasReserve" | "minHealthFactorBps">;
 
 /** A limit and the unit it is set in. */
 export interface LimitUnitOf {
@@ -24,7 +27,6 @@ export const limitUnits: readonly LimitUnitOf[] = [
   { field: "priceImpactBps", unit: "bps" },
   { field: "taxBps", unit: "bps" },
   { field: "liquidityFloorUsdMicros", unit: "usd" },
-  { field: "minHealthFactorBps", unit: "healthFactor" },
   { field: "venues", unit: "list" },
   { field: "allowTokens", unit: "list" },
   { field: "denyTokens", unit: "list" },
@@ -70,9 +72,6 @@ export type LimitLine = SettingLine | GasReserveLine;
 
 type LimitValue = LimitChanges[LimitField];
 
-// Health factors are basis points of one: 15000 reads 1.5.
-const healthFactorDecimals = 4;
-
 function valueText(entry: LimitUnitOf, value: NonNullable<LimitValue>, display: LimitDisplay) {
   const { formatter } = display;
   if (typeof value === "bigint") {
@@ -84,9 +83,6 @@ function valueText(entry: LimitUnitOf, value: NonNullable<LimitValue>, display: 
   }
   if (entry.unit === "seconds" || entry.unit === "days") {
     return formatter.message(`limit.${entry.unit}`, { count: value });
-  }
-  if (entry.unit === "healthFactor") {
-    return formatter.tokenAmount(BigInt(value), healthFactorDecimals);
   }
   return isBps(value) ? formatter.percent(value) : String(value);
 }

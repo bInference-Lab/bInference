@@ -100,36 +100,9 @@ const okx = createContracts(
   "2026-10-09",
 );
 
-const venus = createContracts("venus", {
-  "https://github.com/VenusProtocol/venus-protocol/blob/main/deployments/bscmainnet_addresses.json":
-    {
-      unitroller: "0xfD36E2c2a6789Db23113685031d7F16329158384",
-      vbnb: "0xA07c5b74C9B40447a954e1466938b865b6BBea36",
-      vusdt: "0xfD5840Cd36d94D7229439859C0112a4185BC0255",
-      vusdc: "0xecA88125a5ADbe82614ffC12D0DB554E2e2867C8",
-      vbtc: "0x882C173bC7Ff3b7786CA16dfeD3DFFfb9Ee7847B",
-      veth: "0xf508fCD89b8bd15579dc79A6827cB4686A3592c8",
-    },
-});
-
 const lista = createContracts("lista", {
   "https://docs.bsc.lista.org/for-developer/liquid-staking-slisbnb/smart-contract": {
     "stake-manager": "0x1adB950d8bB3dA4bE104211D5AB038628e477fE6",
-  },
-  "https://docs.bsc.lista.org/for-developer/lista-lending/smart-contract/smart-contract-bsc-core": {
-    moolah: "0x8F73b65B4caAf64FBA2aF91cC5D4a2A1318E5D8C",
-    "moolah-vault-wbnb": "0x57134a64B7cD9F9eb72F8255A671F5Bf2fe3E2d0",
-    "moolah-vault-usdt": "0x6d6783C146F2B0B2774C1725297f1845dc502525",
-  },
-});
-
-const aave = createContracts("aave", {
-  "https://github.com/bgd-labs/aave-address-book/blob/main/src/AaveV3BNB.sol": {
-    "pool-addresses-provider": "0xff75B6da14FfbbfD355Daf7a2731456b3562Ba6D",
-    pool: "0x6807dc923806fE8Fd134338EABCA509979a7e0cB",
-    oracle: "0x39bc1bfDa2130d6Bb6DBEfd366939b4c7aa7C697",
-    "pool-data-provider": "0xc90Df74A7c16245c5F5C5870327Ceb38Fe5d5328",
-    "wrapped-token-gateway": "0x0c2C95b24529664fE55D4437D7A31175CFE6c4f7",
   },
 });
 
@@ -270,9 +243,7 @@ export const bsc: ChainDefinition = {
     ...kyberswap,
     ...okx,
     ...bscLaunchpadContracts,
-    ...venus,
     ...lista,
-    ...aave,
     ...stakehub,
     ...across,
     ...relay,

@@ -655,8 +655,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | filled, cancelled                                  | 已成交, 已取消               |                                         |
 | open orders, order history                         | 挂单, 订单记录               |                                         |
 | stake, unstake, claim                              | 质押, 解除质押, 领取         |                                         |
-| supply, withdraw, borrow, repay (lending)          | 存入, 取出, 借款, 还款       | Not in v1; for messages still in code   |
-| health factor                                      | 健康因子                     | Not in v1; for messages still in code   |
+| lend, borrow                                       | 借贷                         | binference does neither in v1           |
 | bridge (verb)                                      | 跨链                         |                                         |
 | validator                                          | 验证者                       | Native BNB staking                      |
 | commission (a validator's), jailed                 | 佣金, 被监禁                 | A jailed validator earns nothing        |
@@ -722,7 +721,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | first buy                                | 首笔买入               | The launch wallet's own buy          |
 | owner key                                | 所有者密钥             | Shown once as a `bnok1` code         |
 | balance                                  | 余额                   |                                      |
-| withdraw, fund (a wallet)                | 提取, 充值             | Lending's withdraw is 取出           |
+| withdraw, fund (a wallet)                | 提取, 充值             |                                      |
 | top up                                   | 充值                   |                                      |
 | send (to an address)                     | 转账                   |                                      |
 | transfer (between your own accounts)     | 划转                   |                                      |
