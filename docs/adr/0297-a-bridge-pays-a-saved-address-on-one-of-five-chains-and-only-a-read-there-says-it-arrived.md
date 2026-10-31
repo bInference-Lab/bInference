@@ -1,6 +1,6 @@
 # 0297. A bridge pays a saved address on one of five chains, and only a read there says it arrived
 
-Status: Accepted
+Status: Amended by 0302
 
 Accepted by the owner on 2026-10-30, with the rescue address allowed only where it is a plain
 wallet on both chains, and the address book showing how many saved addresses on other chains

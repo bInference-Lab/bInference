@@ -1,6 +1,6 @@
 # 0305. A fifth 24-hour cap bounds the ETH a wallet approves on BSC
 
-Status: Proposed
+Status: Accepted
 
 Proposed with the owner's ruling of 2026-10-31: ETH bridges stay in v1 (Across's ETH to WETH on
 Ethereum, Base, Arbitrum and Robinhood Chain), with a fifth Privy 24-hour cap on BSC ETH, at twice

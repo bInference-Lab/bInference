@@ -1,6 +1,6 @@
 # 0304. The signer refuses an approval sent to the identity registry
 
-Status: Proposed
+Status: Accepted
 
 Proposed with the lead's ruling of 2026-10-31: the identity registry stays out of the approval rule
 and the signer refuses `approve` on it.

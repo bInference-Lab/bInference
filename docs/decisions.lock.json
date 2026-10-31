@@ -1203,6 +1203,22 @@
     "0301": {
       "status": "Accepted",
       "sha256": "076dbc83481e176af6c5043bb7041b87dcd7b2e9fd643a7aad8d4b313d0818ab"
+    },
+    "0302": {
+      "status": "Accepted",
+      "sha256": "56cb1089f289c374bec4c14d324eccbff7c4cfb5c2efb2f5b612be11e0c1ab87"
+    },
+    "0303": {
+      "status": "Accepted",
+      "sha256": "041e1e0ce684273e17439302048fb99dd57f223f151fc2ba56a490af9f064122"
+    },
+    "0304": {
+      "status": "Accepted",
+      "sha256": "d02e4e51a5a677c93b9a3ecfbb145a9f2edfcdbc978151fcf4eb461e73bb3575"
+    },
+    "0305": {
+      "status": "Accepted",
+      "sha256": "d3c576db7e0fcf17206988cc1c1e0704c02dfb3cb8e090fb4a3f85b6c1a7ebb6"
     }
   }
 }

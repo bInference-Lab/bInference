@@ -1,6 +1,6 @@
 # 0302. A bridge deposit binds its depositor, recipient, chain and tokens in one rule per route
 
-Status: Proposed
+Status: Accepted
 
 Proposed with the owner's ruling of 2026-10-31 (each destination chain's rules list up to 100
 saved addresses, chain and recipient bound together; the lead then asked for each route's tokens
