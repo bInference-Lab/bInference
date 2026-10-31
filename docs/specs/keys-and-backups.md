@@ -368,8 +368,11 @@ A refusal is logged with the rule number, never with key material, and raises
   wallet's; otherwise the owner names one of the shared addresses. It adopts launch wallets too
   ([decision 0218](../DECISIONS.md#d0218)): after the agent wallets, the newest first, which
   becomes the agent's launch wallet; any other is an extra launch wallet that nothing trades from,
-  which `wallet list` and `binference check` name so the owner rescues it. An owner key that owns
-  only launch wallets is refused. Nothing changes on Privy until the owner types the number of wallets found. Then, as
+  which `wallet list` and `binference check` name so the owner rescues it. It adopts bridge
+  wallets the same way, after the launch wallets ([decision 0307](../DECISIONS.md#d0307)): a
+  wallet whose ceiling names a contract only a bridge wallet calls or approves, such as Relay's
+  depository, is one, and the rescue address is never a bridge wallet's. An owner key that owns
+  only launch or bridge wallets is refused. Nothing changes on Privy until the owner types the number of wallets found. Then, as
   `init` does, it takes the bot and the limits, makes one agent with the default settings and this
   machine's agent key, moves every wallet's signer to that key, records each wallet with its
   ceiling, and issues the bot's pairing link. A folder that holds a config file but no install is

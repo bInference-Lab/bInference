@@ -5,6 +5,7 @@ import type { InitContext } from "../init/init-context.js";
 import { rescueAddressOf } from "../init/rescue-step.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import { takeRebuildRescue } from "./rebuild-rescue.js";
+import type { RebuildWallet } from "./rebuild-wallets.js";
 
 const rescue = "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
 const saved = "0xeA6F82DbD6C87DE5E542eFbd1f9964879828e4e7";
@@ -16,8 +17,12 @@ function owned(recipients: readonly string[]): OwnedWallet {
   } as unknown as OwnedWallet;
 }
 
-// A launch wallet at `address`, whose ceiling lists the recipients given.
-function launchAt(address: string, recipients: readonly string[]): OwnedWallet {
+// A launch or bridge wallet at `address`, whose ceiling lists the recipients given.
+function roledAt(
+  address: string,
+  recipients: readonly string[],
+  role: "launch" | "bridge" = "launch",
+): RebuildWallet {
   return {
     wallet: { address },
     ceiling: {
@@ -25,9 +30,10 @@ function launchAt(address: string, recipients: readonly string[]): OwnedWallet {
       contracts: [],
       perTxNativeCapBase: 0n,
       recipients,
-      isLaunch: true,
+      isLaunch: role === "launch",
     },
-  } as unknown as OwnedWallet;
+    role,
+  } as unknown as RebuildWallet;
 }
 
 function contextOf(options: { readonly rescue?: string; readonly answers?: readonly string[] }) {
@@ -86,7 +92,7 @@ describe("the rescue address of a rebuild", () => {
   });
 
   it("never takes a launch wallet it found, though every ceiling lists it", async () => {
-    const wallets = [owned([rescue, saved]), launchAt(saved, [rescue, saved])];
+    const wallets = [owned([rescue, saved]), roledAt(saved, [rescue, saved])];
 
     expect(await takeRebuildRescue(contextOf({}).context, wallets)).toStrictEqual(
       ok(rescueAddressOf(rescue)),
@@ -95,5 +101,13 @@ describe("the rescue address of a rebuild", () => {
       ok: false,
       refusal,
     });
+  });
+
+  it("never takes a bridge wallet it found, though every ceiling lists it", async () => {
+    const wallets = [owned([rescue, saved]), roledAt(saved, [rescue, saved], "bridge")];
+
+    expect(await takeRebuildRescue(contextOf({}).context, wallets)).toStrictEqual(
+      ok(rescueAddressOf(rescue)),
+    );
   });
 });

@@ -1,4 +1,5 @@
-import { type ChainRef, chainRefSchema } from "@binference/chain";
+import { type ChainRef, chainRefSchema, type WalletRole } from "@binference/chain";
+import { bsc, bscVenueCalls } from "@binference/chains";
 import { type Id, ok, type Secret } from "@binference/core";
 import type { OwnedWallet, PrivyId } from "@binference/custody-privy";
 import type { UnlockMode } from "../config/schema/engine.schema.js";
@@ -23,7 +24,12 @@ import type { FirstWallet } from "../init/wallet-step.js";
 import { type MovedSigners, moveSigners } from "./attach-signers.js";
 import { type RebuildOwner, takeRebuildOwner } from "./rebuild-owner.js";
 import { takeRebuildRescue } from "./rebuild-rescue.js";
-import { rebuildOrder } from "./rebuild-wallets.js";
+import {
+  bridgeOnlyAddresses,
+  type RebuildWallet,
+  rebuildOrder,
+  withRoles,
+} from "./rebuild-wallets.js";
 
 /** What a rebuild made, for its summary. */
 export interface RebuildOutcome {
@@ -43,9 +49,20 @@ export interface RebuildOutcome {
 /** What a rebuild checked and built before it changes anything. */
 interface Prepared {
   readonly answers: Answers;
-  readonly owner: RebuildOwner;
+  /** The owner key's wallets, each with its role, in the order the rebuild records them. */
+  readonly owner: Omit<RebuildOwner, "owned"> & { readonly owned: readonly RebuildWallet[] };
   readonly built: InitConfig;
 }
+
+// What the rebuild reads each wallet's role by: on BNB Smart Chain, the one chain this build serves,
+// the contracts only a bridge wallet calls or approves among the calls the registry lists.
+const bridgeOnly = bridgeOnlyAddresses(bsc, bscVenueCalls);
+
+// The words that name the extra wallets of each role a rebuild found.
+const extraKeys: Readonly<Record<WalletRole, string>> = {
+  launch: "rebuild.extraLaunch",
+  bridge: "rebuild.extraBridge",
+};
 
 // The person types the number of wallets found, a word of no language, to go on.
 async function confirmed(context: InitContext, count: number): Promise<boolean> {
@@ -58,23 +75,24 @@ async function confirmed(context: InitContext, count: number): Promise<boolean> 
 }
 
 // Each wallet with the time Privy made it and its role, so one the owner did not make stands out;
-// with more than one launch wallet, which one the agent trades from (decision 0218).
-function showFound(context: InitContext, owned: readonly OwnedWallet[]): void {
+// with more than one wallet of a role, which one the agent uses (decisions 0218 and 0307).
+function showFound(context: InitContext, owned: readonly RebuildWallet[]): void {
   const wallets = owned
-    .map(({ wallet, ceiling }) =>
+    .map(({ wallet, role }) =>
       context.words("rebuild.foundWallet", {
         address: wallet.address,
         made: context.dateTime(wallet.createdAtMs),
-        role: ceiling.isLaunch ? "launch" : "agent",
+        role: role ?? "agent",
       }),
     )
     .join("\n");
   context.prompter.say(context.words("rebuild.found", { count: owned.length, wallets }));
-  const launches = owned.filter((item) => item.ceiling.isLaunch);
-  const [newest, ...extra] = launches;
-  if (newest !== undefined && extra.length > 0) {
-    const address = newest.wallet.address;
-    context.prompter.say(context.words("rebuild.extraLaunch", { count: extra.length, address }));
+  for (const role of ["launch", "bridge"] as const) {
+    const [newest, ...extra] = owned.filter((item) => item.role === role);
+    if (newest !== undefined && extra.length > 0) {
+      const address = newest.wallet.address;
+      context.prompter.say(context.words(extraKeys[role], { count: extra.length, address }));
+    }
   }
 }
 
@@ -91,7 +109,7 @@ async function questions(context: InitContext): Promise<InitStep<Omit<Prepared, 
   if (!found.ok) {
     return found;
   }
-  const owned = rebuildOrder(found.value.owned);
+  const owned = rebuildOrder(withRoles(found.value.owned, bridgeOnly));
   if (owned === undefined) {
     return refused("init.rebuild_only_launch", "refused.rebuildOnlyLaunch");
   }
@@ -146,8 +164,8 @@ function firstOf(owned: OwnedWallet, agentQuorum: PrivyId): FirstWallet {
 }
 
 // Records the custody, the rescue address and every wallet with its ceiling, in the rebuild's
-// order: the first as init's first wallet, the others beside it, a launch wallet with its role
-// (decisions 0217 and 0218).
+// order: the first as init's first wallet, the others beside it, a launch or bridge wallet with its
+// role (decisions 0217, 0218 and 0307).
 async function record(
   context: InitContext,
   stores: InitStores,
@@ -160,11 +178,11 @@ async function record(
 ): Promise<InitStep<undefined>> {
   const { prepared, agent, agentKey, moved } = made;
   // In the rebuild's order: the first an agent wallet, then each a millisecond after the one
-  // before, so the store lists them so and the agent's launch wallet comes first of its kind.
+  // before, so the store lists them so and the agent's wallet of each role comes first of its kind.
   const [first, ...others] = prepared.owner.owned.map((owned) =>
     Object.assign(
       { first: firstOf(owned, moved.signer), perTxNativeBase: owned.ceiling.perTxNativeCapBase },
-      owned.ceiling.isLaunch ? { role: "launch" as const } : {},
+      owned.role === undefined ? {} : { role: owned.role },
     ),
   );
   if (first === undefined) {
@@ -237,9 +255,9 @@ async function make(
  * 0142). It warns first that history, settings, labels, saved addresses and the bot's pairing
  * start fresh, takes the Privy app and the owner key, finds the wallets the key owns, reads the
  * rescue address from their ceilings or asks for one they list, and goes on only once the person
- * types how many wallets it found. It adopts launch wallets too, after the agent wallets, the
- * newest the agent's launch wallet, and refuses an owner key that owns only launch wallets
- * (decision 0218). Then, as init does, it takes the bot and the limits and builds
+ * types how many wallets it found. It adopts launch and bridge wallets too, after the main
+ * wallets, the newest of each role the agent's wallet of that role, and refuses an owner key that
+ * owns only such wallets (decisions 0218 and 0307). Then, as init does, it takes the bot and the limits and builds
  * the config, makes the first agent and this machine's agent key, moves every wallet's signer to
  * the key in a change the owner key signs, records the wallets with their ceilings, issues the
  * bot's pairing link and writes the config last. Nothing changes on Privy before the count is

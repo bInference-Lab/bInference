@@ -1,23 +1,23 @@
 import { ok } from "@binference/core";
-import type { OwnedWallet } from "@binference/custody-privy";
 import { type InitContext, type InitStep, refused } from "../init/init-context.js";
 import { type RescueAddress, rescueAddressOf } from "../init/rescue-step.js";
+import type { RebuildWallet } from "./rebuild-wallets.js";
 
 function lower(items: readonly string[]): ReadonlySet<string> {
   return new Set(items.map((item) => item.toLowerCase()));
 }
 
 // The addresses every ceiling lets a native send pay, as the first ceiling writes them; never a
-// launch wallet's, which no ceiling may list (decision 0218).
-function commonRecipients(owned: readonly OwnedWallet[]): readonly string[] {
+// launch or bridge wallet's, which no ceiling may list (decisions 0218 and 0307).
+function commonRecipients(owned: readonly RebuildWallet[]): readonly string[] {
   const [first, ...rest] = owned;
   const others = rest.map((item) => lower(item.ceiling.recipients));
-  const launches = lower(
-    owned.filter((item) => item.ceiling.isLaunch).map((item) => item.wallet.address),
+  const roled = lower(
+    owned.filter((item) => item.role !== undefined).map((item) => item.wallet.address),
   );
   return (first?.ceiling.recipients ?? []).filter(
     (address) =>
-      others.every((set) => set.has(address.toLowerCase())) && !launches.has(address.toLowerCase()),
+      others.every((set) => set.has(address.toLowerCase())) && !roled.has(address.toLowerCase()),
   );
 }
 
@@ -30,11 +30,11 @@ function listed(candidates: readonly string[], text: string): RescueAddress | un
 /**
  * The rescue address of a rebuild (decision 0142): one of the addresses every wallet's ceiling
  * lets a send pay, since the rescue address is in every ceiling, and never the address of a
- * launch wallet it found. It is read when the ceilings share exactly one; otherwise `--rescue` names one of them, or a person picks one.
+ * launch or bridge wallet it found. It is read when the ceilings share exactly one; otherwise `--rescue` names one of them, or a person picks one.
  */
 export async function takeRebuildRescue(
   context: InitContext,
-  owned: readonly OwnedWallet[],
+  owned: readonly RebuildWallet[],
 ): Promise<InitStep<RescueAddress>> {
   const candidates = commonRecipients(owned);
   const addresses = candidates.join(", ");
