@@ -56,6 +56,7 @@ export const cardKeys = [
   "order.kind",
   "card.place.curve",
   "card.launchWallet",
+  "card.bridgeWallet",
   "card.route",
   "card.fees",
   "card.check",

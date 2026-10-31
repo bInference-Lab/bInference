@@ -4,9 +4,9 @@ import type { AssetInfos } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { CardClosing } from "../confirmations/card-closing.js";
 import { assetsOfLine } from "../confirmations/card-line.js";
-import { type Card, drawCard } from "../confirmations/draw-card.js";
+import { type Card, type CardRoleWallet, drawCard } from "../confirmations/draw-card.js";
 import { isFirstLiveCard } from "../confirmations/first-live-card.js";
-import { roleWalletOf } from "../install/role-wallet.js";
+import { roleWalletIn } from "../install/role-wallet.js";
 import type { CardCloseReason, CardRecord } from "../intents/card-record.js";
 import { closingOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -180,6 +180,21 @@ async function clientOf(
   return tokens.find((token) => token.id === ref)?.label ?? ref;
 }
 
+// The agent's launch or bridge wallet the intent runs from, which its card names (decisions 0217
+// and 0307); nothing for any other wallet.
+async function roleWalletNamed(
+  options: CardShowingsOptions,
+  record: IntentRecord,
+  call: Call,
+): Promise<{ readonly roleWallet?: CardRoleWallet }> {
+  const { wallets } = await options.install.read(call);
+  const role = wallets.find((wallet) => wallet.id === record.walletId)?.role;
+  const own = role === undefined ? undefined : roleWalletIn(wallets, record.agentId, role);
+  return role === undefined || own?.id !== record.walletId
+    ? {}
+    : { roleWallet: { role, label: own.label } };
+}
+
 // An open card version drawn from its stored intent, with the info of every asset it names.
 async function drawOpen(
   options: CardShowingsOptions,
@@ -193,12 +208,7 @@ async function drawOpen(
   const cards = card.version > 1 ? await intents.cards(record.id, call) : [];
   const previous = cards.find((each) => each.version === card.version - 1);
   const client = card.autoAsk === "mcp" ? await clientOf(options, record, call) : "";
-  const launch = await roleWalletOf(
-    options.install,
-    { agent: record.agentId, role: "launch" },
-    call,
-  );
-  const named = launch?.id === record.walletId ? { launchWallet: launch.label } : {};
+  const named = await roleWalletNamed(options, record, call);
   const locked = options.isLocked === undefined ? {} : { isLocked: options.isLocked() };
   const source = {
     record,

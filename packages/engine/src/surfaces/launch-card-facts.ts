@@ -76,7 +76,7 @@ export function launchCardFacts(
   source: CardSource,
   warnings: CardWarnings,
 ): CardFacts | undefined {
-  const { record, card, settings, launchWallet } = source;
+  const { record, card, settings, roleWallet } = source;
   const request = requestDocument.decode(record.request);
   if (request.kind !== "launchToken") {
     return undefined;
@@ -90,7 +90,7 @@ export function launchCardFacts(
     hasOutsideContent: record.hasOutsideContent,
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
     action: { kind: "launchToken", symbol, name, venue, pair: pairWith, firstBuy, details },
-    ...(launchWallet === undefined ? {} : { launchWallet }),
+    ...(roleWallet === undefined ? {} : { roleWallet }),
     warnings: {
       ...warnings,
       ...(quote.firstBuy?.isUnbound === true ? { hasUnboundFirstBuy: true } : {}),

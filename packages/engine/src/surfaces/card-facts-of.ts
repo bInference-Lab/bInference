@@ -14,6 +14,7 @@ import type {
   AutoAsk,
   CardCheck,
   CardFacts,
+  CardRoleWallet,
   CardRoute,
   CardWarnings,
 } from "../confirmations/draw-card.js";
@@ -59,8 +60,11 @@ export interface CardSource {
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
   /** Who proposed the intent, as an auto mode line names an MCP proposal's client. */
   readonly client: string;
-  /** The label of the launch wallet the intent runs from; absent for any other wallet. */
-  readonly launchWallet?: string;
+  /**
+   * The wallet of a role the intent runs from, the agent's launch or bridge wallet, with its
+   * label; absent for any other wallet.
+   */
+  readonly roleWallet?: CardRoleWallet;
   /** Whether the engine is locked now; a `locked` auto mode line shows only while it is. */
   readonly isLocked?: boolean;
 }
@@ -192,14 +196,14 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
     record.simulation === undefined ? undefined : simulationDocument.decode(record.simulation);
   const check = checkOf(simulation, quote.minOut.asset, chains);
   const taxBps = taxOf(record);
-  const { launchWallet } = source;
+  const { roleWallet } = source;
   return {
     agentName: settings.agent.name,
     isPaper: record.isPaper,
     hasOutsideContent: record.hasOutsideContent,
     card: { version: card.version, openedAtMs: card.openedAtMs, expiresAtMs: card.expiresAtMs },
     action,
-    ...(launchWallet === undefined ? {} : { launchWallet }),
+    ...(roleWallet === undefined ? {} : { roleWallet }),
     ...(route === undefined ? {} : { route }),
     ...(check === undefined ? {} : { check }),
     warnings: {
@@ -253,11 +257,11 @@ function unfreezeFacts(quote: UnfreezeQuote, source: CardSource): CardFacts {
   };
 }
 
-// An auto order's card: its action line, the agent's reason, the launch wallet that holds it
+// An auto order's card: its action line, the agent's reason, the launch or bridge wallet that holds it
 // (decision 0217), and the line on linked exits when its position holds another active exit order
 // (decision 0189).
 function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | undefined {
-  const { record, card, settings, launchWallet } = source;
+  const { record, card, settings, roleWallet } = source;
   const { request, hasLinkedExits } = quote;
   const action = orderActionOf(quote, settings);
   if (action === undefined) {
@@ -277,7 +281,7 @@ function autoOrderFacts(quote: AutoOrderQuote, source: CardSource): CardFacts | 
       ...(request.worstPrice === undefined ? {} : { worstPrice: request.worstPrice }),
     },
     ...(reason === undefined ? {} : { reason }),
-    ...(launchWallet === undefined ? {} : { launchWallet }),
+    ...(roleWallet === undefined ? {} : { roleWallet }),
   };
 }
 

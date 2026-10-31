@@ -1,4 +1,4 @@
-import type { Amount, AssetRef } from "@binference/chain";
+import type { Amount, AssetRef, WalletRole } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import type { PoolFee, RouteLeg } from "@binference/protocol";
 import type { AutoAskCode } from "../intents/auto-mode-refusal.js";
@@ -97,10 +97,11 @@ export interface CardFacts {
   readonly check?: CardCheck;
   readonly warnings: CardWarnings;
   /**
-   * The label of the launch wallet the intent runs from (decision 0217), which the card names
-   * under its action; absent for any other wallet.
+   * The wallet of a role the intent runs from, with its label, which the card names under its
+   * action: the agent's launch wallet (decision 0217) or its bridge wallet (decision 0307); absent
+   * for any other wallet.
    */
-  readonly launchWallet?: string;
+  readonly roleWallet?: CardRoleWallet;
   /**
    * The agent's reason from the request, the only model words on a card. Each surface escapes it
    * and cuts it to 200 characters (spec 4, section 1).
@@ -240,9 +241,21 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
   ];
 }
 
+/** The wallet of a role an intent runs from, as its card names it. */
+export interface CardRoleWallet {
+  readonly role: WalletRole;
+  readonly label: string;
+}
+
+// The line that names the wallet of each role an intent runs from.
+const roleWalletKeys: Readonly<Record<WalletRole, CardKey>> = {
+  launch: "card.launchWallet",
+  bridge: "card.bridgeWallet",
+};
+
 /**
  * Draws one card version from its facts (spec 4, section 3): the header, the action, a token
- * launch's every other setting, the launch wallet it runs from, the route, the fees, the check,
+ * launch's every other setting, the launch or bridge wallet it runs from, the route, the fees, the check,
  * the warnings, what the agent says and the expiry, in that order. Lines without facts are left
  * out.
  */
@@ -253,8 +266,8 @@ export function drawCard(facts: CardFacts): Card {
     ...(facts.action.kind === "launchToken" && facts.action.details !== undefined
       ? launchDetailLines(facts.action.details)
       : []),
-    ...optional(facts.launchWallet, (label) => ({
-      key: "card.launchWallet",
+    ...optional(facts.roleWallet, ({ role, label }) => ({
+      key: roleWalletKeys[role],
       values: { wallet: { type: "text", text: label } },
     })),
     ...optional(facts.route, routeLine),

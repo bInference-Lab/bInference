@@ -46,6 +46,7 @@
   "order.worstPrice": "Every fill trades at {price} or better",
   "place.curve": "the {launchpad} curve",
   "launchWallet": "From your launch wallet {wallet}",
+  "bridgeWallet": "From your bridge wallet {wallet}",
   "route": "Route  {route} · impact {impact} · max slippage {slippage}",
   "fees": "Fees   network ≈ {fee}{privateSend, select, yes { · private send} other {}}",
   "check": "Check  ✅ simulation: you receive {received} · {verified, select, yes {✅ {token} verified} other {✅ {token} passed the risk checks}}",

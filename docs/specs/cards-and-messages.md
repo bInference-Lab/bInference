@@ -209,7 +209,9 @@ launchpad.
 
 A trade that runs from the agent's launch wallet shows `card.launchWallet` right after its action
 line: "From your launch wallet {wallet}" / 「从你的发射钱包 {wallet} 发起」, `{wallet}` the label the
-owner gave it ([decision 0217](../DECISIONS.md#d0217)).
+owner gave it ([decision 0217](../DECISIONS.md#d0217)). An intent that runs from its bridge wallet
+shows `card.bridgeWallet` there: "From your bridge wallet {wallet}" / 「从你的跨链钱包 {wallet}
+发起」 ([decision 0307](../DECISIONS.md#d0307)).
 
 `{place}` is "the Flap curve" / 「Flap 联合曲线」, "the four.meme curve" / 「four.meme 联合曲线」,
 "the Genius.fun curve" / 「Genius.fun 联合曲线」, or the venue's name for a pool.
