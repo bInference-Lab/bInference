@@ -46,8 +46,9 @@ const feeCap = 1_000_000_000n;
 const coinPrice = { numerator: 600n, denominator: 10n ** 12n };
 const tokenPrice = { numerator: 1n, denominator: 1n };
 
-// Every request kind but the trades the money path routes (a swap, a buy and a sell): sends,
-// withdrawals, bridges, launches and the kinds it does not route yet.
+// Every request kind but the trades the money path routes (a swap, a buy and a sell): sends and
+// approval revokes on their own path, withdrawals, bridges, launches and the kinds it does not
+// route yet.
 const otherRequests: readonly IntentRequest[] = [
   { ...base, kind: "send", amount: coin, to: { address: outside } },
   {
@@ -258,8 +259,14 @@ async function outcomeOf(c: Case): Promise<Outcome> {
   if (c.other === undefined) {
     return swapOutcome(test, c, expectOk(proposed));
   }
+  const { kind } = requestOf(c);
+  if (kind === "send" || kind === "revokeApproval") {
+    // A send and a revoke run their own path, which the auto test always leaves to a tap.
+    const ranAlone = proposed.ok && proposed.value.state === "confirmed";
+    return { isAuto: false, problems: ranAlone ? [`a ${kind} ran alone`] : [] };
+  }
   const isRefused = !proposed.ok && proposed.error === refusalOf(c);
-  return { isAuto: false, problems: isRefused ? [] : [`a ${requestOf(c).kind} was not refused`] };
+  return { isAuto: false, problems: isRefused ? [] : [`a ${kind} was not refused`] };
 }
 
 // Each condition holds most of the time, so a run meets the one that fails among those that hold.

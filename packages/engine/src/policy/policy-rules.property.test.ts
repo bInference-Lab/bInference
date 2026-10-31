@@ -115,6 +115,7 @@ type Earned = Readonly<Partial<Record<PolicyReason, boolean>>>;
 
 const liveOnly: ReadonlySet<string> = new Set([
   "send",
+  "revokeApproval",
   "bridge",
   "cexOrder",
   "registerIdentity",

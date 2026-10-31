@@ -108,6 +108,11 @@ describe("the policy check", () => {
     ["paper_only", { ...send, isPaper: true }, {}],
     ["paper_only", { ...buy, kind: "launchToken", isPaper: true }, {}],
     [
+      "paper_only",
+      { ...buy, kind: "revokeApproval", isPaper: true, outflows: [], inflowAssets: [] },
+      {},
+    ],
+    [
       "per_trade_cap",
       { ...buy, outflows: [{ asset: coin, base: oneCoin / 5n }] },
       { recentOutflows: [] },

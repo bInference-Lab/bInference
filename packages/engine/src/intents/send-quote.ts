@@ -15,7 +15,7 @@ import { type DocumentCodec, documentCodec } from "./intent-documents.schema.js"
  * smart-account wallet (decision 0306), and the other name the address's reverse record gives,
  * which whoever controls the address sets, so a surface escapes and cuts it.
  */
-interface SentName {
+export interface SentName {
   readonly name: string;
   readonly resolvedAtMs: number;
   readonly smartAccount?: true;

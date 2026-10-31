@@ -8,6 +8,8 @@ import { type LaunchingMoneyPath, withLaunches } from "../money-path/launching-m
 import type { LaunchPathOptions } from "../money-path/resolve-launch.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
+import type { TransferPathOptions } from "../sends/propose-transfer.js";
+import { withTransfers } from "../sends/with-transfers.js";
 import type { EngineOptions } from "./create-engine.js";
 
 // What a token launch runs on beyond the money path's ports: the launch host, the owner's
@@ -26,9 +28,17 @@ function launchPathOf(
   return { ...path, install: stores.install, launch };
 }
 
+// What a send or an approval revoke runs on beyond the money path's ports: the install's wallets
+// and rescue address, the name resolvers, and the chain's simulator on live balances.
+function transferPathOf(options: EngineOptions, path: MoneyPathOptions): TransferPathOptions {
+  const { stores, chainSimulator, nameResolvers = [] } = options;
+  return { ...path, install: stores.install, simulator: chainSimulator, nameResolvers };
+}
+
 /**
  * The money path every proposal and order fill runs through, from the engine's options, with
- * token launches on their own path when the options hold a launch host (decision 0234).
+ * sends and approval revokes on their own path (spec 6, section 5), and token launches on theirs
+ * when the options hold a launch host (decision 0234).
  */
 export function moneyPathOf(
   options: EngineOptions,
@@ -65,5 +75,6 @@ export function moneyPathOf(
     clock,
     ids,
   };
-  return withLaunches(createMoneyPath(path), launchPathOf(options, path));
+  const transfers = withTransfers(createMoneyPath(path), transferPathOf(options, path));
+  return withLaunches(transfers, launchPathOf(options, path));
 }

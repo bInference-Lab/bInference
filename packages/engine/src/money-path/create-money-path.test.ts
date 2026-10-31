@@ -425,7 +425,7 @@ describe("the money path", () => {
       "agent.not_found",
       "wallet.not_found",
       "wallet.not_found",
-      "quote.no_route",
+      "address.not_found",
       "quote.no_route",
       "quote.no_route",
     ]);
