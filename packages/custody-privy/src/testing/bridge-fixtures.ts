@@ -154,6 +154,7 @@ export const callData: {
   readonly transferFrom: (from: Hex, to: Hex) => Hex;
   readonly setApprovalForAll: (operator: Hex) => Hex;
   readonly depositErc20: (depositor: Hex, token: Hex) => Hex;
+  readonly depositNative: (depositor: Hex) => Hex;
 } = {
   delegate: (validator) =>
     encodeFunctionData({ abi: staking, functionName: "delegate", args: [validator, false] }),
@@ -183,5 +184,11 @@ export const callData: {
       abi: relay,
       functionName: "depositErc20",
       args: [depositor, token, 5n, `0x${"ab".repeat(32)}`],
+    }),
+  depositNative: (depositor) =>
+    encodeFunctionData({
+      abi: relay,
+      functionName: "depositNative",
+      args: [depositor, `0x${"ab".repeat(32)}`],
     }),
 };

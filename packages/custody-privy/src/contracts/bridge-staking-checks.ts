@@ -29,6 +29,7 @@ import {
   type TestCall,
   walletUnder,
 } from "./privy-custody-setup.js";
+import { sharedWalletsCheck } from "./shared-wallets-check.js";
 
 const { spokePool, bscUsdc, bscEth, baseUsdc, robinhoodWeth, ethereumUsdc } = bridgeAddresses;
 const { baseSaved, robinhoodSaved, rescue, identity } = bridgeAddresses;
@@ -40,8 +41,8 @@ const refused = { ok: false, error: "refused" };
 /** A 0x-prefixed hex string. */
 export type Hex = `0x${string}`;
 
-// A wallet's address as the calldata helpers take it; Privy answers checksummed hex.
-function hexOf(address: string): Hex {
+/** A wallet's address as the calldata helpers take it; Privy answers checksummed hex. */
+export function hexOf(address: string): Hex {
   assert.ok(/^0x[0-9a-fA-F]{40}$/.test(address), "Privy answered no EVM address.");
   return `0x${address.slice(2)}`;
 }
@@ -87,7 +88,7 @@ async function routeCapsOn(subject: PrivyCustodySubject): Promise<ChainCaps["app
   }));
 }
 
-const made = new WeakMap<object, Promise<Wallets>>();
+const made = new WeakMap<PrivyCustodySubject, Promise<Wallets>>();
 
 function ceilingOf(
   kind: "main" | "bridge",
@@ -104,8 +105,7 @@ const id = (n: string) => idSchema("wal").parse(`wal_0190f1c2-3b4c-7d5e-8f60-718
 
 // A wallet that bridges, stakes and registers, and a bridge wallet, beside the suite's wallet and
 // under its 24-hour caps, so the suite makes no more aggregations.
-async function makeWallets(harness: PrivyCustodyHarness): Promise<Wallets> {
-  const subject = harness.create();
+async function makeWallets(subject: PrivyCustodySubject): Promise<Wallets> {
   const caps = heldCapsOf(await setUp(subject));
   const routeCaps = await routeCapsOn(subject);
   const main = await walletUnder(subject, {
@@ -127,15 +127,7 @@ export function bridgeCheck(
   name: string,
   run: (wallets: Wallets) => Promise<void>,
 ): ContractCheck {
-  return {
-    name,
-    run: async () => {
-      const subject = harness.create();
-      const wallets = made.get(subject) ?? makeWallets(harness);
-      made.set(subject, wallets);
-      await run(await wallets);
-    },
-  };
+  return sharedWalletsCheck(harness, { made, make: makeWallets }, { name, run });
 }
 
 /** Whether Privy signs the call from the wallet. */

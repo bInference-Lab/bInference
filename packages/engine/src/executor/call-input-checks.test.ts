@@ -1,9 +1,10 @@
 import { accountRefSchema, chainRefSchema, type VenueDeclaration } from "@binference/chain";
+import { createFakeBridgeVenue, fakeDepositAbi } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
 import { expectOk } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import { callInputChecksOf } from "./call-input-checks.js";
-import { declaredCallsOf, walletOnlySpendersOf } from "./declared-calls.js";
+import { declaredCallsOf, declaredTargetsOf, walletOnlySpendersOf } from "./declared-calls.js";
 import { benchChain } from "./test-executor.js";
 
 const fakeChain = expectOk(testChains().get(benchChain));
@@ -106,5 +107,18 @@ describe("the functions and spenders a route's venues declare", () => {
     expect(walletOnlySpendersOf(fakeChain, [launchpad])).toStrictEqual([
       { role: "bridge", spender: router },
     ]);
+  });
+});
+
+describe("what the signer reads of a bridge only a bridge wallet deposits into", () => {
+  const bridgeChain = expectOk(testChains(["fake-bridge"]).get(benchChain));
+  const bridge = createFakeBridgeVenue();
+  const depository = accountRefSchema.parse(`${bridgeChain.ref}:0x0000000d`);
+
+  it("marks its deposit and its spender as a bridge wallet's, for the signer to refuse elsewhere", () => {
+    const targets = declaredTargetsOf(bridgeChain, { used: [bridge], all: [bridge] });
+
+    expect(targets.walletOnlyCalls).toStrictEqual([{ role: "bridge", abi: fakeDepositAbi }]);
+    expect(targets.walletOnlySpenders).toStrictEqual([{ role: "bridge", spender: depository }]);
   });
 });

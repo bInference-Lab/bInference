@@ -125,6 +125,19 @@ const testRelayCalls: readonly CeilingCall[] = ["depositErc20", "depositNative"]
 }));
 
 /**
+ * The ceiling request of a bridge wallet (decision 0307), as the registry plans it for Relay:
+ * Relay's deposits on its depository, each paying back the wallet, and the depository as its one
+ * spender, beside the test request's sends and the caps given; none of a main wallet's calls.
+ */
+export function testBridgeWalletCeilingRequest(caps: ChainCaps = testCaps): CeilingRequest {
+  const request = testCeilingRequest(caps);
+  const chains = request.chains.map((chain) =>
+    Object.assign({}, chain, { calls: testRelayCalls, spenders: [stakingAddresses.depository] }),
+  );
+  return { ...request, chains };
+}
+
+/**
  * The ceiling of a wallet that bridges, stakes and registers its identity: the bridge request's,
  * with the staking and identity calls and the stake manager as a spender; a bridge wallet's also
  * with Relay's deposits and its depository as a spender (decision 0303).
