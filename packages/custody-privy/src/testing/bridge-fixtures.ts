@@ -107,3 +107,81 @@ export function approveTo(spender: Hex, amount: bigint): Hex {
     args: [spender, amount],
   });
 }
+
+// StakeHub, Lista's stake manager, the identity registry's ERC-721 moves and Relay's depository, as
+// their verified sources declare them.
+const staking = parseAbi([
+  "function delegate(address operatorAddress, bool delegateVotePower) payable",
+  "function undelegate(address operatorAddress, uint256 shares)",
+  "function redelegate(address srcValidator, address dstValidator, uint256 shares, bool delegateVotePower)",
+  "function claim(address operatorAddress, uint256 requestNumber)",
+  "function deposit() payable",
+  "function requestWithdraw(uint256 _amountInSlisBnb)",
+  "function claimWithdraw(uint256 _idx)",
+  "function claimWithdrawFor(address _user, uint256 _idx)",
+]);
+const registry = parseAbi([
+  "function transferFrom(address from, address to, uint256 tokenId)",
+  "function setApprovalForAll(address operator, bool approved)",
+]);
+const relay = parseAbi([
+  "function depositErc20(address depositor, address token, uint256 amount, bytes32 id)",
+  "function depositNative(address depositor, bytes32 id) payable",
+]);
+
+/** The staking and Relay functions a ceiling lists, as JSON ABI entries. */
+export const stakingAbis: Readonly<Record<string, AbiFunction>> = {
+  delegate: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "delegate" })),
+  undelegate: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "undelegate" })),
+  claim: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "claim" })),
+  deposit: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "deposit" })),
+  requestWithdraw: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "requestWithdraw" })),
+  claimWithdraw: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "claimWithdraw" })),
+  depositErc20: abiFunctionSchema.parse(getAbiItem({ abi: relay, name: "depositErc20" })),
+  depositNative: abiFunctionSchema.parse(getAbiItem({ abi: relay, name: "depositNative" })),
+};
+
+/** Calldata of the staking, identity and Relay calls the checks ask Privy to sign. */
+export const callData: {
+  readonly delegate: (validator: Hex) => Hex;
+  readonly undelegate: (validator: Hex) => Hex;
+  readonly redelegate: (from: Hex, to: Hex) => Hex;
+  readonly claim: (validator: Hex) => Hex;
+  readonly deposit: () => Hex;
+  readonly requestWithdraw: () => Hex;
+  readonly claimWithdraw: () => Hex;
+  readonly claimWithdrawFor: (user: Hex) => Hex;
+  readonly transferFrom: (from: Hex, to: Hex) => Hex;
+  readonly setApprovalForAll: (operator: Hex) => Hex;
+  readonly depositErc20: (depositor: Hex, token: Hex) => Hex;
+} = {
+  delegate: (validator) =>
+    encodeFunctionData({ abi: staking, functionName: "delegate", args: [validator, false] }),
+  undelegate: (validator) =>
+    encodeFunctionData({ abi: staking, functionName: "undelegate", args: [validator, 5n] }),
+  redelegate: (from, to) =>
+    encodeFunctionData({ abi: staking, functionName: "redelegate", args: [from, to, 5n, false] }),
+  claim: (validator) =>
+    encodeFunctionData({ abi: staking, functionName: "claim", args: [validator, 0n] }),
+  deposit: () => encodeFunctionData({ abi: staking, functionName: "deposit" }),
+  requestWithdraw: () =>
+    encodeFunctionData({ abi: staking, functionName: "requestWithdraw", args: [5n] }),
+  claimWithdraw: () =>
+    encodeFunctionData({ abi: staking, functionName: "claimWithdraw", args: [0n] }),
+  claimWithdrawFor: (user) =>
+    encodeFunctionData({ abi: staking, functionName: "claimWithdrawFor", args: [user, 0n] }),
+  transferFrom: (from, to) =>
+    encodeFunctionData({ abi: registry, functionName: "transferFrom", args: [from, to, 1n] }),
+  setApprovalForAll: (operator) =>
+    encodeFunctionData({
+      abi: registry,
+      functionName: "setApprovalForAll",
+      args: [operator, true],
+    }),
+  depositErc20: (depositor, token) =>
+    encodeFunctionData({
+      abi: relay,
+      functionName: "depositErc20",
+      args: [depositor, token, 5n, `0x${"ab".repeat(32)}`],
+    }),
+};

@@ -17,6 +17,7 @@ import {
   transferData,
 } from "../testing/custody-fixtures.js";
 import { readBackWallet, type WalletExpectation } from "../wallets/read-back.js";
+import { bridgeStakingChecks } from "./bridge-staking-checks.js";
 import { recipientChecks } from "./ceiling-recipients-checks.js";
 import { launchWalletChecks } from "./launch-wallet-checks.js";
 import {
@@ -211,7 +212,8 @@ const venueChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] => 
  * The contract the Privy fake and the Privy test app both pass: a wallet made and read back, the
  * calls the ceiling allows signed as the wallet, the ones it does not refused by Privy itself, even
  * with a valid agent key, functions, receivers and approvals past a cap among them, the recipients
- * and the signer only the owner key changes, and a launch wallet's own calls (decision 0217).
+ * and the signer only the owner key changes, a launch wallet's own calls (decision 0217), and the
+ * bridge, staking and identity rules (decisions 0302 to 0304).
  */
 export function privyCustodyContract(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [
@@ -222,5 +224,6 @@ export function privyCustodyContract(harness: PrivyCustodyHarness): readonly Con
     ...recipientChecks(harness),
     ...signerChecks(harness),
     ...launchWalletChecks(harness),
+    ...bridgeStakingChecks(harness),
   ];
 }

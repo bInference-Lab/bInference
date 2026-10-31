@@ -3,7 +3,6 @@ import { generateKeyPairSync } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { err, ok } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import type { PrivyId } from "../privy/privy-records.js";
 import { testAddresses } from "../testing/custody-fixtures.js";
 import { ownerSigner } from "../testing/owner-signer.js";
 import {
@@ -18,20 +17,13 @@ import {
   type CustodySetup,
   live,
   type PrivyCustodyHarness,
+  policyOf,
 } from "./privy-custody-setup.js";
 
 const { rescue, saved, unsaved } = testAddresses;
 const sendTo = (to: string) => ({ call: { to, valueWei: 1n, data: "0x" as const } });
 // A change signed for now goes out at once; the live app checks it against its own clock.
 const minuteMs = 60_000;
-
-async function policyOf(setup: CustodySetup): Promise<PrivyId> {
-  const wallet = await setup.subject.api.wallet(setup.wallet.id, live());
-  assert.ok(wallet.ok);
-  const [policy] = wallet.value.policyIds;
-  assert.ok(policy !== undefined);
-  return policy;
-}
 
 // Signs as the owner, and counts the requests it signed.
 function counted(authorize: OwnerAuthorize): {

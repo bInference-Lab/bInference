@@ -1,5 +1,11 @@
-import type { BridgeCall, BridgeTarget, CeilingRequest, ChainCaps } from "../ceiling/ceiling.js";
-import { bridgeAbis } from "./bridge-fixtures.js";
+import type {
+  BridgeCall,
+  BridgeTarget,
+  CeilingCall,
+  CeilingRequest,
+  ChainCaps,
+} from "../ceiling/ceiling.js";
+import { bridgeAbis, stakingAbis } from "./bridge-fixtures.js";
 import { testCaps, testCeilingRequest } from "./custody-fixtures.js";
 
 /** Real contracts and tokens on BSC and the destinations, and accounts saved per destination. */
@@ -64,6 +70,56 @@ export function testBridgeCeilingRequest(caps: ChainCaps = testCaps): CeilingReq
     Object.assign({}, chain, {
       spenders: [...chain.spenders, bridgeAddresses.spokePool],
       bridges: testTargets,
+    }),
+  );
+  return { ...request, chains };
+}
+
+/** BSC's staking contracts, the slisBNB token and Relay's depository. */
+export const stakingAddresses = {
+  stakeHub: "0x0000000000000000000000000000000000002002",
+  stakeManager: "0x1adB950d8bB3dA4bE104211D5AB038628e477fE6",
+  slisBnb: "0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B",
+  depository: "0x4cD00E387622C35bDDB9b4c962C136462338BC31",
+} as const;
+
+const onContract = (contract: string, names: readonly string[]): readonly CeilingCall[] =>
+  names.map((name) => ({
+    contract,
+    abi: stakingAbis[name] ?? bridgeAbis.register,
+    walletInputs: [],
+  }));
+
+// StakeHub's and the stake manager's calls, and the identity registry's `register(string)`.
+const testStakingCalls: readonly CeilingCall[] = [
+  ...onContract(stakingAddresses.stakeHub, ["delegate", "undelegate", "claim"]),
+  ...onContract(stakingAddresses.stakeManager, ["deposit", "requestWithdraw", "claimWithdraw"]),
+  { contract: bridgeAddresses.identity, abi: bridgeAbis.register, walletInputs: [] },
+];
+
+// Relay's deposits, each paying back the wallet, which only a bridge wallet's ceiling lists.
+const testRelayCalls: readonly CeilingCall[] = ["depositErc20", "depositNative"].map((name) => ({
+  contract: stakingAddresses.depository,
+  abi: stakingAbis[name] ?? bridgeAbis.register,
+  walletInputs: ["depositor"],
+}));
+
+/**
+ * The ceiling of a wallet that bridges, stakes and registers its identity: the bridge request's,
+ * with the staking and identity calls and the stake manager as a spender; a bridge wallet's also
+ * with Relay's deposits and its depository as a spender (decision 0303).
+ */
+export function testStakingCeilingRequest(
+  caps: ChainCaps = testCaps,
+  wallet: "main" | "bridge" = "main",
+): CeilingRequest {
+  const request = testBridgeCeilingRequest(caps);
+  const relayCalls = wallet === "bridge" ? testRelayCalls : [];
+  const relaySpenders = wallet === "bridge" ? [stakingAddresses.depository] : [];
+  const chains = request.chains.map((chain) =>
+    Object.assign({}, chain, {
+      calls: [...chain.calls, ...testStakingCalls, ...relayCalls],
+      spenders: [...chain.spenders, stakingAddresses.stakeManager, ...relaySpenders],
     }),
   );
   return { ...request, chains };

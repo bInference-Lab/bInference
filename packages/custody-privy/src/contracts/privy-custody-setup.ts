@@ -99,9 +99,11 @@ export function heldCapsOf(setup: CustodySetup): ChainCaps {
   return held.caps;
 }
 
-// A wallet under the ceiling given, owned by the owner key with the agent key as its one signer,
-// read back, and the `privy-owner` adapter over it as the engine's wallet given.
-async function walletUnder(
+/**
+ * A wallet under the ceiling given, owned by the owner key with the agent key as its one signer,
+ * read back, and the `privy-owner` adapter over it as the engine's wallet given.
+ */
+export async function walletUnder(
   subject: PrivyCustodySubject,
   made: {
     readonly ceiling: (caps: ChainCaps) => Ceiling;
@@ -317,6 +319,15 @@ export async function askPrivy(
     },
     live(),
   );
+}
+
+/** The id of the policy Privy holds for a setup's wallet, its ceiling. */
+export async function policyOf(setup: CustodySetup): Promise<PrivyId> {
+  const wallet = await setup.subject.api.wallet(setup.wallet.id, live());
+  assert.ok(wallet.ok);
+  const [policy] = wallet.value.policyIds;
+  assert.ok(policy !== undefined);
+  return policy;
 }
 
 /** A check of the custody contract on the suite's wallet for the harness's subject. */
