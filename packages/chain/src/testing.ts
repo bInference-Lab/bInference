@@ -80,6 +80,14 @@ export type {
   RelaySenderSubject,
 } from "./contracts/relay-sender-contract.js";
 export { deliveryReaderContract } from "./contracts/delivery-reader-contract.js";
+export { nameResolverContract } from "./contracts/name-resolver-contract.js";
+export type {
+  NamedAccount,
+  NameResolverHarness,
+  NameResolverSubject,
+} from "./contracts/name-resolver-contract.js";
+export { createFakeNameResolver } from "./fakes/fake-name-resolver.js";
+export type { FakeNameRecord, FakeNameResolver } from "./fakes/fake-name-resolver.js";
 export type {
   DeliveryReaderHarness,
   DeliveryReaderSubject,

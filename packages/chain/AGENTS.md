@@ -47,3 +47,6 @@ Rules for this package:
   account's holding of an asset and what one transaction brought it in one asset, with its block
   and whether that block is final. It only reads, so a family that never signs, such as Solana's,
   fills it too.
+- `NameResolver` (`src/names/ports.ts`) answers what a name under one suffix points to on its
+  chain at the latest block, and its reverse record, reading again on every call. Naming-service
+  plugins fill it; the engine picks one by the name's suffix and names no service.

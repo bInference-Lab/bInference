@@ -153,6 +153,9 @@ new name here first, in the change that uses it.
   engine resolves it when the card opens and again before it signs, the card shows the name and the
   address, and the address book keeps only the address. Its **reverse record** is the name an
   address's own record points back to.
+- **name resolver**: a plugin that answers what a name under one suffix, such as `.bnb`, points to
+  on its chain now, and what that address's reverse record names. It keeps nothing, so a name read
+  again after a change answers the new address.
 - **send level**: from 0 (Open) to 3 (Locked), where sends may go among the saved addresses.
 - **freeze**: stops an agent or the whole install at once; an agent created while the install is
   frozen starts frozen. Unfreezing is asked for in the CLI, the console or the Mini App, and takes
