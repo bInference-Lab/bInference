@@ -35,6 +35,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.limitChangeCancelled":
     "Limit change cancelled for the 24-hour cap; the limit in effect stays",
   "notice.ceilingChange": `${warning} The owner key changed the ceiling of main's wallets from the CLI: the most one contract call may carry. Not you? Freeze now.`,
+  "notice.dayCapAdded":
+    "A 24-hour cap on approvals of ETH now holds main's wallets. Until this change, approvals of ETH had no 24-hour cap.",
   "notice.signerRevoked": `${warning} The owner key removed the agent key of signer office-mac from every wallet, from the CLI. The machine that held it signs nothing more. Not you? Freeze now.`,
   "notice.sendLevel": "Send level 2 → 1 at Oct 11, 2026, 09:30:00",
   "notice.sendLevelCancelled": "Send level change to 0 cancelled; it stays 2",

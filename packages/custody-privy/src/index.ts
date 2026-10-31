@@ -72,7 +72,7 @@ export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
 export { setCeilingCalls } from "./wallets/ceiling-calls.js";
-export { createDayCaps } from "./wallets/create-day-caps.js";
+export { addPlannedCaps, capsWithTokens, createDayCaps } from "./wallets/create-day-caps.js";
 export type { CallsRefusal, PolicyCalls } from "./wallets/ceiling-calls.js";
 export { setCeilingRecipients } from "./wallets/ceiling-recipients.js";
 export type { PolicyRecipients, RecipientsRefusal } from "./wallets/ceiling-recipients.js";

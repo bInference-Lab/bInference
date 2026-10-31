@@ -34,6 +34,8 @@ const expected: Readonly<Record<string, string>> = {
     "命令行 修改了限额：单笔上限将于 2026年10月11日 09:30:00 更改。不是你操作？请立即取消。",
   "notice.limitChangeCancelled": "已取消对24 小时上限的修改，当前限额保持不变",
   "notice.ceilingChange": `${warning} 已从 命令行 用所有者密钥修改 main 钱包的上限：一次合约调用最多可携带的金额。不是你操作？请立即冻结。`,
+  "notice.dayCapAdded":
+    "main 的钱包对 ETH 的授权现在有 24 小时上限。在此之前，ETH 的授权没有 24 小时上限。",
   "notice.signerRevoked": `${warning} 已从 命令行 用所有者密钥从所有钱包移除签名方 office-mac 的 Agent 密钥。持有它的机器无法再签名。不是你操作？请立即冻结。`,
   "notice.sendLevel": "转账级别 2 → 1，将于 2026年10月11日 09:30:00 生效",
   "notice.sendLevelCancelled": "已取消将转账级别改为 0，仍为 2",

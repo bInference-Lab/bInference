@@ -421,3 +421,50 @@ describe("a bridge venue in the ceilings", () => {
     expect(changed?.data).toMatchObject({ path: "agents.main.ceiling", surface: "cli" });
   });
 });
+
+// The agent's two live wallets under the cap on the coin, and custody that adds a cap on the fake
+// chain's token to every ceiling a change of calls writes, as a ceiling made before ETH's cap gains
+// it with its first ETH bridge route.
+async function startedWithAddedCap(): Promise<TestEngine> {
+  const chains = testChains(["other-swap"]);
+  const held = createFakeCeilingEditor({ clock: createManualClock(testNowMs), chains });
+  const tokenCap = { ...dayCap, asset: assetRefSchema.parse("fake:1/erc20:0x0000000a") };
+  const adding: CeilingEditor = {
+    ...held,
+    setCalls: async (request, options) => {
+      const set = await held.setCalls(request, options);
+      for (const { ceiling } of request.ceilings) {
+        const calls = { contracts: [swapRouter], perTxNativeBase: 5n, dayCaps: [dayCap, tokenCap] };
+        held.put(ceiling, [owner], calls);
+      }
+      return set;
+    },
+  };
+  const test = await startTestEngine({ chains, ceilings: adding });
+  for (const item of [first, second]) {
+    test.stores.install.addWallet(item);
+    held.put(item.policyId, [owner], {
+      contracts: [swapRouter],
+      perTxNativeBase: 5n,
+      dayCaps: [dayCap],
+    });
+  }
+  return test;
+}
+
+describe("a change that adds a 24-hour cap", () => {
+  it("tells the owner the asset it caps had no 24-hour cap until now, once", async () => {
+    const test = await startedWithAddedCap();
+
+    expectOk(await setCeiling(test, { venues: ["fake-swap", "other-swap"] }));
+
+    expect(notices(test)).toStrictEqual([
+      {
+        key: "notice.ceilingChange",
+        agent: testAgent,
+        values: { agent: "main", surface: "cli", change: "dayCaps" },
+      },
+      { key: "notice.dayCapAdded", agent: testAgent, values: { agent: "main", assets: "TKN" } },
+    ]);
+  });
+});

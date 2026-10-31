@@ -118,6 +118,11 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     agent: tableAgent,
     values: { ...agent, surface: "cli", change: "cap" },
   },
+  "notice.dayCapAdded": {
+    key: "notice.dayCapAdded",
+    agent: tableAgent,
+    values: { ...agent, assets: "ETH" },
+  },
   "notice.signerRevoked": {
     key: "notice.signerRevoked",
     values: { signer: "office-mac", surface: "cli" },

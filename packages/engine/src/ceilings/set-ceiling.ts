@@ -19,6 +19,7 @@ import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { type CeilingChangeKind, ceilingChangeNotice } from "./ceiling-notice.js";
 import { ceilingViewOf, venuesIn } from "./ceiling-view-of.js";
+import { type CeilingReads, dayCapAddedNotice } from "./day-cap-added.js";
 
 /** What a ceiling change reads, asks custody, writes, journals and announces through. */
 export interface SetCeilingOptions {
@@ -160,9 +161,15 @@ async function refresh(
 }
 
 /** One ceiling as custody held it before a change and after. */
-interface ReadPair {
-  readonly earlier: CeilingRead;
-  readonly next: CeilingRead;
+// Each wallet's ceiling read before the change and after it.
+function pairsOf(
+  before: readonly HeldCeiling[],
+  after: readonly HeldCeiling[],
+): readonly CeilingReads[] {
+  return after.flatMap((next): readonly CeilingReads[] => {
+    const earlier = before.find((item) => item.wallet.id === next.wallet.id);
+    return earlier === undefined ? [] : [{ earlier: earlier.read, next: next.read }];
+  });
 }
 
 function limitsOf(caps: CeilingRead["dayCaps"]): string {
@@ -174,10 +181,7 @@ function kindOf(
   before: readonly HeldCeiling[],
   after: readonly HeldCeiling[],
 ): CeilingChangeKind | undefined {
-  const pairs = after.flatMap((next): readonly ReadPair[] => {
-    const earlier = before.find((item) => item.wallet.id === next.wallet.id);
-    return earlier === undefined ? [] : [{ earlier: earlier.read, next: next.read }];
-  });
+  const pairs = pairsOf(before, after);
   const caps = pairs.some(
     ({ earlier, next }) => limitsOf(earlier.dayCaps) !== limitsOf(next.dayCaps),
   );
@@ -220,6 +224,10 @@ async function announce(
   }
   const { call, settings } = moved;
   const surface = answererOf(call.caller).surface;
+  const added = dayCapAddedNotice(settings.agent, {
+    chains: options.chains,
+    reads: pairsOf(reads.before, reads.after),
+  });
   await journalConfigChange(
     options,
     {
@@ -228,7 +236,10 @@ async function announce(
       path: `agents.${settings.agent.name}.ceiling`,
       before: wireOf(options, reads.before),
       after: wireOf(options, reads.after),
-      notices: [ceilingChangeNotice(settings.agent, { surface, kind })],
+      notices: [
+        ceilingChangeNotice(settings.agent, { surface, kind }),
+        ...(added === undefined ? [] : [added]),
+      ],
     },
     { signal: call.signal },
   );

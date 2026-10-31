@@ -14,7 +14,6 @@ import {
   type Result,
 } from "@binference/core";
 import {
-  type CallsRefusal as PrivyCallsRefusal,
   type CeilingChain,
   type CeilingChainPlan,
   type CeilingHeld,
@@ -29,7 +28,6 @@ import {
   type PrivyPolicy,
   type RecipientsRefusal,
   sendSignedRecipients,
-  setCeilingCalls,
   setCeilingRecipients,
   signCeilingRecipients,
   signedRecipientsSchema,
@@ -49,6 +47,8 @@ import type {
 } from "@binference/engine/install";
 import { z } from "zod";
 import type { CapAssets } from "../init/ceiling-request.js";
+import { callsRefusalOf } from "./calls-refusal.js";
+import { type GrownCaps, setCappedCalls } from "./capped-calls.js";
 import { dayCapViewsOf } from "./day-cap-views.js";
 import { ownerAuthorize, type OwnerKeyHolder } from "./owner-authorize.js";
 import { withDayCaps } from "./resized-caps.js";
@@ -233,23 +233,10 @@ async function sendSigned(
   return ok(undefined);
 }
 
-function callsRefusalOf(error: PrivyCallsRefusal): CallsRefusal {
-  if (error === "refused") {
-    return "bad_owner_key";
-  }
-  if (error === "not_found") {
-    return error;
-  }
-  // The registry's contracts and a cap the engine checked are a ceiling Privy takes.
-  throw new BinferenceError({
-    code: "cli.ceiling_unbuilt",
-    message: "The venues give no contract calls a ceiling can have.",
-    details: { problem: error },
-  });
-}
-
-// Each chain's plan with its 24-hour caps: those the ceiling names, else those the install's
-// ceilings name, else new ones its owner's quorum owns, as Privy keeps 10 aggregations an app.
+// Each chain's plan with its 24-hour caps: of those the ceiling and the install's ceilings name,
+// the ones with the most token caps, since every ceiling of an install shares them and a token cap
+// joins at the end (decision 0305); else new ones its owner's quorum owns, as Privy keeps 10
+// aggregations an app.
 async function cappedChains(
   options: Options,
   target: { readonly held: Held; readonly plans: readonly CeilingChainPlan[] },
@@ -257,7 +244,9 @@ async function cappedChains(
 ): Promise<readonly CeilingChain[]> {
   const known = [...target.held.rules.caps, ...(await options.heldCaps(signal))];
   const capsOn = (plan: CeilingChainPlan) =>
-    known.find((item) => item.chainId === String(plan.chain.chainId))?.caps;
+    known
+      .filter((item) => item.chainId === String(plan.chain.chainId))
+      .toSorted((left, right) => right.caps.approvals.length - left.caps.approvals.length)[0]?.caps;
   const missing = target.plans.filter((plan) => capsOn(plan) === undefined);
   const owner = target.held.policy.ownerId;
   const made =
@@ -283,12 +272,17 @@ async function cappedChains(
 }
 
 // One ceiling's calls on each chain it enables now; a chain the venues give no contract stops it.
+// The caps a ceiling of the change made serve the next ones.
 async function setOne(
   options: Options,
-  change: { readonly calls: CeilingCalls; readonly authorize: OwnerAuthorize },
+  change: {
+    readonly calls: CeilingCalls;
+    readonly authorize: OwnerAuthorize;
+    readonly grown: GrownCaps;
+  },
   signal: AbortSignal,
 ): Promise<Result<void, CallsRefusal>> {
-  const { calls, authorize } = change;
+  const { calls, authorize, grown } = change;
   const policy = policyOf(calls.ceiling);
   if (!policy.ok) {
     return policy;
@@ -306,8 +300,10 @@ async function setOne(
   const dayUsdMicros = calls.dayCapUsdMicros;
   const chains = withDayCaps(capped, { dayUsdMicros, capPlanOn: options.capPlanOn });
   const expiresAtMs = options.clock.now() + nowExpiryMs;
-  const target = { policy: policy.value, chains };
-  const set = await setCeilingCalls(options.api, target, { authorize, expiresAtMs, signal });
+  const target = { policy: policy.value, chains, owner: held.value.policy.ownerId };
+  const capPlanOn = (chain: ChainRef) => options.capPlanOn(chain, dayUsdMicros);
+  const input = { api: options.api, authorize, expiresAtMs, signal, capPlanOn, grown };
+  const set = await setCappedCalls(target, input);
   return set.ok ? set : err(callsRefusalOf(set.error));
 }
 
@@ -320,9 +316,10 @@ async function setCalls(
   if (!authorize.ok) {
     return authorize;
   }
+  const grown: GrownCaps = new Map();
   for (const calls of ceilings) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one ceiling at a time: a refusal stops the rest
-    const set = await setOne(options, { calls, authorize: authorize.value }, signal);
+    const set = await setOne(options, { calls, authorize: authorize.value, grown }, signal);
     if (!set.ok) {
       return set;
     }

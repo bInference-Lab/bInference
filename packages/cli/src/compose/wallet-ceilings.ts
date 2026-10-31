@@ -43,9 +43,13 @@ export function ceilingChainsOf(
 
 const storedPolicy = z.object({ rules: z.array(z.json()) });
 
+const tokenCaps = (caps: readonly HeldCaps[]): number =>
+  caps.reduce((count, item) => count + item.caps.approvals.length, 0);
+
 /**
- * The 24-hour caps the live wallets' ceilings name, as the store mirrors them: those of the first
- * ceiling that names any, which every ceiling of the install shares.
+ * The 24-hour caps the live wallets' ceilings name, as the store mirrors them, which every ceiling
+ * of the install shares: those of the ceiling naming the most token caps, since a token cap joins
+ * at the end of a ceiling's caps in the change that first needs it (decision 0305).
  */
 export async function heldCapsOf(
   install: Pick<InstallStore, "read">,
@@ -58,5 +62,6 @@ export async function heldCapsOf(
       const policy = storedPolicy.safeParse(wallet.ceiling.policy);
       return policy.success ? (readCeiling(policy.data.rules)?.caps ?? []) : [];
     });
-  return held.find((caps) => caps.length > 0) ?? [];
+  const named = held.filter((caps) => caps.length > 0);
+  return named.toSorted((left, right) => tokenCaps(right) - tokenCaps(left))[0] ?? [];
 }

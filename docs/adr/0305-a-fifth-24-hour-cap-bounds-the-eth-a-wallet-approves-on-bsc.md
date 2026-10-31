@@ -34,8 +34,11 @@ names, so a deposit of it could empty the ETH the wallet holds.
   route and its token's cap always land in the same policy. The check runs in custody, under the
   owner key's signature, never in a venue plugin on the engine's side.
 - **Ceilings made before.** Caps are matched by their place in the chain's list, ETH last, so an
-  install made before this decision keeps its three token caps and a resize sizes those; its
-  approval rule names no ETH cap until a ceiling with one is made with the owner key.
+  install made before this decision keeps its three token caps and a resize sizes those. The
+  change of calls that first adds an ETH route makes the ETH cap with the owner key and adds it to
+  every ceiling it writes, or, when the cap cannot be made, adds neither. A wallet made later takes
+  the install's caps with the most token caps, ETH's among them. The owner hears that approvals of
+  ETH had no 24-hour cap until that change (`notice.dayCapAdded`).
 
 ## Consequences
 
@@ -44,8 +47,8 @@ names, so a deposit of it could empty the ETH the wallet holds.
   stablecoins: a bad-price fill inside the cap, as decision 0149 accepts for trades. Spec 5 and ARCHITECTURE section 8 name ETH among the capped tokens.
 - Init makes 5 of Privy's 10 aggregations.
 - An install whose ceilings name no ETH cap holds no ETH route: custody refuses the ceiling until
-  the cap is in it. Across's plugin answering `no_route` for such a route is a courtesy to the
-  owner, not the wall.
+  the cap is in it. The same holds for any token a later route takes. Across's plugin answering
+  `no_route` for such a route is a courtesy to the owner, not the wall.
 - Any other uncapped token a later venue moves keeps decision 0149's wording: it can be sold at any
   price.
 
