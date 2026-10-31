@@ -15,10 +15,12 @@ import {
 
 // Probes of what Privy's policy engine can compare on a bridge deposit's arguments, which its docs
 // leave unsaid: whether a ceiling can bind a deposit before any rule is written. They run only on
-// the Privy test app, with `BINFERENCE_PRIVY_PROBES=1` and the app's id and secret in the
-// environment. Each probe makes a policy and a wallet with no owner, so the app secret alone signs,
-// asks Privy to sign without broadcasting, and prints what Privy answered. They check nothing of
-// binference's own code.
+// the Privy test app, with `BINFERENCE_PRIVY_PROBES=1` and the app's id and secret in environment
+// variables, which a script fills from the keychain for the one run. Each probe makes a policy and
+// a wallet with no owner, so the app secret alone signs, asks Privy to sign without broadcasting,
+// and prints what Privy answered. They check nothing of binference's own code. Privy deletes no
+// wallet, so each run leaves its ownerless wallets and policies on the test app; run them there
+// only, and rarely.
 // oxlint-disable-next-line node/no-process-env -- the switch and the test app's credentials, read only here
 const environment = process.env;
 const {
@@ -61,14 +63,21 @@ interface Call {
 type Made = { readonly id: string } | { readonly refused: string };
 type Hex = `0x${string}`;
 
+// Each request to Privy gives up after this long.
+const requestTimeoutMs = 20_000;
+
 // The unit tests' setup refuses every request through the global fetch; the probes reach Privy
-// over node:https, with no retry, so no fake timer ever waits.
+// over node:https, with no retry, so no fake timer ever waits, and each request ends at its
+// signal or after `requestTimeoutMs`.
 async function httpsFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
   const url = input instanceof Request ? input.url : String(input);
   const headers = Object.fromEntries(new Headers(init?.headers).entries());
   const body = typeof init?.body === "string" ? init.body : undefined;
+  const timeout = AbortSignal.timeout(requestTimeoutMs);
+  const signal = init?.signal == null ? timeout : AbortSignal.any([init.signal, timeout]);
   return new Promise((resolve, reject) => {
-    const outgoing = httpsRequest(url, { method: init?.method ?? "GET", headers }, (incoming) => {
+    const method = init?.method ?? "GET";
+    const outgoing = httpsRequest(url, { method, headers, signal }, (incoming) => {
       const parts: Buffer[] = [];
       incoming.on("data", (part: Buffer) => parts.push(part));
       incoming.on("error", reject);
