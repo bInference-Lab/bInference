@@ -358,3 +358,63 @@ describe("a launchpad's create call in a launch wallet's ceiling", () => {
     ]);
   });
 });
+
+// A bridge venue on the fake chain: a deposit whose recipient and chain the ceiling binds, and one
+// only a bridge wallet makes (decisions 0302 and 0303).
+const depositAbi = { type: "function", name: "depositV3", inputs: [] };
+const orderedAbi = { type: "function", name: "depositErc20", inputs: [] };
+
+async function startedWithBridge(): Promise<TestEngine> {
+  const chains = testChains(["fake-bridge"]);
+  const base = createFakeVenue();
+  const bridgeInputs = {
+    recipient: "recipient",
+    destinationChain: "destinationChainId",
+    tokenIn: "inputToken",
+    tokenOut: "outputToken",
+    emptyInputs: ["message"],
+  };
+  const calls = [
+    { contract: "router", abi: depositAbi, walletInputs: ["depositor"], bridge: bridgeInputs },
+    { contract: "router", abi: orderedAbi, walletInputs: ["depositor"], onlyWallet: "bridge" },
+  ];
+  const bridge: Venue = {
+    ...base,
+    id: "fake-bridge",
+    contracts: base.contracts.map((item) => Object.assign({}, item, { calls })),
+  };
+  const test = await startTestEngine({ chains, venues: [base, bridge] });
+  for (const item of [first, second, launchWallet]) {
+    test.stores.install.addWallet(item);
+    test.ceilings.put(item.policyId, [owner], { contracts: [swapRouter], perTxNativeBase: 5n });
+  }
+  return test;
+}
+
+async function contractCountOf(test: TestEngine, policyId: string): Promise<number | undefined> {
+  const read = await test.ceilings.read(policyId, { signal: new AbortController().signal });
+  return read.ok ? read.value.contracts.length : undefined;
+}
+
+describe("a bridge venue in the ceilings", () => {
+  it("reaches every live wallet of the agent, the launch wallet's too, and is announced", async () => {
+    const test = await startedWithBridge();
+
+    const view = expectOk(await setCeiling(test, { venues: ["fake-swap", "fake-bridge"] }));
+
+    expect(view.venues).toStrictEqual(["fake-swap", "fake-bridge"]);
+    const venues = await Promise.all(
+      [first, second, launchWallet].map(async (item) => contractCountOf(test, item.policyId)),
+    );
+    expect(venues).toStrictEqual([2, 2, 2]);
+    expect(notices(test)).toStrictEqual([
+      {
+        key: "notice.ceilingChange",
+        agent: testAgent,
+        values: { agent: "main", surface: "cli", change: "venues" },
+      },
+    ]);
+    const changed = test.pushes.find((push) => push.kind === "config/changed");
+    expect(changed?.data).toMatchObject({ path: "agents.main.ceiling", surface: "cli" });
+  });
+});
