@@ -500,13 +500,17 @@ interface Signer {
 - **Honest limit.** A compromised machine can sign whatever the policy allows, up to the ceiling,
   until the owner removes the agent key: it cannot pay an address the owner did not save, but it
   can trade at a bad price, into a pool it owns, up to the 24-hour caps, and sell any other token
-  the wallet holds ([decision 0149](DECISIONS.md#d0149)). An agent's launch wallet is the one
-  exception: its ceiling allows the calls launchpads declare on any contract and approvals naming
-  any spender, so a compromised machine can take all the launch wallet holds, though nothing more
-  from the agent's other wallets, which can never pay it
-  ([decisions 0217 and 0218](DECISIONS.md#d0218)). The ceiling is the real bound: keep it tight,
-  and keep in a launch wallet only what curve trades need
-  ([decision 0002](DECISIONS.md#d0002)).
+  the wallet holds ([decision 0149](DECISIONS.md#d0149)). An agent's launch wallet and its bridge
+  wallet are the two exceptions. The launch wallet's ceiling allows the calls launchpads declare on
+  any contract and approvals naming any spender ([decisions 0217 and 0218](DECISIONS.md#d0218));
+  the bridge wallet's allows only deposits into a bridge whose deposit names no recipient, such as
+  Relay's, which pay whoever the bridge's order names ([decisions 0303](DECISIONS.md#d0303) and
+  [0307](DECISIONS.md#d0307)). A compromised machine can take all either holds, though nothing more
+  from the agent's other wallets: beyond decision 0149, no rule lets them pay either, though a swap
+  through a venue whose receiver no rule can pin still can, within that decision's caps. The ceiling
+  is the real bound: keep it
+  tight, and keep in a launch wallet only what curve trades need and in a bridge wallet only what
+  the next bridge needs ([decision 0002](DECISIONS.md#d0002)).
 
 <a id="section-9"></a>
 
@@ -950,7 +954,7 @@ Agent runtime tables: `agents`, `sessions`, `transcript_events`, `memory_items`,
 | Telegram account takeover                                      | Daily caps; opt-in send levels with 24-hour loosening; freeze from anywhere, unfreeze asked for only from the CLI, the console or the Mini App and confirmed with a tap; alerts on every surface; small dedicated wallets. **At the default level a hijacked Telegram can send the agent wallet's funds anywhere (decisions [0015](DECISIONS.md#d0015), [0016](DECISIONS.md#d0016)).** |
 | Malicious plugin or skill                                      | No third-party code in the engine; the community tier is sandboxed and read-only; pinned hashes, consent on widening, signature checks; skills cannot add tools                                                                                                                                                                                                                        |
 | A compromised agent runtime (exec tools on, a bad skill)       | It holds only `read`, `propose` and `chat`; it cannot approve, sign or change settings                                                                                                                                                                                                                                                                                                 |
-| Key theft                                                      | Wallet keys only in Privy; the agent key only in the signer process (and optionally its own OS user), unlocked from the OS keychain or an owner-only file; the Privy policy as the ceiling; curve trades only from a launch wallet the owner funds with a small amount ([0217](DECISIONS.md#d0217))                                                                                    |
+| Key theft                                                      | Wallet keys only in Privy; the agent key only in the signer process (and optionally its own OS user), unlocked from the OS keychain or an owner-only file; the Privy policy as the ceiling; curve trades only from a launch wallet and Relay bridges only from a bridge wallet, each funded by the owner with a small amount ([0217](DECISIONS.md#d0217), [0307](DECISIONS.md#d0307))  |
 | Honeypots, hidden taxes, rugs                                  | Round-trip simulation from fresh addresses, GoPlus, honeypot.is, launchpad mode decode, maximum tax, fail closed                                                                                                                                                                                                                                                                       |
 | MEV                                                            | Private relays only, a tight minimum out from simulation, 60-second deadlines                                                                                                                                                                                                                                                                                                          |
 | Double spends, stuck nonces                                    | One writer per wallet, raw transaction stored before broadcast, recovery by hash and nonce                                                                                                                                                                                                                                                                                             |

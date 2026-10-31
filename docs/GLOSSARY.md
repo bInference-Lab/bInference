@@ -276,6 +276,9 @@ new name here first, in the change that uses it.
 - **extra launch wallet**: a live launch wallet beyond the agent's launch wallet, which only a
   rebuild adopts. Nothing trades from it; `wallet list` and `binference check` name it so the
   owner rescues what it holds.
+- **extra bridge wallet**: a live bridge wallet beyond the agent's bridge wallet, which only a
+  rebuild adopts. Nothing runs from it; `wallet list` and `binference check` name it so the owner
+  rescues what it holds.
 - **hook allowlist**: per chain, the pool hooks a route may pass through, each with the fee it
   keeps and who made its pools. A route through a PancakeSwap Infinity or Uniswap v4 pool with any other hook is dropped,
   aggregator routes too.
@@ -722,6 +725,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | launch wallet                            | 发射钱包               | Trades on a launch's own curve       |
 | extra launch wallet                      | 额外的发射钱包         | Nothing trades from it               |
 | bridge wallet                            | 跨链钱包               | Deposits into Relay                  |
+| extra bridge wallet                      | 额外的跨链钱包         | Nothing runs from it                 |
 | pin (a launch's picture and words)       | 固定                   | The launchpad's storage keeps it     |
 | picture link                             | 图片地址               | The owner hosts it                   |
 | launch draft                             | 发射草稿               | The agent suggests, the owner starts |
