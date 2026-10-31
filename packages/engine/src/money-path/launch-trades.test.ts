@@ -165,9 +165,9 @@ const launchAccount = accountRefSchema.parse("fake:1:0x000000d9");
 async function withLaunchWallet(options: TestEngineOptions = {}): Promise<TestEngine> {
   const test = await engineOver({
     risk: passing,
+    wallets: [testWallet, launchWallet],
     ...options,
     agent: { mode: "live", limits: { ...testLimits, venues: ["fake-swap", curve] } },
-    wallets: [testWallet, launchWallet],
     custodyWallets: new Map([[launchWallet, launchAccount]]),
   });
   test.stores.install.addWallet(
@@ -214,6 +214,26 @@ describe("a trade routed to the agent's launch wallet", () => {
 
     expect([registry.wallet, unheld.wallet]).toStrictEqual([testWallet, testWallet]);
     expect(registry.state).toBe("awaiting_confirmation");
+  });
+
+  it("runs a trade from a wallet with no role, never from a bridge wallet listed first", async () => {
+    const bridgeWallet = fixtureId("wal", 307);
+    const test = await withLaunchWallet({
+      wallets: [bridgeWallet, testWallet, launchWallet],
+    });
+    test.stores.install.addWallet(
+      testWalletRecord({
+        id: bridgeWallet,
+        agentId: testAgent,
+        label: "relays",
+        createdAtMs: testNowMs,
+        role: "bridge",
+      }),
+    );
+
+    const registry = await propose(test, { ...unnamedBuy, token: testToken });
+
+    expect(registry.wallet).toBe(testWallet);
   });
 
   it("ends a live curve trade that names another wallet, before any card", async () => {

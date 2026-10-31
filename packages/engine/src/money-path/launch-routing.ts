@@ -1,6 +1,6 @@
 import type { AssetRef, ChainRegistry, RegisteredChain, Signer } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
-import { roleWalletOf } from "../install/role-wallet.js";
+import { roleWalletIn } from "../install/role-wallet.js";
 import type { InstallStore } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { assetInfoOf } from "./asset-infos.js";
@@ -85,7 +85,7 @@ async function isLaunchTrade(
  * live launch wallet for a buy or a sale of a token a launchpad holds on a curve with contracts of
  * its own launch, or for a sale or a swap of a token the registry does not list that the launch
  * wallet holds, a graduated token's sale through the pools among them; else its oldest live
- * wallet that is no launch wallet. A paper intent signs nothing, so it runs from that default
+ * wallet with no role, never a launch or bridge wallet. A paper intent signs nothing, so it runs from that default
  * wallet. `owned` is the agent's live wallets, oldest first. Without routing, the oldest. A live
  * trade of an agent with a launch wallet whose curve read failed is `launch_unread`: it runs from
  * no wallet (decision 0218).
@@ -98,12 +98,14 @@ export async function routedWalletOf(
   if (routing === undefined) {
     return ok(trade.owned[0]);
   }
-  const launch = await roleWalletOf(
-    routing.install,
-    { agent: trade.agent, role: "launch" },
-    { signal },
+  const { wallets } = await routing.install.read({ signal });
+  const launch = roleWalletIn(wallets, trade.agent, "launch");
+  // No trade falls back to a wallet with a role: an extra launch wallet runs nothing, and a bridge
+  // wallet's ceiling allows no trade (decision 0307).
+  const withRole = new Set(
+    wallets.filter((wallet) => wallet.role !== undefined).map((wallet) => wallet.id),
   );
-  const fallback = trade.owned.find((wallet) => wallet !== launch?.id);
+  const fallback = trade.owned.find((wallet) => !withRole.has(wallet));
   if (launch === undefined || trade.isPaper) {
     return ok(fallback);
   }
