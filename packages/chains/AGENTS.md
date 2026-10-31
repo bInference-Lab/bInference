@@ -22,6 +22,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - A chain bridges deliver to is read only: no relay, no venue contract but Multicall3, which
   reads a balance. A Solana address is base58 text of 32 bytes, read back with
   `@binference/chain-solana`'s codec by `pnpm chains:read`, never in `pnpm check`.
+- `src/venue-calls/` holds the functions binference may call on a chain's staking, bridge and
+  identity contracts, read from each project's verified source: a plugin declares these and no
+  other. Every address or bytes32 input is pinned to the wallet, bound by a bridge rule, or named
+  in its test with why it credits nothing; a call no rule can bind is a bridge wallet's alone.
 - `bscBridgeRoutes` lists only routes a bridge's own API serves from BSC, each to a token the
   destination's file lists; a token no route reaches is not listed. Run `pnpm chains:read` after
   a change and keep its report.
