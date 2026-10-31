@@ -2,7 +2,7 @@ import { err, ok, type Result } from "@binference/core";
 import { addressList } from "./address-list.js";
 import type { BridgeTarget, CeilingProblem } from "./ceiling.js";
 import type { AbiFunction, PolicyRule } from "./policy-rule.js";
-import { allow, noValue, onCalldata, onTransaction, walletAddress } from "./rule-parts.js";
+import { allow, noValue, onCalldata, onTransaction, walletAddress } from "./policy-rule.js";
 
 // Privy's rule names hold at most 50 characters.
 const maxRuleName = 50;

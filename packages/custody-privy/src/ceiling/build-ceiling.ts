@@ -32,7 +32,7 @@ import {
   onCap,
   onTransaction,
   walletAddress,
-} from "./rule-parts.js";
+} from "./policy-rule.js";
 
 /**
  * The two rules of one chain that name who a send may pay: a native send, and a token `transfer`

@@ -5,9 +5,8 @@ import {
   testTargets,
 } from "../testing/bridge-target-fixtures.js";
 import { buildCeiling } from "./build-ceiling.js";
-import { bridgeRoom, ceilingBytes, maxCeilingBytes } from "./ceiling-size.js";
+import { ceilingBytes, maxCeilingBytes } from "./ceiling-size.js";
 import type { BridgeTarget, CeilingRequest } from "./ceiling.js";
-import { policyRuleJson } from "./policy-rule.js";
 
 function addresses(count: number, from = 1): readonly string[] {
   return Array.from(
@@ -36,11 +35,6 @@ function bytesOf(request: CeilingRequest): number | string {
   return built.ok ? ceilingBytes(built.value.rules) : built.error;
 }
 
-function roomOf(request: CeilingRequest, destination: string): number | string {
-  const built = buildCeiling(request);
-  return built.ok ? bridgeRoom(built.value.rules.map(policyRuleJson), destination) : built.error;
-}
-
 describe("the bytes a ceiling holds", () => {
   it("keeps the test ceiling with its bridge targets far below what Privy takes", () => {
     expect(bytesOf(testBridgeCeilingRequest())).toBeLessThan(maxCeilingBytes / 10);
@@ -54,16 +48,5 @@ describe("the bytes a ceiling holds", () => {
       }),
     );
     expect(buildCeiling(withTargets(targets))).toStrictEqual({ ok: false, error: "too_large" });
-  });
-});
-
-describe("the room a destination's bridge rules have left", () => {
-  it("counts the addresses a destination's rules can still list, up to Privy's 100", () => {
-    expect(roomOf(testBridgeCeilingRequest(), "8453")).toBe(99);
-    expect(roomOf(withTargets([{ ...baseTarget, recipients: addresses(100) }]), "8453")).toBe(0);
-  });
-
-  it("gives no room on a destination no bridge rule names", () => {
-    expect(roomOf(testBridgeCeilingRequest(), "42161")).toBe(0);
   });
 });

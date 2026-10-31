@@ -1,5 +1,6 @@
 import { parseEvmAddress } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
+import { maxListed } from "./address-list.js";
 import type { CeilingCall, CeilingProblem, LaunchCall } from "./ceiling.js";
 import { type AbiFunction, abiFunctionJson } from "./policy-rule.js";
 
@@ -13,8 +14,7 @@ export interface CallRuleLists {
   readonly contracts: readonly string[];
 }
 
-// Privy's `in` operator takes at most 100 values, and a rule's name at most 50 characters.
-const maxListed = 100;
+// A rule's name holds at most 50 characters.
 const maxRuleName = 50;
 
 /** The name of the rule that allows calls of one function on one chain. */

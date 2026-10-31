@@ -1,6 +1,5 @@
 export { buildCeiling } from "./ceiling/build-ceiling.js";
 export { maxAggregations } from "./ceiling/ceiling.js";
-export { bridgeRoom, maxCeilingBytes } from "./ceiling/ceiling-size.js";
 export type {
   BridgeCall,
   BridgeInputs,

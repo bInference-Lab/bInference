@@ -40,8 +40,8 @@ interface Deposit {
 }
 
 // A deposit is safe when it pays an address saved for its destination, refunds the wallet, carries
-// no coin and moves a token a route to that destination moves. Its message is the signer's to check:
-// Privy takes no condition for an empty `bytes` value.
+// no coin and moves a token a route to that destination moves. Its message is the signer's to
+// check: Privy takes no condition for an empty `bytes` value.
 function isSafe(deposit: Deposit): boolean {
   const target = destinations.get(deposit.chain);
   return (

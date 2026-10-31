@@ -1,8 +1,8 @@
 import { parseEvmAddress } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 
-// Privy's `in` operator takes at most 100 values.
-const maxListed = 100;
+/** The most values Privy's `in` operator takes. */
+export const maxListed = 100;
 
 /** Why a list of recipients cannot go in a ceiling. */
 export type AddressProblem = "malformed_address" | "too_many_addresses";
