@@ -485,7 +485,8 @@ interface Signer {
   saved addresses; no EIP-7702 except Privy's own; no `personal_sign`. Only the owner changes it.
   The engine's limits sit under the ceiling and move freely up to it
   ([decision 0089](DECISIONS.md#d0089)). Privy's 24-hour sums cap the BNB the wallets send and
-  their approvals of WBNB, USDT and USDC ([decision 0149](DECISIONS.md#d0149)): disaster limits,
+  their approvals of WBNB, USDT, USDC and ETH ([decisions 0149](DECISIONS.md#d0149) and
+  [0305](DECISIONS.md#d0305)): disaster limits,
   recorded after signing, at most 10 per app.
 - **The signer process** re-checks the hard rules itself (spec 5, 5.2) before it asks Privy to sign
   with `eth_signTransaction`. The engine stores the raw transaction and broadcasts it through

@@ -130,6 +130,7 @@ async function heldCaps(api: PrivyApi, wallet: PrivyId): Promise<ChainCaps> {
     10n * bnb,
     1_000n * bnb,
     1_000n * bnb,
+    bnb,
   ]);
   return held.caps;
 }

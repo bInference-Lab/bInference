@@ -256,8 +256,10 @@ export const bsc: ChainDefinition = {
 
 /**
  * What a wallet's ceiling caps on BSC per rolling 24 hours (decision 0149): the BNB its
- * transactions send, and its approvals of WBNB and the two main stablecoins. BNB and WBNB count
- * at a floor of $100, well below BNB's price in every year since 2021; each stablecoin at $1.
+ * transactions send, and its approvals of WBNB, the two main stablecoins and ETH, which a bridge
+ * deposit takes (decision 0305). BNB and WBNB count at a floor of $100, well below BNB's price in
+ * every year since 2021; each stablecoin at $1; ETH at $1,000, below its price in every year since
+ * 2021. ETH comes last, so the caps of a ceiling made before it keep their places.
  */
 export const bscCeilingCaps: CeilingCapsDefinition = {
   nativeFloorUsd: 100_000_000n,
@@ -265,6 +267,7 @@ export const bscCeilingCaps: CeilingCapsDefinition = {
     { symbol: "WBNB", floorUsd: 100_000_000n },
     { symbol: "USDT", floorUsd: 1_000_000n },
     { symbol: "USDC", floorUsd: 1_000_000n },
+    { symbol: "ETH", floorUsd: 1_000_000_000n },
   ],
 };
 

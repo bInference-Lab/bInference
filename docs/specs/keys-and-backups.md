@@ -172,7 +172,7 @@ saving a launch wallet's address, or making it the rescue address, is refused as
 `address.launch_wallet`, and a saved address that names one never reaches a ceiling
 ([decision 0218](../DECISIONS.md#d0218)). The owner funds it from outside. A thief with this
 machine's keys can take what the launch wallet holds, within the 24-hour caps for the coin, WBNB,
-USDT and USDC, and nothing more from the agent's other wallets than the promise below allows. Curve
+USDT, USDC and ETH, and nothing more from the agent's other wallets than the promise below allows. Curve
 sales and sales through the pools pay the launch wallet, so its proceeds stay there until a rescue
 takes them back; an allowance a stolen key grants from it outlives a rescue, so after a theft the
 owner funds that launch wallet no more.
@@ -188,15 +188,15 @@ call, and the signer refuses one from any other wallet.
 cannot send BNB or a token to an address the owner did not save, cannot call a contract or a
 function no enabled venue declares, and cannot approve a spender no enabled venue declares. Through
 venue calls it can lose at most the 24-hour caps: the BNB the wallets send, and the approvals of
-WBNB, USDT and USDC. It can trade at a bad price inside them, and sell any other token the wallet
+WBNB, USDT, USDC and ETH ([decision 0305](../DECISIONS.md#d0305)). It can trade at a bad price inside them, and sell any other token the wallet
 holds at any price: a swap into a pool its caller owns pays the caller, whatever its receiver
 field says, and Privy reads only a function's top-level inputs.
 
 **The 24-hour caps** are Privy aggregations: rolling sums Privy records after it signs, at most 10
 per app. Init makes them once, owned by the owner key's quorum, and every ceiling of the install
 names the same ones, so they bound all its wallets together. Each is twice
-`defaults.limits.rollingDayUsd`, counting BNB and WBNB at $100 and each stablecoin at $1: 10 BNB, 10
-WBNB, 1,000 USDT and 1,000 USDC by default. The native sum counts every transaction on the chain,
+`defaults.limits.rollingDayUsd`, counting BNB and WBNB at $100, each stablecoin at $1 and ETH at
+$1,000: 10 BNB, 10 WBNB, 1,000 USDT, 1,000 USDC and 1 ETH by default. The native sum counts every transaction on the chain,
 sends to saved addresses among them; a send itself is never capped. They are disaster limits:
 parallel requests can pass together and a request counts once signed, landed or not, so the engine's
 rolling caps stay the main money limit. `binference ceiling` and `ceiling/get` show each cap: what

@@ -67,13 +67,14 @@ describe("bsc price feeds", () => {
 });
 
 describe("bsc ceiling caps", () => {
-  it("caps registry tokens only: WBNB at BNB's floor, the stablecoins at a dollar", () => {
+  it("caps registry tokens only: WBNB at BNB's floor, the stablecoins at a dollar, ETH last", () => {
     const capped = bscCeilingCaps.tokens.map((item) => item.symbol);
     expect(bsc.tokens.map((token) => token.symbol)).toStrictEqual(expect.arrayContaining(capped));
     const wbnb = bscCeilingCaps.tokens.find((item) => item.symbol === "WBNB");
     expect(wbnb?.floorUsd).toBe(bscCeilingCaps.nativeFloorUsd);
     const stablecoins = bscCeilingCaps.tokens.filter((item) => item.symbol.startsWith("USD"));
     expect(stablecoins.map((item) => item.floorUsd)).toStrictEqual([1_000_000n, 1_000_000n]);
+    expect(bscCeilingCaps.tokens.at(-1)).toStrictEqual({ symbol: "ETH", floorUsd: 1_000_000_000n });
   });
 });
 

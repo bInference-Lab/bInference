@@ -59,13 +59,14 @@ function tokenOf(symbol: string): string | undefined {
 }
 
 describe("the 24-hour caps of a ceiling", () => {
-  it("are twice the default day, BNB and WBNB at $100, USDT and USDC at $1", () => {
+  it("are twice the default day, BNB and WBNB at $100, USDT and USDC at $1, ETH at $1,000", () => {
     const plan = capPlanOf(bsc, initialDayCapUsd({ defaults: agentDefaultsSchema.parse({}) }));
     expect(plan.nativeLimitBase).toBe(10n * bnb);
     expect(plan.approvals).toStrictEqual([
       { token: tokenOf("WBNB"), limitBase: 10n * bnb },
       { token: tokenOf("USDT"), limitBase: 1_000n * bnb },
       { token: tokenOf("USDC"), limitBase: 1_000n * bnb },
+      { token: tokenOf("ETH"), limitBase: bnb },
     ]);
   });
 
@@ -77,6 +78,7 @@ describe("the 24-hour caps of a ceiling", () => {
       20_000_000_000n,
       2_000_000_000_000n,
       2_000_000_000_000n,
+      2_000_000_000n,
     ]);
   });
 });

@@ -2,11 +2,12 @@ import type { ChainRef } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import type { CeilingChain, ChainCapPlan } from "@binference/custody-privy";
 
-// The chain with each cap at its size in `sized`, summed by the same aggregation. Another count of
-// token caps is a fault, so no cap is matched to the wrong token.
+// The chain with each cap at its size in `sized`, summed by the same aggregation. A ceiling made
+// before a cap joined the end of the chain's list holds fewer and keeps them (decision 0305); more
+// token caps than binference sizes is a fault, so no cap is matched to the wrong token.
 function resizedCaps(chain: CeilingChain, sized: ChainCapPlan): CeilingChain {
   const { native, approvals } = chain.caps;
-  if (sized.approvals.length !== approvals.length) {
+  if (sized.approvals.length < approvals.length) {
     throw new BinferenceError({
       code: "cli.ceiling_unbuilt",
       message: "The ceiling names other 24-hour caps than binference sizes on its chain.",
