@@ -44,6 +44,7 @@ import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
 import type { ReadTokenCode } from "../money-path/token-code.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
+import { createNameHandlers, type NameHandlers } from "../names/name-handlers.js";
 import type { CopyOrders } from "../orders/copy-orders.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import { createDcaOrders, type DcaOrders } from "../orders/dca-orders.js";
@@ -106,7 +107,8 @@ export interface EngineHandlers
     AddressBookHandlers,
     RescueAddressHandlers,
     SafetyHandlers,
-    LaunchDraftHandlers {}
+    LaunchDraftHandlers,
+    NameHandlers {}
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
@@ -432,6 +434,7 @@ export function createEngineWithFills(given: EngineOptions): {
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
       ...chat.handlers,
       ...drafts.handlers,
+      ...createNameHandlers({ resolvers: options.nameResolvers ?? [], clock: options.clock }),
     },
     answer: intents.answer,
     launchDrafts: drafts.desk,

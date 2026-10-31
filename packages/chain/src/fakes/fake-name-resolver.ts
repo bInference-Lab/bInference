@@ -9,8 +9,8 @@ export interface FakeNameRecord {
   readonly address: AccountRef;
   /** The address holds code. */
   readonly isContract?: boolean;
-  /** What the address's reverse record names; `matches` when absent. */
-  readonly reverse?: ReverseRecord;
+  /** What the address's reverse record names, `unread` for none read; `matches` when absent. */
+  readonly reverse?: ReverseRecord | "unread";
 }
 
 /** A fake resolver whose records a test changes, and whose chain can stop answering. */
@@ -38,10 +38,13 @@ function answerOf(name: string, record: FakeNameRecord | undefined): NameResolut
   if (record === undefined) {
     return { kind: "not_found", name };
   }
-  const { address } = record;
-  return record.isContract === true
-    ? { kind: "contract", name, address }
-    : { kind: "found", name, address, reverse: record.reverse ?? { kind: "matches" } };
+  const { address, reverse = { kind: "matches" } } = record;
+  if (record.isContract === true) {
+    return { kind: "contract", name, address };
+  }
+  return reverse === "unread"
+    ? { kind: "found", name, address }
+    : { kind: "found", name, address, reverse };
 }
 
 /**

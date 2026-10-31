@@ -40,7 +40,7 @@ describe("fake name resolver", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("answers the reverse record a test sets, and forgets a removed name", async () => {
+  it("answers the reverse record a test sets, or none read, and forgets a removed name", async () => {
     const resolver = resolverWithRecords();
     resolver.set("alice.fake", {
       address: person,
@@ -48,6 +48,12 @@ describe("fake name resolver", () => {
     });
     await expect(resolver.resolve("alice.fake", live)).resolves.toMatchObject({
       reverse: { kind: "differs", other: "bob.fake" },
+    });
+    resolver.set("alice.fake", { address: person, reverse: "unread" });
+    await expect(resolver.resolve("alice.fake", live)).resolves.toStrictEqual({
+      kind: "found",
+      name: "alice.fake",
+      address: person,
     });
     resolver.set("alice.fake", undefined);
     await expect(resolver.resolve("alice.fake", live)).resolves.toStrictEqual({

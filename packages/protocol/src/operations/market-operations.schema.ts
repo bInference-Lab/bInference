@@ -127,9 +127,12 @@ interface AssetSearchView extends Page<AssetView> {
 
 /** The answer of `name/resolve`. */
 interface ResolvedName {
+  /** The name, normalized. */
   readonly name: string;
   readonly address: AccountRef;
   readonly resolvedAt: number;
+  /** What the address's reverse record names; absent when it could not be read. */
+  readonly reverse?: "matches" | "differs" | "none";
 }
 
 /** The args of `market/scan`: the chain, where the tokens come from, and how many. */
@@ -269,7 +272,12 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
     name: "name/resolve",
     scope: "read",
     args: z.strictObject({ name: z.string().min(1).max(255) }),
-    result: z.object({ name: z.string(), address: accountRefSchema, resolvedAt: epochMsSchema }),
+    result: z.object({
+      name: z.string(),
+      address: accountRefSchema,
+      resolvedAt: epochMsSchema,
+      reverse: z.enum(["matches", "differs", "none"]).exactOptional(),
+    }),
   },
   "quote/get": {
     ...readFlags,

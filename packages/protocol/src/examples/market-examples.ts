@@ -122,7 +122,7 @@ export const marketExamples: { readonly [N in keyof MarketOperationShapes]: Wire
   "asset/search": { args: { chain: refs.chain, query: "TKN" }, result: pageOf(asset) },
   "name/resolve": {
     args: { name: "owner.bnb" },
-    result: { name: "owner.bnb", address: refs.account, resolvedAt: at },
+    result: { name: "owner.bnb", address: refs.account, resolvedAt: at, reverse: "matches" },
   },
   "quote/get": { args: swapRequest, result: quoteView },
   "risk/check": { args: { asset: refs.token }, result: riskView },

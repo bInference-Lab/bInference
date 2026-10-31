@@ -4,6 +4,7 @@ import {
   canonicalAsset,
   type MarketCandle,
   type MarketPool,
+  type NameResolver,
   type TrendingToken,
 } from "@binference/chain";
 import { type Clock, err, ok, type Result } from "@binference/core";
@@ -37,6 +38,8 @@ export interface MarketParts {
    * `source: launches` (decision 0256); without one that scan fails `market.no_launch_feed`.
    */
   readonly launchFeed?: boolean;
+  /** The name resolvers `name/resolve` asks, one per suffix; every name is refused without one. */
+  readonly nameResolvers?: readonly NameResolver[];
 }
 
 /** What the market handlers read: the market reads, the chain registry and the launches. */

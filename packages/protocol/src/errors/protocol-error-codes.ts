@@ -85,6 +85,7 @@ export const protocolErrorCodes = [
   "asset.bad_address",
   "asset.unreadable",
   "name.not_found",
+  "name.contract",
   "name.resolver_down",
   "quote.no_route",
   "quote.venue_down",

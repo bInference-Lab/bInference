@@ -581,6 +581,9 @@ importers:
       '@binference/signer':
         specifier: workspace:*
         version: link:../signer
+      '@binference/spaceid':
+        specifier: workspace:*
+        version: link:../../plugins/spaceid
       '@binference/store':
         specifier: workspace:*
         version: link:../store

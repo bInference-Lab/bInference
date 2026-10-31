@@ -81,6 +81,7 @@
   "asset.bad_address": "This is not a valid address. Check it and paste it again.",
   "asset.unreadable": "This token's contract did not give its symbol and decimals, so binference cannot show its amounts on a card. Check the address.",
   "name.not_found": "No address is registered for this name. Check the spelling.",
+  "name.contract": "That name points to a contract. Send to a person's address or a saved address.",
   "name.resolver_down": "The name service is not responding. Try again later, or paste the address.",
   "quote.no_route": "No route for this trade right now. Try a smaller amount or another token.",
   "quote.venue_down": "The venue for this trade is not responding. Try again in a minute.",

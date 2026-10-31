@@ -19,6 +19,7 @@ import { composeTrading, type TradingParts } from "./compose-trading.js";
 import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
 import { engineHandlers } from "./engine-handlers.js";
 import { selfHostedMarketReads } from "./market-reads.js";
+import { chainNameResolvers } from "./name-resolvers.js";
 import { botParts } from "./open-bot.js";
 import { type Opened, type Opening, registryParts } from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
@@ -207,6 +208,12 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
   };
 }
 
+// Browser push, when the engine holds a VAPID key.
+function webPushOf(opening: Opening, opened: Opened) {
+  const key = opened.webPushKey;
+  return key === undefined ? {} : { webPush: { key, http: opening.host.http, isPublicEndpoint } };
+}
+
 // The engine and its protocol server over the wired parts.
 function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { host } = opening;
@@ -241,11 +248,10 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       isLocked: () => locked.lock.isLocked(),
       ...pricingOf(host, wiring.priceWatchers.canPrice),
       ...chainTokenReads(parts.reads),
+      nameResolvers: chainNameResolvers(parts.reads),
       workspace: stateWorkspace(opening.platform),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
-      ...(opened.webPushKey === undefined
-        ? {}
-        : { webPush: { key: opened.webPushKey, http: host.http, isPublicEndpoint } }),
+      ...webPushOf(opening, opened),
       turns: wiring.runtime.turns,
       handlers: ownHandlersOf(opening, opened, wiring),
       clock: host.clock,

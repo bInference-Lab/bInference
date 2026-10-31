@@ -145,6 +145,8 @@ export interface TestEngineOptions {
   readonly exporter?: WalletExporter;
   /** The market reads; reads over no data source, which know nothing, when absent. */
   readonly marketReads?: MarketReads;
+  /** The name resolvers `name/resolve` asks; none, so every name is refused, when absent. */
+  readonly nameResolvers?: EngineOptions["nameResolvers"];
   /** Custody's removal of a machine's agent key; none when absent. */
   readonly revoker?: SignerRevoker;
   /** Runs a rescue's sends; one under which every send reverts when absent. */

@@ -49,6 +49,7 @@
     "@binference/runtime": "workspace:*",
     "@binference/server": "workspace:*",
     "@binference/signer": "workspace:*",
+    "@binference/spaceid": "workspace:*",
     "@binference/store": "workspace:*",
     "@binference/telegram": "workspace:*",
     "@binference/tui": "workspace:*",

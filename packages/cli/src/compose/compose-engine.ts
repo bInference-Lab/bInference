@@ -117,6 +117,8 @@ export interface ComposeEngineOptions {
   readonly liveOrderFills?: boolean;
   /** Whether a launch feed runs, whose records `market/scan` reads (decision 0256). */
   readonly launchFeed?: boolean;
+  /** The name resolvers `name/resolve` and sends by name ask; every name is refused without. */
+  readonly nameResolvers?: EngineOptions["nameResolvers"];
   /** The quote assets, whose leader buys no copy order follows (decision 0260). */
   readonly quoteAssets?: EngineOptions["quoteAssets"];
   /** Reads what a token the registry does not list answers on chain, for its cards. */
@@ -284,6 +286,7 @@ function engineOf(
     canPrice: options.canPrice,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
+    ...(options.nameResolvers === undefined ? {} : { nameResolvers: options.nameResolvers }),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     readTokenFacts: options.readTokenFacts,
     ...(options.readTokenCode === undefined ? {} : { launchTokenCode: options.readTokenCode }),
