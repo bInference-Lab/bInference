@@ -1,4 +1,9 @@
-import { type AccountRef, accountRefSchema, type WalletRole } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  type WalletRole,
+  walletRoleSchema,
+} from "@binference/chain";
 import { type Id, idSchema, type JsonValue, jsonValueSchema, type Result } from "@binference/core";
 import { z } from "zod";
 import type { RescueState } from "../policy/rescue-change.js";
@@ -130,8 +135,10 @@ export interface WalletDraft {
   readonly ceiling: CeilingMirror;
   /**
    * `launch` for the agent's launch wallet, whose ceiling also allows the calls launchpads declare
-   * on the contracts each launch makes (decision 0217); absent for an agent wallet. Only a rebuild
-   * leaves an agent more than one live launch wallet (decision 0218).
+   * on the contracts each launch makes (decision 0217); `bridge` for its bridge wallet, whose
+   * ceiling allows the deposits bridge venues mark as a bridge wallet's (decision 0303); absent
+   * for a main wallet. Only a rebuild leaves an agent more than one live wallet of a
+   * role (decision 0218).
    */
   readonly role?: WalletRole;
 }
@@ -160,7 +167,7 @@ const walletShape = {
   label: shortTextSchema,
   createdAtMs: epochMsSchema,
   ceiling: ceilingMirrorSchema,
-  role: z.literal("launch").exactOptional(),
+  role: walletRoleSchema.exactOptional(),
 };
 
 /** Parses a ceiling update. */

@@ -53,6 +53,7 @@
     "engine/0047_daily_summaries.ts": "19f5216274c13804dc66d25be658b677c85117c5f6c1224ee6984f03c1cc793f",
     "engine/0048_alert_fires_told.ts": "225ea1f46e5a8c0844b3310c97a91698764c7adfc5532ccf30d24f10c04e31bc",
     "engine/0049_intent_draft_refs.ts": "7cb8f9b9aeba5511d09dd8de45df4292e1b80ebebfb954880d77d06850a64c81",
-    "engine/0050_limits_without_health_factor.ts": "2592a71fd8254e00c890b21a01007db89da2c8a7557a9ce104c0481fea816cbd"
+    "engine/0050_limits_without_health_factor.ts": "2592a71fd8254e00c890b21a01007db89da2c8a7557a9ce104c0481fea816cbd",
+    "engine/0051_bridge_wallets.ts": "bd5a5973b4f64542abbbe365405674beb577d3de0400f98869525de764927ef7"
   }
 }

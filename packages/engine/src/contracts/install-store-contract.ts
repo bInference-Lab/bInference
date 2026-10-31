@@ -146,14 +146,16 @@ async function storesANewWallet(subject: InstallStoreSubject): Promise<void> {
   assert.deepEqual((await store.read(live())).wallets, [made, first.wallet]);
 }
 
-async function storesLaunchWallets(subject: InstallStoreSubject): Promise<void> {
+async function storesRoleWallets(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   const first = setup(subject, 2);
   await store.setUp(first, live());
   const launch = { ...wallet(subject, 1), role: "launch" } as const;
   const extra = { ...wallet(subject, 3), role: "launch" } as const;
+  const bridge = { ...wallet(subject, 4), role: "bridge" } as const;
   await store.createWallet(launch, live());
   await store.createWallet(extra, live());
+  await store.createWallet(bridge, live());
   const { wallets } = await store.read(live());
   assert.deepEqual(
     wallets.map((item) => [item.id, item.role]),
@@ -161,6 +163,7 @@ async function storesLaunchWallets(subject: InstallStoreSubject): Promise<void> 
       [launch.id, "launch"],
       [first.wallet.id, undefined],
       [extra.id, "launch"],
+      [bridge.id, "bridge"],
     ],
   );
 }
@@ -224,9 +227,9 @@ function walletChecks(create: () => Promise<InstallStoreSubject>): readonly Cont
   return [
     checkOn("stores a new wallet beside the ones it holds", create, storesANewWallet),
     checkOn(
-      "stores an agent's launch wallets with their role, as a rebuild adopts each",
+      "stores an agent's launch and bridge wallets with their role, as a rebuild adopts each",
       create,
-      storesLaunchWallets,
+      storesRoleWallets,
     ),
     checkOn(
       "replaces the ceiling changes kept while a new rescue address waits",

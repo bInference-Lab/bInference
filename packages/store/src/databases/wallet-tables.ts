@@ -1,7 +1,7 @@
 import type { Generated } from "kysely";
 
 // The tables of the install's wallets, as SQLite returns them: migration 0003 defines them, and
-// migration 0038 adds `wallets.role`.
+// migration 0038 adds `wallets.role`, and migration 0051 lets it hold `bridge`.
 
 /** `ceilings`: the policy mirror as JSON text, the cap as decimal text. */
 export interface CeilingsTable {
@@ -13,7 +13,10 @@ export interface CeilingsTable {
   version: number;
 }
 
-/** `wallets`: `role` is `agent`, or `launch` for an agent's launch wallet. */
+/**
+ * `wallets`: `role` is `agent`, `launch` for an agent's launch wallet, or `bridge` for its bridge
+ * wallet.
+ */
 export interface WalletsTable {
   id: string;
   agent_id: string;

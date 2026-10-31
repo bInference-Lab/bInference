@@ -44,7 +44,7 @@ function toWallet(row: Selectable<WalletsTable>, ceiling: CeilingsTable): Wallet
     label: row.label,
     createdAtMs: row.created_at,
     ...field("archivedAtMs", row.archived_at),
-    ...(row.role === "launch" ? { role: row.role } : {}),
+    ...(row.role === "agent" ? {} : { role: row.role }),
     ceiling: {
       policyId: ceiling.policy_id,
       policy: readJson(ceiling.policy),
