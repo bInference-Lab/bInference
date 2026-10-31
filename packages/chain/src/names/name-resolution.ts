@@ -10,12 +10,17 @@ export type ReverseRecord =
   | { readonly kind: "differs"; readonly other: string }
   | { readonly kind: "none" };
 
-/** A name that points to an address holding no code, on the resolver's chain. */
+/**
+ * A name that points to a person's address on the resolver's chain: one holding no code, or a
+ * smart-account wallet whose only code is its family's delegation to a wallet program.
+ */
 export interface NameFound {
   readonly kind: "found";
   /** The name in its normalized form, which is what was resolved. */
   readonly name: string;
   readonly address: AccountRef;
+  /** The address is a smart-account wallet: its only code is a delegation, such as EIP-7702's. */
+  readonly smartAccount?: true;
   /** What the address's reverse record names; absent when its resolver gave no readable answer. */
   readonly reverse?: ReverseRecord;
 }
@@ -29,7 +34,10 @@ export interface NameNotFound {
   readonly name: string;
 }
 
-/** A name that points to an address holding code: a send by name pays a person, never a contract. */
+/**
+ * A name that points to an address holding code other than a delegation: a send by name pays a
+ * person, never a contract.
+ */
 export interface NameOfContract {
   readonly kind: "contract";
   readonly name: string;

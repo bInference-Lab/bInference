@@ -9619,6 +9619,10 @@
               "minimum": 0,
               "maximum": 9007199254740991
             },
+            "smartAccount": {
+              "type": "boolean",
+              "const": true
+            },
             "reverse": {
               "type": "string",
               "enum": [

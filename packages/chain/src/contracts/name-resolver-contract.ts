@@ -12,12 +12,14 @@ export interface NamedAccount {
 
 /**
  * A name resolver under test: `person` points to a plain account whose reverse record names it,
- * `contract` to an account holding code; nobody registered `unregistered`; `malformed` carries the
- * suffix but does not normalize. `move` points `person` to `elsewhere`, another plain account.
+ * `smartAccount` to a smart-account wallet whose only code is a delegation, `contract` to an
+ * account holding other code; nobody registered `unregistered`; `malformed` carries the suffix but
+ * does not normalize. `move` points `person` to `elsewhere`, another plain account.
  */
 export interface NameResolverSubject {
   readonly resolver: NameResolver;
   readonly person: NamedAccount;
+  readonly smartAccount: NamedAccount;
   readonly contract: NamedAccount;
   readonly unregistered: string;
   readonly malformed: string;
@@ -46,6 +48,14 @@ async function normalizes(harness: NameResolverHarness): Promise<void> {
   assert.equal(answer.kind, "found");
   assert.equal(answer.name, person.name);
   assert.equal(answer.address, person.address);
+}
+
+async function marksSmartAccount(harness: NameResolverHarness): Promise<void> {
+  const { resolver, smartAccount } = await harness.create();
+  const answer = await resolver.resolve(smartAccount.name, live());
+  assert.ok(answer.kind === "found" && answer.smartAccount === true);
+  assert.equal(answer.name, smartAccount.name);
+  assert.equal(answer.address, smartAccount.address);
 }
 
 async function refusesContract(harness: NameResolverHarness): Promise<void> {
@@ -104,6 +114,10 @@ export function nameResolverContract(harness: NameResolverHarness): readonly Con
     {
       name: "normalizes a name before it resolves it",
       run: async () => normalizes(harness),
+    },
+    {
+      name: "answers a smart-account wallet as a person, marked as one",
+      run: async () => marksSmartAccount(harness),
     },
     {
       name: "answers a name that points to a contract as a contract",

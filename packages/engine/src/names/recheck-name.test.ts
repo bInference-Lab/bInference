@@ -43,6 +43,26 @@ describe("recheckName", () => {
     ).resolves.toStrictEqual({ kind: "moved", now: other });
   });
 
+  it("passes a smart-account wallet the card showed as one", async () => {
+    const resolver = resolverPointing({ address: confirmed, isSmartAccount: true });
+    const smartCard = { ...card, smartAccount: true } as const;
+    await expect(recheckName(resolver, smartCard, options)).resolves.toStrictEqual({
+      kind: "same",
+    });
+  });
+
+  it("refuses the card's address once it turned into a smart-account wallet or back", async () => {
+    const turned = resolverPointing({ address: confirmed, isSmartAccount: true });
+    await expect(recheckName(turned, card, options)).resolves.toStrictEqual({
+      kind: "moved",
+      now: confirmed,
+    });
+    const smartCard = { ...card, smartAccount: true } as const;
+    await expect(
+      recheckName(resolverPointing({ address: confirmed }), smartCard, options),
+    ).resolves.toStrictEqual({ kind: "moved", now: confirmed });
+  });
+
   it("refuses the card's address once it holds code", async () => {
     const resolver = resolverPointing({ address: confirmed, isContract: true });
     await expect(recheckName(resolver, card, options)).resolves.toStrictEqual({

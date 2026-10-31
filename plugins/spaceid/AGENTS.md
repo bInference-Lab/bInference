@@ -19,8 +19,10 @@ apply here. Rules for this plugin:
   reads the latest block, then every record at that block number, through the chain's RPC
   failover with the caller's signal. It caches nothing.
 - A name is not found when its second-level registration ended by the block's time, it has no
-  resolver, its resolver answers no address, or the address is zero. An address with any code,
-  an EIP-7702 delegation's included, is a contract.
+  resolver, its resolver answers no address, or the address is zero.
+  An address whose code is exactly an EIP-7702 delegation designator (`0xef0100` and 20 bytes) is
+  a smart-account wallet, a person (`smartAccount: true`); any other code is a contract
+  (`src/registry/code-kind.ts`).
 - A revert of the registry or the base registrar, or an answer outside its shape, is a fault
   (`spaceid.read_failed`); a resolver that reverts is no record.
 - Unit tests read a SPACE ID world in `src/testing/`, never the network. The fork tests in

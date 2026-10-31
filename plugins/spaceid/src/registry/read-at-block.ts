@@ -2,6 +2,7 @@ import { BinferenceError } from "@binference/plugin-sdk";
 import type { RpcFailover } from "@binference/plugin-sdk/evm";
 import type { Address, Hex } from "viem";
 import { z } from "zod";
+import { type CodeKind, codeKindOf } from "./code-kind.js";
 
 /** Where a resolution reads: the chain's RPC failover, one block, and the call's signal. */
 export interface BlockRead {
@@ -72,8 +73,11 @@ export async function callAtBlock(
   return reply.kind === "error" ? undefined : reply.value;
 }
 
-/** Whether the account holds code at the read's block. Rejects as {@link callAtBlock} does. */
-export async function holdsCode(read: BlockRead, account: Address): Promise<boolean> {
+/**
+ * What the account's code at the read's block says about it (see {@link codeKindOf}). Rejects as
+ * {@link callAtBlock} does.
+ */
+export async function readCodeKind(read: BlockRead, account: Address): Promise<CodeKind> {
   const reply = await read.rpc.request({
     method: "eth_getCode",
     params: [account, read.block],
@@ -83,5 +87,5 @@ export async function holdsCode(read: BlockRead, account: Address): Promise<bool
   if (reply.kind === "error") {
     throw unreadable("an account's code could not be read.");
   }
-  return reply.value !== "0x";
+  return codeKindOf(reply.value);
 }

@@ -131,6 +131,8 @@ interface ResolvedName {
   readonly name: string;
   readonly address: AccountRef;
   readonly resolvedAt: number;
+  /** The address is a smart-account wallet, whose only code is a delegation. */
+  readonly smartAccount?: true;
   /** What the address's reverse record names; absent when it could not be read. */
   readonly reverse?: "matches" | "differs" | "none";
 }
@@ -276,6 +278,7 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
       name: z.string(),
       address: accountRefSchema,
       resolvedAt: epochMsSchema,
+      smartAccount: z.literal(true).exactOptional(),
       reverse: z.enum(["matches", "differs", "none"]).exactOptional(),
     }),
   },

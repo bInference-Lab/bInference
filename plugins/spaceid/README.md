@@ -10,9 +10,10 @@ before it signs, so a name changed between the two refuses the send.
 - **Read.** The latest block, then at that block: the base registrar's expiry of the name's
   second-level label, the registry's resolver for the name, the resolver's `addr`, the address's
   code, and the address's reverse record through the resolver the registry names for it.
-- **Answer.** `found` with the address and its reverse record (`matches`, `differs` with the
-  record's text, or `none`); `not_found` for an expired registration, no resolver, no address or
-  the zero address; `contract` for an address with code; `malformed` for text that is no `.bnb`
+- **Answer.** `found` with the address, `smartAccount: true` when its only code is an EIP-7702
+  delegation, and its reverse record (`matches`, `differs` with the record's text, or `none`);
+  `not_found` for an expired registration, no resolver, no address or the zero address;
+  `contract` for an address with any other code; `malformed` for text that is no `.bnb`
   name.
 - **Faults.** No node answering is the RPC failover's `chain.rpc_down`; a registry or base
   registrar that reverts or answers outside its shape is `spaceid.read_failed`. Missing or foreign

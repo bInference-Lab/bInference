@@ -153,6 +153,8 @@ new name here first, in the change that uses it.
   engine resolves it when the card opens and again before it signs, the card shows the name and the
   address, and the address book keeps only the address. Its **reverse record** is the name an
   address's own record points back to.
+- **smart-account wallet**: a person's address whose only code is an EIP-7702 delegation to a
+  wallet program. A `.bnb` name may point to one; any other code makes the address a contract.
 - **name resolver**: a plugin that answers what a name under one suffix, such as `.bnb`, points to
   on its chain now, and what that address's reverse record names. It keeps nothing, so a name read
   again after a change answers the new address.

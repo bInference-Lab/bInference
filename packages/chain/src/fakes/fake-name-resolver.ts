@@ -7,8 +7,10 @@ import type { NameResolver } from "../names/ports.js";
 /** What a fake name's record holds. */
 export interface FakeNameRecord {
   readonly address: AccountRef;
-  /** The address holds code. */
+  /** The address holds code other than a delegation. */
   readonly isContract?: boolean;
+  /** The address is a smart-account wallet: its only code is a delegation. */
+  readonly isSmartAccount?: boolean;
   /** What the address's reverse record names, `unread` for none read; `matches` when absent. */
   readonly reverse?: ReverseRecord | "unread";
 }
@@ -42,9 +44,13 @@ function answerOf(name: string, record: FakeNameRecord | undefined): NameResolut
   if (record.isContract === true) {
     return { kind: "contract", name, address };
   }
-  return reverse === "unread"
-    ? { kind: "found", name, address }
-    : { kind: "found", name, address, reverse };
+  const found = {
+    kind: "found",
+    name,
+    address,
+    ...(record.isSmartAccount === true ? { smartAccount: true as const } : {}),
+  } as const;
+  return reverse === "unread" ? found : { ...found, reverse };
 }
 
 /**

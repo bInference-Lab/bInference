@@ -235,7 +235,8 @@ Rules for this package:
 - Names (`src/names/`, decision 0306): `name/resolve` asks the `NameResolver` whose suffix the
   name ends with, every call, and maps its answer to the protocol's codes; a resolver that rejects
   is `name.resolver_down`. `recheckName` (exported from `@binference/engine/sends`) is the second
-  read of a send by name before it signs: only the card's address, holding no code, passes.
+  read of a send by name before it signs: only the card's address, still a plain account or a
+  smart-account wallet as the card showed it, passes.
 - The address book lives in the agent's settings: the policy reads every live entry, on every
   chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers

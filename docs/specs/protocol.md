@@ -362,7 +362,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `portfolio/resetPaper` | `confirm`, write | `{ agent, balances? }` → the new paper portfolio (default 1 BNB and 500 USDT)                                                                                   |
 | `asset/get`            | `read`           | `{ asset }` → `AssetInfo` with risk when known                                                                                                                  |
 | `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)                                     |
-| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt, reverse? }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071)); below                                                  |
+| `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt, smartAccount?, reverse? }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071)); below                                   |
 | `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                                                   |
 | `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                                                        |
 | `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                                             |
@@ -449,9 +449,12 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   engine reads SPACE ID's registry and the name's resolver on BNB Smart Chain at the latest block,
   every call, and caches nothing. It answers the address record as a CAIP-10 account of BNB Smart
   Chain. `reverse` says what the address's reverse record names: `matches` (this name), `differs`
-  (another name) or `none`. It fails `name.not_found` for a name with no resolver, no address
-  record, the zero address or an expired registration; `name.contract` for an address that holds
-  code, since a send by name pays a person, never a contract; and `name.resolver_down`, retryable,
+  (another name) or `none`. `smartAccount: true` marks an address whose only code is an EIP-7702
+  delegation designator, a smart-account wallet, which counts as a person
+  ([decision 0306](../DECISIONS.md#d0306)). It fails `name.not_found` for a name with no resolver,
+  no address record, the zero address or an expired registration;
+  `name.contract` for an address that holds any other code, since a send by name pays a person,
+  never a contract; and `name.resolver_down`, retryable,
   when the chain does not answer. A send by name resolves the same way when it is proposed and again
   when its wallet's queue takes it (section 8.1, spec 6).
 - `staking/options` reads each staking venue the agent's venues allow on `chain`, or `venue`

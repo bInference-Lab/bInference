@@ -13,6 +13,7 @@ function resolverWithNames() {
   resolver.set("alice.fake", { address: alice });
   resolver.set("bob.fake", { address: alice, reverse: { kind: "differs", other: "alice.fake" } });
   resolver.set("vault.fake", { address: vault, isContract: true });
+  resolver.set("smart.fake", { address: vault, isSmartAccount: true });
   return resolver;
 }
 
@@ -32,6 +33,21 @@ describe("name/resolve", () => {
         name: "alice.fake",
         address: alice,
         resolvedAt: clock.now(),
+        reverse: "matches",
+      }),
+    );
+  });
+
+  it("marks a name that points to a smart-account wallet", async () => {
+    const { engine, clock } = await engineWith();
+    await expect(
+      engine.handlers["name/resolve"](testCall({ name: "smart.fake" })),
+    ).resolves.toStrictEqual(
+      ok({
+        name: "smart.fake",
+        address: vault,
+        resolvedAt: clock.now(),
+        smartAccount: true,
         reverse: "matches",
       }),
     );

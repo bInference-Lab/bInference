@@ -29,6 +29,7 @@ const contracts = {
 };
 const person = accountOf("binference fork person");
 const other = accountOf("binference fork other");
+const smart = accountOf("binference fork smart");
 const wbnb = bscToken("WBNB");
 
 interface Placed {
@@ -54,9 +55,9 @@ function addressOf(ref: AccountRef): Address {
   return parsed.value;
 }
 
-function contractOf(answer: NameResolution): Address {
-  if (answer.kind !== "contract") {
-    throw new Error(`The name resolved as ${answer.kind}, not as a contract.`);
+function foundOf(answer: NameResolution): Address {
+  if (answer.kind !== "found") {
+    throw new Error(`The name resolved as ${answer.kind}, not to a person.`);
   }
   return addressOf(answer.address);
 }
@@ -75,11 +76,15 @@ async function send(fork: Fork, steps: readonly PlacementStep[]): Promise<void> 
   }
 }
 
-// `binference-person.bnb` points to a fresh address whose reverse record names it, and
-// `binference-vault.bnb` to WBNB, a contract.
+// `binference-person.bnb` points to a fresh address whose reverse record names it,
+// `binference-smart.bnb` to a smart-account wallet delegating to SPACE ID's public resolver (any
+// address makes the designator), and `binference-vault.bnb` to WBNB, a contract.
 async function placedOn(fork: Fork, signal: AbortSignal): Promise<Placed> {
   const parts = await readPlacementParts(contracts, { rpc: fork.rpc, signal });
+  const designator = `0xef0100${parts.publicResolver.slice(2).toLowerCase()}`;
+  await fork.call("anvil_setCode", [smart, designator]);
   await send(fork, [
+    ...registerSteps(parts, { label: "binference-smart", holder: person, address: smart }),
     ...registerSteps(parts, { label: "binference-person", holder: person, address: person }),
     ...reverseSteps(parts, { address: person, name: "binference-person.bnb" }),
     ...registerSteps(parts, { label: "binference-vault", holder: person, address: wbnb }),
@@ -107,6 +112,7 @@ describe("bnb names on a fork of BSC", () => {
       return await Promise.resolve({
         resolver,
         person: { name: "binference-person.bnb", address: refOf(fork, person) },
+        smartAccount: { name: "binference-smart.bnb", address: refOf(fork, smart) },
         contract: { name: "binference-vault.bnb", address: refOf(fork, wbnb) },
         unregistered: "binference-nobody-registered-this.bnb",
         malformed: "binference_person.bnb",
@@ -126,15 +132,20 @@ describe("bnb names on a fork of BSC", () => {
     });
   });
 
-  // SPACE ID's own address delegates its code by EIP-7702 (read 2026-10-31): it holds code, so a
-  // send by name refuses it as it refuses any account with code.
-  it("refuses SPACE ID's own name, whose address holds a delegation's code", async ({ signal }) => {
+  // SPACE ID's own address delegates its code by EIP-7702 (read 2026-10-31): a smart-account
+  // wallet, which a send by name pays as a person (decision 0306).
+  it("resolves SPACE ID's own name both ways, to its smart-account wallet", async ({ signal }) => {
     await withFork(signal, async (fork) => {
       const { resolver } = await placedOn(fork, signal);
       const answer = await resolver.resolve("SpaceID.bnb", { signal });
-      expect(answer).toMatchObject({ kind: "contract", name: "spaceid.bnb" });
-      const code = await fork.client.getCode({ address: contractOf(answer) });
-      expect(code?.startsWith("0xef0100")).toBe(true);
+      expect(answer).toMatchObject({
+        kind: "found",
+        name: "spaceid.bnb",
+        smartAccount: true,
+        reverse: { kind: "matches" },
+      });
+      const code = await fork.client.getCode({ address: foundOf(answer) });
+      expect(code).toMatch(/^0xef0100[0-9a-f]{40}$/);
     });
   });
 

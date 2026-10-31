@@ -10,7 +10,7 @@ import {
 import { parseEvmAddress, type RpcFailover } from "@binference/plugin-sdk/evm";
 import type { Address } from "viem";
 import { type BnbName, bnbNameOf, bnbSuffix } from "./names/bnb-name.js";
-import { type BlockRead, holdsCode, readLatestBlock } from "./registry/read-at-block.js";
+import { type BlockRead, readCodeKind, readLatestBlock } from "./registry/read-at-block.js";
 import {
   readAddressRecord,
   readReverseRecord,
@@ -63,20 +63,27 @@ async function resolveAt(
     return { kind: "not_found", name: name.name };
   }
   const account = accountRefSchema.parse(`${read.chain}:${address}`);
-  if (await holdsCode(read, address)) {
+  const code = await readCodeKind(read, address);
+  if (code === "other") {
     return { kind: "contract", name: name.name, address: account };
   }
   const reverse = await readReverseRecord(read, contracts, { address, name: name.name });
-  const found = { kind: "found", name: name.name, address: account } as const;
+  const found = {
+    kind: "found",
+    name: name.name,
+    address: account,
+    ...(code === "delegation" ? { smartAccount: true as const } : {}),
+  } as const;
   return reverse === undefined ? found : { ...found, reverse };
 }
 
 /**
  * Creates the `.bnb` name resolver over SPACE ID's contracts on one chain. Each call reads the
  * latest block and then every record at that block: the base registrar's expiry of the name's
- * second-level label, the registry's resolver for the name, that resolver's `addr`, whether the
- * address holds code, and the address's reverse record through the resolver the registry names
- * for it. It never assumes a resolver and caches nothing. Missing or foreign contracts are a fault
+ * second-level label, the registry's resolver for the name, that resolver's `addr`, the address's
+ * code, and the address's reverse record through the resolver the registry names
+ * for it. An address whose only code is an EIP-7702 delegation is a smart-account wallet, any other
+ * code a contract. It never assumes a resolver and caches nothing. Missing or foreign contracts are a fault
  * (`spaceid.bad_options`).
  */
 export function createSpaceIdResolver(options: SpaceIdOptions): NameResolver {

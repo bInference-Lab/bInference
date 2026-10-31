@@ -27,6 +27,9 @@ const reverseResolver: Address = "0x1DdA6feF836c0c1dE986aC15597922dEe95Ff98A";
 const alice: Address = "0x1111111111111111111111111111111111110001";
 const bob: Address = "0x1111111111111111111111111111111111110002";
 const vault: Address = "0x55d398326f99059fF775485246999027B3197955";
+const smart: Address = "0x1111111111111111111111111111111111110003";
+// An EIP-7702 designator naming the delegate SPACE ID's own address uses on BSC.
+const designator = "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b";
 const live = { signal: new AbortController().signal };
 
 const account = (address: Address): AccountRef => accountRefSchema.parse(`${chain}:${address}`);
@@ -52,6 +55,8 @@ function testbed(): { readonly world: SpaceIdWorld; readonly resolver: NameResol
   setReverse(world, alice, "alice.bnb");
   placeName(world, "vault", vault);
   world.setCode(vault);
+  placeName(world, "smart", smart);
+  world.setCode(smart, designator);
   return { world, resolver: createSpaceIdResolver({ chain, rpc: world.rpc, contracts }) };
 }
 
@@ -63,6 +68,7 @@ describe("the bnb name resolver", () => {
         return await Promise.resolve({
           resolver,
           person: { name: "alice.bnb", address: account(alice) },
+          smartAccount: { name: "smart.bnb", address: account(smart) },
           contract: { name: "vault.bnb", address: account(vault) },
           unregistered: "nobody.bnb",
           malformed: "a_b.bnb",
@@ -91,6 +97,16 @@ describe("the bnb name resolver", () => {
     ]);
     world.setTime(now - 1n);
     await expect(resolver.resolve("alice.bnb", live)).resolves.toMatchObject({ kind: "found" });
+  });
+
+  it("refuses an address whose code is a designator with more after it", async () => {
+    const { world, resolver } = testbed();
+    world.setCode(smart, `${designator}00`);
+    await expect(resolver.resolve("smart.bnb", live)).resolves.toStrictEqual({
+      kind: "contract",
+      name: "smart.bnb",
+      address: account(smart),
+    });
   });
 
   it("finds nothing for a name with no resolver, no addr, or the zero address", async () => {

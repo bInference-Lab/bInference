@@ -40,8 +40,8 @@ export interface SpaceIdWorld {
   setReverseName(resolver: Address, address: Address, name: string): void;
   /** Makes every call to the contract revert, as a contract without the function does. */
   breakContract(contract: Address): void;
-  /** Gives the account code. */
-  setCode(account: Address): void;
+  /** Gives the account code: a contract's when none is named. */
+  setCode(account: Address, code?: Hex): void;
   /** Moves the latest block's time, in seconds since the epoch. */
   setTime(seconds: bigint): void;
   /** Every later request rejects as no node answering. */
@@ -61,7 +61,7 @@ interface WorldState {
   readonly addresses: Map<string, Address>;
   readonly names: Map<string, string>;
   readonly broken: Set<Address>;
-  readonly code: Set<Address>;
+  readonly code: Map<Address, Hex>;
   readonly asked: string[];
   time: bigint;
   isDown: boolean;
@@ -120,7 +120,7 @@ function valueOf<T>(
     return { number: block, timestamp: numberToHex(state.time) };
   }
   if (method === "eth_getCode") {
-    return state.code.has(getAddress(codeParams.parse(params)[0])) ? "0x6080" : "0x";
+    return state.code.get(getAddress(codeParams.parse(params)[0])) ?? "0x";
   }
   const [{ to, data }] = callParams.parse(params);
   return answerCall(state, to, data);
@@ -153,7 +153,7 @@ export function createSpaceIdWorld(time: bigint): SpaceIdWorld {
     addresses: new Map(),
     names: new Map(),
     broken: new Set(),
-    code: new Set(),
+    code: new Map(),
     asked: [],
     time,
     isDown: false,
@@ -173,7 +173,7 @@ export function createSpaceIdWorld(time: bigint): SpaceIdWorld {
     setReverseName: (resolver, address, name) =>
       state.names.set(recordKey(resolver, namehash(reverseNameOf(address))), name),
     breakContract: (contract) => state.broken.add(getAddress(contract)),
-    setCode: (account) => state.code.add(getAddress(account)),
+    setCode: (account, code = "0x6080") => state.code.set(getAddress(account), code),
     setTime: (seconds) => {
       state.time = seconds;
     },

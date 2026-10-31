@@ -7,6 +7,7 @@ import { createFakeNameResolver } from "./fake-name-resolver.js";
 const chain = chainRefSchema.parse("fake:1");
 const person = accountRefSchema.parse("fake:1:0x000000a1");
 const contract = accountRefSchema.parse("fake:1:0x000000c1");
+const smart = accountRefSchema.parse("fake:1:0x000000d1");
 const elsewhere = accountRefSchema.parse("fake:1:0x000000b2");
 const live = { signal: new AbortController().signal };
 
@@ -14,6 +15,7 @@ function resolverWithRecords() {
   const resolver = createFakeNameResolver({ chain, suffix: ".fake" });
   resolver.set("alice.fake", { address: person });
   resolver.set("vault.fake", { address: contract, isContract: true });
+  resolver.set("smart.fake", { address: smart, isSmartAccount: true });
   return resolver;
 }
 
@@ -25,6 +27,7 @@ describe("fake name resolver", () => {
         return await Promise.resolve({
           resolver,
           person: { name: "alice.fake", address: person },
+          smartAccount: { name: "smart.fake", address: smart },
           contract: { name: "vault.fake", address: contract },
           unregistered: "nobody.fake",
           malformed: "a_b.fake",

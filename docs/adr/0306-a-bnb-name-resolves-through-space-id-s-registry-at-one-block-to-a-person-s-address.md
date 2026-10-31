@@ -1,4 +1,4 @@
-# 0306. A .bnb name resolves through SPACE ID's registry at one block, and any code refuses it
+# 0306. A .bnb name resolves through SPACE ID's registry at one block to a person's address
 
 Status: Proposed
 
@@ -20,7 +20,8 @@ the send. The specs leave open how the client is built and how each rule is read
 - The base registrar keeps an expired name's registry record for a grace period of 90 days
   (`GRACE_PERIOD()` 7,776,000 s), and its resolver still answers then.
 - SPACE ID's own address delegates its code by EIP-7702 (`0xef0100` and a delegate's address, read
-  2026-10-31), so it holds code.
+  2026-10-31), so it holds code. Wallets such as MetaMask's smart accounts do the same: the key
+  still controls the account, and its code is only a pointer to a wallet program.
 
 ## Decision
 
@@ -36,19 +37,25 @@ the send. The specs leave open how the client is built and how each rule is read
 - The name is not found when its registration ended at or before the block's time (the grace
   period counts as ended), the registry names no resolver, the resolver reverts or answers no
   address, or the address is zero. A subname ends with its second-level name.
-- Any code at the address refuses the name as a contract, a delegation's code included.
+- An address whose code is exactly an EIP-7702 delegation designator (`0xef0100` followed by 20
+  bytes) is a smart-account wallet: the name resolves to it as to a person, and `name/resolve`
+  answers `smartAccount: true` (the owner chose this on 2026-10-31). Any other code, a designator
+  with more bytes or another prefix included, refuses the name as a contract.
 - The reverse record `matches` when its text normalizes to the name, `differs` with its own text
   otherwise, and is `none` with no resolver or an empty name. A reverse resolver that reverts or
   answers outside its shape leaves `reverse` out; the name still resolves.
 - A revert of the registry or the base registrar, or an answer outside their shape, is a fault
   (`spaceid.read_failed`). The engine answers any fault as `name.resolver_down`.
 - The resolver is the `NameResolver` port of `@binference/chain`, chosen by its suffix, so the
-  engine names no naming service. The send path reads the name again with `recheckName`.
+  engine names no naming service. The send path reads the name again with `recheckName`, and an
+  address that became a smart-account wallet or stopped being one since the card is `moved`.
 
 ## Consequences
 
-- `spaceid.bnb` and every name whose owner's wallet delegates by EIP-7702 is refused with
-  `name.contract`. An owner ruling may later allow a delegation's code; it would be a new ADR.
+- `spaceid.bnb` and every name whose owner's wallet delegates by EIP-7702 resolves, marked as a
+  smart-account wallet; the card of a send to one says so.
+- A delegation runs the wallet program's code when the account receives funds. A send of BNB or a
+  BEP-20 token still lands in the account its key controls.
 - A resolution takes seven reads, two of them at once. The engine's answer for a name is never
   older than the block it read.
 - A name in its grace period answers `name.not_found`, though other apps may still resolve it.
@@ -61,5 +68,5 @@ the send. The specs leave open how the client is built and how each rule is read
   a read. Lost.
 - **Resolve a name in its grace period.** The spec counts it as expired, and its holder may lose it
   at any time. Lost.
-- **Treat a delegation's code as a person's account.** A delegated account still answers to its
-  key, but the spec and the owner's rule refuse an address with code. Left to the owner.
+- **Refuse every address with code, a delegation's included.** It refuses SPACE ID's own name and
+  every owner whose wallet became a smart account. Lost (owner).
