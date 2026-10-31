@@ -14,6 +14,20 @@ import type {
   TxDecoder,
 } from "./ports.js";
 
+/**
+ * The inputs of a bridge deposit a ceiling binds (decision 0302), each a top-level input of the
+ * call: the 20-byte address the destination chain pays, the destination chain's id, the token
+ * that leaves and the token that arrives, and the `bytes` inputs that must be empty, such as a
+ * message that would run actions on arrival.
+ */
+export interface BridgeCallInputs {
+  readonly recipient: string;
+  readonly destinationChain: string;
+  readonly tokenIn: string;
+  readonly tokenOut: string;
+  readonly emptyInputs: readonly string[];
+}
+
 /** A function a venue's transactions call on one of its contracts. */
 export interface VenueCall {
   /** The contract's name, one of the chain's `names` or `launchContracts`. */
@@ -35,6 +49,12 @@ export interface VenueCall {
    * ceiling lists it, a launch wallet's neither, and custody refuses it (decision 0277).
    */
   readonly isUnbuilt?: boolean;
+  /**
+   * The call is a bridge deposit and these are the inputs its ceiling rules bind: one rule per
+   * destination chain, paying only the addresses saved for that chain (decision 0302). Left out,
+   * a plain call.
+   */
+  readonly bridge?: BridgeCallInputs;
 }
 
 /** The contracts a venue touches on one chain, by their names in that chain's registry entry. */
@@ -89,6 +109,7 @@ interface VenueCallWire {
   readonly walletInputs?: readonly string[] | undefined;
   readonly onlyWallet?: WalletRole;
   readonly isUnbuilt?: boolean;
+  readonly bridge?: BridgeCallInputs;
 }
 
 /** A {@link VenueDeclaration} as a plugin's manifest writes it. */
@@ -123,6 +144,15 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
       .default([]),
     onlyWallet: walletRoleSchema.exactOptional(),
     isUnbuilt: z.literal(true).exactOptional(),
+    bridge: z
+      .strictObject({
+        recipient: z.string().min(1),
+        destinationChain: z.string().min(1),
+        tokenIn: z.string().min(1),
+        tokenOut: z.string().min(1),
+        emptyInputs: z.array(z.string().min(1)).refine(isUnique),
+      })
+      .exactOptional(),
   })
   .refine(isUnbuiltShaped, {
     message: "A call the venue never builds is a launch wallet's alone.",

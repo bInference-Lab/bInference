@@ -1,6 +1,6 @@
 import type { EvmChain } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
-import { addressList } from "./build-ceiling.js";
+import { addressList } from "./address-list.js";
 import { approveAbi } from "./ceiling-abis.js";
 import type { ChainCaps } from "./ceiling.js";
 import type { AbiFunction, TransactionCondition } from "./policy-rule.js";

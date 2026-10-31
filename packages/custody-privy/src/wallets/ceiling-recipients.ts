@@ -1,6 +1,7 @@
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
-import { type AddressProblem, addressList, recipientRules } from "../ceiling/build-ceiling.js";
+import { type AddressProblem, addressList } from "../ceiling/address-list.js";
+import { recipientRules } from "../ceiling/build-ceiling.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
 import type { PolicyRuleRef } from "../privy/privy-wire.schema.js";

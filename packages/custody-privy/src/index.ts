@@ -1,6 +1,10 @@
 export { buildCeiling } from "./ceiling/build-ceiling.js";
 export { maxAggregations } from "./ceiling/ceiling.js";
+export { bridgeRoom, maxCeilingBytes } from "./ceiling/ceiling-size.js";
 export type {
+  BridgeCall,
+  BridgeInputs,
+  BridgeTarget,
   Ceiling,
   CeilingCall,
   CeilingChain,
@@ -26,7 +30,8 @@ export type {
   TransactionCondition,
 } from "./ceiling/policy-rule.js";
 export { readCeiling } from "./ceiling/read-ceiling.js";
-export type { CeilingHeld, HeldCaps } from "./ceiling/read-ceiling.js";
+export type { CeilingHeld, HeldBridge, HeldCaps } from "./ceiling/read-ceiling.js";
+export type { BridgeDestination, BridgePlan } from "./ceiling/registry-bridge-targets.js";
 export { launchCeilingOf, registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
 export type {
   RegistryCeilingProblem,

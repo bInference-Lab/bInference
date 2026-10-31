@@ -3,6 +3,7 @@ import {
   type ChainRef,
   declaredAddress,
   declaredContracts,
+  type VenueCall,
   type VenueContracts,
   type VenueDeclaration,
   type WalletRole,
@@ -11,6 +12,7 @@ import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 import { abiFunctionSchema } from "./abi-function.schema.js";
 import type { CeilingCall, CeilingChainPlan, LaunchCall, LaunchCeiling } from "./ceiling.js";
+import { type BridgePlan, registryBridgeTargets } from "./registry-bridge-targets.js";
 
 /** What the ceiling takes from the registry for one chain. */
 export interface RegistryCeilingRequest {
@@ -26,13 +28,18 @@ export interface RegistryCeilingRequest {
    * agent wallet's.
    */
   readonly role?: WalletRole;
+  /**
+   * The routes and the saved addresses a bridge deposit may reach from the chain (decision 0302);
+   * absent, no bridge target, so no bridge deposit is allowed.
+   */
+  readonly bridges?: BridgePlan;
 }
 
 /**
  * Why the registry gives no ceiling for a chain: a venue names a contract the chain's entry does
  * not list for it, or declares a call whose function is no JSON ABI entry.
  */
-export type RegistryCeilingProblem = "unknown_contract" | "bad_call";
+export type RegistryCeilingProblem = "unknown_contract" | "bad_call" | "unknown_token";
 
 /** A venue and what it declares on one chain. */
 interface Declared {
@@ -57,6 +64,7 @@ function callsOf(
     (call) =>
       isRegistryName(declared, call.contract) &&
       call.isUnbuilt !== true &&
+      call.bridge === undefined &&
       (call.onlyWallet === undefined || call.onlyWallet === ceiling.role),
   );
   for (const call of listed) {
@@ -95,6 +103,39 @@ function spendersOf(
   return ok(spenders);
 }
 
+// What one venue adds on the chain: its plain calls and spenders, and every call it declares there.
+function venuePartsOf(
+  venue: VenueDeclaration,
+  request: RegistryCeilingRequest,
+): Result<
+  {
+    readonly calls: readonly CeilingCall[];
+    readonly spenders: readonly string[];
+    readonly declared: readonly VenueCall[];
+  },
+  RegistryCeilingProblem
+> {
+  const ref = evmChainOf(request.definition).ref;
+  const named = declaredContracts(venue, { ref, definition: request.definition });
+  if (!named.ok) {
+    return named;
+  }
+  const contracts = venue.contracts.find((item) => item.chain === ref);
+  if (contracts === undefined) {
+    return ok({ calls: [], spenders: [], declared: [] });
+  }
+  const declared = { venue, contracts };
+  const ceiling = { definition: request.definition, role: request.role };
+  const calls = callsOf(declared, ceiling);
+  const spenders = spendersOf(declared, ceiling);
+  if (!calls.ok) {
+    return calls;
+  }
+  return spenders.ok
+    ? ok({ calls: calls.value, spenders: spenders.value, declared: contracts.calls ?? [] })
+    : spenders;
+}
+
 /**
  * The ceiling's view of one chain from the registry (decision 0149), before its 24-hour caps:
  * the functions each enabled venue declares its trades call, on the contracts it names, and the
@@ -103,7 +144,9 @@ function spendersOf(
  * approves (decision 0277). A venue that declares nothing on the chain adds nothing. A name the definition does not hold, or a call that is no JSON ABI entry,
  * is an expected failure, so a ceiling never allows less, or more, than the venues use. A call
  * or a spender on a contract each launch makes, such as a launchpad's curve, adds nothing: no
- * address list can hold one, so such trades stay outside every ceiling (decision 0212).
+ * address list can hold one, so such trades stay outside every ceiling (decision 0212). A bridge
+ * deposit a venue declares is no plain call: it becomes the targets `bridges` plans (decision 0302),
+ * and none without a plan. A route whose token a chain does not list is `unknown_token`.
  */
 export function registryCeilingChain(
   request: RegistryCeilingRequest,
@@ -111,27 +154,26 @@ export function registryCeilingChain(
   const chain = evmChainOf(request.definition);
   const calls: CeilingCall[] = [];
   const spenders: string[] = [];
+  const bridging: { readonly venue: VenueDeclaration; readonly calls: readonly VenueCall[] }[] = [];
   for (const venue of request.venues) {
-    const named = declaredContracts(venue, { ref: chain.ref, definition: request.definition });
-    if (!named.ok) {
-      return named;
+    const parts = venuePartsOf(venue, request);
+    if (!parts.ok) {
+      return parts;
     }
-    const contracts = venue.contracts.find((item) => item.chain === chain.ref);
-    const declared = contracts === undefined ? undefined : { venue, contracts };
-    const ceiling = { definition: request.definition, role: request.role };
-    const venueCalls = declared === undefined ? ok([]) : callsOf(declared, ceiling);
-    const venueSpenders = declared === undefined ? ok([]) : spendersOf(declared, ceiling);
-    if (!venueCalls.ok) {
-      return venueCalls;
-    }
-    if (!venueSpenders.ok) {
-      return venueSpenders;
-    }
-    calls.push(...venueCalls.value);
-    spenders.push(...venueSpenders.value);
+    calls.push(...parts.value.calls);
+    spenders.push(...parts.value.spenders);
+    bridging.push({ venue, calls: parts.value.declared });
+  }
+  const targets =
+    request.bridges === undefined
+      ? ok([])
+      : registryBridgeTargets(request.definition, bridging, request.bridges);
+  if (!targets.ok) {
+    return targets;
   }
   const { perTxNativeCapBase } = request;
-  return ok({ chain, calls, spenders: [...new Set(spenders)], perTxNativeCapBase });
+  const extras = targets.value.length === 0 ? {} : { bridges: targets.value };
+  return ok({ chain, calls, spenders: [...new Set(spenders)], perTxNativeCapBase, ...extras });
 }
 
 // The calls one venue declares on its launch contracts on a chain, and whether it names one as a

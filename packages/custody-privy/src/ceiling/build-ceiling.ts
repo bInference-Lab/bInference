@@ -1,6 +1,7 @@
-import { parseEvmAddress } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 import { isPrivyId } from "../privy/privy-records.js";
+import { addressList } from "./address-list.js";
+import { bridgeRule, checkedTargets } from "./bridge-rules.js";
 import {
   type CallRuleLists,
   callListsOf,
@@ -9,8 +10,10 @@ import {
   launchListsOf,
 } from "./call-lists.js";
 import { approveAbi, transferAbi } from "./ceiling-abis.js";
+import { ceilingBytes, maxCeilingBytes } from "./ceiling-size.js";
 import {
   type Ceiling,
+  type BridgeTarget,
   type CeilingChain,
   type CeilingProblem,
   type CeilingRequest,
@@ -20,73 +23,16 @@ import {
   type LaunchCeiling,
   maxAggregations,
 } from "./ceiling.js";
-import type {
-  CalldataCondition,
-  PolicyCondition,
-  PolicyRule,
-  ReferenceCondition,
-  TransactionCondition,
-} from "./policy-rule.js";
-
-// Privy's `in` operator takes at most 100 values.
-const maxListed = 100;
-const noValue = "0x0";
-// Privy puts the address of the wallet that signs in place of this variable.
-const walletAddress = "{{wallet.address}}";
-
-/** Why a list of recipients cannot go in a ceiling. */
-export type AddressProblem = "malformed_address" | "too_many_addresses";
-
-/**
- * The recipients a ceiling lists: checksummed, each once, in the order given, since Privy compares
- * strings case by case. More than 100 is `too_many_addresses`: Privy's `in` takes at most 100.
- */
-export function addressList(texts: readonly string[]): Result<readonly string[], AddressProblem> {
-  const listed = new Set<string>();
-  for (const text of texts) {
-    const address = parseEvmAddress(text);
-    if (!address.ok) {
-      return address;
-    }
-    listed.add(address.value);
-  }
-  return listed.size > maxListed ? err("too_many_addresses") : ok([...listed]);
-}
-
-function hexOf(value: bigint): string {
-  return `0x${value.toString(16)}`;
-}
-
-function onTransaction(
-  field: TransactionCondition["field"],
-  operator: TransactionCondition["operator"],
-  value: TransactionCondition["value"],
-): TransactionCondition {
-  return { field_source: "ethereum_transaction", field, operator, value };
-}
-
-function onCalldata(
-  abi: CalldataCondition["abi"][number],
-  field: string,
-  value: CalldataCondition["value"],
-): CalldataCondition {
-  return {
-    field_source: "ethereum_calldata",
-    field,
-    abi: [abi],
-    operator: typeof value === "string" ? "eq" : "in",
-    value,
-  };
-}
-
-function onCap(cap: DayCap): ReferenceCondition {
-  const field = `aggregation.${cap.aggregation}`;
-  return { field_source: "reference", field, operator: "lte", value: hexOf(cap.limitBase) };
-}
-
-function allow(name: string, conditions: readonly PolicyCondition[]): PolicyRule {
-  return { name, method: "eth_signTransaction", action: "ALLOW", conditions };
-}
+import type { PolicyCondition, PolicyRule } from "./policy-rule.js";
+import {
+  allow,
+  hexOf,
+  noValue,
+  onCalldata,
+  onCap,
+  onTransaction,
+  walletAddress,
+} from "./rule-parts.js";
 
 /**
  * The two rules of one chain that name who a send may pay: a native send, and a token `transfer`
@@ -127,6 +73,8 @@ export interface CeilingChainLists {
   readonly caps: CapLists;
   /** What a launch wallet's rules add on the chain, its calls checked; absent on an agent wallet. */
   readonly launch?: LaunchCeiling;
+  /** The bridge targets, checked (decision 0302); absent when the chain has none. */
+  readonly bridges?: readonly BridgeTarget[];
 }
 
 // A call of one function: on the chain, with at most the cap in native coin and the 24-hour native
@@ -176,8 +124,8 @@ function launchRulesOf(lists: CeilingChainLists): readonly PolicyRule[] {
   return [...calls, ...(launch.approvesAnySpender ? [approvals] : [])];
 }
 
-// The call rules and the approval rule of one chain, then a launch wallet's rules; no approval
-// rule for no spender.
+// The call rules, the bridge rules and the approval rule of one chain, then a launch wallet's
+// rules; no approval rule for no spender.
 function callRulesOf(lists: CeilingChainLists): readonly PolicyRule[] {
   const { chainId } = lists;
   const approvals = allow(`Approvals, chain ${chainId}`, [
@@ -188,6 +136,7 @@ function callRulesOf(lists: CeilingChainLists): readonly PolicyRule[] {
   ]);
   return [
     ...lists.calls.map((call) => callRule(lists, call)),
+    ...(lists.bridges ?? []).map((target) => bridgeRule(target, chainId)),
     ...(lists.spenders.length > 0 ? [approvals] : []),
     ...launchRulesOf(lists),
   ];
@@ -238,6 +187,24 @@ function launchOf(
   return calls.ok ? ok({ launch: { calls: calls.value, approvesAnySpender } }) : calls;
 }
 
+// A chain's bridge targets, checked; absent when none. A target's function may not also be a plain
+// call rule's, which would let it pay anyone.
+function bridgesOf(
+  chain: CeilingChain,
+  chainId: string,
+  calls: readonly CallRuleLists[],
+): Result<Pick<CeilingChainLists, "bridges">, CeilingProblem> {
+  const targets = checkedTargets(chain.bridges ?? [], chainId);
+  if (!targets.ok) {
+    return targets;
+  }
+  const plain = new Set(calls.map((call) => call.abi.name));
+  if (targets.value.some((target) => plain.has(target.call.abi.name))) {
+    return err("bad_bridge");
+  }
+  return ok(targets.value.length === 0 ? {} : { bridges: targets.value });
+}
+
 function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProblem> {
   if (chain.perTxNativeCapBase < 0n) {
     return err("negative_cap");
@@ -255,6 +222,10 @@ function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProbl
   if (!launch.ok) {
     return launch;
   }
+  const extras = bridgesOf(chain, chainId, calls.value);
+  if (!extras.ok) {
+    return extras;
+  }
   const caps = capsChecked(chain.caps);
   const { perTxNativeCapBase } = chain;
   return caps.ok
@@ -265,6 +236,7 @@ function chainLists(chain: CeilingChain): Result<CeilingChainLists, CeilingProbl
         perTxNativeCapBase,
         caps: caps.value,
         ...launch.value,
+        ...extras.value,
       })
     : caps;
 }
@@ -329,10 +301,11 @@ export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingPr
   if (!recipients.ok) {
     return recipients;
   }
-  return ok({
-    chains: request.chains.map((item) => item.chain.ref),
-    rules: ceilingRules(lists.value, recipients.value),
-  });
+  const rules = ceilingRules(lists.value, recipients.value);
+  if (ceilingBytes(rules) > maxCeilingBytes) {
+    return err("too_large");
+  }
+  return ok({ chains: request.chains.map((item) => item.chain.ref), rules });
 }
 
 /**

@@ -20,13 +20,16 @@ export type CallsRefusal =
   /** The owner key did not sign, or Privy did not take its signature as the policy owner's. */
   | "refused";
 
-// The rules of a chain that name what a call may do: its call rules and its approval rule, and a
-// launch wallet's launch call rules and approval of any spender (decision 0217).
+// The rules of a chain that name what a call may do: its call rules, its bridge rules and its
+// approval rule, and a launch wallet's launch call rules and approval of any spender (decisions
+// 0217 and 0302).
 function isCallsRule(name: string, chainId: string): boolean {
   const onChain = name.endsWith(`, chain ${chainId}`);
   const isCall = name.startsWith("Call ") || name.startsWith("Launch call ");
   const isApprovals = name === `Approvals, chain ${chainId}`;
-  return onChain && (isCall || isApprovals || name === `Launch approvals, chain ${chainId}`);
+  const isBridge = name.startsWith("Bridge ") && name.includes(`, chain ${chainId} to `);
+  const isLaunchApprovals = name === `Launch approvals, chain ${chainId}`;
+  return isBridge || (onChain && (isCall || isApprovals || isLaunchApprovals));
 }
 
 // One chain's call and approval rules, rebuilt: written over, added or taken out by name. A chain

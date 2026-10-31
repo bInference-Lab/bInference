@@ -28,7 +28,10 @@ Rules for this package:
   caps as aggregations the app sums over every wallet (decision 0149). A launch wallet's ceiling
   adds the launch rules (decision 0217): each call a launchpad declares on its launch contracts,
   by function name on any contract, its pinned inputs the wallet itself, and an `approve` naming
-  any spender, each under the same caps. No agent wallet's ceiling ever holds one. A change to `src/ceiling/`
+  any spender, each under the same caps. No agent wallet's ceiling ever holds one. A bridge
+  deposit is one rule per destination chain (decision 0302): its depositor pinned, its recipient
+  among the addresses saved for that chain, the chain id and the routes' tokens in the same rule.
+  Privy reads no empty `bytes` value and has no `neq`: what it cannot bind, the signer checks. A change to `src/ceiling/`
   changes what every wallet may sign: the known-answer test and the property test against the fake's policy engine change with
   it, and the change needs the owner key on every existing wallet.
 - The owner key changes a ceiling's recipients only through `src/wallets/ceiling-recipients.ts`:

@@ -63,6 +63,41 @@ export interface CeilingChain {
   readonly caps: ChainCaps;
   /** What a launch wallet's ceiling adds on the chain; absent on every agent wallet's. */
   readonly launch?: LaunchCeiling;
+  /** The bridge deposits a call may make from the chain, one target per destination; none if absent. */
+  readonly bridges?: readonly BridgeTarget[];
+}
+
+/**
+ * The inputs of a bridge deposit a ceiling binds (decision 0302), each a top-level input of the
+ * function: the 20-byte recipient, the destination chain's id, the token that leaves and the token
+ * that arrives. An input that must be empty, such as a message, is the signer's alone to check:
+ * Privy takes no condition for an empty `bytes` value (seen on its test app, 2026-10-31).
+ */
+export interface BridgeInputs {
+  readonly recipient: string;
+  readonly destinationChain: string;
+  readonly tokenIn: string;
+  readonly tokenOut: string;
+}
+
+/** A function that deposits into a bridge on one contract, and the inputs a ceiling binds. */
+export interface BridgeCall extends CeilingCall {
+  readonly bridge: BridgeInputs;
+}
+
+/**
+ * What a bridge deposit to one destination chain may name (decision 0302): the deposit function,
+ * the destination's EIP-155 id, the addresses the owner saved for that chain (the rescue address
+ * among them where it is a plain wallet on both chains), and the tokens the bridge's routes to it
+ * take and deliver. Addresses are EVM addresses in any case.
+ */
+export interface BridgeTarget {
+  readonly call: BridgeCall;
+  /** The destination chain's EIP-155 id as decimal text. */
+  readonly destinationChainId: string;
+  readonly recipients: readonly string[];
+  readonly tokensIn: readonly string[];
+  readonly tokensOut: readonly string[];
 }
 
 /** A chain's ceiling before its 24-hour caps are attached, as the registry gives it. */
@@ -93,7 +128,9 @@ export interface Ceiling {
  * more than Privy lists; a negative cap; a call whose function name is too long for a rule name
  * or whose wallet input is no address input, or a launch call that pins none; two calls of one
  * name that differ; a cap whose aggregation is no Privy id; more aggregations than Privy keeps for
- * an app.
+ * an app; a bridge target whose inputs are not the function's, that repeats a destination, names no
+ * recipient or token, or whose rule name passes Privy's 50 characters; rules past the bytes one
+ * Privy policy holds.
  */
 export type CeilingProblem =
   | "no_chain"
@@ -104,4 +141,6 @@ export type CeilingProblem =
   | "bad_call"
   | "clashing_calls"
   | "bad_cap"
-  | "too_many_caps";
+  | "too_many_caps"
+  | "bad_bridge"
+  | "too_large";

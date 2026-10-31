@@ -136,15 +136,22 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    `dagSwapTo.receiver` on OKX's router, must be the wallet itself. Each call holds only while the
    native coin the wallets sent in the last 24 hours stays within the chain's cap. No rule names an
    executor, a token or a Permit2.
-3. **Approvals:** `approve(spender, amount)` on any token, only when `spender` is a contract an
+3. **Bridge deposits** ([decision 0302](../DECISIONS.md#d0302)): a deposit an enabled bridge venue
+   declares, one rule per destination chain (`Bridge <function>, chain <id> to <destination>`):
+   the function on its contract with no native coin, its depositor the wallet itself, its
+   recipient one of the addresses saved for that destination (and the rescue address where it is
+   a plain wallet on both chains), the destination chain's id, and the tokens the venue's routes
+   there take and deliver. A destination with no saved address has no rule. The deposit's message
+   must be empty, which the signer checks: Privy takes no condition for an empty value.
+4. **Approvals:** `approve(spender, amount)` on any token, only when `spender` is a contract an
    enabled venue declares as its spender, and only while each capped token's approvals in the last
    24 hours stay within its cap; never `setApprovalForAll`.
-4. **Sends** ([decision 0091](../DECISIONS.md#d0091)): a native transfer, or a token
+5. **Sends** ([decision 0091](../DECISIONS.md#d0091)): a native transfer, or a token
    `transfer(to, amount)`, only when the recipient is the rescue address or a saved address. One
    exception: a 0-value transfer to the wallet itself, which is how a stuck transaction is cancelled
    (spec 6, section 6). Saving an address changes the policy, so it needs the owner key
    (self-hosted) or the user's Privy sign-in (Cloud).
-5. **Signing method** `eth_signTransaction` only. No `personal_sign`, no typed data except named
+6. **Signing method** `eth_signTransaction` only. No `personal_sign`, no typed data except named
    Permit2 domains towards a registry spender, and no EIP-7702 authorization: no rule names
    `eth_sign7702Authorization`, so Privy denies every one (Privy refuses a rule for that method
    without conditions, so the ceiling holds no `DENY` rule for it; the exact match of section 6

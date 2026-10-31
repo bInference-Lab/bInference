@@ -1,0 +1,189 @@
+import {
+  type BridgeRouteDefinition,
+  type ChainDefinition,
+  chainRefSchema,
+  type VenueDeclaration,
+} from "@binference/chain";
+import { describe, expect, it } from "vitest";
+import { bridgeAddresses, testBridgeCall } from "../testing/bridge-target-fixtures.js";
+import { oneBnbWei, testAddresses } from "../testing/custody-fixtures.js";
+import { abiFunctionJson } from "./policy-rule.js";
+import { registryCeilingChain } from "./registry-ceiling-chain.js";
+
+const verification = {
+  source: "https://example.org/docs",
+  checkedOn: "2026-10-31",
+  control: "read",
+} as const;
+const endpoint = { name: "rpc", url: "https://rpc.example.org", source: "https://example.org" };
+
+function chainOf(
+  id: string,
+  key: string,
+  family = "evm",
+): Omit<ChainDefinition, "tokens" | "contracts"> {
+  return {
+    id,
+    key,
+    name: key,
+    family,
+    nativeAsset: {
+      assetNamespace: "slip44",
+      assetReference: "60",
+      symbol: "ETH",
+      name: "Ether",
+      decimals: 18,
+    },
+    blockTimeMs: 1000,
+    finality: { kind: "finalized_tag" },
+    rpcs: [endpoint],
+    relays: [],
+    explorers: [{ ...endpoint, txUrl: "https://scan.example.org/tx/{hash}" }],
+  };
+}
+
+const token = (symbol: string, address: string) => ({
+  symbol,
+  name: symbol,
+  decimals: 18,
+  address,
+  verification,
+});
+
+const source: ChainDefinition = {
+  ...chainOf("eip155:56", "bsc"),
+  tokens: [token("USDC", bridgeAddresses.bscUsdc), token("ETH", bridgeAddresses.bscEth)],
+  contracts: [
+    { venue: "across", name: "spoke-pool", address: bridgeAddresses.spokePool, verification },
+    {
+      venue: "erc8004",
+      name: "identity-registry",
+      address: bridgeAddresses.identity,
+      verification,
+    },
+  ],
+};
+const base: ChainDefinition = {
+  ...chainOf("eip155:8453", "base-mainnet"),
+  tokens: [token("USDC", bridgeAddresses.baseUsdc)],
+  contracts: [],
+};
+const robinhood: ChainDefinition = {
+  ...chainOf("eip155:4663", "robinhood"),
+  tokens: [token("WETH", bridgeAddresses.robinhoodWeth)],
+  contracts: [],
+};
+const solana: ChainDefinition = {
+  ...chainOf("solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", "solana", "solana"),
+  tokens: [],
+  contracts: [],
+};
+
+function route(leaves: string, to: string, arrives: string): BridgeRouteDefinition {
+  return {
+    venue: "across",
+    leaves,
+    to,
+    arrives,
+    source: "https://example.org/routes",
+    checkedOn: "2026-10-31",
+  };
+}
+
+const bsc = chainRefSchema.parse("eip155:56");
+const across: VenueDeclaration = {
+  id: "across",
+  contracts: [
+    {
+      chain: bsc,
+      names: ["spoke-pool"],
+      calls: [
+        {
+          contract: "spoke-pool",
+          abi: abiFunctionJson(testBridgeCall.abi),
+          walletInputs: ["depositor"],
+          bridge: { ...testBridgeCall.bridge, emptyInputs: ["message"] },
+        },
+      ],
+      spenders: ["spoke-pool"],
+    },
+  ],
+};
+
+function chainWith(bridges: Parameters<typeof registryCeilingChain>[0]["bridges"]) {
+  return registryCeilingChain({
+    definition: source,
+    venues: [across],
+    perTxNativeCapBase: oneBnbWei,
+    ...(bridges === undefined ? {} : { bridges }),
+  });
+}
+
+// The plan's targets, or the refusal.
+function targetsOf(bridges: Parameters<typeof registryCeilingChain>[0]["bridges"]) {
+  const chain = chainWith(bridges);
+  return chain.ok ? chain.value.bridges : chain.error;
+}
+
+// The plan's plain calls, or the refusal.
+function restOf(bridges: Parameters<typeof registryCeilingChain>[0]["bridges"]) {
+  const chain = chainWith(bridges);
+  return chain.ok ? chain.value.calls : chain.error;
+}
+
+const routes = [
+  route("USDC", "base-mainnet", "USDC"),
+  route("ETH", "robinhood", "WETH"),
+  { ...route("USDC", "solana", "USDC"), venue: "relay" },
+];
+
+describe("bridge targets from the registry", () => {
+  it("makes one target per destination with a route and a saved address, and no plain call", () => {
+    const plan = {
+      routes,
+      destinations: [
+        { definition: base, recipients: [bridgeAddresses.baseSaved] },
+        { definition: robinhood, recipients: [bridgeAddresses.robinhoodSaved] },
+      ],
+    };
+    expect(restOf(plan)).toStrictEqual([]);
+    expect(targetsOf(plan)).toStrictEqual([
+      {
+        call: { ...testBridgeCall },
+        destinationChainId: "8453",
+        recipients: [bridgeAddresses.baseSaved],
+        tokensIn: [bridgeAddresses.bscUsdc],
+        tokensOut: [bridgeAddresses.baseUsdc],
+      },
+      {
+        call: { ...testBridgeCall },
+        destinationChainId: "4663",
+        recipients: [bridgeAddresses.robinhoodSaved],
+        tokensIn: [bridgeAddresses.bscEth],
+        tokensOut: [bridgeAddresses.robinhoodWeth],
+      },
+    ]);
+  });
+
+  it("makes no target where nothing binds a deposit: no saved address, no route, or no 20-byte address", () => {
+    const targets = targetsOf({
+      routes,
+      destinations: [
+        { definition: base, recipients: [] },
+        { definition: robinhood, recipients: [bridgeAddresses.robinhoodSaved] },
+        { definition: solana, recipients: [testAddresses.saved] },
+      ],
+    });
+    expect(targets).toMatchObject([{ destinationChainId: "4663" }]);
+    expect(targetsOf(undefined)).toBeUndefined();
+  });
+
+  it("refuses a route whose token a chain does not list", () => {
+    expect(
+      targetsOf({
+        routes: [route("USDT", "base-mainnet", "USDT")],
+        destinations: [{ definition: base, recipients: [bridgeAddresses.baseSaved] }],
+      }),
+    ).toBe("unknown_token");
+  });
+});

@@ -60,6 +60,7 @@ describe("readCeiling", () => {
       isLaunch: false,
       launchCalls: [],
       functions: ["swap", "swapTo"],
+      bridges: [],
     });
   });
 
@@ -77,6 +78,7 @@ describe("readCeiling", () => {
       isLaunch: true,
       launchCalls: ["buy", "sell", "approve"],
       functions: [],
+      bridges: [],
     });
     expect(readCeiling(rulesOf(testLaunchCeilingRequest()))).toMatchObject({
       contracts: [testAddresses.router],
