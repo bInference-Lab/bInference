@@ -44,12 +44,14 @@ interface WalletArgs {
 
 /**
  * The args of `wallet/create`: a new Privy wallet, owned by the owner key; with `launch`, the
- * agent's launch wallet (decision 0217).
+ * agent's launch wallet (decision 0217); with `bridge`, its bridge wallet (decision 0307). Both
+ * together are `protocol.bad_args`.
  */
 interface CreateWalletArgs extends AgentArgs {
   readonly label: string;
   readonly ownerKey: string;
   readonly launch?: true;
+  readonly bridge?: true;
 }
 
 /** The args of `wallet/rename`. */
@@ -178,6 +180,7 @@ export const walletOperations: OperationTable<WalletOperationShapes> = {
       label: labelSchema,
       ownerKey: ownerKeyCodeSchema,
       launch: z.literal(true).exactOptional(),
+      bridge: z.literal(true).exactOptional(),
     }),
     result: walletViewSchema,
   },

@@ -48,9 +48,13 @@ export interface LabelFlags extends AgentFlags {
   readonly label: string;
 }
 
-/** What `wallet create` takes: `--launch` makes the agent's launch wallet (decision 0217). */
+/**
+ * What `wallet create` takes: `--launch` makes the agent's launch wallet (decision 0217), `--bridge`
+ * its bridge wallet (decision 0307).
+ */
 export interface WalletCreateFlags extends LabelFlags {
   readonly launch: boolean;
+  readonly bridge: boolean;
 }
 
 /** What `uninstall` takes: `--state` also removes the state folder. */
@@ -169,12 +173,16 @@ export const labelFlagsSchema: z.ZodType<LabelFlags> = z.object({
   label: z.string().min(1).max(64),
 });
 
-/** Parses the options commander read for `wallet create`; an agent wallet unless `--launch`. */
+/**
+ * Parses the options commander read for `wallet create`; a main wallet unless `--launch` or
+ * `--bridge`.
+ */
 export const walletCreateFlagsSchema: z.ZodType<WalletCreateFlags> = z.object({
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
   label: z.string().min(1).max(64),
   launch: z.boolean().default(false),
+  bridge: z.boolean().default(false),
 });
 
 /** Parses the options commander read for `check`. */

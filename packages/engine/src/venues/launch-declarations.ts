@@ -75,7 +75,7 @@ export function declarationsOf(launchers: ReadonlyMap<string, HostedLauncher>): 
       return launcher === undefined ? undefined : placeOf(launcher);
     },
     pictureBytesFor: (venue, words) => pictureBytesOn(launchers, venue, words),
-    launchWalletCalls: (venue) => launchers.get(venue)?.hosted.launchWalletCalls ?? [],
+    launchWalletCalls: (venue) => launchers.get(venue)?.hosted.roleWalletCalls.launch ?? [],
     launchpadsOn: (chain: ChainRef) =>
       [...launchers.values()]
         .filter((item) => item.hosted.contracts.has(chain))

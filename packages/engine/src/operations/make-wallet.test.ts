@@ -1,5 +1,9 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
-import { createFakeLaunchpad, createFakeVenue } from "@binference/chain/testing";
+import {
+  createFakeBridgeVenue,
+  createFakeLaunchpad,
+  createFakeVenue,
+} from "@binference/chain/testing";
 import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
@@ -33,25 +37,32 @@ const unsaved: AddressEntryRecord = {
 
 function create(
   test: TestEngine,
-  args: { readonly ownerKey?: string; readonly agent?: string; readonly launch?: true } = {},
+  args: {
+    readonly ownerKey?: string;
+    readonly agent?: string;
+    readonly launch?: true;
+    readonly bridge?: true;
+  } = {},
 ) {
-  const { ownerKey = fakeOwnerKeyCode, agent = testAgent, launch } = args;
+  const { ownerKey = fakeOwnerKeyCode, agent = testAgent, ...roles } = args;
   const call = { agent: idSchema("agt").parse(agent), label: "spare", ownerKey };
-  return test.engine.handlers["wallet/create"](
-    testCall(launch === undefined ? call : { ...call, launch }),
-  );
+  return test.engine.handlers["wallet/create"](testCall({ ...call, ...roles }));
 }
 
 // The test engine with the owner's rescue address in effect and one live wallet listing it,
-// beside a launchpad that declares a call on each launch's own curve, unless left out.
-async function withRescue(options: { readonly launchpads?: false } = {}): Promise<TestEngine> {
+// beside a launchpad that declares a call on each launch's own curve and a bridge whose deposit is
+// a bridge wallet's, unless left out.
+async function withRescue(
+  options: { readonly launchpads?: false; readonly bridges?: false } = {},
+): Promise<TestEngine> {
   const launchCurve = accountRefSchema.parse("fake:1:0x000000b1");
   const pads =
     options.launchpads === false ? [] : [createFakeLaunchpad({ onCurve: [], launchCurve })];
+  const bridges = options.bridges === false ? [] : [createFakeBridgeVenue()];
   const test = await startTestEngine({
     custodyWallets: new Map([[main.id, accountRefSchema.parse("fake:1:0x000000c1")]]),
-    chains: testChains(["fake-curve"]),
-    venues: [createFakeVenue(), ...pads],
+    chains: testChains(["fake-curve", "fake-bridge"]),
+    venues: [createFakeVenue(), ...pads, ...bridges],
   });
   await test.stores.install.changeRescue(
     { address: owner, atMs: testNowMs - 3 * looseningWaitMs },
@@ -172,6 +183,34 @@ describe("making a wallet with the owner key", () => {
     const test = await withRescue({ launchpads: false });
 
     expect(await create(test, { launch: true })).toStrictEqual(err("wallet.no_launch_calls"));
+    expect(test.walletMaker.count()).toBe(0);
+  });
+
+  it("makes the agent's bridge wallet with its role, and refuses a second", async () => {
+    const test = await withRescue();
+
+    const view = expectOk(await create(test, { bridge: true }));
+
+    const stored = await newWallet(test);
+    expect([view.bridge, view.role, stored.role]).toStrictEqual([true, undefined, "bridge"]);
+    expect(JSON.stringify(stored.ceiling.policy)).toContain('"role":"bridge"');
+    expect(await create(test, { bridge: true })).toStrictEqual(err("wallet.bridge_exists"));
+    expect(test.walletMaker.count()).toBe(1);
+  });
+
+  it("makes no bridge wallet when no venue the install runs marks a bridge wallet's deposit", async () => {
+    const test = await withRescue({ bridges: false });
+
+    expect(await create(test, { bridge: true })).toStrictEqual(err("wallet.no_bridge_calls"));
+    expect(test.walletMaker.count()).toBe(0);
+  });
+
+  it("refuses a wallet asked to be a launch and a bridge wallet at once", async () => {
+    const test = await withRescue();
+
+    expect(await create(test, { launch: true, bridge: true })).toStrictEqual(
+      err("protocol.bad_args"),
+    );
     expect(test.walletMaker.count()).toBe(0);
   });
 

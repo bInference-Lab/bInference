@@ -100,6 +100,6 @@ describe("the brew venue's options on BSC", () => {
       "holderDistributor",
     ]);
     expect(venues.launchesOnly("brew")).toBe(true);
-    expect(venues.launchWalletCalls(["brew"])).toHaveLength(1);
+    expect(venues.roleWalletCalls("launch", ["brew"])).toHaveLength(1);
   });
 });

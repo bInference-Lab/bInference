@@ -466,6 +466,8 @@
         "wallet.track_limit",
         "wallet.launch_exists",
         "wallet.no_launch_calls",
+        "wallet.bridge_exists",
+        "wallet.no_bridge_calls",
         "address.not_found",
         "address.launch_wallet",
         "rescue.no_address",
@@ -2458,6 +2460,10 @@
                         "type": "string",
                         "const": "launch"
                       },
+                      "bridge": {
+                        "type": "boolean",
+                        "const": true
+                      },
                       "extra": {
                         "type": "boolean"
                       },
@@ -2507,6 +2513,10 @@
                       "role": {
                         "type": "string",
                         "const": "launch"
+                      },
+                      "bridge": {
+                        "type": "boolean",
+                        "const": true
                       },
                       "extra": {
                         "type": "boolean"
@@ -2690,6 +2700,10 @@
                   "type": "string",
                   "const": "launch"
                 },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "extra": {
                   "type": "boolean"
                 },
@@ -2739,6 +2753,10 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "extra": {
                   "type": "boolean"
@@ -2921,6 +2939,10 @@
                   "type": "string",
                   "const": "launch"
                 },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "extra": {
                   "type": "boolean"
                 },
@@ -2970,6 +2992,10 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "extra": {
                   "type": "boolean"
@@ -3150,6 +3176,10 @@
                   "type": "string",
                   "const": "launch"
                 },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "extra": {
                   "type": "boolean"
                 },
@@ -3199,6 +3229,10 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "extra": {
                   "type": "boolean"
@@ -3451,6 +3485,10 @@
                   "type": "string",
                   "const": "launch"
                 },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "extra": {
                   "type": "boolean"
                 },
@@ -3500,6 +3538,10 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "extra": {
                   "type": "boolean"
@@ -3674,6 +3716,10 @@
                   "type": "string",
                   "const": "launch"
                 },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
+                },
                 "extra": {
                   "type": "boolean"
                 },
@@ -3723,6 +3769,10 @@
                 "role": {
                   "type": "string",
                   "const": "launch"
+                },
+                "bridge": {
+                  "type": "boolean",
+                  "const": true
                 },
                 "extra": {
                   "type": "boolean"
@@ -6728,6 +6778,10 @@
                     "type": "string",
                     "const": "launch"
                   },
+                  "bridge": {
+                    "type": "boolean",
+                    "const": true
+                  },
                   "extra": {
                     "type": "boolean"
                   },
@@ -6798,6 +6852,10 @@
               "pattern": "^bnok1[A-Za-z2-7][A-Za-z2-7 -]{20,200}$"
             },
             "launch": {
+              "type": "boolean",
+              "const": true
+            },
+            "bridge": {
               "type": "boolean",
               "const": true
             }
@@ -6871,6 +6929,10 @@
             "role": {
               "type": "string",
               "const": "launch"
+            },
+            "bridge": {
+              "type": "boolean",
+              "const": true
             },
             "extra": {
               "type": "boolean"
@@ -6996,6 +7058,10 @@
             "role": {
               "type": "string",
               "const": "launch"
+            },
+            "bridge": {
+              "type": "boolean",
+              "const": true
             },
             "extra": {
               "type": "boolean"

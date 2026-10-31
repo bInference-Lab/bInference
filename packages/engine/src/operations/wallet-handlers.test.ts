@@ -3,6 +3,7 @@ import {
   accountRefSchema,
   chainRefSchema,
   createChainRegistry,
+  type WalletRole,
 } from "@binference/chain";
 import {
   createFakeChainDefinition,
@@ -10,7 +11,7 @@ import {
   createFakeSigner,
   createFakeSigningScheme,
 } from "@binference/chain/testing";
-import { createIdSource, err, type Id } from "@binference/core";
+import { createIdSource, err, type Id, type JsonValue } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -61,12 +62,18 @@ function twoChains() {
   });
 }
 
-// The calls a launch wallet makes on the test agent's one venue, `fake-swap`: a create call and a buy.
+// The calls a launch wallet makes on the test agent's one venue, `fake-swap`: a create call and a
+// buy; and the deposit a bridge wallet makes there.
 const createCall = { type: "function", name: "create", inputs: [] };
 const buyCall = { type: "function", name: "buy", inputs: [] };
+const depositCall = { type: "function", name: "deposit", inputs: [] };
+const roleCalls: Readonly<Record<WalletRole, readonly JsonValue[]>> = {
+  launch: [createCall, buyCall],
+  bridge: [depositCall],
+};
 const launchHost = {
-  launchWalletCalls: (venues?: readonly string[]) =>
-    venues?.includes("fake-swap") === true ? [createCall, buyCall] : [],
+  roleWalletCalls: (role: WalletRole, venues?: readonly string[]) =>
+    venues?.includes("fake-swap") === true ? roleCalls[role] : [],
 };
 
 async function walletList(
@@ -176,5 +183,31 @@ describe("the wallet list", () => {
     );
     expect(launchViews).toHaveLength(2);
     expect(items[0]?.missingCalls).toBeUndefined();
+  });
+
+  it("names the calls the agent's bridge wallet's ceiling lacks, and marks an extra one", async () => {
+    const bridge = testWalletRecord({
+      id: fixtureId("wal", 46),
+      agentId: testAgent,
+      label: "Bridges",
+      createdAtMs: 40,
+      role: "bridge",
+    });
+    const extra = { ...bridge, id: fixtureId("wal", 47), createdAtMs: 45 };
+    const held = new Map([
+      ...everyAccount,
+      [bridge.id, accounts.spare],
+      [extra.id, accounts.others],
+    ]);
+    const list = await walletList(held, [main, bridge, extra]);
+    const { items } = expectOk(await list(testCall({ agent: testAgent })));
+
+    expect(
+      items.map((view) => [view.label, view.bridge, view.missingCalls, view.extra]),
+    ).toStrictEqual([
+      ["Main", undefined, undefined, undefined],
+      ["Bridges", true, ["deposit"], undefined],
+      ["Bridges", true, undefined, true],
+    ]);
   });
 });

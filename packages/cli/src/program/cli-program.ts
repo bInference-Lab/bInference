@@ -99,7 +99,8 @@ function addWalletCommands(program: Command, options: ProgramOptions): void {
     );
   withCommon(wallet.command("create").description(message("command.walletCreate")), message)
     .requiredOption("--label <text>", message("option.walletLabel"))
-    .option("--launch", message("option.launchWallet"))
+    .addOption(new Option("--launch", message("option.launchWallet")).conflicts("bridge"))
+    .option("--bridge", message("option.bridgeWallet"))
     .addOption(agentOption(message))
     .action((flags: OptionValues) =>
       choose({ name: "walletCreate", options: walletCreateFlagsSchema.parse(flags) }),

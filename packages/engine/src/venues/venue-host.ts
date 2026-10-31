@@ -8,8 +8,17 @@ import {
   type VenueContracts,
   type VenueQuote,
   venueQuoteSchema,
+  type WalletRole,
 } from "@binference/chain";
-import { type Bps, type Clock, type Err, type Ok, ok, type Result } from "@binference/core";
+import {
+  type Bps,
+  type Clock,
+  type Err,
+  type JsonValue,
+  type Ok,
+  ok,
+  type Result,
+} from "@binference/core";
 import { z } from "zod";
 import type { QuoteFailure } from "../intents/intent-reason.js";
 import type { QuoteTerms } from "../intents/intent-status.js";
@@ -23,7 +32,7 @@ import {
 import { callVenue, ownCopy, type VenueCallOptions } from "./call-venue.js";
 import { frozenAmount, frozenQuote, nativeAssetOf } from "./host-terms.js";
 import type { HostedLaunchReader, HostedVenue } from "./hosted-venue.js";
-import { hostVenues, launchCallsOf, launchReadersOf, launchWalletCallsOf } from "./hosted-venue.js";
+import { hostVenues, launchCallsOf, launchReadersOf, roleWalletCallsOf } from "./hosted-venue.js";
 import { type LaunchContracts, tradeLaunchOf } from "./launch-contracts.js";
 import { type CurveClaim, isLaunchpad, readCurves } from "./read-curves.js";
 import { readInsiders } from "./read-insiders.js";
@@ -167,11 +176,12 @@ export interface VenueHost {
    */
   launchCalls(venue?: string): HostedVenue["launchCalls"];
   /**
-   * The JSON ABI entry of each call only a launch wallet makes on the venues named, or on every
-   * hosted venue when none are named: a launchpad's create call and its launch calls. A launch
-   * wallet's ceiling must allow each (decision 0271).
+   * The JSON ABI entry of each call only a wallet of the role makes on the venues named, or on
+   * every hosted venue when none are named: for a launch wallet a launchpad's create call and its
+   * launch calls (decision 0271), for a bridge wallet a bridge's deposits (decision 0303). That
+   * wallet's ceiling must allow each.
    */
-  launchWalletCalls(venues?: readonly string[]): HostedVenue["launchWalletCalls"];
+  roleWalletCalls(role: WalletRole, venues?: readonly string[]): readonly JsonValue[];
   /** The launchpads that read their launches on the chain, with their contracts (decision 0256). */
   launchReaders(chain: ChainRef): readonly HostedLaunchReader[];
 }
@@ -383,7 +393,8 @@ export function createVenueHost(options: VenueHostOptions): VenueHost {
       return names.some((declared) => declared.size > 0);
     },
     launchCalls: (venue) => launchCallsOf(venues, venue),
-    launchWalletCalls: (named) => launchWalletCallsOf(venues, named),
+    roleWalletCalls: (role, named) =>
+      roleWalletCallsOf(venues, named === undefined ? { role } : { role, named }),
     launchReaders: (chain) => launchReadersOf(venues, chain),
   };
   return host;

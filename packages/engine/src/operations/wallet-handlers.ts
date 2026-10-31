@@ -1,4 +1,4 @@
-import type { ChainRegistry, Signer } from "@binference/chain";
+import type { ChainRegistry, Signer, WalletRole } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode, WalletView } from "@binference/protocol";
 import { z } from "zod";
@@ -32,15 +32,17 @@ export interface WalletHandlersOptions
 
 const abiNameSchema = z.object({ name: z.string().min(1) });
 
-// The functions of the calls the agent's launchpads declare that its launch wallet's ceiling does
-// not allow (decision 0271); none for a wallet of an agent the store no longer holds.
+// The functions of the calls the agent's venues mark as a wallet of the role's alone that the
+// wallet's ceiling does not allow (decision 0271); none for a wallet of an agent the store no
+// longer holds.
 async function missingCallsOf(
   options: WalletHandlersOptions,
-  wallet: WalletRecord,
+  held: { readonly wallet: WalletRecord; readonly role: WalletRole },
   signal: AbortSignal,
 ): Promise<readonly string[]> {
+  const { wallet, role } = held;
   const agent = await options.agents.get(wallet.agentId, { signal });
-  const calls = options.host.launchWalletCalls(agent?.limits.venues ?? []);
+  const calls = options.host.roleWalletCalls(role, agent?.limits.venues ?? []);
   const names = callsOutsideCeiling(wallet, calls).flatMap((abi) => {
     const parsed = abiNameSchema.safeParse(abi);
     return parsed.success ? [parsed.data.name] : [];
@@ -48,8 +50,8 @@ async function missingCallsOf(
   return [...new Set(names)];
 }
 
-// A wallet's view: an extra launch wallet is marked, since nothing trades from it and the owner
-// rescues it; the agent's launch wallet names the calls its ceiling lacks.
+// A wallet's view: an extra launch or bridge wallet is marked, since nothing runs from it and the
+// owner rescues it; the agent's wallet of a role names the calls its ceiling lacks.
 async function listedView(
   options: WalletHandlersOptions,
   listed: { readonly wallet: WalletRecord; readonly wallets: readonly WalletRecord[] },
@@ -57,15 +59,14 @@ async function listedView(
 ): Promise<WalletView | undefined> {
   const { wallet, wallets } = listed;
   const view = await walletViewOf(options, wallet, signal);
-  const isLive = wallet.role === "launch" && wallet.archivedAtMs === undefined;
-  const isExtra = isLive && roleWalletIn(wallets, wallet.agentId, "launch")?.id !== wallet.id;
-  if (view === undefined || !isLive) {
+  const { role } = wallet;
+  if (view === undefined || role === undefined || wallet.archivedAtMs !== undefined) {
     return view;
   }
-  if (isExtra) {
+  if (roleWalletIn(wallets, wallet.agentId, role)?.id !== wallet.id) {
     return { ...view, extra: true };
   }
-  const missingCalls = await missingCallsOf(options, wallet, signal);
+  const missingCalls = await missingCallsOf(options, { wallet, role }, signal);
   return missingCalls.length === 0 ? view : { ...view, missingCalls };
 }
 
@@ -73,13 +74,14 @@ async function listedView(
  * Creates the wallet list. `wallet/list` answers the agent's wallets, or every agent's when the
  * call names none, oldest first, so an agent's default wallet comes first; archived wallets are
  * listed with the time they were archived. Each wallet's address comes from
- * {@link walletViewOf}; a live launch wallet that is not its agent's launch wallet, as a rebuild
- * may adopt, is marked `extra` (decision 0218), and the agent's launch wallet names in
- * `missingCalls` the functions its agent's launchpads call that its ceiling does not allow
+ * {@link walletViewOf}; a live launch or bridge wallet that is not its agent's wallet of that role,
+ * as a rebuild may adopt, is marked `extra` (decision 0218), and the agent's wallet of a role names
+ * in `missingCalls` the functions its agent's venues mark as that role's that its ceiling does not
+ * allow
  * (decision 0271). An unknown agent is `agent.not_found`; a stored
  * wallet custody holds on no chain fails the call with `wallet.custody_down`. `wallet/create`
  * makes a wallet with the owner key (see {@link makeWallet}), one call at a time, so a second
- * launch wallet of an agent is refused before custody makes it; and `wallet/exportSealed` exports one's key sealed to the
+ * launch or bridge wallet of an agent is refused before custody makes it; and `wallet/exportSealed` exports one's key sealed to the
  * caller's recipient key (see {@link exportWallet}); `signer/revoke` removes a machine's agent key
  * from every live wallet with the owner key (see {@link revokeSigner}). `agent/list` lists the
  * agents with their default wallets (see {@link createAgentListHandlers}).

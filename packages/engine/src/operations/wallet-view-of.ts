@@ -1,4 +1,4 @@
-import type { AccountRef, ChainRegistry, Signer } from "@binference/chain";
+import type { AccountRef, ChainRegistry, Signer, WalletRole } from "@binference/chain";
 import type { Ok, Result } from "@binference/core";
 import type { WalletView } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
@@ -9,13 +9,25 @@ export interface WalletViewParts {
   readonly chains: ChainRegistry;
 }
 
+/**
+ * What a wallet view shows of a wallet's role: `role: "launch"` for a launch wallet, `bridge: true`
+ * for a bridge wallet (decision 0307), nothing for a main wallet.
+ */
+export function roleMarksOf(role: WalletRole | undefined): Pick<WalletView, "role" | "bridge"> {
+  const marks: Readonly<Record<WalletRole, Pick<WalletView, "role" | "bridge">>> = {
+    launch: { role: "launch" },
+    bridge: { bridge: true },
+  };
+  return role === undefined ? {} : marks[role];
+}
+
 function isHeld(account: Result<AccountRef, "unknown_wallet">): account is Ok<AccountRef> {
   return account.ok;
 }
 
 /**
  * A stored wallet as the protocol shows it, with its account on the first registered chain where
- * custody holds it and its role when it is a launch wallet; `undefined` when custody holds it on
+ * custody holds it and its role when it is a launch or bridge wallet; `undefined` when custody holds it on
  * none, so no wallet is ever shown without the address custody signs for.
  */
 export async function walletViewOf(
@@ -38,6 +50,6 @@ export async function walletViewOf(
         label: wallet.label,
         createdAt: wallet.createdAtMs,
         ...(wallet.archivedAtMs === undefined ? {} : { archivedAt: wallet.archivedAtMs }),
-        ...(wallet.role === "launch" ? { role: wallet.role } : {}),
+        ...roleMarksOf(wallet.role),
       };
 }

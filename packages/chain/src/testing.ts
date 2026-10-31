@@ -61,6 +61,7 @@ export type { FakeLauncher } from "./fakes/fake-launcher.js";
 export type { FakeLauncherOptions, FakePinScript } from "./fakes/fake-launcher-options.js";
 export { createFakePictureLauncher } from "./fakes/fake-picture-launcher.js";
 export type { FakeLaunchpad, FakeLaunchpadOptions } from "./fakes/fake-launchpad.js";
+export { createFakeBridgeVenue, fakeDepositAbi } from "./fakes/fake-bridge-venue.js";
 export { createFakeVenue, fakeSwapData } from "./fakes/fake-venue.js";
 export type { FakeVenueOptions } from "./fakes/fake-venue.js";
 export { nonceSourceContract } from "./contracts/nonce-source-contract.js";

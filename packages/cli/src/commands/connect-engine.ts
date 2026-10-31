@@ -162,6 +162,8 @@ const policyCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "wallet.unfunded",
   "wallet.launch_exists",
   "wallet.no_launch_calls",
+  "wallet.bridge_exists",
+  "wallet.no_bridge_calls",
   "address.launch_wallet",
   "intent.own_wallet_recipient",
   "limit.daily_cap",

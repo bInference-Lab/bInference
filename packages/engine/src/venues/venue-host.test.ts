@@ -8,6 +8,7 @@ import {
   type DecodedEffect,
   type TxDraft,
   type Venue,
+  type WalletRole,
 } from "@binference/chain";
 import {
   createFakeChainDefinition,
@@ -86,7 +87,7 @@ function hostOf(venue: Venue = createFakeVenue(), clock = createManualClock(nowM
 const createAbi = { type: "function", name: "create", inputs: [] };
 
 // The fake venue with a create call on its router, marked as a launch wallet's or not.
-function venueWithCreate(call: { readonly onlyWallet?: "launch" }): Venue {
+function venueWithCreate(call: { readonly onlyWallet?: WalletRole }): Venue {
   const base = createFakeVenue();
   const marked = call.onlyWallet === undefined ? {} : { onlyWallet: call.onlyWallet };
   const calls = [{ contract: "router", abi: createAbi, walletInputs: [], ...marked }];
@@ -178,10 +179,19 @@ describe("venue host", () => {
 
   it("names the calls only a launch wallet makes: the ones a venue marks so", () => {
     const marked = hostOf(venueWithCreate({ onlyWallet: "launch" }));
-    expect(marked.launchWalletCalls(["fake-swap", "other-swap"])).toStrictEqual([createAbi]);
-    expect(marked.launchWalletCalls()).toStrictEqual([createAbi]);
+    expect(marked.roleWalletCalls("launch", ["fake-swap", "other-swap"])).toStrictEqual([
+      createAbi,
+    ]);
+    expect(marked.roleWalletCalls("launch")).toStrictEqual([createAbi]);
+    expect(marked.roleWalletCalls("bridge")).toStrictEqual([]);
     const plain = hostOf(venueWithCreate({}));
-    expect(plain.launchWalletCalls(["fake-swap"])).toStrictEqual([]);
+    expect(plain.roleWalletCalls("launch", ["fake-swap"])).toStrictEqual([]);
+  });
+
+  it("names the calls only a bridge wallet makes: the ones a venue marks so", () => {
+    const marked = hostOf(venueWithCreate({ onlyWallet: "bridge" }));
+    expect(marked.roleWalletCalls("bridge", ["fake-swap"])).toStrictEqual([createAbi]);
+    expect(marked.roleWalletCalls("launch", ["fake-swap"])).toStrictEqual([]);
   });
 
   it("quotes a trade without building it, then builds that quote with its own time", async () => {

@@ -7,6 +7,7 @@ import {
   type Venue,
   type VenueContracts,
   venueDeclarationSchema,
+  type WalletRole,
 } from "@binference/chain";
 import { BinferenceError, type JsonValue } from "@binference/core";
 import { z } from "zod";
@@ -26,11 +27,11 @@ export interface HostedVenue {
   /** The JSON ABI entry of each call the venue declares on a launch's own contracts, any chain. */
   readonly launchCalls: readonly JsonValue[];
   /**
-   * The JSON ABI entry of each call only a launch wallet makes on the venue (decision 0271): the
-   * calls it marks so, such as a launchpad's create call, but those it never builds (decision
-   * 0277), and its launch calls.
+   * The JSON ABI entry of each call only a wallet of each role makes on the venue: the calls it
+   * marks so but those it never builds (decision 0277), such as a launchpad's create call
+   * (decision 0271) or a bridge's deposit (decision 0303), and for a launch wallet its launch calls.
    */
-  readonly launchWalletCalls: readonly JsonValue[];
+  readonly roleWalletCalls: Readonly<Record<WalletRole, readonly JsonValue[]>>;
 }
 
 function refuse(id: string, problem: string): BinferenceError {
@@ -90,19 +91,23 @@ function host(venue: Venue, chains: ChainRegistry): HostedVenue {
       .filter((call) => declared.launchContracts?.includes(call.contract) === true)
       .map((call) => call.abi),
   );
-  const marked = declaration.data.contracts.flatMap((declared) =>
-    (declared.calls ?? [])
-      .filter((call) => call.onlyWallet === "launch" && call.isUnbuilt !== true)
-      .map((call) => call.abi),
-  );
-  const launchWalletCalls = [...marked, ...launchCalls];
+  const marked = (role: WalletRole) =>
+    declaration.data.contracts.flatMap((declared) =>
+      (declared.calls ?? [])
+        .filter((call) => call.onlyWallet === role && call.isUnbuilt !== true)
+        .map((call) => call.abi),
+    );
+  const roleWalletCalls = {
+    launch: [...marked("launch"), ...launchCalls],
+    bridge: marked("bridge"),
+  };
   return {
     venue,
     contracts: new Map(contracts),
     noDeadline: new Set(noDeadline),
     launchNames: new Map(launchNames),
     launchCalls,
-    launchWalletCalls,
+    roleWalletCalls,
   };
 }
 
@@ -138,16 +143,17 @@ export function launchCallsOf(
 }
 
 /**
- * The JSON ABI entry of each call only a launch wallet makes on the venues named, or on every
- * hosted venue when none are named (decision 0271). A venue not hosted gives none.
+ * The JSON ABI entry of each call only a wallet of the role makes on the venues named, or on every
+ * hosted venue when none are named (decisions 0271 and 0303). A venue not hosted gives none.
  */
-export function launchWalletCallsOf(
+export function roleWalletCallsOf(
   venues: ReadonlyMap<string, HostedVenue>,
-  named?: readonly string[],
+  asked: { readonly role: WalletRole; readonly named?: readonly string[] },
 ): readonly JsonValue[] {
+  const { role, named } = asked;
   const hosted =
     named === undefined ? [...venues.values()] : named.map((venue) => venues.get(venue));
-  return hosted.flatMap((item) => item?.launchWalletCalls ?? []);
+  return hosted.flatMap((item) => item?.roleWalletCalls[role] ?? []);
 }
 
 /** A launchpad that reads its launches on one chain, with its contracts there. */

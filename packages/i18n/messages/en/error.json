@@ -47,6 +47,8 @@
   "wallet.track_limit": "binference already tracks 50 wallets for copy orders and wallet alerts. End one of them before you track another wallet.",
   "wallet.launch_exists": "This agent has a launch wallet already, and an agent holds one at most. See it with `binference wallet list`.",
   "wallet.no_launch_calls": "No launchpad this binference runs declares a call on a launch's own contracts, so a launch wallet would allow nothing more than an agent wallet. Enable a launchpad such as Genius.fun in config.json5, then try again.",
+  "wallet.bridge_exists": "This agent has a bridge wallet already, and an agent holds one at most. See it with `binference wallet list`.",
+  "wallet.no_bridge_calls": "No venue this binference runs marks a deposit as a bridge wallet's, so a bridge wallet would allow nothing. Enable a bridge venue such as Relay in config.json5, then try again.",
   "address.not_found": "This address book entry does not exist or was removed. Check the address book in the console.",
   "address.launch_wallet": "This address is a launch wallet of this binference, and no wallet may pay one: fund a launch wallet from outside, such as from the rescue address's wallet.",
   "rescue.no_address": "Set a rescue address first: run `binference rescue set` with your own wallet's address.",

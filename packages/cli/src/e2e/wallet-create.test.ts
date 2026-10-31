@@ -1,5 +1,6 @@
 import { accountRefSchema } from "@binference/chain";
 import {
+  createFakeBridgeVenue,
   createFakeChainDefinition,
   createFakeLaunchpad,
   createFakeVenue,
@@ -42,6 +43,16 @@ const launchpads: SkeletonOptions = {
     createFakeLaunchpad({ onCurve: [], launchCurve: accountRefSchema.parse("fake:1:0x000000b1") }),
   ],
   fakeChain: withLaunchpadRouter(),
+};
+
+// The fake bridge, whose deposit only a bridge wallet makes, with a router the registry lists.
+const bridges: SkeletonOptions = {
+  venues: [createFakeVenue(), createFakeBridgeVenue()],
+  fakeChain: (() => {
+    const fake = createFakeChainDefinition();
+    const routers = fake.contracts.map((router) => ({ ...router, venue: "fake-bridge" }));
+    return { ...fake, contracts: [...fake.contracts, ...routers] };
+  })(),
 };
 
 // The skeleton on both compositions, with the owner's rescue address in effect unless left out.
@@ -133,6 +144,47 @@ describe("binference wallet create --launch", () => {
       expect(item).toContain(", launch wallet");
       const status = await runOn(machine, ["status"]);
       expect(status.stdout).toContain(en("status.launchWallet", { id: testAgent, wallet }));
+    },
+  );
+});
+
+describe("binference wallet create --bridge", () => {
+  it("makes the agent's bridge wallet and lists it, once", slow, async () => {
+    const machine = await servedMachine("self-hosted", true, bridges);
+
+    const made = await create(machine, ["--label", "relays", "--bridge"], [fakeOwnerKeyCode]);
+    const again = await create(machine, ["--label", "more", "--bridge"], [fakeOwnerKeyCode]);
+    const both = await runOn(machine, ["wallet", "create", "--label", "x", "--launch", "--bridge"]);
+
+    const wallet = walletIn(made.stdout);
+    const values = { label: "relays", wallet, agent: testAgent, chain: "fake:1" };
+    expect([made.code, made.stderr]).toStrictEqual([0, ""]);
+    expect(made.stdout).toBe(`${en("wallet.createdBridge", values)}\n${secondLine(made.stdout)}\n`);
+    expect([again.code, again.stderr]).toStrictEqual([
+      2,
+      `${String(messages.en["error.wallet.bridge_exists"])}\n`,
+    ]);
+    expect(both.code).toBe(1);
+    const listed = await runOn(machine, ["wallet", "list"]);
+    const address = secondLine(made.stdout);
+    const shown = { ...values, address, role: "bridge", extra: "no", archived: "no" };
+    const item = en("wallet.item", shown);
+    expect(listed.stdout).toContain(item);
+    expect(item).toContain(", bridge wallet");
+  });
+
+  it(
+    "makes nothing when no venue the install runs marks a bridge wallet's deposit",
+    slow,
+    async () => {
+      const machine = await servedMachine("self-hosted");
+
+      const refused = await create(machine, ["--label", "relays", "--bridge"], [fakeOwnerKeyCode]);
+
+      expect([refused.code, refused.stderr]).toStrictEqual([
+        2,
+        `${String(messages.en["error.wallet.no_bridge_calls"])}\n`,
+      ]);
     },
   );
 });

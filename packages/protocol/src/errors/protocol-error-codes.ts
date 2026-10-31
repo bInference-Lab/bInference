@@ -51,6 +51,8 @@ export const protocolErrorCodes = [
   "wallet.track_limit",
   "wallet.launch_exists",
   "wallet.no_launch_calls",
+  "wallet.bridge_exists",
+  "wallet.no_bridge_calls",
   "address.not_found",
   "address.launch_wallet",
   "rescue.no_address",

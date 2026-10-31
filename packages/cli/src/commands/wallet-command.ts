@@ -16,6 +16,12 @@ import { withEngine } from "./connect-engine.js";
 import { withOwnerKey } from "./owner-key-prompt.js";
 import { withWallet } from "./wallet-choice.js";
 
+// What `wallet create` says it made, by the new wallet's role.
+const createdKeys: Readonly<Record<string, string>> = {
+  launch: "wallet.createdLaunch",
+  bridge: "wallet.createdBridge",
+};
+
 // A label is the owner's text from any surface: cut and made visible, as cards do.
 const labelLength = 64;
 
@@ -27,7 +33,7 @@ function walletValues(wallet: WalletView) {
     agent: wallet.agent,
     chain: chainName(chain),
     address,
-    role: wallet.role ?? "agent",
+    role: wallet.role ?? (wallet.bridge === true ? "bridge" : "agent"),
     extra: wallet.extra === true ? "yes" : "no",
   };
 }
@@ -35,8 +41,8 @@ function walletValues(wallet: WalletView) {
 /**
  * `binference wallet list [--agent <id>]`: the agent wallets through `wallet/list`, every agent's
  * when `--agent` is left out, oldest first, each with its label, its address and its chain, a
- * launch wallet, an extra launch wallet a rebuild adopted (decision 0218) and archived ones marked. With `--json` it prints the list as the operation
- * answers it.
+ * launch or bridge wallet, an extra one a rebuild adopted (decision 0218) and archived ones marked.
+ * With `--json` it prints the list as the operation answers it.
  */
 export async function runWalletList(
   run: CommandRun,
@@ -77,11 +83,14 @@ export async function runWalletAddress(
 }
 
 /**
- * `binference wallet create --label <label> [--launch] [--agent <id>]`: makes a new agent wallet
+ * `binference wallet create --label <label> [--launch | --bridge] [--agent <id>]`: makes a new
+ * agent wallet
  * through `wallet/create` over IPC, with the owner key the person types unseen (decision 0130).
  * Custody makes it under a ceiling of its own, which lets it trade on the agent's venues and send
  * only to the rescue address and the saved addresses; with `--launch`, the agent's launch wallet,
- * whose ceiling also lets it trade on launch curves (decision 0217). The command shows the address
+ * whose ceiling also lets it trade on launch curves (decision 0217); with `--bridge`, its bridge
+ * wallet, whose ceiling lets it deposit only into the bridges that name no recipient (decision
+ * 0307). The command shows the address
  * to fund it at, on its own line. With `--json` it prints the wallet as the operation answers it.
  */
 export async function runWalletCreate(
@@ -97,10 +106,12 @@ export async function runWalletCreate(
   const made = await withOwnerKey(run, options, {
     command: "wallet create",
     call: async (client, ownerKey, signal) => {
-      const args = { agent, label: options.label, ownerKey };
-      return client.call("wallet/create", options.launch ? { ...args, launch: true } : args, {
-        signal,
-      });
+      const roles = {
+        ...(options.launch ? { launch: true as const } : {}),
+        ...(options.bridge ? { bridge: true as const } : {}),
+      };
+      const args = { agent, label: options.label, ownerKey, ...roles };
+      return client.call("wallet/create", args, { signal });
     },
   });
   if (!made.ok) {
@@ -108,7 +119,7 @@ export async function runWalletCreate(
   }
   run.output.json(jsonValueSchema.parse(z.encode(operations["wallet/create"].result, made.value)));
   const values = walletValues(made.value);
-  run.output.say(options.launch ? "wallet.createdLaunch" : "wallet.created", values);
+  run.output.say(createdKeys[values.role] ?? "wallet.created", values);
   run.output.line(values.address);
   return 0;
 }

@@ -1,4 +1,4 @@
-import type { AccountRef } from "@binference/chain";
+import type { AccountRef, WalletRole } from "@binference/chain";
 import {
   createSecret,
   err,
@@ -24,12 +24,13 @@ import {
 import type { VenueHost } from "../venues/venue-host.js";
 import { activeAgent } from "./active-agent.js";
 import type { EngineCall } from "./engine-call.js";
+import { roleMarksOf } from "./wallet-view-of.js";
 
 /** What making a wallet reads, writes, journals and asks custody through. */
 export interface MakeWalletOptions extends RescueCeilingsOptions {
   readonly maker: WalletMaker;
-  /** The calls only a launch wallet makes on the install's launchpads, which its ceiling allows. */
-  readonly host: Pick<VenueHost, "launchWalletCalls">;
+  /** The calls only a wallet of each role makes on the install's venues, which its ceiling allows. */
+  readonly host: Pick<VenueHost, "roleWalletCalls">;
   readonly journal: ConfigJournal;
   readonly ids: IdSource;
 }
@@ -40,7 +41,7 @@ const refusalCodes: Readonly<Record<WalletRefusal, ProtocolErrorCode>> = {
 };
 
 // The rescue address in effect, a new one that waits, and the agent's saved addresses, none of them
-// a launch wallet's (decision 0218).
+// a launch or bridge wallet's (decisions 0218 and 0307).
 async function recipientsOf(
   options: MakeWalletOptions,
   settings: AgentSettings,
@@ -59,21 +60,41 @@ async function recipientsOf(
   return ok([...new Set([rescueAddress, ...waiting, ...saved])]);
 }
 
-// A launch wallet needs a launchpad that declares a call only a launch wallet makes, such as a
-// create call or a launch call (decision 0271), and an agent holds one at most.
-async function launchRefusal(
+// Why a wallet of each role is refused: the agent holds a live one, or no venue marks a call only
+// such a wallet makes.
+const roleRefusals: Readonly<
+  Record<WalletRole, { readonly exists: ProtocolErrorCode; readonly noCalls: ProtocolErrorCode }>
+> = {
+  launch: { exists: "wallet.launch_exists", noCalls: "wallet.no_launch_calls" },
+  bridge: { exists: "wallet.bridge_exists", noCalls: "wallet.no_bridge_calls" },
+};
+
+// The role the call asks for; asking for two is malformed.
+function roleAsked(args: EngineCall<"wallet/create">["args"]): WalletRole | undefined | "both" {
+  if (args.launch === true) {
+    return args.bridge === true ? "both" : "launch";
+  }
+  return args.bridge === true ? "bridge" : undefined;
+}
+
+// The role the new wallet takes. A wallet of a role needs a venue that marks a call only such a
+// wallet makes, such as a create call or a launch call for a launch wallet (decision 0271), or a
+// deposit for a bridge wallet (decision 0303), and an agent holds one of each role at most.
+async function roleOf(
   options: MakeWalletOptions,
   call: EngineCall<"wallet/create">,
-): Promise<ProtocolErrorCode | undefined> {
-  if (options.host.launchWalletCalls().length === 0) {
-    return "wallet.no_launch_calls";
+): Promise<Result<WalletRole | undefined, ProtocolErrorCode>> {
+  const role = roleAsked(call.args);
+  if (role === undefined || role === "both") {
+    return role === undefined ? ok(undefined) : err("protocol.bad_args");
   }
-  const held = await roleWalletOf(
-    options.install,
-    { agent: call.args.agent, role: "launch" },
-    { signal: call.signal },
-  );
-  return held === undefined ? undefined : "wallet.launch_exists";
+  const refusals = roleRefusals[role];
+  if (options.host.roleWalletCalls(role).length === 0) {
+    return err(refusals.noCalls);
+  }
+  const asked = { agent: call.args.agent, role };
+  const held = await roleWalletOf(options.install, asked, { signal: call.signal });
+  return held === undefined ? ok(role) : err(refusals.exists);
 }
 
 async function record(
@@ -102,7 +123,10 @@ async function record(
  * again over every ceiling, the new one too. With `launch`, the wallet is the agent's launch wallet,
  * whose ceiling also allows the calls the install's launchpads declare on each launch's own
  * contracts (decision 0217); an agent with a live one already is `wallet.launch_exists`, and an
- * install whose launchpads declare no such call `wallet.no_launch_calls` (decision 0218). The owner
+ * install whose launchpads declare no such call `wallet.no_launch_calls` (decision 0218). With
+ * `bridge`, it is the agent's bridge wallet, whose ceiling holds only the deposits the install's
+ * venues mark as a bridge wallet's (decision 0307): `wallet.bridge_exists` and
+ * `wallet.no_bridge_calls` likewise; both roles at once are `protocol.bad_args`. The owner
  * key reaches this call over IPC only, as the protocol server keeps it. No rescue address is
  * `rescue.no_address`, a wrong key `wallet.bad_owner_key`; nothing is made then.
  */
@@ -115,11 +139,11 @@ export async function makeWallet(
   if (!found.ok) {
     return found;
   }
-  const isLaunch = args.launch === true;
-  const refusal = isLaunch ? await launchRefusal(options, call) : undefined;
-  if (refusal !== undefined) {
-    return err(refusal);
+  const asked = await roleOf(options, call);
+  if (!asked.ok) {
+    return asked;
   }
+  const role = asked.value;
   await settleRescueCeilings(options, signal);
   const recipients = await recipientsOf(options, found.value, signal);
   if (!recipients.ok) {
@@ -128,8 +152,8 @@ export async function makeWallet(
   const ownerKey = createSecret(args.ownerKey);
   const wallet = options.ids.next("wal");
   const venues = found.value.limits.venues;
-  const role = isLaunch ? { role: "launch" as const } : {};
-  const request = { wallet, ownerKey, venues, recipients: recipients.value, ...role };
+  const roles = role === undefined ? {} : { role };
+  const request = { wallet, ownerKey, venues, recipients: recipients.value, ...roles };
   const made = await options.maker.make(request, { signal });
   if (!made.ok) {
     return err(refusalCodes[made.error]);
@@ -141,7 +165,7 @@ export async function makeWallet(
     agentId: args.agent,
     label: args.label,
     createdAtMs,
-    ...(isLaunch ? { role: "launch" } : {}),
+    ...roles,
   };
   await options.install.createWallet(draft, { signal });
   // A refusal here keeps the changes signed before; custody refuses them once due, and says so.
@@ -152,7 +176,7 @@ export async function makeWallet(
     address: made.value.account,
     label: args.label,
     createdAt: createdAtMs,
-    ...(isLaunch ? { role: "launch" } : {}),
+    ...roleMarksOf(role),
   };
   await record(options, call, { view, name: found.value.agent.name });
   return ok(view);
