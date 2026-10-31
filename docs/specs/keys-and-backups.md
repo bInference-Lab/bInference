@@ -177,6 +177,13 @@ sales and sales through the pools pay the launch wallet, so its proceeds stay th
 takes them back; an allowance a stolen key grants from it outlives a rescue, so after a theft the
 owner funds that launch wallet no more.
 
+**A bridge wallet's ceiling** ([decision 0303](../DECISIONS.md#d0303)). An agent's bridge wallet,
+funded from outside only, holds every rule above and the calls bridge venues mark as a bridge
+wallet's alone: Relay's depository deposits, its depositor the wallet itself, and approvals naming
+the depository, under the same 24-hour caps. A Relay deposit names only an order id, so a thief with
+this machine's keys can take what the bridge wallet holds; no other wallet's ceiling lists a Relay
+call, and the signer refuses one from any other wallet.
+
 **What it promises** ([decision 0149](../DECISIONS.md#d0149)). A machine whose keys are stolen
 cannot send BNB or a token to an address the owner did not save, cannot call a contract or a
 function no enabled venue declares, and cannot approve a spender no enabled venue declares. Through

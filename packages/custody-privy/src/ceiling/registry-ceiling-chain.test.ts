@@ -113,6 +113,29 @@ function spendersFor(wallet: { readonly isLaunch: boolean }) {
   return built.ok ? built.value.spenders : built.error;
 }
 
+// A bridge whose deposit names only an order id, so only a bridge wallet calls it and approves its
+// depository (decision 0303).
+const ordered = declaredVenue("swapper", {
+  names: ["router", "permit2"],
+  calls: [
+    { contract: "router", abi: swapToJson, walletInputs: ["receiver"], onlyWallet: "bridge" },
+  ],
+  onlyWalletSpenders: { bridge: ["router"] },
+});
+
+// The calls and spenders a ceiling of that bridge allows, for a wallet of each role.
+function bridgeOnlyFor(role: "launch" | "bridge" | undefined) {
+  const built = registryCeilingChain({
+    definition,
+    venues: [ordered],
+    perTxNativeCapBase: oneBnbWei,
+    ...(role === undefined ? {} : { role }),
+  });
+  return built.ok
+    ? { calls: built.value.calls.map((call) => call.abi.name), spenders: built.value.spenders }
+    : built.error;
+}
+
 describe("registryCeilingChain", () => {
   it("lists the calls and spenders each enabled venue declares on the chain, and only those", () => {
     const chain = registryCeilingChain({
@@ -140,6 +163,16 @@ describe("registryCeilingChain", () => {
       testRouterAbi.swap.name,
       testRouterAbi.swapTo.name,
     ]);
+  });
+
+  it("lists a deposit and a spender only a bridge wallet uses in a bridge wallet's ceiling alone", () => {
+    const none = { calls: [], spenders: [] };
+    expect(bridgeOnlyFor(undefined)).toStrictEqual(none);
+    expect(bridgeOnlyFor("launch")).toStrictEqual(none);
+    expect(bridgeOnlyFor("bridge")).toStrictEqual({
+      calls: [testRouterAbi.swapTo.name],
+      spenders: [testAddresses.router],
+    });
   });
 
   it("lists a spender only a launch wallet approves in a launch wallet's ceiling alone", () => {

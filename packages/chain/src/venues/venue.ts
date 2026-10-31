@@ -194,7 +194,10 @@ export const venueDeclarationSchema: z.ZodType<VenueDeclaration, VenueDeclaratio
           calls: z.array(callSchema).exactOptional(),
           spenders: z.array(kebabCaseSchema).exactOptional(),
           onlyWalletSpenders: z
-            .strictObject({ launch: z.array(kebabCaseSchema).exactOptional() })
+            .strictObject({
+              launch: z.array(kebabCaseSchema).exactOptional(),
+              bridge: z.array(kebabCaseSchema).exactOptional(),
+            })
             .exactOptional(),
           launchContracts: z
             .array(kebabCaseSchema)

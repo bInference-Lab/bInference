@@ -243,6 +243,9 @@ new name here first, in the change that uses it.
 - **launch wallet**: a small wallet of its own, funded by the owner, whose ceiling may allow a
   launch's contracts. Live trades on a launch's own curve need one; the agent wallets' ceilings
   list only registry contracts, so until it exists only a paper agent uses such a venue.
+- **bridge wallet**: a small wallet of its own, funded by the owner from outside, whose ceiling alone
+  allows deposits into a bridge whose deposit names no recipient, such as Relay's. A stolen key can
+  take what it holds and nothing from the agent's other wallets.
 - **launcher**: the part of a launchpad's plugin that launches tokens: it quotes a launch from the
   launchpad's contracts, uploads its words and picture, reports their pin, and builds and decodes
   the create call. A launchpad with no API for pictures uploads nothing: it takes a picture link,
@@ -713,6 +716,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | agent wallet                             | Agent 钱包             |                                      |
 | launch wallet                            | 发射钱包               | Trades on a launch's own curve       |
 | extra launch wallet                      | 额外的发射钱包         | Nothing trades from it               |
+| bridge wallet                            | 跨链钱包               | Deposits into Relay                  |
 | pin (a launch's picture and words)       | 固定                   | The launchpad's storage keeps it     |
 | picture link                             | 图片地址               | The owner hosts it                   |
 | launch draft                             | 发射草稿               | The agent suggests, the owner starts |

@@ -190,3 +190,26 @@ describe("a create overload a launchpad declares but never builds", () => {
     expect(brokenHardRules(sixArgumentCall, context)).toStrictEqual([2]);
   });
 });
+
+// A deposit into a bridge whose deposit names only an order id: a bridge wallet's call alone
+// (decision 0303), refused from a main wallet and from the launch wallet.
+const bridgeOnly = {
+  ...withTransaction(call, { to: router, data: "0x59bee192" }),
+  allowed: { ...call.allowed, walletOnlyCalls: [{ role: "bridge" as const, abi: createAbi }] },
+};
+const fromBridgeWallet = (input: AuthorizeInput): AuthorizeInput => ({
+  ...input,
+  wallet: { ...input.wallet, role: "bridge" },
+});
+
+describe("a call only a bridge wallet makes", () => {
+  it("signs it from the bridge wallet, and refuses it from a main or a launch wallet as rule 2", () => {
+    expect(checkHardRules(fromBridgeWallet(bridgeOnly), context)).toBeUndefined();
+    expect(brokenHardRules(bridgeOnly, context)).toStrictEqual([2]);
+    expect(brokenHardRules(fromLaunchWallet(bridgeOnly), context)).toStrictEqual([2]);
+  });
+
+  it("refuses a launch wallet's call from the bridge wallet as rule 2", () => {
+    expect(brokenHardRules(fromBridgeWallet(createCall), context)).toStrictEqual([2]);
+  });
+});
