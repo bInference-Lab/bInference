@@ -109,6 +109,8 @@ export type {
 } from "./watching/head-socket.js";
 export { createPoolPriceReader, poolSource } from "./watching/pool-price-reader.js";
 export type { PoolPriceReaderOptions } from "./watching/pool-price-reader.js";
+export { readAggregate } from "./watching/read-aggregate.js";
+export type { AggregateCall, AggregateRead } from "./watching/read-aggregate.js";
 export { createPriceWatcher } from "./watching/price-watcher.js";
 export type {
   PriceWatcher,

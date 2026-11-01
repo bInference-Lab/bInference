@@ -20,8 +20,11 @@ export {
   encodeEvmDraft,
   findCreate2Salt,
   parseEvmAddress,
+  readAggregate,
 } from "@binference/chain-evm";
 export type {
+  AggregateCall,
+  AggregateRead,
   AggregatorCall,
   AggregatorChain,
   AggregatorPair,
