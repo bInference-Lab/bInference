@@ -3,6 +3,7 @@ import type { IntentStore } from "../ports.js";
 import type { CardPress, CardStanding } from "./card-press.js";
 import type { CardShowings } from "./create-card-showings.js";
 import { type OwnerIdOf, pressedByOwner } from "./pressed-by-owner.js";
+import { reasonValuesOf } from "./reason-values.js";
 
 /**
  * The engine's side of the owner's presses of Telegram card buttons: it finds the card version by
@@ -40,7 +41,7 @@ async function standingOf(
   signal: AbortSignal,
 ): Promise<CardStanding> {
   if (outcome.verdict === "requote_failed") {
-    return { status: "open", reason: outcome.reason };
+    return { status: "open", reason: outcome.reason, reasonValues: reasonValuesOf(intent.record) };
   }
   if (outcome.verdict === "locked" || outcome.verdict === "over_cap") {
     return { status: outcome.verdict };

@@ -1,6 +1,13 @@
 import { err, type Id, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { expectOk, testCoin, testNowMs, testSwap, testToken } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testCoin,
+  testNowMs,
+  testSwap,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import type { AnswerCard } from "../operations/answer-card.js";
 import {
   startTestEngine,
@@ -132,11 +139,15 @@ describe("the card presses", () => {
     expect(await stateOf(subject)).toBe("awaiting_confirmation");
   });
 
-  it("keep the card open with the reason when the re-quote fails", async () => {
+  it("keep the card open with the reason and what its words may name when the re-quote fails", async () => {
     const subject = await pressing({ venues: [downAfterFirstQuote()] });
     await subject.test.clock.advance(11_000);
     const standing = await subject.presses.answer(press(subject.ref, "confirm"), live);
-    expect(standing).toStrictEqual({ status: "open", reason: "venue_down" });
+    expect(standing).toStrictEqual({
+      status: "open",
+      reason: "venue_down",
+      reasonValues: { wallet: { type: "text", text: testWallet } },
+    });
     expect(await stateOf(subject)).toBe("awaiting_confirmation");
   });
 

@@ -1,6 +1,7 @@
 import type { Clock } from "@binference/core";
 import type { CardClosing, QuoteFailure, SimulationFailure } from "@binference/engine";
 import type { CardPress, CardStanding } from "@binference/engine/surfaces";
+import type { CardValueView } from "@binference/protocol";
 import type { CardAnswers } from "../ports.js";
 
 /** The engine's side of card answers in memory, with handles a test drives it by. */
@@ -11,7 +12,7 @@ export interface FakeCardAnswers extends CardAnswers {
    * The next answer to `ref` leaves the card open, as a failed re-quote does, or as a Confirm of a
    * live intent does while the engine is locked.
    */
-  refuseNext(ref: string, reason: Refusal): void;
+  refuseNext(ref: string, reason: Refusal, values?: ReasonValues): void;
   /** Closes a card as another surface or the card timer would. */
   close(ref: string, closing: CardClosing): void;
   /** Every press that closed a card or was refused, in order: what the engine stored. */
@@ -27,15 +28,22 @@ export interface FakeCardAnswersOptions {
 /** Why the fake leaves a card open: a failed re-quote, a locked engine, or the rolling cap. */
 type Refusal = QuoteFailure | SimulationFailure | "locked" | "over_cap";
 
+/** What a re-quote's reason may name, as the engine gives it: a chain, a name, a wallet. */
+type ReasonValues = Readonly<Record<string, Extract<CardValueView, { readonly type: "text" }>>>;
+
 interface CardState {
   readonly closing?: CardClosing;
   readonly refusal?: Refusal;
+  readonly values?: ReasonValues;
 }
 
-function refused(refusal: Refusal): CardStanding {
-  return refusal === "locked" || refusal === "over_cap"
-    ? { status: refusal }
-    : { status: "open", reason: refusal };
+function refused(refusal: Refusal, values: ReasonValues | undefined): CardStanding {
+  if (refusal === "locked" || refusal === "over_cap") {
+    return { status: refusal };
+  }
+  return values === undefined
+    ? { status: "open", reason: refusal }
+    : { status: "open", reason: refusal, reasonValues: values };
 }
 
 /**
@@ -52,7 +60,7 @@ export function createFakeCardAnswers(options: FakeCardAnswersOptions): FakeCard
     answered.push(press);
     if (card.refusal !== undefined) {
       cards.set(press.ref, {});
-      return refused(card.refusal);
+      return refused(card.refusal, card.values);
     }
     const outcome = press.decision === "confirm" ? "confirmed" : "denied";
     const answeredBy = { surface: "telegram", by: `tg:${String(press.presserId)}` } as const;
@@ -72,8 +80,8 @@ export function createFakeCardAnswers(options: FakeCardAnswersOptions): FakeCard
     open: (ref) => {
       cards.set(ref, {});
     },
-    refuseNext: (ref, reason) => {
-      cards.set(ref, { refusal: reason });
+    refuseNext: (ref, reason, values) => {
+      cards.set(ref, values === undefined ? { refusal: reason } : { refusal: reason, values });
     },
     close: (ref, closing) => {
       cards.set(ref, { closing });

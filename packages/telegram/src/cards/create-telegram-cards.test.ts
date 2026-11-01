@@ -329,6 +329,32 @@ describe("the Telegram cards", () => {
     ]);
   });
 
+  it("say why a card stays open in words that name the values the engine gives", async () => {
+    const context = await setUp();
+    context.engine.open(ref);
+    context.engine.refuseNext(ref, "bridge_chain_unpaid", {
+      chain: { type: "text", text: "Base" },
+    });
+    await pressCard(context, confirmData);
+    expect(context.botApi.answers()).toStrictEqual([
+      {
+        callbackId: "press-9001",
+        text: "no bridge binference uses can pay an address on Base from this wallet yet, so nothing was sent; bridge to another chain",
+      },
+    ]);
+  });
+
+  it("answer a press without words when its reason names a value the engine did not give", async () => {
+    const context = await setUp();
+    context.engine.open(ref);
+    context.engine.refuseNext(ref, "rescue_unpaid");
+    await pressCard(context, confirmData);
+    expect(context.botApi.answers()).toStrictEqual([{ callbackId: "press-9001" }]);
+    expect(context.logger.records().map((record) => record.fields.errorCode)).toStrictEqual([
+      "i18n.bad_values",
+    ]);
+  });
+
   it("turn every copy into the receipt when another surface answers first", async () => {
     const context = await setUp();
     await context.cards.show(showing(), live);

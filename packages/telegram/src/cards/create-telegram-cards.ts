@@ -8,7 +8,7 @@ import type {
   OwnerStore,
   ReceiptAfter,
 } from "@binference/engine/surfaces";
-import type { MessageLocale } from "@binference/i18n";
+import { cardLineText, type MessageLocale } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
 import type { Api } from "grammy";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
@@ -218,15 +218,29 @@ function noticeOf(context: CardsContext, standing: CardStanding): string | undef
   if (standing.status === "over_cap") {
     return context.words("error.limit.daily_cap");
   }
-  return standing.status === "open" && standing.reason !== undefined
-    ? context.words(`reason.${standing.reason}`)
-    : undefined;
+  if (standing.status !== "open" || standing.reason === undefined) {
+    return undefined;
+  }
+  const line = { key: `reason.${standing.reason}`, values: standing.reasonValues ?? {} } as const;
+  return cardLineText(line, context.displayOf({}));
+}
+
+// A reason whose words name what the engine did not give is answered without words, so the press
+// never waits on an answer.
+function pressNoticeOf(context: CardsContext, standing: CardStanding): string | undefined {
+  try {
+    return noticeOf(context, standing);
+  } catch (error) {
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    context.options.logger.warn("telegram.press_notice_unwritten", { errorCode });
+    return undefined;
+  }
 }
 
 // The answer is stored by now; a press Telegram no longer takes an answer for only spins on.
 async function answerPress(context: CardsContext, pressed: Pressed, call: Call): Promise<void> {
+  const notice = pressNoticeOf(context, pressed.standing);
   try {
-    const notice = noticeOf(context, pressed.standing);
     await context.bot.answer(pressed.press.callbackId, notice, call);
   } catch (error) {
     call.signal.throwIfAborted();
