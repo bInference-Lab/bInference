@@ -185,6 +185,9 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   budget_notices: names("agent_id day_at at"),
   daily_summaries: names("agent_id date at outcome live_usd_micros paper_usd_micros"),
+  bridges: names(
+    "intent_id venue deposit_ref to_chain recipient sent_asset sent_amount delivered_asset delivered_coin min_out value_usd_micros state status_url sent_at late_at fill_tx received received_asset refund_tx settled_at checked_at version",
+  ),
   questions: names(
     "id agent_id session_id turn_id text choices ref state answer close_reason created_at closes_at closed_at",
   ),
@@ -220,6 +223,7 @@ const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   telegram_topics: ["agent_id", "chat_id"],
   budget_notices: ["agent_id", "day_at"],
   daily_summaries: ["agent_id", "date"],
+  bridges: ["intent_id"],
   schedule_runs: ["schedule_id", "due_at"],
   alert_fires: ["alert_id", "fires"],
   tracked_wallets: ["account"],
@@ -246,6 +250,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   wallets: ["unique|address", "unique|custody_wallet_id"],
   intents: ["index|agent_id,state", "index|state,changed_at", "unique|draft_ref|partial"],
   intent_events: ["index|intent_id,at", "index|to_state,at"],
+  bridges: ["index|state,sent_at", "unique|refund_tx|partial", "unique|to_chain,fill_tx|partial"],
   carried_outflows: ["index|agent_id,paper,confirmed_at"],
   cards: ["unique|callback_ref", "unique|intent_id,version"],
   confirmations: ["unique|intent_id"],

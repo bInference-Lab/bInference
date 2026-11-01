@@ -17,3 +17,21 @@ export type {
   DepartureWrite,
 } from "./positions/departure-record.js";
 export { recheckName, type CardName, type NameRecheck } from "./names/recheck-name.js";
+export { movedBridge } from "./bridges/bridge-move.js";
+export {
+  bridgeDraftSchema,
+  bridgeMoveSchema,
+  bridgeQuerySchema,
+  bridgeRecordSchema,
+  openBridgeStates,
+} from "./bridges/bridge-record.js";
+export type {
+  BridgeCursor,
+  BridgeDeliveryState,
+  BridgeDraft,
+  BridgeMove,
+  BridgeMoveRefusal,
+  BridgeQuery,
+  BridgeRecord,
+} from "./bridges/bridge-record.js";
+export type { BridgeStore } from "./bridges/ports.js";

@@ -55,6 +55,7 @@
     "engine/0049_intent_draft_refs.ts": "7cb8f9b9aeba5511d09dd8de45df4292e1b80ebebfb954880d77d06850a64c81",
     "engine/0050_limits_without_health_factor.ts": "2592a71fd8254e00c890b21a01007db89da2c8a7557a9ce104c0481fea816cbd",
     "engine/0051_bridge_wallets.ts": "bd5a5973b4f64542abbbe365405674beb577d3de0400f98869525de764927ef7",
-    "engine/0052_address_recipient_bytes.ts": "a7dd9bc9315fa5f4e00b3579d0d8e387d2d3d147e8cbd202622f67b84dc006fd"
+    "engine/0052_address_recipient_bytes.ts": "a7dd9bc9315fa5f4e00b3579d0d8e387d2d3d147e8cbd202622f67b84dc006fd",
+    "engine/0053_bridges.ts": "6267c26ff323d751f2d764c0e3754707aa963be75bbdc7f062a741864ad9a9c0"
   }
 }

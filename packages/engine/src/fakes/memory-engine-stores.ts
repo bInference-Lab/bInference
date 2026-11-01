@@ -5,6 +5,7 @@ import { createMemoryAgentStore, type MemoryAgentStore } from "./memory-agent-st
 import { createMemoryAgentTopicStore } from "./memory-agent-topic-store.js";
 import { createMemoryAlertStore } from "./memory-alert-store.js";
 import { createMemoryAliveStore } from "./memory-alive-store.js";
+import { createMemoryBridgeStore } from "./memory-bridge-store.js";
 import { createMemoryCardCopyStore } from "./memory-card-copy-store.js";
 import { createMemoryConfigJournal } from "./memory-config-journal.js";
 import { createMemoryDailySummaryStore } from "./memory-daily-summary-store.js";
@@ -81,5 +82,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     launches: createMemoryLaunchStore(),
     alive: createMemoryAliveStore(),
     dailySummaries: createMemoryDailySummaryStore({ agents }),
+    bridges: createMemoryBridgeStore({ hasIntent: (id) => intents.intentNow(id) !== undefined }),
   };
 }

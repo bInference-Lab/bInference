@@ -1,5 +1,6 @@
 import type { AlertStore } from "../alerts/ports.js";
 import type { ModelUsageStore } from "../billing/ports.js";
+import type { BridgeStore } from "../bridges/ports.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
 import type { AliveStore } from "../downtime/ports.js";
 import type { LaunchStore } from "../launches/ports.js";
@@ -64,4 +65,6 @@ export interface EngineStores {
   readonly alive: AliveStore;
   /** Each agent's daily summary of each owner's date, with the totals it read. */
   readonly dailySummaries: DailySummaryStore;
+  /** Each bridge's delivery, read until a delivery or a refund settles it (decision 0297). */
+  readonly bridges: BridgeStore;
 }
