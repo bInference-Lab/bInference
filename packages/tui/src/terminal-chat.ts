@@ -10,6 +10,7 @@ import { type ChatInputParts, onAction } from "./chat-input.js";
 import { keyAction, type PressedKey } from "./chat-keys.js";
 import { agentNameText, failureText, wordsOf } from "./chat-lines.js";
 import { createChatNotices } from "./chat-notices.js";
+import { createChatReceipts } from "./chat-receipts.js";
 import { type ChatScreen, createChatScreen } from "./chat-screen.js";
 import { createChatStore } from "./chat-state.js";
 import type { ChatTerminal } from "./chat-terminal.js";
@@ -72,14 +73,15 @@ function openSession(options: TerminalChatOptions, signal: AbortSignal): Session
   };
 }
 
-// Subscribes the agent's chat, the cards and the notices; answers the parts the keys reach and how
-// to unsubscribe.
+// Subscribes the agent's chat, the cards with a bridge's receipts, and the notices; answers the
+// parts the keys reach and how to unsubscribe.
 function follow(session: Session, report: (error: ErrorOptions["cause"]) => void) {
   const { context } = session;
   const feed = createJobQueue(report);
   const transcript = createChatTranscript(context, context.words("tui.you"));
   const question = createAgentQuestion(context);
   const cards = createChatCards(context);
+  const receipts = createChatReceipts(context);
   const notices = createChatNotices(context);
   const later = (job: () => Promise<void>) => async (): Promise<void> => {
     feed(job);
@@ -88,7 +90,11 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
   const unsubscribe = [
     followChat(context, { transcript, question, queue: feed }),
     context.client.subscribe("intent", {
-      onPush: () => feed(async () => cards.reload()),
+      onPush: (push) =>
+        feed(async () => {
+          await cards.reload();
+          await receipts.pushed(push);
+        }),
       refetch: later(async () => cards.reload()),
     }),
     context.client.subscribe("notice", {
