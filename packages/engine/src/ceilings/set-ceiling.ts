@@ -182,7 +182,8 @@ export async function setCeiling(
   if (refusal !== undefined) {
     return err(refusal);
   }
-  const recipients = await ceilingRecipients(options, signal);
+  const most = options.ceilings.mostPerChain;
+  const recipients = await ceilingRecipients({ ...options, most }, signal);
   const ceilings = callsOf(options, { changes: args.changes, held: before, recipients });
   const set = await options.ceilings.setCalls(
     { ownerKey: createSecret(args.ownerKey), ceilings },

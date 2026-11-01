@@ -20,6 +20,7 @@ import {
   resignRescueCeilings,
   settleRescueCeilings,
 } from "../safety/rescue-ceilings.js";
+import { rescueReachOf } from "../safety/rescue-reach.js";
 import { rescueAccounts, savedPayees, walletRecipients } from "../safety/wallet-recipients.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { activeAgent } from "./active-agent.js";
@@ -53,7 +54,8 @@ async function recipientsOf(
     return err("rescue.no_address");
   }
   const saved = savedPayees(settings.addressBook, { facts, chains: options.chains });
-  return ok(walletRecipients({ saved }, rescues));
+  const reach = rescueReachOf(facts, options.ceilings.mostPerChain);
+  return ok(walletRecipients({ agent: settings.agent.id, saved }, { rescues, reach }));
 }
 
 // Why a wallet of each role is refused: the agent holds a live one, or no venue marks a call only

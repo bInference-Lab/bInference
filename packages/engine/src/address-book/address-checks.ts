@@ -3,7 +3,7 @@ import { err, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { InstallFacts } from "../install/install-record.js";
-import { rescueAt } from "../policy/rescue-change.js";
+import { rescuesOn } from "../safety/rescue-reach.js";
 import { payeeRefusal } from "./payee-refusal.js";
 import { type AddressChains, isOwnWalletElsewhere, type SavedAccount } from "./saved-account.js";
 
@@ -21,7 +21,8 @@ const chainOf = (account: AccountRef): ChainRef => accountRefParts(account).chai
  * chain, a launch or bridge wallet of the install or a venue's contract (see `payeeRefusal`); on a
  * destination, any wallet of the install (`address.own_wallet`), since no bridge pays binference's
  * own address on another chain; and on either, a chain whose ceiling rule lists the most it can,
- * the rescue address among them on its own chain (`address.chain_full`). `undefined` when none.
+ * the rescue addresses among them as `rescuesOn` counts them, the one source of room
+ * (`address.chain_full`). `undefined` when none.
  */
 export function addressRefusal(
   parts: AddressCheckParts,
@@ -42,11 +43,11 @@ export function addressRefusal(
     return "address.own_wallet";
   }
   const chain = chainOf(saved.account);
-  const { rescueAddress, pendingRescue } = rescueAt(facts, parts.nowMs);
-  const rescues = [rescueAddress, pendingRescue?.address].filter(
-    (account) => account !== undefined && chainOf(account) === chain,
-  );
-  const listed = settings.addressBook.filter((entry) => chainOf(entry.account) === chain);
+  const listed = settings.addressBook
+    .map((entry) => entry.account)
+    .filter((account) => chainOf(account) === chain);
+  const at = { agent: settings.agent.id, chain, nowMs: parts.nowMs };
+  const rescues = rescuesOn(facts, at).filter((account) => !listed.includes(account));
   return listed.length + rescues.length >= parts.mostPerChain ? "address.chain_full" : undefined;
 }
 

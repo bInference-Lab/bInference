@@ -9,6 +9,7 @@ import { type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { AgentStore, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { ceilingOutdatedNotice } from "./rescue-address-notice.js";
+import { rescueReachOf } from "./rescue-reach.js";
 import {
   rescueAccounts,
   type WalletCeiling,
@@ -86,8 +87,11 @@ export async function moveRescueCeilings(
   const { next, ownerKey, signal } = move;
   const targets = await walletCeilings(options, move.facts, signal);
   const pending = next.pendingRescue;
-  const now: Recipients = (wallet) =>
-    walletRecipients(wallet, [next.rescueAddress, pending?.address]);
+  const reach = rescueReachOf(move.facts, options.ceilings.mostPerChain);
+  const paying = (rescues: readonly (AccountRef | undefined)[]): Recipients => {
+    return (wallet) => walletRecipients(wallet, { rescues, reach });
+  };
+  const now = paying([next.rescueAddress, pending?.address]);
   const ceilings = targets.map((wallet) => ({ ceiling: wallet.ceiling, recipients: now(wallet) }));
   const set = await options.ceilings.setRecipients({ ownerKey, ceilings }, { signal });
   if (!set.ok || pending === undefined) {
@@ -96,7 +100,7 @@ export async function moveRescueCeilings(
   const onEffect = await signedChange(options, move, {
     targets,
     from: now,
-    to: (wallet) => walletRecipients(wallet, [pending.address]),
+    to: paying([pending.address]),
     untilMs: pending.atMs + effectWindowMs,
   });
   const onCancel =
@@ -105,7 +109,7 @@ export async function moveRescueCeilings(
       : await signedChange(options, move, {
           targets,
           from: now,
-          to: (wallet) => walletRecipients(wallet, [next.rescueAddress]),
+          to: paying([next.rescueAddress]),
           untilMs: pending.atMs,
         });
   if (!onEffect.ok) {
@@ -140,11 +144,15 @@ export async function saveInCeilings(
   options: RescueCeilingsOptions,
   move: SavedAddressMove,
 ): Promise<Result<void, ProtocolErrorCode>> {
-  const listed = [...rescueAccounts(move.facts, options.clock.now()), move.account];
+  const payees = {
+    rescues: rescueAccounts(move.facts, options.clock.now()),
+    saving: move.account,
+    reach: rescueReachOf(move.facts, options.ceilings.mostPerChain),
+  };
   const targets = await walletCeilings(options, move.facts, move.signal);
   const ceilings = targets
     .filter((wallet) => wallet.agent === move.agent)
-    .map((wallet) => ({ ceiling: wallet.ceiling, recipients: walletRecipients(wallet, listed) }));
+    .map((wallet) => ({ ceiling: wallet.ceiling, recipients: walletRecipients(wallet, payees) }));
   const set = await options.ceilings.setRecipients(
     { ownerKey: move.ownerKey, ceilings },
     { signal: move.signal },

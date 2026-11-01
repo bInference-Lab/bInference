@@ -13,6 +13,7 @@ import { callsRefusalCodes } from "../ceilings/set-ceiling.js";
 import type { CeilingCalls } from "../install/ceiling-change.js";
 import type { ConfigJournal } from "../ports.js";
 import type { RescueCeilingsOptions, SavedAddressMove } from "../safety/rescue-ceilings.js";
+import { rescueReachOf } from "../safety/rescue-reach.js";
 import { rescueAccounts, walletCeilings, walletRecipients } from "../safety/wallet-recipients.js";
 
 /** What a destination save reads, writes, stores and announces through. */
@@ -26,7 +27,11 @@ async function callsOf(
   move: SavedAddressMove,
   before: readonly HeldCeiling[],
 ): Promise<readonly CeilingCalls[]> {
-  const listed = [...rescueAccounts(move.facts, parts.clock.now()), move.account];
+  const payees = {
+    rescues: rescueAccounts(move.facts, parts.clock.now()),
+    saving: move.account,
+    reach: rescueReachOf(move.facts, parts.ceilings.mostPerChain),
+  };
   const wallets = await walletCeilings(parts, move.facts, move.signal);
   return before.map(({ wallet, read }) => {
     const saved = wallets.find((item) => item.ceiling === wallet.policyId)?.saved ?? [];
@@ -34,7 +39,7 @@ async function callsOf(
       ceiling: wallet.policyId,
       venues: venuesIn(parts.chains, read),
       perTxNativeBase: read.perTxNativeBase,
-      recipients: walletRecipients({ saved }, listed),
+      recipients: walletRecipients({ agent: wallet.agentId, saved }, payees),
     };
     return wallet.role === undefined ? calls : Object.assign(calls, { role: wallet.role });
   });

@@ -2,8 +2,10 @@ import { type AccountRef, accountRefParts, type ChainRef } from "@binference/cha
 import { err, type Id, jsonValueSchema, ok } from "@binference/core";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import type { InstallFacts } from "../install/install-record.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
+import { rescuesOn } from "../safety/rescue-reach.js";
 import { addAddress, type AddAddressOptions, addressEntryView } from "./add-address.js";
 
 /** The handlers of an agent's address book (protocol spec, section 7.6). */
@@ -13,23 +15,31 @@ export interface AddressBookHandlers {
   readonly "address/remove": EngineHandler<"address/remove">;
 }
 
-// The room left on each chain other than the wallets' that holds a saved address (decision 0297).
+// The room left on each chain other than the wallets' that holds a saved address (decision 0297),
+// the rescue addresses counted as `rescuesOn` counts them for `address/add` (decision 0321).
 function roomOf(
   settings: AgentSettings,
-  limits: { readonly isWalletChain: (chain: ChainRef) => boolean; readonly most: number },
+  limits: {
+    readonly isWalletChain: (chain: ChainRef) => boolean;
+    readonly most: number;
+    readonly facts: InstallFacts;
+    readonly nowMs: number;
+  },
 ) {
-  const chains = settings.addressBook
-    .map((entry) => accountRefParts(entry.account).chain)
-    .filter((chain) => !limits.isWalletChain(chain));
-  const counts = new Map<ChainRef, number>();
-  for (const chain of chains) {
-    counts.set(chain, (counts.get(chain) ?? 0) + 1);
-  }
-  const room: { readonly chain: ChainRef; readonly used: number; readonly most: number }[] = [];
-  for (const [chain, used] of counts) {
-    room.push({ chain, used, most: limits.most });
-  }
-  return room;
+  const saved = settings.addressBook.map((entry) => entry.account);
+  const chains = [
+    ...new Set(
+      saved
+        .map((account) => accountRefParts(account).chain)
+        .filter((chain) => !limits.isWalletChain(chain)),
+    ),
+  ];
+  return chains.map((chain) => {
+    const listed = saved.filter((account) => accountRefParts(account).chain === chain);
+    const at = { agent: settings.agent.id, chain, nowMs: limits.nowMs };
+    const rescues = rescuesOn(limits.facts, at).filter((account) => !listed.includes(account));
+    return { chain, used: listed.length + rescues.length, most: limits.most };
+  });
 }
 
 // Every account a bridge rule of the agent's live wallets pays, as their stored copies read.
@@ -64,8 +74,11 @@ export function createAddressBookHandlers(options: AddAddressOptions): AddressBo
         return found;
       }
       const isWalletChain = (chain: ChainRef) => options.chains.get(chain).ok;
-      const room = roomOf(found.value, { isWalletChain, most: options.ceilings.mostPerChain });
       const paid = await bridgedNow(options, args.agent, signal);
+      const facts = await options.install.read({ signal });
+      const most = options.ceilings.mostPerChain;
+      const nowMs = options.clock.now();
+      const room = roomOf(found.value, { isWalletChain, most, facts, nowMs });
       const items = found.value.addressBook.map((entry) =>
         addressEntryView(entry, {
           noRoute: !isWalletChain(accountRefParts(entry.account).chain) && !paid.has(entry.account),
