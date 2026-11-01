@@ -409,6 +409,14 @@ and `step_unsent` (a step never signed after an earlier one landed,
   When the wallet queue takes it, the engine reads the name again: an address that differs from
   the card's, or none, ends it `failed_check` with `name_moved` before anything is signed, and the
   owner gets `notice.nameMoved`. A send never runs in auto mode (`send`).
+- **Approval revokes** ([decision 0309](../DECISIONS.md#d0309)). A `revokeApproval` sets one
+  token's ERC-20 allowance of one spender to zero. The spender must be a contract the chain registry
+  lists on the wallet's chain and the wallet's ceiling names; any other ends `failed_check` with
+  `spender_unlisted` before any card. Its plan is the token's `approve(spender, 0)`: the simulation
+  must move nothing out of the wallet and set only that allowance, at zero, and the signer allows
+  that spender alone, at zero. It counts against neither cap, never runs in auto mode (`kind`),
+  and ends `rejected_policy` with `paper_only` in paper mode. Its network fee leaves the coin's
+  position as a departure ([decision 0127](../DECISIONS.md#d0127)).
 - **Staking** ([decision 0296](../DECISIONS.md#d0296)). A `stake` intent stakes, unstakes or
   claims through its venue. The checks:
   - **Caps.** A stake counts its USD value, its BNB at the price

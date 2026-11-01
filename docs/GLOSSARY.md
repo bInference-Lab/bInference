@@ -158,6 +158,9 @@ new name here first, in the change that uses it.
 - **name resolver**: a plugin that answers what a name under one suffix, such as `.bnb`, points to
   on its chain now, and what that address's reverse record names. It keeps nothing, so a name read
   again after a change answers the new address.
+- **transfer** (in code): a send or an approval revoke, the two intents whose one step pays an
+  outside account or sets an outside spender's allowance to zero; they share one path, from the
+  resolve step to the departure.
 - **send level**: from 0 (Open) to 3 (Locked), where sends may go among the saved addresses.
 - **freeze**: stops an agent or the whole install at once; an agent created while the install is
   frozen starts frozen. Unfreezing is asked for in the CLI, the console or the Mini App, and takes
