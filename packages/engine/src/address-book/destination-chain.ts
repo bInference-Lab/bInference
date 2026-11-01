@@ -16,6 +16,12 @@ export interface DestinationChain {
   readonly name: string;
   /** The registry's info of its coin and each token it lists, which a bridge may deliver. */
   readonly assets: AssetInfos;
+  /**
+   * The page template of a transaction on the chain's first block explorer, as the registry lists
+   * it, with `{hash}` for the hash: a bridge's receipt links its delivery there. A receipt shows the
+   * hash alone without one.
+   */
+  readonly txUrl?: string;
   /** The address codec of its family (decision 0298). */
   readonly codec: AddressCodec;
   /**

@@ -1,4 +1,5 @@
 import type { ChainRegistry } from "@binference/chain";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { BridgeStore } from "../bridges/ports.js";
 import { receiptAfterLine } from "../confirmations/card-closing.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -16,6 +17,8 @@ export interface BridgeViewOptions {
   readonly transactions: Pick<TransactionStore, "ofIntent">;
   /** The install's wallets, whose label a bridge's refund names. */
   readonly install: Pick<InstallStore, "read">;
+  /** The chains bridges deliver to, whose explorer a delivered bridge links to. */
+  readonly destinations?: readonly DestinationChain[] | undefined;
 }
 
 /**

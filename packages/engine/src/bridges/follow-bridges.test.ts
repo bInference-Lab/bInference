@@ -1,13 +1,13 @@
 import {
   type Amount,
   type ChainEvent,
-  type ChainRegistry,
   chainRefSchema,
   isTxHash,
   type TxHash,
 } from "@binference/chain";
-import { type Id, ok } from "@binference/core";
+import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import { type BridgeBench, bridgeBench } from "../executor/test-bridge-bench.js";
 import { driveUntil, tapped } from "../executor/test-executor.js";
 import { restartBench } from "../executor/test-restart.js";
@@ -21,6 +21,7 @@ import {
   testArrives,
   testBridge,
   testDestination,
+  testDestinationChain,
   testFarEntry,
   testOtherArrives,
   testRoute,
@@ -311,35 +312,17 @@ describe("following a bridge's delivery", () => {
   });
 });
 
-// The bench's registry with the destination listed beside the fake chain, as Fake Two with its
-// own block explorer, as the registry lists each chain a bridge delivers to.
-function withDestination(bench: BridgeBench): ChainRegistry {
-  const chains = bench.fakes.chains;
-  return {
-    get(ref) {
-      const found = chains.get(ref === testDestination ? sourceChain : ref);
-      if (ref !== testDestination || !found.ok) {
-        return found;
-      }
-      const explorers = [{ ...twoScan, url: "https://two.example.invalid" }];
-      const definition = { ...found.value.definition, id: "fake:2", name: "Fake Two", explorers };
-      return ok({ ...found.value, ref, definition });
-    },
-    list: () => chains.list(),
-  };
-}
-
-const twoScan = {
-  name: "two-scan",
-  txUrl: "https://two.example.invalid/tx/{hash}",
-  source: "https://example.invalid/two-scan",
-};
-
-// The card receipts as the owner's surfaces read them, over the bench's stores and bridges.
-function receiptOf(bench: BridgeBench, intent: Id<"int">, chains = withDestination(bench)) {
+// The card receipts as the owner's surfaces read them, over the bench's stores and bridges, the
+// fake chain's registry, which lists no destination, and the chains bridges deliver to.
+function receiptOf(
+  bench: BridgeBench,
+  intent: Id<"int">,
+  destinations: readonly DestinationChain[] = [testDestinationChain(bench.fakes.codesThere)],
+) {
   const showings = createCardShowings({
     ...bench.test.stores,
-    chains,
+    chains: bench.fakes.chains,
+    destinations,
     venues: { hasNoDeadline: () => false },
   });
   return showings.settled(intent, live);
@@ -375,13 +358,13 @@ describe("a bridge's receipt", () => {
     const { bridges: _bridges, ...stores } = bench.test.stores;
     const unread = createCardShowings({
       ...stores,
-      chains: withDestination(bench),
+      chains: bench.fakes.chains,
       venues: { hasNoDeadline: () => false },
     });
     expect((await unread.settled(intent, live))?.live?.outcome).toStrictEqual(sent);
   });
 
-  it("says who received what on the destination, with the fill's link there, once across a restart", async () => {
+  it("says who received what on the destination, with the fill's link on its explorer, once across a restart", async () => {
     const bench = await bridgeBench();
     const { intent, bridge } = await inTransit(bench);
     filled(bench, bridge, { received: { asset: testArrives, base: 99_000_000n } });
@@ -402,7 +385,8 @@ describe("a bridge's receipt", () => {
       tx: { explorerLink: `https://two.example.invalid/tx/${hashOf("f1")}` },
     });
     expect(ended?.live?.assets[testArrives]).toMatchObject({ symbol: "TKN", decimals: 6 });
-    const bare = await receiptOf(bench, intent, bench.fakes.chains);
+    const { txUrl: _txUrl, ...unlinked } = testDestinationChain(bench.fakes.codesThere);
+    const bare = await receiptOf(bench, intent, [unlinked]);
     expect(bare?.live?.outcome).toMatchObject({ tx: { hash: hashOf("f1") } });
   });
 
@@ -432,7 +416,7 @@ describe("a bridge's receipt", () => {
     });
   });
 
-  it("gives an intent's view the line its card ends with, on its way and once delivered", async () => {
+  it("gives an intent's view the line its card ends with, on its way and once delivered with its link", async () => {
     const bench = await bridgeBench();
     const { intent, bridge } = await inTransit(bench);
     const sent = { key: "receipt.bridgeSent" };
@@ -452,7 +436,7 @@ describe("a bridge's receipt", () => {
         address: { type: "text", text: "0x000000b1" },
       },
     };
-    const txHash = { type: "text", text: hashOf("f1") };
+    const link = `https://two.example.invalid/tx/${hashOf("f1")}`;
     expect(got).toMatchObject({
       value: {
         bridgeReceipt: {
@@ -461,7 +445,7 @@ describe("a bridge's receipt", () => {
             chain: { type: "text", text: "Fake Two" },
             recipient: { type: "line", line: payee },
             received: { type: "amount", amount: { asset: testArrives, base: 99_000_000n } },
-            explorerLink: { type: "line", line: { key: "receipt.tx", values: { txHash } } },
+            explorerLink: { type: "text", text: link },
           },
         },
         assets: { [testArrives]: { symbol: "TKN" } },

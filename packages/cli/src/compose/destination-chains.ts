@@ -69,7 +69,8 @@ function readersOf(
  * The chains a bridge delivers to as the engine takes them (decision 0314): each with its family's
  * address codec, on Solana an account kind reader and on an EVM chain an account code reader, each
  * over the registry's keyless endpoints, so a program, a token account or a token's own contract
- * is refused before it is saved (decisions 0298 and 0318).
+ * is refused before it is saved (decisions 0298 and 0318), and its first explorer's transaction
+ * page, which a delivered bridge's receipt links to.
  */
 export function selfHostedDestinationChains(parts: {
   readonly http: Http;
@@ -83,6 +84,8 @@ export function selfHostedDestinationChains(parts: {
       return [];
     }
     const named = { ref, name: definition.name, assets: registryAssetsOf(definition) };
-    return [{ ...named, codec: codec.value, ...readersOf(definition, parts) }];
+    const txUrl = definition.explorers[0]?.txUrl;
+    const linked = txUrl === undefined ? named : { ...named, txUrl };
+    return [{ ...linked, codec: codec.value, ...readersOf(definition, parts) }];
   });
 }

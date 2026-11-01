@@ -334,7 +334,7 @@ function intentParts(
   parts: { readonly settled: Engine["pushSettled"]; readonly check: DowntimeCheck },
 ): IntentParts {
   const { settled, check } = parts;
-  const { stores, host, chains, clock, isLocked } = options;
+  const { stores, host, chains, clock, isLocked, destinations } = options;
   const gate = createCapGate({ intents: stores.intents, clock });
   const stored = storedIntentsOf(options, { settled, gate });
   const confirmations = createConfirmations({
@@ -348,7 +348,7 @@ function intentParts(
   const execute = executeOf(options, { stored, paper, orders });
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
-  const showings = createCardShowings({ ...stores, chains, venues: host, isLocked });
+  const showings = createCardShowings({ ...stores, chains, destinations, venues: host, isLocked });
   const moneyPath = moneyPathOf(options, { stored, paper, launches, execute, lowGas, gate });
   const handlers = {
     ...createIntentHandlers({ ...options, ...stores, stored, moneyPath, answer, showings }),

@@ -22,6 +22,7 @@ import {
 } from "@binference/core/testing";
 import type { BridgeRequest, IntentState } from "@binference/protocol";
 import { z } from "zod";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import {
   createMemoryEngineStores,
@@ -41,6 +42,8 @@ import {
 import { testAccount, testChains } from "../operations/test-engine.js";
 import { createPositions } from "../positions/create-positions.js";
 import type { EnginePush } from "../pushes/engine-push.js";
+import { bridgeReceiptOf } from "../surfaces/bridge-receipt.js";
+import type { LiveReceipt } from "../surfaces/live-receipt.js";
 import type { BridgeDeliveryState } from "./bridge-record.js";
 import { createBridgeFollower } from "./follow-bridges.js";
 
@@ -62,6 +65,8 @@ export interface BridgeFollowBench {
   notices(): readonly FollowedNotice[];
   /** What the follower logged, oldest first: each record's event and error code. */
   logged(): readonly (readonly [string, string | undefined])[];
+  /** The bridge's receipt as the owner's surfaces show it, read with the chains given. */
+  receipt(destinations: readonly DestinationChain[]): Promise<LiveReceipt | undefined>;
 }
 
 const live = { signal: new AbortController().signal };
@@ -93,13 +98,15 @@ interface FollowedBridge {
   readonly depositHash?: TxHash;
   /** The venue; the fake bridge, which takes a fill as its own when its events name the deposit. */
   readonly bridge?: Bridge;
+  /** The destination's name as the confirmed quote holds it; its chain's id when absent. */
+  readonly chainName?: string;
 }
 
 // The quote a card would have confirmed: the amount, the recipient and the least output.
 function quoteOf(given: FollowedBridge & { readonly venue: string }, amount: Amount) {
   return bridgeQuoteDocument.encode({
     venue: given.venue,
-    chainName: accountRefParts(given.recipient).chain,
+    chainName: given.chainName ?? accountRefParts(given.recipient).chain,
     amount,
     recipient: given.recipient,
     recipientBytes: "0x01",
@@ -181,6 +188,17 @@ function settledFake(fill: DepositRef, deposit: FollowedDeposit): FakeBridge {
   return fake;
 }
 
+// The bridge's receipt as the owner's surfaces read it, with the chains bridges deliver to.
+async function receiptOf(
+  stores: MemoryEngineStores,
+  intentId: Id<"int">,
+  destinations: readonly DestinationChain[],
+): Promise<LiveReceipt | undefined> {
+  const record = await stores.intents.get(intentId, live);
+  const reads = { ...stores, chains: testChains(), destinations };
+  return record === undefined ? undefined : bridgeReceiptOf({ ...reads, record }, live);
+}
+
 /**
  * Starts the follower over one live bridge, final and in transit, to `recipient` on its chain,
  * which must deliver at least `minOut`: by default 100 of the fake token deposited on the fake chain
@@ -232,5 +250,6 @@ export async function startBridgeFollowBench(
         return push.kind === "notice/new" && notice.success ? [notice.data] : [];
       }),
     logged: () => log.records().map((record) => [record.event, record.fields.errorCode] as const),
+    receipt: async (destinations) => receiptOf(stores, intentId, destinations),
   };
 }

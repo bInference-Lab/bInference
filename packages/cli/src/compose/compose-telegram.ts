@@ -1,10 +1,11 @@
 import type { ChainRegistry } from "@binference/chain";
 import type { Clock, Logger, Random, Secret } from "@binference/core";
-import type { AnswerCard, EngineStores, VenueHost } from "@binference/engine";
+import type { AnswerCard, EngineOptions, EngineStores, VenueHost } from "@binference/engine";
 import { issueLaunchTicket } from "@binference/engine/access";
 import type { OwnerImageSource } from "@binference/engine/chat";
 import {
   type CardCopyStore,
+  type CardShowings,
   createCardPresses,
   createCardShowings,
   createLaunchDraftPresses,
@@ -76,6 +77,8 @@ export interface TelegramWiring {
   /** The engine's handlers and the composition root's, such as `engine/status`. */
   readonly handlers: EngineHandlerTable;
   readonly chains: ChainRegistry;
+  /** The chains bridges deliver to, whose explorer a delivered bridge's receipt links to. */
+  readonly destinations?: EngineOptions["destinations"];
   /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
   /** The owner's language and timezone now, read for each message the bot sends. */
@@ -270,6 +273,14 @@ function draftsOf(parts: TelegramParts, wiring: TelegramWiring, display: OwnerDi
   });
 }
 
+// The cards the bot shows and their receipts, as the engine draws them, a delivered bridge's linked
+// to the explorer of the chain it delivered on.
+function showingsOf(wiring: TelegramWiring): CardShowings {
+  const { stores, chains, destinations, venues, isLocked } = wiring;
+  const locked = isLocked === undefined ? {} : { isLocked };
+  return createCardShowings({ ...stores, chains, destinations, venues, ...locked });
+}
+
 /**
  * Joins the owner's bot to the engine: cards whose presses the engine answers (the owner's
  * numeric Telegram id only, stored before Telegram hears back), the ingress that hands the
@@ -278,10 +289,9 @@ function draftsOf(parts: TelegramParts, wiring: TelegramWiring, display: OwnerDi
  * The owner's messages that are not fast commands go to the agent with `chat/post`.
  */
 export function composeTelegram(parts: TelegramParts, wiring: TelegramWiring): ComposedTelegram {
-  const { stores, chains, logger } = wiring;
+  const { stores, logger } = wiring;
   const display = displayOf(wiring);
-  const locked = wiring.isLocked === undefined ? {} : { isLocked: wiring.isLocked };
-  const showings = createCardShowings({ ...stores, chains, venues: wiring.venues, ...locked });
+  const showings = showingsOf(wiring);
   const answers = createCardPresses({
     intents: stores.intents,
     answer: wiring.answer,

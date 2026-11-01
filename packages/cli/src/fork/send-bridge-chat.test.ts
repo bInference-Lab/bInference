@@ -355,11 +355,11 @@ async function bridgesToBase(chat: Chat): Promise<void> {
     return never();
   }
   expect(funds.args.recipient).toBe(pad(baseHolder).toLowerCase());
-  machine.arrivals.acrossFilled({ hash: landed.hash, ...funds.args });
+  const fill = machine.arrivals.acrossFilled({ hash: landed.hash, ...funds.args });
   const receipt = await delivered(chat, step, 4);
   expect(receipt).toMatch(
     new RegExp(
-      `^${done} Delivered on Base: my Base address \\(${baseHolder}\\) received [\\d.]+ USDT · `,
+      `^${done} Delivered on Base: my Base address \\(${baseHolder}\\) received [\\d.]+ USDT · https://basescan\\.org/tx/${fill}$`,
       "u",
     ),
   );
@@ -389,11 +389,11 @@ async function bridgesToSolana(chat: Chat): Promise<void> {
   expect(order.args.from).toBe(walletsOf(machine).bridge.address);
   const bridged = await machine.stores.bridges.get(step.intent, live());
   const paid = bridged?.minOut.base ?? never();
-  machine.arrivals.relayFilled({ hash: landed.hash, orderId: order.args.id, paid });
+  const fill = machine.arrivals.relayFilled({ hash: landed.hash, orderId: order.args.id, paid });
   const receipt = await delivered(chat, step, 6);
   expect(receipt).toMatch(
     new RegExp(
-      `^${done} Delivered on Solana: my Solana address \\(${solanaPerson}\\) received [\\d.]+ USDC · `,
+      `^${done} Delivered on Solana: my Solana address \\(${solanaPerson}\\) received [\\d.]+ USDC · https://explorer\\.solana\\.com/tx/${fill}$`,
       "u",
     ),
   );

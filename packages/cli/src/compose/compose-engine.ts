@@ -208,6 +208,7 @@ function joinTelegram(
         drafts: engine.drafts,
         handlers: { ...engine.handlers, ...options.ownerChat },
         chains,
+        ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
         venues: engine.venues,
         owner,
         stored: async () => engine.notices.idle(),

@@ -1,6 +1,7 @@
 import type { ChainRegistry } from "@binference/chain";
 import { BinferenceError, type Id, idSchema } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { BridgeStore } from "../bridges/ports.js";
 import type { CardClosing } from "../confirmations/card-closing.js";
@@ -129,6 +130,8 @@ export interface CardShowingsOptions {
   readonly install: Pick<InstallStore, "read">;
   /** Each bridge's delivery, which its receipt shows once a read settled it (decision 0297). */
   readonly bridges?: Pick<BridgeStore, "get">;
+  /** The chains bridges deliver to, whose explorer a delivery's receipt links to. */
+  readonly destinations?: readonly DestinationChain[] | undefined;
   readonly chains: ChainRegistry;
   /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
@@ -297,9 +300,9 @@ async function settled(
   if (written !== undefined) {
     return { ref: card.callbackRef, closing, written };
   }
-  const { bridges, install } = options;
+  const { bridges, install, destinations } = options;
   const live = await liveReceiptOf(
-    { record, history, transactions, chains, bridges, install },
+    { record, history, transactions, chains, bridges, install, destinations },
     call,
   );
   if (live !== undefined) {

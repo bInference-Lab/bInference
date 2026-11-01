@@ -5,16 +5,19 @@ import type { BridgeOutcome } from "../confirmations/card-closing.js";
 import { type BridgeIntentQuote, bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import type { LiveReceipt, LiveReceiptSource } from "./live-receipt.js";
-import { receiptTxOf } from "./receipt-tx.js";
+import { destinationTxOf, receiptTxOf } from "./receipt-tx.js";
 
 interface Call {
   readonly signal: AbortSignal;
 }
 
-/** What a bridge's receipt reads: the intent, its transactions, its delivery and the wallets. */
+/**
+ * What a bridge's receipt reads: the intent, its transactions, its delivery, the wallets and the
+ * chains bridges deliver to.
+ */
 export type BridgeReceiptSource = Pick<
   LiveReceiptSource,
-  "record" | "transactions" | "chains" | "bridges" | "install"
+  "record" | "transactions" | "chains" | "bridges" | "install" | "destinations"
 >;
 
 // A chain as a receipt names it: the registry's name, or its reference when the registry lacks it.
@@ -47,8 +50,9 @@ async function sentOf(
   };
 }
 
-// Settled by a read: the delivery, with the transaction that paid the recipient on its chain, or
-// the refund, with the one that paid the wallet back on the chain the deposit left.
+// Settled by a read: the delivery, with the transaction that paid the recipient on its chain,
+// linked to the explorer the destination's registry entry lists, or the refund, with the one that
+// paid the wallet back on the chain the deposit left.
 async function settledOf(
   source: BridgeReceiptSource,
   context: { readonly quote: BridgeIntentQuote; readonly bridge: BridgeRecord },
@@ -71,7 +75,7 @@ async function settledOf(
         ...(isRescue === undefined ? {} : { isRescue }),
       },
       received,
-      tx: receiptTxOf(chains, bridge.toChain, fillTx),
+      tx: destinationTxOf(source, bridge.toChain, fillTx),
     };
   }
   if (bridge.state !== "refunded" || refundTx === undefined) {

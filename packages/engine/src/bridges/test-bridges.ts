@@ -109,6 +109,7 @@ export function testDestinationChain(codes: FakeAccountCodeReader): DestinationC
   return {
     ref: testDestination,
     name: "Fake Two",
+    txUrl: "https://two.example.invalid/tx/{hash}",
     assets: {
       [testArrives]: { symbol: "TKN", name: "Token", decimals: 6, verified: true },
       [testOtherArrives]: { symbol: "TKG", name: "Global token", decimals: 6, verified: true },

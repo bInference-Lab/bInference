@@ -6,6 +6,7 @@ import {
   type ChainRegistry,
 } from "@binference/chain";
 import { type AssetInfos, unsentEndStates } from "@binference/protocol";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { BridgeStore } from "../bridges/ports.js";
 import type { LiveOutcome, ReceiptTx } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
@@ -26,7 +27,8 @@ export interface LiveReceipt {
 
 /**
  * What a live receipt reads: the intent, its history, its transactions and the registry; for a
- * bridge, its delivery and the install's wallets, whose label a refund names.
+ * bridge, its delivery, the install's wallets, whose label a refund names, and the chains bridges
+ * deliver to, whose explorer a delivery links to.
  */
 export interface LiveReceiptSource {
   readonly record: IntentRecord;
@@ -35,6 +37,7 @@ export interface LiveReceiptSource {
   readonly chains: ChainRegistry;
   readonly bridges?: Pick<BridgeStore, "get"> | undefined;
   readonly install: Pick<InstallStore, "read">;
+  readonly destinations?: readonly DestinationChain[] | undefined;
 }
 
 // A trade that reconciled: what it sold and bought; a launch: its token, and its first buy's.
