@@ -47,7 +47,12 @@ export interface TelegramRelayContext {
  */
 type RelayWork =
   | { readonly kind: "show"; readonly ref: CardVersionRef }
-  | { readonly kind: "settle"; readonly intent: Id<"int"> }
+  | {
+      readonly kind: "settle";
+      readonly intent: Id<"int">;
+      /** Settle only a receipt that shows how a live intent stands, as a bridge on its way. */
+      readonly onlyLive?: true;
+    }
   | { readonly kind: "deliver"; readonly through?: Id<"ntc"> }
   | { readonly kind: "chat"; readonly push: EnginePush };
 
@@ -67,10 +72,12 @@ const openedSchema: z.ZodType<CardVersionRef> = z.object({
 const movedSchema = z.object({ intent: idSchema("int"), state: z.string().optional() });
 const storedNoticeSchema = z.object({ id: idSchema("ntc") });
 const deliverAll: RelayWork = { kind: "deliver" };
-// The moves after which a confirmed card's receipt shows more: a paper fill, a live intent's end
-// on chain or before it sent anything, and a send whose fate is not known yet (spec 4, 3.5).
+// The moves after which a confirmed card's receipt shows more: a paper fill, a bridge's final
+// deposit, a live intent's end on chain or before it sent anything, and a send whose fate is not
+// known yet (spec 4, sections 3.5 and 3.9).
 const settlingStates: ReadonlySet<string> = new Set([
   "paper_filled",
+  "finalized",
   "reconciled",
   "failed_onchain",
   "unknown_after_send",
@@ -96,6 +103,14 @@ function settles(kind: string, state: string | undefined): boolean {
   return kind === "card/closed" || (kind === "intent/changed" && settlingStates.has(state ?? ""));
 }
 
+// A final deposit is a bridge on its way (spec 6, section 8); any other intent's receipt says
+// nothing new there, so its card is left as it is.
+function settleWorkOf(intent: Id<"int">, state: string | undefined): RelayWork {
+  return state === "finalized"
+    ? { kind: "settle", intent, onlyLive: true }
+    : { kind: "settle", intent };
+}
+
 // A card version that opens is shown. One that closes is settled, and so is a confirmed intent's
 // card once the intent records its paper fill or ends on chain, which the receipt shows. A stored
 // notice is delivered.
@@ -110,7 +125,7 @@ function cardWorkOf(push: EnginePush): RelayWork | undefined {
   }
   const moved = movedSchema.safeParse(push.data);
   return moved.success && settles(push.kind, moved.data.state)
-    ? { kind: "settle", intent: moved.data.intent }
+    ? settleWorkOf(moved.data.intent, moved.data.state)
     : undefined;
 }
 
@@ -137,9 +152,14 @@ async function show(context: TelegramRelayContext, ref: CardVersionRef, call: Ca
   }
 }
 
-async function settle(context: TelegramRelayContext, intent: Id<"int">, call: Call) {
-  const settling = await context.showings.settled(intent, call);
-  if (settling !== undefined && !isTelegramAnswer(settling)) {
+async function settle(
+  context: TelegramRelayContext,
+  work: Extract<RelayWork, { kind: "settle" }>,
+  call: Call,
+) {
+  const settling = await context.showings.settled(work.intent, call);
+  const isShown = work.onlyLive !== true || settling?.live !== undefined;
+  if (settling !== undefined && isShown && !isTelegramAnswer(settling)) {
     await context.cards.settle(settling, call);
   }
 }
@@ -211,7 +231,7 @@ async function perform(
     case "show":
       return show(context, work.ref, call);
     case "settle":
-      return settle(context, work.intent, call);
+      return settle(context, work, call);
   }
 }
 

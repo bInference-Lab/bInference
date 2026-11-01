@@ -1,6 +1,6 @@
 import { ok } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
-import type { CardShowings, CardVersionRef } from "@binference/engine/surfaces";
+import type { CardSettling, CardShowings, CardVersionRef } from "@binference/engine/surfaces";
 import type { ChatReplies, NoticeOutbox, OutboxPass, TelegramCards } from "@binference/telegram";
 import { describe, expect, it } from "vitest";
 import { createTelegramRelay } from "./telegram-relay.js";
@@ -23,6 +23,18 @@ const noticed = (n: number) =>
     data: { id: notice(n), at: nowMs, key: "notice.locked", values: {} },
   }) as const;
 
+const moved = (state: string) =>
+  ({ topic: "intent", kind: "intent/changed", data: { intent, state } }) as const;
+// A card the console confirmed, whose receipt says it is sending until the engine tells more.
+const sending: CardSettling = {
+  ref: "q3Zr_x9-AbCdEfGh",
+  closing: {
+    outcome: "confirmed",
+    answeredBy: { surface: "console", by: "dev_console" },
+    atMs: nowMs,
+  },
+};
+
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const answered = {
   topic: `chat:${agent}`,
@@ -30,17 +42,23 @@ const answered = {
   data: { agent, turn: "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001", text: "Done.", final: true },
 } as const;
 
-// A relay whose cards, outbox and chat replies write what they were asked into `events`.
-function setUp(passes: OutboxPass[] = []) {
+// A relay whose cards, outbox and chat replies write what they were asked into `events`; the
+// intent's card settles as `settling` says.
+function setUp(passes: OutboxPass[] = [], settling?: CardSettling) {
   const events: string[] = [];
   const clock = createManualClock(nowMs);
   const showings = {
     opened: async (ref: CardVersionRef) => Promise.resolve(ref),
+    settled: async () => Promise.resolve(settling),
   } as unknown as CardShowings;
   const cards = {
     show: async (showing: CardVersionRef) => {
       events.push(`show ${showing.card}`);
       return Promise.resolve(ok(undefined));
+    },
+    settle: async (settled: CardSettling) => {
+      events.push(`settle ${settled.live?.outcome.kind ?? settled.closing.outcome}`);
+      return Promise.resolve();
     },
   } as unknown as TelegramCards;
   const outbox: NoticeOutbox = {
@@ -119,6 +137,30 @@ describe("the relay to the owner's chat", () => {
     await test.relay.idle();
     expect(test.events).toStrictEqual(["send all", "send all"]);
     await test.relay.close();
+  });
+
+  it("turns a bridge's card into its receipt on its way once its deposit is final", async () => {
+    const bridgeSent = {
+      kind: "bridgeSent",
+      fromChain: "Fake One",
+      chain: "Fake Two",
+      minutes: 1,
+      tx: { explorerLink: "https://scan.example.invalid/tx/0x01" },
+    } as const;
+    const test = setUp([], { ...sending, live: { outcome: bridgeSent, assets: {} } });
+    test.relay.relay(moved("finalized"));
+    await test.relay.idle();
+    await test.relay.close();
+    expect(test.events).toStrictEqual(["settle bridgeSent", "chat closed"]);
+  });
+
+  it("leaves any other card as it is when its intent's deposit is final, then settles its end", async () => {
+    const test = setUp([], sending);
+    test.relay.relay(moved("finalized"));
+    test.relay.relay(moved("reconciled"));
+    await test.relay.idle();
+    await test.relay.close();
+    expect(test.events).toStrictEqual(["settle confirmed", "chat closed"]);
   });
 
   it("sends what waited for the owner once the owner pairs", async () => {
