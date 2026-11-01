@@ -72,6 +72,7 @@ describe("the recent outflows", () => {
       { n: 4, atMs: testNowMs, valueUsdMicros: 4n, end: "expired" },
       { n: 5, atMs: testNowMs, valueUsdMicros: 5n, end: "failed_onchain" },
       { n: 6, atMs: testNowMs, valueUsdMicros: 6n },
+      { n: 7, atMs: testNowMs, valueUsdMicros: 7n, end: "failed_check" },
     ]);
     const query = { agentId: testAgent, isPaper: false, nowMs: testNowMs, exclude: intentId(6) };
     await expect(recentOutflowsOf(intents, query, live())).resolves.toStrictEqual([

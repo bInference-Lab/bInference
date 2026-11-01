@@ -675,7 +675,9 @@ entries also carry `paper: true` ([decision 0157](../DECISIONS.md#d0157)).
 - One agent's confirmations, by a tap or the auto mode, run one at a time against its rolling cap:
   each reads the confirmations every earlier one left, so two that pass the cap together never both
   land, and a tap that would pass it fails `limit.daily_cap` with its card left open
-  ([decision 0136](../DECISIONS.md#d0136)). An intent that ended `failed_onchain` counts again
+  ([decision 0136](../DECISIONS.md#d0136)). A confirmed intent that ended `failed_check` signed
+  nothing, so it does not count either. An intent that ended
+  `failed_onchain` counts again
   once a late landing is linked to it ([decision 0147](../DECISIONS.md#d0147)).
 
 <a id="section-10"></a>

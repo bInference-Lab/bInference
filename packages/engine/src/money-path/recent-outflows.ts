@@ -15,8 +15,15 @@ export interface RecentOutflowsQuery {
 
 // The policy keeps 24 hours; an outflow exactly that old still counts, so the read keeps it too.
 const windowMs = 86_400_000;
-// The ends of a confirmed intent that moved nothing: nothing was signed or sent, or it reverted.
-const movedNothing: ReadonlySet<IntentState> = new Set(["cancelled", "expired", "failed_onchain"]);
+// The ends of a confirmed intent that moved nothing: nothing was signed or sent, or it reverted. A
+// confirmed intent ends `failed_check` only before anything is signed, as when a launch wallet's
+// launch moved or a paper portfolio held too little (decision 0136).
+const movedNothing: ReadonlySet<IntentState> = new Set([
+  "cancelled",
+  "expired",
+  "failed_onchain",
+  "failed_check",
+]);
 
 /**
  * Whether the rolling 24-hour cap counts a confirmed intent (decision 0136): one the policy
@@ -35,7 +42,8 @@ export function isCounted(
  * The outflows the rolling 24-hour cap counts for an agent (decision 0136): every intent of the
  * agent in the query's mode confirmed in the last 24 hours, by the owner's tap or the auto mode,
  * each counted from its confirmation at the USD value the policy judged it at, settled or not.
- * An intent that ended without moving anything (`cancelled`, `expired`, `failed_onchain`), one the
+ * An intent that ended without moving anything (`cancelled`, `expired`, `failed_onchain`,
+ * `failed_check`), one the
  * policy never valued, such as a rescue, and the intent under check do not count; one whose
  * dropped step landed after all counts again (decision 0147).
  */
