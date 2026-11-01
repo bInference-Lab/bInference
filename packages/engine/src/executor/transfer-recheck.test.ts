@@ -116,7 +116,7 @@ describe("the wallet queue's check of a confirmed send", () => {
 });
 
 describe("a send that ended without moving anything", () => {
-  it("leaves the 24-hour cap free for the next send after its name moved (decision 0136)", async () => {
+  it("leaves the 24-hour cap free for the next send after its name moved (decision 0311)", async () => {
     const cap = 1_000_000n;
     const limits = { ...testLimits, perTradeUsdMicros: cap, rollingDayUsdMicros: cap };
     const names = testNames();

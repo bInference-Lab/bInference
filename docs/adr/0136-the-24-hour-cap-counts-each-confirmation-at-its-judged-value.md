@@ -1,6 +1,6 @@
 # 0136. The 24-hour cap counts each confirmation at its judged value
 
-Status: Accepted
+Status: Amended by 0311
 
 ## Context
 

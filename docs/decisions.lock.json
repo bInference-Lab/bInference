@@ -1239,6 +1239,10 @@
     "0310": {
       "status": "Accepted",
       "sha256": "255ef98932559912b34d3385ce92a67876e4a460674e05e27da0580aa7d01933"
+    },
+    "0311": {
+      "status": "Accepted",
+      "sha256": "5aa00af7856cfe43bb809166661d9e32e49714976c3c0160c8d5c36cfb95bba9"
     }
   }
 }
