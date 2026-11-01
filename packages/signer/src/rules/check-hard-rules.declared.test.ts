@@ -15,7 +15,7 @@ import {
 } from "../testing/sign-fixtures.js";
 import { brokenHardRules, checkHardRules, type HardRuleContext } from "./check-hard-rules.js";
 
-const { router, token, saved } = fixtureAddresses;
+const { router, token, saved, stranger } = fixtureAddresses;
 const context: HardRuleContext = { settings: fixtureSettings, nowMs: fixtureNowMs };
 const call = authorizeFixture();
 
@@ -128,24 +128,42 @@ describe("a bridge deposit whose check the engine marks", () => {
   const mark = {
     recipient: "recipient",
     destinationChain: "destinationChainId",
+    tokenIn: "inputToken",
+    tokenOut: "outputToken",
+    amountIn: "inputAmount",
     minOut: "outputAmount",
+  };
+  const bound = {
+    recipient: saved,
+    destinationChainId: "8453",
+    inputToken: fixtureDeposit.inputToken,
+    outputToken: fixtureDeposit.outputToken,
+    inputAmount: "20000000",
   };
   const depositCheck: CallInputCheck = {
     abi: bridgeDepositAbi,
     wallet: ["depositor"],
-    equal: { recipient: saved, destinationChainId: "8453" },
+    equal: bound,
     empty: ["message"],
     atLeast: { outputAmount: "19900000" },
     bridge: mark,
   };
 
-  it("signs it once the confirmed plan names its recipient, chain and least output", () => {
+  it("signs it once the confirmed plan names its recipient, chain, tokens, amount and least output", () => {
     expect(checkHardRules(depositWith(depositCheck), context)).toBeUndefined();
   });
 
+  const without = (name: keyof typeof bound) =>
+    Object.fromEntries(Object.entries(bound).filter(([key]) => key !== name));
+
   it.each([
-    ["no recipient", { ...depositCheck, equal: { destinationChainId: "8453" } }],
-    ["no destination chain", { ...depositCheck, equal: { recipient: saved } }],
+    ["no recipient", { ...depositCheck, equal: without("recipient") }],
+    ["no destination chain", { ...depositCheck, equal: without("destinationChainId") }],
+    ["no token that leaves", { ...depositCheck, equal: without("inputToken") }],
+    ["no token that arrives", { ...depositCheck, equal: without("outputToken") }],
+    ["no amount sent", { ...depositCheck, equal: without("inputAmount") }],
+    ["another amount sent", { ...depositCheck, equal: { ...bound, inputAmount: "20000001" } }],
+    ["another token that arrives", { ...depositCheck, equal: { ...bound, outputToken: stranger } }],
     ["no least output", { ...depositCheck, atLeast: {} }],
     [
       "a least amount on another input than the declared least output",

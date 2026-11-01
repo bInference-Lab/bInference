@@ -8,8 +8,13 @@ import {
 import type { ChosenBridge } from "./choose-bridge.js";
 import type { ResolvedBridge } from "./resolve-bridge.js";
 
-// A recipient of 20 bytes, the form a signer compares an address input in (decision 0302).
-const signerRecipient = /^0x[0-9a-f]{40}$/u;
+/**
+ * Whether the hex is 20 bytes in lowercase, the form the signer compares an address input in
+ * (decision 0302): a bridge deposit's recipient and tokens are bound only in it.
+ */
+export function isSignerAddress(hex: string): boolean {
+  return /^0x[0-9a-f]{40}$/u.test(hex);
+}
 
 // Whether the signer can hold the deposit to its recipient: a venue that declares its deposit's
 // recipient input on the chain gets that input bound only to 20 bytes, so a payee of any other
@@ -18,7 +23,7 @@ function isBindable(bridge: ResolvedBridge, chosen: ChosenBridge): boolean {
   const declared = chosen.candidate.hosted.bridge.contracts
     .filter((contracts) => contracts.chain === bridge.chain.ref)
     .some((contracts) => (contracts.calls ?? []).some((call) => call.bridge !== undefined));
-  return !declared || signerRecipient.test(bridge.payee.recipientBytes);
+  return !declared || isSignerAddress(bridge.payee.recipientBytes);
 }
 
 // A bound deposit's recipient is the payee, as the destination's codec gives its bytes, in a form

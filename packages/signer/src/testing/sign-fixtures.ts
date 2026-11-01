@@ -135,8 +135,8 @@ export function withTransaction(
 }
 
 /**
- * A bridge deposit's function in the shape the signer reads, as its JSON ABI entry: two addresses,
- * two amounts and a message, like Across's deposit with fewer inputs.
+ * A bridge deposit's function in the shape the signer reads, as its JSON ABI entry: four addresses,
+ * three amounts and a message, like Across's deposit with fewer inputs.
  */
 export const bridgeDepositAbi: JsonValue = {
   type: "function",
@@ -144,6 +144,9 @@ export const bridgeDepositAbi: JsonValue = {
   inputs: [
     { type: "address", name: "depositor" },
     { type: "address", name: "recipient" },
+    { type: "address", name: "inputToken" },
+    { type: "address", name: "outputToken" },
+    { type: "uint256", name: "inputAmount" },
     { type: "uint256", name: "outputAmount" },
     { type: "uint256", name: "destinationChainId" },
     { type: "bytes", name: "message" },
@@ -154,6 +157,9 @@ export const bridgeDepositAbi: JsonValue = {
 export interface FixtureDeposit {
   readonly depositor: string;
   readonly recipient: string;
+  readonly inputToken: string;
+  readonly outputToken: string;
+  readonly inputAmount: bigint;
   readonly destinationChainId: bigint;
   readonly outputAmount: bigint;
   /** The message's bytes as hex, without `0x`; empty for none. */
@@ -161,29 +167,41 @@ export interface FixtureDeposit {
 }
 
 /**
- * The calldata of {@link bridgeDepositAbi} (selector `0x71b8dc69`), written word by word apart from
- * the signer's reader: five heads, the message's offset among them, then its length and bytes.
+ * The calldata of {@link bridgeDepositAbi} (selector `0x94e99628`), written word by word apart from
+ * the signer's reader: eight heads, the message's offset among them, then its length and bytes.
  */
 export function bridgeDepositCalldata(deposit: FixtureDeposit): string {
   const hex = (value: bigint): string => word(value.toString(16));
   const length = BigInt(deposit.message.length / 2);
   const padded = deposit.message.padEnd(Math.ceil(deposit.message.length / 64) * 64, "0");
   return [
-    "0x71b8dc69",
+    "0x94e99628",
     word(deposit.depositor.slice(2)),
     word(deposit.recipient.slice(2)),
+    word(deposit.inputToken.slice(2)),
+    word(deposit.outputToken.slice(2)),
+    hex(deposit.inputAmount),
     hex(deposit.outputAmount),
     hex(deposit.destinationChainId),
-    hex(5n * 32n),
+    hex(8n * 32n),
     hex(length),
     padded,
   ].join("");
 }
 
-/** A deposit to the saved address on chain 8453 with 19,900,000 out and no message. */
+/** The token a fixture deposit delivers on chain 8453. */
+const fixtureOutputToken = "0x4444444444444444444444444444444444444444";
+
+/**
+ * A deposit of 20,000,000 of the fixture token to the saved address on chain 8453, with 19,900,000
+ * out and no message.
+ */
 export const fixtureDeposit: FixtureDeposit = {
   depositor: fixtureAddresses.wallet,
   recipient: fixtureAddresses.saved,
+  inputToken: fixtureAddresses.token,
+  outputToken: fixtureOutputToken,
+  inputAmount: 20_000_000n,
   destinationChainId: 8453n,
   outputAmount: 19_900_000n,
   message: "",

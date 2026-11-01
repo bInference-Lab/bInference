@@ -31,6 +31,7 @@ export function acrossContractsOn(chain: ChainRef): VenueContracts {
           tokenIn: "inputToken",
           tokenOut: "outputToken",
           minOut: "outputAmount",
+          amountIn: "inputAmount",
           emptyInputs: ["message"],
         },
       },

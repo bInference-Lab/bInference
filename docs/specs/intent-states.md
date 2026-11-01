@@ -466,6 +466,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
     the wallet queue takes the bridge: any code on either chain, a delegation included, ends it
     `rescue_not_plain` before its card, and keeps a confirmed one unsigned
     ([decision 0318](../DECISIONS.md#d0318)). An entry is read again the same way.
+  - **At the queue** the policy runs again on the card's amount and payee, and a bridge whose
+    quote expired by the engine's clock, or whose rescue address changed or gained code, stays
+    unsigned until its confirmation runs out ([decision 0319](../DECISIONS.md#d0319)).
   - **One deposit.** Its plan is an exact approval when the token needs one, then one deposit. The
     quote step decodes the deposit: its recipient bytes, through the address codec of the
     recipient's chain family, equal the entry's; its destination chain is the entry's; its

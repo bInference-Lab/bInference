@@ -19,8 +19,9 @@ export function callInputChecksOf(
       const empty = bridge?.emptyInputs ?? [];
       const check = { abi, wallet: walletInputs, equal: {}, empty, atLeast: {} };
       if (bridge !== undefined) {
-        const { recipient, destinationChain, minOut } = bridge;
-        return [{ ...check, bridge: { recipient, destinationChain, minOut } }];
+        const { recipient, destinationChain, tokenIn, tokenOut, amountIn, minOut } = bridge;
+        const marked = { recipient, destinationChain, tokenIn, tokenOut, minOut };
+        return [{ ...check, bridge: amountIn === undefined ? marked : { ...marked, amountIn } }];
       }
       return walletInputs.length === 0 && empty.length === 0 ? [] : [check];
     });

@@ -65,13 +65,17 @@ export interface CallInputCheck {
   /** Number inputs that must be at least these, in decimal, such as a deposit's output. */
   readonly atLeast: Readonly<Record<string, string>>;
   /**
-   * The inputs of a bridge deposit that name its recipient, its destination chain and the output a
-   * fill pays at least: the signer refuses the call unless `equal` names the first two, from the
-   * confirmed plan, and `atLeast` names the third (decision 0317). Absent for any other call.
+   * The inputs of a bridge deposit that name its recipient, its destination chain, the token that
+   * leaves, the token that arrives, the amount sent when the venue names it, and the output a fill
+   * pays at least: the signer refuses the call unless `equal` names every one but the last, from
+   * the confirmed plan, and `atLeast` names the last (decision 0317). Absent for any other call.
    */
   readonly bridge?: {
     readonly recipient: string;
     readonly destinationChain: string;
+    readonly tokenIn: string;
+    readonly tokenOut: string;
+    readonly amountIn?: string;
     readonly minOut: string;
   };
 }
@@ -171,7 +175,14 @@ const callInputCheckSchema: z.ZodType<CallInputCheck, CallInputCheck> = z.strict
   empty: z.array(inputName).max(16),
   atLeast: z.record(inputName, z.string().regex(/^\d{1,78}$/)),
   bridge: z
-    .strictObject({ recipient: inputName, destinationChain: inputName, minOut: inputName })
+    .strictObject({
+      recipient: inputName,
+      destinationChain: inputName,
+      tokenIn: inputName,
+      tokenOut: inputName,
+      amountIn: inputName.exactOptional(),
+      minOut: inputName,
+    })
     .exactOptional(),
 });
 

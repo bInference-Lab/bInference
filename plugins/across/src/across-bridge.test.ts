@@ -165,6 +165,7 @@ describe("the Across bridge", () => {
         tokenIn: "inputToken",
         tokenOut: "outputToken",
         minOut: "outputAmount",
+        amountIn: "inputAmount",
         emptyInputs: ["message"],
       },
     ]);

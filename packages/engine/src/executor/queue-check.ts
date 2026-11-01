@@ -26,6 +26,12 @@ import type { OrderFillReason } from "../orders/order-fill.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck, PolicyVerdict } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
+import {
+  bridgeQuoteOf,
+  bridgeTargetsOf,
+  type ExecutorBridging,
+  recheckBridge,
+} from "./bridge-queue-check.js";
 import { declaredTargetsOf } from "./declared-calls.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
 import { launchQuoteOf, recheckLaunch } from "./launch-queue-check.js";
@@ -67,6 +73,8 @@ export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
   readonly clock: Clock;
   /** The venues' declarations, which name the contracts a trade's steps may reach. */
   readonly venues: readonly VenueDeclaration[];
+  /** The bridges' declarations and the chains they deliver to; without them, no bridge signs. */
+  readonly bridging?: ExecutorBridging;
 }
 
 interface Rechecked {
@@ -91,6 +99,9 @@ async function recheckPolicy(
   }
   if (record.kind === "send" || record.kind === "revokeApproval") {
     return recheckTransfer(snapshot, parts, signal);
+  }
+  if (record.kind === "bridge") {
+    return recheckBridge(snapshot, parts, signal);
   }
   const request = { ...requestDocument.decode(record.request), wallet: record.walletId };
   const resolving = { request, settings, signal, intent: record.id };
@@ -168,12 +179,17 @@ function allowedTargetsOf(
     readonly chain: RegisteredChain;
     readonly chains: ChainRegistry;
     readonly venues: readonly VenueDeclaration[];
+    readonly bridges?: readonly VenueDeclaration[];
   },
 ): AllowedTargets {
   const { chain } = context;
   const transfer = transferQuoteOf(snapshot.record);
   if (transfer !== undefined) {
     return transferTargetsOf(transfer, context);
+  }
+  const bridged = bridgeQuoteOf(snapshot.record);
+  if (bridged !== undefined) {
+    return bridgeTargetsOf(bridged, { ...context, bridges: context.bridges ?? [] });
   }
   const launch = launchQuoteOf(snapshot.record);
   const quote =
@@ -283,7 +299,13 @@ export async function recoveredFillTerms(
     return undefined;
   }
   const { grant, current } = granted;
-  const allowed = allowedTargetsOf(snapshot, { chain, chains: parts.chains, venues: parts.venues });
+  const bridges = parts.bridging?.bridges ?? [];
+  const allowed = allowedTargetsOf(snapshot, {
+    chain,
+    chains: parts.chains,
+    venues: parts.venues,
+    bridges,
+  });
   return { authorization: { kind: "order", grant, current }, termsHash: grant.termsHash, allowed };
 }
 
@@ -315,6 +337,7 @@ export async function checkForQueue(
     chain,
     chains: parts.chains,
     venues: parts.venues,
+    bridges: parts.bridging?.bridges ?? [],
   });
   const launch = await launchTargetsOf(snapshot.record, parts, signal);
   const failure = launch.kind === "failed" ? { launchFailure: launch.reason } : {};

@@ -110,6 +110,8 @@ export interface BenchOptions {
    * declarations of, the launchpads' curve reads, the registry, and the agent's wallets.
    */
   readonly launch?: BenchLaunch;
+  /** What the executor bridges with, over the registry that lists the bridge's contracts. */
+  readonly bridging?: Pick<ExecutorOptions, "chains" | "bridging">;
 }
 
 /** The parts of a bench whose executor signs a launch wallet's curve trades. */
@@ -227,6 +229,7 @@ export function executorOf(
     custody,
     prices: createFakePriceSource(options.prices ?? new Map([[testCoin, coinPrice]])),
     ...launchPartsOf(options.launch),
+    ...options.bridging,
     sending: sendingOf({ network, transactions }, notes, options),
     clock: test.clock,
     ids: createIdSource({ clock: test.clock, random: createSeededRandom(options.idSeed ?? 9) }),

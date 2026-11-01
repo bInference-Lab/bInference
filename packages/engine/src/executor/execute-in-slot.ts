@@ -41,8 +41,11 @@ interface Taken {
  */
 export type SlotOutcome = IncludedSteps | DroppedStep | Retry | undefined;
 
-/** Why the queue left a confirmed intent to try again a block later. */
-type Retry = "over_fee_cap" | "unprepared";
+/**
+ * Why the queue left a confirmed intent to try again a block later: its fee, a first step no node
+ * prepared, or a bridge its checks hold (decisions 0318 and 0319).
+ */
+type Retry = "over_fee_cap" | "unprepared" | "held";
 
 function notTaken(run: ExecutionRun, intent: Id<"int">, problem: string): undefined {
   run.parts.log.warn("executor.not_taken", { intentId: intent, errorCode: problem });
@@ -88,6 +91,11 @@ async function checkedForQueue(
   if (check.refusal !== undefined) {
     await endRefusedFill(run, { snapshot, reason: check.refusal });
     return notTaken(run, intent, check.refusal);
+  }
+  // A bridge its checks hold stays confirmed, and the queue reads it again a block later.
+  if (snapshot.record.kind === "bridge" && !check.facts.hasPolicyPassed) {
+    run.parts.log.warn("executor.bridge_held", { intentId: intent });
+    return "held";
   }
   const { terms } = check;
   if (terms === undefined) {

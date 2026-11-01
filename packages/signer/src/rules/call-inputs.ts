@@ -29,16 +29,20 @@ function equals(call: CallHeads, name: string, expected: string): boolean {
     : numberOf(word) === BigInt(expected);
 }
 
-// A bridge deposit's check names its recipient and destination chain from the confirmed plan, and
-// its least output on the input the venue declares a fill pays at least, never on another; one
-// that does not refuses the call (decisions 0302 and 0317).
+// A bridge deposit's check names its recipient, destination chain, both tokens and, when the venue
+// names it, the amount sent from the confirmed plan, and its least output on the input the venue
+// declares a fill pays at least, never on another; one that does not refuses the call (decisions
+// 0302 and 0317).
 function isBound(check: CallInputCheck): boolean {
   const { bridge } = check;
+  if (bridge === undefined) {
+    return true;
+  }
+  const equalNames = [bridge.recipient, bridge.destinationChain, bridge.tokenIn, bridge.tokenOut];
+  const named = bridge.amountIn === undefined ? equalNames : [...equalNames, bridge.amountIn];
   return (
-    bridge === undefined ||
-    (check.equal[bridge.recipient] !== undefined &&
-      check.equal[bridge.destinationChain] !== undefined &&
-      check.atLeast[bridge.minOut] !== undefined)
+    named.every((name) => check.equal[name] !== undefined) &&
+    check.atLeast[bridge.minOut] !== undefined
   );
 }
 

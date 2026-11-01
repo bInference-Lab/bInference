@@ -299,10 +299,15 @@ says without checking it:
    only a wallet of another role may approve (`allowed.walletOnlySpenders`, such as Relay's
    depository, a bridge wallet's alone, [decision 0303](../DECISIONS.md#d0303)). A call's inputs
    are what `allowed.callInputs` says, read from its calldata: each input a venue pins is the wallet
-   itself, each a bridge deposit binds equals the confirmed plan's recipient and chain, and each it
-   keeps empty, such as a deposit's message, is empty ([decision 0302](../DECISIONS.md#d0302)). A
-   bridge deposit whose check does not name the plan's recipient, chain and least output breaks
-   this rule. From a launch wallet
+   itself, each a bridge deposit binds equals the confirmed plan's recipient, chain, token that
+   leaves, token that arrives and, when the venue names its input, amount sent, and each it keeps
+   empty, such as a deposit's message, is empty ([decision 0302](../DECISIONS.md#d0302)). A bridge
+   deposit whose check does not name all of those and the least output breaks this rule. The
+   engine fills a bridge's check from its confirmed quote: the recipient's 20 bytes, the venue's id
+   of the destination chain, both tokens' 20-byte contracts, the amount sent and the least output;
+   a recipient or token of another length has no such form, so its deposit breaks the rule
+   ([decision 0319](../DECISIONS.md#d0319)).
+   From a launch wallet
    (`wallet.role` is `launch`), a call may also go to, and an approval name, a contract of the
    launch the step trades on (`allowed.launch`), which the engine reads from the launchpad as the
    wallet queue takes the intent and again before each later step and speed-up, and an approval

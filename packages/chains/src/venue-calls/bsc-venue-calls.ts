@@ -114,6 +114,7 @@ const across: VenueContracts = {
         tokenIn: "inputToken",
         tokenOut: "outputToken",
         minOut: "outputAmount",
+        amountIn: "inputAmount",
         emptyInputs: ["message"],
       },
     },

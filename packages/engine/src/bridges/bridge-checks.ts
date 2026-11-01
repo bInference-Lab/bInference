@@ -42,10 +42,12 @@ function ceilingRefusal(parts: BridgeCheckParts, bridge: ResolvedBridge): QuoteF
   return reaches ? "ceiling_lacks_payee" : "bridge_chain_unpaid";
 }
 
-// The rescue address holds no code on its own chain and none on the destination: the same key
-// holds it on both (decisions 0297 and 0318). A chain with no reader counts as code; a read that
-// fails rejects.
-async function isPlainOnBoth(
+/**
+ * Whether the rescue address holds no code on its own chain and none on the destination, so the
+ * same key holds it on both (decisions 0297 and 0318). A chain with no reader counts as code; a
+ * read that fails rejects. The proposal and the wallet queue read it alike.
+ */
+export async function isPlainOnBoth(
   readers: { readonly here?: AccountCodeReader; readonly there?: AccountCodeReader },
   accounts: { readonly home: AccountRef; readonly there: AccountRef },
   signal: AbortSignal,

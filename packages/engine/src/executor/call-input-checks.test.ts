@@ -62,6 +62,8 @@ describe("the input checks a route's venues declare", () => {
         bridge: {
           recipient: "recipient",
           destinationChain: "destinationChainId",
+          tokenIn: "inputToken",
+          tokenOut: "outputToken",
           minOut: "outputAmount",
         },
       },

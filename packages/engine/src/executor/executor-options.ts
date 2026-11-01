@@ -15,6 +15,7 @@ import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import type { WalletQueue } from "../wallet-queue/wallet-queue.js";
+import type { ExecutorBridging } from "./bridge-queue-check.js";
 
 /** The parts one chain's transactions go through: its preparer, its relays and its receipts. */
 export interface ChainSending {
@@ -77,6 +78,12 @@ export interface ExecutorOptions {
    * without one for its suffix, a send by name waits and never signs.
    */
   readonly nameResolvers?: readonly NameResolver[];
+  /**
+   * The bridges' declarations, the chains they deliver to and the code readers: what a confirmed
+   * bridge is checked again and signed with (decisions 0317 and 0318). Without them, no bridge
+   * signs.
+   */
+  readonly bridging?: ExecutorBridging;
   /**
    * Each chain's sending parts. An intent run reads its chain's once, when it reads its plan, and
    * keeps them to its end: a settings reload reaches the runs that start after it (decision 0230).

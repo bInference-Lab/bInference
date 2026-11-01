@@ -86,11 +86,11 @@ describe("a deposit written in a form the ABI does not write", () => {
   });
 
   it("refuses a message whose offset is not on a word, or past the calldata, as rule 2", () => {
-    expect(brokenHardRules(withWord(4, (5n * 32n + 1n).toString(16)), context)).toStrictEqual([2]);
-    expect(brokenHardRules(withWord(4, (64n * 32n).toString(16)), context)).toStrictEqual([2]);
+    expect(brokenHardRules(withWord(7, (8n * 32n + 1n).toString(16)), context)).toStrictEqual([2]);
+    expect(brokenHardRules(withWord(7, (64n * 32n).toString(16)), context)).toStrictEqual([2]);
   });
 
   it("reads a message whose offset points at a zero word as empty, as Solidity does", () => {
-    expect(checkHardRules(withWord(4, (6n * 32n).toString(16), 1), context)).toBeUndefined();
+    expect(checkHardRules(withWord(7, (9n * 32n).toString(16), 1), context)).toBeUndefined();
   });
 });

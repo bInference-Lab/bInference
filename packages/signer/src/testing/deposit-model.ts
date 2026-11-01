@@ -1,7 +1,12 @@
 import type { CallInputCheck } from "@binference/chain";
 import * as fc from "fast-check";
 import type { Data } from "./request-model.js";
-import { bridgeDepositAbi, bridgeDepositCalldata, fixtureAddresses } from "./sign-fixtures.js";
+import {
+  bridgeDepositAbi,
+  bridgeDepositCalldata,
+  fixtureAddresses,
+  fixtureDeposit,
+} from "./sign-fixtures.js";
 
 // Bridge deposits in the request model (decision 0302), written apart from the signer's reader:
 // the deposit a request carries, the checks the engine passes for it, and what the oracle decides.
@@ -30,6 +35,7 @@ export interface DepositCheck {
 export function depositCalldata(data: DepositData): string {
   const { depositor, recipient, chain, outputAmount, message } = data;
   return bridgeDepositCalldata({
+    ...fixtureDeposit,
     depositor,
     recipient,
     destinationChainId: chain,

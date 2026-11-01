@@ -234,43 +234,84 @@ function holdBridgeWallet(test: TestEngine, bridged: readonly AccountRef[]): voi
   });
 }
 
-/**
- * Starts a live engine whose agent may use the fake bridge, which delivers the fake token to the
- * destination; the rescue address is set, the destination entry saved, the wallet holds 1,000 of
- * the token at $1 and its ceiling pays the entry and the rescue address there.
- */
-export async function bridgeEngine(options: BridgeEngineOptions = {}): Promise<BridgeTest> {
+/** The fakes a bridge test drives: the bridge, its routes, the code reads and the registry. */
+export interface BridgeFakes {
+  readonly bridge: FakeBridge;
+  readonly hosted: HostedBridge;
+  /** The code read on the fake chain, where the rescue address holds none unless a test says. */
+  readonly codesHere: FakeAccountCodeReader;
+  /** The code read on the destination. */
+  readonly codesThere: FakeAccountCodeReader;
+  /** The fake chain's registry, which lists the fake bridge's spoke beside the fake venue's router. */
+  readonly chains: ReturnType<typeof createChainRegistry>;
+}
+
+/** The fakes of a bridge test, its bridge and routes as the options name them. */
+export function bridgeFakes(
+  options: Pick<BridgeEngineOptions, "bridge" | "routes"> = {},
+): BridgeFakes {
   const routes = options.routes ?? [testRoute];
-  const fake = createFakeBridge({ routes, quotedAtMs: testNowMs });
-  const hosted: HostedBridge = { bridge: options.bridge ?? fake, routes };
-  // The fake chain's registry lists the fake bridge's spoke beside the fake venue's router.
+  const bridge = createFakeBridge({ routes, quotedAtMs: testNowMs });
   const definition = createFakeChainDefinition();
   const [router] = definition.contracts;
   const spoke =
     router === undefined
       ? []
       : [{ ...router, venue: "fake-cross", name: "spoke", address: "0x000000e1" }];
-  const codesHere = createFakeAccountCodeReader({ chain: chainRefSchema.parse("fake:1") });
-  const codesThere = createFakeAccountCodeReader({ chain: testDestination });
-  const test = await startTestEngine({
-    agent: { mode: "live", limits: bridgeLimits },
+  return {
+    bridge,
+    hosted: { bridge: options.bridge ?? bridge, routes },
+    codesHere: createFakeAccountCodeReader({ chain: chainRefSchema.parse("fake:1") }),
+    codesThere: createFakeAccountCodeReader({ chain: testDestination }),
     chains: createChainRegistry({
       chains: [{ ...definition, contracts: [...definition.contracts, ...spoke] }],
       families: [createFakeFamily()],
       signingSchemes: [createFakeSigningScheme()],
     }),
-    destinations: [testDestinationChain(codesThere)],
-    bridging: { bridges: [hosted], codeReaders: [codesHere] },
+  };
+}
+
+/**
+ * The options of a live engine whose agent may use the fake bridge, which delivers the fake token
+ * to the destination; the wallet holds 1,000 of the token at $1.
+ */
+export function bridgeEngineOptions(
+  fakes: BridgeFakes,
+  options: TestEngineOptions = {},
+): TestEngineOptions {
+  return {
+    agent: { mode: "live", limits: bridgeLimits },
+    chains: fakes.chains,
+    destinations: [testDestinationChain(fakes.codesThere)],
+    bridging: { bridges: [fakes.hosted], codeReaders: [fakes.codesHere] },
     prices: new Map([[testToken, { numerator: 1_000_000n, denominator: 1_000_000n }]]),
     held: new Map([[testAccount, [{ asset: testToken, base: 1_000_000_000n }]]]),
     chainSimulator: bridgeSimulator(),
     ...options,
-  });
+  };
+}
+
+/**
+ * Sets the rescue address, saves the destination entry and lists the test wallet under a ceiling
+ * whose bridge rules pay `bridged`: the entry and the rescue address there by default.
+ */
+export async function readyBridges(
+  test: TestEngine,
+  bridged: readonly AccountRef[] = [testFarEntry.account, testRescueThere],
+): Promise<void> {
   await test.stores.install.changeRescue(
     { address: testRescue, atMs: testNowMs - 3 * looseningWaitMs },
     live,
   );
   await saveTestAddress(test, testFarEntry);
-  holdBridgeWallet(test, options.bridged ?? [testFarEntry.account, testRescueThere]);
-  return { test, bridge: fake, codesHere, codesThere };
+  holdBridgeWallet(test, bridged);
+}
+
+/** Starts a live engine with the bridge fakes, ready to bridge (see `readyBridges`). */
+export async function bridgeEngine(options: BridgeEngineOptions = {}): Promise<BridgeTest> {
+  const fakes = bridgeFakes(options);
+  const { bridge: _bridge, routes: _routes, bridged, ...engine } = options;
+  const test = await startTestEngine(bridgeEngineOptions(fakes, engine));
+  await readyBridges(test, bridged);
+  return { test, bridge: fakes.bridge, codesHere: fakes.codesHere, codesThere: fakes.codesThere };
 }
