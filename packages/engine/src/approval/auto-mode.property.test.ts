@@ -1,5 +1,4 @@
 import {
-  accountRefSchema,
   type ApprovalModeNow,
   type AutoModeGrant,
   chainRefSchema,
@@ -30,6 +29,8 @@ import {
   testCall,
   testCallers,
 } from "../operations/test-engine.js";
+import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
+import { holdTestWallet, testRouter, transferSimulator } from "../sends/test-transfers.js";
 import { autoModeGrantOf } from "./auto-mode-grant-of.js";
 import { testSnapshot } from "./test-snapshot.js";
 
@@ -39,7 +40,6 @@ import { testSnapshot } from "./test-snapshot.js";
 
 const base = { agent: testAgent, wallet: testWallet, reason: "Move funds" } as const;
 const coin = { asset: testCoin, base: 1_000_000n };
-const outside = accountRefSchema.parse("fake:1:0x000000ee");
 const stranger = "0x000000ff";
 const feeCap = 1_000_000_000n;
 // The coin is worth $600, the token $0.000001 a base unit; both round up to whole micro-dollars.
@@ -50,7 +50,7 @@ const tokenPrice = { numerator: 1n, denominator: 1n };
 // approval revokes on their own path, withdrawals, bridges, launches and the kinds it does not
 // route yet.
 const otherRequests: readonly IntentRequest[] = [
-  { ...base, kind: "send", amount: coin, to: { address: outside } },
+  { ...base, kind: "send", amount: coin, to: { address: testSaved.account } },
   {
     ...base,
     kind: "bridge",
@@ -67,7 +67,7 @@ const otherRequests: readonly IntentRequest[] = [
     image: "img_1",
     pairWith: testCoin,
   },
-  { ...base, kind: "revokeApproval", token: testToken, spender: outside },
+  { ...base, kind: "revokeApproval", token: testToken, spender: testRouter },
   { ...base, kind: "lend", action: "withdraw", venue: "fake-lend", amount: coin },
   { ...base, kind: "stake", action: "unstake", venue: "fake-stake", amount: coin },
   { ...base, kind: "cexOrder", market: "BNBUSDT", side: "buy", type: "market", size: "1" },
@@ -148,6 +148,11 @@ function optionsOf(c: Case): TestEngineOptions {
       [testCoin, coinPrice],
       [testToken, tokenPrice],
     ]),
+    // A send to the saved address and the token's revoke from the router each reach their card.
+    chainSimulator: transferSimulator(
+      [{ to: testSaved.account, amount: coin }],
+      [{ token: testToken, spender: testRouter }],
+    ),
   };
 }
 
@@ -191,6 +196,8 @@ async function modeOf(test: TestEngine): Promise<ApprovalModeNow> {
 interface Outcome {
   readonly isAuto: boolean;
   readonly problems: readonly string[];
+  /** A send or a revoke that reached its card, which the auto test then left to the owner. */
+  readonly isAskedTransfer?: boolean;
 }
 
 // The grant holds until the owner switches to manual; then it ends, and the same trade asks.
@@ -254,6 +261,8 @@ function refusalOf(c: Case): string {
 
 async function outcomeOf(c: Case): Promise<Outcome> {
   const test = await startTestEngine(optionsOf(c));
+  await saveTestAddress(test);
+  holdTestWallet(test);
   const call = testCall(requestOf(c), callerOf(c));
   const proposed = await test.engine.handlers["intent/propose"](call);
   if (c.other === undefined) {
@@ -262,8 +271,9 @@ async function outcomeOf(c: Case): Promise<Outcome> {
   const { kind } = requestOf(c);
   if (kind === "send" || kind === "revokeApproval") {
     // A send and a revoke run their own path, which the auto test always leaves to a tap.
-    const ranAlone = proposed.ok && proposed.value.state === "confirmed";
-    return { isAuto: false, problems: ranAlone ? [`a ${kind} ran alone`] : [] };
+    const state = proposed.ok ? proposed.value.state : undefined;
+    const problems = state === "confirmed" ? [`a ${kind} ran alone`] : [];
+    return { isAuto: false, problems, isAskedTransfer: state === "awaiting_confirmation" };
   }
   const isRefused = !proposed.ok && proposed.error === refusalOf(c);
   return { isAuto: false, problems: isRefused ? [] : [`a ${kind} was not refused`] };
@@ -315,5 +325,8 @@ describe("auto mode, end to end", () => {
       { numRuns: 200 },
     );
     expect(outcomes.filter((outcome) => outcome.isAuto).length).toBeGreaterThan(0);
+    expect(outcomes.filter((outcome) => outcome.isAskedTransfer === true).length).toBeGreaterThan(
+      0,
+    );
   });
 });

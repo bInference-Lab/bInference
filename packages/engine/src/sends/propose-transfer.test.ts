@@ -224,6 +224,16 @@ describe("a send by name", () => {
     });
   });
 
+  it("keeps at most 255 characters of another name the reverse record gives", async () => {
+    const names = testNames();
+    const other = "x".repeat(2_000);
+    names.set("alice.bnb", { address: testSaved.account, reverse: { kind: "differs", other } });
+    const test = await startSends({}, names);
+    const view = await propose(test, testSend({ name: "alice.bnb" }));
+    const quote = await sendQuoteOf(test, view);
+    expect(quote.name?.reverseOther).toBe("x".repeat(255));
+  });
+
   it("ends failed_check for a name with no address or a contract's, before anything is quoted", async () => {
     const names = testNames();
     names.set("vault.bnb", { address: testSaved.account, isContract: true });
@@ -287,6 +297,12 @@ describe("an approval revoke", () => {
     const upper = assetRefSchema.parse("fake:1/token:0x0000000A");
     const view = await propose(await startSends(), testRevoke(upper));
     expect(Object.keys(view.assets)).toStrictEqual([testToken]);
+  });
+
+  it("never runs in auto mode: its card asks why", async () => {
+    const test = await startSends({ agent: { mode: "live", approvalMode: "auto" } });
+    const view = await propose(test, testRevoke(testToken));
+    expect(view.state).toBe("awaiting_confirmation");
   });
 
   it("refuses the chain's coin, which has no allowance", async () => {

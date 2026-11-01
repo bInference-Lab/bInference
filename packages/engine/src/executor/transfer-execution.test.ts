@@ -25,6 +25,7 @@ import {
   stateOf,
   tapped,
 } from "./test-executor.js";
+import { restartBench } from "./test-restart.js";
 
 const live = { signal: new AbortController().signal };
 const coin: Amount = { asset: testCoin, base: 10n ** 15n };
@@ -243,7 +244,7 @@ describe("a send by name on its wallet's queue", () => {
     ]);
   });
 
-  it("ends name_moved when the name points nowhere, or to the same address as a contract", async () => {
+  it("ends name_moved when the name points nowhere", async () => {
     const names = testNames();
     names.set("alice.bnb", { address: testSaved.account });
     const bench = await benchWith(names);
@@ -252,6 +253,68 @@ describe("a send by name on its wallet's queue", () => {
     await bench.release();
     await expect(driveUntil(bench, gone, { states: done })).resolves.toBe("failed_check");
     expect(notices(bench)).toMatchObject([{ values: { now: "none", address: "" } }]);
+  });
+
+  it.each([
+    ["became a contract", { address: testSaved.account, isContract: true }],
+    ["became a smart-account wallet", { address: testSaved.account, isSmartAccount: true }],
+  ] as const)(
+    "ends name_moved when the card's address %s, and tells the owner the same address changed",
+    async (_case, record) => {
+      const names = testNames();
+      names.set("alice.bnb", { address: testSaved.account });
+      const bench = await benchWith(names);
+      const intent = await tapped(bench, testSend({ name: "alice.bnb" }));
+      names.set("alice.bnb", record);
+      await bench.release();
+      await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("failed_check");
+      expect(bench.signed).toHaveLength(0);
+      expect(notices(bench)).toMatchObject([
+        { values: { now: "sameAddress", address: "0x000000f1", confirmed: "0x000000f1" } },
+      ]);
+    },
+  );
+
+  it("ends name_moved when a smart-account wallet on the card is one no more", async () => {
+    const names = testNames();
+    names.set("alice.bnb", { address: testSaved.account, isSmartAccount: true });
+    const bench = await benchWith(names);
+    const intent = await tapped(bench, testSend({ name: "alice.bnb" }));
+    names.set("alice.bnb", { address: testSaved.account });
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("failed_check");
+    await expect(reasonOf(bench, intent)).resolves.toBe("name_moved");
+  });
+
+  it("expires a send that waited on a silent name service past its confirmation, told as a send", async () => {
+    const names = testNames();
+    names.set("alice.bnb", { address: testSaved.account });
+    const bench = await benchWith(names);
+    const intent = await tapped(bench, testSend({ name: "alice.bnb" }));
+    names.down();
+    await bench.release();
+    await driveUntil(bench, intent, { states: done, blocks: 2 });
+    await bench.test.clock.advance(601_000);
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("expired");
+    expect(bench.signed).toHaveLength(0);
+    expect(notices(bench)).toMatchObject([
+      { key: "notice.confirmationLapsed", values: { kind: "send" } },
+    ]);
+  });
+
+  it("reads the name again after a restart during the wait, and pays once it answers", async () => {
+    const names = testNames();
+    names.set("alice.bnb", { address: testSaved.account });
+    const bench = await benchWith(names);
+    const intent = await tapped(bench, testSend({ name: "alice.bnb" }));
+    names.down();
+    await bench.release();
+    await driveUntil(bench, intent, { states: done, blocks: 2 });
+    const restarted = await restartBench(bench, { engine: { nameResolvers: [names] } });
+    names.up();
+    await restarted.executor.takeConfirmed(live);
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    expect([bench.signed.length, restarted.signed.length]).toStrictEqual([0, 1]);
   });
 
   it("signs nothing and waits while the name service does not answer, then goes on", async () => {
