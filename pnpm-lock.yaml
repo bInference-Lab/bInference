@@ -512,6 +512,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@binference/across':
+        specifier: workspace:*
+        version: link:../../plugins/across
       '@binference/brew':
         specifier: workspace:*
         version: link:../../plugins/brew
@@ -639,9 +642,6 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
     devDependencies:
-      '@binference/across':
-        specifier: workspace:*
-        version: link:../../plugins/across
       '@modelcontextprotocol/client':
         specifier: 'catalog:'
         version: 2.2.0
