@@ -15,6 +15,7 @@ export const testSaved: AddressEntryRecord = {
   id: idSchema("adr").parse("adr_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
   agentId: testAgent,
   account: accountRefSchema.parse("fake:1:0x000000f1"),
+  recipientBytes: "0x000000f1",
   label: "savings",
   usableAtMs: testNowMs - looseningWaitMs,
   inCeilingAtMs: testNowMs - 2 * looseningWaitMs,

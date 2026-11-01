@@ -95,6 +95,8 @@ export interface AddressBookTable {
   in_ceiling_at: number | null;
   created_at: number;
   removed_at: number | null;
+  /** The address's recipient bytes, in lowercase hex. */
+  recipient_bytes: string;
 }
 
 /** `meta`: the schema version, the install id and when the install began. */

@@ -12,6 +12,13 @@ export interface AddressEntryRecord {
   readonly agentId: Id<"agt">;
   /** The address on its chain, in the chain family's canonical form. */
   readonly account: AccountRef;
+  /**
+   * The address's recipient bytes, in lowercase hex after `0x`: what its family's address codec
+   * gave it when it was saved (decisions 0297 and 0298), which a bridge's recipient check compares
+   * a deposit's recipient with. Custody's ceilings take the CAIP-10 account and derive the same
+   * bytes through the same codec.
+   */
+  readonly recipientBytes: string;
   readonly label: string;
   /**
    * From when send level 2 lets a send pay it: 24 hours after the owner key saved it in the
@@ -28,6 +35,7 @@ export const addressEntryRecordSchema: z.ZodType<AddressEntryRecord> = z.strictO
   id: idSchema("adr"),
   agentId: idSchema("agt"),
   account: accountRefSchema,
+  recipientBytes: z.string().regex(/^0x(?:[0-9a-f]{2})+$/),
   label: shortTextSchema,
   usableAtMs: epochMsSchema,
   inCeilingAtMs: epochMsSchema.exactOptional(),

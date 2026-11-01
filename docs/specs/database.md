@@ -158,8 +158,10 @@ transaction. Each write checks `version`. A row in transit or late counts in the
 total at `value_usd_micros`.
 
 **Saved addresses on other chains.** `recipient_bytes` is the address codec's output for the
-entry's chain family, written when the entry is added and never recomputed; the ceiling's rule for
-the entry binds the same bytes and the chain's id together. Two entries of one agent never hold
+entry's chain family, written when the entry is added and never recomputed; a bridge's recipient
+check compares a deposit's recipient with it. The ceiling's rule for the entry binds the same
+bytes and the chain's id together: custody takes the entry's CAIP-10 account and derives them
+through the same codec ([decision 0313](../DECISIONS.md#d0313)). Two entries of one agent never hold
 the same chain and address, as the unique index says, while one address may be saved on several
 chains.
 

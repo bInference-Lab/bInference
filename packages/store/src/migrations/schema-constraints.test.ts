@@ -102,7 +102,7 @@ describe("the engine database's constraints", () => {
     const save = (id: string): void =>
       run(
         database,
-        "INSERT INTO address_book VALUES (?, ?, 'fake:1', '0xabc', 'cold', 1, NULL, 1, NULL)",
+        "INSERT INTO address_book VALUES (?, ?, 'fake:1', '0xabc', 'cold', 1, NULL, 1, NULL, '0x0abc')",
         id,
         agentId,
       );

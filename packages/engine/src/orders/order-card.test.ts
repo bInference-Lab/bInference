@@ -1,4 +1,4 @@
-import { accountRefSchema, assetRefSchema } from "@binference/chain";
+import { accountRefParts, accountRefSchema, assetRefSchema } from "@binference/chain";
 import { bpsSchema, err, type Id } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
@@ -111,6 +111,7 @@ describe("an auto order's card in English", () => {
       id: fixtureId("adr", 1),
       agentId: testAgent,
       account: testLeader,
+      recipientBytes: accountRefParts(testLeader).address.toLowerCase(),
       label: "Whale",
       usableAtMs: 0,
       createdAtMs: 0,

@@ -1,4 +1,10 @@
-import { type AccountRef, accountRefSchema, type ChainRegistry } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefParts,
+  accountRefSchema,
+  type ChainRegistry,
+  recipientHex,
+} from "@binference/chain";
 import {
   BinferenceError,
   createSecret,
@@ -88,6 +94,21 @@ async function savedEntry(
   return ok(addressEntryView(saved));
 }
 
+// The account's recipient bytes through its chain's family codec; the account is canonical already,
+// so a codec that refuses it is a fault.
+function recipientBytesOf(chains: ChainRegistry, account: AccountRef): string {
+  const { chain, address } = accountRefParts(account);
+  const registered = chains.get(chain);
+  const bytes = registered.ok ? registered.value.family.addressCodec.toBytes(address) : undefined;
+  if (bytes?.ok !== true) {
+    throw new BinferenceError({
+      code: "engine.address_unreadable",
+      message: "A saved address has no recipient bytes in its family's codec.",
+    });
+  }
+  return recipientHex(bytes.value);
+}
+
 async function storeEntry(
   options: AddAddressOptions,
   call: EngineCall<"address/add">,
@@ -98,6 +119,7 @@ async function storeEntry(
     id: options.ids.next("adr"),
     agentId: call.args.agent,
     account: saving.account,
+    recipientBytes: recipientBytesOf(options.chains, saving.account),
     label: call.args.label,
     usableAtMs: atMs + looseningWaitMs,
     inCeilingAtMs: atMs,

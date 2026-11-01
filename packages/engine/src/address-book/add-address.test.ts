@@ -113,6 +113,8 @@ describe("saving an address with the owner key", () => {
     expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner, cold]);
     expect(test.ceilings.recipients(otherWallet.policyId)).toStrictEqual([owner]);
     expect(await sendRefusals(test, cold)).toStrictEqual([]);
+    const stored = await test.stores.agents.get(testAgent, live);
+    expect(stored?.addressBook.map((item) => item.recipientBytes)).toStrictEqual(["0x000000f3"]);
     const listed = expectOk(
       await test.engine.handlers["address/list"](testCall({ agent: testAgent })),
     );

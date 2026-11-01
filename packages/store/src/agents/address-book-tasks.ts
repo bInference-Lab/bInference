@@ -20,6 +20,7 @@ function toAddressEntry(row: Selectable<AddressBookTable>): AddressEntryRecord {
     id: row.id,
     agentId: row.agent_id,
     account: accountRefSchema.parse(`${row.chain}:${row.address}`),
+    recipientBytes: row.recipient_bytes,
     label: row.label,
     usableAtMs: row.usable_at,
     ...field("inCeilingAtMs", row.in_ceiling_at),
@@ -99,6 +100,7 @@ export const addAddressTask: StoreTask<
         in_ceiling_at: entry.inCeilingAtMs ?? null,
         created_at: entry.createdAtMs,
         removed_at: null,
+        recipient_bytes: entry.recipientBytes,
       }),
     );
     return ok(entry);

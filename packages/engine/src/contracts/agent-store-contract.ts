@@ -201,6 +201,7 @@ function entry(n: number, address: string): AddressEntryRecord {
     id: fixtureId("adr", n),
     agentId: fixtureId("agt", 1),
     account: accountRefSchema.parse(`fake:1:${address}`),
+    recipientBytes: `0x0${address.slice(2)}`,
     label: `entry ${String(n)}`,
     usableAtMs: 90_000 + n,
     createdAtMs: 1_000 + n,

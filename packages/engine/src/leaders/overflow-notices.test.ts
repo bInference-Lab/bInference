@@ -35,6 +35,7 @@ async function cutWallets() {
     id: fixtureId("adr", 1),
     agentId: testAgent,
     account: accountOf(1),
+    recipientBytes: accountRefParts(accountOf(1)).address.toLowerCase(),
     label: "Whale",
   };
   await stores.agents.addAddress({ ...whale, usableAtMs: 0, createdAtMs: 0 }, live());

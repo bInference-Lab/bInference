@@ -1,4 +1,4 @@
-import { type AccountRef, accountRefSchema, type Amount } from "@binference/chain";
+import { type AccountRef, accountRefParts, accountRefSchema, type Amount } from "@binference/chain";
 import type { IntentRequest } from "@binference/protocol";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -59,6 +59,7 @@ function entryOf(entry: Entry, index: number): AddressEntryRecord {
     id: fixtureId("adr", index + 1),
     agentId: testAgent,
     account: entry.account,
+    recipientBytes: accountRefParts(entry.account).address.toLowerCase(),
     label: `entry ${String(index)}`,
     usableAtMs: entry.usableAtMs,
     ...(entry.isSaved ? { inCeilingAtMs: testNowMs - 1 } : {}),

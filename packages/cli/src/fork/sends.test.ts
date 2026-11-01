@@ -117,6 +117,7 @@ async function saveHolder(fork: Fork, rig: RescueRig): Promise<void> {
     id: idSchema("adr").parse("adr_0190f1c2-3a4b-7c5d-8e6f-000000000066"),
     agentId: agent,
     account: evmAccountRef(fork.chain, holder),
+    recipientBytes: holder.toLowerCase(),
     label: "alice",
     usableAtMs: atMs,
     inCeilingAtMs: atMs,

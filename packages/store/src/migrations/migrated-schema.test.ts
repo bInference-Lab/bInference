@@ -91,7 +91,8 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   approval_modes: names("agent_id mode changed_by_surface changed_at version"),
   send_levels: names("agent_id level pending_level pending_at changed_at version"),
   address_book: names(
-    "id agent_id chain address label usable_at in_ceiling_at created_at removed_at",
+    "id agent_id chain address label usable_at in_ceiling_at created_at removed_at " +
+      "recipient_bytes",
   ),
   wallets: names(
     "id agent_id family custody custody_wallet_id policy_id signer_id address label created_at " +
