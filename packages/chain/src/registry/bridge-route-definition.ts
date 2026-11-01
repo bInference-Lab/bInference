@@ -19,4 +19,10 @@ export interface BridgeRouteDefinition {
   readonly source: string;
   /** The day it was read, YYYY-MM-DD. */
   readonly checkedOn: string;
+  /**
+   * Set only on a route the bridge fills by a swap into another token, such as USDC arriving as
+   * USDG: the most the swap's rate may keep of the input less the bridge's fees, in basis points,
+   * a dollar counted as a dollar. Left out, the least output is exactly the input less the fees.
+   */
+  readonly swapCapBps?: number;
 }

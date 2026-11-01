@@ -1,4 +1,5 @@
 import type { AccountRef, Amount, AssetRef } from "@binference/chain";
+import type { Bps } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
 import { type CardPayee, payeeValue } from "./send-card-lines.js";
 
@@ -13,6 +14,8 @@ interface BridgeDetails {
   readonly isChecksumless: boolean;
   /** The token that arrives differs from the one sent, such as USDC arriving as USDG. */
   readonly otherToken?: { readonly sent: AssetRef; readonly received: AssetRef };
+  /** The share of the input less the fees a swap's rate keeps, on a route filled by a swap. */
+  readonly swapRateBps?: Bps;
 }
 
 /** A bridge's action and what shows under it: who it pays, on which chain, and in what time. */
@@ -43,8 +46,9 @@ export function bridgeActionLine(action: BridgeAction): CardLine {
 
 /**
  * The lines under a bridge's action line (spec 4, section 3.9): what the recipient receives at
- * least there, the bridge's fees and venue, that binference reads the destination chain, and,
- * for an address with no checksum, a line to check it whole.
+ * least there, the bridge's fees and venue, on a route filled by a swap the swap's rate
+ * (decision 0323), that binference reads the destination chain, and, for an address with no
+ * checksum, a line to check it whole.
  */
 export function bridgeDetailLines(action: BridgeAction): readonly CardLine[] {
   const { details } = action;
@@ -52,6 +56,15 @@ export function bridgeDetailLines(action: BridgeAction): readonly CardLine[] {
     return [];
   }
   const chain = text(action.chain);
+  const swapRate: readonly CardLine[] =
+    details.swapRateBps === undefined
+      ? []
+      : [
+          {
+            key: "card.bridge.swapRate",
+            values: { rate: { type: "percent", bps: details.swapRateBps } },
+          },
+        ];
   const lines: readonly CardLine[] = [
     {
       key: "card.bridge.arrives",
@@ -65,6 +78,7 @@ export function bridgeDetailLines(action: BridgeAction): readonly CardLine[] {
       key: "card.bridge.fees",
       values: { fees: { type: "amount", amount: details.fees }, venue: text(details.venue) },
     },
+    ...swapRate,
     { key: "card.bridge.read", values: { chain } },
   ];
   return details.isChecksumless ? [...lines, { key: "card.bridge.solana", values: {} }] : lines;

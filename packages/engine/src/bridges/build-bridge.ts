@@ -73,6 +73,7 @@ function quoteOf(
     minOut: quote.minOut,
     ...(quote.deliveredAsCoin === undefined ? {} : { deliveredAsCoin: quote.deliveredAsCoin }),
     fees: quote.fees,
+    ...(chosen.swapRateBps === undefined ? {} : { swapRateBps: chosen.swapRateBps }),
     etaSeconds: quote.etaSeconds,
     quotedAtMs: quote.quotedAtMs,
     expiresAtMs: quote.expiresAtMs,

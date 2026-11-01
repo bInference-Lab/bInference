@@ -52,6 +52,7 @@ function routeOf(route: (typeof bscBridgeRoutes)[number]): readonly BridgeRoute[
     leaves,
     arrives,
     decimals: { leaves: decimals.leaves, arrives: decimals.arrives },
+    ...(route.swapCapBps === undefined ? {} : { swapCapBps: route.swapCapBps }),
   };
   return route.arrives === `W${symbol}` ? [{ ...served, coin }] : [served];
 }

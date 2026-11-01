@@ -9,6 +9,7 @@ import {
   type BridgeFee,
   type BridgeFeeWire,
 } from "@binference/chain";
+import { type Bps, bpsSchema } from "@binference/core";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 import { type DocumentCodec, documentCodec } from "./intent-documents.schema.js";
@@ -29,8 +30,9 @@ interface BridgeDepositTerms {
  * chain's name, the amount sent,
  * who it pays on the destination chain and their recipient bytes, labeled as the address book or
  * the rescue address names them, what the route delivers there and at least how much, the coin a
- * fill may pay in its place, what the bridge keeps, how long it expects to take, when it quoted
- * and until when, and the deposit. A bridge keeps it in the intent's `quote` column, so the card's
+ * fill may pay in its place, what the bridge keeps, the share a swap's rate keeps on a route the
+ * bridge fills by a swap (decision 0323), how long it expects to take, when it quoted and until
+ * when, and the deposit. A bridge keeps it in the intent's `quote` column, so the card's
  * terms hash binds every part, and the wallet queue and the delivery read hold the bridge to it.
  */
 export interface BridgeIntentQuote {
@@ -46,6 +48,8 @@ export interface BridgeIntentQuote {
   readonly minOut: Amount;
   readonly deliveredAsCoin?: AssetRef;
   readonly fees: readonly BridgeFee[];
+  /** The share of the input less the fees a swap's rate keeps, on a route filled by a swap. */
+  readonly swapRateBps?: Bps;
   readonly etaSeconds: number;
   readonly quotedAtMs: number;
   readonly expiresAtMs: number;
@@ -65,6 +69,7 @@ interface BridgeIntentQuoteWire {
   readonly minOut: AmountWire;
   readonly deliveredAsCoin?: string;
   readonly fees: readonly BridgeFeeWire[];
+  readonly swapRateBps?: number;
   readonly etaSeconds: number;
   readonly quotedAtMs: number;
   readonly expiresAtMs: number;
@@ -93,6 +98,7 @@ const bridgeIntentQuoteSchema: z.ZodType<BridgeIntentQuote, BridgeIntentQuoteWir
     minOut: amountSchema,
     deliveredAsCoin: assetRefSchema.exactOptional(),
     fees: z.array(feeSchema).max(8),
+    swapRateBps: bpsSchema.exactOptional(),
     etaSeconds: z.int().nonnegative(),
     quotedAtMs: epochMsSchema,
     expiresAtMs: epochMsSchema,

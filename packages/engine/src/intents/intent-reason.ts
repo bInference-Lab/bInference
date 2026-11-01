@@ -73,7 +73,8 @@ export type RiskReason = (typeof riskReasons)[number];
  * `spender_unlisted` an approval revoke whose spender the chain registry does not list, so no
  * approval binference makes can name it (decision 0309). A bridge whose routes all answered no
  * route ends `bridge_no_route`, `amount_too_low`, `amount_too_high` or `bridge_liquidity`
- * (decision 0319); one whose rescue address holds code on either chain `rescue_not_plain`, whose
+ * (decision 0319), and one whose only quotes keep more than their route's cap by a swap's rate
+ * `swap_rate` (decision 0323); one whose rescue address holds code on either chain `rescue_not_plain`, whose
  * entry is a token's contract or an account no wallet spends from `recipient_not_wallet`, and one
  * whose payee's code could not be read `recipient_unread` (decision 0318); one whose wallet's
  * ceiling lists the rescue address on its own chain only `rescue_unpaid`, one to a chain no bridge
@@ -111,6 +112,7 @@ export const checkReasons = [
   "amount_too_low",
   "amount_too_high",
   "bridge_liquidity",
+  "swap_rate",
   "rescue_not_plain",
   "recipient_not_wallet",
   "recipient_unread",

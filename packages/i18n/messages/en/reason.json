@@ -53,6 +53,7 @@
   "amount_too_low": "the amount is below what the bridge takes on this route, so nothing was sent; bridge a larger amount",
   "amount_too_high": "the amount is above what the bridge takes on this route, so nothing was sent; bridge a smaller amount",
   "bridge_liquidity": "the bridge's relayers hold too little to fill this amount now, so nothing was sent; try a smaller amount or try again later",
+  "swap_rate": "the bridge swaps into the token that arrives at a rate that keeps more than the 0.5% binference allows, so nothing was sent; try again later",
   "rescue_not_plain": "your rescue address holds code on {chain} or on this wallet's chain, so the same address on {chain} may not be yours and nothing was sent; save an address you control on {chain} in the address book with your owner key, then bridge to that entry",
   "recipient_not_wallet": "the address is a token's own contract or an account no wallet spends from, so nothing was sent; remove it from the address book and save a wallet's address",
   "recipient_unread": "binference could not read the address on chain, so nothing was sent; try again",

@@ -209,8 +209,10 @@ block), each from its launchpad's quote before any upload
 address holds code on either chain), `recipient_not_wallet` (an entry a read finds to be a token's
 own contract, a program or a token account) and `recipient_unread` (a read of its payee that
 failed) ([decision 0318](../DECISIONS.md#d0318)), then `bridge_no_route`, `amount_too_low`,
-`amount_too_high` or `bridge_liquidity` when no route answers, `price_impact` when every quote keeps
-more than the agent's slippage limit, and `decode_mismatch` for a deposit that differs from its
+`amount_too_high` or `bridge_liquidity` when no route answers, `swap_rate` when every quote on a
+route filled by a swap keeps more than the route's cap by the swap's rate
+([decision 0323](../DECISIONS.md#d0323)), `price_impact` when every quote keeps more than the
+agent's slippage limit, and `decode_mismatch` for a deposit that differs from its
 plan ([decision 0319](../DECISIONS.md#d0319)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization

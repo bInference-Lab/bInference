@@ -9,13 +9,14 @@ import {
   type NoBridgeRoute,
   type RegisteredChain,
 } from "@binference/chain";
-import { bpsPerWhole, type Clock, err, ok, type Result } from "@binference/core";
+import { type Bps, bpsPerWhole, type Clock, err, ok, type Result } from "@binference/core";
 import type { CeilingEditor } from "../install/ports.js";
 import type { QuoteFailure } from "../intents/intent-reason.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { callVenue, ownCopy } from "../venues/call-venue.js";
 import type { BridgeCandidate } from "./bridge-routes.js";
 import type { ResolvedBridge } from "./resolve-bridge.js";
+import { swapRateOf } from "./swap-rate.js";
 
 /** What a bridge's quotes run on. */
 export interface BridgeQuoteParts {
@@ -23,11 +24,15 @@ export interface BridgeQuoteParts {
   readonly clock: Clock;
 }
 
-/** The route a bridge takes: its candidate, what it asked, and the quote it gave. */
+/**
+ * The route a bridge takes: its candidate, what it asked, the quote it gave, and on a route the
+ * bridge fills by a swap, the share the swap's rate keeps, in basis points.
+ */
 export interface ChosenBridge {
   readonly candidate: BridgeCandidate;
   readonly request: BridgeQuoteRequest;
   readonly quote: BridgeQuote;
+  readonly swapRateBps?: Bps;
 }
 
 // Each venue answers within this, or counts as down (decision 0319).
@@ -120,12 +125,26 @@ async function quoteOne(
     quote.minOut.asset === candidate.route.arrives &&
     quote.fees.every((fee) => fee.amount.asset === bridge.amount.asset) &&
     quote.expiresAtMs > parts.clock.now();
-  if (!isAsked) {
-    return err("venue_down");
+  return isAsked ? judged(bridge, { candidate, request, quote }) : err("venue_down");
+}
+
+// A quote the route's own swap cap or the agent's slippage limit refuses, else the route: on a
+// route the bridge fills by a swap, the swap's rate is worked out here from the quote and held to
+// the route's cap before the floor (decision 0323).
+function judged(bridge: ResolvedBridge, chosen: ChosenBridge): Quoted {
+  const { candidate, quote } = chosen;
+  const cap = candidate.route.swapCapBps;
+  const swapRateBps =
+    cap === undefined
+      ? undefined
+      : swapRateOf({ ...quote, amount: bridge.amount, decimals: candidate.route.decimals });
+  if (cap !== undefined && swapRateBps !== undefined && swapRateBps > cap) {
+    return err("swap_rate");
   }
-  return quote.minOut.base < floorOf(bridge, candidate)
-    ? err("price_impact")
-    : ok({ candidate, request, quote });
+  if (quote.minOut.base < floorOf(bridge, candidate)) {
+    return err("price_impact");
+  }
+  return ok(swapRateBps === undefined ? chosen : { ...chosen, swapRateBps });
 }
 
 function weightOf(chosen: ChosenBridge): bigint {
@@ -135,9 +154,11 @@ function weightOf(chosen: ChosenBridge): bigint {
   );
 }
 
-// Which reason wins when routes refused for different ones: a route that answered below the floor,
-// then the route's own limits, then a venue that did not answer, before no route at all.
+// Which reason wins when routes refused for different ones: a route whose swap kept more than its
+// cap, one that answered below the floor, then the route's own limits, then a venue that did not
+// answer, before no route at all.
 const reasonOrder: readonly QuoteFailure[] = [
+  "swap_rate",
   "price_impact",
   "amount_too_low",
   "amount_too_high",
@@ -157,12 +178,14 @@ function reasonOf(refusals: readonly QuoteFailure[]): QuoteFailure {
 
 /**
  * Quotes every route the bridge's wallet may take at once, each venue within 3 seconds, and takes
- * the best least output at the delivered token's decimals (decision 0319). A quote whose least
+ * the best least output at the delivered token's decimals (decision 0319). On a route the bridge
+ * fills by a swap, a quote whose swap rate keeps more than the route's cap is not taken
+ * (`swap_rate`, decision 0323). A quote whose least
  * output is below the amount sent less the agent's slippage limit is not taken (`price_impact`); a
  * venue that throws, runs out of time or answers a quote for another token, one with a fee in
  * another asset than the one sent, or one already expired is `venue_down`; a route a bridge does
  * not serve now gives its typed reason. With no route left, the reason every route gave, else
- * `price_impact`, then the amount and liquidity reasons, then `venue_down`, before
+ * `swap_rate`, `price_impact`, then the amount and liquidity reasons, then `venue_down`, before
  * `bridge_no_route`.
  */
 export async function chooseBridge(

@@ -58,6 +58,7 @@ function bridgeAction(quote: BridgeIntentQuote, source: CardSource): CardAction<
       venue,
       isChecksumless: quote.recipientBytes.length === checksumlessHexLength,
       ...(otherToken === undefined ? {} : { otherToken }),
+      ...(quote.swapRateBps === undefined ? {} : { swapRateBps: quote.swapRateBps }),
     },
   };
 }
@@ -66,8 +67,8 @@ function bridgeAction(quote: BridgeIntentQuote, source: CardSource): CardAction<
  * The facts of a bridge's card (spec 4, sections 3.3 and 3.9), from its quote, which the card's
  * terms hash covers: the amount, the destination chain and the address it pays, labeled as the
  * address book or the rescue address names it, the minutes the bridge expects, the least the
- * recipient receives, the bridge's fees and venue, a line for an address with no checksum and a
- * warning for another token on arrival; then the bridge wallet it runs from and the agent's reason.
+ * recipient receives, the bridge's fees and venue, the swap's rate on a route filled by a swap,
+ * a line for an address with no checksum and a warning for another token on arrival; then the bridge wallet it runs from and the agent's reason.
  */
 export function bridgeCardFacts(
   quote: BridgeIntentQuote,

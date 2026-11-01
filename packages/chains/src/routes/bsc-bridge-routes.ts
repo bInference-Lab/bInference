@@ -2,11 +2,12 @@ import type { BridgeRouteDefinition } from "@binference/chain";
 
 type Route = readonly [leaves: string, to: string, arrives: string];
 
-/** Where a list of routes was read: the bridge, its endpoint and the day. */
+/** Where a list of routes was read: the bridge, its endpoint and the day, and a swap's cap. */
 interface RouteSource {
   readonly venue: string;
   readonly source: string;
   readonly checkedOn: string;
+  readonly swapCapBps?: number;
 }
 
 function routesOf(from: RouteSource, rows: readonly Route[]): BridgeRouteDefinition[] {
@@ -23,7 +24,13 @@ const relayChains: RouteSource = {
   source: "https://api.relay.link/chains",
   checkedOn: "2026-10-30",
 };
-const relayQuote: RouteSource = { ...relayChains, source: "https://api.relay.link/quote/v2" };
+// Relay fills USDG on Robinhood Chain by a swap, whose rate may keep at most 0.5% of the input
+// less Relay's fees (the owner's cap of 2026-11-01, decision 0323).
+const relayQuote: RouteSource = {
+  ...relayChains,
+  source: "https://api.relay.link/quote/v2",
+  swapCapBps: 50,
+};
 
 // Across: the direct routes its available-routes endpoint lists from BSC, each to a registry
 // token. Its Swap API reaches Robinhood Chain's USDG only through a swap into ETH on BSC and one

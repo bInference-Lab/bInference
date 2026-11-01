@@ -162,6 +162,7 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   amount_too_low: "quote.no_route",
   amount_too_high: "quote.no_route",
   bridge_liquidity: "quote.no_route",
+  swap_rate: "quote.no_route",
   rescue_not_plain: "quote.no_route",
   recipient_not_wallet: "quote.no_route",
   recipient_unread: "chain.rpc_down",

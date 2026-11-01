@@ -27,6 +27,7 @@ export const cardKeys = [
   "card.bridge.arrives",
   "card.bridge.otherToken",
   "card.bridge.fees",
+  "card.bridge.swapRate",
   "card.bridge.solana",
   "card.bridge.read",
   "card.cex.action",

@@ -18,6 +18,7 @@
   "bridge.arrives": "{recipient} 在 {chain} 至少收到 {minOut}",
   "bridge.otherToken": "⚠️ {sent} 在 {chain} 以另一种代币 {received} 到账",
   "bridge.fees": "跨链费用 {fees} · 通过 {venue}",
+  "bridge.swapRate": "兑换汇率：{rate}",
   "bridge.solana": "Solana 地址没有校验码：请逐字核对",
   "bridge.read": "binference 会读取 {chain} 确认到账，延迟时会通知你",
   "cex.action": "Binance {side, select, buy {买入} other {卖出}} {size} {market}，价格 {price}",

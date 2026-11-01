@@ -36,6 +36,16 @@ describe("the bridge routes from BSC", () => {
     },
   );
 
+  it("caps a swap's rate at 50 basis points on Relay's swaps into USDG alone", () => {
+    const capped = bscBridgeRoutes
+      .filter((route) => route.swapCapBps !== undefined)
+      .map(({ venue, leaves, arrives, swapCapBps }) => [venue, leaves, arrives, swapCapBps]);
+    expect(capped).toStrictEqual([
+      ["relay", "USDC", "USDG", 50],
+      ["relay", "USDT", "USDG", 50],
+    ]);
+  });
+
   it("lists each route once", () => {
     const keys = bscBridgeRoutes.map(
       ({ venue, leaves, to, arrives }) => `${venue} ${leaves} ${to} ${arrives}`,

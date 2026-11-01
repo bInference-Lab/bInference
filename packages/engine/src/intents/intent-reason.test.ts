@@ -76,6 +76,7 @@ describe("intent reasons", () => {
       "amount_too_low",
       "amount_too_high",
       "bridge_liquidity",
+      "swap_rate",
       "rescue_not_plain",
       "recipient_not_wallet",
       "recipient_unread",
@@ -109,7 +110,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(71);
+    expect(intentReasons).toHaveLength(72);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {
