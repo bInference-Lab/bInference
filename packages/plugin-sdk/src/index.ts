@@ -79,6 +79,7 @@ export type {
   TxBuilder,
   TxDecoder,
   TxDraft,
+  TxHash,
   TxSimulator,
   UploadingLauncher,
   UsdPrice,
@@ -96,7 +97,9 @@ export {
   assetRefParts,
   assetRefSchema,
   candleIntervals,
+  chainRefParts,
   chainRefSchema,
+  isTxHash,
   orderedFlags,
   writtenWordsOf,
 } from "@binference/chain";
