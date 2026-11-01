@@ -59,6 +59,8 @@ describe("a call to a contract whose functions the venues declare", () => {
     ["Across's fillRelay, which pays from the wallet's allowance", "deff4b24"],
     ["Relay's depositErc20 with no amount", "5a1ee3ac"],
     ["StakeHub's redelegate", "59491871"],
+    ["StakeHub's claimBatch", "d7c2dfc8"],
+    ["StakeHub's syncGovToken, which names another account", "baa7199e"],
     ["Lista's claimWithdrawFor, which pays another user", "9a53d5af"],
   ])("refuses %s on a contract that declares other functions, as rule 2", (_case, selector) => {
     expect(brokenHardRules(callWith(selector), context)).toStrictEqual([2]);
