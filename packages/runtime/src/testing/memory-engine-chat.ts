@@ -6,8 +6,8 @@ import type {
   InboxWatch,
   RecordedUsage,
   TurnStartAnswer,
-} from "../relay/engine-chat-records.js";
-import type { EngineChat } from "../relay/ports.js";
+} from "../engine-chat/engine-chat-records.js";
+import type { EngineChat } from "../engine-chat/ports.js";
 import { nthTestId } from "./memory-agent-stores.js";
 import { waitForPush } from "./wait-for-push.js";
 

@@ -1,6 +1,6 @@
 import type { EngineView } from "../contracts/turn-engine-contract.js";
 import type { JournalEntry, JournalView } from "../contracts/turn-journal-contract.js";
-import { statusKeysOf } from "../relay/status-keys.js";
+import { statusKeysOf } from "../engine-chat/status-keys.js";
 import type { RecordedStep } from "./turn-recorder.js";
 
 function entryOf(step: RecordedStep): readonly JournalEntry[] {

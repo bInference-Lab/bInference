@@ -1,7 +1,7 @@
 import type { Id } from "@binference/core";
 import { type LiveFactsView, liveFactsViewSchema, type WorkspaceFile } from "@binference/protocol";
-import type { ContextSource } from "../relay/ports.js";
-import type { SkillIndexEntry } from "../relay/skill-index-entry.js";
+import type { ContextSource } from "../engine-chat/ports.js";
+import type { SkillIndexEntry } from "../engine-chat/skill-index-entry.js";
 
 /** A {@link ContextSource} held in memory, which a test edits as the owner would. */
 export interface MemoryContextSource extends ContextSource {

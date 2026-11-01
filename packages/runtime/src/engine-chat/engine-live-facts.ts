@@ -7,7 +7,7 @@ import type { ContextSource } from "./ports.js";
  * not answer is `undefined`, so the turn goes on without the facts (decision 0201); an aborted
  * signal rejects with its reason.
  */
-export function createRelayLiveFacts(source: ContextSource, agent: Id<"agt">): LiveFactsReader {
+export function createEngineLiveFacts(source: ContextSource, agent: Id<"agt">): LiveFactsReader {
   return {
     async read(signal) {
       try {

@@ -2,16 +2,16 @@ import { describe, expect, it } from "vitest";
 import { liveFactsReaderContract } from "../contracts/live-facts-reader-contract.js";
 import { nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryContextSource } from "../testing/memory-context-source.js";
-import { createRelayLiveFacts } from "./relay-live-facts.js";
+import { createEngineLiveFacts } from "./engine-live-facts.js";
 
 const agent = nthTestId("agt", 1);
 
-describe("createRelayLiveFacts", () => {
+describe("createEngineLiveFacts", () => {
   it.each(
     liveFactsReaderContract({
       create: async () => {
         const source = createMemoryContextSource({ agents: [agent] });
-        const reader = createRelayLiveFacts(source, agent);
+        const reader = createEngineLiveFacts(source, agent);
         return await Promise.resolve({ reader, agent, goDown: () => source.link("down") });
       },
     }),

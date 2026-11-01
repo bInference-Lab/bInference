@@ -1,7 +1,7 @@
 import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
 import type { Locale } from "@binference/protocol";
-import { createRelayLiveFacts } from "../relay/relay-live-facts.js";
+import { createEngineLiveFacts } from "../engine-chat/engine-live-facts.js";
 import { messagesOf, type StoredHistory } from "../sessions/conversation.js";
 import { nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryContextSource } from "../testing/memory-context-source.js";
@@ -158,7 +158,7 @@ function testParts(
     // A paper agent's live facts, read at the turn's clock.
     facts:
       options.facts ??
-      createRelayLiveFacts(createMemoryContextSource({ now: () => clock.now() }), testAgent),
+      createEngineLiveFacts(createMemoryContextSource({ now: () => clock.now() }), testAgent),
     clock,
     ...imagePartsOf(options, clock),
   };

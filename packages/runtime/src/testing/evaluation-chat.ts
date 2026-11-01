@@ -3,9 +3,9 @@ import type { InboxMessageView, IntentView, Locale } from "@binference/protocol"
 import type { TranscriptEvent } from "@binference/store";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import { agentInstructions } from "../context/agent-instructions.js";
+import type { ContextSource, OwnerImageReader } from "../engine-chat/ports.js";
 import type { ModelChain } from "../loop/ports.js";
 import { turnLimits } from "../loop/turn-run.js";
-import type { ContextSource, OwnerImageReader } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import { agentToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";

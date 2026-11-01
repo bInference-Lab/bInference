@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import type { ContextSource } from "../relay/ports.js";
-import type { SkillIndexEntry } from "../relay/skill-index-entry.js";
+import type { ContextSource } from "../engine-chat/ports.js";
+import type { SkillIndexEntry } from "../engine-chat/skill-index-entry.js";
 
 /**
  * An engine with one agent whose `RULES.md` holds `rules`, that has no `NOTES.md`, and whose

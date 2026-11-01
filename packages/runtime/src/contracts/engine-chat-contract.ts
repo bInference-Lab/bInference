@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { InboxMessageView } from "@binference/protocol";
-import type { EngineChat } from "../relay/ports.js";
+import type { EngineChat } from "../engine-chat/ports.js";
 
 /** An engine with one active agent, the runtime's side of its chat, and the owner's side. */
 export interface EngineChatSubject {

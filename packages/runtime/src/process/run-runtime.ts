@@ -14,8 +14,8 @@ import {
 } from "../control/control-line.schema.js";
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
+import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
 import { answerNoteRoute, isNoteRoute, type NoteRouteParts } from "../notes/note-routes.js";
-import type { ContextSource, EngineChat, OwnerImageReader } from "../relay/ports.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";

@@ -1,13 +1,13 @@
 import { err, type Id, idSchema, ok } from "@binference/core";
 import type { QueuedMessage } from "@binference/store";
 import { readTurnPrefix } from "../context/turn-prefix.js";
+import type { TurnStartAnswer } from "../engine-chat/engine-chat-records.js";
+import { createEngineLiveFacts } from "../engine-chat/engine-live-facts.js";
+import { createEngineTurnEngine } from "../engine-chat/engine-turn-engine.js";
 import { createChatTurn, type TurnReport } from "../loop/chat-turn.js";
 import type { OwnerMessage } from "../loop/model-message.js";
 import type { ReadImage } from "../loop/turn-records.js";
 import type { TurnParts } from "../loop/turn-run.js";
-import type { TurnStartAnswer } from "../relay/engine-chat-records.js";
-import { createRelayLiveFacts } from "../relay/relay-live-facts.js";
-import { createRelayTurnEngine } from "../relay/relay-turn-engine.js";
 import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
@@ -251,7 +251,7 @@ function turnPartsOf(
 ): TurnParts {
   const { stores, clock } = context;
   const { place, setup, taken, owners, refusals } = turn;
-  const engine = createRelayTurnEngine({
+  const engine = createEngineTurnEngine({
     chat: context.engine,
     stores,
     place,
@@ -265,7 +265,7 @@ function turnPartsOf(
     journal: createSessionJournal(stores, place, clock),
     engine,
     merge: mergeOf(context, place),
-    facts: createRelayLiveFacts(context.turnContext, place.agent),
+    facts: createEngineLiveFacts(context.turnContext, place.agent),
     clock,
     ...imagePartsOf(context, { agent: place.agent, setup, taken }),
   };

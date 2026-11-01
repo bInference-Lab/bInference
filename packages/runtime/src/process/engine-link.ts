@@ -3,9 +3,9 @@ import { createProtocolClient, type ProtocolClientOptions } from "@binference/cl
 import { operations } from "@binference/protocol";
 import { WebSocket } from "ws";
 import type { StartLine } from "../control/control-line.schema.js";
-import { createProtocolContextSource } from "../relay/protocol-context-source.js";
-import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
-import { createProtocolImageReader } from "../relay/protocol-image-reader.js";
+import { createProtocolContextSource } from "../engine-chat/protocol-context-source.js";
+import { createProtocolEngineChat } from "../engine-chat/protocol-engine-chat.js";
+import { createProtocolImageReader } from "../engine-chat/protocol-image-reader.js";
 import type { EngineLink } from "./run-runtime.js";
 
 type ClientPorts = Pick<ProtocolClientOptions, "clock" | "random" | "logger">;

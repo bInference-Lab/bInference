@@ -159,7 +159,7 @@ most 4 in the install, taking its open session's waiting messages, oldest first 
 `merge` mode (`chats.newMessageMode`) a message that arrives during a turn joins it at its next
 merge point; in `after` mode, and after a committed batch, it starts the next turn.
 
-`src/relay/` reaches the engine's side of chat through the `EngineChat` port, bound to the
+`src/engine-chat/` reaches the engine's side of chat through the `EngineChat` port, bound to the
 protocol client: the `inbox` topic, `inbox/list`, `inbox/take` and the `turn/*` operations, with a
 turn's status line sent as spec 4's keys.
 

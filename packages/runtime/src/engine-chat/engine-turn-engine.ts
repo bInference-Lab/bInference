@@ -10,7 +10,7 @@ import type { EngineChat } from "./ports.js";
 import { statusKeysOf } from "./status-keys.js";
 
 /** What the engine's side of one turn works with. */
-export interface RelayTurnOptions {
+export interface EngineTurnOptions {
   readonly chat: EngineChat;
   readonly stores: AgentStores;
   readonly place: TurnPlace;
@@ -26,7 +26,7 @@ const messageId = idSchema("msg");
 // Once the engine started the turn (runtime spec, section 11): the turn's row with the messages it
 // took, then those messages as the owner's events. A message a turn took before is not taken again.
 async function recordStart(
-  options: RelayTurnOptions,
+  options: EngineTurnOptions,
   request: TurnStartRequest,
   signal: AbortSignal,
 ): Promise<void> {
@@ -60,7 +60,7 @@ async function recordStart(
  * `turn/end`. A start the engine refuses answers the refusal, after the paused status line for a
  * spent budget; one it cannot answer, or whose row is not written, rejects.
  */
-export function createRelayTurnEngine(options: RelayTurnOptions): TurnEngine {
+export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
   const { chat, place } = options;
   const at = { agent: place.agent, turn: place.turn };
   const status: TurnEngine["status"] = async (line, signal) => {

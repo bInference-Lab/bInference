@@ -1,7 +1,7 @@
 import type { Id } from "@binference/core";
 import { type WorkspaceFile, workspaceFiles } from "@binference/protocol";
-import type { ContextSource } from "../relay/ports.js";
-import type { SkillIndexEntry } from "../relay/skill-index-entry.js";
+import type { ContextSource } from "../engine-chat/ports.js";
+import type { SkillIndexEntry } from "../engine-chat/skill-index-entry.js";
 
 /** The most characters of one workspace file the prefix holds (runtime spec, section 7.2). */
 export const fileMaxChars = 12_000;

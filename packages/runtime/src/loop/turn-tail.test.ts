@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createRelayLiveFacts } from "../relay/relay-live-facts.js";
+import { createEngineLiveFacts } from "../engine-chat/engine-live-facts.js";
 import { nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryContextSource } from "../testing/memory-context-source.js";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
@@ -13,7 +13,7 @@ describe("the volatile tail of a turn", () => {
   it("follows the history on every call, read again only after a batch that wrote", async () => {
     const source = createMemoryContextSource();
     const reads: number[] = [];
-    const facts = createRelayLiveFacts(source, agent);
+    const facts = createEngineLiveFacts(source, agent);
     const counted = {
       read: async (signal: AbortSignal) => {
         const read = await facts.read(signal);
@@ -45,7 +45,7 @@ describe("the volatile tail of a turn", () => {
     source.link("down");
     const { turn, transport } = createTestTurn({
       replies: [textReply("Hi.")],
-      facts: createRelayLiveFacts(source, agent),
+      facts: createEngineLiveFacts(source, agent),
     });
     await expect(turn.run()).resolves.toMatchObject({ state: "ended", outcome: "ok" });
     expect(transport.requests[0]?.tail).toContain("- The live facts could not be read now.");

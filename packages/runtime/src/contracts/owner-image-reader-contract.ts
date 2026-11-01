@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { ImageContentType } from "@binference/protocol";
-import type { OwnerImageReader } from "../relay/ports.js";
+import type { OwnerImageReader } from "../engine-chat/ports.js";
 
 /** An image reader under test, an agent's message, and three images it names. */
 export interface OwnerImageReaderSubject {

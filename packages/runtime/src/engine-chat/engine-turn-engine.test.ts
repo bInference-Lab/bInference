@@ -4,7 +4,7 @@ import { type EngineView, turnEngineContract } from "../contracts/turn-engine-co
 import type { AgentStores } from "../sessions/agent-stores.js";
 import { createMemoryAgentStores, nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "../testing/memory-engine-chat.js";
-import { createRelayTurnEngine } from "./relay-turn-engine.js";
+import { createEngineTurnEngine } from "./engine-turn-engine.js";
 
 const agent = nthTestId("agt", 1);
 const live = (): AbortSignal => new AbortController().signal;
@@ -47,22 +47,22 @@ async function subject(refuse: "archived" | "not_found" | undefined) {
   const message = await posted(engine, stores);
   const place = { agent, session: message.session, turn: message.turn };
   const taken = [{ id: message.message, text: "hello", outside: false }];
-  const relay = createRelayTurnEngine({
+  const turns = createEngineTurnEngine({
     chat: engine,
     stores,
     place,
     taken,
     clock: createManualClock(5),
   });
-  return { engine, stores, message, relay };
+  return { engine, stores, message, turns };
 }
 
-describe("createRelayTurnEngine", () => {
+describe("createEngineTurnEngine", () => {
   it.each(
     turnEngineContract({
       create: async ({ refuse }) => {
-        const { engine, message, relay } = await subject(refuse);
-        return { engine: relay, messages: [message.message], read: async () => viewOf(engine) };
+        const { engine, message, turns } = await subject(refuse);
+        return { engine: turns, messages: [message.message], read: async () => viewOf(engine) };
       },
     }),
   )("keeps the engine contract: $name", async ({ run }) => {
@@ -70,8 +70,8 @@ describe("createRelayTurnEngine", () => {
   });
 
   it("writes the turn's row, takes its messages and keeps them once the engine started it", async () => {
-    const { stores, message, relay } = await subject(undefined);
-    await relay.start({ messages: [message.message], outsideContent: true }, live());
+    const { stores, message, turns } = await subject(undefined);
+    await turns.start({ messages: [message.message], outsideContent: true }, live());
     await expect(stores.sessions.turn(message.turn, { signal: live() })).resolves.toMatchObject({
       sessionId: message.session,
       outsideContent: true,
@@ -95,8 +95,8 @@ describe("createRelayTurnEngine", () => {
     engine.refuse(agent, { started: false, refusal: "budget", resumesAt: 9 });
     const place = { agent, session: message.session, turn: message.turn };
     const clock = createManualClock(5);
-    const relay = createRelayTurnEngine({ chat: engine, stores, place, taken: [], clock });
-    await relay.start({ messages: [message.message], outsideContent: false }, live());
+    const turns = createEngineTurnEngine({ chat: engine, stores, place, taken: [], clock });
+    await turns.start({ messages: [message.message], outsideContent: false }, live());
 
     expect(engine.pushes.filter(({ kind }) => kind === "chat/status")).toStrictEqual([
       {
@@ -114,8 +114,8 @@ describe("createRelayTurnEngine", () => {
     engine.refuse(agent, { started: false, refusal: "frozen" });
     const place = { agent, session: message.session, turn: message.turn };
     const clock = createManualClock(5);
-    const relay = createRelayTurnEngine({ chat: engine, stores, place, taken: [], clock });
-    await relay.start({ messages: [message.message], outsideContent: false }, live());
+    const turns = createEngineTurnEngine({ chat: engine, stores, place, taken: [], clock });
+    await turns.start({ messages: [message.message], outsideContent: false }, live());
 
     expect(engine.pushes.filter(({ kind }) => kind === "chat/status")).toStrictEqual([]);
   });
@@ -125,7 +125,7 @@ describe("createRelayTurnEngine", () => {
     engine.refuse(agent, { started: false, refusal: "budget", resumesAt: 9 });
     const heard: unknown[] = [];
     const place = { agent, session: message.session, turn: message.turn };
-    const relay = createRelayTurnEngine({
+    const turns = createEngineTurnEngine({
       chat: engine,
       stores,
       place,
@@ -134,7 +134,7 @@ describe("createRelayTurnEngine", () => {
       onRefused: (refusal) => heard.push(refusal),
     });
     await expect(
-      relay.start({ messages: [message.message], outsideContent: false }, live()),
+      turns.start({ messages: [message.message], outsideContent: false }, live()),
     ).resolves.toStrictEqual({
       ok: false,
       error: "budget",

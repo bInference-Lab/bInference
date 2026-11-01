@@ -1,8 +1,8 @@
 import type { Clock } from "@binference/core";
 import type { TurnCompaction } from "../compaction/turn-history.js";
+import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
 import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
-import type { ContextSource, EngineChat, OwnerImageReader } from "../relay/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { AgentChats } from "./agent-chats.js";

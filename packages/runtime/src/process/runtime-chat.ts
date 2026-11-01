@@ -2,7 +2,7 @@ import type { Clock } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
-import type { ContextSource, EngineChat, OwnerImageReader } from "../relay/ports.js";
+import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import { type RepairedTurn, repairUnfinishedTurns } from "../sessions/repair-turns.js";
 import type { TurnPlace } from "../sessions/turn-place.js";

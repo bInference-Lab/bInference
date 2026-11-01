@@ -12,14 +12,14 @@ import {
 } from "@binference/store/testing";
 import type { StartLine } from "../control/control-line.schema.js";
 import type { RuntimeModelPrice, RuntimeSettings } from "../control/runtime-settings.schema.js";
+import type { ContextSource } from "../engine-chat/ports.js";
+import { createProtocolContextSource } from "../engine-chat/protocol-context-source.js";
+import { createProtocolEngineChat } from "../engine-chat/protocol-engine-chat.js";
+import { createProtocolImageReader } from "../engine-chat/protocol-image-reader.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
 import { type EngineLink, type RuntimeHost, runRuntime } from "../process/run-runtime.js";
-import type { ContextSource } from "../relay/ports.js";
-import { createProtocolContextSource } from "../relay/protocol-context-source.js";
-import { createProtocolEngineChat } from "../relay/protocol-engine-chat.js";
-import { createProtocolImageReader } from "../relay/protocol-image-reader.js";
 import { agentToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
