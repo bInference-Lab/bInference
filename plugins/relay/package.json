@@ -28,5 +28,8 @@
     "@solana/kit": "catalog:",
     "viem": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@binference/chain-evm": "workspace:*"
   }
 }
