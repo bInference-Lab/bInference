@@ -59,7 +59,11 @@ describe("the input checks a route's venues declare", () => {
         equal: {},
         empty: ["message"],
         atLeast: {},
-        bridge: { recipient: "recipient", destinationChain: "destinationChainId" },
+        bridge: {
+          recipient: "recipient",
+          destinationChain: "destinationChainId",
+          minOut: "outputAmount",
+        },
       },
     ]);
   });

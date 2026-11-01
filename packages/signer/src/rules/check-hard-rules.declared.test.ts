@@ -125,7 +125,11 @@ const depositWith = (check: CallInputCheck): AuthorizeInput => ({
 });
 
 describe("a bridge deposit whose check the engine marks", () => {
-  const mark = { recipient: "recipient", destinationChain: "destinationChainId" };
+  const mark = {
+    recipient: "recipient",
+    destinationChain: "destinationChainId",
+    minOut: "outputAmount",
+  };
   const depositCheck: CallInputCheck = {
     abi: bridgeDepositAbi,
     wallet: ["depositor"],
@@ -143,6 +147,10 @@ describe("a bridge deposit whose check the engine marks", () => {
     ["no recipient", { ...depositCheck, equal: { destinationChainId: "8453" } }],
     ["no destination chain", { ...depositCheck, equal: { recipient: saved } }],
     ["no least output", { ...depositCheck, atLeast: {} }],
+    [
+      "a least amount on another input than the declared least output",
+      { ...depositCheck, atLeast: { destinationChainId: "1" } },
+    ],
     [
       "nothing from a plan, as the engine sends it today",
       { ...depositCheck, equal: {}, atLeast: {} },
