@@ -1,7 +1,15 @@
 import { bpsSchema } from "@binference/core";
 import type { CardFacts } from "@binference/engine";
+import type { LiveOutcome } from "@binference/engine/surfaces";
 import { type AssetInfos, assetInfosSchema } from "@binference/protocol";
-import { accountRef, assetRef, assetsWith, refs, swapFacts } from "./card-fixtures.js";
+import {
+  accountRef,
+  assetRef,
+  assetsWith,
+  receiptTxHash,
+  refs,
+  swapFacts,
+} from "./card-fixtures.js";
 
 /** A base58 account with no checksum, as an address on Solana is written, on a fake chain. */
 export const base58Recipient: string = "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU";
@@ -134,4 +142,41 @@ export const revokeFacts: CardFacts = {
     spenderName: "PancakeSwap v2 router",
   },
   reason: "Cleaning up old approvals",
+};
+
+/** A Solana transaction's signature as its explorer page names it, the longest a receipt links. */
+export const solanaSignature: string =
+  "5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW";
+
+/**
+ * How the base58 bridge stands as its receipt shows it (spec 4, section 3.9): on its way from BNB
+ * Smart Chain, delivered to the saved address on Solana, and paid back to the bridge wallet.
+ */
+export const bridgeOutcomes: {
+  readonly sent: LiveOutcome;
+  readonly delivered: LiveOutcome;
+  readonly refunded: LiveOutcome;
+} = {
+  sent: {
+    kind: "bridgeSent",
+    fromChain: "BNB Smart Chain",
+    chain: "Solana",
+    minutes: 2,
+    tx: { explorerLink: `https://bscscan.com/tx/${receiptTxHash}` },
+  },
+  delivered: {
+    kind: "bridgeDelivered",
+    chain: "Solana",
+    recipient: accountRef(`fake:2:${base58Recipient}`),
+    payee: { label: "Cold wallet" },
+    received: { asset: usdc, base: 19_950_000n },
+    tx: { explorerLink: `https://solscan.io/tx/${solanaSignature}` },
+  },
+  refunded: {
+    kind: "bridgeRefunded",
+    venue: "Relay",
+    amount: usdt(20n),
+    wallet: "Bridge",
+    tx: { hash: receiptTxHash },
+  },
 };

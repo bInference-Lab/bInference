@@ -1,17 +1,25 @@
 import { messages } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
-import { showTransferCard, type TransferPress } from "../testing/transfer-card-bench.js";
+import { receiptTxHash } from "../testing/card-fixtures.js";
+import {
+  settleTransferCard,
+  showTransferCard,
+  type TransferPress,
+} from "../testing/transfer-card-bench.js";
 import {
   base58Recipient,
   baseBridgeFacts,
+  bridgeOutcomes,
   checksummedRecipient,
   nameSendFacts,
   rescueSendFacts,
   revokeFacts,
   savedSendFacts,
   solanaBridgeFacts,
+  solanaSignature,
 } from "../testing/transfer-card-fixtures.js";
 
+const done = String.fromCodePoint(0x2705);
 const waiting = String.fromCodePoint(0x1f7e1);
 const live = String.fromCodePoint(0x1f534);
 const warning = String.fromCodePoint(0x26a0, 0xfe0f);
@@ -97,4 +105,31 @@ describe("send, revoke and bridge cards in the owner's chat, in English", () => 
       expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
     },
   );
+});
+
+// Telegram's most characters in a message's text (Bot API `editMessageText`).
+const maxMessageLength = 4096;
+
+describe("a bridge card's receipts in the owner's chat, in English", () => {
+  it.each([
+    [
+      "on its way, with the deposit's link",
+      bridgeOutcomes.sent,
+      `${done} Left BNB Smart Chain · arrives on Solana in about 2 min · https://bscscan.com/tx/${receiptTxHash}`,
+    ],
+    [
+      "delivered, with the fill's link on the destination",
+      bridgeOutcomes.delivered,
+      `${done} Delivered on Solana: Cold wallet (${base58Recipient}) received 19.95 USDC · https://solscan.io/tx/${solanaSignature}`,
+    ],
+    [
+      "paid back, with the refund's hash on a chain with no explorer",
+      bridgeOutcomes.refunded,
+      `${warning} Not delivered: Relay paid 20 USDT back to Bridge · transaction 0xcdcd…cdcd`,
+    ],
+  ])("turns the card into its receipt %s", async (_name, outcome, text) => {
+    const receipt = await settleTransferCard("en", solanaBridgeFacts, outcome);
+    expect(receipt).toBe(text);
+    expect(receipt.length).toBeLessThanOrEqual(maxMessageLength);
+  });
 });
