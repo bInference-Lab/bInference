@@ -196,7 +196,7 @@ async function modeOf(test: TestEngine): Promise<ApprovalModeNow> {
 interface Outcome {
   readonly isAuto: boolean;
   readonly problems: readonly string[];
-  /** A send or a revoke that reached its card, which the auto test then left to the owner. */
+  /** A send, revoke or bridge that reached its card, which the auto test left to the owner. */
   readonly isAskedTransfer?: boolean;
 }
 
@@ -269,8 +269,8 @@ async function outcomeOf(c: Case): Promise<Outcome> {
     return swapOutcome(test, c, expectOk(proposed));
   }
   const { kind } = requestOf(c);
-  if (kind === "send" || kind === "revokeApproval") {
-    // A send and a revoke run their own path, which the auto test always leaves to a tap.
+  if (kind === "send" || kind === "revokeApproval" || kind === "bridge") {
+    // A send, a revoke and a bridge run their own path, which the auto test always leaves to a tap.
     const state = proposed.ok ? proposed.value.state : undefined;
     const problems = state === "confirmed" ? [`a ${kind} ran alone`] : [];
     return { isAuto: false, problems, isAskedTransfer: state === "awaiting_confirmation" };

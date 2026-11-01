@@ -18,6 +18,7 @@ import type {
   CardRoute,
   CardWarnings,
 } from "../confirmations/draw-card.js";
+import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { CardRecord } from "../intents/card-record.js";
 import {
   quoteDocument,
@@ -37,6 +38,7 @@ import { tradeSlippageBps } from "../money-path/swap-trade.js";
 import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
 import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import { bridgeCardFacts } from "./bridge-card-facts.js";
 import { launchCardFacts } from "./launch-card-facts.js";
 import { orderActionOf } from "./order-action-of.js";
 import { transferCardFacts } from "./transfer-card-facts.js";
@@ -301,6 +303,11 @@ const ownQuoteFacts: ReadonlyMap<
   ],
   ["send", (quote, source) => transferCardFacts(quote, source, baseWarnings(source))],
   ["revokeApproval", (quote, source) => transferCardFacts(quote, source, baseWarnings(source))],
+  [
+    "bridge",
+    (quote, source) =>
+      bridgeCardFacts(bridgeQuoteDocument.decode(quote), source, baseWarnings(source)),
+  ],
 ]);
 
 /**
@@ -310,8 +317,9 @@ const ownQuoteFacts: ReadonlyMap<
  * sale's fill is an estimate), the highest tax the risk step measured and the agent's reason; for
  * a rescue, its address, what it moves and their value; for an unfreeze, what it unfreezes; for an
  * auto order, its terms; for a token launch, every setting it runs with (decision 0235); for a send
- * or an approval revoke, its target or spender and a send by name's name. The money path quotes
- * trades, rescues, unfreezes, auto orders, launches, sends and revokes only, so an intent of
+ * or an approval revoke, its target or spender and a send by name's name; for a bridge, its payee,
+ * delivery and fees. The money path quotes trades, rescues, unfreezes, auto orders, launches,
+ * sends, revokes and bridges only, so an intent of
  * another kind, or one without a quote, has none. The fees line waits for a gas estimate in the quote, and
  * no source marks unusual names yet.
  */

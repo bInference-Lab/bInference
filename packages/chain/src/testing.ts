@@ -44,7 +44,7 @@ export { txBuilderContract } from "./contracts/tx-builder-contract.js";
 export type { TxBuilderHarness, TxBuilderSubject } from "./contracts/tx-builder-contract.js";
 export { txDecoderContract } from "./contracts/tx-decoder-contract.js";
 export type { TxDecoderHarness, TxDecoderSubject } from "./contracts/tx-decoder-contract.js";
-export { fakeApprovalData, fakeDraft } from "./fakes/fake-draft.js";
+export { fakeApprovalData, fakeCallOf, fakeDraft } from "./fakes/fake-draft.js";
 export type { FakeCall } from "./fakes/fake-draft.js";
 export { createFakeFamily } from "./fakes/fake-family.js";
 export { createFakeSigner } from "./fakes/fake-signer.js";

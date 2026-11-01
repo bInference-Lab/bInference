@@ -32,21 +32,25 @@ export interface JudgedTransfer {
   readonly outflow?: Amount;
   /** Where a send pays; absent for a revoke, and for a paper send whose name was left unread. */
   readonly target?: AccountRef;
+  /** The venue a bridge's route would take, judged against the agent's venues. */
+  readonly venue?: string;
 }
 
 /**
- * The policy step of a send or an approval revoke (spec 6, section 4): a send's amount counts
- * against the per-trade and 24-hour caps and the gas reserve as any outflow does, its target must
- * be the rescue address in effect or a saved address on the wallet's chain under the send level,
- * and both are refused in paper mode. A revoke moves nothing, so no cap counts it. The same check
- * runs when the proposal is resolved and again as the wallet queue takes the intent.
+ * The policy step of a send, a bridge or an approval revoke (spec 6, section 4): a send's or a
+ * bridge's amount counts against the per-trade and 24-hour caps and the gas reserve as any outflow
+ * does, its target must be the rescue address in effect or a saved address on its chain under the
+ * send level, a bridge's venue one the agent may use, and all are refused in paper mode. A revoke
+ * moves nothing, so no cap counts it. The same check runs when the proposal is resolved and again
+ * as the wallet queue takes the intent.
  */
 export async function checkTransferPolicy(
   parts: TransferPolicyParts,
   judged: JudgedTransfer,
   signal: AbortSignal,
 ): Promise<PolicyVerdict> {
-  const { status, settings, facts, chain, nativeAsset, rescueAccount, outflow, target } = judged;
+  const { status, settings, facts, chain, nativeAsset, rescueAccount, outflow, target, venue } =
+    judged;
   const policyFacts = policyFactsOf({
     settings,
     wallet: facts,
@@ -60,6 +64,7 @@ export async function checkTransferPolicy(
     outflows: outflow === undefined ? [] : [outflow],
     inflowAssets: [],
     ...(target === undefined ? {} : { target }),
+    ...(venue === undefined ? {} : { venue }),
   };
   const withRescue = rescueAccount === undefined ? policyFacts : { ...policyFacts, rescueAccount };
   return parts.policy.check(subject, withRescue, { signal });

@@ -71,7 +71,14 @@ export type RiskReason = (typeof riskReasons)[number];
  * contract, both at the resolve step; `name_moved` a send by name whose name, read again as the
  * wallet queue takes it, points elsewhere than its card or nowhere (spec 6, section 5);
  * `spender_unlisted` an approval revoke whose spender the chain registry does not list, so no
- * approval binference makes can name it (decision 0309).
+ * approval binference makes can name it (decision 0309). A bridge whose routes all answered no
+ * route ends `bridge_no_route`, `amount_too_low`, `amount_too_high` or `bridge_liquidity`
+ * (decision 0319); one whose rescue address holds code on either chain `rescue_not_plain`, whose
+ * entry is a token's contract or an account no wallet spends from `recipient_not_wallet`, and one
+ * whose payee's code could not be read `recipient_unread` (decision 0318); one whose wallet's
+ * ceiling lists the rescue address on its own chain only `rescue_unpaid`, one to a chain no bridge
+ * rule of the ceiling reaches `bridge_chain_unpaid`, and one to an entry a rule reaching its chain
+ * does not list `ceiling_lacks_payee` (decision 0319).
  */
 export const checkReasons = [
   "no_route",
@@ -100,6 +107,16 @@ export const checkReasons = [
   "name_contract",
   "name_moved",
   "spender_unlisted",
+  "bridge_no_route",
+  "amount_too_low",
+  "amount_too_high",
+  "bridge_liquidity",
+  "rescue_not_plain",
+  "recipient_not_wallet",
+  "recipient_unread",
+  "ceiling_lacks_payee",
+  "rescue_unpaid",
+  "bridge_chain_unpaid",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

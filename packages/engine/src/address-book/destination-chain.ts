@@ -4,6 +4,7 @@ import type {
   AddressCodec,
   ChainRef,
 } from "@binference/chain";
+import type { AssetInfos } from "@binference/protocol";
 
 /**
  * A chain a bridge delivers to, where the address book may save an address besides the chains of
@@ -11,6 +12,10 @@ import type {
  */
 export interface DestinationChain {
   readonly ref: ChainRef;
+  /** The registry's name of the chain, as a card names it, such as Base. */
+  readonly name: string;
+  /** The registry's info of its coin and each token it lists, which a bridge may deliver. */
+  readonly assets: AssetInfos;
   /** The address codec of its family (decision 0298). */
   readonly codec: AddressCodec;
   /**

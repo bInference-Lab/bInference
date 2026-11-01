@@ -157,6 +157,17 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   start_unreachable: "quote.no_route",
   dry_run_failed: "quote.no_route",
   spender_unlisted: "quote.no_route",
+  // A bridge's quote never goes stale at a tap; its reasons end it before its card.
+  bridge_no_route: "quote.no_route",
+  amount_too_low: "quote.no_route",
+  amount_too_high: "quote.no_route",
+  bridge_liquidity: "quote.no_route",
+  rescue_not_plain: "quote.no_route",
+  recipient_not_wallet: "quote.no_route",
+  recipient_unread: "chain.rpc_down",
+  ceiling_lacks_payee: "limit.over_ceiling",
+  rescue_unpaid: "limit.over_ceiling",
+  bridge_chain_unpaid: "quote.no_route",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

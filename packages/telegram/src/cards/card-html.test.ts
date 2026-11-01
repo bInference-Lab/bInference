@@ -1,5 +1,5 @@
 import { bpsSchema } from "@binference/core";
-import { type CardAction, type CardFacts, type CardValue, drawCard } from "@binference/engine";
+import { type CardAction, type CardFacts, drawCard } from "@binference/engine";
 import { createFormatter, displayOutsideText } from "@binference/i18n";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
@@ -15,8 +15,6 @@ import {
 } from "../testing/card-fixtures.js";
 import { parseFakeHtml } from "../testing/fake-html.js";
 import { type CardDisplay, cardHtml, receiptHtml } from "./card-html.js";
-
-type ChainRef = Extract<CardValue, { readonly type: "chain" }>["chain"];
 
 // The status icons of spec 4, from their code points: code and tests carry no emojis.
 const icons = {
@@ -181,8 +179,8 @@ describe("a card in Telegram HTML", () => {
     ],
     [
       "bridge",
-      { kind: "bridge", amount: oneUsdt, chain: "fake:2" as ChainRef, recipient, minutes: 15 },
-      "Bridge 1 USDT to fake:2 · to 0xAbCd…Ef12 · about 15 min",
+      { kind: "bridge", amount: oneUsdt, chain: "Base", recipient, minutes: 15 },
+      "Bridge 1 USDT to Base · to 0xAbCdEf0123456789aBcDeF0123456789AbCdEf12 · about 15 min",
     ],
     [
       "cexOrder",

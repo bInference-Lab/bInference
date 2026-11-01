@@ -1,6 +1,7 @@
 import { BinferenceError, type JsonValue } from "@binference/core";
 import type { CardClosing } from "../confirmations/card-closing.js";
 import { autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
+import { bridgeQuoteDocument } from "./bridge-quote.js";
 import type { CardRecord } from "./card-record.js";
 import {
   type EventCause,
@@ -30,8 +31,9 @@ function causes(history: IntentHistory): readonly EventCause[] {
 }
 
 // When each kind whose quote is a document of its own was quoted. A rescue's quote values what it
-// moves, an unfreeze's names its agents, an auto order's holds its terms, a send's names its target
-// and a revoke's its spender: none has a minimum out (decisions 0044, 0128, 0189 and 0309). A
+// moves, an unfreeze's names its agents, an auto order's holds its terms, a send's names its target,
+// a revoke's its spender and a bridge's its payee, whose least output a tap never quotes again:
+// none has a minimum out (decisions 0044, 0128, 0189 and 0309). A
 // launch's first buy is the first trade of its token, so a tap never quotes it again.
 const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new Map([
   ["rescue", (quote) => rescueQuoteDocument.decode(quote).quotedAtMs],
@@ -40,6 +42,7 @@ const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new
   ["launchToken", (quote) => tokenLaunchQuoteDocument.decode(quote).quotedAtMs],
   ["send", (quote) => sendQuoteDocument.decode(quote).quotedAtMs],
   ["revokeApproval", (quote) => revokeQuoteDocument.decode(quote).quotedAtMs],
+  ["bridge", (quote) => bridgeQuoteDocument.decode(quote).quotedAtMs],
 ]);
 
 function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {

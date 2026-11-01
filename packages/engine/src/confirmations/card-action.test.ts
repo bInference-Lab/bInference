@@ -1,4 +1,4 @@
-import type { AccountRef, AssetRef, ChainRef } from "@binference/chain";
+import type { AccountRef, AssetRef } from "@binference/chain";
 import type { Bps } from "@binference/core";
 import { messages } from "@binference/i18n";
 import { parseMessage } from "@binference/i18n/check";
@@ -50,7 +50,7 @@ const actions: readonly (readonly [CardAction, string, string])[] = [
     {
       kind: "bridge",
       amount: half,
-      chain: "fake:2" as ChainRef,
+      chain: "Fake Two",
       recipient: wallet,
       minutes: 3,
     },
@@ -127,7 +127,7 @@ describe("action lines", () => {
       ["amount", "account"],
       ["amount", "account", "count"],
       ["amount", "account"],
-      ["amount", "chain", "account", "count"],
+      ["amount", "text", "text", "count"],
       ["choice", "text", "text", "text"],
       ["text"],
       ["text", "text", "text", "asset", "amount"],

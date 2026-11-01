@@ -2,16 +2,16 @@ import type { TxDraft, TxSimulator } from "@binference/chain";
 import { type IdSource, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import { planDocument, simulationDocument } from "../intents/intent-documents.schema.js";
+import { planDocument } from "../intents/intent-documents.schema.js";
 import type { SentPayee } from "../intents/send-quote.js";
 import { type AdvanceParts, advanceIntent } from "../money-path/advance-intent.js";
-import { authorizationCheckOf } from "../money-path/authorization-check-of.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { startProposal, storeProposed } from "../money-path/store-proposed.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore, IntentStore } from "../ports.js";
 import { checkTransferPolicy, type TransferPolicyParts } from "./check-transfer-policy.js";
+import { advanceBySimulation, advanceByVerdict, runToCard } from "./owner-steps.js";
 import { payeeOf } from "./payee-of.js";
 import { planTransfer, simulateTransfer, type TransferMove } from "./plan-transfer.js";
 import {
@@ -102,14 +102,7 @@ async function judge(
     ...(move?.kind === "send" ? { outflow: move.transfer.amount, target: move.transfer.to } : {}),
   };
   const verdict = await checkTransferPolicy(options, judged, advance.signal);
-  if (!verdict.ok) {
-    const trigger = { type: "policy_refused", reason: verdict.error } as const;
-    return { snapshot: await advanceIntent(advance, proposed, { trigger }) };
-  }
-  const checked = await advanceIntent(advance, proposed, { trigger: { type: "policy_passed" } });
-  return checked.record.state === "checked"
-    ? { snapshot: checked, pass: verdict.value }
-    : { snapshot: checked };
+  return advanceByVerdict(advance, proposed, verdict);
 }
 
 // The simulation of a quoted send's or revoke's one draft: nothing is bought, so no token risk
@@ -130,14 +123,7 @@ async function simulate(
   const { simulator, clock } = options;
   const parts = { simulator, chain: resolved.chain, nowMs: () => clock.now() };
   const simulation = await simulateTransfer(parts, planned, advance.signal);
-  return simulation.ok
-    ? advanceIntent(advance, assessed, {
-        trigger: { type: "simulation_matched" },
-        fields: { simulation: simulationDocument.encode(simulation.value) },
-      })
-    : advanceIntent(advance, assessed, {
-        trigger: { type: "simulation_failed", reason: simulation.error },
-      });
+  return advanceBySimulation(advance, assessed, simulation);
 }
 
 // The step's quote and plan, with the value the caps counted, then its simulation.
@@ -169,22 +155,12 @@ async function quoteAndSimulate(
 // Resolve, policy, quote, simulation, then the card: the auto test leaves every send and every
 // revoke to the owner's tap (spec 6, section 5).
 async function runTransfer(run: TransferRun, proposed: IntentSnapshot): Promise<IntentSnapshot> {
-  const judged = await judge(run, proposed);
-  if (judged.pass === undefined) {
-    return judged.snapshot;
-  }
-  const simulated = await quoteAndSimulate(run, judged.snapshot, judged.pass);
-  if (simulated.record.state !== "simulated") {
-    return simulated;
-  }
-  const trigger = authorizationCheckOf({
-    settings: simulated.settings,
-    pass: judged.pass,
+  return runToCard(run.advance, {
+    judge: async () => judge(run, proposed),
+    simulate: async (checked, pass) => quoteAndSimulate(run, checked, pass),
     wallet: run.resolved.facts,
-    isLocked: run.options.isLocked(),
-    hasUnlistedSpender: false,
+    isLocked: run.options.isLocked,
   });
-  return advanceIntent(run.advance, simulated, { trigger });
 }
 
 /**

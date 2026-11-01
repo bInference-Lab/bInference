@@ -4,6 +4,7 @@ import {
   cardLineText,
   displayOutsideText,
   type Formatter,
+  reasonNamesOf,
   unsentReceiptText,
 } from "@binference/i18n";
 import {
@@ -96,7 +97,7 @@ function reportEnded(
 ): ExitCode | undefined {
   const { intent, request } = view;
   if (unsentEndStates.has(view.state)) {
-    const receipt = unsentReceiptText(run.formatter, view.outcome?.reason, view.resolvedName?.name);
+    const receipt = unsentReceiptText(run.formatter, view.outcome?.reason, reasonNamesOf(view));
     run.output.explain("confirm.unsent", { intent, receipt });
     return 1;
   }

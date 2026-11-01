@@ -9,6 +9,8 @@ import type {
   RescueRequest,
   UnfreezeRequest,
 } from "@binference/protocol";
+import type { DestinationChain } from "../address-book/destination-chain.js";
+import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import {
   quoteDocument,
@@ -65,6 +67,20 @@ function transferAssetOf(
   return quote === undefined ? request.token : revokeQuoteDocument.decode(quote).token;
 }
 
+// What a bridge sends and, once quoted, what it delivers and the coin a fill may pay instead.
+function bridgeAssetsOf(
+  record: IntentRecord,
+  request: Extract<AnyRequest, { kind: "bridge" }>,
+): readonly AssetRef[] {
+  if (record.quote === undefined) {
+    return [request.amount.asset];
+  }
+  const { amount, minOut, deliveredAsCoin } = bridgeQuoteDocument.decode(record.quote);
+  return deliveredAsCoin === undefined
+    ? [amount.asset, minOut.asset]
+    : [amount.asset, minOut.asset, deliveredAsCoin];
+}
+
 // A kind whose quote is a document of its own: a rescue lists what it moves, an auto order its
 // token and a launch its pair and token; a send names what it sends and a revoke the token it
 // frees. `undefined` for a trade and the kinds the money path does not route.
@@ -87,6 +103,9 @@ function ownAssetsOf(record: IntentRecord, request: AnyRequest): readonly AssetR
 // A trade's quote names what it spends and buys; other kinds list their assets once the money path
 // runs them, and an unfreeze moves none.
 function assetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] {
+  if (request.kind === "bridge") {
+    return bridgeAssetsOf(record, request);
+  }
   const own = ownAssetsOf(record, request);
   if (own !== undefined) {
     return own;
@@ -113,6 +132,7 @@ function requestOf(record: IntentRecord): AnyRequest {
 // Only a trade's quote is a `QuoteView`.
 const ownQuoteKinds: ReadonlySet<string> = new Set([
   "send",
+  "bridge",
   "revokeApproval",
   "rescue",
   "unfreeze",
@@ -148,13 +168,33 @@ function executionOf(snapshot: IntentSnapshot): Omit<IntentOutcome, "reason"> {
     : { executions: [{ amountIn: fill.amountIn, amountOut: fill.amountOut, at: fill.atMs }] };
 }
 
-function outcomeOf(snapshot: IntentSnapshot): IntentOutcome | undefined {
+/** What a view shows beyond the stored intent: the chains bridges reach. */
+export interface ViewReads {
+  /** The chains bridges deliver to, whose name a bridge's reason gives. */
+  readonly destinations?: readonly DestinationChain[] | undefined;
+}
+
+// The name of the chain a bridge's reason names: the chain it bridges to.
+function chainNameOf(request: AnyRequest, reads: ViewReads): string | undefined {
+  const toChain = request.kind === "bridge" ? request.toChain : undefined;
+  return reads.destinations?.find((destination) => destination.ref === toChain)?.name;
+}
+
+function outcomeOf(
+  snapshot: IntentSnapshot,
+  context: { readonly request: AnyRequest; readonly reads: ViewReads },
+): IntentOutcome | undefined {
   const { reason } = snapshot.record;
   const execution = executionOf(snapshot);
   if (reason === undefined && execution.executions === undefined) {
     return undefined;
   }
-  return { ...(reason === undefined ? {} : { reason }), ...execution };
+  const chain = reason === undefined ? undefined : chainNameOf(context.request, context.reads);
+  return {
+    ...(reason === undefined ? {} : { reason }),
+    ...(chain === undefined ? {} : { chain }),
+    ...execution,
+  };
 }
 
 // A send by name's name and the address its card showed, from its quote (decision 0308).
@@ -172,13 +212,18 @@ function resolvedNameOf(record: IntentRecord): IntentView["resolvedName"] {
  * An intent as every surface draws it (protocol spec, section 8.3): the stored record, its quote,
  * risk check and simulation, its newest card version, its outcome with the paper fill or the
  * settled trade as its execution, the info of the assets it names: the registry's, or what the
- * intent stored of an unlisted token at its proposal, and a send by name's resolved name.
+ * intent stored of an unlisted token at its proposal, and a send by name's resolved name, with
+ * the name of the chain a bridge's reason names.
  */
-export function intentViewOf(snapshot: IntentSnapshot, chains: ChainRegistry): IntentView {
+export function intentViewOf(
+  snapshot: IntentSnapshot,
+  chains: ChainRegistry,
+  reads: ViewReads = {},
+): IntentView {
   const { record } = snapshot;
   const request = requestOf(record);
   const card = cardViewOf(snapshot);
-  const outcome = outcomeOf(snapshot);
+  const outcome = outcomeOf(snapshot, { request, reads });
   const resolvedName = resolvedNameOf(record);
   return {
     intent: record.id,

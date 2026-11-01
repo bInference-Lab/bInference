@@ -36,12 +36,17 @@ import { createTelegramCards } from "./create-telegram-cards.js";
 
 const live = { signal: new AbortController().signal };
 // A re-quote fails for every check reason but the queue's own reads of a launch (decision 0218)
-// and of a send's name, and the resolve step's read of that name (decision 0308).
+// and of a send's name, the resolve step's read of that name (decision 0308), and a bridge's
+// payee and ceiling checks, whose words name its chain: a bridge never re-quotes (decision 0319).
 const unquoted: ReadonlySet<string> = new Set([
   "launch_moved",
   "name_unresolved",
   "name_contract",
   "name_moved",
+  "rescue_not_plain",
+  "ceiling_lacks_payee",
+  "rescue_unpaid",
+  "bridge_chain_unpaid",
 ]);
 const requoteReasons = checkReasons.filter(
   (reason): reason is QuoteFailure | SimulationFailure => !unquoted.has(reason),

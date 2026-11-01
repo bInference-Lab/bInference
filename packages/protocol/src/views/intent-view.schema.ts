@@ -64,6 +64,8 @@ export interface ExecutionView {
 export interface IntentOutcome {
   /** The reason code stored with a terminal state, such as `daily_cap` or `honeypot`. */
   readonly reason?: string;
+  /** The name of the chain a bridge's reason names, the chain it bridges to, as its words show it. */
+  readonly chain?: string;
   readonly txHashes?: readonly TxHash[];
   readonly executions?: readonly ExecutionView[];
 }
@@ -139,6 +141,7 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
         .string()
         .regex(/^[a-z][a-z_]*$/)
         .exactOptional(),
+      chain: z.string().min(1).max(100).exactOptional(),
       txHashes: z.array(z.string().refine(isTxHash)).exactOptional(),
       executions: z.array(executionViewSchema).exactOptional(),
     })

@@ -1,5 +1,6 @@
-import type { AccountRef, Amount, AssetRef, ChainRef } from "@binference/chain";
+import type { AccountRef, Amount, AssetRef } from "@binference/chain";
 import { type Bps, bpsPerWhole } from "@binference/core";
+import { type BridgeAction, bridgeActionLine } from "./bridge-card-lines.js";
 import type { CardLine, CardValue } from "./card-line.js";
 import type { LaunchDetails } from "./launch-card-lines.js";
 import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
@@ -54,12 +55,8 @@ export interface CardActionFacts {
     readonly spenderName?: string;
   };
   readonly stake: StakeMove;
-  readonly bridge: {
-    readonly amount: Amount;
-    readonly chain: ChainRef;
-    readonly recipient: AccountRef;
-    readonly minutes: number;
-  };
+  /** Who a bridge pays as its card names them, and what shows under its action (decision 0297). */
+  readonly bridge: BridgeAction;
   /** `size` and `price` are decimal text in the market's units, as the exchange writes them. */
   readonly cexOrder: {
     readonly side: "buy" | "sell";
@@ -192,15 +189,7 @@ const actionLines: ActionLines = {
     values: { spender: spenderOf(action), token: asset(action.token) },
   }),
   stake: stakeLine,
-  bridge: (action) => ({
-    key: "card.bridge.action",
-    values: {
-      amount: amount(action.amount),
-      chain: { type: "chain", chain: action.chain },
-      recipient: account(action.recipient),
-      minutes: count(action.minutes),
-    },
-  }),
+  bridge: bridgeActionLine,
   cexOrder: (action) => ({
     key: "card.cex.action",
     values: {

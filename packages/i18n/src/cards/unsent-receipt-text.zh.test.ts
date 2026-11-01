@@ -15,4 +15,10 @@ describe("the receipt of an intent that ended before it sent or filled, in Chine
       `${refused} 未发送：在签名之前已结束`,
     ]);
   });
+
+  it("names a bridge's chain in the words of its reason", () => {
+    expect(unsentReceiptText(chinese, "bridge_chain_unpaid", { chain: "Solana" })).toBe(
+      `${refused} 未发送：binference 使用的跨链服务目前都无法从此钱包向 Solana 上的地址付款，因此未发送任何内容；请跨链到另一条链`,
+    );
+  });
 });

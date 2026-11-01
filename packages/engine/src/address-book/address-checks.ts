@@ -50,9 +50,15 @@ export function addressRefusal(
   return listed.length + rescues.length >= parts.mostPerChain ? "address.chain_full" : undefined;
 }
 
-// Whether the account can hold what a payment brings it, by its chain's readers: no program or
-// token account (decision 0298) and no token's own contract (decision 0318).
-async function isWalletAccount(saved: SavedAccount, signal: AbortSignal): Promise<boolean> {
+/**
+ * Whether the account can hold what a payment brings it, by its chain's readers: no program or
+ * token account (decision 0298) and no token's own contract (decision 0318); a chain with no
+ * reader of a kind reads as a wallet for that kind. A read that fails rejects.
+ */
+export async function isWalletAccount(
+  saved: Pick<SavedAccount, "account" | "kinds" | "codes">,
+  signal: AbortSignal,
+): Promise<boolean> {
   const kind =
     saved.kinds === undefined ? "wallet" : await saved.kinds.read(saved.account, { signal });
   const code =

@@ -203,7 +203,15 @@ launches), `start_unpriced` (its launchpad works out the starting market cap fro
 price, which binference lacks), `start_unreachable` (no starting price its launchpad can set fits
 the starting market cap) and `dry_run_failed` (its steps failed when run unsent at the latest
 block), each from its launchpad's quote before any upload
-([decision 0284](../DECISIONS.md#d0284)).
+([decision 0284](../DECISIONS.md#d0284)); for a bridge, after the policy and before any quote,
+`ceiling_lacks_payee` (a main wallet's ceiling holds no bridge rule paying its recipient there),
+`nothing_to_sell` or `balance_unread` for the amount it sends, `rescue_not_plain` (the rescue
+address holds code on either chain), `recipient_not_wallet` (an entry a read finds to be a token's
+own contract, a program or a token account) and `recipient_unread` (a read of its payee that
+failed) ([decision 0318](../DECISIONS.md#d0318)), then `bridge_no_route`, `amount_too_low`,
+`amount_too_high` or `bridge_liquidity` when no route answers, `price_impact` when every quote keeps
+more than the agent's slippage limit, and `decode_mismatch` for a deposit that differs from its
+plan ([decision 0319](../DECISIONS.md#d0319)).
 
 Fill reasons for `failed_check`, stored at a fill's authorization
 ([decision 0195](../DECISIONS.md#d0195)): `order_inactive` (its order is not active, has expired or
@@ -444,6 +452,20 @@ and `step_unsent` (a step never signed after an earlier one landed,
   address on an EVM destination chain while that address holds no code on either chain, under
   the send level. It counts its USD value against both caps, never runs in auto mode, and ends
   `rejected_policy` with `paper_only` in paper mode.
+  - **Its wallet and route** ([decision 0319](../DECISIONS.md#d0319)). Its routes are those a
+    bridge the engine runs serves for the token it sends to the destination chain, at the venues
+    the agent's limits allow (else `venue_off`). With no wallet named it runs from the default
+    wallet on a main wallet's route, else from the agent's bridge wallet on a bridge venue's route,
+    else `intent.bridge_wallet_missing`; a named bridge wallet takes only bridge venues' routes, and
+    any wallet named where no route it may take serves is `intent.bridge_wallet_only`, each before
+    anything is stored. After the policy, the payee's checks run (section 4), then every route is
+    quoted, each venue within 3 seconds; a least output below the amount less the agent's slippage
+    limit is not taken, and the best least output wins.
+  - **The rescue address** is the payee only after its code is read again on the wallet's chain and
+    on the destination, after the policy and before the quote, so before each card, and again when
+    the wallet queue takes the bridge: any code on either chain, a delegation included, ends it
+    `rescue_not_plain` before its card, and keeps a confirmed one unsigned
+    ([decision 0318](../DECISIONS.md#d0318)). An entry is read again the same way.
   - **One deposit.** Its plan is an exact approval when the token needs one, then one deposit. The
     quote step decodes the deposit: its recipient bytes, through the address codec of the
     recipient's chain family, equal the entry's; its destination chain is the entry's; its

@@ -2,6 +2,7 @@ import type { ChainRegistry } from "@binference/chain";
 import { err, idSchema, ok, type Result } from "@binference/core";
 import type { IntentView, Page, ProtocolErrorCode } from "@binference/protocol";
 import { z } from "zod";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentQuery } from "../intents/intent-change.js";
 import { intentStates } from "../intents/intent-state.js";
@@ -13,6 +14,8 @@ import { intentViewOf } from "./intent-view-of.js";
 export interface IntentListOptions {
   readonly stored: Pick<StoredIntents, "list" | "snapshot">;
   readonly chains: ChainRegistry;
+  /** The chains bridges deliver to, whose names a bridge's outcome gives; none without. */
+  readonly destinations?: readonly DestinationChain[];
 }
 
 const defaultPageSize = 50;
@@ -71,7 +74,9 @@ export async function listIntents(
     wanted.map(async (record) => options.stored.snapshot(record.id, { signal })),
   );
   const items = snapshots.flatMap((snapshot) =>
-    snapshot === undefined ? [] : [intentViewOf(snapshot, options.chains)],
+    snapshot === undefined
+      ? []
+      : [intentViewOf(snapshot, options.chains, { destinations: options.destinations })],
   );
   const last = records.at(-1);
   return ok(

@@ -20,6 +20,7 @@ import {
   createConfigHistoryHandlers,
 } from "../audit/config-history-handlers.js";
 import type { ModelBudgetParts } from "../billing/model-budget.js";
+import type { BridgingOptions } from "../bridges/hosted-bridge.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
@@ -216,7 +217,8 @@ export interface Engine {
 }
 
 /** The ports and adapters the composition root builds the engine from. */
-export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptions {
+export interface EngineOptions
+  extends MarketParts, ModelBudgetParts, ImageOptions, BridgingOptions {
   readonly stores: EngineStores;
   /** Executions, arrivals and positions, live and paper; the paper portfolio lives here. */
   readonly positions: PositionStore;
@@ -346,7 +348,7 @@ function intentParts(
   const showings = createCardShowings({ ...stores, chains, venues: host, isLocked });
   const moneyPath = moneyPathOf(options, { stored, paper, launches, execute, lowGas, gate });
   const handlers = {
-    ...createIntentHandlers({ stored, moneyPath, answer, chains, showings }),
+    ...createIntentHandlers({ ...options, stored, moneyPath, answer, showings }),
     ...createOrderHandlers(orders),
   };
   const cardTimer = cardTimerOf(options, { confirmations, orders });

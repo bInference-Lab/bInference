@@ -50,7 +50,12 @@ async function servedMachine(): Promise<Served> {
     throw new Error("Expected the self-hosted composition.");
   }
   const machine = await machines.create(testNowMs);
-  const base = { ref: chainRefSchema.parse(baseMainnet.id), codec: createEvmAddressCodec() };
+  const base = {
+    ref: chainRefSchema.parse(baseMainnet.id),
+    name: baseMainnet.name,
+    assets: {},
+    codec: createEvmAddressCodec(),
+  };
   const options = { chains: [bsc], destinations: [base] };
   const skeleton = await serveSkeleton(machine, selfHosted, options);
   served.push(skeleton);

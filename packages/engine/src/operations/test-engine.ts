@@ -167,6 +167,8 @@ export interface TestEngineOptions {
   readonly tokensWithCode?: readonly AssetRef[];
   /** The chains a bridge delivers to, where an address may be saved too; none when absent. */
   readonly destinations?: EngineOptions["destinations"];
+  /** The bridges and their routes, and the wallets' chains' code readers; none when absent. */
+  readonly bridging?: Pick<EngineOptions, "bridges" | "codeReaders">;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -275,10 +277,18 @@ function switchesOf(
   options: TestEngineOptions,
 ): Pick<
   EngineOptions,
-  "liveOrderFills" | "launchFeed" | "uploads" | "botImages" | "quoteAssets" | "destinations"
+  | "liveOrderFills"
+  | "launchFeed"
+  | "uploads"
+  | "botImages"
+  | "quoteAssets"
+  | "destinations"
+  | "bridges"
+  | "codeReaders"
 > {
   return {
     liveOrderFills: options.liveOrderFills === true,
+    ...options.bridging,
     ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),

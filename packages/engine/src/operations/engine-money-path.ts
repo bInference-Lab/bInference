@@ -1,3 +1,5 @@
+import type { BridgePathOptions } from "../bridges/propose-bridge.js";
+import { withBridges } from "../bridges/with-bridges.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
@@ -36,9 +38,28 @@ function transferPathOf(options: EngineOptions, path: MoneyPathOptions): Transfe
   return { ...path, install, intents, simulator: chainSimulator, nameResolvers };
 }
 
+// What a bridge runs on beyond the money path's ports: the install, the bridges and their routes,
+// the chains they deliver to, the code readers, the wallets' stored ceilings and the chain's
+// simulator on live balances.
+function bridgePathOf(options: EngineOptions, path: MoneyPathOptions): BridgePathOptions {
+  const { stores, chainSimulator, bridges = [], destinations = [], codeReaders = [] } = options;
+  const { install } = stores;
+  const ceilings = options.ceilings;
+  return {
+    ...path,
+    install,
+    bridges,
+    destinations,
+    codeReaders,
+    ceilings,
+    simulator: chainSimulator,
+  };
+}
+
 /**
  * The money path every proposal and order fill runs through, from the engine's options, with
- * sends and approval revokes on their own path (spec 6, section 5), and token launches on theirs
+ * sends and approval revokes, and bridges, on their own paths (spec 6, section 5), and token
+ * launches on theirs
  * when the options hold a launch host (decision 0234).
  */
 export function moneyPathOf(
@@ -77,5 +98,6 @@ export function moneyPathOf(
     ids,
   };
   const transfers = withTransfers(createMoneyPath(path), transferPathOf(options, path));
-  return withLaunches(transfers, launchPathOf(options, path));
+  const bridges = withBridges(transfers, bridgePathOf(options, path));
+  return withLaunches(bridges, launchPathOf(options, path));
 }

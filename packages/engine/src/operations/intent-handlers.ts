@@ -66,7 +66,7 @@ async function answered(
   }
   const refusal = answerError(result.value.outcome);
   return refusal === undefined
-    ? ok(intentViewOf(result.value.intent, options.chains))
+    ? ok(intentViewOf(result.value.intent, options.chains, { destinations: options.destinations }))
     : err(refusal);
 }
 
@@ -76,7 +76,7 @@ function viewOf(
 ): Result<IntentView, ProtocolErrorCode> {
   return snapshot === undefined
     ? err("intent.not_found")
-    : ok(intentViewOf(snapshot, options.chains));
+    : ok(intentViewOf(snapshot, options.chains, { destinations: options.destinations }));
 }
 
 // The intent's open card version as the engine draws it; an intent with none is in the wrong

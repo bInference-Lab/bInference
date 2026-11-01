@@ -18,7 +18,7 @@ export { createEvmAddressCodec } from "./evm-address-codec.js";
 export { eip155ChainIdOf, erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
 export type { EvmChain } from "./evm-chain.js";
 export { createEvmFamily } from "./evm-family.js";
-export { evmFamilyId, evmNamespace } from "./evm-ids.js";
+export { erc20Namespace, evmFamilyId, evmNamespace } from "./evm-ids.js";
 export { readFees } from "./fees/read-fees.js";
 export type { EvmFees, FeeOptions, FeeReading } from "./fees/read-fees.js";
 export { createChainlinkPrices } from "./prices/chainlink-prices.js";

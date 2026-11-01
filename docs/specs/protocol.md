@@ -1019,11 +1019,16 @@ neither. Every staking move pays only the agent's own wallet. Spec 6 holds their
 mode.
 
 **Bridges** ([decision 0297](../DECISIONS.md#d0297)). `toChain` is a destination chain the
-registry lists; `to.entry` is an address book entry on `toChain`; `to.rescue` is allowed only on
-an EVM destination chain while the rescue address holds no code on the wallet's chain or on
-`toChain`. Anything else is `protocol.bad_args`. The engine takes the route with the best minimum
-received, as `bridge/quote` orders them; its quote names the delivered token, which may differ
-from the token sent. A bridge's `IntentView.delivery` follows it until the delivery or a refund is
+registry lists; `to.entry` is an address book entry on `toChain` (an unknown entry is
+`address.not_found`, one that is a wallet of the install `address.own_wallet`); `to.rescue` is
+allowed only on a destination of the rescue address's own family, and without a rescue address is
+`rescue.no_address`. Anything else is `protocol.bad_args`. The rescue address's code is read on the
+wallet's chain and on `toChain` before its card: code on either ends the bridge `failed_check` with
+`rescue_not_plain` ([decision 0318](../DECISIONS.md#d0318)). The wallet a bridge runs from follows
+its routes ([decision 0319](../DECISIONS.md#d0319)): `intent.bridge_wallet_missing` and
+`intent.bridge_wallet_only` refuse it before anything is stored. The engine takes the route with
+the best minimum received, as `bridge/quote` orders them; its quote names the delivered token,
+which may differ from the token sent. A bridge's `IntentView.delivery` follows it until the delivery or a refund is
 read.
 
 `rescue` intents are created only by `safety/rescue`, `unfreeze` intents only by `safety/unfreeze`
@@ -1110,7 +1115,9 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
 - `IntentView`:
   `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets, resolvedName?, delivery? }`.
   `resolvedName` is `{ name, address, resolvedAt }` for a send by name. `delivery` is a bridge's
-  `DeliveryView`; a change of it pushes `intent/changed`.
+  `DeliveryView`; a change of it pushes `intent/changed`. `outcome` is
+  `{ reason?, chain?, txHashes?, executions? }`: `chain` names the chain a bridge's reason means,
+  the chain it bridges to, as that reason's words show it.
 - `StakingPositionView`:
   `{ wallet, venue, validator?, staked: Amount, stakedValue?: Amount, unbonding: [{ amount, readyAt }], claimable: Amount, paper }`:
   `staked` in the venue's own receipt token (a validator's credit shares on StakeHub, slisBNB on

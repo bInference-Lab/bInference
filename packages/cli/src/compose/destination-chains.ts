@@ -1,13 +1,20 @@
-import { type ChainDefinition, chainRefSchema } from "@binference/chain";
-import { createEvmAccountCodeReader, createRpcFailover, evmChainOf } from "@binference/chain-evm";
+import { assetRefSchema, type ChainDefinition, chainRefSchema } from "@binference/chain";
+import {
+  createEvmAccountCodeReader,
+  createRpcFailover,
+  erc20Namespace,
+  evmChainOf,
+} from "@binference/chain-evm";
 import {
   createSolanaAccountKindReader,
   createSolanaRpcClient,
   solanaChainOf,
   solanaFamilyId,
+  solanaTokenNamespace,
 } from "@binference/chain-solana";
 import type { Clock, Http } from "@binference/core";
 import type { EngineOptions } from "@binference/engine";
+import type { AssetInfos } from "@binference/protocol";
 import { selfHostedDestinations, selfHostedFamilies } from "./self-hosted-destinations.js";
 
 // A node answers an account read within this; past it, the next endpoint is asked.
@@ -17,6 +24,23 @@ const evmReadTimeoutMs = 10_000;
 const evmRestMs = 30_000;
 
 type Destination = NonNullable<EngineOptions["destinations"]>[number];
+
+// The registry's coin and tokens of a destination, each verified, as its cards name them.
+function registryAssetsOf(definition: ChainDefinition): AssetInfos {
+  const { nativeAsset, tokens } = definition;
+  const coin = `${definition.id}/${nativeAsset.assetNamespace}:${nativeAsset.assetReference}`;
+  const namespace = definition.family === solanaFamilyId ? solanaTokenNamespace : erc20Namespace;
+  const listed = [
+    [coin, nativeAsset] as const,
+    ...tokens.map((token) => [`${definition.id}/${namespace}:${token.address}`, token] as const),
+  ];
+  return Object.fromEntries(
+    listed.map(([asset, { symbol, name, decimals }]) => [
+      assetRefSchema.parse(asset),
+      { symbol, name, decimals, verified: true },
+    ]),
+  );
+}
 type DestinationReaders = Pick<Destination, "kinds" | "codes">;
 
 // The reader that tells a payee from an account no one spends from as a wallet: Solana's account
@@ -55,6 +79,10 @@ export function selfHostedDestinationChains(parts: {
   return selfHostedDestinations().flatMap((definition): readonly Destination[] => {
     const ref = chainRefSchema.parse(definition.id);
     const codec = families.codecOf(ref);
-    return codec.ok ? [{ ref, codec: codec.value, ...readersOf(definition, parts) }] : [];
+    if (!codec.ok) {
+      return [];
+    }
+    const named = { ref, name: definition.name, assets: registryAssetsOf(definition) };
+    return [{ ...named, codec: codec.value, ...readersOf(definition, parts) }];
   });
 }

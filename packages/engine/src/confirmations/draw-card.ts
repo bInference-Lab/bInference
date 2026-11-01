@@ -4,6 +4,7 @@ import type { PoolFee, RouteLeg } from "@binference/protocol";
 import type { AutoAskCode } from "../intents/auto-mode-refusal.js";
 import type { CardTerms } from "../intents/intent-status.js";
 import { launchWarningKey } from "../venues/launch-settings.schema.js";
+import { bridgeDetailLines, bridgeTokenWarning } from "./bridge-card-lines.js";
 import { actionLine, actionVerb, type CardAction } from "./card-action.js";
 import type { CardKey, CardLine, CardValue } from "./card-line.js";
 import { launchDetailLines } from "./launch-card-lines.js";
@@ -224,6 +225,7 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
       [warnings.isNewAddress, "card.warn.newAddress"],
     ]),
     ...optional(warnings.reverseDiffers, reverseDiffersLine),
+    ...(facts.action.kind === "bridge" ? bridgeTokenWarning(facts.action) : []),
     ...shown([[facts.check?.isTokenVerified === false, "card.warn.unverified"]]),
     ...taxLines(warnings.taxBps),
     ...poolFeeLines(warnings.poolFees),
@@ -275,6 +277,7 @@ export function drawCard(facts: CardFacts): Card {
       ? launchDetailLines(facts.action.details)
       : []),
     ...(facts.action.kind === "send" ? sendNameLines(facts.action) : []),
+    ...(facts.action.kind === "bridge" ? bridgeDetailLines(facts.action) : []),
     ...optional(facts.roleWallet, ({ role, label }) => ({
       key: roleWalletKeys[role],
       values: { wallet: { type: "text", text: label } },

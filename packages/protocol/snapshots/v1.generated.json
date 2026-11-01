@@ -6878,6 +6878,11 @@
                   "type": "string",
                   "pattern": "^[a-z][a-z_]*$"
                 },
+                "chain": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -13512,6 +13517,11 @@
                   "type": "string",
                   "pattern": "^[a-z][a-z_]*$"
                 },
+                "chain": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -14875,6 +14885,11 @@
                 "reason": {
                   "type": "string",
                   "pattern": "^[a-z][a-z_]*$"
+                },
+                "chain": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
                 },
                 "txHashes": {
                   "type": "array",
@@ -16775,6 +16790,11 @@
                         "type": "string",
                         "pattern": "^[a-z][a-z_]*$"
                       },
+                      "chain": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
                       "txHashes": {
                         "type": "array",
                         "items": {
@@ -18161,6 +18181,11 @@
                   "type": "string",
                   "pattern": "^[a-z][a-z_]*$"
                 },
+                "chain": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -19531,6 +19556,11 @@
                   "type": "string",
                   "pattern": "^[a-z][a-z_]*$"
                 },
+                "chain": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -20899,6 +20929,11 @@
                 "reason": {
                   "type": "string",
                   "pattern": "^[a-z][a-z_]*$"
+                },
+                "chain": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
                 },
                 "txHashes": {
                   "type": "array",
@@ -31359,6 +31394,11 @@
                               "reason": {
                                 "type": "string",
                                 "pattern": "^[a-z][a-z_]*$"
+                              },
+                              "chain": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
                               },
                               "txHashes": {
                                 "type": "array",

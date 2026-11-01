@@ -1,4 +1,4 @@
-import { accountRefParts } from "@binference/chain";
+import { type AccountRef, accountRefParts } from "@binference/chain";
 import type { CardAction } from "./card-action.js";
 import type { CardLine, CardValue } from "./card-line.js";
 
@@ -26,12 +26,15 @@ function addressOf(action: CardAction<"send">): CardValue {
   return text(accountRefParts(action.recipient).address);
 }
 
-// The recipient of `card.send.action` (spec 4, section 3.9): "your rescue address" before the
-// rescue address, the address book label before a saved one, the address alone otherwise.
-function recipientOf(action: CardAction<"send">): CardValue {
-  const address = addressOf(action);
-  const label = action.payee?.label;
-  if (action.payee?.isRescue === true) {
+/**
+ * A recipient as a send's or a bridge's card names it (spec 4, section 3.9): "your rescue address"
+ * before the rescue address, the address book label before a saved one, the address alone
+ * otherwise, always whole.
+ */
+export function payeeValue(recipient: AccountRef, payee: CardPayee | undefined): CardValue {
+  const address = text(accountRefParts(recipient).address);
+  const label = payee?.label;
+  if (payee?.isRescue === true) {
     return { type: "line", line: { key: "card.value.rescuePayee", values: { address } } };
   }
   return label === undefined
@@ -47,7 +50,10 @@ export function sendActionLine(action: CardAction<"send">): CardLine {
   const amount: CardValue = { type: "amount", amount: action.amount };
   const { name } = action;
   return name === undefined
-    ? { key: "card.send.action", values: { amount, recipient: recipientOf(action) } }
+    ? {
+        key: "card.send.action",
+        values: { amount, recipient: payeeValue(action.recipient, action.payee) },
+      }
     : {
         key: "card.send.name",
         values: { amount, payee: text(name.name), address: addressOf(action) },

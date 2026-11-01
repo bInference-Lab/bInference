@@ -75,9 +75,15 @@ async function engineWithDestinations(
   given: { readonly ceilings?: FakeCeilingEditor; readonly reader?: AccountKindReader } = {},
 ): Promise<TestEngine> {
   const destinations = [
-    { ref: destination, codec: createFakeAddressCodec(), kinds: given.reader ?? kinds },
-    { ref: wide, codec: wideCodec },
-    { ref: evmLike, codec: createFakeAddressCodec(), codes },
+    {
+      ref: destination,
+      name: "Fake Two",
+      assets: {},
+      codec: createFakeAddressCodec(),
+      kinds: given.reader ?? kinds,
+    },
+    { ref: wide, name: "Wide", assets: {}, codec: wideCodec },
+    { ref: evmLike, name: "Fake Three", assets: {}, codec: createFakeAddressCodec(), codes },
   ];
   const ceilingsAsked = given.ceilings === undefined ? {} : { ceilings: given.ceilings };
   const test = await startTestEngine({ destinations, ...ceilingsAsked });
