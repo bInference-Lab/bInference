@@ -1,5 +1,7 @@
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
+import { anyChain, maxListed } from "../ceiling/address-list.js";
+import type { ChainAddresses } from "../ceiling/ceiling.js";
 import { policyRuleJson } from "../ceiling/policy-rule.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import { isPrivyId, type PrivyId } from "../privy/privy-records.js";
@@ -26,14 +28,14 @@ export interface SignedRuleChange {
 
 /**
  * A change of a ceiling's recipients that the owner key signed ahead, to send later: from the
- * recipients its send rules list when it was signed, to new ones, until its expiry, with the
+ * recipients it lists for each chain when it was signed, to new ones, until its expiry, with the
  * bridge rules it narrows and the ones it takes out (decision 0302). It holds no secret: a
  * signature authorizes only this change, and only until it expires.
  */
 export interface SignedRecipients {
   readonly policy: PrivyId;
-  readonly from: readonly string[];
-  readonly to: readonly string[];
+  readonly from: readonly ChainAddresses[];
+  readonly to: readonly ChainAddresses[];
   readonly expiresAtMs: number;
   readonly changes: readonly SignedRuleChange[];
   /** The bridge rules the change takes out; absent in a change signed before bridges. */
@@ -48,11 +50,26 @@ const changeSchema = z.strictObject({
   text: z.string().exactOptional(),
 });
 
-/** Parses a change signed ahead, as it is kept between its signing and its sending. */
+// The recipients of a change: per chain, or, in a change signed before saved addresses named their
+// chain, one list that stands for every chain.
+const recipientsSchema: z.ZodType<readonly ChainAddresses[]> = z.union([
+  z
+    .array(z.strictObject({ chainId: z.string(), addresses: z.array(z.string()).max(maxListed) }))
+    .max(maxListed),
+  z
+    .array(z.string())
+    .max(maxListed)
+    .transform((addresses) => [{ chainId: anyChain, addresses }]),
+]);
+
+/**
+ * Parses a change signed ahead, as it is kept between its signing and its sending. A change signed
+ * before saved addresses named their chain lists its recipients once, for every chain.
+ */
 export const signedRecipientsSchema: z.ZodType<SignedRecipients> = z.strictObject({
   policy: privyIdSchema,
-  from: z.array(z.string()).max(100),
-  to: z.array(z.string()).max(100),
+  from: recipientsSchema,
+  to: recipientsSchema,
   expiresAtMs: z.int().positive(),
   changes: z.array(changeSchema).max(256),
   removes: z.array(changeSchema).max(256).exactOptional(),
@@ -74,8 +91,8 @@ export async function signCeilingRecipients(
   api: PrivyApi,
   target: {
     readonly policy: PrivyId;
-    readonly from: readonly string[];
-    readonly to: readonly string[];
+    readonly from: readonly ChainAddresses[];
+    readonly to: readonly ChainAddresses[];
   },
   input: CallOptions & { readonly authorize: OwnerAuthorize; readonly expiresAtMs: number },
 ): Promise<Result<SignedRecipients, RecipientsRefusal>> {

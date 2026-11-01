@@ -109,41 +109,47 @@ export interface BridgeDeposit {
 }
 
 /**
- * A bridge deposit with the addresses it may pay on its destination: those saved for that chain
- * (the rescue address among them where it is a plain wallet on both chains). Addresses are EVM
- * addresses in any case.
+ * A bridge deposit with the addresses it may pay on its destination: those saved for that chain,
+ * as recipient bytes in lowercase hex or as EVM addresses in any case.
  */
 export interface BridgeTarget extends BridgeDeposit {
   readonly recipients: readonly string[];
 }
 
 /**
- * The addresses a bridge may pay on one destination chain (decision 0302): the entries saved for
- * that chain, and the rescue address where it is a plain wallet on both chains. Each must also be
- * a ceiling recipient, so taking one out of the recipients takes it out of every destination.
+ * The addresses the owner key lets a wallet pay on one chain (decision 0313): by a send on a chain
+ * the ceiling enables, by a bridge deposit on a destination (decision 0302). An address saved for
+ * one chain is listed for that chain alone, so a send on another chain never pays it.
  */
-export interface BridgedAddresses {
-  /** The destination chain's EIP-155 id as decimal text. */
+export interface ChainAddresses {
+  /**
+   * The chain's id as decimal text, as the rules bind it: its EIP-155 id, or the id a bridge gives
+   * a destination of another family.
+   */
   readonly chainId: string;
+  /** Each address as recipient bytes in lowercase hex, or as an EVM address in any case. */
   readonly addresses: readonly string[];
 }
 
 /** A chain's ceiling before its 24-hour caps are attached, as the registry gives it. */
 export type CeilingChainPlan = Omit<CeilingChain, "caps">;
 
-/** Everything a wallet's ceiling is built from. Addresses are EVM addresses in any case. */
+/** Everything a wallet's ceiling is built from. */
 export interface CeilingRequest {
   /** The chains the owner enabled, chain 56 first. */
   readonly chains: readonly CeilingChain[];
-  /** The owner's rescue address, which every send may pay. */
+  /** The owner's rescue address, an EVM address, which a send on every enabled chain may pay. */
   readonly rescue: string;
-  /** The addresses the owner saved with the owner key (decision 0091). */
-  readonly saved: readonly string[];
   /**
-   * Per destination chain, the addresses among the rescue address and the saved ones a bridge may
-   * pay there (decision 0302); none if absent, so no bridge deposit is allowed.
+   * Per chain, the addresses the owner saved for it with the owner key (decisions 0091 and 0313):
+   * a send on an enabled chain pays those of that chain, a bridge those of its destination.
    */
-  readonly bridged?: readonly BridgedAddresses[];
+  readonly saved: readonly ChainAddresses[];
+  /**
+   * Per destination chain, the addresses a bridge may pay there (decision 0302), each kept only
+   * where it is also saved for that chain; none if absent, so no bridge deposit is allowed.
+   */
+  readonly bridged?: readonly ChainAddresses[];
 }
 
 /**

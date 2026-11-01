@@ -1,7 +1,7 @@
 import { err, ok, type Result } from "@binference/core";
 import { bridgedOf, type CeilingAddresses } from "../ceiling/bridge-recipients.js";
 import { callRules } from "../ceiling/build-ceiling.js";
-import type { BridgedAddresses, CeilingChain, CeilingProblem } from "../ceiling/ceiling.js";
+import type { CeilingChain, CeilingProblem, ChainAddresses } from "../ceiling/ceiling.js";
 import { readCeiling } from "../ceiling/read-ceiling.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import type { PrivyId } from "../privy/privy-records.js";
@@ -15,13 +15,15 @@ import {
 } from "./rule-plans.js";
 
 /**
- * A ceiling, what a contract call may do on each chain whose rules change, and the addresses a
- * bridge may pay on each destination; absent, the ones its bridge rules pay now.
+ * A ceiling, what a contract call may do on each chain whose rules change, the addresses a bridge
+ * may pay on each destination, and every address the owner key lets the wallet pay on each chain,
+ * which those must be listed in (decision 0313); absent, the ones its rules pay now.
  */
 export interface PolicyCalls {
   readonly policy: PrivyId;
   readonly chains: readonly CeilingChain[];
-  readonly bridged?: readonly BridgedAddresses[];
+  readonly bridged?: readonly ChainAddresses[];
+  readonly recipients?: readonly ChainAddresses[];
 }
 
 /** Why a ceiling's contract calls cannot change. */
@@ -111,9 +113,10 @@ export async function planCeilingCalls(
   if (rules === undefined || held === undefined) {
     return err("not_found");
   }
+  const heldBridged = bridgedOf(held.bridges);
   const addresses = {
-    recipients: held.recipients,
-    bridged: target.bridged ?? bridgedOf(held.bridges),
+    recipients: target.recipients ?? [...held.recipients, ...heldBridged],
+    bridged: target.bridged ?? heldBridged,
   };
   const edits = editsOf(rules, { chains: target.chains, addresses });
   if (!edits.ok) {

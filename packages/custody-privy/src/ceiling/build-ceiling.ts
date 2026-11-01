@@ -1,6 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
 import { isPrivyId } from "../privy/privy-records.js";
-import { addressList } from "./address-list.js";
+import { addressesOn, addressList } from "./address-list.js";
 import { bridgeTargetsOf, type CeilingAddresses } from "./bridge-recipients.js";
 import { bridgeRules, checkedTargets } from "./bridge-rules.js";
 import {
@@ -18,6 +18,7 @@ import {
   type CeilingChain,
   type CeilingProblem,
   type CeilingRequest,
+  type ChainAddresses,
   type ChainCaps,
   type DayCap,
   type LaunchCall,
@@ -302,20 +303,20 @@ export function callRules(
  * venue function its venues declare, by `function_name`, on the contracts they declare it on,
  * with at most the cap in native coin, its pinned inputs the signing wallet itself, while the
  * 24-hour native cap holds; an `approve` with no native coin to a declared spender, while each
- * capped token's 24-hour cap holds; a native send or a token `transfer` to the rescue address or a
- * saved address; a zero-value transfer to the wallet itself, which cancels a stuck transaction. A
- * launch wallet's chain also allows each launch call, by `function_name` on any contract, its
- * pinned inputs the wallet itself, and an `approve` with no native coin naming any spender, each
- * under the same caps (decision 0217). A bridge deposit an enabled venue declares pays, on each
- * destination, the addresses `bridged` names there that are also the rescue address or a saved
- * one (decision 0302). It lets the owner, never a signer, export the key. Privy denies everything
- * else, typed data, `personal_sign` and every EIP-7702 authorization among it: no rule names that
- * method, and Privy refuses a rule without conditions for it (seen on a Privy app, 2026-10-11). It
- * holds no `DENY` rule on calldata: Privy denies every transaction whose calldata such a rule
- * cannot decode, plain sends among them (seen on a Privy app, 2026-10-07).
+ * capped token's 24-hour cap holds; a native send or a token `transfer` to the rescue address or
+ * an address saved for that chain (decision 0313); a zero-value transfer to the wallet itself,
+ * which cancels a stuck transaction. A launch wallet's chain also allows each launch call, by
+ * `function_name` on any contract, its pinned inputs the wallet itself, and an `approve` with no
+ * native coin naming any spender, each under the same caps (decision 0217). A bridge deposit an
+ * enabled venue declares pays, on each destination, the addresses `bridged` names there that are
+ * also saved for it (decision 0302). It lets the owner, never a signer, export the key. Privy
+ * denies everything else, typed data, `personal_sign` and every EIP-7702 authorization among it:
+ * no rule names that method, and Privy refuses a rule without conditions for it (seen on a Privy
+ * app, 2026-10-11). It holds no `DENY` rule on calldata: Privy denies every transaction whose
+ * calldata such a rule cannot decode, plain sends among them (seen on a Privy app, 2026-10-07).
  */
 export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingProblem> {
-  const recipients = addressList([request.rescue, ...request.saved]);
+  const recipients = recipientsOf(request);
   if (!recipients.ok) {
     return recipients;
   }
@@ -331,13 +332,33 @@ export function buildCeiling(request: CeilingRequest): Result<Ceiling, CeilingPr
   return ok({ chains: request.chains.map((item) => item.chain.ref), rules });
 }
 
+// Per chain, whom the owner key lets a wallet pay: on each enabled chain the rescue address and the
+// addresses saved for it, checksummed; on any other chain the addresses saved for it, as given.
+function recipientsOf(request: CeilingRequest): Result<readonly ChainAddresses[], CeilingProblem> {
+  const enabled = request.chains.map((item) => String(item.chain.chainId));
+  const lists: ChainAddresses[] = [];
+  for (const chainId of enabled) {
+    const listed = addressList([request.rescue, ...addressesOn(request.saved, chainId)]);
+    if (!listed.ok) {
+      return listed;
+    }
+    lists.push({ chainId, addresses: listed.value });
+  }
+  const others = request.saved.filter((item) => !enabled.includes(item.chainId));
+  return ok([...lists, ...others]);
+}
+
 /**
  * The rules {@link buildCeiling} writes for chains whose lists are checked and checksummed, and
- * recipients that are: each chain's rules in the order given, then the rules of no chain.
+ * recipients that are: each chain's rules in the order given, its sends paying the recipients
+ * listed for that chain, then the rules of no chain.
  */
 export function ceilingRules(
   chains: readonly CeilingChainLists[],
-  recipients: readonly string[],
+  recipients: readonly ChainAddresses[],
 ): readonly PolicyRule[] {
-  return [...chains.flatMap((item) => chainRules(item, recipients)), ownerExport];
+  return [
+    ...chains.flatMap((item) => chainRules(item, addressesOn(recipients, item.chainId))),
+    ownerExport,
+  ];
 }

@@ -4,7 +4,7 @@ import { addressList } from "./address-list.js";
 import { checkedTargets } from "./bridge-rules.js";
 import { type CeilingChainLists, ceilingRules } from "./build-ceiling.js";
 import { type CallRuleLists, launchListsOf } from "./call-lists.js";
-import type { ChainCaps } from "./ceiling.js";
+import type { ChainAddresses, ChainCaps } from "./ceiling.js";
 import {
   callIn,
   capsIn,
@@ -43,8 +43,11 @@ export interface CeilingHeld {
    * allows calls; 0 when no chain does.
    */
   readonly perTxNativeCapBase: bigint;
-  /** Every address a native send may pay, each once. */
-  readonly recipients: readonly string[];
+  /**
+   * Per chain the ceiling enables, every address its native send rule lets a send pay, each once,
+   * in the order the rules name the chains (decision 0313).
+   */
+  readonly recipients: readonly ChainAddresses[];
   /** The caps of each chain whose rules allow calls, in the order the rules name the chains. */
   readonly caps: readonly HeldCaps[];
   /** Whether it is a launch wallet's ceiling: one of its rules is a launch rule (decision 0217). */
@@ -248,7 +251,10 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
       ]),
     ],
     perTxNativeCapBase,
-    recipients: [...new Set(sends.flatMap((rule) => valuesOf(rule, "to", "in")))],
+    recipients: sends.map((rule) => ({
+      chainId: onChain.exec(rule.name)?.[1] ?? "",
+      addresses: [...new Set(valuesOf(rule, "to", "in"))],
+    })),
     caps,
     isLaunch: read.some(isLaunchRule),
     launchCalls: [...new Set(read.flatMap(launchFunctionOf))],
@@ -264,10 +270,10 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
 
 /**
  * Whether rules Privy holds are exactly a ceiling `buildCeiling` builds: the ceiling rebuilt
- * from the chains, calls, spenders, caps, launch rules and native-send recipients they name has the
- * same rules,
- * compared as the read-back compares them. A token send to a recipient the native sends do not
- * list, a call rule without its 24-hour cap, a rule of no ceiling or a lowercase address fails it.
+ * from the chains, calls, spenders, caps, launch rules and each chain's native-send recipients
+ * they name has the same rules, compared as the read-back compares them. A token send to a
+ * recipient its chain's native sends do not list, a call rule without its 24-hour cap, a rule of
+ * no ceiling or a lowercase address fails it.
  */
 export function isBuiltCeiling(rules: readonly JsonValue[]): boolean {
   const read = heldRules(rules);
@@ -275,20 +281,21 @@ export function isBuiltCeiling(rules: readonly JsonValue[]): boolean {
     return false;
   }
   const chainIds = chainIdsOf(read);
-  const [first] = chainIds;
   const lists = chainIds.map((chainId) => listsOf(read, chainId));
-  const sends = first === undefined ? undefined : namedRule(read, "Native sends", first);
-  const recipients = addressList(sends === undefined ? [] : valuesOf(sends, "to", "in"));
+  const recipients = chainIds.map((chainId) => sendsOf(read, chainId));
   const chains = lists.flatMap((item) => (item === undefined ? [] : [item]));
-  if (
-    chains.length !== lists.length ||
-    chains.length === 0 ||
-    !recipients.ok ||
-    recipients.value.length === 0
-  ) {
+  const sends = recipients.flatMap((item) => (item === undefined ? [] : [item]));
+  if (chains.length !== lists.length || chains.length === 0 || sends.length !== chainIds.length) {
     return false;
   }
-  const built = ruleTexts(ceilingRules(chains, recipients.value).map(policyRuleJson));
+  const built = ruleTexts(ceilingRules(chains, sends).map(policyRuleJson));
   const held = ruleTexts(rules);
   return held !== undefined && JSON.stringify(held) === JSON.stringify(built);
+}
+
+// A chain's native-send recipients, checksummed; undefined when it lists none or one malformed.
+function sendsOf(read: readonly HeldRule[], chainId: string): ChainAddresses | undefined {
+  const sends = namedRule(read, "Native sends", chainId);
+  const listed = addressList(sends === undefined ? [] : valuesOf(sends, "to", "in"));
+  return listed.ok && listed.value.length > 0 ? { chainId, addresses: listed.value } : undefined;
 }

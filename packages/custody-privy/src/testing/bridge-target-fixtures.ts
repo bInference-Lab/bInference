@@ -1,9 +1,9 @@
 import type {
   BridgeCall,
   BridgeDeposit,
-  BridgedAddresses,
   CeilingCall,
   CeilingRequest,
+  ChainAddresses,
   ChainCaps,
 } from "../ceiling/ceiling.js";
 import { bridgeAbis, stakingAbis } from "./bridge-fixtures.js";
@@ -63,7 +63,7 @@ export const testDeposits: readonly BridgeDeposit[] = [
 ];
 
 /** The addresses saved per destination: one on Base, one on Robinhood Chain, the rescue on Ethereum. */
-export const testBridged: readonly BridgedAddresses[] = [
+export const testBridged: readonly ChainAddresses[] = [
   { chainId: "8453", addresses: [bridgeAddresses.baseSaved] },
   { chainId: "4663", addresses: [bridgeAddresses.robinhoodSaved] },
   { chainId: "1", addresses: [bridgeAddresses.rescue] },
@@ -76,9 +76,9 @@ export const testRouteCaps: ChainCaps["approvals"] = [
 ];
 
 /**
- * The test ceiling request with the bridge deposits and the addresses saved per destination, the
- * Robinhood Chain address among the saved ones, the SpokePool as a spender, and the caps of the
- * routes' tokens after the ones given.
+ * The test ceiling request with the bridge deposits and the addresses saved per destination, each
+ * saved for its destination alone, the SpokePool as a spender, and the caps of the routes' tokens
+ * after the ones given.
  */
 export function testBridgeCeilingRequest(
   caps: ChainCaps = testCaps,
@@ -91,8 +91,7 @@ export function testBridgeCeilingRequest(
       bridges: testDeposits,
     }),
   );
-  const saved = [...request.saved, bridgeAddresses.robinhoodSaved];
-  return { ...request, chains, saved, bridged: testBridged };
+  return { ...request, chains, saved: [...request.saved, ...testBridged], bridged: testBridged };
 }
 
 /** BSC's staking contracts, the slisBNB token and Relay's depository. */

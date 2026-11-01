@@ -13,7 +13,12 @@ const other = "0x4C7f6780Ec91C6AC1D99dA89A90db7895a17dAcE";
 
 function owned(recipients: readonly string[]): OwnedWallet {
   return {
-    ceiling: { chainIds: ["56"], contracts: [], perTxNativeCapBase: 0n, recipients },
+    ceiling: {
+      chainIds: ["56"],
+      contracts: [],
+      perTxNativeCapBase: 0n,
+      recipients: [{ chainId: "56", addresses: recipients }],
+    },
   } as unknown as OwnedWallet;
 }
 
@@ -29,7 +34,7 @@ function roledAt(
       chainIds: ["56"],
       contracts: [],
       perTxNativeCapBase: 0n,
-      recipients,
+      recipients: [{ chainId: "56", addresses: recipients }],
       isLaunch: role === "launch",
     },
     role,

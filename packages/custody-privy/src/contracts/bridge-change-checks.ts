@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { ok } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
+import type { ChainAddresses } from "../ceiling/ceiling.js";
 import { readRuleRefs } from "../privy/privy-wire.schema.js";
 import {
   bridgeAddresses,
   testBridged,
   testStakingCeilingRequest,
 } from "../testing/bridge-target-fixtures.js";
-import { testAddresses } from "../testing/custody-fixtures.js";
+import { onTestChain, testAddresses } from "../testing/custody-fixtures.js";
 import { setCeilingRecipients } from "../wallets/ceiling-recipients.js";
 import { sendSignedRecipients, signCeilingRecipients } from "../wallets/signed-recipients.js";
 import {
@@ -21,9 +22,14 @@ import {
 } from "./bridge-staking-checks.js";
 import { live, type PrivyCustodyHarness, policyOf } from "./privy-custody-setup.js";
 
-const { baseSaved, robinhoodSaved, rescue, ethereumUsdc } = bridgeAddresses;
+const { baseSaved, rescue, ethereumUsdc } = bridgeAddresses;
 const { unsaved } = testAddresses;
 const secondBase: Hex = "0xfB6916095ca1df60bB79Ce92cE3Ea74c37c5d359";
+
+// The addresses named per destination, those for Base replaced by the ones given.
+function base(addresses: readonly string[]): readonly ChainAddresses[] {
+  return testBridged.map((item) => (item.chainId === "8453" ? { ...item, addresses } : item));
+}
 
 // The ceiling's recipients written with the owner key, a second Base address saved for Base or
 // not, then asked again every half second for up to 15 seconds, until a deposit to `probe` signs or
@@ -37,15 +43,15 @@ async function baseRecipientsBecome(
     kind: "main",
     routeCaps: wallets.routeCaps,
   });
-  const bridged = testBridged.map((item) =>
-    item.chainId === "8453" ? { chainId: item.chainId, addresses: [baseSaved, secondBase] } : item,
-  );
   const written = await setCeilingRecipients(
     setup.subject.api,
     {
       policy: await policyOf(setup),
-      recipients: [request.rescue, ...request.saved, ...change.saved],
-      bridged,
+      recipients: [
+        ...onTestChain(request.rescue, baseSaved),
+        ...base([baseSaved, ...change.saved]),
+      ],
+      bridged: base([baseSaved, secondBase]),
     },
     {
       ...live(),
@@ -90,8 +96,9 @@ export function bridgeChangeChecks(harness: PrivyCustodyHarness): readonly Contr
       async ({ bridge }) => {
         const { api } = bridge.subject;
         const policy = await policyOf(bridge);
-        const from = [rescue, baseSaved, robinhoodSaved];
-        const to = [unsaved, baseSaved, robinhoodSaved];
+        const destinations = testBridged.filter((item) => item.chainId !== "1");
+        const from = [...onTestChain(rescue, baseSaved), ...testBridged];
+        const to = [...onTestChain(unsaved, baseSaved), ...destinations];
         const expiresAtMs = bridge.subject.clock.now() + 60_000;
         const options = { ...live(), authorize: bridge.subject.ownerAuthorize, expiresAtMs };
         const signed = await signCeilingRecipients(api, { policy, from, to }, options);

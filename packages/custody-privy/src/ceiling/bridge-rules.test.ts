@@ -13,7 +13,7 @@ import { testAddresses, testCaps } from "../testing/custody-fixtures.js";
 import { evaluatePolicy } from "../testing/fake-policy-engine.js";
 import { fakePolicyBodySchema } from "../testing/fake-privy-request.schema.js";
 import { buildCeiling } from "./build-ceiling.js";
-import type { BridgeDeposit, BridgedAddresses, CeilingRequest } from "./ceiling.js";
+import type { BridgeDeposit, CeilingRequest, ChainAddresses } from "./ceiling.js";
 import { policyRuleJson } from "./policy-rule.js";
 import { isBuiltCeiling, readCeiling } from "./read-ceiling.js";
 
@@ -70,7 +70,7 @@ function verdict(call: {
 // The test request with these deposits, and with these addresses saved per destination.
 function withDeposits(
   deposits: readonly BridgeDeposit[],
-  bridged: readonly BridgedAddresses[] = testBridged,
+  bridged: readonly ChainAddresses[] = testBridged,
 ): CeilingRequest {
   const request = testBridgeCeilingRequest();
   const chains = request.chains.map((chain) => Object.assign({}, chain, { bridges: deposits }));
@@ -87,10 +87,10 @@ const baseDeposit: BridgeDeposit = firstDeposit ?? {
 const manyAddresses = (count: number): readonly string[] =>
   Array.from({ length: count }, (_, index) => `0x${(index + 1).toString(16).padStart(40, "0")}`);
 
-// The test request saving these addresses, each also named for Base with the rescue address.
+// The test request saving these addresses and the rescue address for Base, each named there.
 function withSaved(saved: readonly string[]): CeilingRequest {
   const bridged = [{ chainId: "8453", addresses: [testAddresses.rescue, ...saved] }];
-  return { ...withDeposits([baseDeposit], bridged), saved };
+  return { ...withDeposits([baseDeposit], bridged), saved: bridged };
 }
 
 // The names of the rules a request builds.
@@ -218,9 +218,8 @@ describe("building bridge targets", () => {
     const refused = { ok: false, error: "bad_bridge" };
     expect(buildCeiling(withDeposits([baseDeposit, baseDeposit]))).toStrictEqual(refused);
     const badChain = [{ chainId: "08453", addresses: [baseSaved] }];
-    expect(
-      buildCeiling(withDeposits([{ ...baseDeposit, destinationChainId: "08453" }], badChain)),
-    ).toStrictEqual(refused);
+    const request = withDeposits([{ ...baseDeposit, destinationChainId: "08453" }], badChain);
+    expect(buildCeiling({ ...request, saved: badChain })).toStrictEqual(refused);
   });
 
   it("refuses a deposit function that is also a plain call, which would pay anyone", () => {
@@ -248,21 +247,34 @@ describe("building bridge targets", () => {
 });
 
 describe("who a bridge deposit pays", () => {
-  it("pays only addresses that are still the rescue address or a saved one", () => {
+  it("pays only addresses still saved for the destination", () => {
     const request = testBridgeCeilingRequest();
     const unsavedRobinhood = {
       ...request,
-      saved: request.saved.filter((item) => item !== robinhoodSaved),
+      saved: request.saved.filter((item) => item.chainId !== "4663"),
     };
     expect(names(request)).toContain("Bridge depositV3, chain 56 to 4663, 1");
     expect(names(unsavedRobinhood)).not.toContain("Bridge depositV3, chain 56 to 4663, 1");
     expect(names(unsavedRobinhood)).toContain("Bridge depositV3, chain 56 to 8453, 1");
   });
 
-  it("takes the old rescue address out of every destination when it is replaced", () => {
-    const request = { ...testBridgeCeilingRequest(), rescue: testAddresses.unsaved };
-    const ethereum = names(request).filter((name) => name.includes(" to 1, "));
+  it("takes an old rescue address out of a destination once it is listed there no more", () => {
+    const request = testBridgeCeilingRequest();
+    const replaced = {
+      ...request,
+      rescue: testAddresses.unsaved,
+      saved: request.saved.filter((item) => item.chainId !== "1"),
+    };
+    const ethereum = names(replaced).filter((name) => name.includes(" to 1, "));
     expect(ethereum).toStrictEqual([]);
+  });
+
+  it("never pays an address saved for a destination by a send on the chain it leaves", () => {
+    const sends = rulesOf(testBridgeCeilingRequest()).find((rule) =>
+      JSON.stringify(rule).includes("Native sends, chain 56"),
+    );
+    expect(JSON.stringify(sends)).not.toContain(robinhoodSaved);
+    expect(JSON.stringify(sends)).toContain(testAddresses.rescue);
   });
 
   it("pays no destination the ceiling names no address for", () => {

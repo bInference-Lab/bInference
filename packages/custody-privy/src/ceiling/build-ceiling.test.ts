@@ -3,6 +3,7 @@ import type { JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import {
   oneBnbWei,
+  onTestChain,
   testAddresses,
   testCalls,
   testCaps,
@@ -250,7 +251,7 @@ describe("buildCeiling", () => {
     ];
     const rules = rulesOf({
       ...withLists({ calls, spenders: [lower(router), router] }),
-      saved: [lower(saved), saved, lower(rescue)],
+      saved: onTestChain(lower(saved), saved, lower(rescue)),
     });
     expect(rules).toStrictEqual(expectedRules);
   });
@@ -304,13 +305,18 @@ describe("buildCeiling", () => {
     ["malformed_address", { ...testCeilingRequest(), rescue: "0x123" }],
     [
       "malformed_address",
-      { ...testCeilingRequest(), saved: ["0xeA6F82DbD6C87DE5E542eFbd1f9964879828e4E7"] },
+      {
+        ...testCeilingRequest(),
+        saved: onTestChain("0xeA6F82DbD6C87DE5E542eFbd1f9964879828e4E7"),
+      },
     ],
     [
       "too_many_addresses",
       {
         ...testCeilingRequest(),
-        saved: Array.from({ length: 100 }, (_, n) => `0x${n.toString(16).padStart(40, "0")}`),
+        saved: onTestChain(
+          ...Array.from({ length: 100 }, (_, n) => `0x${n.toString(16).padStart(40, "0")}`),
+        ),
       },
     ],
     ["negative_cap", withLists({ perTxNativeCapBase: -1n })],
@@ -379,7 +385,7 @@ describe("buildCeiling", () => {
       { length: 99 },
       (_, n) => `0x${(n + 1).toString(16).padStart(40, "0")}`,
     );
-    expect(built({ ...testCeilingRequest(), saved: saved99 }).ok).toBe(true);
+    expect(built({ ...testCeilingRequest(), saved: onTestChain(...saved99) }).ok).toBe(true);
     expect(oneBnbWei).toBe(1_000_000_000_000_000_000n);
   });
 });

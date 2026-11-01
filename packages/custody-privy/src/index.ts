@@ -3,7 +3,7 @@ export { maxAggregations } from "./ceiling/ceiling.js";
 export type {
   BridgeCall,
   BridgeDeposit,
-  BridgedAddresses,
+  ChainAddresses,
   BridgeInputs,
   BridgeTarget,
   Ceiling,
@@ -34,6 +34,7 @@ export { readCeiling } from "./ceiling/read-ceiling.js";
 export type { HeldBridge } from "./ceiling/read-bridge-rules.js";
 export type { CeilingHeld, HeldCaps } from "./ceiling/read-ceiling.js";
 export type { BridgePlan } from "./ceiling/registry-bridge-deposits.js";
+export { ruleChainIds } from "./ceiling/rule-chain-ids.js";
 export { launchCeilingOf, registryCeilingChain } from "./ceiling/registry-ceiling-chain.js";
 export type {
   RegistryCeilingProblem,

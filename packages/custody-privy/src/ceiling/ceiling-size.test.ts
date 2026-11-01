@@ -40,7 +40,7 @@ describe("the bytes a ceiling holds", () => {
     const request = testBridgeCeilingRequest();
     const wide: CeilingRequest = {
       ...request,
-      saved,
+      saved: deposits.map((deposit) => ({ chainId: deposit.destinationChainId, addresses: saved })),
       chains: request.chains.map((chain) => Object.assign({}, chain, { bridges: deposits })),
       bridged: deposits.map((deposit) => ({
         chainId: deposit.destinationChainId,

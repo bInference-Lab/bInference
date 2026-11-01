@@ -42,6 +42,7 @@ import {
 import { createPrivySignerRevoker } from "./privy-signer-revoker.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
+import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 import { signedWalletsOf } from "./signed-wallets.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
 import { ceilingChainsOf, ceilingVenuesOf, heldCapsOf } from "./wallet-ceilings.js";
@@ -213,6 +214,11 @@ async function readInstall(
   }
 }
 
+// How the engine's accounts become each ceiling's addresses (decision 0313).
+function addressPartsOf(options: OpenCustodyOptions) {
+  return selfHostedCeilingAddresses(options.chains.list().map((item) => item.definition));
+}
+
 // The ceiling editor on the owner's app: calls and caps as init plans them for this install.
 function ceilingEditorOf(
   options: OpenCustodyOptions,
@@ -225,6 +231,7 @@ function ceilingEditorOf(
     capPlanOn: (chain, dayUsdMicros) => capPlanOn(options, chain, dayUsdMicros),
     capAssetsOn: (chain) => capAssetsOn(options.chains, chain),
     heldCaps: async (read) => heldCapsOf(options.install, read),
+    addresses: addressPartsOf(options),
   });
 }
 
@@ -269,6 +276,7 @@ export async function openCustody(
       ceilingChains: (wallet) => ceilingChainsOf(options, wallet),
       heldCaps: async (read) => heldCapsOf(install, read),
       onMade: (wallet, made) => wallets.set(wallet, made),
+      addresses: addressPartsOf(options),
     }),
     signer: createPrivyOwnerSigner({
       api,

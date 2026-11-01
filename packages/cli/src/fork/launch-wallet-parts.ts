@@ -50,6 +50,7 @@ import {
 import { createChainWalletFacts } from "../compose/chain-wallet-facts.js";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createPrivyWalletMaker } from "../compose/privy-wallet-maker.js";
+import { selfHostedCeilingAddresses } from "../compose/self-hosted-destinations.js";
 import { type StartedSigner, startSignerProcess } from "../compose/start-signer.js";
 import { ceilingChainsOf, heldCapsOf } from "../compose/wallet-ceilings.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
@@ -141,6 +142,7 @@ export function walletMakerOf(
     ceilingChains: (wallet) => ceilingChainsOf(plans, wallet),
     heldCaps: async (signal) => heldCapsOf(parts.stores.install, signal),
     onMade: (wallet, made) => custody.wallets.set(wallet, made),
+    addresses: selfHostedCeilingAddresses(plans.chains.list().map((item) => item.definition)),
   });
 }
 

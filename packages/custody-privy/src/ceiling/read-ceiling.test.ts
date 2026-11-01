@@ -5,6 +5,7 @@ import { z } from "zod";
 import { stakingAddresses } from "../testing/bridge-target-fixtures.js";
 import {
   oneBnbWei,
+  onTestChain,
   testAddresses,
   testCalls,
   testCaps,
@@ -57,7 +58,7 @@ describe("readCeiling", () => {
       chainIds: ["56"],
       contracts: [testAddresses.router],
       perTxNativeCapBase: oneBnbWei,
-      recipients: [testAddresses.rescue, testAddresses.saved],
+      recipients: onTestChain(testAddresses.rescue, testAddresses.saved),
       caps: [{ chainId: "56", caps: testCaps }],
       isLaunch: false,
       launchCalls: [],
@@ -75,7 +76,7 @@ describe("readCeiling", () => {
       chainIds: ["56"],
       contracts: [],
       perTxNativeCapBase: oneBnbWei,
-      recipients: [testAddresses.rescue, testAddresses.saved],
+      recipients: onTestChain(testAddresses.rescue, testAddresses.saved),
       caps: [{ chainId: "56", caps: testCaps }],
       isLaunch: true,
       launchCalls: ["buy", "sell", "approve"],

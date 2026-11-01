@@ -27,6 +27,7 @@
     "@binference/brew": "workspace:*",
     "@binference/chain": "workspace:*",
     "@binference/chain-evm": "workspace:*",
+    "@binference/chain-solana": "workspace:*",
     "@binference/chains": "workspace:*",
     "@binference/client": "workspace:*",
     "@binference/console": "workspace:*",

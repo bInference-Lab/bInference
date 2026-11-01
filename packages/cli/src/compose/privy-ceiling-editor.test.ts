@@ -4,6 +4,7 @@ import {
   assetRefSchema,
   type WalletRole,
 } from "@binference/chain";
+import { bsc } from "@binference/chains";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   buildCeiling,
@@ -13,6 +14,7 @@ import {
 } from "@binference/custody-privy";
 import {
   createFakePrivy,
+  onTestChain,
   testAddresses,
   testCalls,
   testCapPlan,
@@ -23,6 +25,7 @@ import { ceilingEditorContract } from "@binference/engine/testing";
 import { createP256KeyPair, formatOwnerKeyCode } from "@binference/signer";
 import { describe, expect, it } from "vitest";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
+import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 
 const live = { signal: new AbortController().signal };
 const { rescue, saved, unsaved, router } = testAddresses;
@@ -78,6 +81,7 @@ const capsOptions = {
     tokens: [{ asset: tokenAsset, token: testAddresses.token, decimals: 0, floorUsd: 1_000_000n }],
   }),
   heldCaps: async () => Promise.resolve([]),
+  addresses: selfHostedCeilingAddresses([bsc]),
 };
 
 interface RuleJson {
@@ -104,7 +108,7 @@ async function subject() {
     { publicKey: owner.publicKey, displayName: "owner" },
     live,
   );
-  const ceiling = buildCeiling({ ...testCeilingRequest(), rescue, saved: [saved] });
+  const ceiling = buildCeiling({ ...testCeilingRequest(), rescue, saved: onTestChain(saved) });
   if (!ceiling.ok) {
     throw new Error("Expected the test ceiling.");
   }
@@ -210,5 +214,14 @@ describe("the Privy ceiling editor", () => {
       ok: false,
       error: "bad_owner_key",
     });
+  });
+
+  it("lists an address saved for Base in no send rule on BNB Smart Chain", async () => {
+    const made = await subject();
+    const onBase = accountRefSchema.parse(`eip155:8453:${unsaved}`);
+    const ceilings = [{ ceiling: made.ceiling, recipients: [accounts[0], onBase] }];
+    await made.editor.setRecipients({ ownerKey: made.ownerKey, ceilings }, live);
+
+    expect(await made.recipients()).toStrictEqual([accounts[0]]);
   });
 });

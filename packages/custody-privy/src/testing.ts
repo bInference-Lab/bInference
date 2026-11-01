@@ -4,6 +4,7 @@ export {
   approvalForAllData,
   approveData,
   oneBnbWei,
+  onTestChain,
   swapData,
   swapToData,
   sweepData,

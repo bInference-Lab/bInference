@@ -141,10 +141,13 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    declares, one rule per route of each destination chain
    (`Bridge <function>, chain <id> to <destination>, <n>`): the function on its contract with no
    native coin, its depositor the wallet itself, its recipient one of the addresses saved for that
-   destination that is still the rescue address or a saved address, the destination chain's id,
-   and the route's token that leaves with its token that arrives, as a pair. Every write of the
-   ceiling works the recipients out again, so removing a saved address or replacing the rescue
-   address takes it out of every destination in the same change. A route whose token that leaves
+   destination ([decision 0313](../DECISIONS.md#d0313)), as 20 bytes in an `address` input or 32
+   in a `bytes32` input, the destination chain's id, and the route's token that leaves with its
+   token that arrives, as a pair. Every write of the ceiling works the recipients out again from
+   the agent's saved addresses, so removing a saved address or replacing the rescue address takes
+   it out of every destination in the same change. Saving an address for a destination rewrites
+   each live wallet's call rules, which adds that destination's rules where a venue's routes reach
+   it. A route whose token that leaves
    has no 24-hour approval cap on the chain is refused, so a deposit loses at most that cap
    ([decision 0305](../DECISIONS.md#d0305)). A destination with no saved address has no rule. The
    deposit's message must be empty, which the signer checks: Privy takes no condition for an empty
@@ -153,7 +156,9 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    enabled venue declares as its spender, and only while each capped token's approvals in the last
    24 hours stay within its cap; never `setApprovalForAll`.
 5. **Sends** ([decision 0091](../DECISIONS.md#d0091)): a native transfer, or a token
-   `transfer(to, amount)`, only when the recipient is the rescue address or a saved address. One
+   `transfer(to, amount)`, only when the recipient is the rescue address or an address saved for
+   that chain: an address saved for Base is never paid by a send on BSC
+   ([decision 0313](../DECISIONS.md#d0313)). One
    exception: a 0-value transfer to the wallet itself, which is how a stuck transaction is cancelled
    (spec 6, section 6). Saving an address changes the policy, so it needs the owner key
    (self-hosted) or the user's Privy sign-in (Cloud).

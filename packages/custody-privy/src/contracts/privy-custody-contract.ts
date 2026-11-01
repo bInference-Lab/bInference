@@ -13,6 +13,7 @@ import {
   testAddresses,
   testCapPlan,
   testCeilingRequest,
+  onTestChain,
   testChain,
   transferData,
 } from "../testing/custody-fixtures.js";
@@ -95,7 +96,10 @@ const readBackChecks = (harness: PrivyCustodyHarness): readonly ContractCheck[] 
     "fails the read-back of a wallet whose policy is not the ceiling asked for",
     async (setup) => {
       const caps = heldCapsOf(setup);
-      const wider = buildCeiling({ ...testCeilingRequest(caps), saved: [saved, unsaved] });
+      const wider = buildCeiling({
+        ...testCeilingRequest(caps),
+        saved: onTestChain(saved, unsaved),
+      });
       assert.ok(wider.ok);
       await readsBackAs(setup, { ...setup.expected, ceiling: wider.value }, "policy");
     },

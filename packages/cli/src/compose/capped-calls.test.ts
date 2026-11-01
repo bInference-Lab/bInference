@@ -1,4 +1,5 @@
 import { assetRefSchema, type WalletRole } from "@binference/chain";
+import { bsc } from "@binference/chains";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   type BridgeDeposit,
@@ -21,6 +22,7 @@ import {
 import { createP256KeyPair, formatOwnerKeyCode } from "@binference/signer";
 import { describe, expect, it } from "vitest";
 import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
+import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 
 const live = { signal: new AbortController().signal };
 const { rescue, saved, router, token } = testAddresses;
@@ -97,7 +99,7 @@ async function oldInstall(extra = 0) {
     }),
   );
   const bridged = [{ chainId: "8453", addresses: [saved] }];
-  const ceiling = buildCeiling({ ...request, chains, rescue, saved: [saved], bridged });
+  const ceiling = buildCeiling({ ...request, chains, rescue, saved: bridged, bridged });
   if (!ceiling.ok) {
     throw new Error(ceiling.error);
   }
@@ -110,6 +112,7 @@ async function oldInstall(extra = 0) {
     clock,
     ownerKeyPublic: async () => Promise.resolve(owner.publicKey),
     callsOn: callsOnWith({ withEth: true }),
+    addresses: selfHostedCeilingAddresses([bsc]),
     capPlanOn: () => planWith(extra),
     capAssetsOn: () => ({
       native: { asset: nativeAsset, decimals: 18, floorUsd: 100_000_000n },

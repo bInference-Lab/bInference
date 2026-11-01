@@ -1,5 +1,5 @@
 import { type AccountRef, accountRefSchema, type WalletRole } from "@binference/chain";
-import { bscVenueCalls } from "@binference/chains";
+import { bsc, bscVenueCalls } from "@binference/chains";
 import { type Http, type Id, idSchema, type Result } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
@@ -26,6 +26,7 @@ import { configSchema } from "../config/schema/config.schema.js";
 import type { CeilingDraft } from "../init/ceiling-request.js";
 import { selfHostedChains } from "./open-engine-parts.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
+import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 import { ceilingChainsOf } from "./wallet-ceilings.js";
 
 const live = { signal: new AbortController().signal };
@@ -145,6 +146,7 @@ async function subject() {
       wallet.role === undefined ? draft : roleDrafts[wallet.role](wallet),
     heldCaps: counted.heldCaps,
     onMade: (wallet, made) => signedFor.set(wallet, made),
+    addresses: selfHostedCeilingAddresses([bsc]),
   });
   const next = { n: 0 };
   return {
@@ -242,6 +244,7 @@ describe("the Privy wallet maker", () => {
       ceilingChains: () => draft,
       heldCaps: async () => Promise.resolve([]),
       onMade: () => undefined,
+      addresses: selfHostedCeilingAddresses([bsc]),
     });
     const request = {
       wallet: made.nextWallet(),

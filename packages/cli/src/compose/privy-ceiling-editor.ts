@@ -1,10 +1,4 @@
-import {
-  accountRefParts,
-  type AccountRef,
-  accountRefSchema,
-  type ChainRef,
-  chainRefSchema,
-} from "@binference/chain";
+import { type ChainRef, chainRefSchema } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -49,9 +43,10 @@ import { z } from "zod";
 import type { CapAssets } from "../init/ceiling-request.js";
 import { callsRefusalOf } from "./calls-refusal.js";
 import { type GrownCaps, planCappedCalls } from "./capped-calls.js";
-import { dayCapViewsOf } from "./day-cap-views.js";
+import { type CeilingAddressParts, ceilingAddressesOf } from "./ceiling-addresses.js";
 import { ownerAuthorize, type OwnerKeyHolder } from "./owner-authorize.js";
 import { writeEveryPlan } from "./planned-writes.js";
+import { privyCeilingRead } from "./privy-ceiling-read.js";
 import { withDayCaps } from "./resized-caps.js";
 
 /** What the Privy ceiling editor reaches Privy with, and the owner key it takes. */
@@ -72,17 +67,14 @@ export interface PrivyCeilingEditorOptions extends OwnerKeyHolder {
   readonly capAssetsOn: (chain: ChainRef) => CapAssets | undefined;
   /** The 24-hour caps the install's live ceilings name now. */
   readonly heldCaps: (signal: AbortSignal) => Promise<readonly HeldCaps[]>;
+  /** How each account becomes the addresses a ceiling lists for its own chain (decision 0313). */
+  readonly addresses: CeilingAddressParts;
 }
 
 // A change signed now goes out at once; five minutes covers every ceiling of an install.
 const nowExpiryMs = 5 * 60_000;
 
 const payloadSchema = z.array(signedRecipientsSchema);
-
-// Privy compares addresses as text: each account's address once, in the order given.
-function addressesOf(accounts: readonly AccountRef[]): readonly string[] {
-  return [...new Set(accounts.map((account) => accountRefParts(account).address))];
-}
 
 function policyOf(ceiling: string): Result<PrivyId, "not_found"> {
   return isPrivyId(ceiling) ? ok(ceiling) : err("not_found");
@@ -99,16 +91,6 @@ function refusalOf(error: RecipientsRefusal): CeilingRefusal {
 }
 
 type Options = PrivyCeilingEditorOptions;
-
-// Each address on each chain the ceiling enables, as custody's accounts.
-function accountsOn(
-  chains: readonly ChainRef[],
-  addresses: readonly string[],
-): readonly AccountRef[] {
-  return chains.flatMap((chain) =>
-    addresses.map((address) => accountRefSchema.parse(`${chain}:${address}`)),
-  );
-}
 
 /** A ceiling's policy as Privy holds it, and its rules read. */
 interface Held {
@@ -146,18 +128,7 @@ async function read(
   if (!held.ok) {
     return held;
   }
-  const { rules, policy } = held.value;
-  const chains = rules.chainIds.map((id) => chainRefSchema.parse(`eip155:${id}`));
-  return ok({
-    chains,
-    contracts: accountsOn(chains, rules.contracts),
-    perTxNativeBase: rules.perTxNativeCapBase,
-    recipients: accountsOn(chains, rules.recipients),
-    dayCaps: dayCapViewsOf(rules.caps, options.capAssetsOn),
-    launchCalls: rules.launchCalls,
-    functions: rules.functions,
-    policy: jsonValueSchema.parse(policy),
-  });
+  return ok(privyCeilingRead(held.value, options.capAssetsOn));
 }
 
 async function setRecipients(
@@ -175,7 +146,10 @@ async function setRecipients(
     if (!policy.ok) {
       return policy;
     }
-    const target = { policy: policy.value, recipients: addressesOf(recipients) };
+    // Every write derives each destination's bridge recipients from the same accounts (decision
+    // 0302), so a removed address stops being paid on every chain in one change.
+    const addresses = ceilingAddressesOf(recipients, options.addresses);
+    const target = { policy: policy.value, recipients: addresses, bridged: addresses };
     // oxlint-disable-next-line eslint/no-await-in-loop -- one ceiling at a time: a refusal stops the rest
     const one = await planCeilingRecipients(options.api, target, { signal });
     if (!one.ok) {
@@ -204,7 +178,11 @@ async function signRecipients(
     if (!policy.ok) {
       return policy;
     }
-    const target = { policy: policy.value, from: addressesOf(from), to: addressesOf(to) };
+    const target = {
+      policy: policy.value,
+      from: ceilingAddressesOf(from, options.addresses),
+      to: ceilingAddressesOf(to, options.addresses),
+    };
     // oxlint-disable-next-line eslint/no-await-in-loop -- the owner signs one ceiling at a time
     const one = await signCeilingRecipients(options.api, target, {
       authorize: authorize.value,
@@ -338,8 +316,8 @@ async function setCalls(
  * code, checks it is the key that owns the install's ceilings, and changes each ceiling's send
  * rules, or its contract-call and approval rules (decision 0132) with the 24-hour caps they
  * compare (decision 0151), through Privy, signed with it.
- * The key is used for the one request and kept nowhere. Every account is listed by its address on
- * every chain the ceiling enables.
+ * The key is used for the one request and kept nowhere. Every account is listed by its recipient
+ * bytes for its own chain alone (decision 0313).
  */
 export function createPrivyCeilingEditor(options: PrivyCeilingEditorOptions): CeilingEditor {
   return {

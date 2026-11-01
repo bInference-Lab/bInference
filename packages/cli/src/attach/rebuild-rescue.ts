@@ -7,15 +7,20 @@ function lower(items: readonly string[]): ReadonlySet<string> {
   return new Set(items.map((item) => item.toLowerCase()));
 }
 
+// The addresses a ceiling's native send rules let a send pay, on any chain it enables.
+function sendsOf(wallet: RebuildWallet): readonly string[] {
+  return wallet.ceiling.recipients.flatMap((item) => item.addresses);
+}
+
 // The addresses every ceiling lets a native send pay, as the first ceiling writes them; never a
 // launch or bridge wallet's, which no ceiling may list (decisions 0218 and 0307).
 function commonRecipients(owned: readonly RebuildWallet[]): readonly string[] {
   const [first, ...rest] = owned;
-  const others = rest.map((item) => lower(item.ceiling.recipients));
+  const others = rest.map((item) => lower(sendsOf(item)));
   const roled = lower(
     owned.filter((item) => item.role !== undefined).map((item) => item.wallet.address),
   );
-  return (first?.ceiling.recipients ?? []).filter(
+  return (first === undefined ? [] : sendsOf(first)).filter(
     (address) =>
       others.every((set) => set.has(address.toLowerCase())) && !roled.has(address.toLowerCase()),
   );

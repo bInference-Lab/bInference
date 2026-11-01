@@ -3,7 +3,7 @@ import { generateKeyPairSync } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 import { err, ok } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
-import { testAddresses } from "../testing/custody-fixtures.js";
+import { onTestChain, testAddresses } from "../testing/custody-fixtures.js";
 import { ownerSigner } from "../testing/owner-signer.js";
 import { setCeilingRecipients } from "../wallets/ceiling-recipients.js";
 import type { OwnerAuthorize } from "../wallets/rule-plans.js";
@@ -49,7 +49,11 @@ async function setTo(setup: CustodySetup, recipients: readonly string[]): Promis
     ...live(),
   };
   assert.deepEqual(
-    await setCeilingRecipients(setup.subject.api, { policy, recipients }, options),
+    await setCeilingRecipients(
+      setup.subject.api,
+      { policy, recipients: onTestChain(...recipients) },
+      options,
+    ),
     ok(undefined),
   );
 }
@@ -99,7 +103,7 @@ async function refusesAStranger(setup: CustodySetup): Promise<void> {
   const stranger = ownerSigner(generateKeyPairSync("ec", { namedCurve: "prime256v1" }).privateKey);
   const changed = await setCeilingRecipients(
     setup.subject.api,
-    { policy, recipients: [unsaved] },
+    { policy, recipients: onTestChain(unsaved) },
     { authorize: stranger, expiresAtMs: inMinutes(setup, 5), ...live() },
   );
   assert.deepEqual(changed, err("refused"));
@@ -112,7 +116,7 @@ async function sendsWhileUnchanged(setup: CustodySetup): Promise<void> {
   const owner = counted(setup.subject.ownerAuthorize);
   const signed = await signCeilingRecipients(
     api,
-    { policy, from: [rescue, saved], to: [rescue] },
+    { policy, from: onTestChain(rescue, saved), to: onTestChain(rescue) },
     { authorize: owner.authorize, expiresAtMs: inMinutes(setup, 10), ...live() },
   );
   assert.ok(signed.ok);
@@ -133,7 +137,7 @@ async function refusesWhenExpired(setup: CustodySetup): Promise<void> {
   const policy = await policyOf(setup);
   const signed = await signCeilingRecipients(
     api,
-    { policy, from: [rescue, saved], to: [rescue] },
+    { policy, from: onTestChain(rescue, saved), to: onTestChain(rescue) },
     { authorize: setup.subject.ownerAuthorize, expiresAtMs: inMinutes(setup, -1), ...live() },
   );
   assert.ok(signed.ok);

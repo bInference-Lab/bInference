@@ -52,20 +52,27 @@ interface Deposit {
 
 const same = (left: string, right: string): boolean => left.toLowerCase() === right.toLowerCase();
 
-/** A generated ceiling: its destinations, and the addresses it saves besides the rescue address. */
-interface Ceiling {
-  readonly destinations: readonly Destination[];
-  readonly saved: readonly Hex[];
+/** An address the owner saved for one chain. */
+interface SavedAddress {
+  readonly chain: bigint;
+  readonly address: Hex;
 }
 
-// Decisions 0091, 0297 and 0302, read directly and apart from the builder: a deposit is safe when
-// it pays an address saved for its destination that is still the rescue address or a saved one,
-// refunds the wallet, carries no coin, and moves one of that destination's routes as its pair of
-// tokens. Its message is the signer's to check: Privy takes no condition for an empty `bytes`
-// value.
+/** A generated ceiling: its destinations, and the addresses it saves, each for its chain. */
+interface Ceiling {
+  readonly destinations: readonly Destination[];
+  readonly saved: readonly SavedAddress[];
+}
+
+// Decisions 0091, 0297, 0302 and 0313, read directly and apart from the builder: a deposit is safe
+// when it pays an address named for its destination that is still saved for that chain, refunds
+// the wallet, carries no coin, and moves one of that destination's routes as its pair of tokens.
+// Its message is the signer's to check: Privy takes no condition for an empty `bytes` value.
 function isSafe(ceiling: Ceiling, deposit: Deposit): boolean {
   const place = ceiling.destinations.find((item) => item.chain === deposit.chain);
-  const sendable = [rescue, ...ceiling.saved].some((item) => same(item, deposit.recipient));
+  const sendable = ceiling.saved.some(
+    (item) => item.chain === deposit.chain && same(item.address, deposit.recipient),
+  );
   return (
     place !== undefined &&
     sendable &&
@@ -97,7 +104,13 @@ const destinations: fc.Arbitrary<readonly Destination[]> = fc.uniqueArray(
 
 const ceilings: fc.Arbitrary<Ceiling> = fc.record({
   destinations,
-  saved: fc.uniqueArray(fc.constantFrom(...people), { maxLength: 4 }),
+  saved: fc.uniqueArray(
+    fc.record({
+      chain: fc.constantFrom(8453n, 4663n, 1n, 56n),
+      address: fc.constantFrom(...people),
+    }),
+    { maxLength: 6, selector: (item) => `${String(item.chain)} ${item.address}` },
+  ),
 });
 
 // The fake's rules for a generated ceiling, each address typed in the case given.
@@ -123,7 +136,10 @@ function rulesFor(chosen: Ceiling, typed: (address: Hex) => string): readonly Fa
   const request = testBridgeCeilingRequest(testCaps, routeCaps);
   const built = buildCeiling({
     ...request,
-    saved: chosen.saved.map(typed),
+    saved: chosen.saved.map((item) => ({
+      chainId: String(item.chain),
+      addresses: [typed(item.address)],
+    })),
     bridged,
     chains: request.chains.map((chain) => Object.assign({}, chain, { bridges: deposits })),
   });
@@ -185,7 +201,10 @@ describe("bridge deposits under any ceiling of saved addresses, recipients and r
       [bscUsdc, ethereumUsdc],
       [bscEth, ethereumWeth],
     ] as const;
-    const ceiling = { destinations: [{ chain: 1n, saved: [rescue], pairs }], saved: [] };
+    const ceiling = {
+      destinations: [{ chain: 1n, saved: [rescue], pairs }],
+      saved: [{ chain: 1n, address: rescue }],
+    };
     const rules = rulesFor(ceiling, (address) => address);
     const base = {
       to: spokePool,

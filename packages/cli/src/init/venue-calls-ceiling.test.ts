@@ -52,7 +52,7 @@ function rulesFor(role: "bridge" | undefined): readonly string[] {
   const built = buildCeiling({
     chains: [{ ...plan.value, caps }],
     rescue,
-    saved: [saved],
+    saved: bridged,
     bridged,
   });
   return built.ok ? built.value.rules.map((rule) => rule.name) : [built.error];

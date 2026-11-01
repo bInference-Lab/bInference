@@ -1,12 +1,16 @@
 import { generateKeyPairSync } from "node:crypto";
+import type { JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { recipientRules } from "../ceiling/build-ceiling.js";
-import type { Ceiling } from "../ceiling/ceiling.js";
+import { buildCeiling, recipientRules } from "../ceiling/build-ceiling.js";
+import type { Ceiling, ChainAddresses } from "../ceiling/ceiling.js";
 import type { PolicyRule } from "../ceiling/policy-rule.js";
+import { isBuiltCeiling } from "../ceiling/read-ceiling.js";
 import { testCeiling } from "../contracts/privy-custody-setup.js";
 import type { PrivyApi } from "../privy/privy-api.js";
-import { testAddresses } from "../testing/custody-fixtures.js";
+import { testBridgeCeilingRequest, testBridged } from "../testing/bridge-target-fixtures.js";
+import { onTestChain, testAddresses } from "../testing/custody-fixtures.js";
 import { createFakeCustodySubject } from "../testing/fake-custody-subject.js";
+import { setCeilingRecipients } from "./ceiling-recipients.js";
 import { findOwnedWallets } from "./owned-wallets.js";
 
 const live = { signal: new AbortController().signal };
@@ -45,6 +49,28 @@ function withoutRule(ceiling: Ceiling, name: string): Ceiling {
   return { ...ceiling, rules: ceiling.rules.filter((rule) => rule.name !== name) };
 }
 
+// The ceiling a request builds; a request the builder refuses is a broken test.
+function builtOf(request: Parameters<typeof buildCeiling>[0]): Ceiling {
+  const built = buildCeiling(request);
+  if (!built.ok) {
+    throw new Error(built.error);
+  }
+  return built.value;
+}
+
+// Recipient bytes as the ceiling adapter derives them: every address in lowercase.
+function lowercase(lists: readonly ChainAddresses[]): readonly ChainAddresses[] {
+  return lists.map((item) => ({
+    ...item,
+    addresses: item.addresses.map((address) => address.toLowerCase()),
+  }));
+}
+
+// The rules of a policy Privy answered with; none for a policy it does not hold.
+function rulesOf(held: Awaited<ReturnType<PrivyApi["policy"]>>): readonly JsonValue[] {
+  return held.ok ? held.value.rules : [];
+}
+
 async function made() {
   const { api, ownerKey } = createFakeCustodySubject();
   const first = await walletOwnedBy(api, ownerKey);
@@ -61,8 +87,8 @@ describe("the wallets an owner key owns", () => {
 
     expect(found.map((item) => item.wallet.id)).toStrictEqual(owned);
     expect(found.map((item) => item.ceiling.recipients)).toStrictEqual([
-      [testAddresses.rescue, testAddresses.saved],
-      [testAddresses.rescue, testAddresses.saved],
+      onTestChain(testAddresses.rescue, testAddresses.saved),
+      onTestChain(testAddresses.rescue, testAddresses.saved),
     ]);
   });
 
@@ -97,5 +123,30 @@ describe("the wallets an owner key owns", () => {
     const { api } = await made();
 
     expect(await findOwnedWallets(api, { ownerKey: newKey() }, live)).toStrictEqual([]);
+  });
+
+  it("keep a bridge wallet once its recipients are set again from lowercase bytes", async () => {
+    const { api, ownerKey, ownerAuthorize } = createFakeCustodySubject();
+    const built = builtOf(testBridgeCeilingRequest());
+    const owner = await api.createKeyQuorum({ publicKey: ownerKey, displayName: "owner" }, live);
+    const signer = await api.createKeyQuorum({ publicKey: newKey(), displayName: "agent" }, live);
+    const policy = (await api.createPolicy({ ceiling: built, owner: owner.id }, live)).id;
+    const { id } = await api.createWallet({ owner: owner.id, signer: signer.id, policy }, live);
+    const sends = onTestChain(testAddresses.rescue, testAddresses.saved);
+    const recipients = lowercase([...sends, ...testBridged]);
+    const options = { ...live, authorize: ownerAuthorize, expiresAtMs: madeAtMs + 60_000 };
+
+    const set = await setCeilingRecipients(
+      api,
+      { policy, recipients, bridged: recipients },
+      options,
+    );
+
+    const held = await api.policy(policy, live);
+    expect(set).toStrictEqual({ ok: true, value: undefined });
+    expect(held).toMatchObject({ ok: true });
+    expect(isBuiltCeiling(rulesOf(held))).toBe(true);
+    const found = await findOwnedWallets(api, { ownerKey }, live);
+    expect(found.map((item) => item.wallet.id)).toContain(id);
   });
 });

@@ -11,6 +11,7 @@ import { bsc, bscCeilingCaps } from "@binference/chains";
 import { BinferenceError, type Http, ok } from "@binference/core";
 import {
   type CeilingChainPlan,
+  type ChainAddresses,
   type ChainCapPlan,
   registryCeilingChain,
 } from "@binference/custody-privy";
@@ -68,7 +69,8 @@ export interface CeilingDraft {
   /** Each chain's 24-hour caps, in the order of `chains`. */
   readonly capPlans: readonly ChainCapPlan[];
   readonly rescue: string;
-  readonly saved: readonly string[];
+  /** Per chain, the addresses saved for it; none at init. */
+  readonly saved: readonly ChainAddresses[];
 }
 
 // What each chain this binference serves caps per rolling 24 hours (decision 0149).

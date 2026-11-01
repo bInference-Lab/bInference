@@ -2,7 +2,13 @@ import { assetRefSchema, chainRefSchema } from "@binference/chain";
 import type { EvmChain } from "@binference/chain-evm";
 import { BinferenceError } from "@binference/core";
 import { encodeFunctionData, type Hex, parseAbi } from "viem";
-import type { CeilingCall, CeilingRequest, ChainCaps, LaunchCeiling } from "../ceiling/ceiling.js";
+import type {
+  CeilingCall,
+  CeilingRequest,
+  ChainAddresses,
+  ChainCaps,
+  LaunchCeiling,
+} from "../ceiling/ceiling.js";
 import type { ChainCapPlan } from "../ceiling/day-caps.js";
 import type { AbiFunction } from "../ceiling/policy-rule.js";
 
@@ -118,6 +124,11 @@ export const testCapPlan: ChainCapPlan = {
   approvals: [{ token: testAddresses.token, limitBase: 1_000n }],
 };
 
+/** Addresses listed for the test chain alone, as a change of a ceiling's recipients names them. */
+export function onTestChain(...addresses: readonly string[]): readonly ChainAddresses[] {
+  return [{ chainId: String(testChain.chainId), addresses }];
+}
+
 /**
  * The ceiling request of the tests: one chain whose router's `swap` and `swapTo` are listed and
  * which is the one spender, the caps given, a rescue and a saved address.
@@ -134,7 +145,7 @@ export function testCeilingRequest(caps: ChainCaps = testCaps): CeilingRequest {
       },
     ],
     rescue: testAddresses.rescue,
-    saved: [testAddresses.saved],
+    saved: onTestChain(testAddresses.saved),
   };
 }
 

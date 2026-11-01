@@ -32,6 +32,7 @@ import type {
 import { parseOwnerKeyCode } from "@binference/signer";
 import type { CeilingDraft } from "../init/ceiling-request.js";
 import { walletPolicyOf } from "../init/wallet-step.js";
+import { type CeilingAddressParts, ceilingAddressesOf } from "./ceiling-addresses.js";
 
 /** What the Privy wallet maker reaches Privy with, and what each new ceiling is built from. */
 export interface PrivyWalletMakerOptions {
@@ -52,6 +53,8 @@ export interface PrivyWalletMakerOptions {
   readonly heldCaps: (signal: AbortSignal) => Promise<readonly HeldCaps[]>;
   /** Signs for each wallet made from then on, under the engine's id. */
   readonly onMade: (wallet: Id<"wal">, made: PrivyWallet) => void;
+  /** How each account becomes the addresses a ceiling lists for its own chain (decision 0313). */
+  readonly addresses: CeilingAddressParts;
 }
 
 /** The install's key quorums, when custody is set up and the code is the install's owner key. */
@@ -91,10 +94,17 @@ function unbuilt(problem: string): BinferenceError {
   });
 }
 
-function ceilingOf(chains: readonly CeilingChain[], request: WalletRequest) {
-  const addresses = request.recipients.map((account) => accountRefParts(account).address);
-  const [rescue = "", ...saved] = addresses;
-  const ceiling = buildCeiling({ chains, rescue, saved });
+// The rescue address comes first among the recipients; each other account is listed for its own
+// chain, and a bridge to a destination may pay those saved there.
+function ceilingOf(
+  options: PrivyWalletMakerOptions,
+  chains: readonly CeilingChain[],
+  request: WalletRequest,
+) {
+  const [first, ...rest] = request.recipients;
+  const rescue = first === undefined ? "" : accountRefParts(first).address;
+  const saved = ceilingAddressesOf(rest, options.addresses);
+  const ceiling = buildCeiling({ chains, rescue, saved, bridged: saved });
   if (ceiling.ok) {
     return ok(ceiling.value);
   }
@@ -170,7 +180,7 @@ async function make(
   const draft = options.ceilingChains(request);
   const chains = await capsOf(options, draft, { owner: quorums.value.owner, signal });
   const [first] = chains;
-  const ceiling = ceilingOf(chains, request);
+  const ceiling = ceilingOf(options, chains, request);
   if (!ceiling.ok) {
     return ceiling;
   }

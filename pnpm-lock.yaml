@@ -521,6 +521,9 @@ importers:
       '@binference/chain-evm':
         specifier: workspace:*
         version: link:../chain-evm
+      '@binference/chain-solana':
+        specifier: workspace:*
+        version: link:../chain-solana
       '@binference/chains':
         specifier: workspace:*
         version: link:../chains
