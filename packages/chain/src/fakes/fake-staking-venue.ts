@@ -236,6 +236,11 @@ export function createFakeStakingVenue(options: FakeStakingOptions): FakeStaking
       signal.throwIfAborted();
       return await Promise.resolve(holdingsOf(book, listed, wallet));
     },
+    receipt: async (validator, { signal }) => {
+      signal.throwIfAborted();
+      const found = listed.some((item) => item.validator === validator);
+      return await Promise.resolve(found ? ok(receiptOf(validator)) : err("validator_unknown"));
+    },
     plan: async (request, { signal }) => {
       signal.throwIfAborted();
       checkRequest(request);

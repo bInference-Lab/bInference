@@ -55,7 +55,7 @@ Rules for this package:
   chain at the latest block, and its reverse record, reading again on every call. Naming-service
   plugins fill it; the engine picks one by the name's suffix and names no service.
 - `StakingVenue` (`src/staking/ports.ts`) lists a staking venue's validators, reads a wallet's
-  stake and unbonding coin, plans a stake, an unstake or a claim at the latest block, live or
+  stake and unbonding coin, names the receipt token a stake with a validator mints, plans a stake, an unstake or a claim at the latest block, live or
   against a paper position, or names why the venue would refuse it (`stakeRefusals`), builds the
   planned call, decodes one back, and reads back what a landed move did. Every
   call it builds or decodes credits the account that signs; it declares its contracts like a venue,

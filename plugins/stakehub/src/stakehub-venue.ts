@@ -15,6 +15,7 @@ import { decodeStake } from "./calls/decode-stake.js";
 import { latestBlock } from "./hub/hub-read.js";
 import { readHoldings } from "./hub/read-holdings.js";
 import { type OptionsRead, readOptions } from "./hub/read-options.js";
+import { readReceipt } from "./hub/read-receipt.js";
 import { readLanded } from "./landed/read-landed.js";
 import { planStakeMove } from "./plan/plan-stake.js";
 import { stakeHubContractsOn, stakeHubName } from "./stakehub-contracts.js";
@@ -92,6 +93,8 @@ export function createStakeHubVenue(options: StakeHubOptions): StakingVenue {
     options: async ({ signal }) => readOptions(await at(signal)),
     holdings: async (wallet, { signal }) =>
       readHoldings(await at(signal), wallet, walletAddress(chain, wallet)),
+    receipt: async (validator, { signal }) =>
+      readReceipt(await at(signal), walletAddress(chain, validator)),
     plan: async (request, { signal }) => {
       const wallet = walletAddress(chain, request.wallet);
       const validator = walletAddress(chain, request.validator);

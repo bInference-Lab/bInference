@@ -1,5 +1,6 @@
 import type { Result } from "@binference/core";
 import type { AccountRef } from "../caip/account-ref.js";
+import type { AssetRef } from "../caip/asset-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { TxDraft } from "../transaction.js";
 import type { VenueDeclaration } from "../venues/venue.js";
@@ -39,6 +40,16 @@ export interface StakingVenue extends VenueDeclaration {
     wallet: AccountRef,
     options: { readonly signal: AbortSignal },
   ): Promise<readonly StakingHolding[]>;
+  /**
+   * The receipt token a stake with the validator mints, such as its credit shares, in which a
+   * paper position of that stake is kept; `validator_unknown` for a validator the venue does not
+   * list. A venue that cannot read its contracts throws. Rejects with the signal's reason once the
+   * signal aborts.
+   */
+  receipt(
+    validator: AccountRef,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<AssetRef, "validator_unknown">>;
   /**
    * Plans the move at the latest block, or names why the venue would refuse it, in the order the
    * venue itself checks ({@link StakeRefusal}). With the request's paper position it reads only the

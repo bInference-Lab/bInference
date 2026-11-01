@@ -41,6 +41,10 @@ async function stakesAndReadsBack(harness: StakingVenueHarness): Promise<void> {
   );
   assert.ok(plan.pool !== undefined && (plan.shares?.base ?? 0n) > 0n);
   const held = await onlyHolding(subject);
+  const receipt = await subject.venue.receipt(subject.active, live());
+  const none = await subject.venue.receipt(subject.unknown, live());
+  assert.deepEqual(receipt, { ok: true, value: held.staked.asset });
+  assert.deepEqual(none, { ok: false, error: "validator_unknown" });
   assert.deepEqual([landed.moved, landed.shares], [subject.stake, held.staked]);
   assert.deepEqual(landed.shares, plan.shares);
   assert.ok(held.stakedValue.base > 0n && held.stakedValue.base <= subject.stake.base);
@@ -176,6 +180,7 @@ async function stopsOnAbort(harness: StakingVenueHarness): Promise<void> {
   assert.ok(hash !== undefined);
   await assert.rejects(venue.options({ signal }), reason);
   await assert.rejects(venue.holdings(wallet, { signal }), reason);
+  await assert.rejects(venue.receipt(validator, { signal }), reason);
   await assert.rejects(venue.plan({ action: "claim", wallet, validator }, { signal }), reason);
   await assert.rejects(venue.build(plan, { signal }), reason);
   await assert.rejects(
@@ -192,7 +197,7 @@ export function stakingVenueContract(harness: StakingVenueHarness): readonly Con
       run: async () => listsValidators(harness),
     },
     {
-      name: "stakes in one call that credits the wallet, and reads back the shares it minted",
+      name: "stakes in one call that credits the wallet, and reads back the receipt shares it minted",
       run: async () => stakesAndReadsBack(harness),
     },
     {

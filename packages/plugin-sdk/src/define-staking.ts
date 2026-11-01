@@ -39,6 +39,7 @@ export function defineStaking(definition: StakingVenue): StakingVenue {
     contracts: frozenContracts(contracts),
     options: async (options) => definition.options(options),
     holdings: async (wallet, options) => definition.holdings(wallet, options),
+    receipt: async (validator, options) => definition.receipt(validator, options),
     plan: async (request, options) => definition.plan(request, options),
     build: async (plan, options) => definition.build(plan, options),
     decode: (draft) => definition.decode(draft),
