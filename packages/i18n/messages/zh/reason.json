@@ -12,6 +12,7 @@
   "token_denied": "该代币在你的禁止列表中，或不在你的允许列表中",
   "send_level": "你的转账级别不允许向此地址转账",
   "unsaved_address": "该地址既不是你的紧急转出地址，也不是你保存的地址；保存地址需要你的所有者密钥",
+  "validator_jailed": "验证者 {validator} 已被监禁，不会产生收益",
   "outside_content_send": "它在读取外部内容后，要向地址簿以外的地址转账",
   "no_price": "binference 找不到此代币的美元价格",
   "honeypot": "该代币疑似貔貅盘：你可能无法卖出",
@@ -91,5 +92,13 @@
   "no_fresh_price": "binference 恢复后未读到该代币的价格",
   "position_closed": "其持仓已卖出",
   "rearming": "它此前已成交，价格离开触发价格再回来后才会再次触发",
-  "behind_fill": "它在该 Agent 的另一笔成交之后或最近几次跳过之后等待；之后的价格会再次触发它"
+  "behind_fill": "它在该 Agent 的另一笔成交之后或最近几次跳过之后等待；之后的价格会再次触发它",
+  "below_min_stake": "该平台最少需要 {min}",
+  "nothing_to_claim": "还没有可领取的金额{readyAt, select, none {} other {；下一笔将于 {readyAt} 可领取}}",
+  "validator_unknown": "该平台没有验证者 {validator}；请从其列表中选择",
+  "nothing_staked": "该钱包未向 {validator} 质押任何金额",
+  "exceeds_staked": "超过了该钱包向 {validator} 质押的价值；请全部解除质押，或减少金额",
+  "staking_paused": "该平台已暂停，现在不接受质押、解除质押或领取；请稍后再试",
+  "wallet_blocked": "该平台拒绝此钱包；请从其他钱包质押",
+  "claim_unpayable": "该平台支付领取款项的方式无法被此钱包的代码接收，领取会失败；请从没有代码的钱包领取"
 }

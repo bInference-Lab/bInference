@@ -12,6 +12,7 @@
   "token_denied": "the token is on your deny list, or missing from your allow list",
   "send_level": "your send level does not allow this address",
   "unsaved_address": "the address is neither your rescue address nor one you saved; saving one needs your owner key",
+  "validator_jailed": "the validator {validator} is jailed, so it earns nothing",
   "outside_content_send": "it sends to an address outside your address book after reading outside content",
   "no_price": "binference found no USD price for this token",
   "honeypot": "the token looks like a honeypot: you might not be able to sell it",
@@ -91,5 +92,13 @@
   "no_fresh_price": "no price of its token was read after binference came back",
   "position_closed": "its position was already sold",
   "rearming": "it filled before and fires again once its price has left the trigger price and come back",
-  "behind_fill": "it waited behind another fill of the agent or after its last skips; a later price fires it again"
+  "behind_fill": "it waited behind another fill of the agent or after its last skips; a later price fires it again",
+  "below_min_stake": "the venue takes at least {min}",
+  "nothing_to_claim": "nothing is ready to claim yet{readyAt, select, none {} other {; the next part is ready at {readyAt}}}",
+  "validator_unknown": "the venue lists no validator {validator}; pick one from its list",
+  "nothing_staked": "this wallet has nothing staked with {validator}",
+  "exceeds_staked": "that is more than this wallet's stake with {validator} is worth; unstake all of it, or less",
+  "staking_paused": "the venue is paused and takes no stake, unstake or claim now; try again later",
+  "wallet_blocked": "the venue refuses this wallet; stake from another wallet",
+  "claim_unpayable": "the venue pays a claim in a way this wallet's code cannot receive, so the claim would fail; claim from a wallet without code"
 }

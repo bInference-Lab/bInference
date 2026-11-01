@@ -3,6 +3,9 @@
  * is stored with `failed_check`, as is `daily_cap` for a fill whose cap room went before its
  * authorization (decision 0195); every other code is stored with `rejected_policy`. No rule stores
  * `tax` yet: the risk step measures a token's tax and refuses with `high_tax` (decision 0113).
+ * `validator_jailed` is a stake whose validator its staking venue lists as jailed, as the venue's
+ * plan refuses it; an unstake or a claim from a jailed validator passes. Nothing stores it until
+ * the money path plans stakes.
  */
 export const policyReasons = [
   "frozen",
@@ -19,6 +22,7 @@ export const policyReasons = [
   "send_level",
   "outside_content_send",
   "unsaved_address",
+  "validator_jailed",
   "no_price",
 ] as const;
 
@@ -79,7 +83,11 @@ export type RiskReason = (typeof riskReasons)[number];
  * whose payee's code could not be read `recipient_unread` (decision 0318); one whose wallet's
  * ceiling lists the rescue address on its own chain only `rescue_unpaid`, one to a chain no bridge
  * rule of the ceiling reaches `bridge_chain_unpaid`, and one to an entry a rule reaching its chain
- * does not list `ceiling_lacks_payee` (decision 0319).
+ * does not list `ceiling_lacks_payee` (decision 0319). A stake, an unstake or a claim its staking
+ * venue would refuse ends at its quote, before any card, with the venue's own reason (decision
+ * 0324): `validator_unknown`, `below_min_stake`, `nothing_staked`, `exceeds_staked`,
+ * `nothing_to_claim`, `staking_paused`, `wallet_blocked` or `claim_unpayable`; nothing stores
+ * them until the money path plans stakes.
  */
 export const checkReasons = [
   "no_route",
@@ -119,6 +127,14 @@ export const checkReasons = [
   "ceiling_lacks_payee",
   "rescue_unpaid",
   "bridge_chain_unpaid",
+  "validator_unknown",
+  "below_min_stake",
+  "nothing_staked",
+  "exceeds_staked",
+  "nothing_to_claim",
+  "staking_paused",
+  "wallet_blocked",
+  "claim_unpayable",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

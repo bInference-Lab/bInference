@@ -28,6 +28,7 @@ describe("intent reasons", () => {
       "send_level",
       "outside_content_send",
       "unsaved_address",
+      "validator_jailed",
       "no_price",
     ]);
   });
@@ -83,6 +84,14 @@ describe("intent reasons", () => {
       "ceiling_lacks_payee",
       "rescue_unpaid",
       "bridge_chain_unpaid",
+      "validator_unknown",
+      "below_min_stake",
+      "nothing_staked",
+      "exceeds_staked",
+      "nothing_to_claim",
+      "staking_paused",
+      "wallet_blocked",
+      "claim_unpayable",
     ]);
     expect(failureReasons).toStrictEqual([
       "reverted",
@@ -110,7 +119,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(72);
+    expect(intentReasons).toHaveLength(81);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {

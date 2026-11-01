@@ -172,8 +172,13 @@ counted once, [decision 0215](../DECISIONS.md#d0215), on a token with no buy tax
 [decision 0216](../DECISIONS.md#d0216)), `low_liquidity`, `sources_down`, `blacklisted`.
 
 Check reasons for `failed_check`: `name_unresolved` and `name_contract` at the resolve step, and
-`name_moved` when the queue takes a send by name; `nothing_to_claim` (a claim with nothing ready)
-and `below_min_stake` (a stake under the venue's least) at the venue's quote, before any card;
+`name_moved` when the queue takes a send by name; at the staking venue's quote, before any card
+and in the venue's own order ([decision 0324](../DECISIONS.md#d0324)): `staking_paused` (the venue
+takes no move now), `wallet_blocked` (the venue refuses the wallet), `validator_unknown` (the venue
+lists no such validator), `below_min_stake` (a stake under the venue's least), `nothing_staked` (an
+unstake from a validator the wallet holds nothing with), `exceeds_staked` (an unstake of more than
+the stake is worth), `nothing_to_claim` (a claim with nothing ready) and `claim_unpayable` (a claim
+the venue would pay in a way the wallet's code cannot receive);
 `spender_unlisted` (an approval revoke whose spender the chain registry does not list,
 [decision 0309](../DECISIONS.md#d0309)) at its quote, before any card; `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
@@ -438,9 +443,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
   - **Own wallet only.** The quote step's decode holds every argument that names who is paid or
     credited (a delegator, a beneficiary, a recipient) to the agent's own wallet; the ceiling binds
     the same arguments.
-  - **Venue checks.** A stake to a jailed validator ends `rejected_policy` with
-    `validator_jailed`, one below the venue's least `failed_check` with `below_min_stake`, and a
-    claim with nothing ready `failed_check` with `nothing_to_claim`, each before any card.
+  - **Venue checks.** A stake below the venue's least ends `failed_check` with
+    `below_min_stake`, one to a jailed validator `rejected_policy` with `validator_jailed`, and the
+    venue's other refusals `failed_check` with their check reasons above, each before any card.
   - **Auto mode.** A stake within the caps and a claim may pass the auto test; an unstake never
     does (`unstake`): it locks the funds for the unbonding time.
   - **Unbonding.** An unstake's card and receipt say when its funds can be claimed, read from the

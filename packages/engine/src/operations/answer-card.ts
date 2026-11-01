@@ -169,6 +169,15 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   ceiling_lacks_payee: "limit.over_ceiling",
   rescue_unpaid: "limit.over_ceiling",
   bridge_chain_unpaid: "quote.no_route",
+  // A staking venue's refusals end a stake at its quote, before its card (decision 0324).
+  validator_unknown: "quote.no_route",
+  below_min_stake: "quote.no_route",
+  nothing_staked: "quote.no_route",
+  exceeds_staked: "quote.no_route",
+  nothing_to_claim: "quote.no_route",
+  staking_paused: "quote.venue_down",
+  wallet_blocked: "quote.no_route",
+  claim_unpayable: "quote.no_route",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

@@ -38,7 +38,14 @@ const live = { signal: new AbortController().signal };
 // A re-quote fails for every check reason but the queue's own reads of a launch (decision 0218)
 // and of a send's name, the resolve step's read of that name (decision 0308), and a bridge's
 // payee and ceiling checks, whose words name its chain: a bridge never re-quotes (decision 0319).
+// Nor does a stake: its venue plans it again as the queue takes it, and the refusals whose words
+// name its validator, least stake or next ready time end it there (decision 0324).
 const unquoted: ReadonlySet<string> = new Set([
+  "validator_unknown",
+  "below_min_stake",
+  "nothing_staked",
+  "exceeds_staked",
+  "nothing_to_claim",
   "launch_moved",
   "name_unresolved",
   "name_contract",
