@@ -8,7 +8,7 @@ import {
   testAgentDraft,
 } from "@binference/engine/testing";
 import type { MessageLocale } from "@binference/i18n";
-import { noticeTable, noticeTableAtMs } from "@binference/i18n/testing";
+import { noticeTable, noticeTableAtMs, type TableNotice } from "@binference/i18n/testing";
 import { Api } from "grammy";
 import { testChains } from "../commands/test-command-bot.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
@@ -24,18 +24,21 @@ export interface SentTable {
 }
 
 /**
- * Stores every notice of the engine's notice table in key order, sends them through the outbox
- * to the synthetic Bot API in `locale`, in UTC, and answers the text the owner's chat showed for
- * each key.
+ * Stores every notice of `table`, the engine's notice table unless another is given, in key
+ * order, sends them through the outbox to the synthetic Bot API in `locale`, in UTC, and answers
+ * the text the owner's chat showed for each key.
  */
-export async function sentNoticeTable(locale: MessageLocale): Promise<SentTable> {
+export async function sentNoticeTable(
+  locale: MessageLocale,
+  table: Readonly<Record<string, TableNotice>> = noticeTable,
+): Promise<SentTable> {
   const botApi = createFakeBotApi();
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
   const agents = createMemoryAgentStore();
   await agents.create(testAgentDraft(), live);
   const notices = createMemoryNoticeStore({ agents });
-  const entries = Object.entries(noticeTable);
+  const entries = Object.entries(table);
   await entries.reduce(async (previous, [, notice], at) => {
     await previous;
     const id = idSchema("ntc").parse(
