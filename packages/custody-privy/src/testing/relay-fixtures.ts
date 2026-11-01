@@ -43,10 +43,10 @@ const testRelayChain: ChainDefinition = {
   ],
 };
 
-const depositCall = (name: "depositErc20" | "depositNative") => {
-  const abi = stakingAbis[name];
+const depositCall = () => {
+  const abi = stakingAbis["depositErc20"];
   if (abi === undefined) {
-    throw new BinferenceError({ code: "internal.error", message: `No test ABI for ${name}.` });
+    throw new BinferenceError({ code: "internal.error", message: "No test ABI for depositErc20." });
   }
   return {
     contract: "depository",
@@ -56,16 +56,16 @@ const depositCall = (name: "depositErc20" | "depositNative") => {
   };
 };
 
-// Relay as its plugin declares it on BNB Smart Chain (decision 0303): its depository's two
-// deposits, each pinning its depositor to the wallet, a bridge wallet's alone, and the depository
-// as a spender only a bridge wallet approves.
+// Relay as its plugin declares it on BNB Smart Chain (decision 0303): its depository's token
+// deposit, pinning its depositor to the wallet, a bridge wallet's alone, and the depository as a
+// spender only a bridge wallet approves.
 const testRelayVenue: VenueDeclaration = {
   id: "relay",
   contracts: [
     {
       chain: bsc,
       names: ["depository"],
-      calls: [depositCall("depositErc20"), depositCall("depositNative")],
+      calls: [depositCall()],
       onlyWalletSpenders: { bridge: ["depository"] },
     },
   ],

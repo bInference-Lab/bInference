@@ -1137,6 +1137,21 @@ importers:
         specifier: workspace:*
         version: link:../../packages/chain-evm
 
+  plugins/relay:
+    dependencies:
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      '@solana/kit':
+        specifier: 'catalog:'
+        version: 8.5.0(typescript@7.0.2)
+      viem:
+        specifier: 'catalog:'
+        version: 2.57.1(typescript@7.0.2)(zod@4.6.5)
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   plugins/spaceid:
     dependencies:
       '@binference/plugin-sdk':

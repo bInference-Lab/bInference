@@ -1,0 +1,32 @@
+{
+  "name": "@binference/relay",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Relay bridge: quotes from Relay's API and deposits into its depository on BNB Smart Chain, each held to the order it pays.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/plugin-sdk": "workspace:*",
+    "@solana/kit": "catalog:",
+    "viem": "catalog:",
+    "zod": "catalog:"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "message": "Invalid recipient address 0x2222222222222222222222222222222222222222 for chain 792703809",
+  "errorCode": "INVALID_ADDRESS",
+  "requestId": "0x1793547374d4191e5852086194a92fd157f8f9d135ba29ce722d8a2efc11c5b4"
+}

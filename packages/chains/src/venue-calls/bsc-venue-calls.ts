@@ -124,7 +124,8 @@ const across: VenueContracts = {
 
 // Relay's depository, from its EVM Depository reference and its verified ABI: a deposit names only
 // its depositor and an order id, and the recipient lives in Relay's off-chain order, so only a
-// bridge wallet calls it and approves it (decision 0303).
+// bridge wallet calls it and approves it (decision 0303). Only its token deposit: no route leaves
+// as a coin, so no ceiling lets a bridge wallet's gas go into Relay.
 const relay: VenueContracts = {
   chain: bsc,
   names: ["depository"],
@@ -137,19 +138,6 @@ const relay: VenueContracts = {
         ["uint256", "amount"],
         ["bytes32", "id"],
       ]),
-      walletInputs: ["depositor"],
-      onlyWallet: "bridge",
-    },
-    {
-      contract: "depository",
-      abi: abiOf(
-        "depositNative",
-        [
-          ["address", "depositor"],
-          ["bytes32", "id"],
-        ],
-        "payable",
-      ),
       walletInputs: ["depositor"],
       onlyWallet: "bridge",
     },

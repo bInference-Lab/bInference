@@ -1,0 +1,5 @@
+{
+  "message": "Insufficient liquidity for swap. Requested amount exceeds provisioned liquidity.",
+  "errorCode": "INSUFFICIENT_LIQUIDITY",
+  "requestId": "0x1793547371f1eb5bf0f10959b8e62c69017f3fcd3961507b3bc4f089a8efe0ae"
+}

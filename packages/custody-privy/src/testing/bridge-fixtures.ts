@@ -167,7 +167,6 @@ export const stakingAbis: Readonly<Record<string, AbiFunction>> = {
   requestWithdraw: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "requestWithdraw" })),
   claimWithdraw: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "claimWithdraw" })),
   depositErc20: abiFunctionSchema.parse(getAbiItem({ abi: relay, name: "depositErc20" })),
-  depositNative: abiFunctionSchema.parse(getAbiItem({ abi: relay, name: "depositNative" })),
 };
 
 /** Calldata of the staking, identity and Relay calls the checks ask Privy to sign. */

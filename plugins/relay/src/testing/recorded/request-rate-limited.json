@@ -1,0 +1,5 @@
+{
+  "message": "You reached the rate limit for GET /requests/v2. Relay reduces this limit in stages. Relay retires v2 on November 24, 2026. Migrate to GET /requests/v3.",
+  "successor": "https://api.relay.link/requests/v3",
+  "migrationGuide": "https://docs.relay.link/references/api/api_guides/migrating-to-requests-v3"
+}

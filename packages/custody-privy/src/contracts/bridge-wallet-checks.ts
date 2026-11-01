@@ -82,7 +82,7 @@ function signChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [
     bridgeWalletCheck(
       harness,
-      "makes a bridge wallet that holds only Relay's deposits",
+      "makes a bridge wallet that holds only Relay's token deposit",
       async (w) => {
         const found = await readBackWallet(
           w.bridge.subject.api,
@@ -96,7 +96,6 @@ function signChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
     ),
     bridgeWalletCheck(harness, "signs a Relay deposit from the bridge wallet", async (w) => {
       await privySigns(w.bridge, tokenDeposit(hexOf(w.bridge.wallet.address)));
-      await privySigns(w.bridge, coinDeposit(hexOf(w.bridge.wallet.address)));
       await privySigns(w.bridge, { to: token, valueWei: 0n, data: approveData(depository, 5n) });
     }),
     bridgeWalletCheck(
@@ -132,10 +131,10 @@ function refuseChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
     }),
     bridgeWalletCheck(
       harness,
-      "refuses a Relay deposit refunding another or past the cap",
+      "refuses a Relay deposit refunding another, or of the coin",
       async (w) => {
         await privyRefuses(w.bridge, tokenDeposit(`0x${unsaved.slice(2)}`));
-        await privyRefuses(w.bridge, coinDeposit(hexOf(w.bridge.wallet.address), oneBnbWei + 1n));
+        await privyRefuses(w.bridge, coinDeposit(hexOf(w.bridge.wallet.address)));
         await privyRefuses(w.bridge, { to: unsaved, valueWei: 1n, data: "0x" });
       },
     ),
@@ -144,11 +143,11 @@ function refuseChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
 
 /**
  * What a bridge wallet's ceiling holds on the Privy fake and the Privy test app (decision 0307):
- * Relay's deposits paying back the bridge wallet and an approval naming the depository, and its
- * sends to the rescue address, which a rescue takes; the same deposits and approval refused from
- * the main wallet, a send from the main wallet to the bridge wallet refused, and from the bridge
- * wallet every main wallet's call, a deposit refunding another, one past the cap per call and a
- * send to an unsaved address refused.
+ * Relay's token deposit paying back the bridge wallet and an approval naming the depository, and
+ * its sends to the rescue address, which a rescue takes; the same deposits and approval refused
+ * from the main wallet, a send from the main wallet to the bridge wallet refused, and from the
+ * bridge wallet every main wallet's call, a deposit refunding another, a coin deposit, which no
+ * route builds, and a send to an unsaved address refused.
  */
 export function bridgeWalletChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [...signChecks(harness), ...refuseChecks(harness)];

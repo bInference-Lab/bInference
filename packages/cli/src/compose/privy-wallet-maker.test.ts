@@ -196,7 +196,7 @@ describe("the Privy wallet maker", () => {
     const answer = await made.maker.make(request, live);
 
     const rules = await made.rulesOf(answer);
-    expect(readCeiling(rules)?.functions).toStrictEqual(["depositErc20", "depositNative"]);
+    expect(readCeiling(rules)?.functions).toStrictEqual(["depositErc20"]);
   });
 
   it.each(walletMakerContract({ create: subject }))(

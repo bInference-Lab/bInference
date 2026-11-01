@@ -1,0 +1,5 @@
+{
+  "message": "Swap output amount is too small to cover fees required to execute swap",
+  "errorCode": "AMOUNT_TOO_LOW",
+  "requestId": "0x17935473693e7082eb7baa647a3df13b3a938fb9cb02afec4086a767e2e7ebe9"
+}

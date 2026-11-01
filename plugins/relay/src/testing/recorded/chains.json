@@ -1,0 +1,404 @@
+{
+  "chains": [
+    {
+      "id": 1,
+      "name": "ethereum",
+      "vmType": "evm",
+      "protocol": {
+        "v2": {
+          "chainId": "ethereum",
+          "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31"
+        }
+      },
+      "currency": {
+        "id": "eth",
+        "symbol": "ETH",
+        "name": "Ether",
+        "address": "0x0000000000000000000000000000000000000000",
+        "decimals": 18,
+        "supportsBridging": true
+      },
+      "erc20Currencies": [
+        {
+          "id": "weth",
+          "symbol": "WETH",
+          "address": "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usde",
+          "symbol": "USDe",
+          "address": "0x4c9edd5852cd905f086c759e8383e09bff1e68b3",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdc",
+          "symbol": "USDC",
+          "address": "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdt",
+          "symbol": "USDT",
+          "address": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "musd",
+          "symbol": "mUSD",
+          "address": "0xaca92e438df0b2401ff60da7e4337b687a2435da",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "dai",
+          "symbol": "DAI",
+          "address": "0x6b175474e89094c44da98b954eedeac495271d0f",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "ape",
+          "symbol": "APE",
+          "address": "0x4d224452801aced8b2f0aebe155379bb5d594381",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdg",
+          "symbol": "USDG",
+          "address": "0xe343167631d89b6ffc58b88d6b7fb0228795491d",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "ausd",
+          "symbol": "AUSD",
+          "address": "0x00000000efe302beaa2b3e6e1b18d08d69a9012a",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "pyusd",
+          "symbol": "PYUSD",
+          "address": "0x6c3ea9036406852006290770bedfcaba0e23a0e8",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdm",
+          "symbol": "USDm",
+          "address": "0xec2af1c8b110a61fd9c3fa6a554a031ca9943926",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "kbtc",
+          "symbol": "kBTC",
+          "address": "0x73e0c0d45e048d25fc26fa3159b0aa04bfa4db98",
+          "decimals": 8,
+          "supportsBridging": true
+        },
+        {
+          "id": "cirbtc",
+          "symbol": "cirBTC",
+          "address": "0x72dfb2e44f59c5ad2bafe84314e5b99a7cd5075e",
+          "decimals": 8,
+          "supportsBridging": true
+        },
+        {
+          "id": "somi",
+          "symbol": "SOMI",
+          "address": "0x1b0f6590d21dc02b92ad3a7d00f8884dc4f1aed9",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "ousd",
+          "symbol": "OUSD",
+          "address": "0x9f6f3991d525015a6f8caf062c83b62fd3ac4436",
+          "decimals": 6,
+          "supportsBridging": true
+        }
+      ]
+    },
+    {
+      "id": 56,
+      "name": "bsc",
+      "vmType": "evm",
+      "protocol": {
+        "v2": {
+          "chainId": "bnb",
+          "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31"
+        }
+      },
+      "currency": {
+        "id": "bnb",
+        "symbol": "BNB",
+        "name": "Binance Coin",
+        "address": "0x0000000000000000000000000000000000000000",
+        "decimals": 18,
+        "supportsBridging": true
+      },
+      "erc20Currencies": [
+        {
+          "id": "somi",
+          "symbol": "SOMI",
+          "address": "0xa9616e5e23ec1582c2828b025becf3ef610e266f",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdt",
+          "symbol": "USDT",
+          "address": "0x55d398326f99059ff775485246999027b3197955",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usde",
+          "symbol": "USDe",
+          "address": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdc",
+          "symbol": "USDC",
+          "address": "0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d",
+          "decimals": 18,
+          "supportsBridging": true
+        }
+      ]
+    },
+    {
+      "id": 4663,
+      "name": "robinhood",
+      "vmType": "evm",
+      "protocol": {
+        "v2": {
+          "chainId": "robinhood",
+          "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31"
+        }
+      },
+      "currency": {
+        "id": "eth",
+        "symbol": "ETH",
+        "name": "Ether",
+        "address": "0x0000000000000000000000000000000000000000",
+        "decimals": 18,
+        "supportsBridging": true
+      },
+      "erc20Currencies": [
+        {
+          "id": "usdg",
+          "symbol": "USDG",
+          "address": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+          "decimals": 6,
+          "supportsBridging": true
+        }
+      ]
+    },
+    {
+      "id": 8453,
+      "name": "base",
+      "vmType": "evm",
+      "protocol": {
+        "v2": {
+          "chainId": "base",
+          "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31"
+        }
+      },
+      "currency": {
+        "id": "eth",
+        "symbol": "ETH",
+        "name": "Ether",
+        "address": "0x0000000000000000000000000000000000000000",
+        "decimals": 18,
+        "supportsBridging": true
+      },
+      "erc20Currencies": [
+        {
+          "id": "btc",
+          "symbol": "cbBTC",
+          "address": "0xcbb7c0000ab88b473b1f5afd9ef808440eed33bf",
+          "decimals": 8,
+          "supportsBridging": true
+        },
+        {
+          "id": "weth",
+          "symbol": "WETH",
+          "address": "0x4200000000000000000000000000000000000006",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdt",
+          "symbol": "USDT",
+          "address": "0xfde4c96c8593536e31f229ea8f37b2ada2699bb2",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdc",
+          "symbol": "USDC",
+          "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "sol",
+          "symbol": "SOL",
+          "address": "0x311935cd80b76769bf2ecc9d8ab7635b2139cf82",
+          "decimals": 9,
+          "supportsBridging": true
+        },
+        {
+          "id": "degen",
+          "symbol": "DEGEN",
+          "address": "0x4ed4e862860bed51a9570b96d89af5e1b0efefed",
+          "decimals": 18,
+          "supportsBridging": false
+        },
+        {
+          "id": "ousd",
+          "symbol": "OUSD",
+          "address": "0xb2000000000000000000002feb517dfec7415344",
+          "decimals": 6,
+          "supportsBridging": true
+        }
+      ]
+    },
+    {
+      "id": 42161,
+      "name": "arbitrum",
+      "vmType": "evm",
+      "protocol": {
+        "v2": {
+          "chainId": "arbitrum",
+          "depository": "0x4cd00e387622c35bddb9b4c962c136462338bc31"
+        }
+      },
+      "currency": {
+        "id": "eth",
+        "symbol": "ETH",
+        "name": "Ether",
+        "address": "0x0000000000000000000000000000000000000000",
+        "decimals": 18,
+        "supportsBridging": true
+      },
+      "erc20Currencies": [
+        {
+          "id": "weth",
+          "symbol": "WETH",
+          "address": "0x82af49447d8a07e3bd95bd0d56f35241523fbab1",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdc",
+          "symbol": "USDC",
+          "address": "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "ape",
+          "symbol": "APE",
+          "address": "0x7f9fbf9bdd3f4105c478b996b648fe6e828a1e98",
+          "decimals": 18,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdt",
+          "symbol": "USDT",
+          "address": "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "usde",
+          "symbol": "USDe",
+          "address": "0x5d3a1ff2b6bab83b63cd9ad0787074081a52ef34",
+          "decimals": 18,
+          "supportsBridging": true
+        }
+      ]
+    },
+    {
+      "id": 792703809,
+      "name": "solana",
+      "vmType": "svm",
+      "protocol": {
+        "v2": {
+          "chainId": "solana",
+          "depository": "99vQwtBwYtrqqD9YSXbdum3KBdxPAVxYTaQ3cfnJSrN2",
+          "depositoryVault": "7uTT8Xi5RWXzy7h9XL244GRgEycDYDhLjr3ZyNdXi8pZ"
+        }
+      },
+      "currency": {
+        "id": "sol",
+        "symbol": "SOL",
+        "name": "Solana",
+        "address": "11111111111111111111111111111111",
+        "decimals": 9,
+        "supportsBridging": true
+      },
+      "erc20Currencies": [
+        {
+          "id": "pengu",
+          "symbol": "PENGU",
+          "address": "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdc",
+          "symbol": "USDC",
+          "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdt",
+          "symbol": "USDT",
+          "address": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "cash",
+          "symbol": "CASH",
+          "address": "CASHx9KJUStyftLFWGvEVf59SGeG9sh5FfcnZMVPCASH",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "pyusd",
+          "symbol": "PYUSD",
+          "address": "2b1kV6DkPAnxd5ixfnxCpjxmKwqjjaYmCZfHsFu24GXo",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "usdg",
+          "symbol": "USDG",
+          "address": "2u1tszSeqZ3qBWF3uNGPFc8TzMk2tdiwknnRMWGWjGWH",
+          "decimals": 6,
+          "supportsBridging": true
+        },
+        {
+          "id": "ousd",
+          "symbol": "OUSD",
+          "address": "ousd2mJsPEckLHcSCDxyKD7NDGARZcfLbDZkKiatYHB",
+          "decimals": 6,
+          "supportsBridging": true
+        }
+      ]
+    }
+  ]
+}

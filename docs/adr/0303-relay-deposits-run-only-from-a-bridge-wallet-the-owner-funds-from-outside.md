@@ -1,6 +1,6 @@
 # 0303. Relay deposits run only from a bridge wallet the owner funds from outside
 
-Status: Accepted
+Status: Amended by 0323
 
 Proposed with the owner's ruling of 2026-10-31: Relay goes through a small bridge wallet, like the
 launch wallet, funded from outside only; Relay deposits are allowed only in a bridge wallet's

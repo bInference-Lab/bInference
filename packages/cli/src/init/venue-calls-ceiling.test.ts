@@ -80,11 +80,10 @@ describe("a ceiling built from the staking, bridge and identity calls on BSC", (
     ]);
   });
 
-  it("adds Relay's deposits to a bridge wallet's ceiling alone", () => {
+  it("adds Relay's token deposit, and never its coin deposit, to a bridge wallet's ceiling alone", () => {
     const rules = rulesFor("bridge");
-    expect(rules).toStrictEqual(
-      expect.arrayContaining(["Call depositErc20, chain 56", "Call depositNative, chain 56"]),
-    );
+    expect(rules).toContain("Call depositErc20, chain 56");
+    expect(rules).not.toContain("Call depositNative, chain 56");
     expect(rulesFor(undefined)).not.toContain("Call depositErc20, chain 56");
   });
 });

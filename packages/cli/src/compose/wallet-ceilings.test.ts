@@ -33,12 +33,11 @@ describe("the venues a wallet's ceiling is planned from", () => {
 });
 
 describe("a bridge wallet's ceiling as the CLI plans it", () => {
-  it("holds Relay's deposits and its depository though the agent uses only KyberSwap", () => {
+  it("holds Relay's token deposit and its depository though the agent uses only KyberSwap", () => {
     const [chain] = ceilingChainsOf(plans, { venues: ["kyberswap"], role: "bridge" }).chains;
 
     expect(chain?.calls.map((call) => [call.abi.name, call.walletInputs])).toStrictEqual([
       ["depositErc20", ["depositor"]],
-      ["depositNative", ["depositor"]],
     ]);
     expect(chain?.spenders).toStrictEqual(["0x4cD00E387622C35bDDB9b4c962C136462338BC31"]);
   });

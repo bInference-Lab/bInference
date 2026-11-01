@@ -1,0 +1,11 @@
+{
+  "requests": [],
+  "deprecation": {
+    "message": "GET /requests/v2 is deprecated. Migrate to GET /requests/v3. Relay reduces the v2 rate limit in stages from September 1, 2026. Relay retires v2 on November 24, 2026.",
+    "deprecatedAt": "2026-07-22T00:00:00Z",
+    "migrationGuide": "https://docs.relay.link/references/api/api_guides/migrating-to-requests-v3",
+    "throttledFrom": "2026-09-01T00:00:00Z",
+    "sunsetAt": "2026-11-24T00:00:00Z",
+    "successor": "https://api.relay.link/requests/v3"
+  }
+}

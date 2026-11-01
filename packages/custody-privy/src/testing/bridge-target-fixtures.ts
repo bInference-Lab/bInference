@@ -143,8 +143,8 @@ const testStakingCalls: readonly CeilingCall[] = [
   { contract: bridgeAddresses.identity, abi: bridgeAbis.register, walletInputs: [] },
 ];
 
-// Relay's deposits, each paying back the wallet, which only a bridge wallet's ceiling lists.
-const testRelayCalls: readonly CeilingCall[] = ["depositErc20", "depositNative"].map((name) => ({
+// Relay's token deposit, paying back the wallet, which only a bridge wallet's ceiling lists.
+const testRelayCalls: readonly CeilingCall[] = ["depositErc20"].map((name) => ({
   contract: stakingAddresses.depository,
   abi: stakingAbis[name] ?? bridgeAbis.register,
   walletInputs: ["depositor"],

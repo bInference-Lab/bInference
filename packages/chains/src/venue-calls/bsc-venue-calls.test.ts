@@ -32,7 +32,6 @@ const creditsNothing: Readonly<Record<string, string>> = {
 const bridgeWalletOnly: Readonly<Record<string, string>> = {
   "depositErc20.token": "the token that leaves the bridge wallet",
   "depositErc20.id": "Relay's order id; the recipient lives in the order, off chain",
-  "depositNative.id": "Relay's order id; the recipient lives in the order, off chain",
 };
 
 function boundInputs(
@@ -100,14 +99,13 @@ describe("the staking, bridge and identity calls on bsc", () => {
       "claimWithdraw(uint256)",
       "depositV3(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes)",
       "depositErc20(address,address,uint256,bytes32)",
-      "depositNative(address,bytes32)",
       "register(string)",
     ]);
   });
 
   it("lets only a bridge wallet deposit into Relay or approve its depository", () => {
     const relay = bscVenueCalls["relay"];
-    expect(relay?.calls?.map((call) => call.onlyWallet)).toStrictEqual(["bridge", "bridge"]);
+    expect(relay?.calls?.map((call) => call.onlyWallet)).toStrictEqual(["bridge"]);
     expect([relay?.spenders, relay?.onlyWalletSpenders]).toStrictEqual([
       undefined,
       { bridge: ["depository"] },

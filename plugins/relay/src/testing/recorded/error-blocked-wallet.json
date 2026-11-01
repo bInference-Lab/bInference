@@ -1,0 +1,5 @@
+{
+  "message": "This address is blocked and cannot be used for transactions",
+  "errorCode": "BLOCKED_WALLET_ADDRESS",
+  "requestId": "0x17935499662344dc25381b448703e2e6268911487becad95a37b4c517b31b268"
+}

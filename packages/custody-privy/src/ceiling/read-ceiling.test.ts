@@ -280,7 +280,7 @@ describe("isBuiltCeiling", () => {
     expect(readCeiling(bridge)).toMatchObject({
       contracts: [stakingAddresses.depository],
       isLaunch: false,
-      functions: ["depositErc20", "depositNative"],
+      functions: ["depositErc20"],
     });
   });
 
