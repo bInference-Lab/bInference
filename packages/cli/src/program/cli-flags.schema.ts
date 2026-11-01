@@ -44,8 +44,13 @@ export interface CeilingSetFlags extends WalletAddressFlags {
 }
 
 /** What `address add` and `wallet create` take: the agent, and the label `--label` gives. */
-export interface LabelFlags extends AgentFlags {
+interface LabelFlags extends AgentFlags {
   readonly label: string;
+}
+
+/** What `address add` takes: the label, and the key of the chain `--chain` names, if any. */
+export interface AddressAddFlags extends LabelFlags {
+  readonly chain?: string;
 }
 
 /**
@@ -166,11 +171,12 @@ export const ceilingSetFlagsSchema: z.ZodType<CeilingSetFlags> = z.object({
   dayCapUsd: z.string().min(1).max(64).exactOptional(),
 });
 
-/** Parses the options of `address add` and `wallet create`; a label is 1 to 64 characters. */
-export const labelFlagsSchema: z.ZodType<LabelFlags> = z.object({
+/** Parses the options of `address add`: a label of 1 to 64 characters, and a chain's key. */
+export const addressAddFlagsSchema: z.ZodType<AddressAddFlags> = z.object({
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
   label: z.string().min(1).max(64),
+  chain: z.string().min(1).max(64).exactOptional(),
 });
 
 /**

@@ -1,5 +1,6 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
-import { bsc } from "@binference/chains";
+import { type AccountRef, accountRefSchema, chainRefSchema } from "@binference/chain";
+import { createEvmAddressCodec } from "@binference/chain-evm";
+import { baseMainnet, bsc } from "@binference/chains";
 import type { ManualClock } from "@binference/core/testing";
 import {
   type FakeCeilingEditor,
@@ -49,7 +50,9 @@ async function servedMachine(): Promise<Served> {
     throw new Error("Expected the self-hosted composition.");
   }
   const machine = await machines.create(testNowMs);
-  const skeleton = await serveSkeleton(machine, selfHosted, { chains: [bsc] });
+  const base = { ref: chainRefSchema.parse(baseMainnet.id), codec: createEvmAddressCodec() };
+  const options = { chains: [bsc], destinations: [base] };
+  const skeleton = await serveSkeleton(machine, selfHosted, options);
   served.push(skeleton);
   const { install } = skeleton.parts.stores;
   await install.changeRescue(
@@ -59,7 +62,10 @@ async function servedMachine(): Promise<Served> {
   const [wallet] = (await install.read(live)).wallets;
   const ceilings = skeleton.parts.ceilings as FakeCeilingEditor;
   const ceiling = wallet?.policyId ?? "";
-  ceilings.put(ceiling, [accountOf(ownerAddress)]);
+  // The ceiling lets a call reach a venue of BNB Chain's registry, as every wallet's does.
+  const [venue] = bsc.contracts;
+  const calls = { contracts: [accountOf(venue?.address ?? "")], perTxNativeBase: 1n };
+  ceilings.put(ceiling, [accountOf(ownerAddress)], calls);
   return { machine, ceilings, ceiling };
 }
 
@@ -148,7 +154,7 @@ describe("binference address", () => {
     const bad = await runOn(machine, ["address", "add", "0x12", "--label", "x"]);
     expect([bad.code, bad.stderr]).toStrictEqual([
       1,
-      `${en("address.badAddress", { address: "0x12" })}\n`,
+      `${en("address.badAddress", { address: "0x12", chain: bsc.name })}\n`,
     ]);
     const scripted = await runOn(machine, ["address", "add", coldAddress, "--label", "x", "--yes"]);
     expect([scripted.code, scripted.stderr]).toStrictEqual([
@@ -159,4 +165,71 @@ describe("binference address", () => {
     expect(flagged.code).toBe(1);
     expect(flagged.stderr).toBe(`${en("usage.invalid")}\n`);
   });
+
+  it(
+    "saves an address for a chain a bridge delivers to, which no send on BNB Chain pays",
+    slow,
+    async () => {
+      const { machine, ceilings, ceiling } = await servedMachine();
+
+      const argv = [coldAddress, "--label", "cold", "--chain", baseMainnet.key];
+      const added = await addAddress(machine, argv, [fakeOwnerKeyCode]);
+      expect([added.code, added.stderr]).toStrictEqual([0, ""]);
+
+      const entry = entryIn(added.stdout);
+      const values = {
+        address: coldAddress,
+        chain: baseMainnet.name,
+        label: "cold",
+        agent: testAgent,
+      };
+      expect(added.stdout).toBe(
+        `${en("address.addedElsewhere", { ...values, entry, usableAt: when(testNowMs + dayMs) })}\n`,
+      );
+      expect(ceilings.recipients(ceiling)).toStrictEqual([accountOf(ownerAddress)]);
+      const listed = await runOn(machine, ["address", "list"]);
+      expect(listed.stdout).toContain(
+        en("address.room", { used: 1, most: 100, chain: baseMainnet.name }),
+      );
+    },
+  );
+
+  it("refuses a chain it saves no address on, before it asks for the owner key", slow, async () => {
+    const { machine } = await servedMachine();
+
+    const bad = await runOn(machine, [
+      "address",
+      "add",
+      coldAddress,
+      "--label",
+      "x",
+      "--chain",
+      "moon",
+    ]);
+
+    expect(bad.code).toBe(1);
+    expect(bad.stderr).toContain(
+      en("address.badChain", {
+        chain: "moon",
+        chains: "bsc, ethereum, base-mainnet, arbitrum, robinhood, solana",
+      }),
+    );
+  });
+
+  it(
+    "names an address of another kind of chain as one, before it asks for the owner key",
+    slow,
+    async () => {
+      const { machine } = await servedMachine();
+      const solanaWallet = "F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe";
+      const argv = ["address", "add", solanaWallet, "--label", "x", "--chain", baseMainnet.key];
+
+      const bad = await runOn(machine, argv);
+
+      expect([bad.code, bad.stderr]).toStrictEqual([
+        1,
+        `${en("address.otherChain", { address: solanaWallet, chain: baseMainnet.name })}\n`,
+      ]);
+    },
+  );
 });

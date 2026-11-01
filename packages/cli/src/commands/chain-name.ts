@@ -1,8 +1,10 @@
 import type { ChainRef } from "@binference/chain";
-import { selfHostedChains } from "../compose/open-engine-parts.js";
+import { addressChains } from "./address-chain.js";
 
-/** The chain's name when this binference serves it, such as BNB Smart Chain; else its id. */
+/**
+ * The chain's name when this binference serves it or a bridge delivers to it, such as BNB Smart
+ * Chain or Base; else its id.
+ */
 export function chainName(chain: ChainRef): string {
-  const registered = selfHostedChains().get(chain);
-  return registered.ok ? registered.value.definition.name : chain;
+  return addressChains().find((item) => item.id === chain)?.name ?? chain;
 }

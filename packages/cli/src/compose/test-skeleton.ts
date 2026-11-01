@@ -240,6 +240,8 @@ export interface SkeletonOptions {
   readonly handlers?: ComposeEngineOptions["handlers"];
   /** What tokens the registry does not list answer on chain; `UNL`, 18 decimals when left out. */
   readonly tokenFacts?: ComposeEngineOptions["readTokenFacts"];
+  /** The chains a bridge delivers to, where an address may be saved too; none when left out. */
+  readonly destinations?: ComposeEngineOptions["destinations"];
   /** The agents' workspace files; in memory when left out. */
   readonly workspace?: ComposeEngineOptions["workspace"];
   /** Whether a launch feed runs, whose stored launches `market/scan` reads; none when left out. */
@@ -252,10 +254,11 @@ function surfacesOf(
   options: SkeletonOptions,
 ): Pick<
   ComposeEngineOptions,
-  "telegram" | "ownerChat" | "http" | "consoleFiles" | "webPush" | "turns"
+  "telegram" | "ownerChat" | "http" | "consoleFiles" | "webPush" | "turns" | "destinations"
 > {
-  const { telegram, ownerChat, webPush, turns } = options;
+  const { telegram, ownerChat, webPush, turns, destinations } = options;
   return {
+    ...(destinations === undefined ? {} : { destinations }),
     ...(telegram === undefined ? {} : { telegram }),
     ...(turns === undefined ? {} : { turns }),
     ...(ownerChat === undefined ? {} : { ownerChat }),

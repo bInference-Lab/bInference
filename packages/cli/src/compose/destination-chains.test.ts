@@ -1,0 +1,38 @@
+import { chainRefSchema } from "@binference/chain";
+import { arbitrum, baseMainnet, ethereum, robinhood, solana } from "@binference/chains";
+import { createManualClock } from "@binference/core/testing";
+import { describe, expect, it } from "vitest";
+import { selfHostedDestinationChains } from "./destination-chains.js";
+
+const refusing = {
+  request: async () => Promise.reject(new Error("No network in a unit test.")),
+};
+
+describe("the chains a bridge delivers to, as the engine takes them", () => {
+  it("names the five destinations, each with its family's codec, and reads Solana alone", () => {
+    const destinations = selfHostedDestinationChains({
+      http: refusing,
+      clock: createManualClock(),
+    });
+
+    expect(destinations.map((item) => item.ref)).toStrictEqual(
+      [ethereum, baseMainnet, arbitrum, robinhood, solana].map((item) =>
+        chainRefSchema.parse(item.id),
+      ),
+    );
+    expect(destinations.map((item) => item.codec.namespace)).toStrictEqual([
+      "eip155",
+      "eip155",
+      "eip155",
+      "eip155",
+      "solana",
+    ]);
+    expect(destinations.map((item) => item.kinds?.chain)).toStrictEqual([
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      chainRefSchema.parse(solana.id),
+    ]);
+  });
+});

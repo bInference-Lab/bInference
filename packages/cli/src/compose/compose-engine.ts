@@ -119,6 +119,8 @@ export interface ComposeEngineOptions {
   readonly launchFeed?: boolean;
   /** The name resolvers `name/resolve` and sends by name ask; every name is refused without. */
   readonly nameResolvers?: EngineOptions["nameResolvers"];
+  /** The chains a bridge delivers to, where an address may be saved too; none when absent. */
+  readonly destinations?: EngineOptions["destinations"];
   /** The quote assets, whose leader buys no copy order follows (decision 0260). */
   readonly quoteAssets?: EngineOptions["quoteAssets"];
   /** Reads what a token the registry does not list answers on chain, for its cards. */
@@ -254,6 +256,17 @@ function custodyPartsOf(parts: EngineParts) {
   };
 }
 
+// Where the engine finds an address: the name resolvers, and the chains a bridge delivers to.
+function addressPartsOf(
+  options: Pick<ComposeEngineOptions, "nameResolvers" | "destinations">,
+): Pick<EngineOptions, "nameResolvers" | "destinations"> {
+  const { nameResolvers, destinations } = options;
+  return {
+    ...(nameResolvers === undefined ? {} : { nameResolvers }),
+    ...(destinations === undefined ? {} : { destinations }),
+  };
+}
+
 // The engine on the profile parts, its venue host and risk check, publishing through `publish`.
 function engineOf(
   parts: EngineParts,
@@ -286,7 +299,7 @@ function engineOf(
     canPrice: options.canPrice,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
-    ...(options.nameResolvers === undefined ? {} : { nameResolvers: options.nameResolvers }),
+    ...addressPartsOf(options),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     readTokenFacts: options.readTokenFacts,
     ...(options.readTokenCode === undefined ? {} : { launchTokenCode: options.readTokenCode }),

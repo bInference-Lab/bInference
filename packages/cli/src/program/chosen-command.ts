@@ -1,7 +1,7 @@
 import type { MessageValues } from "@binference/i18n";
 import type { ProtocolId } from "@binference/protocol";
 import type {
-  LabelFlags,
+  AddressAddFlags,
   WalletCreateFlags,
   AgentFlags,
   CeilingSetFlags,
@@ -59,7 +59,7 @@ export type ChosenCommand =
   | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }
   | { readonly name: "addressList" | "limit" | "limitCancel"; readonly options: AgentFlags }
   | { readonly name: "limitSet"; readonly options: AgentFlags; readonly sets: readonly string[] }
-  | { readonly name: "addressAdd"; readonly options: LabelFlags; readonly address: string }
+  | { readonly name: "addressAdd"; readonly options: AddressAddFlags; readonly address: string }
   | {
       readonly name: "addressRemove";
       readonly options: CommonOptions;

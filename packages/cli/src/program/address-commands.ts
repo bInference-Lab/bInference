@@ -1,7 +1,7 @@
 import type { ProtocolId } from "@binference/protocol";
 import { Argument, type Command, type OptionValues } from "commander";
 import type { ProgramOptions } from "./chosen-command.js";
-import { labelFlagsSchema, agentFlagsSchema, commonFlagsSchema } from "./cli-flags.schema.js";
+import { addressAddFlagsSchema, agentFlagsSchema, commonFlagsSchema } from "./cli-flags.schema.js";
 import { agentOption, idOf, withCommon } from "./command-options.js";
 
 /**
@@ -23,9 +23,10 @@ export function addAddressCommands(program: Command, options: ProgramOptions): v
   withCommon(address.command("add").description(message("command.addressAdd")), message)
     .addArgument(new Argument("<address>", message("argument.sendAddress")))
     .requiredOption("--label <text>", message("option.label"))
+    .option("--chain <key>", message("option.addressChain"))
     .addOption(agentOption(message))
     .action((typed: string, flags: OptionValues) =>
-      choose({ name: "addressAdd", options: labelFlagsSchema.parse(flags), address: typed }),
+      choose({ name: "addressAdd", options: addressAddFlagsSchema.parse(flags), address: typed }),
     );
   withCommon(address.command("remove").description(message("command.addressRemove")), message)
     .addArgument(new Argument("<entry>", message("argument.entry")).argParser(idOf("addressBook")))

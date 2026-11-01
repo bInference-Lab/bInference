@@ -18,6 +18,7 @@ import {
 import { flapDeclaration } from "@binference/flap";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { okxDeclaration } from "@binference/okx";
+import { selfHostedBridgePlan } from "../compose/self-hosted-destinations.js";
 import type { VenuesConfig } from "../config/schema/chains-venues.schema.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { baseUnitsOf } from "./base-units.js";
@@ -181,11 +182,13 @@ function ceilingChainOf(
   if (cap === undefined) {
     return refused("init.bad_ceiling_cap", "refused.badCeilingCap", { cap: capText });
   }
+  const bridges = selfHostedBridgePlan(registered.ref);
   const chain = registryCeilingChain({
     definition,
     venues: request.venues,
     perTxNativeCapBase: cap,
     ...(request.role === undefined ? {} : { role: request.role }),
+    ...(bridges === undefined ? {} : { bridges }),
   });
   if (!chain.ok) {
     // A venue that names a contract its chain's registry lacks is a fault of this build.

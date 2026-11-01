@@ -42,7 +42,7 @@ import {
 import { createPrivySignerRevoker } from "./privy-signer-revoker.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
-import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
+import { selfHostedBridgePlan, selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 import { signedWalletsOf } from "./signed-wallets.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
 import { ceilingChainsOf, ceilingVenuesOf, heldCapsOf } from "./wallet-ceilings.js";
@@ -153,8 +153,8 @@ async function startCheckedSigner(
 }
 
 // What a contract call may do on a chain a ceiling enables, for the venues `ceilingVenuesOf` gives,
-// under the cap given, and on a launch wallet's what its launch rules allow. A chain the
-// registry lacks is a fault here.
+// under the cap given, with the bridge deposits their routes reach from the chain (decision 0302),
+// and on a launch wallet's what its launch rules allow. A chain the registry lacks is a fault here.
 function callsOn(
   options: OpenCustodyOptions,
   chain: ChainRef,
@@ -162,6 +162,7 @@ function callsOn(
 ): CeilingChainPlan {
   const registered = options.chains.list().find((item) => item.ref === chain);
   const venues = ceilingVenuesOf(options.venues, calls);
+  const bridges = selfHostedBridgePlan(chain);
   const built =
     registered === undefined
       ? undefined
@@ -170,6 +171,7 @@ function callsOn(
           venues,
           perTxNativeCapBase: calls.perTxNativeBase,
           ...(calls.role === undefined ? {} : { role: calls.role }),
+          ...(bridges === undefined ? {} : { bridges }),
         });
   if (built?.ok !== true) {
     throw new BinferenceError({
