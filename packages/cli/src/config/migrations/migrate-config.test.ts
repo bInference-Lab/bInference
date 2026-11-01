@@ -164,7 +164,7 @@ describe("migrate config", () => {
   it("moves a version 10 file to version 11 without the health factor, saying why", () => {
     const limits = { perTradeUsd: "50", minHealthFactor: 1.8 };
     const tenth: JsonObject = { version: 10, defaults: { limits } };
-    const migrated = migrateConfig(tenth, configMigrations);
+    const migrated = migrateConfig(tenth, configMigrations.slice(0, 10));
     expect(migrated).toStrictEqual({
       ok: true,
       file: { version: 11, defaults: { limits: { perTradeUsd: "50" } } },
@@ -180,9 +180,25 @@ describe("migrate config", () => {
       ],
     });
     const without: JsonObject = { version: 10, defaults: { limits: { perTradeUsd: "50" } } };
-    expect(migrateConfig(without, configMigrations)).toMatchObject({
+    expect(migrateConfig(without, configMigrations.slice(0, 10))).toMatchObject({
       ok: true,
       steps: [{ from: 10, to: 11, edits: [] }],
+    });
+  });
+
+  it("moves a version 11 file to version 12 unchanged, naming the Relay key it adds", () => {
+    const eleventh: JsonObject = { version: 11, venues: { kyberClientId: "binference" } };
+    expect(migrateConfig(eleventh, configMigrations)).toStrictEqual({
+      ok: true,
+      file: { version: 12, venues: { kyberClientId: "binference" } },
+      steps: [
+        {
+          from: 11,
+          to: 12,
+          summary: "Adds venues.keys.relay, the owner's Relay API key, which no file sets yet.",
+          edits: [],
+        },
+      ],
     });
   });
 

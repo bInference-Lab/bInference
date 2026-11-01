@@ -46,6 +46,8 @@ export interface VenueKeysConfig {
   readonly okx?: OkxKeysConfig;
   readonly oneinch?: SecretSource;
   readonly zerox?: SecretSource;
+  /** Relay's API key, sent with every Relay request; Relay answers without one too (decision 0322). */
+  readonly relay?: SecretSource;
 }
 
 /** The routing venues' keys and ids. */
@@ -153,6 +155,12 @@ export const venuesSchema: z.ZodType<VenuesConfig> = z
           .describe("Adds OKX routing."),
         oneinch: secretSourceSchema.exactOptional().describe("Adds 1inch routing."),
         zerox: secretSourceSchema.exactOptional().describe("Adds 0x routing."),
+        relay: secretSourceSchema
+          .exactOptional()
+          .describe(
+            "Relay's API key, sent with every Relay request. Without one Relay answers at a lower " +
+              "rate, and a Relay deposit's status reads only until Relay retires that read on 2026-11-24.",
+          ),
       })
       .prefault({})
       .describe("Keys that add routing venues."),

@@ -9,7 +9,7 @@ import {
 } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
 import { bsc, bscPoolHooks, bscUnboundFirstBuys, bscPriceFeeds } from "@binference/chains";
-import { BinferenceError, err, ok, type Result } from "@binference/core";
+import { BinferenceError, err, ok, type Result, type Secret } from "@binference/core";
 import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
 import type { BackupFailure } from "@binference/engine/backups";
 import { ensurePrivateFolder, openLogFile, type Platform } from "@binference/platform";
@@ -80,6 +80,8 @@ export interface Opened {
   readonly venues: readonly Venue[];
   /** Reads the venues' keys again after a reload changed them (decision 0230). */
   readonly followVenues: ReadVenues["followReload"];
+  /** The owner's Relay API key, or `undefined` for a keyless Relay (decision 0322). */
+  readonly relayKey: Secret | undefined;
   /** The owner's bot, or `undefined` when its token could not be read. */
   readonly bot: OpenedBot | undefined;
   /** What the agent runtime starts with, its keys read from their secret sources. */

@@ -2,7 +2,7 @@
 
 This file is generated from the config schema by `pnpm check:config-schema --write`. Change the schema in `packages/cli/src/config/schema/`, never this file.
 
-This binference reads `config.json5` version 11. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 12. Each key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -123,6 +123,7 @@ Routing venues.
 - `venues.keys.okx.passphrase`: OKX's passphrase. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Required. Variable: `BINFERENCE_VENUES__KEYS__OKX__PASSPHRASE`.
 - `venues.keys.oneinch`: Adds 1inch routing. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__ONEINCH`.
 - `venues.keys.zerox`: Adds 0x routing. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__ZEROX`.
+- `venues.keys.relay`: Relay's API key, sent with every Relay request. Without one Relay answers at a lower rate, and a Relay deposit's status reads only until Relay retires that read on 2026-11-24. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__RELAY`.
 - `venues.kyberClientId`: The client id sent to KyberSwap. Takes text. Default: `"binference"`. Variable: `BINFERENCE_VENUES__KYBER_CLIENT_ID`.
 
 ## `risk`

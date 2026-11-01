@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 12,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -767,6 +767,10 @@
               },
               "zerox": {
                 "description": "Adds 0x routing.",
+                "$ref": "#/$defs/Secret"
+              },
+              "relay": {
+                "description": "Relay's API key, sent with every Relay request. Without one Relay answers at a lower rate, and a Relay deposit's status reads only until Relay retires that read on 2026-11-24.",
                 "$ref": "#/$defs/Secret"
               }
             },

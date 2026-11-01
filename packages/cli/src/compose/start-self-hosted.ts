@@ -28,7 +28,8 @@ import {
   selfHostedPoolHooks,
 } from "./open-engine-parts.js";
 import { readRpcUrls } from "./read-rpc-urls.js";
-import { type ReadVenues, type ReadVenuesOptions, readVenues } from "./read-venues.js";
+import { type ReadVenuesOptions, readVenues } from "./read-venues.js";
+import { readRelayKey } from "./relay-key.js";
 import { serveEngine } from "./serve-engine.js";
 import type { StartOutcome } from "./start-outcome.js";
 
@@ -85,20 +86,22 @@ type SecretParts = Pick<
   | "reads"
   | "venues"
   | "followVenues"
+  | "relayKey"
   | "bot"
   | "runtime"
   | "secrets"
 >;
 
-// The venues over the chains' reads, each call reading config as reloaded.
-async function venuesOf(
+// The venues over the chains' reads, each call reading config as reloaded, and Relay's key, read
+// once at start (decision 0322).
+async function venuePartsOf(
   settings: ConfigCell,
   parts: Pick<
     ReadVenuesOptions,
     "reads" | "secrets" | "http" | "clock" | "random" | "registry" | "logger" | "signal"
   >,
-): Promise<ReadVenues> {
-  return readVenues({
+): Promise<Pick<Opened, "venues" | "followVenues" | "relayKey">> {
+  const { venues, followReload } = await readVenues({
     ...parts,
     venues: settings.started.venues,
     current: () => settings.current().venues,
@@ -106,6 +109,9 @@ async function venuesOf(
     poolHooks: selfHostedPoolHooks(),
     feeds: selfHostedFeeds(),
   });
+  const named = settings.started.venues.keys.relay;
+  const relayKey = await readRelayKey(named, parts, parts.signal);
+  return { venues, followVenues: followReload, relayKey };
 }
 
 // The parts that read config's secret sources: the owner's own RPCs, the venues and the bot.
@@ -130,7 +136,7 @@ async function readSecretParts(
   const current = () => settings.current().chains;
   const reads = composeChainReads({ chains, config: config.chains, current, http, clock });
   const venueParts = { ...call, secrets, http, clock, random, reads, registry: chains };
-  const { venues, followReload: followVenues } = await venuesOf(settings, venueParts);
+  const venued = await venuePartsOf(settings, venueParts);
   const source = config.telegram.botToken;
   const logger = log.logger.child("telegram");
   const bot = await openBot({
@@ -147,7 +153,7 @@ async function readSecretParts(
     logger: log.logger.child("runtime"),
     signal,
   });
-  return { tracers, headSockets, chains, reads, venues, followVenues, bot, runtime, secrets };
+  return { tracers, headSockets, chains, reads, ...venued, bot, runtime, secrets };
 }
 
 async function openStoresAndServe(

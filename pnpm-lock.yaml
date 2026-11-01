@@ -581,6 +581,9 @@ importers:
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@binference/relay':
+        specifier: workspace:*
+        version: link:../../plugins/relay
       '@binference/runtime':
         specifier: workspace:*
         version: link:../runtime

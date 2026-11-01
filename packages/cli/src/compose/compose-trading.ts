@@ -41,6 +41,11 @@ export function composeTrading(opening: Opening, opened: Opened): TradingParts {
     simulators: composeSimulators(reads, { chains, clock }),
     positions,
     paperBalances: paperBalancesOf(config.defaults.paper.balances, reads),
-    bridging: selfHostedBridging({ http: opening.host.http, clock, reads }),
+    bridging: selfHostedBridging({
+      http: opening.host.http,
+      clock,
+      reads,
+      ...(opened.relayKey === undefined ? {} : { relayKey: opened.relayKey }),
+    }),
   };
 }

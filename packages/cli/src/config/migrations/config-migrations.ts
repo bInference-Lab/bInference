@@ -73,6 +73,11 @@ export const configMigrations: readonly ConfigMigration[] = [
         ? []
         : [{ kind: "remove", path: minHealthFactor }],
   },
+  {
+    from: 11,
+    summary: "Adds venues.keys.relay, the owner's Relay API key, which no file sets yet.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

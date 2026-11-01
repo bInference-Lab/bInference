@@ -35,6 +35,8 @@ const restartOnlyKeys: readonly string[] = [
   "chains.enabled",
   "chains.rpc.*.tracer",
   "chains.rpc.*.ws",
+  // Relay's bridge is made with the key read at start (decision 0322).
+  "venues.keys.relay",
   "remote.publicUrl",
   "network",
   "cex",

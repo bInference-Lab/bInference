@@ -34,6 +34,7 @@ import {
 } from "@binference/geniusfun";
 import { createKyberswapVenue, type KyberswapHook } from "@binference/kyberswap";
 import { createOkxVenue, type OkxKeys } from "@binference/okx";
+import { createRelayVenue, relayId } from "@binference/relay";
 import type {
   ChainsConfig,
   OkxKeysConfig,
@@ -184,6 +185,18 @@ function geniusfunLaunchChainsOf(
   });
 }
 
+// The chains the engine reads whose registry lists Relay's depository, where a bridge wallet may
+// deposit into it (decision 0303).
+function relayChainsOf(chains: readonly RegisteredChain[]): readonly ChainRef[] {
+  return chains
+    .filter((chain) =>
+      chain.definition.contracts.some(
+        (item) => item.venue === relayId && item.name === "depository",
+      ),
+    )
+    .map((chain) => chain.ref);
+}
+
 // The chain's allowed pool hooks, each at its registry address with its fee (decision 0214). A hook
 // the registry does not list is a fault of this build.
 function allowedHooksOf(
@@ -214,8 +227,9 @@ function allowedHooksOf(
  * on (decision 0271), and Genius.fun launches tokens on each chain the registry lists its m4.2
  * launch router on (decision 0277). Brew, on each chain the registry lists its single-pair factory
  * on, reads its launches for the launch feed, trades nothing itself (decision 0278), and launches
- * tokens against the coin or any registry token (decision 0283). The
- * money path asks every venue an agent allows and keeps the best plan (decision 0107), and sends a
+ * tokens against the coin or any registry token (decision 0283). Relay, on each chain the registry
+ * lists its depository on, declares its deposits as a bridge wallet's and trades nothing; its
+ * bridge runs beside Across (decision 0322). The money path asks every venue an agent allows and keeps the best plan (decision 0107), and sends a
  * token on a launchpad's curve to that launchpad alone (decision 0179). An OKX key that cannot be read is logged and OKX
  * left out: KyberSwap still routes. KyberSwap routes through the pool hooks each chain's allowlist
  * names, with their fees, and drops routes through any other hooked pool (decision 0214).
@@ -249,16 +263,17 @@ export async function readVenues(options: ReadVenuesOptions): Promise<ReadVenues
     launches: { random: options.random, chains: geniusfunLaunchChainsOf(enabled, reads) },
   });
   const brew = createBrewVenue(brewOptionsOf(enabled, { ...options, reads }));
+  const relay = createRelayVenue(relayChainsOf(enabled));
   const held = { keys: await okxKeysOf(options.venues.keys.okx, options, options.signal) };
   if (held.keys === undefined) {
     return {
-      venues: [kyberswap, flap, geniusfun, brew],
+      venues: [kyberswap, flap, geniusfun, brew, relay],
       followReload: async () => Promise.resolve(),
     };
   }
   const okx = createOkxVenue({ http, clock, keys: () => held.keys, chains });
   return {
-    venues: [kyberswap, flap, geniusfun, brew, okx],
+    venues: [kyberswap, flap, geniusfun, brew, relay, okx],
     async followReload(changed, signal) {
       if (changed.some((path) => path.startsWith("venues.keys.okx"))) {
         const named = (options.current?.() ?? options.venues).keys.okx;

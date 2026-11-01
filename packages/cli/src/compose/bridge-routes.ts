@@ -6,6 +6,7 @@ import {
   type ChainDefinition,
   type ChainRef,
 } from "@binference/chain";
+import { solanaFamilyId, solanaTokenNamespace } from "@binference/chain-solana";
 import { bsc, bscBridgeRoutes } from "@binference/chains";
 import type { EngineOptions } from "@binference/engine";
 import { getAddress } from "viem";
@@ -14,10 +15,15 @@ import { selfHostedDestinations } from "./self-hosted-destinations.js";
 // A route as the engine and a bridge plugin take it.
 type BridgeRoute = NonNullable<EngineOptions["bridges"]>[number]["routes"][number];
 
+// A registry token as a CAIP-19 asset: an ERC-20 at its checksummed address on an EVM chain, an
+// SPL token at its mint on Solana.
 function tokenOf(definition: ChainDefinition, symbol: string): AssetRef | undefined {
   const token = definition.tokens.find((item) => item.symbol === symbol);
-  return token === undefined
-    ? undefined
+  if (token === undefined) {
+    return undefined;
+  }
+  return definition.family === solanaFamilyId
+    ? assetRefSchema.parse(`${definition.id}/${solanaTokenNamespace}:${token.address}`)
     : assetRefSchema.parse(`${definition.id}/erc20:${getAddress(token.address)}`);
 }
 
