@@ -250,6 +250,26 @@ export type {
   ReverseRecord,
 } from "./names/name-resolution.js";
 export type { NameResolver } from "./names/ports.js";
+export { bridgeQuoteSchema, decodedDepositSchema } from "./bridges/bridge-terms.js";
+export type {
+  BoundDeposit,
+  BridgeBuildRequest,
+  BridgeDestination,
+  BridgeFee,
+  BridgeFeeKind,
+  BridgeFeeWire,
+  BridgeQuote,
+  BridgeQuoteRequest,
+  BridgeQuoteWire,
+  DecodedDeposit,
+  DecodedDepositWire,
+  DepositRef,
+  DepositState,
+  DepositStatus,
+  NoBridgeRoute,
+  OrderDeposit,
+} from "./bridges/bridge-terms.js";
+export type { Bridge } from "./bridges/ports.js";
 export type { ReceiptReader, RelaySender, TxPreparer } from "./sending/ports.js";
 export { leastReplacementFee } from "./sending/least-replacement-fee.js";
 export type {

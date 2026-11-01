@@ -35,6 +35,7 @@ const venue: VenueDeclaration = {
             destinationChain: "destinationChainId",
             tokenIn: "inputToken",
             tokenOut: "outputToken",
+            minOut: "outputAmount",
             emptyInputs: ["message"],
           },
         },

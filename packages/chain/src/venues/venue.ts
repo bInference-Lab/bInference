@@ -19,13 +19,15 @@ import type {
  * call: the account the destination chain pays, a 20-byte address or 32 bytes for a chain such as
  * Solana (decision 0313), the destination chain's id, the token that leaves and the token that
  * arrives, and the `bytes` inputs that must be empty, such as a message that would run actions on
- * arrival.
+ * arrival. `minOut` names the number input a fill pays at least, which the signer holds to the
+ * confirmed plan's least output.
  */
 export interface BridgeCallInputs {
   readonly recipient: string;
   readonly destinationChain: string;
   readonly tokenIn: string;
   readonly tokenOut: string;
+  readonly minOut: string;
   readonly emptyInputs: readonly string[];
 }
 
@@ -156,6 +158,7 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
         destinationChain: z.string().min(1),
         tokenIn: z.string().min(1),
         tokenOut: z.string().min(1),
+        minOut: z.string().min(1),
         emptyInputs: z.array(z.string().min(1)).refine(isUnique),
       })
       .exactOptional(),

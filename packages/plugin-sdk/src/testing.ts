@@ -1,4 +1,5 @@
 export {
+  bridgeContract,
   curveReaderContract,
   insiderReaderContract,
   launcherContract,
@@ -14,6 +15,8 @@ export {
   txDecoderContract,
 } from "@binference/chain/testing";
 export type {
+  BridgeHarness,
+  BridgeSubject,
   CurveReaderHarness,
   CurveReaderSubject,
   InsiderReaderHarness,

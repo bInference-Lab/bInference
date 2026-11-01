@@ -233,6 +233,10 @@ new name here first, in the change that uses it.
   as the venue's own receipt token, with its amounts waiting to be claimed.
 - **unbonding**: the funds an unstake took out, which wait for the **unbonding time** the venue sets
   before a claim can take them back to the wallet.
+- **bridge** (in code): a plugin that moves a token from the wallet's chain to an account on
+  another chain: it quotes a bridge route, builds and decodes its **deposit**, the one call that
+  pays the bridge on the source chain and names the recipient, and tells a deposit's **deposit
+  status**: unseen, pending, filled, expired or refunded. Across's plugin is one.
 - **bridge route**: one venue's way from BNB Smart Chain to a destination chain for one token,
   with the token it delivers.
 - **destination chain**: where a bridge delivers: Ethereum, Base, Arbitrum, Robinhood Chain or

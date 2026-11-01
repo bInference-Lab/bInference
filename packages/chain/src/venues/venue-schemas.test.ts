@@ -20,6 +20,7 @@ const testBridgeInputs = {
   destinationChain: "destinationChainId",
   tokenIn: "inputToken",
   tokenOut: "outputToken",
+  minOut: "outputAmount",
   emptyInputs: [],
 };
 

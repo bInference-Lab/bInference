@@ -47,6 +47,10 @@ Rules for this package:
   account's holding of an asset and what one transaction brought it in one asset, with its block
   and whether that block is final. It only reads, so a family that never signs, such as Solana's,
   fills it too.
+- `Bridge` (`src/bridges/ports.ts`) quotes a bridge route, builds and decodes its deposit, and
+  tells a deposit's status by the bridge's word, which only says where to read: the destination
+  chain's `DeliveryReader` says whether funds arrived. It declares its contracts like a venue, so
+  ceilings hold its deposit's rules, and names each destination with the id its deposit uses.
 - `NameResolver` (`src/names/ports.ts`) answers what a name under one suffix points to on its
   chain at the latest block, and its reverse record, reading again on every call. Naming-service
   plugins fill it; the engine picks one by the name's suffix and names no service.

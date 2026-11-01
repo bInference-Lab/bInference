@@ -1,4 +1,6 @@
+import type { Amount } from "../amount.js";
 import { type AccountRef, accountRefParts } from "../caip/account-ref.js";
+import { parseAssetRef } from "../caip/asset-ref.js";
 import type { TxDraft } from "../transaction.js";
 
 /** A call of the fake family: the address it goes to, the native coin it sends and its data. */
@@ -44,4 +46,26 @@ export function fakeCallOf(draft: TxDraft): FakeCall | undefined {
 /** The data of a fake token approval: `spender` may spend `amountBase` of the token called. */
 export function fakeApprovalData(spender: string, amountBase: bigint): string {
   return ["approve", spender, amountBase.toString()].join(",");
+}
+
+/** An amount from a fake call's words: its base units in decimal and its asset. */
+export function fakeAmountOf(base: string, asset: string): Amount | undefined {
+  const parsed = parseAssetRef(asset);
+  return parsed.ok && isFakeUnsigned(base)
+    ? { asset: parsed.value, base: BigInt(base) }
+    : undefined;
+}
+
+/**
+ * The amount in and the least out of a fake call's words after its kind: the account it pays, the
+ * base units and asset in, then the base units and asset out. Words of any other shape are
+ * undefined.
+ */
+export function fakeAmountsOf(
+  words: readonly string[],
+): { readonly amountIn: Amount; readonly minOut: Amount } | undefined {
+  const [, inBase = "", inAsset = "", outBase = "", outAsset = ""] = words;
+  const amountIn = fakeAmountOf(inBase, inAsset);
+  const minOut = fakeAmountOf(outBase, outAsset);
+  return amountIn === undefined || minOut === undefined ? undefined : { amountIn, minOut };
 }

@@ -398,6 +398,7 @@ async function startedWithBridge(): Promise<TestEngine> {
     destinationChain: "destinationChainId",
     tokenIn: "inputToken",
     tokenOut: "outputToken",
+    minOut: "outputAmount",
     emptyInputs: ["message"],
   };
   const calls = [

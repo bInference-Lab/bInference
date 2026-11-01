@@ -2,6 +2,14 @@ export type {
   AccountRef,
   Amount,
   AssetRef,
+  BoundDeposit,
+  Bridge,
+  BridgeBuildRequest,
+  BridgeDestination,
+  BridgeFee,
+  BridgeFeeKind,
+  BridgeQuote,
+  BridgeQuoteRequest,
   BuildRequest,
   CandleInterval,
   CandleRequest,
@@ -9,8 +17,12 @@ export type {
   CurveHolding,
   CurveReader,
   CurveRequest,
+  DecodedDeposit,
   DecodedEffect,
   DecodedLaunch,
+  DepositRef,
+  DepositState,
+  DepositStatus,
   FoundLaunch,
   InsiderReader,
   LaunchBuild,
@@ -46,6 +58,8 @@ export type {
   NameOfContract,
   NameResolution,
   NameResolver,
+  NoBridgeRoute,
+  OrderDeposit,
   PinStatus,
   PoolHookFee,
   PriceMiss,
@@ -107,6 +121,7 @@ export type {
   Result,
   Secret,
 } from "@binference/core";
+export { defineBridge } from "./define-bridge.js";
 export { defineData } from "./define-data.js";
 export { defineLaunchpad, defineVenue } from "./define-venue.js";
 export { lintSkill } from "./skills/lint-skill.js";

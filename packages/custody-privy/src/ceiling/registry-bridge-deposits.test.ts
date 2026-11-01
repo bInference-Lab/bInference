@@ -102,7 +102,7 @@ const across: VenueDeclaration = {
           contract: "spoke-pool",
           abi: abiFunctionJson(testBridgeCall.abi),
           walletInputs: ["depositor"],
-          bridge: { ...testBridgeCall.bridge, emptyInputs: ["message"] },
+          bridge: { ...testBridgeCall.bridge, minOut: "outputAmount", emptyInputs: ["message"] },
         },
       ],
       spenders: ["spoke-pool"],

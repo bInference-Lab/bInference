@@ -11,14 +11,14 @@ import {
 import { z } from "zod";
 import type { Amount } from "../amount.js";
 import { type AccountRef, accountRefParts, printAccountRef } from "../caip/account-ref.js";
-import { assetRefParts, parseAssetRef, printAssetRef } from "../caip/asset-ref.js";
+import { assetRefParts, printAssetRef } from "../caip/asset-ref.js";
 import { type ChainRef, chainRefSchema } from "../caip/chain-ref.js";
 import type { TxDraft } from "../transaction.js";
 import type { BuildRequest } from "../venues/build-request.js";
 import type { DecodedEffect } from "../venues/decoded-effect.js";
 import type { Venue } from "../venues/venue.js";
 import { createFakeChainDefinition } from "./fake-chain.js";
-import { fakeApprovalData, fakeCallOf, fakeDraft, isFakeUnsigned } from "./fake-draft.js";
+import { fakeAmountsOf, fakeApprovalData, fakeCallOf, fakeDraft } from "./fake-draft.js";
 
 /** What a fake venue quotes at. */
 export interface FakeVenueOptions {
@@ -67,31 +67,10 @@ export function fakeSwapData(effect: DecodedEffect): string {
   ].join(",");
 }
 
-function amountOf(base: string, asset: string): Amount | undefined {
-  const parsed = parseAssetRef(asset);
-  return parsed.ok && isFakeUnsigned(base)
-    ? { asset: parsed.value, base: BigInt(base) }
-    : undefined;
-}
-
-interface FakeAmounts {
-  readonly amountIn: Amount;
-  readonly minOut: Amount;
-}
-
-// The words of a trade call after `swap`: recipient, amount in, asset in, minimum out, asset out
-// and deadline.
-function amountsOf(words: readonly string[]): FakeAmounts | undefined {
-  const [, inBase = "", inAsset = "", outBase = "", outAsset = ""] = words;
-  const amountIn = amountOf(inBase, inAsset);
-  const minOut = amountOf(outBase, outAsset);
-  return amountIn === undefined || minOut === undefined ? undefined : { amountIn, minOut };
-}
-
 function effectOf(chain: ChainRef, words: readonly string[]): DecodedEffect | undefined {
   const [address = "", , , , , deadline = ""] = words;
   const recipient = printAccountRef({ chain, address });
-  const amounts = amountsOf(words);
+  const amounts = fakeAmountsOf(words);
   const deadlineMs = deadlineSchema.safeParse(deadline);
   if (!recipient.ok || amounts === undefined || !deadlineMs.success) {
     return undefined;

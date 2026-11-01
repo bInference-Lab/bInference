@@ -41,7 +41,8 @@ function frozenSpenders(
   );
 }
 
-function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueContracts[] {
+/** A venue's declared contracts, frozen with every list inside them. */
+export function frozenContracts(contracts: readonly VenueContracts[]): readonly VenueContracts[] {
   return Object.freeze(
     contracts.map((item) =>
       Object.freeze({

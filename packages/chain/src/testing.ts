@@ -103,6 +103,10 @@ export type {
 } from "./contracts/name-resolver-contract.js";
 export { createFakeNameResolver } from "./fakes/fake-name-resolver.js";
 export type { FakeNameRecord, FakeNameResolver } from "./fakes/fake-name-resolver.js";
+export { bridgeContract } from "./contracts/bridge-contract.js";
+export type { BridgeHarness, BridgeSubject } from "./contracts/bridge-contract.js";
+export { createFakeBridge } from "./fakes/fake-bridge.js";
+export type { FakeBridge, FakeBridgeRoute } from "./fakes/fake-bridge.js";
 export type {
   DeliveryReaderHarness,
   DeliveryReaderSubject,
