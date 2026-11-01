@@ -15,6 +15,7 @@ export {
   decodeCall,
   decodeEvmDraft,
   decodeLog,
+  eip155ChainIdOf,
   encodeEvmApproval,
   encodeEvmDraft,
   findCreate2Salt,

@@ -29,21 +29,16 @@ export interface EvmChain {
 const chainIdPattern = /^[1-9][0-9]{0,14}$/;
 const chainIdSchema = z.coerce.number().int().positive();
 
-interface EvmChainId {
-  readonly ref: ChainRef;
-  readonly chainId: number;
-}
-
-// A CAIP-2 id in the eip155 namespace whose reference is an EIP-155 chain id.
-function evmChainIdOf(id: string): EvmChainId | undefined {
-  const ref = chainRefSchema.safeParse(id);
-  if (!ref.success) {
-    return undefined;
-  }
-  const { namespace, reference } = chainRefParts(ref.data);
+/**
+ * The EIP-155 chain id a CAIP-2 chain names: its reference, when its namespace is `eip155` and
+ * the reference is a positive decimal of at most 15 digits, which a number holds exactly. Any
+ * other chain is `undefined`.
+ */
+export function eip155ChainIdOf(chain: ChainRef): number | undefined {
+  const { namespace, reference } = chainRefParts(chain);
   const chainId = chainIdSchema.safeParse(reference);
   return namespace === evmNamespace && chainIdPattern.test(reference) && chainId.success
-    ? { ref: ref.data, chainId: chainId.data }
+    ? chainId.data
     : undefined;
 }
 
@@ -63,10 +58,12 @@ export function evmChainOf(definition: ChainDefinition): EvmChain {
   if (definition.family !== evmFamilyId) {
     throw refuse(definition, `its family is ${definition.family}.`);
   }
-  const id = evmChainIdOf(definition.id);
-  if (id === undefined) {
+  const ref = chainRefSchema.safeParse(definition.id);
+  const chainId = ref.success ? eip155ChainIdOf(ref.data) : undefined;
+  if (!ref.success || chainId === undefined) {
     throw refuse(definition, `its id ${definition.id} is not eip155 with a chain id.`);
   }
+  const id = { ref: ref.data, chainId };
   const { assetNamespace, assetReference, symbol, decimals } = definition.nativeAsset;
   return {
     ref: id.ref,

@@ -1,6 +1,6 @@
-import type { ChainDefinition } from "@binference/chain";
+import { type ChainDefinition, chainRefSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
-import { erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
+import { eip155ChainIdOf, erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
 
 const definition: ChainDefinition = {
   id: "eip155:31337",
@@ -59,5 +59,20 @@ describe("evm chain", () => {
     expect(() => evmChainOf({ ...definition, ...change })).toThrow(
       expect.objectContaining({ code: "chain.not_evm" }),
     );
+  });
+});
+
+describe("eip155ChainIdOf", () => {
+  it.each([
+    ["eip155:56", 56],
+    ["eip155:4663", 4663],
+    ["eip155:999999999999999", 999_999_999_999_999],
+    ["eip155:0", undefined],
+    ["eip155:056", undefined],
+    ["eip155:1000000000000000", undefined],
+    ["solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp", undefined],
+    ["fake:1", undefined],
+  ])("reads %s as %s", (text, id) => {
+    expect(eip155ChainIdOf(chainRefSchema.parse(text))).toBe(id);
   });
 });

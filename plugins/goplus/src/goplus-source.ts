@@ -8,6 +8,7 @@ import {
   ok,
   type TokenRiskSource,
 } from "@binference/plugin-sdk";
+import { eip155ChainIdOf } from "@binference/plugin-sdk/evm";
 import { type GoplusAnswer, readGoplusAnswer } from "./api/token-security.schema.js";
 import { goplusReport } from "./goplus-findings.js";
 
@@ -18,7 +19,6 @@ export interface GoplusOptions {
 }
 
 const origin = "https://api.gopluslabs.io";
-const evmChainId = /^[1-9]\d{0,14}$/;
 const success = 1;
 // GoPlus's answers for a token it has no data on: data still syncing (2), an unsupported chain
 // (2018, and 2022 seen live), an address that is no contract (2020, and 2007 seen live), and no
@@ -42,9 +42,9 @@ function tokenOf(
   asset: AssetRef,
 ): { readonly chainId: string; readonly address: string } | undefined {
   const { chain, assetNamespace, assetReference } = assetRefParts(asset);
-  const [namespace, chainId = ""] = chain.split(":");
-  return namespace === "eip155" && assetNamespace === "erc20" && evmChainId.test(chainId)
-    ? { chainId, address: assetReference.toLowerCase() }
+  const chainId = eip155ChainIdOf(chain);
+  return assetNamespace === "erc20" && chainId !== undefined
+    ? { chainId: String(chainId), address: assetReference.toLowerCase() }
     : undefined;
 }
 
