@@ -11,14 +11,7 @@ import { baseMainnet } from "@binference/chains";
 import { BinferenceError, type Http, type Id, idSchema } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import type { IntentRequest, IntentView } from "@binference/protocol";
-import { createSpaceIdResolver } from "@binference/spaceid";
-import {
-  type PlacementParts,
-  type PlacementStep,
-  pointStep,
-  readPlacementParts,
-  registerSteps,
-} from "@binference/spaceid/testing";
+import { pointStep } from "@binference/spaceid/testing";
 import {
   type Address,
   encodeFunctionData,
@@ -40,7 +33,9 @@ import { createSystemClock } from "../runtime/system-clock.js";
 import { createSystemHttp } from "../runtime/system-http.js";
 import { forkLimits, startMining } from "./executor-rig.js";
 import { buyFor, heldOn } from "./fork-holdings.js";
-import { type RescueRig, rescueAgents, rescueRigOf } from "./rescue-rig.js";
+import { rescueAgents } from "./rescue-rig-parts.js";
+import { type RescueRig, rescueRigOf } from "./rescue-rig.js";
+import { placeName, sendAs, spaceIdOn } from "./space-id-names.js";
 
 // Sends, approval revokes and bridges on a fork of BSC: a `.bnb` name placed as SPACE ID's
 // controllers and its holder place one, saved in the agent's address book, then paid by name; a
@@ -51,10 +46,6 @@ const owner = {
   scopes: ["read", "propose", "confirm", "loosen"],
   transport: "ipc",
 } as const;
-const contracts = {
-  registry: bscContract("spaceid", "registry"),
-  registrar: bscContract("spaceid", "base-registrar"),
-};
 const usdt = bscToken("USDT");
 const router = bscContract("pancakeswap", "v2-router");
 const label = "binference-send-alice";
@@ -80,36 +71,6 @@ function expectValue<T>(
     throw new BinferenceError({ code: "fork.refused", message: result.error });
   }
   return result.value;
-}
-
-async function sendAs(fork: Fork, steps: readonly PlacementStep[]): Promise<void> {
-  for (const step of steps) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- each step needs the one before it
-    await fork.call("anvil_impersonateAccount", [step.from]);
-    // oxlint-disable-next-line eslint/no-await-in-loop -- each step needs the one before it
-    await fork.call("anvil_setBalance", [step.from, toHex(10n ** 18n)]);
-    // oxlint-disable-next-line eslint/no-await-in-loop -- each step needs the one before it
-    expect((await fork.send(step)).status).toBe("success");
-  }
-}
-
-async function placeName(fork: Fork, signal: AbortSignal): Promise<PlacementParts> {
-  const parts = await readPlacementParts(contracts, { rpc: fork.rpc, signal });
-  await sendAs(fork, registerSteps(parts, { label, holder, address: holder }));
-  return parts;
-}
-
-function resolverOn(fork: Fork) {
-  const refOf = (address: Address): AccountRef =>
-    accountRefSchema.parse(`${fork.chain.ref}:${address}`);
-  return createSpaceIdResolver({
-    chain: fork.chain.ref,
-    rpc: fork.rpc,
-    contracts: {
-      registry: refOf(contracts.registry),
-      "base-registrar": refOf(contracts.registrar),
-    },
-  });
 }
 
 // The agent's main wallet holds 0.05 BNB and what 0.05 BNB buys of USDT; the holder holds no code.
@@ -206,8 +167,8 @@ describe("sends and approval revokes on the BSC fork", () => {
     signal,
   }) => {
     await withFork(signal, async (fork) => {
-      const parts = await placeName(fork, signal);
-      const rig = await rescueRigOf(fork, [resolverOn(fork)]);
+      const parts = await placeName(fork, { label, holder, address: holder }, signal);
+      const rig = await rescueRigOf(fork, [spaceIdOn(fork)]);
       const miner = new AbortController();
       const mining = startMining(fork, miner.signal);
       try {

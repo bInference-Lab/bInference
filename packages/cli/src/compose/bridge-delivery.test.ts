@@ -9,7 +9,7 @@ import {
   type TxHash,
 } from "@binference/chain";
 import { arbitrum, bsc, solana } from "@binference/chains";
-import type { Http, HttpResponse } from "@binference/core";
+import type { Http, JsonValue } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { startBridgeFollowBench } from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
@@ -20,47 +20,11 @@ import acrossStatus from "./recorded/across-fill-status.json" with { type: "json
 import evmFill from "./recorded/arbitrum-usdc-fill.json" with { type: "json" };
 import bscDeposit from "./recorded/bsc-usdc-deposit.json" with { type: "json" };
 import solanaFill from "./recorded/solana-usdc-fill.json" with { type: "json" };
+import { createRecordedChain } from "./test-recorded-chain.js";
 
-// A recording holds what a chain's public RPC answered for each call, by method and params.
-const recordedSchema = z.object({
-  answers: z.array(
-    z.object({ method: z.string(), params: z.array(z.unknown()), result: z.unknown() }),
-  ),
-});
-const callSchema = z.object({
-  id: z.union([z.string(), z.number()]),
-  method: z.string(),
-  params: z.array(z.unknown()).default([]),
-});
-
-/**
- * An Http for tests that answers every endpoint's JSON-RPC calls from one recording, with no
- * network; a call it lacks gets an RPC error.
- */
-function recordedChainHttp(recording: unknown): Http {
-  const answers = new Map(
-    recordedSchema
-      .parse(recording)
-      .answers.map(({ method, params, result }) => [`${method}${JSON.stringify(params)}`, result]),
-  );
-  return {
-    async request(request): Promise<HttpResponse> {
-      request.signal.throwIfAborted();
-      const call = callSchema.parse(JSON.parse(request.body ?? "null"));
-      const recorded = answers.get(`${call.method}${JSON.stringify(call.params)}`);
-      const reply =
-        recorded === undefined
-          ? { error: { code: -32_602, message: "not recorded" } }
-          : { result: recorded };
-      const body = JSON.stringify({ jsonrpc: "2.0", id: call.id, ...reply });
-      return await Promise.resolve({ status: 200, headers: {}, body });
-    },
-  };
-}
-
-function readerOf(definition: ChainDefinition, recording: unknown): DeliveryReader {
+function readerOf(definition: ChainDefinition, recording: JsonValue): DeliveryReader {
   const reader = deliveryReaderOf(definition, {
-    http: recordedChainHttp(recording),
+    http: createRecordedChain(recording).http,
     clock: createManualClock(),
   });
   if (reader === undefined) {
