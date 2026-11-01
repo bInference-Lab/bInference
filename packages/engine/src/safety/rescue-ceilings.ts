@@ -1,6 +1,7 @@
-import type { AccountRef, ChainRegistry } from "@binference/chain";
+import type { AccountCodeReader, AccountRef, ChainRegistry } from "@binference/chain";
 import { type Clock, err, type Id, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { CeilingRefusal } from "../install/ceiling-change.js";
 import type { InstallFacts } from "../install/install-record.js";
 import type { CeilingEditor } from "../install/ports.js";
@@ -9,6 +10,8 @@ import { type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { AgentStore, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { ceilingOutdatedNotice } from "./rescue-address-notice.js";
+import type { RescueReads } from "./rescue-check.js";
+import { joinWaitingReach } from "./rescue-keep.js";
 import { rescueReachOf } from "./rescue-reach.js";
 import {
   rescueAccounts,
@@ -26,6 +29,22 @@ export interface RescueCeilingsOptions {
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly publish: PublishPush;
+  /**
+   * The reads of the rescue address's plain-wallet check on each destination (decision 0321);
+   * without them it joins no destination's bridge rules anew.
+   */
+  readonly rescueReads?: RescueReads;
+}
+
+/**
+ * The reads of the check from what bridges run with: their destinations and the wallets' chains'
+ * code readers; none of either when absent.
+ */
+export function rescueReadsOf(given: {
+  readonly destinations?: readonly DestinationChain[] | undefined;
+  readonly codeReaders?: readonly AccountCodeReader[] | undefined;
+}): RescueReads {
+  return { destinations: given.destinations ?? [], codeReaders: given.codeReaders ?? [] };
 }
 
 // The change that removes the old address stays valid this long after the new one takes effect,
@@ -203,12 +222,17 @@ export async function sendCancelCeilings(
   if (!sent.ok) {
     options.publish(ceilingOutdatedNotice(cancelled.address));
   }
+  // The dropped address's standings go with it (decision 0321).
+  const atMs = options.clock.now();
+  await options.install.keepRescueReach({ agents: [], records: [], atMs }, { signal });
 }
 
 /**
  * Sends the change kept for a new rescue address once it has taken effect, which leaves the old
  * address out of every ceiling, and forgets the changes kept. When custody cannot send it, the
- * owner is told the ceilings still list the old address. A fault leaves it for the next settle.
+ * owner is told the ceilings still list the old address. Then each bridge rule that listed the new
+ * address while it waited pays it, and the owner is told so once (decision 0321). A fault leaves
+ * it for the next settle.
  */
 export async function settleRescueCeilings(
   options: RescueCeilingsOptions,
@@ -216,13 +240,56 @@ export async function settleRescueCeilings(
 ): Promise<void> {
   const facts = await options.install.read({ signal });
   const pending = facts.pendingRescue;
-  const onEffect = facts.rescueCeiling?.onEffect;
-  if (pending === undefined || onEffect === undefined || pending.atMs > options.clock.now()) {
+  if (pending === undefined || pending.atMs > options.clock.now()) {
     return;
   }
-  const sent = await options.ceilings.sendSigned(onEffect, { signal });
-  await options.install.clearRescueCeiling({ signal });
-  if (!sent.ok && facts.rescueAddress !== undefined) {
-    options.publish(ceilingOutdatedNotice(facts.rescueAddress));
+  const onEffect = facts.rescueCeiling?.onEffect;
+  if (onEffect !== undefined) {
+    const sent = await options.ceilings.sendSigned(onEffect, { signal });
+    await options.install.clearRescueCeiling({ signal });
+    if (!sent.ok && facts.rescueAddress !== undefined) {
+      options.publish(ceilingOutdatedNotice(facts.rescueAddress));
+    }
   }
+  await joinWaitingReach(options, signal);
+}
+
+// The owner key's writes of each install, one after the other, so no two keep the rescue
+// addresses' standings from checks read at the same time.
+const ownerWrites = new WeakMap<InstallStore, Promise<void>>();
+
+/** Runs an owner key's write of ceilings once every earlier one of the install has ended. */
+export async function serially<T>(install: InstallStore, write: () => Promise<T>): Promise<T> {
+  const earlier = ownerWrites.get(install) ?? Promise.resolve();
+  const next = earlier.then(write, write);
+  ownerWrites.set(
+    install,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return await next;
+}
+
+/**
+ * Runs an owner key's change of ceilings in the install's line of such writes (decisions 0110 and
+ * 0321): it first sends a rescue change whose time came, then writes, and then, unless custody
+ * refused the owner key, signs again the changes kept for a new rescue address that waits, over
+ * the ceilings as they list now, so a kept change never undoes what the write listed.
+ */
+export async function ownerKeyRewrite<T>(
+  options: RescueCeilingsOptions,
+  key: { readonly ownerKey: Secret; readonly signal: AbortSignal },
+  write: () => Promise<Result<T, ProtocolErrorCode>>,
+): Promise<Result<T, ProtocolErrorCode>> {
+  return serially(options.install, async () => {
+    await settleRescueCeilings(options, key.signal);
+    const written = await write();
+    if (written.ok || written.error !== "wallet.bad_owner_key") {
+      // A refusal here keeps the changes signed before; custody refuses them once due, and says so.
+      await resignRescueCeilings(options, key.ownerKey, key.signal);
+    }
+    return written;
+  });
 }

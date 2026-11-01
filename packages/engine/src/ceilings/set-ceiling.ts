@@ -13,8 +13,12 @@ import type { CeilingEditor } from "../install/ports.js";
 import { unknownVenues } from "../limits/limit-ceiling.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall } from "../operations/engine-call.js";
+import { rescueAt } from "../policy/rescue-change.js";
 import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import { ownerKeyRewrite } from "../safety/rescue-ceilings.js";
+import { checkRescueReach, type RescueReads, withCheckedReach } from "../safety/rescue-check.js";
+import { keepCheckedReach } from "../safety/rescue-keep.js";
 import { ceilingRecipients } from "../safety/wallet-recipients.js";
 import {
   announceRewrite,
@@ -34,6 +38,8 @@ export interface SetCeilingOptions {
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly publish: PublishPush;
+  /** The reads of the rescue address's plain-wallet check (decision 0321); none checks nothing. */
+  readonly rescueReads?: RescueReads;
 }
 
 type Call = EngineCall<"ceiling/set">;
@@ -157,7 +163,11 @@ async function walletsOf(
  * caps comes alone, above 0, and resizes the caps of every live wallet of the install, whose sums
  * they share (decision 0151); any other is `protocol.bad_args`. Its chains and send recipients
  * stay: naming other chains is `protocol.bad_args`, as a new chain needs a new wallet. Its bridge
- * rules pay again the addresses saved for each destination (decision 0313).
+ * rules pay again the addresses saved for each destination (decision 0313), and a rescue address
+ * on each destination the agent's rules serve once its plain-wallet check passed there, which runs
+ * first for the agent (decision 0321). It runs in the install's line of owner key writes: a rescue
+ * change whose time came is sent first, and the changes kept for a new rescue address that waits
+ * are signed again after, as `address/add` does.
  * No venue or an unknown one is `protocol.bad_args`; removing a venue the agent's limits name, in
  * effect or waiting, is `limit.venue_in_use`; a wrong key is `wallet.bad_owner_key`. Each wallet's
  * stored copy of its ceiling is then read back from custody; a change that moved one is
@@ -182,19 +192,44 @@ export async function setCeiling(
   if (refusal !== undefined) {
     return err(refusal);
   }
-  const most = options.ceilings.mostPerChain;
-  const recipients = await ceilingRecipients({ ...options, most }, signal);
-  const ceilings = callsOf(options, { changes: args.changes, held: before, recipients });
-  const set = await options.ceilings.setCalls(
-    { ownerKey: createSecret(args.ownerKey), ceilings },
-    { signal },
+  const ownerKey = createSecret(args.ownerKey);
+  return ownerKeyRewrite(options, { ownerKey, signal }, async () =>
+    rewrite(options, call, { settings, wallets, before }),
   );
+}
+
+// The write of every ceiling the change reaches, once the rescue addresses were checked for the
+// agent, a venue may give a destination its first bridge rule (decision 0321); then every copy read
+// back, the standings custody holds kept, and the change journaled and announced.
+async function rewrite(
+  options: SetCeilingOptions,
+  call: Call,
+  held: {
+    readonly settings: AgentSettings;
+    readonly wallets: readonly WalletRecord[];
+    readonly before: readonly HeldCeiling[];
+  },
+): Promise<Result<CeilingView, ProtocolErrorCode>> {
+  const { args, signal } = call;
+  const { settings, wallets, before } = held;
+  const facts = await options.install.read({ signal });
+  const rescue = rescueAt(facts, options.clock.now());
+  const plan = { agents: [settings.agent.id], rescue };
+  const checked = await checkRescueReach(options, plan, signal);
+  const records = withCheckedReach(facts, checked).rescueReach ?? [];
+  const most = options.ceilings.mostPerChain;
+  const recipients = await ceilingRecipients({ ...options, most, records }, signal);
+  const ceilings = callsOf(options, { changes: args.changes, held: before, recipients });
+  const ownerKey = createSecret(args.ownerKey);
+  const set = await options.ceilings.setCalls({ ownerKey, ceilings }, { signal });
   if (!set.ok && set.error === "bad_owner_key") {
     return err(callsRefusalCodes[set.error]);
   }
   // A refusal part way may leave earlier ceilings changed: every copy is read back all the same.
   const after = await refreshCeilings(options, wallets, signal);
-  const moved = { agent: settings.agent, author: authorOf(call.caller), signal };
+  const notices = await keepCheckedReach(options, checked, { after, signal });
+  const also = notices.get(settings.agent.id) ?? [];
+  const moved = { agent: settings.agent, author: authorOf(call.caller), signal, also };
   await announceRewrite(options, moved, { before, after });
   const named = after.find((item) => item.wallet.id === args.wallet);
   if (!set.ok || named === undefined) {

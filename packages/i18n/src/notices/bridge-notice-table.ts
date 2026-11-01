@@ -1,12 +1,13 @@
-import { noticeTableParts } from "./notice-table-parts.js";
+import { noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
 import type { WrittenNotice } from "./write-notice.js";
 
 const { coinAmount } = noticeTableParts;
 
 /**
  * One notice of each bridge key of spec 4, section 4.4, as the engine publishes it: a bridge late
- * after 2 hours, a late bridge that arrived, a bridge its venue paid back, and a confirmed bridge
- * that lapsed unsigned with what held it.
+ * after 2 hours, a late bridge that arrived, a bridge its venue paid back, a confirmed bridge
+ * that lapsed unsigned with what held it, and the rescue address put in or left out of a
+ * destination's bridge rules.
  */
 export const bridgeNoticeTable: Readonly<Record<string, WrittenNotice>> = {
   "notice.bridgeLate": {
@@ -27,5 +28,14 @@ export const bridgeNoticeTable: Readonly<Record<string, WrittenNotice>> = {
   "notice.bridgeLapsed": {
     key: "notice.bridgeLapsed",
     values: { chain: "Base", why: "quote" },
+  },
+  "notice.rescueBridged": {
+    key: "notice.rescueBridged",
+    values: { agent: "main", address: "0x9F3c…41aB", chains: "Base, Arbitrum", status: "waiting" },
+    times: { when: noticeTableAtMs },
+  },
+  "notice.rescueNotBridged": {
+    key: "notice.rescueNotBridged",
+    values: { agent: "main", address: "0x9F3c…41aB", chains: "Base", why: "code" },
   },
 };

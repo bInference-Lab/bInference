@@ -37,6 +37,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.ceilingChange": `${warning} The owner key changed the ceiling of main's wallets from the CLI: the most one contract call may carry. Not you? Freeze now.`,
   "notice.dayCapAdded":
     "A 24-hour cap on approvals of ETH now holds main's wallets. Until this change, approvals of ETH had no 24-hour cap.",
+  "notice.rescueBridged":
+    "Once your new rescue address 0x9F3c…41aB takes effect at Oct 11, 2026, 09:30:00, bridges from main's wallets may pay it on Base, Arbitrum: it holds no code there or on its own chain, so it is most likely a plain wallet with the same key there.",
   "notice.signerRevoked": `${warning} The owner key removed the agent key of signer office-mac from every wallet, from the CLI. The machine that held it signs nothing more. Not you? Freeze now.`,
   "notice.sendLevel": "Send level 2 → 1 at Oct 11, 2026, 09:30:00",
   "notice.sendLevelCancelled": "Send level change to 0 cancelled; it stays 2",
@@ -85,6 +87,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.bridgeArrived": `${done} Your late bridge to Base arrived: 0x71C7…976F received 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross did not deliver your bridge to Base and paid 20 FAKE back to Main`,
   "notice.bridgeLapsed": `${warning} Your bridge to Base was not sent before its confirmation ran out: its quote expired, so propose it again. Nothing was signed.`,
+  "notice.rescueNotBridged":
+    "Bridges from main's wallets do not pay your rescue address 0x9F3c…41aB on Base: it holds code there or on its own chain, so the same address there may not be yours. To bridge there, save an address you control on Base in the address book with your owner key.",
   "notice.launchStopped": `${warning} The launch of MCAT on pad stopped: the launchpad did not pin its picture and words within 5 minutes. Nothing was signed, but its picture and words may be public on the launchpad. Propose the launch again if you still want it.`,
   "notice.stepUnsent": `${warning} A trade stopped part way: an earlier step landed on chain, but a later one was never signed. Check the wallet.`,
   "notice.launchNotSigned": `${warning} The launch of MCAT on pad stopped after you confirmed it: binference stopped before it signed the launch, and it never signs after a stop. No token was made and nothing was sent. Its picture and words may already be public on the launchpad. Propose the launch again if you still want it.`,

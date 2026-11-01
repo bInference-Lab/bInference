@@ -17,10 +17,9 @@ import type { EngineCall } from "../operations/engine-call.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { ConfigJournal } from "../ports.js";
 import {
+  ownerKeyRewrite,
   type RescueCeilingsOptions,
-  resignRescueCeilings,
   saveInCeilings,
-  settleRescueCeilings,
 } from "../safety/rescue-ceilings.js";
 import { addressRefusal, walletCheck } from "./address-checks.js";
 import { saveForDestination } from "./destination-ceilings.js";
@@ -180,26 +179,23 @@ export async function addAddress(
   if (!isWallet.ok) {
     return isWallet;
   }
-  await settleRescueCeilings(options, signal);
-  const facts = await options.install.read({ signal });
   const ownerKey = createSecret(args.ownerKey);
-  const move = { facts, agent: args.agent, account: saved.account, ownerKey, signal };
-  const inCeiling = saved.isWalletChain
-    ? await saveInCeilings(options, move)
-    : await saveForDestination(options, {
-        ...move,
-        record: found.value.agent,
-        author: authorOf(call.caller),
-      });
-  if (!inCeiling.ok) {
-    return inCeiling;
-  }
-  const after = inCeiling.value ?? [];
-  const noRoute =
-    !saved.isWalletChain && !after.some(({ read }) => read.bridged.includes(saved.account));
-  const name = found.value.agent.name;
-  const stored = await storeEntry(options, call, { saved, name, noRoute });
-  // A refusal here keeps the changes signed before; custody refuses them once due, and says so.
-  await resignRescueCeilings(options, ownerKey, signal);
-  return stored;
+  return ownerKeyRewrite(options, { ownerKey, signal }, async () => {
+    const facts = await options.install.read({ signal });
+    const move = { facts, agent: args.agent, account: saved.account, ownerKey, signal };
+    const inCeiling = saved.isWalletChain
+      ? await saveInCeilings(options, move)
+      : await saveForDestination(options, {
+          ...move,
+          record: found.value.agent,
+          author: authorOf(call.caller),
+        });
+    if (!inCeiling.ok) {
+      return inCeiling;
+    }
+    const after = inCeiling.value ?? [];
+    const noRoute =
+      !saved.isWalletChain && !after.some(({ read }) => read.bridged.includes(saved.account));
+    return storeEntry(options, call, { saved, name: found.value.agent.name, noRoute });
+  });
 }

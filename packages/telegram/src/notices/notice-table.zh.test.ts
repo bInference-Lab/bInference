@@ -36,6 +36,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.ceilingChange": `${warning} 已从 命令行 用所有者密钥修改 main 钱包的上限：一次合约调用最多可携带的金额。不是你操作？请立即冻结。`,
   "notice.dayCapAdded":
     "main 的钱包对 ETH 的授权现在有 24 小时上限。在此之前，ETH 的授权没有 24 小时上限。",
+  "notice.rescueBridged":
+    "你的新紧急转出地址 0x9F3c…41aB 于 2026年10月11日 09:30:00 生效后，main 的钱包可以跨链到它在 Base, Arbitrum 上的地址：它在那里和在本链上都没有合约代码，因此很可能是同一把密钥持有的普通钱包。",
   "notice.signerRevoked": `${warning} 已从 命令行 用所有者密钥从所有钱包移除签名方 office-mac 的 Agent 密钥。持有它的机器无法再签名。不是你操作？请立即冻结。`,
   "notice.sendLevel": "转账级别 2 → 1，将于 2026年10月11日 09:30:00 生效",
   "notice.sendLevelCancelled": "已取消将转账级别改为 0，仍为 2",
@@ -84,6 +86,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.bridgeArrived": `${done} 你延迟的跨链已在 Base 到账：0x71C7…976F 收到 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross 未完成你到 Base 的跨链，已将 20 FAKE 退回 Main`,
   "notice.bridgeLapsed": `${warning} 你到 Base 的跨链在确认过期前未发送：它的报价已过期，请重新发起。未签名任何内容。`,
+  "notice.rescueNotBridged":
+    "main 的钱包不会跨链到你在 Base 上的紧急转出地址 0x9F3c…41aB：它在那里或在本链上有合约代码，因此那里的同一地址可能不属于你。要跨链到那里，请用你的所有者密钥在地址簿中保存一个你在 Base 上控制的地址。",
   "notice.launchStopped": `${warning} MCAT 在 pad 的发射已停止：发射台未在 5 分钟内固定其图片和文字。未签名任何内容，但其图片和文字可能已在发射台公开。如仍需要，请重新发起发射。`,
   "notice.stepUnsent": `${warning} 一笔交易中途停止：前面的步骤已上链，但后面的步骤从未签名。请检查钱包。`,
   "notice.launchNotSigned": `${warning} MCAT 在 pad 的发射在你确认后停止：binference 在签名发射之前停止了，停止后也不会再签名。没有创建代币，也没有发送任何交易。其图片和文字可能已在发射台公开。如仍需要，请重新发起发射。`,

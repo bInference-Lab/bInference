@@ -1,7 +1,9 @@
+import type { AccountRef } from "@binference/chain";
 import { createSecret, err, jsonValueSchema, ok, type Result, type Secret } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import { payeeRefusal } from "../address-book/payee-refusal.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import { readCeilings, refreshCeilings } from "../ceilings/ceiling-rewrite.js";
 import type { RescueMove } from "../install/rescue-record.js";
 import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
@@ -12,8 +14,12 @@ import {
   moveRescueCeilings,
   type RescueCeilingsOptions,
   sendCancelCeilings,
+  serially,
   settleRescueCeilings,
 } from "./rescue-ceilings.js";
+import { checkRescueReach, withCheckedReach } from "./rescue-check.js";
+import { announceEachAgent } from "./rescue-joins.js";
+import { keepCheckedReach } from "./rescue-keep.js";
 
 /** The handlers of the install's rescue address change (protocol spec, section 7.1). */
 export interface RescueAddressHandlers {
@@ -78,6 +84,46 @@ function ownerKeyOf(
   return ownerKey === undefined ? err("wallet.bad_owner_key") : ok(createSecret(ownerKey));
 }
 
+// The new address in every live wallet's ceiling, the rescue addresses checked for every agent on
+// the destinations its rules serve, as the change leaves them (decision 0321), the change stored
+// and journaled, then each ceiling read back, the standings custody holds kept, and each agent's
+// rewrite announced.
+async function writeRescue(
+  options: RescueAddressHandlersOptions,
+  call: EngineCall<"safety/setRescueAddress">,
+  asked: { readonly address: AccountRef; readonly ownerKey: Secret; readonly isNew: boolean },
+): Promise<Result<void, ProtocolErrorCode>> {
+  const { signal } = call;
+  const { address, ownerKey, isNew } = asked;
+  const held = await options.install.read({ signal });
+  const atMs = options.clock.now();
+  const next = changeRescue(held, address, atMs);
+  const wallets = held.wallets.filter((wallet) => wallet.archivedAtMs === undefined);
+  const agents = [...new Set(wallets.map((wallet) => wallet.agentId))];
+  const plan = { agents, rescue: next, ...(isNew ? { fresh: address } : {}) };
+  const checked = await checkRescueReach(options, plan, signal);
+  const facts = withCheckedReach(held, checked);
+  const before = await readCeilings(options, wallets, signal);
+  const ceiling = await moveRescueCeilings(options, { facts, next, ownerKey, signal });
+  if (!ceiling.ok) {
+    return ceiling;
+  }
+  const kept = ceiling.value === undefined ? {} : { ceiling: ceiling.value };
+  const change = { address, atMs, ...kept };
+  await record(options, call, await options.install.changeRescue(change, { signal }));
+  const after = await refreshCeilings(options, wallets, signal);
+  const notices = await keepCheckedReach(options, checked, { after, signal });
+  await announceEachAgent(
+    options,
+    { author: authorOf(call.caller), signal, notices },
+    {
+      before,
+      after,
+    },
+  );
+  return ok(undefined);
+}
+
 async function setRescue(
   options: RescueAddressHandlersOptions,
   call: EngineCall<"safety/setRescueAddress">,
@@ -96,31 +142,22 @@ async function setRescue(
   if (refusal !== undefined) {
     return err(refusal);
   }
-  await settleRescueCeilings(options, signal);
-  const facts = await options.install.read({ signal });
-  const atMs = options.clock.now();
-  const next = changeRescue(facts, address.value, atMs);
-  const effectiveAt =
-    next.pendingRescue?.address === address.value ? next.pendingRescue.atMs : atMs;
-  if (isSame(next, rescueAt(facts, atMs))) {
-    return ok({ effectiveAt });
-  }
-  const ceiling = await moveRescueCeilings(options, {
-    facts,
-    next,
-    ownerKey: ownerKey.value,
-    signal,
+  return serially(options.install, async () => {
+    await settleRescueCeilings(options, signal);
+    const facts = await options.install.read({ signal });
+    const atMs = options.clock.now();
+    const held = rescueAt(facts, atMs);
+    const next = changeRescue(facts, address.value, atMs);
+    const effectiveAt =
+      next.pendingRescue?.address === address.value ? next.pendingRescue.atMs : atMs;
+    if (isSame(next, held)) {
+      return ok({ effectiveAt });
+    }
+    const isNew = address.value !== held.rescueAddress;
+    const asked = { address: address.value, ownerKey: ownerKey.value, isNew };
+    const written = await writeRescue(options, call, asked);
+    return written.ok ? ok({ effectiveAt }) : written;
   });
-  if (!ceiling.ok) {
-    return ceiling;
-  }
-  const change = {
-    address: address.value,
-    atMs,
-    ...(ceiling.value === undefined ? {} : { ceiling: ceiling.value }),
-  };
-  await record(options, call, await options.install.changeRescue(change, { signal }));
-  return ok({ effectiveAt });
 }
 
 async function cancelChange(
@@ -149,7 +186,11 @@ async function cancelChange(
  * the owner key over IPC only: it saves the new address in every wallet's ceiling at once, beside
  * the address in effect, and signs ahead the change that leaves the old address out once the new
  * one takes effect 24 hours later, and the one that leaves the new address out if it is
- * cancelled. The new address is announced with its time; asking for the address in effect drops
+ * cancelled. First it runs, for every agent, the plain-wallet check of the new address on each
+ * destination the agent's bridge rules serve, and of the address in effect where its standing does
+ * not list it, so the rules there list each rescue address where it passed; each ceiling is then
+ * read back, and each agent whose standings changed is told: a waiting address with the time a
+ * bridge may pay it (decision 0321). It runs in the install's line of owner key writes. The new address is announced with its time; asking for the address in effect drops
  * one that waits and answers now. An address on a chain the registry lacks, or one its family
  * cannot read, is `protocol.bad_args`; a launch wallet of the install, which no ceiling may list,
  * `address.launch_wallet` (decision 0218), a bridge wallet `address.bridge_wallet` and a contract the

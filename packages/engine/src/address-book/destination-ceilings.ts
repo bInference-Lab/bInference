@@ -11,8 +11,11 @@ import {
 import { venuesIn } from "../ceilings/ceiling-view-of.js";
 import { callsRefusalCodes } from "../ceilings/set-ceiling.js";
 import type { CeilingCalls } from "../install/ceiling-change.js";
+import { rescueAt } from "../policy/rescue-change.js";
 import type { ConfigJournal } from "../ports.js";
 import type { RescueCeilingsOptions, SavedAddressMove } from "../safety/rescue-ceilings.js";
+import { checkRescueReach, withCheckedReach } from "../safety/rescue-check.js";
+import { keepCheckedReach } from "../safety/rescue-keep.js";
 import { rescueReachOf } from "../safety/rescue-reach.js";
 import { rescueAccounts, walletCeilings, walletRecipients } from "../safety/wallet-recipients.js";
 
@@ -50,11 +53,13 @@ async function callsOf(
  * with the owner key (decision 0313): each is planned again with its venues and its cap as it
  * holds them, and its bridge rules pay, on each destination, the rescue address in effect, a new
  * one that waits, the agent's saved addresses and the account where they are listed for that
- * destination. Custody plans every wallet before it writes any and signs nothing for a rule that
- * holds its body already, so a plan that changes no rule signs nothing. Then every wallet's
- * stored copy is read back, even after a refusal part way, and a change that moved a ceiling is
- * journaled and announced as `ceiling set` announces it, with `notice.dayCapAdded` when it added
- * a 24-hour cap (decision 0305). It answers each wallet's ceiling as read after the save. A
+ * destination, and a rescue address on each destination the agent's rules serve once its
+ * plain-wallet check passed there, which runs first for the agent (decision 0321). Custody plans
+ * every wallet before it writes any and signs nothing for a rule that holds its body already, so a
+ * plan that changes no rule signs nothing. Then every wallet's stored copy is read back, even
+ * after a refusal part way, the rescue addresses' standings custody holds are kept, and a change
+ * that moved a ceiling or a standing is journaled and announced as `ceiling set` announces it, with
+ * `notice.dayCapAdded` when it added a 24-hour cap (decision 0305). It answers each wallet's ceiling as read after the save. A
  * ceiling custody does not hold is `wallet.not_found`, and nothing is written then; any other
  * refusal is its protocol error code.
  */
@@ -69,7 +74,15 @@ export async function saveForDestination(
   if (before.length < wallets.length) {
     return err("wallet.not_found");
   }
-  const ceilings = await callsOf(parts, move, before);
+  // The destination may gain its first bridge rule here: the rescue addresses are checked first.
+  const plan = {
+    agents: [move.agent],
+    rescue: rescueAt(move.facts, parts.clock.now()),
+    saving: { agent: move.agent, account: move.account },
+  };
+  const checked = await checkRescueReach(parts, plan, move.signal);
+  const facts = withCheckedReach(await parts.install.read({ signal: move.signal }), checked);
+  const ceilings = await callsOf(parts, { ...move, facts }, before);
   const set = await parts.ceilings.setCalls(
     { ownerKey: move.ownerKey, ceilings },
     { signal: move.signal },
@@ -79,7 +92,9 @@ export async function saveForDestination(
   }
   // A refusal part way may leave earlier ceilings changed: every copy is read back all the same.
   const after = await refreshCeilings(parts, wallets, move.signal);
-  const moved = { agent: move.record, author: move.author, signal: move.signal };
+  const notices = await keepCheckedReach(parts, checked, { after, signal: move.signal });
+  const also = notices.get(move.agent) ?? [];
+  const moved = { agent: move.record, author: move.author, signal: move.signal, also };
   await announceRewrite(parts, moved, { before, after });
   return set.ok ? ok(after) : err(callsRefusalCodes[set.error]);
 }

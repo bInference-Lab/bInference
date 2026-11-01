@@ -3,6 +3,7 @@ import {
   type NoticeSettingsHandlers,
 } from "../notices/notice-settings-handlers.js";
 import type { PaperParts } from "../paper/paper-parts.js";
+import { rescueReadsOf } from "../safety/rescue-ceilings.js";
 import {
   createWorkspaceHandlers,
   type WorkspaceHandlers,
@@ -50,6 +51,7 @@ function ceilingsOf(options: EngineOptions): CeilingHandlers {
     chains,
     clock: options.clock,
     publish: options.publish,
+    rescueReads: rescueReadsOf(options),
   });
 }
 

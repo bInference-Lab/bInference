@@ -147,7 +147,13 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    the agent's saved addresses, so removing a saved address or replacing the rescue address takes
    it out of every destination in the same change. Saving an address for a destination rewrites
    each live wallet's call rules, which adds that destination's rules where a venue's routes reach
-   it. A route whose token that leaves
+   it. Where an agent saved an address for a destination, its rules there also pay the rescue
+   address in effect, and a new one that waits, once the plain-wallet check passed for that agent:
+   no code on its own chain or on the destination, read with the owner key at a rescue address
+   change, a save for a destination and `ceiling set`, and kept per agent in
+   `safety.rescue_reach` from what custody holds after the write. It joins after the saved
+   addresses while the chain's 100 leave room, and counts against them
+   ([decision 0321](../DECISIONS.md#d0321)). A route whose token that leaves
    has no 24-hour approval cap on the chain is refused, so a deposit loses at most that cap
    ([decision 0305](../DECISIONS.md#d0305)). A destination with no saved address has no rule. The
    deposit's message must be empty, which the signer checks: Privy takes no condition for an empty

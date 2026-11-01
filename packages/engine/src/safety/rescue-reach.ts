@@ -18,8 +18,8 @@ export function rescueReachOf(facts: InstallFacts, most: number): RescueReach {
   return { records: facts.rescueReach ?? [], most };
 }
 
-// Whether a standing lets an agent's bridge rules list the rescue address: it is in them.
-function isListedStanding(record: RescueReachRecord): boolean {
+/** Whether a standing lets an agent's bridge rules list the rescue address: it is in them. */
+export function isListedStanding(record: RescueReachRecord): boolean {
   return record.state === "joined" || record.state === "waiting";
 }
 

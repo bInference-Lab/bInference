@@ -8,7 +8,7 @@ import type { CeilingRead } from "../install/ceiling-change.js";
 import type { WalletRecord } from "../install/install-record.js";
 import type { CeilingEditor } from "../install/ports.js";
 import type { ConfigJournal, InstallStore } from "../ports.js";
-import type { PublishPush } from "../pushes/engine-push.js";
+import type { EnginePush, PublishPush } from "../pushes/engine-push.js";
 import { type CeilingChangeKind, ceilingChangeNotice } from "./ceiling-notice.js";
 import { ceilingViewOf } from "./ceiling-view-of.js";
 import { type CeilingReads, dayCapAddedNotice } from "./day-cap-added.js";
@@ -130,8 +130,9 @@ function wireOf(chains: ChainRegistry, held: readonly HeldCeiling[]) {
 /**
  * Journals and announces a rewrite of an agent's ceilings that moved one (decisions 0132 and
  * 0305): what a call may reach, its cap or the 24-hour caps, under `agents.<name>.ceiling`, with
- * the ceiling notice and, when the rewrite added a 24-hour cap, `notice.dayCapAdded`. A rewrite
- * that moved none is not journaled.
+ * the ceiling notice and, when the rewrite added a 24-hour cap, `notice.dayCapAdded`; and with the
+ * notices `also` gives, such as a rescue address's standings that changed (decision 0321). A
+ * rewrite that moved none and comes with no notice is not journaled.
  */
 export async function announceRewrite(
   parts: Pick<CeilingRewriteParts, "journal" | "publish" | "chains" | "clock">,
@@ -139,18 +140,17 @@ export async function announceRewrite(
     readonly agent: AgentRecord;
     readonly author: ConfigAuthor;
     readonly signal: AbortSignal;
+    readonly also?: readonly EnginePush[];
   },
   reads: { readonly before: readonly HeldCeiling[]; readonly after: readonly HeldCeiling[] },
 ): Promise<void> {
+  const { agent, author, signal, also = [] } = moved;
+  const pairs = pairsOf(reads.before, reads.after);
   const kind = kindOf(reads.before, reads.after);
-  if (kind === undefined) {
+  if (kind === undefined && also.length === 0) {
     return;
   }
-  const { agent, author, signal } = moved;
-  const added = dayCapAddedNotice(agent, {
-    chains: parts.chains,
-    reads: pairsOf(reads.before, reads.after),
-  });
+  const added = dayCapAddedNotice(agent, { chains: parts.chains, reads: pairs });
   await journalConfigChange(
     parts,
     {
@@ -160,8 +160,11 @@ export async function announceRewrite(
       before: wireOf(parts.chains, reads.before),
       after: wireOf(parts.chains, reads.after),
       notices: [
-        ceilingChangeNotice(agent, { surface: author.surface, kind }),
+        ...(kind === undefined
+          ? []
+          : [ceilingChangeNotice(agent, { surface: author.surface, kind })]),
         ...(added === undefined ? [] : [added]),
+        ...also,
       ],
     },
     { signal },

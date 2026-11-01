@@ -61,7 +61,7 @@ import {
   createRescueAddressHandlers,
   type RescueAddressHandlers,
 } from "../safety/rescue-address-handlers.js";
-import { settleRescueCeilings } from "../safety/rescue-ceilings.js";
+import { rescueReadsOf, settleRescueCeilings } from "../safety/rescue-ceilings.js";
 import type { SafetyHandlers } from "../safety/safety-handlers.js";
 import {
   createSendLevelHandlers,
@@ -378,6 +378,7 @@ function sharedParts(options: EngineOptions) {
       chains,
       clock,
       publish,
+      rescueReads: rescueReadsOf(options),
     },
     settingsParts: { agents: stores.agents, journal: stores.configJournal, clock, publish },
   };
