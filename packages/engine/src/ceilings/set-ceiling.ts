@@ -1,25 +1,28 @@
 import type { ChainRef, ChainRegistry } from "@binference/chain";
-import { type Clock, createSecret, err, jsonValueSchema, ok, type Result } from "@binference/core";
+import { type Clock, createSecret, err, ok, type Result } from "@binference/core";
 import {
   type CeilingChanges,
   type CeilingView,
-  ceilingViewSchema,
   type ProtocolErrorCode,
 } from "@binference/protocol";
-import { z } from "zod";
 import type { AgentSettings } from "../agents/agent-record.js";
-import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
-import type { CallsRefusal, CeilingCalls, CeilingRead } from "../install/ceiling-change.js";
+import { authorOf } from "../audit/journal-config-change.js";
+import type { CallsRefusal, CeilingCalls } from "../install/ceiling-change.js";
 import type { WalletRecord } from "../install/install-record.js";
 import type { CeilingEditor } from "../install/ports.js";
 import { unknownVenues } from "../limits/limit-ceiling.js";
 import { activeAgent } from "../operations/active-agent.js";
-import { answererOf, type EngineCall } from "../operations/engine-call.js";
+import type { EngineCall } from "../operations/engine-call.js";
 import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
-import { type CeilingChangeKind, ceilingChangeNotice } from "./ceiling-notice.js";
+import {
+  announceRewrite,
+  type HeldCeiling,
+  isSameSet,
+  readCeilings,
+  refreshCeilings,
+} from "./ceiling-rewrite.js";
 import { ceilingViewOf, venuesIn } from "./ceiling-view-of.js";
-import { type CeilingReads, dayCapAddedNotice } from "./day-cap-added.js";
 
 /** What a ceiling change reads, asks custody, writes, journals and announces through. */
 export interface SetCeilingOptions {
@@ -30,13 +33,6 @@ export interface SetCeilingOptions {
   readonly chains: ChainRegistry;
   readonly clock: Clock;
   readonly publish: PublishPush;
-}
-
-/** A live wallet of the agent, and its ceiling as custody held it at `readAt`. */
-interface HeldCeiling {
-  readonly wallet: WalletRecord;
-  readonly read: CeilingRead;
-  readonly readAt: number;
 }
 
 type Call = EngineCall<"ceiling/set">;
@@ -51,23 +47,6 @@ const refusalCodes: Readonly<Record<CallsRefusal, ProtocolErrorCode>> = {
   uncapped_token: "wallet.ceiling_uncapped",
 };
 
-// Each wallet's ceiling as custody holds it now; one custody does not hold is left out.
-async function readAll(
-  options: SetCeilingOptions,
-  wallets: readonly WalletRecord[],
-  signal: AbortSignal,
-): Promise<readonly HeldCeiling[]> {
-  const held: HeldCeiling[] = [];
-  for (const wallet of wallets) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- custody reads one ceiling at a time
-    const read = await options.ceilings.read(wallet.policyId, { signal });
-    if (read.ok) {
-      held.push({ wallet, read: read.value, readAt: options.clock.now() });
-    }
-  }
-  return held;
-}
-
 function isCapsChange(changes: CeilingChanges): boolean {
   return changes.dayCapUsdMicros !== undefined;
 }
@@ -77,15 +56,6 @@ function capsRefusal(changes: CeilingChanges): ProtocolErrorCode | undefined {
   const { chains, venues, perTxNative, dayCapUsdMicros = 0n } = changes;
   const isAlone = chains === undefined && venues === undefined && perTxNative === undefined;
   return isAlone && dayCapUsdMicros > 0n ? undefined : "protocol.bad_args";
-}
-
-function lowerSet(items: readonly string[]): ReadonlySet<string> {
-  return new Set(items.map((item) => item.toLowerCase()));
-}
-
-function isSameSet(left: readonly string[], right: readonly string[]): boolean {
-  const [a, b] = [lowerSet(left), lowerSet(right)];
-  return a.size === b.size && [...a].every((item) => b.has(item));
 }
 
 // A chain change, venues none or unknown, a venue removed that the limits in effect or waiting
@@ -148,107 +118,6 @@ function callsOf(
   );
 }
 
-// Each wallet's stored copy of its ceiling, as custody holds it after the change.
-async function refresh(
-  options: SetCeilingOptions,
-  wallets: readonly WalletRecord[],
-  signal: AbortSignal,
-): Promise<readonly HeldCeiling[]> {
-  const after = await readAll(options, wallets, signal);
-  for (const { wallet, read, readAt } of after) {
-    const { policy, perTxNativeBase } = read;
-    const ceiling = { policyId: wallet.policyId, policy, perTxNativeBase, readAtMs: readAt };
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one wallet's copy at a time
-    await options.install.updateCeiling({ wallet: wallet.id, ceiling }, { signal });
-  }
-  return after;
-}
-
-/** One ceiling as custody held it before a change and after. */
-// Each wallet's ceiling read before the change and after it.
-function pairsOf(
-  before: readonly HeldCeiling[],
-  after: readonly HeldCeiling[],
-): readonly CeilingReads[] {
-  return after.flatMap((next): readonly CeilingReads[] => {
-    const earlier = before.find((item) => item.wallet.id === next.wallet.id);
-    return earlier === undefined ? [] : [{ earlier: earlier.read, next: next.read }];
-  });
-}
-
-function limitsOf(caps: CeilingRead["dayCaps"]): string {
-  return caps.map((cap) => `${cap.asset} ${cap.limit}`).join(",");
-}
-
-// What moved between the reads before and after: the contracts a call may reach, the cap, both.
-function kindOf(
-  before: readonly HeldCeiling[],
-  after: readonly HeldCeiling[],
-): CeilingChangeKind | undefined {
-  const pairs = pairsOf(before, after);
-  const caps = pairs.some(
-    ({ earlier, next }) => limitsOf(earlier.dayCaps) !== limitsOf(next.dayCaps),
-  );
-  if (caps) {
-    return "dayCaps";
-  }
-  // A new function on the same contracts, such as a launchpad's create call, moves the venues'
-  // calls as much as a new contract does (decision 0271).
-  const venues = pairs.some(
-    ({ earlier, next }) =>
-      !isSameSet(earlier.contracts, next.contracts) ||
-      !isSameSet(earlier.functions, next.functions),
-  );
-  const cap = pairs.some(({ earlier, next }) => earlier.perTxNativeBase !== next.perTxNativeBase);
-  if (venues && cap) {
-    return "both";
-  }
-  if (venues || cap) {
-    return venues ? "venues" : "cap";
-  }
-  return undefined;
-}
-
-function wireOf(options: SetCeilingOptions, held: readonly HeldCeiling[]) {
-  const views = held.map((item) =>
-    z.encode(ceilingViewSchema, ceilingViewOf(options.chains, { ...item, wallet: item.wallet.id })),
-  );
-  return jsonValueSchema.parse(views);
-}
-
-// A change that moved a ceiling is journaled, pushed as `config/changed`, and announced.
-async function announce(
-  options: SetCeilingOptions,
-  moved: { readonly call: Call; readonly settings: AgentSettings },
-  reads: { readonly before: readonly HeldCeiling[]; readonly after: readonly HeldCeiling[] },
-): Promise<void> {
-  const kind = kindOf(reads.before, reads.after);
-  if (kind === undefined) {
-    return;
-  }
-  const { call, settings } = moved;
-  const surface = answererOf(call.caller).surface;
-  const added = dayCapAddedNotice(settings.agent, {
-    chains: options.chains,
-    reads: pairsOf(reads.before, reads.after),
-  });
-  await journalConfigChange(
-    options,
-    {
-      author: authorOf(call.caller),
-      atMs: options.clock.now(),
-      path: `agents.${settings.agent.name}.ceiling`,
-      before: wireOf(options, reads.before),
-      after: wireOf(options, reads.after),
-      notices: [
-        ceilingChangeNotice(settings.agent, { surface, kind }),
-        ...(added === undefined ? [] : [added]),
-      ],
-    },
-    { signal: call.signal },
-  );
-}
-
 // The live wallet the call names, its agent, and every live wallet of that agent.
 async function walletsOf(
   options: SetCeilingOptions,
@@ -296,7 +165,7 @@ export async function setCeiling(
     return found;
   }
   const { settings, wallets } = found.value;
-  const before = await readAll(options, wallets, signal);
+  const before = await readCeilings(options, wallets, signal);
   if (before.length < wallets.length) {
     return err("wallet.not_found");
   }
@@ -313,8 +182,9 @@ export async function setCeiling(
     return err(refusalCodes[set.error]);
   }
   // A refusal part way may leave earlier ceilings changed: every copy is read back all the same.
-  const after = await refresh(options, wallets, signal);
-  await announce(options, { call, settings }, { before, after });
+  const after = await refreshCeilings(options, wallets, signal);
+  const moved = { agent: settings.agent, author: authorOf(call.caller), signal };
+  await announceRewrite(options, moved, { before, after });
   const named = after.find((item) => item.wallet.id === args.wallet);
   if (!set.ok || named === undefined) {
     return err(set.ok ? "wallet.not_found" : refusalCodes[set.error]);
