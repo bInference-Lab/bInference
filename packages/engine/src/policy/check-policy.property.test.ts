@@ -194,7 +194,8 @@ function capViolations(item: Case, verdict: PolicyVerdict): readonly string[] {
   return [
     isPriced(item) ? "" : "passed without a price",
     numerator > perTradeCapUsdMicros * denominator ? "passed over the per-trade cap" : "",
-    numerator + spent * denominator > rollingDayCapUsdMicros * denominator
+    // An intent worth nothing counts against no cap (decision 0296).
+    numerator > 0n && numerator + spent * denominator > rollingDayCapUsdMicros * denominator
       ? "passed over the 24-hour cap"
       : "",
   ].filter((text) => text !== "");

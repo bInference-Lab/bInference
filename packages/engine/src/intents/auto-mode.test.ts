@@ -73,6 +73,11 @@ describe("the auto test", () => {
     expect(refusalOf(swap, { rollingDaySpentUsdMicros: 400_000_001n })).toBe("overCap");
   });
 
+  it("lets an intent worth nothing pass both caps, even on a day past its cap", () => {
+    const spent = { rollingDaySpentUsdMicros: 900_000_000n, valueUsdMicros: 0n };
+    expect(refusalOf({ ...swap, kind: "stake" }, spent)).toBe("passes");
+  });
+
   it("asks when the fee per gas passes the network fee cap, and runs at the cap", () => {
     expect(refusalOf(swap, { feePerGasNativeBase: 1_000_000_001n })).toBe("overFeeCap");
     expect(refusalOf(swap, { feePerGasNativeBase: 1_000_000_000n })).toBe("passes");
@@ -178,13 +183,14 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
     hasUnlistedSpender: generated.hasUnlistedSpender,
   }));
 
-// The money conditions of the auto test: the caps and the network fee cap.
+// The money conditions of the auto test: the caps, which an intent worth nothing always fits, and
+// the network fee cap.
 function fitsEveryCap(given: AutoModeFacts): boolean {
-  return (
-    given.valueUsdMicros <= given.perTradeCapUsdMicros &&
-    given.rollingDaySpentUsdMicros + given.valueUsdMicros <= given.rollingDayCapUsdMicros &&
-    given.feePerGasNativeBase <= given.networkFeeCapNativeBase
-  );
+  const fitsCaps =
+    given.valueUsdMicros === 0n ||
+    (given.valueUsdMicros <= given.perTradeCapUsdMicros &&
+      given.rollingDaySpentUsdMicros + given.valueUsdMicros <= given.rollingDayCapUsdMicros);
+  return fitsCaps && given.feePerGasNativeBase <= given.networkFeeCapNativeBase;
 }
 
 // Spec 6, section 5, written out independently of the module under test.

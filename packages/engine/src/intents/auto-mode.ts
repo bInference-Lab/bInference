@@ -56,10 +56,13 @@ function kindRefusal(kind: IntentKind, facts: AutoModeFacts): AutoModeRefusal | 
   return "kind";
 }
 
+// An intent worth nothing, such as an unstake or a claim, counts against neither cap (decision
+// 0296).
 function fitsCaps(facts: AutoModeFacts): boolean {
   return (
-    facts.valueUsdMicros <= facts.perTradeCapUsdMicros &&
-    facts.rollingDaySpentUsdMicros + facts.valueUsdMicros <= facts.rollingDayCapUsdMicros
+    facts.valueUsdMicros === 0n ||
+    (facts.valueUsdMicros <= facts.perTradeCapUsdMicros &&
+      facts.rollingDaySpentUsdMicros + facts.valueUsdMicros <= facts.rollingDayCapUsdMicros)
   );
 }
 

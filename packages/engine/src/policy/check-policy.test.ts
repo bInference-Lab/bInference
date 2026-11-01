@@ -239,6 +239,13 @@ describe("the policy check's money math", () => {
     expect(reasonsOf(await verdict(buy, spentAt(nowMs - dayMs - 1)))).toStrictEqual([]);
   });
 
+  it("passes an intent worth nothing, such as a claim, on a day past the 24-hour cap", async () => {
+    const claim: PolicySubject = { ...buy, kind: "stake", outflows: [], inflowAssets: [] };
+    const spent = { recentOutflows: [{ atMs: nowMs - 60_000, valueUsdMicros: 900_000_000n }] };
+    expect(reasonsOf(await verdict(buy, spent))).toStrictEqual(["daily_cap"]);
+    expect(reasonsOf(await verdict(claim, spent))).toStrictEqual([]);
+  });
+
   it("treats a zero or malformed price as no price", async () => {
     const zero = createFakePriceSource(new Map([[coin, { numerator: 0n, denominator: 1n }]]));
     const bad = createFakePriceSource(new Map([[coin, { numerator: 1n, denominator: 0n }]]));

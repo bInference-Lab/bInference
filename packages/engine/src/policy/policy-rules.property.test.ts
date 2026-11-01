@@ -145,6 +145,7 @@ function capPassViolations({ facts, figures }: PolicyInput): readonly string[] {
   const { perTradeCapUsdMicros, rollingDayCapUsdMicros } = facts.limits;
   return [
     figures.valueUsdMicros > perTradeCapUsdMicros ? "passed over the per-trade cap" : "",
+    figures.valueUsdMicros > 0n &&
     figures.rollingDaySpentUsdMicros + figures.valueUsdMicros > rollingDayCapUsdMicros
       ? "passed over the 24-hour cap"
       : "",
@@ -218,8 +219,10 @@ function capsEarned({ facts, figures }: PolicyInput): Earned {
   const { perTradeCapUsdMicros, rollingDayCapUsdMicros } = facts.limits;
   return {
     per_trade_cap: figures !== undefined && figures.valueUsdMicros > perTradeCapUsdMicros,
+    // An intent worth nothing counts against no cap, even past a day already spent (decision 0296).
     daily_cap:
       figures !== undefined &&
+      figures.valueUsdMicros > 0n &&
       figures.valueUsdMicros + figures.rollingDaySpentUsdMicros > rollingDayCapUsdMicros,
     no_price: figures === undefined,
   };

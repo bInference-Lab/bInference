@@ -237,9 +237,12 @@ const intentRules: readonly PolicyRule[] = [
       input.subject.kind !== "send" && nativeOutBase(input) > input.facts.ceilingPerTxNativeBase,
   },
   {
+    // An intent worth nothing, such as an unstake or a claim, counts against neither cap, even
+    // when the day's spending already passed it (decision 0296).
     reason: "daily_cap",
     refuses: ({ facts, figures }) =>
       figures !== undefined &&
+      figures.valueUsdMicros > 0n &&
       figures.rollingDaySpentUsdMicros + figures.valueUsdMicros >
         facts.limits.rollingDayCapUsdMicros,
   },
