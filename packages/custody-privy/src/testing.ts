@@ -19,7 +19,12 @@ export {
   testRouterAbi,
   transferData,
 } from "./testing/custody-fixtures.js";
-export { bridgeAddresses, testBridgeCall } from "./testing/bridge-target-fixtures.js";
+export {
+  bridgeAddresses,
+  solanaBridgeId,
+  testBridgeCall,
+  testBridgeCeilingRequest,
+} from "./testing/bridge-target-fixtures.js";
 export { createFakeCustodySubject } from "./testing/fake-custody-subject.js";
 export type { FakeCustodySubject } from "./testing/fake-custody-subject.js";
 export { createFakePrivy } from "./testing/fake-privy.js";

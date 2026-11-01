@@ -25,7 +25,16 @@ export const bridgeAddresses = {
   robinhoodSaved: "0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed",
   /** The tests' rescue address, plain on BSC and on Ethereum, so a deposit there may pay it. */
   rescue: "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB",
+  /** Saved for Solana: `4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T`, a wallet, as 32 bytes. */
+  solanaSaved: "0x321cfa5add185e8893a5fd88013ec4d7e122ded46354cadff50d956395e75b60",
+  /** Never saved: `A9YsiCuAtY5RT3nfLKZTz2EuxxXf3FZogPqHkSH89SXT`, as 32 bytes. */
+  solanaUnsaved: "0x87e9de84edd18ed1f059d5b9bb4508d33bec6c014a0a4dac77d72b43dbb315da",
+  /** USDC's mint on Solana, `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`, as 32 bytes. */
+  solanaUsdc: "0xc6fa7af3bedbad3a3d65f36aabc97431b1bbe4c2d2f6e0e47ca60203452f5d61",
 } as const;
+
+/** The id Across gives Solana, which a deposit there names as its destination chain. */
+export const solanaBridgeId = "34268394551451";
 
 /** Across's `depositV3` on the SpokePool, binding what Across's plugin declares. */
 export const testBridgeCall: BridgeCall = {
@@ -40,7 +49,16 @@ export const testBridgeCall: BridgeCall = {
   },
 };
 
-/** Deposits to Base (USDC), Robinhood Chain (ETH to WETH) and Ethereum (USDC, and ETH to WETH). */
+// The tests' `depositTo` on the SpokePool: a 32-byte recipient and token that arrives.
+const testSolanaBridgeCall: BridgeCall = {
+  ...testBridgeCall,
+  abi: bridgeAbis.depositTo,
+};
+
+/**
+ * Deposits to Base (USDC), Robinhood Chain (ETH to WETH), Ethereum (USDC, and ETH to WETH) and
+ * Solana (USDC, through the 32-byte `depositTo`).
+ */
 export const testDeposits: readonly BridgeDeposit[] = [
   {
     call: testBridgeCall,
@@ -60,13 +78,22 @@ export const testDeposits: readonly BridgeDeposit[] = [
       { tokenIn: bridgeAddresses.bscEth, tokenOut: bridgeAddresses.ethereumWeth },
     ],
   },
+  {
+    call: testSolanaBridgeCall,
+    destinationChainId: solanaBridgeId,
+    routes: [{ tokenIn: bridgeAddresses.bscUsdc, tokenOut: bridgeAddresses.solanaUsdc }],
+  },
 ];
 
-/** The addresses saved per destination: one on Base, one on Robinhood Chain, the rescue on Ethereum. */
+/**
+ * The addresses saved per destination: one on Base, one on Robinhood Chain, the rescue on Ethereum
+ * and one on Solana.
+ */
 export const testBridged: readonly ChainAddresses[] = [
   { chainId: "8453", addresses: [bridgeAddresses.baseSaved] },
   { chainId: "4663", addresses: [bridgeAddresses.robinhoodSaved] },
   { chainId: "1", addresses: [bridgeAddresses.rescue] },
+  { chainId: solanaBridgeId, addresses: [bridgeAddresses.solanaSaved] },
 ];
 
 /** The approval caps of the tokens the test routes take: BSC's USDC and ETH, 1,000 base units each. */

@@ -30,6 +30,24 @@ export function addressList(texts: readonly string[]): Result<readonly string[],
   return listed.size > maxListed ? err("too_many_addresses") : ok([...listed]);
 }
 
+const thirtyTwoBytes = /^0x[0-9a-fA-F]{64}$/;
+
+/**
+ * The 32-byte recipients a deposit's `bytes32` input lists (decision 0313): lowercase hex, each
+ * once, in the order given; Privy compares a `bytes32` value in any case. Text of another length
+ * is `malformed_address`, and more than 100 `too_many_addresses`.
+ */
+export function bytes32List(texts: readonly string[]): Result<readonly string[], AddressProblem> {
+  const listed = new Set<string>();
+  for (const text of texts) {
+    if (!thirtyTwoBytes.test(text)) {
+      return err("malformed_address");
+    }
+    listed.add(text.toLowerCase());
+  }
+  return listed.size > maxListed ? err("too_many_addresses") : ok([...listed]);
+}
+
 /** The addresses the lists name for a chain: those listed for it, and those for every chain. */
 export function addressesOn(lists: readonly ChainAddresses[], chainId: string): readonly string[] {
   return lists

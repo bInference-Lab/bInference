@@ -9,11 +9,13 @@ import {
   callData,
   type DepositArgs,
   depositData,
+  depositToData,
   depositV3Data,
   registerData,
 } from "../testing/bridge-fixtures.js";
 import {
   bridgeAddresses,
+  solanaBridgeId,
   stakingAddresses,
   testStakingCeilingRequest,
 } from "../testing/bridge-target-fixtures.js";
@@ -33,6 +35,7 @@ import { sharedWalletsCheck } from "./shared-wallets-check.js";
 
 const { spokePool, bscUsdc, bscEth, baseUsdc, robinhoodWeth, ethereumUsdc } = bridgeAddresses;
 const { baseSaved, robinhoodSaved, rescue, identity } = bridgeAddresses;
+const { solanaSaved, solanaUnsaved, solanaUsdc } = bridgeAddresses;
 const { stakeHub, stakeManager, slisBnb, depository } = stakingAddresses;
 const { unsaved } = testAddresses;
 const validator: Hex = "0x85e99B4093C337A9d5EF478bE8E95d2632a638DD";
@@ -164,6 +167,19 @@ export function depositCall(
 
 const call = (to: string, data: Hex, valueWei = 0n): TestCall => ({ to, valueWei, data });
 
+// A 32-byte `depositTo` from the wallet of USDC to Solana, by default to the saved address.
+function solanaDepositCall(setup: CustodySetup, args: Partial<DepositArgs>): TestCall {
+  const data = depositToData({
+    depositor: hexOf(setup.wallet.address),
+    recipient: solanaSaved,
+    inputToken: bscUsdc,
+    outputToken: solanaUsdc,
+    destinationChainId: BigInt(solanaBridgeId),
+    ...args,
+  });
+  return call(spokePool, data);
+}
+
 function acceptChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
   return [
     bridgeCheck(harness, "signs a deposit to an address saved for each chain", async ({ main }) => {
@@ -178,6 +194,9 @@ function acceptChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
         depositCall(main, { recipient: rescue, outputToken: ethereumUsdc, destinationChainId: 1n }),
       );
       await privySigns(main, call(bscUsdc, approveTo(spokePool, 5n)));
+    }),
+    bridgeCheck(harness, "signs a 32-byte deposit to an address saved for Solana", async (w) => {
+      await privySigns(w.main, solanaDepositCall(w.main, {}));
     }),
     bridgeCheck(
       harness,
@@ -219,6 +238,11 @@ function refuseChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
       await privyRefuses(w.main, depositCall(w.main, { destinationChainId: 1n }));
       await privyRefuses(w.main, depositCall(w.main, { destinationChainId: 10n }));
       await privyRefuses(w.main, depositCall(w.main, { destinationChainId: 137n }));
+    }),
+    bridgeCheck(harness, "refuses a 32-byte deposit to an unsaved Solana address", async (w) => {
+      await privyRefuses(w.main, solanaDepositCall(w.main, { recipient: solanaUnsaved }));
+      await privyRefuses(w.main, solanaDepositCall(w.main, { recipient: baseSaved }));
+      await privyRefuses(w.main, solanaDepositCall(w.main, { destinationChainId: 8453n }));
     }),
     bridgeCheck(harness, "refuses a deposit that refunds another or carries coin", async (w) => {
       await privyRefuses(w.main, depositCall(w.main, { depositor: unsaved }));

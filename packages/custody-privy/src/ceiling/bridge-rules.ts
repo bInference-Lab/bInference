@@ -1,5 +1,5 @@
 import { err, ok, type Result } from "@binference/core";
-import { addressList } from "./address-list.js";
+import { type AddressProblem, addressList, bytes32List } from "./address-list.js";
 import type { BridgeRoute, BridgeTarget, CeilingProblem } from "./ceiling.js";
 import {
   type AbiFunction,
@@ -29,41 +29,63 @@ function typeOf(abi: AbiFunction, input: string): string | undefined {
   return abi.inputs.find((item) => item.name === input)?.type;
 }
 
-// Every bound input is a top-level input of its type: the recipient, the tokens and each pin an
-// address, the destination a uint256. One input at least is pinned to the wallet: the depositor,
-// whom the bridge refunds (decision 0297).
+// Every bound input is a top-level input of its type: the token that leaves and each pin an
+// address, the recipient and the token that arrives an address or 32 bytes, the destination a
+// uint256. One input at least is pinned to the wallet: the depositor, whom the bridge refunds
+// (decision 0297).
 function inputsFit(target: BridgeTarget): boolean {
   const { abi, walletInputs, bridge } = target.call;
-  const addresses = [bridge.recipient, bridge.tokenIn, bridge.tokenOut, ...walletInputs];
+  const addresses = [bridge.tokenIn, ...walletInputs];
+  const either = [bridge.recipient, bridge.tokenOut];
+  const inputs = [...addresses, ...either, bridge.destinationChain];
   return (
     walletInputs.length > 0 &&
     addresses.every((input) => typeOf(abi, input) === "address") &&
+    either.every((input) => listOf(typeOf(abi, input)) !== undefined) &&
     typeOf(abi, bridge.destinationChain) === "uint256" &&
-    new Set([...addresses, bridge.destinationChain]).size === addresses.length + 1
+    new Set(inputs).size === inputs.length
   );
 }
 
-// A target's routes, each token checksummed and each pair once; none is `bad_bridge`.
-function routesOf(routes: readonly BridgeRoute[]): Result<readonly BridgeRoute[], CeilingProblem> {
+type Listed = (texts: readonly string[]) => Result<readonly string[], AddressProblem>;
+
+// How values of an input's type are listed: an address checksummed, 32 bytes in lowercase hex.
+function listOf(type: string | undefined): Listed | undefined {
+  if (type === "address") {
+    return addressList;
+  }
+  return type === "bytes32" ? bytes32List : undefined;
+}
+
+// A target's routes, each token in its input's form and each pair once; none is `bad_bridge`.
+function routesOf(target: BridgeTarget): Result<readonly BridgeRoute[], CeilingProblem> {
+  const listOut = listOf(typeOf(target.call.abi, target.call.bridge.tokenOut)) ?? addressList;
   const pairs: BridgeRoute[] = [];
-  for (const route of routes) {
-    const tokens = addressList([route.tokenIn, route.tokenOut]);
-    if (!tokens.ok) {
-      return tokens;
+  for (const route of target.routes) {
+    const tokenIn = addressList([route.tokenIn]);
+    const tokenOut = listOut([route.tokenOut]);
+    if (!tokenIn.ok) {
+      return tokenIn;
     }
-    const [tokenIn = "", tokenOut = tokenIn] = tokens.value;
-    if (!pairs.some((pair) => pair.tokenIn === tokenIn && pair.tokenOut === tokenOut)) {
-      pairs.push({ tokenIn, tokenOut });
+    if (!tokenOut.ok) {
+      return tokenOut;
+    }
+    const [leaves = "", arrives = ""] = [...tokenIn.value, ...tokenOut.value];
+    if (!pairs.some((pair) => pair.tokenIn === leaves && pair.tokenOut === arrives)) {
+      pairs.push({ tokenIn: leaves, tokenOut: arrives });
     }
   }
   return pairs.length === 0 ? err("bad_bridge") : ok(pairs);
 }
 
-// A target's contract, recipients and routes, each checksummed and none empty.
+// A target's contract, recipients and routes, each in its input's form and none empty: a recipient
+// of another length than the recipient input takes is `malformed_address`, never padded.
 function listsOf(target: BridgeTarget): Result<BridgeTarget, CeilingProblem> {
   const contract = addressList([target.call.contract]);
-  const recipients = addressList(target.recipients);
-  const routes = routesOf(target.routes);
+  const listRecipients =
+    listOf(typeOf(target.call.abi, target.call.bridge.recipient)) ?? addressList;
+  const recipients = listRecipients(target.recipients);
+  const routes = routesOf(target);
   if (!recipients.ok) {
     return recipients;
   }
@@ -90,10 +112,11 @@ function checkedTarget(
 }
 
 /**
- * The bridge targets of one chain, checked (decision 0302): each target's inputs are top-level
- * inputs of its function with the types they need, one of them pinned to the wallet, its rule
- * names fit Privy's 50 characters, it names one recipient and one route at least, its addresses
- * are checksummed, and no function names a destination twice. Anything else is refused.
+ * The bridge targets of one chain, checked (decisions 0302 and 0313): each target's inputs are
+ * top-level inputs of its function with the types they need, one of them pinned to the wallet, its
+ * rule names fit Privy's 50 characters, it names one recipient and one route at least, its
+ * addresses are checksummed and its 32-byte values in lowercase hex, and no function names a
+ * destination twice. Anything else is refused.
  */
 export function checkedTargets(
   targets: readonly BridgeTarget[],

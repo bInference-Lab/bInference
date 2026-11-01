@@ -74,9 +74,11 @@ export interface CeilingChain {
 
 /**
  * The inputs of a bridge deposit a ceiling binds (decision 0302), each a top-level input of the
- * function: the 20-byte recipient, the destination chain's id, the token that leaves and the token
- * that arrives. An input that must be empty, such as a message, is the signer's alone to check:
- * Privy takes no condition for an empty `bytes` value (seen on its test app, 2026-10-31).
+ * function: the recipient, an `address` that takes 20 bytes or a `bytes32` that takes 32 (decision
+ * 0313), the destination chain's id, the token that leaves and the token that arrives, an
+ * `address` or, on a destination of another family, a `bytes32`. An input that must be empty, such
+ * as a message, is the signer's alone to check: Privy takes no condition for an empty `bytes`
+ * value (seen on its test app, 2026-10-31).
  */
 export interface BridgeInputs {
   readonly recipient: string;
@@ -110,7 +112,8 @@ export interface BridgeDeposit {
 
 /**
  * A bridge deposit with the addresses it may pay on its destination: those saved for that chain,
- * as recipient bytes in lowercase hex or as EVM addresses in any case.
+ * as recipient bytes in lowercase hex or as EVM addresses in any case, of the length its recipient
+ * input takes.
  */
 export interface BridgeTarget extends BridgeDeposit {
   readonly recipients: readonly string[];

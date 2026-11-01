@@ -9,6 +9,12 @@ const spokePool = parseAbi([
   "function deposit(bytes32 depositor, bytes32 recipient, bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 destinationChainId, bytes32 exclusiveRelayer, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityParameter, bytes message) payable",
 ]);
 
+// A deposit that names a 32-byte recipient and token that arrives beside a depositor of 20 bytes,
+// as a deposit to Solana would; no v1 venue builds it, so its function is the tests' own.
+const toThirtyTwo = parseAbi([
+  "function depositTo(address depositor, bytes32 recipient, address inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 destinationChainId, bytes message)",
+]);
+
 // The ERC-8004 identity registry's three `register` overloads, as its verified source has them.
 const identity = parseAbi([
   "struct MetadataEntry { string metadataKey; bytes metadataValue; }",
@@ -21,14 +27,19 @@ const approveAbiItems = parseAbi([
   "function approve(address spender, uint256 amount) returns (bool)",
 ]);
 
-/** Across's `depositV3` and `deposit`, and the registry's `register(string)`, as JSON ABI entries. */
+/**
+ * Across's `depositV3` and `deposit`, the tests' 32-byte `depositTo`, and the registry's
+ * `register(string)`, as JSON ABI entries.
+ */
 export const bridgeAbis: {
   readonly depositV3: AbiFunction;
   readonly deposit: AbiFunction;
+  readonly depositTo: AbiFunction;
   readonly register: AbiFunction;
 } = {
   depositV3: abiFunctionSchema.parse(getAbiItem({ abi: spokePool, name: "depositV3" })),
   deposit: abiFunctionSchema.parse(getAbiItem({ abi: spokePool, name: "deposit" })),
+  depositTo: abiFunctionSchema.parse(getAbiItem({ abi: toThirtyTwo, name: "depositTo" })),
   register: abiFunctionSchema.parse(
     getAbiItem({ abi: identity, name: "register", args: ["card"] }),
   ),
@@ -81,6 +92,24 @@ export function depositData(args: DepositArgs): Hex {
     abi: spokePool,
     functionName: "deposit",
     args: depositTuple(args, to32),
+  });
+}
+
+/** A `depositTo` call's data: its recipient and its token that arrives in 32 bytes. */
+export function depositToData(args: DepositArgs): Hex {
+  return encodeFunctionData({
+    abi: toThirtyTwo,
+    functionName: "depositTo",
+    args: [
+      args.depositor,
+      to32(args.recipient),
+      args.inputToken,
+      to32(args.outputToken),
+      20n * 10n ** 18n,
+      19_900_000n,
+      args.destinationChainId,
+      args.message ?? "0x",
+    ],
   });
 }
 

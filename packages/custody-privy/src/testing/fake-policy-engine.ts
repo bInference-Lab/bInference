@@ -40,12 +40,13 @@ function asNumber(text: string): bigint | undefined {
   return /^(?:0x[0-9a-fA-F]+|[0-9]+)$/.test(text) ? BigInt(text) : undefined;
 }
 
-const evmAddress = /^0x[0-9a-fA-F]{40}$/;
+const caseless = /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/;
 
-// Privy compares an EVM address in `to` or a calldata argument in any case, every other string
-// exactly ("Condition sets", docs.privy.io); numbers compare as numbers whatever their base.
+// Privy compares an EVM address in `to` or a calldata argument in any case ("Condition sets",
+// docs.privy.io), and a `bytes32` argument too (seen on its test app, 2026-10-31); every other
+// string exactly. Numbers compare as numbers whatever their base.
 function comparable(text: string): string {
-  return evmAddress.test(text) ? text.toLowerCase() : text;
+  return caseless.test(text) ? text.toLowerCase() : text;
 }
 
 function holds(left: Compared, condition: FakeCondition, input: PolicyInput): boolean {

@@ -16,9 +16,10 @@ import type {
 
 /**
  * The inputs of a bridge deposit a ceiling binds (decision 0302), each a top-level input of the
- * call: the 20-byte address the destination chain pays, the destination chain's id, the token
- * that leaves and the token that arrives, and the `bytes` inputs that must be empty, such as a
- * message that would run actions on arrival.
+ * call: the account the destination chain pays, a 20-byte address or 32 bytes for a chain such as
+ * Solana (decision 0313), the destination chain's id, the token that leaves and the token that
+ * arrives, and the `bytes` inputs that must be empty, such as a message that would run actions on
+ * arrival.
  */
 export interface BridgeCallInputs {
   readonly recipient: string;

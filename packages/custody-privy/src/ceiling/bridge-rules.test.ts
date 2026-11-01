@@ -1,8 +1,9 @@
 import type { JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { type DepositArgs, depositV3Data } from "../testing/bridge-fixtures.js";
+import { type DepositArgs, depositToData, depositV3Data } from "../testing/bridge-fixtures.js";
 import {
   bridgeAddresses,
+  solanaBridgeId,
   testBridgeCall,
   testBridgeCeilingRequest,
   testBridged,
@@ -201,6 +202,51 @@ describe("a bridge deposit's rule", () => {
   });
 });
 
+describe("a deposit that pays 32 bytes", () => {
+  const { solanaSaved, solanaUnsaved, solanaUsdc } = bridgeAddresses;
+  const toSolana = (args: Partial<DepositArgs>) =>
+    depositToData({
+      depositor: wallet,
+      recipient: solanaSaved,
+      inputToken: bscUsdc,
+      outputToken: solanaUsdc,
+      destinationChainId: BigInt(solanaBridgeId),
+      ...args,
+    });
+
+  it("lists the addresses saved for Solana and its token that arrives as lowercase hex", () => {
+    const rule = rules.find((item) => JSON.stringify(item).includes(`to ${solanaBridgeId}, 1`));
+    expect(JSON.stringify(rule)).toContain(`"value":["${solanaSaved}"]`);
+    expect(JSON.stringify(rule)).toContain(`"value":"${solanaUsdc}"`);
+  });
+
+  it("allows a deposit to a saved Solana address, in any case, and refuses any other", () => {
+    expect(verdict({ data: toSolana({}) })).toBe("ALLOW");
+    expect(
+      verdict({
+        data: toSolana({
+          recipient: solanaSaved.toUpperCase().replace("0X", "0x") as `0x${string}`,
+        }),
+      }),
+    ).toBe("ALLOW");
+    expect(verdict({ data: toSolana({ recipient: solanaUnsaved }) })).toBe("DENY");
+    expect(verdict({ data: toSolana({ destinationChainId: 8453n }) })).toBe("DENY");
+  });
+
+  it("refuses an address of the wrong length for its recipient input, never padding it", () => {
+    const refused = { ok: false, error: "malformed_address" };
+    const request = testBridgeCeilingRequest();
+    const twentyForSolana = [{ chainId: solanaBridgeId, addresses: [baseSaved] }];
+    const thirtyTwoForBase = [{ chainId: "8453", addresses: [solanaSaved] }];
+    expect(
+      buildCeiling({ ...request, saved: twentyForSolana, bridged: twentyForSolana }),
+    ).toStrictEqual(refused);
+    expect(
+      buildCeiling({ ...request, saved: thirtyTwoForBase, bridged: thirtyTwoForBase }),
+    ).toStrictEqual(refused);
+  });
+});
+
 describe("building bridge targets", () => {
   it.each([
     ["a recipient that is no input", { ...testBridgeCall.bridge, recipient: "receiver" }],
@@ -318,6 +364,12 @@ describe("reading bridge rules back", () => {
         function: "depositV3",
         recipients: [testAddresses.rescue],
       },
+      {
+        chainId: "56",
+        destinationChainId: solanaBridgeId,
+        function: "depositTo",
+        recipients: [bridgeAddresses.solanaSaved],
+      },
     ]);
     expect(isBuiltCeiling(rules)).toBe(true);
   });
@@ -325,7 +377,7 @@ describe("reading bridge rules back", () => {
   it("counts the spoke pool among the contracts and the deposit among the functions", () => {
     expect(readCeiling(rules)).toMatchObject({
       contracts: [testAddresses.router, spokePool],
-      functions: ["swap", "swapTo", "depositV3"],
+      functions: ["swap", "swapTo", "depositV3", "depositTo"],
     });
   });
 
