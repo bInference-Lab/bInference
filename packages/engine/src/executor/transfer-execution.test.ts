@@ -9,6 +9,7 @@ import { testAccount, testChains } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
 import {
+  holdTestWallet,
   testNames,
   testRevoke,
   testRouter,
@@ -43,6 +44,7 @@ async function benchWith(names: FakeNameResolver = testNames()): Promise<Executo
     },
   });
   await saveTestAddress(bench.test);
+  holdTestWallet(bench.test);
   return bench;
 }
 
@@ -159,6 +161,7 @@ describe("a revoke's signing request", () => {
         chainSimulator: transferSimulator([], [{ token: testToken, spender: testRouter }]),
       },
     });
+    holdTestWallet(bench.test);
     const intent = await tapped(bench, testRevoke(testToken));
     await bench.release();
     await driveUntil(bench, intent, { states: done });

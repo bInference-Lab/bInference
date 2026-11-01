@@ -21,6 +21,14 @@ function mentions(policy: JsonValue, address: string): boolean {
     : valuesOf(policy).some((value) => mentions(value, address));
 }
 
+/**
+ * Whether a wallet's ceiling, as last read back from custody, names the address anywhere in its
+ * rules, in any letter case: a spender its approvals may name, or a contract its calls reach.
+ */
+export function isNamedInCeiling(wallet: WalletRecord, address: string): boolean {
+  return mentions(wallet.ceiling.policy, address);
+}
+
 // The registry contracts of a venue on the chains of one wallet's family.
 function contractsOf(chains: ChainRegistry, venue: string, family: string): readonly string[] {
   return chains

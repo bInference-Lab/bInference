@@ -7,11 +7,19 @@ import { revokeQuoteDocument } from "../intents/revoke-quote.js";
 import { type SendQuote, sendQuoteDocument } from "../intents/send-quote.js";
 import type { CardSource } from "./card-facts-of.js";
 
-// A send's action, with the name its card shows beside the address when it was sent by name.
+/** The warnings a send's or a revoke's quote gives beside every card's own. */
+type TransferWarnings = Partial<Pick<CardWarnings, "reverseDiffers" | "isNewAddress">>;
+
+// A send's action, with who it pays, and the name its card shows beside the address when it was
+// sent by name.
 function sendAction(quote: SendQuote): CardAction<"send"> {
-  const { amount, recipient, name } = quote;
+  const { amount, recipient, name, label, isRescue } = quote;
+  const payee = {
+    ...(label === undefined ? {} : { label }),
+    ...(isRescue === undefined ? {} : { isRescue }),
+  };
   if (name === undefined) {
-    return { kind: "send", amount, recipient };
+    return { kind: "send", amount, recipient, payee };
   }
   const { smartAccount } = name;
   const shown = { name: name.name, resolvedAtMs: name.resolvedAtMs };
@@ -23,32 +31,37 @@ function sendAction(quote: SendQuote): CardAction<"send"> {
   };
 }
 
-// The warning a send by name's reverse record gives when it names another name; none otherwise.
-function reverseOf(quote: SendQuote): Pick<CardWarnings, "reverseDiffers"> {
+// The warnings a send's quote gives: an address the agent never sent to, and a send by name whose
+// reverse record names another name.
+function sendWarnings(quote: SendQuote): TransferWarnings {
   const other = quote.name?.reverseOther;
+  const isNewAddress = quote.isNewRecipient === true;
   return quote.name === undefined || other === undefined
-    ? {}
-    : { reverseDiffers: { name: quote.name.name, other } };
+    ? { isNewAddress }
+    : { isNewAddress, reverseDiffers: { name: quote.name.name, other } };
 }
 
-// A send's action and its reverse record's warning, or a revoke's action.
+// A send's action and its warnings, or a revoke's action.
 function actionOf(
   kind: IntentKind,
   quote: JsonValue,
-): { readonly action: CardAction; readonly reverse: Pick<CardWarnings, "reverseDiffers"> } {
+): { readonly action: CardAction; readonly reverse: TransferWarnings } {
   if (kind === "send") {
     const sent = sendQuoteDocument.decode(quote);
-    return { action: sendAction(sent), reverse: reverseOf(sent) };
+    return { action: sendAction(sent), reverse: sendWarnings(sent) };
   }
-  const { token, spender } = revokeQuoteDocument.decode(quote);
-  return { action: { kind: "revokeApproval", token, spender }, reverse: {} };
+  const { token, spender, spenderName } = revokeQuoteDocument.decode(quote);
+  const named = spenderName === undefined ? {} : { spenderName };
+  return { action: { kind: "revokeApproval", token, spender, ...named }, reverse: {} };
 }
 
 /**
  * The facts of a send's or an approval revoke's card (spec 4, sections 3.3 and 3.9), from its
- * quote, which the card's terms hash covers: a send's amount and the address it pays, with the
- * name it was resolved from, its read and a reverse record that names another name; a revoke's
- * spender and token; then the wallet of a role it runs from and the agent's reason.
+ * quote, which the card's terms hash covers: a send's amount and the address it pays, labeled as
+ * the address book or the rescue address names it, with the name it was resolved from, its read,
+ * a reverse record that names another name and an address the agent never sent to; a revoke's
+ * spender by its registry name and its token; then the wallet of a role it runs from and the
+ * agent's reason.
  */
 export function transferCardFacts(
   quote: JsonValue,

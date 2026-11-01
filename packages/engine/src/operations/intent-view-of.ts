@@ -19,6 +19,7 @@ import {
 import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
+import { revokeQuoteDocument } from "../intents/revoke-quote.js";
 import { sendQuoteDocument } from "../intents/send-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
@@ -50,12 +51,26 @@ function launchAssetsOf(record: IntentRecord, request: LaunchTokenRequest): read
     : [request.pairWith, tokenLaunchQuoteDocument.decode(quote).token];
 }
 
+// What a send sends or the token a revoke frees, as its quote spells it once it has one.
+function transferAssetOf(
+  record: IntentRecord,
+  request: Extract<AnyRequest, { kind: "send" | "revokeApproval" }>,
+): AssetRef {
+  const { quote } = record;
+  if (request.kind === "send") {
+    return quote === undefined
+      ? request.amount.asset
+      : sendQuoteDocument.decode(quote).amount.asset;
+  }
+  return quote === undefined ? request.token : revokeQuoteDocument.decode(quote).token;
+}
+
 // A kind whose quote is a document of its own: a rescue lists what it moves, an auto order its
 // token and a launch its pair and token; a send names what it sends and a revoke the token it
 // frees. `undefined` for a trade and the kinds the money path does not route.
 function ownAssetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] | undefined {
-  if (request.kind === "send") {
-    return [request.amount.asset];
+  if (request.kind === "send" || request.kind === "revokeApproval") {
+    return [transferAssetOf(record, request)];
   }
   if (request.kind === "rescue") {
     const quote = record.quote === undefined ? undefined : rescueQuoteDocument.decode(record.quote);
@@ -65,9 +80,6 @@ function ownAssetsOf(record: IntentRecord, request: AnyRequest): readonly AssetR
     return record.quote === undefined
       ? []
       : [autoOrderQuoteDocument.decode(record.quote).request.token];
-  }
-  if (request.kind === "revokeApproval") {
-    return [request.token];
   }
   return request.kind === "launchToken" ? launchAssetsOf(record, request) : undefined;
 }

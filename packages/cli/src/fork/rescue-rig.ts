@@ -170,7 +170,7 @@ function walletRecord(item: RescueRigWallet, atMs: number): WalletRecord {
     ...(item.role === undefined ? {} : { role: item.role }),
     ceiling: {
       policyId: `privy-policy-${tag}`,
-      policy: [],
+      policy: [{ approve: bscContract("pancakeswap", "v2-router") }],
       perTxNativeBase: 10n ** 18n,
       readAtMs: atMs,
     },

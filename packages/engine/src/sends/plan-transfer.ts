@@ -12,10 +12,12 @@ import {
 } from "@binference/chain";
 import { err, type JsonValue, ok, type Result } from "@binference/core";
 import type { SimulationView } from "@binference/protocol";
+import type { WalletRecord } from "../install/install-record.js";
 import type { QuoteFailure, SimulationFailure } from "../intents/intent-reason.js";
 import { revokeQuoteDocument } from "../intents/revoke-quote.js";
-import { type SentName, sendQuoteDocument } from "../intents/send-quote.js";
-import { isRegistryContract } from "../operations/is-registry-contract.js";
+import { type SentName, type SentPayee, sendQuoteDocument } from "../intents/send-quote.js";
+import { isNamedInCeiling } from "../limits/limit-ceiling.js";
+import { registryContractOf } from "../operations/is-registry-contract.js";
 import { checkTransfer, type PlannedTransfer } from "../simulation/check-transfer.js";
 
 /** A send or a revoke with its target known: what its one step does. */
@@ -24,12 +26,15 @@ export type TransferMove =
       readonly kind: "send";
       readonly transfer: PlannedTransfer;
       readonly name?: SentName;
+      readonly payee: SentPayee;
     }
   | {
       readonly kind: "revokeApproval";
       readonly owner: AccountRef;
       readonly token: AssetRef;
       readonly spender: AccountRef;
+      /** The wallet as the install holds it, whose ceiling must name the spender. */
+      readonly wallet?: WalletRecord;
     };
 
 /** A send's or a revoke's quote document and the one draft its plan holds. */
@@ -46,8 +51,9 @@ function tokenAccount(token: AssetRef): AccountRef {
 
 /**
  * The quote and build step of a send or an approval revoke (spec 6, section 3): a send drafts its
- * asset, as it is, to its target; a revoke drafts the token's approval of its spender back to 0,
- * and only for a spender the chain registry lists (decision 0309), else `spender_unlisted`. An
+ * asset, as it is, to its target, with who that is; a revoke drafts the token's approval of its
+ * spender back to 0, only for a spender the chain registry lists and the wallet's ceiling names
+ * (decision 0309), else `spender_unlisted`, and names it as the registry does. An
  * asset its family cannot draft is `no_route`. The quote binds the target and, for a send by name,
  * the name the card shows (decision 0308).
  */
@@ -58,9 +64,9 @@ export function planTransfer(
 ): Result<TransferPlan, QuoteFailure> {
   const quotedAtMs = context.nowMs;
   if (move.kind === "send") {
-    const { transfer, name } = move;
+    const { transfer, name, payee } = move;
     const draft = chain.family.transferDraft(transfer);
-    const quote = { amount: transfer.amount, recipient: transfer.to, quotedAtMs };
+    const quote = { amount: transfer.amount, recipient: transfer.to, ...payee, quotedAtMs };
     return draft.ok
       ? ok({
           quote: sendQuoteDocument.encode(name === undefined ? quote : { ...quote, name }),
@@ -68,14 +74,23 @@ export function planTransfer(
         })
       : err("no_route");
   }
-  const { owner, token, spender } = move;
-  if (!isRegistryContract(spender, context.chains)) {
+  const { owner, token, spender, wallet } = move;
+  const contract = registryContractOf(spender, context.chains);
+  if (
+    contract === undefined ||
+    wallet === undefined ||
+    !isNamedInCeiling(wallet, contract.address)
+  ) {
     return err("spender_unlisted");
   }
   const reset = { from: owner, token: tokenAccount(token), spender, amountBase: 0n };
   const draft = chain.family.approvalDraft(reset);
+  const spenderName = `${contract.venue} ${contract.name}`;
   return draft.ok
-    ? ok({ quote: revokeQuoteDocument.encode({ token, spender, quotedAtMs }), draft: draft.value })
+    ? ok({
+        quote: revokeQuoteDocument.encode({ token, spender, spenderName, quotedAtMs }),
+        draft: draft.value,
+      })
     : err("no_route");
 }
 

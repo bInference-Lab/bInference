@@ -32,7 +32,8 @@ function launchPathOf(
 // and rescue address, the name resolvers, and the chain's simulator on live balances.
 function transferPathOf(options: EngineOptions, path: MoneyPathOptions): TransferPathOptions {
   const { stores, chainSimulator, nameResolvers = [] } = options;
-  return { ...path, install: stores.install, simulator: chainSimulator, nameResolvers };
+  const { install, intents } = stores;
+  return { ...path, install, intents, simulator: chainSimulator, nameResolvers };
 }
 
 /**

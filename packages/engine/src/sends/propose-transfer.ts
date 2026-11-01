@@ -3,14 +3,16 @@ import { type IdSource, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { planDocument, simulationDocument } from "../intents/intent-documents.schema.js";
+import type { SentPayee } from "../intents/send-quote.js";
 import { type AdvanceParts, advanceIntent } from "../money-path/advance-intent.js";
 import { authorizationCheckOf } from "../money-path/authorization-check-of.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { startProposal, storeProposed } from "../money-path/store-proposed.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { PolicyPass } from "../policy/check-policy.js";
-import type { AgentStore } from "../ports.js";
+import type { AgentStore, IntentStore } from "../ports.js";
 import { checkTransferPolicy, type TransferPolicyParts } from "./check-transfer-policy.js";
+import { payeeOf } from "./payee-of.js";
 import { planTransfer, simulateTransfer, type TransferMove } from "./plan-transfer.js";
 import {
   type ResolvedTransfer,
@@ -23,6 +25,8 @@ import {
 /** What a send or an approval revoke is resolved, checked, simulated and stored through. */
 export interface TransferPathOptions extends TransferResolveOptions, TransferPolicyParts {
   readonly stored: StoredIntents;
+  /** The settled intents, which tell whether the agent ever sent to a send's address. */
+  readonly intents: Pick<IntentStore, "list">;
   readonly agents: AgentStore;
   /** Runs the step unsent on its chain, live balances only: a paper send never gets this far. */
   readonly simulator: TxSimulator;
@@ -40,22 +44,43 @@ interface TransferRun {
   readonly resolved: ResolvedTransfer;
 }
 
-// What the step moves, once its target is known; a paper send's unread name has none.
-function moveOf({
-  ask,
-  account,
-}: Pick<ResolvedTransfer, "account"> & {
-  readonly ask: TransferAsk;
-}): TransferMove | undefined {
+// What the step moves, once its target is known; a paper send's unread name has none. A send names
+// who it pays only once its policy passed (`payee`).
+function moveOf(
+  {
+    ask,
+    account,
+    walletRecord,
+  }: Pick<ResolvedTransfer, "account" | "walletRecord"> & {
+    readonly ask: TransferAsk;
+  },
+  payee: SentPayee = {},
+): TransferMove | undefined {
   if (ask.kind === "revokeApproval") {
-    return { kind: "revokeApproval", owner: account, token: ask.token, spender: ask.spender };
+    const { token, spender } = ask;
+    const wallet = walletRecord === undefined ? {} : { wallet: walletRecord };
+    return { kind: "revokeApproval", owner: account, token, spender, ...wallet };
   }
   if (ask.target.kind !== "account") {
     return undefined;
   }
   const transfer = { from: account, to: ask.target.account, amount: ask.amount };
   const { name } = ask.target;
-  return name === undefined ? { kind: "send", transfer } : { kind: "send", transfer, name };
+  return name === undefined
+    ? { kind: "send", transfer, payee }
+    : { kind: "send", transfer, name, payee };
+}
+
+// Who a send pays as its card names them; a revoke pays no one.
+async function payeeFor(run: TransferRun): Promise<SentPayee> {
+  const { resolved, options, advance } = run;
+  const { ask, settings, rescueAccount } = resolved;
+  if (ask.kind !== "send" || ask.target.kind !== "account") {
+    return {};
+  }
+  const rescue = rescueAccount === undefined ? {} : { rescueAccount };
+  const payee = { settings, account: ask.target.account, ...rescue };
+  return payeeOf(options.intents, payee, advance.signal);
 }
 
 // A name that points to no person ends the send at the resolve step, before the policy; any
@@ -122,7 +147,7 @@ async function quoteAndSimulate(
   pass: PolicyPass,
 ): Promise<IntentSnapshot> {
   const { options, advance, resolved } = run;
-  const move = moveOf(resolved);
+  const move = moveOf(resolved, await payeeFor(run));
   const nowMs = options.clock.now();
   const context = { chains: options.chains, nowMs };
   const planned = move === undefined ? undefined : planTransfer(resolved.chain, move, context);

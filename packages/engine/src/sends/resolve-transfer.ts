@@ -40,6 +40,8 @@ export interface ResolvedTransfer {
   readonly facts: WalletFacts;
   /** The install's rescue address in effect now, which a send may pay; absent when none is set. */
   readonly rescueAccount?: AccountRef;
+  /** The wallet as the install holds it, with its ceiling; absent when the install lists none. */
+  readonly walletRecord?: WalletRecord;
 }
 
 /** What a send or a revoke is resolved with. */
@@ -184,6 +186,7 @@ export async function resolveTransfer(
     { signal },
   );
   const { rescueAddress } = rescueAt(install, options.clock.now());
+  const walletRecord = install.wallets.find((record) => record.id === wallet);
   return ok({
     settings,
     wallet,
@@ -193,5 +196,6 @@ export async function resolveTransfer(
     ask: ask.value,
     facts,
     ...(rescueAddress === undefined ? {} : { rescueAccount: rescueAddress }),
+    ...(walletRecord === undefined ? {} : { walletRecord }),
   });
 }

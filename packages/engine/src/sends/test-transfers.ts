@@ -1,5 +1,6 @@
 import {
   type AccountRef,
+  accountRefParts,
   accountRefSchema,
   type Amount,
   type AssetRef,
@@ -15,7 +16,8 @@ import {
   type FakeNameResolver,
 } from "@binference/chain/testing";
 import type { IntentRequest } from "@binference/protocol";
-import { testAgent, testCoin, testToken, testWallet } from "../intents/test-intents.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
+import { testAgent, testCoin, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import {
   startTestEngine,
@@ -110,22 +112,52 @@ export async function transferCard(
   return testCardText(test, proposed.value, locale);
 }
 
-/** A live engine whose name `alice.bnb` points to the saved address, a smart-account wallet. */
-export async function aliceEngine(reverse = true): Promise<TestEngine> {
-  const names = testNames();
+/**
+ * A live engine whose name `alice.bnb` points to the saved address, a smart-account wallet whose
+ * reverse record names `mallory.bnb` unless `reverse` is false, through `names`, and whose
+ * simulator runs a send of 0.001 coin there, or `sends`, and the token's revoke from the router.
+ */
+export async function aliceEngine(
+  options: {
+    readonly reverse?: boolean;
+    readonly names?: FakeNameResolver;
+    readonly sends?: readonly { readonly to: AccountRef; readonly amount: Amount }[];
+  } = {},
+): Promise<TestEngine> {
+  const { reverse = true, names = testNames() } = options;
   names.set("alice.bnb", {
     address: testSaved.account,
     isSmartAccount: true,
     ...(reverse ? { reverse: { kind: "differs", other: "mallory.bnb" } } : {}),
   });
+  const coin = { asset: testCoin, base: 10n ** 15n };
   const test = await startTestEngine({
     agent: { mode: "live" },
     nameResolvers: [names],
-    chainSimulator: transferSimulator(
-      [{ to: testSaved.account, amount: { asset: testCoin, base: 10n ** 15n } }],
-      [{ token: testToken, spender: testRouter }],
-    ),
+    chainSimulator: transferSimulator(options.sends ?? [{ to: testSaved.account, amount: coin }], [
+      { token: testToken, spender: testRouter },
+    ]),
   });
   await saveTestAddress(test);
+  holdTestWallet(test);
   return test;
+}
+
+/**
+ * Lists the test wallet in the install, its ceiling naming the fake chain's router, as custody's
+ * read-back holds one: a revoke may name only a spender its wallet's ceiling names.
+ */
+export function holdTestWallet(test: Pick<TestEngine, "stores">): void {
+  const record = testWalletRecord({
+    id: testWallet,
+    agentId: testAgent,
+    label: "main",
+    createdAtMs: testNowMs - 1,
+  });
+  const policy = [{ field: "approve.spender", value: ["0x0000000b"] }];
+  test.stores.install.addWallet({
+    ...record,
+    address: accountRefParts(testAccount).address,
+    ceiling: { ...record.ceiling, policy },
+  });
 }

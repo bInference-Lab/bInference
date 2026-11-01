@@ -23,12 +23,23 @@ export interface SentName {
 }
 
 /**
- * What a send's card confirms (spec 6, section 5): the amount, the account it pays, in its
- * family's canonical form, and the name it was resolved from, and when that was. A send keeps it
- * in the intent's `quote` column, so the card's terms hash binds the address and the name, and
- * the wallet queue reads the name again against it.
+ * Who a send pays as its card names them (spec 4, section 3.9): the address book label of the
+ * recipient, whether it is the install's rescue address in effect, and whether no earlier send of
+ * the agent landed there, each as read when the send was quoted.
  */
-export interface SendQuote {
+export interface SentPayee {
+  readonly label?: string;
+  readonly isRescue?: true;
+  readonly isNewRecipient?: true;
+}
+
+/**
+ * What a send's card confirms (spec 6, section 5): the amount, the account it pays, in its
+ * family's canonical form, who that is, and the name it was resolved from, and when that was. A
+ * send keeps it in the intent's `quote` column, so the card's terms hash binds the address, the
+ * label and the name, and the wallet queue reads the name again against it.
+ */
+export interface SendQuote extends SentPayee {
   readonly amount: Amount;
   readonly recipient: AccountRef;
   readonly name?: SentName;
@@ -36,7 +47,7 @@ export interface SendQuote {
 }
 
 /** A {@link SendQuote} as JSON carries it. */
-interface SendQuoteWire {
+interface SendQuoteWire extends SentPayee {
   readonly amount: AmountWire;
   readonly recipient: string;
   readonly name?: SentName;
@@ -54,6 +65,9 @@ const sendQuoteSchema: z.ZodType<SendQuote, SendQuoteWire> = z.strictObject({
   amount: amountSchema,
   recipient: accountRefSchema,
   name: sentNameSchema.exactOptional(),
+  label: z.string().min(1).max(200).exactOptional(),
+  isRescue: z.literal(true).exactOptional(),
+  isNewRecipient: z.literal(true).exactOptional(),
   quotedAtMs: epochMsSchema,
 });
 

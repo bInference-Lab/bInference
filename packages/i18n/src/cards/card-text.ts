@@ -51,6 +51,10 @@ const textLengths: Readonly<Record<string, number>> = {
   // receives money.
   address: 128,
   recipient: 128,
+  // A send's payee shows whole: a .bnb name of up to 255 characters, and the owner's own label of
+  // an address (spec 4, section 3.9).
+  payee: 255,
+  label: 200,
   // A receipt's link to its transaction on a block explorer shows whole.
   explorerLink: 200,
 };

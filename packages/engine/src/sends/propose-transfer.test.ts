@@ -1,4 +1,4 @@
-import { accountRefSchema, type Amount } from "@binference/chain";
+import { accountRefSchema, type Amount, assetRefSchema } from "@binference/chain";
 import type { FakeNameResolver } from "@binference/chain/testing";
 import type { JsonValue } from "@binference/core";
 import type { IntentRequest, IntentView, ProtocolErrorCode } from "@binference/protocol";
@@ -19,6 +19,7 @@ import {
 } from "../operations/test-engine.js";
 import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
 import {
+  holdTestWallet,
   testNames,
   testRevoke,
   testRouter,
@@ -52,6 +53,7 @@ async function startSends(
     ...options,
   });
   await saveTestAddress(test);
+  holdTestWallet(test);
   return test;
 }
 
@@ -105,6 +107,8 @@ describe("a send", () => {
     await expect(sendQuoteOf(test, view)).resolves.toStrictEqual({
       amount: coin,
       recipient: testSaved.account,
+      label: "savings",
+      isNewRecipient: true,
       quotedAtMs: testNowMs,
     });
     const record = await test.stores.intents.get(view.intent, live);
@@ -261,6 +265,7 @@ describe("an approval revoke", () => {
     expect(revokeQuoteDocument.decode(await quoteOf(test, view))).toStrictEqual({
       token: testToken,
       spender: testRouter,
+      spenderName: "fake-swap router",
       quotedAtMs: testNowMs,
     });
     const record = await test.stores.intents.get(view.intent, live);
@@ -270,6 +275,18 @@ describe("an approval revoke", () => {
   it("ends failed_check for a spender the registry does not list, before the card", async () => {
     const view = await propose(await startSends(), testRevoke(testToken, stranger));
     expect(ending(view)).toStrictEqual(["failed_check", "spender_unlisted"]);
+  });
+
+  it("ends failed_check for a registry spender this wallet's ceiling does not name", async () => {
+    const test = await startTestEngine({ agent: { mode: "live" }, prices });
+    const view = await propose(test, testRevoke(testToken));
+    expect(ending(view)).toStrictEqual(["failed_check", "spender_unlisted"]);
+  });
+
+  it("names its token in the view as its quote spells it", async () => {
+    const upper = assetRefSchema.parse("fake:1/token:0x0000000A");
+    const view = await propose(await startSends(), testRevoke(upper));
+    expect(Object.keys(view.assets)).toStrictEqual([testToken]);
   });
 
   it("refuses the chain's coin, which has no allowance", async () => {

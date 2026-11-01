@@ -3,7 +3,7 @@ import { type Bps, bpsPerWhole } from "@binference/core";
 import type { CardLine, CardValue } from "./card-line.js";
 import type { LaunchDetails } from "./launch-card-lines.js";
 import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
-import { type CardSentName, sendActionLine } from "./send-card-lines.js";
+import { type CardPayee, type CardSentName, sendActionLine } from "./send-card-lines.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
 export type TradePlace = { readonly curve: string } | { readonly pool: string };
@@ -37,13 +37,22 @@ export interface CardActionFacts {
     readonly place: TradePlace;
     readonly share?: Bps;
   };
-  /** A send by name names the name its card shows beside the address (decision 0308). */
+  /**
+   * A send by name names the name its card shows beside the address (decision 0308); any other
+   * names who it pays (spec 4, section 3.9).
+   */
   readonly send: {
     readonly amount: Amount;
     readonly recipient: AccountRef;
     readonly name?: CardSentName;
+    readonly payee?: CardPayee;
   };
-  readonly revokeApproval: { readonly token: AssetRef; readonly spender: AccountRef };
+  /** `spenderName` is the spender as the chain registry names it, its venue and contract. */
+  readonly revokeApproval: {
+    readonly token: AssetRef;
+    readonly spender: AccountRef;
+    readonly spenderName?: string;
+  };
   readonly stake: StakeMove;
   readonly bridge: {
     readonly amount: Amount;
@@ -140,6 +149,20 @@ function sellLine(action: CardAction<"sell">): CardLine {
       };
 }
 
+// A revoke's spender by its registry name before its address (decision 0309), or its address.
+function spenderOf(action: CardAction<"revokeApproval">): CardValue {
+  const { spenderName, spender } = action;
+  return spenderName === undefined
+    ? account(spender)
+    : {
+        type: "line",
+        line: {
+          key: "card.value.spender",
+          values: { contract: text(spenderName), address: account(spender) },
+        },
+      };
+}
+
 function stakeLine(move: StakeMove): CardLine {
   const values = { amount: amount(move.amount), validator: account(move.validator) };
   return move.action === "unstake"
@@ -166,7 +189,7 @@ const actionLines: ActionLines = {
   send: sendActionLine,
   revokeApproval: (action) => ({
     key: "card.revoke.action",
-    values: { spender: account(action.spender), token: asset(action.token) },
+    values: { spender: spenderOf(action), token: asset(action.token) },
   }),
   stake: stakeLine,
   bridge: (action) => ({

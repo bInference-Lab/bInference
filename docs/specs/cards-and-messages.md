@@ -497,16 +497,24 @@ for a buy's, and `{condition}` is "at or above {price}" or "at or below {price}"
 A recipient on a send or a bridge card is `{label} ({address})`, its address book label and its
 address whole, never shortened, in its chain's own form: checksummed hex, or base58 on Solana
 ([decision 0298](../DECISIONS.md#d0298)). The rescue address shows as "your rescue address" /
-「你的紧急转出地址」 before it. A validator is `{name} ({address})`, its moniker escaped as a token
+「你的紧急转出地址」 before it. A send's `card.send.action` names its recipient by
+`card.value.payee`, or by `card.value.rescuePayee` for the rescue address in effect, both as read
+when the send was quoted, and by the whole address alone for neither. A send's label and a send by
+name's `{payee}` show whole, up to the 200 characters a label holds and the 255 a name holds. A
+revoke's `{spender}` is `card.value.spender`: the registry's venue and contract name, then the short
+address ([decision 0309](../DECISIONS.md#d0309)). A validator is `{name} ({address})`, its moniker escaped as a token
 name is and cut to 32 characters, then its short address. `{chain}` is the chain registry's name,
 such as Base or Robinhood Chain, in both languages.
 
 | Line                   | Key                        | English                                                                                                          | 中文                                                                                        |
 | ---------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Send by name           | `card.send.name`           | Send {amount} to {name} ({address})                                                                              | 向 {name}（{address}）转账 {amount}                                                         |
-| Name read              | `card.send.resolved`       | {name} points to {address}, read at {time}; binference reads it again before it signs                            | {name} 指向 {address}，读取于 {time}；签名前 binference 会再次读取                          |
-| Smart-account wallet   | `card.send.smartAccount`   | {name} is a smart-account wallet                                                                                 | {name} 是智能账户钱包                                                                       |
-| Reverse record differs | `card.warn.reverseDiffers` | ⚠️ This address's reverse record names {other}, not {name}                                                       | ⚠️ 此地址的反向记录指向 {other}，而不是 {name}                                              |
+| Send by name           | `card.send.name`           | Send {amount} to {payee} ({address})                                                                             | 向 {payee}（{address}）转账 {amount}                                                        |
+| Name read              | `card.send.resolved`       | {payee} points to {address}, read at {time}; binference reads it again before it signs                           | {payee} 指向 {address}，读取于 {time}；签名前 binference 会再次读取                         |
+| Smart-account wallet   | `card.send.smartAccount`   | {payee} is a smart-account wallet                                                                                | {payee} 是智能账户钱包                                                                      |
+| Reverse record differs | `card.warn.reverseDiffers` | ⚠️ This address's reverse record names {other}, not {payee}                                                      | ⚠️ 此地址的反向记录指向 {other}，而不是 {payee}                                             |
+| Saved recipient        | `card.value.payee`         | {label} ({address})                                                                                              | {label}（{address}）                                                                        |
+| Rescue recipient       | `card.value.rescuePayee`   | your rescue address ({address})                                                                                  | 你的紧急转出地址（{address}）                                                               |
+| Revoked spender        | `card.value.spender`       | {contract} ({address})                                                                                           | {contract}（{address}）                                                                     |
 | Validator              | `card.stake.validator`     | Validator {validator} · commission {commission}                                                                  | 验证者 {validator} · 佣金 {commission}                                                      |
 | Stake for slisBNB      | `card.stake.liquid`        | Stake {amount} with Lista for at least {minOut}                                                                  | 在 Lista 质押 {amount}，至少获得 {minOut}                                                   |
 | Unstake slisBNB        | `card.stake.unstakeLiquid` | Unstake {amount} from Lista                                                                                      | 从 Lista 解除质押 {amount}                                                                  |
@@ -528,6 +536,8 @@ such as Base or Robinhood Chain, in both languages.
   `card.warn.reverseDiffers` shows among the warnings, after the new-address warning, when the
   reverse record names another name, and nothing when it names none. Its `{other}` is set by
   whoever controls the address: surfaces escape it and cut it as a name.
+- A send shows `card.warn.newAddress` when no live send or rescue of the agent that settled paid
+  its address, among the agent's latest 10,000 settled intents, as read when it was quoted.
 - A StakeHub stake, unstake or claim shows `card.stake.validator` right after its action line. An
   unstake, on either venue, then shows `card.stake.unbonding`, `{readyAt}` the date and time in
   the owner's timezone and `{days}` whole days, rounded up. A stake's card names no cap: a stake

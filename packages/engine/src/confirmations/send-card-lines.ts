@@ -13,6 +13,12 @@ export interface CardSentName {
   readonly smartAccount?: true;
 }
 
+/** Who a send pays as its card names them: the address book label, and the rescue address. */
+export interface CardPayee {
+  readonly label?: string;
+  readonly isRescue?: true;
+}
+
 const text = (value: string): CardValue => ({ type: "text", text: value });
 
 // A recipient shows whole, never shortened (spec 4, section 3.9): it receives money.
@@ -20,18 +26,31 @@ function addressOf(action: CardAction<"send">): CardValue {
   return text(accountRefParts(action.recipient).address);
 }
 
+// The recipient of `card.send.action` (spec 4, section 3.9): "your rescue address" before the
+// rescue address, the address book label before a saved one, the address alone otherwise.
+function recipientOf(action: CardAction<"send">): CardValue {
+  const address = addressOf(action);
+  const label = action.payee?.label;
+  if (action.payee?.isRescue === true) {
+    return { type: "line", line: { key: "card.value.rescuePayee", values: { address } } };
+  }
+  return label === undefined
+    ? address
+    : { type: "line", line: { key: "card.value.payee", values: { label: text(label), address } } };
+}
+
 /**
  * A send's action line (spec 4, sections 3.3 and 3.9): `card.send.name` with the name and its
- * address for a send by name, `card.send.action` with the address for any other.
+ * address for a send by name, `card.send.action` with the labeled recipient for any other.
  */
 export function sendActionLine(action: CardAction<"send">): CardLine {
   const amount: CardValue = { type: "amount", amount: action.amount };
   const { name } = action;
   return name === undefined
-    ? { key: "card.send.action", values: { amount, recipient: addressOf(action) } }
+    ? { key: "card.send.action", values: { amount, recipient: recipientOf(action) } }
     : {
         key: "card.send.name",
-        values: { amount, name: text(name.name), address: addressOf(action) },
+        values: { amount, payee: text(name.name), address: addressOf(action) },
       };
 }
 
@@ -45,16 +64,16 @@ export function sendNameLines(action: CardAction<"send">): readonly CardLine[] {
   if (name === undefined) {
     return [];
   }
-  const named = text(name.name);
+  const payee = text(name.name);
   const resolved: CardLine = {
     key: "card.send.resolved",
     values: {
-      name: named,
+      payee,
       address: addressOf(action),
       time: { type: "time", atMs: name.resolvedAtMs },
     },
   };
-  const smart: CardLine = { key: "card.send.smartAccount", values: { name: named } };
+  const smart: CardLine = { key: "card.send.smartAccount", values: { payee } };
   return name.smartAccount === true ? [resolved, smart] : [resolved];
 }
 
@@ -68,6 +87,6 @@ export function reverseDiffersLine(reverse: {
 }): CardLine {
   return {
     key: "card.warn.reverseDiffers",
-    values: { other: text(reverse.other), name: text(reverse.name) },
+    values: { other: text(reverse.other), payee: text(reverse.name) },
   };
 }
