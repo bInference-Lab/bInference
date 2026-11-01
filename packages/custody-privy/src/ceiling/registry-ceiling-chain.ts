@@ -13,6 +13,7 @@ import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
 import { abiFunctionSchema } from "./abi-function.schema.js";
 import type { CeilingCall, CeilingChainPlan, LaunchCall, LaunchCeiling } from "./ceiling.js";
+import { declaredCall } from "./declared-call.js";
 import { type BridgePlan, registryBridgeDeposits } from "./registry-bridge-deposits.js";
 
 /** What the ceiling takes from the registry for one chain. */
@@ -75,15 +76,11 @@ function callsOf(
         : call.onlyWallet === ceiling.role),
   );
   for (const call of listed) {
-    const contract = declaredAddress(declared.venue, { definition }, call.contract);
-    const abi = abiFunctionSchema.safeParse(call.abi);
-    if (!contract.ok) {
-      return contract;
+    const found = declaredCall(declared.venue, definition, call);
+    if (!found.ok) {
+      return found;
     }
-    if (!abi.success) {
-      return err("bad_call");
-    }
-    calls.push({ contract: contract.value, abi: abi.data, walletInputs: call.walletInputs });
+    calls.push(found.value);
   }
   return ok(calls);
 }

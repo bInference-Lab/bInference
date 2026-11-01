@@ -1,14 +1,13 @@
 import {
   type BridgeRouteDefinition,
   type ChainDefinition,
-  declaredAddress,
   type VenueCall,
   type VenueDeclaration,
 } from "@binference/chain";
 import { evmChainOf } from "@binference/chain-evm";
 import { err, ok, type Result } from "@binference/core";
-import { abiFunctionSchema } from "./abi-function.schema.js";
 import type { BridgeDeposit, BridgeInputs, BridgeRoute } from "./ceiling.js";
+import { declaredCall } from "./declared-call.js";
 
 // The inputs a ceiling binds: a declared empty input is the signer's alone (decision 0302).
 function bridgeInputsOf(bridge: NonNullable<VenueCall["bridge"]>): BridgeInputs {
@@ -58,13 +57,9 @@ function depositsOf(
   source: { readonly definition: ChainDefinition; readonly plan: BridgePlan },
 ): Result<readonly BridgeDeposit[], BridgeDepositProblem> {
   const { definition, plan } = source;
-  const contract = declaredAddress(venue, { definition }, call.contract);
-  const abi = abiFunctionSchema.safeParse(call.abi);
-  if (!contract.ok) {
-    return contract;
-  }
-  if (!abi.success) {
-    return err("bad_call");
+  const declared = declaredCall(venue, definition, call);
+  if (!declared.ok) {
+    return declared;
   }
   const deposits: BridgeDeposit[] = [];
   for (const target of plan.destinations) {
@@ -78,9 +73,8 @@ function depositsOf(
     if (!pairs.ok) {
       return pairs;
     }
-    const bridgeCall = { contract: contract.value, abi: abi.data, walletInputs: call.walletInputs };
     deposits.push({
-      call: { ...bridgeCall, bridge: bridgeInputsOf(call.bridge) },
+      call: { ...declared.value, bridge: bridgeInputsOf(call.bridge) },
       destinationChainId: String(evmChainOf(target).chainId),
       routes: pairs.value,
     });
