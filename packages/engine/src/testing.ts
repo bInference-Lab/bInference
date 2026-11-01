@@ -209,3 +209,5 @@ export { createMemoryBackupStore } from "./fakes/memory-backup-store.js";
 export { createMemoryRiskCacheStore } from "./fakes/memory-risk-cache-store.js";
 export { draftOf, draftOwnerId, refOf, testDraftEngine } from "./launches/test-launch-drafts.js";
 export type { DraftEngine } from "./launches/test-launch-drafts.js";
+export { startBridgeFollowBench } from "./bridges/test-bridge-follow.js";
+export type { BridgeFollowBench } from "./bridges/test-bridge-follow.js";

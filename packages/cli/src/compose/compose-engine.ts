@@ -67,6 +67,9 @@ export type EngineParts = Pick<
 >;
 
 /** What the token risk step runs on besides the venue host. */
+// The engine's options a bridge needs: its bridges, its destinations and their readers.
+type BridgingKey = "bridges" | "destinations" | "codeReaders" | "deliveryReaders";
+
 interface RiskParts {
   readonly cache: RiskCacheStore;
   /** How long a source's report holds: config's `risk.cacheTtlSec`, in milliseconds. */
@@ -121,6 +124,11 @@ export interface ComposeEngineOptions {
   readonly nameResolvers?: EngineOptions["nameResolvers"];
   /** The chains a bridge delivers to, where an address may be saved too; none when absent. */
   readonly destinations?: EngineOptions["destinations"];
+  /**
+   * The bridges, the chains they deliver to, the code readers and the delivery readers; nothing
+   * bridges without them.
+   */
+  readonly bridging?: Pick<EngineOptions, BridgingKey>;
   /** The quote assets, whose leader buys no copy order follows (decision 0260). */
   readonly quoteAssets?: EngineOptions["quoteAssets"];
   /** Reads what a token the registry does not list answers on chain, for its cards. */
@@ -256,14 +264,16 @@ function custodyPartsOf(parts: EngineParts) {
   };
 }
 
-// Where the engine finds an address: the name resolvers, and the chains a bridge delivers to.
+// Where the engine finds an address and bridges to one: the name resolvers, the chains a bridge
+// delivers to, and the bridges with their readers.
 function addressPartsOf(
-  options: Pick<ComposeEngineOptions, "nameResolvers" | "destinations">,
-): Pick<EngineOptions, "nameResolvers" | "destinations"> {
-  const { nameResolvers, destinations } = options;
+  options: Pick<ComposeEngineOptions, "nameResolvers" | "destinations" | "bridging">,
+): Pick<EngineOptions, "nameResolvers" | BridgingKey> {
+  const { nameResolvers, destinations, bridging } = options;
   return {
     ...(nameResolvers === undefined ? {} : { nameResolvers }),
     ...(destinations === undefined ? {} : { destinations }),
+    ...bridging,
   };
 }
 

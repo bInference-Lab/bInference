@@ -37,6 +37,7 @@ import {
   type ChainSending,
   createExecutor,
   type RunningExecutor,
+  type ExecutorBridging,
 } from "@binference/engine/executor";
 import { createWalletQueue } from "@binference/engine/wallet-queue";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
@@ -84,6 +85,8 @@ export interface ComposeExecutorOptions {
   readonly liveOrderFills?: boolean;
   /** The name resolvers a send by name is read again through before it signs (decision 0308). */
   readonly nameResolvers?: readonly NameResolver[];
+  /** What a confirmed bridge is checked again and signed with (decisions 0317 and 0318). */
+  readonly bridging?: ExecutorBridging;
 }
 
 // A node rests 30 s after a failure; a relay gets 3 s, several BSC blocks, to take a transaction.
@@ -259,6 +262,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     logger: options.logger,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.nameResolvers === undefined ? {} : { nameResolvers: options.nameResolvers }),
+    ...(options.bridging === undefined ? {} : { bridging: options.bridging }),
   });
   return { executor, health: () => health.state() };
 }

@@ -94,6 +94,9 @@ export const spokePools: AcrossOptions["spokePools"] = {
   [chainRefSchema.parse("eip155:42161")]: accountRefSchema.parse(
     "eip155:42161:0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A",
   ),
+  [chainRefSchema.parse("eip155:4663")]: accountRefSchema.parse(
+    "eip155:4663:0xD29C85F15DF544bA632C9E25829fd29d767d7978",
+  ),
 };
 
 /** Across's SpokePool on BNB Smart Chain, as the registry lists it. */

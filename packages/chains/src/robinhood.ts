@@ -20,6 +20,17 @@ const multicall3 = createContracts("multicall3", {
   },
 });
 
+// Read only: the SpokePool whose fill event says a bridge's deposit from BSC arrived (decision 0320).
+const across = createContracts(
+  "across",
+  {
+    "https://github.com/across-protocol/contracts/blob/master/broadcast/deployed-addresses.json": {
+      "spoke-pool": "0xD29C85F15DF544bA632C9E25829fd29d767d7978",
+    },
+  },
+  "2026-11-01",
+);
+
 const connecting = "https://docs.robinhood.com/chain/connecting";
 
 /**
@@ -60,5 +71,5 @@ export const robinhood: ChainDefinition = {
     },
   ],
   tokens,
-  contracts: multicall3,
+  contracts: [...multicall3, ...across],
 };

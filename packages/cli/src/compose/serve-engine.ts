@@ -4,6 +4,7 @@ import { privyUnreachableNotice } from "@binference/engine/install";
 import { createShutdown, type ShutdownReport, watchFile } from "@binference/platform";
 import type { LockReason } from "../unlock/unlock-keys.js";
 import { type BotChannel, startBotChannel } from "./bot-channel.js";
+import { startBridgeTimer } from "./bridge-timer.js";
 import { startCardTimer } from "./card-timer.js";
 import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
@@ -45,14 +46,25 @@ function startShutdown(
   return { stop: () => void shutdown.stop("request"), finished };
 }
 
+// The timers that read and tell, locked or not: the launches' pins, the daily summaries and the
+// bridges in transit.
+function startReadTimers(
+  composed: ComposedSelfHosted,
+  timers: Pick<Parameters<typeof startPinTimer>[0], "clock" | "closers" | "logger">,
+): void {
+  startPinTimer({ checkPins: composed.checkPins, ...timers });
+  startSummaryTimer({ sendDailySummaries: composed.sendDailySummaries, ...timers });
+  startBridgeTimer({ followBridges: composed.followBridges, ...timers });
+}
+
 function isUnreachable(unlocked: Result<void, LockReason>): boolean {
   return !unlocked.ok && unlocked.error === "custody_unreachable";
 }
 
 // What runs while the engine serves: the settle timer, the gas check, the order and card timers,
-// the schedule queue, the copy orders, the daily summaries, the price watchers, the nightly
-// backup, the reload of `config.json5` when it changes (decision 0118), and the retries of the
-// signer step after a start that found Privy out of reach (decision 0119).
+// the schedule queue, the copy orders, the daily summaries, the bridges in transit, the price
+// watchers, the nightly backup, the reload of `config.json5` when it changes (decision 0118), and
+// the retries of the signer step after a start that found Privy out of reach (decision 0119).
 function startTimers(
   opening: Opening,
   opened: Opened,
@@ -69,9 +81,7 @@ function startTimers(
   startCardTimer({ expireCards: composed.expireCards, clock: host.clock, closers, logger });
   startScheduleTimer({ runSchedules: composed.runSchedules, ...timers });
   startCopyTimer({ runCopies: composed.runCopies, clock: host.clock, closers, logger });
-  startPinTimer({ checkPins: composed.checkPins, clock: host.clock, closers, logger });
-  const { sendDailySummaries } = composed;
-  startSummaryTimer({ sendDailySummaries, clock: host.clock, closers, logger });
+  startReadTimers(composed, { clock: host.clock, closers, logger });
   composed.priceWatchers.start(closers, logger.child("watcher"));
   composed.leaderWatchers.start(closers, logger.child("watcher"));
   composed.launchFeeds.start(closers, logger.child("watcher"));

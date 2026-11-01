@@ -25,6 +25,17 @@ const multicall3 = createContracts("multicall3", {
   },
 });
 
+// Read only: the SpokePool whose fill event says a bridge's deposit from BSC arrived (decision 0320).
+const across = createContracts(
+  "across",
+  {
+    "https://github.com/across-protocol/contracts/blob/master/broadcast/deployed-addresses.json": {
+      "spoke-pool": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64",
+    },
+  },
+  "2026-11-01",
+);
+
 const docs = "https://docs.base.org/base-chain/quickstart/connecting-to-base";
 
 /** Base mainnet, where bridges from BSC deliver: its tokens, public RPCs and explorers. */
@@ -62,5 +73,5 @@ export const baseMainnet: ChainDefinition = {
     },
   ],
   tokens,
-  contracts: multicall3,
+  contracts: [...multicall3, ...across],
 };

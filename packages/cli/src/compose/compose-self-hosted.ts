@@ -17,7 +17,6 @@ import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
 import { composeTrading, type TradingParts } from "./compose-trading.js";
 import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
-import { selfHostedDestinationChains } from "./destination-chains.js";
 import { engineHandlers } from "./engine-handlers.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { chainNameResolvers } from "./name-resolvers.js";
@@ -96,6 +95,7 @@ function composeSending(
     publish: (push) => pushes.publish(push),
     logger: log.logger,
     nameResolvers: chainNameResolvers(parts.reads),
+    bridging: parts.bridging.executor,
     ...(host.testOrders === undefined ? {} : { liveOrderFills: true }),
   });
   // The executor finishes a signature or a send under way within the shutdown's budget.
@@ -251,7 +251,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ...pricingOf(host, wiring.priceWatchers.canPrice),
       ...chainTokenReads(parts.reads),
       nameResolvers: chainNameResolvers(parts.reads),
-      destinations: selfHostedDestinationChains(host),
+      bridging: parts.bridging.engine,
       workspace: stateWorkspace(opening.platform),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
       ...webPushOf(opening, opened),

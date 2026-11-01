@@ -18,6 +18,7 @@ import { bsc, bscBridgeRoutes, bscVenueCalls } from "@binference/chains";
 import { getAddress } from "viem";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import { bridgeContractsOf, bridgeRoutesOf } from "./bridge-routes.js";
 import { selfHostedDestinations } from "./self-hosted-destinations.js";
 
 const bscRef = chainRefSchema.parse(bsc.id);
@@ -29,38 +30,7 @@ function tokenOf(definition: ChainDefinition, symbol: string): AssetRef {
   return assetRefSchema.parse(`${definition.id}/erc20:${getAddress(token?.address ?? "")}`);
 }
 
-function decimalsOf(definition: ChainDefinition, symbol: string): number {
-  return definition.tokens.find((item) => item.symbol === symbol)?.decimals ?? -1;
-}
-
-function destinationOf(key: string): ChainDefinition {
-  const found = destinations.find((item) => item.key === key);
-  if (found === undefined) {
-    throw new Error(`No destination ${key}.`);
-  }
-  return found;
-}
-
-// The registry's Across routes as the bridge takes them, with the registry's decimals: a token that
-// arrives as the destination's wrapped coin names that coin, which the bridge asks for.
-function routeOf(route: (typeof bscBridgeRoutes)[number]): AcrossRoute {
-  const destination = destinationOf(route.to);
-  const { assetNamespace, assetReference, symbol } = destination.nativeAsset;
-  const coin = assetRefSchema.parse(`${destination.id}/${assetNamespace}:${assetReference}`);
-  const decimals = {
-    leaves: decimalsOf(bsc, route.leaves),
-    arrives: decimalsOf(destination, route.arrives),
-  };
-  const leaves = tokenOf(bsc, route.leaves);
-  const arrives = tokenOf(destination, route.arrives);
-  return route.arrives === `W${symbol}`
-    ? { leaves, arrives, decimals, coin }
-    : { leaves, arrives, decimals };
-}
-
-const registryRoutes: readonly AcrossRoute[] = bscBridgeRoutes
-  .filter((route) => route.venue === "across")
-  .map(routeOf);
+const registryRoutes: readonly AcrossRoute[] = bridgeRoutesOf("across");
 
 const routesSchema = z.array(
   z.looseObject({
@@ -126,6 +96,10 @@ describe("the across bridge in this binference", () => {
     expect(routes.some((route) => route.destinationChainId === 34_268_394_551_451)).toBe(false);
     const acrossRoutes = bscBridgeRoutes.filter((route) => route.venue === "across");
     expect(acrossRoutes.map((route) => route.to)).not.toContain("solana");
+  });
+
+  it("lists Across's SpokePool on BSC and on each destination, as its deployed addresses do", () => {
+    expect(bridgeContractsOf("across", "spoke-pool")).toStrictEqual(spokePools);
   });
 
   it("quotes no route Across lists that the registry leaves out, such as Base's USDbC, and asks nothing", async () => {

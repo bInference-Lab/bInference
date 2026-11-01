@@ -26,6 +26,17 @@ const multicall3 = createContracts("multicall3", {
   },
 });
 
+// Read only: the SpokePool whose fill event says a bridge's deposit from BSC arrived (decision 0320).
+const across = createContracts(
+  "across",
+  {
+    "https://github.com/across-protocol/contracts/blob/master/broadcast/deployed-addresses.json": {
+      "spoke-pool": "0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A",
+    },
+  },
+  "2026-11-01",
+);
+
 /** Arbitrum One, where bridges from BSC deliver: its tokens, public RPCs and explorers. */
 export const arbitrum: ChainDefinition = {
   id: "eip155:42161",
@@ -59,5 +70,5 @@ export const arbitrum: ChainDefinition = {
     },
   ],
   tokens,
-  contracts: multicall3,
+  contracts: [...multicall3, ...across],
 };

@@ -1,0 +1,27 @@
+{
+  "source": "Read from https://app.across.to/api/deposit/status on 2026-11-01: Across's status of deposit 1264861 from BSC, filled on Arbitrum One.",
+  "answer": {
+    "sweepTxnRef": null,
+    "actionsTargetRecipient": null,
+    "actionsTargetToken": null,
+    "actionsTargetAmount": null,
+    "actionsTargetTxnRef": null,
+    "actionsTargetBlockTimestamp": null,
+    "status": "filled",
+    "originChainId": 56,
+    "depositId": "1264861",
+    "depositTxHash": "0x0f22262e55fba116b38ba98b7d5866102e2fde1a89f9b08177bd8127658a1674",
+    "depositTxnRef": "0x0f22262e55fba116b38ba98b7d5866102e2fde1a89f9b08177bd8127658a1674",
+    "fillTx": "0xf808ab59453dcde518dd2566d067aedd9496a80453210a9cbb2379b417ba9aa1",
+    "fillTxnRef": "0xf808ab59453dcde518dd2566d067aedd9496a80453210a9cbb2379b417ba9aa1",
+    "destinationChainId": 42161,
+    "depositRefundTxHash": null,
+    "depositRefundTxnRef": null,
+    "actionsSucceeded": null,
+    "actionsTargetChainId": null,
+    "pagination": {
+      "currentIndex": 0,
+      "maxIndex": 0
+    }
+  }
+}

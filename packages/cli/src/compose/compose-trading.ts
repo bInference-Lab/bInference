@@ -6,6 +6,7 @@ import { type ComposedSimulators, composeSimulators } from "./chain-simulators.j
 import { createChainWalletFacts } from "./chain-wallet-facts.js";
 import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
 import { paperBalancesOf } from "./paper-balances.js";
+import { type SelfHostedBridging, selfHostedBridging } from "./self-hosted-bridging.js";
 
 /** What the self-hosted engine trades on, each part over the chains' one set of reads. */
 export interface TradingParts {
@@ -20,11 +21,14 @@ export interface TradingParts {
   readonly positions: PositionStore;
   /** What a paper portfolio starts with: config's `defaults.paper.balances`. */
   readonly paperBalances: readonly Amount[];
+  /** The bridges and the readers the engine and the executor share (decision 0297). */
+  readonly bridging: SelfHostedBridging;
 }
 
 /**
  * The self-hosted engine's trading parts over the chains' one set of reads: the Chainlink prices,
- * the wallets' facts read on chain, the simulators, the stored positions and the paper balances.
+ * the wallets' facts read on chain, the simulators, the stored positions, the paper balances and
+ * the bridging parts.
  */
 export function composeTrading(opening: Opening, opened: Opened): TradingParts {
   const { clock } = opening.host;
@@ -37,5 +41,6 @@ export function composeTrading(opening: Opening, opened: Opened): TradingParts {
     simulators: composeSimulators(reads, { chains, clock }),
     positions,
     paperBalances: paperBalancesOf(config.defaults.paper.balances, reads),
+    bridging: selfHostedBridging({ http: opening.host.http, clock, reads }),
   };
 }
