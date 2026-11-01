@@ -22,14 +22,12 @@ export { protocolErrorCodes } from "./errors/protocol-error-codes.js";
 export type { ProtocolErrorCode } from "./errors/protocol-error-codes.js";
 export { errorCodeSchema, protocolErrorSchema } from "./errors/protocol-error.js";
 export type { ProtocolError } from "./errors/protocol-error.js";
-export { byeFrameSchema } from "./frames/bye-frame.schema.js";
-export type { ByeFrame } from "./frames/bye-frame.schema.js";
+export { type ByeFrame, byeFrameSchema } from "./frames/bye-frame.schema.js";
 export { callFrameSchema, callIdSchema, idempotencyKeySchema } from "./frames/call-frame.schema.js";
 export type { CallFrame } from "./frames/call-frame.schema.js";
 export { challengeFrameSchema } from "./frames/challenge-frame.schema.js";
 export type { ChallengeFrame } from "./frames/challenge-frame.schema.js";
-export { failFrameSchema } from "./frames/fail-frame.schema.js";
-export type { FailFrame } from "./frames/fail-frame.schema.js";
+export { type FailFrame, failFrameSchema } from "./frames/fail-frame.schema.js";
 export {
   clientFrameSchema,
   decodeClientFrame,
@@ -39,8 +37,7 @@ export {
 export type { ClientFrame, ClientFrameProblem, EngineFrame } from "./frames/frame.schema.js";
 export { openFrameSchema } from "./frames/open-frame.schema.js";
 export type { ClientInfo, ClientKind, OpenFrame } from "./frames/open-frame.schema.js";
-export { proveFrameSchema } from "./frames/prove-frame.schema.js";
-export type { ProveFrame } from "./frames/prove-frame.schema.js";
+export { type ProveFrame, proveFrameSchema } from "./frames/prove-frame.schema.js";
 export { pushFrameSchema, pushTopicSchema } from "./frames/push-frame.schema.js";
 export type { PushFrame, PushTopic } from "./frames/push-frame.schema.js";
 export { readyFrameSchema } from "./frames/ready-frame.schema.js";
@@ -50,8 +47,7 @@ export type {
   OwnerInfo,
   ReadyFrame,
 } from "./frames/ready-frame.schema.js";
-export { replyFrameSchema } from "./frames/reply-frame.schema.js";
-export type { ReplyFrame } from "./frames/reply-frame.schema.js";
+export { type ReplyFrame, replyFrameSchema } from "./frames/reply-frame.schema.js";
 export { idPrefixes, protocolIdSchema } from "./ids/id-prefixes.js";
 export type { IdKind, ProtocolId } from "./ids/id-prefixes.js";
 export { localeSchema } from "./locale.js";
