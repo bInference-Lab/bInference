@@ -348,6 +348,10 @@ describe("a call with a cap of its own (decision 0325)", () => {
 
     expect(readCeiling(rules)?.perTxNativeCapBase).toBe(oneBnbWei);
     expect(readCeiling(rules)?.functions).toStrictEqual(["delegate", "swap", "swapTo"]);
+    expect(readCeiling(rules)?.ownCaps).toStrictEqual([
+      { functionName: "delegate", maxValueBase: stake },
+    ]);
+    expect(readCeiling(rulesOf(testCeilingRequest()))?.ownCaps).toBeUndefined();
     expect(isBuiltCeiling(rules)).toBe(true);
     expect(isBuiltCeiling(rules.toReversed())).toBe(true);
   });

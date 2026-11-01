@@ -64,6 +64,33 @@ export interface CeilingHeld {
   readonly functions: readonly string[];
   /** Each bridge rule's target, in the order the rules name them (decision 0302). */
   readonly bridges: readonly HeldBridge[];
+  /**
+   * Each function a call rule holds to a cap of its own, such as a stake's (decision 0325), with
+   * that cap in base units of the native coin, in the order the rules name them; absent when no
+   * rule has one, as in a ceiling written before such rules existed.
+   */
+  readonly ownCaps?: readonly OwnCallCap[];
+}
+
+/** A function a call rule holds to a cap of its own, and that cap in native base units. */
+export interface OwnCallCap {
+  readonly functionName: string;
+  readonly maxValueBase: bigint;
+}
+
+// The functions held to caps of their own, each with its cap; a rule whose call or cap cannot be
+// read leaves the answer `undefined`.
+function ownCapsOf(calls: readonly HeldRule[]): readonly OwnCallCap[] | undefined {
+  const own = calls.filter((rule) => ownCap.test(rule.name));
+  const read = own.map((rule) => {
+    const functionName = callIn(rule)?.abi.name;
+    const maxValueBase = quantityOf(valuesOf(rule, "value", "lte")[0]);
+    return functionName === undefined || maxValueBase === undefined
+      ? undefined
+      : { functionName, maxValueBase };
+  });
+  const caps = read.flatMap((item) => (item === undefined ? [] : [item]));
+  return caps.length === read.length ? caps : undefined;
 }
 
 const onChain = /, chain (\d{1,10})$/;
@@ -216,6 +243,20 @@ function heldPartsOf(
   return launch === undefined || bridges === undefined ? undefined : { ...launch, ...bridges };
 }
 
+// The 24-hour caps of each chain whose rules allow calls.
+function heldCapsOf(read: readonly HeldRule[], chainIds: readonly string[]): readonly HeldCaps[] {
+  return chainIds.flatMap((chainId): readonly HeldCaps[] => {
+    const approvals = namedRule(read, "Approvals", chainId);
+    const held = capsOf(
+      anyCallRules(read, chainId),
+      approvals ?? namedRule(read, "Launch approvals", chainId),
+    );
+    return held?.native === undefined
+      ? []
+      : [{ chainId, caps: { native: held.native, approvals: held.approvals } }];
+  });
+}
+
 /**
  * Reads a ceiling `buildCeiling` built back from the rules Privy holds: the chains its rules name,
  * the contracts its call rules let a call reach and the cap of the first call or launch call rule,
@@ -234,20 +275,12 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
   const approvalRules = read.filter((rule) => rule.name.startsWith("Approvals, chain "));
   const sends = read.filter((rule) => rule.name.startsWith("Native sends, chain "));
   const perTxNativeCapBase = capOf(anyCallRules(read));
-  if (perTxNativeCapBase === undefined) {
+  const ownCaps = ownCapsOf(calls);
+  if (perTxNativeCapBase === undefined || ownCaps === undefined) {
     return undefined;
   }
   const chainIds = chainIdsOf(read);
-  const caps = chainIds.flatMap((chainId): readonly HeldCaps[] => {
-    const approvals = namedRule(read, "Approvals", chainId);
-    const held = capsOf(
-      anyCallRules(read, chainId),
-      approvals ?? namedRule(read, "Launch approvals", chainId),
-    );
-    return held?.native === undefined
-      ? []
-      : [{ chainId, caps: { native: held.native, approvals: held.approvals } }];
-  });
+  const caps = heldCapsOf(read, chainIds);
   return {
     chainIds,
     contracts: [
@@ -271,6 +304,7 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
       ]),
     ],
     bridges: heldBridgesOf(read, chainIds),
+    ...(ownCaps.length === 0 ? {} : { ownCaps }),
   };
 }
 
