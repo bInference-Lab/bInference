@@ -14,7 +14,8 @@ function isAccountRef(text: string): text is AccountRef {
   return /^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}:[-.%a-zA-Z0-9]{1,128}$/.test(text);
 }
 
-function assetRef(text: string): AssetRef {
+/** An asset ref for a card fixture; throws for a text that is not one. */
+export function assetRef(text: string): AssetRef {
   if (!isAssetRef(text)) {
     throw new BinferenceError({ code: "test.bad_fixture", message: `${text} is no asset ref.` });
   }
