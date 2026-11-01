@@ -7,9 +7,9 @@ import { type Address, erc20Abi } from "viem";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bundle.js";
 import { startMining } from "./executor-rig.js";
+import { heldOn } from "./fork-holdings.js";
 import { type ForkLaunch, launchOnGeniusfun } from "./geniusfun-launch.js";
 import { type LaunchRig, launchRigOf, rigFunding, rigOwner } from "./launch-wallet-rig.js";
-import { heldOn } from "./rescue-rig.js";
 
 // Curve trades from an agent's launch wallet (decision 0217) on a BSC fork: a token launched on
 // Genius.fun's m4.2 stack a moment before, on a curve no list holds, bought and sold through the

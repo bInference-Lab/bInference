@@ -23,10 +23,10 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bundle.js";
 import { startMining } from "./executor-rig.js";
+import { heldOn } from "./fork-holdings.js";
 import { geniusfunSettingLinesZh } from "./geniusfun-launch-card.zh.js";
 import { geniusfunOn } from "./launch-wallet-parts.js";
 import { type LaunchRig, launchRigOf, rigOwner } from "./launch-wallet-rig.js";
-import { heldOn } from "./rescue-rig.js";
 
 // A token launch on Genius.fun through the engine's real launch path on a BSC fork (decisions 0234
 // to 0241, 0275 to 0277): the owner proposes it from the CLI with a picture link they host, which

@@ -5,7 +5,8 @@ import type { Address } from "viem";
 import { toHex } from "viem";
 import { describe, expect, it } from "vitest";
 import { startMining } from "./executor-rig.js";
-import { buyFor, heldOn, type RescueRig, rescueAgents, rescueRigOf } from "./rescue-rig.js";
+import { buyFor, heldOn } from "./fork-holdings.js";
+import { type RescueRig, rescueAgents, rescueRigOf } from "./rescue-rig.js";
 
 const owner = {
   credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000061",

@@ -20,9 +20,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bundle.js";
 import { brewSettingLinesZh } from "./brew-launch-card.zh.js";
 import { startMining } from "./executor-rig.js";
+import { heldOn } from "./fork-holdings.js";
 import { brewOn } from "./launch-wallet-parts.js";
 import { type LaunchRig, launchRigOf, rigOwner } from "./launch-wallet-rig.js";
-import { heldOn } from "./rescue-rig.js";
 
 // A token launch on Brew through the engine's real launch path on a BSC fork (decisions 0278 to
 // 0283): the owner proposes it from the CLI with a small picture of their own, which the create

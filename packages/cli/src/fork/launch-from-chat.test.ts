@@ -11,8 +11,8 @@ import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bun
 import { ownerId, ownerPhoto, superviseRuntime, watchChat } from "../e2e/runtime-machine.js";
 import { startMining } from "./executor-rig.js";
 import { freshCid, onePixelPng } from "./flap-launch-parts.js";
+import { heldOn } from "./fork-holdings.js";
 import { type LaunchChatMachine, startLaunchChatMachine } from "./launch-chat-machine.js";
-import { heldOn } from "./rescue-rig.js";
 
 // The launch skeleton (decisions 0285 and 0286): the owner sends a photo and asks in Telegram (the
 // synthetic Bot API) for a token named Fork Cat on Flap with a 0.01 BNB first buy. The scripted

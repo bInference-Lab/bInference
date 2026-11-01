@@ -10,8 +10,8 @@ import { buildSignerBundle, type SignerBundle } from "../compose/test-signer-bun
 import { startMining } from "./executor-rig.js";
 import { flapSettingLinesZh, unboundFirstBuyZh } from "./flap-launch-card.zh.js";
 import { flapOn, freshCid, onePixelPng } from "./flap-launch-parts.js";
+import { heldOn } from "./fork-holdings.js";
 import { type LaunchRig, launchRigOf, rigOwner } from "./launch-wallet-rig.js";
-import { heldOn } from "./rescue-rig.js";
 
 // A token launch on Flap through the engine's real launch path on a BSC fork (decisions 0234 to
 // 0241, 0270, 0271): the owner proposes it from the CLI, Flap's API (faked, never reached) takes

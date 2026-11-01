@@ -24,7 +24,8 @@ import {
 } from "viem";
 import { describe, expect, it } from "vitest";
 import { startMining } from "./executor-rig.js";
-import { buyFor, heldOn, type RescueRig, rescueAgents, rescueRigOf } from "./rescue-rig.js";
+import { buyFor, heldOn } from "./fork-holdings.js";
+import { type RescueRig, rescueAgents, rescueRigOf } from "./rescue-rig.js";
 
 // Sends and approval revokes on a fork of BSC: a `.bnb` name placed as SPACE ID's controllers and
 // its holder place one, saved in the agent's address book, then paid by name; and a router's
