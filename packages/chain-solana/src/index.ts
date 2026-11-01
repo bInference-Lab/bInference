@@ -1,3 +1,5 @@
+export { createSolanaAccountKindReader } from "./accounts/create-solana-account-kind-reader.js";
+export type { SolanaAccountKindReaderOptions } from "./accounts/create-solana-account-kind-reader.js";
 export { createSolanaDeliveryReader } from "./delivery/create-solana-delivery-reader.js";
 export type { SolanaDeliveryReaderOptions } from "./delivery/create-solana-delivery-reader.js";
 export { createSolanaRpcClient } from "./rpc/create-solana-rpc-client.js";
@@ -9,6 +11,7 @@ export {
   solanaAddressFromBytes,
   solanaAddressToBytes,
 } from "./solana-address.js";
+export { createSolanaAddressCodec } from "./solana-address-codec.js";
 export { solanaAddressOn, solanaChainOf, solanaMintOn } from "./solana-chain.js";
 export type { SolanaChain } from "./solana-chain.js";
 export { solanaFamilyId, solanaNamespace, solanaTokenNamespace } from "./solana-ids.js";

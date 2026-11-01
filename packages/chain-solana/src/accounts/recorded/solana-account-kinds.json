@@ -1,0 +1,133 @@
+{
+  "source": "Read from https://api.mainnet-beta.solana.com on 2026-11-01 with getAccountInfo at finalized commitment (the node's default, which Solana's SDK leaves out), base64, no data: a wallet the System Program owns (a Relay fill's fee payer), an off-curve address the System Program owns, an address with no account, the SPL Token program and a USDC token account.",
+  "answers": [
+    {
+      "method": "getAccountInfo",
+      "params": [
+        "F7p3dFrjRTbtRp8FRF6qHLomXbKRBzpvBLjtQcfcgmNe",
+        {
+          "encoding": "base64",
+          "dataSlice": {
+            "offset": 0,
+            "length": 0
+          }
+        }
+      ],
+      "result": {
+        "context": {
+          "apiVersion": "4.3.2",
+          "slot": 464048627
+        },
+        "value": {
+          "data": ["", "base64"],
+          "executable": false,
+          "lamports": 6031367337406,
+          "owner": "11111111111111111111111111111111",
+          "rentEpoch": 18446744073709551615,
+          "space": 0
+        }
+      }
+    },
+    {
+      "method": "getAccountInfo",
+      "params": [
+        "4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T",
+        {
+          "encoding": "base64",
+          "dataSlice": {
+            "offset": 0,
+            "length": 0
+          }
+        }
+      ],
+      "result": {
+        "context": {
+          "apiVersion": "4.3.2",
+          "slot": 464028068
+        },
+        "value": {
+          "data": ["", "base64"],
+          "executable": false,
+          "lamports": 52919206,
+          "owner": "11111111111111111111111111111111",
+          "rentEpoch": 18446744073709551615,
+          "space": 0
+        }
+      }
+    },
+    {
+      "method": "getAccountInfo",
+      "params": [
+        "A9YsiCuAtY5RT3nfLKZTz2EuxxXf3FZogPqHkSH89SXT",
+        {
+          "encoding": "base64",
+          "dataSlice": {
+            "offset": 0,
+            "length": 0
+          }
+        }
+      ],
+      "result": {
+        "context": {
+          "apiVersion": "4.3.2",
+          "slot": 464028045
+        },
+        "value": null
+      }
+    },
+    {
+      "method": "getAccountInfo",
+      "params": [
+        "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+        {
+          "encoding": "base64",
+          "dataSlice": {
+            "offset": 0,
+            "length": 0
+          }
+        }
+      ],
+      "result": {
+        "context": {
+          "apiVersion": "4.3.2",
+          "slot": 464028053
+        },
+        "value": {
+          "data": ["", "base64"],
+          "executable": true,
+          "lamports": 230130698,
+          "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
+          "rentEpoch": 18446744073709551615,
+          "space": 36
+        }
+      }
+    },
+    {
+      "method": "getAccountInfo",
+      "params": [
+        "F8PbdmcRRihC98aEM3deRz8dvUc9UyQr4uVRzo41shQC",
+        {
+          "encoding": "base64",
+          "dataSlice": {
+            "offset": 0,
+            "length": 0
+          }
+        }
+      ],
+      "result": {
+        "context": {
+          "apiVersion": "4.3.2",
+          "slot": 464028061
+        },
+        "value": {
+          "data": ["", "base64"],
+          "executable": false,
+          "lamports": 1488440,
+          "owner": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "rentEpoch": 18446744073709551615,
+          "space": 165
+        }
+      }
+    }
+  ]
+}
