@@ -313,6 +313,26 @@ const cases: fc.Arbitrary<Case> = fc.record({
   hasStrangerSpender: mostly(false, true),
 });
 
+// A send, a bridge and a revoke in a clean runtime turn, each run on every pass, so the count of
+// transfers asked for below never rests on the seed drawing one.
+const transferCases: readonly (readonly [Case])[] = [0, 1, 3].map((other) => [
+  {
+    approvalMode: "auto",
+    isLive: true,
+    caller: "runtime",
+    turn: "clean",
+    other,
+    sellsToken: false,
+    amountBase: 10n ** 15n,
+    perTradeHeadroom: 10n ** 9n,
+    dayHeadroom: 10n ** 9n,
+    spentUsdMicros: 0n,
+    feeOverCap: 0n,
+    isTokenDenied: false,
+    hasStrangerSpender: false,
+  },
+]);
+
 describe("auto mode, end to end", () => {
   it("runs alone only a runtime swap within every cap, and a switch to manual ends it", async () => {
     const outcomes: Outcome[] = [];
@@ -322,7 +342,7 @@ describe("auto mode, end to end", () => {
         outcomes.push(outcome);
         expect(outcome.problems).toStrictEqual([]);
       }),
-      { numRuns: 200 },
+      { numRuns: 200, examples: [...transferCases] },
     );
     expect(outcomes.filter((outcome) => outcome.isAuto).length).toBeGreaterThan(0);
     expect(outcomes.filter((outcome) => outcome.isAskedTransfer === true).length).toBeGreaterThan(
