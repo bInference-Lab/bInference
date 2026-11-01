@@ -1,8 +1,14 @@
 import { setTimeout as wait } from "node:timers/promises";
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefParts,
+  accountRefSchema,
+  chainRefSchema,
+} from "@binference/chain";
 import { erc20AssetRef, evmAccountRef } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
-import { BinferenceError, type Id, idSchema } from "@binference/core";
+import { baseMainnet } from "@binference/chains";
+import { BinferenceError, type Http, type Id, idSchema } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { createSpaceIdResolver } from "@binference/spaceid";
@@ -18,18 +24,27 @@ import {
   encodeFunctionData,
   erc20Abi,
   getAddress,
+  type Hex,
   keccak256,
+  pad,
+  parseAbi,
+  parseEventLogs,
   stringToHex,
   toHex,
 } from "viem";
 import { describe, expect, it } from "vitest";
-import { startMining } from "./executor-rig.js";
+import { composeChainReads } from "../compose/chain-reads.js";
+import { selfHostedChains } from "../compose/open-engine-parts.js";
+import { selfHostedBridging } from "../compose/self-hosted-bridging.js";
+import { createSystemClock } from "../runtime/system-clock.js";
+import { createSystemHttp } from "../runtime/system-http.js";
+import { forkLimits, startMining } from "./executor-rig.js";
 import { buyFor, heldOn } from "./fork-holdings.js";
 import { type RescueRig, rescueAgents, rescueRigOf } from "./rescue-rig.js";
 
-// Sends and approval revokes on a fork of BSC: a `.bnb` name placed as SPACE ID's controllers and
-// its holder place one, saved in the agent's address book, then paid by name; and a router's
-// allowance set back to zero.
+// Sends, approval revokes and bridges on a fork of BSC: a `.bnb` name placed as SPACE ID's
+// controllers and its holder place one, saved in the agent's address book, then paid by name; a
+// router's allowance set back to zero; and USDC bridged through Across to an address saved for Base.
 const owner = {
   credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000066",
   client: { kind: "cli", version: "fork" },
@@ -267,4 +282,199 @@ describe("sends and approval revokes on the BSC fork", () => {
       }
     });
   });
+});
+
+const usdc = bscToken("USDC");
+const spokePool = bscContract("across", "spoke-pool");
+const acrossOrigin = "https://app.across.to";
+const baseRef = chainRefSchema.parse(baseMainnet.id);
+// The USDC that arrives on Base, as the registry lists it.
+const baseUsdc = accountRefSchema.parse(
+  `${baseMainnet.id}:${baseMainnet.tokens.find((token) => token.symbol === "USDC")?.address ?? ""}`,
+);
+const baseHolder = evmAccountRefOn(baseRef, holder);
+const network = createSystemHttp({ version: "test" });
+const depositEvents = parseAbi([
+  "event FundsDeposited(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 indexed destinationChainId, uint256 indexed depositId, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 indexed depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes message)",
+]);
+
+function evmAccountRefOn(chain: string, address: Address): AccountRef {
+  return accountRefSchema.parse(`${chain}:${address}`);
+}
+
+// What a bridge reaches: the fork for BSC, Across's public API for its quote and deposit, and
+// Base's public nodes for the account code of the saved address there. Nothing else.
+function bridgeHttp(fork: Fork): Http {
+  const reads = new Set([acrossOrigin, ...baseMainnet.rpcs.map(({ url }) => new URL(url).origin)]);
+  return {
+    async request(request) {
+      if (request.url.startsWith(fork.rpcUrl)) {
+        return fork.http.request(request);
+      }
+      if (reads.has(new URL(request.url).origin)) {
+        return network.request(request);
+      }
+      throw new BinferenceError({
+        code: "fork.call_refused",
+        message: `The fork test reaches no ${new URL(request.url).host}.`,
+      });
+    },
+  };
+}
+
+// The bridging parts `binference start` composes, over the fork's BSC.
+function bridgingOn(fork: Fork) {
+  const http = bridgeHttp(fork);
+  const clock = createSystemClock();
+  const config = {
+    enabled: [fork.chain.ref],
+    rpc: { [fork.chain.ref]: { urls: [fork.rpcUrl] } },
+    relays: {},
+    maxFeePerGasGwei: { [fork.chain.ref]: "10" },
+  };
+  const reads = composeChainReads({ chains: selfHostedChains(), config, http, clock });
+  return selfHostedBridging({ http, clock, reads });
+}
+
+// The agent may bridge through Across, and the main wallet's ceiling pays the holder on Base
+// through its bridge rule, with a 24-hour cap on USDC, as custody reads it back.
+async function readyToBridge(fork: Fork, rig: RescueRig, signal: AbortSignal): Promise<Id<"adr">> {
+  const settings = await rig.stores.agents.get(agent, { signal });
+  const limits = { ...forkLimits(fork), venues: ["pancakeswap", "across"] };
+  const atMs = Date.now();
+  const expectedVersion = settings?.limits.version ?? 0;
+  expectValue(
+    await rig.stores.agents.setLimits(
+      { agentId: agent, limits, atMs, expectedVersion },
+      { signal },
+    ),
+  );
+  const cap = { asset: erc20AssetRef(fork.chain, usdc), limit: String(10n ** 24n) };
+  const policy = {
+    chains: [fork.chain.ref],
+    contracts: [evmAccountRef(fork.chain, spokePool)],
+    perTxNativeBase: String(10n ** 18n),
+    recipients: [evmAccountRef(fork.chain, rig.rescue)],
+    bridged: [baseHolder],
+    dayCaps: [{ ...cap, windowSeconds: 86_400, floorUsdMicros: "0" }],
+    launchCalls: [],
+    functions: [],
+  };
+  const ceiling = { policyId: "privy-policy-bridge", policy, perTxNativeBase: 10n ** 18n };
+  const update = { wallet: mainOf(rig).wallet, ceiling: { ...ceiling, readAtMs: atMs } };
+  expectValue(await rig.stores.install.updateCeiling(update, { signal }));
+  // The holder's address saved for Base with the owner key three days ago.
+  const savedAtMs = atMs - 3 * 86_400_000;
+  const entry = {
+    id: idSchema("adr").parse("adr_0190f1c2-3a4b-7c5d-8e6f-000000000067"),
+    agentId: agent,
+    account: baseHolder,
+    recipientBytes: holder.toLowerCase(),
+    label: "alice on base",
+    usableAtMs: savedAtMs,
+    inCeilingAtMs: savedAtMs,
+    createdAtMs: savedAtMs,
+  };
+  expectValue(await rig.stores.agents.addAddress(entry, { signal }));
+  return entry.id;
+}
+
+// The FundsDeposited event Across's SpokePool logged in the deposit's receipt.
+async function depositLogOf(fork: Fork, rig: RescueRig, intent: Id<"int">) {
+  const stored = await rig.stores.transactions.ofIntent(intent, {
+    signal: AbortSignal.timeout(5_000),
+  });
+  const deposit = stored.findLast(({ receipt }) => receipt !== undefined);
+  const receipt = await fork.client.getTransactionReceipt({ hash: (deposit?.hash ?? "0x") as Hex });
+  const log = parseEventLogs({ abi: depositEvents, logs: receipt.logs }).find(
+    (item) => getAddress(item.address) === spokePool,
+  );
+  if (log === undefined) {
+    throw new BinferenceError({
+      code: "fork.no_deposit",
+      message: "The SpokePool logged no deposit.",
+    });
+  }
+  return log.args;
+}
+
+function mainOf(rig: RescueRig) {
+  const [main] = rig.wallets;
+  if (main === undefined) {
+    throw new BinferenceError({ code: "fork.no_wallet", message: "The rig has no wallet." });
+  }
+  return main;
+}
+
+const word = (address: Address): string => pad(address).toLowerCase();
+
+describe("a bridge on the BSC fork", () => {
+  it("deposits 20 USDC through Across for an address saved for Base, held to its card, and opens it in transit", async ({
+    signal,
+    annotate,
+  }) => {
+    await withFork(signal, async (fork) => {
+      const rig = await rescueRigOf(fork, [], bridgingOn(fork));
+      const miner = new AbortController();
+      const mining = startMining(fork, miner.signal);
+      try {
+        const wallet = await fund(fork, rig);
+        await buyFor(fork, { token: usdc, to: wallet, value: 5n * 10n ** 16n });
+        const entry = await readyToBridge(fork, rig, signal);
+        const twenty = 20n * 10n ** 18n;
+        const request: IntentRequest = {
+          kind: "bridge",
+          agent,
+          reason: "Move USDC to Base",
+          amount: { asset: erc20AssetRef(fork.chain, usdc), base: twenty },
+          toChain: baseRef,
+          to: { entry },
+        };
+        const view = await propose(rig, request, signal);
+        expect([view.state, view.outcome]).toStrictEqual(["awaiting_confirmation", undefined]);
+        const lines = await cardText(rig, view, signal);
+        await annotate(lines.join("\n"));
+        expect(lines[1]).toMatch(
+          new RegExp(
+            `^Bridge 20 USDC to Base · to alice on base \\(${holder}\\) · about \\d+ min$`,
+          ),
+        );
+        expect(lines).toContainEqual(
+          expect.stringMatching(/receives at least 19\.\d+ USDC on Base$/),
+        );
+        expect(lines).toContainEqual(expect.stringMatching(/^Bridge fees .+ · through across$/));
+
+        await confirm(rig, view, signal);
+        await expect(reach(rig, view.intent, ["finalized", ...ended])).resolves.toBe("finalized");
+        const bridge = await rig.stores.bridges.get(view.intent, { signal });
+        expect(bridge).toMatchObject({
+          state: "in_transit",
+          recipient: baseHolder,
+          toChain: baseRef,
+        });
+        const logged = await depositLogOf(fork, rig, view.intent);
+        expect([
+          logged.recipient,
+          logged.depositor,
+          logged.destinationChainId,
+          logged.inputAmount,
+          logged.outputAmount,
+        ]).toStrictEqual([word(holder), word(wallet), 8453n, twenty, bridge?.minOut.base]);
+        const deposit = rig.asked.at(-1)?.allowed.callInputs?.[0];
+        expect(deposit).toMatchObject({
+          equal: {
+            recipient: holder.toLowerCase(),
+            destinationChainId: "8453",
+            inputToken: usdc.toLowerCase(),
+            outputToken: accountRefParts(baseUsdc).address.toLowerCase(),
+            inputAmount: String(twenty),
+          },
+          atLeast: { outputAmount: String(bridge?.minOut.base) },
+        });
+      } finally {
+        miner.abort();
+        await mining;
+      }
+    });
+  }, 120_000);
 });

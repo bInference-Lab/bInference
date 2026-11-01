@@ -1,4 +1,10 @@
-import { accountRefParts, assetRefParts, type NameResolver, type Signer } from "@binference/chain";
+import {
+  accountRefParts,
+  assetRefParts,
+  type NameResolver,
+  type SignRequest,
+  type Signer,
+} from "@binference/chain";
 import {
   createEvmNonceSource,
   createEvmReceiptReader,
@@ -36,6 +42,7 @@ import { createWalletQueue } from "@binference/engine/wallet-queue";
 import { type Address, erc20Abi, getAddress, type Hex, keccak256, toHex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
+import type { SelfHostedBridging } from "../compose/self-hosted-bridging.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
 import { forkEngineBasics } from "./fork-engine-basics.js";
@@ -59,6 +66,8 @@ export interface RescueRig {
   readonly rescue: Address;
   /** How many signatures the wallets' custody made. */
   readonly signatures: () => number;
+  /** What the executor asked the wallets' custody to sign, oldest first. */
+  readonly asked: readonly SignRequest[];
 }
 
 /**
@@ -84,8 +93,9 @@ const rigWallets: readonly RescueRigWallet[] = [
   walletOf(3, secondAgent),
 ];
 
-// Custody for the rig: each wallet's key signs for it alone, as a custodian would.
-function rigCustody(fork: Fork) {
+// Custody for the rig: each wallet's key signs for it alone, as a custodian would, and notes each
+// request in `asked`.
+function rigCustody(fork: Fork, asked: SignRequest[]) {
   const each = new Map(
     rigWallets.map((item) => [
       item.wallet,
@@ -97,6 +107,7 @@ function rigCustody(fork: Fork) {
       return (await each.get(wallet)?.account(wallet, chain, call)) ?? err("unknown_wallet");
     },
     async signTransaction(request, call) {
+      asked.push(request);
       return (
         (await each.get(request.wallet)?.signTransaction(request, call)) ?? err("unknown_wallet")
       );
@@ -168,8 +179,10 @@ function walletRecord(item: RescueRigWallet, atMs: number): WalletRecord {
   };
 }
 
-/** What the rig's executor shares with its engine: stores, custody, prices and name resolvers. */
-type RigShared = Pick<ExecutorOptions, "stores" | "custody" | "prices" | "nameResolvers">;
+/** What the rig's executor shares with its engine: stores, custody, prices, names and bridges. */
+type RigShared = Pick<ExecutorOptions, "stores" | "custody" | "prices" | "nameResolvers"> & {
+  readonly bridging?: SelfHostedBridging;
+};
 
 function executorOn(fork: Fork, parts: RigShared) {
   const { rpc, chain } = fork;
@@ -196,6 +209,7 @@ function executorOn(fork: Fork, parts: RigShared) {
     publish: () => undefined,
     logger: createMemoryLogger({ subsystem: "engine" }),
     ...(parts.nameResolvers === undefined ? {} : { nameResolvers: parts.nameResolvers }),
+    ...(parts.bridging === undefined ? {} : { bridging: parts.bridging.executor }),
   });
 }
 
@@ -227,19 +241,33 @@ async function storeAgents(stores: MemoryEngineStores, fork: Fork, atMs: number)
   );
 }
 
+// BNB at $600, and each dollar stablecoin at $1.
+function rigPrices(fork: Fork) {
+  const dollar = { numerator: 1n, denominator: 10n ** 12n };
+  return createFakePriceSource(
+    new Map([
+      [fork.chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }],
+      [erc20AssetRef(fork.chain, bscToken("USDT")), dollar],
+      [erc20AssetRef(fork.chain, bscToken("USDC")), dollar],
+    ]),
+  );
+}
+
 /**
  * The rescue rig on a fork: an engine and its executor on memory stores and the fork's BSC, with
  * two agents, three wallets whose keys sign here, a bridge wallet among them, and the owner's
  * rescue address in effect. Its executor checks a send again at the engine's prices, and both read
- * a send's name through `nameResolvers`, none when absent.
+ * a send's name through `nameResolvers`, none when absent, and bridge through `bridging`'s parts.
  */
 export async function rescueRigOf(
   fork: Fork,
   nameResolvers: readonly NameResolver[] = [],
+  bridging?: SelfHostedBridging,
 ): Promise<RescueRig> {
   const clock = createSystemClock();
   const stores = createMemoryEngineStores();
-  const custody = rigCustody(fork);
+  const asked: SignRequest[] = [];
+  const custody = rigCustody(fork, asked);
   const chains = selfHostedChains();
   const rescue = privateKeyToAccount(keccak256(toHex("binference rescue fork owner"))).address;
   const atMs = clock.now() - 3 * 86_400_000;
@@ -249,12 +277,14 @@ export async function rescueRigOf(
   );
   rigWallets.forEach((item) => stores.install.addWallet(walletRecord(item, atMs)));
   await storeAgents(stores, fork, atMs);
-  const prices = new Map([
-    [fork.chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }],
-    [erc20AssetRef(fork.chain, bscToken("USDT")), { numerator: 1n, denominator: 10n ** 12n }],
-  ]);
-  const priceSource = createFakePriceSource(prices);
-  const shared = { stores, custody, prices: priceSource, nameResolvers };
+  const priceSource = rigPrices(fork);
+  const shared = {
+    stores,
+    custody,
+    prices: priceSource,
+    nameResolvers,
+    ...(bridging === undefined ? {} : { bridging }),
+  };
   const engine = createEngine({
     stores,
     positions: createMemoryPositionStore(),
@@ -271,7 +301,8 @@ export async function rescueRigOf(
     chainSimulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),
     executor: executorOn(fork, shared),
     nameResolvers,
+    ...bridging?.engine,
     ...forkEngineBasics(fork, 62),
   });
-  return { engine, stores, wallets: rigWallets, rescue, signatures: custody.signatures };
+  return { engine, stores, wallets: rigWallets, rescue, signatures: custody.signatures, asked };
 }
