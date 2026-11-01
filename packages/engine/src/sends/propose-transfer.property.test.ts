@@ -1,4 +1,5 @@
 import { type AccountRef, accountRefSchema, type Amount } from "@binference/chain";
+import type { IntentRequest } from "@binference/protocol";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
@@ -7,7 +8,7 @@ import { testAgent, testCoin, testNowMs } from "../intents/test-intents.js";
 import { startTestEngine, testCall, testCallers } from "../operations/test-engine.js";
 import type { SendLevel } from "../policy/policy-rules.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
-import { testSend, transferSimulator } from "./test-transfers.js";
+import { testNames, testSend, transferSimulator } from "./test-transfers.js";
 
 const live = { signal: new AbortController().signal };
 const coin: Amount = { asset: testCoin, base: 10n ** 15n };
@@ -32,6 +33,8 @@ interface Case {
   readonly book: readonly Entry[];
   readonly hasRescue: boolean;
   readonly target: AccountRef;
+  /** How the request names its target: the address, its book entry, or a `.bnb` name for it. */
+  readonly via: "address" | "entry" | "name";
   readonly isOutside: boolean;
 }
 
@@ -47,6 +50,7 @@ const cases: fc.Arbitrary<Case> = fc.record({
   ),
   hasRescue: fc.boolean(),
   target: fc.constantFrom(...accounts),
+  via: fc.constantFrom("address" as const, "entry" as const, "name" as const),
   isOutside: fc.boolean(),
 });
 
@@ -64,8 +68,9 @@ function entryOf(entry: Entry, index: number): AddressEntryRecord {
 
 // Spec 6, section 5, and decision 0091: a send reaches its card only to the rescue address in
 // effect or a saved address, never at level 3, and at level 2 only once its cooling ended.
-function isAllowed({ level, book, hasRescue, target }: Case): boolean {
-  if (level === 3) {
+function isAllowed({ level, book, hasRescue, target, via }: Case): boolean {
+  const isBooked = book.some(({ account }) => account === target);
+  if (level === 3 || (via === "entry" && !isBooked)) {
     return false;
   }
   if (hasRescue && target === rescue) {
@@ -75,9 +80,21 @@ function isAllowed({ level, book, hasRescue, target }: Case): boolean {
   return entry?.isSaved === true && (level < 2 || entry.usableAtMs <= testNowMs);
 }
 
+// The request's target as the case names it: an entry the book lacks is refused before any card.
+function targetOf(sent: Case): Extract<IntentRequest, { kind: "send" }>["to"] {
+  if (sent.via === "name") {
+    return { name: "payee.bnb" };
+  }
+  const index = sent.book.findIndex(({ account }) => account === sent.target);
+  return sent.via === "entry" ? { entry: fixtureId("adr", index + 1) } : { address: sent.target };
+}
+
 async function cardOpens(sent: Case): Promise<boolean> {
+  const names = testNames();
+  names.set("payee.bnb", { address: sent.target });
   const test = await startTestEngine({
     agent: { mode: "live", sendLevel: sent.level },
+    nameResolvers: [names],
     chainSimulator: transferSimulator(accounts.map((to) => ({ to, amount: coin }))),
   });
   await Promise.all(
@@ -91,7 +108,7 @@ async function cardOpens(sent: Case): Promise<boolean> {
   }
   const caller = { ...testCallers.runtime, turn: { hasOutsideContent: sent.isOutside } };
   const proposed = await test.engine.handlers["intent/propose"](
-    testCall(testSend({ address: sent.target }, coin), caller),
+    testCall(testSend(targetOf(sent), coin), caller),
   );
   return proposed.ok && proposed.value.state === "awaiting_confirmation";
 }
