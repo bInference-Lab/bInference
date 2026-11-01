@@ -4,7 +4,10 @@ import type { DayCapView } from "@binference/protocol";
 import { z } from "zod";
 import { epochMsSchema } from "../records/record-fields.js";
 
-/** One wallet's ceiling and every account a send from the wallet may pay. */
+/**
+ * One wallet's ceiling and every account the wallet may pay, each on its own chain (decision
+ * 0313): a send pays one on a chain the ceiling enables, a bridge one on its destination.
+ */
 export interface CeilingRecipients {
   /** The ceiling as custody names it: the wallet record's `policyId`. */
   readonly ceiling: string;
@@ -64,6 +67,11 @@ export interface CeilingCalls {
    * the rest. Absent, a main wallet's.
    */
   readonly role?: WalletRole;
+  /**
+   * Every account the wallet may pay, each on its own chain, which the ceiling's bridge rules
+   * pay those of each destination from (decision 0313); absent, they pay whom they pay now.
+   */
+  readonly recipients?: readonly AccountRef[];
 }
 
 /** What contract calls may do under each ceiling, with the owner key that owns every ceiling. */
@@ -87,6 +95,11 @@ export interface CeilingRead {
   readonly perTxNativeBase: bigint;
   /** Each account a send may pay, on each chain it enables. */
   readonly recipients: readonly AccountRef[];
+  /**
+   * Each account its bridge rules pay, on the destination chain they reach (decision 0313); none
+   * where no bridge route reaches the chain an account was saved for.
+   */
+  readonly bridged: readonly AccountRef[];
   /**
    * Each 24-hour cap it names, as `ceiling/get` shows it: the native coin's first on each chain,
    * then each capped token's. Every ceiling of the install names the same sums (decision 0149).
@@ -120,14 +133,14 @@ export type CeilingRefusal =
 
 /**
  * Why the owner key's change of what contract calls may do was not made: `bad_owner_key`,
- * `not_found` and `too_large` as for recipients, `no_calls` for venues that give a chain a ceiling
+ * `bad_recipients`, `not_found` and `too_large` as for recipients, `no_calls` for venues that give a chain a ceiling
  * enables no contract to call, `bad_bridge` for a bridge deposit a venue declares that no ceiling
  * can hold, `uncapped_token` for a bridge route whose token has no 24-hour cap custody could
  * make (decision 0305), and `no_bridge_calls` for a bridge wallet's ceiling no venue the install
  * runs gives a deposit, which would leave it allowing nothing (decision 0307). Nothing was changed.
  */
 export type CallsRefusal =
-  | Exclude<CeilingRefusal, "bad_recipients">
+  | CeilingRefusal
   | "no_calls"
   | "no_bridge_calls"
   | "bad_bridge"

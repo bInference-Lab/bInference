@@ -1,4 +1,6 @@
-import { err, jsonValueSchema, ok } from "@binference/core";
+import { type AccountRef, accountRefParts, type ChainRef } from "@binference/chain";
+import { err, type Id, jsonValueSchema, ok } from "@binference/core";
+import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
@@ -11,9 +13,45 @@ export interface AddressBookHandlers {
   readonly "address/remove": EngineHandler<"address/remove">;
 }
 
+// The room left on each chain other than the wallets' that holds a saved address (decision 0297).
+function roomOf(
+  settings: AgentSettings,
+  limits: { readonly isWalletChain: (chain: ChainRef) => boolean; readonly most: number },
+) {
+  const chains = settings.addressBook
+    .map((entry) => accountRefParts(entry.account).chain)
+    .filter((chain) => !limits.isWalletChain(chain));
+  const counts = new Map<ChainRef, number>();
+  for (const chain of chains) {
+    counts.set(chain, (counts.get(chain) ?? 0) + 1);
+  }
+  const room: { readonly chain: ChainRef; readonly used: number; readonly most: number }[] = [];
+  for (const [chain, used] of counts) {
+    room.push({ chain, used, most: limits.most });
+  }
+  return room;
+}
+
+// Every account a bridge rule of the agent's live wallets pays, as their stored copies read.
+async function bridgedNow(
+  options: AddAddressOptions,
+  agent: Id<"agt">,
+  signal: AbortSignal,
+): Promise<ReadonlySet<AccountRef>> {
+  const { wallets } = await options.install.read({ signal });
+  const owned = wallets.filter(
+    (wallet) => wallet.agentId === agent && wallet.archivedAtMs === undefined,
+  );
+  return new Set(
+    owned.flatMap((wallet) => options.ceilings.readStored(wallet.ceiling.policy)?.bridged ?? []),
+  );
+}
+
 /**
  * Creates the address book handlers. `address/list` answers the agent's live entries, oldest
- * first, each with the time send level 2 lets a send pay it. `address/add` saves an entry in the
+ * first, each with the time send level 2 lets a send pay it, marked when it was saved for a
+ * destination no bridge rule of the agent's wallets reaches yet, and the room left on each other
+ * chain it saved an address for. `address/add` saves an entry in the
  * agent's ceilings with the owner key first (see {@link addAddress}). `address/remove` is
  * braking: the entry stops counting for sends at once, and the removal is journaled and pushed as
  * `config/changed`; the ceilings keep listing it until the owner key changes them again.
@@ -22,7 +60,18 @@ export function createAddressBookHandlers(options: AddAddressOptions): AddressBo
   return {
     async "address/list"({ args, signal }) {
       const found = await activeAgent(options.agents, args.agent, { signal });
-      return found.ok ? ok({ items: found.value.addressBook.map(addressEntryView) }) : found;
+      if (!found.ok) {
+        return found;
+      }
+      const isWalletChain = (chain: ChainRef) => options.chains.get(chain).ok;
+      const room = roomOf(found.value, { isWalletChain, most: options.ceilings.mostPerChain });
+      const paid = await bridgedNow(options, args.agent, signal);
+      const items = found.value.addressBook.map((entry) =>
+        addressEntryView(entry, {
+          noRoute: !isWalletChain(accountRefParts(entry.account).chain) && !paid.has(entry.account),
+        }),
+      );
+      return ok(room.length === 0 ? { items } : { items, room });
     },
     "address/add": async (call) => addAddress(options, call),
     async "address/remove"({ args, caller, signal }) {

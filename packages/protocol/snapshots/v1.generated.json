@@ -472,6 +472,12 @@
         "address.launch_wallet",
         "address.bridge_wallet",
         "address.venue_contract",
+        "address.not_wallet",
+        "address.malformed",
+        "address.other_chain",
+        "address.unknown_chain",
+        "address.chain_full",
+        "address.own_wallet",
         "rescue.no_address",
         "rescue.nothing_to_move",
         "signer.not_found",
@@ -7821,6 +7827,10 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "noRoute": {
+                    "type": "boolean",
+                    "const": true
                   }
                 },
                 "required": [
@@ -7836,6 +7846,32 @@
             "next": {
               "type": "string",
               "minLength": 1
+            },
+            "room": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "chain": {
+                    "type": "string"
+                  },
+                  "used": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "most": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "chain",
+                  "used",
+                  "most"
+                ]
+              }
             }
           },
           "required": [
@@ -7962,6 +7998,10 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "noRoute": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [

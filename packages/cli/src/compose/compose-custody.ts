@@ -1,11 +1,15 @@
-import type { ChainRegistry } from "@binference/chain";
-import { ok, type Result } from "@binference/core";
+import type { ChainRef, ChainRegistry } from "@binference/chain";
+import { type JsonValue, ok, type Result } from "@binference/core";
+import type { CeilingRead } from "@binference/engine/install";
 import type { SignerRefusalNotice } from "@binference/signer";
+import { capAssetsOn } from "../init/ceiling-request.js";
 import type { UnlockedKeys, LockReason } from "../unlock/unlock-keys.js";
 import { createCustodyCell, type CustodyCell } from "./custody-cell.js";
 import { openCustody } from "./open-custody.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
+import { readStoredPrivyCeiling } from "./privy-ceiling-read.js";
 import type { SealKeyKeeper } from "./seal-key-keeper.js";
+import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 import { startBuiltSigner } from "./start-signer.js";
 
 /** Custody as the lock opens it. */
@@ -13,6 +17,16 @@ export interface ComposedCustody {
   readonly cell: CustodyCell;
   /** The lock's step: opens custody with the keys, or answers why the engine stays locked. */
   readonly open: (keys: UnlockedKeys, signal: AbortSignal) => Promise<Result<void, LockReason>>;
+}
+
+// How a wallet's stored copy of its Privy policy reads while the engine is locked, as the ceiling
+// editor reads one once custody opens.
+function storedReaderOf(chains: ChainRegistry): (policy: JsonValue) => CeilingRead | undefined {
+  const parts = {
+    capAssetsOn: (chain: ChainRef) => capAssetsOn(chains, chain),
+    addresses: selfHostedCeilingAddresses(chains.list().map((item) => item.definition)),
+  };
+  return (policy) => readStoredPrivyCeiling(policy, parts);
 }
 
 /**
@@ -34,7 +48,7 @@ export function composeCustody(
 ): ComposedCustody {
   const { host, closers } = opening;
   const { chains, onStopped, onRefusal } = parts;
-  const cell = createCustodyCell();
+  const cell = createCustodyCell(storedReaderOf(chains));
   closers.add("signer", async (signal) => cell.release()?.stop(signal));
   const options = {
     http: host.http,

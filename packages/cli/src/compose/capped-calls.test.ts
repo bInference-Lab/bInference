@@ -1,4 +1,9 @@
-import { assetRefSchema, type WalletRole } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  assetRefSchema,
+  type WalletRole,
+} from "@binference/chain";
 import { bsc } from "@binference/chains";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
@@ -25,7 +30,7 @@ import { createPrivyCeilingEditor } from "./privy-ceiling-editor.js";
 import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 
 const live = { signal: new AbortController().signal };
-const { rescue, saved, router, token } = testAddresses;
+const { rescue, saved, router, token, unsaved } = testAddresses;
 const { bscEth, baseUsdc, spokePool } = bridgeAddresses;
 
 // A deposit to Base taking the test token, and with `withEth`, ETH too.
@@ -79,12 +84,15 @@ const ethAsset = assetRefSchema.parse(`eip155:56/erc20:${bscEth}`);
 async function oldInstall(extra = 0) {
   const clock = createManualClock(1_790_000_000_000);
   const privy = createFakePrivy({ clock, random: createSeededRandom(7) });
-  const api = createPrivyApi({
-    http: privy.http,
-    clock,
-    appId: privy.appId,
-    appSecret: privy.appSecret,
-  });
+  // Every request that would change a policy, counted as it goes out.
+  const sent = { writes: 0 };
+  const http = {
+    request: async (asked: Parameters<typeof privy.http.request>[0]) => {
+      sent.writes += asked.method === "GET" ? 0 : 1;
+      return privy.http.request(asked);
+    },
+  };
+  const api = createPrivyApi({ http, clock, appId: privy.appId, appSecret: privy.appSecret });
   const owner = createP256KeyPair();
   const quorum = await api.createKeyQuorum(
     { publicKey: owner.publicKey, displayName: "owner" },
@@ -146,7 +154,7 @@ async function oldInstall(extra = 0) {
       index === 1 ? { ...calls, role: "launch" as const } : calls,
     ),
   };
-  return { editor, held, names, request: change, launching };
+  return { editor, held, names, request: change, launching, writes: () => sent.writes };
 }
 
 describe("a change of calls one ceiling of which cannot be built", () => {
@@ -189,5 +197,43 @@ describe("a change of calls that adds a bridge route for ETH", () => {
     expect(first?.caps[0]?.caps.approvals).toHaveLength(1);
     expect(await install.names(0)).toContain("Bridge depositV3, chain 56 to 8453, 1");
     expect(await install.names(0)).not.toContain("Bridge depositV3, chain 56 to 8453, 2");
+  });
+});
+
+describe("a change of calls that names the wallet's accounts", () => {
+  it("pays on each destination the accounts saved for it, and drops one no longer saved", async () => {
+    const install = await oldInstall();
+    const onBase = accountRefSchema.parse(`eip155:8453:${unsaved}`);
+    const onBsc = accountRefSchema.parse(`eip155:56:${rescue}`);
+    const named = (recipients: readonly AccountRef[]) => ({
+      ...install.request,
+      ceilings: install.request.ceilings.map((calls) => ({ ...calls, recipients })),
+    });
+
+    const written = { ok: true, value: undefined };
+    expect(await install.editor.setCalls(named([onBsc, onBase]), live)).toStrictEqual(written);
+    const paid = (await install.held(0))?.bridges.find(
+      (item) => item.destinationChainId === "8453",
+    );
+    expect(await install.editor.setCalls(named([onBsc]), live)).toStrictEqual(written);
+
+    expect(paid?.recipients).toStrictEqual([unsaved]);
+    expect((await install.held(0))?.bridges).toStrictEqual([]);
+  });
+
+  it("sends no request at all when the change would rewrite no rule", async () => {
+    const install = await oldInstall();
+    const onBsc = accountRefSchema.parse(`eip155:56:${rescue}`);
+    const named = {
+      ...install.request,
+      ceilings: install.request.ceilings.map((calls) => ({ ...calls, recipients: [onBsc] })),
+    };
+    const written = { ok: true, value: undefined };
+    expect(await install.editor.setCalls(named, live)).toStrictEqual(written);
+    const before = install.writes();
+
+    expect(await install.editor.setCalls(named, live)).toStrictEqual(written);
+
+    expect(install.writes()).toBe(before);
   });
 });

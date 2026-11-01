@@ -11,6 +11,7 @@ import {
   type AddressBookHandlers,
   createAddressBookHandlers,
 } from "../address-book/address-book-handlers.js";
+import type { DestinationChain } from "../address-book/destination-chain.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
 import type { AlertFiring } from "../alerts/fire-alerts.js";
 import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
@@ -262,6 +263,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
   /** Each agent's workspace files, which `agent/readFile` and `agent/writeFile` serve. */
   readonly workspace: WorkspaceFiles;
   readonly chains: ChainRegistry;
+  /**
+   * The chains a bridge delivers to, where the address book may save an address besides the
+   * wallets' chains (decision 0297), each with its family's codec; none when absent.
+   */
+  readonly destinations?: readonly DestinationChain[];
   readonly clock: Clock;
   readonly ids: IdSource;
   /** Where each card version's callback reference comes from (spec 4, section 2). */
@@ -391,7 +397,12 @@ function ownerSettingsHandlers(options: EngineOptions, paper: PaperParts) {
       chains: options.chains,
     }),
     ...createSendLevelHandlers(settingsParts),
-    ...createAddressBookHandlers({ ...rescueParts, journal, ids: options.ids }),
+    ...createAddressBookHandlers({
+      ...rescueParts,
+      journal,
+      ids: options.ids,
+      ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
+    }),
     ...createRescueAddressHandlers({ ...rescueParts, journal }),
   };
 }

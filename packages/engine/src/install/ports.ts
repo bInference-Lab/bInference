@@ -1,4 +1,4 @@
-import type { Result } from "@binference/core";
+import type { JsonValue, Result } from "@binference/core";
 import type {
   CallsRefusal,
   CallsRequest,
@@ -25,8 +25,19 @@ interface CustodyCall {
  * comes with each request, serves it alone and is kept nowhere.
  */
 export interface CeilingEditor {
+  /**
+   * The most addresses one ceiling lists for one chain, the rescue address among them on its own
+   * chain: the address book shows the room left against it (decision 0297).
+   */
+  readonly mostPerChain: number;
   /** The ceiling as custody holds it now; `not_found` for one custody does not hold. */
   read(ceiling: string, options: CustodyCall): Promise<Result<CeilingRead, "not_found">>;
+  /**
+   * A wallet's stored copy of its ceiling (`CeilingRead.policy`, as the install store mirrors it)
+   * read as `read` reads the ceiling, with no call to custody; `undefined` for a copy it cannot
+   * read.
+   */
+  readStored(policy: JsonValue): CeilingRead | undefined;
   /**
    * Sets each ceiling's recipients now, signed with the owner key: every send rule lists exactly
    * these accounts. Setting what a ceiling lists already changes nothing. A refusal changes no

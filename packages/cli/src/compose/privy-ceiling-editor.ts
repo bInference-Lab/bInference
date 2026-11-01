@@ -15,6 +15,7 @@ import {
   createDayCaps,
   type HeldCaps,
   isPrivyId,
+  maxListed,
   readCeiling,
   type PrivyApi,
   type PrivyId,
@@ -46,7 +47,7 @@ import { type GrownCaps, planCappedCalls } from "./capped-calls.js";
 import { type CeilingAddressParts, ceilingAddressesOf } from "./ceiling-addresses.js";
 import { ownerAuthorize, type OwnerKeyHolder } from "./owner-authorize.js";
 import { writeEveryPlan } from "./planned-writes.js";
-import { privyCeilingRead } from "./privy-ceiling-read.js";
+import { privyCeilingRead, readStoredPrivyCeiling } from "./privy-ceiling-read.js";
 import { withDayCaps } from "./resized-caps.js";
 
 /** What the Privy ceiling editor reaches Privy with, and the owner key it takes. */
@@ -128,7 +129,8 @@ async function read(
   if (!held.ok) {
     return held;
   }
-  return ok(privyCeilingRead(held.value, options.capAssetsOn));
+  const { policy, rules } = held.value;
+  return ok(privyCeilingRead({ policy: jsonValueSchema.parse(policy), rules }, options));
 }
 
 async function setRecipients(
@@ -279,7 +281,12 @@ async function planOne(
   const capped = await cappedChains(options, { held: held.value, plans }, signal);
   const dayUsdMicros = calls.dayCapUsdMicros;
   const chains = withDayCaps(capped, { dayUsdMicros, capPlanOn: options.capPlanOn });
-  const target = { policy: policy.value, chains, owner: held.value.policy.ownerId };
+  const owner = held.value.policy.ownerId;
+  const addresses =
+    calls.recipients === undefined
+      ? {}
+      : { addresses: ceilingAddressesOf(calls.recipients, options.addresses) };
+  const target = { policy: policy.value, chains, owner, ...addresses };
   const capPlanOn = (chain: ChainRef) => options.capPlanOn(chain, dayUsdMicros);
   const planned = await planCappedCalls(target, { api: options.api, signal, capPlanOn, grown });
   return planned.ok ? planned : err(callsRefusalOf(planned.error));
@@ -321,7 +328,9 @@ async function setCalls(
  */
 export function createPrivyCeilingEditor(options: PrivyCeilingEditorOptions): CeilingEditor {
   return {
+    mostPerChain: maxListed,
     read: async (ceiling, { signal }) => read(options, ceiling, signal),
+    readStored: (policy) => readStoredPrivyCeiling(policy, options),
     setRecipients: async (request, { signal }) => setRecipients(options, request, signal),
     signRecipients: async (request, { signal }) => signRecipients(options, request, signal),
     sendSigned: async (change, { signal }) => sendSigned(options, change, signal),

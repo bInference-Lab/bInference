@@ -106,6 +106,27 @@ interface AddressEntryView {
   /** When the owner key saved the address in the ceiling. */
   readonly inCeilingAt?: number;
   readonly createdAt: number;
+  /**
+   * Set for an address saved for a destination chain no bridge rule of the agent's wallets
+   * reaches yet: nothing pays it until a bridge route the install runs reaches that chain.
+   */
+  readonly noRoute?: true;
+}
+
+/**
+ * How many addresses an agent saved for one chain other than its wallets', and the most one rule
+ * of the ceiling lists for that chain (decision 0297).
+ */
+interface AddressRoomView {
+  readonly chain: ChainRef;
+  readonly used: number;
+  readonly most: number;
+}
+
+/** The agent's saved addresses, and the room left on each other chain it saved one for. */
+interface AddressBookView extends Page<AddressEntryView> {
+  /** One per chain other than the wallets' chains that holds a saved address; none when absent. */
+  readonly room?: readonly AddressRoomView[];
 }
 
 /** The args of `address/add`: saved in the address book and in the ceiling, with the owner key. */
@@ -140,7 +161,7 @@ export interface WalletOperationShapes {
   readonly "ceiling/get": { readonly args: WalletArgs; readonly result: CeilingView };
   readonly "ceiling/set": { readonly args: SetCeilingArgs; readonly result: CeilingView };
   readonly "signer/revoke": { readonly args: RevokeSignerArgs; readonly result: Empty };
-  readonly "address/list": { readonly args: AgentArgs; readonly result: Page<AddressEntryView> };
+  readonly "address/list": { readonly args: AgentArgs; readonly result: AddressBookView };
   readonly "address/add": { readonly args: AddAddressArgs; readonly result: AddressEntryView };
   readonly "address/remove": {
     readonly args: { readonly entry: ProtocolId<"addressBook"> };
@@ -160,6 +181,7 @@ const addressEntryView = z.object({
   usableAt: epochMsSchema,
   inCeilingAt: epochMsSchema.exactOptional(),
   createdAt: epochMsSchema,
+  noRoute: z.literal(true).exactOptional(),
 });
 
 /** The wallet, ceiling, signer and address book operations, by name. */
@@ -240,7 +262,13 @@ export const walletOperations: OperationTable<WalletOperationShapes> = {
     name: "address/list",
     scope: "read",
     args: z.strictObject({ agent }),
-    result: pageSchema(addressEntryView),
+    result: z.object({
+      items: z.array(addressEntryView),
+      next: z.string().min(1).exactOptional(),
+      room: z
+        .array(z.object({ chain: chainRefSchema, used: z.int().min(0), most: z.int().min(1) }))
+        .exactOptional(),
+    }),
   },
   "address/add": {
     ...localWriteFlags,

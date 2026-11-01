@@ -5,11 +5,16 @@ import type { CeilingRefusal } from "../install/ceiling-change.js";
 import type { InstallFacts } from "../install/install-record.js";
 import type { CeilingEditor } from "../install/ports.js";
 import type { RescueCeiling } from "../install/rescue-record.js";
-import { roleOfWalletAccount } from "../install/role-wallet.js";
 import { type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { AgentStore, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { ceilingOutdatedNotice } from "./rescue-address-notice.js";
+import {
+  rescueAccounts,
+  type WalletCeiling,
+  walletCeilings,
+  walletRecipients,
+} from "./wallet-recipients.js";
 
 /** What the rescue address's ceiling changes read, write and announce through. */
 export interface RescueCeilingsOptions {
@@ -26,60 +31,13 @@ export interface RescueCeilingsOptions {
 // so an engine that was off that day still sends it.
 const effectWindowMs = 7 * 86_400_000;
 
-/** One live wallet's ceiling, and the addresses its agent saved with the owner key. */
-interface WalletCeiling {
-  readonly agent: Id<"agt">;
-  readonly ceiling: string;
-  readonly saved: readonly AccountRef[];
-}
-
-const refusalCodes: Readonly<Record<CeilingRefusal, ProtocolErrorCode>> = {
+// The protocol error code of each way custody refuses a change of recipients.
+const recipientRefusalCodes: Readonly<Record<CeilingRefusal, ProtocolErrorCode>> = {
   bad_owner_key: "wallet.bad_owner_key",
-  bad_recipients: "protocol.bad_args",
+  bad_recipients: "address.chain_full",
   not_found: "wallet.not_found",
   too_large: "wallet.ceiling_too_large",
 };
-
-async function savedOf(
-  agents: AgentStore,
-  agent: Id<"agt">,
-  signal: AbortSignal,
-): Promise<readonly [Id<"agt">, readonly AccountRef[]]> {
-  const settings = await agents.get(agent, { signal });
-  const saved = (settings?.addressBook ?? [])
-    .filter((entry) => entry.inCeilingAtMs !== undefined)
-    .map((entry) => entry.account);
-  return [agent, saved];
-}
-
-async function walletCeilings(
-  options: RescueCeilingsOptions,
-  facts: InstallFacts,
-  signal: AbortSignal,
-): Promise<readonly WalletCeiling[]> {
-  const live = facts.wallets.filter((wallet) => wallet.archivedAtMs === undefined);
-  const agents = [...new Set(live.map((wallet) => wallet.agentId))];
-  const books = new Map(
-    await Promise.all(agents.map(async (agent) => savedOf(options.agents, agent, signal))),
-  );
-  // A launch or bridge wallet's address never reaches a ceiling, though a book restored from a
-  // backup may hold it (decisions 0218 and 0307).
-  const payable = (account: AccountRef) =>
-    roleOfWalletAccount(facts.wallets, account, options.chains) === undefined;
-  return live.map((wallet) => ({
-    agent: wallet.agentId,
-    ceiling: wallet.policyId,
-    saved: (books.get(wallet.agentId) ?? []).filter(payable),
-  }));
-}
-
-function recipients(
-  wallet: WalletCeiling,
-  addresses: readonly (AccountRef | undefined)[],
-): readonly AccountRef[] {
-  const listed = addresses.filter((address): address is AccountRef => address !== undefined);
-  return [...new Set([...listed, ...wallet.saved])];
-}
 
 /** A rescue address move the owner key authorizes, as the rule decided it. */
 export interface RescueCeilingMove {
@@ -128,16 +86,17 @@ export async function moveRescueCeilings(
   const { next, ownerKey, signal } = move;
   const targets = await walletCeilings(options, move.facts, signal);
   const pending = next.pendingRescue;
-  const now: Recipients = (wallet) => recipients(wallet, [next.rescueAddress, pending?.address]);
+  const now: Recipients = (wallet) =>
+    walletRecipients(wallet, [next.rescueAddress, pending?.address]);
   const ceilings = targets.map((wallet) => ({ ceiling: wallet.ceiling, recipients: now(wallet) }));
   const set = await options.ceilings.setRecipients({ ownerKey, ceilings }, { signal });
   if (!set.ok || pending === undefined) {
-    return set.ok ? ok(undefined) : err(refusalCodes[set.error]);
+    return set.ok ? ok(undefined) : err(recipientRefusalCodes[set.error]);
   }
   const onEffect = await signedChange(options, move, {
     targets,
     from: now,
-    to: (wallet) => recipients(wallet, [pending.address]),
+    to: (wallet) => walletRecipients(wallet, [pending.address]),
     untilMs: pending.atMs + effectWindowMs,
   });
   const onCancel =
@@ -146,14 +105,14 @@ export async function moveRescueCeilings(
       : await signedChange(options, move, {
           targets,
           from: now,
-          to: (wallet) => recipients(wallet, [next.rescueAddress]),
+          to: (wallet) => walletRecipients(wallet, [next.rescueAddress]),
           untilMs: pending.atMs,
         });
   if (!onEffect.ok) {
-    return err(refusalCodes[onEffect.error]);
+    return err(recipientRefusalCodes[onEffect.error]);
   }
   if (onCancel !== undefined && !onCancel.ok) {
-    return err(refusalCodes[onCancel.error]);
+    return err(recipientRefusalCodes[onCancel.error]);
   }
   return ok({
     onEffect: onEffect.value,
@@ -181,17 +140,16 @@ export async function saveInCeilings(
   options: RescueCeilingsOptions,
   move: SavedAddressMove,
 ): Promise<Result<void, ProtocolErrorCode>> {
-  const { rescueAddress, pendingRescue } = rescueAt(move.facts, options.clock.now());
-  const listed = [rescueAddress, pendingRescue?.address, move.account];
+  const listed = [...rescueAccounts(move.facts, options.clock.now()), move.account];
   const targets = await walletCeilings(options, move.facts, move.signal);
   const ceilings = targets
     .filter((wallet) => wallet.agent === move.agent)
-    .map((wallet) => ({ ceiling: wallet.ceiling, recipients: recipients(wallet, listed) }));
+    .map((wallet) => ({ ceiling: wallet.ceiling, recipients: walletRecipients(wallet, listed) }));
   const set = await options.ceilings.setRecipients(
     { ownerKey: move.ownerKey, ceilings },
     { signal: move.signal },
   );
-  return set.ok ? ok(undefined) : err(refusalCodes[set.error]);
+  return set.ok ? ok(undefined) : err(recipientRefusalCodes[set.error]);
 }
 
 /**

@@ -2,7 +2,7 @@ import { type ChainDefinition, createFamilyRegistry, type FamilyRegistry } from 
 import { createEvmAddressCodec } from "@binference/chain-evm";
 import { createSolanaAddressCodec } from "@binference/chain-solana";
 import { arbitrum, baseMainnet, ethereum, robinhood, solana } from "@binference/chains";
-import { ruleChainIds } from "@binference/custody-privy";
+import { ruleChainIds, ruleChainsOf } from "@binference/custody-privy";
 import type { CeilingAddressParts } from "./ceiling-addresses.js";
 
 // The chains a bridge delivers to from the chains this binference serves (decision 0297), where
@@ -24,8 +24,10 @@ function selfHostedFamilies(): FamilyRegistry {
 export function selfHostedCeilingAddresses(
   chains: readonly ChainDefinition[],
 ): CeilingAddressParts {
+  const definitions = [...chains, ...selfHostedDestinations()];
   return {
     families: selfHostedFamilies(),
-    chainIdsOf: ruleChainIds([...chains, ...selfHostedDestinations()]),
+    chainIdsOf: ruleChainIds(definitions),
+    chainsOfId: ruleChainsOf(definitions),
   };
 }

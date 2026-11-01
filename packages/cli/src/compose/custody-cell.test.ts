@@ -72,7 +72,7 @@ async function editorSubject() {
   const editor = createFakeCeilingEditor({ clock, chains });
   const calls = { contracts: [], perTxNativeBase: 10n ** 18n, dayCaps: [dayCap] };
   editor.put("ceiling-1", [fakeAccounts[0], fakeAccounts[1]], calls);
-  const cell = createCustodyCell();
+  const cell = createCustodyCell(() => undefined);
   cell.hold({ ...opened(), ceilings: editor });
   return Promise.resolve({
     editor: cell.ceilings,
@@ -81,6 +81,7 @@ async function editorSubject() {
     ceiling: "ceiling-1",
     unknownCeiling: "ceiling-9",
     accounts: fakeAccounts,
+    elsewhere: accountRefSchema.parse("fake:2:0x000000e1"),
     venues: { known: "fake-swap", unknown: "no-such-venue" },
     recipients: async () => Promise.resolve(editor.recipients("ceiling-1") ?? []),
     now: () => clock.now(),
@@ -96,7 +97,7 @@ describe("the custody cell", () => {
   );
 
   it("signs nothing and knows no wallet while the engine is locked", async () => {
-    const cell = createCustodyCell();
+    const cell = createCustodyCell(() => undefined);
     expect(cell.isOpen()).toBe(false);
     await expect(cell.signer.account(wallet, chain, live())).resolves.toStrictEqual({
       ok: false,
@@ -127,7 +128,7 @@ describe("the custody cell", () => {
   });
 
   it("signs through the custody it holds, until that is released", async () => {
-    const cell = createCustodyCell();
+    const cell = createCustodyCell(() => undefined);
     const custody = opened();
     cell.hold(custody);
     expect([cell.isOpen(), cell.holds(custody)]).toStrictEqual([true, true]);
@@ -152,7 +153,7 @@ describe("the custody cell", () => {
 
   it("answers nothing on an aborted signal", async () => {
     const stopped = { signal: AbortSignal.abort(new Error("stopped")) };
-    const cell = createCustodyCell();
+    const cell = createCustodyCell(() => undefined);
     await expect(cell.signer.account(wallet, chain, stopped)).rejects.toThrow("stopped");
     await expect(cell.signer.signTransaction({} as never, stopped)).rejects.toThrow("stopped");
     await expect(cell.ceilings.sendSigned({} as never, stopped)).rejects.toThrow("stopped");

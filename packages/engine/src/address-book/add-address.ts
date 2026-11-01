@@ -1,10 +1,4 @@
-import {
-  type AccountRef,
-  accountRefParts,
-  accountRefSchema,
-  type ChainRegistry,
-  recipientHex,
-} from "@binference/chain";
+import type { AccountRef } from "@binference/chain";
 import {
   BinferenceError,
   createSecret,
@@ -16,9 +10,9 @@ import {
 } from "@binference/core";
 import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
+import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import { activeAgent } from "../operations/active-agent.js";
-import { canonicalAccount } from "../operations/canonical-account.js";
 import type { EngineCall } from "../operations/engine-call.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { ConfigJournal } from "../ports.js";
@@ -28,18 +22,32 @@ import {
   saveInCeilings,
   settleRescueCeilings,
 } from "../safety/rescue-ceilings.js";
-import { payeeRefusal } from "./payee-refusal.js";
+import { addressRefusal, walletCheck } from "./address-checks.js";
+import { saveForDestination } from "./destination-ceilings.js";
+import type { DestinationChain } from "./destination-chain.js";
+import { type SavedAccount, savedAccountOf } from "./saved-account.js";
 
 /** What saving an address reads, writes and journals through. */
 export interface AddAddressOptions extends RescueCeilingsOptions {
   readonly journal: ConfigJournal;
   readonly ids: IdSource;
+  /**
+   * The chains a bridge delivers to, where an address may be saved besides the wallets' chains
+   * (decision 0297); none when absent.
+   */
+  readonly destinations?: readonly DestinationChain[];
 }
 
 type AddressEntryView = ResultOf<"address/add">;
 
-/** An address book entry as the address book operations answer it. */
-export function addressEntryView(entry: AddressEntryRecord): AddressEntryView {
+/**
+ * An address book entry as the address book operations answer it, marked `noRoute` when it was
+ * saved for a destination chain no bridge rule of the agent's wallets reaches yet (decision 0313).
+ */
+export function addressEntryView(
+  entry: AddressEntryRecord,
+  reach: { readonly noRoute: boolean } = { noRoute: false },
+): AddressEntryView {
   return {
     entry: entry.id,
     agent: entry.agentId,
@@ -48,12 +56,8 @@ export function addressEntryView(entry: AddressEntryRecord): AddressEntryView {
     usableAt: entry.usableAtMs,
     ...(entry.inCeilingAtMs === undefined ? {} : { inCeilingAt: entry.inCeilingAtMs }),
     createdAt: entry.createdAtMs,
+    ...(reach.noRoute ? { noRoute: true as const } : {}),
   };
-}
-
-function accountOf(chains: ChainRegistry, call: EngineCall<"address/add">) {
-  const typed = accountRefSchema.safeParse(`${call.args.chain}:${call.args.address}`);
-  return typed.success ? canonicalAccount(chains, typed.data) : err("protocol.bad_args" as const);
 }
 
 async function record(
@@ -94,32 +98,18 @@ async function savedEntry(
   return ok(addressEntryView(saved));
 }
 
-// The account's recipient bytes through its chain's family codec; the account is canonical already,
-// so a codec that refuses it is a fault.
-function recipientBytesOf(chains: ChainRegistry, account: AccountRef): string {
-  const { chain, address } = accountRefParts(account);
-  const registered = chains.get(chain);
-  const bytes = registered.ok ? registered.value.family.addressCodec.toBytes(address) : undefined;
-  if (bytes?.ok !== true) {
-    throw new BinferenceError({
-      code: "engine.address_unreadable",
-      message: "A saved address has no recipient bytes in its family's codec.",
-    });
-  }
-  return recipientHex(bytes.value);
-}
-
 async function storeEntry(
   options: AddAddressOptions,
   call: EngineCall<"address/add">,
-  saving: { readonly account: AccountRef; readonly name: string },
+  saving: { readonly saved: SavedAccount; readonly name: string; readonly noRoute: boolean },
 ): Promise<Result<AddressEntryView, ProtocolErrorCode>> {
   const atMs = options.clock.now();
+  const { account, recipientBytes } = saving.saved;
   const entry: AddressEntryRecord = {
     id: options.ids.next("adr"),
     agentId: call.args.agent,
-    account: saving.account,
-    recipientBytes: recipientBytesOf(options.chains, saving.account),
+    account,
+    recipientBytes,
     label: call.args.label,
     usableAtMs: atMs + looseningWaitMs,
     inCeilingAtMs: atMs,
@@ -127,23 +117,46 @@ async function storeEntry(
   };
   const added = await options.agents.addAddress(entry, { signal: call.signal });
   if (!added.ok) {
-    return savedEntry(options, call, saving.account);
+    return savedEntry(options, call, account);
   }
   await record(options, call, { entry: added.value, name: saving.name });
-  return ok(addressEntryView(added.value));
+  return ok(addressEntryView(added.value, { noRoute: saving.noRoute }));
+}
+
+// The account the call names, checked as it may be saved: its chain, its form, and the refusals
+// that need no read on chain.
+async function checkedAccount(
+  options: AddAddressOptions,
+  call: EngineCall<"address/add">,
+  settings: AgentSettings,
+): Promise<Result<SavedAccount, ProtocolErrorCode>> {
+  const parts = { chains: options.chains, destinations: options.destinations ?? [] };
+  const saved = savedAccountOf(parts, call.args);
+  if (!saved.ok) {
+    return saved;
+  }
+  const facts = await options.install.read({ signal: call.signal });
+  const mostPerChain = options.ceilings.mostPerChain;
+  const checks = { ...parts, mostPerChain, nowMs: options.clock.now() };
+  const refusal = addressRefusal(checks, { saved: saved.value, facts, settings });
+  // A full chain refuses only a new entry: one the book holds is answered as it is.
+  const held = settings.addressBook.some((entry) => entry.account === saved.value.account);
+  return refusal === undefined || (held && refusal === "address.chain_full") ? saved : err(refusal);
 }
 
 /**
- * Saves an address in an agent's address book with the owner key (spec 5, section 4; decision
- * 0091): first in the ceiling of each of the agent's live wallets, then in the book, journaled and
- * pushed as `config/changed`; while a new rescue address waits, the owner key signs its changes
- * again over the ceilings as they list now. Send level 2 lets a send pay it from 24 hours after it
- * was saved (decision 0111). An address the book holds already is answered as it is, and nothing
- * changes. The owner key reaches this call over IPC only, as the protocol server keeps it; a wrong
- * one is `wallet.bad_owner_key`, an address its chain cannot read `protocol.bad_args`, a launch
- * wallet of the install `address.launch_wallet` and a bridge wallet `address.bridge_wallet`, which
- * no ceiling may list (decisions 0218 and 0307), a contract the registry lists for a venue
- * `address.venue_contract`, and a ceiling custody does not hold `wallet.not_found`.
+ * Saves an address in an agent's address book with the owner key (spec 5, section 4; decisions
+ * 0091 and 0313): first in the ceiling of each of the agent's live wallets, then in the book,
+ * journaled and pushed as `config/changed`; while a new rescue address waits, the owner key signs
+ * its changes again over the ceilings as they list now. An address on a chain of the agent's
+ * wallets joins the send rules of that chain; one on a destination chain joins the bridge rules
+ * that reach it, as each wallet's call rules are written again. Send level 2 lets a send pay it
+ * from 24 hours after it was saved (decision 0111). An address the book holds already is answered
+ * as it is, and nothing changes. The owner key reaches this call over IPC only, as the protocol
+ * server keeps it; a wrong one is `wallet.bad_owner_key`. Its chain and form are checked first
+ * (see `savedAccountOf`), then the refusals of `addressRefusal`, then, on Solana, the account is
+ * read: a program or a token account is `address.not_wallet` (decision 0298). A ceiling custody
+ * does not hold is `wallet.not_found`.
  */
 export async function addAddress(
   options: AddAddressOptions,
@@ -154,31 +167,38 @@ export async function addAddress(
   if (!found.ok) {
     return found;
   }
-  const account = accountOf(options.chains, call);
-  if (!account.ok) {
-    return account;
+  const checked = await checkedAccount(options, call, found.value);
+  if (!checked.ok) {
+    return checked;
   }
-  const { wallets } = await options.install.read({ signal });
-  const refusal = payeeRefusal(wallets, account.value, options.chains);
-  if (refusal !== undefined) {
-    return err(refusal);
+  const saved = checked.value;
+  const held = found.value.addressBook.find((entry) => entry.account === saved.account);
+  if (held !== undefined) {
+    return ok(addressEntryView(held));
   }
-  const saved = found.value.addressBook.find((entry) => entry.account === account.value);
-  if (saved !== undefined) {
-    return ok(addressEntryView(saved));
+  const isWallet = await walletCheck(saved, signal);
+  if (!isWallet.ok) {
+    return isWallet;
   }
   await settleRescueCeilings(options, signal);
   const facts = await options.install.read({ signal });
   const ownerKey = createSecret(args.ownerKey);
-  const move = { facts, agent: args.agent, account: account.value, ownerKey, signal };
-  const inCeiling = await saveInCeilings(options, move);
+  const move = { facts, agent: args.agent, account: saved.account, ownerKey, signal };
+  const inCeiling = saved.isWalletChain
+    ? await saveInCeilings(options, move)
+    : await saveForDestination(options, {
+        ...move,
+        record: found.value.agent,
+        author: authorOf(call.caller),
+      });
   if (!inCeiling.ok) {
     return inCeiling;
   }
-  const stored = await storeEntry(options, call, {
-    account: account.value,
-    name: found.value.agent.name,
-  });
+  const after = inCeiling.value ?? [];
+  const noRoute =
+    !saved.isWalletChain && !after.some(({ read }) => read.bridged.includes(saved.account));
+  const name = found.value.agent.name;
+  const stored = await storeEntry(options, call, { saved, name, noRoute });
   // A refusal here keeps the changes signed before; custody refuses them once due, and says so.
   await resignRescueCeilings(options, ownerKey, signal);
   return stored;

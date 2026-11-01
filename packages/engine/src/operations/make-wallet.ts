@@ -12,15 +12,15 @@ import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
 import type { WalletDraft } from "../install/install-record.js";
 import type { WalletMaker } from "../install/ports.js";
-import { roleOfWalletAccount, roleWalletOf } from "../install/role-wallet.js";
+import { roleWalletOf } from "../install/role-wallet.js";
 import type { WalletRefusal } from "../install/wallet-request.js";
-import { rescueAt } from "../policy/rescue-change.js";
 import type { ConfigJournal } from "../ports.js";
 import {
   type RescueCeilingsOptions,
   resignRescueCeilings,
   settleRescueCeilings,
 } from "../safety/rescue-ceilings.js";
+import { rescueAccounts, savedPayees, walletRecipients } from "../safety/wallet-recipients.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { activeAgent } from "./active-agent.js";
 import type { EngineCall } from "./engine-call.js";
@@ -37,7 +37,7 @@ export interface MakeWalletOptions extends RescueCeilingsOptions {
 
 const refusalCodes: Readonly<Record<WalletRefusal, ProtocolErrorCode>> = {
   bad_owner_key: "wallet.bad_owner_key",
-  bad_recipients: "protocol.bad_args",
+  bad_recipients: "address.chain_full",
 };
 
 // The rescue address in effect, a new one that waits, and the agent's saved addresses, none of them
@@ -48,16 +48,12 @@ async function recipientsOf(
   signal: AbortSignal,
 ): Promise<Result<readonly AccountRef[], ProtocolErrorCode>> {
   const facts = await options.install.read({ signal });
-  const { rescueAddress, pendingRescue } = rescueAt(facts, options.clock.now());
-  if (rescueAddress === undefined) {
+  const rescues = rescueAccounts(facts, options.clock.now());
+  if (rescues[0] === undefined) {
     return err("rescue.no_address");
   }
-  const saved = settings.addressBook
-    .filter((entry) => entry.inCeilingAtMs !== undefined)
-    .map((entry) => entry.account)
-    .filter((account) => roleOfWalletAccount(facts.wallets, account, options.chains) === undefined);
-  const waiting = pendingRescue === undefined ? [] : [pendingRescue.address];
-  return ok([...new Set([rescueAddress, ...waiting, ...saved])]);
+  const saved = savedPayees(settings.addressBook, { facts, chains: options.chains });
+  return ok(walletRecipients({ saved }, rescues));
 }
 
 // Why a wallet of each role is refused: the agent holds a live one, or no venue marks a call only

@@ -50,7 +50,7 @@ function composeWith(chainsConfig: ChainsConfig) {
   return composeExecutor({
     stores: createMemoryEngineStores(),
     positions: createMemoryPositionStore(),
-    custody: createCustodyCell().signer,
+    custody: createCustodyCell(() => undefined).signer,
     wallets: createFakeWalletFacts(new Map(), {
       nativeBalanceBase: 0n,
       ceilingPerTxNativeBase: 0n,

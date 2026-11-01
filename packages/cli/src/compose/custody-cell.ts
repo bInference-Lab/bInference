@@ -1,5 +1,6 @@
 import type { Signer } from "@binference/chain";
 import { BinferenceError, err } from "@binference/core";
+import { maxListed } from "@binference/custody-privy";
 import type {
   CeilingEditor,
   SignerRevoker,
@@ -47,9 +48,13 @@ interface Held {
   held: OpenedCustody | undefined;
 }
 
-// The ceilings of the custody held, refused while none is.
-function ceilingsIn(cell: Held): CeilingEditor {
+// The ceilings of the custody held, refused while none is; a stored copy reads as custody's
+// adapter reads one, locked or not.
+function ceilingsIn(cell: Held, readStored: CeilingEditor["readStored"]): CeilingEditor {
   return {
+    mostPerChain: maxListed,
+    readStored: (policy) =>
+      cell.held === undefined ? readStored(policy) : cell.held.ceilings.readStored(policy),
     read: async (ceiling, options) =>
       cell.held === undefined ? refuseLocked(options) : cell.held.ceilings.read(ceiling, options),
     setRecipients: async (request, options) =>
@@ -71,8 +76,11 @@ function ceilingsIn(cell: Held): CeilingEditor {
   };
 }
 
-/** Creates an empty {@link CustodyCell}: the engine starts locked. */
-export function createCustodyCell(): CustodyCell {
+/**
+ * Creates an empty {@link CustodyCell}: the engine starts locked. While it is, a wallet's stored
+ * copy of its ceiling reads through `readStored`, as custody's adapter reads one.
+ */
+export function createCustodyCell(readStored: CeilingEditor["readStored"]): CustodyCell {
   const cell: Held = { held: undefined };
   return {
     signer: {
@@ -89,7 +97,7 @@ export function createCustodyCell(): CustodyCell {
           : cell.held.signer.signTransaction(request, options);
       },
     },
-    ceilings: ceilingsIn(cell),
+    ceilings: ceilingsIn(cell, readStored),
     walletMaker: {
       make: async (request, options) =>
         cell.held === undefined

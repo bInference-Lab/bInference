@@ -1,11 +1,13 @@
 import {
   type AccountRef,
   accountRefParts,
+  accountRefSchema,
   type ChainRef,
   type FamilyRegistry,
   recipientBytesOf,
+  recipientHexBytes,
 } from "@binference/chain";
-import type { ChainAddresses } from "@binference/custody-privy";
+import type { ChainAddresses, HeldBridge } from "@binference/custody-privy";
 
 /** How the accounts the engine names become the addresses a ceiling lists per chain. */
 export interface CeilingAddressParts {
@@ -13,6 +15,8 @@ export interface CeilingAddressParts {
   readonly families: FamilyRegistry;
   /** The ids a ceiling's rules bind for a chain; none for a chain no rule pays on. */
   readonly chainIdsOf: (chain: ChainRef) => readonly string[];
+  /** The chains an id a ceiling's rules bind stands for, the reverse of `chainIdsOf`. */
+  readonly chainsOfId: (id: string) => readonly ChainRef[];
 }
 
 /**
@@ -38,4 +42,27 @@ export function ceilingAddressesOf(
     chainId,
     addresses: [...new Set(addresses)],
   }));
+}
+
+/**
+ * Each account a ceiling's bridge rules pay, on the chain each destination id stands for, in the
+ * canonical form of its family's codec: the reverse of {@link ceilingAddressesOf}. A recipient a
+ * codec cannot read, or an id no chain stands for, names no account.
+ */
+export function bridgedAccountsOf(
+  bridges: readonly Pick<HeldBridge, "destinationChainId" | "recipients">[],
+  parts: CeilingAddressParts,
+): readonly AccountRef[] {
+  const accounts = bridges.flatMap(({ destinationChainId, recipients }) =>
+    parts.chainsOfId(destinationChainId).flatMap((chain) => {
+      const codec = parts.families.codecOf(chain);
+      return recipients.flatMap((recipient) => {
+        const bytes = recipientHexBytes(recipient.toLowerCase());
+        const address = codec.ok && bytes.ok ? codec.value.fromBytes(bytes.value) : undefined;
+        const account = address?.ok === true ? `${chain}:${address.value}` : undefined;
+        return account === undefined ? [] : [accountRefSchema.parse(account)];
+      });
+    }),
+  );
+  return [...new Set(accounts)];
 }

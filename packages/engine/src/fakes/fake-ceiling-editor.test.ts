@@ -39,6 +39,7 @@ describe("the fake ceiling editor", () => {
           ceiling: "ceiling-1",
           unknownCeiling: "ceiling-9",
           accounts,
+          elsewhere: accountRefSchema.parse("fake:2:0x000000e1"),
           venues: { known: "fake-swap", unknown: "no-such-venue" },
           recipients: async () => Promise.resolve(listed(editor.recipients("ceiling-1"))),
           now: () => clock.now(),

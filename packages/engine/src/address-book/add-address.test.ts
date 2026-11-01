@@ -184,10 +184,10 @@ describe("saving an address with the owner key", () => {
     expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
   });
 
-  it("refuses an address its chain cannot read, and an unknown agent", async () => {
+  it("refuses an address its chain cannot read, with its reason, and an unknown agent", async () => {
     const test = await withCeilings();
 
-    expect(await add(test, { address: "not-an-address" })).toStrictEqual(err("protocol.bad_args"));
+    expect(await add(test, { address: "not-an-address" })).toStrictEqual(err("address.malformed"));
     expect(await add(test, { agent: unknownAgent })).toStrictEqual(err("agent.not_found"));
     expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
   });
@@ -263,6 +263,6 @@ describe("saving an address with the owner key", () => {
   it("refuses an empty address", async () => {
     const test = await withCeilings();
 
-    expect(await add(test, { address: "" })).toStrictEqual(err("protocol.bad_args"));
+    expect(await add(test, { address: "" })).toStrictEqual(err("address.malformed"));
   });
 });

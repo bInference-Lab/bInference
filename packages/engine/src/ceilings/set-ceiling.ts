@@ -1,4 +1,4 @@
-import type { ChainRef, ChainRegistry } from "@binference/chain";
+import type { AccountRef, ChainRef, ChainRegistry } from "@binference/chain";
 import { type Clock, createSecret, err, ok, type Result } from "@binference/core";
 import {
   type CeilingChanges,
@@ -15,6 +15,7 @@ import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall } from "../operations/engine-call.js";
 import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import { ceilingRecipients } from "../safety/wallet-recipients.js";
 import {
   announceRewrite,
   type HeldCeiling,
@@ -37,8 +38,10 @@ export interface SetCeilingOptions {
 
 type Call = EngineCall<"ceiling/set">;
 
-const refusalCodes: Readonly<Record<CallsRefusal, ProtocolErrorCode>> = {
+/** The protocol error code of each way custody refuses a change of calls. */
+export const callsRefusalCodes: Readonly<Record<CallsRefusal, ProtocolErrorCode>> = {
   bad_owner_key: "wallet.bad_owner_key",
+  bad_recipients: "address.chain_full",
   not_found: "wallet.not_found",
   no_calls: "protocol.bad_args",
   no_bridge_calls: "wallet.no_bridge_calls",
@@ -97,9 +100,13 @@ function refusalOf(
 // a wallet with a role keeps that role's rules, as a launch wallet its launch rules (decision 0217).
 function callsOf(
   options: SetCeilingOptions,
-  changes: CeilingChanges,
-  held: readonly HeldCeiling[],
+  change: {
+    readonly changes: CeilingChanges;
+    readonly held: readonly HeldCeiling[];
+    readonly recipients: ReadonlyMap<string, readonly AccountRef[]>;
+  },
 ): readonly CeilingCalls[] {
+  const { changes, held, recipients } = change;
   const { dayCapUsdMicros } = changes;
   // A ceiling that allows no call names no cap, so a change of the caps leaves it as it is.
   const changed =
@@ -114,6 +121,7 @@ function callsOf(
       },
       resize,
       wallet.role === undefined ? {} : { role: wallet.role },
+      { recipients: recipients.get(wallet.policyId) ?? [] },
     ),
   );
 }
@@ -147,8 +155,9 @@ async function walletsOf(
  * owner key over IPC (decision 0132): the venues whose registry contracts it may reach and the
  * most native coin one call may carry, on the chains each ceiling enables. A change of the 24-hour
  * caps comes alone, above 0, and resizes the caps of every live wallet of the install, whose sums
- * they share (decision 0151); any other is `protocol.bad_args`. Its chains and
- * recipients stay: naming other chains is `protocol.bad_args`, as a new chain needs a new wallet.
+ * they share (decision 0151); any other is `protocol.bad_args`. Its chains and send recipients
+ * stay: naming other chains is `protocol.bad_args`, as a new chain needs a new wallet. Its bridge
+ * rules pay again the addresses saved for each destination (decision 0313).
  * No venue or an unknown one is `protocol.bad_args`; removing a venue the agent's limits name, in
  * effect or waiting, is `limit.venue_in_use`; a wrong key is `wallet.bad_owner_key`. Each wallet's
  * stored copy of its ceiling is then read back from custody; a change that moved one is
@@ -173,13 +182,14 @@ export async function setCeiling(
   if (refusal !== undefined) {
     return err(refusal);
   }
-  const ceilings = callsOf(options, args.changes, before);
+  const recipients = await ceilingRecipients(options, signal);
+  const ceilings = callsOf(options, { changes: args.changes, held: before, recipients });
   const set = await options.ceilings.setCalls(
     { ownerKey: createSecret(args.ownerKey), ceilings },
     { signal },
   );
   if (!set.ok && set.error === "bad_owner_key") {
-    return err(refusalCodes[set.error]);
+    return err(callsRefusalCodes[set.error]);
   }
   // A refusal part way may leave earlier ceilings changed: every copy is read back all the same.
   const after = await refreshCeilings(options, wallets, signal);
@@ -187,7 +197,7 @@ export async function setCeiling(
   await announceRewrite(options, moved, { before, after });
   const named = after.find((item) => item.wallet.id === args.wallet);
   if (!set.ok || named === undefined) {
-    return err(set.ok ? "wallet.not_found" : refusalCodes[set.error]);
+    return err(set.ok ? "wallet.not_found" : callsRefusalCodes[set.error]);
   }
   return ok(ceilingViewOf(options.chains, { ...named, wallet: named.wallet.id }));
 }

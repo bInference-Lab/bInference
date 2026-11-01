@@ -165,6 +165,8 @@ export interface TestEngineOptions {
   readonly launchImages?: LaunchImageSource;
   /** The tokens whose address holds code, as a token that exists does; none when absent. */
   readonly tokensWithCode?: readonly AssetRef[];
+  /** The chains a bridge delivers to, where an address may be saved too; none when absent. */
+  readonly destinations?: EngineOptions["destinations"];
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -271,9 +273,13 @@ function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter
 // as the test asks.
 function switchesOf(
   options: TestEngineOptions,
-): Pick<EngineOptions, "liveOrderFills" | "launchFeed" | "uploads" | "botImages" | "quoteAssets"> {
+): Pick<
+  EngineOptions,
+  "liveOrderFills" | "launchFeed" | "uploads" | "botImages" | "quoteAssets" | "destinations"
+> {
   return {
     liveOrderFills: options.liveOrderFills === true,
+    ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
     ...(options.uploads === undefined ? {} : { uploads: options.uploads }),

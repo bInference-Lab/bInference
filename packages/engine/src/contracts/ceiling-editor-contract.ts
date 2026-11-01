@@ -21,6 +21,8 @@ export interface CeilingEditorSubject {
   /** A ceiling id custody does not hold. */
   readonly unknownCeiling: string;
   readonly accounts: readonly [AccountRef, AccountRef, AccountRef];
+  /** An account on a chain the ceiling does not enable, as one saved for a bridge's destination. */
+  readonly elsewhere: AccountRef;
   /** A venue with a contract on every chain the ceiling enables, and one with none. */
   readonly venues: { readonly known: string; readonly unknown: string };
   /** What the ceiling lets a send pay now, sorted. */
@@ -201,6 +203,36 @@ async function refusesAborted(subject: CeilingEditorSubject): Promise<void> {
   assert.deepEqual(await subject.recipients(), sorted([accounts[0], accounts[1]]));
 }
 
+// An account saved for another chain never joins a send rule, whether the recipients or the calls
+// change (decision 0313).
+async function keepsSendsOnTheirChain(subject: CeilingEditorSubject): Promise<void> {
+  const { editor, ownerKey, ceiling, accounts, elsewhere } = subject;
+  const recipients = [accounts[0], accounts[1], elsewhere];
+  const request = { ownerKey, ceilings: [{ ceiling, recipients }] };
+  assert.deepEqual(await editor.setRecipients(request, live()), ok(undefined));
+  const sends = sorted([accounts[0], accounts[1]]);
+  assert.deepEqual(await subject.recipients(), sends);
+  const [calls] = callsOf(subject, subject.venues.known).ceilings;
+  assert.ok(calls !== undefined);
+  const named = { ...calls, recipients: [accounts[0], elsewhere] };
+  assert.deepEqual(await editor.setCalls({ ownerKey, ceilings: [named] }, live()), ok(undefined));
+  const read = await editor.read(ceiling, live());
+  assert.ok(read.ok);
+  assert.deepEqual(sorted(read.value.recipients), sends);
+  assert.ok(!read.value.recipients.includes(elsewhere));
+  assert.ok(read.value.bridged.every((account) => account === elsewhere));
+}
+
+// The room one chain's list holds, and a stored copy that reads as custody reads the ceiling.
+async function readsItsLimitAndCopies(subject: CeilingEditorSubject): Promise<void> {
+  const { editor, ceiling } = subject;
+  assert.ok(editor.mostPerChain >= 1 && editor.mostPerChain % 1 === 0);
+  const read = await editor.read(ceiling, live());
+  assert.ok(read.ok);
+  assert.deepEqual(editor.readStored(read.value.policy), read.value);
+  assert.equal(editor.readStored({ rules: "none" }), undefined);
+}
+
 /** The contract every `CeilingEditor` adapter passes. */
 export function ceilingEditorContract(harness: CeilingEditorHarness): readonly ContractCheck[] {
   const create = async (): Promise<CeilingEditorSubject> => harness.create();
@@ -228,5 +260,15 @@ export function ceilingEditorContract(harness: CeilingEditorHarness): readonly C
       resizesDayCaps,
     ),
     checkOn("refuses every call on an aborted signal and changes nothing", create, refusesAborted),
+    checkOn(
+      "never lists an account saved for another chain in a send rule",
+      create,
+      keepsSendsOnTheirChain,
+    ),
+    checkOn(
+      "names the most one chain's list holds, and reads a stored copy as the ceiling",
+      create,
+      readsItsLimitAndCopies,
+    ),
   ];
 }

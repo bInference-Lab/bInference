@@ -5,6 +5,7 @@ import {
   type CallsRefusal,
   capsWithTokens,
   type CeilingChain,
+  type ChainAddresses,
   type ChainCaps,
   type ChainCapPlan,
   isPrivyId,
@@ -23,6 +24,11 @@ export interface CappedCallsTarget {
   readonly chains: readonly CeilingChain[];
   /** The owner key's quorum, which owns the ceiling; null when Privy names none. */
   readonly owner: string | null;
+  /**
+   * Per chain, the addresses the wallet may pay, which its bridge rules pay those of each
+   * destination from (decision 0313); absent, they pay whom they pay now.
+   */
+  readonly addresses?: readonly ChainAddresses[];
 }
 
 /** How a change of calls plans the ceiling, and where it finds and keeps the caps it makes. */
@@ -81,7 +87,10 @@ export async function planCappedCalls(
 ): Promise<Result<PlannedEdits, CallsRefusal>> {
   const { api, signal } = input;
   const chains = named(target.chains, input);
-  const planned = await planCeilingCalls(api, { policy: target.policy, chains }, { signal });
+  const { addresses } = target;
+  const paying = addresses === undefined ? {} : { recipients: addresses, bridged: addresses };
+  const asked = { policy: target.policy, ...paying };
+  const planned = await planCeilingCalls(api, { ...asked, chains }, { signal });
   const { owner } = target;
   if (planned.ok || planned.error !== "uncapped_token" || owner === null || !isPrivyId(owner)) {
     return planned;
@@ -89,5 +98,5 @@ export async function planCappedCalls(
   const grown = await grownChains({ chains, owner }, input);
   return grown === undefined
     ? err("uncapped_token")
-    : planCeilingCalls(api, { policy: target.policy, chains: grown }, { signal });
+    : planCeilingCalls(api, { ...asked, chains: grown }, { signal });
 }

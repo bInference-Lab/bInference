@@ -23,3 +23,15 @@ export function ruleChainIds(
     return id === undefined ? [] : [id];
   };
 }
+
+/**
+ * The chains each id a ceiling's rules bind stands for, the reverse of {@link ruleChainIds}: an
+ * EIP-155 id's EVM chain among the definitions; none for an id no definition gives.
+ */
+export function ruleChainsOf(
+  definitions: readonly ChainDefinition[],
+): (id: string) => readonly ChainRef[] {
+  const idsOf = ruleChainIds(definitions);
+  const chains = definitions.map((definition) => chainRefSchema.parse(definition.id));
+  return (id) => chains.filter((chain) => idsOf(chain).includes(id));
+}

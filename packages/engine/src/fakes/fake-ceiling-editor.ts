@@ -1,6 +1,5 @@
 import {
   type AccountRef,
-  accountRefParts,
   accountRefSchema,
   type ChainRef,
   type ChainRegistry,
@@ -21,8 +20,18 @@ import type {
   CeilingRecipients,
   SignedCeilingChange,
   SignedChangeRefusal,
+  SignRecipientsRequest,
 } from "../install/ceiling-change.js";
 import type { CeilingEditor } from "../install/ports.js";
+import {
+  chainsOf,
+  offEnabled,
+  oneCoin,
+  onEnabled,
+  readOf,
+  readStoredOf,
+} from "./fake-ceiling-read.js";
+import type { FakeBridges } from "./fake-ceiling-read.js";
 import { memoryCall } from "./memory-call.js";
 
 /** The owner key code the fake ceiling editor takes; any other code is another key. */
@@ -44,8 +53,16 @@ export interface FakeCalls {
 
 /** A ceiling editor in memory, whose ceilings a test sets up and reads. */
 export interface FakeCeilingEditor extends CeilingEditor {
-  /** What a ceiling lists now, sorted; undefined for one the fake does not hold. */
+  /**
+   * Whom a ceiling's send rules list now, on the chains it enables, sorted; undefined for one the
+   * fake does not hold.
+   */
   recipients(ceiling: string): readonly AccountRef[] | undefined;
+  /**
+   * Whom a ceiling lets a bridge pay, on chains it does not enable, sorted, as custody derives its
+   * bridge rules from the accounts it was given (decision 0313); undefined for one it does not hold.
+   */
+  bridged(ceiling: string): readonly AccountRef[] | undefined;
   /**
    * Holds a ceiling that lists these recipients, as `binference init` leaves one; it lets a call
    * reach no contract and carry one coin, unless `calls` says otherwise.
@@ -129,42 +146,14 @@ function sendAll(
   return ok(undefined);
 }
 
-const oneCoin: FakeCalls = { contracts: [], perTxNativeBase: 10n ** 18n };
-
-function chainsOf(recipients: readonly AccountRef[]): readonly ChainRef[] {
-  return [...new Set(recipients.map((account) => accountRefParts(account).chain))];
-}
-
-// A held ceiling as custody reads it: the chains of its recipients, and what its calls may do.
-function readOf(recipients: readonly AccountRef[], calls: FakeCalls): CeilingRead {
-  const { contracts, perTxNativeBase } = calls;
-  // Each function rides in the policy as a JSON ABI entry with no inputs, as a call rule holds it.
-  const policy = jsonValueSchema.parse({
-    contracts: [...contracts],
-    perTxNativeBase: String(perTxNativeBase),
-    recipients: [...recipients],
-    functions: (calls.functions ?? []).map((name) => ({ type: "function", name, inputs: [] })),
-  });
-  const dayCaps = calls.dayCaps ?? [];
-  const launchCalls = calls.launchCalls ?? [];
-  const functions = calls.functions ?? [];
-  const chains = chainsOf(recipients);
-  return {
-    chains,
-    contracts,
-    perTxNativeBase,
-    recipients,
-    dayCaps,
-    launchCalls,
-    functions,
-    policy,
-  };
-}
-
-/** The ceilings and calls the fake holds, and the registry its venues' contracts come from. */
+/**
+ * The ceilings and calls the fake holds, the chains each enables, and the registry its venues'
+ * contracts come from.
+ */
 interface Held {
   readonly ceilings: Ceilings;
   readonly calls: Map<string, FakeCalls>;
+  readonly enabled: Map<string, readonly ChainRef[]>;
   readonly chains?: ChainRegistry;
   readonly venues?: readonly VenueDeclaration[];
   readonly functionsOf?: FakeCeilingEditorOptions["functionsOf"];
@@ -247,11 +236,11 @@ function callsFor(
   asked: CallsRequest["ceilings"][number],
 ): Result<FakeCalls, CallsRefusal> {
   const { ceiling, venues, perTxNativeBase, dayCapUsdMicros, role } = asked;
-  const recipients = held.ceilings.get(ceiling);
-  if (recipients === undefined) {
+  const chains = held.enabled.get(ceiling);
+  if (chains === undefined) {
     return err("not_found");
   }
-  const each = chainsOf(recipients).map((chain) => contractsOn(held, chain, { venues, role }));
+  const each = chains.map((chain) => contractsOn(held, chain, { venues, role }));
   if (each.some((contracts) => contracts.length === 0)) {
     return err(emptyRefusals[role ?? "main"]);
   }
@@ -277,7 +266,42 @@ function setCalls(held: Held, request: CallsRequest): Result<void, CallsRefusal>
   for (const [ceiling, calls] of changes) {
     held.calls.set(ceiling, calls);
   }
+  // Custody derives a ceiling's bridge rules from the accounts given and leaves its sends alone.
+  for (const { ceiling, recipients } of request.ceilings) {
+    const chains = held.enabled.get(ceiling) ?? [];
+    const sends = onEnabled(held.ceilings.get(ceiling) ?? [], chains);
+    if (recipients !== undefined) {
+      held.ceilings.set(ceiling, sorted([...sends, ...offEnabled(recipients, chains)]));
+    }
+  }
   return ok(undefined);
+}
+
+// A held ceiling as custody reads it, or `not_found` for one the fake does not hold.
+function readHeld(
+  held: Held,
+  asked: { readonly ceiling: string; readonly bridges: FakeBridges },
+): Result<CeilingRead, "not_found"> {
+  const accounts = held.ceilings.get(asked.ceiling);
+  return accounts === undefined
+    ? err("not_found")
+    : ok(
+        readOf(accounts, held.enabled.get(asked.ceiling) ?? [], {
+          calls: held.calls.get(asked.ceiling) ?? oneCoin,
+          bridges: asked.bridges,
+        }),
+      );
+}
+
+// A change signed ahead carries its changes in its payload; only the owner key signs one.
+function signAll(request: SignRecipientsRequest): Result<SignedCeilingChange, CeilingRefusal> {
+  if (!isOwner(request.ownerKey)) {
+    return err("bad_owner_key");
+  }
+  const payload = jsonValueSchema.parse(
+    request.changes.map(({ ceiling, from, to }) => ({ ceiling, from: [...from], to: [...to] })),
+  );
+  return ok({ untilMs: request.untilMs, payload });
 }
 
 /** What the fake ceiling editor keeps time by, and where its venues' contracts come from. */
@@ -301,50 +325,49 @@ export interface FakeCeilingEditorOptions {
     venues: readonly string[],
     ceiling: { readonly role: WalletRole | undefined },
   ) => readonly string[];
+  /** The chains its ceilings' bridge rules reach; every chain a ceiling does not enable when absent. */
+  readonly bridges?: FakeBridges;
 }
 
 /**
- * Creates the {@link FakeCeilingEditor}: ceilings in memory, owned by {@link fakeOwnerKeyCode}.
+ * Creates the {@link FakeCeilingEditor}: ceilings in memory, owned by {@link fakeOwnerKeyCode},
+ * each enabling the chains of the recipients it was put with. It lists at most 100 addresses for
+ * one chain, as Privy's `in` does.
  * A change signed ahead carries its changes in its payload, and expires by the clock. A change of
  * calls is checked on every ceiling before any changes.
  */
 export function createFakeCeilingEditor(options: FakeCeilingEditorOptions): FakeCeilingEditor {
   const ceilings: Ceilings = new Map();
   const calls = new Map<string, FakeCalls>();
+  const enabled = new Map<string, readonly ChainRef[]>();
   const store: Held = {
     ceilings,
     calls,
+    enabled,
     ...(options.chains === undefined ? {} : { chains: options.chains }),
     ...(options.venues === undefined ? {} : { venues: options.venues }),
     ...(options.functionsOf === undefined ? {} : { functionsOf: options.functionsOf }),
   };
   return {
+    mostPerChain: 100,
     read: async (ceiling, call) =>
-      memoryCall(call, () => {
-        const held = ceilings.get(ceiling);
-        return held === undefined
-          ? err("not_found" as const)
-          : ok(readOf(held, calls.get(ceiling) ?? oneCoin));
-      }),
+      memoryCall(call, () => readHeld(store, { ceiling, bridges: options.bridges ?? {} })),
+    readStored: readStoredOf,
     recipients: (ceiling) => {
       const held = ceilings.get(ceiling);
-      return held === undefined ? undefined : sorted(held);
+      return held === undefined ? undefined : onEnabled(held, enabled.get(ceiling) ?? []);
+    },
+    bridged: (ceiling) => {
+      const held = ceilings.get(ceiling);
+      return held === undefined ? undefined : offEnabled(held, enabled.get(ceiling) ?? []);
     },
     put: (ceiling, recipients, held = oneCoin) => {
       ceilings.set(ceiling, sorted(recipients));
       calls.set(ceiling, held);
+      enabled.set(ceiling, chainsOf(recipients));
     },
     setRecipients: async (request, call) => memoryCall(call, () => setAll(ceilings, request)),
-    signRecipients: async ({ ownerKey, changes, untilMs }, call) =>
-      memoryCall(call, (): Result<SignedCeilingChange, CeilingRefusal> => {
-        if (!isOwner(ownerKey)) {
-          return err("bad_owner_key");
-        }
-        const payload = jsonValueSchema.parse(
-          changes.map(({ ceiling, from, to }) => ({ ceiling, from: [...from], to: [...to] })),
-        );
-        return ok({ untilMs, payload });
-      }),
+    signRecipients: async (request, call) => memoryCall(call, () => signAll(request)),
     sendSigned: async (change, call) =>
       memoryCall(call, () => sendAll(ceilings, change, options.clock.now())),
     setCalls: async (request, call) => memoryCall(call, () => setCalls(store, request)),

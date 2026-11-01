@@ -134,6 +134,7 @@ async function subject() {
     ceiling: policy.id,
     unknownCeiling: "nosuchpolicy000000000000",
     accounts,
+    elsewhere: accountRefSchema.parse(`eip155:8453:${unsaved}`),
     venues: { known: "swap", unknown: "none" },
     recipients,
     now: () => clock.now(),
