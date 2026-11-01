@@ -10019,7 +10019,9 @@
         "plugins/relay/src/index.ts",
         "plugins/relay/src/testing.ts",
         "plugins/spaceid/src/index.ts",
-        "plugins/spaceid/src/testing.ts"
+        "plugins/spaceid/src/testing.ts",
+        "plugins/stakehub/src/index.ts",
+        "plugins/stakehub/src/testing.ts"
       ],
       "rules": {"oxc/no-barrel-file": "off", "guards/no-reexport-file": "off"}
     }
