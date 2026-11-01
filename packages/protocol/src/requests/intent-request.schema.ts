@@ -165,6 +165,12 @@ export type BuyTerms = Omit<BuyRequest, ActorFields>;
 /** A sell's terms: what the agent names, without who acts, which its runtime fills. */
 export type SellTerms = Omit<SellRequest, ActorFields>;
 
+/** A send's terms: what the agent names, without who acts, which its runtime fills. */
+export type SendTerms = Omit<SendRequest, ActorFields>;
+
+/** A bridge's terms: what the agent names, without who acts, which its runtime fills. */
+export type BridgeTerms = Omit<BridgeRequest, ActorFields>;
+
 /**
  * A token launch's terms as the agent drafts them (decision 0285): without who acts or the
  * picture, which the engine fills from the owner's own photo or `none`.
@@ -306,6 +312,21 @@ export const buyTermsSchema: z.ZodType<BuyTerms> = z.strictObject({ ...buyFields
 
 /** Parses a sell's terms, as {@link swapTermsSchema} does a swap's. */
 export const sellTermsSchema: z.ZodType<SellTerms> = z.strictObject({ ...sellFields, reason });
+
+/** Parses a send's terms, as {@link swapTermsSchema} does a swap's. */
+export const sendTermsSchema: z.ZodType<SendTerms> = z.strictObject({
+  amount: sendShape.amount,
+  to: sendShape.to,
+  reason,
+});
+
+/** Parses a bridge's terms, as {@link swapTermsSchema} does a swap's. */
+export const bridgeTermsSchema: z.ZodType<BridgeTerms> = z.strictObject({
+  amount: bridgeShape.amount,
+  toChain: bridgeShape.toChain,
+  to: bridgeShape.to,
+  reason,
+});
 
 /** Parses a launch's terms, as {@link swapTermsSchema} does a swap's; an image is refused too. */
 export const launchTermsSchema: z.ZodType<LaunchTerms> = z.strictObject({

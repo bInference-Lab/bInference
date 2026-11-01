@@ -1,5 +1,7 @@
 import { BinferenceError } from "@binference/core";
 import {
+  type BridgeTerms,
+  bridgeTermsSchema,
   type BuyTerms,
   buyTermsSchema,
   type IntentRequest,
@@ -9,6 +11,8 @@ import {
   proposalAnswer,
   type SellTerms,
   sellTermsSchema,
+  type SendTerms,
+  sendTermsSchema,
   type SwapTerms,
   swapTermsSchema,
 } from "@binference/protocol";
@@ -84,6 +88,28 @@ function sellTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
+function sendTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool<SendTerms>({
+    name: "send",
+    kind: "propose",
+    description: agentToolTexts.send,
+    args: sendTermsSchema,
+    run: async (terms, context) =>
+      proposeIntent(client, { ...terms, agent, kind: "send" }, context),
+  });
+}
+
+function bridgeTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool<BridgeTerms>({
+    name: "bridge",
+    kind: "propose",
+    description: agentToolTexts.bridge,
+    args: bridgeTermsSchema,
+    run: async (terms, context) =>
+      proposeIntent(client, { ...terms, agent, kind: "bridge" }, context),
+  });
+}
+
 /**
  * What `order_create` takes: the order, one of six kinds. A model's tool takes an object at its
  * root, so the order's union sits in one field.
@@ -117,5 +143,12 @@ function orderCreateTool({ agent, client }: AgentToolParts): AgentTool {
 
 /** The agent's propose tools, in the order the model sees them. */
 export function tradeTools(parts: AgentToolParts): readonly AgentTool[] {
-  return [swapTool(parts), buyTool(parts), sellTool(parts), orderCreateTool(parts)];
+  return [
+    swapTool(parts),
+    buyTool(parts),
+    sellTool(parts),
+    sendTool(parts),
+    orderCreateTool(parts),
+    bridgeTool(parts),
+  ];
 }

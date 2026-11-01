@@ -111,6 +111,17 @@ const key = context.idempotencyKey;
 const scanFilters = { launchpads: ["fake-curve"], maxTaxBps: 500 };
 const buyTerms = { token, spend: { asset: coin, base: "1000" }, reason: "Buy the dip." };
 const sellTerms = { token, amount: { percentBps: 5_000 }, reason: "Take half off." };
+const sendTerms = {
+  amount: { asset: token, base: "20" },
+  to: { name: "alice.bnb" },
+  reason: "You asked to pay Alice.",
+};
+const bridgeTerms = {
+  amount: { asset: token, base: "10" },
+  toChain: "fake:2",
+  to: { entry: `adr_${wallet.slice(4)}` },
+  reason: "You asked to move it to your address there.",
+};
 
 // Each tool, the arguments a model writes, and the calls it makes of the engine.
 const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
@@ -173,10 +184,16 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   ["swap", swapTerms, [{ op: "intent/propose", args: { ...swapTerms, agent, kind: "swap" }, key }]],
   ["buy", buyTerms, [{ op: "intent/propose", args: { ...buyTerms, agent, kind: "buy" }, key }]],
   ["sell", sellTerms, [{ op: "intent/propose", args: { ...sellTerms, agent, kind: "sell" }, key }]],
+  ["send", sendTerms, [{ op: "intent/propose", args: { ...sendTerms, agent, kind: "send" }, key }]],
   [
     "order_create",
     { order: stopLoss },
     [{ op: "order/create", args: { ...stopLoss, agent }, key }],
+  ],
+  [
+    "bridge",
+    bridgeTerms,
+    [{ op: "intent/propose", args: { ...bridgeTerms, agent, kind: "bridge" }, key }],
   ],
   [
     "order_cancel",
@@ -312,6 +329,8 @@ describe("the agent's tools", () => {
     ["swap", { ...swapTerms, agent: "agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff" }],
     ["buy", { ...buyTerms, wallet }],
     ["sell", { ...sellTerms, wallet }],
+    ["send", { ...sendTerms, wallet }],
+    ["bridge", { ...bridgeTerms, agent }],
     ["order_create", { order: { ...stopLoss, wallet } }],
     ["portfolio", { wallet }],
     ["token_search", { chain: "fake:1", query: "FAKE", agent }],

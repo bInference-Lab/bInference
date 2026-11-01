@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ids, nativeAmount, refs, swapRequest } from "../examples/wire-values.js";
 import {
+  bridgeTermsSchema,
   buyTermsSchema,
   intentRequestSchema,
   readIntentRequestSchema,
   sellTermsSchema,
+  sendTermsSchema,
   swapTermsSchema,
 } from "./intent-request.schema.js";
 
@@ -139,18 +141,33 @@ describe("intentRequestSchema", () => {
   });
 });
 
-const termsSchemas = { swap: swapTermsSchema, buy: buyTermsSchema, sell: sellTermsSchema };
+const termsSchemas = {
+  swap: swapTermsSchema,
+  buy: buyTermsSchema,
+  sell: sellTermsSchema,
+  send: sendTermsSchema,
+  bridge: bridgeTermsSchema,
+};
+
+// The example request each kind's terms are read from, by its name in `requests`.
+const termsExamples: Readonly<Record<keyof typeof termsSchemas, string>> = {
+  swap: "swap",
+  buy: "buy",
+  sell: "sell",
+  send: "send to a name",
+  bridge: "bridge",
+};
 
 // A request's terms: everything but the agent and wallet that act, and its kind.
 function termsOf(kind: keyof typeof termsSchemas): Readonly<Record<string, unknown>> {
-  const request = requests.find(([name]) => name === kind)?.[1] ?? {};
+  const request = requests.find(([name]) => name === termsExamples[kind])?.[1] ?? {};
   const actors = new Set(["agent", "wallet", "kind"]);
   return Object.fromEntries(
     Object.entries(request).filter(([key]: readonly [string, unknown]) => !actors.has(key)),
   );
 }
 
-describe.each(["swap", "buy", "sell"] as const)("the terms of a %s", (kind) => {
+describe.each(["swap", "buy", "sell", "send", "bridge"] as const)("the terms of a %s", (kind) => {
   const schema = termsSchemas[kind];
   const terms = termsOf(kind);
 

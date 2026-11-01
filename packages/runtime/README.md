@@ -177,8 +177,8 @@ fails a check never runs, and the model reads why.
 `agentTools` are the agent's first tools, each mapped onto one operation of the engine and called
 over the runtime's connection: the reads `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
 `token_risk` (`risk/check`), `quote` (`quote/get`), `orders` (`order/list`) and `tx_status`
-(`intent/get`); the proposals `swap`, `buy` and `sell` (`intent/propose`) and `order_create`
-(`order/create`); and `order_cancel` (`order/cancel`), a control tool that brakes, so it runs in a
+(`intent/get`); the proposals `swap`, `buy`, `sell`, `send` and `bridge` (`intent/propose`) and
+`order_create` (`order/create`); and `order_cancel` (`order/cancel`), a control tool that brakes, so it runs in a
 committed turn's batch too. The model writes the terms and its reason; the runtime names the turn's
 agent and no wallet, so the engine acts from the agent's default wallet, and a call that names an
 agent or a wallet fails its check ([decision 0176](../../docs/DECISIONS.md#d0176)). A tool reads and

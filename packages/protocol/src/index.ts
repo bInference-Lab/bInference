@@ -113,18 +113,21 @@ export type { LiveFactsView } from "./views/live-facts-view.schema.js";
 export { assetSearchTermsSchema } from "./operations/market-operations.schema.js";
 export type { AssetSearchTerms } from "./operations/market-operations.schema.js";
 export {
+  bridgeTermsSchema,
   buyTermsSchema,
   intentRequestSchema,
   launchTermsSchema,
   noUploadImage,
   readIntentRequestSchema,
   sellTermsSchema,
+  sendTermsSchema,
   swapRequestSchema,
   swapTermsSchema,
 } from "./requests/intent-request.schema.js";
 export type {
   BridgeRequest,
   BridgeTarget,
+  BridgeTerms,
   BuyRequest,
   BuyTerms,
   CexOrderRequest,
@@ -139,6 +142,7 @@ export type {
   SellTerms,
   SendRequest,
   SendTarget,
+  SendTerms,
   StakeRequest,
   SwapRequest,
   SwapTerms,
