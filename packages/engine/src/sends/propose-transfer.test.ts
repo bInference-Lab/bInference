@@ -305,6 +305,18 @@ describe("an approval revoke", () => {
     expect(view.state).toBe("awaiting_confirmation");
   });
 
+  it("reaches its card while the agent is frozen, where a send is refused (decision 0312)", async () => {
+    const test = await startSends();
+    const frozen = await test.engine.handlers["safety/freeze"](testCall({}));
+    expect(frozen.ok).toBe(true);
+    const revoke = await propose(test, testRevoke(testToken));
+    const send = await propose(test, testSend());
+    expect([ending(revoke), ending(send)]).toStrictEqual([
+      ["awaiting_confirmation", undefined],
+      ["rejected_policy", "frozen"],
+    ]);
+  });
+
   it("refuses the chain's coin, which has no allowance", async () => {
     await expect(refusal(await startSends(), testRevoke(testCoin))).resolves.toBe(
       "protocol.bad_args",

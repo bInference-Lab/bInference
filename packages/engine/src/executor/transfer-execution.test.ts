@@ -5,7 +5,7 @@ import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { planDocument } from "../intents/intent-documents.schema.js";
 import { testCoin, testToken, testWallet } from "../intents/test-intents.js";
-import { testAccount, testChains } from "../operations/test-engine.js";
+import { testAccount, testCall, testChains } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
 import {
@@ -150,6 +150,18 @@ function approvingOne(store: IntentStore): IntentStore {
     },
   };
 }
+
+describe("a frozen agent's revoke", () => {
+  it("signs its approval of 0 once the owner taps its card (decision 0312)", async () => {
+    const bench = await benchWith();
+    const frozen = await bench.test.engine.handlers["safety/freeze"](testCall({}));
+    expect(frozen.ok).toBe(true);
+    const intent = await tapped(bench, testRevoke(testToken));
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    expect(bench.signed.map(({ step }) => step.action.kind)).toStrictEqual(["approve"]);
+  });
+});
 
 describe("a revoke's signing request", () => {
   it("asks for an approval of exactly zero, whatever its draft encodes", async () => {

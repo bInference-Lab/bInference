@@ -215,7 +215,12 @@ function asksTooMuchSlippage({ subject, facts }: PolicyInput): boolean {
  * measured only by the risk step's round trip (decision 0113), which refuses with `high_tax`.
  */
 const intentRules: readonly PolicyRule[] = [
-  { reason: "frozen", refuses: ({ facts }) => facts.isFrozen },
+  {
+    // A revoke moves nothing and is what an owner reaches for after a suspected theft, so it
+    // passes a freeze, still with its card (decision 0312).
+    reason: "frozen",
+    refuses: ({ facts, subject }) => facts.isFrozen && subject.kind !== "revokeApproval",
+  },
   {
     reason: "paper_only",
     refuses: ({ subject }) => subject.isPaper && liveOnlyKinds.has(subject.kind),

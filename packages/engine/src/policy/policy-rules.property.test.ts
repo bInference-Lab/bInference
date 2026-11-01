@@ -154,7 +154,8 @@ function capPassViolations({ facts, figures }: PolicyInput): readonly string[] {
 function walletPassViolations({ subject, facts }: PolicyInput): readonly string[] {
   const spent = nativeOut(subject.outflows);
   return [
-    facts.isFrozen ? "passed while frozen" : "",
+    // Only an approval revoke passes a freeze (decision 0312).
+    facts.isFrozen && subject.kind !== "revokeApproval" ? "passed while frozen" : "",
     spent > 0n && facts.nativeBalanceBase - spent < facts.limits.gasReserveBase
       ? "passed into the gas reserve"
       : "",
@@ -227,7 +228,7 @@ function capsEarned({ facts, figures }: PolicyInput): Earned {
 function walletEarned({ subject, facts }: PolicyInput): Earned {
   const spent = nativeOut(subject.outflows);
   return {
-    frozen: facts.isFrozen,
+    frozen: facts.isFrozen && subject.kind !== "revokeApproval",
     paper_only: subject.isPaper && liveOnly.has(subject.kind),
     ceiling: subject.kind !== "send" && spent > facts.ceilingPerTxNativeBase,
     gas_reserve: spent > 0n && spent + facts.limits.gasReserveBase > facts.nativeBalanceBase,

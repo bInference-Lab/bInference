@@ -654,6 +654,9 @@ In one transaction, it:
 - pauses auto orders;
 - confirms on every surface.
 
+While frozen, every new intent of the agent is refused but an approval revoke, which still waits
+for the owner's tap ([decision 0312](DECISIONS.md#d0312)).
+
 An unfreeze is asked for in the CLI, the console or the Mini App, and takes effect on the owner's
 tap on its card, from any surface ([rule 11](#rule-11), [decision 0128](DECISIONS.md#d0128)).
 

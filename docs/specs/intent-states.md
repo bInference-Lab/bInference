@@ -146,7 +146,7 @@ The reason stored with `rejected_policy` is one of:
 
 | Reason                 | When                                                                                                                                                                                                            |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `frozen`               | The agent or the install is frozen                                                                                                                                                                              |
+| `frozen`               | The agent or the install is frozen; an approval revoke passes ([decision 0312](../DECISIONS.md#d0312))                                                                                                          |
 | `paper_only`           | A live-only action (a send, an approval revoke, a bridge, a CEX order, identity, a token launch) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))   |
 | `per_trade_cap`        | USD value above the per-trade cap; a stake counts at its value, an unstake and a claim never ([decision 0296](../DECISIONS.md#d0296))                                                                           |
 | `ceiling`              | Above the wallet's Privy policy, which only the owner can raise ([decision 0085](../DECISIONS.md#d0085), spec 5)                                                                                                |
@@ -415,8 +415,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
   `spender_unlisted` before any card. Its plan is the token's `approve(spender, 0)`: the simulation
   must move nothing out of the wallet and set only that allowance, at zero, and the signer allows
   that spender alone, at zero. It counts against neither cap, never runs in auto mode (`kind`),
-  and ends `rejected_policy` with `paper_only` in paper mode. Its network fee leaves the coin's
-  position as a departure ([decision 0127](../DECISIONS.md#d0127)).
+  and ends `rejected_policy` with `paper_only` in paper mode. It passes a freeze, still with its
+  card, though a freeze cancels one that waits when the freeze lands
+  ([decision 0312](../DECISIONS.md#d0312)). Its network fee leaves the coin's position as a
+  departure ([decision 0127](../DECISIONS.md#d0127)).
 - **Staking** ([decision 0296](../DECISIONS.md#d0296)). A `stake` intent stakes, unstakes or
   claims through its venue. The checks:
   - **Caps.** A stake counts its USD value, its BNB at the price

@@ -1,6 +1,6 @@
 # 0099. A freeze leaves a pending rescue
 
-Status: Accepted
+Status: Amended by 0312
 
 ## Context
 

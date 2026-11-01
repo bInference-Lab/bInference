@@ -105,6 +105,7 @@ describe("the policy check", () => {
 
   it.each([
     ["frozen", buy, { isFrozen: true }],
+    ["frozen", send, { isFrozen: true }],
     ["paper_only", { ...send, isPaper: true }, {}],
     ["paper_only", { ...buy, kind: "launchToken", isPaper: true }, {}],
     [
@@ -429,6 +430,17 @@ describe("sends and the send level", () => {
     ]);
     expect(reasonsOf(await verdict(outside))).toStrictEqual([]);
     expect(reasonsOf(await verdict({ ...outside, target: rescue }))).toStrictEqual([]);
+  });
+});
+
+describe("an approval revoke", () => {
+  it("passes a freeze, moving nothing, and still meets every other rule", async () => {
+    const revoke = { ...send, kind: "revokeApproval", outflows: [] } as const;
+    const { target: _target, ...untargeted } = revoke;
+    await expect(verdict(untargeted, { isFrozen: true })).resolves.toMatchObject({ ok: true });
+    expect(
+      reasonsOf(await verdict({ ...untargeted, isPaper: true }, { isFrozen: true })),
+    ).toStrictEqual(["paper_only"]);
   });
 });
 
