@@ -47,12 +47,15 @@ async function createWallet(machine: InitMachine, ownerKey: string, flags: reado
   expect(await runCli(host)).toBe(0);
 }
 
+// Whether a wallet entry of `rolesOf` has a role, which sorts it after the agent wallets.
+const hasRole = (entry: string): number => Number(!entry.endsWith(" agent"));
+
 // Each live wallet's Privy id and role, the agent wallets first.
 function rolesOf(facts: { readonly wallets: readonly WalletRecord[] }): readonly string[] {
   return facts.wallets
     .filter((wallet) => wallet.archivedAtMs === undefined)
     .map((wallet) => `${wallet.custodyWalletId} ${wallet.role ?? "agent"}`)
-    .toSorted((left, right) => Number(left.endsWith("launch")) - Number(right.endsWith("launch")));
+    .toSorted((left, right) => hasRole(left) - hasRole(right));
 }
 
 // `binference init --attach` on a folder with no install: the app and the bot from flags, the
@@ -147,6 +150,37 @@ describe("binference init --attach on a folder with no install", () => {
     expect(after.facts.wallets[0]?.role).toBeUndefined();
     expect(await signsWith(old, await heldKey(old))).toBe("refused");
   });
+
+  it(
+    "adopts the agent's bridge wallet, made for Relay on the old machine, as one",
+    slow,
+    async () => {
+      const { machine: old, ownerKey } = await setUpWithOwnerKey(folders);
+      expect(await engines.start(old)).toMatchObject({ state: "ready" });
+      await createWallet(old, ownerKey, ["--bridge"]);
+      const before = await storedInstall(old);
+      const fresh = await emptyMachine(old);
+
+      const rebuilt = await rebuild(fresh, { ownerKeys: [ownerKey], count: "2" });
+
+      expect([rebuilt.code, rebuilt.stderr]).toStrictEqual([0, ""]);
+      const after = await storedInstall(fresh);
+      expect(rolesOf(after.facts)).toStrictEqual(rolesOf(before.facts));
+      expect(rolesOf(before.facts).map((entry) => entry.split(" ")[1])).toStrictEqual([
+        "agent",
+        "bridge",
+      ]);
+      // The found list marks the bridge wallet, and the agent wallet is the first the store lists.
+      const lines = rebuilt.prompter.transcript.lines.join("\n");
+      const bridge = after.facts.wallets.find((wallet) => wallet.role === "bridge");
+      const made = english.dateTime(old.clock.now());
+      const found = { address: String(bridge?.address), made, role: "bridge" };
+      expect(lines).toContain(english.message("init.rebuild.foundWallet", found));
+      expect(after.facts.wallets[0]?.role).toBeUndefined();
+      expect(await signsWith(old, await heldKey(old))).toBe("refused");
+      expect(await engines.start(fresh)).toMatchObject({ state: "ready" });
+    },
+  );
 
   it("changes nothing for a key that owns no wallet, typed three times", slow, async () => {
     const { machine: old } = await setUpWithOwnerKey(folders);
