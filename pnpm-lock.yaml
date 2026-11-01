@@ -1189,6 +1189,10 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.6.5
+    devDependencies:
+      '@binference/chain-evm':
+        specifier: workspace:*
+        version: link:../../packages/chain-evm
 
 packages:
 

@@ -27,5 +27,8 @@
     "@binference/plugin-sdk": "workspace:*",
     "viem": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@binference/chain-evm": "workspace:*"
   }
 }
