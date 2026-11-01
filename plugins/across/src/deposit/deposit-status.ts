@@ -13,7 +13,7 @@ import type { AcrossApi } from "../api/across-api.js";
 import type { AcrossDepositAnswer } from "../api/status-answer.schema.js";
 
 /** Across's page for a deposit, by its transaction on the source chain. */
-function statusUrlOf(hash: string): string {
+export function statusUrlOf(hash: string): string {
   return `https://across.to/transfer/${hash}`;
 }
 

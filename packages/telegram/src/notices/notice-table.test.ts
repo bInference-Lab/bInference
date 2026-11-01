@@ -87,6 +87,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.bridgeArrived": `${done} Your late bridge to Base arrived: 0x71C7…976F received 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross did not deliver your bridge to Base and paid 20 FAKE back to Main`,
   "notice.bridgeLapsed": `${warning} Your bridge to Base was not sent before its confirmation ran out: its quote expired, so propose it again. Nothing was signed.`,
+  "notice.bridgeKeyNeeded": `${warning} fake-cross no longer says where your bridges stand without an API key it accepts. Until you set one, binference cannot tell when they arrive, and tells you of each one still out after 2 hours. Set venues.keys.fake-cross in config.json5 to a key from fake-cross's dashboard, then restart binference.`,
   "notice.rescueNotBridged":
     "Bridges from main's wallets do not pay your rescue address 0x9F3c…41aB on Base: it holds code there or on its own chain, so the same address there may not be yours. To bridge there, save an address you control on Base in the address book with your owner key.",
   "notice.launchStopped": `${warning} The launch of MCAT on pad stopped: the launchpad did not pin its picture and words within 5 minutes. Nothing was signed, but its picture and words may be public on the launchpad. Propose the launch again if you still want it.`,

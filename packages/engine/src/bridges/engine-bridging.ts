@@ -1,4 +1,5 @@
 import type { AccountCodeReader, DeliveryReader } from "@binference/chain";
+import type { Logger } from "@binference/core";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { EngineOptions } from "../operations/create-engine.js";
 import { createPositions } from "../positions/create-positions.js";
@@ -19,6 +20,11 @@ export interface BridgeOptions {
    * alone settle a bridge (decision 0297); without one for its chain, a bridge stays in transit.
    */
   readonly deliveryReaders?: readonly DeliveryReader[];
+  /**
+   * Where the follower logs a bridge whose status its venue does not give, by the fault's code;
+   * nothing is logged without it.
+   */
+  readonly bridgeLog?: Logger;
 }
 
 /** The engine's work on bridges in transit, which the composition root runs on a timer. */
@@ -44,6 +50,7 @@ export function bridgeWorkOf(options: EngineOptions, stored: StoredIntents): Bri
     chains: options.chains,
     publish: options.publish,
     clock: options.clock,
+    ...(options.bridgeLog === undefined ? {} : { log: options.bridgeLog }),
   });
   return { followBridges: follower.follow };
 }

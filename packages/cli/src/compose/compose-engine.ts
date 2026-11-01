@@ -265,15 +265,16 @@ function custodyPartsOf(parts: EngineParts) {
 }
 
 // Where the engine finds an address and bridges to one: the name resolvers, the chains a bridge
-// delivers to, and the bridges with their readers.
+// delivers to, and the bridges with their readers and the log of their follower.
 function addressPartsOf(
-  options: Pick<ComposeEngineOptions, "nameResolvers" | "destinations" | "bridging">,
-): Pick<EngineOptions, "nameResolvers" | BridgingKey> {
-  const { nameResolvers, destinations, bridging } = options;
+  options: Pick<ComposeEngineOptions, "nameResolvers" | "destinations" | "bridging" | "logger">,
+): Pick<EngineOptions, "nameResolvers" | BridgingKey | "bridgeLog"> {
+  const { nameResolvers, destinations, bridging, logger } = options;
   return {
     ...(nameResolvers === undefined ? {} : { nameResolvers }),
     ...(destinations === undefined ? {} : { destinations }),
     ...bridging,
+    ...(bridging === undefined ? {} : { bridgeLog: logger.child("bridges") }),
   };
 }
 

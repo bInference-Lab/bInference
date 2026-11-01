@@ -126,6 +126,7 @@ async function tellsStatus(harness: BridgeHarness): Promise<void> {
   const fill = await bridge.status(filled.deposit, live());
   assert.deepEqual(fill.state, { kind: "filled", fill: filled.fill });
   assert.ok(fill.statusUrl.startsWith("https://"));
+  assert.ok(bridge.pageOf(unseen).startsWith("https://"));
   const refund = await bridge.status(refunded.deposit, live());
   assert.deepEqual(refund.state, { kind: "refunded", refund: refunded.refund });
   assert.deepEqual((await bridge.status(expired, live())).state, { kind: "expired" });

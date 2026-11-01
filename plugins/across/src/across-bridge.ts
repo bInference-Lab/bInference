@@ -13,7 +13,7 @@ import type { AcrossOptions } from "./across-options.js";
 import { createAcrossApi } from "./api/across-api.js";
 import { buildDeposit } from "./deposit/build-deposit.js";
 import { decodeDeposit } from "./deposit/decode-deposit.js";
-import { depositStatus } from "./deposit/deposit-status.js";
+import { depositStatus, statusUrlOf } from "./deposit/deposit-status.js";
 import { acrossSettlement } from "./deposit/settlement.js";
 import { quoteBridge } from "./routes/quote-bridge.js";
 
@@ -68,6 +68,7 @@ export function createAcrossBridge(options: AcrossOptions): Bridge {
     },
     decode: (draft) => decodeDeposit(draft, destinations),
     status: async (deposit, { signal }) => depositStatus(deposit, { api, destinations }, signal),
+    pageOf: (deposit) => statusUrlOf(deposit.hash),
     settlement: (check) => acrossSettlement(check, options.spokePools),
   });
 }

@@ -86,6 +86,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.bridgeArrived": `${done} 你延迟的跨链已在 Base 到账：0x71C7…976F 收到 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross 未完成你到 Base 的跨链，已将 20 FAKE 退回 Main`,
   "notice.bridgeLapsed": `${warning} 你到 Base 的跨链在确认过期前未发送：它的报价已过期，请重新发起。未签名任何内容。`,
+  "notice.bridgeKeyNeeded": `${warning} 平台 fake-cross 现在只在收到有效的 API 密钥时才告知跨链进度。设置之前，binference 无法得知你的跨链何时到账，2 小时后仍未到账的每笔跨链都会通知你。请在 config.json5 中把 venues.keys.fake-cross 设为 fake-cross 控制面板中的密钥，然后重启 binference。`,
   "notice.rescueNotBridged":
     "main 的钱包不会跨链到你在 Base 上的紧急转出地址 0x9F3c…41aB：它在那里或在本链上有合约代码，因此那里的同一地址可能不属于你。要跨链到那里，请用你的所有者密钥在地址簿中保存一个你在 Base 上控制的地址。",
   "notice.launchStopped": `${warning} MCAT 在 pad 的发射已停止：发射台未在 5 分钟内固定其图片和文字。未签名任何内容，但其图片和文字可能已在发射台公开。如仍需要，请重新发起发射。`,

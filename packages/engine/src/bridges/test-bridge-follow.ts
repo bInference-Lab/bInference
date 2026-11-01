@@ -15,7 +15,11 @@ import {
   type FakeBridge,
 } from "@binference/chain/testing";
 import { createIdSource, type Id, type IdSource } from "@binference/core";
-import { createManualClock, createSeededRandom } from "@binference/core/testing";
+import {
+  createManualClock,
+  createMemoryLogger,
+  createSeededRandom,
+} from "@binference/core/testing";
 import type { BridgeRequest, IntentState } from "@binference/protocol";
 import { z } from "zod";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
@@ -40,18 +44,28 @@ import type { EnginePush } from "../pushes/engine-push.js";
 import type { BridgeDeliveryState } from "./bridge-record.js";
 import { createBridgeFollower } from "./follow-bridges.js";
 
+/** A notice the follower published: its key and its plain values. */
+interface FollowedNotice {
+  readonly key: string;
+  readonly values: Readonly<Record<string, string>>;
+}
+
 /** A follower over one bridge in transit, whose delivery a test's readers read. */
 export interface BridgeFollowBench {
   /** Runs one pass of the follower. */
   follow(): Promise<void>;
+  /** Moves the bench's clock on, as time passes between passes. */
+  advance(ms: number): Promise<void>;
   /** The bridge intent's state and its bridge's, as stored now. */
   states(): Promise<readonly [IntentState | undefined, BridgeDeliveryState | undefined]>;
-  /** The keys of the notices the follower published, oldest first. */
-  notices(): readonly string[];
+  /** The notices the follower published, oldest first. */
+  notices(): readonly FollowedNotice[];
+  /** What the follower logged, oldest first: each record's event and error code. */
+  logged(): readonly (readonly [string, string | undefined])[];
 }
 
 const live = { signal: new AbortController().signal };
-const noticeKeySchema = z.object({ key: z.string() });
+const noticeSchema = z.object({ key: z.string(), values: z.record(z.string(), z.string()) });
 
 function depositHash(): TxHash {
   const hash = `0x${"d1".repeat(32)}`;
@@ -189,6 +203,7 @@ export async function startBridgeFollowBench(
   const bridge = given.bridge ?? settledFake(given.fill, deposit);
   const intentId = await storeFinalBridge(stores, ids, { ...given, venue: bridge.id, deposit });
   const positions = createMemoryPositionStore();
+  const log = createMemoryLogger({ subsystem: "bridges" });
   const follower = createBridgeFollower({
     bridges: stores.bridges,
     stored: createStoredIntents({ intents: stores.intents, agents: stores.agents, ids, publish }),
@@ -201,9 +216,11 @@ export async function startBridgeFollowBench(
     chains: testChains(),
     publish,
     clock,
+    log,
   });
   return {
     follow: async () => follower.follow(live),
+    advance: async (ms) => clock.advance(ms),
     async states() {
       const record = await stores.intents.get(intentId, live);
       const held = await stores.bridges.get(intentId, live);
@@ -211,8 +228,9 @@ export async function startBridgeFollowBench(
     },
     notices: () =>
       pushes.flatMap((push) => {
-        const notice = noticeKeySchema.safeParse(push.data);
-        return push.kind === "notice/new" && notice.success ? [notice.data.key] : [];
+        const notice = noticeSchema.safeParse(push.data);
+        return push.kind === "notice/new" && notice.success ? [notice.data] : [];
       }),
+    logged: () => log.records().map((record) => [record.event, record.fields.errorCode] as const),
   };
 }

@@ -44,6 +44,7 @@ export function defineBridge(definition: Bridge): Bridge {
     build: async (request, options) => definition.build(request, options),
     decode: (draft) => definition.decode(draft),
     status: async (deposit, options) => definition.status(deposit, options),
+    pageOf: (deposit) => definition.pageOf(deposit),
     settlement: (check) => definition.settlement(check),
   } satisfies Bridge);
 }

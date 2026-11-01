@@ -61,6 +61,11 @@ export interface Bridge extends VenueDeclaration {
    */
   status(deposit: DepositRef, options: { readonly signal: AbortSignal }): Promise<DepositStatus>;
   /**
+   * The bridge's page for the deposit sent in this transaction, worked out without asking the
+   * bridge: the owner's late notice names it when the bridge cannot say where the deposit stands.
+   */
+  pageOf(deposit: DepositRef): string;
+  /**
    * What the settlement paid for this deposit by its own events (decision 0320), from the events
    * alone: for a fill, the base units its event says the recipient was paid in the delivered
    * token, from the deposit's own event on the destination's own contract, to the deposit's

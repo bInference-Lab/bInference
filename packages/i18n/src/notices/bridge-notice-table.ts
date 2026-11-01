@@ -6,8 +6,8 @@ const { coinAmount } = noticeTableParts;
 /**
  * One notice of each bridge key of spec 4, section 4.4, as the engine publishes it: a bridge late
  * after 2 hours, a late bridge that arrived, a bridge its venue paid back, a confirmed bridge
- * that lapsed unsigned with what held it, and the rescue address put in or left out of a
- * destination's bridge rules.
+ * that lapsed unsigned with what held it, a venue that says where bridges stand only with a key,
+ * and the rescue address put in or left out of a destination's bridge rules.
  */
 export const bridgeNoticeTable: Readonly<Record<string, WrittenNotice>> = {
   "notice.bridgeLate": {
@@ -28,6 +28,10 @@ export const bridgeNoticeTable: Readonly<Record<string, WrittenNotice>> = {
   "notice.bridgeLapsed": {
     key: "notice.bridgeLapsed",
     values: { chain: "Base", why: "quote" },
+  },
+  "notice.bridgeKeyNeeded": {
+    key: "notice.bridgeKeyNeeded",
+    values: { venue: "fake-cross" },
   },
   "notice.rescueBridged": {
     key: "notice.rescueBridged",

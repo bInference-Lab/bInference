@@ -228,6 +228,7 @@ export function createFakeBridge(options: {
       const state = states.get(deposit.hash) ?? { kind: "unseen" };
       return await Promise.resolve({ state, statusUrl: `https://bridge.test/${deposit.hash}` });
     },
+    pageOf: (deposit) => `https://bridge.test/${deposit.hash}`,
     settle(hash, state) {
       states.set(hash, state);
     },

@@ -7,7 +7,7 @@ import {
   type DepositStatus,
   type Signer,
 } from "@binference/chain";
-import type { Clock } from "@binference/core";
+import { BinferenceError, type Clock, type Logger } from "@binference/core";
 import { type BridgeIntentQuote, bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
@@ -15,7 +15,6 @@ import type { InstallStore, PositionStore } from "../ports.js";
 import type { Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
-import { callVenue } from "../venues/call-venue.js";
 import type { BridgeCursor, BridgeMove, BridgeRecord } from "./bridge-record.js";
 import { openBridgeStates } from "./bridge-record.js";
 import {
@@ -33,6 +32,7 @@ import {
   type ReadSettlement,
   type SettlementReading,
 } from "./read-delivery.js";
+import { createStatusReads, type StatusReads } from "./read-status.js";
 
 /** What the delivery of each bridge in transit is followed through (decision 0297). */
 export interface BridgeFollowParts {
@@ -48,7 +48,12 @@ export interface BridgeFollowParts {
   readonly chains: ChainRegistry;
   readonly publish: PublishPush;
   readonly clock: Clock;
+  /** Where a status read that fails is logged by its code; nothing is logged without it. */
+  readonly log?: Logger;
 }
+
+/** The follower's parts with its status reads, which remember each venue across passes. */
+type Following = BridgeFollowParts & { readonly reads: StatusReads };
 
 /** One bridge followed: its row, its intent and the quote its card confirmed. */
 interface Followed {
@@ -57,8 +62,6 @@ interface Followed {
   readonly quote: BridgeIntentQuote;
 }
 
-// A bridge's status answers within this, or counts as not read this time.
-const statusTimeoutMs = 10_000;
 // How many bridges in transit one pass reads.
 const passLimit = 100;
 
@@ -78,11 +81,12 @@ function intentChanged(parts: BridgeFollowParts, snapshot: IntentSnapshot): void
 }
 
 // Two hours after its deposit is final, a bridge in transit is marked late once, and the owner told
-// once with the venue's page for it: only the writer whose move landed tells (decision 0297).
+// once with the venue's page for it, whether or not the venue said where it stands: only the
+// writer whose move landed tells (decision 0297).
 async function markLate(
   parts: BridgeFollowParts,
   followed: Followed,
-  call: { readonly status: DepositStatus; readonly signal: AbortSignal },
+  call: { readonly statusUrl: string; readonly signal: AbortSignal },
 ): Promise<void> {
   const { bridge, snapshot, quote } = followed;
   const atMs = parts.clock.now();
@@ -100,7 +104,7 @@ async function markLate(
     return;
   }
   const { record } = snapshot;
-  const values = { chain: quote.chainName, venue: quote.venue, statusUrl: call.status.statusUrl };
+  const values = { chain: quote.chainName, venue: quote.venue, statusUrl: call.statusUrl };
   parts.publish(
     noticePush({
       key: "notice.bridgeLate",
@@ -218,13 +222,13 @@ async function reconciles(
   return (await parts.stored.move({ ...write, by: "engine" }, { signal })).ok;
 }
 
-// One bridge: its venue's status, the late mark, then a read that may settle it. A venue that does
-// not answer, or a chain that does not, leaves it for the next pass.
-async function followOne(
-  parts: BridgeFollowParts,
+// The bridge with its final intent, the quote its card confirmed and its venue; none for a bridge
+// whose intent is not final or whose venue no longer runs.
+async function followedOf(
+  parts: Following,
   bridge: BridgeRecord,
   signal: AbortSignal,
-): Promise<void> {
+): Promise<{ readonly followed: Followed; readonly venue: Bridge } | undefined> {
   const snapshot = await parts.stored.snapshot(bridge.intentId, { signal });
   const venue = parts.hosted.find((item) => item.bridge.id === bridge.venue)?.bridge;
   if (
@@ -232,21 +236,33 @@ async function followOne(
     snapshot.record.quote === undefined ||
     venue === undefined
   ) {
+    return undefined;
+  }
+  const quote = bridgeQuoteDocument.decode(snapshot.record.quote);
+  return { followed: { bridge, snapshot, quote }, venue };
+}
+
+// One bridge: its venue's status, the late mark, then a read that may settle it. A venue that does
+// not answer still lets the late mark name its page; it, or a chain that does not answer, leaves
+// the bridge for the next pass.
+async function followOne(
+  parts: Following,
+  bridge: BridgeRecord,
+  signal: AbortSignal,
+): Promise<void> {
+  const found = await followedOf(parts, bridge, signal);
+  if (found === undefined) {
     return;
   }
-  const followed = { bridge, snapshot, quote: bridgeQuoteDocument.decode(snapshot.record.quote) };
+  const { followed, venue } = found;
   const deposit = { chain: assetRefParts(bridge.sent.asset).chain, hash: bridge.depositTx };
-  const timing = { clock: parts.clock, signal, timeoutMs: statusTimeoutMs };
-  const status = await callVenue(async (inner) => venue.status(deposit, { signal: inner }), timing);
-  if (!status.ok) {
+  const status = await parts.reads.read({ venue, deposit, intent: bridge.intentId, signal });
+  const statusUrl = status?.statusUrl ?? venue.pageOf(deposit);
+  await markLate(parts, followed, { statusUrl, signal });
+  if (status === undefined) {
     return;
   }
-  await markLate(parts, followed, { status: status.value, signal });
-  const settled = await readSettlement(
-    parts,
-    { ...followed, venue },
-    { status: status.value, signal },
-  );
+  const settled = await readSettlement(parts, { ...followed, venue }, { status, signal });
   if (settled !== undefined) {
     const latest = (await parts.bridges.get(bridge.intentId, { signal })) ?? bridge;
     await settle(parts, { ...followed, bridge: latest }, { settled, signal });
@@ -261,12 +277,14 @@ async function followOne(
  * venue where it stands; and moves it to `reconciled` only once a read of its own destination
  * chain finds the payment, at least its least output, or a read of its source chain the refund,
  * whose units arrive back at their value then, each matched to this deposit by the venue's own
- * events and held by no other bridge. No timer ends a bridge unread. A bridge whose read
- * fails, or throws, waits for the next pass, and the pass goes on.
+ * events and held by no other bridge. No timer ends a bridge unread. A bridge whose status cannot
+ * be read is still marked late with its venue's page; it, and one whose read throws, waits for the
+ * next pass, and the pass goes on (`createStatusReads` logs, rests and tells).
  */
 export function createBridgeFollower(parts: BridgeFollowParts): {
   readonly follow: (options: { readonly signal: AbortSignal }) => Promise<void>;
 } {
+  const following: Following = { ...parts, reads: createStatusReads(parts) };
   // Where the last pass stopped, so each pass reads the next 100 and no row starves the others.
   let cursor: BridgeCursor | undefined;
   return {
@@ -284,10 +302,12 @@ export function createBridgeFollower(parts: BridgeFollowParts): {
       for (const bridge of open) {
         try {
           // oxlint-disable-next-line eslint/no-await-in-loop -- one bridge at a time keeps the node reads paced
-          await followOne(parts, bridge, signal);
-        } catch {
+          await followOne(following, bridge, signal);
+        } catch (error) {
           // A node or a venue that failed this pass is read again on the next.
           signal.throwIfAborted();
+          const errorCode = error instanceof BinferenceError ? error.code : "internal.error";
+          parts.log?.warn("bridge.follow_failed", { intentId: bridge.intentId, errorCode });
         }
       }
     },
