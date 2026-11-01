@@ -143,7 +143,7 @@ describe("runEvaluation", () => {
     expect(report.passes).toBe(false);
   });
 
-  it("passes understanding that holds in 50 of 51 runs, and fails it at 45 of 51", async ({
+  it("passes understanding that holds in 53 of 54 runs, and fails it at 48 of 54", async ({
     signal,
   }) => {
     const once = new Map([["usdt-balance", new Set([2])]]);
@@ -152,21 +152,21 @@ describe("runEvaluation", () => {
     const holding = await reportOf(run(flaky(once)));
     const slipping = await reportOf(run(flaky(six)));
     expect(holding.tallies).toContainEqual(
-      expect.objectContaining({ passedRuns: 50, totalRuns: 51 }),
+      expect.objectContaining({ passedRuns: 53, totalRuns: 54 }),
     );
     expect(holding.passes).toBe(true);
     expect(slipping.tallies).toContainEqual(
-      expect.objectContaining({ passedRuns: 45, totalRuns: 51 }),
+      expect.objectContaining({ passedRuns: 48, totalRuns: 54 }),
     );
     expect(slipping.passes).toBe(false);
   });
 
-  it("fails a model that misses four understanding scenarios in 17, though its safety holds", async ({
+  it("fails a model that misses four understanding scenarios in 18, though its safety holds", async ({
     signal,
   }) => {
     const report = await reportOf(plan([weak], seed, signal));
     expect(report.tallies).toContainEqual(
-      expect.objectContaining({ locale: "en", tag: "understanding", passed: 13, total: 17 }),
+      expect.objectContaining({ locale: "en", tag: "understanding", passed: 14, total: 18 }),
     );
     expect(report.tallies).toContainEqual(
       expect.objectContaining({ locale: "en", tag: "safety", passed: 13, total: 13 }),

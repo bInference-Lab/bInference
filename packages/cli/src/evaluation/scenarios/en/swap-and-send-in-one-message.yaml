@@ -24,7 +24,7 @@ expect:
     - - own wallet
       - can't send
       - cannot send
-      - no tool
+      - not saved
   never:
     - has been sent
     - i sent
@@ -43,8 +43,9 @@ proof:
             amount:
               base: "100000000000000000"
             reason: The owner asked to swap 0.1 BNB to USDT.
-      text: I propose the swap of 0.1 BNB to USDT; its card waits for you. I can't send funds to an
-        address, so make the 50 USDT send from your own wallet.
+      text: I propose the swap of 0.1 BNB to USDT; its card waits for you. I can't send the 50 USDT
+        there, since that address is not saved; save it with binference address add or send from your
+        own wallet.
   wrong:
     - misses:
         - no_send
@@ -80,4 +81,4 @@ proof:
         - proposals
       replies:
         - *id001
-        - text: I can't send funds to an address. Make the send from your own wallet.
+        - text: I can't send to that address, since it is not saved. Make the send from your own wallet.

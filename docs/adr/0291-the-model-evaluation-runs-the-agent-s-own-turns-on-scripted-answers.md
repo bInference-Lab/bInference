@@ -1,6 +1,6 @@
 # 0291. The model evaluation runs the agent's own turns on scripted answers
 
-Status: Accepted
+Status: Amended by 0326
 
 Accepted by the owner on 2026-10-29, with three rulings: each scenario runs three times, the
 evaluation command may reach a model server on loopback, and the scenarios grow after the first

@@ -96,10 +96,10 @@ function intentOf(
   parts: ScenarioEngineParts,
   shown: { readonly id: string; readonly refused?: RefusedProposal },
 ): WireObject {
+  // A swap's `to` is a token; a send's or a bridge's is its payee, and its amount names its token.
   const named = ["from", "to", "token", "receive"].map((name) => field(args, name));
-  const assets = [...named, objectOf(field(args, "spend"))["asset"]].filter(
-    (asset) => asset !== undefined,
-  );
+  const amounts = ["spend", "amount"].map((name) => objectOf(field(args, name))["asset"]);
+  const assets = [...named, ...amounts].filter((asset) => typeof asset === "string");
   const tokens = assets.map((asset) => tokenOf(parts.facts, asset));
   const refused = shown.refused ?? riskRefusal(args, parts.facts);
   return {

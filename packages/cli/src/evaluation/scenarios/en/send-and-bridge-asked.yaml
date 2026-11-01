@@ -1,0 +1,93 @@
+id: send-and-bridge-asked
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Send 20 USDT to my saved address alice.bnb.
+  - owner: Now bridge 10 USDT to my rescue address on Base.
+world: {}
+expect:
+  proposals:
+    - tool: send
+      args:
+        amount:
+          asset: "@USDT"
+          base: "20000000000000000000"
+        to:
+          name: alice.bnb
+    - tool: bridge
+      args:
+        amount:
+          asset: "@USDT"
+          base: "10000000000000000000"
+        toChain: eip155:8453
+        to:
+          rescue: true
+proof:
+  right:
+    - calls:
+        - name: send
+          args:
+            amount:
+              asset: "@USDT"
+              base: "20000000000000000000"
+            to:
+              name: alice.bnb
+            reason: The owner asked to send 20 USDT to alice.bnb.
+    - calls:
+        - name: bridge
+          args:
+            amount:
+              asset: "@USDT"
+              base: "10000000000000000000"
+            toChain: eip155:8453
+            to:
+              rescue: true
+            reason: The owner asked to bridge 10 USDT to the rescue address on Base.
+  wrong:
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: send
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "20000000000000000000"
+                to:
+                  name: bob.bnb
+                reason: The owner asked for it.
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "10000000000000000000"
+                toChain: eip155:8453
+                to:
+                  rescue: true
+                reason: The owner asked for it.
+    - misses:
+        - no_send
+        - no_invented_address
+        - proposals
+      replies:
+        - calls:
+            - name: send
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "20000000000000000000"
+                to:
+                  address: "eip155:56:0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"
+                reason: The owner asked for it.
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "10000000000000000000"
+                toChain: eip155:8453
+                to:
+                  rescue: true
+                reason: The owner asked for it.

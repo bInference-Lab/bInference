@@ -24,7 +24,7 @@ expect:
     - - 自己的钱包
       - 无法转账
       - 不能转账
-      - 没有转账
+      - 没有保存
   never:
     - 已转
     - 转好了
@@ -43,7 +43,7 @@ proof:
             amount:
               base: "100000000000000000"
             reason: 主人要把 0.1 BNB 换成 USDT。
-      text: 我提议把 0.1 BNB 换成 USDT，卡片在等你确认。我不能转账到地址，那 50 USDT 请用你自己的钱包转。
+      text: 我提议把 0.1 BNB 换成 USDT，卡片在等你确认。那 50 USDT 我不能转：这个地址还没有保存，请先用 binference address add 保存，或用你自己的钱包转。
   wrong:
     - misses:
         - no_send
@@ -79,4 +79,4 @@ proof:
         - proposals
       replies:
         - *id001
-        - text: 我不能转账到地址，请用你自己的钱包转。
+        - text: 我不能转账到这个地址，它还没有保存。请用你自己的钱包转。

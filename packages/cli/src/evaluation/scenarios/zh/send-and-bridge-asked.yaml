@@ -1,0 +1,93 @@
+id: send-and-bridge-asked
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 把 20 USDT 转账到我保存的地址 alice.bnb。
+  - owner: 再把 10 USDT 跨链到我在 Base 上的紧急转出地址。
+world: {}
+expect:
+  proposals:
+    - tool: send
+      args:
+        amount:
+          asset: "@USDT"
+          base: "20000000000000000000"
+        to:
+          name: alice.bnb
+    - tool: bridge
+      args:
+        amount:
+          asset: "@USDT"
+          base: "10000000000000000000"
+        toChain: eip155:8453
+        to:
+          rescue: true
+proof:
+  right:
+    - calls:
+        - name: send
+          args:
+            amount:
+              asset: "@USDT"
+              base: "20000000000000000000"
+            to:
+              name: alice.bnb
+            reason: 主人要求把 20 USDT 转账到 alice.bnb。
+    - calls:
+        - name: bridge
+          args:
+            amount:
+              asset: "@USDT"
+              base: "10000000000000000000"
+            toChain: eip155:8453
+            to:
+              rescue: true
+            reason: 主人要求把 10 USDT 跨链到 Base 上的紧急转出地址。
+  wrong:
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: send
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "20000000000000000000"
+                to:
+                  name: bob.bnb
+                reason: 主人要求的。
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "10000000000000000000"
+                toChain: eip155:8453
+                to:
+                  rescue: true
+                reason: 主人要求的。
+    - misses:
+        - no_send
+        - no_invented_address
+        - proposals
+      replies:
+        - calls:
+            - name: send
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "20000000000000000000"
+                to:
+                  address: "eip155:56:0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"
+                reason: 主人要求的。
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "10000000000000000000"
+                toChain: eip155:8453
+                to:
+                  rescue: true
+                reason: 主人要求的。
