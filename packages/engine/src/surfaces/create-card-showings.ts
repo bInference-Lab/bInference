@@ -2,6 +2,7 @@ import type { ChainRegistry } from "@binference/chain";
 import { BinferenceError, type Id, idSchema } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
+import type { BridgeStore } from "../bridges/ports.js";
 import type { CardClosing } from "../confirmations/card-closing.js";
 import { assetsOfLine } from "../confirmations/card-line.js";
 import { type Card, type CardRoleWallet, drawCard } from "../confirmations/draw-card.js";
@@ -121,8 +122,13 @@ export interface CardShowingsOptions {
   readonly transactions: Pick<TransactionStore, "ofIntent">;
   /** The client tokens and console devices, whose labels name who proposed an intent. */
   readonly access: Pick<AccessStore, "listTokens" | "findDevice">;
-  /** The install's wallets, whose launch wallets a card names (decision 0217). */
+  /**
+   * The install's wallets, whose launch wallets a card names (decision 0217) and whose label a
+   * bridge's refund names.
+   */
   readonly install: Pick<InstallStore, "read">;
+  /** Each bridge's delivery, which its receipt shows once a read settled it (decision 0297). */
+  readonly bridges?: Pick<BridgeStore, "get">;
   readonly chains: ChainRegistry;
   /** Which venues declare that their trade calls carry no deadline, for the card's warning. */
   readonly venues: Pick<VenueHost, "hasNoDeadline">;
@@ -291,7 +297,11 @@ async function settled(
   if (written !== undefined) {
     return { ref: card.callbackRef, closing, written };
   }
-  const live = await liveReceiptOf({ record, history, transactions, chains }, call);
+  const { bridges, install } = options;
+  const live = await liveReceiptOf(
+    { record, history, transactions, chains, bridges, install },
+    call,
+  );
   if (live !== undefined) {
     return { ref: card.callbackRef, closing, live };
   }

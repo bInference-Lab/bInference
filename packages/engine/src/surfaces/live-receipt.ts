@@ -3,11 +3,10 @@ import {
   type Amount,
   type AssetRef,
   assetRefParts,
-  type ChainRef,
   type ChainRegistry,
-  type TxHash,
 } from "@binference/chain";
 import { type AssetInfos, unsentEndStates } from "@binference/protocol";
+import type { BridgeStore } from "../bridges/ports.js";
 import type { LiveOutcome, ReceiptTx } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import { type IntentHistory, settledTradeOf } from "../intents/intent-history.js";
@@ -15,7 +14,9 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { sendQuoteDocument } from "../intents/send-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
-import type { TransactionStore } from "../ports.js";
+import type { InstallStore, TransactionStore } from "../ports.js";
+import { bridgeReceiptOf } from "./bridge-receipt.js";
+import { receiptTxOf } from "./receipt-tx.js";
 
 /** How a confirmed live intent ended on chain, with the assets its receipt names. */
 export interface LiveReceipt {
@@ -23,22 +24,17 @@ export interface LiveReceipt {
   readonly assets: AssetInfos;
 }
 
-/** What a live receipt reads: the intent, its history, its transactions and the registry. */
+/**
+ * What a live receipt reads: the intent, its history, its transactions and the registry; for a
+ * bridge, its delivery and the install's wallets, whose label a refund names.
+ */
 export interface LiveReceiptSource {
   readonly record: IntentRecord;
   readonly history: IntentHistory;
   readonly transactions: Pick<TransactionStore, "ofIntent">;
   readonly chains: ChainRegistry;
-}
-
-// A transaction's page on the chain's first block explorer, from the page template the registry
-// lists for it, or its hash when the registry lists no explorer for the chain.
-function txOf(chains: ChainRegistry, chain: ChainRef, hash: TxHash): ReceiptTx {
-  const registered = chains.get(chain);
-  const explorer = registered.ok ? registered.value.definition.explorers[0] : undefined;
-  return explorer === undefined
-    ? { hash }
-    : { explorerLink: explorer.txUrl.replace("{hash}", hash) };
+  readonly bridges?: Pick<BridgeStore, "get"> | undefined;
+  readonly install: Pick<InstallStore, "read">;
 }
 
 // A trade that reconciled: what it sold and bought; a launch: its token, and its first buy's.
@@ -50,7 +46,7 @@ function reconciledOf(source: LiveReceiptSource): LiveReceipt | undefined {
     return undefined;
   }
   const { amountIn, amountOut } = settled;
-  const tx = txOf(chains, assetRefParts(amountIn.asset).chain, hash);
+  const tx = receiptTxOf(chains, assetRefParts(amountIn.asset).chain, hash);
   const fill = { amountIn, amountOut };
   const assets = intentAssetInfos(chains, record, [amountIn.asset, amountOut.asset]);
   if (record.kind !== "launchToken") {
@@ -94,7 +90,7 @@ async function landedOf(
     : {
         outcome: {
           kind: "landed",
-          tx: txOf(chains, accountRefParts(last.account).chain, last.hash),
+          tx: receiptTxOf(chains, accountRefParts(last.account).chain, last.hash),
         },
         assets: {},
       };
@@ -127,7 +123,7 @@ async function failedOf(
   if (last === undefined || record.reason === undefined) {
     return undefined;
   }
-  const tx = txOf(chains, accountRefParts(last.account).chain, last.hash);
+  const tx = receiptTxOf(chains, accountRefParts(last.account).chain, last.hash);
   return { outcome: { kind: "failed", reason: record.reason, tx }, assets: {} };
 }
 
@@ -137,8 +133,9 @@ async function failedOf(
  * reason; each with its last transaction's explorer link, or its hash on a chain the registry
  * lists no explorer for; an end before anything was sent, with
  * its reason when it stored one, which a paper intent that ended before its fill gives too; and
- * `unknown_after_send` while the chain is read. `undefined` for any other paper intent and one
- * still on its way.
+ * `unknown_after_send` while the chain is read. A bridge says where it stands from its final
+ * deposit on (section 3.9): on its way, then delivered or paid back. `undefined` for any other
+ * paper intent and one still on its way.
  */
 export async function liveReceiptOf(
   source: LiveReceiptSource,
@@ -150,6 +147,10 @@ export async function liveReceiptOf(
   }
   if (record.isPaper) {
     return undefined;
+  }
+  const bridged = record.kind === "bridge" ? await bridgeReceiptOf(source, call) : undefined;
+  if (bridged !== undefined) {
+    return bridged;
   }
   if (record.state === "reconciled") {
     return reconciledOf(source) ?? (await landedOf(source, call)) ?? doneAlone;

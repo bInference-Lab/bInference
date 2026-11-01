@@ -120,6 +120,9 @@ export const cardKeys = [
   "receipt.unsent",
   "receipt.unknown",
   "receipt.failed",
+  "receipt.bridgeSent",
+  "receipt.bridgeDelivered",
+  "receipt.bridgeRefunded",
   "receipt.result",
   "receipt.tx",
   // The P&L card's lines (spec 4, section 3.7).

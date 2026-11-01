@@ -1,8 +1,9 @@
-import type { Amount, AssetRef, TxHash } from "@binference/chain";
+import type { AccountRef, Amount, AssetRef, TxHash } from "@binference/chain";
 import type { IntentReason } from "../intents/intent-reason.js";
 import { type CardAction, type CardActionFacts, orderTermsOf } from "./card-action.js";
 import type { Answerer } from "./card-answer.js";
 import type { CardLine, CardValue } from "./card-line.js";
+import { type CardPayee, payeeValue } from "./send-card-lines.js";
 
 /**
  * How a card closed: the first answer, Confirm or Cancel, or its timer. Every copy of the card on
@@ -46,7 +47,8 @@ export type ReceiptTx = { readonly explorerLink: string } | { readonly hash: TxH
  * and, with a first buy, what that sold and bought; any other intent that landed, such as a send
  * or a rescue; one that failed on chain, with its reason; each with its last transaction. One that
  * reconciled with nothing sent is done; one that ended before anything was sent gives its reason
- * when it stored one; one whose fate is not known yet says so.
+ * when it stored one; one whose fate is not known yet says so. A bridge says where its delivery
+ * stands ({@link BridgeOutcome}).
  */
 export type LiveOutcome =
   | { readonly kind: "filled"; readonly fill: ReceiptFill; readonly tx: ReceiptTx }
@@ -66,7 +68,41 @@ export type LiveOutcome =
     }
   | { readonly kind: "unsent" }
   | { readonly kind: "unknown" }
-  | { readonly kind: "failed"; readonly reason: IntentReason; readonly tx: ReceiptTx };
+  | { readonly kind: "failed"; readonly reason: IntentReason; readonly tx: ReceiptTx }
+  | BridgeOutcome;
+
+/**
+ * Where a bridge stands once its deposit is final (spec 4, section 3.9): on its way, with the
+ * chain it left by the registry's name, its destination's, the minutes it expects and its
+ * deposit; delivered, with who received what and the transaction that paid them on the
+ * destination chain; or paid back, by its venue, with what came back to which wallet and the
+ * transaction that paid it on the source chain.
+ */
+export type BridgeOutcome =
+  | {
+      readonly kind: "bridgeSent";
+      readonly fromChain: string;
+      readonly chain: string;
+      readonly minutes: number;
+      readonly tx: ReceiptTx;
+    }
+  | {
+      readonly kind: "bridgeDelivered";
+      readonly chain: string;
+      readonly recipient: AccountRef;
+      /** The recipient's label in the address book, or that it is the rescue address. */
+      readonly payee: CardPayee;
+      readonly received: Amount;
+      readonly tx: ReceiptTx;
+    }
+  | {
+      readonly kind: "bridgeRefunded";
+      readonly venue: string;
+      readonly amount: Amount;
+      /** The label of the wallet the venue paid back. */
+      readonly wallet: string;
+      readonly tx: ReceiptTx;
+    };
 
 /**
  * What a confirmed intent with nothing to send took effect as (spec 4, section 3.5): an unfreeze,
@@ -144,6 +180,33 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
   }),
   unsent: () => ({ key: "receipt.unsent", values: {} }),
   unknown: () => ({ key: "receipt.unknown", values: {} }),
+  bridgeSent: (after) => ({
+    key: "receipt.bridgeSent",
+    values: {
+      fromChain: text(after.fromChain),
+      chain: text(after.chain),
+      minutes: { type: "count", count: after.minutes },
+      explorerLink: txValue(after.tx),
+    },
+  }),
+  bridgeDelivered: (after) => ({
+    key: "receipt.bridgeDelivered",
+    values: {
+      chain: text(after.chain),
+      recipient: payeeValue(after.recipient, after.payee),
+      received: { type: "amount", amount: after.received },
+      explorerLink: txValue(after.tx),
+    },
+  }),
+  bridgeRefunded: (after) => ({
+    key: "receipt.bridgeRefunded",
+    values: {
+      venue: text(after.venue),
+      amount: { type: "amount", amount: after.amount },
+      wallet: text(after.wallet),
+      explorerLink: txValue(after.tx),
+    },
+  }),
   unfrozen: (after) =>
     after.scope === "agent"
       ? { key: "receipt.unfrozenAgent", values: { agent: text(after.agent) } }

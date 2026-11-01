@@ -1,17 +1,20 @@
 import {
   type Amount,
   type ChainEvent,
+  type ChainRegistry,
   chainRefSchema,
   isTxHash,
   type TxHash,
 } from "@binference/chain";
-import type { Id } from "@binference/core";
+import { type Id, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { type BridgeBench, bridgeBench } from "../executor/test-bridge-bench.js";
 import { driveUntil, tapped } from "../executor/test-executor.js";
 import { restartBench } from "../executor/test-restart.js";
 import { testToken, testWallet } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
+import type { EnginePush } from "../pushes/engine-push.js";
+import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { BridgeRecord } from "./bridge-record.js";
 import { bridgeLateAfterMs } from "./bridge-settlement.js";
 import {
@@ -305,5 +308,148 @@ describe("following a bridge's delivery", () => {
       JSON.stringify(push.data).includes("notice.bridgeArrived"),
     );
     expect(arrived).toHaveLength(1);
+  });
+});
+
+// The bench's registry with the destination listed beside the fake chain, as Fake Two with its
+// own block explorer, as the registry lists each chain a bridge delivers to.
+function withDestination(bench: BridgeBench): ChainRegistry {
+  const chains = bench.fakes.chains;
+  return {
+    get(ref) {
+      const found = chains.get(ref === testDestination ? sourceChain : ref);
+      if (ref !== testDestination || !found.ok) {
+        return found;
+      }
+      const explorers = [{ ...twoScan, url: "https://two.example.invalid" }];
+      const definition = { ...found.value.definition, id: "fake:2", name: "Fake Two", explorers };
+      return ok({ ...found.value, ref, definition });
+    },
+    list: () => chains.list(),
+  };
+}
+
+const twoScan = {
+  name: "two-scan",
+  txUrl: "https://two.example.invalid/tx/{hash}",
+  source: "https://example.invalid/two-scan",
+};
+
+// The card receipts as the owner's surfaces read them, over the bench's stores and bridges.
+function receiptOf(bench: BridgeBench, intent: Id<"int">, chains = withDestination(bench)) {
+  const showings = createCardShowings({
+    ...bench.test.stores,
+    chains,
+    venues: { hasNoDeadline: () => false },
+  });
+  return showings.settled(intent, live);
+}
+
+// The moves the engine and its executor pushed into `state` for the intent.
+function movesInto(pushes: readonly EnginePush[], intent: Id<"int">, state: string) {
+  return pushes.filter((push) => {
+    const data = JSON.stringify(push.data);
+    return (
+      push.kind === "intent/changed" &&
+      data.includes(`"intent":"${intent}"`) &&
+      data.includes(`"state":"${state}"`)
+    );
+  });
+}
+
+describe("a bridge's receipt", () => {
+  it("says it left once its deposit lands, with the deposit's link, before and after its row opens", async () => {
+    const bench = await bridgeBench();
+    const { intent, bridge } = await inTransit(bench);
+    const deposit = { explorerLink: `https://scan.example.invalid/tx/${bridge.depositTx}` };
+    const sent = {
+      kind: "bridgeSent",
+      fromChain: "Fake One",
+      chain: "Fake Two",
+      minutes: 1,
+      tx: deposit,
+    };
+
+    expect(movesInto(bench.pushes, intent, "finalized")).toHaveLength(1);
+    expect((await receiptOf(bench, intent))?.live?.outcome).toStrictEqual(sent);
+    const { bridges: _bridges, ...stores } = bench.test.stores;
+    const unread = createCardShowings({
+      ...stores,
+      chains: withDestination(bench),
+      venues: { hasNoDeadline: () => false },
+    });
+    expect((await unread.settled(intent, live))?.live?.outcome).toStrictEqual(sent);
+  });
+
+  it("says who received what on the destination, with the fill's link there, once across a restart", async () => {
+    const bench = await bridgeBench();
+    const { intent, bridge } = await inTransit(bench);
+    filled(bench, bridge, { received: { asset: testArrives, base: 99_000_000n } });
+
+    await follow(bench);
+    const restarted = await restartBench(bench);
+    await follow(bench);
+
+    const pushes = [...bench.pushes, ...bench.test.pushes, ...restarted.pushes];
+    expect(movesInto(pushes, intent, "reconciled")).toHaveLength(1);
+    const ended = await receiptOf(bench, intent);
+    expect(ended?.live?.outcome).toStrictEqual({
+      kind: "bridgeDelivered",
+      chain: "Fake Two",
+      recipient: testFarEntry.account,
+      payee: { label: "exchange" },
+      received: { asset: testArrives, base: 99_000_000n },
+      tx: { explorerLink: `https://two.example.invalid/tx/${hashOf("f1")}` },
+    });
+    expect(ended?.live?.assets[testArrives]).toMatchObject({ symbol: "TKN", decimals: 6 });
+    const bare = await receiptOf(bench, intent, bench.fakes.chains);
+    expect(bare?.live?.outcome).toMatchObject({ tx: { hash: hashOf("f1") } });
+  });
+
+  it("says the venue paid the amount back to the wallet, with the refund's link, once across a restart", async () => {
+    const bench = await bridgeBench();
+    const { intent, bridge } = await inTransit(bench);
+    const refund = { chain: sourceChain, hash: hashOf("e1") };
+    bench.fakes.bridge.settle(bridge.depositTx, { kind: "refunded", refund });
+    bench.fakes.landsHere.land(refund.hash, {
+      recipient: testAccount,
+      received: [{ asset: testToken, base: 100_000_000n }],
+      events: settling(bridge.depositTx),
+    });
+
+    await follow(bench);
+    const restarted = await restartBench(bench);
+    await follow(bench);
+
+    const pushes = [...bench.pushes, ...bench.test.pushes, ...restarted.pushes];
+    expect(movesInto(pushes, intent, "reconciled")).toHaveLength(1);
+    expect((await receiptOf(bench, intent))?.live?.outcome).toStrictEqual({
+      kind: "bridgeRefunded",
+      venue: "fake-cross",
+      amount: { asset: testToken, base: 100_000_000n },
+      wallet: "main",
+      tx: { explorerLink: `https://scan.example.invalid/tx/${hashOf("e1")}` },
+    });
+  });
+
+  it("says it was delivered once when recovery reconciles a delivery a stop cut short", async () => {
+    const bench = await bridgeBench();
+    const { intent, bridge } = await inTransit(bench);
+    const received = { asset: testArrives, base: 99_000_000n };
+    const delivered = { intentId: intent, atMs: bridge.sentAtMs, expectedVersion: 0 };
+    await bench.test.stores.bridges.move(
+      { ...delivered, to: "delivered", fillTx: hashOf("f1"), received },
+      live,
+    );
+
+    const restarted = await restartBench(bench);
+    await follow(bench);
+
+    expect(movesInto(restarted.pushes, intent, "reconciled")).toHaveLength(1);
+    expect(movesInto(bench.test.pushes, intent, "reconciled")).toStrictEqual([]);
+    expect((await receiptOf(bench, intent))?.live?.outcome).toMatchObject({
+      kind: "bridgeDelivered",
+      received,
+    });
   });
 });

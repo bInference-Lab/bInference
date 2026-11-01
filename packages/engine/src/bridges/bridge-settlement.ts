@@ -88,6 +88,16 @@ export function bridgeAssetsOf(
   ]);
 }
 
+/** The label of the wallet a bridge left from, which a refund's words name; its id without one. */
+export async function walletLabelOf(
+  install: Pick<InstallStore, "read">,
+  walletId: IntentRecord["walletId"],
+  signal: AbortSignal,
+): Promise<string> {
+  const { wallets } = await install.read({ signal });
+  return wallets.find((wallet) => wallet.id === walletId)?.label ?? walletId;
+}
+
 /**
  * Tells what a settled bridge's receipt does not (spec 6, section 8), from whichever path moved
  * its intent to `reconciled`, which alone tells it: the follower's read or recovery's
@@ -107,9 +117,7 @@ export async function tellSettled(
   signal: AbortSignal,
 ): Promise<void> {
   const { snapshot, bridge, quote } = settled;
-  const install = await parts.install.read({ signal });
-  const walletId = snapshot.record.walletId;
-  const walletLabel = install.wallets.find((wallet) => wallet.id === walletId)?.label ?? walletId;
+  const walletLabel = await walletLabelOf(parts.install, snapshot.record.walletId, signal);
   const assets = bridgeAssetsOf(parts.chains, snapshot, quote);
   const notice = settledNotice(snapshot.record, { bridge, quote, assets, walletLabel });
   if (notice !== undefined) {

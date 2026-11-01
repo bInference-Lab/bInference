@@ -18,5 +18,8 @@
   "unfrozenAgent": "✅ 已解除冻结：{agent} 可以在交易限额内再次交易",
   "unfrozenAll": "✅ 已对全部 Agent 解除冻结（{count, plural, other {# 个曾被冻结}}），新建的 Agent 也不再冻结",
   "orderActive": "{mode, select, paper {🧪 模拟自动订单已生效} other {✅ 自动订单已生效}}：{orderKind}，{summary}，截至 {expiry}",
-  "orderUnstarted": "❌ 自动订单未生效：{why, select, expired {确认之前它已过期} other {它已先被取消}}"
+  "orderUnstarted": "❌ 自动订单未生效：{why, select, expired {确认之前它已过期} other {它已先被取消}}",
+  "bridgeSent": "✅ 已从 {fromChain} 发出 · 约 {minutes, number} 分钟后在 {chain} 到账 · {explorerLink}",
+  "bridgeDelivered": "✅ 已在 {chain} 到账：{recipient} 收到 {received} · {explorerLink}",
+  "bridgeRefunded": "⚠️ 未到账：{venue} 已将 {amount} 退回 {wallet} · {explorerLink}"
 }
