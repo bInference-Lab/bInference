@@ -1267,6 +1267,10 @@
     "0317": {
       "status": "Accepted",
       "sha256": "0643828e1adebda70489544eb90d81c5d38184d68e1e3d82c0b9cdb6424a8a00"
+    },
+    "0318": {
+      "status": "Accepted",
+      "sha256": "2c1baf266cf7bedde94c684497ac619ec15b48ba21d43e5b3bdbaaf98e7f4783"
     }
   }
 }

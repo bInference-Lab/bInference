@@ -53,7 +53,7 @@
   "address.launch_wallet": "此地址是本 binference 的发射钱包，任何钱包都不得向其付款：请从外部为发射钱包充值，例如从紧急转出地址所在的钱包。",
   "address.bridge_wallet": "此地址是本 binference 的跨链钱包，任何钱包都不得向其付款：请从外部为跨链钱包充值，例如从紧急转出地址所在的钱包。",
   "address.venue_contract": "请改为保存你要收款的钱包：此地址是平台使用的合约，例如 Relay 的存款合约，向它转账可能会付给平台订单指定的任何人。",
-  "address.not_wallet": "该 Solana 地址是程序或代币账户，不是钱包。请向收款人索取钱包地址。",
+  "address.not_wallet": "该地址是代币自身的合约、程序或代币账户，不是钱包。请向收款人索取钱包地址。",
   "address.malformed": "此地址不符合所选链的写法：EVM 链上应为带校验的十六进制地址，Solana 上应为 32 字节的 base58 地址。请重新从收款人处复制。",
   "address.other_chain": "此地址属于另一类链，与你选择的链不符，例如为 Base 保存了 Solana 地址。请选择该地址所在的链。",
   "address.unknown_chain": "binference 无法在此链上保存地址。请保存在 BNB Smart Chain 上，或保存在跨链可到达的链上：Ethereum、Base、Arbitrum、Robinhood Chain 或 Solana。",

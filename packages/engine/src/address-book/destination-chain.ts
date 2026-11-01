@@ -1,4 +1,9 @@
-import type { AccountKindReader, AddressCodec, ChainRef } from "@binference/chain";
+import type {
+  AccountCodeReader,
+  AccountKindReader,
+  AddressCodec,
+  ChainRef,
+} from "@binference/chain";
 
 /**
  * A chain a bridge delivers to, where the address book may save an address besides the chains of
@@ -13,4 +18,9 @@ export interface DestinationChain {
    * token accounts, such as Solana; none where every address can hold what it is paid.
    */
   readonly kinds?: AccountKindReader;
+  /**
+   * Reads what code an address there holds, on an EVM chain (decision 0318): a token is refused
+   * as a payee, and the rescue address is paid there only while it holds none.
+   */
+  readonly codes?: AccountCodeReader;
 }

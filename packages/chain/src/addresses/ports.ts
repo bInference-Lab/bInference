@@ -47,3 +47,26 @@ export interface AccountKindReader {
    */
   read(account: AccountRef, options: { readonly signal: AbortSignal }): Promise<AccountKind>;
 }
+
+/**
+ * What an account holds as code on one chain (decision 0318): `none`, a plain wallet whose key
+ * holds it on every chain of its family; `delegation`, only an EIP-7702 delegation; `token`, code
+ * that answers a token's supply and decimals, where a payment is lost; `contract`, any other code,
+ * such as a contract wallet.
+ */
+export type AccountCode = "none" | "delegation" | "token" | "contract";
+
+/**
+ * Reads what code an account holds on one chain, at its latest block: the rescue address's plain
+ * wallet check before a bridge pays it on another chain, and a token refused as a payee there
+ * (decision 0318). It only reads. Adapter: the EVM family's, over the chain's RPC failover.
+ */
+export interface AccountCodeReader {
+  /** The chain it reads. */
+  readonly chain: ChainRef;
+  /**
+   * The account's code. An account of another chain is a fault; a node that cannot answer
+   * rejects, and so does the signal once it aborts.
+   */
+  read(account: AccountRef, options: { readonly signal: AbortSignal }): Promise<AccountCode>;
+}

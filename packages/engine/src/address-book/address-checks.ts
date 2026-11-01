@@ -50,22 +50,29 @@ export function addressRefusal(
   return listed.length + rescues.length >= parts.mostPerChain ? "address.chain_full" : undefined;
 }
 
+// Whether the account can hold what a payment brings it, by its chain's readers: no program or
+// token account (decision 0298) and no token's own contract (decision 0318).
+async function isWalletAccount(saved: SavedAccount, signal: AbortSignal): Promise<boolean> {
+  const kind =
+    saved.kinds === undefined ? "wallet" : await saved.kinds.read(saved.account, { signal });
+  const code =
+    saved.codes === undefined ? "none" : await saved.codes.read(saved.account, { signal });
+  return kind === "wallet" && code !== "token";
+}
+
 /**
- * Reads, on a chain whose accounts may be programs, whether the account is a wallet (decision
- * 0298): a program or a token account is `address.not_wallet`, and a read that fails for any
- * reason but the call's own abort, a node that does not answer or an answer the reader cannot
- * read, is `chain.rpc_down`, so nothing is saved unread. On any other chain nothing is read.
+ * Reads, on a chain whose readers can tell, whether the account is a wallet: a program or a token
+ * account on Solana (decision 0298), or a token's own contract on an EVM destination (decision
+ * 0318), is `address.not_wallet`, and a read that fails for any reason but the call's own abort,
+ * a node that does not answer or an answer the reader cannot read, is `chain.rpc_down`, so nothing
+ * is saved unread. On any other chain nothing is read.
  */
 export async function walletCheck(
   saved: SavedAccount,
   signal: AbortSignal,
 ): Promise<Result<void, ProtocolErrorCode>> {
-  if (saved.kinds === undefined) {
-    return ok(undefined);
-  }
   try {
-    const kind = await saved.kinds.read(saved.account, { signal });
-    return kind === "wallet" ? ok(undefined) : err("address.not_wallet");
+    return (await isWalletAccount(saved, signal)) ? ok(undefined) : err("address.not_wallet");
   } catch {
     signal.throwIfAborted();
     return err("chain.rpc_down");

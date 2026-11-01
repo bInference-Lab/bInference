@@ -9,7 +9,7 @@ const refusing = {
 };
 
 describe("the chains a bridge delivers to, as the engine takes them", () => {
-  it("names the five destinations, each with its family's codec, and reads Solana alone", () => {
+  it("names the five destinations, each with its family's codec and account reader", () => {
     const destinations = selfHostedDestinationChains({
       http: refusing,
       clock: createManualClock(),
@@ -33,6 +33,10 @@ describe("the chains a bridge delivers to, as the engine takes them", () => {
       undefined,
       undefined,
       chainRefSchema.parse(solana.id),
+    ]);
+    expect(destinations.map((item) => item.codes?.chain)).toStrictEqual([
+      ...[ethereum, baseMainnet, arbitrum, robinhood].map((item) => chainRefSchema.parse(item.id)),
+      undefined,
     ]);
   });
 });

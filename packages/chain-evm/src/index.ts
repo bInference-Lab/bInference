@@ -1,3 +1,5 @@
+export { createEvmAccountCodeReader } from "./accounts/create-evm-account-code-reader.js";
+export type { EvmAccountCodeReaderOptions } from "./accounts/create-evm-account-code-reader.js";
 export { readEvmBalances } from "./balances/read-balances.js";
 export type { BalancesRequest } from "./balances/read-balances.js";
 export { callAbiJson } from "./decoding/call-abi-json.js";

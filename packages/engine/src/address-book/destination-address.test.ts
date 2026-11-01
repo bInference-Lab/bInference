@@ -7,6 +7,7 @@ import {
   chainRefSchema,
 } from "@binference/chain";
 import {
+  createFakeAccountCodeReader,
   createFakeAccountKindReader,
   createFakeAddressCodec,
   createFakeVenue,
@@ -57,6 +58,16 @@ const wideCodec: AddressCodec = {
 };
 const wide = chainRefSchema.parse("wide:1");
 const kinds = createFakeAccountKindReader({ chain: destination, notWallets: [program] });
+const evmLike = chainRefSchema.parse("fake:3");
+const token: AccountRef = accountRefSchema.parse("fake:3:0x000000e1");
+const codes = createFakeAccountCodeReader({
+  chain: evmLike,
+  codes: new Map([
+    [token, "token"],
+    [accountRefSchema.parse("fake:3:0x000000e2"), "contract"],
+    [accountRefSchema.parse("fake:3:0x000000e3"), "delegation"],
+  ]),
+});
 
 // The test engine with the two destinations, the rescue address in effect and the agent's wallet
 // under a ceiling that reaches the fake swap; under `ceilings` when given, else the test's own.
@@ -66,6 +77,7 @@ async function engineWithDestinations(
   const destinations = [
     { ref: destination, codec: createFakeAddressCodec(), kinds: given.reader ?? kinds },
     { ref: wide, codec: wideCodec },
+    { ref: evmLike, codec: createFakeAddressCodec(), codes },
   ];
   const ceilingsAsked = given.ceilings === undefined ? {} : { ceilings: given.ceilings };
   const test = await startTestEngine({ destinations, ...ceilingsAsked });
@@ -166,6 +178,36 @@ describe("saving an address on a chain a bridge delivers to", () => {
       expect(test.ceilings.bridged(wallet.policyId)).toStrictEqual([]);
     },
   );
+
+  it("refuses a token's own contract on a destination it reads code on, and saves no other", async () => {
+    const test = await engineWithDestinations();
+
+    expect(await add(test, { chain: "fake:3", address: "0x000000E1" })).toStrictEqual(
+      err("address.not_wallet"),
+    );
+    const saved = await Promise.all(
+      ["0x000000E2", "0x000000E3", "0x000000E4"].map(async (address) =>
+        expectOk(await add(test, { chain: "fake:3", address })),
+      ),
+    );
+    expect(saved.map((entry) => entry.address)).toStrictEqual([
+      "fake:3:0x000000e2",
+      "fake:3:0x000000e3",
+      "fake:3:0x000000e4",
+    ]);
+  });
+
+  it("saves nothing while a destination whose code it reads does not answer", async () => {
+    const test = await engineWithDestinations();
+    codes.down();
+    try {
+      expect(await add(test, { chain: "fake:3", address: "0x000000E2" })).toStrictEqual(
+        err("chain.rpc_down"),
+      );
+    } finally {
+      codes.up();
+    }
+  });
 
   it("saves nothing while the chain it must read does not answer", async () => {
     const test = await engineWithDestinations();

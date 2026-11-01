@@ -87,6 +87,13 @@ export type {
   AddressCodecSubject,
   CodecSample,
 } from "./contracts/address-codec-contract.js";
+export { accountCodeReaderContract } from "./contracts/account-code-reader-contract.js";
+export type {
+  AccountCodeReaderHarness,
+  AccountCodeReaderSubject,
+} from "./contracts/account-code-reader-contract.js";
+export { createFakeAccountCodeReader } from "./fakes/fake-account-code-reader.js";
+export type { FakeAccountCodeReader } from "./fakes/fake-account-code-reader.js";
 export { accountKindReaderContract } from "./contracts/account-kind-reader-contract.js";
 export type {
   AccountKindReaderHarness,

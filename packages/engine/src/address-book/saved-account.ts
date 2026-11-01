@@ -1,4 +1,5 @@
 import {
+  type AccountCodeReader,
   type AccountKindReader,
   type AccountRef,
   accountRefParts,
@@ -28,6 +29,8 @@ export interface SavedAccount {
   readonly isWalletChain: boolean;
   /** The reader that tells a wallet from a program on its chain, where its family needs one. */
   readonly kinds?: AccountKindReader;
+  /** The reader of an account's code on its chain, where it is a destination of the EVM family. */
+  readonly codes?: AccountCodeReader;
 }
 
 // The codec of a chain the address book saves on: a wallet chain's family's, else a destination's;
@@ -80,12 +83,15 @@ export function savedAccountOf(
     return err("address.malformed");
   }
   const isWalletChain = parts.chains.get(asked.chain).ok;
-  const kinds = parts.destinations.find((item) => item.ref === asked.chain)?.kinds;
+  const destination = parts.destinations.find((item) => item.ref === asked.chain);
+  const kinds = destination?.kinds;
+  const codes = destination?.codes;
   return ok({
     account: account.data,
     recipientBytes: recipientHex(bytes.value),
     isWalletChain,
     ...(kinds === undefined ? {} : { kinds }),
+    ...(codes === undefined ? {} : { codes }),
   });
 }
 

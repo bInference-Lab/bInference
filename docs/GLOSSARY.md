@@ -227,6 +227,9 @@ new name here first, in the change that uses it.
   finds a chain's address codec by its CAIP-2 namespace.
 - **account kind reader**: the port a chain family fills where an account may be a program or a
   token account, as on Solana, to tell such an account from a wallet before an address is saved.
+- **account code reader**: the port a chain family fills to read what code an account holds: none,
+  a delegation, a token's or a contract's. A bridge pays the rescue address on another chain only
+  where it holds none on either chain, and never pays a token there.
 - **staking**: putting the agent's BNB to work: native BNB staking with a **validator** through
   StakeHub, or slisBNB through Lista. Its moves are a **stake**, an **unstake** and a **claim**.
 - **staking position**: what a wallet holds with one staking venue, and one validator on StakeHub,

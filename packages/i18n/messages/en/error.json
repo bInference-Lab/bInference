@@ -53,7 +53,7 @@
   "address.launch_wallet": "This address is a launch wallet of this binference, and no wallet may pay one: fund a launch wallet from outside, such as from the rescue address's wallet.",
   "address.bridge_wallet": "This address is a bridge wallet of this binference, and no wallet may pay one: fund a bridge wallet from outside, such as from the rescue address's wallet.",
   "address.venue_contract": "Save the wallet you want paid instead: this address is a contract a venue uses, such as Relay's depository, and a send to it can pay whoever the venue's order names.",
-  "address.not_wallet": "That Solana address is a program or a token account, not a wallet. Ask the recipient for their wallet address.",
+  "address.not_wallet": "That address is a token's own contract, a program or a token account, not a wallet. Ask the recipient for their wallet address.",
   "address.malformed": "This address is not written as its chain writes it: a checksummed hex address on an EVM chain, or a base58 address of 32 bytes on Solana. Copy it again from the recipient.",
   "address.other_chain": "This address is one of another kind of chain than the one you chose, such as a Solana address saved for Base. Choose the chain the address is on.",
   "address.unknown_chain": "binference cannot save an address on this chain. Save it on BNB Smart Chain, or on a chain a bridge delivers to: Ethereum, Base, Arbitrum, Robinhood Chain or Solana.",

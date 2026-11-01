@@ -707,7 +707,9 @@ the rescue address among them on its own chain, is `address.chain_full`, as is a
 refuses on the write. On Solana the engine reads the account last: an executable program, an
 account another program than the System Program owns, an account that holds data such as a
 durable nonce, and an address off the ed25519 curve such as a program-derived address are
-`address.not_wallet`, and a read that fails `chain.rpc_down`. An address saved for a destination
+`address.not_wallet`, and a read that fails `chain.rpc_down`. On an EVM destination it reads the
+account's code last the same way: a token's own contract, which answers a token's supply and
+decimals, is `address.not_wallet` ([decision 0318](../DECISIONS.md#d0318)). An address saved for a destination
 rewrites every live wallet's call rules with its venues and cap as they are, planned before any
 is written; a plan that changes no rule signs nothing, and one that moved a ceiling is read back,
 stored and announced as `ceiling/set` is ([decision 0313](../DECISIONS.md#d0313)). Its entry
