@@ -10,6 +10,7 @@ import type {
   VenueDeclaration,
 } from "@binference/chain";
 import type { Clock, IdSource, Logger } from "@binference/core";
+import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { PositionStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
@@ -93,6 +94,12 @@ export interface ExecutorOptions {
   readonly ids: IdSource;
   /** Where the pushes of its intent moves and ledger entries go. */
   readonly publish: PublishPush;
+  /**
+   * Hears each settle message a move that ends a live intent stored for the agent runtime, after
+   * the move's own pushes: the engine's `pushSettled`, so the runtime hears of it at once. Without
+   * it the runtime reads the message only with `inbox/list`.
+   */
+  readonly settled?: (message: AgentInboxMessage) => void;
   readonly logger: Logger;
   readonly limits?: Partial<ExecutorLimits>;
   /**

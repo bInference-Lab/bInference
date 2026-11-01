@@ -33,6 +33,7 @@ import {
   type PositionStore,
   type WalletFactsSource,
 } from "@binference/engine";
+import type { AgentInboxMessage } from "@binference/engine/chat";
 import {
   type ChainSending,
   createExecutor,
@@ -80,6 +81,8 @@ export interface ComposeExecutorOptions {
   readonly clock: Clock;
   readonly random: Random;
   readonly publish: (push: EnginePush) => void;
+  /** Where each settle message the executor stores goes: the engine's `pushSettled`. */
+  readonly settled: (message: AgentInboxMessage) => void;
   readonly logger: Logger;
   /** Whether live order fills may sign: only a test host turns them on (decision 0211). */
   readonly liveOrderFills?: boolean;
@@ -259,6 +262,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     clock,
     ids: createIdSource({ clock, random }),
     publish: options.publish,
+    settled: options.settled,
     logger: options.logger,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.nameResolvers === undefined ? {} : { nameResolvers: options.nameResolvers }),

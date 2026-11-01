@@ -17,7 +17,7 @@ import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
 import { createIdSource, err, type Id } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import type { EngineOptions, WalletFactsSource } from "@binference/engine";
-import { createExecutor } from "@binference/engine/executor";
+import { createExecutor, type ExecutorOptions } from "@binference/engine/executor";
 import type { WalletRecord } from "@binference/engine/install";
 import {
   createFakePriceSource,
@@ -211,8 +211,14 @@ export interface RescueRigParts {
   readonly rescue: Address;
   /** What the executor asked the wallets' custody to sign, oldest first. */
   readonly asked: readonly SignRequest[];
-  /** The executor on the fork, its pushes going to `publish`. */
-  executor(publish: EngineOptions["publish"]): ReturnType<typeof createExecutor>;
+  /** The executor on the fork, which sends its pushes and settle messages to `out`. */
+  executor(out: RigExecutorOut): ReturnType<typeof createExecutor>;
+}
+
+/** Where the rig's executor sends its pushes and, when given, its settle messages. */
+interface RigExecutorOut {
+  readonly publish: EngineOptions["publish"];
+  readonly settled?: ExecutorOptions["settled"];
 }
 
 // The executor on the fork: anvil as the one relay, receipts at the finalized tag, and the rig's
@@ -220,7 +226,7 @@ export interface RescueRigParts {
 function executorOn(
   fork: Fork,
   parts: Omit<RescueRigParts, "executor" | "rigWallets" | "rescue" | "asked"> & RescueRigReach,
-  publish: EngineOptions["publish"],
+  out: RigExecutorOut,
 ): ReturnType<typeof createExecutor> {
   const { rpc, chain } = fork;
   const clock = createSystemClock();
@@ -243,7 +249,8 @@ function executorOn(
     sending: new Map([[chain.ref, sending]]),
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(61) }),
-    publish,
+    publish: out.publish,
+    ...(out.settled === undefined ? {} : { settled: out.settled }),
     logger: createMemoryLogger({ subsystem: "engine" }),
     nameResolvers: parts.nameResolvers,
     ...(parts.bridging === undefined ? {} : { bridging: parts.bridging.executor }),
@@ -275,6 +282,6 @@ export async function rescueRigParts(fork: Fork, reach: RescueRigReach): Promise
     rigWallets,
     rescue,
     asked,
-    executor: (publish) => executorOn(fork, { ...shared, ...reach }, publish),
+    executor: (out) => executorOn(fork, { ...shared, ...reach }, out),
   };
 }

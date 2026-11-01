@@ -184,10 +184,10 @@ async function readyToSendAndBridge(fork: Fork, machine: SendBridgeMachine): Pro
   });
 }
 
-// The model's answers, one a turn: the send by name; the bridge to Base; its words when the Base
-// bridge settles, which the bridge follower pushes to the runtime at once; the bridge to Solana;
-// and its words when that one settles. The send settles in the executor, whose move stores its
-// settle message without a push, so the runtime takes it with the owner's next message.
+// The model's answers, one a turn: the send by name; its words when the send settles, which the
+// executor pushes to the runtime at once; the bridge to Base; its words when the Base bridge
+// settles, which the bridge follower pushes; the bridge to Solana; and its words when that one
+// settles.
 function modelReplies(fork: Fork) {
   const amountOf = (token: Address, base: bigint) => ({
     asset: erc20AssetRef(fork.chain, token),
@@ -212,6 +212,7 @@ function modelReplies(fork: Fork) {
   };
   return [
     callsReply([{ name: "send", args: send }]),
+    textReply(`The 20 USDT reached ${name}.`),
     callsReply([{ name: "bridge", args: toBase }]),
     textReply("The USDT arrived on Base."),
     callsReply([{ name: "bridge", args: toSolana }]),
@@ -310,8 +311,8 @@ async function delivered(chat: Chat, step: Step, turn: number): Promise<string> 
   return messageText(machine, step.card);
 }
 
-// "send 20 USDT to alice.bnb": the card names the name and the address it points to, and the
-// send lands on the fork.
+// "send 20 USDT to alice.bnb": the card names the name and the address it points to, the send
+// lands on the fork, and the agent hears at once that it settled.
 async function sendsByName(chat: Chat): Promise<void> {
   const { fork, machine } = chat;
   const before = await heldOn(fork, { address: alice, token: usdt });
@@ -324,6 +325,7 @@ async function sendsByName(chat: Chat): Promise<void> {
   );
   await confirm(machine);
   await expect(until(machine, step.intent, "reconciled")).resolves.toBe("reconciled");
+  await chat.turns.turnsEnded(2);
   await machine.bot.idle();
   const after = await heldOn(fork, { address: alice, token: usdt });
   expect(after.token - before.token).toBe(20n * 10n ** 18n);
@@ -337,7 +339,7 @@ async function sendsByName(chat: Chat): Promise<void> {
 // restamped for this deposit, reconciles it.
 async function bridgesToBase(chat: Chat): Promise<void> {
   const { fork, machine } = chat;
-  const step = await ask(chat, "bridge 10 USDT to my Base address", 2);
+  const step = await ask(chat, "bridge 10 USDT to my Base address", 3);
   const lines = step.card.text.split("\n");
   expect(lines).toContainEqual(
     expect.stringMatching(
@@ -354,7 +356,7 @@ async function bridgesToBase(chat: Chat): Promise<void> {
   }
   expect(funds.args.recipient).toBe(pad(baseHolder).toLowerCase());
   machine.arrivals.acrossFilled({ hash: landed.hash, ...funds.args });
-  const receipt = await delivered(chat, step, 3);
+  const receipt = await delivered(chat, step, 4);
   expect(receipt).toMatch(
     new RegExp(
       `^${done} Delivered on Base: my Base address \\(${baseHolder}\\) received [\\d.]+ USDT · `,
@@ -368,7 +370,7 @@ async function bridgesToBase(chat: Chat): Promise<void> {
 // memo names this deposit's order, reconciles it.
 async function bridgesToSolana(chat: Chat): Promise<void> {
   const { fork, machine } = chat;
-  const step = await ask(chat, "bridge 10 USDC to my Solana address", 4);
+  const step = await ask(chat, "bridge 10 USDC to my Solana address", 5);
   const lines = step.card.text.split("\n");
   expect(lines).toContainEqual(
     expect.stringMatching(
@@ -388,7 +390,7 @@ async function bridgesToSolana(chat: Chat): Promise<void> {
   const bridged = await machine.stores.bridges.get(step.intent, live());
   const paid = bridged?.minOut.base ?? never();
   machine.arrivals.relayFilled({ hash: landed.hash, orderId: order.args.id, paid });
-  const receipt = await delivered(chat, step, 5);
+  const receipt = await delivered(chat, step, 6);
   expect(receipt).toMatch(
     new RegExp(
       `^${done} Delivered on Solana: my Solana address \\(${solanaPerson}\\) received [\\d.]+ USDC · `,

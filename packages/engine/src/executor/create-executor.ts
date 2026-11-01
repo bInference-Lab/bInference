@@ -74,9 +74,10 @@ interface Taken {
 }
 
 // The executor's writer of intents adds to each move of an order's live fill its write on the
-// order: the fill as it reconciles, or the skip as it ends otherwise (decision 0210).
+// order: the fill as it reconciles, or the skip as it ends otherwise (decision 0210). Each settle
+// message a move that ends an intent stores goes to `settled`, so the agent runtime hears of it.
 function storedOf(options: ExecutorOptions) {
-  const { stores, ids, publish, positions, prices, chains } = options;
+  const { stores, ids, publish, positions, prices, chains, settled } = options;
   const landed = { intents: stores.intents, positions, prices, chains };
   const fillEnd = createFillEnd({ orders: stores.orders, ids, landed });
   return createStoredIntents({
@@ -85,6 +86,7 @@ function storedOf(options: ExecutorOptions) {
     ids,
     publish,
     fillEnd,
+    ...(settled === undefined ? {} : { settled }),
   });
 }
 

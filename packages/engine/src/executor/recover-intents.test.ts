@@ -3,6 +3,7 @@ import type { FakeNetwork } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
+import { testCallers } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import {
@@ -17,6 +18,7 @@ import {
   transactionsOf,
 } from "./test-executor.js";
 import { restartBench, restartEvents, sendForeign } from "./test-restart.js";
+import { settlesOf } from "./test-settles.js";
 
 const live = () => ({ signal: new AbortController().signal });
 // A sale of the token: an exact approval to the fake router, then the swap.
@@ -212,6 +214,16 @@ describe("recovery after a restart", () => {
     const restarted = await restartBench(bench);
     await expect(driveUntil(bench, intent, settled)).resolves.toBe("reconciled");
     expect(restarted.signed).toHaveLength(0);
+  });
+
+  it("tells the agent runtime once when its recovered intent reconciles", async () => {
+    const bench = await startExecutorBench();
+    const intent = await tapped(bench, testSwap(), testCallers.runtime);
+    await driveUntil(bench, intent, { states: ["included"] });
+    await restartBench(bench);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("reconciled");
+    await flush();
+    expect(settlesOf(bench)).toStrictEqual([[intent, "reconciled"]]);
   });
 
   it("reconciles a finalized intent once, its trade recorded once", async () => {

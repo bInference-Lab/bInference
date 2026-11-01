@@ -32,6 +32,7 @@ import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
 import type { IntentState } from "../intents/intent-state.js";
 import { expectOk, testAgent, testCoin, testSwap, testWallet } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
+import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
   type TestEngine,
@@ -234,6 +235,7 @@ export function executorOf(
     clock: test.clock,
     ids: createIdSource({ clock: test.clock, random: createSeededRandom(options.idSeed ?? 9) }),
     publish: notes.pushed,
+    settled: (message) => test.engine.pushSettled(message),
     logger,
     ...(options.limits === undefined ? {} : { limits: options.limits }),
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
@@ -334,13 +336,17 @@ export async function driveUntil(
   return driveUntil(bench, intent, { states: goal.states, blocks: blocks - 1 });
 }
 
-/** The owner's tap on the card of a swap the CLI proposed; the engine hands it to the executor. */
+/**
+ * The owner's tap on the card of a swap the CLI, or `proposer`, proposed; the engine hands it to
+ * the executor.
+ */
 export async function tapped(
   bench: ExecutorBench,
   request: IntentRequest = testSwap(),
+  proposer?: EngineCaller,
 ): Promise<Id<"int">> {
   const handlers = bench.test.engine.handlers;
-  const view = expectOk(await handlers["intent/propose"](testCall(request)));
+  const view = expectOk(await handlers["intent/propose"](testCall(request, proposer)));
   const card = view.card?.card ?? fixtureId("crd", 0);
   const args = { intent: view.intent, card, cardVersion: 1 };
   expectOk(await handlers["intent/confirm"](testCall(args)));

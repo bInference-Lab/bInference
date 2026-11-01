@@ -67,6 +67,7 @@ function composeWith(chainsConfig: ChainsConfig) {
     clock,
     random: createSeededRandom(1),
     publish: () => undefined,
+    settled: () => undefined,
     logger: createMemoryLogger({ subsystem: "engine" }),
   });
 }

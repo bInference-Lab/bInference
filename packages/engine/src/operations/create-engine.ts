@@ -129,6 +129,13 @@ export interface Engine extends BridgeWork {
    */
   readonly launchDrafts: LaunchDraftDesk;
   /**
+   * Pushes on the `inbox` topic a settle message a writer of intents outside the engine stored,
+   * the executor's, so the agent runtime hears at once that its live intent ended. The composition
+   * root hands it to the executor; a push that fails is dropped, and the runtime reads the message
+   * again with `inbox/list` at its start.
+   */
+  readonly pushSettled: (message: AgentInboxMessage) => void;
+  /**
    * Does the work that waits for its time: once a new rescue address takes effect, it sends the
    * change that leaves the old one out of every ceiling. A timer of the composition root calls it;
    * the rescue address operations call it too.
@@ -324,10 +331,7 @@ interface IntentParts {
 function intentParts(
   options: EngineOptions,
   paper: PaperParts,
-  parts: {
-    readonly settled: (message: AgentInboxMessage) => void;
-    readonly check: DowntimeCheck;
-  },
+  parts: { readonly settled: Engine["pushSettled"]; readonly check: DowntimeCheck },
 ): IntentParts {
   const { settled, check } = parts;
   const { stores, host, chains, clock, isLocked } = options;
@@ -451,6 +455,7 @@ export function createEngineWithFills(given: EngineOptions): {
     },
     answer: intents.answer,
     launchDrafts: drafts.desk,
+    pushSettled: chat.settled,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     ...startupWorkOf(options, { ...intents, relay: chat.relay, check, paper }),

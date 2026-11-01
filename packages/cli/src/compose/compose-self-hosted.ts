@@ -1,6 +1,7 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
+import type { AgentInboxMessage } from "@binference/engine/chat";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState } from "@binference/protocol";
@@ -64,7 +65,8 @@ export interface ComposedSelfHosted extends TimedWork {
   readonly launchFeeds: ComposedWatching["launchFeeds"];
 }
 
-// The executor sends through the chains' relays; its pushes reach the engine's once it exists.
+// The executor sends through the chains' relays; its pushes and settle messages reach the
+// engine's once it exists.
 function composeSending(
   opening: Opening,
   opened: Opened,
@@ -77,7 +79,10 @@ function composeSending(
   const { host, closers } = opening;
   const { log, stores } = opened;
   const { parts, chains } = context;
-  const pushes = { publish: (_push: EnginePush): void => undefined };
+  const pushes = {
+    publish: (_push: EnginePush): void => undefined,
+    settled: (_message: AgentInboxMessage): void => undefined,
+  };
   const composed = composeExecutor({
     stores,
     tracers: opened.tracers,
@@ -93,6 +98,7 @@ function composeSending(
     clock: host.clock,
     random: host.random,
     publish: (push) => pushes.publish(push),
+    settled: (message) => pushes.settled(message),
     logger: log.logger,
     nameResolvers: chainNameResolvers(parts.reads),
     bridging: parts.bridging.executor,
@@ -294,6 +300,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   // The launches a draft's Start began stop before the bot's line, so their ends still reach it.
   opening.closers.add("launch_drafts", async () => engine.launchDrafts.close());
   sending.pushes.publish = publish;
+  sending.pushes.settled = engine.pushSettled;
   locked.announce.publish = publish;
   wiring.jobs.publish = publish;
   wiring.watcherPushes.publish = publish;

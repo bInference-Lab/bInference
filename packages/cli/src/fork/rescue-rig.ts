@@ -60,7 +60,7 @@ export async function rescueRigOf(
     risk: createFakeRiskCheck({ chains, clock }),
     simulator: createFakeSimulator(new Map()),
     chainSimulator: createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain }),
-    executor: parts.executor(() => undefined),
+    executor: parts.executor({ publish: () => undefined }),
     nameResolvers,
     ...bridging?.engine,
     ...forkEngineBasics(fork, 62),

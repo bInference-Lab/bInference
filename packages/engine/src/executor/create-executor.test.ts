@@ -27,6 +27,7 @@ import {
   startExecutorBench,
   stateOf,
 } from "./test-executor.js";
+import { settlesOf } from "./test-settles.js";
 
 const live = () => ({ signal: new AbortController().signal });
 // A sale of the token: an exact approval to the fake router, then the swap.
@@ -249,6 +250,33 @@ describe("the executor", () => {
       grant: { approvalMode: "auto", agent: testAgent, intent, networkFeeCapNativeBase: cap },
       current: { agent: testAgent, mode: "auto" },
     });
+  });
+});
+
+describe("the executor's settle messages", () => {
+  it("tells the agent runtime once when its live intent reconciles", async () => {
+    const bench = await startExecutorBench({ agent: { approvalMode: "auto" } });
+    const intent = await automatic(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    await flush();
+    expect(settlesOf(bench)).toStrictEqual([[intent, "reconciled"]]);
+  });
+
+  it("tells the agent runtime once when its live intent ends failed_onchain", async () => {
+    const bench = await startExecutorBench({ network: { reverting: [saleApproval.payload] } });
+    const intent = await tapped(bench, tokenSale, testCallers.runtime);
+    const goal = { states: ["failed_onchain"] } as const;
+    await expect(driveUntil(bench, intent, goal)).resolves.toBe("failed_onchain");
+    await flush();
+    expect(settlesOf(bench)).toStrictEqual([[intent, "failed_onchain"]]);
+  });
+
+  it("tells the agent runtime nothing of a live intent the owner proposed", async () => {
+    const bench = await startExecutorBench();
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, { states: ["reconciled"] })).resolves.toBe("reconciled");
+    await flush();
+    expect(settlesOf(bench)).toStrictEqual([]);
   });
 });
 

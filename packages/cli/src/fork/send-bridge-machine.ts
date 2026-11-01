@@ -10,7 +10,11 @@ import {
   type MemoryLogger,
 } from "@binference/core/testing";
 import type { EnginePush } from "@binference/engine";
-import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
+import {
+  type AgentInboxMessage,
+  createRunningTurns,
+  type RunningTurns,
+} from "@binference/engine/chat";
 import { createSourceMarketReads } from "@binference/engine/market";
 import { createSimulationCheck } from "@binference/engine/simulation";
 import {
@@ -104,7 +108,10 @@ function composedOn(fork: Fork, made: Made): ComposedEngine {
   const { rig, names, bridging, telegram, turns, logger } = made;
   const clock = createSystemClock();
   const chains = selfHostedChains();
-  const pushes = { publish: (_push: EnginePush): void => undefined };
+  const pushes = {
+    publish: (_push: EnginePush): void => undefined,
+    settled: (_message: AgentInboxMessage): void => undefined,
+  };
   const simulator = createEvmTxSimulator({ rpc: fork.rpc, chain: fork.chain });
   const composed = composeEngine(partsOf(fork, rig), {
     chains,
@@ -112,7 +119,10 @@ function composedOn(fork: Fork, made: Made): ComposedEngine {
     simulator: createSimulationCheck({ simulator, chains, clock }),
     risk: { cache: createMemoryRiskCacheStore(["goplus"]), cacheTtlMs: () => 600_000, simulator },
     wallets: rig.wallets,
-    executor: rig.executor((push) => pushes.publish(push)),
+    executor: rig.executor({
+      publish: (push) => pushes.publish(push),
+      settled: (message) => pushes.settled(message),
+    }),
     positions: createMemoryPositionStore(),
     paperBalances: [],
     version: "2026.10.0",
@@ -131,6 +141,7 @@ function composedOn(fork: Fork, made: Made): ComposedEngine {
     logger,
   });
   pushes.publish = composed.publish;
+  pushes.settled = composed.engine.pushSettled;
   return composed;
 }
 
