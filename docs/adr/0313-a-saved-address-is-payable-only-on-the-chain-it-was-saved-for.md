@@ -1,6 +1,6 @@
 # 0313. A saved address is payable only on the chain it was saved for
 
-Status: Accepted
+Status: Amended by 0321
 
 Accepted by the owner on 2026-11-01, built on the owner's ruling of 2026-10-30 ("Lock chain and
 address": an address saved for Base is never payable by a plain send on BNB Smart Chain, and its
