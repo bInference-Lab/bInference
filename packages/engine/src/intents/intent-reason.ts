@@ -17,8 +17,8 @@ export const policyReasons = [
   "venue_off",
   "token_denied",
   "send_level",
-  "unsaved_address",
   "outside_content_send",
+  "unsaved_address",
   "no_price",
 ] as const;
 

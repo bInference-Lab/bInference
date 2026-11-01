@@ -257,11 +257,13 @@ const intentRules: readonly PolicyRule[] = [
   },
   { reason: "token_denied", refuses: isTokenDenied },
   { reason: "send_level", refuses: (input) => isSend(input) && breaksSendLevel(input) },
-  { reason: "unsaved_address", refuses: (input) => isSend(input) && paysUnsaved(input) },
   {
+    // A marked turn's unknown payee says why it is refused before it says the address is unsaved
+    // (decision 0310).
     reason: "outside_content_send",
     refuses: (input) => isSend(input) && input.subject.hasOutsideContent && paysUnknown(input),
   },
+  { reason: "unsaved_address", refuses: (input) => isSend(input) && paysUnsaved(input) },
   { reason: "no_price", refuses: ({ figures }) => figures === undefined },
 ];
 

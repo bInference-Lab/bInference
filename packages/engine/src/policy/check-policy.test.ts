@@ -424,8 +424,8 @@ describe("sends and the send level", () => {
   it("marks an outside-content send to an address outside the book", async () => {
     const outside = { ...send, hasOutsideContent: true };
     expect(reasonsOf(await verdict({ ...outside, target: stranger }))).toStrictEqual([
-      "unsaved_address",
       "outside_content_send",
+      "unsaved_address",
     ]);
     expect(reasonsOf(await verdict(outside))).toStrictEqual([]);
     expect(reasonsOf(await verdict({ ...outside, target: rescue }))).toStrictEqual([]);

@@ -184,12 +184,12 @@ describe("a send", () => {
     expect(view.state).toBe("awaiting_confirmation");
   });
 
-  it("refuses an unsaved address from an outside-content turn, with both reasons", async () => {
+  it("refuses an unknown address from an outside-content turn for its outside content first", async () => {
     const test = await startSends();
     const marked = { ...testCallers.runtime, turn: { hasOutsideContent: true } };
     const view = await propose(test, testSend({ address: stranger }), marked);
     expect(view.outsideContent).toBe(true);
-    expect(view.outcome?.reason).toBe("unsaved_address");
+    expect(view.outcome?.reason).toBe("outside_content_send");
   });
 });
 

@@ -158,8 +158,8 @@ The reason stored with `rejected_policy` is one of:
 | `venue_off`            | The venue is not allowed for this agent                                                                                                                                                                         |
 | `token_denied`         | The intent buys or receives a token on the deny list, or moves one missing from a set allow list. Selling a denied token passes, but always opens a card ([decision 0101](../DECISIONS.md#d0101))               |
 | `send_level`           | The send target is not allowed at the current send level                                                                                                                                                        |
+| `outside_content_send` | A send or bridge proposed in a turn with the outside-content mark, to an address not in the address book; it comes before `unsaved_address` ([decision 0310](../DECISIONS.md#d0310))                            |
 | `unsaved_address`      | The send target is neither the rescue address nor a saved address ([decision 0091](../DECISIONS.md#d0091)); saving one needs the owner key                                                                      |
-| `outside_content_send` | A send or bridge proposed in a turn with the outside-content mark, to an address not in the address book                                                                                                        |
 | `validator_jailed`     | A stake names a validator StakeHub lists as jailed; an unstake or a claim from one passes                                                                                                                       |
 | `no_price`             | No USD value could be found ([decision 0059](../DECISIONS.md#d0059))                                                                                                                                            |
 
@@ -403,7 +403,8 @@ and `step_unsent` (a step never signed after an earlier one landed,
   never takes it. A freeze cancels it like any unsigned intent.
 - **Sends** ([decision 0091](../DECISIONS.md#d0091)). A send pays the rescue address or a saved
   address on the wallet's chain, under the send level; anything else ends `rejected_policy` with
-  `unsaved_address` or `send_level`. A send by `.bnb` name resolves it at the resolve step and
+  `send_level`, `outside_content_send` for a marked turn's address outside the book, or
+  `unsaved_address`. A send by `.bnb` name resolves it at the resolve step and
   keeps the name and the address, which its card shows; the address must be saved as any other.
   When the wallet queue takes it, the engine reads the name again: an address that differs from
   the card's, or none, ends it `failed_check` with `name_moved` before anything is signed, and the
