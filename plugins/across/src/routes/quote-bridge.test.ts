@@ -15,6 +15,7 @@ import {
   recordedRoutes,
   requestFor,
   tokens,
+  spokePools,
 } from "../testing/bridge-fixtures.js";
 import { tooHighAnswer } from "../testing/recorded-answers.js";
 import { usdcToBaseAnswer, wethToBaseAnswer } from "../testing/recorded-quotes.js";
@@ -24,7 +25,7 @@ import { routeQueryOf } from "./route-query.js";
 
 const live = { signal: new AbortController().signal };
 const request = requestFor(tokens.usdc, tokens.baseUsdc);
-const options = { http: createScriptedHttp([]), chains: [bsc], routes: recordedRoutes };
+const options = { http: createScriptedHttp([]), chains: [bsc], routes: recordedRoutes, spokePools };
 
 // The Swap API query the bridge makes for a request it takes.
 function queryOf(asked: BridgeQuoteRequest): SwapQuery {

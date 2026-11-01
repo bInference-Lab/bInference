@@ -17,7 +17,9 @@ import {
   tokens,
   unseenDeposit,
   wallet,
+  spokePools,
 } from "./testing/bridge-fixtures.js";
+import { recordedBareTransferCheck, recordedFillCheck } from "./testing/recorded-settlements.js";
 
 const live = { signal: new AbortController().signal };
 const noRoute = { ok: false, error: "no_route" };
@@ -48,6 +50,8 @@ describe("the Across bridge", () => {
           },
           expired: deposit(recordedExpired),
           unseen: deposit(unseenDeposit),
+          settled: { check: recordedFillCheck, paid: 288_148_284n },
+          stranger: recordedBareTransferCheck,
         }),
     }),
   )("follows the contract: $name", async ({ run }) => {
@@ -148,12 +152,12 @@ describe("the Across bridge", () => {
     const http = recordedApi();
     const decimals = { leaves: 18, arrives: 6 };
     const toSolana = [{ leaves: tokens.usdc, arrives: tokens.solanaUsdc, decimals }];
-    expect(() => createAcrossBridge({ http, chains: [bsc], routes: toSolana })).toThrow(
+    expect(() => createAcrossBridge({ http, chains: [bsc], routes: toSolana, spokePools })).toThrow(
       expect.objectContaining({ code: "across.bad_options" }),
     );
-    expect(() => createAcrossBridge({ http, chains: [base], routes: recordedRoutes })).toThrow(
-      expect.objectContaining({ code: "across.bad_options" }),
-    );
+    expect(() =>
+      createAcrossBridge({ http, chains: [base], routes: recordedRoutes, spokePools }),
+    ).toThrow(expect.objectContaining({ code: "across.bad_options" }));
   });
 
   it("declares depositV3 on the SpokePool, its bound inputs, the one spender, and its destinations", () => {

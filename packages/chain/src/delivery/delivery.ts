@@ -12,6 +12,17 @@ export interface DeliveryRequest {
 }
 
 /**
+ * One event a transaction emitted, as its chain family writes it: on an EVM chain a log, its
+ * emitting contract, its topics and its data in hex; on Solana a log line of the program that ran,
+ * with no topics and the line's text after its prefix, such as a memo.
+ */
+export interface ChainEvent {
+  readonly emitter: AccountRef;
+  readonly topics: readonly string[];
+  readonly data: string;
+}
+
+/**
  * What one transaction brought one account of one asset on the chain that holds it, such as a
  * bridge's fill on the destination chain.
  */
@@ -28,4 +39,9 @@ export interface Delivery {
    * when it brought none of that asset. A holding that shrank reads as 0.
    */
   readonly received: Amount;
+  /**
+   * The events the transaction emitted, in their order, so a bridge can tell its own fill or
+   * refund of one deposit from any other payment; none for a failed one.
+   */
+  readonly events: readonly ChainEvent[];
 }

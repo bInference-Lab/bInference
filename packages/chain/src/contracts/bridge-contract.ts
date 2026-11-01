@@ -7,6 +7,7 @@ import {
   type DecodedDeposit,
   decodedDepositSchema,
   type DepositRef,
+  type SettlementCheck,
 } from "../bridges/bridge-terms.js";
 import type { Bridge } from "../bridges/ports.js";
 import type { AccountRef } from "../caip/account-ref.js";
@@ -18,7 +19,8 @@ import { assetRefParts } from "../caip/asset-ref.js";
  * `unserved` asks for a delivered asset no route of it reaches; `otherRecipient` is another account
  * of the request's destination chain. `deposits` is the kind of deposit the bridge builds (decision
  * 0317). `filled`, `refunded` and `expired` are deposits it tells as such, and `unseen` one it never
- * saw.
+ * saw. `settled` is a fill it takes as its deposit's own, paying `paid`, and `stranger` the same
+ * check with the fill's events but a bare transfer left out (decision 0320).
  */
 export interface BridgeSubject {
   readonly bridge: Bridge;
@@ -30,6 +32,8 @@ export interface BridgeSubject {
   readonly refunded: { readonly deposit: DepositRef; readonly refund: DepositRef };
   readonly expired: DepositRef;
   readonly unseen: DepositRef;
+  readonly settled: { readonly check: SettlementCheck; readonly paid: bigint };
+  readonly stranger: SettlementCheck;
 }
 
 /** Makes a fresh {@link BridgeSubject} for each check. */
@@ -128,6 +132,14 @@ async function tellsStatus(harness: BridgeHarness): Promise<void> {
   assert.deepEqual((await bridge.status(unseen, live())).state, { kind: "unseen" });
 }
 
+async function matchesOwnSettlement(harness: BridgeHarness): Promise<void> {
+  const { bridge, settled, stranger } = await harness.create();
+  assert.deepEqual(bridge.settlement(settled.check), { ok: true, value: settled.paid });
+  assert.deepEqual(bridge.settlement(stranger), { ok: false, error: "not_own" });
+  const noEvents = { ...settled.check, settlement: { ...settled.check.settlement, events: [] } };
+  assert.deepEqual(bridge.settlement(noEvents), { ok: false, error: "not_own" });
+}
+
 async function stopsOnAbort(harness: BridgeHarness): Promise<void> {
   const subject = await harness.create();
   const { bridge, request, filled } = subject;
@@ -164,6 +176,10 @@ export function bridgeContract(harness: BridgeHarness): readonly ContractCheck[]
     {
       name: "tells a filled, a refunded, an expired and an unseen deposit",
       run: async () => tellsStatus(harness),
+    },
+    {
+      name: "matches a fill to its own deposit by its events alone, never a bare transfer",
+      run: async () => matchesOwnSettlement(harness),
     },
     {
       name: "rejects a quote, a build and a status with the signal's reason once it aborts",

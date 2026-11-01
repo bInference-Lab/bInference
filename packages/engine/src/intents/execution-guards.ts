@@ -8,9 +8,6 @@ import type {
   TransitionProblem,
 } from "./transition-guard.js";
 
-/** How long a bridge waits for delivery after its source transaction is final (decision 0067). */
-export const bridgeDeliveryWaitMs: number = 2 * 60 * 60 * 1000;
-
 /**
  * Any state before `executing` to `cancelled`: nothing is signed yet. A freeze spares a rescue,
  * which works while frozen.
@@ -130,19 +127,16 @@ export function failOnchain(
 }
 
 /**
- * `finalized` to `reconciled`. A bridge also waits for the bridge to report delivery, or for 2
- * hours, after which the caller marks the delivery unknown and sends a notice.
+ * `finalized` to `reconciled`. A bridge reconciles only once a read of its destination chain found
+ * its delivery, or a read of its source chain its refund (decision 0297): no timer ends it.
  */
 export function reconcileFills({
   status,
   trigger,
-  nowMs,
 }: GuardInput<"fills_reconciled">): Result<IntentChange, TransitionProblem> {
-  const isWaitingForDelivery =
-    status.kind === "bridge" &&
-    trigger.isDeliveryReported !== true &&
-    nowMs - status.changedAtMs < bridgeDeliveryWaitMs;
-  return isWaitingForDelivery ? err("delivery_pending") : ok({});
+  return status.kind === "bridge" && trigger.isDeliveryRead !== true
+    ? err("delivery_pending")
+    : ok({});
 }
 
 /**

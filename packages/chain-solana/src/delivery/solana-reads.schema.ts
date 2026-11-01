@@ -24,6 +24,8 @@ export interface ParsedTransaction {
   readonly postBalances: readonly bigint[];
   readonly preTokenBalances: readonly TokenBalance[];
   readonly postTokenBalances: readonly TokenBalance[];
+  /** The log lines the runtime and its programs wrote, in order; none when the node kept none. */
+  readonly logMessages: readonly string[];
 }
 
 const tokenBalances = z
@@ -49,6 +51,7 @@ export const transactionSchema: z.ZodType<ParsedTransaction | null> = z
       postBalances: z.array(integer),
       preTokenBalances: tokenBalances,
       postTokenBalances: tokenBalances,
+      logMessages: z.array(z.string()).nullish(),
     }),
     transaction: z.looseObject({
       message: z.looseObject({ accountKeys: z.array(z.looseObject({ pubkey: z.string() })) }),
@@ -62,6 +65,7 @@ export const transactionSchema: z.ZodType<ParsedTransaction | null> = z
     postBalances: meta.postBalances,
     preTokenBalances: meta.preTokenBalances,
     postTokenBalances: meta.postTokenBalances,
+    logMessages: meta.logMessages ?? [],
   }))
   .nullable();
 

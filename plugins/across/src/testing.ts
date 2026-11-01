@@ -10,10 +10,18 @@ export {
   recordedRoutes,
   requestFor,
   spokePool,
+  spokePools,
   tokens,
   unseenDeposit,
   wallet,
 } from "./testing/bridge-fixtures.js";
+export {
+  recordedBareTransferCheck,
+  recordedFillCheck,
+  recordedFillDepositEvents,
+  recordedFillEvents,
+  recordedRefundCheck,
+} from "./testing/recorded-settlements.js";
 export {
   badDepositorAnswer,
   expiredAnswer,

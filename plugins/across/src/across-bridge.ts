@@ -14,6 +14,7 @@ import { createAcrossApi } from "./api/across-api.js";
 import { buildDeposit } from "./deposit/build-deposit.js";
 import { decodeDeposit } from "./deposit/decode-deposit.js";
 import { depositStatus } from "./deposit/deposit-status.js";
+import { acrossSettlement } from "./deposit/settlement.js";
 import { quoteBridge } from "./routes/quote-bridge.js";
 
 /** The bridge's id, which the registry names Across's contracts and routes after. */
@@ -50,7 +51,8 @@ function destinationsOf(options: AcrossOptions): readonly BridgeDestination[] {
 /**
  * Creates the Across bridge over an `Http` port, keyless (decision 0315): quotes from Across's Swap
  * API for the routes given, deposits re-encoded as `depositV3` on each chain's SpokePool (decision
- * 0302), the decoder of those deposits, and each deposit's status from Across's API. It serves
+ * 0302), the decoder of those deposits, each deposit's status from Across's API, and the match of a
+ * fill or refund to its deposit by the SpokePools' own events (decision 0320). It serves
  * only the registry's routes, and only for a token that leaves with a 24-hour cap (decision 0305).
  */
 export function createAcrossBridge(options: AcrossOptions): Bridge {
@@ -66,5 +68,6 @@ export function createAcrossBridge(options: AcrossOptions): Bridge {
     },
     decode: (draft) => decodeDeposit(draft, destinations),
     status: async (deposit, { signal }) => depositStatus(deposit, { api, destinations }, signal),
+    settlement: (check) => acrossSettlement(check, options.spokePools),
   });
 }

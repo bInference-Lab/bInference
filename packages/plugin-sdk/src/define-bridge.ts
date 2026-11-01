@@ -21,7 +21,8 @@ function refused(problem: string): BinferenceError {
  * another chain. It declares its contracts and calls as `defineVenue` does, so a ceiling holds its
  * deposit's rules, and the chains it delivers to, each once with the id its deposit names it by.
  * `build` must deposit exactly the request's input from the wallet to its recipient with a fill of
- * at least `minOut`, and `decode` reads those terms back from the bytes alone.
+ * at least `minOut`, `decode` reads those terms back from the bytes alone, and `settlement` takes a
+ * fill or refund as a deposit's own only from that deposit's own events.
  *
  * The declaration is checked at once: a bad one is a fault (`plugin.bad_venue`), so the plugin
  * fails when it loads. The returned bridge is frozen, and calls its methods on the definition.
@@ -43,5 +44,6 @@ export function defineBridge(definition: Bridge): Bridge {
     build: async (request, options) => definition.build(request, options),
     decode: (draft) => definition.decode(draft),
     status: async (deposit, options) => definition.status(deposit, options),
+    settlement: (check) => definition.settlement(check),
   } satisfies Bridge);
 }

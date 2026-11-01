@@ -93,6 +93,8 @@ export type {
   AccountCodeReaderSubject,
 } from "./contracts/account-code-reader-contract.js";
 export { createFakeAccountCodeReader } from "./fakes/fake-account-code-reader.js";
+export { createFakeDeliveryReader } from "./fakes/fake-delivery-reader.js";
+export type { FakeDeliveryReader, FakeLanding } from "./fakes/fake-delivery-reader.js";
 export type { FakeAccountCodeReader } from "./fakes/fake-account-code-reader.js";
 export { accountKindReaderContract } from "./contracts/account-kind-reader-contract.js";
 export type {
@@ -112,7 +114,7 @@ export { createFakeNameResolver } from "./fakes/fake-name-resolver.js";
 export type { FakeNameRecord, FakeNameResolver } from "./fakes/fake-name-resolver.js";
 export { bridgeContract } from "./contracts/bridge-contract.js";
 export type { BridgeHarness, BridgeSubject } from "./contracts/bridge-contract.js";
-export { createFakeBridge } from "./fakes/fake-bridge.js";
+export { createFakeBridge, fakeSettlementCases } from "./fakes/fake-bridge.js";
 export type { FakeBridge, FakeBridgeRoute } from "./fakes/fake-bridge.js";
 export type {
   DeliveryReaderHarness,

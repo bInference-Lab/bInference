@@ -20,7 +20,7 @@ import {
   createConfigHistoryHandlers,
 } from "../audit/config-history-handlers.js";
 import type { ModelBudgetParts } from "../billing/model-budget.js";
-import type { BridgingOptions } from "../bridges/hosted-bridge.js";
+import { type BridgeWork, type BridgeOptions, bridgeWorkOf } from "../bridges/engine-bridging.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
@@ -118,7 +118,7 @@ export interface EngineHandlers
  * change, the freeze, the wallet list and the ledger, built from ports. A looser limit, send level
  * or rescue address waits 24 hours. It holds no I/O of its own; pushes leave through `publish`.
  */
-export interface Engine {
+export interface Engine extends BridgeWork {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
   readonly handlers: EngineHandlers;
   /** Applies a card answer from a surface the engine serves itself, such as a Telegram tap. */
@@ -217,8 +217,7 @@ export interface Engine {
 }
 
 /** The ports and adapters the composition root builds the engine from. */
-export interface EngineOptions
-  extends MarketParts, ModelBudgetParts, ImageOptions, BridgingOptions {
+export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptions, BridgeOptions {
   readonly stores: EngineStores;
   /** Executions, arrivals and positions, live and paper; the paper portfolio lives here. */
   readonly positions: PositionStore;
@@ -348,7 +347,7 @@ function intentParts(
   const showings = createCardShowings({ ...stores, chains, venues: host, isLocked });
   const moneyPath = moneyPathOf(options, { stored, paper, launches, execute, lowGas, gate });
   const handlers = {
-    ...createIntentHandlers({ ...options, stored, moneyPath, answer, showings }),
+    ...createIntentHandlers({ ...options, ...stores, stored, moneyPath, answer, showings }),
     ...createOrderHandlers(orders),
   };
   const cardTimer = cardTimerOf(options, { confirmations, orders });
@@ -459,6 +458,7 @@ export function createEngineWithFills(given: EngineOptions): {
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,
     sendDailySummaries: async (call) => summaries.run(call),
+    ...bridgeWorkOf(options, intents.stored),
   };
   return { engine, fillOrder: async (request, call) => intents.fills.run(request, call) };
 }

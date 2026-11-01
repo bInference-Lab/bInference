@@ -245,7 +245,7 @@ export type {
   AddressCodec,
 } from "./addresses/ports.js";
 export { recipientBytesOf, recipientHex, recipientHexBytes } from "./addresses/recipient-bytes.js";
-export type { Delivery, DeliveryRequest } from "./delivery/delivery.js";
+export type { ChainEvent, Delivery, DeliveryRequest } from "./delivery/delivery.js";
 export type { DeliveryReader } from "./delivery/ports.js";
 export type {
   NameFound,
@@ -274,6 +274,8 @@ export type {
   DepositStatus,
   NoBridgeRoute,
   OrderDeposit,
+  SettlementCheck,
+  SettlementSide,
 } from "./bridges/bridge-terms.js";
 export type { Bridge } from "./bridges/ports.js";
 export type { ReceiptReader, RelaySender, TxPreparer } from "./sending/ports.js";

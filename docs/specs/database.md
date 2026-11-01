@@ -149,12 +149,15 @@ with no gain or loss, and sets `claim_intent_id` and `claimed_at`, in one transa
 claim's reconciliation. So a dollar counts once: staked, unbonding or back in the wallet.
 
 **Bridges** ([decision 0297](../DECISIONS.md#d0297)). A bridge's deposit, once final, writes its
-`departures` row, the units leaving their position at average cost, and its `bridges` row in
-`in_transit`, in one transaction. The engine reads each row that is in transit or late:
-2 hours after `sent_at` it marks `late` once; the delivery read moves it to `delivered` with
-`fill_tx` and `received`, and a refund read to `refunded` with `refund_tx`, whose returned units
-are an `arrivals` row at their value then. Either end moves the intent to `reconciled` in the same
-transaction. Each write checks `version`. A row in transit or late counts in the agent's live
+`departures` rows, the units leaving their position at average cost, then its `bridges` row in
+`in_transit`, each once ([decision 0320](../DECISIONS.md#d0320)). The engine reads each row that is
+in transit or late, 100 a pass, paging through them all: 2 hours after `sent_at` it marks `late`
+once; a delivery read its venue matches to the deposit by their events moves it to `delivered`
+with `fill_tx` and `received`, and a refund read to `refunded` with `refund_tx`, whose returned
+units are an `arrivals` row at their value then, stored once by `refund_tx` before the row moves.
+One fill per destination chain, and one refund, settles one row at most. The intent moves to
+`reconciled` after its row settled; a stop between them is finished by the next reconciliation,
+which tells the owner what the receipt does not. Each write checks `version`. A row in transit or late counts in the agent's live
 total at `value_usd_micros`.
 
 **Saved addresses on other chains.** `recipient_bytes` is the address codec's output for the

@@ -3,6 +3,7 @@ import { type Amount, type AmountWire, amountSchema } from "../amount.js";
 import { type AccountRef, accountRefParts, accountRefSchema } from "../caip/account-ref.js";
 import { type AssetRef, assetRefParts, assetRefSchema } from "../caip/asset-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
+import type { ChainEvent } from "../delivery/delivery.js";
 import type { TxHash } from "../transaction.js";
 
 /**
@@ -192,6 +193,29 @@ export type DepositState =
   | { readonly kind: "filled"; readonly fill: DepositRef }
   | { readonly kind: "expired" }
   | { readonly kind: "refunded"; readonly refund: DepositRef };
+
+/** One side of a settlement check: a transaction on its chain, and the events it emitted. */
+export interface SettlementSide {
+  readonly ref: DepositRef;
+  readonly events: readonly ChainEvent[];
+}
+
+/**
+ * What a host asks a bridge to match (decision 0320): a deposit, and a transaction the bridge's
+ * status named as that deposit's fill on the destination chain or its refund on the source chain,
+ * each with the events a read of its chain found; and what the deposit must have sent and paid.
+ */
+export interface SettlementCheck {
+  readonly kind: "fill" | "refund";
+  readonly deposit: SettlementSide;
+  readonly settlement: SettlementSide;
+  /** The wallet that deposited, which a refund pays back. */
+  readonly wallet: AccountRef;
+  readonly amountIn: Amount;
+  readonly recipient: AccountRef;
+  /** The least output, in the token the route delivers. */
+  readonly minOut: Amount;
+}
 
 /** What a bridge says of one deposit, with its own page for it. */
 export interface DepositStatus {

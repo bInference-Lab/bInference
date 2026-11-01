@@ -3,10 +3,12 @@ import { err, idSchema, ok, type Result } from "@binference/core";
 import type { IntentView, Page, ProtocolErrorCode } from "@binference/protocol";
 import { z } from "zod";
 import type { DestinationChain } from "../address-book/destination-chain.js";
+import type { BridgeStore } from "../bridges/ports.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentQuery } from "../intents/intent-change.js";
 import { intentStates } from "../intents/intent-state.js";
 import { epochMsSchema } from "../records/record-fields.js";
+import { deliveryOf } from "./delivery-view-of.js";
 import type { EngineCall } from "./engine-call.js";
 import { intentViewOf } from "./intent-view-of.js";
 
@@ -14,6 +16,8 @@ import { intentViewOf } from "./intent-view-of.js";
 export interface IntentListOptions {
   readonly stored: Pick<StoredIntents, "list" | "snapshot">;
   readonly chains: ChainRegistry;
+  /** Each bridge's delivery, which a bridge's view shows once its deposit is final. */
+  readonly bridges?: Pick<BridgeStore, "get">;
   /** The chains bridges deliver to, whose names a bridge's outcome gives; none without. */
   readonly destinations?: readonly DestinationChain[];
 }
@@ -70,14 +74,15 @@ export async function listIntents(
   }
   const records = await options.stored.list(query.value, { signal });
   const wanted = records.filter((record) => args.kind === undefined || record.kind === args.kind);
-  const snapshots = await Promise.all(
-    wanted.map(async (record) => options.stored.snapshot(record.id, { signal })),
+  const viewed = await Promise.all(
+    wanted.map(async (record) => {
+      const snapshot = await options.stored.snapshot(record.id, { signal });
+      const delivery = await deliveryOf(options.bridges, record, signal);
+      const reads = { delivery, destinations: options.destinations };
+      return snapshot === undefined ? [] : [intentViewOf(snapshot, options.chains, reads)];
+    }),
   );
-  const items = snapshots.flatMap((snapshot) =>
-    snapshot === undefined
-      ? []
-      : [intentViewOf(snapshot, options.chains, { destinations: options.destinations })],
-  );
+  const items = viewed.flat();
   const last = records.at(-1);
   return ok(
     records.length === query.value.limit && last !== undefined

@@ -27,6 +27,7 @@ import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import { autoOrderQuoteDocument, autoOrderRequestDocument } from "../orders/auto-order-quote.js";
+import type { DeliveryView } from "./delivery-view-of.js";
 
 /** What an intent was asked: a proposal's request, a rescue's, an unfreeze's or an auto order's. */
 type AnyRequest = IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest;
@@ -168,8 +169,10 @@ function executionOf(snapshot: IntentSnapshot): Omit<IntentOutcome, "reason"> {
     : { executions: [{ amountIn: fill.amountIn, amountOut: fill.amountOut, at: fill.atMs }] };
 }
 
-/** What a view shows beyond the stored intent: the chains bridges reach. */
+/** What a view shows beyond the stored intent: a bridge's delivery, and the chains bridges reach. */
 export interface ViewReads {
+  /** The bridge's delivery, once its deposit is final. */
+  readonly delivery?: DeliveryView | undefined;
   /** The chains bridges deliver to, whose name a bridge's reason gives. */
   readonly destinations?: readonly DestinationChain[] | undefined;
 }
@@ -212,8 +215,8 @@ function resolvedNameOf(record: IntentRecord): IntentView["resolvedName"] {
  * An intent as every surface draws it (protocol spec, section 8.3): the stored record, its quote,
  * risk check and simulation, its newest card version, its outcome with the paper fill or the
  * settled trade as its execution, the info of the assets it names: the registry's, or what the
- * intent stored of an unlisted token at its proposal, and a send by name's resolved name, with
- * the name of the chain a bridge's reason names.
+ * intent stored of an unlisted token at its proposal, a send by name's resolved name, and a
+ * bridge's delivery when the caller read it, with the name of the chain a bridge's reason names.
  */
 export function intentViewOf(
   snapshot: IntentSnapshot,
@@ -221,6 +224,7 @@ export function intentViewOf(
   reads: ViewReads = {},
 ): IntentView {
   const { record } = snapshot;
+  const { delivery } = reads;
   const request = requestOf(record);
   const card = cardViewOf(snapshot);
   const outcome = outcomeOf(snapshot, { request, reads });
@@ -247,5 +251,6 @@ export function intentViewOf(
     changedAt: record.changedAtMs,
     assets: intentAssetInfos(chains, record, assetsOf(record, request)),
     ...(resolvedName === undefined ? {} : { resolvedName }),
+    ...(delivery === undefined ? {} : { delivery }),
   };
 }

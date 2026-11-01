@@ -8,9 +8,9 @@ import type { TxHash } from "../transaction.js";
 
 /**
  * A delivery reader under test, on one chain: `recipient` holds `holding.base` of
- * `holding.asset`, and `delivered`, which a final block holds, brought it `received`; `failed`
- * ran and failed while sending it `received.asset`; no block holds `unknown`; `stranger` is an
- * account of another chain.
+ * `holding.asset`, and `delivered`, which a final block holds, brought it `received` with an
+ * event `emitter` emitted; `failed` ran and failed while sending it `received.asset`; no block
+ * holds `unknown`; `stranger` is an account of another chain.
  */
 export interface DeliveryReaderSubject {
   readonly reader: DeliveryReader;
@@ -18,6 +18,7 @@ export interface DeliveryReaderSubject {
   readonly holding: Amount;
   readonly delivered: TxHash;
   readonly received: Amount;
+  readonly emitter: AccountRef;
   readonly failed: TxHash;
   readonly unknown: TxHash;
   readonly stranger: AccountRef;
@@ -49,6 +50,8 @@ async function readsDelivery(harness: DeliveryReaderHarness): Promise<void> {
   assert.ok(delivery.block > 0n);
   assert.deepEqual(delivery.received, received);
   assert.ok(received.base > 0n);
+  const emitter = subject.emitter.toLowerCase();
+  assert.ok(delivery.events.some((event) => event.emitter.toLowerCase() === emitter));
 }
 
 async function readsFailure(harness: DeliveryReaderHarness): Promise<void> {
@@ -56,6 +59,7 @@ async function readsFailure(harness: DeliveryReaderHarness): Promise<void> {
   const delivery = await subject.reader.delivery(requestOf(subject, subject.failed), live());
   assert.equal(delivery?.status, "failed");
   assert.deepEqual(delivery.received, { asset: subject.received.asset, base: 0n });
+  assert.deepEqual(delivery.events, []);
 }
 
 async function readsNothing(harness: DeliveryReaderHarness): Promise<void> {

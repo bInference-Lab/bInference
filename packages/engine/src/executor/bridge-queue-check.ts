@@ -181,8 +181,7 @@ async function rescueHolds(
   return { holds: await isStillPlain(parts, { home, there: quote.recipient }, signal), home };
 }
 
-// The bridge's quote, its chain and the wallet's account there, while its quote has not expired by
-// the engine's clock; none otherwise.
+// The bridge's quote, its chain and the wallet's account there; none when one cannot be read.
 async function heldBridgeOf(
   record: IntentRecord,
   parts: BridgeRecheckParts,
@@ -198,7 +197,7 @@ async function heldBridgeOf(
   const quote = bridgeQuoteOf(record);
   const chain =
     quote === undefined ? undefined : parts.chains.get(assetRefParts(quote.amount.asset).chain);
-  if (quote === undefined || chain?.ok !== true || parts.clock.now() >= quote.expiresAtMs) {
+  if (quote === undefined || chain?.ok !== true) {
     return undefined;
   }
   const account = await parts.custody.account(record.walletId, chain.value.ref, { signal });
@@ -206,22 +205,32 @@ async function heldBridgeOf(
 }
 
 /**
+ * What holds a confirmed bridge unsigned at the queue: its quote expired, its rescue address
+ * changed or gained code, the policy refuses it now, or a read it needs failed.
+ */
+export type BridgeHold = "quote" | "rescue" | "policy" | "other";
+
+/**
  * The checks of a confirmed bridge as the wallet queue takes it (spec 6, `queue_took`; decisions
  * 0318 and 0319): its quote has not expired by the engine's clock; the policy passes again on the
  * amount and payee its card confirmed, with the wallet's facts, the send level and the address
  * book now; and a bridge to the rescue address still pays the rescue address in effect, which
- * still holds no code on either chain. Any that fails leaves it unsigned, and the queue tries
- * again a block later until its confirmation runs out.
+ * still holds no code on either chain. Any that fails leaves it unsigned, says what held it, and
+ * the queue tries again a block later until its confirmation runs out.
  */
 export async function recheckBridge(
   snapshot: IntentSnapshot,
   parts: BridgeRecheckParts,
   signal: AbortSignal,
-): Promise<{ readonly hasPassed: boolean; readonly networkFeeCapNativeBase?: bigint }> {
+): Promise<{
+  readonly hasPassed: boolean;
+  readonly heldBy?: BridgeHold;
+  readonly networkFeeCapNativeBase?: bigint;
+}> {
   const { record, settings, stored } = snapshot;
   const held = await heldBridgeOf(record, parts, signal);
   if (held === undefined) {
-    return { hasPassed: false };
+    return { hasPassed: false, heldBy: "other" };
   }
   const { quote, chain, account } = held;
   const query = { agent: record.agentId, wallet: record.walletId, account, intent: record.id };
@@ -239,8 +248,29 @@ export async function recheckBridge(
     ...(rescue.home === undefined ? {} : { rescueAccount: quote.recipient }),
   };
   const verdict = await checkTransferPolicy(parts, judged, signal);
-  return {
-    hasPassed: verdict.ok && rescue.holds,
-    networkFeeCapNativeBase: facts.networkFeeCapNativeBase,
-  };
+  const networkFeeCapNativeBase = facts.networkFeeCapNativeBase;
+  const heldBy = holdOf({
+    rescue: rescue.holds,
+    policy: verdict.ok,
+    quote: parts.clock.now() < quote.expiresAtMs,
+  });
+  return heldBy === undefined
+    ? { hasPassed: true, networkFeeCapNativeBase }
+    : { hasPassed: false, heldBy, networkFeeCapNativeBase };
+}
+
+// What holds the bridge, the owner's own changes first: its rescue address, then the policy, then
+// its quote's age, which a lapse always reaches in the end.
+function holdOf(passes: {
+  readonly rescue: boolean;
+  readonly policy: boolean;
+  readonly quote: boolean;
+}): BridgeHold | undefined {
+  if (!passes.rescue) {
+    return "rescue";
+  }
+  if (!passes.policy) {
+    return "policy";
+  }
+  return passes.quote ? undefined : "quote";
 }

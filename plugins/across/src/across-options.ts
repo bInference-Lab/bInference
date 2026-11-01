@@ -1,4 +1,4 @@
-import type { AssetRef, ChainRef, Http } from "@binference/plugin-sdk";
+import type { AccountRef, AssetRef, ChainRef, Http } from "@binference/plugin-sdk";
 
 /**
  * A route Across serves, as the registry lists it (decision 0301): the token that leaves the
@@ -27,4 +27,10 @@ export interface AcrossOptions {
   readonly chains: readonly ChainRef[];
   /** The routes it serves from those chains, each to an EIP-155 destination. */
   readonly routes: readonly AcrossRoute[];
+  /**
+   * Across's SpokePool on each chain a deposit leaves from or a fill lands on, as the registry
+   * lists them, whose events alone say a fill or refund is a deposit's own (decision 0320). A
+   * settlement on a chain missing here is never one.
+   */
+  readonly spokePools: Readonly<Partial<Record<ChainRef, AccountRef>>>;
 }

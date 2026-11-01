@@ -8,12 +8,12 @@ import { landedFillWrite } from "../orders/fill-landed.js";
 import type { OrderFillWrite } from "../orders/order-fill.js";
 import { orderPush } from "../orders/order-view-of.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { bridgeQuoteOf } from "./bridge-queue-check.js";
 import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
-import { departLateTransfer } from "./reconcile-finalized.js";
+import { departLateLanding } from "./reconcile-finalized.js";
 import { type BookedTrade, bookTrade } from "./reconcile-trade.js";
 import { currentSteps } from "./recover-steps.js";
 import { recordReceipt } from "./run-step.js";
-import { transferQuoteOf } from "./transfer-queue-check.js";
 
 /** A dropped step's transaction a block holds after all, with its receipt. */
 export interface Landed {
@@ -26,6 +26,20 @@ function isWholeTrade(run: ExecutionRun, steps: readonly TransactionRecord[]): b
   return (
     steps.length === run.plan.steps.length &&
     steps.every(({ state }) => state === "included" || state === "final")
+  );
+}
+
+// Every step of a bridge's plan in a block, ran or reverted: its gas is spent either way, and only
+// a deposit that ran moved the token (decision 0320).
+function isBridgeInBlocks(
+  run: ExecutionRun,
+  dropped: IntentSnapshot,
+  steps: readonly TransactionRecord[],
+): boolean {
+  return (
+    bridgeQuoteOf(dropped.record) !== undefined &&
+    steps.length === run.plan.steps.length &&
+    steps.every(({ state }) => state === "included" || state === "final" || state === "reverted")
   );
 }
 
@@ -56,7 +70,7 @@ async function finalizeSteps(
   if (reread.some((receipt, index) => receipt?.block.hash !== steps[index]?.receipt?.block.hash)) {
     return false;
   }
-  const pending = steps.filter(({ state }) => state !== "final");
+  const pending = steps.filter(({ state }) => state === "included");
   const marked = await Promise.all(
     pending.map(async ({ id }) =>
       parts.stores.transactions.recordFinal({ id, atMs: parts.clock.now() }, { signal }),
@@ -159,7 +173,8 @@ async function announceCount(
  * the intent again at once. An order's fill whose whole trade is in blocks counts on its order in
  * that same write, once (decision 0211). Once every step of the plan is in a block and those
  * blocks are final, the trade goes into the positions and realized P&L as a reconciliation books
- * it, and a send's or a revoke's as its departure; a trade whose steps did not all land, or whose
+ * it, and a send's, a revoke's or a bridge's as its departures, a bridge's with a reverted deposit
+ * as its gas alone; a trade whose steps did not all land, or whose
  * block a reorg moved, is logged and left out of the positions.
  */
 export async function bookLateLanding(
@@ -176,13 +191,13 @@ export async function bookLateLanding(
   const isWhole = isWholeTrade(run, steps);
   const landing = { intentId, txId: transaction.id, atMs };
   await linkLanding(run, { dropped, landing, isWhole, left: linkAttempts });
-  if (!isWhole || !(await finalizeSteps(run, steps))) {
+  const isBooked = isWhole || isBridgeInBlocks(run, dropped, steps);
+  if (!isBooked || !(await finalizeSteps(run, steps))) {
     parts.log.warn("executor.landed_late_unbooked", { intentId });
     return;
   }
-  // A send or a revoke books no trade: what its step took out leaves the positions instead.
-  if (transferQuoteOf(dropped.record) !== undefined) {
-    await departLateTransfer(run, dropped);
+  // A send, a revoke or a bridge books no trade: what its steps took out leaves the positions.
+  if ((await departLateLanding(run, dropped)) !== "trade") {
     return;
   }
   const booked = await bookAgain(run, { snapshot: dropped, atMs });

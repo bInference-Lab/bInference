@@ -11,13 +11,14 @@ import {
   recordedRoutes,
   requestFor,
   tokens,
+  spokePools,
 } from "../testing/bridge-fixtures.js";
 import { quoteBridge } from "./quote-bridge.js";
 import { routeQueryOf } from "./route-query.js";
 
 const live = { signal: new AbortController().signal };
 const request = requestFor(tokens.usdc, tokens.baseUsdc);
-const options = { http: createScriptedHttp([]), chains: [bsc], routes: recordedRoutes };
+const options = { http: createScriptedHttp([]), chains: [bsc], routes: recordedRoutes, spokePools };
 const query = routeQueryOf(request, options)?.query;
 const url = query === undefined ? "" : swapUrlOf(query);
 // The recorded answer's input and the fees besides the relayer's, in BSC USDC's 18 decimals.

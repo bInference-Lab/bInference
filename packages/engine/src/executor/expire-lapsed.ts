@@ -5,6 +5,7 @@ import { cardExpiresAt } from "../intents/card-rules.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { bridgeQuoteOf, recheckBridge } from "./bridge-queue-check.js";
 import { type ExecutorParts, moveIntent } from "./executor-run.js";
 
 /** The owner's notice of a trade whose confirmation ran out before it was sent (decision 0120). */
@@ -55,11 +56,24 @@ export async function expireIfLapsed(
     return true;
   }
   parts.log.warn("executor.lapsed", { intentId: record.id });
-  // A send that waited on its name, or on anything else, is told as a send (decision 0308).
-  const values = { kind: record.kind === "send" ? "send" : "trade" };
-  const notice = { key: lapsedNoticeKey, agent: record.agentId, intent: record.id, values };
-  parts.publish(noticePush(notice));
+  parts.publish(noticePush(await lapsedNoticeOf(parts, snapshot, signal)));
   return false;
+}
+
+// What the owner hears of a lapsed intent: a bridge with what held it, read again now (decision
+// 0320); a send that waited on its name, or on anything else, as a send (decision 0308); any other
+// as a trade.
+async function lapsedNoticeOf(parts: ExecutorParts, snapshot: IntentSnapshot, signal: AbortSignal) {
+  const { record } = snapshot;
+  const base = { agent: record.agentId, intent: record.id };
+  const quote = bridgeQuoteOf(record);
+  if (quote === undefined) {
+    const values = { kind: record.kind === "send" ? "send" : "trade" };
+    return { ...base, key: lapsedNoticeKey, values };
+  }
+  const held = await recheckBridge(snapshot, parts, signal);
+  const values = { chain: quote.chainName, why: held.heldBy ?? "other" };
+  return { ...base, key: "notice.bridgeLapsed", values };
 }
 
 /** The owner's notice of a trade whose confirmation ran out while the fee was above the cap. */

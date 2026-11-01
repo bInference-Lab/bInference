@@ -4,7 +4,7 @@ import { assetRefSchema } from "../caip/asset-ref.js";
 import { chainRefSchema } from "../caip/chain-ref.js";
 import { bridgeContract } from "../contracts/bridge-contract.js";
 import type { TxHash } from "../transaction.js";
-import { createFakeBridge } from "./fake-bridge.js";
+import { createFakeBridge, fakeSettlementCases } from "./fake-bridge.js";
 import { createFakeChainDefinition } from "./fake-chain.js";
 import { fakeDraft } from "./fake-draft.js";
 
@@ -47,6 +47,7 @@ async function subjectOf(deposits: "bound" | "order") {
     refunded: { deposit: deposit("0xd2"), refund },
     expired: deposit("0xd3"),
     unseen: deposit("0xe9"),
+    ...fakeSettlementCases({ deposit: deposit("0xd1"), fill }, request),
   });
 }
 

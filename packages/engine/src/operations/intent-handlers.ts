@@ -4,6 +4,7 @@ import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-int
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { CardShowings } from "../surfaces/create-card-showings.js";
 import { type AnswerCard, answerError } from "./answer-card.js";
+import { type DeliveryView, deliveryOf } from "./delivery-view-of.js";
 import { answererOf, type EngineCall, type EngineHandler, proposerOf } from "./engine-call.js";
 import { type IntentListOptions, listIntents } from "./intent-list.js";
 import { intentViewOf } from "./intent-view-of.js";
@@ -73,10 +74,11 @@ async function answered(
 function viewOf(
   options: IntentHandlersOptions,
   snapshot: IntentSnapshot | undefined,
+  delivery?: DeliveryView,
 ): Result<IntentView, ProtocolErrorCode> {
   return snapshot === undefined
     ? err("intent.not_found")
-    : ok(intentViewOf(snapshot, options.chains, { destinations: options.destinations }));
+    : ok(intentViewOf(snapshot, options.chains, { delivery, destinations: options.destinations }));
 }
 
 // The intent's open card version as the engine draws it; an intent with none is in the wrong
@@ -114,8 +116,14 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
       const proposed = await options.moneyPath.propose(args, proposer, proposing);
       return proposed.ok ? viewOf(options, proposed.value) : proposed;
     },
-    "intent/get": async ({ args, signal }) =>
-      viewOf(options, await options.stored.snapshot(args.intent, { signal })),
+    "intent/get": async ({ args, signal }) => {
+      const snapshot = await options.stored.snapshot(args.intent, { signal });
+      const delivery =
+        snapshot === undefined
+          ? undefined
+          : await deliveryOf(options.bridges, snapshot.record, signal);
+      return viewOf(options, snapshot, delivery);
+    },
     "intent/card": async (call) => drawnCard(options, call),
     "intent/list": async (call) => listIntents(options, call),
     "intent/confirm": async (call) => answered(options, call, "confirm"),

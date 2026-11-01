@@ -21,6 +21,8 @@ import {
   createFakeSigningScheme,
   type FakeAccountCodeReader,
   type FakeBridge,
+  type FakeDeliveryReader,
+  createFakeDeliveryReader,
   fakeCallOf,
 } from "@binference/chain/testing";
 import { bpsSchema, err, idSchema, ok } from "@binference/core";
@@ -242,6 +244,10 @@ export interface BridgeFakes {
   readonly codesHere: FakeAccountCodeReader;
   /** The code read on the destination. */
   readonly codesThere: FakeAccountCodeReader;
+  /** The deliveries read on the fake chain, where a refund lands. */
+  readonly landsHere: FakeDeliveryReader;
+  /** The deliveries read on the destination, where a fill lands. */
+  readonly landsThere: FakeDeliveryReader;
   /** The fake chain's registry, which lists the fake bridge's spoke beside the fake venue's router. */
   readonly chains: ReturnType<typeof createChainRegistry>;
 }
@@ -263,6 +269,8 @@ export function bridgeFakes(
     hosted: { bridge: options.bridge ?? bridge, routes },
     codesHere: createFakeAccountCodeReader({ chain: chainRefSchema.parse("fake:1") }),
     codesThere: createFakeAccountCodeReader({ chain: testDestination }),
+    landsHere: createFakeDeliveryReader(chainRefSchema.parse("fake:1")),
+    landsThere: createFakeDeliveryReader(testDestination),
     chains: createChainRegistry({
       chains: [{ ...definition, contracts: [...definition.contracts, ...spoke] }],
       families: [createFakeFamily()],
@@ -283,7 +291,11 @@ export function bridgeEngineOptions(
     agent: { mode: "live", limits: bridgeLimits },
     chains: fakes.chains,
     destinations: [testDestinationChain(fakes.codesThere)],
-    bridging: { bridges: [fakes.hosted], codeReaders: [fakes.codesHere] },
+    bridging: {
+      bridges: [fakes.hosted],
+      codeReaders: [fakes.codesHere],
+      deliveryReaders: [fakes.landsHere, fakes.landsThere],
+    },
     prices: new Map([[testToken, { numerator: 1_000_000n, denominator: 1_000_000n }]]),
     held: new Map([[testAccount, [{ asset: testToken, base: 1_000_000_000n }]]]),
     chainSimulator: bridgeSimulator(),

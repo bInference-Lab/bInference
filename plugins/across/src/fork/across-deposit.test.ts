@@ -73,7 +73,8 @@ function tokenOn(fork: Fork, symbol: string): AssetRef {
 }
 
 function bridgeOn(fork: Fork, routes: readonly AcrossRoute[]): Bridge {
-  return createAcrossBridge({ http: acrossHttp, chains: [fork.chain.ref], routes });
+  const spokePools = { [fork.chain.ref]: accountRefSchema.parse(`${fork.chain.ref}:${spokePool}`) };
+  return createAcrossBridge({ http: acrossHttp, chains: [fork.chain.ref], routes, spokePools });
 }
 
 // A card's request: `amount` of the registry token `leaves` for the person on `arrives`'s chain.

@@ -1,4 +1,4 @@
-import type { AccountCodeReader, AssetRef, Bridge } from "@binference/chain";
+import type { AssetRef, Bridge } from "@binference/chain";
 
 /**
  * A route a bridge serves, as the chain registry lists it (decision 0301): the token that leaves
@@ -16,15 +16,4 @@ export interface BridgeRoute {
 export interface HostedBridge {
   readonly bridge: Bridge;
   readonly routes: readonly BridgeRoute[];
-}
-
-/** What the engine bridges with (decision 0297). */
-export interface BridgingOptions {
-  /** The bridges the engine runs, with their registry routes; with none, a bridge finds no route. */
-  readonly bridges?: readonly HostedBridge[];
-  /**
-   * The account code readers of the wallets' chains, which tell the rescue address a plain wallet
-   * before a bridge pays it on another chain (decision 0318); without one, it is never paid there.
-   */
-  readonly codeReaders?: readonly AccountCodeReader[];
 }

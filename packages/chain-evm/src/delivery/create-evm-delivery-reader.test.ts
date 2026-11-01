@@ -1,4 +1,10 @@
-import type { AccountRef, AssetRef, ReceiptReader, TxHash } from "@binference/chain";
+import {
+  type AccountRef,
+  type AssetRef,
+  accountRefSchema,
+  type ReceiptReader,
+  type TxHash,
+} from "@binference/chain";
 import { deliveryReaderContract } from "@binference/chain/testing";
 import { err, ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
@@ -92,6 +98,9 @@ describe("the EVM delivery reader", () => {
           holding: { asset: usdc, base: 599_532_886n },
           delivered: fill,
           received: { asset: usdc, base: 288_148_284n },
+          emitter: accountRefSchema.parse(
+            "eip155:42161:0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A",
+          ),
           failed: reverted,
           unknown,
           stranger: "eip155:56:0x168E0c5AE6B259883D878C89C042ad6347F8ba85" as AccountRef,

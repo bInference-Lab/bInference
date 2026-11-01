@@ -4,6 +4,7 @@ import {
   recipientOn,
   recordedApi,
   requestFor,
+  spokePools,
   tokens,
 } from "@binference/across/testing";
 import {
@@ -129,7 +130,12 @@ describe("the across bridge in this binference", () => {
 
   it("quotes no route Across lists that the registry leaves out, such as Base's USDbC, and asks nothing", async () => {
     const http = recordedApi();
-    const bridge = createAcrossBridge({ http, chains: [bscRef], routes: registryRoutes });
+    const bridge = createAcrossBridge({
+      http,
+      chains: [bscRef],
+      routes: registryRoutes,
+      spokePools,
+    });
     const usdbc = assetRefSchema.parse(
       "eip155:8453/erc20:0xd9aAEc86B65D86f6A7B5B1b0c42FFA531710b6CA",
     );
@@ -149,6 +155,7 @@ describe("the across bridge in this binference", () => {
       http: recordedApi(),
       chains: [bscRef],
       routes: registryRoutes,
+      spokePools,
     });
     await expect(
       bridge.quote(requestFor(tokens.usdc, tokens.baseUsdc), live),

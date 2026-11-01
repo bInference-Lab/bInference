@@ -58,7 +58,7 @@ export interface ExecutorLimits {
 export interface ExecutorOptions {
   readonly stores: Pick<
     EngineStores,
-    "intents" | "agents" | "ledger" | "transactions" | "install" | "orders"
+    "intents" | "agents" | "ledger" | "transactions" | "install" | "orders" | "bridges"
   >;
   readonly positions: PositionStore;
   readonly queue: WalletQueue;

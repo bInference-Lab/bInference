@@ -1,4 +1,4 @@
-import type { AccountRef, AssetRef, TxHash } from "@binference/chain";
+import { type AccountRef, type AssetRef, accountRefSchema, type TxHash } from "@binference/chain";
 import { deliveryReaderContract } from "@binference/chain/testing";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
@@ -73,6 +73,9 @@ describe("the Solana delivery reader", () => {
           holding: { asset: usdc, base: 30_281_703n },
           delivered: fill,
           received: { asset: usdc, base: 3_074_273n },
+          emitter: accountRefSchema.parse(
+            `${chain.ref}:MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`,
+          ),
           failed,
           unknown,
           stranger: "eip155:1:0x168E0c5AE6B259883D878C89C042ad6347F8ba85" as AccountRef,

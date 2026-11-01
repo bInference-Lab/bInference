@@ -1,6 +1,7 @@
 import {
   type Amount,
   type AssetRef,
+  type ChainEvent,
   type Delivery,
   type DeliveryReader,
   type DeliveryRequest,
@@ -9,10 +10,13 @@ import {
 } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import type { Address } from "viem";
+import { z } from "zod";
 import { readEvmBalances } from "../balances/read-balances.js";
-import type { EvmChain } from "../evm-chain.js";
+import { type EvmChain, evmAccountRef } from "../evm-chain.js";
+import { requestResult } from "../rpc/request-result.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { accountAddressOn } from "../sending/account-address-on.js";
+import { evmLogSchema } from "../simulation/simulation-reply.schema.js";
 import { aggregatorTokenOf } from "../tokens/aggregator-token.js";
 
 /** What the EVM delivery reader reads one chain through. */
@@ -74,6 +78,28 @@ async function receivedOf(read: DeliveryRead, receipt: TxReceipt): Promise<Amoun
   return { asset: request.asset, base };
 }
 
+const receiptLogsSchema = z.looseObject({ logs: z.array(evmLogSchema) });
+
+// The logs of the transaction's receipt, each as an event of the contract that emitted it; a
+// reverted transaction emitted none.
+async function eventsOf(read: DeliveryRead, receipt: TxReceipt): Promise<readonly ChainEvent[]> {
+  const { options, request, signal } = read;
+  if (receipt.status === "reverted") {
+    return [];
+  }
+  const answer = await requestResult(options.rpc, {
+    method: "eth_getTransactionReceipt",
+    params: [request.hash],
+    result: receiptLogsSchema,
+    signal,
+  });
+  return answer.logs.map(({ address, topics, data }) => ({
+    emitter: evmAccountRef(options.chain, address),
+    topics,
+    data,
+  }));
+}
+
 // A delivery is read in the chain's coin or one of its ERC-20 tokens only.
 function checkAsset(chain: EvmChain, asset: AssetRef): void {
   if (
@@ -103,6 +129,7 @@ async function readDelivery(read: DeliveryRead): Promise<Delivery | undefined> {
     final: receipt.block.number <= head.final,
     status: receipt.status === "success" ? "success" : "failed",
     received: await receivedOf(read, receipt),
+    events: await eventsOf(read, receipt),
   };
 }
 
@@ -111,7 +138,8 @@ async function readDelivery(read: DeliveryRead): Promise<Delivery | undefined> {
  * Multicall3, the coin's `eth_getBalance`. A delivery is read from the transaction's receipt: a
  * token's as the sum of its `Transfer` logs to the recipient less those from it; the coin's as the
  * recipient's balance change across the block, since an inner call's value leaves no log; a
- * reverted one as 0. It is final once the chain's final block holds it. An account or an asset of
+ * reverted one as 0. Its events are the receipt's logs, none for a reverted one. It is final once
+ * the chain's final block holds it. An account or an asset of
  * another chain is a fault, and a block whose state every node pruned is `chain.state_missing`.
  */
 export function createEvmDeliveryReader(options: EvmDeliveryReaderOptions): DeliveryReader {

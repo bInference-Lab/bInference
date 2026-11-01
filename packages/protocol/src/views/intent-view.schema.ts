@@ -3,6 +3,8 @@ import {
   accountRefSchema,
   type Amount,
   amountSchema,
+  type ChainRef,
+  chainRefSchema,
   isTxHash,
   type TxHash,
 } from "@binference/chain";
@@ -70,6 +72,26 @@ export interface IntentOutcome {
   readonly executions?: readonly ExecutionView[];
 }
 
+/**
+ * Where a bridge's delivery stands (decision 0297): in transit from its deposit's final block,
+ * late 2 hours after, delivered once a read of the destination chain found the payment, refunded
+ * once a read of the source chain found the bridge paying the wallet back. `minOut` is in the
+ * token the route delivers, and `received` what the read found arriving.
+ */
+interface DeliveryView {
+  readonly state: "in_transit" | "late" | "delivered" | "refunded";
+  readonly toChain: ChainRef;
+  readonly recipient: AccountRef;
+  readonly minOut: Amount;
+  readonly received?: Amount;
+  readonly fillTx?: TxHash;
+  readonly refundTx?: TxHash;
+  readonly statusUrl?: string;
+  readonly sentAt: number;
+  readonly lateAt?: number;
+  readonly settledAt?: number;
+}
+
 /** An intent as every surface draws it, with the info of each asset it mentions. */
 export interface IntentView {
   readonly intent: ProtocolId<"intent">;
@@ -98,6 +120,8 @@ export interface IntentView {
     readonly address: AccountRef;
     readonly resolvedAt: number;
   };
+  /** A bridge's delivery, once its deposit is final; absent for any other intent. */
+  readonly delivery?: DeliveryView;
 }
 
 const usdMicros = decimalStringSchema.exactOptional();
@@ -153,5 +177,20 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
   assets: assetInfosSchema,
   resolvedName: z
     .object({ name: z.string().min(1), address: accountRefSchema, resolvedAt: epochMsSchema })
+    .exactOptional(),
+  delivery: z
+    .object({
+      state: z.enum(["in_transit", "late", "delivered", "refunded"]),
+      toChain: chainRefSchema,
+      recipient: accountRefSchema,
+      minOut: amountSchema,
+      received: amountSchema.exactOptional(),
+      fillTx: z.string().refine(isTxHash).exactOptional(),
+      refundTx: z.string().refine(isTxHash).exactOptional(),
+      statusUrl: z.string().exactOptional(),
+      sentAt: epochMsSchema,
+      lateAt: epochMsSchema.exactOptional(),
+      settledAt: epochMsSchema.exactOptional(),
+    })
     .exactOptional(),
 });

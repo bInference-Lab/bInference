@@ -82,6 +82,20 @@ export const recordedRoutes: readonly AcrossRoute[] = [
   },
 ];
 
+/** Across's SpokePool on BSC and on each destination, from its deployed addresses. */
+export const spokePools: AcrossOptions["spokePools"] = {
+  [bsc]: accountRefSchema.parse("eip155:56:0x4e8E101924eDE233C13e2D8622DC8aED2872d505"),
+  [chainRefSchema.parse("eip155:1")]: accountRefSchema.parse(
+    "eip155:1:0x5c7BCd6E7De5423a257D81B442095A1a6ced35C5",
+  ),
+  [chainRefSchema.parse("eip155:8453")]: accountRefSchema.parse(
+    "eip155:8453:0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64",
+  ),
+  [chainRefSchema.parse("eip155:42161")]: accountRefSchema.parse(
+    "eip155:42161:0xe35e9842fceaCA96570B734083f4a58e8F7C5f2A",
+  ),
+};
+
 /** Across's SpokePool on BNB Smart Chain, as the registry lists it. */
 export const spokePool: AccountRef = accountRefSchema.parse(
   "eip155:56:0x4e8E101924eDE233C13e2D8622DC8aED2872d505",
@@ -131,7 +145,12 @@ export const unseenDeposit: Hex = `0x${"11".repeat(32)}`;
 const json = (status: number, body: string): HttpResponse => ({ status, headers: {}, body });
 
 function quoteRoute(arrives: AssetRef, leaves: AssetRef, body: string): ScriptedRoute {
-  const options = { http: createScriptedHttp([]), chains: [bsc], routes: recordedRoutes };
+  const options = {
+    http: createScriptedHttp([]),
+    chains: [bsc],
+    routes: recordedRoutes,
+    spokePools,
+  };
   const query = routeQueryOf(requestFor(leaves, arrives), options)?.query;
   if (query === undefined) {
     throw new BinferenceError({
@@ -164,5 +183,5 @@ export function recordedApi(extra: readonly ScriptedRoute[] = []): ScriptedHttp 
 
 /** What the Across bridge is made from over {@link recordedApi}: BNB Smart Chain and the recorded routes. */
 export function recordedOptions(http: ScriptedHttp = recordedApi()): AcrossOptions {
-  return { http, chains: [bsc], routes: recordedRoutes };
+  return { http, chains: [bsc], routes: recordedRoutes, spokePools };
 }

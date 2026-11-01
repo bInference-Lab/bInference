@@ -7029,6 +7029,91 @@
                 "address",
                 "resolvedAt"
               ]
+            },
+            "delivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_transit",
+                    "late",
+                    "delivered",
+                    "refunded"
+                  ]
+                },
+                "toChain": {
+                  "type": "string"
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "received": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "fillTx": {
+                  "type": "string"
+                },
+                "refundTx": {
+                  "type": "string"
+                },
+                "statusUrl": {
+                  "type": "string"
+                },
+                "sentAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "lateAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "settledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "state",
+                "toChain",
+                "recipient",
+                "minOut",
+                "sentAt"
+              ]
             }
           },
           "required": [
@@ -13668,6 +13753,91 @@
                 "address",
                 "resolvedAt"
               ]
+            },
+            "delivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_transit",
+                    "late",
+                    "delivered",
+                    "refunded"
+                  ]
+                },
+                "toChain": {
+                  "type": "string"
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "received": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "fillTx": {
+                  "type": "string"
+                },
+                "refundTx": {
+                  "type": "string"
+                },
+                "statusUrl": {
+                  "type": "string"
+                },
+                "sentAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "lateAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "settledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "state",
+                "toChain",
+                "recipient",
+                "minOut",
+                "sentAt"
+              ]
             }
           },
           "required": [
@@ -15036,6 +15206,91 @@
                 "name",
                 "address",
                 "resolvedAt"
+              ]
+            },
+            "delivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_transit",
+                    "late",
+                    "delivered",
+                    "refunded"
+                  ]
+                },
+                "toChain": {
+                  "type": "string"
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "received": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "fillTx": {
+                  "type": "string"
+                },
+                "refundTx": {
+                  "type": "string"
+                },
+                "statusUrl": {
+                  "type": "string"
+                },
+                "sentAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "lateAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "settledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "state",
+                "toChain",
+                "recipient",
+                "minOut",
+                "sentAt"
               ]
             }
           },
@@ -16941,6 +17196,91 @@
                       "address",
                       "resolvedAt"
                     ]
+                  },
+                  "delivery": {
+                    "type": "object",
+                    "properties": {
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "in_transit",
+                          "late",
+                          "delivered",
+                          "refunded"
+                        ]
+                      },
+                      "toChain": {
+                        "type": "string"
+                      },
+                      "recipient": {
+                        "type": "string"
+                      },
+                      "minOut": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "received": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "fillTx": {
+                        "type": "string"
+                      },
+                      "refundTx": {
+                        "type": "string"
+                      },
+                      "statusUrl": {
+                        "type": "string"
+                      },
+                      "sentAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "lateAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "settledAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "state",
+                      "toChain",
+                      "recipient",
+                      "minOut",
+                      "sentAt"
+                    ]
                   }
                 },
                 "required": [
@@ -18332,6 +18672,91 @@
                 "address",
                 "resolvedAt"
               ]
+            },
+            "delivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_transit",
+                    "late",
+                    "delivered",
+                    "refunded"
+                  ]
+                },
+                "toChain": {
+                  "type": "string"
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "received": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "fillTx": {
+                  "type": "string"
+                },
+                "refundTx": {
+                  "type": "string"
+                },
+                "statusUrl": {
+                  "type": "string"
+                },
+                "sentAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "lateAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "settledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "state",
+                "toChain",
+                "recipient",
+                "minOut",
+                "sentAt"
+              ]
             }
           },
           "required": [
@@ -19707,6 +20132,91 @@
                 "address",
                 "resolvedAt"
               ]
+            },
+            "delivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_transit",
+                    "late",
+                    "delivered",
+                    "refunded"
+                  ]
+                },
+                "toChain": {
+                  "type": "string"
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "received": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "fillTx": {
+                  "type": "string"
+                },
+                "refundTx": {
+                  "type": "string"
+                },
+                "statusUrl": {
+                  "type": "string"
+                },
+                "sentAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "lateAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "settledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "state",
+                "toChain",
+                "recipient",
+                "minOut",
+                "sentAt"
+              ]
             }
           },
           "required": [
@@ -21080,6 +21590,91 @@
                 "name",
                 "address",
                 "resolvedAt"
+              ]
+            },
+            "delivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_transit",
+                    "late",
+                    "delivered",
+                    "refunded"
+                  ]
+                },
+                "toChain": {
+                  "type": "string"
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "received": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "fillTx": {
+                  "type": "string"
+                },
+                "refundTx": {
+                  "type": "string"
+                },
+                "statusUrl": {
+                  "type": "string"
+                },
+                "sentAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "lateAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "settledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "state",
+                "toChain",
+                "recipient",
+                "minOut",
+                "sentAt"
               ]
             }
           },
@@ -31545,6 +32140,91 @@
                               "name",
                               "address",
                               "resolvedAt"
+                            ]
+                          },
+                          "delivery": {
+                            "type": "object",
+                            "properties": {
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "in_transit",
+                                  "late",
+                                  "delivered",
+                                  "refunded"
+                                ]
+                              },
+                              "toChain": {
+                                "type": "string"
+                              },
+                              "recipient": {
+                                "type": "string"
+                              },
+                              "minOut": {
+                                "type": "object",
+                                "properties": {
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "base": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "asset",
+                                  "base"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "received": {
+                                "type": "object",
+                                "properties": {
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "base": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "asset",
+                                  "base"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "fillTx": {
+                                "type": "string"
+                              },
+                              "refundTx": {
+                                "type": "string"
+                              },
+                              "statusUrl": {
+                                "type": "string"
+                              },
+                              "sentAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "lateAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "settledAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "state",
+                              "toChain",
+                              "recipient",
+                              "minOut",
+                              "sentAt"
                             ]
                           }
                         },

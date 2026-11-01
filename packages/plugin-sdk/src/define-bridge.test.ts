@@ -1,5 +1,5 @@
 import { accountRefSchema, assetRefSchema, chainRefSchema, type TxHash } from "@binference/chain";
-import { createFakeBridge } from "@binference/chain/testing";
+import { createFakeBridge, fakeSettlementCases } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
 import { defineBridge } from "./define-bridge.js";
 import { bridgeContract } from "./testing.js";
@@ -37,6 +37,7 @@ describe("defineBridge", () => {
           refunded: { deposit: { ...sent, hash: "0xd2" as TxHash }, refund },
           expired: { ...sent, hash: "0xd3" as TxHash },
           unseen: { ...sent, hash: "0xe9" as TxHash },
+          ...fakeSettlementCases({ deposit: sent, fill }, request),
         });
       },
     }),

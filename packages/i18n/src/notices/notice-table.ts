@@ -1,4 +1,5 @@
 import type { ProtocolId } from "@binference/protocol";
+import { bridgeNoticeTable } from "./bridge-notice-table.js";
 import { noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
 import type { WrittenNotice } from "./write-notice.js";
 
@@ -228,6 +229,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.feeAboveCap": { key: "notice.feeAboveCap", values: {} },
   "notice.launchUnsent": { key: "notice.launchUnsent", values: { reason: "launch_moved" } },
   "notice.nameMoved": { key: "notice.nameMoved", values: movedName },
+  ...bridgeNoticeTable,
   "notice.launchStopped": {
     key: "notice.launchStopped",
     values: { symbol: "MCAT", venue: "pad", reason: "pin_timeout", private: "no" },

@@ -1,7 +1,6 @@
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import {
-  bridgeDeliveryWaitMs,
   cancelIntent,
   cancelUnsent,
   failMovedName,
@@ -223,7 +222,7 @@ const finalized: IntentStatus = { ...confirmed, state: "finalized", changedAtMs:
 function reconcile(
   kind: IntentKind,
   nowMs: number,
-  delivery: Readonly<{ isDeliveryReported?: boolean }> = {},
+  delivery: Readonly<{ isDeliveryRead?: boolean }> = {},
 ): GuardInput<"fills_reconciled"> {
   return {
     status: { ...finalized, kind },
@@ -237,23 +236,20 @@ describe("reconciling", () => {
     expect(reconcileFills(reconcile("swap", 1_000))).toStrictEqual({ ok: true, value: {} });
   });
 
-  it("reconciles a bridge once the bridge reports delivery", () => {
-    expect(reconcileFills(reconcile("bridge", 2_000, { isDeliveryReported: true })).ok).toBe(true);
-    expect(reconcileFills(reconcile("bridge", 2_000, { isDeliveryReported: false }))).toStrictEqual(
-      {
-        ok: false,
-        error: "delivery_pending",
-      },
-    );
-  });
-
-  it("reconciles an undelivered bridge 2 hours after its source transaction is final", () => {
-    expect(bridgeDeliveryWaitMs).toBe(7_200_000);
-    expect(reconcileFills(reconcile("bridge", 1_000 + 7_199_999))).toStrictEqual({
+  it("reconciles a bridge only once a read found its delivery or refund", () => {
+    expect(reconcileFills(reconcile("bridge", 2_000, { isDeliveryRead: true })).ok).toBe(true);
+    expect(reconcileFills(reconcile("bridge", 2_000, { isDeliveryRead: false }))).toStrictEqual({
       ok: false,
       error: "delivery_pending",
     });
-    expect(reconcileFills(reconcile("bridge", 1_000 + 7_200_000)).ok).toBe(true);
+  });
+
+  it("never reconciles an unread bridge by time, however late it is", () => {
+    const weekLater = 1_000 + 7 * 86_400_000;
+    expect(reconcileFills(reconcile("bridge", weekLater))).toStrictEqual({
+      ok: false,
+      error: "delivery_pending",
+    });
   });
 });
 

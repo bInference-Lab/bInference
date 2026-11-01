@@ -205,8 +205,11 @@ export interface TriggerFacts {
    * `hasSignedStep`: an earlier step was signed, and a block holds it.
    */
   readonly step_unsent: { readonly hasSignedStep: boolean };
-  /** Fills decoded and compared with the simulation. A bridge also reports delivery. */
-  readonly fills_reconciled: { readonly isDeliveryReported?: boolean };
+  /**
+   * Fills decoded and compared with the simulation. A bridge's comes only once a read found its
+   * delivery or its refund (decision 0297).
+   */
+  readonly fills_reconciled: { readonly isDeliveryRead?: boolean };
   /** A confirmed unfreeze is written: its agents, and the install it names, are unfrozen. */
   readonly unfreeze_written: NoFacts;
   /** A confirmed auto order card is written: its order became active, or had ended. */

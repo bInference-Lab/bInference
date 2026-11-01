@@ -59,7 +59,7 @@ interface Facts {
   readonly hasConfirmation: boolean;
   readonly confirmationTtlMs: number;
   readonly isAuthorizationValid: boolean;
-  readonly isDeliveryReported: boolean;
+  readonly isDeliveryRead: boolean;
 }
 
 interface At {
@@ -153,7 +153,7 @@ const builders: Builders = {
   sent_step_found: () => ({ type: "sent_step_found" }),
   nonce_taken: () => ({ type: "nonce_taken" }),
   step_unsent: (facts) => ({ type: "step_unsent", hasSignedStep: facts.hasSignedStep }),
-  fills_reconciled: ({ isDeliveryReported }) => ({ type: "fills_reconciled", isDeliveryReported }),
+  fills_reconciled: ({ isDeliveryRead }) => ({ type: "fills_reconciled", isDeliveryRead }),
   unfreeze_written: () => ({ type: "unfreeze_written" }),
   order_written: () => ({ type: "order_written" }),
 };
@@ -202,7 +202,7 @@ const facts: fc.Arbitrary<Facts> = fc.record({
   hasConfirmation: mostly(true, false),
   confirmationTtlMs: fc.integer({ min: -1_000, max: 60_000 }),
   isAuthorizationValid: mostly(true, false),
-  isDeliveryReported: fc.boolean(),
+  isDeliveryRead: fc.boolean(),
 });
 
 // How a step picks its trigger: along the normal path, among the state's own rows, or any trigger.

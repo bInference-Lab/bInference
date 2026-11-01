@@ -168,7 +168,7 @@ export interface TestEngineOptions {
   /** The chains a bridge delivers to, where an address may be saved too; none when absent. */
   readonly destinations?: EngineOptions["destinations"];
   /** The bridges and their routes, and the wallets' chains' code readers; none when absent. */
-  readonly bridging?: Pick<EngineOptions, "bridges" | "codeReaders">;
+  readonly bridging?: Pick<EngineOptions, "bridges" | "codeReaders" | "deliveryReaders">;
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -285,6 +285,7 @@ function switchesOf(
   | "destinations"
   | "bridges"
   | "codeReaders"
+  | "deliveryReaders"
 > {
   return {
     liveOrderFills: options.liveOrderFills === true,

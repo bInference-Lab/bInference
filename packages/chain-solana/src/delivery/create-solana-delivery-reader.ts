@@ -8,6 +8,7 @@ import {
   type SolanaRpcApiMainnet,
 } from "@solana/kit";
 import { type SolanaChain, solanaAddressOn, solanaMintOn } from "../solana-chain.js";
+import { solanaLogEvents } from "./solana-log-events.js";
 import {
   lamportsSchema,
   type ParsedTransaction,
@@ -98,6 +99,7 @@ async function readDelivery(
     final: true,
     status: failed ? "failed" : "success",
     received: { asset: request.asset, base: failed ? 0n : received },
+    events: failed ? [] : solanaLogEvents(chain, found.logMessages),
   };
 }
 

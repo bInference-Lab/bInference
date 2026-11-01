@@ -5,8 +5,10 @@ import type {
   BridgeBuildRequest,
   BridgeQuoteRequest,
   DecodedDeposit,
+  DepositRef,
   DepositState,
   OrderDeposit,
+  SettlementCheck,
 } from "../bridges/bridge-terms.js";
 import type { Bridge } from "../bridges/ports.js";
 import { accountRefParts, parseAccountRef, printAccountRef } from "../caip/account-ref.js";
@@ -144,12 +146,51 @@ function build(request: BridgeBuildRequest, kind: DecodedDeposit["kind"]): reado
   return [fakeDraft(wallet, approval), fakeDraft(wallet, { to, value: 0n, data: deposit })];
 }
 
+/** The most a fake settlement names as paid: it names no amount, so a host's read decides. */
+const unnamed = 2n ** 256n - 1n;
+
+// A fake fill or refund is the deposit's own when one of its events carries the deposit's hash, as
+// a test lands it; a transfer with no such event is never its own.
+function settlement(check: SettlementCheck): Result<bigint, "not_own"> {
+  const hash = check.deposit.ref.hash.toLowerCase();
+  const isOwn = check.settlement.events.some((event) => event.data.toLowerCase().includes(hash));
+  return isOwn ? ok(unnamed) : err("not_own");
+}
+
+/**
+ * A fill the fake bridge takes as its deposit's own, whose event carries the deposit's hash, and
+ * the same check with only a bare transfer of the fill's token, which it never takes; for the
+ * bridge contract suite.
+ */
+export function fakeSettlementCases(
+  sent: { readonly deposit: DepositRef; readonly fill: DepositRef },
+  request: Pick<BridgeQuoteRequest, "wallet" | "amountIn" | "recipient" | "deliveredAsset">,
+): {
+  readonly settled: { readonly check: SettlementCheck; readonly paid: bigint };
+  readonly stranger: SettlementCheck;
+} {
+  const fillEvent = { emitter: request.recipient, topics: [], data: `filled ${sent.deposit.hash}` };
+  const transfer = { emitter: request.recipient, topics: [], data: "transfer" };
+  const check: SettlementCheck = {
+    kind: "fill",
+    deposit: { ref: sent.deposit, events: [] },
+    settlement: { ref: sent.fill, events: [transfer, fillEvent] },
+    wallet: request.wallet,
+    amountIn: request.amountIn,
+    recipient: request.recipient,
+    minOut: { asset: request.deliveredAsset, base: 1n },
+  };
+  const stranger = { ...check, settlement: { ...check.settlement, events: [transfer] } };
+  return { settled: { check, paid: unnamed }, stranger };
+}
+
 /**
  * Creates the `fake-cross` bridge from the fake chain to `fake:2`, for tests. It serves the routes
  * given, only for a capped token that leaves, keeps 1% of the input for the relayer, refuses a
  * build for another request than its quote's or above its least output, builds an exact approval
  * of its `spoke` and then its deposit, `bound` unless `deposits` says `order`, decodes its own
- * deposits honestly, and tells each deposit's state as a test settles it.
+ * deposits honestly, tells each deposit's state as a test settles it, and takes a fill or refund
+ * as a deposit's own only when one of its events carries the deposit's hash.
  */
 export function createFakeBridge(options: {
   readonly routes: readonly FakeBridgeRoute[];
@@ -190,5 +231,6 @@ export function createFakeBridge(options: {
     settle(hash, state) {
       states.set(hash, state);
     },
+    settlement,
   };
 }
