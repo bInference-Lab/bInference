@@ -2,6 +2,7 @@ import type { ChainFamily } from "@binference/chain";
 import { readEvmDraft } from "./drafts/read-evm-draft.js";
 import { evmApprovalDraft } from "./drafts/token-approval-draft.js";
 import { evmTransferDraft } from "./drafts/token-transfer-draft.js";
+import { createEvmAddressCodec } from "./evm-address-codec.js";
 import { parseEvmAddress } from "./evm-address.js";
 import { erc20Namespace, evmFamilyId, evmNamespace } from "./evm-ids.js";
 import { freshEvmAccount } from "./fresh-evm-account.js";
@@ -18,6 +19,7 @@ export function createEvmFamily(): ChainFamily {
     namespace: evmNamespace,
     tokenNamespace: erc20Namespace,
     parseAddress: parseEvmAddress,
+    addressCodec: createEvmAddressCodec(),
     readDraft: readEvmDraft,
     freshAccount: freshEvmAccount,
     transferDraft: evmTransferDraft,

@@ -81,6 +81,20 @@ export type {
   RelaySenderSubject,
 } from "./contracts/relay-sender-contract.js";
 export { deliveryReaderContract } from "./contracts/delivery-reader-contract.js";
+export { addressCodecContract } from "./contracts/address-codec-contract.js";
+export type {
+  AddressCodecHarness,
+  AddressCodecSubject,
+  CodecSample,
+} from "./contracts/address-codec-contract.js";
+export { accountKindReaderContract } from "./contracts/account-kind-reader-contract.js";
+export type {
+  AccountKindReaderHarness,
+  AccountKindReaderSubject,
+} from "./contracts/account-kind-reader-contract.js";
+export { createFakeAddressCodec } from "./fakes/fake-address-codec.js";
+export { createFakeAccountKindReader } from "./fakes/fake-account-kind-reader.js";
+export type { FakeAccountKindReader } from "./fakes/fake-account-kind-reader.js";
 export { nameResolverContract } from "./contracts/name-resolver-contract.js";
 export type {
   NamedAccount,

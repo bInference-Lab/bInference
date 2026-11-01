@@ -223,7 +223,10 @@ new name here first, in the change that uses it.
 - **registry**: the verified contract addresses in `@binference/chains`.
 - **chain family**: how binference reads and writes the accounts of one kind of chain: `evm` for the
   `eip155` chains, and `solana`, which binference reads but never signs on. Each family fills the
-  address codec and the reader ports; core code never names one.
+  address codec and the reader ports; core code never names one. The **chain family registry**
+  finds a chain's address codec by its CAIP-2 namespace.
+- **account kind reader**: the port a chain family fills where an account may be a program or a
+  token account, as on Solana, to tell such an account from a wallet before an address is saved.
 - **staking**: putting the agent's BNB to work: native BNB staking with a **validator** through
   StakeHub, or slisBNB through Lista. Its moves are a **stake**, an **unstake** and a **claim**.
 - **staking position**: what a wallet holds with one staking venue, and one validator on StakeHub,

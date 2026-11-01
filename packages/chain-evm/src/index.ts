@@ -12,6 +12,7 @@ export { decodeEvmDraft, encodeEvmDraft } from "./drafts/evm-draft.js";
 export type { EvmCallRequest, EvmDraftCall } from "./drafts/evm-draft.js";
 export type { CalldataProblem } from "./decoding/decode-call.js";
 export { parseEvmAddress } from "./evm-address.js";
+export { createEvmAddressCodec } from "./evm-address-codec.js";
 export { erc20AssetRef, evmAccountRef, evmChainOf } from "./evm-chain.js";
 export type { EvmChain } from "./evm-chain.js";
 export { createEvmFamily } from "./evm-family.js";

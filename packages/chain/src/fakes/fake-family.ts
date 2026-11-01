@@ -6,6 +6,7 @@ import type { DraftCall, TokenApproval } from "../draft-call.js";
 import type { ChainFamily } from "../ports.js";
 import type { TokenApprovalRequest, TokenTransfer } from "../token-transfer.js";
 import type { TxDraft } from "../transaction.js";
+import { createFakeAddressCodec } from "./fake-address-codec.js";
 import { fakeCallOf, fakeDraft, isFakeAddress, isFakeUnsigned } from "./fake-draft.js";
 
 const namespace = "fake";
@@ -110,6 +111,7 @@ export function createFakeFamily(): ChainFamily {
     namespace,
     tokenNamespace,
     parseAddress,
+    addressCodec: createFakeAddressCodec(),
     readDraft,
     freshAccount,
     transferDraft,

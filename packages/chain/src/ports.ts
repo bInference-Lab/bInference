@@ -1,4 +1,5 @@
 import type { Id, Ratio, Result } from "@binference/core";
+import type { AddressCodec } from "./addresses/ports.js";
 import type { AccountRef } from "./caip/account-ref.js";
 import type { AssetRef } from "./caip/asset-ref.js";
 import type { ChainRef } from "./caip/chain-ref.js";
@@ -27,6 +28,11 @@ export interface ChainFamily {
    * compares equal for one account. Malformed text is an expected failure, never a throw.
    */
   parseAddress(text: string): Result<string, "malformed_address">;
+  /**
+   * The family's address codec, of its namespace: its canonical form is `parseAddress`'s, and it
+   * gives each address the recipient bytes a ceiling binds (decision 0298).
+   */
+  readonly addressCodec: AddressCodec;
   /**
    * Reads where a draft calls, the native coin it sends and the token approval it grants, from the
    * draft's bytes alone. A draft of another family, or bytes it cannot read, is an expected

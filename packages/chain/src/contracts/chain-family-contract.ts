@@ -174,14 +174,16 @@ export function chainFamilyContract(harness: ChainFamilyHarness): readonly Contr
       },
     },
     {
-      name: "gives the canonical form of every address it accepts",
+      name: "gives the canonical form of every address it accepts, as its address codec does",
       run: async () => {
         const { family, addresses } = harness.create();
         assert.ok(addresses.length > 0);
         for (const { text, canonical } of addresses) {
           assert.deepEqual(family.parseAddress(text), { ok: true, value: canonical });
           assert.deepEqual(family.parseAddress(canonical), { ok: true, value: canonical });
+          assert.deepEqual(family.addressCodec.parse(text), { ok: true, value: canonical });
         }
+        assert.equal(family.addressCodec.namespace, family.namespace);
         await Promise.resolve();
       },
     },
@@ -192,6 +194,10 @@ export function chainFamilyContract(harness: ChainFamilyHarness): readonly Contr
         assert.ok(malformed.length > 0);
         for (const text of malformed) {
           assert.deepEqual(family.parseAddress(text), { ok: false, error: "malformed_address" });
+          assert.deepEqual(family.addressCodec.parse(text), {
+            ok: false,
+            error: "malformed_address",
+          });
         }
         await Promise.resolve();
       },

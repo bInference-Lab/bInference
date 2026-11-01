@@ -235,6 +235,10 @@ export type {
   RelayRefused,
   RelaySilent,
 } from "./sending/relay-answer.js";
+export { createFamilyRegistry } from "./addresses/family-registry.js";
+export type { FamilyRegistry } from "./addresses/family-registry.js";
+export type { AccountKind, AccountKindReader, AddressCodec } from "./addresses/ports.js";
+export { recipientBytesOf, recipientHex, recipientHexBytes } from "./addresses/recipient-bytes.js";
 export type { Delivery, DeliveryRequest } from "./delivery/delivery.js";
 export type { DeliveryReader } from "./delivery/ports.js";
 export type {
