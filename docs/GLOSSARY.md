@@ -236,6 +236,10 @@ new name here first, in the change that uses it.
   as the venue's own receipt token, with its amounts waiting to be claimed.
 - **unbonding**: the funds an unstake took out, which wait for the **unbonding time** the venue sets
   before a claim can take them back to the wallet.
+- **staking venue** (in code): a plugin that stakes a chain's coin with validators: it lists them,
+  reads a wallet's staking positions, makes a **stake plan** of one move at the latest block or
+  names why it would refuse it, and builds and decodes that move's call, which credits only the
+  wallet that signs. StakeHub's plugin is one.
 - **bridge** (in code): a plugin that moves a token from the wallet's chain to an account on
   another chain: it quotes a bridge route, builds and decodes its **deposit**, the one call that
   pays the bridge on the source chain and names the recipient, and tells a deposit's **deposit

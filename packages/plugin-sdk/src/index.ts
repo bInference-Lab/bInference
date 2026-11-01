@@ -105,6 +105,23 @@ export {
   orderedFlags,
   writtenWordsOf,
 } from "@binference/chain";
+export type {
+  DecodedStake,
+  LandedRequest,
+  LandedStake,
+  PaperStake,
+  StakeAction,
+  StakePlan,
+  StakePool,
+  StakeRefusal,
+  StakeRequest,
+  StakingHolding,
+  StakingOptions,
+  StakingValidator,
+  StakingVenue,
+  UnbondingPart,
+} from "@binference/chain/staking";
+export { stakePlanSchema, stakeRefusals } from "@binference/chain/staking";
 export {
   BinferenceError,
   bpsSchema,
@@ -129,5 +146,6 @@ export type {
 export { defineBridge } from "./define-bridge.js";
 export { defineData } from "./define-data.js";
 export { defineLaunchpad, defineVenue } from "./define-venue.js";
+export { defineStaking } from "./define-staking.js";
 export { lintSkill } from "./skills/lint-skill.js";
 export type { SkillFinding } from "./skills/lint-skill.js";

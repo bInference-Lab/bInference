@@ -54,3 +54,10 @@ Rules for this package:
 - `NameResolver` (`src/names/ports.ts`) answers what a name under one suffix points to on its
   chain at the latest block, and its reverse record, reading again on every call. Naming-service
   plugins fill it; the engine picks one by the name's suffix and names no service.
+- `StakingVenue` (`src/staking/ports.ts`) lists a staking venue's validators, reads a wallet's
+  stake and unbonding coin, plans a stake, an unstake or a claim at the latest block, live or
+  against a paper position, or names why the venue would refuse it (`stakeRefusals`), builds the
+  planned call, decodes one back, and reads back what a landed move did. Every
+  call it builds or decodes credits the account that signs; it declares its contracts like a venue,
+  so ceilings hold their rules. It and its terms are exported from `@binference/chain/staking`,
+  since the root entry is at its size limit.

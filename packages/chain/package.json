@@ -14,6 +14,11 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./staking": {
+      "@binference/source": "./src/staking.ts",
+      "types": "./dist/staking.d.mts",
+      "default": "./dist/staking.mjs"
+    },
     "./testing": {
       "@binference/source": "./src/testing.ts",
       "types": "./dist/testing.d.mts",
@@ -21,7 +26,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/staking.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/core": "workspace:*",
