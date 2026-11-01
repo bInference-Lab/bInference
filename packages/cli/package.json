@@ -53,6 +53,7 @@
     "@binference/server": "workspace:*",
     "@binference/signer": "workspace:*",
     "@binference/spaceid": "workspace:*",
+    "@binference/stakehub": "workspace:*",
     "@binference/store": "workspace:*",
     "@binference/telegram": "workspace:*",
     "@binference/tui": "workspace:*",
