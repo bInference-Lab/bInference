@@ -1,4 +1,3 @@
-import { setTimeout as wait } from "node:timers/promises";
 import {
   type AccountRef,
   accountRefParts,
@@ -9,8 +8,7 @@ import { erc20AssetRef, evmAccountRef } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
 import { baseMainnet } from "@binference/chains";
 import { BinferenceError, type Http, type Id, idSchema } from "@binference/core";
-import { cardLineText, createFormatter } from "@binference/i18n";
-import type { IntentRequest, IntentView } from "@binference/protocol";
+import type { IntentRequest } from "@binference/protocol";
 import { pointStep } from "@binference/spaceid/testing";
 import {
   type Address,
@@ -35,17 +33,19 @@ import { forkLimits, startMining } from "./executor-rig.js";
 import { buyFor, heldOn } from "./fork-holdings.js";
 import { rescueAgents } from "./rescue-rig-parts.js";
 import { type RescueRig, rescueRigOf } from "./rescue-rig.js";
+import {
+  cardTextOf,
+  confirmOn,
+  endedStates,
+  expectValue,
+  proposeOn,
+  reachOn,
+} from "./rig-calls.js";
 import { placeName, sendAs, spaceIdOn } from "./space-id-names.js";
 
 // Sends, approval revokes and bridges on a fork of BSC: a `.bnb` name placed as SPACE ID's
 // controllers and its holder place one, saved in the agent's address book, then paid by name; a
 // router's allowance set back to zero; and USDC bridged through Across to an address saved for Base.
-const owner = {
-  credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000066",
-  client: { kind: "cli", version: "fork" },
-  scopes: ["read", "propose", "confirm", "loosen"],
-  transport: "ipc",
-} as const;
 const usdt = bscToken("USDT");
 const router = bscContract("pancakeswap", "v2-router");
 const label = "binference-send-alice";
@@ -58,19 +58,6 @@ const [
 
 function accountOf(phrase: string): Address {
   return getAddress(keccak256(stringToHex(phrase)).slice(0, 42));
-}
-
-function call<Args>(args: Args, signal: AbortSignal) {
-  return { args, caller: owner, signal };
-}
-
-function expectValue<T>(
-  result: { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: string },
-): T {
-  if (!result.ok) {
-    throw new BinferenceError({ code: "fork.refused", message: result.error });
-  }
-  return result.value;
 }
 
 // The agent's main wallet holds 0.05 BNB and what 0.05 BNB buys of USDT; the holder holds no code.
@@ -103,64 +90,10 @@ async function saveHolder(fork: Fork, rig: RescueRig): Promise<void> {
   expectValue(await rig.stores.agents.addAddress(entry, { signal: AbortSignal.timeout(5_000) }));
 }
 
-async function propose(
-  rig: RescueRig,
-  request: IntentRequest,
-  signal: AbortSignal,
-): Promise<IntentView> {
-  return expectValue(await rig.engine.handlers["intent/propose"](call(request, signal)));
-}
-
-async function cardText(
-  rig: RescueRig,
-  view: IntentView,
-  signal: AbortSignal,
-): Promise<readonly string[]> {
-  const drawn = expectValue(
-    await rig.engine.handlers["intent/card"](call({ intent: view.intent }, signal)),
-  );
-  const display = {
-    formatter: createFormatter({ locale: "en", timeZone: "UTC" }),
-    assets: drawn.assets,
-  };
-  return drawn.lines.map((line) => cardLineText(line, display));
-}
-
-async function confirm(rig: RescueRig, view: IntentView, signal: AbortSignal): Promise<void> {
-  const card = view.card?.card;
-  if (card === undefined) {
-    throw new BinferenceError({ code: "fork.no_card", message: `${view.kind} opened no card.` });
-  }
-  expectValue(
-    await rig.engine.handlers["intent/confirm"](
-      call({ intent: view.intent, card, cardVersion: 1 }, signal),
-    ),
-  );
-}
-
-async function reach(
-  rig: RescueRig,
-  intent: Id<"int">,
-  states: readonly string[],
-): Promise<string> {
-  const deadline = Date.now() + 30_000;
-  const poll = async (): Promise<string> => {
-    const record = await rig.stores.intents.get(intent, { signal: AbortSignal.timeout(5_000) });
-    if ((record !== undefined && states.includes(record.state)) || Date.now() > deadline) {
-      return record?.state ?? "missing";
-    }
-    await wait(200);
-    return poll();
-  };
-  return poll();
-}
-
 function sendByName(base: bigint, fork: Fork): IntentRequest {
   const amount = { asset: erc20AssetRef(fork.chain, usdt), base };
   return { kind: "send", agent, reason: "Pay Alice", amount, to: { name } };
 }
-
-const ended = ["reconciled", "failed_check", "failed_onchain", "expired", "cancelled"];
 
 describe("sends and approval revokes on the BSC fork", () => {
   it("pays 20 USDT to a SPACE ID name with the name and the address on its card, and refuses one whose name moved", async ({
@@ -175,26 +108,26 @@ describe("sends and approval revokes on the BSC fork", () => {
         await fund(fork, rig);
         await saveHolder(fork, rig);
         const twenty = 20n * 10n ** 18n;
-        const view = await propose(rig, sendByName(twenty, fork), signal);
+        const view = await proposeOn(rig, sendByName(twenty, fork), signal);
         expect(view).toMatchObject({
           state: "awaiting_confirmation",
           resolvedName: { name, address: evmAccountRef(fork.chain, holder) },
         });
-        const lines = await cardText(rig, view, signal);
+        const lines = await cardTextOf(rig, view, signal);
         expect(lines[1]).toBe(`Send 20 USDT to ${name} (${holder})`);
         expect(lines[2]).toMatch(new RegExp(`^${name} points to ${holder}, read at `));
-        await confirm(rig, view, signal);
-        await expect(reach(rig, view.intent, ended)).resolves.toBe("reconciled");
+        await confirmOn(rig, view, signal);
+        await expect(reachOn(rig, view.intent, endedStates)).resolves.toBe("reconciled");
         await expect(heldOn(fork, { address: holder, token: usdt })).resolves.toMatchObject({
           token: twenty,
         });
 
-        const moving = await propose(rig, sendByName(10n ** 18n, fork), signal);
+        const moving = await proposeOn(rig, sendByName(10n ** 18n, fork), signal);
         expect(moving.state).toBe("awaiting_confirmation");
         await sendAs(fork, [pointStep(parts, { name, holder, address: later })]);
         const signed = rig.signatures();
-        await confirm(rig, moving, signal);
-        await expect(reach(rig, moving.intent, ended)).resolves.toBe("failed_check");
+        await confirmOn(rig, moving, signal);
+        await expect(reachOn(rig, moving.intent, endedStates)).resolves.toBe("failed_check");
         const record = await rig.stores.intents.get(moving.intent, { signal });
         expect([record?.reason, rig.signatures()]).toStrictEqual(["name_moved", signed]);
       } finally {
@@ -232,10 +165,10 @@ describe("sends and approval revokes on the BSC fork", () => {
           token: erc20AssetRef(fork.chain, usdt),
           spender: evmAccountRef(fork.chain, router),
         };
-        const view = await propose(rig, request, signal);
+        const view = await proposeOn(rig, request, signal);
         expect(view.state).toBe("awaiting_confirmation");
-        await confirm(rig, view, signal);
-        await expect(reach(rig, view.intent, ended)).resolves.toBe("reconciled");
+        await confirmOn(rig, view, signal);
+        await expect(reachOn(rig, view.intent, endedStates)).resolves.toBe("reconciled");
         await expect(allowance()).resolves.toBe(0n);
       } finally {
         miner.abort();
@@ -391,9 +324,9 @@ describe("a bridge on the BSC fork", () => {
           toChain: baseRef,
           to: { entry },
         };
-        const view = await propose(rig, request, signal);
+        const view = await proposeOn(rig, request, signal);
         expect([view.state, view.outcome]).toStrictEqual(["awaiting_confirmation", undefined]);
-        const lines = await cardText(rig, view, signal);
+        const lines = await cardTextOf(rig, view, signal);
         await annotate(lines.join("\n"));
         expect(lines[1]).toMatch(
           new RegExp(
@@ -405,8 +338,10 @@ describe("a bridge on the BSC fork", () => {
         );
         expect(lines).toContainEqual(expect.stringMatching(/^Bridge fees .+ · through across$/));
 
-        await confirm(rig, view, signal);
-        await expect(reach(rig, view.intent, ["finalized", ...ended])).resolves.toBe("finalized");
+        await confirmOn(rig, view, signal);
+        await expect(reachOn(rig, view.intent, ["finalized", ...endedStates])).resolves.toBe(
+          "finalized",
+        );
         const bridge = await rig.stores.bridges.get(view.intent, { signal });
         expect(bridge).toMatchObject({
           state: "in_transit",
