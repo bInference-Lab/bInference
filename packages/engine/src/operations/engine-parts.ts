@@ -101,7 +101,9 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     budget,
     intentView: async (intent, signal) => {
       const snapshot = await late.stored?.snapshot(intent, { signal });
-      return snapshot === undefined ? undefined : intentViewOf(snapshot, chains);
+      // A settled bridge's reason names its destination chain, as every surface's view does.
+      const reads = { destinations: options.destinations };
+      return snapshot === undefined ? undefined : intentViewOf(snapshot, chains, reads);
     },
     ids: options.ids,
     random: options.random,

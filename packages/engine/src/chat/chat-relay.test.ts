@@ -1,6 +1,7 @@
 import { idSchema } from "@binference/core";
 import { type InboxMessageView, inboxMessageViewSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { bridgeEngine, testBridge, testRescueThere } from "../bridges/test-bridges.js";
 import { expectOk, testAgent, testSwap } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
@@ -134,6 +135,18 @@ describe("the chat relay", () => {
     expect(settles[0]).toMatchObject({ intent: { intent: intent.intent, state: "paper_filled" } });
     const listed = expectOk(await handlers["inbox/list"](testCall({}, runtime))).items;
     expect(listed).toStrictEqual(settles);
+  });
+
+  it("names a settled bridge's destination chain in the runtime's view", async () => {
+    const { test } = await bridgeEngine({ bridged: [testRescueThere] });
+    const view = expectOk(
+      await test.engine.handlers["intent/propose"](testCall(testBridge(), runtime)),
+    );
+    expect(view.state).toBe("failed_check");
+    const settles = inboxPushes(test).filter((item) => item.kind === "inbox/intentSettled");
+    expect(settles).toMatchObject([
+      { intent: { outcome: { reason: "ceiling_lacks_payee", chain: "Fake Two" } } },
+    ]);
   });
 
   it("sends no stop when the frozen agent runs no turn", async () => {
