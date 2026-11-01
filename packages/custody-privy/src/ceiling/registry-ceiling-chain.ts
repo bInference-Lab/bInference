@@ -80,7 +80,8 @@ function callsOf(
     if (!found.ok) {
       return found;
     }
-    calls.push(found.value);
+    const { maxValueBase } = call;
+    calls.push(maxValueBase === undefined ? found.value : { ...found.value, maxValueBase });
   }
   return ok(calls);
 }

@@ -61,7 +61,7 @@ function rulesFor(role: "bridge" | undefined): readonly string[] {
 describe("a ceiling built from the staking, bridge and identity calls on BSC", () => {
   it("allows Across's deposit to each saved destination its routes reach, and no Relay call", () => {
     expect(rulesFor(undefined)).toStrictEqual([
-      "Call delegate, chain 56",
+      "Call delegate, own cap, chain 56",
       "Call undelegate, chain 56",
       "Call claim, chain 56",
       "Call deposit, chain 56",

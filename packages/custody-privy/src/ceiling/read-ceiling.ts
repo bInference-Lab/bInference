@@ -68,6 +68,8 @@ export interface CeilingHeld {
 
 const onChain = /, chain (\d{1,10})$/;
 const callPrefix = "Call ";
+// A call rule with a cap of its own (decision 0325).
+const ownCap = /^Call [^,]+, own cap, chain \d{1,10}$/;
 const launchCallPrefix = "Launch call ";
 
 // The function a launch rule lets a call reach on any contract: a launch call's, or `approve`.
@@ -99,9 +101,10 @@ function chainIdsOf(read: readonly HeldRule[]): readonly string[] {
   return [...new Set(read.flatMap((rule) => onChain.exec(rule.name)?.slice(1, 2) ?? []))];
 }
 
-// The cap per call of a chain's first call rule: 0 for none, undefined when it is no quantity.
+// The chain's cap per call, from its first call rule that has no cap of its own: 0 for none,
+// undefined when it is no quantity.
 function capOf(calls: readonly HeldRule[]): bigint | undefined {
-  const [first] = calls;
+  const first = calls.find((rule) => !ownCap.test(rule.name));
   return first === undefined ? 0n : quantityOf(valuesOf(first, "value", "lte")[0]);
 }
 
@@ -119,13 +122,16 @@ function capsOf(calls: readonly HeldRule[], approvals: HeldRule | undefined) {
     : { native: nativeCap, approvals: approved };
 }
 
-// One call rule's function, pins and contracts, checksummed; undefined when it cannot be read.
+// One call rule's function, pins, contracts, checksummed, and its own cap when its name says it has
+// one; undefined when it cannot be read.
 function checkedCall(rule: HeldRule): CallRuleLists | undefined {
   const call = callIn(rule);
   const contracts = call === undefined ? undefined : addressList(call.contracts);
-  return call !== undefined && contracts?.ok === true
-    ? { ...call, contracts: contracts.value }
-    : undefined;
+  const cap = ownCap.test(rule.name) ? quantityOf(valuesOf(rule, "value", "lte")[0]) : 0n;
+  if (call === undefined || contracts?.ok !== true || cap === undefined) {
+    return undefined;
+  }
+  return { ...call, contracts: contracts.value, ...(cap === 0n ? {} : { maxValueBase: cap }) };
 }
 
 // A chain's rules that let a call reach a contract: its call rules, then a launch wallet's launch
@@ -260,7 +266,7 @@ export function readCeiling(rules: readonly JsonValue[]): CeilingHeld | undefine
     launchCalls: [...new Set(read.flatMap(launchFunctionOf))],
     functions: [
       ...new Set([
-        ...calls.map((rule) => rule.name.slice(callPrefix.length).replace(onChain, "")),
+        ...calls.flatMap((rule) => callIn(rule)?.abi.name ?? []),
         ...bridges.flatMap((rule) => callIn(rule)?.abi.name ?? []),
       ]),
     ],

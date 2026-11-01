@@ -38,6 +38,9 @@ const stakehub: VenueContracts = {
         "payable",
       ),
       walletInputs: [],
+      // A stake may carry up to 100 BNB, the owner's ruling of 2026-11-01 (decision 0325); every
+      // other call keeps the wallet's cap per call.
+      maxValueBase: 100n * 10n ** 18n,
     },
     {
       contract: "stake-hub",

@@ -12,6 +12,8 @@ export interface CallRuleLists {
   readonly abi: AbiFunction;
   readonly walletInputs: readonly string[];
   readonly contracts: readonly string[];
+  /** The call's own cap per call, as its venue declares (decision 0325); absent, the chain's. */
+  readonly maxValueBase?: bigint;
 }
 
 // A rule's name holds at most 50 characters.
@@ -22,14 +24,30 @@ export function callRuleName(functionName: string, chainId: string): string {
   return `Call ${functionName}, chain ${chainId}`;
 }
 
+/**
+ * The name of the rule that allows calls of one function on one chain up to a cap of their own
+ * (decision 0325), so the read-back tells its cap from the chain's.
+ */
+export function ownCapCallRuleName(functionName: string, chainId: string): string {
+  return `Call ${functionName}, own cap, chain ${chainId}`;
+}
+
 /** The name of the rule that allows a launch wallet's calls of one function on any contract. */
 export function launchCallRuleName(functionName: string, chainId: string): string {
   return `Launch call ${functionName}, chain ${chainId}`;
 }
 
-// What decides whether two calls of one name fit one rule: the function and its pinned inputs.
-function shapeOf(call: LaunchCall): string {
-  return JSON.stringify([abiFunctionJson(call.abi), [...call.walletInputs].toSorted()]);
+// What decides whether two calls of one name fit one rule: the function, its pinned inputs and
+// its own cap per call.
+function shapeOf(call: LaunchCall & Pick<CeilingCall, "maxValueBase">): string {
+  const cap = call.maxValueBase?.toString() ?? "";
+  return JSON.stringify([abiFunctionJson(call.abi), [...call.walletInputs].toSorted(), cap]);
+}
+
+function ruleNameOf(call: CeilingCall, chainId: string): string {
+  return call.maxValueBase === undefined
+    ? callRuleName(call.abi.name, chainId)
+    : ownCapCallRuleName(call.abi.name, chainId);
 }
 
 // Each pinned input is a top-level address input of the function, named once, and the rule's name
@@ -68,6 +86,17 @@ export function launchListsOf(
   return ok([...grouped.values()]);
 }
 
+// One function's rule lists: the function, its pinned inputs, every contract it is declared on,
+// and its own cap when its venue declares one.
+function listsOfGroup(group: {
+  readonly call: CeilingCall;
+  readonly contracts: ReadonlySet<string>;
+}): CallRuleLists {
+  const { abi, walletInputs, maxValueBase } = group.call;
+  const lists = { abi, walletInputs, contracts: [...group.contracts] };
+  return maxValueBase === undefined ? lists : Object.assign(lists, { maxValueBase });
+}
+
 /**
  * The call rules of one chain, one per function name in the order first given: each lists every
  * contract given that function. A malformed contract, a function whose rule name passes 50
@@ -87,7 +116,8 @@ export function callListsOf(
     if (!contract.ok) {
       return contract;
     }
-    if (!isWellFormed(call, callRuleName(call.abi.name, chainId))) {
+    const hasCap = call.maxValueBase === undefined || call.maxValueBase > 0n;
+    if (!hasCap || !isWellFormed(call, ruleNameOf(call, chainId))) {
       return err("bad_call");
     }
     const held = grouped.get(call.abi.name);
@@ -98,11 +128,7 @@ export function callListsOf(
     group.contracts.add(contract.value);
     grouped.set(call.abi.name, group);
   }
-  const lists = [...grouped.values()].map(({ call, contracts }) => ({
-    abi: call.abi,
-    walletInputs: call.walletInputs,
-    contracts: [...contracts],
-  }));
+  const lists = [...grouped.values()].map(listsOfGroup);
   return lists.some((item) => item.contracts.length > maxListed)
     ? err("too_many_addresses")
     : ok(lists);

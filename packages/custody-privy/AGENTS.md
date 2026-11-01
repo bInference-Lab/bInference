@@ -25,7 +25,9 @@ Rules for this package:
 - The app secret is a core `Secret`, revealed only into the Basic auth header. Faults carry the
   path and the status, never a header, a body or a key.
 - The ceiling is Privy's policy language: one rule per function a venue declares, and 24-hour
-  caps as aggregations the app sums over every wallet (decision 0149). A launch wallet's ceiling
+  caps as aggregations the app sums over every wallet (decision 0149). A call whose venue declares
+  a cap of its own, StakeHub's `delegate`, gets a rule named `Call <function>, own cap, chain <id>`
+  holding it to that cap, so the read-back tells it from the chain's cap per call (decision 0325). A launch wallet's ceiling
   adds the launch rules (decision 0217): each call a launchpad declares on its launch contracts,
   by function name on any contract, its pinned inputs the wallet itself, and an `approve` naming
   any spender, each under the same caps. No agent wallet's ceiling ever holds one. A bridge

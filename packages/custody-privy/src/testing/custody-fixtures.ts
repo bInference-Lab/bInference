@@ -115,12 +115,12 @@ export const testCaps: ChainCaps = {
 };
 
 /**
- * The caps the custody contract makes on a Privy app: 100 BNB sent, more than its checks send in
- * all, and 1,000 base units of the token approved.
+ * The caps the custody contract makes on a Privy app: 1,000 BNB sent, more than its checks send in
+ * all with a 100 BNB stake among them, and 1,000 base units of the token approved.
  */
 export const testCapPlan: ChainCapPlan = {
   chain: testChain,
-  nativeLimitBase: 100n * 10n ** 18n,
+  nativeLimitBase: 1_000n * 10n ** 18n,
   approvals: [{ token: testAddresses.token, limitBase: 1_000n }],
 };
 

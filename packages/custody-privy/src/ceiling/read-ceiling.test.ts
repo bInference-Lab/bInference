@@ -300,3 +300,68 @@ describe("isBuiltCeiling", () => {
     ).toBe(false);
   });
 });
+
+const stake = 100n * oneBnbWei;
+const [swapCall] = testCalls;
+if (swapCall === undefined) {
+  throw new Error("The test calls hold no swap.");
+}
+// A payable call with a cap of its own, a stake.
+const delegateCall = {
+  contract: stakingAddresses.stakeHub,
+  abi: { ...swapCall.abi, name: "delegate", stateMutability: "payable" as const },
+  walletInputs: [],
+};
+
+// The test ceiling with the stake first, so its rule leads the chain's.
+function stakingRequest(cap: bigint = stake): CeilingRequest {
+  const request = testCeilingRequest();
+  const delegate = { ...delegateCall, maxValueBase: cap };
+  const chains = request.chains.map((chain) => ({ ...chain, calls: [delegate, ...chain.calls] }));
+  return { ...request, chains };
+}
+
+function valueOf(rules: readonly JsonValue[], name: string): unknown {
+  const rule = z
+    .array(
+      z.looseObject({
+        name: z.string(),
+        conditions: z.array(z.looseObject({ field: z.string(), value: z.unknown() })),
+      }),
+    )
+    .parse(rules)
+    .find((item) => item.name === name);
+  return rule?.conditions.find((item) => item.field === "value")?.value;
+}
+
+describe("a call with a cap of its own (decision 0325)", () => {
+  it("holds that call alone to its own cap, and every other call to the chain's", () => {
+    const rules = rulesOf(stakingRequest());
+
+    expect(valueOf(rules, "Call delegate, own cap, chain 56")).toBe(`0x${stake.toString(16)}`);
+    expect(valueOf(rules, "Call swap, chain 56")).toBe(`0x${oneBnbWei.toString(16)}`);
+    expect(valueOf(rules, "Call swapTo, chain 56")).toBe(`0x${oneBnbWei.toString(16)}`);
+  });
+
+  it("reads back the chain's cap and the call's own, as the ceiling was built", () => {
+    const rules = rulesOf(stakingRequest());
+
+    expect(readCeiling(rules)?.perTxNativeCapBase).toBe(oneBnbWei);
+    expect(readCeiling(rules)?.functions).toStrictEqual(["delegate", "swap", "swapTo"]);
+    expect(isBuiltCeiling(rules)).toBe(true);
+    expect(isBuiltCeiling(rules.toReversed())).toBe(true);
+  });
+
+  it("refuses a cap of zero, and the same function with another cap on another contract", () => {
+    const zero = buildCeiling(stakingRequest(0n));
+    const request = stakingRequest();
+    const twin = { ...delegateCall, contract: testAddresses.router };
+    const chains = request.chains.map((chain) => ({ ...chain, calls: [...chain.calls, twin] }));
+
+    expect(zero).toStrictEqual({ ok: false, error: "bad_call" });
+    expect(buildCeiling({ ...request, chains })).toStrictEqual({
+      ok: false,
+      error: "clashing_calls",
+    });
+  });
+});

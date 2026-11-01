@@ -70,6 +70,10 @@ function signaturesOf(contracts: Calls): readonly string[] {
   });
 }
 
+function everyCall() {
+  return Object.values(bscVenueCalls).flatMap((contracts) => contracts.calls ?? []);
+}
+
 describe("the staking, bridge and identity calls on bsc", () => {
   it.each(Object.entries(bscVenueCalls))(
     "declares %s's calls on contracts the registry lists for it",
@@ -116,6 +120,13 @@ describe("the staking, bridge and identity calls on bsc", () => {
     const capped = new Set(bscCeilingCaps.tokens.map((item) => item.symbol));
     const uncapped = bscBridgeRoutes.filter((route) => !capped.has(route.leaves));
     expect(uncapped).toStrictEqual([]);
+  });
+
+  it("lets only StakeHub's delegate carry more than the wallet's cap per call, up to 100 BNB", () => {
+    const raised = everyCall().filter((call) => call.maxValueBase !== undefined);
+    expect(raised.map((call) => [nameOf(call.abi), call.maxValueBase])).toStrictEqual([
+      ["delegate", 100n * 10n ** 18n],
+    ]);
   });
 
   it("keeps every approval away from the identity registry", () => {

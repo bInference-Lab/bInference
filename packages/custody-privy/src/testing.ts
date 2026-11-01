@@ -25,6 +25,8 @@ export {
   testBridgeCall,
   testBridgeCeilingRequest,
 } from "./testing/bridge-target-fixtures.js";
+export { ceilingVerdict } from "./testing/ceiling-verdict.js";
+export type { CeilingTx } from "./testing/ceiling-verdict.js";
 export { createFakeCustodySubject } from "./testing/fake-custody-subject.js";
 export type { FakeCustodySubject } from "./testing/fake-custody-subject.js";
 export { createFakePrivy } from "./testing/fake-privy.js";

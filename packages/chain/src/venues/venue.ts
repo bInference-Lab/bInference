@@ -60,6 +60,12 @@ export interface VenueCall {
    * a plain call.
    */
   readonly bridge?: BridgeCallInputs;
+  /**
+   * The most native coin, in base units, this call may send, in place of the wallet's cap per call:
+   * its ceiling rule holds this call to it, such as a stake to StakeHub (decision 0325). Left out,
+   * the wallet's cap per call. Only a plain call the venue builds may name one.
+   */
+  readonly maxValueBase?: bigint;
 }
 
 /** The contracts a venue touches on one chain, by their names in that chain's registry entry. */
@@ -121,6 +127,7 @@ interface VenueCallWire {
   readonly onlyWallet?: WalletRole;
   readonly isUnbuilt?: boolean;
   readonly bridge?: BridgeCallInputs;
+  readonly maxValueBase?: bigint;
 }
 
 /** A {@link VenueDeclaration} as a plugin's manifest writes it. */
@@ -144,6 +151,11 @@ const isUnbuiltShaped = (call: VenueCall): boolean =>
 const isBridgeShaped = (call: VenueCall): boolean =>
   call.bridge === undefined || (call.onlyWallet === undefined && call.isUnbuilt !== true);
 
+// A cap of its own is a plain call's that the venue builds, and lets it send some coin.
+const isValueCapShaped = (call: VenueCall): boolean =>
+  call.maxValueBase === undefined ||
+  (call.maxValueBase > 0n && call.bridge === undefined && call.isUnbuilt !== true);
+
 const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
   .strictObject({
     contract: kebabCaseSchema,
@@ -165,12 +177,16 @@ const callSchema: z.ZodType<VenueCall, VenueCallWire> = z
         emptyInputs: z.array(z.string().min(1)).refine(isUnique),
       })
       .exactOptional(),
+    maxValueBase: z.bigint().exactOptional(),
   })
   .refine(isUnbuiltShaped, {
     message: "A call the venue never builds is a launch wallet's alone.",
   })
   .refine(isBridgeShaped, {
     message: "A bridge deposit is every wallet's call, and one the venue builds.",
+  })
+  .refine(isValueCapShaped, {
+    message: "A cap of its own is above zero, on a plain call the venue builds.",
   });
 
 // Every call and every spender names one of the chain's declared contracts, registry or launch,

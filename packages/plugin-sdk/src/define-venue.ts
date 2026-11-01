@@ -16,7 +16,7 @@ import { BinferenceError } from "@binference/core";
 import { z } from "zod";
 
 function frozenCall(call: VenueCall): VenueCall {
-  const { contract, abi, walletInputs, onlyWallet, isUnbuilt, bridge } = call;
+  const { contract, abi, walletInputs, onlyWallet, isUnbuilt, bridge, maxValueBase } = call;
   return Object.freeze({
     contract,
     abi,
@@ -28,6 +28,7 @@ function frozenCall(call: VenueCall): VenueCall {
       : {
           bridge: Object.freeze({ ...bridge, emptyInputs: Object.freeze([...bridge.emptyInputs]) }),
         }),
+    ...(maxValueBase === undefined ? {} : { maxValueBase }),
   });
 }
 

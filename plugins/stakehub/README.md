@@ -18,7 +18,8 @@ system contract, unstakes it and claims it back after the unbonding time.
   pool they are priced by, and a claim's parts by reference.
 - **Build.** One call to StakeHub from the wallet: `delegate` with the stake and no votes handed
   over, `undelegate` of the fewest shares worth at least the amount, every share for the whole
-  stake, or `claim` of the ready unstakes. StakeHub credits the caller in each.
+  stake, or `claim` of the ready unstakes. StakeHub credits the caller in each. A stake carries up
+  to 100 BNB under its own ceiling rule.
 - **Read-back.** What a landed move did, from its own event and the credit contract at its block:
   the shares a stake minted, an unstake's request with its reference and unlock time, the parts a
   claim took.

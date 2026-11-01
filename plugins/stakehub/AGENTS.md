@@ -14,9 +14,10 @@ apply here. Rules for this plugin ([decision 0324](../../docs/adr/0324-stakehub-
   SDK for StakeHub; its staking developer guide reads and calls the contracts, and so does this
   plugin. Every function and error it relies on comes from `bsc-genesis-contract`'s `StakeHub.sol`,
   `StakeCredit.sol` and `extension/Protectable.sol`.
-- It declares `delegate`, `undelegate` and `claim` on StakeHub and nothing else, no spender: the
-  registry's `bscVenueCalls.stakehub` holds the same calls, and the composition root's test checks
-  the two agree. `redelegate`, `claimBatch` and `syncGovToken` are never built.
+- It declares `delegate`, `undelegate` and `claim` on StakeHub and nothing else, no spender, with
+  `delegate` carrying up to 100 BNB in a ceiling rule of its own (decision 0325): the registry's
+  `bscVenueCalls.stakehub` holds the same calls, and the composition root's test checks the two
+  agree. `redelegate`, `claimBatch` and `syncGovToken` are never built.
 - Every move credits the caller: StakeHub takes no beneficiary in these three functions. The
   decoder reads only those three, to StakeHub on its chain, in the exact bytes the builder writes,
   `delegate` never handing over votes, with coin only on a stake; anything else is

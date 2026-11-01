@@ -10,6 +10,11 @@ export interface CeilingCall {
   readonly abi: AbiFunction;
   /** The function's address inputs that must be the signing wallet itself, such as a receiver. */
   readonly walletInputs: readonly string[];
+  /**
+   * The most native coin, in base units, the call may send, in place of the chain's cap per call,
+   * as its venue declares (decision 0325); absent, the chain's cap.
+   */
+  readonly maxValueBase?: bigint;
 }
 
 /**
@@ -17,7 +22,7 @@ export interface CeilingCall {
  * declares on the contracts each launch makes, which no list of addresses can hold. Its pinned
  * inputs must be the signing wallet itself, and it pins one at least.
  */
-export type LaunchCall = Omit<CeilingCall, "contract">;
+export type LaunchCall = Omit<CeilingCall, "contract" | "maxValueBase">;
 
 /**
  * What a launch wallet's ceiling allows on one chain beyond an agent wallet's (decision 0217): the

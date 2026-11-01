@@ -9,6 +9,7 @@ import {
   callRuleName,
   launchCallRuleName,
   launchListsOf,
+  ownCapCallRuleName,
 } from "./call-lists.js";
 import { approveAbi, transferAbi } from "./ceiling-abis.js";
 import { ceilingBytes, maxCeilingBytes } from "./ceiling-size.js";
@@ -79,11 +80,12 @@ export interface CeilingChainLists {
   readonly bridges?: readonly BridgeTarget[];
 }
 
-// A call of one function: on the chain, with at most the cap in native coin and the 24-hour native
-// cap not passed, its pinned inputs the wallet itself; to its contracts when it lists some.
+// A call of one function: on the chain, with at most its cap in native coin (its own when its venue
+// declares one, else the chain's) and the 24-hour native cap not passed, its pinned inputs the
+// wallet itself; to its contracts when it lists some.
 function callConditions(
   lists: CeilingChainLists,
-  call: LaunchCall,
+  call: LaunchCall & Pick<CallRuleLists, "maxValueBase">,
   contracts: readonly PolicyCondition[],
 ): readonly PolicyCondition[] {
   const { abi } = call;
@@ -94,7 +96,7 @@ function callConditions(
   return [
     onTransaction("chain_id", "eq", lists.chainId),
     ...contracts,
-    onTransaction("value", "lte", hexOf(lists.perTxNativeCapBase)),
+    onTransaction("value", "lte", hexOf(call.maxValueBase ?? lists.perTxNativeCapBase)),
     onCalldata(abi, "function_name", abi.name),
     ...pins,
     ...(native === undefined ? [] : [onCap(native)]),
@@ -103,7 +105,11 @@ function callConditions(
 
 function callRule(lists: CeilingChainLists, call: CallRuleLists): PolicyRule {
   const to = onTransaction("to", "in", call.contracts);
-  return allow(callRuleName(call.abi.name, lists.chainId), callConditions(lists, call, [to]));
+  const name =
+    call.maxValueBase === undefined
+      ? callRuleName(call.abi.name, lists.chainId)
+      : ownCapCallRuleName(call.abi.name, lists.chainId);
+  return allow(name, callConditions(lists, call, [to]));
 }
 
 // A launch wallet's rules on one chain (decision 0217): each launch call on any contract, and an
