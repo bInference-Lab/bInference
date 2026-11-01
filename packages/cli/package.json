@@ -67,6 +67,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@binference/across": "workspace:*",
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@types/ws": "catalog:",
