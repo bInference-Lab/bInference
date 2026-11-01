@@ -7114,6 +7114,9 @@
                 "minOut",
                 "sentAt"
               ]
+            },
+            "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -7135,7 +7138,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/wallet/list": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -13838,6 +14183,9 @@
                 "minOut",
                 "sentAt"
               ]
+            },
+            "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -13859,7 +14207,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/intent/get": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -15292,6 +15982,9 @@
                 "minOut",
                 "sentAt"
               ]
+            },
+            "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -15313,7 +16006,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/intent/card": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -17281,6 +18316,9 @@
                       "minOut",
                       "sentAt"
                     ]
+                  },
+                  "bridgeReceipt": {
+                    "$ref": "#/$defs/__schema0"
                   }
                 },
                 "required": [
@@ -17312,7 +18350,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/intent/confirm": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -18757,6 +20137,9 @@
                 "minOut",
                 "sentAt"
               ]
+            },
+            "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -18778,7 +20161,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/intent/deny": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -20217,6 +21942,9 @@
                 "minOut",
                 "sentAt"
               ]
+            },
+            "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -20238,7 +21966,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/intent/cancel": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -21676,6 +23746,9 @@
                 "minOut",
                 "sentAt"
               ]
+            },
+            "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -21697,7 +23770,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/order/create": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -32226,6 +34641,9 @@
                               "minOut",
                               "sentAt"
                             ]
+                          },
+                          "bridgeReceipt": {
+                            "$ref": "#/$defs/__schema0"
                           }
                         },
                         "required": [
@@ -32958,7 +35376,349 @@
         "t",
         "id",
         "result"
-      ]
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/inbox/take": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

@@ -11,6 +11,12 @@ interface Call {
   readonly signal: AbortSignal;
 }
 
+/** What a bridge's receipt reads: the intent, its transactions, its delivery and the wallets. */
+export type BridgeReceiptSource = Pick<
+  LiveReceiptSource,
+  "record" | "transactions" | "chains" | "bridges" | "install"
+>;
+
 // A chain as a receipt names it: the registry's name, or its reference when the registry lacks it.
 function chainName(chains: ChainRegistry, chain: ChainRef): string {
   const registered = chains.get(chain);
@@ -20,7 +26,7 @@ function chainName(chains: ChainRegistry, chain: ChainRef): string {
 // On its way once its deposit is final: the deposit its row holds, else the intent's last
 // transaction, which is the plan's last step, before the follower's row opens.
 async function sentOf(
-  source: LiveReceiptSource,
+  source: BridgeReceiptSource,
   context: { readonly quote: BridgeIntentQuote; readonly bridge: BridgeRecord | undefined },
   call: Call,
 ): Promise<BridgeOutcome | undefined> {
@@ -44,7 +50,7 @@ async function sentOf(
 // Settled by a read: the delivery, with the transaction that paid the recipient on its chain, or
 // the refund, with the one that paid the wallet back on the chain the deposit left.
 async function settledOf(
-  source: LiveReceiptSource,
+  source: BridgeReceiptSource,
   context: { readonly quote: BridgeIntentQuote; readonly bridge: BridgeRecord },
   call: Call,
 ): Promise<BridgeOutcome | undefined> {
@@ -89,7 +95,7 @@ async function settledOf(
  * and one whose deposit or settlement is not stored, which the other receipts then show.
  */
 export async function bridgeReceiptOf(
-  source: LiveReceiptSource,
+  source: BridgeReceiptSource,
   call: Call,
 ): Promise<LiveReceipt | undefined> {
   const { record, bridges, chains } = source;

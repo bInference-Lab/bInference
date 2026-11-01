@@ -225,7 +225,8 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
   orderUnstarted: ({ why }) => ({ key: "receipt.orderUnstarted", values: { why: choice(why) } }),
 };
 
-function afterLine<K extends ReceiptAfter["kind"]>(after: AfterOf<K>): CardLine {
+/** The receipt line of what followed a confirmation, whichever surface answered the card. */
+export function receiptAfterLine<K extends ReceiptAfter["kind"]>(after: AfterOf<K>): CardLine {
   const draw: (after: AfterOf<K>) => CardLine = afterLines[after.kind];
   return draw(after);
 }
@@ -251,5 +252,5 @@ export function receiptLine(closing: CardClosing, after?: ReceiptAfter): CardLin
   }
   return after === undefined
     ? { key: "receipt.confirmed", values: { surface, time: { type: "time", atMs: closing.atMs } } }
-    : afterLine(after);
+    : receiptAfterLine(after);
 }

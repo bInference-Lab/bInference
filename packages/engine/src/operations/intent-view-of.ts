@@ -10,6 +10,7 @@ import type {
   UnfreezeRequest,
 } from "@binference/protocol";
 import type { DestinationChain } from "../address-book/destination-chain.js";
+import type { CardLine } from "../confirmations/card-line.js";
 import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import {
@@ -175,6 +176,8 @@ export interface ViewReads {
   readonly delivery?: DeliveryView | undefined;
   /** The chains bridges deliver to, whose name a bridge's reason gives. */
   readonly destinations?: readonly DestinationChain[] | undefined;
+  /** The line a live bridge's card ends with, once its deposit is final. */
+  readonly bridgeReceipt?: CardLine | undefined;
 }
 
 // The name of the chain a bridge's reason names: the chain it bridges to.
@@ -211,12 +214,22 @@ function resolvedNameOf(record: IntentRecord): IntentView["resolvedName"] {
     : { name: name.name, address: recipient, resolvedAt: name.resolvedAtMs };
 }
 
+// What the caller read of a bridge beyond its stored intent: its delivery and its card's last line.
+function bridgeFieldsOf(reads: ViewReads): Pick<IntentView, "delivery" | "bridgeReceipt"> {
+  const { delivery, bridgeReceipt } = reads;
+  return {
+    ...(delivery === undefined ? {} : { delivery }),
+    ...(bridgeReceipt === undefined ? {} : { bridgeReceipt }),
+  };
+}
+
 /**
  * An intent as every surface draws it (protocol spec, section 8.3): the stored record, its quote,
  * risk check and simulation, its newest card version, its outcome with the paper fill or the
  * settled trade as its execution, the info of the assets it names: the registry's, or what the
  * intent stored of an unlisted token at its proposal, a send by name's resolved name, and a
- * bridge's delivery when the caller read it, with the name of the chain a bridge's reason names.
+ * bridge's delivery and the line its card ends with when the caller read them, with the name of
+ * the chain a bridge's reason names.
  */
 export function intentViewOf(
   snapshot: IntentSnapshot,
@@ -224,7 +237,6 @@ export function intentViewOf(
   reads: ViewReads = {},
 ): IntentView {
   const { record } = snapshot;
-  const { delivery } = reads;
   const request = requestOf(record);
   const card = cardViewOf(snapshot);
   const outcome = outcomeOf(snapshot, { request, reads });
@@ -251,6 +263,6 @@ export function intentViewOf(
     changedAt: record.changedAtMs,
     assets: intentAssetInfos(chains, record, assetsOf(record, request)),
     ...(resolvedName === undefined ? {} : { resolvedName }),
-    ...(delivery === undefined ? {} : { delivery }),
+    ...bridgeFieldsOf(reads),
   };
 }

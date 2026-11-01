@@ -14,6 +14,7 @@ import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type IntentRequest, readIntentRequestSchema } from "../requests/intent-request.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { type AssetInfos, assetInfosSchema } from "./asset-info.schema.js";
+import { type CardLineView, cardLineViewSchema } from "./card-lines.schema.js";
 import { type CardView, cardViewSchema } from "./card-view.schema.js";
 import { type IntentKind, intentKindSchema } from "./intent-kind.schema.js";
 import { type IntentState, intentStateSchema } from "./intent-state.schema.js";
@@ -122,6 +123,12 @@ export interface IntentView {
   };
   /** A bridge's delivery, once its deposit is final; absent for any other intent. */
   readonly delivery?: DeliveryView;
+  /**
+   * The line a live bridge's card ends with as it stands once its deposit is final (spec 4,
+   * section 3.9): on its way, then delivered or paid back. Its assets are in `assets`; absent for
+   * any other intent.
+   */
+  readonly bridgeReceipt?: CardLineView;
 }
 
 const usdMicros = decimalStringSchema.exactOptional();
@@ -193,4 +200,5 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
       settledAt: epochMsSchema.exactOptional(),
     })
     .exactOptional(),
+  bridgeReceipt: cardLineViewSchema.exactOptional(),
 });

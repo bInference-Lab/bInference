@@ -1,23 +1,21 @@
-import type { ChainRegistry } from "@binference/chain";
 import { err, idSchema, ok, type Result } from "@binference/core";
 import type { IntentView, Page, ProtocolErrorCode } from "@binference/protocol";
 import { z } from "zod";
 import type { DestinationChain } from "../address-book/destination-chain.js";
-import type { BridgeStore } from "../bridges/ports.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentQuery } from "../intents/intent-change.js";
 import { intentStates } from "../intents/intent-state.js";
 import { epochMsSchema } from "../records/record-fields.js";
-import { deliveryOf } from "./delivery-view-of.js";
+import { type BridgeViewOptions, bridgeViewReads } from "./bridge-view-reads.js";
 import type { EngineCall } from "./engine-call.js";
 import { intentViewOf } from "./intent-view-of.js";
 
-/** What `intent/list` reads: the intents by state, each one's snapshot, and the chains. */
-export interface IntentListOptions {
+/**
+ * What `intent/list` reads: the intents by state, each one's snapshot, the chains, and what a
+ * bridge's view reads beyond its intent.
+ */
+export interface IntentListOptions extends BridgeViewOptions {
   readonly stored: Pick<StoredIntents, "list" | "snapshot">;
-  readonly chains: ChainRegistry;
-  /** Each bridge's delivery, which a bridge's view shows once its deposit is final. */
-  readonly bridges?: Pick<BridgeStore, "get">;
   /** The chains bridges deliver to, whose names a bridge's outcome gives; none without. */
   readonly destinations?: readonly DestinationChain[];
 }
@@ -77,8 +75,8 @@ export async function listIntents(
   const viewed = await Promise.all(
     wanted.map(async (record) => {
       const snapshot = await options.stored.snapshot(record.id, { signal });
-      const delivery = await deliveryOf(options.bridges, record, signal);
-      const reads = { delivery, destinations: options.destinations };
+      const bridged = await bridgeViewReads(options, record, signal);
+      const reads = { ...bridged, destinations: options.destinations };
       return snapshot === undefined ? [] : [intentViewOf(snapshot, options.chains, reads)];
     }),
   );

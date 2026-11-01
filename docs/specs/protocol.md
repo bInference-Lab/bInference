@@ -1113,9 +1113,11 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   the balances of the agent's mode, its active and paused orders (at most 50), and its outflows of
   the last 24 hours against the caps in effect.
 - `IntentView`:
-  `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets, resolvedName?, delivery? }`.
+  `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets, resolvedName?, delivery?, bridgeReceipt? }`.
   `resolvedName` is `{ name, address, resolvedAt }` for a send by name. `delivery` is a bridge's
-  `DeliveryView`; a change of it pushes `intent/changed`. `outcome` is
+  `DeliveryView`; a change of it pushes `intent/changed`. `bridgeReceipt` is the `CardLineView`
+  a live bridge's card ends with from its final deposit on (spec 4, section 3.9), which
+  `intent/get` and `intent/list` give, its assets in `assets`. `outcome` is
   `{ reason?, chain?, txHashes?, executions? }`: `chain` names the chain a bridge's reason means,
   the chain it bridges to, as that reason's words show it.
 - `StakingPositionView`:
@@ -1256,7 +1258,7 @@ every field given must hold, and an empty filter passes every launch. `launch/li
     drops the field.
   - An intent's `kind` has a new value, `webhookRule`, the card of a webhook rule. A client that
     meets a kind it does not know shows the card's lines from `intent/card`.
-  - `IntentView.resolvedName` and `IntentView.delivery`, `PortfolioView.staking` and
+  - `IntentView.resolvedName`, `IntentView.delivery` and `IntentView.bridgeReceipt`, `PortfolioView.staking` and
     `PortfolioView.inTransit`, `WebhookRuleView.ratePerMinute` and `lastAlertAt`, `address/list`'s
     `room`, and `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet` are new optional
     fields.

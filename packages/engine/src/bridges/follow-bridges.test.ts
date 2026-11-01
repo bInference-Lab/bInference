@@ -432,6 +432,43 @@ describe("a bridge's receipt", () => {
     });
   });
 
+  it("gives an intent's view the line its card ends with, on its way and once delivered", async () => {
+    const bench = await bridgeBench();
+    const { intent, bridge } = await inTransit(bench);
+    const sent = { key: "receipt.bridgeSent" };
+    const viewed = await bench.test.engine.handlers["intent/get"](testCall({ intent }));
+    const listed = await bench.test.engine.handlers["intent/list"](testCall({ kind: "bridge" }));
+    expect(viewed).toMatchObject({ value: { bridgeReceipt: sent } });
+    expect(listed).toMatchObject({ value: { items: [{ bridgeReceipt: sent }] } });
+
+    filled(bench, bridge, { received: { asset: testArrives, base: 99_000_000n } });
+    await follow(bench);
+
+    const got = await bench.test.engine.handlers["intent/get"](testCall({ intent }));
+    const payee = {
+      key: "card.value.payee",
+      values: {
+        label: { type: "text", text: "exchange" },
+        address: { type: "text", text: "0x000000b1" },
+      },
+    };
+    const txHash = { type: "text", text: hashOf("f1") };
+    expect(got).toMatchObject({
+      value: {
+        bridgeReceipt: {
+          key: "receipt.bridgeDelivered",
+          values: {
+            chain: { type: "text", text: "Fake Two" },
+            recipient: { type: "line", line: payee },
+            received: { type: "amount", amount: { asset: testArrives, base: 99_000_000n } },
+            explorerLink: { type: "line", line: { key: "receipt.tx", values: { txHash } } },
+          },
+        },
+        assets: { [testArrives]: { symbol: "TKN" } },
+      },
+    });
+  });
+
   it("says it was delivered once when recovery reconciles a delivery a stop cut short", async () => {
     const bench = await bridgeBench();
     const { intent, bridge } = await inTransit(bench);

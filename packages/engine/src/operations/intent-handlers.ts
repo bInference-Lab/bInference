@@ -4,10 +4,10 @@ import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-int
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { CardShowings } from "../surfaces/create-card-showings.js";
 import { type AnswerCard, answerError } from "./answer-card.js";
-import { type DeliveryView, deliveryOf } from "./delivery-view-of.js";
+import { bridgeViewReads } from "./bridge-view-reads.js";
 import { answererOf, type EngineCall, type EngineHandler, proposerOf } from "./engine-call.js";
 import { type IntentListOptions, listIntents } from "./intent-list.js";
-import { intentViewOf } from "./intent-view-of.js";
+import { intentViewOf, type ViewReads } from "./intent-view-of.js";
 
 /** The handlers of the intent operations the engine serves (protocol spec, section 7.4). */
 export interface IntentHandlers {
@@ -74,11 +74,13 @@ async function answered(
 function viewOf(
   options: IntentHandlersOptions,
   snapshot: IntentSnapshot | undefined,
-  delivery?: DeliveryView,
+  bridged: ViewReads = {},
 ): Result<IntentView, ProtocolErrorCode> {
   return snapshot === undefined
     ? err("intent.not_found")
-    : ok(intentViewOf(snapshot, options.chains, { delivery, destinations: options.destinations }));
+    : ok(
+        intentViewOf(snapshot, options.chains, { ...bridged, destinations: options.destinations }),
+      );
 }
 
 // The intent's open card version as the engine draws it; an intent with none is in the wrong
@@ -118,11 +120,9 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
     },
     "intent/get": async ({ args, signal }) => {
       const snapshot = await options.stored.snapshot(args.intent, { signal });
-      const delivery =
-        snapshot === undefined
-          ? undefined
-          : await deliveryOf(options.bridges, snapshot.record, signal);
-      return viewOf(options, snapshot, delivery);
+      const bridged =
+        snapshot === undefined ? {} : await bridgeViewReads(options, snapshot.record, signal);
+      return viewOf(options, snapshot, bridged);
     },
     "intent/card": async (call) => drawnCard(options, call),
     "intent/list": async (call) => listIntents(options, call),
