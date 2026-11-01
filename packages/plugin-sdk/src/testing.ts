@@ -45,6 +45,7 @@ export {
   createManualClock,
   createScriptedHttp,
   createSeededRandom,
+  httpContract,
 } from "@binference/core/testing";
 export type {
   ContractCheck,
