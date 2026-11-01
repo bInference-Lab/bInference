@@ -7,6 +7,8 @@ import {
   type InstallFacts,
   type RescueCeiling,
   rescueCeilingSchema,
+  type RescueReachRecord,
+  rescueReachSchema,
   type RescueState,
   type WalletRecord,
   walletRecordSchema,
@@ -109,6 +111,14 @@ export function readRescueCeiling(database: DatabaseSync): RescueCeiling | undef
   return text === null ? undefined : rescueCeilingSchema.parse(readJson(text));
 }
 
+/** Reads where each rescue address stands in each agent's bridge rules, if anywhere. */
+export function readRescueReach(database: DatabaseSync): readonly RescueReachRecord[] | undefined {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const safety = takeFirst(kysely.selectFrom("safety").select("rescue_reach").where("id", "=", 1));
+  const text = safety?.rescue_reach ?? null;
+  return text === null ? undefined : rescueReachSchema.parse(readJson(text));
+}
+
 /**
  * Reads the install's custody, freeze, rescue address, accepted disclaimer and wallets with
  * their ceilings, oldest first.
@@ -122,6 +132,7 @@ export function readInstall(database: DatabaseSync): InstallFacts {
     ...field("frozenAtMs", safety?.frozen_at ?? null),
     ...readRescue(database),
     ...field("rescueCeiling", readRescueCeiling(database) ?? null),
+    ...field("rescueReach", readRescueReach(database) ?? null),
     ...field("disclaimer", readDisclaimer(database) ?? null),
     wallets: readWallets(database),
   };

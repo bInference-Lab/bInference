@@ -52,6 +52,7 @@ import { migration as limitsWithoutHealthFactor } from "./0050_limits_without_he
 import { migration as bridgeWallets } from "./0051_bridge_wallets.js";
 import { migration as addressRecipientBytes } from "./0052_address_recipient_bytes.js";
 import { migration as bridges } from "./0053_bridges.js";
+import { migration as rescueReach } from "./0054_rescue_reach.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -108,4 +109,5 @@ export const engineMigrations: readonly Migration[] = [
   bridgeWallets,
   addressRecipientBytes,
   bridges,
+  rescueReach,
 ];

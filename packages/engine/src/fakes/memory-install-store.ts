@@ -15,6 +15,8 @@ import {
   type RescueCeiling,
   rescueCeilingAfter,
   type RescueMove,
+  type RescueReachChange,
+  reachAfter,
 } from "../install/rescue-record.js";
 import { cancelRescue, changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { InstallStore } from "../ports.js";
@@ -46,8 +48,9 @@ function setUp(state: InstallState, setup: InstallSetup): Result<InstallState, "
   const archived = state.wallets.map((item) =>
     item.archivedAtMs === undefined ? { ...item, archivedAtMs: setup.atMs } : item,
   );
+  const { rescueReach: _forgotten, ...kept } = state;
   return ok({
-    ...withRescue(state, { rescueAddress: setup.rescueAddress }, undefined),
+    ...withRescue(kept, { rescueAddress: setup.rescueAddress }, undefined),
     custody: setup.custody,
     wallets: [...archived, setup.wallet],
   });
@@ -59,13 +62,14 @@ function withRescue(
   rescue: RescueState,
   ceiling: RescueCeiling | undefined,
 ): InstallState {
-  const { installId, custody, frozenAtMs, disclaimer, wallets } = state;
+  const { installId, custody, frozenAtMs, rescueReach, disclaimer, wallets } = state;
   return {
     ...(installId === undefined ? {} : { installId }),
     ...(custody === undefined ? {} : { custody }),
     ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
     ...rescue,
     ...(ceiling === undefined ? {} : { rescueCeiling: ceiling }),
+    ...(rescueReach === undefined ? {} : { rescueReach }),
     ...(disclaimer === undefined ? {} : { disclaimer }),
     wallets,
   };
@@ -99,12 +103,13 @@ function movedRescue(
 
 // The install's facts as the store holds them, without the id.
 function factsOf(state: InstallState): InstallFacts {
-  const { custody, frozenAtMs, rescueCeiling, disclaimer, wallets } = state;
+  const { custody, frozenAtMs, rescueCeiling, rescueReach, disclaimer, wallets } = state;
   return {
     ...(custody === undefined ? {} : { custody }),
     ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
     ...storedRescue(state),
     ...(rescueCeiling === undefined ? {} : { rescueCeiling }),
+    ...(rescueReach === undefined ? {} : { rescueReach }),
     ...(disclaimer === undefined ? {} : { disclaimer }),
     wallets,
   };
@@ -214,6 +219,14 @@ function withFreeze(state: InstallState, { atMs, isFrozen }: FreezeChange): Inst
   return { ...rest, ...(at === undefined ? {} : { frozenAtMs: at }) };
 }
 
+// The state with some agents' standings of the rescue addresses replaced, as the SQLite store's
+// one transaction does; none left forgets them.
+function withReach(state: InstallState, reach: RescueReachChange): InstallState {
+  const { rescueReach: held = [], ...rest } = state;
+  const after = reachAfter(held, { reach, rescue: storedRescue(state) });
+  return after.length === 0 ? rest : { ...rest, rescueReach: after };
+}
+
 // The state with the ceiling changes signed again for the new rescue address that waits.
 function withKept(state: InstallState, ceiling: RescueCeiling): InstallState {
   return state.pendingRescue === undefined
@@ -271,6 +284,8 @@ export function createMemoryInstallStore(): MemoryInstallStore {
       memoryCall(call, () => update((state) => withRescue(state, storedRescue(state), undefined))),
     keepRescueCeiling: async (ceiling, call) =>
       memoryCall(call, () => update((state) => withKept(state, structuredClone(ceiling)))),
+    keepRescueReach: async (reach, call) =>
+      memoryCall(call, () => update((state) => withReach(state, structuredClone(reach)))),
     createWallet: async (wallet, call) =>
       memoryCall(call, () => update((state) => withWallet(state, structuredClone(wallet)))),
     updateCeiling: async (change, call) =>

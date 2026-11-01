@@ -37,6 +37,7 @@ import type {
 } from "./install/install-record.js";
 import type {
   RescueAddressChange,
+  RescueReachStore,
   RescueCancel,
   RescueCeiling,
   RescueMove,
@@ -576,7 +577,7 @@ export interface AgentStore {
  * Keeps the install's own facts (database spec, section 2.1): its id, its custody on Privy, the
  * rescue address, the accepted disclaimer, and the wallets `binference init` sets up.
  */
-export interface InstallStore extends CustodyKeyStore, DisclaimerStore {
+export interface InstallStore extends CustodyKeyStore, DisclaimerStore, RescueReachStore {
   /**
    * The install's id. The first call stores the proposed id with the time the install began;
    * every later call answers that stored id and ignores the proposal.

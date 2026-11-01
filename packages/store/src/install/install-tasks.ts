@@ -71,6 +71,7 @@ function writeRescue(database: DatabaseSync, setup: InstallSetup): void {
         pending_rescue_address: null,
         pending_rescue_at: null,
         rescue_ceiling: null,
+        rescue_reach: null,
         version: row("version", "+", 1),
       }))
       .where("id", "=", 1),

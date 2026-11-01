@@ -114,6 +114,7 @@ interface SafetyTable {
   pending_rescue_address: string | null;
   pending_rescue_at: number | null;
   rescue_ceiling: string | null;
+  rescue_reach: string | null;
   disclaimer_version: string | null;
   disclaimer_accepted_at: number | null;
   version: number;

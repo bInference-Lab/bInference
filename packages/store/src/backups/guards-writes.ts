@@ -40,6 +40,7 @@ function writeSafety(database: DatabaseSync, carry: GuardsCarry): void {
         pending_rescue_address: safety.pendingRescue?.address ?? null,
         pending_rescue_at: safety.pendingRescue?.atMs ?? null,
         rescue_ceiling: safety.rescueCeiling ?? null,
+        rescue_reach: safety.rescueReach ?? null,
         version: row("version", "+", 1),
       }))
       .where("id", "=", 1),

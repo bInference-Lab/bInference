@@ -137,11 +137,12 @@ interface DrawnInstall {
   readonly owner: InstallGuards["telegramOwner"];
   readonly frozenAtMs: number | undefined;
   readonly rescueAddress: string | undefined;
+  readonly rescueReach: string | undefined;
   readonly outflows: readonly CountedOutflow[];
 }
 
 function installOf(drawn: DrawnInstall): InstallGuards {
-  const { owner, frozenAtMs, rescueAddress } = drawn;
+  const { owner, frozenAtMs, rescueAddress, rescueReach } = drawn;
   return {
     access: {
       tokens: drawn.tokens,
@@ -155,6 +156,7 @@ function installOf(drawn: DrawnInstall): InstallGuards {
     safety: {
       ...(frozenAtMs === undefined ? {} : { frozenAtMs }),
       ...(rescueAddress === undefined ? {} : { rescueAddress }),
+      ...(rescueReach === undefined ? {} : { rescueReach }),
     },
     agents: drawn.agents,
     wallets: [],
@@ -173,6 +175,9 @@ const installGuards: fc.Arbitrary<InstallGuards> = fc
     }),
     frozenAtMs: maybeTime,
     rescueAddress: fc.option(fc.constantFrom("0xaa", "0xbb"), { nil: undefined }),
+    rescueReach: fc.option(fc.constantFrom('["eip155:8453:0xaa"]', '["eip155:1:0xbb"]'), {
+      nil: undefined,
+    }),
     outflows,
   })
   .map(installOf);
@@ -232,6 +237,8 @@ function looserThan(current: InstallGuards, after: InstallGuards, atMs: number):
       ["telegram owner", after.telegramOwner !== current.telegramOwner],
       ["freeze", isFrozen && after.safety.frozenAtMs === undefined],
       ["rescue", after.safety.rescueAddress !== current.safety.rescueAddress],
+      // Where the rescue address passed its check belongs to that address (decision 0321).
+      ["rescue standings", after.safety.rescueReach !== current.safety.rescueReach],
     ]),
     ...current.agents.flatMap((now) => {
       const later = after.agents.find((agent) => agent.agentId === now.agentId);

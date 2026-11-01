@@ -134,6 +134,27 @@ describe("the guards a restore carries into the restored database", () => {
     expect(counted.map((intent) => intent.valueUsdMicros)).toStrictEqual([3_000_000n]);
   });
 
+  it("carries the rescue address and its standings of the state it replaces", async () => {
+    const rescue = "eip155:56:0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
+    const standings = JSON.stringify([
+      { agent: testAgent, account: rescue.replace(":56:", ":8453:"), state: "joined" },
+    ]);
+    const restored = await installWith({});
+    const current = await installWith({});
+    const now = kyselyOf(current.database);
+    now.execute(
+      now.kysely.updateTable("safety").set({ rescue_address: rescue, rescue_reach: standings }),
+    );
+    const read = await createRestoreGuards(current.host).read(testNowMs, options);
+
+    const after = await createRestoreGuards(restored.host).carry(read, testNowMs, options);
+
+    expect(after.safety).toMatchObject({ rescueAddress: rescue, rescueReach: standings });
+    const kept = kyselyOf(restored.database);
+    const row = kept.takeFirst(kept.kysely.selectFrom("safety").select("rescue_reach"));
+    expect(row?.rescue_reach).toBe(standings);
+  });
+
   it("counts a carried intent once, in the place of the restored copy's own", async () => {
     const restored = await installWith({});
     await spend(restored, 2, 1_000_000n);

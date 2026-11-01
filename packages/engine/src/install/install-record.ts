@@ -9,7 +9,13 @@ import { z } from "zod";
 import type { RescueState } from "../policy/rescue-change.js";
 import { epochMsSchema, shortTextSchema } from "../records/record-fields.js";
 import { type DisclaimerAcceptance, disclaimerAcceptanceSchema } from "./disclaimer-record.js";
-import { pendingRescueSchema, type RescueCeiling, rescueCeilingSchema } from "./rescue-record.js";
+import {
+  pendingRescueSchema,
+  type RescueCeiling,
+  rescueCeilingSchema,
+  type RescueReachRecord,
+  rescueReachSchema,
+} from "./rescue-record.js";
 
 /**
  * The install's custody on Privy (database spec, section 2.1): the owner's app, and the key
@@ -218,6 +224,12 @@ export interface InstallFacts extends RescueState {
   readonly frozenAtMs?: number;
   /** The ceiling changes kept for the new rescue address that waits. */
   readonly rescueCeiling?: RescueCeiling;
+  /**
+   * Where each rescue address stands in each agent's bridge rules on each destination (decision
+   * 0321), as last told the owner; a record counts only for the rescue address in effect or the
+   * one that waits. Absent while there is none.
+   */
+  readonly rescueReach?: readonly RescueReachRecord[];
   /** The disclaimer the owner accepted last; none before the owner accepted one. */
   readonly disclaimer?: DisclaimerAcceptance;
   readonly wallets: readonly WalletRecord[];
@@ -230,6 +242,7 @@ export const installFactsSchema: z.ZodType<InstallFacts> = z.strictObject({
   rescueAddress: accountRefSchema.exactOptional(),
   pendingRescue: pendingRescueSchema.exactOptional(),
   rescueCeiling: rescueCeilingSchema.exactOptional(),
+  rescueReach: rescueReachSchema.exactOptional(),
   disclaimer: disclaimerAcceptanceSchema.exactOptional(),
   wallets: z.array(walletRecordSchema),
 });

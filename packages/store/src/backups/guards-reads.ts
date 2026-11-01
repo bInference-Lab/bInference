@@ -93,6 +93,7 @@ function safetyOf(database: DatabaseSync): SafetyGuards {
     ...field("rescueAddress", row.rescue_address),
     ...(address === null || atMs === null ? {} : { pendingRescue: { address, atMs } }),
     ...field("rescueCeiling", row.rescue_ceiling),
+    ...field("rescueReach", row.rescue_reach),
   };
 }
 

@@ -14,6 +14,7 @@ import {
   setUpInstallTask,
   updateCeilingTask,
 } from "./install-tasks.js";
+import { keepRescueReachTask } from "./rescue-reach-task.js";
 
 /** Every task of the SQLite install store. */
 export const installTasks: readonly TaskRunner[] = [
@@ -24,6 +25,7 @@ export const installTasks: readonly TaskRunner[] = [
   cancelRescueChangeTask,
   clearRescueCeilingTask,
   keepRescueCeilingTask,
+  keepRescueReachTask,
   createWalletTask,
   updateCeilingTask,
   attachTask,
@@ -36,6 +38,7 @@ export function createSqliteInstallStore(host: StoreHost): InstallStore {
   const read = bindTask(host, readInstallTask);
   const clearRescue = bindTask(host, clearRescueCeilingTask);
   const keepRescue = bindTask(host, keepRescueCeilingTask);
+  const keepReach = bindTask(host, keepRescueReachTask);
   const createWallet = bindTask(host, createWalletTask);
   const acceptDisclaimer = bindTask(host, acceptDisclaimerTask);
   return {
@@ -49,6 +52,9 @@ export function createSqliteInstallStore(host: StoreHost): InstallStore {
     },
     keepRescueCeiling: async (ceiling, options) => {
       await keepRescue(ceiling, options);
+    },
+    keepRescueReach: async (reach, options) => {
+      await keepReach(reach, options);
     },
     createWallet: async (wallet, options) => {
       await createWallet(wallet, options);

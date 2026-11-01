@@ -44,6 +44,17 @@ describe("the engine database's constraints", () => {
     expect(() => run(database, "INSERT INTO safety (id) VALUES (2)")).toThrow(/CHECK/);
   });
 
+  it("keeps the rescue addresses' standings only as a JSON array", () => {
+    const database = engine();
+    const passes = JSON.stringify([
+      { account: "eip155:8453:0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB" },
+    ]);
+    const set = "UPDATE safety SET rescue_reach = ? WHERE id = 1";
+    run(database, set, passes);
+    expect(() => run(database, set, JSON.stringify({ chain: 8453 }))).toThrow(/CHECK/);
+    expect(() => run(database, set, "[not json")).toThrow(/CHECK/);
+  });
+
   it("refuses a value of the wrong type in a STRICT table", () => {
     const database = engine();
     expect(() => run(database, "INSERT INTO nonces VALUES ('fake:1:0xabc', 'seven', 1)")).toThrow(

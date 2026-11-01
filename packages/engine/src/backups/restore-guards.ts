@@ -39,6 +39,11 @@ export interface SafetyGuards {
   readonly pendingRescue?: { readonly address: string; readonly atMs: number };
   /** The rescue rules the ceilings hold, as JSON text. */
   readonly rescueCeiling?: string;
+  /**
+   * Where each rescue address stands in each agent's bridge rules, as JSON text (decision 0321):
+   * it travels with the rescue addresses it belongs to.
+   */
+  readonly rescueReach?: string;
 }
 
 /** What guards one agent's funds. */
@@ -132,6 +137,7 @@ const safetySchema: z.ZodType<SafetyGuards> = z.strictObject({
     .strictObject({ address: z.string().min(1), atMs: epochMsSchema })
     .exactOptional(),
   rescueCeiling: z.string().min(1).exactOptional(),
+  rescueReach: z.string().min(1).exactOptional(),
 });
 
 const agentGuardsSchema: z.ZodType<AgentGuards> = z.strictObject({
