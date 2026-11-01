@@ -48,7 +48,8 @@ function lockedFault(reason: LockReason): BinferenceError {
 
 type Wallets = Awaited<ReturnType<InstallStore["read"]>>["wallets"];
 
-// Each agent that is not archived, with its live launch wallet (decision 0217) when it has one.
+// Each agent that is not archived, with its live launch wallet (decision 0217) and bridge wallet
+// (decision 0307) when it has them.
 function agentsOf(
   records: Awaited<ReturnType<AgentStore["list"]>>,
   wallets: Wallets,
@@ -56,20 +57,23 @@ function agentsOf(
   return records
     .filter((record) => record.archivedAtMs === undefined)
     .map((record) => {
-      const launch = wallets.find(
-        (wallet) =>
-          wallet.agentId === record.id &&
-          wallet.role === "launch" &&
-          wallet.archivedAtMs === undefined,
+      const live = wallets.filter(
+        (wallet) => wallet.agentId === record.id && wallet.archivedAtMs === undefined,
       );
+      const launch = live.find((wallet) => wallet.role === "launch");
+      const bridge = live.find((wallet) => wallet.role === "bridge");
       const agent = { id: record.id, mode: record.mode, frozen: record.frozenAtMs !== undefined };
-      return Object.assign(agent, launch === undefined ? {} : { launchWallet: launch.id });
+      return Object.assign(
+        agent,
+        launch === undefined ? {} : { launchWallet: launch.id },
+        bridge === undefined ? {} : { bridgeWallet: bridge.id },
+      );
     });
 }
 
 /**
  * The handlers of `engine/status`, `engine/stop` and `engine/unlock`. Status answers the state, the
- * release, the protocol version, the agents that are not archived with their launch wallets, and
+ * release, the protocol version, the agents that are not archived with their launch and bridge wallets, and
  * the health signals; the
  * engine counts as frozen when it has agents and every one of them is frozen. Stop starts the
  * shutdown sequence and answers at once. Unlock opens the agent key, with the passphrase in the

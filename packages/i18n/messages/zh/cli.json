@@ -179,6 +179,7 @@
   "status.agents": "{count, plural, =0 {还没有 Agent。} other {# 个 Agent：}}",
   "status.agent": "{id}：{mode, select, paper {模拟模式} live {实盘} other {{mode}}}{frozen, select, yes {，已冻结} other {}}",
   "status.launchWallet": "{id}：发射钱包 {wallet}",
+  "status.bridgeWallet": "{id}：跨链钱包 {wallet}",
   "status.signals": "健康信号：",
   "status.signal": "{name}：{state, select, ok {正常} warn {需要查看} fail {失败} other {{state}}}",
   "status.signalSince": "{name}：自 {when} 起{state, select, ok {正常} warn {需要查看} fail {失败} other {{state}}}",

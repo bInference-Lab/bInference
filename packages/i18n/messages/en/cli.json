@@ -179,6 +179,7 @@
   "status.agents": "{count, plural, =0 {No agents yet.} one {# agent:} other {# agents:}}",
   "status.agent": "{id}: {mode, select, paper {paper mode} live {live} other {{mode}}}{frozen, select, yes {, frozen} other {}}",
   "status.launchWallet": "{id}: launch wallet {wallet}",
+  "status.bridgeWallet": "{id}: bridge wallet {wallet}",
   "status.signals": "Health signals:",
   "status.signal": "{name}: {state, select, ok {ok} warn {needs a look} fail {failing} other {{state}}}",
   "status.signalSince": "{name}: {state, select, ok {ok} warn {needs a look} fail {failing} other {{state}}} since {when}",

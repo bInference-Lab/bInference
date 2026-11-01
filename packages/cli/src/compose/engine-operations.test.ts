@@ -64,6 +64,7 @@ function operationsWith(
 }
 
 const launchId = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000d2");
+const bridgeId = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000d3");
 
 describe("the engine's own operations", () => {
   it("names each agent's live launch wallet in engine/status", async () => {
@@ -84,6 +85,36 @@ describe("the engine's own operations", () => {
         ],
       },
     });
+  });
+
+  it("names each agent's live bridge wallet in engine/status, and no archived one", async () => {
+    const bridge = testWalletRecord({
+      id: bridgeId,
+      agentId: agentId(1),
+      label: "bridges",
+      createdAtMs: 1,
+      role: "bridge",
+    });
+    const archived = testWalletRecord({
+      id: launchId,
+      agentId: agentId(2),
+      label: "old bridges",
+      createdAtMs: 1,
+      role: "bridge",
+      archivedAtMs: 2,
+    });
+    const lock = passphraseLock().lock;
+    const { handlers } = operationsWith([agent(1), agent(2)], lock, [bridge, archived]);
+    const status = await handlers["engine/status"]?.({ ...call, args: {} });
+    expect(status).toMatchObject({
+      value: {
+        agents: [
+          { id: agentId(1), mode: "paper", frozen: false, bridgeWallet: bridgeId },
+          { id: agentId(2), mode: "paper", frozen: false },
+        ],
+      },
+    });
+    expect(status).not.toMatchObject({ value: { agents: [{}, { bridgeWallet: bridgeId }] } });
   });
 
   it("answers engine/status with the agents that are not archived", async () => {

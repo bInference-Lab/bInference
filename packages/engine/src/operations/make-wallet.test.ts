@@ -197,6 +197,10 @@ describe("making a wallet with the owner key", () => {
     expect(JSON.stringify(stored.ceiling.policy)).toContain('"role":"bridge"');
     expect(await create(test, { bridge: true })).toStrictEqual(err("wallet.bridge_exists"));
     expect(test.walletMaker.count()).toBe(1);
+    const listed = expectOk(await test.engine.handlers["agent/list"](testCall({})));
+    expect(
+      listed.items.map((agent) => [agent.launchWallet?.label, agent.bridgeWallet?.label]),
+    ).toStrictEqual([[undefined, "spare"]]);
   });
 
   it("makes no bridge wallet when no venue the install runs marks a bridge wallet's deposit", async () => {

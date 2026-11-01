@@ -31,6 +31,11 @@ export interface AgentView {
    * (decision 0217). Only `agent/list` sets it; absent when the agent has none.
    */
   readonly launchWallet?: WalletView;
+  /**
+   * The agent's live bridge wallet, which a bridge whose deposit names no recipient leaves from
+   * (decision 0307). Only `agent/list` sets it; absent when the agent has none.
+   */
+  readonly bridgeWallet?: WalletView;
 }
 
 /** Parses an agent mode. */
@@ -48,4 +53,5 @@ export const agentViewSchema: z.ZodType<AgentView> = z.object({
   changedAt: epochMsSchema,
   defaultWallet: walletViewSchema.exactOptional(),
   launchWallet: walletViewSchema.exactOptional(),
+  bridgeWallet: walletViewSchema.exactOptional(),
 });
