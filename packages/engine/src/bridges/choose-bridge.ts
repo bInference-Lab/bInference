@@ -99,13 +99,14 @@ function floorOf(bridge: ResolvedBridge, candidate: BridgeCandidate): bigint {
   return (scaled * keptBps) / BigInt(bpsPerWhole);
 }
 
-type Quoted = Result<ChosenBridge, QuoteFailure>;
+/** A route's quote, held to the route's checks, or why it was not taken. */
+export type QuotedRoute = Result<ChosenBridge, QuoteFailure>;
 
 async function quoteOne(
   parts: BridgeQuoteParts,
   bridge: ResolvedBridge,
   call: { readonly candidate: BridgeCandidate; readonly signal: AbortSignal },
-): Promise<Quoted> {
+): Promise<QuotedRoute> {
   const { candidate, signal } = call;
   const request = requestOf(parts, bridge, candidate);
   const timing = { clock: parts.clock, signal, timeoutMs: quoteTimeoutMs };
@@ -131,7 +132,7 @@ async function quoteOne(
 // A quote the route's own swap cap or the agent's slippage limit refuses, else the route: on a
 // route the bridge fills by a swap, the swap's rate is worked out here from the quote and held to
 // the route's cap before the floor (decision 0323).
-function judged(bridge: ResolvedBridge, chosen: ChosenBridge): Quoted {
+function judged(bridge: ResolvedBridge, chosen: ChosenBridge): QuotedRoute {
   const { candidate, quote } = chosen;
   const cap = candidate.route.swapCapBps;
   const swapRateBps =
@@ -147,7 +148,8 @@ function judged(bridge: ResolvedBridge, chosen: ChosenBridge): Quoted {
   return ok(swapRateBps === undefined ? chosen : { ...chosen, swapRateBps });
 }
 
-function weightOf(chosen: ChosenBridge): bigint {
+/** What a route's least output weighs, at a scale past any token's decimals. */
+export function routeWeightOf(chosen: ChosenBridge): bigint {
   return (
     chosen.quote.minOut.base *
     10n ** BigInt(compareDecimals - chosen.candidate.route.decimals.arrives)
@@ -177,31 +179,46 @@ function reasonOf(refusals: readonly QuoteFailure[]): QuoteFailure {
 }
 
 /**
- * Quotes every route the bridge's wallet may take at once, each venue within 3 seconds, and takes
- * the best least output at the delivered token's decimals (decision 0319). On a route the bridge
- * fills by a swap, a quote whose swap rate keeps more than the route's cap is not taken
- * (`swap_rate`, decision 0323). A quote whose least
- * output is below the amount sent less the agent's slippage limit is not taken (`price_impact`); a
- * venue that throws, runs out of time or answers a quote for another token, one with a fee in
- * another asset than the one sent, or one already expired is `venue_down`; a route a bridge does
- * not serve now gives its typed reason. With no route left, the reason every route gave, else
- * `swap_rate`, `price_impact`, then the amount and liquidity reasons, then `venue_down`, before
- * `bridge_no_route`.
+ * Quotes every route the bridge's wallet may take at once, each venue within 3 seconds (decision
+ * 0319), and answers each route's quote or why it was not taken, in the routes' order. On a route
+ * the bridge fills by a swap, a quote whose swap rate keeps more than the route's cap is not taken
+ * (`swap_rate`, decision 0323). A quote whose least output is below the amount sent less the
+ * agent's slippage limit is not taken (`price_impact`); a venue that throws, runs out of time or
+ * answers a quote for another token, one with a fee in another asset than the one sent, or one
+ * already expired is `venue_down`; a route a bridge does not serve now gives its typed reason.
  */
-export async function chooseBridge(
+export async function quoteRoutes(
   parts: BridgeQuoteParts,
   bridge: ResolvedBridge,
   signal: AbortSignal,
-): Promise<Quoted> {
-  const quoted = await Promise.all(
+): Promise<readonly QuotedRoute[]> {
+  return Promise.all(
     bridge.candidates.map(async (candidate) => quoteOne(parts, bridge, { candidate, signal })),
   );
+}
+
+/**
+ * The route a bridge takes of the quoted ones: the best least output at the delivered token's
+ * decimals, the first of equal ones (decision 0319). With no route taken, the reason every route
+ * gave, else `swap_rate`, `price_impact`, then the amount and liquidity reasons, then
+ * `venue_down`, before `bridge_no_route`.
+ */
+export function bestRoute(quoted: readonly QuotedRoute[]): QuotedRoute {
   const chosen = quoted.flatMap((item) => (item.ok ? [item.value] : []));
   const best = chosen.reduce<ChosenBridge | undefined>(
-    (top, item) => (top === undefined || weightOf(item) > weightOf(top) ? item : top),
+    (top, item) => (top === undefined || routeWeightOf(item) > routeWeightOf(top) ? item : top),
     undefined,
   );
   return best === undefined
     ? err(reasonOf(quoted.flatMap((item) => (item.ok ? [] : [item.error]))))
     : ok(best);
+}
+
+/** Quotes every route the bridge's wallet may take and takes the best (see {@link bestRoute}). */
+export async function chooseBridge(
+  parts: BridgeQuoteParts,
+  bridge: ResolvedBridge,
+  signal: AbortSignal,
+): Promise<QuotedRoute> {
+  return bestRoute(await quoteRoutes(parts, bridge, signal));
 }
