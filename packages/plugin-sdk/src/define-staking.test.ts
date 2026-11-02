@@ -1,5 +1,9 @@
 import { accountRefSchema, assetRefSchema, chainRefSchema } from "@binference/chain";
-import { createFakeStakingVenue, fakeDraft } from "@binference/chain/testing";
+import {
+  createFakeLiquidStakingVenue,
+  createFakeStakingVenue,
+  fakeDraft,
+} from "@binference/chain/testing";
 import { BinferenceError, bpsSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { defineStaking } from "./define-staking.js";
@@ -19,6 +23,16 @@ function fake() {
     nowMs: 1_800_000_000_000,
   });
 }
+
+const liquidOptions = {
+  name: "Pool",
+  commissionBps: bpsSchema.parse(1_000),
+  minStakeBase: 10n,
+  minUnstakeBase: 5n,
+  unbondingSeconds: 3_600,
+  rate: { coin: 11n, units: 10n },
+  nowMs: 1_800_000_000_000,
+};
 
 function refusalOf(run: () => unknown): unknown {
   try {
@@ -54,13 +68,18 @@ describe("defineStaking", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
+  it("keeps a liquid venue's pool", () => {
+    const inner = createFakeLiquidStakingVenue(liquidOptions);
+    expect(defineStaking(inner).pool).toBe(inner.pool);
+  });
+
   it("freezes what it declares", () => {
     const venue = defineStaking(fake());
     expect(Object.isFrozen(venue)).toBe(true);
     expect(Object.isFrozen(venue.contracts[0]?.names)).toBe(true);
   });
 
-  it("refuses contracts on another chain, none at all, or a bridge deposit", () => {
+  it("refuses contracts on another chain, none at all, a bridge deposit or a pool elsewhere", () => {
     const other = chainRefSchema.parse("fake:2");
     const bridge = {
       contract: "hub",
@@ -80,6 +99,7 @@ describe("defineStaking", () => {
       { ...fake(), contracts: [] },
       { ...fake(), contracts: [{ chain: fake().chain, names: ["hub"], calls: [bridge] }] },
       { ...fake(), id: "Not An Id" },
+      { ...fake(), pool: accountRefSchema.parse("fake:2:0x000000e1") },
     ];
     expect(cases.map((item) => refusalOf(() => defineStaking(item)))).toStrictEqual(
       cases.map(() => "plugin.bad_venue"),

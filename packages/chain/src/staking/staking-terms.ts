@@ -45,7 +45,14 @@ export interface UnbondingPart {
   readonly ref: string;
   /** In the chain's coin. */
   readonly amount: Amount;
+  /**
+   * When a claim can take it. A venue whose own queue releases a part (a liquid venue) gives the
+   * earliest time while the part waits, never before its read, and no later than its read once
+   * the queue released it.
+   */
   readonly readyAtMs: number;
+  /** The venue's queue has not released it yet, whatever its time: no claim can take it now. */
+  readonly queued?: true;
 }
 
 /** What one wallet holds with one validator of a staking venue. */
@@ -81,7 +88,9 @@ export interface PaperStake {
  * What the host asks a staking venue to plan, for the agent's own wallet: a stake of exactly
  * `amount` of the chain's coin with a validator; an unstake of at least `amount` of the coin from
  * one, or of the whole stake, every receipt unit, with `whole`; or a claim of everything a
- * validator lets the wallet claim now. `paper` plans it against a paper position.
+ * validator lets the wallet claim now. On a liquid venue the validator is its pool, an unstake's
+ * `amount` is exactly that many units of its receipt token, and a claim takes the oldest part
+ * its queue released. `paper` plans it against a paper position.
  */
 export type StakeRequest = {
   readonly wallet: AccountRef;

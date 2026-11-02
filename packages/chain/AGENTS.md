@@ -60,5 +60,8 @@ Rules for this package:
   against a paper position, or names why the venue would refuse it (`stakeRefusals`), builds the
   planned call, decodes one back, and reads back what a landed move did. Every
   call it builds or decodes credits the account that signs; it declares its contracts like a venue,
-  so ceilings hold their rules. It and its terms are exported from `@binference/chain/staking`,
-  since the root entry is at its size limit.
+  so ceilings hold their rules. A liquid staking venue declares its one `pool`, which stands
+  where a validator does, names an unstake in its receipt token, approves exactly those units
+  before the unstake's call, and lets its own queue say when a part is ready (decision 0331). It
+  and its terms are exported from `@binference/chain/staking`, since the root entry is at its size
+  limit.

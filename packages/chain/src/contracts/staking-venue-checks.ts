@@ -8,8 +8,9 @@ import type { TxDraft, TxHash } from "../transaction.js";
 
 /**
  * A staking venue under test: `wallet` holds enough of the chain's coin to stake `stake` twice
- * and has nothing staked; `active` is a validator that takes stakes, `jailed` one that is jailed,
- * and `unknown` no validator at all. `run` lands drafts as the chain would, signed by their
+ * and has nothing staked; `active` is a validator that takes stakes, the pool of a liquid venue,
+ * `jailed` one that is jailed, which a liquid venue has none of, and `unknown` no validator at
+ * all. `run` lands drafts as the chain would, signed by their
  * sender, and answers their hashes; `wait` moves the chain's time on. `foreign` holds drafts from
  * the wallet that the venue never builds, such as a sibling function, a call to another contract
  * or one naming another account.
@@ -18,7 +19,7 @@ export interface StakingVenueSubject {
   readonly venue: StakingVenue;
   readonly wallet: AccountRef;
   readonly active: AccountRef;
-  readonly jailed: AccountRef;
+  readonly jailed?: AccountRef;
   readonly unknown: AccountRef;
   /** In the chain's coin, at or above the venue's least stake. */
   readonly stake: Amount;
@@ -55,16 +56,23 @@ export async function onlyHolding(subject: StakingVenueSubject): Promise<Staking
 }
 
 /**
- * Builds the plan, decodes every draft and holds each to the plan, from the wallet and crediting
- * it; lands the drafts; and answers what the venue reads back of the move.
+ * Builds the plan, decodes its staking call and holds it to the plan, from the wallet and
+ * crediting it, after the one approval a liquid venue's unstake makes, which no staking decoder
+ * reads; lands the drafts; and answers what the venue reads back of the move.
  */
 export async function landedPlan(
   subject: StakingVenueSubject,
   plan: StakePlan,
 ): Promise<LandedStake> {
   const drafts = await subject.venue.build(plan, live());
-  assert.equal(drafts.length, 1);
-  for (const draft of drafts) {
+  const isApproved = subject.venue.pool !== undefined && plan.action === "unstake";
+  assert.equal(drafts.length, isApproved ? 2 : 1);
+  const [approval] = drafts;
+  if (isApproved && approval !== undefined) {
+    assert.equal(approval.from, plan.wallet);
+    assert.deepEqual(subject.venue.decode(approval), { ok: false, error: "unknown_call" });
+  }
+  for (const draft of drafts.slice(isApproved ? 1 : 0)) {
     const read = subject.venue.decode(draft);
     assert.ok(read.ok, "The venue could not decode a call it built.");
     assert.equal(draft.from, plan.wallet);

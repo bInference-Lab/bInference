@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
+import type { Amount } from "../amount.js";
 import type { AccountRef } from "../caip/account-ref.js";
 import { accountRefParts } from "../caip/account-ref.js";
 import { assetRefParts } from "../caip/asset-ref.js";
@@ -10,6 +11,7 @@ import {
   onlyHolding,
   planned,
   type StakingVenueHarness,
+  type StakingVenueSubject,
   staked,
 } from "./staking-venue-checks.js";
 
@@ -17,11 +19,15 @@ const msPerSecond = 1_000;
 
 async function listsValidators(harness: StakingVenueHarness): Promise<void> {
   const subject = await harness.create();
+  const { pool } = subject.venue;
   const options = await subject.venue.options(live());
   const of = (account: AccountRef) => options.validators.find((item) => item.validator === account);
   assert.equal(of(subject.active)?.jailed, false);
-  assert.equal(of(subject.jailed)?.jailed, true);
+  assert.equal(subject.jailed === undefined ? true : of(subject.jailed)?.jailed, true);
   assert.equal(of(subject.unknown), undefined);
+  // A liquid venue lists its pool alone, and every move names it.
+  assert.ok(pool === undefined || (options.validators.length === 1 && subject.active === pool));
+  assert.ok(pool === undefined || subject.jailed === undefined);
   assert.ok(options.unbondingSeconds > 0);
   assert.equal(options.minStake.asset, subject.stake.asset);
   assert.ok(options.minStake.base <= subject.stake.base);
@@ -47,6 +53,7 @@ async function stakesAndReadsBack(harness: StakingVenueHarness): Promise<void> {
   assert.deepEqual(none, { ok: false, error: "validator_unknown" });
   assert.deepEqual([landed.moved, landed.shares], [subject.stake, held.staked]);
   assert.deepEqual(landed.shares, plan.shares);
+  assert.ok((landed.shares?.base ?? 0n) >= (plan.minShares?.base ?? 0n));
   assert.ok(held.stakedValue.base > 0n && held.stakedValue.base <= subject.stake.base);
   assert.deepEqual([held.unbonding, held.claimable.base], [[], 0n]);
 }
@@ -64,6 +71,7 @@ async function unstakesAndClaims(harness: StakingVenueHarness): Promise<void> {
   assert.ok(part !== undefined && rest.length === 0);
   assert.deepEqual([landed.request, landed.shares], [part, plan.shares]);
   assert.ok(part.readyAtMs >= (plan.readyAtMs ?? 0));
+  assert.equal(part.queued === true, subject.venue.pool !== undefined);
   const early = await subject.venue.plan({ action: "claim", wallet, validator }, live());
   assert.deepEqual(early, {
     ok: false,
@@ -78,43 +86,70 @@ async function unstakesAndClaims(harness: StakingVenueHarness): Promise<void> {
   assert.deepEqual(await subject.venue.holdings(wallet, live()), []);
 }
 
+// What an unstake names: the coin on a venue of validators, the receipt token on a liquid one.
+async function unstakeAmount(subject: StakingVenueSubject, base: bigint): Promise<Amount> {
+  const receipt = await subject.venue.receipt(subject.active, live());
+  assert.ok(receipt.ok);
+  return { asset: subject.venue.pool === undefined ? subject.stake.asset : receipt.value, base };
+}
+
 async function refusesInOrder(harness: StakingVenueHarness): Promise<void> {
   const subject = await harness.create();
   const { wallet, stake, active, jailed } = subject;
   const options = await subject.venue.options(live());
   const small = { ...stake, base: options.minStake.base - 1n };
+  const unstaked = await unstakeAmount(subject, stake.base);
+  const jailedAsks: readonly StakeRequest[] =
+    jailed === undefined
+      ? []
+      : [
+          { action: "stake", wallet, validator: jailed, amount: stake },
+          { action: "stake", wallet, validator: jailed, amount: small },
+        ];
   const asks: readonly StakeRequest[] = [
-    { action: "stake", wallet, validator: jailed, amount: stake },
     { action: "stake", wallet, validator: subject.unknown, amount: stake },
-    { action: "unstake", wallet, validator: active, amount: stake },
+    { action: "unstake", wallet, validator: active, amount: unstaked },
     { action: "claim", wallet, validator: active },
     { action: "stake", wallet, validator: active, amount: small },
-    { action: "stake", wallet, validator: jailed, amount: small },
+    ...jailedAsks,
   ];
   const answers = await Promise.all(asks.map(async (ask) => subject.venue.plan(ask, live())));
+  const jailedErrors = jailed === undefined ? [] : ["validator_jailed", "below_min_stake"];
   assert.deepEqual(
     answers.map((answer) => (answer.ok ? "planned" : answer.error)),
-    [
-      "validator_jailed",
-      "validator_unknown",
-      "nothing_staked",
-      "nothing_to_claim",
-      "below_min_stake",
-      "below_min_stake",
-    ],
+    ["validator_unknown", "nothing_staked", "nothing_to_claim", "below_min_stake", ...jailedErrors],
   );
   // The least stake goes with its refusal; a claim with no part waiting names no ready time.
   const facts = answers.map((answer) => (answer.ok ? undefined : answer.facts));
-  assert.deepEqual([facts[3], facts[4]], [undefined, { minStake: options.minStake }]);
+  assert.deepEqual([facts[2], facts[3]], [undefined, { minStake: options.minStake }]);
 }
 
 async function refusesOverUnstake(harness: StakingVenueHarness): Promise<void> {
   const subject = await harness.create();
-  const { wallet, active: validator, stake } = subject;
-  await staked(subject);
-  const amount = { ...stake, base: stake.base * 2n };
+  const { wallet, active: validator } = subject;
+  const { plan } = await staked(subject);
+  const held = subject.venue.pool === undefined ? plan.moved.base : (plan.shares?.base ?? 0n);
+  const amount = await unstakeAmount(subject, held * 2n);
   const answer = await subject.venue.plan({ action: "unstake", wallet, validator, amount }, live());
   assert.deepEqual(answer, { ok: false, error: "exceeds_staked" });
+}
+
+async function unstakesPart(harness: StakingVenueHarness): Promise<void> {
+  const subject = await harness.create();
+  const { venue, wallet, active: validator } = subject;
+  await staked(subject);
+  const held = await onlyHolding(subject);
+  const isLiquid = venue.pool !== undefined;
+  const half = await unstakeAmount(
+    subject,
+    (isLiquid ? held.staked.base : held.stakedValue.base) / 2n,
+  );
+  const plan = await planned(subject, { action: "unstake", wallet, validator, amount: half });
+  // A liquid venue burns exactly the units named; one of validators takes out at least the coin.
+  const isExact = plan.shares?.base === half.base && plan.shares.asset === half.asset;
+  assert.ok(isLiquid ? isExact : plan.moved.base >= half.base);
+  const landed = await landedPlan(subject, plan);
+  assert.deepEqual(landed.shares, plan.shares);
 }
 
 async function plansPaper(harness: StakingVenueHarness): Promise<void> {
@@ -173,7 +208,7 @@ async function readsBackOnlyItsMove(harness: StakingVenueHarness): Promise<void>
     live(),
   );
   const elsewhere = await subject.venue.landed(
-    { action: "stake", wallet, validator: subject.jailed, hash },
+    { action: "stake", wallet, validator: subject.jailed ?? subject.unknown, hash },
     live(),
   );
   assert.deepEqual(
@@ -230,12 +265,16 @@ export function stakingVenueContract(harness: StakingVenueHarness): readonly Con
       run: async () => unstakesAndClaims(harness),
     },
     {
-      name: "refuses a jailed or unknown validator, an empty unstake or claim, a small stake first and names the least stake",
+      name: "refuses an unknown validator, an empty unstake or claim, a small stake, then a jailed one, and names the least stake",
       run: async () => refusesInOrder(harness),
     },
     {
       name: "refuses to unstake more than the stake is worth",
       run: async () => refusesOverUnstake(harness),
+    },
+    {
+      name: "unstakes part of a stake, a liquid venue its receipt units exactly after approving them",
+      run: async () => unstakesPart(harness),
     },
     {
       name: "plans a paper unstake and claim from the paper position alone",

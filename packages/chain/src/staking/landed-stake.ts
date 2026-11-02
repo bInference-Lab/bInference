@@ -8,6 +8,7 @@ export interface UnbondingPartWire {
   readonly ref: string;
   readonly amount: AmountWire;
   readonly readyAtMs: number;
+  readonly queued?: true;
 }
 
 /** A {@link LandedStake} as JSON carries it. */
@@ -34,7 +35,12 @@ export const landedStakeSchema: z.ZodType<LandedStake, LandedStakeWire> = z.stri
   moved: amountSchema,
   shares: amountSchema.exactOptional(),
   request: z
-    .strictObject({ ref: refSchema, amount: amountSchema, readyAtMs: z.int().nonnegative() })
+    .strictObject({
+      ref: refSchema,
+      amount: amountSchema,
+      readyAtMs: z.int().nonnegative(),
+      queued: z.literal(true).exactOptional(),
+    })
     .exactOptional(),
   claimed: z.array(refSchema).exactOptional(),
 });

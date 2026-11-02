@@ -1,4 +1,4 @@
-import { venueDeclarationSchema } from "@binference/chain";
+import { accountRefParts, venueDeclarationSchema } from "@binference/chain";
 import type { StakingVenue } from "@binference/chain/staking";
 import { BinferenceError } from "@binference/core";
 import { z } from "zod";
@@ -12,7 +12,8 @@ function refused(problem: string): BinferenceError {
 }
 
 /**
- * Defines a staking plugin: a venue that stakes its chain's coin with validators. It declares its
+ * Defines a staking plugin: a venue that stakes its chain's coin with validators, or into the one
+ * pool of a liquid staking venue, which it names as `pool` on its own chain. It declares its
  * contracts and calls as `defineVenue` does, so a ceiling holds their rules, all on the one chain
  * it stakes on, and no call that pays another chain. `plan` reads the chain and names a refusal
  * as an answer, `build` makes the planned call from the plan's wallet and crediting it alone, and
@@ -33,9 +34,14 @@ export function defineStaking(definition: StakingVenue): StakingVenue {
   if (contracts.some((item) => (item.calls ?? []).some((call) => call.bridge !== undefined))) {
     throw refused("it declares a bridge deposit, which pays another chain.");
   }
+  const { pool } = definition;
+  if (pool !== undefined && accountRefParts(pool).chain !== definition.chain) {
+    throw refused("its pool is on another chain than it stakes on.");
+  }
   return Object.freeze({
     id: declaration.data.id,
     chain: definition.chain,
+    ...(pool === undefined ? {} : { pool }),
     contracts: frozenContracts(contracts),
     options: async (options) => definition.options(options),
     holdings: async (wallet, options) => definition.holdings(wallet, options),

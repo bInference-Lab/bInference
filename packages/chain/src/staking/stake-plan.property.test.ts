@@ -47,6 +47,14 @@ describe("stake plans on the wire", () => {
             },
             {
               ...common,
+              action: "stake" as const,
+              value: amount,
+              shares: { asset: receipt, base: (shares / 2n + 1n).toString() },
+              minShares: { asset: receipt, base: (shares / 4n + 1n).toString() },
+              pool,
+            },
+            {
+              ...common,
               action: "unstake" as const,
               jailed: true,
               value: zero,
@@ -64,7 +72,7 @@ describe("stake plans on the wire", () => {
     );
   });
 
-  it("refuses coin sent by an unstake or claim, parts that fit another action, a jailed stake, a name out of bounds or a rate no venue pays", () => {
+  it("refuses coin sent by an unstake or claim, parts that fit another action, a jailed stake, least shares off the stake, a name out of bounds or a rate no venue pays", () => {
     fc.assert(
       fc.property(fc.bigInt({ min: 1n, max: 2n ** 128n }), epochMs, (sent, at) => {
         const amount = { asset: coin, base: sent.toString() };
@@ -88,6 +96,18 @@ describe("stake plans on the wire", () => {
           { ...stake, validatorName: "Binance\u202E" },
           { ...stake, aprBps: 1_000_001 },
           { ...stake, aprBps: 1.5 },
+          { ...stake, minShares: { asset: receipt, base: (sent + 1n).toString() } },
+          { ...stake, minShares: { asset: receipt, base: "0" } },
+          { ...stake, minShares: { asset: coin, base: "1" } },
+          {
+            ...common,
+            action: "unstake",
+            value: { asset: coin, base: "0" },
+            shares: minted,
+            minShares: minted,
+            pool,
+            readyAtMs: at,
+          },
         ];
         expect(wrong.map((item) => stakePlanSchema.safeParse(item).success)).toStrictEqual(
           wrong.map(() => false),

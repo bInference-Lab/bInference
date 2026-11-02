@@ -52,6 +52,12 @@ export interface StakePlan {
   readonly moved: Amount;
   /** The receipt token units a stake mints, or an unstake burns, at the plan's block. */
   readonly shares?: Amount;
+  /**
+   * The least receipt units a stake mints when it lands, which its card promises: a venue whose
+   * stake call takes no least amount sets it at its own bound under `shares`, and the host holds
+   * the queue's new plan and the landed move to it. Absent when the venue promises none.
+   */
+  readonly minShares?: Amount;
   /** The validator's pool a stake or an unstake prices its shares by. */
   readonly pool?: StakePool;
   /**
@@ -92,6 +98,7 @@ export interface StakePlanWire {
   readonly value: AmountWire;
   readonly moved: AmountWire;
   readonly shares?: AmountWire;
+  readonly minShares?: AmountWire;
   readonly pool?: StakePoolWire;
   readonly votingToken?: string;
   readonly parts?: readonly string[];
@@ -129,17 +136,29 @@ export const receiptPoolSchema: z.ZodType<ReceiptPool, ReceiptPoolWire> = z.stri
 });
 
 function amountsOf(plan: StakePlan): readonly Amount[] {
-  const { value, moved, shares, pool } = plan;
-  return [value, moved, ...(shares === undefined ? [] : [shares])].concat(
+  const { value, moved, shares, minShares, pool } = plan;
+  return [value, moved, ...[shares, minShares].filter((item) => item !== undefined)].concat(
     pool === undefined ? [] : [pool.shares, pool.coin],
   );
 }
 
 // Every account and amount of a plan is of the wallet's chain; a stake and an unstake carry
-// shares and a pool, a claim its parts; only a stake sends coin, only an unstake has a ready time,
-// and only an unstake or a claim plans from a jailed validator.
+// shares and a pool, a claim its parts; only a stake sends coin or promises least shares, of its
+// own receipt token and no more than it plans, only an unstake has a ready time, and only an
+// unstake or a claim plans from a jailed validator.
 function isShaped(plan: StakePlan): boolean {
-  return isOneChain(plan) && fitsAction(plan);
+  return isOneChain(plan) && fitsAction(plan) && fitsLeast(plan);
+}
+
+function fitsLeast({ action, shares, minShares }: StakePlan): boolean {
+  return (
+    minShares === undefined ||
+    (action === "stake" &&
+      shares !== undefined &&
+      minShares.asset === shares.asset &&
+      minShares.base > 0n &&
+      minShares.base <= shares.base)
+  );
 }
 
 function isOneChain(plan: StakePlan): boolean {
@@ -165,8 +184,9 @@ function fitsAction(plan: StakePlan): boolean {
 
 /**
  * Decodes a stake plan from JSON, and encodes it back with `z.encode`: every account and amount on
- * the wallet's chain, coin sent only by a stake, shares and a pool on a stake or an unstake, a
- * ready time only on an unstake, the parts only on a claim, and no stake from a jailed validator.
+ * the wallet's chain, coin sent only by a stake, shares and a pool on a stake or an unstake, least
+ * shares only on a stake and within its shares, a ready time only on an unstake, the parts only on
+ * a claim, and no stake from a jailed validator.
  */
 export const stakePlanSchema: z.ZodType<StakePlan, StakePlanWire> = z
   .strictObject({
@@ -181,6 +201,7 @@ export const stakePlanSchema: z.ZodType<StakePlan, StakePlanWire> = z
     value: amountSchema,
     moved: amountSchema,
     shares: amountSchema.exactOptional(),
+    minShares: amountSchema.exactOptional(),
     pool: poolSchema.exactOptional(),
     votingToken: assetRefSchema.exactOptional(),
     parts: z.array(z.string().min(1).max(200)).min(1).exactOptional(),
