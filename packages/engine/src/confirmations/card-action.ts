@@ -5,23 +5,25 @@ import type { CardLine, CardValue } from "./card-line.js";
 import type { LaunchDetails } from "./launch-card-lines.js";
 import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
 import { type CardPayee, type CardSentName, sendActionLine } from "./send-card-lines.js";
+import { type StakeDetails, validatorValue } from "./stake-card-lines.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
 export type TradePlace = { readonly curve: string } | { readonly pool: string };
 
-/** A staking move; an unstake says when the amount can be claimed. */
-export type StakeMove =
-  | {
-      readonly action: "stake" | "claim";
-      readonly amount: Amount;
-      readonly validator: AccountRef;
-    }
-  | {
-      readonly action: "unstake";
-      readonly amount: Amount;
-      readonly validator: AccountRef;
-      readonly readyInDays: number;
-    };
+/**
+ * A staking move; an unstake says in how many whole days the amount can be claimed. The
+ * validator's name, as its venue lists it, shows before its address; its details show under the
+ * action line (`stakeDetailLines`).
+ */
+export type StakeMove = {
+  readonly amount: Amount;
+  readonly validator: AccountRef;
+  readonly validatorName?: string;
+  readonly details?: StakeDetails;
+} & (
+  | { readonly action: "stake" | "claim" }
+  | { readonly action: "unstake"; readonly readyInDays: number }
+);
 
 /**
  * The facts of each kind's action line (spec 4, section 3.3), resolved from the stored intent:
@@ -161,7 +163,7 @@ function spenderOf(action: CardAction<"revokeApproval">): CardValue {
 }
 
 function stakeLine(move: StakeMove): CardLine {
-  const values = { amount: amount(move.amount), validator: account(move.validator) };
+  const values = { amount: amount(move.amount), validator: validatorValue(move) };
   return move.action === "unstake"
     ? { key: "card.stake.unstake", values: { ...values, days: count(move.readyInDays) } }
     : { key: `card.stake.${move.action}`, values };

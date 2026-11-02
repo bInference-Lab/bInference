@@ -19,6 +19,8 @@ export interface AutoModeFacts {
   readonly isLocked: boolean;
   /** A stake move stays inside the agent's own positions. */
   readonly isInsideOwnPositions: boolean;
+  /** The stake move is an unstake, which locks its coin while it unbonds (decision 0296). */
+  readonly isUnstake?: boolean;
   /** The policy's mark: the intent moves a token on the deny list out of the wallet. */
   readonly sellsDeniedToken: boolean;
   readonly valueUsdMicros: bigint;
@@ -50,10 +52,10 @@ function kindRefusal(kind: IntentKind, facts: AutoModeFacts): AutoModeRefusal | 
   if (sendKinds.has(kind)) {
     return "send";
   }
-  if (tradeKinds.has(kind) || (kind === "stake" && facts.isInsideOwnPositions)) {
-    return undefined;
+  if (kind === "stake" && facts.isInsideOwnPositions) {
+    return facts.isUnstake === true ? "unstake" : undefined;
   }
-  return "kind";
+  return tradeKinds.has(kind) ? undefined : "kind";
 }
 
 // An intent worth nothing, such as an unstake or a claim, counts against neither cap (decision
@@ -101,11 +103,11 @@ function autoModeRefusal(
 
 /**
  * The auto test of spec 6, section 5. It passes only when the agent is in auto mode, the engine is
- * not locked for the intent, the kind is a swap, buy or sell or a stake move inside the
- * agent's own positions, it sells no token on the deny list, the value fits the per-trade and
- * rolling-day caps, the fee per gas is at most the network fee cap, every approval goes to a
- * registry spender, the turn read no outside content, and the agent runtime proposed it. Anything
- * else opens a card.
+ * not locked for the intent, the kind is a swap, buy or sell or a stake move inside the agent's
+ * own positions other than an unstake, it sells no token on the deny list, the value fits the
+ * per-trade and rolling-day caps, the fee per gas is at most the network fee cap, every approval
+ * goes to a registry spender, the turn read no outside content, and the agent runtime proposed
+ * it. Anything else opens a card.
  */
 export function checkAutoMode(
   intent: AutoModeSubject,

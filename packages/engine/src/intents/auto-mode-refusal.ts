@@ -1,7 +1,8 @@
 /**
  * Why auto mode leaves an intent to the owner's tap, other than that the agent is not in auto
  * mode: the `autoAsks` lines of spec 4, section 3.4. `locked` means the engine is locked, so
- * nothing could sign the intent, `deniedToken` that the intent sells a token on the deny list,
+ * nothing could sign the intent, `unstake` that it is an unstake, which locks its coin while it
+ * unbonds (decision 0296), `deniedToken` that the intent sells a token on the deny list,
  * `overFeeCap` that its fee per gas is above the network fee cap, and `spender` that a step
  * approves a spender outside the registry. A card version auto mode opened keeps its code.
  */
@@ -9,6 +10,7 @@ export const autoAskCodes = [
   "locked",
   "send",
   "kind",
+  "unstake",
   "deniedToken",
   "overCap",
   "overFeeCap",

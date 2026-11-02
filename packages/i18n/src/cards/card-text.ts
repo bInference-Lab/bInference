@@ -57,6 +57,8 @@ const textLengths: Readonly<Record<string, number>> = {
   label: 200,
   // A receipt's link to its transaction on a block explorer shows whole.
   explorerLink: 200,
+  // A validator's moniker, which anyone running a validator sets (spec 4, section 3.9).
+  moniker: 32,
 };
 const ratioDecimals = 2;
 // A receipt's transaction hash shows short, as an address does: `0xabab…cdcd`.

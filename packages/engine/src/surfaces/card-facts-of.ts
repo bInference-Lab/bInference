@@ -30,6 +30,7 @@ import type { IntentKind } from "../intents/intent-kind.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { type RescueQuote, rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { isSamePlace } from "../intents/same-place.js";
+import { stakeQuoteDocument } from "../intents/stake-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
 import { assetInfoOf } from "../money-path/asset-infos.js";
@@ -41,6 +42,7 @@ import type { VenueHost } from "../venues/venue-host.js";
 import { bridgeCardFacts } from "./bridge-card-facts.js";
 import { launchCardFacts } from "./launch-card-facts.js";
 import { orderActionOf } from "./order-action-of.js";
+import { stakeCardFacts } from "./stake-card-facts.js";
 import { transferCardFacts } from "./transfer-card-facts.js";
 import { unfreezeActionOf } from "./unfreeze-action-of.js";
 
@@ -307,6 +309,11 @@ const ownQuoteFacts: ReadonlyMap<
     "bridge",
     (quote, source) =>
       bridgeCardFacts(bridgeQuoteDocument.decode(quote), source, baseWarnings(source)),
+  ],
+  [
+    "stake",
+    (quote, source) =>
+      stakeCardFacts(stakeQuoteDocument.decode(quote), source, baseWarnings(source)),
   ],
 ]);
 

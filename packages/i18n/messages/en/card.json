@@ -14,6 +14,9 @@
   "stake.stake": "Stake {amount} with {validator}",
   "stake.unstake": "Unstake {amount} from {validator} · ready in {days, plural, one {# day} other {# days}}",
   "stake.claim": "Claim {amount} from {validator}",
+  "stake.validator": "Validator {validator} · commission {commission}",
+  "stake.rate": "Yearly rate {rate}, from its last day of rewards",
+  "stake.unbonding": "Locked while it unbonds: you can claim it from {readyAt}, in about {days, plural, one {# day} other {# days}}, and not sooner",
   "bridge.action": "Bridge {amount} to {chain} · to {recipient} · about {minutes, number} min",
   "bridge.arrives": "{recipient} receives at least {minOut} on {chain}",
   "bridge.otherToken": "⚠️ {sent} arrives on {chain} as {received}, a different token",
@@ -82,5 +85,6 @@
   "value.legSeparator": ", ",
   "value.payee": "{label} ({address})",
   "value.rescuePayee": "your rescue address ({address})",
-  "value.spender": "{contract} ({address})"
+  "value.spender": "{contract} ({address})",
+  "value.validator": "{moniker} ({address})"
 }

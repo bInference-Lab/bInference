@@ -1,6 +1,7 @@
 {
   "send": "sends always ask",
   "kind": "this kind always asks",
+  "unstake": "an unstake locks the funds while they unbond",
   "overCap": "over your auto caps",
   "spender": "it approves a contract that is not verified",
   "outside": "the idea came from outside content",

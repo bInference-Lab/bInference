@@ -14,6 +14,9 @@
   "stake.stake": "向 {validator} 质押 {amount}",
   "stake.unstake": "从 {validator} 解除质押 {amount} · {days, plural, other {# 天后可领取}}",
   "stake.claim": "从 {validator} 领取 {amount}",
+  "stake.validator": "验证者 {validator} · 佣金 {commission}",
+  "stake.rate": "年化收益率 {rate}，按其最近一天的收益计算",
+  "stake.unbonding": "解绑期内锁定：{readyAt} 起可领取，约 {days, plural, other {# 天后}}，在此之前无法取回",
   "bridge.action": "跨链 {amount} 到 {chain} · 收款地址 {recipient} · 约 {minutes, number} 分钟",
   "bridge.arrives": "{recipient} 在 {chain} 至少收到 {minOut}",
   "bridge.otherToken": "⚠️ {sent} 在 {chain} 以另一种代币 {received} 到账",
@@ -82,5 +85,6 @@
   "value.legSeparator": "，",
   "value.payee": "{label}（{address}）",
   "value.rescuePayee": "你的紧急转出地址（{address}）",
-  "value.spender": "{contract}（{address}）"
+  "value.spender": "{contract}（{address}）",
+  "value.validator": "{moniker}（{address}）"
 }

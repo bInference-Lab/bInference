@@ -23,6 +23,11 @@ export interface AuthorizationInput {
    * venue, such as a launch's own contract (decision 0212), so the auto test asks.
    */
   readonly hasUnlistedSpender: boolean;
+  /**
+   * The intent is a staking move, which credits only the agent's own wallet, so it stays inside
+   * its positions; an unstake still asks (decision 0296). Absent for any other kind.
+   */
+  readonly stake?: { readonly isUnstake: boolean };
 }
 
 /**
@@ -34,13 +39,14 @@ export interface AuthorizationInput {
 export function authorizationCheckOf(
   input: AuthorizationInput,
 ): IntentTrigger<"authorization_checked"> {
-  const { settings, pass, wallet, isLocked, hasUnlistedSpender } = input;
+  const { settings, pass, wallet, isLocked, hasUnlistedSpender, stake } = input;
   const { limits, approvalMode } = settings;
   const facts: AutoModeFacts = {
     approvalMode: approvalMode.mode,
     modeVersion: approvalMode.version,
     isLocked,
-    isInsideOwnPositions: false,
+    isInsideOwnPositions: stake !== undefined,
+    ...(stake?.isUnstake === true ? { isUnstake: true } : {}),
     sellsDeniedToken: pass.sellsDeniedToken,
     valueUsdMicros: pass.figures?.valueUsdMicros ?? limits.perTradeUsdMicros + 1n,
     perTradeCapUsdMicros: limits.perTradeUsdMicros,
