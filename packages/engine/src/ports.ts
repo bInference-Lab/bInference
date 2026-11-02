@@ -26,7 +26,6 @@ import type {
   IdempotencyLookup,
   IdempotencyRecall,
 } from "./ingress/idempotency-entry.js";
-import type { InboxAdmission, InboxDraft, InboxEntry } from "./ingress/inbox-entry.js";
 import type { DisclaimerStore } from "./install/disclaimer-record.js";
 import type {
   CeilingUpdate,
@@ -386,21 +385,6 @@ export interface IdempotencyStore {
    */
   remember(entry: IdempotencyEntry, options: StoreCall): Promise<IdempotencyRecall>;
   /** Deletes results stored before `beforeMs` and returns how many. */
-  prune(beforeMs: number, options: StoreCall): Promise<number>;
-}
-
-/** Keeps every inbound Telegram update and webhook call from before it is acknowledged. */
-export interface InboxStore {
-  /** Stores an event; a source key stored before is a `repeat` that returns the first entry. */
-  admit(draft: InboxDraft, options: StoreCall): Promise<InboxAdmission>;
-  /** Marks an entry handled; the first mark wins and a later one is `handled`. */
-  markHandled(
-    mark: { readonly id: number; readonly atMs: number },
-    options: StoreCall,
-  ): Promise<Result<InboxEntry, "not_found" | "handled">>;
-  /** Entries not handled yet, oldest first, at most `limit`: the work a restart resumes. */
-  unhandled(limit: number, options: StoreCall): Promise<readonly InboxEntry[]>;
-  /** Deletes entries handled before `beforeMs` and returns how many. */
   prune(beforeMs: number, options: StoreCall): Promise<number>;
 }
 

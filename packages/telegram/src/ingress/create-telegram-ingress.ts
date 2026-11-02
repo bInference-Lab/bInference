@@ -155,10 +155,8 @@ export function createTelegramIngress(options: TelegramIngressOptions): Telegram
     onOwnerPaired: options.onOwnerPaired ?? (() => undefined),
     onOwnerReplaced: options.onOwnerReplaced ?? (() => undefined),
   };
-  const isOurs = (entry: InboxEntry): boolean =>
-    entry.source === "telegram" && entry.sourceKey.startsWith(keyPrefix);
   const passFrom = async (call: Call, pagesLeft: number): Promise<void> => {
-    const entries = (await stores.inbox.unhandled(pageSize, call)).filter(isOurs);
+    const entries = await stores.inbox.unhandled({ keyPrefix, limit: pageSize }, call);
     if (entries.length === 0) {
       return;
     }

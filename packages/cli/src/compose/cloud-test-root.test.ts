@@ -25,7 +25,9 @@ describe("cloud test root", () => {
     await expect(root.updates.next(live)).resolves.toStrictEqual([
       { updateId: 8, payload: { update_id: 8 } },
     ]);
-    await expect(root.stores.inbox.unhandled(10, live)).resolves.toStrictEqual([admitted.entry]);
+    await expect(
+      root.stores.inbox.unhandled({ keyPrefix: "tg:1:", limit: 10 }, live),
+    ).resolves.toStrictEqual([admitted.entry]);
   });
 
   it("prices and streams from one shared market-data feed", async () => {

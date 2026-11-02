@@ -83,6 +83,7 @@ export type {
 export type { BotUpdate } from "./ingress/bot-update.js";
 export { inboxAdmissionSchema, inboxDraftSchema, inboxEntrySchema } from "./ingress/inbox-entry.js";
 export type { InboxAdmission, InboxDraft, InboxEntry, InboxSource } from "./ingress/inbox-entry.js";
+export type { InboxStore } from "./ingress/ports.js";
 export { isFillAuthorization } from "./intents/authorization.js";
 export type {
   Authorization,
@@ -275,7 +276,6 @@ export type {
   ConfirmationStore,
   Executor,
   IdempotencyStore,
-  InboxStore,
   IntentStore,
   LedgerStore,
   MarketData,

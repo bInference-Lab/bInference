@@ -84,16 +84,38 @@ export const markHandledTask: StoreTask<
   },
 });
 
-/** Lists the entries not handled yet, oldest first. */
-export const unhandledTask: StoreTask<number, readonly InboxEntry[]> = defineTask({
+interface InboxPage {
+  readonly keyPrefix: string;
+  readonly limit: number;
+}
+
+// A prefix is printable ASCII, so the text after its last character bounds its range.
+const pageSchema: z.ZodType<InboxPage> = z.strictObject({
+  keyPrefix: z.string().regex(/^[!-~]{1,64}$/),
+  limit: z.int().min(1).max(1_000),
+});
+
+// The first text after every text that starts with `prefix`, so the unique index on `source_key`
+// finds a source's entries as a range.
+function afterPrefix(prefix: string): string {
+  return `${prefix.slice(0, -1)}${String.fromCharCode(prefix.charCodeAt(prefix.length - 1) + 1)}`;
+}
+
+/** Lists the entries of one source key prefix not handled yet, oldest first. */
+export const unhandledTask: StoreTask<InboxPage, readonly InboxEntry[]> = defineTask({
   name: "inbox.unhandled",
   access: "read",
-  input: z.int().min(1).max(1_000),
+  input: pageSchema,
   output: z.array(inboxEntrySchema),
-  run(database, limit) {
+  run(database, page) {
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const pending = kysely.selectFrom("inbox").selectAll().where("handled_at", "is", null);
-    return execute(pending.orderBy("id").limit(limit)).rows.map(toInboxEntry);
+    const pending = kysely
+      .selectFrom("inbox")
+      .selectAll()
+      .where("handled_at", "is", null)
+      .where("source_key", ">=", page.keyPrefix)
+      .where("source_key", "<", afterPrefix(page.keyPrefix));
+    return execute(pending.orderBy("id").limit(page.limit)).rows.map(toInboxEntry);
   },
 });
 

@@ -50,3 +50,10 @@ export const inboxAdmissionSchema: z.ZodType<InboxAdmission> = z.strictObject({
   kind: z.enum(["new", "repeat"]),
   entry: inboxEntrySchema,
 });
+
+/** One page of unhandled entries: those whose source key starts with `keyPrefix`, at most `limit`. */
+export interface InboxPage {
+  /** Such as `tg:<bot id>:` for one bot's updates. */
+  readonly keyPrefix: string;
+  readonly limit: number;
+}

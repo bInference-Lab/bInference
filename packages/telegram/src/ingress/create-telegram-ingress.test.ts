@@ -98,7 +98,9 @@ describe("the Telegram ingress", () => {
     expect(await context.stores.owners.get(live)).toStrictEqual({ userId: ownerId, pairedAtMs: 1 });
     expect(context.pairings).toStrictEqual([]);
     expect(context.botApi.deleted()).toStrictEqual([]);
-    expect(await context.stores.inbox.unhandled(10, live)).toStrictEqual([]);
+    expect(
+      await context.stores.inbox.unhandled({ keyPrefix: "tg:", limit: 10 }, live),
+    ).toStrictEqual([]);
   });
 
   it("deletes a 24-word message from the owner unseen and answers with the warning", async () => {
@@ -287,11 +289,15 @@ describe("the Telegram ingress", () => {
     context.botApi.failNext("deleteMessage", "network");
     await context.receive(textUpdate({ updateId: 28, from: ownerId, text: twentyFourWords }));
     expect(context.botApi.deleted()).toStrictEqual([]);
-    expect(await context.stores.inbox.unhandled(10, live)).toHaveLength(1);
+    expect(
+      await context.stores.inbox.unhandled({ keyPrefix: "tg:", limit: 10 }, live),
+    ).toHaveLength(1);
     await context.ingress.resume(live);
     expect(context.botApi.deleted()).toHaveLength(1);
     expect(context.botApi.sent()).toHaveLength(1);
-    expect(await context.stores.inbox.unhandled(10, live)).toStrictEqual([]);
+    expect(
+      await context.stores.inbox.unhandled({ keyPrefix: "tg:", limit: 10 }, live),
+    ).toStrictEqual([]);
   });
 
   it("counts a message Telegram no longer has as deleted, and drops an update Telegram refuses", async () => {
@@ -308,7 +314,9 @@ describe("the Telegram ingress", () => {
     });
     await context.receive(textUpdate({ updateId: 30, from: ownerId, text: twentyFourWords }));
     expect(context.botApi.sent()).toHaveLength(1);
-    expect(await context.stores.inbox.unhandled(10, live)).toStrictEqual([]);
+    expect(
+      await context.stores.inbox.unhandled({ keyPrefix: "tg:", limit: 10 }, live),
+    ).toStrictEqual([]);
     expect(context.logger.records().map((record) => record.fields.errorCode)).toContain(
       "telegram.api_refused",
     );
@@ -327,11 +335,27 @@ describe("the Telegram ingress", () => {
     );
     await context.receive(textUpdate({ updateId: 33, from: ownerId, text: "status" }));
     expect(context.delivered.map((update) => update.updateId)).toStrictEqual([33]);
-    const left = await context.stores.inbox.unhandled(10, live);
+    const left = await context.stores.inbox.unhandled({ keyPrefix: "tg:", limit: 10 }, live);
     expect(left.map((entry) => entry.sourceKey)).toStrictEqual(["tg:9:32"]);
     expect(context.logger.records().map((record) => record.event)).toContain(
       "telegram.unreadable_entry",
     );
+  });
+
+  it("handles its own updates behind a full page of another source's entries", async () => {
+    const context = await setUp({ owner: ownerId });
+    const alerts = Array.from({ length: 60 }, (_, n) => ({
+      source: "webhook" as const,
+      sourceKey: `wh:${String(n + 1)}`,
+      payload: { rule: "whr_test", event: n + 1 },
+      receivedAtMs: 1,
+    }));
+    await alerts.reduce(async (previous, alert) => {
+      await previous;
+      await context.stores.inbox.admit(alert, live);
+    }, Promise.resolve());
+    await context.receive(textUpdate({ updateId: 34, from: ownerId, text: "status" }));
+    expect(context.delivered.map((update) => update.updateId)).toStrictEqual([34]);
   });
 
   it("refuses to store an update without a whole update id", async () => {

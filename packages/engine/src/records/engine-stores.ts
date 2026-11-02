@@ -3,6 +3,7 @@ import type { ModelUsageStore } from "../billing/ports.js";
 import type { BridgeStore } from "../bridges/ports.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
 import type { AliveStore } from "../downtime/ports.js";
+import type { InboxStore } from "../ingress/ports.js";
 import type { LaunchStore } from "../launches/ports.js";
 import type { TrackedWalletStore } from "../leaders/ports.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -11,7 +12,6 @@ import type {
   AgentStore,
   ConfigJournal,
   IdempotencyStore,
-  InboxStore,
   InstallStore,
   IntentStore,
   LedgerStore,

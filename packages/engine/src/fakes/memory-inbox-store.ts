@@ -1,6 +1,6 @@
 import { err, ok } from "@binference/core";
 import type { InboxEntry } from "../ingress/inbox-entry.js";
-import type { InboxStore } from "../ports.js";
+import type { InboxStore } from "../ingress/ports.js";
 import { memoryCall } from "./memory-call.js";
 
 /** Creates an empty in-memory {@link InboxStore} for tests. */
@@ -30,9 +30,16 @@ export function createMemoryInboxStore(): InboxStore {
         entries = entries.map((stored) => (stored.id === mark.id ? handled : stored));
         return ok(structuredClone(handled));
       }),
-    unhandled: async (limit, options) =>
+    unhandled: async (page, options) =>
       memoryCall(options, () =>
-        structuredClone(entries.filter((entry) => entry.handledAtMs === undefined).slice(0, limit)),
+        structuredClone(
+          entries
+            .filter(
+              (entry) =>
+                entry.handledAtMs === undefined && entry.sourceKey.startsWith(page.keyPrefix),
+            )
+            .slice(0, page.limit),
+        ),
       ),
     prune: async (beforeMs, options) =>
       memoryCall(options, () => {

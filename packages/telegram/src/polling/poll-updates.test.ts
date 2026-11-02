@@ -110,7 +110,7 @@ describe("pollUpdates", () => {
     const second = await restartAndDrain(botApi, inbox);
     expect(second.delivered.map((update) => update.updateId)).toStrictEqual([41]);
     expect(botApi.pending()).toStrictEqual([]);
-    expect(await inbox.unhandled(10, live)).toStrictEqual([]);
+    expect(await inbox.unhandled({ keyPrefix: "tg:", limit: 10 }, live)).toStrictEqual([]);
   });
 
   it("processes an update once when the engine stops after handling it and before acknowledging it", async () => {
@@ -119,7 +119,7 @@ describe("pollUpdates", () => {
     const second = await restartAndDrain(botApi, inbox);
     expect(second.delivered).toStrictEqual([]);
     expect(botApi.pending()).toStrictEqual([]);
-    expect(await inbox.unhandled(10, live)).toStrictEqual([]);
+    expect(await inbox.unhandled({ keyPrefix: "tg:", limit: 10 }, live)).toStrictEqual([]);
   });
 
   it("acknowledges a batch only with the next call, after every update in it is stored", async () => {
