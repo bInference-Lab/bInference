@@ -24,22 +24,24 @@ const expiry = "过期时间 14:32:05";
 const maxAnswerLength = 200;
 
 describe("staking cards in the owner's chat, in Chinese", () => {
-  it("shows a stake with its validator, commission and yearly rate", async () => {
+  it("shows a stake with its validator, commission, yearly rate and the days an unstake waits", async () => {
     expect((await showTransferCard("zh", stakeFacts)).lines).toStrictEqual([
       header("质押"),
       `向 ${validator} 质押 2 BNB`,
       `验证者 ${validator} · 佣金 7.00%`,
       "年化收益率 3.50%，按其最近一天的收益计算",
+      "日后解除质押需等待 7 天才能领取",
       reason,
       expiry,
     ]);
   });
 
-  it("names an unnamed validator by its address and leaves out a rate the venue gave none of", async () => {
+  it("names an unnamed validator by its address, leaves out a missing rate and says one day", async () => {
     expect((await showTransferCard("zh", unnamedStakeFacts)).lines).toStrictEqual([
       header("质押"),
       "向 0x71C7…976F 质押 1 BNB",
       "验证者 0x71C7…976F · 佣金 7.00%",
+      "日后解除质押需等待 1 天才能领取",
       reason,
       expiry,
     ]);

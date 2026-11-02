@@ -10,6 +10,8 @@ export interface StakeDetails {
   readonly aprBps?: number;
   /** An unstake's: the earliest its coin can be claimed, epoch milliseconds. */
   readonly readyAtMs?: number;
+  /** A stake's: the whole days, rounded up, a later unstake of it waits before its claim. */
+  readonly unbondingDays?: number;
 }
 
 /** A validator's name and address, the parts of a staking line that name it. */
@@ -41,21 +43,31 @@ export function validatorValue(move: NamedValidator): CardValue {
 
 /**
  * The lines under a staking move's action line (spec 4, section 3.9): the validator with its
- * commission, its yearly rate when its venue gives one, and for an unstake when its coin can be
- * claimed, at the earliest, with the unbonding time in whole days.
+ * commission, its yearly rate when its venue gives one, for a stake how many days a later unstake
+ * waits, and for an unstake when its coin can be claimed, at the earliest, with the unbonding time
+ * in whole days.
  */
 export function stakeDetailLines(move: NamedValidator): readonly CardLine[] {
   const { details } = move;
   if (details === undefined) {
     return [];
   }
-  const { aprBps, readyAtMs } = details;
+  const { aprBps, readyAtMs, unbondingDays } = details;
   // A rate above 100% a year is no share a percent line can show, so the card leaves it out.
   const bps = aprBps === undefined ? undefined : bpsSchema.safeParse(aprBps);
   const rate: readonly CardLine[] =
     bps?.success === true
       ? [{ key: "card.stake.rate", values: { rate: { type: "percent", bps: bps.data } } }]
       : [];
+  const later: readonly CardLine[] =
+    unbondingDays === undefined
+      ? []
+      : [
+          {
+            key: "card.stake.unstakeLater",
+            values: { days: { type: "count", count: unbondingDays } },
+          },
+        ];
   const unbonding: readonly CardLine[] =
     readyAtMs === undefined
       ? []
@@ -75,5 +87,5 @@ export function stakeDetailLines(move: NamedValidator): readonly CardLine[] {
       commission: { type: "percent", bps: details.commissionBps },
     },
   };
-  return [validator, ...rate, ...unbonding];
+  return [validator, ...rate, ...later, ...unbonding];
 }

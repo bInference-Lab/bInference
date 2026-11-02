@@ -51,16 +51,17 @@ function wholeUnstake(): StakeRequest {
 }
 
 describe("proposing a stake", () => {
-  it("opens a card with the validator, its commission and yearly rate, and its amount", async () => {
+  it("opens a card with the validator, its commission and yearly rate, and the days an unstake waits", async () => {
     const test = await startStakeEngine(withOwnCap(testStakingFake()));
 
     const view = await propose(test);
 
     expect(view).toMatchObject({ kind: "stake", state: "awaiting_confirmation" });
-    expect((await testCardText(test, view, "en")).slice(1, 4)).toStrictEqual([
+    expect((await testCardText(test, view, "en")).slice(1, 5)).toStrictEqual([
       "Stake 0.5 FAKE with Active (0x000000c1)",
       "Validator Active (0x000000c1) · commission 7.00%",
       "Yearly rate 3.50%, from its last day of rewards",
+      "Unstaking later takes 7 days before you can claim it",
     ]);
   });
 

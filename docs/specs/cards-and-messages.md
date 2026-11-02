@@ -519,6 +519,7 @@ such as Base or Robinhood Chain, in both languages.
 | Validator name         | `card.value.validator`     | {moniker} ({address})                                                                                            | {moniker}（{address}）                                                                      |
 | Validator              | `card.stake.validator`     | Validator {validator} · commission {commission}                                                                  | 验证者 {validator} · 佣金 {commission}                                                      |
 | Yearly rate            | `card.stake.rate`          | Yearly rate {rate}, from its last day of rewards                                                                 | 年化收益率 {rate}，按其最近一天的收益计算                                                   |
+| Unstake later          | `card.stake.unstakeLater`  | Unstaking later takes {days} days before you can claim it                                                        | 日后解除质押需等待 {days} 天才能领取                                                        |
 | Stake for slisBNB      | `card.stake.liquid`        | Stake {amount} with Lista for at least {minOut}                                                                  | 在 Lista 质押 {amount}，至少获得 {minOut}                                                   |
 | Unstake slisBNB        | `card.stake.unstakeLiquid` | Unstake {amount} from Lista                                                                                      | 从 Lista 解除质押 {amount}                                                                  |
 | Unbonding time         | `card.stake.unbonding`     | Locked while it unbonds: you can claim it from {readyAt}, in about {days} days, and not sooner                   | 解绑期内锁定：{readyAt} 起可领取，约 {days} 天后，在此之前无法取回                          |
@@ -544,12 +545,14 @@ such as Base or Robinhood Chain, in both languages.
   its address, among the agent's latest 10,000 settled intents, as read when it was quoted.
 - A StakeHub stake, unstake or claim shows `card.stake.validator` right after its action line. A
   stake then shows `card.stake.rate`, the validator's yearly rate as its venue read it before the
-  card ([decision 0327](../DECISIONS.md#d0327)), and leaves it out when the venue gives none. An
-  unstake, on either venue, then shows `card.stake.unbonding`, `{readyAt}` the date and time in
-  the owner's timezone and `{days}` whole days, rounded up: the later of the venue's time at the
-  quote and the card's expiry plus the unbonding time, so a tap late in the card's life is never
-  ready later than the card says. Its receipt, `receipt.unstaked`, names the venue's own time. A stake's card names no cap: a stake
-  over a cap never reaches its card.
+  card ([decision 0327](../DECISIONS.md#d0327)), and leaves it out when the venue gives none; and
+  after it `card.stake.unstakeLater`, `{days}` the venue's unbonding time as its plan read it from
+  the chain, in whole days, rounded up, so the owner knows before staking how long getting the
+  coin back takes. An unstake, on either venue, then shows `card.stake.unbonding`, `{readyAt}` the
+  date and time in the owner's timezone and `{days}` whole days, rounded up: the later of the
+  venue's time at the quote and the card's expiry plus the unbonding time, so a tap late in the
+  card's life is never ready later than the card says. Its receipt, `receipt.unstaked`, names the
+  venue's own time. A stake's card names no cap: a stake over a cap never reaches its card.
 - A bridge shows, after `card.bridge.action`, `card.bridge.arrives`, `card.bridge.fees` and
   `card.bridge.read`, and `card.bridge.solana` when the recipient is on Solana.
   `card.bridge.otherToken` shows among the warnings when the delivered token differs from the

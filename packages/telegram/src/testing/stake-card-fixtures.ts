@@ -24,7 +24,10 @@ const shared = {
 const details = { commissionBps: bpsSchema.parse(700) } as const;
 const dayMs = 86_400_000;
 
-/** A stake of 2 BNB with a named validator, its commission and its yearly rate (spec 4, 3.9). */
+/**
+ * A stake of 2 BNB with a named validator, its commission and its yearly rate, a later unstake of
+ * it waiting 7 days (spec 4, 3.9).
+ */
 export const stakeFacts: CardFacts = {
   ...shared,
   action: {
@@ -33,17 +36,24 @@ export const stakeFacts: CardFacts = {
     amount: bnb(2n),
     validator,
     validatorName: "Legend",
-    details: { ...details, aprBps: 350 },
+    details: { ...details, aprBps: 350, unbondingDays: 7 },
   },
 };
 
 /**
  * A stake of 1 BNB with a validator the venue knows no name for, from a venue that gives no
- * yearly rate: the card names the validator by its address alone and shows no rate.
+ * yearly rate and unbonds in 1 day: the card names the validator by its address alone and shows
+ * no rate.
  */
 export const unnamedStakeFacts: CardFacts = {
   ...shared,
-  action: { kind: "stake", action: "stake", amount: bnb(1n), validator, details },
+  action: {
+    kind: "stake",
+    action: "stake",
+    amount: bnb(1n),
+    validator,
+    details: { ...details, unbondingDays: 1 },
+  },
 };
 
 /**

@@ -10,15 +10,17 @@ const msPerSecond = 1_000;
 /**
  * A staking move's action from its quote (spec 4, section 3.9): a stake names the coin it sends,
  * an unstake and a claim the coin they take out; the validator by its name and address, with its
- * commission and yearly rate, and for an unstake the unbonding time in whole days, rounded up, and
- * when its coin can be claimed: the venue counts from the block the unstake lands in, so the card
- * shows the ready time of one that lands as the card expires, which no tap makes later.
+ * commission and yearly rate. A stake says how many whole days, rounded up, a later unstake of it
+ * waits. An unstake says the same days and when its coin can be claimed: the venue counts from
+ * the block the unstake lands in, so the card shows the ready time of one that lands as the card
+ * expires, which no tap makes later.
  */
 function stakeActionOf(quote: StakeIntentQuote, expiresAtMs: number): CardAction<"stake"> {
   const { plan } = quote;
   const { validator, validatorName, commissionBps, aprBps } = plan;
   const latestMs = expiresAtMs + plan.unbondingSeconds * msPerSecond;
   const readyAtMs = plan.readyAtMs === undefined ? undefined : Math.max(plan.readyAtMs, latestMs);
+  const unbondingDays = Math.ceil(plan.unbondingSeconds / secondsPerDay);
   const base = {
     kind: "stake",
     validator,
@@ -26,12 +28,12 @@ function stakeActionOf(quote: StakeIntentQuote, expiresAtMs: number): CardAction
     details: {
       commissionBps,
       ...(aprBps === undefined || plan.action !== "stake" ? {} : { aprBps }),
+      ...(plan.action === "stake" ? { unbondingDays } : {}),
       ...(readyAtMs === undefined ? {} : { readyAtMs }),
     },
   } as const;
   if (plan.action === "unstake") {
-    const readyInDays = Math.ceil(plan.unbondingSeconds / secondsPerDay);
-    return { ...base, action: "unstake", amount: plan.moved, readyInDays };
+    return { ...base, action: "unstake", amount: plan.moved, readyInDays: unbondingDays };
   }
   return plan.action === "stake"
     ? { ...base, action: "stake", amount: plan.value }

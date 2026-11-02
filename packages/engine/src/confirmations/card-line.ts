@@ -25,6 +25,7 @@ export const cardKeys = [
   "card.stake.claim",
   "card.stake.validator",
   "card.stake.rate",
+  "card.stake.unstakeLater",
   "card.stake.unbonding",
   "card.bridge.action",
   "card.bridge.arrives",

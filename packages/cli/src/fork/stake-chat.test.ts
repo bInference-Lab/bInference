@@ -74,20 +74,22 @@ function receiptUnitsOf(view: IntentView): string {
   return assetRefParts(execution?.amountOut.asset ?? never()).assetReference;
 }
 
-// "stake 1 BNB": the card names the validator with its commission and rate, the owner's tap
-// stakes 1 BNB through StakeHub on the fork, and the card ends with the receipt units it minted.
+// "stake 1 BNB": the card names the validator with its commission and rate, and the 7 days a later
+// unstake waits as StakeHub reads them on the fork; the owner's tap stakes 1 BNB through StakeHub,
+// and the card ends with the receipt units it minted.
 async function stakesOne(chat: Chat, validator: AccountRef): Promise<IntentView> {
   const { fork, machine } = chat;
   const short = shortOf(accountRefParts(validator).address);
   const step = await ask(chat, "stake 1 BNB", 1);
   const lines = step.card.text.split("\n");
-  expect(lines.slice(0, 5)).toStrictEqual([
+  expect(lines.slice(0, 6)).toStrictEqual([
     `${waiting} Confirm stake · rescue 0 · ${liveMark} Live`,
     expect.stringMatching(new RegExp(`^Stake 1 BNB with .+ \\(${short}\\)$`, "u")),
     expect.stringMatching(
       new RegExp(`^Validator .+ \\(${short}\\) · commission \\d+\\.\\d{2}%$`, "u"),
     ),
     expect.stringMatching(/^Yearly rate \d+\.\d{2}%, from its last day of rewards$/u),
+    "Unstaking later takes 7 days before you can claim it",
     'Agent says  "You asked to stake 1 BNB."',
   ]);
   await confirm(machine);

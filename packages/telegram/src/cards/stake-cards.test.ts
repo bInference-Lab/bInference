@@ -24,22 +24,24 @@ const expiry = "Expires at 14:32:05";
 const maxAnswerLength = 200;
 
 describe("staking cards in the owner's chat, in English", () => {
-  it("shows a stake with its validator, commission and yearly rate", async () => {
+  it("shows a stake with its validator, commission, yearly rate and the days an unstake waits", async () => {
     expect((await showTransferCard("en", stakeFacts)).lines).toStrictEqual([
       header("stake"),
       `Stake 2 BNB with ${validator}`,
       `Validator ${validator} · commission 7.00%`,
       "Yearly rate 3.50%, from its last day of rewards",
+      "Unstaking later takes 7 days before you can claim it",
       reason,
       expiry,
     ]);
   });
 
-  it("names an unnamed validator by its address and leaves out a rate the venue gave none of", async () => {
+  it("names an unnamed validator by its address, leaves out a missing rate and says one day", async () => {
     expect((await showTransferCard("en", unnamedStakeFacts)).lines).toStrictEqual([
       header("stake"),
       "Stake 1 BNB with 0x71C7…976F",
       "Validator 0x71C7…976F · commission 7.00%",
+      "Unstaking later takes 1 day before you can claim it",
       reason,
       expiry,
     ]);

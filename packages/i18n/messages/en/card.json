@@ -16,6 +16,7 @@
   "stake.claim": "Claim {amount} from {validator}",
   "stake.validator": "Validator {validator} · commission {commission}",
   "stake.rate": "Yearly rate {rate}, from its last day of rewards",
+  "stake.unstakeLater": "Unstaking later takes {days, plural, one {# day} other {# days}} before you can claim it",
   "stake.unbonding": "Locked while it unbonds: you can claim it from {readyAt}, in about {days, plural, one {# day} other {# days}}, and not sooner",
   "bridge.action": "Bridge {amount} to {chain} · to {recipient} · about {minutes, number} min",
   "bridge.arrives": "{recipient} receives at least {minOut} on {chain}",

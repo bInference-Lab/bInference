@@ -103,6 +103,7 @@ describe("staking through the engine on the BSC fork", () => {
         expect(staked.lines[3]).toMatch(
           /^Yearly rate \d+(?:\.\d+)?%, from its last day of rewards$/u,
         );
+        expect(staked.lines[4]).toBe("Unstaking later takes 7 days before you can claim it");
         expect(staked.state).toBe("reconciled");
         const [held] = await venue.holdings(wallet, { signal });
         expect(held?.stakedValue.base).toBeGreaterThan(bnb - 10n);
