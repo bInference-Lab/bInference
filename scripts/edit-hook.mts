@@ -2,7 +2,7 @@
 // on Node directly, without tsx, so it imports no repo module and finds the repo from its own path.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
@@ -12,7 +12,7 @@ interface Check {
   readonly applies: (file: string) => boolean;
 }
 
-const root = fileURLToPath(new URL("..", import.meta.url));
+const hookRoot = fileURLToPath(new URL("..", import.meta.url));
 const lintable = /\.(?:[cm]?[jt]sx?)$/;
 const formattable = /\.(?:[cm]?[jt]sx?|json|jsonc|md|ya?ml)$/;
 
@@ -28,21 +28,31 @@ function editedFile(input: string): string | undefined {
   return typeof toolInput.file_path === "string" ? toolInput.file_path : undefined;
 }
 
-function bin(name: string): string {
+// The checkout the edited file belongs to. A worktree lives inside the main checkout, and checks
+// run from the main one load both trees' Oxlint configs, which register the guards plugin twice.
+function checkoutOf(path: string): string | undefined {
+  const top = spawnSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd: existsSync(path) ? dirname(path) : hookRoot,
+    encoding: "utf8",
+  });
+  return top.status === 0 ? top.stdout.trim() : undefined;
+}
+
+function bin(root: string, name: string): string {
   return join(root, "node_modules", name, "bin", name);
 }
 
-function checks(file: string): readonly Check[] {
+function checks(root: string, file: string): readonly Check[] {
   return [
     {
       name: "oxfmt",
-      args: [bin("oxfmt"), "--write", file],
+      args: [bin(root, "oxfmt"), "--write", file],
       applies: (path) => formattable.test(path),
     },
     {
       name: "Oxlint",
       args: [
-        bin("oxlint"),
+        bin(root, "oxlint"),
         "--type-aware",
         "--tsconfig",
         "tsconfig.json",
@@ -60,7 +70,7 @@ function checks(file: string): readonly Check[] {
   ];
 }
 
-function run(check: Check): string | undefined {
+function run(root: string, check: Check): string | undefined {
   const result = spawnSync(process.execPath, check.args, { cwd: root, encoding: "utf8" });
   if (result.status === 0) {
     return undefined;
@@ -69,7 +79,7 @@ function run(check: Check): string | undefined {
 }
 
 // Files outside the repo and files git ignores, such as private notes, are not the repo's text.
-function isRepoFile(file: string): boolean {
+function isRepoFile(root: string, file: string): boolean {
   if (file.startsWith("..") || isAbsolute(file) || !existsSync(join(root, file))) {
     return false;
   }
@@ -77,11 +87,13 @@ function isRepoFile(file: string): boolean {
 }
 
 const target = editedFile(readFileSync(0, "utf8"));
-const file = target === undefined ? undefined : relative(root, resolve(root, target));
-if (file !== undefined && isRepoFile(file)) {
-  const failures = checks(file.replaceAll("\\", "/"))
+const path = target === undefined ? undefined : resolve(hookRoot, target);
+const root = path === undefined ? undefined : checkoutOf(path);
+const file = path === undefined || root === undefined ? undefined : relative(root, path);
+if (root !== undefined && file !== undefined && isRepoFile(root, file)) {
+  const failures = checks(root, file.replaceAll("\\", "/"))
     .filter((check) => check.applies(file))
-    .map(run)
+    .map((check) => run(root, check))
     .filter((failure) => failure !== undefined);
   if (failures.length > 0) {
     console.error(failures.join("\n\n"));
