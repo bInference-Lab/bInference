@@ -1,6 +1,6 @@
 import type { ProtocolId } from "@binference/protocol";
 import { bridgeNoticeTable } from "./bridge-notice-table.js";
-import { noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
+import { dailyNothingElse, noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
 import { stakeNoticeTable } from "./stake-notice-table.js";
 import type { WrittenNotice } from "./write-notice.js";
 
@@ -53,8 +53,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
       question: "no",
       limits: "0",
       held: "0",
-      sendLevel: "no",
-      rescue: "no",
+      ...dailyNothingElse,
     },
     parts: {
       liveLine: {

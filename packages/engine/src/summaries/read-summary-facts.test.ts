@@ -1,8 +1,18 @@
-import { accountRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, chainRefSchema, isTxHash } from "@binference/chain";
+import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import type { BridgeDraft } from "../bridges/bridge-record.js";
 import { live } from "../contracts/store-fixtures.js";
-import { testAgent, testNowMs } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testNowMs,
+  testSwap,
+  testWallet,
+} from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
+import type { UnbondingDraft } from "../staking/unbonding-record.js";
 import { summaryFactsOf } from "./read-summary-facts.js";
 import type { SummaryFacts } from "./summary-facts.js";
 import { fixtureDay } from "./test-summary-day.js";
@@ -44,6 +54,8 @@ describe("the facts of an agent's daily summary", () => {
         heldWallets: 1,
         sendLevel: false,
         rescueAddress: false,
+        lateBridges: 0,
+        readyClaims: 0,
       },
     });
   });
@@ -93,7 +105,66 @@ describe("the facts of an agent's daily summary", () => {
         heldWallets: 0,
         sendLevel: false,
         rescueAddress: false,
+        lateBridges: 0,
+        readyClaims: 0,
       },
     });
   });
+
+  it("counts the agent's late bridges and its unstakes ready to claim, live and paper", async () => {
+    const rig = await startDayRig();
+    const [ready, paperReady, later, bridge] = await fourIntents(rig);
+    const nowMs = rig.clock.now();
+    const { unbondings, bridges } = rig.test.stores;
+    const rows: readonly UnbondingDraft[] = [
+      unbondingOf(ready, { isPaper: false, readyAtMs: nowMs }),
+      unbondingOf(paperReady, { isPaper: true, readyAtMs: nowMs - 1 }),
+      unbondingOf(later, { isPaper: false, readyAtMs: nowMs + 1 }),
+    ];
+    await Promise.all(rows.map(async (row) => unbondings.open(row, live())));
+    await bridges.open(bridgeDraft(bridge), live());
+    await bridges.move({ intentId: bridge, expectedVersion: 0, atMs: nowMs, to: "late" }, live());
+    const { waits } = await factsNow(rig);
+    expect([waits.lateBridges, waits.readyClaims]).toStrictEqual([1, 2]);
+  });
 });
+
+// Four intents of the rig's agent, which unbondings and bridges name.
+async function fourIntents(
+  rig: DayRig,
+): Promise<readonly [Id<"int">, Id<"int">, Id<"int">, Id<"int">]> {
+  const propose = async () =>
+    expectOk(await rig.test.engine.handlers["intent/propose"](testCall(testSwap()))).intent;
+  return [await propose(), await propose(), await propose(), await propose()];
+}
+
+function unbondingOf(
+  intentId: Id<"int">,
+  row: { readonly isPaper: boolean; readonly readyAtMs: number },
+): UnbondingDraft {
+  return {
+    intentId,
+    walletId: testWallet,
+    venue: "fake-staking",
+    requestRef: `r-${intentId}`,
+    amount: { asset: testCoin, base: 1n },
+    ...row,
+  };
+}
+
+function bridgeDraft(intentId: Id<"int">): BridgeDraft {
+  const depositTx = `0x${"ab".repeat(32)}`;
+  if (!isTxHash(depositTx)) {
+    throw new Error("The fixture's hash is not one.");
+  }
+  return {
+    intentId,
+    venue: "fake-bridge",
+    depositTx,
+    toChain: chainRefSchema.parse("fake:2"),
+    recipient: accountRefSchema.parse("fake:2:0x0000000c"),
+    sent: { asset: testCoin, base: 1n },
+    minOut: { asset: assetRefSchema.parse("fake:2/slip44:1"), base: 1n },
+    sentAtMs: 1,
+  };
+}

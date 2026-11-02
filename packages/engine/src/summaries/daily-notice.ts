@@ -54,6 +54,8 @@ export function isIdle(facts: SummaryFacts, before?: DailySummaryRecord): boolea
     waits.cards,
     waits.limits,
     waits.heldWallets,
+    waits.lateBridges,
+    waits.readyClaims,
   ];
   const isQuiet = counts.every((count) => count === 0) && facts.spendUsdMicros === 0n;
   return isQuiet && !waits.question && !holdsLive(live, before);
@@ -148,6 +150,8 @@ function lineValues(
     held: String(waits.heldWallets),
     sendLevel: waits.sendLevel ? showLine : hideLine,
     rescue: waits.rescueAddress ? showLine : hideLine,
+    bridges: String(waits.lateBridges),
+    claims: String(waits.readyClaims),
   };
 }
 
@@ -163,7 +167,8 @@ function ownLines(values: Readonly<Record<string, string>>): number {
  * with its total now, its change since the summary 20 to 28 hours ago and what its trades realized,
  * never added together (decision 0134); the auto orders' fills, skips and open orders, each skip
  * reason on a line after it; the model spend against the daily budget; and what waits for the
- * owner, a looser send level and a new rescue address among it. It takes at most twelve lines, and
+ * owner, a looser send level, a new rescue address, late bridges and unstakes ready to claim among
+ * it. It takes at most twelve lines, and
  * the skip reasons at most four of them. Dollars are written once, the same in both languages;
  * the words follow the owner's language as a surface writes them.
  */

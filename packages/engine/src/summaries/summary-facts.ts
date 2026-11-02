@@ -23,6 +23,10 @@ interface OwnerWaits {
   readonly sendLevel: boolean;
   /** Whether a new rescue address of the install waits for its 24 hours. */
   readonly rescueAddress: boolean;
+  /** Bridges of the agent's wallets marked late, whose delivery no read found yet. */
+  readonly lateBridges: number;
+  /** Unstakes of the agent's wallets, live or paper, whose coin a claim can take now. */
+  readonly readyClaims: number;
 }
 
 /** What one agent's daily summary tells: its last 24 hours, and what stands open now. */

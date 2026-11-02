@@ -2,9 +2,10 @@ import type { Id } from "@binference/core";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { limitsValuesOf } from "../agents/limits-record.js";
 import type { ModelUsageStore } from "../billing/ports.js";
+import { bridgesInTransit } from "../bridges/bridges-in-transit.js";
 import type { QuestionStore } from "../chat/ports.js";
 import type { HeldWallet } from "../executor/held-wallets.js";
-import type { InstallFacts } from "../install/install-record.js";
+import type { InstallFacts, WalletRecord } from "../install/install-record.js";
 import type { OrderStore } from "../orders/ports.js";
 import { readAllRows } from "../pnl/read-all-rows.js";
 import { limitsChanged } from "../policy/limit-change.js";
@@ -59,9 +60,32 @@ async function tradesOf(
   return { realizedUsdMicros, trades: executions.length };
 }
 
+// The agent's bridges marked late, and its unstakes, live or paper, a claim can take now.
+async function stakesAndBridgesOf(
+  parts: SummaryFactsParts,
+  window: Read & { readonly wallets: readonly WalletRecord[]; readonly nowMs: number },
+): Promise<Pick<SummaryFacts["waits"], "lateBridges" | "readyClaims">> {
+  const { wallets, nowMs, signal } = window;
+  const ids = new Set(wallets.map(({ id }) => id));
+  const [bridges, rows] = await Promise.all([
+    bridgesInTransit(parts, ids, { signal }),
+    Promise.all(
+      [...ids].flatMap((walletId) =>
+        [false, true].map(async (isPaper) =>
+          parts.unbondings.openOf({ walletId, isPaper }, { signal }),
+        ),
+      ),
+    ),
+  ]);
+  return {
+    lateBridges: bridges.filter(({ late }) => late).length,
+    readyClaims: rows.flat().filter(({ readyAtMs }) => readyAtMs <= nowMs).length,
+  };
+}
+
 // What waits for the owner: the agent's open cards, its question while it can be answered, the
-// looser limits and send level that wait, the install's new rescue address that waits, and the
-// wallets stuck steps hold.
+// looser limits and send level that wait, the install's new rescue address that waits, the
+// wallets stuck steps hold, its late bridges and its unstakes ready to claim.
 async function waitsOf(
   parts: SummaryFactsParts,
   window: SummaryWindow & Read & { readonly install: InstallFacts },
@@ -69,9 +93,11 @@ async function waitsOf(
   const { settings, nowMs, signal, install } = window;
   const agentId = settings.agent.id;
   const states = ["awaiting_confirmation"] as const;
-  const [cards, question] = await Promise.all([
+  const wallets = install.wallets.filter((wallet) => wallet.agentId === agentId);
+  const [cards, question, elsewhere] = await Promise.all([
     parts.intents.list({ states, agentId, limit: countLimit }, { signal }),
     parts.questions.openOf(agentId, { signal }),
+    stakesAndBridgesOf(parts, { wallets, nowMs, signal }),
   ]);
   const { pending } = settings.limits;
   const isWaiting = (wait: { readonly atMs: number } | undefined) =>
@@ -86,6 +112,7 @@ async function waitsOf(
     heldWallets: parts.heldWallets().filter(({ agent }) => agent === agentId).length,
     sendLevel: isWaiting(settings.sendLevel.pending),
     rescueAddress: isWaiting(install.pendingRescue),
+    ...elsewhere,
   };
 }
 

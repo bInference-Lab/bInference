@@ -7,6 +7,17 @@ export const noticeTableCoin: AssetRef = assetRefSchema.parse("fake:1/slip44:1")
 /** 2026-10-11 09:30 UTC, the moment every notice of the notice table names. */
 export const noticeTableAtMs: number = Date.UTC(2026, 9, 11, 9, 30, 0);
 
+/**
+ * What the daily summary of the notice table leaves out of its waiting lines: no looser send
+ * level, no new rescue address, no late bridge and no unstake ready to claim.
+ */
+export const dailyNothingElse: Readonly<Record<string, string>> = {
+  sendLevel: "no",
+  rescue: "no",
+  bridges: "0",
+  claims: "0",
+};
+
 /** The agent, values and parts the notices of the notice table share. */
 export interface NoticeTableParts {
   /** The agent the table's notices name. */

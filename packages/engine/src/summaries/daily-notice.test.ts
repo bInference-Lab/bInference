@@ -27,6 +27,8 @@ const quiet: SummaryFacts = {
     heldWallets: 0,
     sendLevel: false,
     rescueAddress: false,
+    lateBridges: 0,
+    readyClaims: 0,
   },
 };
 
@@ -119,6 +121,8 @@ describe("a daily summary with much to tell", () => {
         heldWallets: 1,
         sendLevel: true,
         rescueAddress: true,
+        lateBridges: 0,
+        readyClaims: 0,
       },
     };
     expect(written({ facts })).toStrictEqual([
@@ -135,6 +139,30 @@ describe("a daily summary with much to tell", () => {
       "A new rescue address takes effect within 24 hours",
       "6 skips for other reasons",
     ]);
+  });
+});
+
+const waiting = (lateBridges: number, readyClaims: number): { readonly facts: SummaryFacts } => ({
+  facts: { ...quiet, waits: { ...quiet.waits, lateBridges, readyClaims } },
+});
+
+describe("a daily summary of bridges and unstakes", () => {
+  it("tells how many bridges are late and how many unstakes are ready to claim", () => {
+    expect(written(waiting(2, 1)).slice(3)).toStrictEqual([
+      "2 bridges are late",
+      "1 unstake is ready to claim",
+    ]);
+    expect(written(waiting(1, 3)).slice(3)).toStrictEqual([
+      "1 bridge is late",
+      "3 unstakes are ready to claim",
+    ]);
+    expect(written(waiting(0, 0))).toHaveLength(3);
+  });
+
+  it("keeps an agent that waits on them from being idle", () => {
+    const idle = { ...quiet, live: { totalUsdMicros: 0n, realizedUsdMicros: 0n, trades: 0 } };
+    expect(isIdle({ ...idle, waits: { ...idle.waits, lateBridges: 1 } })).toBe(false);
+    expect(isIdle({ ...idle, waits: { ...idle.waits, readyClaims: 1 } })).toBe(false);
   });
 });
 
