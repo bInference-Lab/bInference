@@ -1,4 +1,4 @@
-import { mcpTools, type ResultOf } from "@binference/protocol";
+import { mcpTools, operations, type ResultOf } from "@binference/protocol";
 import { Client } from "@modelcontextprotocol/client";
 import { InMemoryTransport } from "@modelcontextprotocol/server";
 import { describe, expect, it } from "vitest";
@@ -190,6 +190,87 @@ describe("createMcpServer", () => {
       expect(textsOf(answer)).toStrictEqual([
         "binference_intent_status failed with internal.error: The MCP server failed to answer this call.",
       ]);
+    });
+  });
+});
+
+const token = "fake:1/token:0x0000000a";
+const validator = "fake:1:0x0000000c";
+const agent = fixtureIds.agent;
+const reason = "The owner asked for it.";
+const amount = { asset: token, base: "20000000" };
+
+const transferAnswers = {
+  "address/list": operations["address/list"].result.parse({ items: [] }),
+  "staking/options": operations["staking/options"].result.parse({ items: [], assets: {} }),
+  "bridge/quote": operations["bridge/quote"].result.parse({ items: [], assets: {} }),
+  "intent/propose": proposedIntent("awaiting_confirmation"),
+};
+
+const transferReads = [
+  ["binference_addresses", "address/list", { agent }],
+  ["binference_staking_options", "staking/options", { chain: "fake:1", agent }],
+  ["binference_bridge_quote", "bridge/quote", { agent, amount, toChain: "fake:2" }],
+] as const;
+
+const transferProposals = [
+  ["a send to a .bnb name", { kind: "send", agent, reason, amount, to: { name: "alice.bnb" } }],
+  [
+    "a bridge to the rescue address",
+    { kind: "bridge", agent, reason, amount, toChain: "fake:2", to: { rescue: true } },
+  ],
+  ["an approval revoke", { kind: "revokeApproval", agent, reason, token, spender: validator }],
+  [
+    "a stake",
+    {
+      kind: "stake",
+      agent,
+      reason,
+      action: "stake",
+      venue: "fake-stake",
+      validator,
+      amount: { asset: "fake:1/slip44:1", base: "1000000000000000000" },
+    },
+  ],
+  ["a claim", { kind: "stake", agent, reason, action: "claim", venue: "fake-stake", validator }],
+] as const;
+
+describe("the staking, bridge and send tools", () => {
+  it.each(transferReads)("let %s read %s, marked read-only", async (name, operation, args) => {
+    await withSession(transferAnswers, async ({ mcp, engine }) => {
+      const { tools } = await mcp.listTools();
+      expect(tools.find((tool) => tool.name === name)?.annotations?.readOnlyHint).toBe(true);
+      const answer = await mcp.callTool({ name, arguments: args });
+      expect(answer.isError).toBeFalsy();
+      expect(engine.calls.map((call) => [call.op, parsed(call.args)])).toStrictEqual([
+        [operation, args],
+      ]);
+    });
+  });
+
+  it.each(transferProposals)(
+    "propose %s through binference_propose as the client wrote it",
+    async (_case, args) => {
+      await withSession(transferAnswers, async ({ mcp, engine }) => {
+        const answer = await mcp.callTool({ name: "binference_propose", arguments: args });
+        expect(answer.isError).toBeFalsy();
+        expect(engine.calls.map((call) => [call.op, parsed(call.args)])).toStrictEqual([
+          ["intent/propose", args],
+        ]);
+      });
+    },
+  );
+
+  it("tell the model which fields each transfer and staking kind takes", async () => {
+    await withSession({}, async ({ mcp }) => {
+      const { tools } = await mcp.listTools();
+      const propose = tools.find((tool) => tool.name === "binference_propose")?.description;
+      expect(propose).toContain("send: amount {asset, base}, to;");
+      expect(propose).toContain("revokeApproval: token, spender;");
+      expect(propose).toContain("stake: action, venue, validator?, amount? {asset, base};");
+      expect(propose).toContain("bridge: amount {asset, base}, toChain, to;");
+      expect(propose).toContain("{ name } with a .bnb name exactly as the user wrote it");
+      expect(propose).toContain("an entry id from binference_addresses");
     });
   });
 });

@@ -125,6 +125,20 @@ describe("the recorded run's MCP server", () => {
     expect(jsonOf(usdt)).toMatchObject({ items: [{ asset: skillRunIds.usdt, symbol: "USDT" }] });
   }, 30_000);
 
+  it("reads the agent's saved addresses and the staking options on its chain", async () => {
+    served = await serve();
+    const agent = skillRunIds.agent;
+    await served.mcp.callTool({ name: "binference_addresses", arguments: { agent } });
+    const chain = skillRunIds.bnb.slice(0, skillRunIds.bnb.indexOf("/"));
+    const staking = { chain, agent };
+    await served.mcp.callTool({ name: "binference_staking_options", arguments: staking });
+    const [addresses, options] = served.calls();
+    expect(addresses?.answer?.isError).toBe(false);
+    expect(jsonOf(addresses)).toStrictEqual({ items: [] });
+    expect(options?.answer?.isError).toBe(false);
+    expect(jsonOf(options)).toMatchObject({ items: [] });
+  }, 30_000);
+
   it("records a refused call as an error answer", async () => {
     served = await serve();
     const unknownAgent = { ...swap, agent: "agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff" };

@@ -7,10 +7,13 @@ describe("mcpTools", () => {
     expect(mcpTools.map((tool) => [tool.name, tool.operation])).toStrictEqual([
       ["binference_agents", "agent/list"],
       ["binference_token_search", "asset/search"],
+      ["binference_addresses", "address/list"],
       ["binference_portfolio", "portfolio/get"],
       ["binference_token_info", "asset/get"],
       ["binference_token_risk", "risk/check"],
       ["binference_quote", "quote/get"],
+      ["binference_bridge_quote", "bridge/quote"],
+      ["binference_staking_options", "staking/options"],
       ["binference_orders", "order/list"],
       ["binference_resolve_name", "name/resolve"],
       ["binference_propose", "intent/propose"],

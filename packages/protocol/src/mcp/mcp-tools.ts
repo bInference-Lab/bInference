@@ -16,17 +16,20 @@ export interface McpTool {
 
 /**
  * The tools of `binference mcp`, one to one onto operations (protocol spec section 11). The MCP
- * server holds only the `read` and `propose` scopes, so no tool can confirm. The agent list and
- * the token search come first, as a client finds its ids there before it quotes or proposes. The
- * propose tools, which open a card, take a request id.
+ * server holds only the `read` and `propose` scopes, so no tool can confirm. The agent list, the
+ * token search and the address book come first, as a client finds its ids there before it quotes
+ * or proposes. The propose tools, which open a card, take a request id.
  */
 export const mcpTools: readonly McpTool[] = [
   { name: "binference_agents", operation: "agent/list" },
   { name: "binference_token_search", operation: "asset/search" },
+  { name: "binference_addresses", operation: "address/list" },
   { name: "binference_portfolio", operation: "portfolio/get" },
   { name: "binference_token_info", operation: "asset/get" },
   { name: "binference_token_risk", operation: "risk/check" },
   { name: "binference_quote", operation: "quote/get" },
+  { name: "binference_bridge_quote", operation: "bridge/quote" },
+  { name: "binference_staking_options", operation: "staking/options" },
   { name: "binference_orders", operation: "order/list" },
   { name: "binference_resolve_name", operation: "name/resolve" },
   { name: "binference_propose", operation: "intent/propose", takesRequestId: true },
