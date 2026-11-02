@@ -27,10 +27,13 @@ interface Call {
   readonly signal: AbortSignal;
 }
 
+// Each validator the venue lists; a liquid venue's one pool is marked (decision 0331).
 function venueItems(venue: StakingVenue, read: StakingOptions): readonly Item[] {
+  const pool = venue.pool === undefined ? {} : { pool: true as const };
   return read.validators.map(({ validator, name, commissionBps, aprBps, jailed }) => ({
     venue: venue.id,
     validator,
+    ...pool,
     name,
     commissionBps,
     ...(aprBps === undefined ? {} : { aprBps }),

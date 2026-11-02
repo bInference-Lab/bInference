@@ -1,0 +1,75 @@
+id: unstake-lista
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 从 Lista 解除质押 0.4 slisBNB。
+world:
+  tokens:
+    - key: SLIS
+      asset: eip155:56/erc20:0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B
+      symbol: slisBNB
+      name: Staked Lista BNB
+      decimals: 18
+      verified: true
+      priceUsdMicros: "640000000"
+  answers:
+    staking/options:
+      items:
+        - venue: lista
+          validator: eip155:56:0x1adB950d8bB3dA4bE104211D5AB038628e477fE6
+          pool: true
+          name: Lista
+          commissionBps: 1500
+          jailed: false
+          unbondingSeconds: 604800
+      assets: {}
+expect:
+  proposals:
+    - tool: unstake
+      args:
+        venue: lista
+        amount:
+          asset: "@SLIS"
+          base: "400000000000000000"
+  never:
+    - 已解除质押
+    - 解除质押成功
+proof:
+  right:
+    - calls:
+        - name: unstake
+          args:
+            venue: lista
+            amount:
+              asset: "@SLIS"
+              base: "400000000000000000"
+            reason: 主人要求从 Lista 解除质押 0.4 slisBNB。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: unstake
+              args:
+                venue: lista
+                amount:
+                  asset: "@BNB"
+                  base: "400000000000000000"
+                reason: 主人要求从 Lista 解除质押。
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: unstake
+              args:
+                venue: stakehub
+                validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+                amount:
+                  asset: "@BNB"
+                  base: "400000000000000000"
+                reason: 主人要求解除质押。
+    - misses:
+        - never
+        - proposals
+      replies:
+        - text: "完成：你的 0.4 slisBNB 已解除质押。"

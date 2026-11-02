@@ -86,6 +86,7 @@ export const protocolErrorCodes = [
   "intent.extra_wallet",
   "intent.launch_picture_too_large",
   "intent.kind_unavailable",
+  "intent.pool_venue",
   "order.not_found",
   "order.wrong_state",
   "order.kind_unavailable",

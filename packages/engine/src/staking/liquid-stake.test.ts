@@ -74,17 +74,34 @@ describe("staking on a liquid pool (decision 0331)", () => {
     expect([claim.state, claim.outcome?.reason]).toStrictEqual(["paper_filled", undefined]);
   });
 
+  it("marks the pool in the staking options, which a request on it never names", async () => {
+    const fake = testLiquidFake();
+    const test = await startLiquidEngine(fake);
+    const read = await test.engine.handlers["staking/options"](testCall({ chain: fake.chain }));
+
+    expect(expectOk(read).items).toMatchObject([
+      { venue: "fake-liquid", validator: fake.pool, pool: true, name: "Pool" },
+    ]);
+  });
+
   it("refuses a validator, an unstake in coin, or a claim with an amount before anything is stored", async () => {
-    const test = await startLiquidEngine(testLiquidFake());
+    const fake = testLiquidFake();
+    const test = await startLiquidEngine(fake);
     const asks = [
       liquidRequest("stake", { validator: testValidator }),
+      liquidRequest("claim", { validator: fake.pool }),
       liquidRequest("unstake", { amount: { ...units(1n), asset: "fake:1/slip44:1" as never } }),
       liquidRequest("claim", { amount: units(1n) }),
     ];
 
     const answers = await Promise.all(asks.map(async (request) => answerOf(test, request)));
 
-    expect(answers).toStrictEqual(["protocol.bad_args", "protocol.bad_args", "protocol.bad_args"]);
+    expect(answers).toStrictEqual([
+      "intent.pool_venue",
+      "intent.pool_venue",
+      "intent.pool_venue",
+      "protocol.bad_args",
+    ]);
   });
 
   it("draws a stake's, an unstake's and a claim's cards with the pool's name and no validator", async () => {

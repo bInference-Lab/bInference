@@ -689,6 +689,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | validator                                          | 验证者                       | Native BNB staking                      |
 | commission (a validator's), jailed                 | 佣金, 被监禁                 | A jailed validator earns nothing        |
 | unbonding, unbonding time                          | 解绑中, 解绑期               | After an unstake, before a claim        |
+| pool (a liquid staking venue's one pool)           | 质押池                       | Lista's stake manager; no validator     |
 | destination chain                                  | 目标链                       | Where a bridge delivers                 |
 | delivery, delivered (a bridge's)                   | 到账, 已到账                 |                                         |
 | in transit (a bridge)                              | 在途                         |                                         |

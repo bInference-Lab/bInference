@@ -177,6 +177,28 @@ async function unstakedAssetOf(
   return receipt.ok ? receipt.value : undefined;
 }
 
+// Whether the request asks a liquid venue as if it were one of validators: it names a validator, or
+// an unstake names the chain's coin where the venue takes its receipt token (decision 0331).
+function asksPoolAsValidators(
+  options: StakeResolveOptions,
+  request: StakeRequest,
+  place: StakePlace | undefined,
+): boolean {
+  const pooled = options.staking.venuesWith(request.venue).some(({ pool }) => pool !== undefined);
+  if (request.validator !== undefined) {
+    return pooled && place === undefined;
+  }
+  if (
+    place?.venue.pool === undefined ||
+    request.action !== "unstake" ||
+    request.amount === undefined
+  ) {
+    return false;
+  }
+  const asset = canonicalAsset(options.chains, request.amount.asset);
+  return asset.ok && asset.value === nativeAssetOf(place.chain);
+}
+
 /**
  * Resolves a staking request for its path (decisions 0327 and 0331): the validator's chain and
  * the staking venue the engine runs there under the request's venue id, or a liquid venue's pool
@@ -185,7 +207,9 @@ async function unstakedAssetOf(
  * on a venue of validators, or one on a liquid venue, a venue the engine does not run on that
  * chain, an amount of another asset than the chain's coin, or than the receipt token for a liquid
  * venue's unstake, none on a stake, or one on a claim, is `protocol.bad_args`; a liquid venue
- * that cannot name its receipt token is `quote.venue_down`. None stores anything.
+ * that cannot name its receipt token is `quote.venue_down`. A request that names a validator on a
+ * liquid venue, or names its unstake in the chain's coin there, is `intent.pool_venue`, whose words
+ * give the next step. None stores anything.
  */
 export async function resolveStake(
   options: StakeResolveOptions,
@@ -193,6 +217,9 @@ export async function resolveStake(
 ): Promise<Result<ResolvedStake, ProtocolErrorCode>> {
   const { request, settings, isPaper, signal } = resolving;
   const place = placeOf(options, request);
+  if (asksPoolAsValidators(options, request, place)) {
+    return err("intent.pool_venue");
+  }
   const nativeAsset = place === undefined ? undefined : nativeAssetOf(place.chain);
   if (place === undefined || nativeAsset === undefined) {
     return err("protocol.bad_args");

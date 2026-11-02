@@ -32,6 +32,11 @@ interface StakingOptionsArgs extends StakingOptionsTerms {
 interface StakingOptionView {
   readonly venue: string;
   readonly validator: AccountRef;
+  /**
+   * Set on a liquid venue's one pool (decision 0331): a stake, an unstake or a claim there names
+   * no validator, and an unstake names its amount in the receipt token the stake minted.
+   */
+  readonly pool?: true;
   readonly name: string;
   readonly commissionBps: number;
   /** Absent when the venue gives none. */
@@ -59,6 +64,7 @@ export interface StakingOperationShapes {
 const stakingOptionViewSchema: z.ZodType<StakingOptionView> = z.object({
   venue: z.string().min(1).max(32),
   validator: accountRefSchema,
+  pool: z.literal(true).exactOptional(),
   name: z.string().min(1).max(64),
   commissionBps: z.int().min(0).max(10_000),
   aprBps: z.int().min(0).exactOptional(),
