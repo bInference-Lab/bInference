@@ -4,8 +4,9 @@ import type { StakingVenue } from "@binference/chain/staking";
 import { BinferenceError } from "@binference/core";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { createStakeHubVenue } from "@binference/stakehub";
-import { type Address, parseAbi, toHex } from "viem";
+import { type Address, toHex } from "viem";
 import { describe, expect, it } from "vitest";
+import { activeValidator } from "./active-validator.js";
 import { startMining } from "./executor-rig.js";
 import { rescueAgents } from "./rescue-rig-parts.js";
 import { type RescueRig, rescueRigOf } from "./rescue-rig.js";
@@ -18,9 +19,6 @@ const hub = bscContract("stakehub", "stake-hub");
 const govToken = bscContract("stakehub", "gov-token");
 const multicall = bscContract("multicall3", "multicall3");
 const bnb = 10n ** 18n;
-const listAbi = parseAbi([
-  "function getValidators(uint256 offset, uint256 limit) view returns (address[], address[], uint256)",
-]);
 const [agent] = rescueAgents;
 
 const accountOf = (fork: Fork, address: Address): AccountRef =>
@@ -35,33 +33,6 @@ function stakeHubOn(fork: Fork): StakingVenue {
     contracts: { "stake-hub": accountOf(fork, hub), "gov-token": accountOf(fork, govToken) },
     multicall: accountOf(fork, multicall),
   });
-}
-
-// The first validator StakeHub lists that takes a stake now.
-// StakeHub's list is read apart, since one read of every validator's views takes the fork longer
-// than its public node keeps the block's state.
-async function activeValidator(
-  fork: Fork,
-  context: { readonly venue: StakingVenue; readonly wallet: AccountRef },
-  signal: AbortSignal,
-): Promise<AccountRef> {
-  const [operators] = await fork.client.readContract({
-    address: hub,
-    abi: listAbi,
-    functionName: "getValidators",
-    args: [0n, 0n],
-  });
-  for (const operator of operators.slice(0, 8)) {
-    const validator = accountOf(fork, operator);
-    const amount = { asset: fork.chain.nativeAsset, base: bnb };
-    const ask = { action: "stake", wallet: context.wallet, validator, amount } as const;
-    // oxlint-disable-next-line eslint/no-await-in-loop -- the first validator that takes it wins
-    const planned = await context.venue.plan(ask, { signal });
-    if (planned.ok) {
-      return validator;
-    }
-  }
-  throw new BinferenceError({ code: "fork.no_validator", message: "No validator takes a stake." });
 }
 
 function stakeOf(
