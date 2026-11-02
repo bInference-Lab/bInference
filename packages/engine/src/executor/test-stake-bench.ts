@@ -108,7 +108,7 @@ export function landing(
  */
 export async function stakeBench(
   venue: StakingVenue,
-  options: Pick<BenchOptions, "limits"> & { readonly chains?: ChainRegistry } = {},
+  options: Pick<BenchOptions, "limits" | "network"> & { readonly chains?: ChainRegistry } = {},
 ): Promise<ExecutorBench> {
   const { chains = stakingChains(), ...rest } = options;
   const staking = createStakingHost({

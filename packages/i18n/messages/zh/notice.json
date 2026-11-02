@@ -82,5 +82,6 @@
   "daily": "{agent} 的每日摘要（过去 24 小时）{live, select, yes {\n{liveLine}} other {}}{paper, select, yes {\n{paperLine}} other {}}{orders, select, yes {\n{ordersLine}} other {}}\n{spendLine}{cards, plural, =0 {} other {\n# 张卡片等你回复}}{question, select, yes {\nAgent 在等你回答它的问题} other {}}{limits, plural, =0 {} other {\n# 项放宽的限额将在 24 小时内生效}}{held, plural, =0 {} other {\n# 个钱包因链上交易卡住而等待}}{sendLevel, select, yes {\n放宽的转账级别将在 24 小时内生效} other {}}{rescue, select, yes {\n新的紧急转出地址将在 24 小时内生效} other {}}{bridges, plural, =0 {} other {\n# 笔跨链已延迟}}{claims, plural, =0 {} other {\n# 笔解除质押可以领取}}",
   "claimReady": "你从 {validator} 解除质押的 {amount} 现在可以领取",
   "claimedElsewhere": "你从 {validator} 解除质押的 {amount} 已在 binference 之外被领取，已回到你的钱包",
-  "stakeMintedFewer": "⚠️ 你在 {venue} 质押的 {amount} 已上链，但兑换率在上链前变动：只铸造了 {minted}，少于卡片承诺的至少 {least}。binference 已按实际铸造的 {minted} 记账。"
+  "stakeMintedFewer": "⚠️ 你在 {venue} 质押的 {amount} 已上链，但兑换率在上链前变动：只铸造了 {minted}，少于卡片承诺的至少 {least}。binference 已按实际铸造的 {minted} 记账。",
+  "stakeApprovalLeft": "⚠️ 你在 {venue} 的解除质押在授权上链后停止：{venue} 仍可从此钱包动用 {approved}，但只能用于此钱包自己发起的解除质押。如仍需要，请重新发起解除质押，它会重新设置该授权。"
 }

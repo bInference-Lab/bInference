@@ -5,8 +5,9 @@ const { coinAmount } = noticeTableParts;
 
 /**
  * One notice of each staking key of spec 4, section 4, as the engine publishes it: an unstake's
- * coin a claim can take now (decision 0327), one claimed outside binference, and a stake that
- * minted fewer receipt units than its card promised (decision 0331).
+ * coin a claim can take now (decision 0327), one claimed outside binference, a stake that minted
+ * fewer receipt units than its card promised, and an unstake's approval left standing (decision
+ * 0331).
  */
 export const stakeNoticeTable: Readonly<Record<string, WrittenNotice>> = {
   "notice.claimReady": {
@@ -23,5 +24,10 @@ export const stakeNoticeTable: Readonly<Record<string, WrittenNotice>> = {
     key: "notice.stakeMintedFewer",
     values: { venue: "Pool" },
     amounts: { amount: coinAmount(2_000n), minted: coinAmount(1_800n), least: coinAmount(1_810n) },
+  },
+  "notice.stakeApprovalLeft": {
+    key: "notice.stakeApprovalLeft",
+    values: { venue: "Pool" },
+    amounts: { approved: coinAmount(1_800n) },
   },
 };

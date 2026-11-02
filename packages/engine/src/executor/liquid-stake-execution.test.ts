@@ -1,4 +1,4 @@
-import type { ChainRegistry, RegisteredChain } from "@binference/chain";
+import type { Amount, ChainRegistry, RegisteredChain } from "@binference/chain";
 import type { LandedStake, StakePlan, StakeRequest, StakingVenue } from "@binference/chain/staking";
 import { ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
@@ -72,6 +72,17 @@ function mintingLess<T extends StakingVenue>(fake: T) {
     return seen.landed === undefined ? read : ok(seen.landed);
   };
   return { venue: { ...fake, landed }, seen };
+}
+
+// The payload of the request call an unstake of `units` builds, after the approval it makes first.
+async function requestPayloadOf(units: Amount): Promise<string> {
+  const venue = testLiquidFake();
+  const asked = { wallet: testAccount, validator: venue.pool };
+  const stake = await plannedOn(venue, { ...asked, action: "stake", amount: halfCoin });
+  venue.run(await venue.build(stake, live));
+  const unstake = await plannedOn(venue, { ...asked, action: "unstake", amount: units });
+  const drafts = await venue.build(unstake, live);
+  return drafts.at(-1)?.payload ?? "";
 }
 
 async function boughtOf(bench: ExecutorBench) {
@@ -204,6 +215,42 @@ describe("a live move on a liquid pool (decision 0331)", () => {
     const [booked] = await boughtOf(bench);
     expect(booked?.bought).toStrictEqual(seen.landed?.shares);
     expect(noticeKeysOf(bench)).toContain("notice.stakeMintedFewer");
+  });
+
+  it("tells the owner of the approval an unstake left once its request reverted", async () => {
+    const units = { asset: testPoolReceipt, base: 10n ** 17n };
+    const reverting = [await requestPayloadOf(units)];
+    const bench = await stakeBench(landing(testLiquidFake()), {
+      chains: liquidChains(),
+      network: { reverting },
+    });
+    const stake = await tapped(bench, liquidRequest("stake"));
+    await bench.release();
+    await expect(driveUntil(bench, stake, { states: stakeEnds })).resolves.toBe("reconciled");
+    expect(noticeKeysOf(bench)).not.toContain("notice.stakeApprovalLeft");
+
+    const unstake = await tapped(bench, liquidRequest("unstake", { amount: units }));
+    await bench.release();
+    await expect(driveUntil(bench, unstake, { states: stakeEnds })).resolves.toBe("failed_onchain");
+    expect(noticeKeysOf(bench)).toContain("notice.stakeApprovalLeft");
+  });
+
+  it("tells the owner of the approval an unstake left once its request would fail and is never signed", async () => {
+    const units = { asset: testPoolReceipt, base: 10n ** 17n };
+    const bench = await stakeBench(landing(testLiquidFake()), { chains: liquidChains() });
+    const stake = await tapped(bench, liquidRequest("stake"));
+    await bench.release();
+    await expect(driveUntil(bench, stake, { states: stakeEnds })).resolves.toBe("reconciled");
+
+    const unstake = await tapped(bench, liquidRequest("unstake", { amount: units }));
+    bench.network.failing(await requestPayloadOf(units));
+    await bench.release();
+    await expect(driveUntil(bench, unstake, { states: stakeEnds })).resolves.toBe("failed_onchain");
+    await expect(stakeReasonOf(bench, unstake)).resolves.toBe("step_unsent");
+    expect(noticeKeysOf(bench).slice(-2)).toStrictEqual([
+      "notice.stepUnsent",
+      "notice.stakeApprovalLeft",
+    ]);
   });
 
   it("lets the signer reach the pool's declared spender only for a liquid unstake", async () => {

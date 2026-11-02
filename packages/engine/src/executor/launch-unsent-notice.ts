@@ -4,19 +4,11 @@ import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { type Notice, noticePush } from "../pushes/notice-push.js";
 import type { ExecutionRun } from "./executor-run.js";
+import { standingApprovalOf } from "./standing-approval.js";
 
 // The owner's notices of a launch ended on a step that was never signed (decision 0289).
 const notSignedKey = "notice.launchNotSigned";
 const stepUnsentKey = "notice.launchStepUnsent";
-
-// The last approval among the steps that landed before `index`, as the family reads it.
-function standingApprovalOf(run: ExecutionRun, index: number) {
-  const { family } = run.plan.chain;
-  return run.plan.steps
-    .slice(0, index)
-    .map((draft) => family.readDraft(draft))
-    .findLast((read) => read.ok && read.value.approval !== undefined);
-}
 
 // What the notice says of the launch: its symbol, its launchpad, and whether its picture and
 // words stayed private, as its stored quote holds no upload's pin.
@@ -44,8 +36,7 @@ export function launchUnsentNotice(
   ended: IntentRecord,
   index: number,
 ): EnginePush {
-  const read = ended.state === "cancelled" ? undefined : standingApprovalOf(run, index);
-  const approval = read?.ok === true ? read.value.approval : undefined;
+  const approval = ended.state === "cancelled" ? undefined : standingApprovalOf(run, index);
   const told = { agent: ended.agentId, intent: ended.id, values: launchValuesOf(ended) };
   const notice: Notice =
     approval === undefined

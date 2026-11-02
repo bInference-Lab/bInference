@@ -6,6 +6,7 @@ import { noticePush } from "../pushes/notice-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import { endDropped } from "./end-dropped.js";
+import { endFailedStep } from "./end-failed-step.js";
 import { endRefusedFill } from "./end-refused-fill.js";
 import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
@@ -183,8 +184,8 @@ async function endLanded(
   if (ended.outcome === "dropped") {
     return endDropped(run, taken.snapshot, ended.transaction);
   }
-  const type = ended.outcome === "cancelled" ? "step_cancelled" : "step_reverted";
-  await moveIntent(run, taken.snapshot, { type });
+  const isCancel = ended.outcome === "cancelled";
+  await endFailedStep(run, taken.snapshot, { isCancel, step: ended.transaction.step });
   return undefined;
 }
 

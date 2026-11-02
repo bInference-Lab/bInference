@@ -3,6 +3,7 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { endDropped } from "./end-dropped.js";
+import { endFailedStep } from "./end-failed-step.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import { currentSteps } from "./recover-steps.js";
 import { sendAndWatch } from "./send-and-watch.js";
@@ -145,8 +146,8 @@ async function recoverReorg(
     return undefined;
   }
   if (watched.outcome !== "included") {
-    const type = watched.outcome === "cancelled" ? "step_cancelled" : "step_reverted";
-    await moveIntent(run, executing, { type });
+    const isCancel = watched.outcome === "cancelled";
+    await endFailedStep(run, executing, { isCancel, step: watched.transaction.step });
     return undefined;
   }
   const included = await moveIntent(run, executing, { type: "steps_included" });
