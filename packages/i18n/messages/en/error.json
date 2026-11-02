@@ -59,6 +59,7 @@
   "address.unknown_chain": "binference cannot save an address on this chain. Save it on BNB Smart Chain, or on a chain a bridge delivers to: Ethereum, Base, Arbitrum, Robinhood Chain or Solana.",
   "address.chain_full": "This agent has 100 addresses saved for that chain, the most one rule of the ceiling lists. Remove one saved for that chain first.",
   "address.own_wallet": "This address is one of binference's own wallets, which no bridge may pay on another chain. Save a wallet you hold outside binference.",
+  "address.no_recipient": "Name a saved address on that chain to bridge to: the rescue address cannot be paid there. Ask the owner which saved address to use.",
   "rescue.no_address": "Set a rescue address first: run `binference rescue set` with your own wallet's address.",
   "rescue.nothing_to_move": "No agent wallet holds anything to rescue.",
   "signer.not_found": "No wallet lists this signer. Check the signer ID that `binference init --attach` printed, or the key quorums on Privy's dashboard.",

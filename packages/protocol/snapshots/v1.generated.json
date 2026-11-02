@@ -478,6 +478,7 @@
         "address.unknown_chain",
         "address.chain_full",
         "address.own_wallet",
+        "address.no_recipient",
         "rescue.no_address",
         "rescue.nothing_to_move",
         "signer.not_found",
@@ -12498,6 +12499,314 @@
                   "unbonding",
                   "claimable",
                   "paper"
+                ]
+              }
+            },
+            "assets": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "decimals": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "verified": {
+                    "type": "boolean"
+                  },
+                  "onCurve": {
+                    "type": "boolean"
+                  },
+                  "logo": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "name",
+                  "decimals",
+                  "verified"
+                ]
+              }
+            }
+          },
+          "required": [
+            "items",
+            "assets"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/bridge/quote": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "bridge/quote"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "wallet": {
+              "type": "string",
+              "pattern": "^wal_"
+            },
+            "amount": {
+              "type": "object",
+              "properties": {
+                "asset": {
+                  "type": "string"
+                },
+                "base": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                }
+              },
+              "required": [
+                "asset",
+                "base"
+              ],
+              "additionalProperties": false
+            },
+            "toChain": {
+              "type": "string"
+            },
+            "to": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "entry": {
+                      "type": "string",
+                      "pattern": "^adr_"
+                    }
+                  },
+                  "required": [
+                    "entry"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "rescue": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "rescue"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "agent",
+            "amount",
+            "toChain"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/bridge/quote": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "venue": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                  },
+                  "toChain": {
+                    "type": "string"
+                  },
+                  "sentAsset": {
+                    "type": "string"
+                  },
+                  "deliveredAsset": {
+                    "type": "string"
+                  },
+                  "amountIn": {
+                    "type": "object",
+                    "properties": {
+                      "asset": {
+                        "type": "string"
+                      },
+                      "base": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "asset",
+                      "base"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "expectedOut": {
+                    "type": "object",
+                    "properties": {
+                      "asset": {
+                        "type": "string"
+                      },
+                      "base": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "asset",
+                      "base"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "minOut": {
+                    "type": "object",
+                    "properties": {
+                      "asset": {
+                        "type": "string"
+                      },
+                      "base": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "asset",
+                      "base"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "fees": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "bridge",
+                            "relayer",
+                            "gas"
+                          ]
+                        },
+                        "amount": {
+                          "type": "object",
+                          "properties": {
+                            "asset": {
+                              "type": "string"
+                            },
+                            "base": {
+                              "type": "string",
+                              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                            }
+                          },
+                          "required": [
+                            "asset",
+                            "base"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "amount"
+                      ]
+                    }
+                  },
+                  "etaSeconds": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "quotedAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "expiresAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "venue",
+                  "toChain",
+                  "sentAsset",
+                  "deliveredAsset",
+                  "amountIn",
+                  "expectedOut",
+                  "minOut",
+                  "fees",
+                  "etaSeconds",
+                  "quotedAt",
+                  "expiresAt"
                 ]
               }
             },

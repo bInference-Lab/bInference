@@ -1,3 +1,4 @@
+import type { BridgeOperationShapes } from "../operations/bridge-operations.schema.js";
 import type { LaunchDraftOperationShapes } from "../operations/launch-draft-operations.schema.js";
 import type { LaunchpadOperationShapes } from "../operations/launchpad-operations.schema.js";
 import type { StakingOperationShapes } from "../operations/staking-operations.schema.js";
@@ -74,6 +75,36 @@ export const stakingExamples: { readonly [N in keyof StakingOperationShapes]: Wi
           unbonding: [{ amount: nativeAmount, readyAt: at }],
           claimable: { asset: refs.native, base: "0" },
           paper: true,
+        },
+      ],
+      assets: {},
+    },
+  },
+};
+
+/** An example call of the bridge read: one route of the example token to another chain. */
+export const bridgeExamples: { readonly [N in keyof BridgeOperationShapes]: WireExample } = {
+  "bridge/quote": {
+    args: {
+      agent: ids.agent,
+      amount: { asset: refs.token, base: "20000000" },
+      toChain: "fake:2",
+      to: { entry: ids.entry },
+    },
+    result: {
+      items: [
+        {
+          venue: "fake-bridge",
+          toChain: "fake:2",
+          sentAsset: refs.token,
+          deliveredAsset: "fake:2/token:0x0000000b",
+          amountIn: { asset: refs.token, base: "20000000" },
+          expectedOut: { asset: "fake:2/token:0x0000000b", base: "19970000" },
+          minOut: { asset: "fake:2/token:0x0000000b", base: "19970000" },
+          fees: [{ kind: "relayer", amount: { asset: refs.token, base: "30000" } }],
+          etaSeconds: 4,
+          quotedAt: at,
+          expiresAt: at + 60_000,
         },
       ],
       assets: {},

@@ -83,10 +83,13 @@ function payeeOn(destination: DestinationChain, address: string): BridgePayee | 
     : undefined;
 }
 
-// The rescue address in effect, on the destination: the same address through the destination's
-// codec, which reads it only in its own family (decision 0297). The plain-wallet check waits for
-// the policy (decision 0318).
-function rescuePayee(
+/**
+ * The rescue address in effect, on the destination: the same address through the destination's
+ * codec, which reads it only in its own family (decision 0297); none is `rescue.no_address`, one
+ * the destination cannot read `protocol.bad_args`. The plain-wallet check waits for the policy
+ * (decision 0318).
+ */
+export function rescuePayee(
   options: BridgeResolveOptions,
   facts: InstallFacts,
   destination: DestinationChain,

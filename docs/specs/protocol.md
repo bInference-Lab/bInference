@@ -471,7 +471,10 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   `toChain` for `amount.asset`, at each bridge venue the agent's venues allow
   ([decision 0297](../DECISIONS.md#d0297)), best `minOut` first, as `BridgeRouteView`s
   (section 8.3). `to`, when given, names the recipient the route is priced for, checked as
-  section 8.1 checks a bridge's. A `toChain` the registry lists as no destination is
+  section 8.1 checks a bridge's. Without it, the routes are priced for the rescue address on
+  `toChain` when the agent's bridge rules joined it there or the address book saves it there, else
+  the quote is `address.no_recipient`, which asks the owner which saved address to use
+  ([decision 0330](../DECISIONS.md#d0330)). A `toChain` the registry lists as no destination is
   `protocol.bad_args`; no route answers `quote.no_route`, and a venue that does not answer
   `quote.venue_down`. Paper agents quote too: a quote moves nothing.
 - Names and symbols in `assets` of these results are set by whoever deployed each token
@@ -1135,7 +1138,7 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   are absent when the venue could not be read: the view shows the coin with no value and the
   totals leave it out, as a token with no price ([decision 0329](../DECISIONS.md#d0329)).
 - `BridgeRouteView`:
-  `{ venue, toChain, sentAsset, deliveredAsset, amountIn, expectedOut, minOut, fees: [{ kind: bridge | relayer | gas, amount }], gas: Amount, etaSeconds, quotedAt, expiresAt }`:
+  `{ venue, toChain, sentAsset, deliveredAsset, amountIn, expectedOut, minOut, fees: [{ kind: bridge | relayer | gas, amount }], etaSeconds, quotedAt, expiresAt }`: the network fee of the deposit is known only once it is built, so a quote leaves it out and the card shows it;
   `deliveredAsset` is a CAIP-19 asset of `toChain`, which may differ from `sentAsset`, and
   `expectedOut` and `minOut` are amounts of it.
 - `DeliveryView`:

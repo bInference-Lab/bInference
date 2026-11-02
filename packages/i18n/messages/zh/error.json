@@ -59,6 +59,7 @@
   "address.unknown_chain": "binference 无法在此链上保存地址。请保存在 BNB Smart Chain 上，或保存在跨链可到达的链上：Ethereum、Base、Arbitrum、Robinhood Chain 或 Solana。",
   "address.chain_full": "此 Agent 已为该链保存 100 个地址，这是上限中一条规则可列出的最多数量。请先删除一个为该链保存的地址。",
   "address.own_wallet": "此地址是 binference 自己的钱包之一，任何跨链都不得在其他链上向其付款。请保存你在 binference 之外持有的钱包。",
+  "address.no_recipient": "请指定该链上一个已保存的地址作为跨链收款方：紧急转出地址无法在该链收款。请询问所有者使用哪个已保存的地址。",
   "rescue.no_address": "请先设置紧急转出地址：用你自己钱包的地址运行 `binference rescue set`。",
   "rescue.nothing_to_move": "没有任何 Agent 钱包持有可紧急转出的资产。",
   "signer.not_found": "没有任何钱包将此签名方列入。请核对 `binference init --attach` 显示的签名方 ID，或 Privy 控制面板中的密钥组。",

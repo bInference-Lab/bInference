@@ -63,6 +63,7 @@ export const protocolErrorCodes = [
   "address.unknown_chain",
   "address.chain_full",
   "address.own_wallet",
+  "address.no_recipient",
   "rescue.no_address",
   "rescue.nothing_to_move",
   "signer.not_found",

@@ -10,6 +10,7 @@ import {
   type WorkspaceHandlers,
 } from "../workspace/workspace-handlers.js";
 import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-handlers.js";
+import { type BridgeQuoteHandlers, createBridgeQuoteHandlers } from "./bridge-quote-handlers.js";
 import { type CeilingHandlers, createCeilingHandlers } from "./ceiling-handlers.js";
 import type { EngineOptions } from "./create-engine.js";
 import { createLiveFactsHandlers, type LiveFactsHandlers } from "./live-facts-handlers.js";
@@ -28,7 +29,8 @@ export interface SettingsHandlers
     CeilingHandlers,
     NoticeSettingsHandlers,
     WorkspaceHandlers,
-    LiveFactsHandlers {}
+    LiveFactsHandlers,
+    BridgeQuoteHandlers {}
 
 // The notice settings handlers, which read and journal through the agents and the journal.
 function noticeSettingsOf(options: EngineOptions): NoticeSettingsHandlers {
@@ -154,5 +156,16 @@ export function settingsHandlers(options: EngineOptions, paper: PaperParts): Set
     ...ceilings,
     ...noticeSettingsOf(options),
     ...contextHandlersOf(options, portfolio),
+    ...createBridgeQuoteHandlers({
+      chains,
+      destinations: options.destinations ?? [],
+      bridges: options.bridges ?? [],
+      custody: options.custody,
+      wallets: options.wallets,
+      install: stores.install,
+      ceilings: options.ceilings,
+      clock: options.clock,
+      agents: stores.agents,
+    }),
   };
 }
