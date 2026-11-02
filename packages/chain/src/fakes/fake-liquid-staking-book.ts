@@ -190,3 +190,13 @@ export function claimedUuid(draft: TxDraft): string | undefined {
 
 /** The receipt units as an amount of the pool's receipt token. */
 export const units = (base: bigint): Amount => amount(base, receipt);
+
+/** Claims the wallet's released request with that id outside the venue's moves, as a bot may. */
+export function claimForWallet(book: PoolBook, wallet: AccountRef, ref: string): void {
+  const held = book.holding(wallet);
+  const taken = held.requests.find((item) => String(item.uuid) === ref && isReleased(book, item));
+  if (taken === undefined) {
+    throw wrong("The fake pool claims only a released request.");
+  }
+  book.put(wallet, { ...held, requests: held.requests.filter((item) => item !== taken) });
+}

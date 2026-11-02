@@ -13,6 +13,7 @@ import type { TxDraft, TxHash } from "../transaction.js";
 import { fakeApprovalData, fakeDraft } from "./fake-draft.js";
 import {
   claimedUuid,
+  claimForWallet,
   coinOf,
   createPoolBook,
   decodePool,
@@ -44,6 +45,11 @@ export interface FakeLiquidStakingVenue extends StakingVenue {
   holdQueue(): void;
   /** Lets a held queue release its requests again. */
   releaseQueue(): void;
+  /**
+   * Claims the wallet's released request with that id for it, outside the venue's own moves, as
+   * a venue's bot or its site may: the coin goes to the wallet and the request leaves its list.
+   */
+  claimFor(wallet: AccountRef, ref: string): void;
 }
 
 type PlanBase = Omit<StakePlan, "action" | "value" | "moved">;
@@ -300,6 +306,7 @@ export function createFakeLiquidStakingVenue(
     unpause: book.unpause,
     holdQueue: book.holdQueue,
     releaseQueue: book.releaseQueue,
+    claimFor: (wallet, ref) => claimForWallet(book, wallet, ref),
   };
 }
 
