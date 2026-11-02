@@ -112,4 +112,10 @@ export interface CliHost {
    * orders never fill: no config key or variable turns them on.
    */
   readonly testOrders?: TestOrders;
+  /**
+   * Only engines a test starts set it: the port the webhook listener binds in place of
+   * `engine.webhookPort`, 0 for a free one the system picks, so a test never takes the owner's
+   * 7457 (decision 0333). Left out, as the entry file leaves it, the config's port holds.
+   */
+  readonly webhookPort?: number;
 }

@@ -125,6 +125,7 @@ export type HostParts = Partial<
     | "homeDir"
     | "mcpStdio"
     | "chatTerminal"
+    | "webhookPort"
   >
 >;
 
@@ -169,6 +170,8 @@ export function hostWith(
     clock: machine.clock,
     random: createSeededRandom((seeds.next += 1)),
     http: offline,
+    // An engine a test starts takes a free webhook port, never the owner's 7457.
+    webhookPort: 0,
     ...parts,
     signals: machine.signals,
     version: "2026.10.0-test",

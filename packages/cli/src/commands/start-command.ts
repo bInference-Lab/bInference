@@ -46,7 +46,7 @@ function refuse(output: CliOutput, refusal: StartRefusal): ExitCode {
 function announce(output: CliOutput, engine: RunningEngine): void {
   const { host, port } = engine.http;
   output.say("start.ready", { host, port: String(port), ipc: engine.ipc, logFile: engine.logFile });
-  const { lockReason } = engine;
+  const { lockReason, webhooks } = engine;
   if (lockReason !== undefined) {
     output.say(lockReason === "signer_revoked" ? "start.revoked" : "start.locked", {
       reason: lockReason,
@@ -56,6 +56,7 @@ function announce(output: CliOutput, engine: RunningEngine): void {
     state: engine.state,
     ...(lockReason === undefined ? {} : { lockReason }),
     http: { host, port },
+    ...(webhooks === undefined ? {} : { webhooks: { host: webhooks.host, port: webhooks.port } }),
     ipc: engine.ipc,
     logFile: engine.logFile,
   });

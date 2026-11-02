@@ -49,12 +49,16 @@ function runBinference(machine: TestMachine, argv: readonly string[]): SourcePro
 
 async function startEngine(machine: TestMachine): Promise<SourceProgram> {
   const port = String(await freePort());
+  // `src/main.ts` binds the config's webhook port, so the test names a free one.
+  const webhookPort = String(await freePort());
   const engine = runBinference(machine, [
     "start",
     "--foreground",
     "--json",
     "--set",
     `engine.port=${port}`,
+    "--set",
+    `engine.webhookPort=${webhookPort}`,
   ]);
   await expect(engine.lineWith('"state":"ready"')).resolves.toContain('"ipc"');
   return engine;

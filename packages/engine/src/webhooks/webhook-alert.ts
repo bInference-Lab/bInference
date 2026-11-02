@@ -10,7 +10,7 @@ export const webhookRepeatWindowMs = 600_000;
 export const webhookRateWindowMs = 60_000;
 
 /** The longest `id` an alert's body may carry (decision 0299). */
-const maxWebhookAlertIdLength = 128;
+export const maxWebhookAlertIdLength = 128;
 
 /** Where a webhook rule stands: its URL answers only while it is `active`. */
 type WebhookRuleState = "awaiting_confirmation" | "active" | "deleted";
@@ -44,7 +44,7 @@ export const webhookRuleKeySchema: z.ZodType<WebhookRuleKey> = z.strictObject({
  * An alert's body as it is stored: its text when it is UTF-8, else its bytes in base64. Nothing
  * in it sets a fill's size or side (decision 0299).
  */
-type WebhookBody = { readonly text: string } | { readonly base64: string };
+export type WebhookBody = { readonly text: string } | { readonly base64: string };
 
 // At most 16 KiB of bytes: as many UTF-16 units of text at most, or their base64.
 const webhookBodySchema: z.ZodType<WebhookBody> = z.union([

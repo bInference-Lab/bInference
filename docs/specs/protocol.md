@@ -129,16 +129,24 @@ an origin of the allowed list. Any other origin fails with `auth.origin`.
 Inbound webhooks ([decision 0053](../DECISIONS.md#d0053)) use a separate listener, `127.0.0.1:7457`
 by default, which Tailscale `funnel` publishes. It serves one route and nothing else:
 
-- `POST /hook/:ruleId/:secret` with a JSON body of at most 16 KiB.
+- `POST /hook/:ruleId/:secret` with a body of at most 16 KiB, JSON or plain text
+  ([decision 0333](../DECISIONS.md#d0333)); the body is stored with the alert.
 - `202` when the alert is accepted, `404` for an unknown rule or wrong secret (the same answer for
   both), `409` for a repeat, `429` above the rule's rate.
-- A repeat is the same `id` field in the body, or the same body hash, within 10 minutes. `id` is a
-  string of at most 128 characters; nothing else in the body is read: the rule's bounds decide
-  every fill ([decision 0299](../DECISIONS.md#d0299)).
+- A repeat is the same `id` field in the body, or the same body hash, within 10 minutes. `id` is
+  read only from a JSON object, and only as a string of 1 to 128 characters; nothing else in the
+  body is read: the rule's bounds decide every fill ([decision 0299](../DECISIONS.md#d0299)).
 - A rule's rate is the alerts it accepts in any 60 seconds, its `ratePerMinute`.
 - The secret is 32 random bytes in base64url; only its SHA-256 is stored.
 - A rule's URL answers only while the rule is `active`: before its card's Confirm, and after it is
   deleted or rotated, the old URL gets the same `404`.
+- Per [decision 0333](../DECISIONS.md#d0333): every other method, path and WebSocket upgrade
+  gets that same empty `404`, so none of the engine's routes is served there. The secret's SHA-256
+  is compared in constant time with the rule's, or with a decoy's for an unknown rule, after the
+  same read. The body is read whole first: over 16 KiB is `413`. Only accepted alerts count as
+  repeats and toward the rate. An accepted alert is in the inbox, with its body, before the
+  `202`; one that cannot be stored is `503`. No answer has a body. When `engine.webhookPort` is
+  taken, the engine runs without the listener and logs `webhook.listen_failed`.
 
 <a id="section-3"></a>
 

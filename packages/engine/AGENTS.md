@@ -220,6 +220,13 @@ Rules for this package:
   canonical form first, and an archived agent's alert ends at its next match. The firing holds no
   intent store, executor or venue, and `alerts-move-no-money.property.test.ts` holds that no alert
   reaches the money path.
+- Webhook alerts (`src/webhooks/`, decisions 0299 and 0333): `createWebhookIntake` hashes the
+  secret, reads the rule by id and compares the hashes in constant time, with a decoy's for an
+  unknown rule, so a wrong secret and an unknown rule do the same work before the same
+  `not_found`. Only then is the body read: any body is an alert, kept as text or base64, and only
+  a JSON object's `id` is read from it. The `WebhookAlertStore` judges a repeat and the rate on the
+  rule's accepted alerts and writes the alert's row, and an accepted alert's inbox entry with its
+  body, in one write; nothing there reaches the money path.
 - Launches (`src/launches/`, decisions 0254 to 0256) are what the launch feed stored behind the
   `LaunchStore` port: `launch/list` and `market/scan` with `source: launches` read them, their
   filters naming only launchpads the venue host runs, and `tellLaunches` pushes each launch stored

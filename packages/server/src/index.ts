@@ -20,3 +20,5 @@ export { defaultServerLimits } from "./server-limits.js";
 export type { ServerLimits } from "./server-limits.js";
 export type { MiniAppAuth, ServerAuth } from "./sign-in.js";
 export { telegramCredentialOf } from "./sign-in.js";
+export { createWebhookListener } from "./webhook-listener.js";
+export type { WebhookListener, WebhookListenerOptions } from "./webhook-listener.js";

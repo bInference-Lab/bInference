@@ -22,6 +22,7 @@ import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
 import { startSummaryTimer } from "./summary-timer.js";
 import { startUnlockRetry } from "./unlock-retry.js";
+import { listenForWebhooks } from "./webhook-listening.js";
 
 // Hands every part's closer to the one shutdown sequence, which stop signals and `engine/stop`
 // start, last opened first: the agent runtime, the settle timer, the server, so nothing new comes
@@ -57,6 +58,13 @@ function startReadTimers(
   startSummaryTimer({ sendDailySummaries: composed.sendDailySummaries, ...timers });
   startBridgeTimer({ followBridges: composed.followBridges, ...timers });
   startClaimReadyTimer({ tellClaimsReady: composed.tellClaimsReady, ...timers });
+}
+
+// What a stop left: the positions of paper fills, the rows of order fills and the launches' pins.
+async function repairAfterStop(composed: ComposedSelfHosted, signal: AbortSignal): Promise<void> {
+  await composed.repairPaperFills({ signal });
+  await composed.repairOrderFills({ signal });
+  await composed.checkPins({ signal, isRepair: true });
 }
 
 function isUnreachable(unlocked: Result<void, LockReason>): boolean {
@@ -141,7 +149,8 @@ function botChannelOf(
 /**
  * Serves the engine in the startup order of ARCHITECTURE.md section 24, once the lock, the config,
  * the stores, their migrations and the integrity check are done: the protocol server listens at
- * once, answering every call but `engine/status` with `engine.starting`; the keys open through the
+ * once, answering every call but `engine/status` with `engine.starting`, and the webhook listener
+ * beside it, which stores each alert it accepts in the inbox; the keys open through the
  * unlock mode and start the signer and custody, or leave the engine locked with the reason
  * (decisions 0103 and 0117); every unfinished live intent is recovered by hash and nonce and holds
  * its place in its wallet's queue, and each recent paper fill a crash left without positions gets
@@ -164,6 +173,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
       ? { ok: false, refusal: "port_taken", port: config.engine.port }
       : { ok: false, refusal: "already_running", folder: platform.stateFolder.root };
   }
+  const webhooks = await listenForWebhooks(opening, opened);
   const unlocked = await locked.lock.unlock({ signal });
   await executor.recover({ signal });
   // Before the repairs and the timers: the re-check counts the skips they record, and no price
@@ -176,9 +186,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
     logger: log.logger,
   });
   composed.priceWatchers.triggers.pauses = pauses.check;
-  await composed.repairPaperFills({ signal });
-  await composed.repairOrderFills({ signal });
-  await composed.checkPins({ signal, isRepair: true });
+  await repairAfterStop(composed, signal);
   if (unlocked.ok) {
     await composed.resume(signal);
   }
@@ -198,6 +206,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   }
   const engine: RunningEngine = {
     ...listening.value,
+    ...(webhooks === undefined ? {} : { webhooks }),
     logFile: log.file,
     state: locked.state(),
     ...(unlocked.ok ? {} : { lockReason: unlocked.error }),

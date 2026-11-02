@@ -26,6 +26,8 @@ export type StartRefusal =
 export interface RunningEngine {
   /** Where the HTTP listener bound: the console, the Mini App and the WebSocket at `/ws`. */
   readonly http: ServerAddress;
+  /** Where the webhook listener bound, unless another program held its port (decision 0333). */
+  readonly webhooks?: ServerAddress;
   /** The socket path or pipe name the CLI and the agent runtime connect to. */
   readonly ipc: string;
   /** The engine's log file. */

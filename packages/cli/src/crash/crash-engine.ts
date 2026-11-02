@@ -42,6 +42,8 @@ const host: CliHost = {
     script: fileURLToPath(import.meta.url),
   },
   startSigner: startCrashSigner,
+  // The suite's engines never take the owner's webhook port.
+  webhookPort: 0,
   ...(env.CRASH_FILLS === "1" ? { testOrders: crashTestOrders() } : {}),
   ...(env.CRASH_CHAT === "1"
     ? {
