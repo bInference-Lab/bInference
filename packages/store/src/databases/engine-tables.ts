@@ -14,6 +14,7 @@ import type { PositionTables } from "./position-tables.js";
 import type { ScheduleTables } from "./schedule-tables.js";
 import type { SummaryTables } from "./summary-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
+import type { UnbondingTables } from "./unbonding-tables.js";
 import type { WalletTables } from "./wallet-tables.js";
 
 // The engine tables the store adapters query, as SQLite returns them: TEXT is a string, INTEGER a
@@ -327,6 +328,7 @@ export interface EngineTables
     LaunchTables,
     SummaryTables,
     BridgeTables,
+    UnbondingTables,
     WalletTables {
   meta: MetaTable;
   safety: SafetyTable;

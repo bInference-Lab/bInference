@@ -24,6 +24,7 @@ import { createMemoryScheduleStore } from "./memory-schedule-store.js";
 import { createMemoryTrackedWalletStore } from "./memory-tracked-wallet-store.js";
 import { createMemoryTracking } from "./memory-tracking.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
+import { createMemoryUnbondingStore } from "./memory-unbonding-store.js";
 
 /**
  * Every engine store port, in memory, over one shared ledger that tests can also append to, with
@@ -83,5 +84,8 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     alive: createMemoryAliveStore(),
     dailySummaries: createMemoryDailySummaryStore({ agents }),
     bridges: createMemoryBridgeStore({ hasIntent: (id) => intents.intentNow(id) !== undefined }),
+    unbondings: createMemoryUnbondingStore({
+      hasIntent: (id) => intents.intentNow(id) !== undefined,
+    }),
   };
 }

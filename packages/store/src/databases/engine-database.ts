@@ -28,6 +28,7 @@ import { agentTopicTasks } from "../surfaces/sqlite-agent-topic-store.js";
 import { cardCopyTasks } from "../surfaces/sqlite-card-copy-store.js";
 import { ownerTasks } from "../surfaces/sqlite-owner-store.js";
 import { transactionTasks } from "../transactions/sqlite-transaction-store.js";
+import { unbondingTasks } from "../unbondings/sqlite-unbonding-store.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
 /** `engine.sqlite`: money, safety, settings and access. `synchronous=FULL`, for money. */
@@ -59,6 +60,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...modelUsageTasks,
     ...dailySummaryTasks,
     ...bridgeTasks,
+    ...unbondingTasks,
     ...scheduleTasks,
     ...alertTasks,
     ...leaderTasks,

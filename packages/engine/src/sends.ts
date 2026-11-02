@@ -35,3 +35,20 @@ export type {
   BridgeRecord,
 } from "./bridges/bridge-record.js";
 export type { BridgeStore } from "./bridges/ports.js";
+export {
+  unbondingClaimSchema,
+  unbondingDraftSchema,
+  unbondingQuerySchema,
+  unbondingReadyQuerySchema,
+  unbondingRecordSchema,
+  unbondingToldSchema,
+} from "./staking/unbonding-record.js";
+export type {
+  UnbondingClaim,
+  UnbondingDraft,
+  UnbondingQuery,
+  UnbondingReadyQuery,
+  UnbondingRecord,
+  UnbondingTold,
+} from "./staking/unbonding-record.js";
+export type { UnbondingStore } from "./staking/ports.js";

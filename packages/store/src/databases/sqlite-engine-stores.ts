@@ -24,6 +24,7 @@ import { createSqliteCardCopyStore } from "../surfaces/sqlite-card-copy-store.js
 import { createSqliteOwnerStore } from "../surfaces/sqlite-owner-store.js";
 import type { StoreHost } from "../tasks/store-host.js";
 import { createSqliteTransactionStore } from "../transactions/sqlite-transaction-store.js";
+import { createSqliteUnbondingStore } from "../unbondings/sqlite-unbonding-store.js";
 
 /**
  * Every engine store port on `engine.sqlite`, for the composition root: pass the handle that
@@ -55,5 +56,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     alive: createSqliteAliveStore(host),
     dailySummaries: createSqliteDailySummaryStore(host),
     bridges: createSqliteBridgeStore(host),
+    unbondings: createSqliteUnbondingStore(host),
   };
 }

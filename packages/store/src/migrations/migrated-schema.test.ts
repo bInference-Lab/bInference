@@ -188,6 +188,9 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   bridges: names(
     "intent_id venue deposit_ref to_chain recipient sent_asset sent_amount delivered_asset delivered_coin min_out value_usd_micros state status_url sent_at late_at fill_tx received received_asset refund_tx settled_at checked_at version",
   ),
+  stake_unbondings: names(
+    "id intent_id wallet_id venue validator request_ref asset amount value_usd_micros ready_at claim_intent_id claimed_at told_ready_at paper",
+  ),
   questions: names(
     "id agent_id session_id turn_id text choices ref state answer close_reason created_at closes_at closed_at",
   ),
@@ -252,6 +255,13 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   intent_events: ["index|intent_id,at", "index|to_state,at"],
   bridges: ["index|state,sent_at", "unique|refund_tx|partial", "unique|to_chain,fill_tx|partial"],
   carried_outflows: ["index|agent_id,paper,confirmed_at"],
+  stake_unbondings: [
+    "index|claim_intent_id|partial",
+    "index|ready_at|partial",
+    "index|wallet_id,paper,venue,ready_at|partial",
+    "unique|intent_id",
+    "unique|venue,wallet_id,paper,request_ref",
+  ],
   cards: ["unique|callback_ref", "unique|intent_id,version"],
   confirmations: ["unique|intent_id"],
   txs: ["index|hash", "index|intent_id,step", "unique|account,nonce|partial"],

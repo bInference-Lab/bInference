@@ -36,6 +36,11 @@ export { modelUsageStoreContract } from "./contracts/model-usage-store-contract.
 export { bridgeStoreContract } from "./contracts/bridge-store-contract.js";
 export type { BridgeStoreHarness, BridgeStoreSubject } from "./contracts/bridge-store-contract.js";
 export { dailySummaryStoreContract } from "./contracts/daily-summary-store-contract.js";
+export { unbondingStoreContract } from "./contracts/unbonding-store-contract.js";
+export type {
+  UnbondingStoreHarness,
+  UnbondingStoreSubject,
+} from "./contracts/unbonding-store-contract.js";
 export type { DailySummaryStoreHarness } from "./contracts/daily-summary-store-contract.js";
 export type { ModelUsageStoreHarness } from "./contracts/model-usage-store-contract.js";
 export { quoteSourceContract } from "./contracts/quote-source-contract.js";
@@ -153,6 +158,7 @@ export { createMemoryAliveStore } from "./fakes/memory-alive-store.js";
 export { createMemoryAgentTopicStore } from "./fakes/memory-agent-topic-store.js";
 export { createMemoryModelUsageStore } from "./fakes/memory-model-usage-store.js";
 export { createMemoryBridgeStore } from "./fakes/memory-bridge-store.js";
+export { createMemoryUnbondingStore } from "./fakes/memory-unbonding-store.js";
 export { createMemoryDailySummaryStore } from "./fakes/memory-daily-summary-store.js";
 export type { MemoryModelUsageStoreOptions } from "./fakes/memory-model-usage-store.js";
 export type { MemoryNoticeStoreOptions } from "./fakes/memory-notice-store.js";

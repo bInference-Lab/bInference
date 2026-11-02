@@ -19,6 +19,7 @@ import type {
   TransactionStore,
 } from "../ports.js";
 import type { ScheduleStore } from "../schedules/ports.js";
+import type { UnbondingStore } from "../staking/ports.js";
 import type { DailySummaryStore } from "../summaries/ports.js";
 import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/ports.js";
 
@@ -67,4 +68,6 @@ export interface EngineStores {
   readonly dailySummaries: DailySummaryStore;
   /** Each bridge's delivery, read until a delivery or a refund settles it (decision 0297). */
   readonly bridges: BridgeStore;
+  /** The coin each unstake took out, until a claim takes it (decision 0296). */
+  readonly unbondings: UnbondingStore;
 }
