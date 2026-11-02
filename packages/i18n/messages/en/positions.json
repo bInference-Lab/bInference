@@ -1,0 +1,6 @@
+{
+  "staked": "{amount} staked with {validator} · {hasValue, select, yes {worth {value}} other {value unknown}}",
+  "unbonding": "{amount} unbonding, claimable from {readyAt}",
+  "claimable": "{amount} ready to claim",
+  "bridge": "{amount} to {recipient} on {chain} · since {since}{late, select, yes { · late} other {}}"
+}

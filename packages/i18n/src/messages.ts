@@ -15,6 +15,7 @@ import enLimit from "../messages/en/limit.json" with { type: "json" };
 import enNotice from "../messages/en/notice.json" with { type: "json" };
 import enOrder from "../messages/en/order.json" with { type: "json" };
 import enPnl from "../messages/en/pnl.json" with { type: "json" };
+import enPositions from "../messages/en/positions.json" with { type: "json" };
 import enQuestion from "../messages/en/question.json" with { type: "json" };
 import enReason from "../messages/en/reason.json" with { type: "json" };
 import enReceipt from "../messages/en/receipt.json" with { type: "json" };
@@ -41,6 +42,7 @@ import zhLimit from "../messages/zh/limit.json" with { type: "json" };
 import zhNotice from "../messages/zh/notice.json" with { type: "json" };
 import zhOrder from "../messages/zh/order.json" with { type: "json" };
 import zhPnl from "../messages/zh/pnl.json" with { type: "json" };
+import zhPositions from "../messages/zh/positions.json" with { type: "json" };
 import zhQuestion from "../messages/zh/question.json" with { type: "json" };
 import zhReason from "../messages/zh/reason.json" with { type: "json" };
 import zhReceipt from "../messages/zh/receipt.json" with { type: "json" };
@@ -81,6 +83,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("daily", enDaily),
     ...inArea("order", enOrder),
     ...inArea("pnl", enPnl),
+    ...inArea("positions", enPositions),
     ...inArea("fill", enFill),
     ...inArea("alert", enAlert),
     ...inArea("launch", enLaunch),
@@ -109,6 +112,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("daily", zhDaily),
     ...inArea("order", zhOrder),
     ...inArea("pnl", zhPnl),
+    ...inArea("positions", zhPositions),
     ...inArea("fill", zhFill),
     ...inArea("alert", zhAlert),
     ...inArea("launch", zhLaunch),

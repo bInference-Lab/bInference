@@ -31,6 +31,8 @@
   "balance.empty": "No agent wallet holds anything yet.",
   "positions.section": "{mode, select, paper {🧪 Paper positions} other {🔴 Live positions}}",
   "positions.empty": "No positions yet.",
+  "positions.staking": "Staking",
+  "positions.inTransit": "🟡 In transit",
   "orders.item": "{kind, select, limit {Limit order} takeProfit {Take-profit} stopLoss {Stop-loss} trailing {Trailing stop} dca {DCA} copy {Copy trade} other {Auto order}} · {side, select, buy {buy} other {sell}} {token} · {trigger} · {fills, plural, one {# fill} other {# fills}} · ends {expiry}",
   "orders.price": "{direction, select, above {at or above {price}} below {at or below {price}} other {at {price}}}",
   "orders.trailing": "{distance} from the best price",

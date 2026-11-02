@@ -1,11 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { ownerCards, pnlHandlers } from "../testing/pnl-card-fixtures.js";
+import { agents, ownerCards, pnlHandlers, stakingPortfolio } from "../testing/pnl-card-fixtures.js";
 import { startCommandBot } from "./test-command-bot.js";
 
 const paper = String.fromCodePoint(0x1f9ea);
 const red = String.fromCodePoint(0x1f534);
+const yellow = String.fromCodePoint(0x1f7e1);
 
 describe("the positions command in Chinese", () => {
+  it("shows each mode's staking and the bridges in transit in the owner's language", async () => {
+    const portfolios = { [agents.main.agent]: stakingPortfolio };
+    const bot = await startCommandBot(pnlHandlers({}, portfolios), { locale: "zh" });
+    await bot.send("/positions");
+    expect(bot.texts()[0]?.split("\n\n")).toStrictEqual([
+      `${red} 实盘持仓`,
+      [
+        "质押",
+        "在 0x2222…0001 质押 1.05 BNB · 市值 $630.00",
+        "0.5 BNB 解绑中，2026年10月17日 09:30:00 起可领取",
+        "0.1 BNB 可以领取",
+      ].join("\n"),
+      [
+        `${yellow} 在途`,
+        "50 USDT 跨链到 fake:2 的 0x4444…0001 · 自 2026年10月10日 09:30:00 · 已延迟",
+      ].join("\n"),
+      `${paper} 模拟持仓`,
+      ["质押", "在 0x2222…0001 质押 0.4725 BNB · 市值 $283.50"].join("\n"),
+    ]);
+  });
+
   it("shows each P&L card in the owner's language, live before paper", async () => {
     const bot = await startCommandBot(pnlHandlers(ownerCards), { locale: "zh" });
     await bot.send("/positions");
@@ -43,5 +65,13 @@ describe("the positions command in Chinese", () => {
     const bot = await startCommandBot(pnlHandlers({}), { locale: "zh" });
     await bot.send("/positions");
     expect(bot.texts()).toStrictEqual(["还没有持仓。"]);
+  });
+
+  it("says a stake's value is unknown when its receipt units have no price, in the owner's language", async () => {
+    const unpriced = { ...stakingPortfolio, balances: [], inTransit: [] };
+    const portfolios = { [agents.main.agent]: unpriced };
+    const bot = await startCommandBot(pnlHandlers({}, portfolios), { locale: "zh" });
+    await bot.send("/positions");
+    expect(bot.texts()[0]?.split("\n")[3]).toBe("在 0x2222…0001 质押 1.05 BNB · 市值未知");
   });
 });

@@ -1,3 +1,4 @@
+import { accountRefSchema, assetRefSchema, chainRefSchema } from "@binference/chain";
 import { ok } from "@binference/core";
 import { drawPnlCard, type PositionFigures } from "@binference/engine";
 import type { OwnerChatHandlers } from "@binference/engine/surfaces";
@@ -5,6 +6,7 @@ import {
   type AgentView,
   type ArgsOf,
   type PnlCardView,
+  type PortfolioView,
   protocolIdSchema,
 } from "@binference/protocol";
 import { assetsWith, refs } from "./card-fixtures.js";
@@ -115,14 +117,78 @@ export const ownerCards: CardsByAgent = {
   [agents.old.agent]: [cardOf(pepeOpen, agents.old)],
 };
 
+const wallet = protocolIdSchema("wallet").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000b1");
+const receipt = assetRefSchema.parse("fake:1/erc20:0x3333333333333333333333333333333333330001");
+const bnb = (base: bigint) => ({ asset: refs.bnb, base });
+
 /**
- * `agent/list` and `portfolio/pnl` as the engine answers them for the owner's agents, each with
- * its cards, and every call of `portfolio/pnl` the bot made.
+ * `main` staked one unit of a validator's receipt token live, worth 1.05 BNB or $630, waits for
+ * half a BNB it unstaked and may claim a tenth now; staked 0.45 units on paper, worth 0.4725 BNB or
+ * $283.50; and bridges 50 USDT to an account on another chain, late since the day began.
  */
-export function pnlHandlers(byAgent: CardsByAgent): Pick<
-  OwnerChatHandlers,
-  "agent/list" | "portfolio/pnl"
-> & {
+export const stakingPortfolio: PortfolioView = {
+  balances: [
+    { wallet, amount: { asset: receipt, base: whole }, usdMicros: 630_000_000n, paper: false },
+    {
+      wallet,
+      amount: { asset: receipt, base: (whole * 45n) / 100n },
+      usdMicros: 283_500_000n,
+      paper: true,
+    },
+  ],
+  positions: [],
+  totalUsdMicros: 0n,
+  assets: assetsWith(),
+  staking: [
+    {
+      wallet,
+      venue: "stakehub",
+      validator: accountRefSchema.parse("fake:1:0x2222222222222222222222222222222222220001"),
+      staked: { asset: receipt, base: whole },
+      stakedValue: bnb((whole * 105n) / 100n),
+      unbonding: [{ amount: bnb(whole / 2n), readyAt: atMs + 7 * dayMs }],
+      claimable: bnb(whole / 10n),
+      paper: false,
+    },
+    {
+      wallet,
+      venue: "stakehub",
+      validator: accountRefSchema.parse("fake:1:0x2222222222222222222222222222222222220001"),
+      staked: { asset: receipt, base: (whole * 45n) / 100n },
+      stakedValue: bnb((whole * 4725n) / 10_000n),
+      unbonding: [],
+      claimable: bnb(0n),
+      paper: true,
+    },
+  ],
+  inTransit: [
+    {
+      intent: protocolIdSchema("intent").parse("int_0190f1c2-3a4b-7c5d-8e6f-0000000000c1"),
+      wallet,
+      amount: { asset: refs.usdt, base: 50n * whole },
+      usdMicros: 50_000_000n,
+      toChain: chainRefSchema.parse("fake:2"),
+      recipient: accountRefSchema.parse("fake:2:0x4444444444444444444444444444444444440001"),
+      sentAt: atMs,
+      late: true,
+    },
+  ],
+};
+
+/** Each agent's portfolio, as `portfolio/get` answers it for the agent. */
+export type PortfolioByAgent = Readonly<Record<string, PortfolioView>>;
+
+const noHoldings: PortfolioView = { balances: [], positions: [], totalUsdMicros: 0n, assets: {} };
+
+/**
+ * `agent/list`, `portfolio/pnl` and `portfolio/get` as the engine answers them for the owner's
+ * agents, each with its cards and its portfolio, none unless given, and every call of
+ * `portfolio/pnl` the bot made.
+ */
+export function pnlHandlers(
+  byAgent: CardsByAgent,
+  portfolios: PortfolioByAgent = {},
+): Pick<OwnerChatHandlers, "agent/list" | "portfolio/pnl" | "portfolio/get"> & {
   readonly asked: () => readonly PnlArgs[];
 } {
   const asked: PnlArgs[] = [];
@@ -140,6 +206,8 @@ export function pnlHandlers(byAgent: CardsByAgent): Pick<
         }),
       );
     },
+    "portfolio/get": async ({ args }) =>
+      Promise.resolve(ok(portfolios[args.agent ?? ""] ?? noHoldings)),
     asked: () => [...asked],
   };
 }

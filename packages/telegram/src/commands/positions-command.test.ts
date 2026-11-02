@@ -8,11 +8,13 @@ import {
   ownerCards,
   pepeOpen,
   pnlHandlers,
+  stakingPortfolio,
 } from "../testing/pnl-card-fixtures.js";
 import { startCommandBot } from "./test-command-bot.js";
 
 const paper = String.fromCodePoint(0x1f9ea);
 const red = String.fromCodePoint(0x1f534);
+const yellow = String.fromCodePoint(0x1f7e1);
 // The test bot's clock.
 const nowMs = 1_760_000_000_000;
 const weekMs = 7 * 86_400_000;
@@ -27,6 +29,27 @@ const pepeCard = [
 ].join("\n");
 
 describe("the positions command", () => {
+  it("shows each mode's staking after its cards, and the bridges in transit with the live ones", async () => {
+    const portfolios = { [agents.main.agent]: stakingPortfolio };
+    const bot = await startCommandBot(pnlHandlers({}, portfolios));
+    await bot.send("/positions");
+    expect(bot.texts()[0]?.split("\n\n")).toStrictEqual([
+      `${red} Live positions`,
+      [
+        "Staking",
+        "1.05 BNB staked with 0x2222…0001 · worth $630.00",
+        "0.5 BNB unbonding, claimable from Oct 17, 2026, 09:30:00",
+        "0.1 BNB ready to claim",
+      ].join("\n"),
+      [
+        `${yellow} In transit`,
+        "50 USDT to 0x4444…0001 on fake:2 · since Oct 10, 2026, 09:30:00 · late",
+      ].join("\n"),
+      `${paper} Paper positions`,
+      ["Staking", "0.4725 BNB staked with 0x2222…0001 · worth $283.50"].join("\n"),
+    ]);
+  });
+
   it("shows each position as its P&L card, live under its heading before paper", async () => {
     const handlers = pnlHandlers(ownerCards);
     const bot = await startCommandBot(handlers);
@@ -107,5 +130,13 @@ describe("the positions command", () => {
     });
     await bot.send("/positions");
     expect(bot.texts()).toStrictEqual(["No positions yet."]);
+  });
+
+  it("says a stake's value is unknown when its receipt units have no price, in English", async () => {
+    const unpriced = { ...stakingPortfolio, balances: [], inTransit: [] };
+    const portfolios = { [agents.main.agent]: unpriced };
+    const bot = await startCommandBot(pnlHandlers({}, portfolios));
+    await bot.send("/positions");
+    expect(bot.texts()[0]?.split("\n")[3]).toBe("1.05 BNB staked with 0x2222…0001 · value unknown");
   });
 });

@@ -1,0 +1,6 @@
+{
+  "staked": "在 {validator} 质押 {amount} · {hasValue, select, yes {市值 {value}} other {市值未知}}",
+  "unbonding": "{amount} 解绑中，{readyAt} 起可领取",
+  "claimable": "{amount} 可以领取",
+  "bridge": "{amount} 跨链到 {chain} 的 {recipient} · 自 {since}{late, select, yes { · 已延迟} other {}}"
+}
