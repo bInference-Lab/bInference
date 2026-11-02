@@ -2,7 +2,6 @@ import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { Socket } from "node:net";
 import type { Duplex } from "node:stream";
 import {
-  BinferenceError,
   type Clock,
   createIdSource,
   type ErrorCode,
@@ -15,6 +14,7 @@ import type { UploadShelf } from "@binference/engine/chat";
 import type { PushFrame } from "@binference/protocol";
 import { WebSocketServer } from "ws";
 import { createAuthFailures } from "./auth-failures.js";
+import { bindListener, type ServerAddress } from "./bind-listener.js";
 import { createCallDispatch } from "./call-dispatch.js";
 import { checkBind } from "./check-bind.js";
 import type { ConnectionContext } from "./connection-link.js";
@@ -77,12 +77,6 @@ export interface ProtocolServerOptions {
   readonly onLockout?: (lockout: AuthLockoutReport) => void;
 }
 
-/** The address the HTTP listener bound. */
-export interface ServerAddress {
-  readonly host: string;
-  readonly port: number;
-}
-
 /** The engine's protocol server: one WebSocket per client over HTTP or local IPC. */
 export interface ProtocolServer {
   /**
@@ -114,42 +108,6 @@ export interface ProtocolServer {
 interface Listeners {
   readonly http: Server;
   readonly ipc: Server;
-}
-
-function listenFailed(http: HttpListenOptions, cause: Error): BinferenceError {
-  return new BinferenceError({
-    code: "server.listen_failed",
-    message: `The server could not listen on ${http.host}:${String(http.port)}.`,
-    details: { host: http.host, port: http.port },
-    cause,
-  });
-}
-
-async function listen(
-  server: Server,
-  http: HttpListenOptions,
-  signal: AbortSignal,
-): Promise<ServerAddress> {
-  signal.throwIfAborted();
-  await new Promise<void>((resolve, reject) => {
-    const fail = (error: Error): void => reject(listenFailed(http, error));
-    const onAbort = (): void => {
-      server.close();
-      fail(new Error("The start was aborted."));
-    };
-    signal.addEventListener("abort", onAbort, { once: true });
-    server.once("error", fail);
-    server.listen({ host: http.host, port: http.port }, () => {
-      server.off("error", fail);
-      signal.removeEventListener("abort", onAbort);
-      resolve();
-    });
-  });
-  const address = server.address();
-  if (address === null || typeof address === "string") {
-    throw listenFailed(http, new Error("The listener reports no TCP address."));
-  }
-  return { host: address.address, port: address.port };
 }
 
 async function closeListener(server: Server): Promise<void> {
@@ -342,7 +300,7 @@ export function createProtocolServer(options: ProtocolServerOptions): ProtocolSe
         return undefined;
       }
       checkBind({ host: http.host, hasAuth: options.auth !== undefined });
-      const address = await listen(listeners.http, http, signal);
+      const address = await bindListener(listeners.http, http, signal);
       const extraOrigins = http.extraOrigins ?? (() => []);
       const publicOrigin =
         http.publicOrigin === undefined ? {} : { publicOrigin: http.publicOrigin };

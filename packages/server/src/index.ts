@@ -1,11 +1,11 @@
 export { isLoopbackHost } from "./check-bind.js";
 export type { ConsoleFiles } from "./console-route.js";
 export { createProtocolServer } from "./create-protocol-server.js";
+export type { ServerAddress } from "./bind-listener.js";
 export type {
   HttpListenOptions,
   ProtocolServer,
   ProtocolServerOptions,
-  ServerAddress,
 } from "./create-protocol-server.js";
 export type { EngineFacts } from "./engine-facts.js";
 export type {

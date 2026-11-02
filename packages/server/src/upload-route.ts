@@ -1,7 +1,7 @@
-import { Buffer } from "node:buffer";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { UploadHolder, UploadRefusal, UploadShelf } from "@binference/engine/chat";
 import { maxImageBytes, type ProtocolErrorCode } from "@binference/protocol";
+import { readLimitedBody } from "./limited-body.js";
 import { resourceHeaders } from "./security-headers.js";
 
 /** The path every upload goes to, its single-use ticket after it. */
@@ -46,25 +46,6 @@ function refuse(response: ServerResponse, refusal: RouteRefusal): void {
   response.writeHead(status, jsonHeaders).end(JSON.stringify({ error: { code, message } }));
 }
 
-// The body's bytes, or `undefined` once it passes 5 MiB; the size is checked as pieces arrive.
-async function readBody(request: IncomingMessage): Promise<Uint8Array | undefined> {
-  const declared = Number(request.headers["content-length"] ?? "0");
-  if (Number.isFinite(declared) && declared > maxImageBytes) {
-    return undefined;
-  }
-  const pieces: Buffer[] = [];
-  let size = 0;
-  for await (const piece of request) {
-    const bytes = Buffer.isBuffer(piece) ? piece : Buffer.from(String(piece));
-    size += bytes.byteLength;
-    if (size > maxImageBytes) {
-      return undefined;
-    }
-    pieces.push(bytes);
-  }
-  return Buffer.concat(pieces);
-}
-
 async function upload(
   request: IncomingMessage,
   response: ServerResponse,
@@ -74,7 +55,7 @@ async function upload(
     refuse(response, "origin");
     return;
   }
-  const body = await readBody(request);
+  const body = await readLimitedBody(request, maxImageBytes);
   if (body === undefined) {
     response.setHeader("connection", "close");
     refuse(response, "too_large");
