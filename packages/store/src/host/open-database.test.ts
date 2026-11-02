@@ -78,7 +78,8 @@ describe("openDatabase", () => {
     const summary = await handles[0]?.run(summarize, null, call());
     const integrity = await handles[1]?.checkIntegrity(call());
 
-    expect(migrations.flatMap((report) => report.applied)).toStrictEqual([
+    // Four handles migrate at once, so which one applies each migration varies; each applies once.
+    expect(migrations.flatMap((report) => report.applied).toSorted()).toStrictEqual([
       "0001_meta",
       "0002_probe_tables",
     ]);
