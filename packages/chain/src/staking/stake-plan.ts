@@ -12,6 +12,15 @@ export interface StakePool {
 }
 
 /**
+ * A receipt token a staking venue mints, as its pool stood at one block: the validator a stake
+ * with it goes to, and the pool's units of the token with the coin they are worth together.
+ */
+export interface ReceiptPool {
+  readonly validator: AccountRef;
+  readonly pool: StakePool;
+}
+
+/**
  * A move a staking venue planned at one block, which the host shows on the card, books on paper
  * and gives back to the venue's build. Every amount is the chain's coin but `shares` and the
  * pool's `shares`, the venue's receipt token.
@@ -105,6 +114,18 @@ const aprBpsSchema = z.int().min(0).max(1_000_000);
 const poolSchema: z.ZodType<StakePool, StakePoolWire> = z.strictObject({
   shares: amountSchema,
   coin: amountSchema,
+});
+
+/** A {@link ReceiptPool} as JSON carries it. */
+export interface ReceiptPoolWire {
+  readonly validator: string;
+  readonly pool: StakePoolWire;
+}
+
+/** Parses a receipt token's pool as a venue answers it. */
+export const receiptPoolSchema: z.ZodType<ReceiptPool, ReceiptPoolWire> = z.strictObject({
+  validator: accountRefSchema,
+  pool: poolSchema,
 });
 
 function amountsOf(plan: StakePlan): readonly Amount[] {

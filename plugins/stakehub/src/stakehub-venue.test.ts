@@ -30,6 +30,7 @@ const jailed: Address = "0x2222222222222222222222222222222222220002";
 const unknown: Address = "0x2222222222222222222222222222222222220009";
 
 const account = (address: Address): AccountRef => accountRefSchema.parse(`${chain}:${address}`);
+const creditAsset = (address: string) => assetRefSchema.parse(`${chain}/erc20:${address}`);
 const contracts = { "stake-hub": account(stakeHubAddress) };
 const stakeOfOne = {
   action: "stake",
@@ -224,6 +225,26 @@ describe("the StakeHub venue on a StakeHub world", () => {
     expect(part.moved.base - bnb).toBeGreaterThanOrEqual(0n);
     expect(part.moved.base - bnb).toBeLessThan(2n);
     expect(whole.shares).toStrictEqual(held.staked);
+  });
+
+  it("reads a credit contract's pool in any spelling, and leaves out a token it mints no credit for and an empty credit", async () => {
+    const { venue } = testbed();
+    const named = [
+      coin,
+      creditAsset("0x3333333333333333333333333333333333330002"),
+      creditAsset("0x3333333333333333333333333333333333330001"),
+      creditAsset("0x4444444444444444444444444444444444440001"),
+    ];
+    expect(await venue.pools(named, live)).toStrictEqual([
+      {
+        validator: account(active),
+        pool: {
+          shares: { asset: named[2], base: 1_000n * bnb },
+          coin: { asset: coin, base: 1_050n * bnb },
+        },
+      },
+    ]);
+    expect(await venue.pools([], live)).toStrictEqual([]);
   });
 
   it("refuses an amount of another asset or of nothing, and a wallet of another chain, as a fault", async () => {

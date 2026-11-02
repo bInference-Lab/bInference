@@ -16,6 +16,7 @@ import { decodeStake } from "./calls/decode-stake.js";
 import { latestBlock } from "./hub/hub-read.js";
 import { readHoldings } from "./hub/read-holdings.js";
 import { type OptionsRead, readOptions } from "./hub/read-options.js";
+import { readPools } from "./hub/read-pools.js";
 import { readReceipt } from "./hub/read-receipt.js";
 import { readLanded } from "./landed/read-landed.js";
 import { planStakeMove } from "./plan/plan-stake.js";
@@ -70,6 +71,13 @@ export function stakeHubDeclaration(chains: readonly ChainRef[]): VenueDeclarati
   return { id: stakeHubId, contracts: chains.map(stakeHubContractsOn) };
 }
 
+// StakeHub's voting token, when the registry names it.
+function votingOf(chain: ChainRef, gov: AccountRef | undefined) {
+  return gov === undefined
+    ? {}
+    : { votingToken: assetRefSchema.parse(`${chain}/erc20:${addressOn(chain, gov, "GovToken")}`) };
+}
+
 /**
  * Creates the StakeHub staking venue on one chain, over BNB Chain's native staking contracts as
  * its staking developer guide describes them: every read takes the latest block, then reads
@@ -84,13 +92,7 @@ export function createStakeHubVenue(options: StakeHubOptions): StakingVenue {
   const { chain, coin, rpc } = options;
   const hub = addressOn(chain, options.contracts[stakeHubName], "StakeHub");
   const multicall = addressOn(chain, options.multicall, "Multicall3");
-  const gov = options.contracts[govTokenName];
-  const voting =
-    gov === undefined
-      ? {}
-      : {
-          votingToken: assetRefSchema.parse(`${chain}/erc20:${addressOn(chain, gov, "GovToken")}`),
-        };
+  const voting = votingOf(chain, options.contracts[govTokenName]);
   const at = async (signal: AbortSignal): Promise<OptionsRead> => {
     const head = await latestBlock(rpc, { multicall, signal });
     return { rpc, multicall, hub, chain, coin, signal, ...voting, ...head };
@@ -103,6 +105,7 @@ export function createStakeHubVenue(options: StakeHubOptions): StakingVenue {
       readHoldings(await at(signal), wallet, walletAddress(chain, wallet)),
     receipt: async (validator, { signal }) =>
       readReceipt(await at(signal), walletAddress(chain, validator)),
+    pools: async (receipts, { signal }) => readPools(await at(signal), receipts),
     plan: async (request, { signal }) => {
       const wallet = walletAddress(chain, request.wallet);
       const validator = walletAddress(chain, request.validator);

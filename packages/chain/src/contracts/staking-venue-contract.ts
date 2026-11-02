@@ -149,6 +149,19 @@ async function plansPaper(harness: StakingVenueHarness): Promise<void> {
   });
 }
 
+async function readsPools(harness: StakingVenueHarness): Promise<void> {
+  const subject = await harness.create();
+  const { venue, active, stake } = subject;
+  const { landed } = await staked(subject);
+  const minted = landed.shares;
+  assert.ok(minted !== undefined);
+  const [found, ...rest] = await venue.pools([stake.asset, minted.asset], live());
+  assert.ok(found !== undefined && rest.length === 0, "The venue should read one pool.");
+  assert.deepEqual([found.validator, found.pool.shares.asset], [active, minted.asset]);
+  assert.equal(found.pool.coin.asset, stake.asset);
+  assert.ok(found.pool.shares.base >= minted.base && found.pool.coin.base > 0n);
+}
+
 async function readsBackOnlyItsMove(harness: StakingVenueHarness): Promise<void> {
   const subject = await harness.create();
   const { wallet, active: validator, stake } = subject;
@@ -192,6 +205,7 @@ async function stopsOnAbort(harness: StakingVenueHarness): Promise<void> {
   await assert.rejects(venue.options({ signal }), reason);
   await assert.rejects(venue.holdings(wallet, { signal }), reason);
   await assert.rejects(venue.receipt(validator, { signal }), reason);
+  await assert.rejects(venue.pools([stake.asset], { signal }), reason);
   await assert.rejects(venue.plan({ action: "claim", wallet, validator }, { signal }), reason);
   await assert.rejects(venue.build(plan, { signal }), reason);
   await assert.rejects(
@@ -226,6 +240,10 @@ export function stakingVenueContract(harness: StakingVenueHarness): readonly Con
     {
       name: "plans a paper unstake and claim from the paper position alone",
       run: async () => plansPaper(harness),
+    },
+    {
+      name: "reads the pool of a receipt token it minted, and leaves out a token it does not mint",
+      run: async () => readsPools(harness),
     },
     {
       name: "reads back only the move its transaction holds",

@@ -1,7 +1,7 @@
 # @binference/stakehub
 
-Native BNB staking through StakeHub: lists validators, reads a wallet's stake and unbonding coin,
-and builds the delegate, undelegate and claim calls that credit only the wallet.
+Native BNB staking through StakeHub: lists validators, reads a wallet's stake and unbonding coin
+and the pools that price each validator's credit shares, and builds the delegate, undelegate and claim calls that credit only the wallet.
 
 The root [AGENTS.md](../../AGENTS.md) and [the plugin SDK's rules](../../packages/plugin-sdk/AGENTS.md)
 apply here. Rules for this plugin ([decision 0324](../../docs/adr/0324-stakehub-is-read-and-called-on-chain-and-every-move-credits-only-the-caller.md)):

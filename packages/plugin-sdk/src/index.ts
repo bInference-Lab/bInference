@@ -110,6 +110,7 @@ export type {
   LandedRequest,
   LandedStake,
   PaperStake,
+  ReceiptPool,
   StakeAction,
   StakePlan,
   StakePlanned,

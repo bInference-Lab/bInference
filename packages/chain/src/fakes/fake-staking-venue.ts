@@ -1,7 +1,8 @@
 import { type Bps, err, ok, type Result } from "@binference/core";
 import { type AccountRef, accountRefParts } from "../caip/account-ref.js";
+import type { AssetRef } from "../caip/asset-ref.js";
 import type { StakePlanned, StakingVenue } from "../staking/ports.js";
-import type { StakePlan } from "../staking/stake-plan.js";
+import type { ReceiptPool, StakePlan } from "../staking/stake-plan.js";
 import type {
   PaperStake,
   StakeRefusal,
@@ -203,6 +204,21 @@ function holdingsOf(
   });
 }
 
+// Each receipt named of a listed validator whose pool holds units, in the order named.
+function poolsOf(
+  book: Book,
+  listed: readonly StakingValidator[],
+  receipts: readonly AssetRef[],
+): readonly ReceiptPool[] {
+  return receipts.flatMap((receipt) => {
+    const found = listed.find(({ validator }) => receiptOf(validator) === receipt);
+    if (found === undefined || book.pool(found.validator) === 0n) {
+      return [];
+    }
+    return [{ validator: found.validator, pool: poolOf(book, found.validator) }];
+  });
+}
+
 function draftOf(plan: StakePlan): TxDraft {
   const address = accountRefParts(plan.validator).address;
   const words: Record<StakePlan["action"], string> = {
@@ -254,6 +270,10 @@ export function createFakeStakingVenue(options: FakeStakingOptions): FakeStaking
       signal.throwIfAborted();
       const found = listed.some((item) => item.validator === validator);
       return await Promise.resolve(found ? ok(receiptOf(validator)) : err("validator_unknown"));
+    },
+    pools: async (receipts, { signal }) => {
+      signal.throwIfAborted();
+      return await Promise.resolve(poolsOf(book, listed, receipts));
     },
     plan: async (request, { signal }) => {
       signal.throwIfAborted();

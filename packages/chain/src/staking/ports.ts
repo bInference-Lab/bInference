@@ -4,7 +4,7 @@ import type { AssetRef } from "../caip/asset-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { TxDraft } from "../transaction.js";
 import type { VenueDeclaration } from "../venues/venue.js";
-import type { StakePlan } from "./stake-plan.js";
+import type { ReceiptPool, StakePlan } from "./stake-plan.js";
 import type {
   DecodedStake,
   LandedRequest,
@@ -56,6 +56,17 @@ export interface StakingVenue extends VenueDeclaration {
     validator: AccountRef,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<AssetRef, "validator_unknown">>;
+  /**
+   * The pools of the receipt tokens named that the venue mints, at the latest block, one each, in
+   * the order named, each with the validator it stakes with; a token it does not mint, or whose
+   * pool holds no units, is left out. What some units are worth in the chain's coin is their part
+   * of the pool's coin. A venue that cannot read its contracts throws. Rejects with the signal's
+   * reason once the signal aborts.
+   */
+  pools(
+    receipts: readonly AssetRef[],
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly ReceiptPool[]>;
   /**
    * Plans the move at the latest block, or names why the venue would refuse it, in the order the
    * venue itself checks ({@link StakeRefusal}), with the facts its words name

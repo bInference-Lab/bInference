@@ -16,6 +16,7 @@ import {
   type LandedRequest,
   type LandedStake,
   landedStakeSchema,
+  type ReceiptPool,
   type StakePlan,
   stakePlanSchema,
   type StakeRefusal,
@@ -31,6 +32,7 @@ import { callVenue, ownCopy } from "./call-venue.js";
 import { type LandedMismatch, landedMismatch } from "./landed-checks.js";
 import { stakeMismatch, type StakeStep } from "./stake-checks.js";
 import { planMismatch } from "./stake-plan-checks.js";
+import { readStakePools } from "./stake-pools.js";
 
 /** Why the host has no plan of a staking move: the venue's refusal, or what the host refused. */
 export type StakePlanFailure = StakeRefusal | "venue_down" | "decode_mismatch";
@@ -68,6 +70,8 @@ type HostLanded =
 export interface StakingHost {
   /** The staking venue with this id on the chain, when the engine runs one there. */
   readonly venueOn: (id: string, chain: ChainRef) => StakingVenue | undefined;
+  /** Every staking venue the engine runs on the chain, in the order it was given them. */
+  readonly venuesOn: (chain: ChainRef) => readonly StakingVenue[];
   /**
    * Plans the move, or answers the venue's refusal with the facts its words name. A plan of
    * another move than the request asks is `decode_mismatch` (`other_plan`), and so is an unstake
@@ -93,6 +97,15 @@ export interface StakingHost {
     validator: AccountRef,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<AssetRef, "validator_unknown" | "venue_down">>;
+  /**
+   * The pools of the receipts named that the venue mints, at the latest block, each with its
+   * validator (decision 0329); an answer the host cannot hold is `venue_down`.
+   */
+  pools(
+    venue: StakingVenue,
+    receipts: readonly AssetRef[],
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<readonly ReceiptPool[], "venue_down">>;
   /** The unbonding parts the wallet holds with the validator now, ready or not. */
   parts(
     venue: StakingVenue,
@@ -273,6 +286,7 @@ export function createStakingHost(options: StakingHostOptions): StakingHost {
   const { venues } = options;
   return {
     venueOn: (id, chain) => venues.find((venue) => venue.id === id && venue.chain === chain),
+    venuesOn: (chain) => venues.filter((venue) => venue.chain === chain),
     plan: async (venue, request, { signal }) => planWith(options, venue, { request, signal }),
     build: async (venue, plan, { signal }) => buildWith(options, venue, { plan, signal }),
     async receipt(venue, validator, { signal }) {
@@ -286,6 +300,8 @@ export function createStakingHost(options: StakingHostOptions): StakingHost {
       const copy = assetRefSchema.safeParse(read.value.value);
       return copy.success ? ok(copy.data) : err("venue_down");
     },
+    pools: async (venue, receipts, { signal }) =>
+      readStakePools({ ...options, timeoutMs: stakingTimeoutMs }, venue, { receipts, signal }),
     parts: async (venue, held, { signal }) => partsWith(options, venue, { ...held, signal }),
     landed: async (venue, landing, { signal }) =>
       landedWith(options, venue, { ...landing, signal }),
