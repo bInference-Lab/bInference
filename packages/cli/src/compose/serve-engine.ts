@@ -6,6 +6,7 @@ import type { LockReason } from "../unlock/unlock-keys.js";
 import { type BotChannel, startBotChannel } from "./bot-channel.js";
 import { startBridgeTimer } from "./bridge-timer.js";
 import { startCardTimer } from "./card-timer.js";
+import { startClaimReadyTimer } from "./claim-ready-timer.js";
 import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
 import { startConfigReload } from "./config-reload.js";
@@ -46,8 +47,8 @@ function startShutdown(
   return { stop: () => void shutdown.stop("request"), finished };
 }
 
-// The timers that read and tell, locked or not: the launches' pins, the daily summaries and the
-// bridges in transit.
+// The timers that read and tell, locked or not: the launches' pins, the daily summaries, the
+// bridges in transit and the unstaked coin ready to claim.
 function startReadTimers(
   composed: ComposedSelfHosted,
   timers: Pick<Parameters<typeof startPinTimer>[0], "clock" | "closers" | "logger">,
@@ -55,6 +56,7 @@ function startReadTimers(
   startPinTimer({ checkPins: composed.checkPins, ...timers });
   startSummaryTimer({ sendDailySummaries: composed.sendDailySummaries, ...timers });
   startBridgeTimer({ followBridges: composed.followBridges, ...timers });
+  startClaimReadyTimer({ tellClaimsReady: composed.tellClaimsReady, ...timers });
 }
 
 function isUnreachable(unlocked: Result<void, LockReason>): boolean {

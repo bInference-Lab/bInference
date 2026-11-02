@@ -68,6 +68,7 @@ import {
   createSendLevelHandlers,
   type SendLevelHandlers,
 } from "../send-levels/send-level-handlers.js";
+import { type StakeWork, stakeWorkOf } from "../staking/engine-staking.js";
 import type { DailySummaries } from "../summaries/daily-summaries.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { ImageOptions } from "../uploads/image-options.js";
@@ -119,7 +120,7 @@ export interface EngineHandlers
  * change, the freeze, the wallet list and the ledger, built from ports. A looser limit, send level
  * or rescue address waits 24 hours. It holds no I/O of its own; pushes leave through `publish`.
  */
-export interface Engine extends BridgeWork {
+export interface Engine extends BridgeWork, StakeWork {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
   readonly handlers: EngineHandlers;
   /** Applies a card answer from a surface the engine serves itself, such as a Telegram tap. */
@@ -467,6 +468,7 @@ export function createEngineWithFills(given: EngineOptions): {
     alerts: chat.alerts,
     sendDailySummaries: async (call) => summaries.run(call),
     ...bridgeWorkOf(options, intents.stored),
+    ...stakeWorkOf(options),
   };
   return { engine, fillOrder: async (request, call) => intents.fills.run(request, call) };
 }

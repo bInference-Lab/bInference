@@ -82,6 +82,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.feeAboveCap": `${warning} 网络费高于你设定的上限，一笔交易一直在等待，它的确认已过期。请在新卡片上再次确认，或取消它。`,
   "notice.launchUnsent": `${warning} 一笔在发射项目联合曲线上的交易未发送：发射台已不在该联合曲线上持有此代币，例如代币已毕业。未签名任何内容。`,
   "notice.nameMoved": `${warning} 向 alice.bnb 的转账未签名：该域名现在指向 0x2bA6…3c71，而不是卡片上的 0x71C7…976F。未发送任何内容。请检查域名，然后重新发起转账。`,
+  "notice.claimReady": "你从 0x71C7…976F 解除质押的 2 FAKE 现在可以领取",
   "notice.bridgeLate": `${warning} 你跨链到 Base 的 20 FAKE 2 小时后仍未到账。binference 会继续检查。fake-cross 的状态页：https://bridge.test/transfer/0xd1`,
   "notice.bridgeArrived": `${done} 你延迟的跨链已在 Base 到账：0x71C7…976F 收到 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross 未完成你到 Base 的跨链，已将 20 FAKE 退回 Main`,

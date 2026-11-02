@@ -8,6 +8,7 @@ import {
   stakeRequest,
   testStakingFake,
   testStakingVenue,
+  testUnbondingSeconds,
   testValidator,
 } from "../staking/test-stakes.js";
 import { benchChain, driveUntil, stateOf, type ExecutorBench, tapped } from "./test-executor.js";
@@ -16,6 +17,7 @@ import { landing, stakeBench, stakeEnds, stakeReceiptOf } from "./test-stake-ben
 const live = { signal: new AbortController().signal };
 const mine = { isPaper: false, walletId: testWallet, after: 0, limit: 10 };
 const open = { walletId: testWallet, isPaper: false, venue: testStakingVenue };
+const dayMs = 86_400_000;
 const done = String.fromCodePoint(0x2705);
 
 async function executionsOf(bench: ExecutorBench) {
@@ -42,6 +44,13 @@ async function arrivalsOf(bench: ExecutorBench) {
   return arrivals.map(({ received, valueUsdMicros }) => ({ received, valueUsdMicros }));
 }
 
+// The keys of the notices the engine and its executor sent, oldest first.
+function noticeKeysOf(bench: ExecutorBench): readonly string[] {
+  return [...bench.test.pushes, ...bench.pushes]
+    .filter(({ kind }) => kind === "notice/new")
+    .map(({ data }) => /"key":"([^"]+)"/.exec(JSON.stringify(data))?.[1] ?? "");
+}
+
 describe("a landed staking move, booked from its venue's read-back (decision 0327)", () => {
   it("books a stake once as the coin it spent for the receipt units it minted", async () => {
     const fake = testStakingFake();
@@ -56,7 +65,7 @@ describe("a landed staking move, booked from its venue's read-back (decision 032
     expect(execution?.valueUsdMicros).toBe(300_000_000n);
   });
 
-  it("opens an unstake's unbonding at the venue's ready time and says when a claim can take it", async () => {
+  it("opens an unstake's unbonding at the venue's ready time, says it, and tells once it is ready", async () => {
     const fake = await stakedFake();
     const bench = await stakeBench(landing(fake));
     const intent = await tapped(bench, stakeRequest("unstake"));
@@ -75,6 +84,10 @@ describe("a landed staking move, booked from its venue's read-back (decision 032
         "u",
       ),
     );
+    await bench.test.clock.advance(2 * testUnbondingSeconds * 1_000 + dayMs);
+    await expect(bench.test.engine.tellClaimsReady(live)).resolves.toBe(1);
+    await expect(bench.test.engine.tellClaimsReady(live)).resolves.toBe(0);
+    expect(noticeKeysOf(bench).filter((key) => key === "notice.claimReady")).toHaveLength(1);
   });
 
   it("books a claim of a part unstaked elsewhere as coin with no value, once", async () => {

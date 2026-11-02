@@ -188,7 +188,7 @@ describe("migrate config", () => {
 
   it("moves a version 11 file to version 12 unchanged, naming the Relay key it adds", () => {
     const eleventh: JsonObject = { version: 11, venues: { kyberClientId: "binference" } };
-    expect(migrateConfig(eleventh, configMigrations)).toStrictEqual({
+    expect(migrateConfig(eleventh, configMigrations.slice(0, 11))).toStrictEqual({
       ok: true,
       file: { version: 12, venues: { kyberClientId: "binference" } },
       steps: [
@@ -196,6 +196,25 @@ describe("migrate config", () => {
           from: 11,
           to: 12,
           summary: "Adds venues.keys.relay, the owner's Relay API key, which no file sets yet.",
+          edits: [],
+        },
+      ],
+    });
+  });
+
+  it("moves a version 12 file to version 13 unchanged, naming the notice it lets be muted", () => {
+    const muted = { notifications: { muted: ["alertHeld"] } };
+    const twelfth: JsonObject = { version: 12, defaults: muted };
+    expect(migrateConfig(twelfth, configMigrations)).toStrictEqual({
+      ok: true,
+      file: { version: 13, defaults: muted },
+      steps: [
+        {
+          from: 12,
+          to: 13,
+          summary:
+            "Lets defaults.notifications mute claimReady, the notice that an unstake's coin can " +
+            "be claimed; no file names it yet.",
           edits: [],
         },
       ],

@@ -1,6 +1,7 @@
 import type { ProtocolId } from "@binference/protocol";
 import { bridgeNoticeTable } from "./bridge-notice-table.js";
 import { noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
+import { stakeNoticeTable } from "./stake-notice-table.js";
 import type { WrittenNotice } from "./write-notice.js";
 
 /** A notice of {@link noticeTable}: what a surface writes, and the agent it names. */
@@ -229,6 +230,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.feeAboveCap": { key: "notice.feeAboveCap", values: {} },
   "notice.launchUnsent": { key: "notice.launchUnsent", values: { reason: "launch_moved" } },
   "notice.nameMoved": { key: "notice.nameMoved", values: movedName },
+  ...stakeNoticeTable,
   ...bridgeNoticeTable,
   "notice.launchStopped": {
     key: "notice.launchStopped",

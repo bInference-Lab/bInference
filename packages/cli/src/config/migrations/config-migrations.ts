@@ -78,6 +78,13 @@ export const configMigrations: readonly ConfigMigration[] = [
     summary: "Adds venues.keys.relay, the owner's Relay API key, which no file sets yet.",
     edits: () => [],
   },
+  {
+    from: 12,
+    summary:
+      "Lets defaults.notifications mute claimReady, the notice that an unstake's coin can be " +
+      "claimed; no file names it yet.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

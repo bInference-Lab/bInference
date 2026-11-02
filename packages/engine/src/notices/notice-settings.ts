@@ -3,9 +3,10 @@ import { z } from "zod";
 
 /**
  * The notice kinds an agent may mute (decision 0185): fills, skipped fills, low gas, orders about
- * to expire and the daily summary of decision 0057, and the alert, exit order and update notices
- * of spec 4, sections 4.2 and 4.3. Every other kind always goes: it tells of a security event, of
- * money or a trade that needs a look, or of the engine or the agent stopping.
+ * to expire, the daily summary of decision 0057, unstaked coin ready to claim (decision 0327), and
+ * the alert, exit order and update notices of spec 4, sections 4.2 and 4.3. Every other kind
+ * always goes: it tells of a security event, of money or a trade that needs a look, or of the
+ * engine or the agent stopping.
  */
 export const mutableNoticeKinds = [
   "fill",
@@ -13,6 +14,7 @@ export const mutableNoticeKinds = [
   "lowGas",
   "orderExpiring",
   "daily",
+  "claimReady",
   "alertPrice",
   "alertWallet",
   "alertLaunch",

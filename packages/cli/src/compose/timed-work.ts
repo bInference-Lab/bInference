@@ -5,7 +5,8 @@ import type { Engine } from "@binference/engine";
  * address's ceiling change, the gas check, the auto orders that wait for no price, the cards whose
  * time is up, the schedules whose time came, the copy orders' leader trades, the token launches
  * waiting for their launchpad's pin, the re-check of the orders after a stop or a sleep, the
- * daily summaries (decision 0273), and the bridges in transit (decision 0320).
+ * daily summaries (decision 0273), the bridges in transit (decision 0320), and the unstaked coin
+ * ready to claim (decision 0327).
  */
 export type TimedWork = Pick<
   Engine,
@@ -19,6 +20,7 @@ export type TimedWork = Pick<
   | "downtime"
   | "sendDailySummaries"
   | "followBridges"
+  | "tellClaimsReady"
 >;
 
 /** The engine's {@link TimedWork}, for the timers to run. */
@@ -34,5 +36,6 @@ export function timedWorkOf(engine: Engine): TimedWork {
     downtime: engine.downtime,
     sendDailySummaries: engine.sendDailySummaries,
     followBridges: engine.followBridges,
+    tellClaimsReady: engine.tellClaimsReady,
   };
 }
