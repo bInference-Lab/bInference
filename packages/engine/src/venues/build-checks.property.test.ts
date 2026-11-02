@@ -35,6 +35,10 @@ const asset = testUnstakePlan.moved.asset;
 const shortOf = (base: bigint) => (base > 12n ? "short_unstake" : undefined);
 const unreadyOf = (shift: number) => (shift > 0 ? "unready_part" : undefined);
 
+// A stake's read-back passes with any units minted, fewer than promised too (decision 0331).
+const mintedOf = (base: bigint) => (base === 0n ? "other_shares" : undefined);
+const receiptUnits = (base: bigint) => ({ asset: testStakeReceipt, base });
+
 function landedOf(shares: bigint, shift: number) {
   if (shares !== 10n) {
     return "other_shares";
@@ -254,6 +258,29 @@ describe("build-step check invariants", () => {
             request: { ...testUnstakeRequest, readyAtMs: testUnstakeRequest.readyAtMs + shift },
           };
           expect(landedMismatch(landed, testUnstakePlan, family)).toBe(landedOf(shares, shift));
+        },
+      ),
+    );
+  });
+
+  it("passes a landed stake that minted any units, under its least units too, and refuses one that minted none (decision 0331)", () => {
+    const { readyAtMs: _readyAtMs, ...unstake } = testUnstakePlan;
+    fc.assert(
+      fc.property(
+        fc.bigInt({ min: 1n, max: 2n ** 96n }),
+        fc.bigInt({ min: 0n, max: 2n ** 97n }),
+        (least, minted) => {
+          const plan = {
+            ...unstake,
+            action: "stake" as const,
+            value: { ...unstake.moved, base: 12n },
+            shares: receiptUnits(least),
+            minShares: receiptUnits(least),
+          };
+          const landed = { action: "stake", validator: plan.validator, moved: plan.value } as const;
+          expect(landedMismatch({ ...landed, shares: receiptUnits(minted) }, plan, family)).toBe(
+            mintedOf(minted),
+          );
         },
       ),
     );
