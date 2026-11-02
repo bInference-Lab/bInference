@@ -49,7 +49,7 @@ import { spaceIdOn } from "./space-id-names.js";
  * live agent with its main and bridge wallets, SPACE ID's names on the fork, and Across and Relay
  * over their live APIs, whose deliveries the test lands.
  */
-export interface SendBridgeMachine extends LoopbackServing {
+export interface OwnerChatMachine extends LoopbackServing {
   readonly composed: ComposedEngine;
   readonly bot: ComposedTelegram;
   readonly botApi: FakeBotApi;
@@ -147,12 +147,12 @@ function composedOn(fork: Fork, made: Made): ComposedEngine {
 
 /**
  * Composes and serves the engine on the fork with the owner's bot, in English in UTC, over the
- * rescue rig's parts; a test stops it with {@link SendBridgeMachine.stop} once done.
+ * rescue rig's parts; a test stops it with {@link OwnerChatMachine.stop} once done.
  */
-export async function startSendBridgeMachine(
+export async function startOwnerChatMachine(
   fork: Fork,
   signal: AbortSignal,
-): Promise<SendBridgeMachine> {
+): Promise<OwnerChatMachine> {
   const arrivals = createBridgeArrivals(fork);
   const bridging = bridgingOn(fork, arrivals);
   const names = spaceIdOn(fork);

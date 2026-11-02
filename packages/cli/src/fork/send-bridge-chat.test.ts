@@ -1,12 +1,10 @@
-import { setTimeout as wait } from "node:timers/promises";
 import { type AccountRef, accountRefSchema, chainRefSchema } from "@binference/chain";
 import { erc20AssetRef, evmAccountRef } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
 import { createSolanaAddressCodec } from "@binference/chain-solana";
 import { baseMainnet, solana } from "@binference/chains";
-import { BinferenceError, type Id, idSchema } from "@binference/core";
+import { type Id, idSchema } from "@binference/core";
 import { callsReply, textReply } from "@binference/runtime/testing";
-import type { FakeMessage } from "@binference/telegram/testing";
 import {
   type Address,
   getAddress,
@@ -19,12 +17,23 @@ import {
   toHex,
 } from "viem";
 import { describe, expect, it } from "vitest";
-import { ownerId, ownerText, superviseRuntime, watchChat } from "../e2e/runtime-machine.js";
+import { ownerText, superviseRuntime, watchChat } from "../e2e/runtime-machine.js";
 import { solanaPerson } from "./bridge-arrivals.js";
 import { forkLimits, startMining } from "./executor-rig.js";
 import { buyFor, heldOn } from "./fork-holdings.js";
-import { rescueAgents } from "./rescue-rig-parts.js";
-import { type SendBridgeMachine, startSendBridgeMachine } from "./send-bridge-machine.js";
+import { type OwnerChatMachine, startOwnerChatMachine } from "./owner-chat-machine.js";
+import {
+  ask,
+  type Chat,
+  confirm,
+  live,
+  liveAgent as agent,
+  messageText,
+  never,
+  type Step,
+  until,
+} from "./owner-chat-steps.js";
+import { expectValue } from "./rig-calls.js";
 import { placeName } from "./space-id-names.js";
 
 // The send and bridge skeleton: the owner asks in Telegram (the synthetic Bot API), the scripted
@@ -43,9 +52,7 @@ const usdt = bscToken("USDT");
 const usdc = bscToken("USDC");
 const baseRef = chainRefSchema.parse(baseMainnet.id);
 const solanaRef = chainRefSchema.parse(solana.id);
-const [agent = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000061")] = rescueAgents;
 const done = String.fromCodePoint(0x2705);
-const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
 const entries = {
   alice: idSchema("adr").parse("adr_0190f1c2-3a4b-7c5d-8e6f-000000000341"),
   base: idSchema("adr").parse("adr_0190f1c2-3a4b-7c5d-8e6f-000000000342"),
@@ -60,28 +67,15 @@ function accountOf(phrase: string): Address {
   return getAddress(keccak256(stringToHex(phrase)).slice(0, 42));
 }
 
-function never(): never {
-  throw new BinferenceError({ code: "test.missing", message: "The fixture holds it." });
-}
-
-function valueOf<T>(
-  result: { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: string },
-): T {
-  if (!result.ok) {
-    throw new BinferenceError({ code: "fork.refused", message: result.error });
-  }
-  return result.value;
-}
-
 // The rig's main wallet and its bridge wallet.
-function walletsOf(machine: SendBridgeMachine) {
+function walletsOf(machine: OwnerChatMachine) {
   const [main, bridge] = machine.rig.rigWallets;
   return { main: main ?? never(), bridge: bridge ?? never() };
 }
 
 // The main wallet holds BNB and what 0.1 BNB buys of USDT, the bridge wallet BNB and what 0.05 BNB
 // buys of USDC; neither, nor Alice, holds code.
-async function fund(fork: Fork, machine: SendBridgeMachine): Promise<void> {
+async function fund(fork: Fork, machine: OwnerChatMachine): Promise<void> {
   const { main, bridge } = walletsOf(machine);
   const plain = [main.address, bridge.address, alice];
   await Promise.all(plain.map(async (address) => fork.call("anvil_setCode", [address, "0x"])));
@@ -93,7 +87,7 @@ async function fund(fork: Fork, machine: SendBridgeMachine): Promise<void> {
 
 // An address the owner saved with the owner key three days ago, as `address add` saves one.
 async function save(
-  machine: SendBridgeMachine,
+  machine: OwnerChatMachine,
   entry: { readonly id: Id<"adr">; readonly account: AccountRef; readonly bytes: string },
   entryLabel: string,
 ): Promise<void> {
@@ -108,7 +102,7 @@ async function save(
     inCeilingAtMs: atMs,
     createdAtMs: atMs,
   };
-  valueOf(await machine.stores.agents.addAddress(saved, live()));
+  expectValue(await machine.stores.agents.addAddress(saved, live()));
 }
 
 /** One wallet's ceiling rules as custody read them back. */
@@ -124,7 +118,7 @@ interface CeilingRules {
 // through a bridge rule elsewhere, and a 24-hour cap on the token it sends.
 async function setCeiling(
   fork: Fork,
-  machine: SendBridgeMachine,
+  machine: OwnerChatMachine,
   rules: CeilingRules,
 ): Promise<void> {
   const { wallet } = rules;
@@ -141,18 +135,18 @@ async function setCeiling(
   };
   const policyId = `privy-policy-${wallet.slice(-12)}`;
   const ceiling = { policyId, policy, perTxNativeBase: 10n ** 18n, readAtMs: Date.now() };
-  valueOf(await machine.stores.install.updateCeiling({ wallet, ceiling }, live()));
+  expectValue(await machine.stores.install.updateCeiling({ wallet, ceiling }, live()));
 }
 
 // The install as the owner left it: the agent may bridge through Across and Relay, Alice saved on
 // BSC, an address saved for Base and one for Solana, and each wallet's ceiling paying them.
-async function readyToSendAndBridge(fork: Fork, machine: SendBridgeMachine): Promise<void> {
+async function readyToSendAndBridge(fork: Fork, machine: OwnerChatMachine): Promise<void> {
   const { stores, rig } = machine;
   const settings = await stores.agents.get(agent, live());
   const limits = { ...forkLimits(fork), venues: ["pancakeswap", "across", "relay"] };
   const limited = { agentId: agent, limits, atMs: Date.now() };
   const expectedVersion = settings?.limits.version ?? 0;
-  valueOf(await stores.agents.setLimits({ ...limited, expectedVersion }, live()));
+  expectValue(await stores.agents.setLimits({ ...limited, expectedVersion }, live()));
   const aliceRef = evmAccountRef(fork.chain, alice);
   const baseRefOf = accountRefSchema.parse(`${baseRef}:${baseHolder}`);
   const solanaAccount = accountRefSchema.parse(`${solanaRef}:${solanaPerson}`);
@@ -220,84 +214,13 @@ function modelReplies(fork: Fork) {
   ];
 }
 
-// The newest message in the owner's chat that still carries a Confirm button.
-function openCard(machine: SendBridgeMachine): FakeMessage {
-  return (
-    machine.botApi
-      .messages()
-      .findLast((message) => message.buttons[0]?.[0]?.data?.startsWith("bnf1:c:y:") === true) ??
-    never()
-  );
-}
-
-// The owner taps Confirm on the newest open card.
-async function confirm(machine: SendBridgeMachine): Promise<void> {
-  const card = openCard(machine);
-  const data = card.buttons[0]?.[0]?.data ?? never();
-  const update = machine.botApi.press({ from: ownerId, data, messageId: card.messageId });
-  await machine.bot.ingress.receive(update, live());
-  await machine.bot.idle();
-}
-
-// Waits until the intent reaches `state` or ends otherwise, polling the store, for at most a
-// minute.
-async function until(machine: SendBridgeMachine, intent: Id<"int">, state: string) {
-  const ended = new Set(["reconciled", "failed_check", "failed_onchain", "expired", "cancelled"]);
-  const deadline = Date.now() + 60_000;
-  const poll = async (): Promise<string> => {
-    const record = await machine.stores.intents.get(intent, live());
-    const now = record?.state ?? "missing";
-    if (now === state || ended.has(now) || Date.now() > deadline) {
-      return now;
-    }
-    await wait(250);
-    return poll();
-  };
-  return poll();
-}
-
-// The agent's newest intent: ids are time ordered.
-async function newestIntent(machine: SendBridgeMachine): Promise<Id<"int">> {
-  const listed = await machine.client.call("intent/list", { agent }, live());
-  const ids = listed.items.map(({ intent }) => intent).toSorted();
-  return ids.at(-1) ?? never();
-}
-
-// The text the card's message holds now.
-function messageText(machine: SendBridgeMachine, card: FakeMessage): string {
-  const now = machine.botApi.messages().find(({ messageId }) => messageId === card.messageId);
-  return now?.text ?? "";
-}
-
 // The logs of the intent's last landed transaction on the fork that a bridge's deposit emits.
-async function landedLogs(fork: Fork, machine: SendBridgeMachine, intent: Id<"int">) {
+async function landedLogs(fork: Fork, machine: OwnerChatMachine, intent: Id<"int">) {
   const stored = await machine.stores.transactions.ofIntent(intent, live());
   const landed = stored.findLast(({ receipt }) => receipt !== undefined);
   const hash = (landed?.hash ?? never()) as Hex;
   const receipt = await fork.client.getTransactionReceipt({ hash });
   return { hash, logs: parseEventLogs({ abi: deposits, logs: receipt.logs }) };
-}
-
-/** The chat a step runs in: the machine, the watch on the agent's turns, and the fork. */
-interface Chat {
-  readonly fork: Fork;
-  readonly machine: SendBridgeMachine;
-  readonly turns: ReturnType<typeof watchChat>;
-}
-
-/** What a step leaves to check: the card's message as it was shown, and its intent. */
-interface Step {
-  readonly card: FakeMessage;
-  readonly intent: Id<"int">;
-}
-
-// The owner writes `text`; the model's nth turn proposes, and its card reaches the chat.
-async function ask(chat: Chat, text: string, turn: number): Promise<Step> {
-  const { machine } = chat;
-  await machine.bot.ingress.receive(ownerText(text, turn + 1), live());
-  await chat.turns.turnsEnded(turn);
-  await machine.bot.idle();
-  return { card: openCard(machine), intent: await newestIntent(machine) };
 }
 
 // Follows the bridges once, as the engine's timer does, until the intent reconciles and the
@@ -405,7 +328,7 @@ describe("a send and two bridges from a Telegram chat on a BSC fork", () => {
   }) =>
     withFork(signal, async (fork) => {
       await placeName(fork, { label, holder: alice, address: alice }, signal);
-      const machine = await startSendBridgeMachine(fork, signal);
+      const machine = await startOwnerChatMachine(fork, signal);
       const miner = new AbortController();
       const mining = startMining(fork, miner.signal);
       const runtime = superviseRuntime(machine, {
