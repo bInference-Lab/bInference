@@ -55,6 +55,21 @@ export async function onlyHolding(subject: StakingVenueSubject): Promise<Staking
   return held;
 }
 
+// The venue's decoder reads the staking call as the plan's move, from the wallet and crediting it.
+function checkDecoded(subject: StakingVenueSubject, draft: TxDraft, plan: StakePlan): void {
+  const read = subject.venue.decode(draft);
+  assert.ok(read.ok, "The venue could not decode a call it built.");
+  const { credits, action, validator, value, shares, parts, refs } = read.value;
+  assert.equal(draft.from, plan.wallet);
+  assert.deepEqual(
+    [credits, action, validator, value],
+    [plan.wallet, plan.action, plan.validator, plan.value.base],
+  );
+  assert.equal(shares, plan.action === "unstake" ? plan.shares?.base : undefined);
+  assert.equal(parts, plan.parts?.length);
+  assert.ok(refs === undefined || plan.paper || refs.join() === plan.parts?.join());
+}
+
 /**
  * Builds the plan, decodes its staking call and holds it to the plan, from the wallet and
  * crediting it, after the one approval a liquid venue's unstake makes, which no staking decoder
@@ -73,15 +88,7 @@ export async function landedPlan(
     assert.deepEqual(subject.venue.decode(approval), { ok: false, error: "unknown_call" });
   }
   for (const draft of drafts.slice(isApproved ? 1 : 0)) {
-    const read = subject.venue.decode(draft);
-    assert.ok(read.ok, "The venue could not decode a call it built.");
-    assert.equal(draft.from, plan.wallet);
-    assert.equal(read.value.credits, plan.wallet);
-    assert.equal(read.value.action, plan.action);
-    assert.equal(read.value.validator, plan.validator);
-    assert.equal(read.value.value, plan.value.base);
-    assert.equal(read.value.shares, plan.action === "unstake" ? plan.shares?.base : undefined);
-    assert.equal(read.value.parts, plan.parts?.length);
+    checkDecoded(subject, draft, plan);
   }
   const [hash] = await subject.run(drafts);
   assert.ok(hash !== undefined);

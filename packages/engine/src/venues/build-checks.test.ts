@@ -219,12 +219,24 @@ describe("build-step checks", () => {
   });
 });
 
+const named = (refs: readonly string[]) =>
+  testStakeStep({ action: "claim", shares: undefined, parts: 1, refs } as never);
 const check = (steps: readonly StakePlanStep[]) =>
   stakeMismatch(steps, testUnstakePlan, testStakeBounds);
 
 describe("build-step checks of a staking move (decision 0327)", () => {
   it("passes the one call that makes the plan's move for the wallet", () => {
     expect(check([testStakeStep()])).toBeUndefined();
+  });
+
+  it("holds a live claim whose call names its parts to the plan's own, and a paper one not at all", () => {
+    const paper = { ...testClaimPlan, paper: true };
+    const asks = [
+      stakeMismatch([named(["r:1"])], testClaimPlan, testStakeBounds),
+      stakeMismatch([named(["r:2"])], testClaimPlan, testStakeBounds),
+      stakeMismatch([named(["0"])], paper, testStakeBounds),
+    ];
+    expect(asks).toStrictEqual([undefined, "other_stake", undefined]);
   });
 
   it("passes an unstake's exact approval of its receipt units to a declared spender first (decision 0331)", () => {

@@ -31,7 +31,7 @@ function moveOf(call: ManagerCall, value: bigint): Move | undefined {
   if (call.name === "requestWithdraw") {
     return call.units > 0n ? { action: "unstake", value, shares: call.units } : undefined;
   }
-  return { action: "claim", value, parts: 1 };
+  return { action: "claim", value, parts: 1, refs: [call.uuid.toString()] };
 }
 
 /**

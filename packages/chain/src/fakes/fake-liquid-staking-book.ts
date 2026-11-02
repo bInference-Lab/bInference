@@ -165,7 +165,7 @@ function claimOf(value: bigint, words: readonly string[]): PoolMove | undefined 
   const [name, id, ...rest] = words;
   const isId = id !== undefined && isFakeUnsigned(id);
   return name === "claimWithdrawByUUID" && isId && rest.length === 0 && value === 0n
-    ? { action: "claim", value, parts: 1 }
+    ? { action: "claim", value, parts: 1, refs: [id] }
     : undefined;
 }
 

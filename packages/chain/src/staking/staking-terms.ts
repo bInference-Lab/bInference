@@ -153,6 +153,11 @@ export interface DecodedStake {
   readonly shares?: bigint;
   /** How many unbonding parts a claim takes. */
   readonly parts?: number;
+  /**
+   * The refs of the parts a claim's call names, when its call names them, as a liquid venue's
+   * claim of one request by its id does; absent when the call names only a count.
+   */
+  readonly refs?: readonly string[];
 }
 
 /** A transaction that landed a staking move of the wallet with the validator. */

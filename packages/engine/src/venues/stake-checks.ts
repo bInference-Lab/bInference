@@ -37,8 +37,20 @@ function isPlannedMove(decoded: DecodedStake, plan: StakePlan, family: ChainFami
     isSameAccount(decoded.validator, plan.validator, family) &&
     decoded.value === plan.value.base &&
     decoded.shares === (plan.action === "unstake" ? plan.shares?.base : undefined) &&
-    decoded.parts === (plan.action === "claim" ? plan.parts?.length : undefined)
+    decoded.parts === (plan.action === "claim" ? plan.parts?.length : undefined) &&
+    namesItsParts(decoded, plan)
   );
+}
+
+// A live claim whose call names its parts names exactly the plan's; a paper claim's call, never
+// sent, names no part of the chain (decision 0331).
+function namesItsParts(decoded: DecodedStake, plan: StakePlan): boolean {
+  const { refs } = decoded;
+  if (refs === undefined || plan.paper) {
+    return true;
+  }
+  const parts = plan.parts ?? [];
+  return refs.length === parts.length && refs.every((ref, index) => ref === parts[index]);
 }
 
 interface OrderedStake {
@@ -100,7 +112,7 @@ function callMismatch(
  * approval of exactly its receipt units, sending no coin, to a spender the venue declared, and
  * then that call; the call goes to a contract the venue declared, credits that wallet alone and
  * makes the plan's move: its action, validator, coin, an unstake's shares and a claim's count of
- * parts. Gives the first check that fails, or none.
+ * parts, and a live claim's own parts where its call names them. Gives the first check that fails, or none.
  */
 export function stakeMismatch(
   steps: readonly StakePlanStep[],
