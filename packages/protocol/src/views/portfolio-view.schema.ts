@@ -113,7 +113,7 @@ export const balanceViewSchema: z.ZodType<BalanceView> = z.object({
 });
 
 /** Parses one wallet's stake with one validator. */
-const stakingPositionViewSchema: z.ZodType<StakingPositionView> = z.object({
+export const stakingPositionViewSchema: z.ZodType<StakingPositionView> = z.object({
   wallet: protocolIdSchema("wallet"),
   venue: venueIdSchema,
   validator: accountRefSchema.exactOptional(),

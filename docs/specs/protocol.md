@@ -370,7 +370,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }` of a tracked wallet (below)                                   |
 | `launch/list`          | `read`           | paging, `{ chain, from?, filters?: LaunchFilter }` → `LaunchView` items, newest first, launched at or after `from`                                              |
 | `launchpad/list`       | `read`           | `{ chain }` → `{ items: [LaunchpadView] }`: each launchpad the engine runs on the chain, where it takes the picture, its settings                               |
-| `staking/options`      | `read`           | `{ chain, agent?, venue?: stakehub \| slisbnb }` → `{ items: [StakingOptionView], positions?: [StakingPositionView], assets }` (below)                          |
+| `staking/options`      | `read`           | `{ chain, agent?, venue? }` → `{ items: [StakingOptionView], positions?: [StakingPositionView], assets }` (below)                                               |
 | `bridge/quote`         | `read`           | `{ agent, wallet?, amount: Amount, toChain: ChainRef, to?: { entry } \| { rescue: true } }` → `{ items: [BridgeRouteView], assets }`; creates no intent (below) |
 
 - `asset/search` reads the chain registry and the positions store, never the web. A query the
@@ -458,7 +458,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   when the chain does not answer. A send by name resolves the same way when it is proposed and again
   when its wallet's queue takes it (section 8.1, spec 6).
 - `staking/options` reads each staking venue the agent's venues allow on `chain`, or `venue`
-  alone. A `StakingOptionView` is
+  alone, a staking venue's id (`stakehub`; `slisbnb` once a Lista venue runs). A `StakingOptionView` is
   `{ venue: stakehub, validator: AccountRef, name, commissionBps, aprBps?, jailed, unbondingSeconds, minAmount? }`
   for each validator StakeHub lists at the latest block, or
   `{ venue: slisbnb, rate, unbondingSeconds?, minAmount? }`, `rate` the BNB one slisBNB is worth, a

@@ -25,12 +25,17 @@ import {
   type WalletHoldings,
 } from "./portfolio-view.js";
 import { type HoldingsReadParts, readHoldings } from "./read-holdings.js";
+import {
+  createStakingOptionsHandlers,
+  type StakingOptionsHandlers,
+} from "./staking-options-handlers.js";
 
 /**
  * The handlers of `portfolio/get`, `portfolio/pnl`, `portfolio/resetPaper`, `asset/search`,
- * `market/scan` and `market/chart` (protocol spec, section 7.3).
+ * `market/scan`, `market/chart` and `staking/options` (protocol spec, section 7.3).
  */
-export interface PortfolioHandlers extends AssetSearchHandlers, MarketHandlers {
+export interface PortfolioHandlers
+  extends AssetSearchHandlers, MarketHandlers, StakingOptionsHandlers {
   readonly "portfolio/get": EngineHandler<"portfolio/get">;
   readonly "portfolio/pnl": EngineHandler<"portfolio/pnl">;
   readonly "portfolio/resetPaper": EngineHandler<"portfolio/resetPaper">;
@@ -176,6 +181,7 @@ async function pnlOf(
 export function createPortfolioHandlers(options: PortfolioHandlersOptions): PortfolioHandlers {
   return {
     ...createAssetSearchHandlers(options),
+    ...createStakingOptionsHandlers(options),
     ...createMarketHandlers({
       reads: options.marketReads,
       chains: options.chains,

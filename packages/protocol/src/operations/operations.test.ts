@@ -56,6 +56,7 @@ const specTable = [
   ["market/chart", "read", ""],
   ["launch/list", "read", ""],
   ["launchpad/list", "read", ""],
+  ["staking/options", "read", ""],
   ["launch/draft", "agent", "write"],
   ["wallet/activity", "read", ""],
   ["intent/propose", "propose", "write"],
@@ -195,7 +196,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(156);
+    expect(table).toHaveLength(157);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 

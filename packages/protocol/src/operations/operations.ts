@@ -24,6 +24,7 @@ import { type OrderOperationShapes, orderOperations } from "./order-operations.s
 import { type PluginOperationShapes, pluginOperations } from "./plugin-operations.schema.js";
 import { type QuestionOperationShapes, questionOperations } from "./question-operations.schema.js";
 import { type SettingsOperationShapes, settingsOperations } from "./settings-operations.schema.js";
+import { type StakingOperationShapes, stakingOperations } from "./staking-operations.schema.js";
 import { type StreamOperationShapes, streamOperations } from "./stream-operations.schema.js";
 import { type WalletOperationShapes, walletOperations } from "./wallet-operations.schema.js";
 import { type WebPushOperationShapes, webPushOperations } from "./web-push-operations.schema.js";
@@ -39,6 +40,7 @@ export interface OperationShapes
     WalletOperationShapes,
     MarketOperationShapes,
     LaunchpadOperationShapes,
+    StakingOperationShapes,
     LaunchDraftOperationShapes,
     IntentOperationShapes,
     OrderOperationShapes,
@@ -70,6 +72,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...walletOperations,
   ...marketOperations,
   ...launchpadOperations,
+  ...stakingOperations,
   ...launchDraftOperations,
   ...intentOperations,
   ...orderOperations,

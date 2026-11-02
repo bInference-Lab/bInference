@@ -22,6 +22,7 @@ import {
   type StakeRefusal,
   type StakeRefusalFacts,
   type StakeRequest,
+  type StakingOptions,
   type StakingVenue,
   type UnbondingPart,
 } from "@binference/chain/staking";
@@ -31,6 +32,7 @@ import type { BuildMismatch } from "./build-checks.js";
 import { callVenue, ownCopy } from "./call-venue.js";
 import { type LandedMismatch, landedMismatch } from "./landed-checks.js";
 import { stakeMismatch, type StakeStep } from "./stake-checks.js";
+import { readStakeOptions } from "./stake-options.js";
 import { planMismatch } from "./stake-plan-checks.js";
 import { readStakePools } from "./stake-pools.js";
 
@@ -97,6 +99,11 @@ export interface StakingHost {
     validator: AccountRef,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<AssetRef, "validator_unknown" | "venue_down">>;
+  /** The validators the venue lists now, its unbonding time and least stake, or `venue_down`. */
+  options(
+    venue: StakingVenue,
+    call: { readonly signal: AbortSignal },
+  ): Promise<Result<StakingOptions, "venue_down">>;
   /**
    * The pools of the receipts named that the venue mints, at the latest block, each with its
    * validator (decision 0329); an answer the host cannot hold is `venue_down`.
@@ -300,6 +307,8 @@ export function createStakingHost(options: StakingHostOptions): StakingHost {
       const copy = assetRefSchema.safeParse(read.value.value);
       return copy.success ? ok(copy.data) : err("venue_down");
     },
+    options: async (venue, { signal }) =>
+      readStakeOptions({ ...options, timeoutMs: stakingTimeoutMs }, venue, signal),
     pools: async (venue, receipts, { signal }) =>
       readStakePools({ ...options, timeoutMs: stakingTimeoutMs }, venue, { receipts, signal }),
     parts: async (venue, held, { signal }) => partsWith(options, venue, { ...held, signal }),
