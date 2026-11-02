@@ -1,5 +1,7 @@
+import { assetRefSchema } from "@binference/chain";
 import type { IntentView, StakeRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createFakeTokenFacts, fakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { expectOk, testCoin } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
@@ -142,6 +144,30 @@ describe("proposing a stake", () => {
 
     expect([old.state, old.outcome?.reason]).toStrictEqual(["failed_check", "stake_over_ceiling"]);
     expect(rewritten.state).toBe("awaiting_confirmation");
+  });
+
+  it("keeps what a stake's receipt token says of itself for its receipt, and reads none for a claim", async () => {
+    const facts = createFakeTokenFacts();
+    const test = await startStakeEngine(testStakingFake(), { tokenFacts: facts.read });
+    const receipt = assetRefSchema.parse("fake:1/token:0x000000c1");
+
+    await propose(test);
+    await propose(test, stakeRequest("claim"));
+
+    expect(await test.stores.intents.storedAssets([receipt], live)).toStrictEqual({
+      [receipt]: { ...fakeTokenFacts, verified: false },
+    });
+    expect(facts.reads()).toStrictEqual([[receipt]]);
+  });
+
+  it("stores nothing for a stake whose receipt token answers no symbol or decimals", async () => {
+    const receipt = assetRefSchema.parse("fake:1/token:0x000000c1");
+    const facts = createFakeTokenFacts({ unreadable: [receipt] });
+    const test = await startStakeEngine(testStakingFake(), { tokenFacts: facts.read });
+
+    expect(await answerOf(test, stakeRequest("stake"))).toBe("asset.unreadable");
+    const listed = expectOk(await test.engine.handlers["intent/list"](testCall({})));
+    expect(listed.items).toStrictEqual([]);
   });
 
   it("refuses a request of no validator, another venue, another asset or a claim with an amount", async () => {

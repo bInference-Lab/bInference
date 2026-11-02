@@ -500,7 +500,9 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   and decimals on chain before anything is stored; the intent keeps them, marked unverified, and
   its cards, receipts and views show the token by them. A token that answers no symbol or no
   decimals fails with `asset.unreadable` and stores nothing
-  ([decision 0199](../DECISIONS.md#d0199)).
+  ([decision 0199](../DECISIONS.md#d0199)). A `stake` that stakes or unstakes does the same for the
+  receipt token its venue names for the validator, such as a StakeHub validator's credit shares,
+  so its receipt and positions name what it minted or burned.
 - A request, or an `order/create`, that names the agent's bridge wallet fails with
   `intent.bridge_wallet_only`, and one that names an extra launch or bridge wallet with
   `intent.extra_wallet`; nothing is stored ([decision 0307](../DECISIONS.md#d0307)).

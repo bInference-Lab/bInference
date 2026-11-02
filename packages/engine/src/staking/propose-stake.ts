@@ -1,6 +1,6 @@
 import type { TxSimulator } from "@binference/chain";
 import { type IdSource, ok, type Result } from "@binference/core";
-import type { ProtocolErrorCode, StakeRequest } from "@binference/protocol";
+import type { AssetInfos, ProtocolErrorCode, StakeRequest } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { advanceIntent } from "../money-path/advance-intent.js";
@@ -8,11 +8,12 @@ import { authorizationCheckOf } from "../money-path/authorization-check-of.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
 import { startProposal, storeProposed } from "../money-path/store-proposed.js";
+import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore } from "../ports.js";
 import { advanceBySimulation } from "../sends/owner-steps.js";
 import { type StakePlanParts, planStakeMove } from "./plan-stake-move.js";
-import { resolveStake, type StakeResolveOptions } from "./resolve-stake.js";
+import { type ResolvedStake, resolveStake, type StakeResolveOptions } from "./resolve-stake.js";
 import { paperStakeView, simulateStake } from "./simulate-stake.js";
 import {
   type BuiltStake,
@@ -34,6 +35,24 @@ export interface StakePathOptions extends StakeResolveOptions, StakePlanParts, S
   readonly isLocked: () => boolean;
   readonly execute: ExecuteConfirmed;
   readonly ids: IdSource;
+  /** Reads a receipt token's own symbol, name and decimals when the registry lists none. */
+  readonly readTokenFacts: ReadTokenFacts;
+}
+
+// What the receipt token a stake mints or an unstake burns says of itself, which its receipt and
+// positions name it by (decision 0199); a claim books none. A validator the venue cannot name
+// leaves nothing to read: the plan then ends the intent with the venue's reason.
+async function receiptInfos(
+  options: StakePathOptions,
+  resolved: ResolvedStake,
+  signal: AbortSignal,
+): Promise<Result<AssetInfos, "asset.unreadable">> {
+  const { venue, ask } = resolved;
+  if (ask.action === "claim") {
+    return ok({});
+  }
+  const receipt = await options.staking.receipt(venue, ask.validator, { signal });
+  return receipt.ok ? unlistedAssetInfos(options, [receipt.value], signal) : ok({});
 }
 
 // A live move's call runs unsent; a paper move runs nothing, and its view is its paper plan.
@@ -136,7 +155,11 @@ export async function proposeStake(
   if (!resolved.ok) {
     return resolved;
   }
-  const intent = { ...call, step, wallet: resolved.value.wallet, assets: {} };
+  const assets = await receiptInfos(options, resolved.value, signal);
+  if (!assets.ok) {
+    return assets;
+  }
+  const intent = { ...call, step, wallet: resolved.value.wallet, assets: assets.value };
   const created = await storeProposed(options, intent, signal);
   const advance = { stored: options.stored, machine, signal };
   const planned = await planStakeMove(options, resolved.value, { isPaper, signal });
