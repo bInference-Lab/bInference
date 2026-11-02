@@ -109,6 +109,7 @@ const lista = createContracts("lista", {
 const stakehub = createContracts("stakehub", {
   "https://github.com/bnb-chain/bsc-genesis-contract/blob/master/contracts/System.sol": {
     "stake-hub": "0x0000000000000000000000000000000000002002",
+    "gov-token": "0x0000000000000000000000000000000000002005",
   },
 });
 

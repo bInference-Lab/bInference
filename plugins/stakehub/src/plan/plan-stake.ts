@@ -5,6 +5,7 @@ import {
   ok,
   type Result,
   type StakePlan,
+  type StakePlanned,
   type StakeRefusal,
   type StakeRequest,
   type UnbondingPart,
@@ -37,6 +38,11 @@ function receipt(parts: PlanParts, base: bigint): Amount {
   return { asset, base };
 }
 
+// StakeHub's voting token, which a stake mints and an unstake burns beside the credit shares.
+function votingOf(at: OptionsRead): Pick<StakePlan, "votingToken"> {
+  return at.votingToken === undefined ? {} : { votingToken: at.votingToken };
+}
+
 function poolOf(parts: PlanParts): NonNullable<StakePlan["pool"]> {
   const { supply, pooled } = parts.facts;
   return { shares: receipt(parts, supply), coin: coin(parts.at, pooled) };
@@ -46,10 +52,12 @@ function poolOf(parts: PlanParts): NonNullable<StakePlan["pool"]> {
 function planStake(
   parts: PlanParts,
   request: Extract<StakeRequest, { readonly action: "stake" }>,
-): Result<StakePlan, StakeRefusal> {
+): StakePlanned {
   const { facts, base } = parts;
+  const voting = votingOf(parts.at);
   if (request.amount.base < facts.numbers.minStake) {
-    return err("below_min_stake");
+    const minStake = coin(parts.at, facts.numbers.minStake);
+    return { ...err("below_min_stake"), facts: { minStake } };
   }
   if (facts.jailed) {
     return err("validator_jailed");
@@ -60,7 +68,15 @@ function planStake(
   const minted = sharesOfCoin(request.amount.base, facts);
   const shares = receipt(parts, minted);
   const value = request.amount;
-  return ok({ ...base, action: "stake", value, moved: value, shares, pool: poolOf(parts) });
+  return ok({
+    ...base,
+    action: "stake",
+    value,
+    moved: value,
+    shares,
+    pool: poolOf(parts),
+    ...voting,
+  });
 }
 
 // The shares the wallet holds with the validator: the paper position's, or read at the block.
@@ -99,20 +115,37 @@ async function planUnstake(
     moved: coin(at, coinOfShares(burned.shares, facts)),
     shares: receipt(parts, burned.shares),
     pool: poolOf(parts),
+    ...votingOf(at),
     readyAtMs: Number((at.time + facts.numbers.unbondSeconds) * msPerSecond),
   });
 }
 
+/** The parts a claim takes now, and when the first one still waiting is ready. */
+interface ClaimParts {
+  readonly ready: readonly UnbondingPart[];
+  readonly nextReadyAtMs?: number;
+}
+
+function claimPartsOf(
+  ready: readonly UnbondingPart[],
+  next: UnbondingPart | undefined,
+): ClaimParts {
+  return {
+    ready: ready.slice(0, Number(maxClaimParts)),
+    ...(next === undefined ? {} : { nextReadyAtMs: next.readyAtMs }),
+  };
+}
+
 // The parts a claim takes now: the paper position's ready ones, or the oldest ready ones of the
 // wallet's queue at the block, at most as many as one claim takes.
-async function readyParts(parts: PlanParts, ask: PlanAsk): Promise<readonly UnbondingPart[]> {
+async function readyParts(parts: PlanParts, ask: PlanAsk): Promise<ClaimParts> {
   const { at, facts } = parts;
   const paper = ask.request.paper;
   if (paper !== undefined) {
     const timeMs = Number(at.time * msPerSecond);
     const waiting = paper.parts.findIndex((part) => part.readyAtMs > timeMs);
     const ready = waiting === -1 ? paper.parts : paper.parts.slice(0, waiting);
-    return ready.slice(0, Number(maxClaimParts));
+    return claimPartsOf(ready, paper.parts[ready.length]);
   }
   const { credit } = facts;
   const [count, next] = await readEach(at, [
@@ -125,16 +158,20 @@ async function readyParts(parts: PlanParts, ask: PlanAsk): Promise<readonly Unbo
     next: required(next, "an unbond sequence"),
   };
   const [queue = []] = await readQueues(at, ask.wallet, [head]);
-  return readyRequests(queue, at.time).map((request) => partOf(at, credit, request));
+  const ready = readyRequests(queue, at.time);
+  const waiting = queue[ready.length];
+  const toPart = (request: (typeof queue)[number]) => partOf(at, credit, request);
+  return claimPartsOf(ready.map(toPart), waiting === undefined ? undefined : toPart(waiting));
 }
 
 // A claim, in StakeHub's order: nothing ready first, then a payment the wallet cannot take, since
 // StakeHub pays with 5,000 gas and a wallet's code may need more.
-async function planClaim(parts: PlanParts, ask: PlanAsk): Promise<Result<StakePlan, StakeRefusal>> {
+async function planClaim(parts: PlanParts, ask: PlanAsk): Promise<StakePlanned> {
   const { at, base } = parts;
-  const ready = await readyParts(parts, ask);
+  const { ready, nextReadyAtMs } = await readyParts(parts, ask);
   if (ready.length === 0) {
-    return err("nothing_to_claim");
+    const facts = nextReadyAtMs === undefined ? {} : { facts: { readyAtMs: nextReadyAtMs } };
+    return { ...err("nothing_to_claim"), ...facts };
   }
   if (ask.request.paper === undefined && (await holdsCode(at, ask.wallet))) {
     return err("claim_unpayable");
@@ -156,21 +193,19 @@ async function planClaim(parts: PlanParts, ask: PlanAsk): Promise<Result<StakePl
  * whole stake; a claim the ready parts at the front of the queue. With the request's paper
  * position, shares and parts come from it, and nothing of the wallet's own is read.
  */
-export async function planStakeMove(
-  at: OptionsRead,
-  ask: PlanAsk,
-): Promise<Result<StakePlan, StakeRefusal>> {
+export async function planStakeMove(at: OptionsRead, ask: PlanAsk): Promise<StakePlanned> {
   const facts = await readFacts(at, ask);
   if (!facts.ok) {
     return facts;
   }
   const { request } = ask;
-  const { name, commissionBps, jailed, numbers } = facts.value;
+  const { name, commissionBps, aprBps, jailed, numbers } = facts.value;
   const base: PlanBase = {
     wallet: request.wallet,
     validator: request.validator,
     validatorName: name,
     commissionBps,
+    ...(aprBps === undefined ? {} : { aprBps }),
     jailed,
     paper: request.paper !== undefined,
     unbondingSeconds: Number(numbers.unbondSeconds),

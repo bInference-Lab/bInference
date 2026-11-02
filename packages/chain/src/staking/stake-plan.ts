@@ -2,7 +2,7 @@ import { type Bps, bpsSchema } from "@binference/core";
 import { z } from "zod";
 import { type Amount, type AmountWire, amountSchema } from "../amount.js";
 import { type AccountRef, accountRefParts, accountRefSchema } from "../caip/account-ref.js";
-import { assetRefParts } from "../caip/asset-ref.js";
+import { type AssetRef, assetRefParts, assetRefSchema } from "../caip/asset-ref.js";
 import { type StakeAction, stakeActions } from "./staking-terms.js";
 
 /** A validator's pool at one block: its receipt token units, and the coin they are worth. */
@@ -21,10 +21,18 @@ export interface StakePlan {
   /** The agent's own wallet: it signs, and the move credits it alone. */
   readonly wallet: AccountRef;
   readonly validator: AccountRef;
-  /** The validator's name as the venue listed it: outside content. */
+  /**
+   * The validator's name as the venue listed it: outside content its operator chose, 1 to 64
+   * characters with no control character.
+   */
   readonly validatorName: string;
   /** What the validator keeps of its delegators' rewards, at the plan's block. */
   readonly commissionBps: Bps;
+  /**
+   * What a stake with the validator earned over its last recorded day of rewards, a year at that
+   * rate, in basis points, read at the plan's block; absent when the venue cannot tell.
+   */
+  readonly aprBps?: number;
   /** Whether the validator was jailed at the plan's block: only an unstake or a claim plans so. */
   readonly jailed: boolean;
   /** Whether it was planned against a paper position, reading none of the wallet's own state. */
@@ -37,6 +45,12 @@ export interface StakePlan {
   readonly shares?: Amount;
   /** The validator's pool a stake or an unstake prices its shares by. */
   readonly pool?: StakePool;
+  /**
+   * The voting token the venue mints to the wallet with a stake's receipt units and burns with
+   * them, such as StakeHub's govBNB: an unstake may take it out of the wallet beside them. Absent
+   * when the venue has none.
+   */
+  readonly votingToken?: AssetRef;
   /** The refs of the unbonding parts a claim takes, oldest first. */
   readonly parts?: readonly string[];
   readonly unbondingSeconds: number;
@@ -63,12 +77,14 @@ export interface StakePlanWire {
   readonly validator: string;
   readonly validatorName: string;
   readonly commissionBps: number;
+  readonly aprBps?: number;
   readonly jailed: boolean;
   readonly paper: boolean;
   readonly value: AmountWire;
   readonly moved: AmountWire;
   readonly shares?: AmountWire;
   readonly pool?: StakePoolWire;
+  readonly votingToken?: string;
   readonly parts?: readonly string[];
   readonly unbondingSeconds: number;
   readonly readyAtMs?: number;
@@ -76,6 +92,16 @@ export interface StakePlanWire {
 }
 
 const epochMsSchema = z.int().nonnegative();
+
+// A name its operator chose: shown on the card, cut there, and kept short in the terms hash.
+const validatorNameSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[^\p{Cc}\p{Cf}\p{Cs}\p{Zl}\p{Zp}]+$/u);
+
+// A yearly rate no venue pays: above 10,000% is not a reading of rewards.
+const aprBpsSchema = z.int().min(0).max(1_000_000);
 const poolSchema: z.ZodType<StakePool, StakePoolWire> = z.strictObject({
   shares: amountSchema,
   coin: amountSchema,
@@ -92,13 +118,22 @@ function amountsOf(plan: StakePlan): readonly Amount[] {
 // shares and a pool, a claim its parts; only a stake sends coin, only an unstake has a ready time,
 // and only an unstake or a claim plans from a jailed validator.
 function isShaped(plan: StakePlan): boolean {
+  return isOneChain(plan) && fitsAction(plan);
+}
+
+function isOneChain(plan: StakePlan): boolean {
   const chain = accountRefParts(plan.wallet).chain;
-  const isClaim = plan.action === "claim";
+  const assets = [...amountsOf(plan).map(({ asset }) => asset), plan.votingToken ?? []].flat();
   return (
     accountRefParts(plan.validator).chain === chain &&
-    amountsOf(plan).every(
-      (amount) => assetRefParts(amount.asset).chain === chain && amount.base >= 0n,
-    ) &&
+    amountsOf(plan).every(({ base }) => base >= 0n) &&
+    assets.every((asset) => assetRefParts(asset).chain === chain)
+  );
+}
+
+function fitsAction(plan: StakePlan): boolean {
+  const isClaim = plan.action === "claim";
+  return (
     (plan.action === "stake" || plan.value.base === 0n) &&
     (plan.shares !== undefined && plan.pool !== undefined) === !isClaim &&
     (plan.parts !== undefined) === isClaim &&
@@ -117,14 +152,16 @@ export const stakePlanSchema: z.ZodType<StakePlan, StakePlanWire> = z
     action: z.enum(stakeActions),
     wallet: accountRefSchema,
     validator: accountRefSchema,
-    validatorName: z.string(),
+    validatorName: validatorNameSchema,
     commissionBps: bpsSchema,
+    aprBps: aprBpsSchema.exactOptional(),
     jailed: z.boolean(),
     paper: z.boolean(),
     value: amountSchema,
     moved: amountSchema,
     shares: amountSchema.exactOptional(),
     pool: poolSchema.exactOptional(),
+    votingToken: assetRefSchema.exactOptional(),
     parts: z.array(z.string().min(1).max(200)).min(1).exactOptional(),
     unbondingSeconds: z.int().nonnegative(),
     readyAtMs: epochMsSchema.exactOptional(),

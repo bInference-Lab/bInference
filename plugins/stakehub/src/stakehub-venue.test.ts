@@ -31,6 +31,12 @@ const unknown: Address = "0x2222222222222222222222222222222222220009";
 
 const account = (address: Address): AccountRef => accountRefSchema.parse(`${chain}:${address}`);
 const contracts = { "stake-hub": account(stakeHubAddress) };
+const stakeOfOne = {
+  action: "stake",
+  wallet: account(wallet),
+  validator: account(active),
+  amount: { asset: coin, base: bnb },
+} as const;
 
 function testbed(): { readonly world: StakeHubWorld; readonly venue: StakingVenue } {
   const world = createStakeHubWorld(now);
@@ -145,6 +151,19 @@ describe("the StakeHub venue on a StakeHub world", () => {
     });
     const options = await venue.options(live);
     expect(options.validators[0]?.aprBps).toBe(730);
+  });
+
+  it("plans a stake with its own validator's yearly rate, read from that validator alone", async () => {
+    const { venue } = testbed();
+    const plan = await venue.plan(stakeOfOne, live);
+    expect(successOf(plan).aprBps).toBe(365);
+  });
+
+  it("leaves out a yearly rate above 10,000%, which no day of rewards pays", async () => {
+    const { world, venue } = testbed();
+    world.set(active, { rewards: new Map([[now / day, { reward: 1_000n * bnb, pooled: bnb }]]) });
+    const plan = await venue.plan(stakeOfOne, live);
+    expect(successOf(plan).aprBps).toBeUndefined();
   });
 
   it("refuses a stake to a jailed validator, and lets an unstake and a claim from one through", async () => {

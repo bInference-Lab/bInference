@@ -1,4 +1,4 @@
-import type { Result } from "@binference/core";
+import type { Err, Ok, Result } from "@binference/core";
 import type { AccountRef } from "../caip/account-ref.js";
 import type { AssetRef } from "../caip/asset-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
@@ -10,10 +10,16 @@ import type {
   LandedRequest,
   LandedStake,
   StakeRefusal,
+  StakeRefusalFacts,
   StakeRequest,
   StakingHolding,
   StakingOptions,
 } from "./staking-terms.js";
+
+/** A staking venue's plan, or its refusal with the facts that refusal's words name. */
+export type StakePlanned =
+  | Ok<StakePlan>
+  | (Err<StakeRefusal> & { readonly facts?: StakeRefusalFacts });
 
 /**
  * A staking venue on one chain: it lists its validators, reads what a wallet holds with them,
@@ -52,15 +58,13 @@ export interface StakingVenue extends VenueDeclaration {
   ): Promise<Result<AssetRef, "validator_unknown">>;
   /**
    * Plans the move at the latest block, or names why the venue would refuse it, in the order the
-   * venue itself checks ({@link StakeRefusal}). With the request's paper position it reads only the
+   * venue itself checks ({@link StakeRefusal}), with the facts its words name
+   * ({@link StakeRefusalFacts}). With the request's paper position it reads only the
    * venue's state, never the wallet's. An amount outside the chain's coin, or a wallet or validator
    * of another chain, is a fault; so is a venue that cannot read its contracts. Rejects with the
    * signal's reason once the signal aborts.
    */
-  plan(
-    request: StakeRequest,
-    options: { readonly signal: AbortSignal },
-  ): Promise<Result<StakePlan, StakeRefusal>>;
+  plan(request: StakeRequest, options: { readonly signal: AbortSignal }): Promise<StakePlanned>;
   /**
    * Builds the planned move as one call from the plan's wallet, which credits that wallet alone.
    * A plan of another chain is a fault. Rejects with the signal's reason once the signal aborts.

@@ -1,6 +1,6 @@
 import { type Bps, err, ok, type Result } from "@binference/core";
 import { type AccountRef, accountRefParts } from "../caip/account-ref.js";
-import type { StakingVenue } from "../staking/ports.js";
+import type { StakePlanned, StakingVenue } from "../staking/ports.js";
 import type { StakePlan } from "../staking/stake-plan.js";
 import type {
   PaperStake,
@@ -34,6 +34,8 @@ export interface FakeValidator {
   readonly name: string;
   readonly commissionBps: Bps;
   readonly jailed?: boolean;
+  /** Its yearly rate, in basis points; absent when the fake gives none. */
+  readonly aprBps?: number;
 }
 
 /** A fake staking venue whose moves a test runs and whose clock a test moves. */
@@ -45,6 +47,16 @@ export interface FakeStakingVenue extends StakingVenue {
 }
 
 type PlanBase = Omit<StakePlan, "action" | "value" | "moved">;
+
+function listedOf(item: FakeValidator): StakingValidator {
+  return {
+    validator: account(item.address),
+    name: item.name,
+    commissionBps: item.commissionBps,
+    ...(item.aprBps === undefined ? {} : { aprBps: item.aprBps }),
+    jailed: item.jailed === true,
+  };
+}
 
 // The position a plan reads: the paper one when the request gives it, else the wallet's own.
 function positionOf(book: Book, request: StakeRequest): PaperStake {
@@ -83,9 +95,9 @@ function stakePlan(
   book: Book,
   request: Extract<StakeRequest, { readonly action: "stake" }>,
   base: PlanBase,
-): Result<StakePlan, StakeRefusal> {
+): StakePlanned {
   if (request.amount.base < book.options.minStakeBase) {
-    return err("below_min_stake");
+    return { ...err("below_min_stake"), facts: { minStake: amount(book.options.minStakeBase) } };
   }
   if (base.jailed) {
     return err("validator_jailed");
@@ -102,16 +114,28 @@ function stakePlan(
   });
 }
 
-function planOf(
-  book: Book,
-  request: StakeRequest,
-  found: StakingValidator,
-): Result<StakePlan, StakeRefusal> {
+// A claim of the position's ready parts; with none, when its next part is ready, if one waits.
+function claimPlan(book: Book, request: StakeRequest, base: PlanBase): StakePlanned {
+  const { parts: held } = positionOf(book, request);
+  const ready = readyParts(book, held);
+  const next = held[ready.length];
+  if (ready.length === 0) {
+    return {
+      ...err("nothing_to_claim"),
+      ...(next === undefined ? {} : { facts: { readyAtMs: next.readyAtMs } }),
+    };
+  }
+  const parts = ready.map((part) => part.ref);
+  return ok({ ...base, action: "claim", value: amount(0n), moved: amount(sum(ready)), parts });
+}
+
+function planOf(book: Book, request: StakeRequest, found: StakingValidator): StakePlanned {
   const base: PlanBase = {
     wallet: request.wallet,
     validator: request.validator,
     validatorName: found.name,
     commissionBps: found.commissionBps,
+    ...(found.aprBps === undefined ? {} : { aprBps: found.aprBps }),
     jailed: found.jailed,
     paper: request.paper !== undefined,
     unbondingSeconds: book.options.unbondingSeconds,
@@ -120,14 +144,9 @@ function planOf(
   if (request.action === "stake") {
     return stakePlan(book, request, base);
   }
-  if (request.action === "unstake") {
-    return unstakePlan(book, request, base);
-  }
-  const ready = readyParts(book, positionOf(book, request).parts);
-  const parts = ready.map((part) => part.ref);
-  return ready.length === 0
-    ? err("nothing_to_claim")
-    : ok({ ...base, action: "claim", value: amount(0n), moved: amount(sum(ready)), parts });
+  return request.action === "unstake"
+    ? unstakePlan(book, request, base)
+    : claimPlan(book, request, base);
 }
 
 // Lands one call as the chain would, and keeps what it did for its read-back.
@@ -214,12 +233,7 @@ function checkRequest(request: StakeRequest): void {
  * position given; and each move it ran reads back by its hash.
  */
 export function createFakeStakingVenue(options: FakeStakingOptions): FakeStakingVenue {
-  const listed = options.validators.map((item): StakingValidator => ({
-    validator: account(item.address),
-    name: item.name,
-    commissionBps: item.commissionBps,
-    jailed: item.jailed === true,
-  }));
+  const listed = options.validators.map(listedOf);
   const book = createBook(options);
   const minStake = amount(options.minStakeBase);
   const { unbondingSeconds } = options;
@@ -245,7 +259,8 @@ export function createFakeStakingVenue(options: FakeStakingOptions): FakeStaking
       signal.throwIfAborted();
       checkRequest(request);
       const found = listed.find((item) => item.validator === request.validator);
-      const planned = found === undefined ? err("validator_unknown") : planOf(book, request, found);
+      const planned: StakePlanned =
+        found === undefined ? err("validator_unknown") : planOf(book, request, found);
       return await Promise.resolve(planned);
     },
     build: async (plan, { signal }) => {

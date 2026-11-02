@@ -65,7 +65,11 @@ async function unstakesAndClaims(harness: StakingVenueHarness): Promise<void> {
   assert.deepEqual([landed.request, landed.shares], [part, plan.shares]);
   assert.ok(part.readyAtMs >= (plan.readyAtMs ?? 0));
   const early = await subject.venue.plan({ action: "claim", wallet, validator }, live());
-  assert.deepEqual(early, { ok: false, error: "nothing_to_claim" });
+  assert.deepEqual(early, {
+    ok: false,
+    error: "nothing_to_claim",
+    facts: { readyAtMs: part.readyAtMs },
+  });
   await subject.wait((part.readyAtMs - plan.plannedAtMs) / msPerSecond + 1);
   const claim = await planned(subject, { action: "claim", wallet, validator });
   assert.deepEqual([claim.parts, claim.moved, claim.value.base], [[part.ref], part.amount, 0n]);
@@ -99,6 +103,9 @@ async function refusesInOrder(harness: StakingVenueHarness): Promise<void> {
       "below_min_stake",
     ],
   );
+  // The least stake goes with its refusal; a claim with no part waiting names no ready time.
+  const facts = answers.map((answer) => (answer.ok ? undefined : answer.facts));
+  assert.deepEqual([facts[3], facts[4]], [undefined, { minStake: options.minStake }]);
 }
 
 async function refusesOverUnstake(harness: StakingVenueHarness): Promise<void> {
@@ -135,7 +142,11 @@ async function plansPaper(harness: StakingVenueHarness): Promise<void> {
   assert.deepEqual([unstake.paper, unstake.shares?.base], [true, shares]);
   assert.ok(unstake.pool !== undefined && unstake.moved.base > stake.base);
   assert.deepEqual([claim.paper, claim.parts, claim.moved], [true, ["paper-1"], stake]);
-  assert.deepEqual(none, { ok: false, error: "nothing_to_claim" });
+  assert.deepEqual(none, {
+    ok: false,
+    error: "nothing_to_claim",
+    facts: { readyAtMs: later.readyAtMs },
+  });
 }
 
 async function readsBackOnlyItsMove(harness: StakingVenueHarness): Promise<void> {
@@ -205,7 +216,7 @@ export function stakingVenueContract(harness: StakingVenueHarness): readonly Con
       run: async () => unstakesAndClaims(harness),
     },
     {
-      name: "refuses a jailed or unknown validator, an empty unstake or claim, a small stake first",
+      name: "refuses a jailed or unknown validator, an empty unstake or claim, a small stake first and names the least stake",
       run: async () => refusesInOrder(harness),
     },
     {

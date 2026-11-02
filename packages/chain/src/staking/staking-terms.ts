@@ -118,6 +118,16 @@ export const stakeRefusals = [
 export type StakeRefusal = (typeof stakeRefusals)[number];
 
 /**
+ * What a refusal names besides its reason, which the owner's words show: the venue's least stake
+ * with `below_min_stake`, and with `nothing_to_claim` when the wallet's next part is ready, absent
+ * when no part waits.
+ */
+export interface StakeRefusalFacts {
+  readonly minStake?: Amount;
+  readonly readyAtMs?: number;
+}
+
+/**
  * What a staking call does, read from a draft's bytes alone. Every move credits `credits`: the
  * venue decodes only calls whose coin and receipt token go to the account that signs.
  */

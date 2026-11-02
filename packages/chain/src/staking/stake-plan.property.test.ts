@@ -37,7 +37,14 @@ describe("stake plans on the wire", () => {
             plannedAtMs: at,
           };
           const wires = [
-            { ...common, action: "stake" as const, value: amount, shares: minted, pool },
+            {
+              ...common,
+              action: "stake" as const,
+              value: amount,
+              shares: minted,
+              pool,
+              aprBps: 350,
+            },
             {
               ...common,
               action: "unstake" as const,
@@ -57,7 +64,7 @@ describe("stake plans on the wire", () => {
     );
   });
 
-  it("refuses coin sent by an unstake or claim, parts that fit another action, a jailed stake", () => {
+  it("refuses coin sent by an unstake or claim, parts that fit another action, a jailed stake, a name out of bounds or a rate no venue pays", () => {
     fc.assert(
       fc.property(fc.bigInt({ min: 1n, max: 2n ** 128n }), epochMs, (sent, at) => {
         const amount = { asset: coin, base: sent.toString() };
@@ -76,6 +83,11 @@ describe("stake plans on the wire", () => {
           { ...stake, wallet: "fake:2:0x000000a1" },
           { ...stake, value: { asset: "fake:2/slip44:1", base: "1" } },
           { ...stake, commissionBps: 10_001 },
+          { ...stake, validatorName: "" },
+          { ...stake, validatorName: "v".repeat(65) },
+          { ...stake, validatorName: "Binance\u202E" },
+          { ...stake, aprBps: 1_000_001 },
+          { ...stake, aprBps: 1.5 },
         ];
         expect(wrong.map((item) => stakePlanSchema.safeParse(item).success)).toStrictEqual(
           wrong.map(() => false),

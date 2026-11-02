@@ -2,6 +2,7 @@ import {
   type AccountRef,
   accountRefParts,
   type AssetRef,
+  assetRefSchema,
   BinferenceError,
   type ChainRef,
   defineStaking,
@@ -18,7 +19,7 @@ import { type OptionsRead, readOptions } from "./hub/read-options.js";
 import { readReceipt } from "./hub/read-receipt.js";
 import { readLanded } from "./landed/read-landed.js";
 import { planStakeMove } from "./plan/plan-stake.js";
-import { stakeHubContractsOn, stakeHubName } from "./stakehub-contracts.js";
+import { govTokenName, stakeHubContractsOn, stakeHubName } from "./stakehub-contracts.js";
 
 /** The venue's id, which the chain registry names StakeHub after. */
 export const stakeHubId = "stakehub";
@@ -83,9 +84,16 @@ export function createStakeHubVenue(options: StakeHubOptions): StakingVenue {
   const { chain, coin, rpc } = options;
   const hub = addressOn(chain, options.contracts[stakeHubName], "StakeHub");
   const multicall = addressOn(chain, options.multicall, "Multicall3");
+  const gov = options.contracts[govTokenName];
+  const voting =
+    gov === undefined
+      ? {}
+      : {
+          votingToken: assetRefSchema.parse(`${chain}/erc20:${addressOn(chain, gov, "GovToken")}`),
+        };
   const at = async (signal: AbortSignal): Promise<OptionsRead> => {
     const head = await latestBlock(rpc, { multicall, signal });
-    return { rpc, multicall, hub, chain, coin, signal, ...head };
+    return { rpc, multicall, hub, chain, coin, signal, ...voting, ...head };
   };
   return defineStaking({
     ...stakeHubDeclaration([chain]),

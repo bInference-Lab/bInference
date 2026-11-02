@@ -4,6 +4,9 @@ import { stakeCallsJson } from "./calls/stake-calls.js";
 /** StakeHub's name in the chain registry: every move goes to it. */
 export const stakeHubName = "stake-hub";
 
+/** StakeHub's voting token in the chain registry, which it mints and burns with credit shares. */
+export const govTokenName = "gov-token";
+
 /** The most coin one stake may carry: 100 BNB, the owner's ruling of 2026-11-01 (decision 0325). */
 const stakeCapBase = 100n * 10n ** 18n;
 

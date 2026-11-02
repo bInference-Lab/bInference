@@ -22,11 +22,15 @@ export interface OptionsRead extends BlockRead {
   readonly hub: Address;
   readonly chain: ChainRef;
   readonly coin: AssetRef;
+  /** StakeHub's voting token, which it mints and burns with a validator's credit shares. */
+  readonly votingToken?: AssetRef;
 }
 
 const msPerSecond = 1_000n;
 const daysPerYear = 365n;
 const bpsPerWhole = 10_000n;
+// A rate above 10,000% a year is no reading of rewards, as a day paid on a pool all but empty.
+const maxAprBps = 1_000_000n;
 
 /** StakeHub's numbers every move needs: the unbonding time, the least stake, a reward day. */
 export interface HubNumbers {
@@ -61,7 +65,34 @@ function aprOf(days: readonly (bigint | undefined)[]): number | undefined {
   if (pick.reward === undefined || pick.pooled === undefined || pick.pooled === 0n) {
     return undefined;
   }
-  return Number((pick.reward * daysPerYear * bpsPerWhole) / pick.pooled);
+  const apr = (pick.reward * daysPerYear * bpsPerWhole) / pick.pooled;
+  return apr > maxAprBps ? undefined : Number(apr);
+}
+
+// The two days of rewards and pool a validator's yearly rate is read from: today's and yesterday's.
+function rewardDaysOf(at: OptionsRead, daySeconds: bigint) {
+  const today = at.time / daySeconds;
+  return [today, today - 1n].flatMap((index) =>
+    (["reward", "pooled"] as const).map((part) => ({ index, part })),
+  );
+}
+
+/**
+ * The yearly rate of one validator's last recorded day of rewards at the read's block, in basis
+ * points, from four reads; `undefined` when StakeHub recorded neither day.
+ */
+export async function readRate(
+  at: OptionsRead,
+  operator: Address,
+  daySeconds: bigint,
+): Promise<number | undefined> {
+  const days = rewardDaysOf(at, daySeconds);
+  return aprOf(
+    await readEach(
+      at,
+      days.map((day) => rewardDayRead(at.hub, operator, day)),
+    ),
+  );
 }
 
 // A validator's seven reads: moniker, commission, jail state, and two days of rewards and pool.
@@ -70,10 +101,7 @@ async function readValidators(
   operators: readonly Address[],
   daySeconds: bigint,
 ): Promise<readonly StakingValidator[]> {
-  const today = at.time / daySeconds;
-  const days = [today, today - 1n].flatMap((index) =>
-    (["reward", "pooled"] as const).map((part) => ({ index, part })),
-  );
+  const days = rewardDaysOf(at, daySeconds);
   const { hub } = at;
   const [names, rates, jails, records] = await Promise.all([
     readEach(

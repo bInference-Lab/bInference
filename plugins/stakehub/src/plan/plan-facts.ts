@@ -17,7 +17,12 @@ import {
   monikerRead,
 } from "../hub/hub-calls.js";
 import { readEach, required, unreadable } from "../hub/hub-read.js";
-import { type HubNumbers, type OptionsRead, readHubNumbers } from "../hub/read-options.js";
+import {
+  type HubNumbers,
+  type OptionsRead,
+  readHubNumbers,
+  readRate,
+} from "../hub/read-options.js";
 
 /** The request with its wallet and validator as EVM addresses. */
 export interface PlanAsk {
@@ -30,6 +35,8 @@ export interface PlanAsk {
 export interface Facts {
   readonly name: string;
   readonly commissionBps: Bps;
+  /** The yearly rate of its last recorded day of rewards; absent when StakeHub recorded none. */
+  readonly aprBps?: number;
   readonly jailed: boolean;
   readonly credit: Address;
   readonly numbers: HubNumbers;
@@ -89,7 +96,8 @@ async function readPool(
  * Reads what a plan rests on at the read's block, in the order StakeHub checks it: paused
  * (`staking_paused`), a black-listed wallet (`wallet_blocked`, never for a paper plan), an operator
  * it does not list (`validator_unknown`, a zero credit contract alone); then the validator's
- * moniker, commission and jail state, StakeHub's numbers, and the credit contract's pool.
+ * moniker, commission and jail state, StakeHub's numbers, the credit contract's pool, and the
+ * validator's yearly rate from its last two days of rewards.
  */
 export async function readFacts(
   at: OptionsRead,
@@ -111,5 +119,7 @@ export async function readFacts(
     readHubNumbers(at, at.hub),
     readPool(at, contract),
   ]);
-  return ok({ ...validator, ...pool, credit: contract, numbers });
+  const aprBps = await readRate(at, ask.validator, numbers.daySeconds);
+  const rate = aprBps === undefined ? {} : { aprBps };
+  return ok({ ...validator, ...rate, ...pool, credit: contract, numbers });
 }
