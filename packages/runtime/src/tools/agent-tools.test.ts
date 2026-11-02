@@ -43,6 +43,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "portfolio/get": { balances: [], positions: [], totalUsdMicros: "0", assets: {} },
   "asset/get": { asset: coin, ...coinInfo },
   "bridge/quote": { items: [], assets: {} },
+  "staking/options": { items: [], assets: {} },
   "risk/check": { verdict: "pass", flags: [], onCurve: false, checkedAt: 1 },
   "quote/get": {
     route: [{ venue: "fake-swap", shareBps: 10_000 }],
@@ -148,6 +149,11 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     "bridge_quote",
     { amount: bridgeTerms.amount, toChain: bridgeTerms.toChain },
     [{ op: "bridge/quote", args: { amount: bridgeTerms.amount, toChain: "fake:2", agent } }],
+  ],
+  [
+    "staking_options",
+    { chain: "fake:1", venue: "fake-stake" },
+    [{ op: "staking/options", args: { chain: "fake:1", venue: "fake-stake", agent } }],
   ],
   [
     "orders",
@@ -365,6 +371,7 @@ describe("the agent's tools", () => {
     ["order_create", { order: { ...stopLoss, wallet } }],
     ["portfolio", { wallet }],
     ["token_search", { chain: "fake:1", query: "FAKE", agent }],
+    ["staking_options", { chain: "fake:1", agent }],
   ] as const)("refuse a %s call naming a wallet or an agent before the engine", (name, args) => {
     const run = callTool(answers, { name, args });
     expect(run.refused).toMatch(/^not run: the arguments do not match/);

@@ -370,8 +370,9 @@ account of one of its wallet alerts. For the agent's own wallets the engine answ
   and other wallets did ([decision 0257](../DECISIONS.md#d0257)); `token_info` does for an unlisted
   token; `notes_search` does when it returns an `untrusted` note,
   `schedule_list` when it lists a marked schedule ([decision 0247](../DECISIONS.md#d0247)),
-  `open_skill` when it reads an installed skill, and `tx_status` when it reads a staking move,
-  which names its validator ([decision 0327](../DECISIONS.md#d0327)). Every
+  `open_skill` when it reads an installed skill, `staking_options` when it lists a validator, and
+  `tx_status` when it reads a staking move, which names its validator
+  ([decision 0327](../DECISIONS.md#d0327)). Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
   stays clean.
 - **The turn's mark** is set when the model's context holds outside content: at `turn/start`, when

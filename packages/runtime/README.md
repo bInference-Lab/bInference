@@ -176,7 +176,9 @@ fails a check never runs, and the model reads why.
 
 `agentTools` are the agent's first tools, each mapped onto one operation of the engine and called
 over the runtime's connection: the reads `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
-`token_risk` (`risk/check`), `quote` (`quote/get`), `orders` (`order/list`) and `tx_status`
+`token_risk` (`risk/check`), `quote` (`quote/get`), `bridge_quote` (`bridge/quote`),
+`staking_options` (`staking/options`), whose answer is outside content once it lists a validator,
+since the validator's operator wrote its name, `orders` (`order/list`) and `tx_status`
 (`intent/get`); the proposals `swap`, `buy`, `sell`, `send`, `bridge`, and `stake`, `unstake`
 and `claim`, which each name their action of a `stake` request (`intent/propose`), and
 `order_create` (`order/create`); and `order_cancel` (`order/cancel`), a control tool that brakes, so it runs in a

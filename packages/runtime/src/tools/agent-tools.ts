@@ -18,7 +18,8 @@ import { workspaceTools } from "./workspace-tools.js";
 
 /**
  * The agent's tools for one agent (runtime spec, section 5.1): the reads `portfolio`,
- * `token_info`, `token_risk`, `quote`, `orders`, `tx_status`, the market reads `market_scan`,
+ * `token_info`, `token_risk`, `quote`, `bridge_quote`, `staking_options`, `orders`, `tx_status`,
+ * the market reads `market_scan`,
  * `chart` and `wallet_activity` (decision 0257), and `schedule_list`; the proposals
  * `swap`, `buy`, `sell`, `send`, `order_create`, `stake`, `unstake`, `claim` and `bridge`;
  * `order_cancel`, which brakes; and the control tools `alert_create`, `schedule_create` and `schedule_cancel` (decision 0247). Each

@@ -108,6 +108,8 @@ export { liveFactsViewSchema } from "./views/live-facts-view.schema.js";
 export type { LiveFactsView } from "./views/live-facts-view.schema.js";
 export { assetSearchTermsSchema } from "./operations/market-operations.schema.js";
 export type { AssetSearchTerms } from "./operations/market-operations.schema.js";
+export { stakingOptionsTermsSchema } from "./operations/staking-operations.schema.js";
+export type { StakingOptionsTerms } from "./operations/staking-operations.schema.js";
 export {
   bridgeQuoteTermsSchema,
   bridgeTermsSchema,

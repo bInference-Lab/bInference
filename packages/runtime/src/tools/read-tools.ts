@@ -5,6 +5,7 @@ import {
   type OrderState,
   operations,
   orderStateSchema,
+  stakingOptionsTermsSchema,
   type SwapTerms,
   swapTermsSchema,
 } from "@binference/protocol";
@@ -139,6 +140,29 @@ function bridgeQuoteTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
+/**
+ * `staking_options`, a read tool (runtime spec, section 5.1): the validators each staking venue
+ * lists through `staking/options`, and this agent's stakes. A validator's name is its operator's
+ * own words, so an answer that lists a validator is outside content (runtime spec, section 5.4).
+ */
+function stakingOptionsTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool({
+    name: "staking_options",
+    kind: "read",
+    parallel: true,
+    addressSource: "engine",
+    description: agentToolTexts.staking_options,
+    args: stakingOptionsTermsSchema,
+    run: async (terms, { signal }) =>
+      answerOrFailure("staking_options", async () => {
+        const view = await client.call("staking/options", { ...terms, agent }, { signal });
+        const shown = { ...view, assets: withUnlistedHidden(view.assets) };
+        const text = jsonOf(ops["staking/options"].result, shown);
+        return view.items.length === 0 ? answer(text) : { ...answer(text), outside: true };
+      }),
+  });
+}
+
 /** What `orders` takes: the state to filter by, and the cursor of the page after the first. */
 interface OrdersArgs {
   readonly state?: OrderState;
@@ -200,6 +224,7 @@ export function readTools(parts: AgentToolParts): readonly AgentTool[] {
     tokenRiskTool(parts),
     quoteTool(parts),
     bridgeQuoteTool(parts),
+    stakingOptionsTool(parts),
     ordersTool(parts),
     txStatusTool(parts),
   ];

@@ -13,12 +13,16 @@ import { type AssetInfos, assetInfosSchema } from "../views/asset-info.schema.js
 import { type PortfolioView, stakingPositionViewSchema } from "../views/portfolio-view.schema.js";
 import { type OperationTable, readFlags } from "./operation.schema.js";
 
-/** The args of `staking/options`: the chain, the agent whose venues and stakes count, a venue. */
-interface StakingOptionsArgs {
+/** What a model gives `staking/options` through the agent's tool: the chain, and a venue. */
+export interface StakingOptionsTerms {
   readonly chain: ChainRef;
-  readonly agent?: ProtocolId<"agent">;
   /** A staking venue's id, such as StakeHub's; every venue on the chain when absent. */
   readonly venue?: string;
+}
+
+/** The args of `staking/options`: the chain, the agent whose venues and stakes count, a venue. */
+interface StakingOptionsArgs extends StakingOptionsTerms {
+  readonly agent?: ProtocolId<"agent">;
 }
 
 /**
@@ -63,6 +67,15 @@ const stakingOptionViewSchema: z.ZodType<StakingOptionView> = z.object({
   minAmount: amountSchema.exactOptional(),
 });
 
+const termsFields = { chain: chainRefSchema, venue: venueIdSchema.exactOptional() };
+
+/**
+ * Parses what a model gives `staking/options`: its args without the agent, which the agent runtime
+ * fills for its agent. Unknown fields, an agent among them, are refused.
+ */
+export const stakingOptionsTermsSchema: z.ZodType<StakingOptionsTerms> =
+  z.strictObject(termsFields);
+
 /** The staking operation, by name. */
 export const stakingOperations: OperationTable<StakingOperationShapes> = {
   "staking/options": {
@@ -70,9 +83,9 @@ export const stakingOperations: OperationTable<StakingOperationShapes> = {
     name: "staking/options",
     scope: "read",
     args: z.strictObject({
-      chain: chainRefSchema,
+      chain: termsFields.chain,
       agent: protocolIdSchema("agent").exactOptional(),
-      venue: venueIdSchema.exactOptional(),
+      venue: termsFields.venue,
     }),
     result: z.object({
       items: z.array(stakingOptionViewSchema).max(1_000),
