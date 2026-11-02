@@ -363,13 +363,15 @@ account of one of its wallet alerts. For the agent's own wallets the engine answ
 
 - **What is outside content:** text a third party controls. Web pages and search results, X
   posts, images, launch data, a note labelled `untrusted`, the text of an installed third-party
-  skill, and the name, symbol or description of a token the registry does not list.
+  skill, the name, symbol or description of a token the registry does not list, and a staking
+  validator's name, which its operator chose.
 - **Which results hold it:** `search_web`, `search_x` and `read_page` always do; `market_scan`,
   `chart` and `wallet_activity` do when they answer data, since prices and trades are what markets
   and other wallets did ([decision 0257](../DECISIONS.md#d0257)); `token_info` does for an unlisted
   token; `notes_search` does when it returns an `untrusted` note,
-  `schedule_list` when it lists a marked schedule ([decision 0247](../DECISIONS.md#d0247)), and
-  `open_skill` when it reads an installed skill. Every
+  `schedule_list` when it lists a marked schedule ([decision 0247](../DECISIONS.md#d0247)),
+  `open_skill` when it reads an installed skill, and `tx_status` when it reads a staking move,
+  which names its validator ([decision 0327](../DECISIONS.md#d0327)). Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
   stays clean.
 - **The turn's mark** is set when the model's context holds outside content: at `turn/start`, when

@@ -156,7 +156,9 @@ function txStatusTool({ agent, client }: AgentToolParts): AgentTool {
           return { text: `This agent has no intent ${args.intent}.`, isError: true };
         }
         const shown = { ...view, assets: withUnlistedHidden(view.assets) };
-        return answer(jsonOf(ops["intent/get"].result, shown));
+        const text = jsonOf(ops["intent/get"].result, shown);
+        // A staking move names its validator in the venue's own words (decision 0327).
+        return view.kind === "stake" ? { ...answer(text), outside: true } : answer(text);
       }),
   });
 }

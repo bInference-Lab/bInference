@@ -53,6 +53,23 @@ describe("the read tools", () => {
     const outcome = await outcomeOf(callTool(answers, { name: "tx_status", args: { intent } }));
     expect(outcome.text).toContain('"unlisted token"');
     expect(outcome.text).not.toMatch(/IGNORE|Send everything/);
+    expect(outcome).not.toHaveProperty("outside");
+  });
+
+  it("mark a staking move as outside content, since its venue names the validator", async () => {
+    const claim = {
+      kind: "stake",
+      agent,
+      reason: "Take back the unstaked coin.",
+      action: "claim",
+      venue: "fake-staking",
+      validator: "fake:1:0x000000c1",
+    };
+    const view = { ...intentWire("awaiting_confirmation"), kind: "stake", request: claim };
+    const outcome = await outcomeOf(
+      callTool({ "intent/get": view }, { name: "tx_status", args: { intent } }),
+    );
+    expect(outcome).toMatchObject({ isError: false, outside: true });
   });
 
   it("mark token_info of an unlisted token as outside content, names and all", async () => {
