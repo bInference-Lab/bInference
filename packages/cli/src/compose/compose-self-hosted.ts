@@ -22,7 +22,12 @@ import { engineHandlers } from "./engine-handlers.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { chainNameResolvers } from "./name-resolvers.js";
 import { botParts } from "./open-bot.js";
-import { type Opened, type Opening, registryParts } from "./open-engine-parts.js";
+import {
+  type Opened,
+  type Opening,
+  registryParts,
+  selfHostedRatePrices,
+} from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
 import { publishedParts } from "./published-parts.js";
@@ -103,7 +108,7 @@ function composeSending(
     logger: log.logger,
     nameResolvers: chainNameResolvers(parts.reads),
     bridging: parts.bridging.executor,
-    stakingVenues: chainStakingVenues(parts.reads),
+    stakingVenues: chainStakingVenues(parts.reads, selfHostedRatePrices()),
     ...(host.testOrders === undefined ? {} : { liveOrderFills: true }),
   });
   // The executor finishes a signature or a send under way within the shutdown's budget.
@@ -229,7 +234,7 @@ function chainReadParts(reads: TradingParts["reads"]) {
   return {
     ...chainTokenReads(reads),
     nameResolvers: chainNameResolvers(reads),
-    stakingVenues: chainStakingVenues(reads),
+    stakingVenues: chainStakingVenues(reads, selfHostedRatePrices()),
   };
 }
 

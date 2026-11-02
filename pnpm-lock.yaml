@@ -569,6 +569,9 @@ importers:
       '@binference/kyberswap':
         specifier: workspace:*
         version: link:../../plugins/kyberswap
+      '@binference/lista':
+        specifier: workspace:*
+        version: link:../../plugins/lista
       '@binference/mcp':
         specifier: workspace:*
         version: link:../mcp
