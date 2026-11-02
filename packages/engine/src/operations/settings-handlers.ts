@@ -4,6 +4,7 @@ import {
 } from "../notices/notice-settings-handlers.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { rescueReadsOf } from "../safety/rescue-ceilings.js";
+import { createStakingHost } from "../venues/staking-host.js";
 import {
   createWorkspaceHandlers,
   type WorkspaceHandlers,
@@ -99,6 +100,14 @@ function portfolioOf(options: EngineOptions, paper: PaperParts): PortfolioHandle
     wallets: options.wallets,
     prices: options.prices,
     chains,
+    staking: createStakingHost({
+      venues: options.stakingVenues ?? [],
+      chains,
+      clock: options.clock,
+    }),
+    unbondings: stores.unbondings,
+    bridges: stores.bridges,
+    clock: options.clock,
     ...(options.launchFeed === true ? { launchScan: launchScanOf(options) } : {}),
   });
 }

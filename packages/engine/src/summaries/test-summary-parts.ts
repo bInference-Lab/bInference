@@ -6,6 +6,7 @@ import { testWalletRecord } from "../install/test-wallet-record.js";
 import { testAgent, testCoin, testWallet } from "../intents/test-intents.js";
 import { startTestEngine, type TestEngine, testAccount } from "../operations/test-engine.js";
 import { createPositions } from "../positions/create-positions.js";
+import { createStakingHost } from "../venues/staking-host.js";
 import type { SummaryFactsParts } from "./read-summary-facts.js";
 
 /** 2027-01-16 09:00 in Asia/Shanghai, 01:00 UTC: the fixture day's summary is due. */
@@ -59,9 +60,11 @@ export async function startDayRig(options: DayRigOptions = {}): Promise<DayRig> 
   const held: HeldWallet[] = [];
   const zone = { now: options.timeZone ?? "Asia/Shanghai" };
   const { stores, engineOptions } = test;
+  const clock = createManualClock(options.startMs ?? fixtureDueMs);
+  const { chains } = engineOptions;
   return {
     test,
-    clock: createManualClock(options.startMs ?? fixtureDueMs),
+    clock,
     hold: (stuck) => held.push(stuck),
     zone: () => zone.now,
     moveZone: (moved) => {
@@ -77,7 +80,11 @@ export async function startDayRig(options: DayRigOptions = {}): Promise<DayRig> 
       positions: createPositions({ store: test.positions, prices: engineOptions.prices }),
       wallets: engineOptions.wallets,
       prices: engineOptions.prices,
-      chains: engineOptions.chains,
+      chains,
+      staking: createStakingHost({ venues: engineOptions.stakingVenues ?? [], chains, clock }),
+      unbondings: stores.unbondings,
+      bridges: stores.bridges,
+      clock,
       heldWallets: () => held,
     },
   };

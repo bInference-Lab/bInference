@@ -1,5 +1,6 @@
 import type { PaperParts } from "../paper/paper-parts.js";
 import { createDailySummaries, type DailySummaries } from "../summaries/daily-summaries.js";
+import { createStakingHost } from "../venues/staking-host.js";
 import type { EngineOptions } from "./create-engine.js";
 
 /**
@@ -21,6 +22,13 @@ export function dailySummariesOf(options: EngineOptions, paper: PaperParts): Dai
     wallets: options.wallets,
     prices: options.prices,
     chains: options.chains,
+    staking: createStakingHost({
+      venues: options.stakingVenues ?? [],
+      chains: options.chains,
+      clock: options.clock,
+    }),
+    unbondings: stores.unbondings,
+    bridges: stores.bridges,
     heldWallets: options.heldWallets ?? (() => []),
     ownerTimeZone: options.ownerTimeZone,
     clock: options.clock,

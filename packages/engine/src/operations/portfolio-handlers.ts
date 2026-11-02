@@ -12,12 +12,19 @@ import { assetInfoOf, knownAssetInfos } from "../money-path/asset-infos.js";
 import type { PaperPortfolio } from "../paper/paper-portfolio.js";
 import { pnlCardsOf } from "../pnl/pnl-cards.js";
 import type { AgentStore, InstallStore, IntentStore } from "../ports.js";
+import { createPositions, type Positions } from "../positions/create-positions.js";
+import { stakePricesOf } from "../staking/stake-prices.js";
 import { activeAgent } from "./active-agent.js";
 import { type AssetSearchHandlers, createAssetSearchHandlers } from "./asset-search-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
-import { type LiveHoldingsOptions, liveHoldingsOf } from "./live-holdings.js";
 import { pnlViewOf } from "./pnl-view.js";
-import { paperHoldingsOf, portfolioViewOf, type WalletHoldings } from "./portfolio-view.js";
+import {
+  type HeldElsewhere,
+  paperHoldingsOf,
+  portfolioViewOf,
+  type WalletHoldings,
+} from "./portfolio-view.js";
+import { type HoldingsReadParts, readHoldings } from "./read-holdings.js";
 
 /**
  * The handlers of `portfolio/get`, `portfolio/pnl`, `portfolio/resetPaper`, `asset/search`,
@@ -30,12 +37,12 @@ export interface PortfolioHandlers extends AssetSearchHandlers, MarketHandlers {
 }
 
 /** What the portfolio handlers read and reset through. */
-export interface PortfolioHandlersOptions extends LiveHoldingsOptions, MarketParts {
+export interface PortfolioHandlersOptions extends HoldingsReadParts, MarketParts {
   readonly agents: AgentStore;
   readonly install: InstallStore;
   readonly portfolio: PaperPortfolio;
   /** What intents stored of tokens the registry does not list, which the portfolio shows. */
-  readonly intents: Pick<IntentStore, "storedAssets">;
+  readonly intents: Pick<IntentStore, "storedAssets" | "get">;
   /** The launch feed's records `market/scan` reads, when the engine runs a launch feed. */
   readonly launchScan?: MarketHandlersOptions["launches"];
 }
@@ -63,13 +70,17 @@ function balancesProblem(
 // Each asset the portfolio names, by the registry's info or what its proposal stored.
 async function withStoredAssets(
   options: PortfolioHandlersOptions,
-  holdings: readonly WalletHoldings[],
+  held: { readonly holdings: readonly WalletHoldings[]; readonly elsewhere?: HeldElsewhere },
   signal: AbortSignal,
 ): Promise<PortfolioView> {
-  const view = portfolioViewOf(holdings, options.chains);
+  const view = portfolioViewOf(held.holdings, options.chains, held.elsewhere);
   const named = [
     ...view.balances.map(({ amount }) => amount.asset),
     ...view.positions.map(({ asset }) => asset),
+    ...(view.staking ?? []).flatMap(({ staked, claimable }) =>
+      staked === undefined ? [claimable.asset] : [staked.asset, claimable.asset],
+    ),
+    ...(view.inTransit ?? []).map(({ amount }) => amount.asset),
   ];
   return { ...view, assets: await knownAssetInfos(options, named, { signal }) };
 }
@@ -102,6 +113,25 @@ async function walletsOf(
   return scope.wallet !== undefined && named.length === 0 ? err("wallet.not_found") : ok(named);
 }
 
+// The wallets' positions, live and paper, each receipt token of a staking venue valued at its pool
+// (decision 0329).
+async function pricedPositions(
+  options: PortfolioHandlersOptions,
+  wallets: readonly Id<"wal">[],
+  signal: AbortSignal,
+): Promise<Positions> {
+  const stored = await Promise.all(
+    wallets.flatMap((walletId) =>
+      [false, true].map(async (isPaper) =>
+        options.store.positions({ walletId, isPaper }, { signal }),
+      ),
+    ),
+  );
+  const held = stored.flat().map(({ asset }) => asset);
+  const { prices } = await stakePricesOf(options, held, { signal });
+  return createPositions({ store: options.store, prices });
+}
+
 // Every wallet the agent had counts, archived ones too: their trades happened.
 async function pnlOf(
   options: PortfolioHandlersOptions,
@@ -117,12 +147,13 @@ async function pnlOf(
   }
   const { wallets } = await options.install.read({ signal });
   const owned = wallets.filter((wallet) => wallet.agentId === args.agent).map(({ id }) => id);
+  const parts = { ...options, positions: await pricedPositions(options, owned, signal) };
   const query = { wallets: owned, fromMs: args.from, toMs: args.to };
-  const view = await pnlViewOf(options, query, { signal });
+  const view = await pnlViewOf(parts, query, { signal });
   if (args.cards !== true) {
     return ok(view);
   }
-  const drawn = await pnlCardsOf(options, { ...query, agentName: settings.agent.name }, { signal });
+  const drawn = await pnlCardsOf(parts, { ...query, agentName: settings.agent.name }, { signal });
   return ok({ ...view, cards: drawn.cards, assets: { ...view.assets, ...drawn.assets } });
 }
 
@@ -155,15 +186,8 @@ export function createPortfolioHandlers(options: PortfolioHandlersOptions): Port
       if (!wallets.ok) {
         return wallets;
       }
-      const holdings = await Promise.all(
-        wallets.value.flatMap((wallet) => [
-          liveHoldingsOf(options, wallet, { signal }),
-          options.positions
-            .value({ walletId: wallet.id, isPaper: true }, { signal })
-            .then((valued) => paperHoldingsOf(wallet.id, valued)),
-        ]),
-      );
-      return ok(await withStoredAssets(options, holdings, signal));
+      const read = await readHoldings(options, wallets.value, { signal });
+      return ok(await withStoredAssets(options, read, signal));
     },
     "portfolio/pnl": async ({ args, signal }) => pnlOf(options, args, signal),
     async "portfolio/resetPaper"({ args, signal }) {
@@ -187,7 +211,7 @@ export function createPortfolioHandlers(options: PortfolioHandlersOptions): Port
           ),
         ),
       );
-      return ok(await withStoredAssets(options, valued, signal));
+      return ok(await withStoredAssets(options, { holdings: valued }, signal));
     },
   };
 }

@@ -15,7 +15,7 @@ import { type HoldingsParts, totalsOf } from "./summary-totals.js";
 /** What the summary facts are read from. */
 export interface SummaryFactsParts extends HoldingsParts {
   readonly install: Pick<InstallStore, "read">;
-  readonly intents: Pick<IntentStore, "list">;
+  readonly intents: Pick<IntentStore, "list" | "get">;
   readonly orders: Pick<OrderStore, "fillCounts" | "list">;
   readonly questions: Pick<QuestionStore, "openOf">;
   readonly usage: Pick<ModelUsageStore, "spent">;

@@ -68,6 +68,14 @@ Rules for this package:
 - Funds a send takes out of a live wallet are a departure (decision 0127): the units sent and the
   gas leave their positions at average cost, the cost rounding down, with nothing realized. An
   intent's departures are stored once, with their position writes.
+- The portfolio (`portfolio/get`, `portfolio/pnl` and the daily summary's totals, decision 0329)
+  reads each wallet through `readHoldings` (`src/operations/read-holdings.ts`): a staking venue's
+  receipt token is worth the coin's price times its pool (`stakePricesOf`), asked once per read and
+  never by the policy or the money path; an unbonding no claim took counts at its coin's price now,
+  a bridge in transit at the value its units left with, live and paper apart, each once. These are
+  displays and fail soft: a staking venue that does not answer leaves its tokens with no value,
+  out of the totals, as any unpriced token. A change to what a total counts changes
+  `portfolio-view.property.test.ts`.
 - `PositionStore` has its fake and contract suite; its SQLite adapter is
   `createSqlitePositionStore` in `@binference/store`.
 - The ledger chain check (`src/ledger/`) reads entries and never writes.
