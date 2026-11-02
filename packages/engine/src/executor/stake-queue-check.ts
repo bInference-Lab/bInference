@@ -15,6 +15,7 @@ import { type StakeIntentQuote, stakeQuoteDocument } from "../intents/stake-quot
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { checkTransferPolicy } from "../sends/check-transfer-policy.js";
 import { ownCapCallOf } from "../staking/stake-ceiling.js";
+import { declaredSpenders } from "../venues/declared-spenders.js";
 import type { HostPlanned, StakingHost } from "../venues/staking-host.js";
 import { declaredTargetsOf } from "./declared-calls.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
@@ -28,9 +29,10 @@ export function stakeQuoteOf(record: IntentRecord): StakeIntentQuote | undefined
 }
 
 /**
- * What the signer may let a staking move's one call reach (spec 5, section 5.2): the contracts its
+ * What the signer may let a staking move's calls reach (spec 5, section 5.2): the contracts its
  * venue declares on the chain, read from the registry by name, and only the functions it declares
- * there; no spender and no recipient, since a staking call approves nothing and pays no one. A
+ * there; no recipient, since a staking call pays no one; and no spender, but the venue's declared
+ * spenders for an unstake whose plan burns receipt units it approves first (decision 0331). A
  * venue the engine does not run gives no contract, so nothing signs.
  */
 export function stakeTargetsOf(
@@ -50,7 +52,9 @@ export function stakeTargetsOf(
       ? declared.value.map((address) => accountRefSchema.parse(`${chain.ref}:${address}`))
       : [];
   const targets = declaredTargetsOf(chain, { used, all: [...venues, ...used] });
-  return { contracts, spenders: [], recipients: [], ...targets };
+  const isApproved = venue?.pool !== undefined && quote.plan.action === "unstake";
+  const spenders = venue === undefined || !isApproved ? [] : declaredSpenders(venue, chain);
+  return { contracts, spenders, recipients: [], ...targets };
 }
 
 /** What the queue reads as it checks a staking move again. */
@@ -106,7 +110,8 @@ export async function recheckStake(
 export type StakeTake = "go" | "unread" | "ended";
 
 // The move planned again as the card confirmed it: a stake of its coin, an unstake of the whole
-// stake, which says how many receipt units the wallet holds now, or a claim.
+// stake, which says how many receipt units the wallet holds now, or a claim; each names the
+// validator, a liquid venue's pool, the card's plan named.
 function requestOf(quote: StakeIntentQuote): StakeRequest {
   const { action, wallet, validator, value } = quote.plan;
   if (action === "stake") {
@@ -148,7 +153,8 @@ async function replanOf(
  * Plans a confirmed staking move again as its wallet's queue takes it, before any signature
  * (decision 0327), since a validator can be jailed, the venue paused or the stake moved between
  * the card and the queue: a refusal ends the move `failed_check` with the venue's reason and the
- * facts its words name, a plan of another move than the card's with `decode_mismatch`, and an
+ * facts its words name, a plan of another move than the card's with `decode_mismatch`, as is a
+ * stake that would mint fewer receipt units than its card promised (decision 0331), and an
  * unstake of more receipt units than the wallet now holds `exceeds_staked`; a venue that does not
  * answer, or one the engine does not run, signs nothing and waits for the next block. Any other
  * intent goes on.
@@ -166,9 +172,18 @@ export async function takeStake(run: ExecutionRun, snapshot: IntentSnapshot): Pr
   if (!planned.ok) {
     return endRefused(run, snapshot, refusalOf(planned));
   }
+  if (mintsFewer(quote.plan, planned.value)) {
+    return endRefused(run, snapshot, { reason: "decode_mismatch" });
+  }
   return burnsMore(quote.plan, planned.value)
     ? endRefused(run, snapshot, { reason: "exceeds_staked" })
     : "go";
+}
+
+// Whether the card's stake would now mint fewer receipt units than the least its card promised.
+function mintsFewer(confirmed: StakePlan, now: StakePlan): boolean {
+  const least = confirmed.minShares?.base;
+  return least !== undefined && (now.shares?.base ?? 0n) < least;
 }
 
 // The reason and facts a refused plan ends with; a venue that went down mid-plan is no reason, so

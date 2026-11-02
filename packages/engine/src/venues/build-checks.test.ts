@@ -21,13 +21,14 @@ import {
   type TradeStep,
 } from "./build-checks.js";
 import { landedMismatch, type LandedMismatch } from "./landed-checks.js";
-import { stakeMismatch, type StakeStep } from "./stake-checks.js";
+import { stakeMismatch, type StakePlanStep } from "./stake-checks.js";
 import { claimMismatch, planMismatch, receiptMismatch } from "./stake-plan-checks.js";
 import {
   testClaimPlan,
   testLandedUnstake,
   testStakeBounds,
   testStakeReceipt,
+  testApprovalStep,
   testStakeStep,
   testUnstakePlan,
   testUnstakeRequest,
@@ -218,7 +219,7 @@ describe("build-step checks", () => {
   });
 });
 
-const check = (steps: readonly StakeStep[]) =>
+const check = (steps: readonly StakePlanStep[]) =>
   stakeMismatch(steps, testUnstakePlan, testStakeBounds);
 
 describe("build-step checks of a staking move (decision 0327)", () => {
@@ -226,9 +227,29 @@ describe("build-step checks of a staking move (decision 0327)", () => {
     expect(check([testStakeStep()])).toBeUndefined();
   });
 
+  it("passes an unstake's exact approval of its receipt units to a declared spender first (decision 0331)", () => {
+    expect(check([testApprovalStep(), testStakeStep()])).toBeUndefined();
+    const asks: readonly (readonly [readonly StakePlanStep[], BuildMismatch])[] = [
+      [[testStakeStep(), testApprovalStep()], "step_order"],
+      [[testApprovalStep()], "step_order"],
+      [[testApprovalStep(), testApprovalStep(), testStakeStep()], "step_order"],
+      [[testApprovalStep({ spender: stranger }), testStakeStep()], "undeclared_contract"],
+      [[testApprovalStep({ amountBase: 11n }), testStakeStep()], "other_approval"],
+      [[testApprovalStep({ asset: coin }), testStakeStep()], "other_approval"],
+      [[testApprovalStep({}, 1n), testStakeStep()], "other_approval"],
+    ];
+    expect(asks.map(([steps]) => check(steps))).toStrictEqual(asks.map(([, mismatch]) => mismatch));
+    const claim = stakeMismatch(
+      [testApprovalStep(), testStakeStep()],
+      testClaimPlan,
+      testStakeBounds,
+    );
+    expect(claim).toBe("step_order");
+  });
+
   it("names the first check a call breaks", () => {
     const elsewhere = accountRefSchema.parse("fake:1:0x000000c2");
-    const asks: readonly (readonly [readonly StakeStep[], BuildMismatch])[] = [
+    const asks: readonly (readonly [readonly StakePlanStep[], BuildMismatch])[] = [
       [[], "step_order"],
       [[testStakeStep(), testStakeStep()], "step_order"],
       [[testStakeStep({}, stranger)], "other_sender"],
@@ -251,6 +272,13 @@ const unstakeOf = (amount: bigint | "whole"): StakeRequest => ({
   validator,
   amount: amount === "whole" ? "whole" : { asset: coin, base: amount },
 });
+const minted = (base: bigint) => ({ asset: testStakeReceipt, base });
+const unitsOf = (base: bigint): StakeRequest => ({
+  action: "unstake",
+  wallet: planWallet,
+  validator,
+  amount: { asset: testStakeReceipt, base },
+});
 const partOf = (ref: string, readyAtMs: number): UnbondingPart => ({
   ref,
   amount: { asset: coin, base: 12n },
@@ -258,7 +286,7 @@ const partOf = (ref: string, readyAtMs: number): UnbondingPart => ({
 });
 
 describe("the venue host's checks of a staking plan (decision 0327)", () => {
-  it("holds the plan to the move asked, and an unstake to at least its amount", () => {
+  it("holds the plan to the move asked, an unstake to at least its coin or exactly its receipt units", () => {
     const asks: readonly (readonly [StakeRequest, BuildMismatch | undefined])[] = [
       [unstakeOf("whole"), undefined],
       [unstakeOf(12n), undefined],
@@ -266,6 +294,9 @@ describe("the venue host's checks of a staking plan (decision 0327)", () => {
       [{ action: "claim", wallet: planWallet, validator }, "other_plan"],
       [{ ...unstakeOf("whole"), wallet: stranger }, "other_plan"],
       [{ ...unstakeOf("whole"), validator: stranger }, "other_plan"],
+      [unitsOf(10n), undefined],
+      [unitsOf(9n), "short_unstake"],
+      [unitsOf(11n), "short_unstake"],
     ];
     expect(asks.map(([request]) => planMismatch(testUnstakePlan, request, family))).toStrictEqual(
       asks.map(([, mismatch]) => mismatch),
@@ -274,7 +305,7 @@ describe("the venue host's checks of a staking plan (decision 0327)", () => {
     expect(planMismatch(paid, unstakeOf("whole"), family)).toBe("other_plan");
   });
 
-  it("passes a claim only of parts the wallet holds that are ready by its plan", () => {
+  it("passes a claim only of parts the wallet holds that are ready by its plan and not queued", () => {
     const at = testClaimPlan.plannedAtMs;
     expect(claimMismatch(testClaimPlan, [partOf("r:1", at)])).toBeUndefined();
     expect(claimMismatch(testClaimPlan, [partOf("r:1", at + 1)])).toBe("unready_part");
@@ -283,6 +314,8 @@ describe("the venue host's checks of a staking plan (decision 0327)", () => {
       "unready_part",
     );
     expect(claimMismatch(testUnstakePlan, [])).toBeUndefined();
+    const queued = { ...partOf("r:1", at), queued: true as const };
+    expect(claimMismatch(testClaimPlan, [queued])).toBe("unready_part");
   });
 
   it("holds the shares to the validator's receipt token", () => {
@@ -313,5 +346,21 @@ describe("the venue host's checks of a staking plan (decision 0327)", () => {
     expect(landedMismatch({ ...claimed, claimed: ["r:2"] }, testClaimPlan, family)).toBe(
       "other_parts",
     );
+  });
+
+  it("refuses a stake's read-back that minted fewer units than its card promised (decision 0331)", () => {
+    const { readyAtMs: _readyAtMs, ...unstake } = testUnstakePlan;
+    const plan = {
+      ...unstake,
+      action: "stake" as const,
+      value: { asset: coin, base: 12n },
+      shares: minted(10n),
+      minShares: minted(9n),
+    };
+    const stake = { action: "stake", validator, moved: plan.value } as const;
+    const reads = [10n, 9n, 8n].map((base) =>
+      landedMismatch({ ...stake, shares: minted(base) }, plan, family),
+    );
+    expect(reads).toStrictEqual([undefined, undefined, "other_shares"]);
   });
 });

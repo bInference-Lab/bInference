@@ -124,7 +124,8 @@ export async function quoteStake(
     return { snapshot: await advanceIntent(advance, checked, move) };
   }
   const { plan, steps } = built.value;
-  const quote = { venue: resolved.venue.id, plan };
+  const liquid = resolved.venue.pool === undefined ? {} : { liquid: true as const };
+  const quote = { venue: resolved.venue.id, plan, ...liquid };
   const value = plan.action === "stake" ? pass.figures?.valueUsdMicros : undefined;
   const fields = {
     quote: stakeQuoteDocument.encode(quote),

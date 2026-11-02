@@ -89,6 +89,22 @@ describe("the simulation of a staking move (decision 0327)", () => {
     ]);
   });
 
+  it("lets an unstake set its own receipt units' allowance, or none, and nothing else (decision 0331)", async () => {
+    const approval = (base: bigint, asset = receipt) => ({
+      owner: wallet,
+      spender: hub,
+      amount: { asset, base },
+    });
+    const burned = { transfers: [out({ asset: receipt, base: whole })] };
+    const answers = await Promise.all([
+      judged(planOf("unstake"), { ...burned, approvals: [approval(whole), approval(0n)] }),
+      judged(planOf("unstake"), { ...burned, approvals: [approval(whole + 1n)] }),
+      judged(planOf("unstake"), { ...burned, approvals: [approval(whole, other)] }),
+      judged(planOf("stake"), { approvals: [approval(whole)] }),
+    ]);
+    expect(answers).toStrictEqual(["ran", "effects_differ", "effects_differ", "effects_differ"]);
+  });
+
   it("names a call that reverted", async () => {
     await expect(judged(planOf("stake"), { status: "reverted" })).resolves.toBe(
       "simulation_reverted",

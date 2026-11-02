@@ -520,10 +520,11 @@ such as Base or Robinhood Chain, in both languages.
 | Validator              | `card.stake.validator`     | Validator {validator} · commission {commission}                                                                  | 验证者 {validator} · 佣金 {commission}                                                      |
 | Yearly rate            | `card.stake.rate`          | Yearly rate {rate}, from its last day of rewards                                                                 | 年化收益率 {rate}，按其最近一天的收益计算                                                   |
 | Unstake later          | `card.stake.unstakeLater`  | Unstaking later takes {days} days before you can claim it                                                        | 日后解除质押需等待 {days} 天才能领取                                                        |
-| Stake for slisBNB      | `card.stake.liquid`        | Stake {amount} with Lista for at least {minOut}                                                                  | 在 Lista 质押 {amount}，至少获得 {minOut}                                                   |
-| Unstake slisBNB        | `card.stake.unstakeLiquid` | Unstake {amount} from Lista                                                                                      | 从 Lista 解除质押 {amount}                                                                  |
+| Stake for slisBNB      | `card.stake.liquid`        | Stake {amount} with {venue} for at least {minOut}                                                                | 在 {venue} 质押 {amount}，至少获得 {minOut}                                                 |
+| Unstake slisBNB        | `card.stake.unstakeLiquid` | Unstake {amount} from {venue}                                                                                    | 从 {venue} 解除质押 {amount}                                                                |
 | Unbonding time         | `card.stake.unbonding`     | Locked while it unbonds: you can claim it from {readyAt}, in about {days} days, and not sooner                   | 解绑期内锁定：{readyAt} 起可领取，约 {days} 天后，在此之前无法取回                          |
-| Claim from Lista       | `card.stake.claimLiquid`   | Claim {amount} from your Lista unstake                                                                           | 领取你在 Lista 解除质押的 {amount}                                                          |
+| Liquid queue           | `card.stake.liquidQueue`   | {venue}'s own queue releases it and may take longer; binference tells you once you can claim it                  | 由 {venue} 自己的队列放行，可能更久；可以领取时 binference 会通知你                         |
+| Claim from Lista       | `card.stake.claimLiquid`   | Claim {amount} from your {venue} unstake                                                                         | 领取你在 {venue} 解除质押的 {amount}                                                        |
 | Bridge arrives         | `card.bridge.arrives`      | {recipient} receives at least {minOut} on {chain}                                                                | {recipient} 在 {chain} 至少收到 {minOut}                                                    |
 | Another token arrives  | `card.bridge.otherToken`   | ⚠️ {sent} arrives on {chain} as {received}, a different token                                                    | ⚠️ {sent} 在 {chain} 以另一种代币 {received} 到账                                           |
 | Bridge fees            | `card.bridge.fees`         | Bridge fees {fees} · through {venue}                                                                             | 跨链费用 {fees} · 通过 {venue}                                                              |
@@ -553,6 +554,13 @@ such as Base or Robinhood Chain, in both languages.
   venue's time at the quote and the card's expiry plus the unbonding time, so a tap late in the
   card's life is never ready later than the card says. Its receipt, `receipt.unstaked`, names the
   venue's own time. A stake's card names no cap: a stake over a cap never reaches its card.
+- A Lista stake, unstake or claim ([decision 0331](../DECISIONS.md#d0331)) shows
+  `card.stake.liquid`, `card.stake.unstakeLiquid` or `card.stake.claimLiquid` as its action line,
+  `{venue}` "Lista" / 「Lista」, and no validator, commission or rate line: a stake's `{minOut}` is
+  the least slisBNB it mints, which the queue's new plan and the landed move are held to, then
+  `card.stake.unstakeLater`; an unstake's `{amount}` is the slisBNB it hands Lista, then
+  `card.stake.unbonding` with the earliest time and `card.stake.liquidQueue`, since Lista's own
+  queue releases the coin, and `notice.claimReady` goes out only once Lista reads it as released.
 - A bridge shows, after `card.bridge.action`, `card.bridge.arrives`, `card.bridge.fees` and
   `card.bridge.read`, and `card.bridge.solana` when the recipient is on Solana.
   `card.bridge.otherToken` shows among the warnings when the delivered token differs from the

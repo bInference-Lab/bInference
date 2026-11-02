@@ -2,6 +2,7 @@ import {
   type AccountRef,
   accountRefSchema,
   type Amount,
+  assetRefSchema,
   chainRefSchema,
   createChainRegistry,
   type SimulatedStep,
@@ -152,22 +153,47 @@ export function stakeRequest(
   };
 }
 
+// The fake pool's receipt token, which a liquid unstake approves to the pool and then hands it.
+const poolReceipt = assetRefSchema.parse("fake:1/token:0x000000e2");
+
+// A liquid unstake's approval of the pool's receipt token to the pool, and the units its request
+// hands the pool (decision 0331); the units are the call's last word.
+function poolEffects(draft: TxDraft, pool: AccountRef) {
+  const words = fakeCallOf(draft)?.data.split(",") ?? [];
+  const last = words.at(-1) ?? "";
+  const amount = { asset: poolReceipt, base: /^\d+$/u.test(last) ? BigInt(last) : 0n };
+  if (words[0] === "approve") {
+    return { transfers: [], approvals: [{ owner: draft.from, spender: pool, amount }] };
+  }
+  const handed = words[0] === "requestWithdraw" ? [{ from: draft.from, to: pool, amount }] : [];
+  return { transfers: handed, approvals: [] };
+}
+
 /**
- * A simulator that runs each call to the fake staking venue's contract as the chain would, moving
- * its coin from the wallet to the contract, and hands every other draft to `inner`.
+ * A simulator that runs each call to the fake staking venue's contract or the fake pool as the
+ * chain would, moving its coin from the wallet to the contract, an unstake's approval and receipt
+ * units to the pool, and hands every other draft to `inner`.
  */
 export function stakingSimulator(
   inner: Pick<TxSimulator, "simulate">,
 ): Pick<TxSimulator, "simulate"> {
-  const hub = accountRefSchema.parse("fake:1:0x000000d1");
+  const pool = accountRefSchema.parse("fake:1:0x000000e1");
   const run = (draft: TxDraft): SimulatedStep | undefined => {
     const call = fakeCallOf(draft);
-    if (call?.to !== "0x000000d1") {
+    const to = call === undefined ? undefined : accountRefSchema.parse(`fake:1:${call.to}`);
+    if (
+      call === undefined ||
+      to === undefined ||
+      !["0x000000d1", "0x000000e1", "0x000000e2"].includes(call.to)
+    ) {
       return undefined;
     }
     const amount = { asset: testCoin, base: call.value };
-    const transfers = call.value === 0n ? [] : [{ from: draft.from, to: hub, amount }];
-    return { status: "success", gasUsed: 60_000n, transfers, approvals: [] };
+    const paid = call.value === 0n ? [] : [{ from: draft.from, to, amount }];
+    const pooled =
+      call.to === "0x000000d1" ? { transfers: [], approvals: [] } : poolEffects(draft, pool);
+    const transfers = [...paid, ...pooled.transfers];
+    return { status: "success", gasUsed: 60_000n, transfers, approvals: pooled.approvals };
   };
   return {
     async simulate(drafts, options) {

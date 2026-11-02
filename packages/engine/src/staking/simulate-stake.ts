@@ -1,5 +1,6 @@
 import {
   type Amount,
+  type AssetApproval,
   type ChainFamily,
   isSameAccount,
   type SimulatedStep,
@@ -11,9 +12,22 @@ import { err, ok, type Result } from "@binference/core";
 import type { SimulationView } from "@binference/protocol";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 
-// Each step ran, set no allowance, moved out of the wallet no more of the chain's coin than the plan
-// sends, and took out of it nothing but that coin, the plan's receipt units and the voting token the
-// venue mints with them, which an unstake burns.
+// An allowance a step set: none, but an unstake's of its own receipt units, set to exactly the
+// units it burns or back to zero once its call spent them (decision 0331).
+function isPlannedApproval(approval: AssetApproval, plan: StakePlan, family: ChainFamily): boolean {
+  const { shares } = plan;
+  return (
+    plan.action === "unstake" &&
+    shares !== undefined &&
+    isSameAccount(approval.owner, plan.wallet, family) &&
+    approval.amount.asset === shares.asset &&
+    (approval.amount.base === shares.base || approval.amount.base === 0n)
+  );
+}
+
+// Each step ran, set no allowance but an unstake's own, moved out of the wallet no more of the
+// chain's coin than the plan sends, and took out of it nothing but that coin, the plan's receipt
+// units and the voting token the venue mints with them, which an unstake burns.
 function ranAsPlanned(
   steps: readonly SimulatedStep[],
   plan: StakePlan,
@@ -27,7 +41,7 @@ function ranAsPlanned(
     .reduce((sum, { amount }) => sum + amount.base, 0n);
   const allowed = new Set([plan.value.asset, plan.shares?.asset, plan.votingToken]);
   return (
-    steps.every((step) => step.approvals.length === 0) &&
+    steps.every((step) => step.approvals.every((item) => isPlannedApproval(item, plan, family))) &&
     out.every(({ amount }) => allowed.has(amount.asset)) &&
     coinOut <= plan.value.base
   );
@@ -48,8 +62,8 @@ function viewOf(plan: StakePlan, simulatedAt: number): SimulationView {
 
 /**
  * The simulate step of a live staking move (decision 0327): its call runs unsent on the chain's
- * latest state. It passes when it runs, sets no allowance, and moves out of the wallet no more of
- * the chain's coin than its plan sends: a stake's amount, nothing for an unstake or a claim. A
+ * latest state. It passes when it runs, sets no allowance but a liquid unstake's own (decision
+ * 0331), and moves out of the wallet no more of the chain's coin than its plan sends: a stake's amount, nothing for an unstake or a claim. A
  * step that reverts is `simulation_reverted`, any other difference `effects_differ`.
  */
 export async function simulateStake(

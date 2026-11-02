@@ -3,8 +3,10 @@ import {
   accountRefParts,
   type Amount,
   type AssetRef,
+  assetRefParts,
   canonicalAsset,
   type ChainRegistry,
+  parseAssetRef,
   type RegisteredChain,
   type Signer,
 } from "@binference/chain";
@@ -64,26 +66,26 @@ interface AskContext {
   readonly chains: ChainRegistry;
   readonly validator: AccountRef;
   readonly coin: AssetRef;
+  /** What an unstake names: the chain's coin, or a liquid venue's receipt token (decision 0331). */
+  readonly unstaked: AssetRef;
 }
 
 // The amount the request names, in its family's canonical form, when it is more than nothing of
-// the chain's coin.
-function coinAmountOf(request: StakeRequest, context: AskContext): Amount | undefined {
+// the asset its action names.
+function amountOf(request: StakeRequest, context: AskContext): Amount | undefined {
   const { amount } = request;
+  const named = request.action === "unstake" ? context.unstaked : context.coin;
   const asset = amount === undefined ? undefined : canonicalAsset(context.chains, amount.asset);
-  return amount !== undefined &&
-    asset?.ok === true &&
-    asset.value === context.coin &&
-    amount.base > 0n
-    ? { asset: context.coin, base: amount.base }
+  return amount !== undefined && asset?.ok === true && asset.value === named && amount.base > 0n
+    ? { asset: named, base: amount.base }
     : undefined;
 }
 
-// What the request asks of the chain's coin; an unstake that names no amount takes the whole
-// stake, and a claim names none.
+// What the request asks: a stake of the chain's coin, an unstake of the coin or a liquid venue's
+// receipt units, or of the whole stake when it names no amount; a claim names none.
 function askOf(request: StakeRequest, context: AskContext): StakeAsk | undefined {
   const { validator } = context;
-  const amount = coinAmountOf(request, context);
+  const amount = amountOf(request, context);
   if (request.action === "claim") {
     return request.amount === undefined ? { action: "claim", validator } : undefined;
   }
@@ -119,12 +121,12 @@ interface StakePlace {
   readonly venue: StakingVenue;
 }
 
-// The validator in its family's canonical form, its chain, and the venue the engine runs there under
-// the request's venue id; none when any is missing.
-function placeOf(options: StakeResolveOptions, request: StakeRequest): StakePlace | undefined {
-  if (request.validator === undefined) {
-    return undefined;
-  }
+// The validator in its family's canonical form, its chain, and the venue of validators the engine
+// runs there under the request's venue id; none when any is missing.
+function validatorPlaceOf(
+  options: StakeResolveOptions,
+  request: StakeRequest & { readonly validator: AccountRef },
+): StakePlace | undefined {
   const validator = canonicalAccount(options.chains, request.validator);
   const chain = validator.ok
     ? options.chains.get(accountRefParts(validator.value).chain)
@@ -133,17 +135,57 @@ function placeOf(options: StakeResolveOptions, request: StakeRequest): StakePlac
     return undefined;
   }
   const venue = options.staking.venueOn(request.venue, chain.value.ref);
-  return venue === undefined
+  return venue === undefined || venue.pool !== undefined
     ? undefined
     : { validator: validator.value, chain: chain.value, venue };
 }
 
+// A liquid venue under the request's venue id and its pool, which stands for the validator a
+// request on it never names (decision 0331): on the chain of the amount it names, else the one
+// chain the engine runs it on; none when that leaves no venue, or more than one.
+function poolPlaceOf(options: StakeResolveOptions, request: StakeRequest): StakePlace | undefined {
+  const asset = request.amount === undefined ? undefined : parseAssetRef(request.amount.asset);
+  const chain = asset?.ok === true ? assetRefParts(asset.value).chain : undefined;
+  const venues = options.staking
+    .venuesWith(request.venue)
+    .filter((item) => item.pool !== undefined && (chain === undefined || item.chain === chain));
+  const [venue, ...rest] = venues;
+  const found = venue === undefined ? undefined : options.chains.get(venue.chain);
+  return venue?.pool === undefined || rest.length > 0 || found?.ok !== true
+    ? undefined
+    : { validator: venue.pool, chain: found.value, venue };
+}
+
+function placeOf(options: StakeResolveOptions, request: StakeRequest): StakePlace | undefined {
+  const { validator } = request;
+  return validator === undefined
+    ? poolPlaceOf(options, request)
+    : validatorPlaceOf(options, { ...request, validator });
+}
+
+// What an unstake on the venue names: its receipt token on a liquid venue, else the chain's coin;
+// none when a liquid venue cannot name it now.
+async function unstakedAssetOf(
+  options: StakeResolveOptions,
+  place: StakePlace & { readonly coin: AssetRef },
+  signal: AbortSignal,
+): Promise<AssetRef | undefined> {
+  if (place.venue.pool === undefined) {
+    return place.coin;
+  }
+  const receipt = await options.staking.receipt(place.venue, place.validator, { signal });
+  return receipt.ok ? receipt.value : undefined;
+}
+
 /**
- * Resolves a staking request for its path (decision 0327): the validator's chain and the staking
- * venue the engine runs there under the request's venue id, what it asks, the agent's wallet and
- * its account there, and the wallet's facts in the intent's mode. A request that names no
- * validator, a venue the engine does not run on that chain, an amount of another asset than the
- * chain's coin, none on a stake, or one on a claim, is `protocol.bad_args`. None stores anything.
+ * Resolves a staking request for its path (decisions 0327 and 0331): the validator's chain and
+ * the staking venue the engine runs there under the request's venue id, or a liquid venue's pool
+ * and chain for a request that names no validator, what it asks, the agent's wallet and its
+ * account there, and the wallet's facts in the intent's mode. A request that names no validator
+ * on a venue of validators, or one on a liquid venue, a venue the engine does not run on that
+ * chain, an amount of another asset than the chain's coin, or than the receipt token for a liquid
+ * venue's unstake, none on a stake, or one on a claim, is `protocol.bad_args`; a liquid venue
+ * that cannot name its receipt token is `quote.venue_down`. None stores anything.
  */
 export async function resolveStake(
   options: StakeResolveOptions,
@@ -152,11 +194,16 @@ export async function resolveStake(
   const { request, settings, isPaper, signal } = resolving;
   const place = placeOf(options, request);
   const nativeAsset = place === undefined ? undefined : nativeAssetOf(place.chain);
-  const ask =
-    place === undefined || nativeAsset === undefined
-      ? undefined
-      : askOf(request, { chains: options.chains, validator: place.validator, coin: nativeAsset });
-  if (place === undefined || nativeAsset === undefined || ask === undefined) {
+  if (place === undefined || nativeAsset === undefined) {
+    return err("protocol.bad_args");
+  }
+  const unstaked = await unstakedAssetOf(options, { ...place, coin: nativeAsset }, signal);
+  if (unstaked === undefined) {
+    return err("quote.venue_down");
+  }
+  const context = { chains: options.chains, validator: place.validator, coin: nativeAsset };
+  const ask = askOf(request, { ...context, unstaked });
+  if (ask === undefined) {
     return err("protocol.bad_args");
   }
   const { chain, venue } = place;

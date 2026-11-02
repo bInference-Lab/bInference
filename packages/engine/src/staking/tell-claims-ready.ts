@@ -15,6 +15,14 @@ export interface ClaimReadyParts {
   readonly install: Pick<InstallStore, "read">;
   readonly publish: PublishPush;
   readonly clock: Clock;
+  /**
+   * Whether the venue says a ready row's coin can be claimed now (decision 0331); without it,
+   * every row whose time came can.
+   */
+  readonly isReleased?: (
+    row: UnbondingRecord,
+    call: { readonly signal: AbortSignal },
+  ) => Promise<boolean>;
 }
 
 // The most unbondings one pass tells of; the rest wait for the next pass.
@@ -32,18 +40,25 @@ function noticeOf(row: UnbondingRecord, agent: Id<"agt"> | undefined) {
 }
 
 /**
- * Tells the owner once of each unstake's coin a claim can take now (spec 4, section 4; decision
- * 0327): every unbonding no claim took whose ready time came and that the owner was not told of,
- * live or paper, as `notice.claimReady` with its coin and validator, at most 100 a pass. It marks
- * them told after it published, so a stop between the two tells of them again rather than never.
- * Answers how many it told of.
+ * Tells the owner once of each unstake's coin a claim can take now (spec 4, section 4; decisions
+ * 0327 and 0331): every unbonding no claim took whose ready time came, that its venue says can be
+ * claimed, and that the owner was not told of, live or paper, as `notice.claimReady` with its coin
+ * and validator, at most 100 a pass. A row whose venue's queue holds it waits for a later pass. It
+ * marks them told after it published, so a stop between the two tells of them again rather than
+ * never. Answers how many it told of.
  */
 export async function tellClaimsReady(
   parts: ClaimReadyParts,
   call: { readonly signal: AbortSignal },
 ): Promise<number> {
   const nowMs = parts.clock.now();
-  const ready = await parts.unbondings.untoldReady({ nowMs, limit: maxTold }, call);
+  const due = await parts.unbondings.untoldReady({ nowMs, limit: maxTold }, call);
+  const { isReleased } = parts;
+  const released =
+    isReleased === undefined
+      ? due.map(() => true)
+      : await Promise.all(due.map(async (row) => isReleased(row, call)));
+  const ready = due.filter((_row, index) => released[index] === true);
   if (ready.length === 0) {
     return 0;
   }

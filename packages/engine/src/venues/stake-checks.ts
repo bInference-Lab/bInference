@@ -6,19 +6,25 @@ import {
   type TxDraft,
 } from "@binference/chain";
 import type { DecodedStake, StakePlan } from "@binference/chain/staking";
-import type { BuildMismatch } from "./build-checks.js";
+import type { ApprovalStep, BuildMismatch } from "./build-checks.js";
 
 /** A staking call as the host read it: its draft, and what the venue's decoder read from it. */
 export interface StakeStep {
+  readonly kind: "stake";
   /** The host's own copy of the draft the venue built. */
   readonly draft: TxDraft;
   readonly decoded: DecodedStake;
 }
 
-/** What a staking plan's one call must keep beyond the plan itself. */
+/** One step of a staking move's build: its staking call, or the approval a liquid unstake makes. */
+export type StakePlanStep = ApprovalStep | StakeStep;
+
+/** What a staking plan's calls must keep beyond the plan itself. */
 export interface StakeBounds {
   /** The venue's declared contracts on the plan's chain, read from the registry. */
   readonly contracts: readonly AccountRef[];
+  /** The spenders the venue declares on the plan's chain, any wallet's to approve. */
+  readonly spenders: readonly AccountRef[];
   /** The family that writes the wallet's addresses, which compares accounts. */
   readonly family: ChainFamily;
 }
@@ -35,27 +41,50 @@ function isPlannedMove(decoded: DecodedStake, plan: StakePlan, family: ChainFami
   );
 }
 
-/**
- * The build-step checks of a staking move (decision 0327): its plan is exactly one call, from the
- * plan's wallet on the wallet's chain, to a contract the venue declared, crediting that wallet
- * alone, and making the plan's move: its action, validator, coin, an unstake's shares and a
- * claim's count of parts. Gives the first check that fails, or none.
- */
-export function stakeMismatch(
-  steps: readonly StakeStep[],
+interface OrderedStake {
+  readonly approval?: ApprovalStep;
+  readonly stake: StakeStep;
+}
+
+// A plan is one staking call, or for an unstake one token approval and then its staking call.
+function orderOf(steps: readonly StakePlanStep[], plan: StakePlan): OrderedStake | undefined {
+  const [first, second, ...rest] = steps;
+  if (first === undefined || rest.length > 0) {
+    return undefined;
+  }
+  if (second === undefined) {
+    return first.kind === "stake" ? { stake: first } : undefined;
+  }
+  const isApproved = plan.action === "unstake" && first.kind === "approval";
+  return isApproved && second.kind === "stake" ? { approval: first, stake: second } : undefined;
+}
+
+// An unstake's approval is exactly its receipt units, sends no coin, and names a declared spender.
+function approvalMismatch(
+  step: ApprovalStep,
+  plan: StakePlan,
+  bounds: StakeBounds,
+): BuildMismatch | undefined {
+  const { approval, call } = step;
+  if (!bounds.spenders.some((item) => isSameAccount(item, approval.spender, bounds.family))) {
+    return "undeclared_contract";
+  }
+  const { shares } = plan;
+  const isExact =
+    shares !== undefined &&
+    approval.asset === shares.asset &&
+    approval.amountBase === shares.base &&
+    call.nativeValue === 0n;
+  return isExact ? undefined : "other_approval";
+}
+
+function callMismatch(
+  step: StakeStep,
   plan: StakePlan,
   bounds: StakeBounds,
 ): BuildMismatch | undefined {
   const { family, contracts } = bounds;
-  const [step, ...rest] = steps;
-  if (step === undefined || rest.length > 0) {
-    return "step_order";
-  }
-  const { draft, decoded } = step;
-  const isOnChain = draft.chain === accountRefParts(plan.wallet).chain;
-  if (!isOnChain || !isSameAccount(draft.from, plan.wallet, family)) {
-    return "other_sender";
-  }
+  const { decoded } = step;
   if (!contracts.some((contract) => isSameAccount(contract, decoded.contract, family))) {
     return "undeclared_contract";
   }
@@ -63,4 +92,34 @@ export function stakeMismatch(
     return "other_recipient";
   }
   return isPlannedMove(decoded, plan, family) ? undefined : "other_stake";
+}
+
+/**
+ * The build-step checks of a staking move (decisions 0327 and 0331): every call goes from the
+ * plan's wallet on the wallet's chain; the plan is one staking call, or for an unstake one
+ * approval of exactly its receipt units, sending no coin, to a spender the venue declared, and
+ * then that call; the call goes to a contract the venue declared, credits that wallet alone and
+ * makes the plan's move: its action, validator, coin, an unstake's shares and a claim's count of
+ * parts. Gives the first check that fails, or none.
+ */
+export function stakeMismatch(
+  steps: readonly StakePlanStep[],
+  plan: StakePlan,
+  bounds: StakeBounds,
+): BuildMismatch | undefined {
+  const chain = accountRefParts(plan.wallet).chain;
+  const isFromWallet = ({ draft }: StakePlanStep) =>
+    draft.chain === chain && isSameAccount(draft.from, plan.wallet, bounds.family);
+  if (!steps.every(isFromWallet)) {
+    return "other_sender";
+  }
+  const ordered = orderOf(steps, plan);
+  if (ordered === undefined) {
+    return "step_order";
+  }
+  const { approval, stake } = ordered;
+  return (
+    (approval === undefined ? undefined : approvalMismatch(approval, plan, bounds)) ??
+    callMismatch(stake, plan, bounds)
+  );
 }

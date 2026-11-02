@@ -1,4 +1,4 @@
-import type { TxDraft, TxHash } from "@binference/chain";
+import type { ChainRegistry, TxDraft, TxHash } from "@binference/chain";
 import type { StakePlan, StakeRefusal, StakingVenue } from "@binference/chain/staking";
 import type { FakeStakingVenue } from "@binference/chain/testing";
 import { err, type Id, ok } from "@binference/core";
@@ -11,7 +11,6 @@ import {
   holdStakeWallet,
   stakingChains,
   stakingSimulator,
-  testStakingVenue,
   testValidator,
 } from "../staking/test-stakes.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
@@ -76,7 +75,7 @@ export async function unstakeElsewhere(fake: FakeStakingVenue, base: bigint): Pr
  * fake, once, and reads that back. Drafts a test runs through `run` read back as their own.
  */
 export function landing(
-  fake: FakeStakingVenue,
+  fake: StakingVenue & Pick<FakeStakingVenue, "run" | "wait">,
 ): StakingVenue & Pick<FakeStakingVenue, "run" | "wait"> {
   const built: { drafts: readonly TxDraft[] } = { drafts: [] };
   const ran = new Map<TxHash, TxHash>();
@@ -103,12 +102,15 @@ export function landing(
   };
 }
 
-/** A live agent that may stake on the venue, its wallet under a ceiling, its moves held at the queue. */
+/**
+ * A live agent that may stake on the venue, its wallet under a ceiling, its moves held at the
+ * queue; on the fake staking venue's chain unless `chains` gives one that lists the venue.
+ */
 export async function stakeBench(
   venue: StakingVenue,
-  options: Pick<BenchOptions, "limits"> = {},
+  options: Pick<BenchOptions, "limits"> & { readonly chains?: ChainRegistry } = {},
 ): Promise<ExecutorBench> {
-  const chains = stakingChains();
+  const { chains = stakingChains(), ...rest } = options;
   const staking = createStakingHost({
     venues: [venue],
     chains,
@@ -116,9 +118,9 @@ export async function stakeBench(
   });
   const failing = { simulate: async () => Promise.reject(new Error("Only staking calls run.")) };
   const bench = await startExecutorBench({
-    ...options,
+    ...rest,
     hold: true,
-    agent: { limits: { ...testLimits, venues: [...testLimits.venues, testStakingVenue] } },
+    agent: { limits: { ...testLimits, venues: [...testLimits.venues, venue.id] } },
     engine: { chains, stakingVenues: [venue], chainSimulator: stakingSimulator(failing) },
     routing: { chains, staking },
   });

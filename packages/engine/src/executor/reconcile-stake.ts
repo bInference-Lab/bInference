@@ -31,6 +31,17 @@ async function landedOf(
   return read.ok ? read.value : undefined;
 }
 
+// The staking call of a move: its last step, after the approval a liquid unstake makes first
+// (decision 0331), with the gas every step paid.
+function moveStepOf(steps: readonly LandedStep[]): LandedStep | undefined {
+  const last = steps.reduce<LandedStep | undefined>(
+    (latest, step) => (latest === undefined || step.step > latest.step ? step : latest),
+    undefined,
+  );
+  const base = steps.reduce((sum, step) => sum + step.gas.base, 0n);
+  return last === undefined ? undefined : { ...last, gas: { ...last.gas, base } };
+}
+
 // The booking of what landed: the venue's read-back of its coin, units, request and parts, at the
 // coin's price now when one is known; `undefined` while a read is missing.
 async function bookingOf(
@@ -38,7 +49,8 @@ async function bookingOf(
   finalized: IntentSnapshot,
   quote: StakeIntentQuote,
 ): Promise<StakeBooking | undefined> {
-  const [step] = await landedSteps(run, finalized);
+  const steps = await landedSteps(run, finalized);
+  const step = moveStepOf(steps);
   const landed = step === undefined ? undefined : await landedOf(run, quote, step);
   if (step === undefined || landed === undefined) {
     return undefined;

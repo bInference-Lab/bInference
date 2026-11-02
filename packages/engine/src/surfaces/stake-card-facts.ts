@@ -13,18 +13,35 @@ const msPerSecond = 1_000;
  * commission and yearly rate. A stake says how many whole days, rounded up, a later unstake of it
  * waits. An unstake says the same days and when its coin can be claimed: the venue counts from
  * the block the unstake lands in, so the card shows the ready time of one that lands as the card
- * expires, which no tap makes later.
+ * expires, which no tap makes later. A liquid venue's move names the venue by its pool's name, a
+ * stake the least receipt units it mints, and an unstake the receipt units it burns (decision
+ * 0331).
  */
+// A liquid venue's move names its pool's name, and a stake its least receipt units (decision 0331).
+function liquidOf({ plan, liquid }: StakeIntentQuote) {
+  const { validatorName, minShares } = plan;
+  return liquid === true
+    ? {
+        liquid: {
+          venueName: validatorName,
+          ...(minShares === undefined ? {} : { minOut: minShares }),
+        },
+      }
+    : {};
+}
+
 function stakeActionOf(quote: StakeIntentQuote, expiresAtMs: number): CardAction<"stake"> {
   const { plan } = quote;
   const { validator, validatorName, commissionBps, aprBps } = plan;
   const latestMs = expiresAtMs + plan.unbondingSeconds * msPerSecond;
   const readyAtMs = plan.readyAtMs === undefined ? undefined : Math.max(plan.readyAtMs, latestMs);
   const unbondingDays = Math.ceil(plan.unbondingSeconds / secondsPerDay);
+  const liquid = liquidOf(quote);
   const base = {
     kind: "stake",
     validator,
     validatorName,
+    ...liquid,
     details: {
       commissionBps,
       ...(aprBps === undefined || plan.action !== "stake" ? {} : { aprBps }),
@@ -33,7 +50,9 @@ function stakeActionOf(quote: StakeIntentQuote, expiresAtMs: number): CardAction
     },
   } as const;
   if (plan.action === "unstake") {
-    return { ...base, action: "unstake", amount: plan.moved, readyInDays: unbondingDays };
+    // A liquid venue's unstake names the receipt units it burns (decision 0331).
+    const burned = plan.shares === undefined || quote.liquid !== true ? plan.moved : plan.shares;
+    return { ...base, action: "unstake", amount: burned, readyInDays: unbondingDays };
   }
   return plan.action === "stake"
     ? { ...base, action: "stake", amount: plan.value }

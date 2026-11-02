@@ -5,6 +5,7 @@ import {
   amountSchema,
   type AssetRef,
   assetRefSchema,
+  type ChainFamily,
   type ChainRef,
   type ChainRegistry,
   declaredContracts,
@@ -30,8 +31,10 @@ import { type Clock, type Err, err, type Ok, ok, type Result } from "@binference
 import { z } from "zod";
 import type { BuildMismatch } from "./build-checks.js";
 import { callVenue, ownCopy } from "./call-venue.js";
+import { declaredSpenders } from "./declared-spenders.js";
 import { type LandedMismatch, landedMismatch } from "./landed-checks.js";
-import { stakeMismatch, type StakeStep } from "./stake-checks.js";
+import { readCallStep, readEachDraft } from "./read-steps.js";
+import { stakeMismatch, type StakePlanStep } from "./stake-checks.js";
 import { readStakeOptions } from "./stake-options.js";
 import { planMismatch } from "./stake-plan-checks.js";
 import { readStakePools } from "./stake-pools.js";
@@ -74,6 +77,8 @@ export interface StakingHost {
   readonly venueOn: (id: string, chain: ChainRef) => StakingVenue | undefined;
   /** Every staking venue the engine runs on the chain, in the order it was given them. */
   readonly venuesOn: (chain: ChainRef) => readonly StakingVenue[];
+  /** Every staking venue with this id the engine runs, one per chain. */
+  readonly venuesWith: (id: string) => readonly StakingVenue[];
   /**
    * Plans the move, or answers the venue's refusal with the facts its words name. A plan of
    * another move than the request asks is `decode_mismatch` (`other_plan`), and so is an unstake
@@ -86,7 +91,8 @@ export interface StakingHost {
   ): Promise<HostPlanned>;
   /**
    * Builds the planned move and holds it to the plan: one call, from the plan's wallet, to a
-   * contract the venue declares on the chain, crediting that wallet alone, making the plan's move.
+   * contract the venue declares on the chain, crediting that wallet alone, making the plan's move,
+   * after an unstake's exact approval of its receipt units to a spender the venue declares.
    */
   build(
     venue: StakingVenue,
@@ -156,17 +162,23 @@ function contractsOf(venue: StakingVenue, chain: RegisteredChain): readonly Acco
     : [];
 }
 
-// The venue's decoder read each draft; a draft it cannot read, or a decoder that throws, is none.
+// The chain's family read each draft's approval and the venue's decoder each staking call, each
+// from the host's own copy; a draft neither reads, or a decoder that throws, leaves none.
 function stepsOf(
   venue: StakingVenue,
   drafts: readonly TxDraft[],
-): readonly StakeStep[] | undefined {
+  family: ChainFamily,
+): readonly StakePlanStep[] | undefined {
   try {
-    const steps = drafts.map((draft): StakeStep | undefined => {
-      const decoded = venue.decode(draft);
-      return decoded.ok ? { draft, decoded: { ...decoded.value } } : undefined;
-    });
-    return steps.every((step): step is StakeStep => step !== undefined) ? steps : undefined;
+    const read = readEachDraft(drafts, (draft) =>
+      readCallStep(draft, family, (copy): StakePlanStep | undefined => {
+        const decoded = venue.decode(copy);
+        return decoded.ok
+          ? { kind: "stake", draft: copy, decoded: { ...decoded.value } }
+          : undefined;
+      }),
+    );
+    return read.ok ? read.value : undefined;
   } catch {
     return undefined;
   }
@@ -231,13 +243,23 @@ async function buildWith(
     return err("venue_down");
   }
   const drafts = [...built.value];
-  const steps = stepsOf(venue, drafts);
   const chain = chainOf(options, venue);
+  const steps = chain === undefined ? undefined : stepsOf(venue, drafts, chain.family);
+  const bounds =
+    chain === undefined
+      ? undefined
+      : {
+          contracts: contractsOf(venue, chain),
+          spenders: declaredSpenders(venue, chain),
+          family: chain.family,
+        };
   const mismatch =
-    steps === undefined || chain === undefined
+    steps === undefined || bounds === undefined
       ? "unreadable_step"
-      : stakeMismatch(steps, plan, { contracts: contractsOf(venue, chain), family: chain.family });
-  return mismatch === undefined ? ok(drafts) : { ...err("decode_mismatch"), mismatch };
+      : stakeMismatch(steps, plan, bounds);
+  return mismatch === undefined
+    ? ok(steps?.map((step) => step.draft) ?? [])
+    : { ...err("decode_mismatch"), mismatch };
 }
 
 // What the landed move did, copied and held to the plan.
@@ -294,6 +316,7 @@ export function createStakingHost(options: StakingHostOptions): StakingHost {
   return {
     venueOn: (id, chain) => venues.find((venue) => venue.id === id && venue.chain === chain),
     venuesOn: (chain) => venues.filter((venue) => venue.chain === chain),
+    venuesWith: (id) => venues.filter((venue) => venue.id === id),
     plan: async (venue, request, { signal }) => planWith(options, venue, { request, signal }),
     build: async (venue, plan, { signal }) => buildWith(options, venue, { plan, signal }),
     async receipt(venue, validator, { signal }) {

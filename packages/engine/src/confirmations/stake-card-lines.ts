@@ -20,6 +20,8 @@ interface NamedValidator {
   readonly validatorName?: string;
   readonly details?: StakeDetails;
   readonly readyInDays?: number;
+  /** A liquid venue's move (decision 0331): its name, and no validator stands behind it. */
+  readonly liquid?: { readonly venueName: string };
 }
 
 /**
@@ -41,45 +43,68 @@ export function validatorValue(move: NamedValidator): CardValue {
       };
 }
 
+// A rate above 100% a year is no share a percent line can show, so the card leaves it out.
+function rateLines({ aprBps }: StakeDetails): readonly CardLine[] {
+  const bps = aprBps === undefined ? undefined : bpsSchema.safeParse(aprBps);
+  return bps?.success === true
+    ? [{ key: "card.stake.rate", values: { rate: { type: "percent", bps: bps.data } } }]
+    : [];
+}
+
+function laterLines({ unbondingDays }: StakeDetails): readonly CardLine[] {
+  return unbondingDays === undefined
+    ? []
+    : [
+        {
+          key: "card.stake.unstakeLater",
+          values: { days: { type: "count", count: unbondingDays } },
+        },
+      ];
+}
+
+function unbondingLines(move: NamedValidator, { readyAtMs }: StakeDetails): readonly CardLine[] {
+  return readyAtMs === undefined
+    ? []
+    : [
+        {
+          key: "card.stake.unbonding",
+          values: {
+            readyAt: { type: "dateTime", atMs: readyAtMs },
+            days: { type: "count", count: move.readyInDays ?? 0 },
+          },
+        },
+      ];
+}
+
+// A liquid venue's queue releases an unstake's coin, maybe after the earliest time (decision 0331).
+function queueLines(move: NamedValidator, { readyAtMs }: StakeDetails): readonly CardLine[] {
+  const { liquid } = move;
+  return liquid === undefined || readyAtMs === undefined
+    ? []
+    : [
+        {
+          key: "card.stake.liquidQueue",
+          values: { venue: { type: "text", text: liquid.venueName } },
+        },
+      ];
+}
+
 /**
  * The lines under a staking move's action line (spec 4, section 3.9): the validator with its
  * commission, its yearly rate when its venue gives one, for a stake how many days a later unstake
  * waits, and for an unstake when its coin can be claimed, at the earliest, with the unbonding time
- * in whole days.
+ * in whole days. A liquid venue's move shows no validator, commission or rate, and its unstake
+ * says the venue's queue may release the coin later (decision 0331).
  */
 export function stakeDetailLines(move: NamedValidator): readonly CardLine[] {
   const { details } = move;
   if (details === undefined) {
     return [];
   }
-  const { aprBps, readyAtMs, unbondingDays } = details;
-  // A rate above 100% a year is no share a percent line can show, so the card leaves it out.
-  const bps = aprBps === undefined ? undefined : bpsSchema.safeParse(aprBps);
-  const rate: readonly CardLine[] =
-    bps?.success === true
-      ? [{ key: "card.stake.rate", values: { rate: { type: "percent", bps: bps.data } } }]
-      : [];
-  const later: readonly CardLine[] =
-    unbondingDays === undefined
-      ? []
-      : [
-          {
-            key: "card.stake.unstakeLater",
-            values: { days: { type: "count", count: unbondingDays } },
-          },
-        ];
-  const unbonding: readonly CardLine[] =
-    readyAtMs === undefined
-      ? []
-      : [
-          {
-            key: "card.stake.unbonding",
-            values: {
-              readyAt: { type: "dateTime", atMs: readyAtMs },
-              days: { type: "count", count: move.readyInDays ?? 0 },
-            },
-          },
-        ];
+  const timing = [...laterLines(details), ...unbondingLines(move, details)];
+  if (move.liquid !== undefined) {
+    return [...timing, ...queueLines(move, details)];
+  }
   const validator: CardLine = {
     key: "card.stake.validator",
     values: {
@@ -87,5 +112,5 @@ export function stakeDetailLines(move: NamedValidator): readonly CardLine[] {
       commission: { type: "percent", bps: details.commissionBps },
     },
   };
-  return [validator, ...rate, ...later, ...unbonding];
+  return [validator, ...rateLines(details), ...timing];
 }

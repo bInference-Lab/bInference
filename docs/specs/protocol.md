@@ -458,11 +458,12 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
   when the chain does not answer. A send by name resolves the same way when it is proposed and again
   when its wallet's queue takes it (section 8.1, spec 6).
 - `staking/options` reads each staking venue the agent's venues allow on `chain`, or `venue`
-  alone, a staking venue's id (`stakehub`; `slisbnb` once a Lista venue runs). A `StakingOptionView` is
-  `{ venue: stakehub, validator: AccountRef, name, commissionBps, aprBps?, jailed, unbondingSeconds, minAmount? }`
-  for each validator StakeHub lists at the latest block, or
-  `{ venue: slisbnb, rate, unbondingSeconds?, minAmount? }`, `rate` the BNB one slisBNB is worth, a
-  decimal string from Lista's stake manager. `aprBps` is absent when the venue gives none. `name`
+  alone, a staking venue's id (`stakehub`, `lista`). A `StakingOptionView` is
+  `{ venue, validator: AccountRef, name, commissionBps, aprBps?, jailed, unbondingSeconds, minAmount? }`
+  for each validator StakeHub lists at the latest block, and for a liquid staking venue its one
+  pool ([decision 0331](../DECISIONS.md#d0331)): on `lista`, Lista's stake manager, named Lista,
+  its commission the share of rewards Lista keeps, never jailed. slisBNB's rate shows as its price
+  ([decision 0328](../DECISIONS.md#d0328)). `aprBps` is absent when the venue gives none. `name`
   is the validator's moniker, set by its operator: clients escape it, the card cuts it to 32
   characters, and the `staking_options` tool marks its turn ([rule 13](../ARCHITECTURE.md#rule-13)).
   With `agent`, `positions` holds the agent's staking positions in its mode, live or paper
@@ -1016,11 +1017,13 @@ the card shows both, and the address book keeps only the address. A send's card 
 the engine resolved, never from the model's words.
 
 **Stakes** ([decision 0296](../DECISIONS.md#d0296)). On `stakehub`, `validator` is the
-validator's operator account and every action names it; on `slisbnb` none does. A `stake` names
-`amount` in the chain's coin; an `unstake` names it in BNB on `stakehub`, or in slisBNB on
-`slisbnb`, or leaves it out to unstake the whole stake ([decision 0327](../DECISIONS.md#d0327)); a
-`claim` names none and claims everything its venue lets the wallet claim now, and one that names
-an amount is refused with `protocol.bad_args`. A stake
+validator's operator account and every action names it; on `lista` none does, and one that names
+a validator is refused with `protocol.bad_args` ([decision 0331](../DECISIONS.md#d0331)). A
+`stake` names `amount` in the chain's coin; an `unstake` names it in BNB on `stakehub`, or exactly
+that much slisBNB on `lista`, or leaves it out to unstake the whole stake
+([decision 0327](../DECISIONS.md#d0327)); a `claim` names none and claims everything its venue
+lets the wallet claim now, on `lista` the oldest request its queue released, and one that names an
+amount is refused with `protocol.bad_args`. A stake
 counts its USD value against the per-trade and 24-hour caps; an unstake and a claim count against
 neither. Every staking move pays only the agent's own wallet. Spec 6 holds their checks and auto
 mode.

@@ -13,13 +13,15 @@ export type TradePlace = { readonly curve: string } | { readonly pool: string };
 /**
  * A staking move; an unstake says in how many whole days the amount can be claimed. The
  * validator's name, as its venue lists it, shows before its address; its details show under the
- * action line (`stakeDetailLines`).
+ * action line (`stakeDetailLines`). A move on a liquid venue's pool (decision 0331) names the
+ * venue by its name instead, an unstake its receipt units, and a stake the least units it mints.
  */
 export type StakeMove = {
   readonly amount: Amount;
   readonly validator: AccountRef;
   readonly validatorName?: string;
   readonly details?: StakeDetails;
+  readonly liquid?: { readonly venueName: string; readonly minOut?: Amount };
 } & (
   | { readonly action: "stake" | "claim" }
   | { readonly action: "unstake"; readonly readyInDays: number }
@@ -162,7 +164,23 @@ function spenderOf(action: CardAction<"revokeApproval">): CardValue {
       };
 }
 
+// A liquid venue's lines name the venue: a stake with the least units it mints, an unstake its
+// receipt units, a claim the coin back.
+function liquidLine(move: StakeMove, liquid: NonNullable<StakeMove["liquid"]>): CardLine {
+  const values = { amount: amount(move.amount), venue: text(liquid.venueName) };
+  if (move.action === "stake") {
+    const minOut = amount(liquid.minOut ?? move.amount);
+    return { key: "card.stake.liquid", values: { ...values, minOut } };
+  }
+  return move.action === "unstake"
+    ? { key: "card.stake.unstakeLiquid", values }
+    : { key: "card.stake.claimLiquid", values };
+}
+
 function stakeLine(move: StakeMove): CardLine {
+  if (move.liquid !== undefined) {
+    return liquidLine(move, move.liquid);
+  }
   const values = { amount: amount(move.amount), validator: validatorValue(move) };
   return move.action === "unstake"
     ? { key: "card.stake.unstake", values: { ...values, days: count(move.readyInDays) } }

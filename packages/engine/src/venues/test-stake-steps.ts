@@ -12,6 +12,7 @@ import type {
 } from "@binference/chain/staking";
 import { createFakeFamily, fakeDraft } from "@binference/chain/testing";
 import { bpsSchema } from "@binference/core";
+import type { ApprovalStep } from "./build-checks.js";
 import type { StakeBounds, StakeStep } from "./stake-checks.js";
 
 const coin = assetRefSchema.parse("fake:1/slip44:1");
@@ -39,8 +40,31 @@ export const testUnstakePlan: StakePlan = {
   plannedAtMs: 1_800_000_000_000,
 };
 
-/** What the venue declares and how the wallet's family compares accounts. */
-export const testStakeBounds: StakeBounds = { contracts: [stakeHub], family: createFakeFamily() };
+/** What the venue declares, the hub its spender too, and how the wallet's family compares accounts. */
+export const testStakeBounds: StakeBounds = {
+  contracts: [stakeHub],
+  spenders: [stakeHub],
+  family: createFakeFamily(),
+};
+
+/** An approval of the unstake's 10 receipt units to the hub, with its approval changed as given. */
+export function testApprovalStep(
+  change: Partial<ApprovalStep["approval"]> = {},
+  nativeValue = 0n,
+): ApprovalStep {
+  const draft = fakeDraft(stakeWallet, {
+    to: "0x000000c1",
+    value: 0n,
+    data: "approve,0x000000d1,10",
+  });
+  const approval = { asset: receipt, spender: stakeHub, amountBase: 10n, ...change };
+  return {
+    kind: "approval",
+    draft,
+    call: { target: stakeValidator, nativeValue, approval },
+    approval,
+  };
+}
 
 /** The unstake's one call as the host read it, with its decoded move changed as given. */
 export function testStakeStep(
@@ -57,7 +81,7 @@ export function testStakeStep(
     shares: 10n,
     ...change,
   };
-  return { draft, decoded };
+  return { kind: "stake", draft, decoded };
 }
 
 const { shares: _shares, pool: _pool, readyAtMs: _readyAtMs, ...unstakeBase } = testUnstakePlan;
