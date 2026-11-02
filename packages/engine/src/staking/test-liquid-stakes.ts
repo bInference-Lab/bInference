@@ -1,4 +1,9 @@
-import { type AssetRef, assetRefSchema, createChainRegistry } from "@binference/chain";
+import {
+  type AccountRef,
+  type AssetRef,
+  assetRefSchema,
+  createChainRegistry,
+} from "@binference/chain";
 import {
   createFakeChainDefinition,
   createFakeFamily,
@@ -7,10 +12,13 @@ import {
   type FakeLiquidStakingVenue,
 } from "@binference/chain/testing";
 import { bpsSchema } from "@binference/core";
-import type { StakeRequest } from "@binference/protocol";
-import { testAgent, testLimits, testNowMs } from "../intents/test-intents.js";
+import { createFormatter, reasonNamesOf, unsentReceiptText } from "@binference/i18n";
+import type { IntentView, StakeRequest } from "@binference/protocol";
+import { expectOk, testAgent, testLimits, testNowMs } from "../intents/test-intents.js";
 import {
   startTestEngine,
+  testCall,
+  testCallers,
   type TestEngine,
   type TestEngineOptions,
 } from "../operations/test-engine.js";
@@ -79,4 +87,32 @@ export function liquidRequest(
     ...(action === "stake" ? { amount: halfCoin } : {}),
     ...change,
   };
+}
+
+const units = (base: bigint) => ({ asset: testPoolReceipt, base });
+
+/** The fake pool as a refusal names it: its account and its name. */
+export const testPool: { readonly account: AccountRef; readonly name: string } = {
+  account: testLiquidFake().pool,
+  name: "Pool",
+};
+
+/** The words of the view's refusal before it signed, in the language. */
+export function liquidWordsOf(view: IntentView, locale: "en" | "zh"): string {
+  const formatter = createFormatter({ locale, timeZone: "UTC" });
+  return unsentReceiptText(formatter, view.outcome?.reason ?? "", reasonNamesOf(view));
+}
+
+/**
+ * Two refusals before any plan on a fresh fake pool: an unstake with nothing staked, then, after a
+ * stake, an unstake of more units than it minted.
+ */
+export async function refusedBeforePlan(): Promise<readonly IntentView[]> {
+  const test = await startLiquidEngine(testLiquidFake(), { agent: { approvalMode: "auto" } });
+  const ask = async (request: StakeRequest, caller = testCallers.cli) =>
+    expectOk(await test.engine.handlers["intent/propose"](testCall(request, caller)));
+  const none = await ask(liquidRequest("unstake", { amount: units(10n ** 17n) }));
+  await ask(liquidRequest("stake"), testCallers.runtime);
+  const over = await ask(liquidRequest("unstake", { amount: units(10n ** 18n) }));
+  return [none, over];
 }

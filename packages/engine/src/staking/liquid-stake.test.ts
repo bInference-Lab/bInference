@@ -5,8 +5,11 @@ import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import {
   liquidRequest,
+  liquidWordsOf,
+  refusedBeforePlan,
   startLiquidEngine,
   testLiquidFake,
+  testPool,
   testPoolReceipt,
 } from "./test-liquid-stakes.js";
 import { testUnbondingSeconds, testValidator } from "./test-stakes.js";
@@ -29,6 +32,7 @@ async function answerOf(test: LiquidTest, request: StakeRequest): Promise<string
   return answer.ok ? answer.value.state : answer.error;
 }
 
+const refused = String.fromCodePoint(0x274c);
 async function confirm(test: LiquidTest, view: IntentView): Promise<void> {
   const card = view.card?.card;
   if (card === undefined) {
@@ -91,6 +95,20 @@ describe("staking on a liquid pool (decision 0331)", () => {
     const answers = await Promise.all(asks.map(async (request) => answerOf(test, request)));
 
     expect(answers).toStrictEqual(["protocol.bad_args", "protocol.bad_args", "protocol.bad_args"]);
+  });
+
+  it("names the pool by its name in the words of a refusal before any plan", async () => {
+    const views = await refusedBeforePlan();
+
+    expect(views.map((view) => view.outcome?.reason)).toStrictEqual([
+      "nothing_staked",
+      "exceeds_staked",
+    ]);
+    expect(views.map((view) => view.outcome?.validator)).toStrictEqual([testPool, testPool]);
+    expect(views.map((view) => liquidWordsOf(view, "en"))).toStrictEqual([
+      `${refused} Not sent: this wallet has nothing staked with Pool (0x000000e1)`,
+      `${refused} Not sent: that is more than this wallet's stake with Pool (0x000000e1) is worth; unstake all of it, or less`,
+    ]);
   });
 
   it("refuses an unstake of more receipt units than held, and any move while the pool is paused", async () => {

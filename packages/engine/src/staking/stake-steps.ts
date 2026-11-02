@@ -11,6 +11,7 @@ import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import { checkTransferPolicy, type TransferPolicyParts } from "../sends/check-transfer-policy.js";
 import { advanceByVerdict } from "../sends/owner-steps.js";
 import type { HostPlanned, StakingHost } from "../venues/staking-host.js";
+import { refusalNamedOf } from "./refusal-named.js";
 import type { ResolvedStake } from "./resolve-stake.js";
 import { ownCapCallOf, storedStakeCap } from "./stake-ceiling.js";
 
@@ -108,18 +109,19 @@ async function buildStake(run: StakeRun): Promise<Result<BuiltStake, QuoteFailur
  * stored ceiling and built into its one call, which the host holds to the plan. The intent stores
  * the plan, which carries the validator's yearly rate, as its quote, so the card's terms hash binds
  * it, the call as its plan, and a stake's value, which the rolling cap counts once it is confirmed.
- * A venue's refusal ends the intent with the facts its words name, kept in the event's cause.
+ * A venue's refusal ends the intent with the facts its words name, kept in the event's cause, with
+ * a liquid venue's pool.
  */
 export async function quoteStake(
   run: StakeRun,
   checked: IntentSnapshot,
   pass: PolicyPass,
 ): Promise<{ readonly snapshot: IntentSnapshot; readonly built?: BuiltStake }> {
-  const { parts, resolved, advance, planned } = run;
+  const { parts, resolved, advance } = run;
   const built = await buildStake(run);
   if (!built.ok) {
     const trigger = { type: "quote_failed", reason: built.error } as const;
-    const named = planned.ok ? undefined : planned.facts;
+    const named = await refusalNamedOf(run);
     const move = { trigger, ...(named === undefined ? {} : { named }) };
     return { snapshot: await advanceIntent(advance, checked, move) };
   }

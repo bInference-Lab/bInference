@@ -1,6 +1,7 @@
 import type { CardLine, CardValue } from "../confirmations/card-line.js";
 import { validatorValue } from "../confirmations/stake-card-lines.js";
 import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
+import type { ReasonNamed } from "../intents/event-cause.schema.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import { type IntentHistory, reasonNamedOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -12,23 +13,31 @@ const text = (value: string) => ({ type: "text", text: value }) as const;
 type Named = Pick<IntentRecord, "kind" | "quote" | "walletId"> &
   Partial<Pick<IntentRecord, "request">>;
 
-// A staking move's validator, by its name once a plan named it, else by its account alone.
-function validatorOf(record: Named): CardValue | undefined {
+// A staking move's validator, by its name once a plan named it, else by its account alone; a
+// liquid venue's pool a refusal named stands where a request names none (decision 0331).
+function validatorOf(record: Named, named: ReasonNamed | undefined): CardValue | undefined {
   if (record.quote !== undefined) {
     const { plan } = stakeQuoteDocument.decode(record.quote);
     return validatorValue({ validator: plan.validator, validatorName: plan.validatorName });
   }
   const request = record.request === undefined ? undefined : requestDocument.decode(record.request);
-  return request?.kind === "stake" && request.validator !== undefined
-    ? validatorValue({ validator: request.validator })
-    : undefined;
+  if (request?.kind === "stake" && request.validator !== undefined) {
+    return validatorValue({ validator: request.validator });
+  }
+  const { pool } = named ?? {};
+  return pool === undefined
+    ? undefined
+    : validatorValue({
+        validator: pool.account,
+        ...(pool.name === undefined ? {} : { validatorName: pool.name }),
+      });
 }
 
 // What a staking move's refusal names (decision 0327): the validator, the venue's least stake and
 // when the wallet's next part is ready, `none` when no part waits.
 function stakeValuesOf(record: Named, history?: IntentHistory): CardLine["values"] {
-  const validator = validatorOf(record);
   const named = history === undefined ? undefined : reasonNamedOf(history);
+  const validator = validatorOf(record, named);
   const { minStake, readyAtMs } = named ?? {};
   const readyAt: CardValue =
     readyAtMs === undefined

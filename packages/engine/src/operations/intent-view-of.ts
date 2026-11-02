@@ -1,4 +1,4 @@
-import type { AccountRef, AssetRef, ChainRegistry } from "@binference/chain";
+import type { AssetRef, ChainRegistry } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import type {
   AutoOrderRequest,
@@ -14,6 +14,7 @@ import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { CardLine } from "../confirmations/card-line.js";
 import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
+import type { NamedPool } from "../intents/event-cause.schema.js";
 import {
   quoteDocument,
   requestDocument,
@@ -208,24 +209,26 @@ function stakeNamesOf(snapshot: IntentSnapshot, request: AnyRequest): Partial<In
   if (request.kind !== "stake" || record.reason === undefined) {
     return {};
   }
-  const named = reasonNamedOf(history);
+  const { minStake, readyAtMs, pool } = reasonNamedOf(history) ?? {};
+  const asked = request.validator === undefined ? pool : { account: request.validator };
   return {
-    ...validatorNamedOf(record, request.validator),
-    ...(named?.minStake === undefined ? {} : { minStake: named.minStake }),
-    ...(named?.readyAtMs === undefined ? {} : { readyAt: named.readyAtMs }),
+    ...validatorNamedOf(record, asked),
+    ...(minStake === undefined ? {} : { minStake }),
+    ...(readyAtMs === undefined ? {} : { readyAt: readyAtMs }),
   };
 }
 
-// The validator a staking move names: the plan's, with its name, else the request's.
+// The validator a staking move names: the plan's, with its name, else the request's, else a
+// liquid venue's pool its refusal named, with the name the venue gave it (decision 0331).
 function validatorNamedOf(
   record: IntentSnapshot["record"],
-  asked: AccountRef | undefined,
+  asked: NamedPool | undefined,
 ): Partial<IntentOutcome> {
   if (record.quote !== undefined) {
     const { plan } = stakeQuoteDocument.decode(record.quote);
     return { validator: { account: plan.validator, name: plan.validatorName } };
   }
-  return asked === undefined ? {} : { validator: { account: asked } };
+  return asked === undefined ? {} : { validator: asked };
 }
 
 function outcomeOf(

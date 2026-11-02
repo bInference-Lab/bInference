@@ -1,4 +1,12 @@
-import { type Amount, amountSchema, isTxHash, type TxHash, type UsdPrice } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  type Amount,
+  amountSchema,
+  isTxHash,
+  type TxHash,
+  type UsdPrice,
+} from "@binference/chain";
 import { decimalStringSchema, type JsonValue } from "@binference/core";
 import { z } from "zod";
 import type { CardClosing } from "../confirmations/card-closing.js";
@@ -31,14 +39,23 @@ export interface SettledTrade {
   readonly atMs: number;
 }
 
+/** A liquid staking venue's pool as a refusal names it: its account, and its name once read. */
+export interface NamedPool {
+  readonly account: AccountRef;
+  readonly name?: string;
+}
+
 /**
  * What the words of the move that ended an intent name that the intent keeps nowhere else (spec 4,
  * sections 3.5 and 6; decision 0327): a staking venue's least stake, and when the wallet's next
- * unbonding part is ready, as a refusal names them, or when a landed unstake's coin is ready.
+ * unbonding part is ready, as a refusal names them, or when a landed unstake's coin is ready; and
+ * a liquid venue's pool, which stands for the validator a refusal before any plan names (decision
+ * 0331).
  */
 export interface ReasonNamed {
   readonly minStake?: Amount;
   readonly readyAtMs?: number;
+  readonly pool?: NamedPool;
 }
 
 /**
@@ -86,14 +103,26 @@ const settledTradeSchema: z.ZodType<SettledTrade> = z.strictObject({
   atMs: epochMsSchema,
 });
 
+interface NamedPoolWire {
+  readonly account: string;
+  readonly name?: string;
+}
+
 interface ReasonNamedWire {
   readonly minStake?: { readonly asset: string; readonly base: string };
   readonly readyAtMs?: number;
+  readonly pool?: NamedPoolWire;
 }
+
+const namedPoolSchema: z.ZodType<NamedPool, NamedPoolWire> = z.strictObject({
+  account: accountRefSchema,
+  name: z.string().min(1).max(64).exactOptional(),
+});
 
 const reasonNamedSchema: z.ZodType<ReasonNamed, ReasonNamedWire> = z.strictObject({
   minStake: amountSchema.exactOptional(),
   readyAtMs: epochMsSchema.exactOptional(),
+  pool: namedPoolSchema.exactOptional(),
 });
 
 // Causes carry more than the engine reads back, such as the trigger and who acted.
