@@ -116,6 +116,15 @@ const sendTerms = {
   to: { name: "alice.bnb" },
   reason: "You asked to pay Alice.",
 };
+const stakeTerms = {
+  venue: "fake-stake",
+  validator: leader,
+  amount: { asset: coin, base: "1000" },
+  reason: "You asked to stake it.",
+};
+const unstakeTerms = { venue: "fake-stake", validator: leader, reason: "You asked for all of it." };
+const claimTerms = { venue: "fake-stake", validator: leader, reason: "Its unbonding ended." };
+const staking = (action: string) => ({ agent, kind: "stake", action });
 const bridgeTerms = {
   amount: { asset: token, base: "10" },
   toChain: "fake:2",
@@ -189,6 +198,21 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     "order_create",
     { order: stopLoss },
     [{ op: "order/create", args: { ...stopLoss, agent }, key }],
+  ],
+  [
+    "stake",
+    stakeTerms,
+    [{ op: "intent/propose", args: { ...stakeTerms, ...staking("stake") }, key }],
+  ],
+  [
+    "unstake",
+    unstakeTerms,
+    [{ op: "intent/propose", args: { ...unstakeTerms, ...staking("unstake") }, key }],
+  ],
+  [
+    "claim",
+    claimTerms,
+    [{ op: "intent/propose", args: { ...claimTerms, ...staking("claim") }, key }],
   ],
   [
     "bridge",
@@ -330,11 +354,21 @@ describe("the agent's tools", () => {
     ["buy", { ...buyTerms, wallet }],
     ["sell", { ...sellTerms, wallet }],
     ["send", { ...sendTerms, wallet }],
+    ["stake", { ...stakeTerms, wallet }],
     ["bridge", { ...bridgeTerms, agent }],
     ["order_create", { order: { ...stopLoss, wallet } }],
     ["portfolio", { wallet }],
     ["token_search", { chain: "fake:1", query: "FAKE", agent }],
   ] as const)("refuse a %s call naming a wallet or an agent before the engine", (name, args) => {
+    const run = callTool(answers, { name, args });
+    expect(run.refused).toMatch(/^not run: the arguments do not match/);
+    expect(run.client.calls()).toStrictEqual([]);
+  });
+
+  it.each([
+    ["unstake naming its action", "unstake", { ...unstakeTerms, action: "claim" }],
+    ["claim naming an amount", "claim", { ...claimTerms, amount: { asset: coin, base: "1" } }],
+  ] as const)("refuse a %s before the engine", (_case, name, args) => {
     const run = callTool(answers, { name, args });
     expect(run.refused).toMatch(/^not run: the arguments do not match/);
     expect(run.client.calls()).toStrictEqual([]);

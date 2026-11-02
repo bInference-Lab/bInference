@@ -172,6 +172,15 @@ export type SendTerms = Omit<SendRequest, ActorFields>;
 export type BridgeTerms = Omit<BridgeRequest, ActorFields>;
 
 /**
+ * A stake's or an unstake's terms: what the agent names, without who acts or the action, which
+ * the agent's tool of that action fills.
+ */
+export type StakeTerms = Omit<StakeRequest, ActorFields | "action">;
+
+/** A claim's terms, as a stake's without the amount: a claim takes everything ready. */
+export type ClaimTerms = Omit<StakeTerms, "amount">;
+
+/**
  * A token launch's terms as the agent drafts them (decision 0285): without who acts or the
  * picture, which the engine fills from the owner's own photo or `none`.
  */
@@ -325,6 +334,21 @@ export const bridgeTermsSchema: z.ZodType<BridgeTerms> = z.strictObject({
   amount: bridgeShape.amount,
   toChain: bridgeShape.toChain,
   to: bridgeShape.to,
+  reason,
+});
+
+/** Parses a stake's or an unstake's terms, as {@link swapTermsSchema} does a swap's. */
+export const stakeTermsSchema: z.ZodType<StakeTerms> = z.strictObject({
+  venue: stakeShape.venue,
+  validator: stakeShape.validator,
+  amount: stakeShape.amount,
+  reason,
+});
+
+/** Parses a claim's terms, as {@link swapTermsSchema} does a swap's; an amount is refused. */
+export const claimTermsSchema: z.ZodType<ClaimTerms> = z.strictObject({
+  venue: stakeShape.venue,
+  validator: stakeShape.validator,
   reason,
 });
 

@@ -4,10 +4,12 @@ import { ids, nativeAmount, refs, swapRequest } from "../examples/wire-values.js
 import {
   bridgeTermsSchema,
   buyTermsSchema,
+  claimTermsSchema,
   intentRequestSchema,
   readIntentRequestSchema,
   sellTermsSchema,
   sendTermsSchema,
+  stakeTermsSchema,
   swapTermsSchema,
 } from "./intent-request.schema.js";
 
@@ -40,6 +42,17 @@ const requests = [
   [
     "stake",
     { ...base, kind: "stake", action: "claim", venue: "fake-stake", validator: refs.account },
+  ],
+  [
+    "stake with an amount",
+    {
+      ...base,
+      kind: "stake",
+      action: "stake",
+      venue: "fake-stake",
+      validator: refs.account,
+      amount: nativeAmount,
+    },
   ],
   [
     "bridge",
@@ -146,42 +159,68 @@ const termsSchemas = {
   buy: buyTermsSchema,
   sell: sellTermsSchema,
   send: sendTermsSchema,
+  stake: stakeTermsSchema,
+  claim: claimTermsSchema,
   bridge: bridgeTermsSchema,
 };
 
-// The example request each kind's terms are read from, by its name in `requests`.
-const termsExamples: Readonly<Record<keyof typeof termsSchemas, string>> = {
+type TermsKind = keyof typeof termsSchemas;
+
+// The example request each tool's terms are read from, by its name in `requests`.
+const termsExamples: Readonly<Record<TermsKind, string>> = {
   swap: "swap",
   buy: "buy",
   sell: "sell",
   send: "send to a name",
+  stake: "stake with an amount",
+  claim: "stake",
   bridge: "bridge",
 };
 
-// A request's terms: everything but the agent and wallet that act, and its kind.
-function termsOf(kind: keyof typeof termsSchemas): Readonly<Record<string, unknown>> {
+// What the agent runtime fills besides its agent: the request's kind and, for staking, the action
+// its tool names.
+const filledBy: Readonly<Record<TermsKind, Readonly<Record<string, string>>>> = {
+  swap: { kind: "swap" },
+  buy: { kind: "buy" },
+  sell: { kind: "sell" },
+  send: { kind: "send" },
+  stake: { kind: "stake", action: "stake" },
+  claim: { kind: "stake", action: "claim" },
+  bridge: { kind: "bridge" },
+};
+
+// A request's terms: everything but the agent and wallet that act, its kind and its action.
+function termsOf(kind: TermsKind): Readonly<Record<string, unknown>> {
   const request = requests.find(([name]) => name === termsExamples[kind])?.[1] ?? {};
-  const actors = new Set(["agent", "wallet", "kind"]);
+  const actors = new Set(["agent", "wallet", "kind", "action"]);
   return Object.fromEntries(
     Object.entries(request).filter(([key]: readonly [string, unknown]) => !actors.has(key)),
   );
 }
 
-describe.each(["swap", "buy", "sell", "send", "bridge"] as const)("the terms of a %s", (kind) => {
+describe.each(Object.keys(termsSchemas) as TermsKind[])("the terms of a %s", (kind) => {
   const schema = termsSchemas[kind];
   const terms = termsOf(kind);
 
   it("are the request without who acts, and make the request back with them", () => {
     expect(z.encode(schema, z.decode(schema, terms))).toStrictEqual(terms);
-    const filled = { agent: ids.agent, kind, ...terms };
+    const filled = { agent: ids.agent, ...filledBy[kind], ...terms };
     expect(intentRequestSchema.safeParse(filled).success).toBe(true);
   });
 
   it.each([
     ["a wallet", { wallet: ids.wallet }],
     ["an agent", { agent: ids.agent }],
-    ["a kind", { kind }],
+    ["a kind", { kind: "stake" }],
+    ["an action", { action: "unstake" }],
   ] as const)("refuse %s", (_name, extra) => {
     expect(schema.safeParse({ ...terms, ...extra }).success).toBe(false);
+  });
+});
+
+describe("the terms of a claim", () => {
+  it("refuse an amount, since a claim takes everything ready", () => {
+    const terms = { ...termsOf("claim"), amount: nativeAmount };
+    expect(claimTermsSchema.safeParse(terms).success).toBe(false);
   });
 });

@@ -4,6 +4,8 @@ import {
   bridgeTermsSchema,
   type BuyTerms,
   buyTermsSchema,
+  type ClaimTerms,
+  claimTermsSchema,
   type IntentRequest,
   orderProposalAnswer,
   type OrderTerms,
@@ -13,6 +15,8 @@ import {
   sellTermsSchema,
   type SendTerms,
   sendTermsSchema,
+  type StakeTerms,
+  stakeTermsSchema,
   type SwapTerms,
   swapTermsSchema,
 } from "@binference/protocol";
@@ -110,6 +114,29 @@ function bridgeTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
+// A staking move's tool, one per action: the tool names the action and the model the rest.
+function stakingTool({ agent, client }: AgentToolParts, action: "stake" | "unstake"): AgentTool {
+  return defineTool<StakeTerms>({
+    name: action,
+    kind: "propose",
+    description: agentToolTexts[action],
+    args: stakeTermsSchema,
+    run: async (terms, context) =>
+      proposeIntent(client, { ...terms, agent, kind: "stake", action }, context),
+  });
+}
+
+function claimTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool<ClaimTerms>({
+    name: "claim",
+    kind: "propose",
+    description: agentToolTexts.claim,
+    args: claimTermsSchema,
+    run: async (terms, context) =>
+      proposeIntent(client, { ...terms, agent, kind: "stake", action: "claim" }, context),
+  });
+}
+
 /**
  * What `order_create` takes: the order, one of six kinds. A model's tool takes an object at its
  * root, so the order's union sits in one field.
@@ -149,6 +176,9 @@ export function tradeTools(parts: AgentToolParts): readonly AgentTool[] {
     sellTool(parts),
     sendTool(parts),
     orderCreateTool(parts),
+    stakingTool(parts, "stake"),
+    stakingTool(parts, "unstake"),
+    claimTool(parts),
     bridgeTool(parts),
   ];
 }
