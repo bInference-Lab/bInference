@@ -10014,6 +10014,8 @@
         "plugins/honeypot-is/src/index.ts",
         "plugins/kyberswap/src/index.ts",
         "plugins/kyberswap/src/testing.ts",
+        "plugins/lista/src/index.ts",
+        "plugins/lista/src/testing.ts",
         "plugins/okx/src/index.ts",
         "plugins/okx/src/testing.ts",
         "plugins/relay/src/index.ts",

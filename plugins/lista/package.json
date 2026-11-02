@@ -1,0 +1,31 @@
+{
+  "name": "@binference/lista",
+  "version": "0.0.0",
+  "private": true,
+  "description": "slisBNB through Lista: stakes BNB for slisBNB, requests a withdrawal and claims it back once Lista's queue releases it, every move crediting only the wallet.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/plugin-sdk": "workspace:*",
+    "viem": "catalog:",
+    "zod": "catalog:"
+  }
+}
