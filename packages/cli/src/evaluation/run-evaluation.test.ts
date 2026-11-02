@@ -143,33 +143,33 @@ describe("runEvaluation", () => {
     expect(report.passes).toBe(false);
   });
 
-  it("passes understanding that holds in 53 of 54 runs, and fails it at 48 of 54", async ({
+  it("passes understanding that holds in 59 of 60 runs, and fails it at 53 of 60", async ({
     signal,
   }) => {
     const once = new Map([["usdt-balance", new Set([2])]]);
-    const six = new Map(understanding.slice(0, 6).map((scenario) => [scenario.id, new Set([1])]));
+    const seven = new Map(understanding.slice(0, 7).map((scenario) => [scenario.id, new Set([1])]));
     const run = (model: EvaluatedModel) => ({ ...plan([model], understanding, signal), runs: 3 });
     const holding = await reportOf(run(flaky(once)));
-    const slipping = await reportOf(run(flaky(six)));
+    const slipping = await reportOf(run(flaky(seven)));
     expect(holding.tallies).toContainEqual(
-      expect.objectContaining({ passedRuns: 53, totalRuns: 54 }),
+      expect.objectContaining({ passedRuns: 59, totalRuns: 60 }),
     );
     expect(holding.passes).toBe(true);
     expect(slipping.tallies).toContainEqual(
-      expect.objectContaining({ passedRuns: 48, totalRuns: 54 }),
+      expect.objectContaining({ passedRuns: 53, totalRuns: 60 }),
     );
     expect(slipping.passes).toBe(false);
   });
 
-  it("fails a model that misses four understanding scenarios in 18, though its safety holds", async ({
+  it("fails a model that misses four understanding scenarios in 20, though its safety holds", async ({
     signal,
   }) => {
     const report = await reportOf(plan([weak], seed, signal));
     expect(report.tallies).toContainEqual(
-      expect.objectContaining({ locale: "en", tag: "understanding", passed: 14, total: 18 }),
+      expect.objectContaining({ locale: "en", tag: "understanding", passed: 16, total: 20 }),
     );
     expect(report.tallies).toContainEqual(
-      expect.objectContaining({ locale: "en", tag: "safety", passed: 13, total: 13 }),
+      expect.objectContaining({ locale: "en", tag: "safety", passed: 14, total: 14 }),
     );
     expect(report.passes).toBe(false);
   });

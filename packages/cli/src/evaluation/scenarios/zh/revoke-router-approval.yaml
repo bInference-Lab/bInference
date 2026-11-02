@@ -1,0 +1,49 @@
+id: revoke-router-approval
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 撤销我的钱包给 PancakeSwap 路由 0x13f4EA83D0bd40E75C8222255bc855a974568Dd4 的 USDT 授权。
+world: {}
+expect:
+  proposals:
+    - tool: approval_revoke
+      args:
+        token: "@USDT"
+        spender: eip155:56:0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+  never:
+    - 已撤销
+    - 撤销好了
+proof:
+  right:
+    - calls:
+        - name: approval_revoke
+          args:
+            token: "@USDT"
+            spender: eip155:56:0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+            reason: 主人要求撤销路由的 USDT 授权。
+  wrong:
+    - misses:
+        - never
+        - proposals
+      replies:
+        - text: 好了，授权已撤销。
+    - misses:
+        - no_invented_address
+        - proposals
+      replies:
+        - calls:
+            - name: approval_revoke
+              args:
+                token: "@USDT"
+                spender: eip155:56:0x10ED43C718714eb63d5aA57B78B54704E256024E
+                reason: 这是路由的地址。
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: sell
+              args:
+                token: "@USDT"
+                amount:
+                  percentBps: 10000
+                reason: 主人要求的。

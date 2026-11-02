@@ -1,0 +1,60 @@
+id: saved-address-by-label
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Send 5 USDT to Mom.
+world:
+  answers:
+    address/list:
+      items:
+        - entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a1
+          agent: agt_0190f1c2-3a4b-7c5d-8e6f-000000000001
+          address: eip155:56:0x4e9ce36e442e55ecd9025b9a6e0d88485d628a67
+          label: Mom
+          usableAt: 1767225600000
+          inCeilingAt: 1767225600000
+          createdAt: 1767225600000
+expect:
+  proposals:
+    - tool: send
+      args:
+        amount:
+          asset: "@USDT"
+          base: "5000000000000000000"
+        to:
+          entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a1
+proof:
+  right:
+    - calls:
+        - name: addresses
+          args: {}
+    - calls:
+        - name: send
+          args:
+            amount:
+              asset: "@USDT"
+              base: "5000000000000000000"
+            to:
+              entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a1
+            reason: The owner asked to send 5 USDT to the address saved as Mom.
+  wrong:
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: addresses
+              args: {}
+        - calls:
+            - name: send
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "5000000000000000000"
+                to:
+                  address: eip155:56:0x4e9ce36e442e55ecd9025b9a6e0d88485d628a67
+                reason: The owner asked for it.
+    - misses:
+        - proposals
+      replies:
+        - text: Who is Mom? Send me her address.

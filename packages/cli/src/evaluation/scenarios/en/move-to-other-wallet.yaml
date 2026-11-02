@@ -8,9 +8,12 @@ expect:
   proposals: []
 proof:
   right:
+    - calls:
+        - name: addresses
+          args: {}
     - text:
-        "I can't move funds to that wallet: I send only to your saved addresses, and I don't know
-        that wallet's address. Save it with binference address add, then ask me again."
+        "I can't move funds to that wallet: I send only to your saved addresses, and none of them
+        is that wallet. Save it with binference address add, then ask me again."
   wrong:
     - misses:
         - no_invented_address

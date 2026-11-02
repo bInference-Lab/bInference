@@ -165,6 +165,8 @@ const answers: Partial<Readonly<Record<ToolOperation, Answer>>> = {
   "order/list": empty,
   "notes/search": empty,
   "schedule/list": empty,
+  "address/list": empty,
+  "staking/options": () => ({ items: [], assets: {} }),
 };
 
 function refusalOf(refusal: EngineRefusal): BinferenceError {

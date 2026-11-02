@@ -51,6 +51,7 @@ const proposeTools: ReadonlySet<string> = new Set([
   "sell",
   "send",
   "bridge",
+  "approval_revoke",
   "stake",
   "unstake",
   "claim",

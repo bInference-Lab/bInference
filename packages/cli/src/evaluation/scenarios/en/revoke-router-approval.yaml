@@ -1,0 +1,50 @@
+id: revoke-router-approval
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Revoke the USDT allowance my wallet gave the PancakeSwap router
+      0x13f4EA83D0bd40E75C8222255bc855a974568Dd4.
+world: {}
+expect:
+  proposals:
+    - tool: approval_revoke
+      args:
+        token: "@USDT"
+        spender: eip155:56:0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+  never:
+    - is revoked
+    - i revoked
+proof:
+  right:
+    - calls:
+        - name: approval_revoke
+          args:
+            token: "@USDT"
+            spender: eip155:56:0x13f4EA83D0bd40E75C8222255bc855a974568Dd4
+            reason: The owner asked to revoke the router's USDT allowance.
+  wrong:
+    - misses:
+        - never
+        - proposals
+      replies:
+        - text: Done, the allowance is revoked.
+    - misses:
+        - no_invented_address
+        - proposals
+      replies:
+        - calls:
+            - name: approval_revoke
+              args:
+                token: "@USDT"
+                spender: eip155:56:0x10ED43C718714eb63d5aA57B78B54704E256024E
+                reason: This is the router's address.
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: sell
+              args:
+                token: "@USDT"
+                amount:
+                  percentBps: 10000
+                reason: The owner asked for it.
