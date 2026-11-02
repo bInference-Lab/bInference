@@ -1,5 +1,4 @@
-export { amountSchema } from "./amount.js";
-export type { Amount, AmountWire } from "./amount.js";
+export { type Amount, type AmountWire, amountSchema } from "./amount.js";
 export {
   accountRefParts,
   accountRefSchema,
@@ -30,13 +29,13 @@ export type {
   ChainFamily,
   ChainRegistry,
   NonceSource,
+  PriceFailure,
   PriceSource,
   Signer,
   SigningScheme,
   UsdPrice,
 } from "./ports.js";
-export { withQuotePrice } from "./prices/with-quote-price.js";
-export type { QuotedTrade } from "./prices/with-quote-price.js";
+export { type QuotedTrade, withQuotePrice } from "./prices/with-quote-price.js";
 export { chainDefinitionSchema } from "./registry/chain-definition.js";
 export type {
   AddressVerification,
@@ -56,6 +55,7 @@ export type { ChainRegistryOptions } from "./registry/create-chain-registry.js";
 export type { BridgeRouteDefinition } from "./registry/bridge-route-definition.js";
 export type { PoolHookDefinition } from "./registry/pool-hook-definition.js";
 export type { PriceFeedDefinition } from "./registry/price-feed-definition.js";
+export type { RatePriceDefinition } from "./registry/rate-price-definition.js";
 export type { CeilingCapsDefinition, CeilingCapToken } from "./registry/ceiling-caps-definition.js";
 export type { RegisteredChain } from "./registry/registered-chain.js";
 export type { SignRequest } from "./sign-request.js";

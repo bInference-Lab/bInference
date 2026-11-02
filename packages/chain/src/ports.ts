@@ -132,16 +132,26 @@ export interface NonceSource {
 export type UsdPrice = Ratio;
 
 /**
+ * Why a {@link PriceSource} has no price for an asset:
+ * - `no_price`: the source does not price it, or its price is too old to trust; a trade's own
+ *   quote may still price it (`withQuotePrice`);
+ * - `price_refused`: the asset has a price source of its own that cannot price it now, such as a
+ *   rate read from a paused contract (decision 0328); nothing else may price it, a quote included.
+ */
+export type PriceFailure = "no_price" | "price_refused";
+
+/**
  * Gives the USD price of an asset now (decision 0059): a feed for the native coin and stablecoins,
- * the trade's own quote for other tokens. A price is above zero, with a denominator above zero. An
- * asset it cannot price, or a price too old to trust, is `no_price`, never a throw, so the policy
- * refuses the trade. Adapters: Chainlink feeds read over the chain's RPC in `@binference/chain-evm`,
- * and a market-data service's latest reading.
+ * a contract's rate for a token the registry prices that way (decision 0328), the trade's own
+ * quote for other tokens. A price is above zero, with a denominator above zero. An asset it cannot
+ * price is a {@link PriceFailure}, never a throw, so the policy refuses the trade. Adapters:
+ * Chainlink feeds and contract rates read over the chain's RPC in `@binference/chain-evm`, and a
+ * market-data service's latest reading.
  */
 export interface PriceSource {
   /** The price of one asset. Rejects with the signal's reason once the signal aborts. */
   usdPrice(
     asset: AssetRef,
     options: { readonly signal: AbortSignal },
-  ): Promise<Result<UsdPrice, "no_price">>;
+  ): Promise<Result<UsdPrice, PriceFailure>>;
 }

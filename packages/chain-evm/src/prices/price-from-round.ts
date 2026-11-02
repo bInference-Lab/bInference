@@ -35,8 +35,12 @@ export const staleMarginSeconds = 30;
 const microsPerDollar = 1_000_000n;
 const depegLimitBps = 200n;
 
-function isStale(feed: UsdFeed, round: FeedRound, nowMs: number): boolean {
-  const limitMs = BigInt(feed.heartbeatSeconds + staleMarginSeconds) * 1_000n;
+/**
+ * Whether a feed's round is older at `nowMs` than its heartbeat plus {@link staleMarginSeconds}.
+ * An open round has no update time, so it is stale too.
+ */
+export function isRoundStale(heartbeatSeconds: number, round: FeedRound, nowMs: number): boolean {
+  const limitMs = BigInt(heartbeatSeconds + staleMarginSeconds) * 1_000n;
   return BigInt(nowMs) - round.updatedAtSeconds * 1_000n > limitMs;
 }
 
@@ -59,7 +63,7 @@ export function priceFromRound(
   nowMs: number,
 ): Result<UsdPrice, "no_price"> {
   const { feed } = priced;
-  if (round.answer <= 0n || isStale(feed, round, nowMs)) {
+  if (round.answer <= 0n || isRoundStale(feed.heartbeatSeconds, round, nowMs)) {
     return err("no_price");
   }
   const perWhole = 10n ** BigInt(priced.decimals);

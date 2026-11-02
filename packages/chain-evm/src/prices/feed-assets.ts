@@ -16,8 +16,11 @@ function refuse(definition: ChainDefinition, name: string): BinferenceError {
   });
 }
 
-// The address the registry gives `name`; one it does not hold, or holds malformed, is a fault.
-function addressOf(
+/**
+ * The address the registry gives `name` for a price entry. One it does not hold, or holds
+ * malformed, is a `chain.bad_price_feeds` fault, so a start never runs on a price it cannot read.
+ */
+export function priceEntryAddress(
   definition: ChainDefinition,
   entry: { readonly address: string } | undefined,
   name: string,
@@ -29,7 +32,8 @@ function addressOf(
   return address.value;
 }
 
-function tokenOf(
+/** The registry token a price entry names by `symbol`; one it does not hold is a fault. */
+export function priceEntryToken(
   definition: ChainDefinition,
   symbol: string,
 ): { readonly address: Address; readonly decimals: number } {
@@ -37,7 +41,7 @@ function tokenOf(
   if (token === undefined) {
     throw refuse(definition, symbol);
   }
-  return { address: addressOf(definition, token, symbol), decimals: token.decimals };
+  return { address: priceEntryAddress(definition, token, symbol), decimals: token.decimals };
 }
 
 // The coin from its feed, and each token that wraps it one for one at the same price.
@@ -48,7 +52,7 @@ function coinAssets(
 ): FeedAsset[] {
   const { feed } = item;
   const wrappers = item.wrappers.map((symbol): FeedAsset => {
-    const token = tokenOf(definition, symbol);
+    const token = priceEntryToken(definition, symbol);
     const asset = erc20AssetRef(chain, token.address);
     return { asset, decimals: token.decimals, isStablecoin: false, feed };
   });
@@ -73,7 +77,7 @@ export function feedAssetsOf(
       (entry) => entry.venue === feedGroup && entry.name === item.contract,
     );
     const feed = {
-      address: addressOf(definition, contract, item.contract),
+      address: priceEntryAddress(definition, contract, item.contract),
       decimals: item.decimals,
       heartbeatSeconds: item.heartbeatSeconds,
     };
@@ -83,7 +87,7 @@ export function feedAssetsOf(
     if (!item.isStablecoin) {
       return [];
     }
-    const token = tokenOf(definition, item.symbol);
+    const token = priceEntryToken(definition, item.symbol);
     const asset = erc20AssetRef(chain, token.address);
     return [{ asset, decimals: token.decimals, isStablecoin: true, feed }];
   });

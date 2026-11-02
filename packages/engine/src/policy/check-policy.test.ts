@@ -1,5 +1,5 @@
-import type { AccountRef, AssetRef, QuotedTrade, UsdPrice } from "@binference/chain";
-import type { Bps } from "@binference/core";
+import type { AccountRef, AssetRef, PriceSource, QuotedTrade, UsdPrice } from "@binference/chain";
+import { type Bps, err } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
@@ -169,6 +169,14 @@ function saleQuote(outBase: bigint, out: AssetRef = coin): QuotedTrade {
   };
 }
 
+// The fake's prices, and a source of the meme's own that refuses it, as a paused rate contract does.
+const memeRefused: PriceSource = {
+  async usdPrice(asset, options) {
+    const fed = await createFakePriceSource(prices).usdPrice(asset, options);
+    return asset === meme ? err("price_refused") : fed;
+  },
+};
+
 async function quotedVerdict(subject: PolicySubject, quote: QuotedTrade) {
   const policy = createPolicyCheck({
     prices: createFakePriceSource(prices),
@@ -214,6 +222,18 @@ describe("the policy check with the trade's own quote", () => {
       saleQuote(oneCoin, other),
     );
     expect(reasonsOf(result)).toStrictEqual(["no_price"]);
+  });
+
+  it("never takes the quote's price for a token whose own source refuses it now", async () => {
+    const policy = createPolicyCheck({ prices: memeRefused, clock: createManualClock(nowMs) });
+    const signal = new AbortController().signal;
+    const quote = saleQuote(oneCoin / 10n);
+    const result = await policy.check(
+      unpricedSale,
+      { ...facts, recentOutflows: [] },
+      { signal, quote },
+    );
+    expect(result).toStrictEqual({ ok: false, error: "no_price", reasons: ["no_price"] });
   });
 });
 

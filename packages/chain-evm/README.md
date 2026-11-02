@@ -6,37 +6,40 @@ The EVM chain family. It reads a chain through its RPC endpoints with failover, 
 simulates calls with `eth_simulateV1` and reads the transfers they make, decodes calldata, and
 builds, hashes and checks the transactions a signer signs. It reads a venue's transaction draft for
 the chain-neutral core: the contract it calls, the wei it sends, and the ERC-20 approval it grants.
-It prices the native coin and the stablecoins in USD from Chainlink's feeds. Its price watcher
+It prices the native coin and the stablecoins in USD from Chainlink's feeds, and a token that
+redeems for a growing amount of the coin, such as a liquid staking token, at the coin's price
+times its contract's rate. Its price watcher
 reads the price of every watched token at each new block, in one batched call, from the reads each
 venue declares or from the token's deepest pool. Chain facts come in as data from
 `@binference/chains`; nothing here names a chain.
 
 ## API
 
-| Export                                                                   | What it does                                                                                                                                                     |
-| ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createEvmFamily`, `parseEvmAddress`                                     | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form, draft reading                                                                                 |
-| `encodeEvmDraft`, `decodeEvmDraft`                                       | A venue's call as a `TxDraft`: the address called, the value and the calldata                                                                                    |
-| `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                           | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses                                                                                     |
-| `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health                                                                                |
-| `createEvmClient`                                                        | A viem public client whose requests go through the failover                                                                                                      |
-| `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap                                                                                          |
-| `simulate`, `Simulation`                                                 | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts                                                                                            |
-| `createChainlinkPrices`, `FeedAsset`, `UsdFeed`                          | The `PriceSource` over Chainlink's USD feeds; a stale feed is no price                                                                                           |
-| `createEvmTxSimulator`                                                   | The `TxSimulator` port of one chain: drafts simulated in order, fee left out; given balances become state overrides, a token's in the storage slot a probe finds |
-| `createEvmTxPreparer`                                                    | The `TxPreparer` port: gas from `eth_estimateGas` plus 20%, fees from `readFees`; a call the node refuses would fail; a replacement raises both fees by 10%      |
-| `createEvmRelaySender`                                                   | The `RelaySender` port: `eth_sendRawTransaction` to every private relay at once, each with its own timeout, each answer read                                     |
-| `createEvmReceiptReader`, `createEvmNonceSource`                         | Receipts, the head by the finality rule, a transaction's value and `Transfer` logs, a nonce or the native coin received at a block; the pending nonce            |
-| `createEvmDeliveryReader`                                                | The `DeliveryReader` port: a token's delivery from its transfer logs, the coin's from the balance change across the block                                        |
-| `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                                                                                                    |
-| `callAbiJson`                                                            | One function of an ABI as plain JSON, as a venue declares the calls its trades make                                                                              |
-| `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions                                                                                             |
-| `createBlockSource`, `HeadSubscription`, `HeadSocket`                    | Each new block of a chain: `newHeads` over the owner's WebSocket RPC, else polling once a block time                                                             |
-| `createPriceWatcher`, `PriceWatcher`, `WatchedPrice`, `WatcherLag`       | Every watched token's price reads and quote feeds in one Multicall3 call per block, and the lag                                                                  |
-| `createPoolPriceReader`, `poolSource`                                    | A `PriceReader` over the deepest Uniswap-style v2 pair or v3 pool against a token with a feed                                                                    |
-| `readTokenDecimals`                                                      | ERC-20 decimals of many tokens in one Multicall3 call                                                                                                            |
-| `readTokenFacts`                                                         | ERC-20 symbol, name and decimals of many tokens in one Multicall3 call                                                                                           |
-| `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                                                                                                 |
+| Export                                                                   | What it does                                                                                                                                                      |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createEvmFamily`, `parseEvmAddress`                                     | The `ChainFamily` port: `eip155` chains, addresses in EIP-55 form, draft reading                                                                                  |
+| `encodeEvmDraft`, `decodeEvmDraft`                                       | A venue's call as a `TxDraft`: the address called, the value and the calldata                                                                                     |
+| `evmChainOf`, `evmAccountRef`, `erc20AssetRef`                           | A chain definition's EVM view, and CAIP-10 and CAIP-19 ids for its addresses                                                                                      |
+| `createRpcFailover`, `RpcFailover`, `RpcEndpoint`                        | JSON-RPC over the `Http` port, endpoint by endpoint within a timeout, with health                                                                                 |
+| `createEvmClient`                                                        | A viem public client whose requests go through the failover                                                                                                       |
+| `readFees`, `EvmFees`, `FeeReading`                                      | EIP-1559 fees per gas from the node, marked when above the caller's cap                                                                                           |
+| `simulate`, `Simulation`                                                 | `eth_simulateV1` with transfer traces, read into CAIP ids and amounts                                                                                             |
+| `createChainlinkPrices`, `FeedAsset`, `UsdFeed`                          | The `PriceSource` over Chainlink's USD feeds; a stale feed is no price                                                                                            |
+| `createRatePrices`, `rateAssetsOf`, `RateAsset`                          | A token at the coin's price times its contract's rate, checked against its Chainlink rate feed at the head block; a pause, a gap or a stale feed refuse the price |
+| `createEvmTxSimulator`                                                   | The `TxSimulator` port of one chain: drafts simulated in order, fee left out; given balances become state overrides, a token's in the storage slot a probe finds  |
+| `createEvmTxPreparer`                                                    | The `TxPreparer` port: gas from `eth_estimateGas` plus 20%, fees from `readFees`; a call the node refuses would fail; a replacement raises both fees by 10%       |
+| `createEvmRelaySender`                                                   | The `RelaySender` port: `eth_sendRawTransaction` to every private relay at once, each with its own timeout, each answer read                                      |
+| `createEvmReceiptReader`, `createEvmNonceSource`                         | Receipts, the head by the finality rule, a transaction's value and `Transfer` logs, a nonce or the native coin received at a block; the pending nonce             |
+| `createEvmDeliveryReader`                                                | The `DeliveryReader` port: a token's delivery from its transfer logs, the coin's from the balance change across the block                                         |
+| `decodeCall`                                                             | Calldata against a venue's ABI, as a `Result`                                                                                                                     |
+| `callAbiJson`                                                            | One function of an ABI as plain JSON, as a venue declares the calls its trades make                                                                               |
+| `createEvmSigningScheme`, `encodeEvmTransaction`, `decodeEvmTransaction` | The `SigningScheme` port: build, hash and verify type-2 transactions                                                                                              |
+| `createBlockSource`, `HeadSubscription`, `HeadSocket`                    | Each new block of a chain: `newHeads` over the owner's WebSocket RPC, else polling once a block time                                                              |
+| `createPriceWatcher`, `PriceWatcher`, `WatchedPrice`, `WatcherLag`       | Every watched token's price reads and quote feeds in one Multicall3 call per block, and the lag                                                                   |
+| `createPoolPriceReader`, `poolSource`                                    | A `PriceReader` over the deepest Uniswap-style v2 pair or v3 pool against a token with a feed                                                                     |
+| `readTokenDecimals`                                                      | ERC-20 decimals of many tokens in one Multicall3 call                                                                                                             |
+| `readTokenFacts`                                                         | ERC-20 symbol, name and decimals of many tokens in one Multicall3 call                                                                                            |
+| `quantitySchema`, `hexSchema`, `addressSchema`, `jsonValueSchema`        | The wire values every RPC answer is checked with                                                                                                                  |
 
 ## Example
 

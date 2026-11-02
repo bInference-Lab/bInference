@@ -25,8 +25,8 @@ can check what they move. Nothing here names a chain or a venue.
 | `checkAutoModeGrant`, `AutoModeGrantProblem`, `autoModeKinds`         | Whether an auto grant authorizes a signature now, and why not                                              |
 | `SignerRefusal`                                                       | Why the signer refused: the request, or a hard rule by number                                              |
 | `PrivyRequest`, `privyRequestSchema`, `authorizationPayload`          | A Privy request, and the bytes its authorization signature signs                                           |
-| `PriceSource`, `UsdPrice`                                             | An asset's USD price now, in micro-dollars per base unit                                                   |
-| `withQuotePrice`, `QuotedTrade`                                       | A trade's other token priced from the trade's own quote                                                    |
+| `PriceSource`, `UsdPrice`, `PriceFailure`                             | An asset's USD price now, in micro-dollars per base unit, or why it has none                               |
+| `withQuotePrice`, `QuotedTrade`                                       | A trade's other token priced from the trade's own quote, unless its source refused it                      |
 | `ChainDefinition`, `chainDefinitionSchema`                            | One chain as data: tokens, contracts, RPCs, relays and explorers                                           |
 | `createChainRegistry`                                                 | The registry, which refuses data its family does not accept                                                |
 | `UnsignedTx`, `SignedTx`, `TxHash`                                    | Transactions as the core passes them, opaque inside                                                        |

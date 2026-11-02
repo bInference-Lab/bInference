@@ -26,7 +26,8 @@ Rules for this package:
 - `PriceSource` and `UsdPrice` live here so the engine and a chain family's price adapter share
   them; the engine's fake stays in `@binference/engine/testing`. A price is an exact ratio, and only
   its caller rounds. `withQuotePrice` gives a trade's other token the price of its own quote, for
-  the engine step that holds the quote.
+  the engine step that holds the quote, except a token its source answers `price_refused` for
+  (decision 0328): that refusal is final.
 - Venues are ports here so `engine` and `plugin-sdk` share them: `Quoter`, `TxBuilder`,
   `TxDecoder` and `PriceReader` in `src/venues/ports.ts`, each with a contract suite. A price read's
   calls carry their input in their family's encoding, so the family batches them; its `price` step

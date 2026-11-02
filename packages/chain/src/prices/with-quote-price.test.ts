@@ -27,6 +27,14 @@ function feeds(prices: ReadonlyMap<string, UsdPrice>): PriceSource {
 
 const coinFeed = feeds(new Map([[coin, coinPrice]]));
 
+// The coin's feed, and a source of their own that refuses every other asset now.
+const refusing: PriceSource = {
+  async usdPrice(asset, options) {
+    const coinOnly = await coinFeed.usdPrice(asset, options);
+    return coinOnly.ok ? coinOnly : err("price_refused");
+  },
+};
+
 // Sells 2,000 whole tokens (6 decimals) for 0.5 coin.
 const sale = {
   amountIn: { asset: token, base: 2_000_000_000n },
@@ -88,5 +96,13 @@ describe("a price from the trade's own quote", () => {
     await expect(withQuotePrice(prices, quote).usdPrice(token, live)).resolves.toStrictEqual(
       err("no_price"),
     );
+  });
+
+  it("keeps a refused token refused whatever its quote pays, and refuses what it prices", async () => {
+    const source = withQuotePrice(refusing, sale);
+    await expect(source.usdPrice(token, live)).resolves.toStrictEqual(err("price_refused"));
+    const buy = { amountIn: sale.amountIn, expectedOut: { asset: other, base: 1n } };
+    const bought = withQuotePrice(refusing, buy).usdPrice(other, live);
+    await expect(bought).resolves.toStrictEqual(err("price_refused"));
   });
 });

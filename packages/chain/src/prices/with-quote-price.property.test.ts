@@ -16,6 +16,17 @@ function coinFeed(price: UsdPrice): PriceSource {
   };
 }
 
+// The coin's feed, and a source of their own that refuses every other asset now.
+function refusing(price: UsdPrice): PriceSource {
+  const feed = coinFeed(price);
+  return {
+    async usdPrice(asset, options) {
+      const coinOnly = await feed.usdPrice(asset, options);
+      return coinOnly.ok ? coinOnly : err("price_refused");
+    },
+  };
+}
+
 /** A quote between the token and the coin, either way round, and the coin's feed price. */
 interface QuoteCase {
   readonly tokenBase: bigint;
@@ -46,6 +57,18 @@ describe("a price from the trade's own quote", () => {
         assert.ok(priced.ok);
         expect(mulDiv(tokenBase, priced.value, "up")).toBe(mulDiv(coinBase, coinPrice, "up"));
         expect(mulDiv(tokenBase, priced.value, "down")).toBe(mulDiv(coinBase, coinPrice, "down"));
+      }),
+    );
+  });
+
+  it("never prices a token its source refuses, whatever the quote", async () => {
+    await fc.assert(
+      fc.asyncProperty(cases, async (item: QuoteCase) => {
+        const priced = await withQuotePrice(refusing(item.coinPrice), item.quote).usdPrice(
+          token,
+          live,
+        );
+        expect(priced).toStrictEqual(err("price_refused"));
       }),
     );
   });

@@ -45,7 +45,12 @@ Rules for this package:
   declared events from any contract, hands each transaction's logs to every launchpad, reads one
   header per block with a launch, and completes at most 50 launches a read in one Multicall3 call.
 - Prices come from the Chainlink feeds the composition root names. A feed that cannot be read, a
-  broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw.
+  broken answer, or one older than its heartbeat plus 30 s is `no_price`, never a throw. A token
+  the registry prices by a rate (decision 0328) is the coin's price times its contract's rate,
+  read with the block's time, `paused()` and the rate's Chainlink feed in one Multicall3 call at
+  the head block and kept 3 s; an old block, a paused contract, a rate out of its bounds or more
+  than its gap from a fresh feed, and a failed or late read are `price_refused`, which no quote
+  overrides.
 - No key lives here. The signing scheme builds, hashes and checks what a signer signs.
 - `src/testing/` holds test support: fake and loopback `Http` adapters and loopback servers. It is
   the one place that imports `node:http`, and nothing outside tests imports it.
