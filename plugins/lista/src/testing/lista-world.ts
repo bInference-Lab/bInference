@@ -77,6 +77,11 @@ export interface ListaWorld {
   releaseQueue(): void;
   /** Marks every endpoint down, so each read rejects. */
   goDown(): void;
+  /**
+   * Forgets the state of every block but the latest, as a node that keeps little state does: a
+   * read at an older block fails, while its header still answers.
+   */
+  pruneState(): void;
   /** The methods asked of the RPC, in order. */
   readonly asked: readonly string[];
 }
@@ -109,6 +114,7 @@ function aggregate(model: ListaModel, data: Hex): Hex {
 interface WorldState {
   model: ListaModel;
   isDown: boolean;
+  isPruned: boolean;
   readonly history: Map<bigint, ListaModel>;
   readonly mined: Map<string, Mined>;
   readonly asked: string[];
@@ -125,7 +131,26 @@ function modelAt(state: WorldState, block: string): ListaModel {
   return found;
 }
 
+// A block's header: its number and time, which a node keeps after it forgot the block's state.
+function headerOf<T>(state: WorldState, call: RpcCall<T>) {
+  const [block] = z.tuple([hex, z.boolean()]).parse(call.params);
+  const model = modelAt(state, block);
+  return { number: numberToHex(model.block), timestamp: numberToHex(model.time) };
+}
+
+// The model at a block a call reads, unless its state was pruned.
+function stateAt(state: WorldState, block: string): ListaModel {
+  const model = modelAt(state, block);
+  if (state.isPruned && model !== state.model) {
+    throw new BinferenceError({ code: "world.no_state", message: "Missing trie node." });
+  }
+  return model;
+}
+
 function answerOf<T>(state: WorldState, call: RpcCall<T>) {
+  if (call.method === "eth_getBlockByNumber") {
+    return headerOf(state, call);
+  }
   if (call.method === "eth_getTransactionReceipt" || call.method === "eth_getTransactionByHash") {
     const [hash] = z.tuple([hex]).parse(call.params);
     const found = state.mined.get(hash);
@@ -139,7 +164,7 @@ function answerOf<T>(state: WorldState, call: RpcCall<T>) {
   const [{ to, data }, block] = z
     .tuple([z.object({ to: hex, data: hex }), z.string()])
     .parse(call.params);
-  return getAddress(to) === multicallAddress ? aggregate(modelAt(state, block), data) : undefined;
+  return getAddress(to) === multicallAddress ? aggregate(stateAt(state, block), data) : undefined;
 }
 
 // A node's reply to a call the model answered: a revert when it has no answer.
@@ -205,6 +230,7 @@ export function createListaWorld(): ListaWorld {
   const state: WorldState = {
     model: createModel(bscStart),
     isDown: false,
+    isPruned: false,
     history: new Map(),
     mined: new Map(),
     asked: [],
@@ -242,6 +268,9 @@ export function createListaWorld(): ListaWorld {
     releaseQueue: () => change({ isHeld: false }),
     goDown: () => {
       state.isDown = true;
+    },
+    pruneState: () => {
+      state.isPruned = true;
     },
     asked: state.asked,
   };

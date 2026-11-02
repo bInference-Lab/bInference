@@ -1,5 +1,6 @@
 import {
   accountRefSchema,
+  type LandedRequest,
   type StakeRequest,
   type TxDraft,
   type TxHash,
@@ -37,6 +38,21 @@ function hashOf(hash: TxHash | undefined): TxHash {
 
 function stakeOf(world: ListaWorld, base: bigint): StakeRequest {
   return { action: "stake", wallet, validator: world.pool, amount: { asset: world.coin, base } };
+}
+
+// Stakes 1 BNB and unstakes it whole, a minute before the chain's latest block, and answers the
+// unstake's move to read back.
+async function unstaked(world: ListaWorld): Promise<LandedRequest> {
+  await moved(world, stakeOf(world, bnb));
+  const drafts = await builtOf(world, {
+    action: "unstake",
+    wallet,
+    validator: world.pool,
+    amount: "whole",
+  });
+  const [hash] = world.run(drafts);
+  world.wait(60);
+  return { action: "unstake", wallet, validator: world.pool, hash: hashOf(hash) };
 }
 
 describe("the Lista venue", () => {
@@ -155,6 +171,22 @@ describe("the Lista venue", () => {
       ok: false,
       error: "not_found",
     });
+  });
+
+  it("reads back an unstake at the latest block once its landing block's state is gone", async () => {
+    const kept = createListaWorld();
+    const pruned = createListaWorld();
+    const moves = await Promise.all([unstaked(kept), unstaked(pruned)]);
+    pruned.pruneState();
+
+    const [atLanding, atLatest] = await Promise.all([
+      kept.venue.landed(moves[0], live),
+      pruned.venue.landed(moves[1], live),
+    ]);
+
+    expect(atLanding).toMatchObject({ ok: true, value: { request: { ref: "1" } } });
+    expect(atLatest).toStrictEqual(atLanding);
+    expect(pruned.asked).toContain("eth_getBlockByNumber");
   });
 
   it("fails a read while no node answers", async () => {

@@ -7,7 +7,7 @@ import {
   type UnbondingPart,
 } from "@binference/plugin-sdk";
 import { decodeLog } from "@binference/plugin-sdk/evm";
-import { type Address, getAddress, parseAbi, zeroAddress } from "viem";
+import { type Address, getAddress, numberToHex, parseAbi, zeroAddress } from "viem";
 import { z } from "zod";
 import { readManagerCall } from "../calls/manager-calls.js";
 import {
@@ -89,29 +89,52 @@ function stakeOf(at: ListaAt, ask: LandedAsk, logs: readonly Log[]): LandedStake
   return { action, validator, moved, shares: { asset: at.receipt, base: minted.args.value } };
 }
 
-// An unstake's request: the wallet's one request of these units made in the landing block, with
-// what a claim of it pays and its earliest time by the stake manager at that block.
-async function requestOf(
+const headerSchema = z.object({ timestamp: hexSchema }).nullable();
+
+// The time of a block, from its header, which a node keeps after it forgot the block's state.
+async function blockTimeOf(at: ListaAt, block: bigint): Promise<bigint> {
+  const reply = await at.rpc.request({
+    method: "eth_getBlockByNumber",
+    params: [numberToHex(block), false],
+    result: headerSchema,
+    signal: at.signal,
+  });
+  if (reply.kind === "error" || reply.value === null) {
+    throw unreadable("the landing block's header could not be read.");
+  }
+  return BigInt(reply.value.timestamp);
+}
+
+/** Where a request's read stands: at the landing block, or at the latest with its block's time. */
+type RequestRead =
+  | { readonly units: bigint; readonly block: bigint }
+  | { readonly units: bigint; readonly startTime: bigint };
+
+// The wallet's one request of these units made at the landing block's time, with what a claim of
+// it pays and its earliest time, read at the landing block or at the latest. A request's id, units
+// and start time never change, so the latest list finds it while Lista still lists it.
+async function requestAt(
   at: ListaAt,
   ask: LandedAsk,
-  landing: { readonly block: bigint; readonly units: bigint },
+  read: RequestRead,
 ): Promise<UnbondingPart | undefined> {
+  const block = "block" in read ? read.block : undefined;
   const reads = [
     plainRead(at.multicall, "getCurrentBlockTimestamp"),
     plainRead(at.stakeHub, "unbondPeriod"),
     requestsRead(at.manager, ask.wallet),
   ];
-  const [time, unbonding, listed] = await readViews(at, reads, landing.block);
-  const startTime = uintOf(time, "the block time");
+  const [time, unbonding, listed] = await readViews(at, reads, block);
+  const startTime = "startTime" in read ? read.startTime : uintOf(time, "the block time");
   const matching = requestsOf(listed).flatMap((request, index) =>
-    request.startTime === startTime && request.units === landing.units ? [{ request, index }] : [],
+    request.startTime === startTime && request.units === read.units ? [{ request, index }] : [],
   );
   const [found, ...more] = matching;
   if (found === undefined || more.length > 0) {
     return undefined;
   }
   const status = statusRead(at.manager, ask.wallet, BigInt(found.index));
-  const [answer] = await readViews(at, [status], landing.block);
+  const [answer] = await readViews(at, [status], block);
   const { amount, isClaimable } = statusOf(answer);
   const earliest = (startTime + uintOf(unbonding, "StakeHub's unbondPeriod")) * msPerSecond;
   return {
@@ -120,6 +143,23 @@ async function requestOf(
     readyAtMs: Number(earliest),
     ...(isClaimable ? {} : { queued: true as const }),
   };
+}
+
+// An unstake's request, read first at its landing block. A node that no longer keeps that block's
+// state fails the read, so it is read again at the latest block, matched by the landing block's
+// time from its header (decision 0332).
+async function requestOf(
+  at: ListaAt,
+  ask: LandedAsk,
+  landing: { readonly block: bigint; readonly units: bigint },
+): Promise<UnbondingPart | undefined> {
+  try {
+    return await requestAt(at, ask, landing);
+  } catch {
+    at.signal.throwIfAborted();
+    const startTime = await blockTimeOf(at, landing.block);
+    return requestAt(at, ask, { units: landing.units, startTime });
+  }
 }
 
 async function unstakeOf(
@@ -190,7 +230,8 @@ async function moveOf(
 }
 
 /**
- * What the wallet's landed move did, from its own events and the stake manager at its block: a
+ * What the wallet's landed move did, from its own events and the stake manager at its block, or at
+ * the latest block once a node no longer keeps that block's state: a
  * stake's coin and the slisBNB it minted; an unstake's units, its request by id with what a claim
  * pays and its earliest time; a claim's request, named by its own call, and the coin paid. A
  * transaction that reverted, holds no such move of the wallet, or whose request the stake manager

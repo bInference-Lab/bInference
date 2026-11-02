@@ -23,9 +23,10 @@ and [0332](../../docs/adr/0332-lista-is-read-and-called-on-chain-and-a-claim-nam
   `unknown_call`. An unstake's approval of exactly its slisBNB units comes first, and only the
   chain family reads it. `decode-move.property.test.ts` holds both.
 - `src/manager/` is the one folder that reads the chain's views; `src/landed/` reads a landed
-  move's receipt and transaction. A read takes one Multicall3 call at the latest block, then a
-  wallet's request statuses at that block. A revert of a view Lista always answers, or an answer
-  outside its shape, is `lista.read_failed`.
+  move's receipt and transaction, and an unstake's request at its landing block, or at the latest
+  block by its landing block's header time once a node no longer keeps that block's state. A read
+  takes one Multicall3 call at the latest block, then a wallet's request statuses at that block. A
+  revert of a view Lista always answers, or an answer outside its shape, is `lista.read_failed`.
 - The pool math lives in `src/plan/pool-math.ts`, rounding as the stake manager does. A stake's
   least units sit 10 basis points under what it mints at the plan's block.
 - A part is ready only once `getUserRequestStatus` says it is claimable; until then it is
