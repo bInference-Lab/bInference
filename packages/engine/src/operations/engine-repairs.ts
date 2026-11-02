@@ -21,6 +21,7 @@ function paperRepairOf(
     store: options.positions,
     positions: parts.paper.positions,
     clock: options.clock,
+    unbondings: options.stores.unbondings,
   };
   return async (call) => repairPaperFills(repair, call);
 }

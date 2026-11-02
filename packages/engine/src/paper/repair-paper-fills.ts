@@ -6,6 +6,8 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import type { IntentStore, PositionStore } from "../ports.js";
 import type { Positions } from "../positions/create-positions.js";
 import { isUsablePrice } from "../positions/value-execution.js";
+import { repairPaperStake } from "../staking/fill-stake-on-paper.js";
+import type { UnbondingStore } from "../staking/ports.js";
 import { paperTrade, recordFill } from "./paper-fills.js";
 
 /** What the repair of paper fills reads intents and executions from, and records through. */
@@ -15,6 +17,8 @@ export interface PaperFillRepairOptions {
   readonly store: PositionStore;
   readonly positions: Positions;
   readonly clock: Clock;
+  /** The unbondings a paper staking move books its unstakes and claims into. */
+  readonly unbondings: UnbondingStore;
 }
 
 /** How far back the repair looks: 30 days of paper fills. */
@@ -95,7 +99,8 @@ async function repairOne(
  * many it recorded. The move to `paper_filled` and the positions are two writes, so a crash
  * between them leaves a filled intent with no positions; call this at startup, before any new
  * fill. Each fill is valued at the price it kept, never at today's. A fill recorded before fills
- * kept their price stays without positions.
+ * kept their price stays without positions. A paper staking move is booked again through
+ * `repairPaperStake`, which books nothing twice (decision 0327); it is not counted.
  */
 export async function repairPaperFills(
   options: PaperFillRepairOptions,
@@ -106,7 +111,13 @@ export async function repairPaperFills(
   const filled = await filledSince(options, fromMs, signal);
   const executed = await executedSince(options, fromMs, signal);
   let repaired = 0;
-  for (const record of filled.filter((item) => !executed.has(item.id))) {
+  const parts = { ...options, booked: options.store };
+  for (const record of filled.filter((item) => item.kind === "stake")) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- one fill at a time: each moves positions
+    await repairPaperStake(parts, record.id, { signal });
+  }
+  const unbooked = filled.filter((item) => item.kind !== "stake" && !executed.has(item.id));
+  for (const record of unbooked) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one fill at a time: each moves positions
     if (await repairOne(options, record, signal)) {
       repaired += 1;

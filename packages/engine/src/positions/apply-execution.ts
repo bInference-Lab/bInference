@@ -47,6 +47,27 @@ export function applyExecution(
   held: readonly PositionRecord[],
   execution: ExecutionDraft,
 ): readonly PositionWrite[] {
+  return changesOf(held, execution, { acquires: true });
+}
+
+/**
+ * The position changes of an unstake (database spec, staking): the receipt units it sold leave
+ * their position at average cost and realize the difference with what they took out, and the gas
+ * leaves the coin's, as `applyExecution` moves them; the coin taken out reaches no position, since
+ * the wallet holds it only once a claim takes it. Throws as `applyExecution` does.
+ */
+export function applyUnbondingSale(
+  held: readonly PositionRecord[],
+  execution: ExecutionDraft,
+): readonly PositionWrite[] {
+  return changesOf(held, execution, { acquires: false });
+}
+
+function changesOf(
+  held: readonly PositionRecord[],
+  execution: ExecutionDraft,
+  moves: { readonly acquires: boolean },
+): readonly PositionWrite[] {
   assertTrade(execution);
   const { walletId, isPaper, sold, bought, gas } = execution;
   const touched = new Map<AssetRef, PositionChange>();
@@ -66,7 +87,9 @@ export function applyExecution(
     change(gas.asset, (basis) => dispose(basis, gas.base, execution.gasUsdMicros));
   }
   const costUsdMicros = execution.valueUsdMicros + execution.feeUsdMicros + execution.gasUsdMicros;
-  change(bought.asset, (basis) => acquire(basis, bought.base, costUsdMicros));
+  if (moves.acquires) {
+    change(bought.asset, (basis) => acquire(basis, bought.base, costUsdMicros));
+  }
   return [...touched.values()]
     .filter((entry) => !isEmptyChange(entry))
     .map((entry) => positionWriteOf(execution, entry));

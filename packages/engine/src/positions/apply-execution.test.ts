@@ -1,7 +1,7 @@
 import { assetRefSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
-import { applyExecution } from "./apply-execution.js";
+import { applyExecution, applyUnbondingSale } from "./apply-execution.js";
 import type { ExecutionDraft } from "./execution-record.js";
 import type { PositionRecord } from "./position-record.js";
 
@@ -191,5 +191,34 @@ describe("applyExecution", () => {
     expect(() => applyExecution([], execution({ gas: { asset: coin, base: 0n } }))).toThrow(
       expect.objectContaining({ code: "positions.bad_execution" }),
     );
+  });
+});
+
+describe("applyUnbondingSale (decision 0327)", () => {
+  it("sells the receipt units at average cost and realizes what they took out, with no coin added", () => {
+    // Receipt units: 200 held at 1,600. Sold 100 for 1,000 of coin: cost out 800, gain 200. The coin
+    // they took out waits in its unbonding, so no position acquires it; no gas, no fee.
+    const sale = execution({
+      sold: { asset: token, base: 100n },
+      bought: { asset: coin, base: 50n },
+      feeBase: 0n,
+      feeUsdMicros: 0n,
+      gas: { asset: coin, base: 0n },
+      gasUsdMicros: 0n,
+    });
+    expect(applyUnbondingSale([held({ asset: token })], sale)).toStrictEqual([
+      {
+        position: {
+          walletId,
+          asset: token,
+          isPaper: false,
+          quantityBase: 100n,
+          costUsdMicros: 800n,
+          realizedUsdMicros: 200n,
+          changedAtMs: 5_000,
+        },
+        readVersion: 4,
+      },
+    ]);
   });
 });

@@ -1,6 +1,7 @@
 import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
+import { createMemoryUnbondingStore } from "../fakes/memory-unbonding-store.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { paperFillOf } from "../intents/intent-history.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
@@ -176,6 +177,7 @@ function repairOn(held: Held, nowMs = testNowMs) {
       store: held.positions,
       positions: createPositions({ store: held.positions, prices }),
       clock: repairClock,
+      unbondings: createMemoryUnbondingStore({ hasIntent: () => true }),
     },
     live,
   );

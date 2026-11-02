@@ -3,7 +3,7 @@ import { err, type Id, mulDiv, type Result } from "@binference/core";
 import type { PositionStore } from "../ports.js";
 import { applyArrival } from "./apply-arrival.js";
 import { applyDepartures } from "./apply-departures.js";
-import { applyExecution } from "./apply-execution.js";
+import { applyExecution, applyUnbondingSale } from "./apply-execution.js";
 import type { ArrivalDraft, ArrivalRecord } from "./arrival-record.js";
 import type { DepartureDraft, DepartureOutcome } from "./departure-record.js";
 import type { ExecutionRecord } from "./execution-record.js";
@@ -39,6 +39,24 @@ export interface Positions {
     trade: ExecutedTrade,
     options: { readonly signal: AbortSignal },
   ): Promise<Result<ExecutionRecord, "stale">>;
+  /**
+   * Values an unstake as `record` values a trade and stores it with its position changes: its
+   * receipt units leave at average cost and realize the difference, and the coin it took out
+   * reaches no position until a claim takes it (database spec, staking). `stale` as for `record`.
+   */
+  unbond(
+    trade: ExecutedTrade,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<ExecutionRecord, "stale">>;
+  /**
+   * Stores coin a claim took back at the value its unstake recorded, with no gain or loss, and the
+   * position it adds to (database spec, staking): an arrival with no value opens no position.
+   * `stale` as for `record`.
+   */
+  claim(
+    arrival: ArrivalDraft,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<ArrivalRecord, "stale">>;
   /**
    * Values funds that arrived without a trade at the `PriceSource`'s price now, rounded up as
    * every value at the time is, and stores them with the position they open. Call it when the
@@ -135,14 +153,23 @@ async function resetPaper(
 /** Creates {@link Positions} over a position store and a price source. */
 export function createPositions(options: PositionsOptions): Positions {
   const { store, prices } = options;
-  return {
-    async record(trade, call) {
+  const recordWith =
+    (apply: typeof applyExecution) =>
+    async (trade: ExecutedTrade, call: { readonly signal: AbortSignal }) => {
       const execution = valueExecution(trade);
       const query = { walletId: trade.walletId, isPaper: trade.isPaper };
       const held = await store.positions(query, call);
-      const positions = applyExecution(held, execution);
+      const positions = apply(held, execution);
       const realizedUsdMicros = realizedBy(held, positions);
       return store.record({ execution, positions, realizedUsdMicros }, call);
+    };
+  return {
+    record: recordWith(applyExecution),
+    unbond: recordWith(applyUnbondingSale),
+    async claim(arrival, call) {
+      const query = { walletId: arrival.walletId, isPaper: arrival.isPaper };
+      const held = await store.positions(query, call);
+      return store.recordArrival({ arrival, positions: applyArrival(held, arrival) }, call);
     },
     async receive(funds, call) {
       const price = await prices.usdPrice(funds.received.asset, call);
