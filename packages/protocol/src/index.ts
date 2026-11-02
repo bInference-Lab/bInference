@@ -184,8 +184,7 @@ export type {
   PriceCondition,
   WalletCondition,
 } from "./views/alert-view.schema.js";
-export { launchViewSchema } from "./views/launch-view.schema.js";
-export type { LaunchView } from "./views/launch-view.schema.js";
+export { type LaunchView, launchViewSchema } from "./views/launch-view.schema.js";
 export { assetInfosSchema, assetViewSchema } from "./views/asset-info.schema.js";
 export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema.js";
 export { launchFilterSchema, launchpadIdSchema } from "./views/launch-filter.schema.js";
@@ -203,16 +202,14 @@ export {
   sourceIdSchema,
 } from "./views/market-view.schema.js";
 export type { CandleView, ChartView, ScanItem } from "./views/market-view.schema.js";
-export { backupViewSchema } from "./views/backup-view.schema.js";
-export type { BackupView } from "./views/backup-view.schema.js";
+export { type BackupView, backupViewSchema } from "./views/backup-view.schema.js";
 export {
   cardLinesViewSchema,
   cardLineViewSchema,
   cardValueViewSchema,
 } from "./views/card-lines.schema.js";
 export type { CardLinesView, CardLineView, CardValueView } from "./views/card-lines.schema.js";
-export { cardViewSchema } from "./views/card-view.schema.js";
-export type { CardView } from "./views/card-view.schema.js";
+export { type CardView, cardViewSchema } from "./views/card-view.schema.js";
 export { ceilingChangesSchema, ceilingViewSchema } from "./views/ceiling-view.schema.js";
 export type { CeilingChanges, CeilingView, DayCapView } from "./views/ceiling-view.schema.js";
 export type { FileTicket } from "./views/file-ticket.schema.js";
@@ -232,8 +229,7 @@ export type {
   QuestionView,
 } from "./views/question-view.schema.js";
 export type { ChatSurface, InboxMessageView } from "./views/inbox-message-view.schema.js";
-export { intentKindSchema } from "./views/intent-kind.schema.js";
-export type { IntentKind } from "./views/intent-kind.schema.js";
+export { type IntentKind, intentKindSchema } from "./views/intent-kind.schema.js";
 export { intentStates, intentStateSchema, unsentEndStates } from "./views/intent-state.schema.js";
 export type { IntentState } from "./views/intent-state.schema.js";
 export { intentViewSchema } from "./views/intent-view.schema.js";
@@ -272,8 +268,7 @@ export type {
   OrderState,
   OrderView,
 } from "./views/order-view.schema.js";
-export { pnlCardViewSchema } from "./views/pnl-card-view.schema.js";
-export type { PnlCardView } from "./views/pnl-card-view.schema.js";
+export { type PnlCardView, pnlCardViewSchema } from "./views/pnl-card-view.schema.js";
 export { balanceViewSchema, portfolioViewSchema } from "./views/portfolio-view.schema.js";
 export type { BalanceView, PortfolioView, PositionView } from "./views/portfolio-view.schema.js";
 export { quoteViewSchema, tradePlaceSchema } from "./views/quote-view.schema.js";
@@ -294,7 +289,6 @@ export type {
   ScheduleView,
   ScheduleWhen,
 } from "./views/schedule-view.schema.js";
-export { walletViewSchema } from "./views/wallet-view.schema.js";
-export type { WalletView } from "./views/wallet-view.schema.js";
+export { type WalletView, walletViewSchema } from "./views/wallet-view.schema.js";
 export { webhookRuleViewSchema } from "./views/webhook-rule-view.schema.js";
 export type { WebhookRuleView } from "./views/webhook-rule-view.schema.js";
