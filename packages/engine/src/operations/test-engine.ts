@@ -169,6 +169,8 @@ export interface TestEngineOptions {
   readonly destinations?: EngineOptions["destinations"];
   /** The bridges and their routes, and the wallets' chains' code readers; none when absent. */
   readonly bridging?: Pick<EngineOptions, "bridges" | "codeReaders" | "deliveryReaders">;
+  /** The staking venues the engine runs; none when absent. */
+  readonly stakingVenues?: EngineOptions["stakingVenues"];
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -286,10 +288,12 @@ function switchesOf(
   | "bridges"
   | "codeReaders"
   | "deliveryReaders"
+  | "stakingVenues"
 > {
   return {
     liveOrderFills: options.liveOrderFills === true,
     ...options.bridging,
+    ...(options.stakingVenues === undefined ? {} : { stakingVenues: options.stakingVenues }),
     ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),

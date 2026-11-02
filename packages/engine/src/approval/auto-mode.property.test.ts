@@ -31,6 +31,14 @@ import {
 } from "../operations/test-engine.js";
 import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
 import { holdTestWallet, testRouter, transferSimulator } from "../sends/test-transfers.js";
+import {
+  stakedFake,
+  stakingChains,
+  stakingSimulator,
+  testMinStake,
+  testStakingVenue,
+  testValidator,
+} from "../staking/test-stakes.js";
 import { autoModeGrantOf } from "./auto-mode-grant-of.js";
 import { testSnapshot } from "./test-snapshot.js";
 
@@ -47,8 +55,8 @@ const coinPrice = { numerator: 600n, denominator: 10n ** 12n };
 const tokenPrice = { numerator: 1n, denominator: 1n };
 
 // Every request kind but the trades the money path routes (a swap, a buy and a sell): sends and
-// approval revokes on their own path, withdrawals, bridges, launches and the kinds it does not
-// route yet.
+// approval revokes on their own path, withdrawals, bridges, launches, a stake, an unstake of the
+// whole stake and a claim on the fake staking venue, and the kinds it does not route yet.
 const otherRequests: readonly IntentRequest[] = [
   { ...base, kind: "send", amount: coin, to: { address: testSaved.account } },
   {
@@ -69,7 +77,9 @@ const otherRequests: readonly IntentRequest[] = [
   },
   { ...base, kind: "revokeApproval", token: testToken, spender: testRouter },
   { ...base, kind: "lend", action: "withdraw", venue: "fake-lend", amount: coin },
-  { ...base, kind: "stake", action: "unstake", venue: "fake-stake", amount: coin },
+  { ...base, kind: "stake", action: "stake", venue: testStakingVenue, validator: testValidator },
+  { ...base, kind: "stake", action: "unstake", venue: testStakingVenue, validator: testValidator },
+  { ...base, kind: "stake", action: "claim", venue: testStakingVenue, validator: testValidator },
   { ...base, kind: "cexOrder", market: "BNBUSDT", side: "buy", type: "market", size: "1" },
   { ...base, kind: "registerIdentity" },
 ];
@@ -121,7 +131,21 @@ function strangerSpenderVenue(): Venue {
 const holdingCoin = [{ asset: testCoin, base: 10n ** 18n }];
 const holdingToken = [...holdingCoin, { asset: testToken, base: 10n ** 18n }];
 
+// A stake moves at least the fake venue's least stake; an unstake and a claim move no value.
+function stakeAmountOf(c: Case): bigint {
+  return testMinStake + (c.amountBase % (5n * testMinStake));
+}
+
+function stakeActionOf(c: Case): string | undefined {
+  const request = c.other === undefined ? undefined : otherRequests[c.other];
+  return request?.kind === "stake" ? request.action : undefined;
+}
+
 function valueOf(c: Case): bigint {
+  const action = stakeActionOf(c);
+  if (action !== undefined) {
+    return action === "stake" ? mulDiv(stakeAmountOf(c), coinPrice, "up") : 0n;
+  }
   return mulDiv(c.amountBase, c.sellsToken ? tokenPrice : coinPrice, "up");
 }
 
@@ -149,15 +173,20 @@ function optionsOf(c: Case): TestEngineOptions {
       [testToken, tokenPrice],
     ]),
     // A send to the saved address and the token's revoke from the router each reach their card.
-    chainSimulator: transferSimulator(
-      [{ to: testSaved.account, amount: coin }],
-      [{ token: testToken, spender: testRouter }],
+    chainSimulator: stakingSimulator(
+      transferSimulator(
+        [{ to: testSaved.account, amount: coin }],
+        [{ token: testToken, spender: testRouter }],
+      ),
     ),
   };
 }
 
 function requestOf(c: Case): IntentRequest {
   const other = c.other === undefined ? undefined : otherRequests[c.other];
+  if (other?.kind === "stake" && other.action === "stake") {
+    return { ...other, amount: { asset: testCoin, base: stakeAmountOf(c) } };
+  }
   if (other !== undefined) {
     return other;
   }
@@ -259,16 +288,78 @@ function refusalOf(c: Case): string {
   return kind === "launchToken" && c.caller !== "cli" ? "intent.owner_only" : "quote.no_route";
 }
 
+// A stake within both caps and a claim run alone for the agent runtime in a clean turn, under the
+// fee cap; a claim counts against no cap; an unstake always asks (decision 0296).
+function mayStakeAlone(c: Case, action: string): boolean {
+  const isAsked =
+    c.approvalMode === "auto" && c.caller === "runtime" && c.turn === "clean" && c.feeOverCap <= 0n;
+  if (action === "claim") {
+    return isAsked && c.isLive;
+  }
+  return action === "stake" && isAsked && c.perTradeHeadroom >= 0n && c.dayHeadroom >= 0n;
+}
+
+// What a staking move's run broke: auto mode against the rules, a cap counting an unstake or a
+// claim, or an unstake's card that does not say why auto mode asks.
+function stakeProblems(
+  c: Case,
+  action: string,
+  seen: { readonly isAuto: boolean; readonly isValued: boolean; readonly asked?: string },
+): readonly string[] {
+  const { isAuto, isValued, asked } = seen;
+  const shouldAskUnstake = action === "unstake" && c.isLive && mayStakeAlone(c, "claim");
+  return [
+    ...(isAuto === mayStakeAlone(c, action)
+      ? []
+      : [`auto mode ${isAuto ? "ran" : "asked for"} the ${action}`]),
+    ...(action !== "stake" && isValued ? [`the ${action} counted against the caps`] : []),
+    ...(!shouldAskUnstake || asked === "unstake" ? [] : ["the unstake's card names no unstake"]),
+  ];
+}
+
+async function stakeOutcome(test: TestEngine, c: Case, view: IntentView): Promise<Outcome> {
+  const action = stakeActionOf(c) ?? "stake";
+  const snapshot = await testSnapshot(test, view.intent);
+  const isAuto = snapshot.stored.status.authorizedBy !== undefined;
+  const isValued = snapshot.record.valueUsdMicros !== undefined;
+  const asked = snapshot.history.cards.at(-1)?.autoAsk;
+  const seen = { isAuto, isValued, ...(asked === undefined ? {} : { asked }) };
+  return { isAuto, problems: stakeProblems(c, action, seen) };
+}
+
+// The case's engine, with the fake staking venue beside the router, which its agent may use.
+async function caseEngine(c: Case): Promise<TestEngine> {
+  const limits = { ...testLimits, venues: [...testLimits.venues, testStakingVenue] };
+  const options = optionsOf(c);
+  const stake = { chains: stakingChains(), stakingVenues: [await stakedFake()] };
+  const agent = {
+    ...options.agent,
+    limits: { ...limits, ...options.agent?.limits, venues: limits.venues },
+  };
+  return startTestEngine({ ...options, ...stake, agent });
+}
+
 async function outcomeOf(c: Case): Promise<Outcome> {
-  const test = await startTestEngine(optionsOf(c));
+  const test = await caseEngine(c);
   await saveTestAddress(test);
   holdTestWallet(test);
   const call = testCall(requestOf(c), callerOf(c));
   const proposed = await test.engine.handlers["intent/propose"](call);
-  if (c.other === undefined) {
-    return swapOutcome(test, c, expectOk(proposed));
-  }
+  return c.other === undefined
+    ? swapOutcome(test, c, expectOk(proposed))
+    : otherOutcome(test, c, proposed);
+}
+
+// A request that is no swap: a staking move, a transfer, or a kind the money path refuses.
+async function otherOutcome(
+  test: TestEngine,
+  c: Case,
+  proposed: Awaited<ReturnType<TestEngine["engine"]["handlers"]["intent/propose"]>>,
+): Promise<Outcome> {
   const { kind } = requestOf(c);
+  if (kind === "stake") {
+    return stakeOutcome(test, c, expectOk(proposed));
+  }
   if (kind === "send" || kind === "revokeApproval" || kind === "bridge") {
     // A send, a revoke and a bridge run their own path, which the auto test always leaves to a tap.
     const state = proposed.ok ? proposed.value.state : undefined;
@@ -333,6 +424,17 @@ const transferCases: readonly (readonly [Case])[] = [0, 1, 3].map((other) => [
   },
 ]);
 
+// A stake, an unstake and a claim in a clean runtime turn, live and on paper, each run on every pass.
+const stakeCases: readonly (readonly [Case])[] = [5, 6, 7].flatMap((other) =>
+  [true, false].map((isLive): readonly [Case] => {
+    const [example] = transferCases[0] ?? [];
+    if (example === undefined) {
+      throw new Error("Expected a transfer case.");
+    }
+    return [{ ...example, other, isLive }];
+  }),
+);
+
 describe("auto mode, end to end", () => {
   it("runs alone only a runtime swap within every cap, and a switch to manual ends it", async () => {
     const outcomes: Outcome[] = [];
@@ -342,7 +444,7 @@ describe("auto mode, end to end", () => {
         outcomes.push(outcome);
         expect(outcome.problems).toStrictEqual([]);
       }),
-      { numRuns: 200, examples: [...transferCases] },
+      { numRuns: 200, examples: [...transferCases, ...stakeCases] },
     );
     expect(outcomes.filter((outcome) => outcome.isAuto).length).toBeGreaterThan(0);
     expect(outcomes.filter((outcome) => outcome.isAskedTransfer === true).length).toBeGreaterThan(

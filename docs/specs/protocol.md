@@ -1013,7 +1013,9 @@ the engine resolved, never from the model's words.
 **Stakes** ([decision 0296](../DECISIONS.md#d0296)). On `stakehub`, `validator` is the
 validator's operator account and every action names it; on `slisbnb` none does. A `stake` names
 `amount` in the chain's coin; an `unstake` names it in BNB on `stakehub`, or in slisBNB on
-`slisbnb`; a `claim` names none and claims everything its venue lets the wallet claim now. A stake
+`slisbnb`, or leaves it out to unstake the whole stake ([decision 0327](../DECISIONS.md#d0327)); a
+`claim` names none and claims everything its venue lets the wallet claim now, and one that names
+an amount is refused with `protocol.bad_args`. A stake
 counts its USD value against the per-trade and 24-hour caps; an unstake and a claim count against
 neither. Every staking move pays only the agent's own wallet. Spec 6 holds their checks and auto
 mode.

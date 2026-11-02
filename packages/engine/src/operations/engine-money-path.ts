@@ -12,6 +12,9 @@ import type { PaperParts } from "../paper/paper-parts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { TransferPathOptions } from "../sends/propose-transfer.js";
 import { withTransfers } from "../sends/with-transfers.js";
+import type { StakePathOptions } from "../staking/propose-stake.js";
+import { withStakes } from "../staking/with-stakes.js";
+import { createStakingHost } from "../venues/staking-host.js";
 import type { EngineOptions } from "./create-engine.js";
 
 // What a token launch runs on beyond the money path's ports: the launch host, the owner's
@@ -52,6 +55,22 @@ function bridgePathOf(options: EngineOptions, path: MoneyPathOptions): BridgePat
     destinations,
     codeReaders,
     ceilings,
+    simulator: chainSimulator,
+  };
+}
+
+// What a staking move runs on beyond the money path's ports: the staking venues through their
+// host, the install, the unstakes no claim took, the wallets' stored ceilings and the chain's
+// simulator on live balances (decision 0327).
+function stakePathOf(options: EngineOptions, path: MoneyPathOptions): StakePathOptions {
+  const { stores, chainSimulator, stakingVenues = [], chains, clock } = options;
+  const staking = createStakingHost({ venues: stakingVenues, chains, clock });
+  return {
+    ...path,
+    install: stores.install,
+    unbondings: stores.unbondings,
+    staking,
+    ceilings: options.ceilings,
     simulator: chainSimulator,
   };
 }
@@ -99,5 +118,6 @@ export function moneyPathOf(
   };
   const transfers = withTransfers(createMoneyPath(path), transferPathOf(options, path));
   const bridges = withBridges(transfers, bridgePathOf(options, path));
-  return withLaunches(bridges, launchPathOf(options, path));
+  const stakes = withStakes(bridges, stakePathOf(options, path));
+  return withLaunches(stakes, launchPathOf(options, path));
 }

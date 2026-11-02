@@ -1,5 +1,6 @@
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
+import type { IntentKind } from "../intents/intent-kind.js";
 import type { PaperFills } from "../paper/paper-fills.js";
 import type { Executor } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
@@ -37,7 +38,16 @@ export interface ExecuteConfirmedOptions {
   readonly autoOrder: ExecuteConfirmed;
   /** Fills an auto order's confirmed paper fill, with its write on its order. */
   readonly orderFill: ExecuteConfirmed;
+  /** Fills a confirmed paper staking move at its paper plan (decision 0327). */
+  readonly paperStake: ExecuteConfirmed;
   readonly publish: PublishPush;
+}
+
+// A paper staking move fills at its paper plan; any other paper intent at its confirmed quote.
+function paperFillOf(options: ExecuteConfirmedOptions, kind: IntentKind): ExecuteConfirmed {
+  return kind === "stake"
+    ? options.paperStake
+    : async (snapshot, call) => options.paper.fillAtQuote(snapshot, call);
 }
 
 /** Creates the {@link ExecuteConfirmed} step over paper fills and the executor. */
@@ -54,7 +64,7 @@ export function createExecuteConfirmed(options: ExecuteConfirmedOptions): Execut
       const { authorizedBy } = snapshot.stored.status;
       return authorizedBy !== undefined && isFillAuthorization(authorizedBy)
         ? options.orderFill(snapshot, call)
-        : options.paper.fillAtQuote(snapshot, call);
+        : paperFillOf(options, record.kind)(snapshot, call);
     }
     if (record.kind === "unfreeze") {
       return options.unfreeze(snapshot, call);

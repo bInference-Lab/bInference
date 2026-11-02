@@ -81,7 +81,12 @@ async function routesOf(item: Case): Promise<readonly Route[]> {
   };
   const record = { id: intent, kind: item.kind, state: item.state, isPaper: storedOnPaper(item) };
   const stored = { status: item.isFill ? { authorizedBy: { order } } : {} };
-  const routing = { paper, executor, unfreeze, autoOrder, orderFill, publish };
+  // A paper staking move fills at its paper plan: a paper fill too, never the executor.
+  const paperStake = async (snapshot: IntentSnapshot): Promise<IntentSnapshot> => {
+    routes.push("paper");
+    return await Promise.resolve(snapshot);
+  };
+  const routing = { paper, executor, unfreeze, autoOrder, orderFill, paperStake, publish };
   await createExecuteConfirmed(routing)({ record, stored } as IntentSnapshot, live);
   return routes;
 }

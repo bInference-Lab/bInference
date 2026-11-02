@@ -178,7 +178,9 @@ takes no move now), `wallet_blocked` (the venue refuses the wallet), `validator_
 lists no such validator), `below_min_stake` (a stake under the venue's least), `nothing_staked` (an
 unstake from a validator the wallet holds nothing with), `exceeds_staked` (an unstake of more than
 the stake is worth), `nothing_to_claim` (a claim with nothing ready) and `claim_unpayable` (a claim
-the venue would pay in a way the wallet's code cannot receive);
+the venue would pay in a way the wallet's code cannot receive); `stake_over_ceiling` (a stake above
+what the wallet's stored ceiling lets one stake carry, [decision 0327](../DECISIONS.md#d0327)) after
+the venue's plan, before any card;
 `spender_unlisted` (an approval revoke whose spender the chain registry does not list,
 [decision 0309](../DECISIONS.md#d0309)) at its quote, before any card; `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
@@ -439,7 +441,19 @@ and `step_unsent` (a step never signed after an earlier one landed,
   - **Caps.** A stake counts its USD value, its BNB at the price
     [decision 0059](../DECISIONS.md#d0059) gives, against the per-trade cap and the rolling 24-hour
     cap, and is refused over either as a trade is; it never spends the gas reserve. An unstake and
-    a claim store no value, so neither cap counts them.
+    a claim store no value, so neither cap counts them: an intent worth nothing passes both caps,
+    even on a day whose spending already passed them ([decision 0327](../DECISIONS.md#d0327)). The
+    venue's own cap on its call ([decision 0325](../DECISIONS.md#d0325)) stands for the ceiling's
+    cap per transaction in the policy; a stake above what the wallet's stored ceiling lets one
+    stake carry, as a ceiling written before that decision does, ends `failed_check` with
+    `stake_over_ceiling` before any card.
+  - **Plan.** The venue plans the move before the card, and the intent stores the plan with the
+    validator's yearly rate as its quote, so the card's terms hash binds both. The engine holds the
+    plan to the request and the built call to the plan (`decode_mismatch`). An unstake without an
+    amount unstakes the whole stake; a claim takes none.
+  - **Simulation.** The simulation holds the chain's coin alone: at most the plan's value leaves
+    the wallet, and no approval is set. The receipt token a move mints or burns is the venue's to
+    read back.
   - **Own wallet only.** The quote step's decode holds every argument that names who is paid or
     credited (a delegator, a beneficiary, a recipient) to the agent's own wallet; the ceiling binds
     the same arguments.
@@ -454,6 +468,8 @@ and `step_unsent` (a step never signed after an earlier one landed,
     they can be claimed.
   - **Paper mode.** A paper stake moves paper BNB into a paper staking position at the venue's
     quote; a paper unstake waits the venue's unbonding time before a paper claim can take it back.
+    A paper position counts the venue's receipt units, and a paper unstake keeps its coin in an
+    unbonding row of its own until a paper claim takes it.
 - **Bridges** ([decisions 0067](../DECISIONS.md#d0067) and [0297](../DECISIONS.md#d0297)). A bridge
   is a cross-chain send: it pays an address book entry on its destination chain, or the rescue
   address on an EVM destination chain while that address holds no code on either chain, under

@@ -1,4 +1,5 @@
 import type { AssetRef, ChainRegistry } from "@binference/chain";
+import type { JsonValue } from "@binference/core";
 import type {
   AutoOrderRequest,
   CardView,
@@ -24,6 +25,7 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
 import { revokeQuoteDocument } from "../intents/revoke-quote.js";
 import { sendQuoteDocument } from "../intents/send-quote.js";
+import { stakeQuoteDocument } from "../intents/stake-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
@@ -83,21 +85,26 @@ function bridgeAssetsOf(
     : [amount.asset, minOut.asset, deliveredAsCoin];
 }
 
-// A kind whose quote is a document of its own: a rescue lists what it moves, an auto order its
-// token and a launch its pair and token; a send names what it sends and a revoke the token it
-// frees. `undefined` for a trade and the kinds the money path does not route.
+// What a rescue moves, an auto order's token and a stake's coin, read from the kind's own quote. A
+// staking card names only the chain's coin; its receipt units never show.
+const quotedAssets: Readonly<Partial<Record<string, (quote: JsonValue) => readonly AssetRef[]>>> = {
+  rescue: (quote) => [
+    ...new Set(rescueQuoteDocument.decode(quote).moves.map(({ amount }) => amount.asset)),
+  ],
+  autoOrder: (quote) => [autoOrderQuoteDocument.decode(quote).request.token],
+  stake: (quote) => [stakeQuoteDocument.decode(quote).plan.value.asset],
+};
+
+// A kind whose quote is a document of its own: a rescue, an auto order and a stake list theirs, and
+// a launch its pair and token; a send names what it sends and a revoke the token it frees.
+// `undefined` for a trade and the kinds the money path does not route.
 function ownAssetsOf(record: IntentRecord, request: AnyRequest): readonly AssetRef[] | undefined {
   if (request.kind === "send" || request.kind === "revokeApproval") {
     return [transferAssetOf(record, request)];
   }
-  if (request.kind === "rescue") {
-    const quote = record.quote === undefined ? undefined : rescueQuoteDocument.decode(record.quote);
-    return [...new Set(quote?.moves.map(({ amount }) => amount.asset) ?? [])];
-  }
-  if (request.kind === "autoOrder") {
-    return record.quote === undefined
-      ? []
-      : [autoOrderQuoteDocument.decode(record.quote).request.token];
+  const quoted = quotedAssets[request.kind];
+  if (quoted !== undefined) {
+    return record.quote === undefined ? [] : quoted(record.quote);
   }
   return request.kind === "launchToken" ? launchAssetsOf(record, request) : undefined;
 }
@@ -140,6 +147,7 @@ const ownQuoteKinds: ReadonlySet<string> = new Set([
   "unfreeze",
   "autoOrder",
   "launchToken",
+  "stake",
 ]);
 
 function cardViewOf(snapshot: IntentSnapshot): CardView | undefined {

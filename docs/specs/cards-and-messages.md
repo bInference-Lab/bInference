@@ -502,8 +502,9 @@ address whole, never shortened, in its chain's own form: checksummed hex, or bas
 when the send was quoted, and by the whole address alone for neither. A send's label and a send by
 name's `{payee}` show whole, up to the 200 characters a label holds and the 255 a name holds. A
 revoke's `{spender}` is `card.value.spender`: the registry's venue and contract name, then the short
-address ([decision 0309](../DECISIONS.md#d0309)). A validator is `{name} ({address})`, its moniker escaped as a token
-name is and cut to 32 characters, then its short address. `{chain}` is the chain registry's name,
+address ([decision 0309](../DECISIONS.md#d0309)). A validator is `card.value.validator`, its moniker escaped as a token
+name is and cut to 32 characters, then its short address; a validator with no moniker shows its
+short address alone. `{chain}` is the chain registry's name,
 such as Base or Robinhood Chain, in both languages.
 
 | Line                   | Key                        | English                                                                                                          | 中文                                                                                        |
@@ -515,7 +516,9 @@ such as Base or Robinhood Chain, in both languages.
 | Saved recipient        | `card.value.payee`         | {label} ({address})                                                                                              | {label}（{address}）                                                                        |
 | Rescue recipient       | `card.value.rescuePayee`   | your rescue address ({address})                                                                                  | 你的紧急转出地址（{address}）                                                               |
 | Revoked spender        | `card.value.spender`       | {contract} ({address})                                                                                           | {contract}（{address}）                                                                     |
+| Validator name         | `card.value.validator`     | {moniker} ({address})                                                                                            | {moniker}（{address}）                                                                      |
 | Validator              | `card.stake.validator`     | Validator {validator} · commission {commission}                                                                  | 验证者 {validator} · 佣金 {commission}                                                      |
+| Yearly rate            | `card.stake.rate`          | Yearly rate {rate}, from its last day of rewards                                                                 | 年化收益率 {rate}，按其最近一天的收益计算                                                   |
 | Stake for slisBNB      | `card.stake.liquid`        | Stake {amount} with Lista for at least {minOut}                                                                  | 在 Lista 质押 {amount}，至少获得 {minOut}                                                   |
 | Unstake slisBNB        | `card.stake.unstakeLiquid` | Unstake {amount} from Lista                                                                                      | 从 Lista 解除质押 {amount}                                                                  |
 | Unbonding time         | `card.stake.unbonding`     | Locked while it unbonds: you can claim it from {readyAt}, in about {days} days, and not sooner                   | 解绑期内锁定：{readyAt} 起可领取，约 {days} 天后，在此之前无法取回                          |
@@ -539,7 +542,9 @@ such as Base or Robinhood Chain, in both languages.
   whoever controls the address: surfaces escape it and cut it as a name.
 - A send shows `card.warn.newAddress` when no live send or rescue of the agent that settled paid
   its address, among the agent's latest 10,000 settled intents, as read when it was quoted.
-- A StakeHub stake, unstake or claim shows `card.stake.validator` right after its action line. An
+- A StakeHub stake, unstake or claim shows `card.stake.validator` right after its action line. A
+  stake then shows `card.stake.rate`, the validator's yearly rate as its venue read it before the
+  card ([decision 0327](../DECISIONS.md#d0327)), and leaves it out when the venue gives none. An
   unstake, on either venue, then shows `card.stake.unbonding`, `{readyAt}` the date and time in
   the owner's timezone and `{days}` whole days, rounded up. A stake's card names no cap: a stake
   over a cap never reaches its card.
@@ -1000,6 +1005,7 @@ section 4; spec 1, section 10):
 | `reason.staking_paused`          | the venue is paused and takes no stake, unstake or claim now; try again later                                                                                                                           | 该平台已暂停，现在不接受质押、解除质押或领取；请稍后再试                                                                                                            |
 | `reason.wallet_blocked`          | the venue refuses this wallet; stake from another wallet                                                                                                                                                | 该平台拒绝此钱包；请从其他钱包质押                                                                                                                                  |
 | `reason.claim_unpayable`         | the venue pays a claim in a way this wallet's code cannot receive, so the claim would fail; claim from a wallet without code                                                                            | 该平台支付领取款项的方式无法被此钱包的代码接收，领取会失败；请从没有代码的钱包领取                                                                                  |
+| `reason.stake_over_ceiling`      | this wallet's ceiling still holds one stake to less than this, so nothing was staked; write it again with your owner key, `binference ceiling set --wallet {wallet}`, then stake again, or stake less   | 该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 `binference ceiling set --wallet {wallet}`，然后再质押，或减少金额           |
 | `reason.name_unresolved`         | {name} does not point to an address; check the name, or send to a saved address                                                                                                                         | {name} 未指向任何地址；请检查域名，或转账到已保存的地址                                                                                                             |
 | `reason.name_contract`           | {name} points to a contract, and a send by name pays only a person's address; send to a saved address instead                                                                                           | {name} 指向一个合约，按域名转账只能付给个人地址；请改为转账到已保存的地址                                                                                           |
 | `reason.name_moved`              | {name} changed since the card: it points elsewhere, to nothing, or its address changed kind; check the name, then propose the send again                                                                | {name} 自卡片后已变更：指向别处、不再指向任何地址，或其地址类型已改变；请检查域名，然后重新发起转账                                                                 |

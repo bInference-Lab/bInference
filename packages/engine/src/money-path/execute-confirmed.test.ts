@@ -84,6 +84,7 @@ describe("the execute step", () => {
       unfreeze: async () => Promise.reject(new Error("A rescue is no unfreeze.")),
       autoOrder: async () => Promise.reject(new Error("A rescue is no auto order.")),
       orderFill: async () => Promise.reject(new Error("A rescue is no order's fill.")),
+      paperStake: async () => Promise.reject(new Error("A rescue is no paper stake.")),
     });
     await expect(execute(rescue, live)).resolves.toBe(rescue);
     expect(executor.taken()).toStrictEqual([intent]);

@@ -39,8 +39,10 @@ const live = { signal: new AbortController().signal };
 // and of a send's name, the resolve step's read of that name (decision 0308), and a bridge's
 // payee and ceiling checks, whose words name its chain: a bridge never re-quotes (decision 0319).
 // Nor does a stake: its venue plans it again as the queue takes it, and the refusals whose words
-// name its validator, least stake or next ready time end it there (decision 0324).
+// name its validator, least stake or next ready time end it there (decision 0324), as a stake above
+// an old ceiling, whose words name its wallet, ends before its card (decision 0327).
 const unquoted: ReadonlySet<string> = new Set([
+  "stake_over_ceiling",
   "validator_unknown",
   "below_min_stake",
   "nothing_staked",

@@ -8,6 +8,7 @@ import type { OrderParts } from "../orders/create-order.js";
 import { createPaperFills } from "../paper/paper-fills.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { writeUnfreeze } from "../safety/write-unfreeze.js";
+import { fillStakeOnPaper } from "../staking/fill-stake-on-paper.js";
 import type { EngineOptions } from "./create-engine.js";
 import { fillEndOf, fillOnPaperOf, followCardOf } from "./engine-orders.js";
 
@@ -52,6 +53,20 @@ export function executeOf(
     unfreeze: async (snapshot, call) => writeUnfreeze(written, snapshot, call.signal),
     autoOrder: followCardOf(parts.orders),
     orderFill: fillOnPaperOf(options, { paper: fills, stored, portfolio }),
+    paperStake: async (snapshot, call) =>
+      fillStakeOnPaper(
+        {
+          stored,
+          positions,
+          portfolio,
+          prices,
+          clock,
+          unbondings: stores.unbondings,
+          booked: options.positions,
+        },
+        snapshot,
+        call,
+      ),
   });
 }
 

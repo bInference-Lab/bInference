@@ -754,6 +754,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | balance                                  | 余额                   |                                      |
 | withdraw, fund (a wallet)                | 提取, 充值             |                                      |
 | top up                                   | 充值                   |                                      |
+| funds (what a wallet holds)              | 资金                   |                                      |
 | send (to an address)                     | 转账                   |                                      |
 | transfer (between your own accounts)     | 划转                   |                                      |
 | recipient address                        | 收款地址               |                                      |

@@ -6,6 +6,7 @@ import type {
   Signer,
   TxSimulator,
 } from "@binference/chain";
+import type { StakingVenue } from "@binference/chain/staking";
 import type { Clock, IdSource, Random, WorkspaceFiles } from "@binference/core";
 import {
   type AddressBookHandlers,
@@ -276,6 +277,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
    * wallets' chains (decision 0297), each with its family's codec; none when absent.
    */
   readonly destinations?: readonly DestinationChain[];
+  /**
+   * The staking venues the engine runs, each on its chain (decision 0327); with none, every stake,
+   * unstake and claim is `protocol.bad_args`.
+   */
+  readonly stakingVenues?: readonly StakingVenue[];
   readonly clock: Clock;
   readonly ids: IdSource;
   /** Where each card version's callback reference comes from (spec 4, section 2). */
@@ -393,15 +399,11 @@ function sharedParts(options: EngineOptions) {
 function ownerSettingsHandlers(options: EngineOptions, paper: PaperParts) {
   const { rescueParts, settingsParts } = sharedParts(options);
   const { journal } = settingsParts;
+  const { stores, host, chains } = options;
   return {
     ...settingsHandlers(options, paper),
     ...createApprovalHandlers(settingsParts),
-    ...createLimitHandlers({
-      ...settingsParts,
-      install: options.stores.install,
-      host: options.host,
-      chains: options.chains,
-    }),
+    ...createLimitHandlers({ ...settingsParts, install: stores.install, host, chains }),
     ...createSendLevelHandlers(settingsParts),
     ...createAddressBookHandlers({
       ...rescueParts,
