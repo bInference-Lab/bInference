@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { receiptTxHash } from "../testing/card-fixtures.js";
 import {
   stakeReceiptText,
   stakeWalletId,
+  unnamedStakeRefusalValues,
+  unstakedOutcome,
   unstakedReceiptText,
+  unstakeFacts,
 } from "../testing/stake-card-fixtures.js";
+import { settleTransferCard } from "../testing/transfer-card-bench.js";
 
 const refused = String.fromCodePoint(0x274c);
+const done = String.fromCodePoint(0x2705);
 const validator = "Legend (0x71C7…976F)";
 
 describe("the receipt of a staking move a venue refused, in the owner's chat (decision 0327)", () => {
@@ -43,9 +49,27 @@ describe("the receipt of a staking move a venue refused, in the owner's chat (de
     expect(stakeReceiptText(reason, "en")).toBe(`${refused} Not sent: ${words}`);
   });
 
+  it("names a validator the venue knows no name for by its address alone", () => {
+    expect(stakeReceiptText("validator_jailed", "en", unnamedStakeRefusalValues)).toBe(
+      `${refused} Not sent: the validator 0x71C7…976F is jailed, so it earns nothing`,
+    );
+  });
+
+  it("names no next part when none waits to be ready", () => {
+    expect(stakeReceiptText("nothing_to_claim", "en", unnamedStakeRefusalValues)).toBe(
+      `${refused} Not sent: nothing is ready to claim yet`,
+    );
+  });
+
   it("says what a landed unstake took out, and when a claim can take it", () => {
     expect(unstakedReceiptText("en")).toBe(
-      `${String.fromCodePoint(0x2705)} Unstaked 2 BNB: claim it from Oct 13, 2026, 14:31:05 · transaction 0xcdcd…cdcd`,
+      `${done} Unstaked 2 BNB: claim it from Oct 13, 2026, 14:31:05 · transaction 0xcdcd…cdcd`,
+    );
+  });
+
+  it("turns a landed unstake's card into its receipt, with its explorer link", async () => {
+    await expect(settleTransferCard("en", unstakeFacts, unstakedOutcome)).resolves.toBe(
+      `${done} Unstaked 2 BNB: claim it from Oct 13, 2026, 14:31:05 · https://bscscan.com/tx/${receiptTxHash}`,
     );
   });
 });

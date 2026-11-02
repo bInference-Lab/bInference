@@ -1,6 +1,6 @@
 import { bpsSchema } from "@binference/core";
 import type { CardFacts, CardLine, CardValue, IntentReason } from "@binference/engine";
-import type { ReceiptAfter } from "@binference/engine/surfaces";
+import type { LiveOutcome, ReceiptAfter } from "@binference/engine/surfaces";
 import { createFormatter } from "@binference/i18n";
 import { receiptHtml } from "../cards/card-html.js";
 import { accountRef, assetsWith, receiptTxHash, refs, swapFacts } from "./card-fixtures.js";
@@ -19,7 +19,10 @@ const shared = {
   reason: "Earn on idle BNB",
 } as const;
 
-const details = { commissionBps: bpsSchema.parse(700), aprBps: 350 } as const;
+// What the validator keeps. Only a stake's card has a yearly rate: the engine leaves it out of an
+// unstake's and a claim's.
+const details = { commissionBps: bpsSchema.parse(700) } as const;
+const dayMs = 86_400_000;
 
 /** A stake of 2 BNB with a named validator, its commission and its yearly rate (spec 4, 3.9). */
 export const stakeFacts: CardFacts = {
@@ -30,8 +33,17 @@ export const stakeFacts: CardFacts = {
     amount: bnb(2n),
     validator,
     validatorName: "Legend",
-    details,
+    details: { ...details, aprBps: 350 },
   },
+};
+
+/**
+ * A stake of 1 BNB with a validator the venue knows no name for, from a venue that gives no
+ * yearly rate: the card names the validator by its address alone and shows no rate.
+ */
+export const unnamedStakeFacts: CardFacts = {
+  ...shared,
+  action: { kind: "stake", action: "stake", amount: bnb(1n), validator, details },
 };
 
 /**
@@ -47,7 +59,25 @@ export const unstakeFacts: CardFacts = {
     validator,
     validatorName: "Legend",
     readyInDays: 7,
-    details: { ...details, readyAtMs: swapFacts.card.openedAtMs + 7 * 86_400_000 },
+    details: { ...details, readyAtMs: swapFacts.card.openedAtMs + 7 * dayMs },
+  },
+};
+
+/**
+ * An unstake of 1 BNB that auto mode asked the owner about, ready 1 day after the card opened,
+ * from a validator whose name holds markup and a character that turns text around.
+ */
+export const askedUnstakeFacts: CardFacts = {
+  ...shared,
+  warnings: { ...shared.warnings, autoAsk: { code: "unstake" } },
+  action: {
+    kind: "stake",
+    action: "unstake",
+    amount: bnb(1n),
+    validator,
+    validatorName: "<b>Legend</b>\u{202E}",
+    readyInDays: 1,
+    details: { ...details, readyAtMs: swapFacts.card.openedAtMs + dayMs },
   },
 };
 
@@ -66,24 +96,64 @@ export const stakeValidatorValue: CardValue = {
   },
 };
 
+// What every staking refusal names: the wallet, and the next part ready 7 days after the card opened.
+const walletAndReady: CardLine["values"] = {
+  wallet: { type: "text", text: stakeWalletId },
+  readyAt: { type: "dateTime", atMs: swapFacts.card.openedAtMs + 7 * dayMs },
+};
+
 /**
  * What a staking refusal's words name, as the engine gives them (decision 0327): the wallet, the
  * validator by its name and address, the venue's least stake of 1 BNB, and the next part ready 7
  * days after the card opened.
  */
 const stakeRefusalValues: CardLine["values"] = {
-  wallet: { type: "text", text: stakeWalletId },
+  ...walletAndReady,
   validator: stakeValidatorValue,
   min: { type: "amount", amount: bnb(1n) },
-  readyAt: { type: "dateTime", atMs: swapFacts.card.openedAtMs + 7 * 86_400_000 },
+};
+
+/**
+ * What a staking refusal's words name when the venue knows no name for the validator and no part
+ * waits to be ready: the validator by its address alone, and the next ready time as none.
+ */
+export const unnamedStakeRefusalValues: CardLine["values"] = {
+  ...stakeRefusalValues,
+  validator: { type: "account", account: validator },
+  readyAt: { type: "choice", choice: "none" },
+};
+
+/**
+ * What a staking refusal's words name at their longest when the owner presses its card: the
+ * wallet, the validator by a name longer than a card shows, which it cuts to 32 characters, and
+ * its address, and the next part's ready time. An open card's history names no least stake, so
+ * a press names none.
+ */
+export const longStakeRefusalValues: CardLine["values"] = {
+  ...walletAndReady,
+  validator: {
+    type: "line",
+    line: {
+      key: "card.value.validator",
+      values: {
+        moniker: { type: "text", text: "A validator whose moniker is far too long" },
+        address: { type: "account", account: validator },
+      },
+    },
+  },
 };
 
 /**
  * The text the owner reads of a confirmed staking card's receipt once its venue refused it with
- * `reason`, in a language: the HTML the bot sends, as Telegram parses it.
+ * `reason`, in a language, its words naming `values`: the HTML the bot sends, as Telegram parses
+ * it.
  */
-export function stakeReceiptText(reason: IntentReason, locale: "en" | "zh"): string {
-  return receiptText({ kind: "refused", reason, values: stakeRefusalValues }, locale);
+export function stakeReceiptText(
+  reason: IntentReason,
+  locale: "en" | "zh",
+  values: CardLine["values"] = stakeRefusalValues,
+): string {
+  return receiptText({ kind: "refused", reason, values }, locale);
 }
 
 /**
@@ -91,12 +161,23 @@ export function stakeReceiptText(reason: IntentReason, locale: "en" | "zh"): str
  * days after the card opened, its transaction named by its short hash.
  */
 export function unstakedReceiptText(locale: "en" | "zh"): string {
-  const readyAtMs = swapFacts.card.openedAtMs + 7 * 86_400_000;
+  const readyAtMs = swapFacts.card.openedAtMs + 7 * dayMs;
   return receiptText(
     { kind: "unstaked", amount: bnb(2n), readyAtMs, tx: { hash: receiptTxHash } },
     locale,
   );
 }
+
+/**
+ * A landed unstake as the engine settles its card: 2 BNB out, ready 7 days after the card opened,
+ * its transaction linked on the chain's explorer.
+ */
+export const unstakedOutcome: LiveOutcome = {
+  kind: "unstaked",
+  amount: bnb(2n),
+  readyAtMs: swapFacts.card.openedAtMs + 7 * dayMs,
+  tx: { explorerLink: `https://bscscan.com/tx/${receiptTxHash}` },
+};
 
 // A confirmed card's receipt, the HTML the bot sends, as Telegram parses it.
 function receiptText(after: ReceiptAfter, locale: "en" | "zh"): string {

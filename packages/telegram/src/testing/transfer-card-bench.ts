@@ -1,6 +1,6 @@
 import { BinferenceError } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
-import { type CardFacts, drawCard } from "@binference/engine";
+import { type CardFacts, type CardLine, drawCard, type QuoteFailure } from "@binference/engine";
 import type { LiveOutcome } from "@binference/engine/surfaces";
 import { createMemoryCardCopyStore, createMemoryOwnerStore } from "@binference/engine/testing";
 import type { MessageLocale } from "@binference/i18n";
@@ -16,8 +16,15 @@ import { ownerId } from "./update-fixtures.js";
 const live = { signal: new AbortController().signal };
 const ref = "q3Zr_x9-AbCdEfGh";
 
-/** How the engine answers the owner's Confirm: it takes it, or it leaves the card open and why. */
-export type TransferPress = "confirmed" | "locked" | "over_cap";
+/**
+ * How the engine answers the owner's Confirm: it takes it, or it leaves the card open and why: a
+ * locked engine, the rolling cap, or a failed re-quote's reason with what its words name.
+ */
+export type TransferPress =
+  | "confirmed"
+  | "locked"
+  | "over_cap"
+  | { readonly reason: QuoteFailure; readonly values: CardLine["values"] };
 
 /** What the owner's chat showed: the card's text, and the answer to a press of its Confirm. */
 export interface ShownTransfer {
@@ -62,7 +69,9 @@ export async function showTransferCard(
   if (press === undefined) {
     return { lines };
   }
-  if (press !== "confirmed") {
+  if (typeof press === "object") {
+    answers.refuseNext(ref, press.reason, press.values);
+  } else if (press !== "confirmed") {
     answers.refuseNext(ref, press);
   }
   const update = botApi.press({ from: ownerId, data: `bnf1:c:y:${ref}`, messageId: 1001 });

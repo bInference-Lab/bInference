@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { receiptTxHash } from "../testing/card-fixtures.js";
 import {
   stakeReceiptText,
   stakeWalletId,
+  unnamedStakeRefusalValues,
+  unstakedOutcome,
   unstakedReceiptText,
+  unstakeFacts,
 } from "../testing/stake-card-fixtures.js";
+import { settleTransferCard } from "../testing/transfer-card-bench.js";
 
 const refused = String.fromCodePoint(0x274c);
+const done = String.fromCodePoint(0x2705);
 const validator = "Legend（0x71C7…976F）";
 
 describe("the receipt of a staking move a venue refused, in Chinese (decision 0327)", () => {
@@ -30,18 +36,33 @@ describe("the receipt of a staking move a venue refused, in Chinese (decision 03
     expect(stakeReceiptText(reason, "zh")).toBe(`${refused} 未发送：${words}`);
   });
 
-  it("says what a landed unstake took out, and when a claim can take it", () => {
-    expect(unstakedReceiptText("zh")).toMatch(
-      new RegExp(
-        `^${String.fromCodePoint(0x2705)} 已解除质押 2 BNB：.+ 起可领取 · .+0xcdcd…cdcd$`,
-        "u",
-      ),
+  it("names when the next part is ready", () => {
+    expect(stakeReceiptText("nothing_to_claim", "zh")).toBe(
+      `${refused} 未发送：还没有可领取的金额；下一笔将于 2026年10月13日 14:31:05 可领取`,
     );
   });
 
-  it("names when the next part is ready", () => {
-    expect(stakeReceiptText("nothing_to_claim", "zh")).toMatch(
-      new RegExp(`^${refused} 未发送：还没有可领取的金额；下一笔将于 .+ 可领取$`, "u"),
+  it("names a validator the venue knows no name for by its address alone", () => {
+    expect(stakeReceiptText("validator_jailed", "zh", unnamedStakeRefusalValues)).toBe(
+      `${refused} 未发送：验证者 0x71C7…976F 已被监禁，不会产生收益`,
+    );
+  });
+
+  it("names no next part when none waits to be ready", () => {
+    expect(stakeReceiptText("nothing_to_claim", "zh", unnamedStakeRefusalValues)).toBe(
+      `${refused} 未发送：还没有可领取的金额`,
+    );
+  });
+
+  it("says what a landed unstake took out, and when a claim can take it", () => {
+    expect(unstakedReceiptText("zh")).toBe(
+      `${done} 已解除质押 2 BNB：2026年10月13日 14:31:05 起可领取 · 交易 0xcdcd…cdcd`,
+    );
+  });
+
+  it("turns a landed unstake's card into its receipt, with its explorer link", async () => {
+    await expect(settleTransferCard("zh", unstakeFacts, unstakedOutcome)).resolves.toBe(
+      `${done} 已解除质押 2 BNB：2026年10月13日 14:31:05 起可领取 · https://bscscan.com/tx/${receiptTxHash}`,
     );
   });
 });
