@@ -101,7 +101,7 @@ describe("sends and approval revokes on the BSC fork", () => {
   }) => {
     await withFork(signal, async (fork) => {
       const parts = await placeName(fork, { label, holder, address: holder }, signal);
-      const rig = await rescueRigOf(fork, [spaceIdOn(fork)]);
+      const rig = await rescueRigOf(fork, { nameResolvers: [spaceIdOn(fork)] });
       const miner = new AbortController();
       const mining = startMining(fork, miner.signal);
       try {
@@ -308,7 +308,7 @@ describe("a bridge on the BSC fork", () => {
     annotate,
   }) => {
     await withFork(signal, async (fork) => {
-      const rig = await rescueRigOf(fork, [], bridgingOn(fork));
+      const rig = await rescueRigOf(fork, { bridging: bridgingOn(fork) });
       const miner = new AbortController();
       const mining = startMining(fork, miner.signal);
       try {

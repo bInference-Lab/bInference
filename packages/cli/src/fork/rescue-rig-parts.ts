@@ -14,10 +14,15 @@ import {
   evmAccountRef,
 } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
+import type { StakingVenue } from "@binference/chain/staking";
 import { createIdSource, err, type Id } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import type { EngineOptions, WalletFactsSource } from "@binference/engine";
-import { createExecutor, type ExecutorOptions } from "@binference/engine/executor";
+import {
+  createExecutor,
+  createStakingHost,
+  type ExecutorOptions,
+} from "@binference/engine/executor";
 import type { WalletRecord } from "@binference/engine/install";
 import {
   createFakePriceSource,
@@ -110,7 +115,14 @@ function forkWalletFacts(fork: Fork) {
   const fake = createFakeWalletFacts(agents, facts);
   return {
     wallets: async (agent, call) => fake.wallets(agent, call),
-    facts: async (query, call) => fake.facts(query, call),
+    // A live wallet's coin is what it holds on the fork, which the gas reserve judges a stake by.
+    async facts(query, call) {
+      const held = await fake.facts(query, call);
+      const address = getAddress(accountRefParts(query.account).address);
+      return query.isPaper
+        ? held
+        : { ...held, nativeBalanceBase: await fork.client.getBalance({ address }) };
+    },
     async balances({ account, assets }) {
       const address = getAddress(accountRefParts(account).address);
       return Promise.all(
@@ -155,14 +167,21 @@ function walletRecord(item: RescueRigWallet, atMs: number): WalletRecord {
   };
 }
 
-async function storeAgents(stores: MemoryEngineStores, fork: Fork, atMs: number): Promise<void> {
+// The agents, whose venues add the staking venues the rig runs.
+async function storeAgents(
+  stores: MemoryEngineStores,
+  fork: Fork,
+  context: { readonly atMs: number; readonly venues: readonly string[] },
+): Promise<void> {
   const call = { signal: AbortSignal.timeout(5_000) };
+  const { atMs } = context;
+  const limits = forkLimits(fork);
   const base = {
     locale: "en",
     models: {},
     notifications: {},
     atMs,
-    limits: forkLimits(fork),
+    limits: { ...limits, venues: [...limits.venues, ...context.venues] },
   } as const;
   const modes = ["live", "paper"] as const;
   await Promise.all(
@@ -199,6 +218,8 @@ function rigPrices(fork: Fork) {
 export interface RescueRigReach {
   readonly nameResolvers: readonly NameResolver[];
   readonly bridging?: SelfHostedBridging;
+  /** The staking venues the engine and the executor run, whose ids the agents' venues add. */
+  readonly stakingVenues?: readonly StakingVenue[];
 }
 
 /** The rescue rig's parts on a fork, which an engine is made from. */
@@ -222,7 +243,7 @@ interface RigExecutorOut {
 }
 
 // The executor on the fork: anvil as the one relay, receipts at the finalized tag, and the rig's
-// stores, custody, prices, names and bridges.
+// stores, custody, prices, names, bridges and staking venues.
 function executorOn(
   fork: Fork,
   parts: Omit<RescueRigParts, "executor" | "rigWallets" | "rescue" | "asked"> & RescueRigReach,
@@ -254,6 +275,11 @@ function executorOn(
     logger: createMemoryLogger({ subsystem: "engine" }),
     nameResolvers: parts.nameResolvers,
     ...(parts.bridging === undefined ? {} : { bridging: parts.bridging.executor }),
+    staking: createStakingHost({
+      venues: parts.stakingVenues ?? [],
+      chains: selfHostedChains(),
+      clock,
+    }),
   });
 }
 
@@ -261,7 +287,8 @@ function executorOn(
  * The rescue rig's parts on a fork: memory stores with two agents and three wallets whose keys
  * sign here, a bridge wallet among them, the owner's rescue address in effect, the wallets' facts
  * over the fork's balances, BNB at $600 and each stablecoin at $1, and an executor that reads a
- * send's name through `reach.nameResolvers` and bridges through `reach.bridging`'s parts.
+ * send's name through `reach.nameResolvers`, bridges through `reach.bridging`'s parts and stakes
+ * through `reach.stakingVenues`.
  */
 export async function rescueRigParts(fork: Fork, reach: RescueRigReach): Promise<RescueRigParts> {
   const clock = createSystemClock();
@@ -275,7 +302,8 @@ export async function rescueRigParts(fork: Fork, reach: RescueRigReach): Promise
     { signal: AbortSignal.timeout(5_000) },
   );
   rigWallets.forEach((item) => stores.install.addWallet(walletRecord(item, atMs)));
-  await storeAgents(stores, fork, atMs);
+  const venues = (reach.stakingVenues ?? []).map(({ id }) => id);
+  await storeAgents(stores, fork, { atMs, venues });
   const shared = { stores, custody, wallets: forkWalletFacts(fork), prices: rigPrices(fork) };
   return {
     ...shared,
