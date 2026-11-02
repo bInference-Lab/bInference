@@ -178,6 +178,7 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   staking_paused: "quote.venue_down",
   wallet_blocked: "quote.no_route",
   claim_unpayable: "quote.no_route",
+  stake_over_ceiling: "limit.over_ceiling",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

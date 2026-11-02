@@ -6,6 +6,7 @@ import type { CardRecord } from "./card-record.js";
 import {
   type EventCause,
   type PaperFill,
+  type ReasonNamed,
   readEventCause,
   type SettledTrade,
 } from "./event-cause.schema.js";
@@ -17,6 +18,7 @@ import type { CardTerms, IntentStatus, QuoteTerms } from "./intent-status.js";
 import { rescueQuoteDocument } from "./rescue-quote.js";
 import { revokeQuoteDocument } from "./revoke-quote.js";
 import { sendQuoteDocument } from "./send-quote.js";
+import { stakeQuoteDocument } from "./stake-quote.js";
 import { tokenLaunchQuoteDocument } from "./token-launch-quote.js";
 import { unfreezeQuoteDocument } from "./unfreeze-quote.js";
 
@@ -32,9 +34,9 @@ function causes(history: IntentHistory): readonly EventCause[] {
 
 // When each kind whose quote is a document of its own was quoted. A rescue's quote values what it
 // moves, an unfreeze's names its agents, an auto order's holds its terms, a send's names its target,
-// a revoke's its spender and a bridge's its payee, whose least output a tap never quotes again:
-// none has a minimum out (decisions 0044, 0128, 0189 and 0309). A
-// launch's first buy is the first trade of its token, so a tap never quotes it again.
+// a revoke's its spender, a bridge's its payee, whose least output a tap never quotes again, and
+// a staking move's its venue's plan: none has a minimum out (decisions 0044, 0128, 0189, 0309 and
+// 0327). A launch's first buy is the first trade of its token, so a tap never quotes it again.
 const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new Map([
   ["rescue", (quote) => rescueQuoteDocument.decode(quote).quotedAtMs],
   ["unfreeze", (quote) => unfreezeQuoteDocument.decode(quote).quotedAtMs],
@@ -43,6 +45,7 @@ const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new
   ["send", (quote) => sendQuoteDocument.decode(quote).quotedAtMs],
   ["revokeApproval", (quote) => revokeQuoteDocument.decode(quote).quotedAtMs],
   ["bridge", (quote) => bridgeQuoteDocument.decode(quote).quotedAtMs],
+  ["stake", (quote) => stakeQuoteDocument.decode(quote).plan.plannedAtMs],
 ]);
 
 function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {
@@ -120,4 +123,9 @@ export function paperFillOf(history: IntentHistory): PaperFill | undefined {
 /** The live trade the intent recorded as it reconciled, once it has. */
 export function settledTradeOf(history: IntentHistory): SettledTrade | undefined {
   return causes(history).find((cause) => cause.settled !== undefined)?.settled;
+}
+
+/** What the reason of the move that ended the intent names, when that move kept any. */
+export function reasonNamedOf(history: IntentHistory): ReasonNamed | undefined {
+  return causes(history).findLast((cause) => cause.named !== undefined)?.named;
 }

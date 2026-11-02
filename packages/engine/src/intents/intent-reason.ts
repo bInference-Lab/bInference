@@ -4,8 +4,9 @@
  * authorization (decision 0195); every other code is stored with `rejected_policy`. No rule stores
  * `tax` yet: the risk step measures a token's tax and refuses with `high_tax` (decision 0113).
  * `validator_jailed` is a stake whose validator its staking venue lists as jailed, as the venue's
- * plan refuses it; an unstake or a claim from a jailed validator passes. Nothing stores it until
- * the money path plans stakes.
+ * plan refuses it; an unstake or a claim from a jailed validator passes. The policy stores it with
+ * `rejected_policy` before the card, and the wallet queue with `failed_check` when the venue,
+ * planning the stake again, finds the validator jailed since (decision 0327).
  */
 export const policyReasons = [
   "frozen",
@@ -86,8 +87,10 @@ export type RiskReason = (typeof riskReasons)[number];
  * does not list `ceiling_lacks_payee` (decision 0319). A stake, an unstake or a claim its staking
  * venue would refuse ends at its quote, before any card, with the venue's own reason (decision
  * 0324): `validator_unknown`, `below_min_stake`, `nothing_staked`, `exceeds_staked`,
- * `nothing_to_claim`, `staking_paused`, `wallet_blocked` or `claim_unpayable`; nothing stores
- * them until the money path plans stakes.
+ * `nothing_to_claim`, `staking_paused`, `wallet_blocked` or `claim_unpayable`; the wallet queue
+ * ends one the venue refuses as it plans it again with the same reason. A stake above what the
+ * wallet's stored ceiling lets one stake carry, as a ceiling written before decision 0325 holds
+ * every stake to the cap per call, ends `stake_over_ceiling` before its card (decision 0327).
  */
 export const checkReasons = [
   "no_route",
@@ -135,6 +138,7 @@ export const checkReasons = [
   "staking_paused",
   "wallet_blocked",
   "claim_unpayable",
+  "stake_over_ceiling",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

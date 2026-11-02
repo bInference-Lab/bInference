@@ -100,5 +100,6 @@
   "exceeds_staked": "超过了该钱包向 {validator} 质押的价值；请全部解除质押，或减少金额",
   "staking_paused": "该平台已暂停，现在不接受质押、解除质押或领取；请稍后再试",
   "wallet_blocked": "该平台拒绝此钱包；请从其他钱包质押",
-  "claim_unpayable": "该平台支付领取款项的方式无法被此钱包的代码接收，领取会失败；请从没有代码的钱包领取"
+  "claim_unpayable": "该平台支付领取款项的方式无法被此钱包的代码接收，领取会失败；请从没有代码的钱包领取",
+  "stake_over_ceiling": "该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 `binference ceiling set --wallet {wallet}`，然后再质押，或减少金额"
 }

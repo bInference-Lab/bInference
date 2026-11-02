@@ -15,6 +15,8 @@ import {
   closingDocument,
   type PaperFill,
   paperFillDocument,
+  type ReasonNamed,
+  reasonNamedDocument,
   type SettledTrade,
   settledTradeDocument,
 } from "./event-cause.schema.js";
@@ -42,6 +44,8 @@ export interface IntentMove extends IntentWrite {
   readonly fill?: PaperFill;
   /** The trade a live intent records as it moves to `reconciled`. */
   readonly settled?: SettledTrade;
+  /** What the reason of a move that ends the intent names, kept in its event's cause. */
+  readonly named?: ReasonNamed;
   /** An auto order fill's write on its order, stored with the move (spec 6, section 5). */
   readonly order?: OrderFillWrite;
 }
@@ -61,7 +65,7 @@ interface JsonObject {
 
 function causeOf(move: IntentMove): JsonObject {
   const { event } = move.step;
-  const { by, closing, fill, settled } = move;
+  const { by, closing, fill, settled, named } = move;
   return {
     trigger: event.trigger,
     ...(by === undefined ? {} : { by }),
@@ -70,6 +74,7 @@ function causeOf(move: IntentMove): JsonObject {
     ...(event.cancelCause === undefined ? {} : { cancelCause: event.cancelCause }),
     ...(fill === undefined ? {} : { fill: paperFillDocument.encode(fill) }),
     ...(settled === undefined ? {} : { settled: settledTradeDocument.encode(settled) }),
+    ...(named === undefined ? {} : { named: reasonNamedDocument.encode(named) }),
   };
 }
 

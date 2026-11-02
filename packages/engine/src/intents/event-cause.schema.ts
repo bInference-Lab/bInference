@@ -32,6 +32,16 @@ export interface SettledTrade {
 }
 
 /**
+ * What the words of the move that ended an intent name that the intent keeps nowhere else (spec 4,
+ * sections 3.5 and 6; decision 0327): a staking venue's least stake, and when the wallet's next
+ * unbonding part is ready, as a refusal names them, or when a landed unstake's coin is ready.
+ */
+export interface ReasonNamed {
+  readonly minStake?: Amount;
+  readonly readyAtMs?: number;
+}
+
+/**
  * What the engine reads back from an intent event's cause, beside the trigger: who proposed the
  * intent (on its first event), how a card closed, the paper fill a move recorded, and the live
  * trade the move to `reconciled` recorded.
@@ -41,6 +51,8 @@ export interface EventCause {
   readonly closing?: CardClosing;
   readonly fill?: PaperFill;
   readonly settled?: SettledTrade;
+  /** What the reason of the move that ended the intent names. */
+  readonly named?: ReasonNamed;
 }
 
 const answererSchema = z.strictObject({
@@ -74,12 +86,23 @@ const settledTradeSchema: z.ZodType<SettledTrade> = z.strictObject({
   atMs: epochMsSchema,
 });
 
+interface ReasonNamedWire {
+  readonly minStake?: { readonly asset: string; readonly base: string };
+  readonly readyAtMs?: number;
+}
+
+const reasonNamedSchema: z.ZodType<ReasonNamed, ReasonNamedWire> = z.strictObject({
+  minStake: amountSchema.exactOptional(),
+  readyAtMs: epochMsSchema.exactOptional(),
+});
+
 // Causes carry more than the engine reads back, such as the trigger and who acted.
 const eventCauseSchema: z.ZodType<EventCause> = z.looseObject({
   proposer: z.enum(["agent_runtime", "mcp_client", "owner", "engine"]).exactOptional(),
   closing: cardClosingSchema.exactOptional(),
   fill: paperFillSchema.exactOptional(),
   settled: settledTradeSchema.exactOptional(),
+  named: reasonNamedSchema.exactOptional(),
 });
 
 /** How a card closed, as an event's cause and its ledger entry keep it. */
@@ -98,6 +121,12 @@ export const paperFillDocument: DocumentCodec<PaperFill> = documentCodec(
 export const settledTradeDocument: DocumentCodec<SettledTrade> = documentCodec(
   "settled trade",
   settledTradeSchema,
+);
+
+/** What a refusal's words name, as the event that ends the intent keeps it. */
+export const reasonNamedDocument: DocumentCodec<ReasonNamed> = documentCodec(
+  "reason values",
+  reasonNamedSchema,
 );
 
 const causeDocument: DocumentCodec<EventCause> = documentCodec("event cause", eventCauseSchema);

@@ -20,7 +20,7 @@ export interface AdvanceParts {
 export async function advanceIntent(
   parts: AdvanceParts,
   snapshot: IntentSnapshot,
-  move: { readonly trigger: IntentTrigger } & Pick<IntentMove, "fields">,
+  move: { readonly trigger: IntentTrigger } & Pick<IntentMove, "fields" | "named">,
 ): Promise<IntentSnapshot> {
   const { stored, machine, signal } = parts;
   const step = machine.apply(snapshot.stored.status, move.trigger);
