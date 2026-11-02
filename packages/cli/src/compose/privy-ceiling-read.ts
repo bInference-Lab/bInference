@@ -54,6 +54,7 @@ export function privyCeilingRead(
     dayCaps: dayCapViewsOf(rules.caps, parts.capAssetsOn),
     launchCalls: rules.launchCalls,
     functions: rules.functions,
+    ...(rules.ownCaps === undefined ? {} : { ownCaps: rules.ownCaps }),
     policy: jsonValueSchema.parse(policy),
   };
 }

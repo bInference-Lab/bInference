@@ -129,6 +129,8 @@ export interface ComposeEngineOptions {
    * bridges without them.
    */
   readonly bridging?: Pick<EngineOptions, BridgingKey>;
+  /** The staking venues, each on its chain; nothing stakes without them (decision 0327). */
+  readonly stakingVenues?: EngineOptions["stakingVenues"];
   /** The quote assets, whose leader buys no copy order follows (decision 0260). */
   readonly quoteAssets?: EngineOptions["quoteAssets"];
   /** Reads what a token the registry does not list answers on chain, for its cards. */
@@ -312,6 +314,7 @@ function engineOf(
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
     ...addressPartsOf(options),
+    stakingVenues: options.stakingVenues ?? [],
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     readTokenFacts: options.readTokenFacts,
     ...(options.readTokenCode === undefined ? {} : { launchTokenCode: options.readTokenCode }),

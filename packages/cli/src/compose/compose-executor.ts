@@ -18,6 +18,7 @@ import {
   createRpcFailover,
   type RpcEndpoint,
 } from "@binference/chain-evm";
+import type { StakingVenue } from "@binference/chain/staking";
 import {
   BinferenceError,
   type Clock,
@@ -37,8 +38,10 @@ import type { AgentInboxMessage } from "@binference/engine/chat";
 import {
   type ChainSending,
   createExecutor,
+  createStakingHost,
   type RunningExecutor,
   type ExecutorBridging,
+  type ExecutorOptions,
 } from "@binference/engine/executor";
 import { createWalletQueue } from "@binference/engine/wallet-queue";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
@@ -90,6 +93,8 @@ export interface ComposeExecutorOptions {
   readonly nameResolvers?: readonly NameResolver[];
   /** What a confirmed bridge is checked again and signed with (decisions 0317 and 0318). */
   readonly bridging?: ExecutorBridging;
+  /** The staking venues a confirmed staking move is planned again with and read back from. */
+  readonly stakingVenues?: readonly StakingVenue[];
 }
 
 // A node rests 30 s after a failure; a relay gets 3 s, several BSC blocks, to take a transaction.
@@ -267,6 +272,13 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.nameResolvers === undefined ? {} : { nameResolvers: options.nameResolvers }),
     ...(options.bridging === undefined ? {} : { bridging: options.bridging }),
+    ...stakingOf(options),
   });
   return { executor, health: () => health.state() };
+}
+
+// The staking venues' host, which plans a confirmed staking move again and reads back what landed.
+function stakingOf(options: ComposeExecutorOptions): Pick<ExecutorOptions, "staking"> {
+  const { stakingVenues: venues, chains, clock } = options;
+  return venues === undefined ? {} : { staking: createStakingHost({ venues, chains, clock }) };
 }

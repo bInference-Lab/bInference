@@ -11,7 +11,7 @@ expect:
     - is now staked
 proof:
   right:
-    - text: I have no staking tool yet, so I can't stake. I can swap tokens or set auto orders.
+    - text: I can't stake from this chat yet. The engine can stake, but my staking tools are not built. I can swap tokens or set auto orders.
   wrong:
     - misses:
         - never

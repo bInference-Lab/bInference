@@ -28,6 +28,7 @@ import { ownerChatHandlers } from "./owner-locale-change.js";
 import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
+import { chainStakingVenues } from "./staking-venues.js";
 import { stateWorkspace } from "./state-workspace.js";
 import { type TimedWork, timedWorkOf } from "./timed-work.js";
 import { chainTokenReads } from "./token-facts.js";
@@ -102,6 +103,7 @@ function composeSending(
     logger: log.logger,
     nameResolvers: chainNameResolvers(parts.reads),
     bridging: parts.bridging.executor,
+    stakingVenues: chainStakingVenues(parts.reads),
     ...(host.testOrders === undefined ? {} : { liveOrderFills: true }),
   });
   // The executor finishes a signature or a send under way within the shutdown's budget.
@@ -222,6 +224,15 @@ function webPushOf(opening: Opening, opened: Opened) {
   return key === undefined ? {} : { webPush: { key, http: opening.host.http, isPublicEndpoint } };
 }
 
+// What the engine reads on the chains besides prices: tokens' facts, names and staking venues.
+function chainReadParts(reads: TradingParts["reads"]) {
+  return {
+    ...chainTokenReads(reads),
+    nameResolvers: chainNameResolvers(reads),
+    stakingVenues: chainStakingVenues(reads),
+  };
+}
+
 // The engine and its protocol server over the wired parts.
 function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { host } = opening;
@@ -255,8 +266,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
       ...pricingOf(host, wiring.priceWatchers.canPrice),
-      ...chainTokenReads(parts.reads),
-      nameResolvers: chainNameResolvers(parts.reads),
+      ...chainReadParts(parts.reads),
       bridging: parts.bridging.engine,
       workspace: stateWorkspace(opening.platform),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),

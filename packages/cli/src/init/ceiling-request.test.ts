@@ -11,10 +11,27 @@ const okxKeys = {
   passphrase: { fromKeychain: "okx-passphrase" },
 };
 
+// The calls StakeHub's declaration names, each ABI with the cap of its own it carries.
+function stakeHubCalls(): readonly (readonly [unknown, bigint | undefined])[] {
+  const stakeHub = coreVenues(http, { keys: {}, kyberClientId: "binference" }).find(
+    (venue) => venue.id === "stakehub",
+  );
+  const calls = stakeHub?.contracts.flatMap((item) => item.calls ?? []) ?? [];
+  return calls.map((call) => [call.abi, call.maxValueBase]);
+}
+
 describe("core venues", () => {
-  it("installs KyberSwap and the Flap launchpad while no OKX key is set", () => {
+  it("installs KyberSwap, the Flap launchpad and StakeHub while no OKX key is set", () => {
     const venues = coreVenues(http, { keys: {}, kyberClientId: "binference" });
-    expect(venues.map((venue) => venue.id)).toStrictEqual(["kyberswap", "flap"]);
+    expect(venues.map((venue) => venue.id)).toStrictEqual(["kyberswap", "flap", "stakehub"]);
+  });
+
+  it("installs StakeHub with a stake that carries up to 100 BNB in a rule of its own", () => {
+    expect(stakeHubCalls()).toMatchObject([
+      [{ name: "delegate" }, 100n * 10n ** 18n],
+      [{ name: "undelegate" }, undefined],
+      [{ name: "claim" }, undefined],
+    ]);
   });
 
   it("installs Flap with the Portal's swap and create calls and the Portal as spender", () => {
@@ -47,6 +64,7 @@ describe("core venues", () => {
         ],
       ],
       [["flap", "eip155:56", ["portal"], ["portal"]]],
+      [["stakehub", "eip155:56", ["stake-hub"], undefined]],
       [["okx", "eip155:56", ["dex-router", "token-approve"], ["token-approve"]]],
     ]);
   });

@@ -18,6 +18,7 @@ import {
 import { flapDeclaration } from "@binference/flap";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { okxDeclaration } from "@binference/okx";
+import { stakeHubDeclaration } from "@binference/stakehub";
 import { selfHostedBridgePlan } from "../compose/self-hosted-destinations.js";
 import type { VenuesConfig } from "../config/schema/chains-venues.schema.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
@@ -26,7 +27,8 @@ import { type InitStep, refused } from "./init-context.js";
 
 /**
  * The core venues this binference installs, by what each declares: its id and its registry
- * contracts per chain. KyberSwap and the Flap launchpad need no key; OKX is installed only when
+ * contracts per chain. KyberSwap, the Flap launchpad and StakeHub, whose `delegate` carries up to
+ * 100 BNB in a ceiling rule of its own (decision 0325), need no key; OKX is installed only when
  * `venues.keys.okx` names the owner's key. Each venue is made only to read its declaration;
  * nothing is called, no chain is read and no key is read.
  */
@@ -40,6 +42,7 @@ export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDecl
   const keyless = [
     { id: kyberswap.id, contracts: kyberswap.contracts },
     flapDeclaration([chain.ref]),
+    stakeHubDeclaration([chain.ref]),
   ];
   return venues.keys.okx === undefined
     ? keyless
