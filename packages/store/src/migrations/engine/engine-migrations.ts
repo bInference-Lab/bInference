@@ -54,6 +54,7 @@ import { migration as addressRecipientBytes } from "./0052_address_recipient_byt
 import { migration as bridges } from "./0053_bridges.js";
 import { migration as rescueReach } from "./0054_rescue_reach.js";
 import { migration as stakeUnbondings } from "./0055_stake_unbondings.js";
+import { migration as unbondingsClosedOutside } from "./0056_unbondings_closed_outside.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -112,4 +113,5 @@ export const engineMigrations: readonly Migration[] = [
   bridges,
   rescueReach,
   stakeUnbondings,
+  unbondingsClosedOutside,
 ];

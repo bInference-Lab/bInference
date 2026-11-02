@@ -16,17 +16,16 @@ export interface ClaimReadyParts {
   readonly publish: PublishPush;
   readonly clock: Clock;
   /**
-   * Whether the venue says a ready row's coin can be claimed now (decision 0331); without it,
-   * every row whose time came can.
+   * Whether a row is a live one of a liquid venue, which the watch of its venue's queue tells of
+   * instead (decision 0331); none is when absent.
    */
-  readonly isReleased?: (
-    row: UnbondingRecord,
-    call: { readonly signal: AbortSignal },
-  ) => Promise<boolean>;
+  readonly isWatched?: (row: UnbondingRecord) => boolean;
 }
 
 // The most unbondings one pass tells of; the rest wait for the next pass.
 const maxTold = 100;
+// The most ready rows one pass reads, so rows a venue's queue still holds hide no other.
+const maxRead = 1_000;
 
 function noticeOf(row: UnbondingRecord, agent: Id<"agt"> | undefined) {
   const validator =
@@ -41,24 +40,20 @@ function noticeOf(row: UnbondingRecord, agent: Id<"agt"> | undefined) {
 
 /**
  * Tells the owner once of each unstake's coin a claim can take now (spec 4, section 4; decisions
- * 0327 and 0331): every unbonding no claim took whose ready time came, that its venue says can be
- * claimed, and that the owner was not told of, live or paper, as `notice.claimReady` with its coin
- * and validator, at most 100 a pass. A row whose venue's queue holds it waits for a later pass. It
- * marks them told after it published, so a stop between the two tells of them again rather than
- * never. Answers how many it told of.
+ * 0327 and 0331): every unbonding no claim took whose ready time came and that the owner was not
+ * told of, live or paper, as `notice.claimReady` with its coin and validator, at most 100 a pass;
+ * a live row of a liquid venue is left to the watch of its venue's queue. It marks them told after
+ * it published, so a stop between the two tells of them again rather than never. Answers how many
+ * it told of.
  */
 export async function tellClaimsReady(
   parts: ClaimReadyParts,
   call: { readonly signal: AbortSignal },
 ): Promise<number> {
   const nowMs = parts.clock.now();
-  const due = await parts.unbondings.untoldReady({ nowMs, limit: maxTold }, call);
-  const { isReleased } = parts;
-  const released =
-    isReleased === undefined
-      ? due.map(() => true)
-      : await Promise.all(due.map(async (row) => isReleased(row, call)));
-  const ready = due.filter((_row, index) => released[index] === true);
+  const due = await parts.unbondings.untoldReady({ nowMs, limit: maxRead }, call);
+  const { isWatched = () => false } = parts;
+  const ready = due.filter((row) => !isWatched(row)).slice(0, maxTold);
   if (ready.length === 0) {
     return 0;
   }

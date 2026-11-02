@@ -147,6 +147,29 @@ async function tellsReadyOnce(subject: UnbondingStoreSubject): Promise<void> {
   assert.deepEqual(told, { ...ready, toldReadyAtMs: 9 });
 }
 
+async function closesOutsideOnce(subject: UnbondingStoreSubject): Promise<void> {
+  const { store, intentIds, walletId } = subject;
+  const query = { walletId, isPaper: false, venue: "fake-staking", validator };
+  const open = await store.open(draftOf(subject, intentIds[0]), live());
+  const claimed = await store.open(draftOf(subject, intentIds[1]), live());
+  await store.claim(claimOf(subject, intentIds[2], [claimed.requestRef]), live());
+  const closed = await store.closeOutside({ id: open.id, atMs: 9 }, live());
+  assert.deepEqual(closed, { ok: true, value: { ...open, closedOutsideAtMs: 9 } });
+  assert.deepEqual(await store.closeOutside({ id: open.id, atMs: 10 }, live()), {
+    ok: false,
+    error: "taken",
+  });
+  assert.deepEqual(await store.closeOutside({ id: claimed.id, atMs: 10 }, live()), {
+    ok: false,
+    error: "taken",
+  });
+  assert.deepEqual(await store.listOpen(query, live()), []);
+  assert.deepEqual(await store.openOf({ walletId, isPaper: false }, live()), []);
+  assert.deepEqual(await store.untoldReady({ nowMs: readyAtMs, limit: 10 }, live()), []);
+  const late = await store.claim(claimOf(subject, intentIds[1], [open.requestRef]), live());
+  assert.deepEqual(late, { ok: false, error: "taken" });
+}
+
 async function refusesAborted(subject: UnbondingStoreSubject): Promise<void> {
   const { store, intentIds, walletId } = subject;
   const query = { walletId, isPaper: false, venue: "fake-staking", validator };
@@ -159,6 +182,7 @@ async function refusesAborted(subject: UnbondingStoreSubject): Promise<void> {
   );
   await assertRefusesAborted(async (call) => store.untoldReady({ nowMs: 0, limit: 1 }, call));
   await assertRefusesAborted(async (call) => store.markTold({ ids: [], atMs: 0 }, call));
+  await assertRefusesAborted(async (call) => store.closeOutside({ id: 1, atMs: 0 }, call));
 }
 
 /** The contract every `UnbondingStore` passes. */
@@ -189,6 +213,11 @@ export function unbondingStoreContract(harness: UnbondingStoreHarness): readonly
       "lists the ready unbondings no claim took that the owner was not told of, and marks each once",
       create,
       tellsReadyOnce,
+    ),
+    checkOn(
+      "closes an open unbonding claimed outside binference once, which no list or claim holds after",
+      create,
+      closesOutsideOnce,
     ),
     checkOn("refuses every call on an aborted signal", create, refusesAborted),
   ];

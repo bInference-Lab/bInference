@@ -1,6 +1,7 @@
 import type { Id, Result } from "@binference/core";
 import type {
   UnbondingClaim,
+  UnbondingClose,
   UnbondingDraft,
   UnbondingQuery,
   UnbondingReadyQuery,
@@ -52,4 +53,13 @@ export interface UnbondingStore {
   untoldReady(query: UnbondingReadyQuery, options: StoreCall): Promise<readonly UnbondingRecord[]>;
   /** Marks the unbondings as told ready at the time; one told already keeps its first time. */
   markTold(told: UnbondingTold, options: StoreCall): Promise<void>;
+  /**
+   * Closes an open unbonding as claimed outside binference at the time (decision 0331), so no
+   * list of open ones holds it and no claim takes it, and answers it; one a claim took or that
+   * closed already is `taken`, and nothing changes.
+   */
+  closeOutside(
+    close: UnbondingClose,
+    options: StoreCall,
+  ): Promise<Result<UnbondingRecord, "taken">>;
 }

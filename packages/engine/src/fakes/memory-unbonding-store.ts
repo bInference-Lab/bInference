@@ -2,6 +2,7 @@ import { type Id, err, ok, type Result } from "@binference/core";
 import type { UnbondingStore } from "../staking/ports.js";
 import type {
   UnbondingClaim,
+  UnbondingClose,
   UnbondingDraft,
   UnbondingQuery,
   UnbondingReadyQuery,
@@ -72,7 +73,10 @@ function claim(
   const named = [...rows.values()].filter(
     (row) => isOf(row, taken) && taken.requestRefs.includes(row.requestRef),
   );
-  if (named.some((row) => row.claimIntentId !== undefined && row.claimIntentId !== claimIntentId)) {
+  const isTaken = (row: UnbondingRecord) =>
+    row.closedOutsideAtMs !== undefined ||
+    (row.claimIntentId !== undefined && row.claimIntentId !== claimIntentId);
+  if (named.some(isTaken)) {
     return err("taken");
   }
   for (const row of named) {
@@ -83,10 +87,23 @@ function claim(
 
 function untoldReady(rows: Rows, query: UnbondingReadyQuery): readonly UnbondingRecord[] {
   const ready = (row: UnbondingRecord) =>
-    row.claimIntentId === undefined &&
-    row.toldReadyAtMs === undefined &&
-    row.readyAtMs <= query.nowMs;
+    isOpen(row) && row.toldReadyAtMs === undefined && row.readyAtMs <= query.nowMs;
   return copies(rows.values(), ready).slice(0, query.limit);
+}
+
+// A row no claim took and none closed outside binference.
+function isOpen(row: UnbondingRecord): boolean {
+  return row.claimIntentId === undefined && row.closedOutsideAtMs === undefined;
+}
+
+function closeOutside(rows: Rows, close: UnbondingClose): Result<UnbondingRecord, "taken"> {
+  const row = rows.get(close.id);
+  if (row === undefined || !isOpen(row)) {
+    return err("taken");
+  }
+  const closed = { ...row, closedOutsideAtMs: close.atMs };
+  rows.set(close.id, closed);
+  return ok(structuredClone(closed));
 }
 
 function markTold(rows: Rows, told: UnbondingTold): void {
@@ -104,17 +121,12 @@ export function createMemoryUnbondingStore(options: MemoryUnbondingStoreOptions)
   return {
     open: async (draft, call) => memoryCall(call, () => open(rows, draft, options)),
     listOpen: async (query, call) =>
-      memoryCall(call, () =>
-        copies(rows.values(), (row) => isOf(row, query) && row.claimIntentId === undefined),
-      ),
+      memoryCall(call, () => copies(rows.values(), (row) => isOf(row, query) && isOpen(row))),
     openOf: async (query, call) =>
       memoryCall(call, () =>
         copies(
           rows.values(),
-          (row) =>
-            row.walletId === query.walletId &&
-            row.isPaper === query.isPaper &&
-            row.claimIntentId === undefined,
+          (row) => row.walletId === query.walletId && row.isPaper === query.isPaper && isOpen(row),
         ),
       ),
     claimedBy: async (claimIntentId, call) =>
@@ -122,5 +134,6 @@ export function createMemoryUnbondingStore(options: MemoryUnbondingStoreOptions)
     claim: async (taken, call) => memoryCall(call, () => claim(rows, taken, options)),
     untoldReady: async (query, call) => memoryCall(call, () => untoldReady(rows, query)),
     markTold: async (told, call) => memoryCall(call, () => markTold(rows, told)),
+    closeOutside: async (close, call) => memoryCall(call, () => closeOutside(rows, close)),
   };
 }

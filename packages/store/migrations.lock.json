@@ -58,6 +58,7 @@
     "engine/0052_address_recipient_bytes.ts": "a7dd9bc9315fa5f4e00b3579d0d8e387d2d3d147e8cbd202622f67b84dc006fd",
     "engine/0053_bridges.ts": "6267c26ff323d751f2d764c0e3754707aa963be75bbdc7f062a741864ad9a9c0",
     "engine/0054_rescue_reach.ts": "68264ca03544f722a94ef8dc972118c24be60179bbeb0e7a4d401b0ca2c8067c",
-    "engine/0055_stake_unbondings.ts": "8534fe9130321d852f86aa3510b4e4c428ec8e230fc96315529e20871537c70e"
+    "engine/0055_stake_unbondings.ts": "8534fe9130321d852f86aa3510b4e4c428ec8e230fc96315529e20871537c70e",
+    "engine/0056_unbondings_closed_outside.ts": "301d53a6c3db43cec6b3d352a2d8a4b12a0a86187630298a5bf736881b662e65"
   }
 }

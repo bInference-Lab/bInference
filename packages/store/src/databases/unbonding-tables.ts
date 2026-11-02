@@ -1,4 +1,4 @@
-// The unbondings' table, as SQLite returns it: migration 0055 defines it.
+// The unbondings' table, as SQLite returns it: migrations 0055 and 0056 define it.
 import type { Generated } from "kysely";
 
 /** `stake_unbondings`: the coin each unstake took out, until a claim takes it. */
@@ -16,6 +16,7 @@ export interface StakeUnbondingsTable {
   claim_intent_id: string | null;
   claimed_at: number | null;
   told_ready_at: number | null;
+  closed_outside_at: number | null;
   paper: number;
 }
 

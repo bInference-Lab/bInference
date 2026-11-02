@@ -84,6 +84,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.launchUnsent": `${warning} A trade on a launch's curve was not sent: the launchpad no longer holds the token on that curve, as after its graduation. Nothing was signed.`,
   "notice.nameMoved": `${warning} A send to alice.bnb was not signed: the name now points to 0x2bA6…3c71, not 0x71C7…976F as on its card. Nothing was sent. Check the name, then propose the send again.`,
   "notice.claimReady": "2 FAKE you unstaked from 0x71C7…976F can be claimed now",
+  "notice.claimedElsewhere":
+    "2 FAKE you unstaked from 0x1adB…7fE6 was claimed outside binference and is back in your wallet",
   "notice.bridgeLate": `${warning} Your bridge of 20 FAKE to Base has not arrived after 2 hours. binference keeps checking. fake-cross's status: https://bridge.test/transfer/0xd1`,
   "notice.bridgeArrived": `${done} Your late bridge to Base arrived: 0x71C7…976F received 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross did not deliver your bridge to Base and paid 20 FAKE back to Main`,

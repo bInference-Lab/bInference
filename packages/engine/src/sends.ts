@@ -37,6 +37,7 @@ export type {
 export type { BridgeStore } from "./bridges/ports.js";
 export {
   unbondingClaimSchema,
+  unbondingCloseSchema,
   unbondingDraftSchema,
   unbondingQuerySchema,
   unbondingReadyQuerySchema,
@@ -46,6 +47,7 @@ export {
 } from "./staking/unbonding-record.js";
 export type {
   UnbondingClaim,
+  UnbondingClose,
   UnbondingDraft,
   UnbondingQuery,
   UnbondingReadyQuery,

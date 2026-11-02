@@ -189,7 +189,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
     "intent_id venue deposit_ref to_chain recipient sent_asset sent_amount delivered_asset delivered_coin min_out value_usd_micros state status_url sent_at late_at fill_tx received received_asset refund_tx settled_at checked_at version",
   ),
   stake_unbondings: names(
-    "id intent_id wallet_id venue validator request_ref asset amount value_usd_micros ready_at claim_intent_id claimed_at told_ready_at paper",
+    "id intent_id wallet_id venue validator request_ref asset amount value_usd_micros ready_at claim_intent_id claimed_at told_ready_at paper closed_outside_at",
   ),
   questions: names(
     "id agent_id session_id turn_id text choices ref state answer close_reason created_at closes_at closed_at",

@@ -20,6 +20,8 @@ const live = { signal: new AbortController().signal };
 const mine = { isPaper: false, walletId: testWallet, after: 0, limit: 10 };
 const dayMs = 86_400_000;
 const pool = testLiquidFake().pool;
+// The watch reads a holding again after five minutes.
+const rereadMs = 5 * 60_000 + 1;
 
 // The plan without its promise of least units, minting one unit fewer than it promised.
 function fewer({ minShares, ...plan }: StakePlan): StakePlan {
@@ -42,6 +44,13 @@ function chainOf(chains: ChainRegistry): RegisteredChain {
     throw new Error("The fake pool's chain should be registered.");
   }
   return found.value;
+}
+
+// The keys of the notices the engine and its executor sent, oldest first.
+function noticeKeysOf(bench: ExecutorBench): readonly string[] {
+  return [...bench.test.pushes, ...bench.pushes]
+    .filter(({ kind }) => kind === "notice/new")
+    .map(({ data }) => /"key":"([^"]+)"/u.exec(JSON.stringify(data))?.[1] ?? "");
 }
 
 async function boughtOf(bench: ExecutorBench) {
@@ -74,6 +83,7 @@ describe("a live move on a liquid pool (decision 0331)", () => {
     await bench.test.clock.advance(testUnbondingSeconds * 1_000 + dayMs);
     const whileHeld = await bench.test.engine.tellClaimsReady(live);
     fake.releaseQueue();
+    await bench.test.clock.advance(rereadMs);
     const released = await bench.test.engine.tellClaimsReady(live);
     const claim = await tapped(bench, liquidRequest("claim"));
     await bench.release();
@@ -88,6 +98,55 @@ describe("a live move on a liquid pool (decision 0331)", () => {
     ]);
     expect([whileHeld, released]).toStrictEqual([0, 1]);
     await expect(openRows(bench)).resolves.toStrictEqual([]);
+  });
+
+  it("closes an unstake its venue's bot claimed for the wallet, books its coin once and tells the owner once", async () => {
+    const fake = testLiquidFake();
+    const bench = await stakeBench(landing(fake), { chains: liquidChains() });
+    const stake = await tapped(bench, liquidRequest("stake"));
+    await bench.release();
+    await driveUntil(bench, stake, { states: stakeEnds });
+    const units = { asset: testPoolReceipt, base: 10n ** 17n };
+    const unstake = await tapped(bench, liquidRequest("unstake", { amount: units }));
+    await bench.release();
+    await driveUntil(bench, unstake, { states: stakeEnds });
+    fake.wait(testUnbondingSeconds + 1);
+    await bench.test.clock.advance(testUnbondingSeconds * 1_000 + dayMs);
+    fake.claimFor(testAccount, "1");
+
+    const closed = await bench.test.engine.tellClaimsReady(live);
+    await bench.test.clock.advance(rereadMs);
+    const again = await bench.test.engine.tellClaimsReady(live);
+
+    expect([closed, again]).toStrictEqual([1, 0]);
+    await expect(openRows(bench)).resolves.toStrictEqual([]);
+    const arrivals = await bench.test.positions.arrivals(mine, live);
+    expect(arrivals.map(({ received }) => received.base)).toStrictEqual([11n * 10n ** 16n]);
+    expect(arrivals[0]?.valueUsdMicros).toBeDefined();
+    expect(noticeKeysOf(bench).filter((key) => key === "notice.claimedElsewhere")).toHaveLength(1);
+  });
+
+  it("leaves open an unstake whose request a confirmed claim of binference names", async () => {
+    const fake = testLiquidFake();
+    const bench = await stakeBench(landing(fake), { chains: liquidChains() });
+    const stake = await tapped(bench, liquidRequest("stake"));
+    await bench.release();
+    await driveUntil(bench, stake, { states: stakeEnds });
+    const unstake = await tapped(
+      bench,
+      liquidRequest("unstake", { amount: { asset: testPoolReceipt, base: 10n ** 17n } }),
+    );
+    await bench.release();
+    await driveUntil(bench, unstake, { states: stakeEnds });
+    fake.wait(testUnbondingSeconds + 1);
+    await bench.test.clock.advance(testUnbondingSeconds * 1_000 + dayMs);
+    await tapped(bench, liquidRequest("claim"));
+    fake.claimFor(testAccount, "1");
+
+    const closed = await bench.test.engine.tellClaimsReady(live);
+
+    expect(closed).toBe(0);
+    await expect(openRows(bench)).resolves.toHaveLength(1);
   });
 
   it("ends decode_mismatch, signing nothing, when the stake would now mint fewer units than its card promised", async () => {

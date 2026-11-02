@@ -4,6 +4,7 @@ import type { TaskRunner } from "../tasks/store-task.js";
 import {
   claimedUnbondingsTask,
   claimUnbondingsTask,
+  closeOutsideUnbondingTask,
   listOpenUnbondingsTask,
   markToldUnbondingsTask,
   openUnbondingsOfTask,
@@ -20,6 +21,7 @@ export const unbondingTasks: readonly TaskRunner[] = [
   claimUnbondingsTask,
   untoldReadyUnbondingsTask,
   markToldUnbondingsTask,
+  closeOutsideUnbondingTask,
 ];
 
 /** The {@link UnbondingStore} on `engine.sqlite`: one row of `stake_unbondings` per unstake. */
@@ -31,6 +33,7 @@ export function createSqliteUnbondingStore(host: StoreHost): UnbondingStore {
     claimedBy: bindTask(host, claimedUnbondingsTask),
     claim: bindTask(host, claimUnbondingsTask),
     untoldReady: bindTask(host, untoldReadyUnbondingsTask),
+    closeOutside: bindTask(host, closeOutsideUnbondingTask),
     markTold: async (told, call) => {
       await bindTask(host, markToldUnbondingsTask)(told, call);
     },

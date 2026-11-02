@@ -33,6 +33,17 @@ export interface UnbondingRecord extends UnbondingDraft {
   readonly claimedAtMs?: number;
   /** When the owner was told its coin can be claimed (`notice.claimReady`). */
   readonly toldReadyAtMs?: number;
+  /**
+   * When it closed because its venue no longer lists its request, claimed outside binference
+   * (decision 0331); no claim of binference takes it then.
+   */
+  readonly closedOutsideAtMs?: number;
+}
+
+/** An open unbonding closed as claimed outside binference, at a time. */
+export interface UnbondingClose {
+  readonly id: number;
+  readonly atMs: number;
 }
 
 /** The unbondings no claim took that are ready at a time, at most `limit` of them. */
@@ -97,6 +108,13 @@ export const unbondingRecordSchema: z.ZodType<UnbondingRecord> = z.strictObject(
   claimIntentId: idSchema("int").exactOptional(),
   claimedAtMs: epochMsSchema.exactOptional(),
   toldReadyAtMs: epochMsSchema.exactOptional(),
+  closedOutsideAtMs: epochMsSchema.exactOptional(),
+});
+
+/** Parses an unbonding's close outside binference. */
+export const unbondingCloseSchema: z.ZodType<UnbondingClose> = z.strictObject({
+  id: rowNumberSchema,
+  atMs: epochMsSchema,
 });
 
 /** Parses an unbonding ready query. */

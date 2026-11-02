@@ -3,6 +3,8 @@ import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type UnbondingClaim,
   unbondingClaimSchema,
+  type UnbondingClose,
+  unbondingCloseSchema,
   type UnbondingDraft,
   unbondingDraftSchema,
   type UnbondingQuery,
@@ -42,6 +44,7 @@ function recordOf(row: Selectable<StakeUnbondingsTable>): UnbondingRecord {
     ...field("claimIntentId", row.claim_intent_id),
     ...field("claimedAtMs", row.claimed_at),
     ...field("toldReadyAtMs", row.told_ready_at),
+    ...field("closedOutsideAtMs", row.closed_outside_at),
   });
 }
 
@@ -55,6 +58,11 @@ function ofQuery(select: Rows, query: UnbondingQuery): Rows {
     .where((eb) =>
       validator === undefined ? eb("validator", "is", null) : eb("validator", "=", validator),
     );
+}
+
+// The rows no claim took and none closed outside binference: the coin still waiting.
+function openOnly(select: Rows): Rows {
+  return select.where("claim_intent_id", "is", null).where("closed_outside_at", "is", null);
 }
 
 function rowsOf(
@@ -107,8 +115,7 @@ export const listOpenUnbondingsTask: StoreTask<UnbondingQuery, readonly Unbondin
     access: "read",
     input: unbondingQuerySchema,
     output: z.array(unbondingRecordSchema),
-    run: (database, query) =>
-      rowsOf(database, (select) => ofQuery(select, query).where("claim_intent_id", "is", null)),
+    run: (database, query) => rowsOf(database, (select) => openOnly(ofQuery(select, query))),
   });
 
 /** One wallet's unbondings in one mode no claim took, of every venue, the soonest ready first. */
@@ -120,10 +127,9 @@ export const openUnbondingsOfTask: StoreTask<UnbondingWalletQuery, readonly Unbo
     output: z.array(unbondingRecordSchema),
     run: (database, query) =>
       rowsOf(database, (select) =>
-        select
-          .where("wallet_id", "=", query.walletId)
-          .where("paper", "=", query.isPaper ? 1 : 0)
-          .where("claim_intent_id", "is", null),
+        openOnly(
+          select.where("wallet_id", "=", query.walletId).where("paper", "=", query.isPaper ? 1 : 0),
+        ),
       ),
   });
 
@@ -154,9 +160,10 @@ export const claimUnbondingsTask: StoreTask<
     const named = rowsOf(database, (select) =>
       ofQuery(select, claim).where("request_ref", "in", claim.requestRefs),
     );
-    if (
-      named.some((row) => row.claimIntentId !== undefined && row.claimIntentId !== claimIntentId)
-    ) {
+    const isTaken = (row: UnbondingRecord) =>
+      row.closedOutsideAtMs !== undefined ||
+      (row.claimIntentId !== undefined && row.claimIntentId !== claimIntentId);
+    if (named.some(isTaken)) {
       return err("taken");
     }
     const open = named.filter((row) => row.claimIntentId === undefined).map((row) => row.id);
@@ -185,8 +192,7 @@ export const untoldReadyUnbondingsTask: StoreTask<UnbondingReadyQuery, readonly 
     output: z.array(unbondingRecordSchema),
     run: (database, query) =>
       rowsOf(database, (select) =>
-        select
-          .where("claim_intent_id", "is", null)
+        openOnly(select)
           .where("told_ready_at", "is", null)
           .where("ready_at", "<=", query.nowMs)
           .limit(query.limit),
@@ -212,5 +218,33 @@ export const markToldUnbondingsTask: StoreTask<UnbondingTold, undefined> = defin
         .where("told_ready_at", "is", null),
     );
     return undefined;
+  },
+});
+
+/**
+ * Closes an open unbonding as claimed outside binference at the time and answers it; one a claim
+ * took or that closed already is `taken`, and nothing changes.
+ */
+export const closeOutsideUnbondingTask: StoreTask<
+  UnbondingClose,
+  Result<UnbondingRecord, "taken">
+> = defineTask({
+  name: "unbondings.closeOutside",
+  access: "write",
+  input: unbondingCloseSchema,
+  output: resultSchema(unbondingRecordSchema, ["taken"]),
+  run(database, close) {
+    const [open] = rowsOf(database, (select) => openOnly(select.where("id", "=", close.id)));
+    if (open === undefined) {
+      return err("taken");
+    }
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    execute(
+      kysely
+        .updateTable("stake_unbondings")
+        .set({ closed_outside_at: close.atMs })
+        .where("id", "=", close.id),
+    );
+    return ok({ ...open, closedOutsideAtMs: close.atMs });
   },
 });
