@@ -1,7 +1,6 @@
 import type { Clock } from "@binference/core";
-import type { CardClosing, QuoteFailure, SimulationFailure } from "@binference/engine";
+import type { CardClosing, CardLine, QuoteFailure, SimulationFailure } from "@binference/engine";
 import type { CardPress, CardStanding } from "@binference/engine/surfaces";
-import type { CardValueView } from "@binference/protocol";
 import type { CardAnswers } from "../ports.js";
 
 /** The engine's side of card answers in memory, with handles a test drives it by. */
@@ -28,8 +27,8 @@ export interface FakeCardAnswersOptions {
 /** Why the fake leaves a card open: a failed re-quote, a locked engine, or the rolling cap. */
 type Refusal = QuoteFailure | SimulationFailure | "locked" | "over_cap";
 
-/** What a re-quote's reason may name, as the engine gives it: a chain, a name, a wallet. */
-type ReasonValues = Readonly<Record<string, Extract<CardValueView, { readonly type: "text" }>>>;
+/** What a reason may name, as the engine gives it: a chain, a name, a wallet, a validator. */
+type ReasonValues = CardLine["values"];
 
 interface CardState {
   readonly closing?: CardClosing;

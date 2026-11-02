@@ -1120,8 +1120,11 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   `DeliveryView`; a change of it pushes `intent/changed`. `bridgeReceipt` is the `CardLineView`
   a live bridge's card ends with from its final deposit on (spec 4, section 3.9), which
   `intent/get` and `intent/list` give, its assets in `assets`. `outcome` is
-  `{ reason?, chain?, txHashes?, executions? }`: `chain` names the chain a bridge's reason means,
-  the chain it bridges to, as that reason's words show it.
+  `{ reason?, chain?, validator?, minStake?, readyAt?, txHashes?, executions? }`: `chain` names
+  the chain a bridge's reason means, the chain it bridges to, as that reason's words show it; a
+  staking move's reason names its `validator` (`{ account, name? }`, the name the venue's own),
+  the venue's least stake `minStake` (an `Amount`) and `readyAt`, when the next part can be
+  claimed, as its words show them ([decision 0327](../DECISIONS.md#d0327)).
 - `StakingPositionView`:
   `{ wallet, venue, validator?, staked: Amount, stakedValue?: Amount, unbonding: [{ amount, readyAt }], claimable: Amount, paper }`:
   `staked` in the venue's own receipt token (a validator's credit shares on StakeHub, slisBNB on

@@ -89,6 +89,61 @@ function fakeClient(answers: ChatAnswers, calls: SeenCall[]) {
   return { client, push, setStatus, topics: () => [...subscribers.keys()] };
 }
 
+const confirmedIntent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000009";
+const confirmedCard = "crd_0190f1c2-3a4b-7c5d-8e6f-000000000009";
+
+/**
+ * The row a Ctrl+Y on the one card that waits leaves once the engine answers the Confirm with the
+ * view `confirmedAs` and pushes its change, in the owner's language. The chat is added to `chats`,
+ * which the test ends after it.
+ */
+export async function confirmedRow(
+  chats: ChatHarness[],
+  confirmedAs: object,
+  options: { readonly locale?: MessageLocale; readonly more?: ChatAnswers } = {},
+): Promise<string> {
+  const card = {
+    card: confirmedCard,
+    version: 1,
+    opensAt: harnessNowMs,
+    expiresAt: harnessNowMs + 600_000,
+  };
+  const waiting = {
+    intent: confirmedIntent,
+    agent: harnessAgent,
+    state: "awaiting_confirmation",
+    paper: false,
+    card,
+  };
+  const drawn = {
+    card: confirmedCard,
+    version: 1,
+    expiresAt: harnessNowMs + 600_000,
+    assets: {},
+    lines: [{ key: "card.reason", values: { reason: { type: "text", text: "Earn on idle BNB" } } }],
+  };
+  const listed = { items: [waiting] };
+  const chat = startChat(
+    {
+      "intent/list": () => ({ items: listed.items }),
+      "intent/card": () => drawn,
+      "intent/confirm": () => {
+        listed.items = [];
+        return { ...waiting, ...confirmedAs };
+      },
+      ...options.more,
+    },
+    options.locale,
+  );
+  chats.push(chat);
+  await chat.settle();
+  chat.press("\u0019");
+  await chat.settle();
+  chat.push("intent", "intent/changed", { intent: confirmedIntent });
+  await chat.settle();
+  return chat.rows().at(-2) ?? "";
+}
+
 /**
  * Starts terminal chat with the agent `main` on a fake engine that answers from `answers`, in a
  * fake terminal 100 columns wide and 30 rows high, in the owner's language, on a manual clock.

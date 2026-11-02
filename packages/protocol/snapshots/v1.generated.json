@@ -6883,6 +6883,44 @@
                   "minLength": 1,
                   "maxLength": 100
                 },
+                "validator": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                },
+                "minStake": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "readyAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -13952,6 +13990,44 @@
                   "minLength": 1,
                   "maxLength": 100
                 },
+                "validator": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                },
+                "minStake": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "readyAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -15750,6 +15826,44 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 100
+                },
+                "validator": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                },
+                "minStake": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "readyAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
                 },
                 "txHashes": {
                   "type": "array",
@@ -18085,6 +18199,44 @@
                         "minLength": 1,
                         "maxLength": 100
                       },
+                      "validator": {
+                        "type": "object",
+                        "properties": {
+                          "account": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 64
+                          }
+                        },
+                        "required": [
+                          "account"
+                        ]
+                      },
+                      "minStake": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "readyAt": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
                       "txHashes": {
                         "type": "array",
                         "items": {
@@ -19906,6 +20058,44 @@
                   "minLength": 1,
                   "maxLength": 100
                 },
+                "validator": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                },
+                "minStake": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "readyAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -21711,6 +21901,44 @@
                   "minLength": 1,
                   "maxLength": 100
                 },
+                "validator": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                },
+                "minStake": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "readyAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
                 "txHashes": {
                   "type": "array",
                   "items": {
@@ -23514,6 +23742,44 @@
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 100
+                },
+                "validator": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                },
+                "minStake": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "readyAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
                 },
                 "txHashes": {
                   "type": "array",
@@ -34409,6 +34675,44 @@
                                 "type": "string",
                                 "minLength": 1,
                                 "maxLength": 100
+                              },
+                              "validator": {
+                                "type": "object",
+                                "properties": {
+                                  "account": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 64
+                                  }
+                                },
+                                "required": [
+                                  "account"
+                                ]
+                              },
+                              "minStake": {
+                                "type": "object",
+                                "properties": {
+                                  "asset": {
+                                    "type": "string"
+                                  },
+                                  "base": {
+                                    "type": "string",
+                                    "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                  }
+                                },
+                                "required": [
+                                  "asset",
+                                  "base"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "readyAt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
                               },
                               "txHashes": {
                                 "type": "array",

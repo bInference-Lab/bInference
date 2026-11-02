@@ -241,7 +241,10 @@ describe("a send by name on its wallet's queue", () => {
     expect(ended?.live?.outcome).toStrictEqual({
       kind: "refused",
       reason: "name_moved",
-      name: "alice.bnb",
+      values: {
+        name: { type: "text", text: "alice.bnb" },
+        wallet: { type: "text", text: testWallet },
+      },
     });
     expect(notices(bench)).toMatchObject([
       {

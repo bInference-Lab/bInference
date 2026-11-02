@@ -140,7 +140,11 @@ describe("a launch wallet's curve trade in the wallet queue", () => {
       venues: { hasNoDeadline: () => false },
     });
     const ended = await showings.settled(intent, { signal: AbortSignal.timeout(5_000) });
-    expect(ended?.live?.outcome).toStrictEqual({ kind: "refused", reason: "launch_unread" });
+    expect(ended?.live?.outcome).toStrictEqual({
+      kind: "refused",
+      reason: "launch_unread",
+      values: { wallet: { type: "text", text: launchWallet } },
+    });
     expect(noticesOf(bench)).toMatchObject([
       { key: "notice.launchUnsent", intent, values: { reason: "launch_unread" } },
     ]);

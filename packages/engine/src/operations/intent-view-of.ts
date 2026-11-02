@@ -1,4 +1,4 @@
-import type { AssetRef, ChainRegistry } from "@binference/chain";
+import type { AccountRef, AssetRef, ChainRegistry } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import type {
   AutoOrderRequest,
@@ -20,7 +20,7 @@ import {
   riskDocument,
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
-import { paperFillOf, settledTradeOf } from "../intents/intent-history.js";
+import { paperFillOf, reasonNamedOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument, rescueRequest } from "../intents/rescue-quote.js";
 import { revokeQuoteDocument } from "../intents/revoke-quote.js";
@@ -103,8 +103,15 @@ function ownAssetsOf(record: IntentRecord, request: AnyRequest): readonly AssetR
     return [transferAssetOf(record, request)];
   }
   const quoted = quotedAssets[request.kind];
+  if (quoted !== undefined && record.quote !== undefined) {
+    return quoted(record.quote);
+  }
+  // A stake refused before its quote names the coin it asked to put in, as its least stake is.
+  if (request.kind === "stake") {
+    return request.amount === undefined ? [] : [request.amount.asset];
+  }
   if (quoted !== undefined) {
-    return record.quote === undefined ? [] : quoted(record.quote);
+    return [];
   }
   return request.kind === "launchToken" ? launchAssetsOf(record, request) : undefined;
 }
@@ -194,6 +201,33 @@ function chainNameOf(request: AnyRequest, reads: ViewReads): string | undefined 
   return reads.destinations?.find((destination) => destination.ref === toChain)?.name;
 }
 
+// What a staking move's reason names (decision 0327): its validator, by its name once the venue
+// planned the move, the venue's least stake, and when the wallet's next unbonding part is ready.
+function stakeNamesOf(snapshot: IntentSnapshot, request: AnyRequest): Partial<IntentOutcome> {
+  const { record, history } = snapshot;
+  if (request.kind !== "stake" || record.reason === undefined) {
+    return {};
+  }
+  const named = reasonNamedOf(history);
+  return {
+    ...validatorNamedOf(record, request.validator),
+    ...(named?.minStake === undefined ? {} : { minStake: named.minStake }),
+    ...(named?.readyAtMs === undefined ? {} : { readyAt: named.readyAtMs }),
+  };
+}
+
+// The validator a staking move names: the plan's, with its name, else the request's.
+function validatorNamedOf(
+  record: IntentSnapshot["record"],
+  asked: AccountRef | undefined,
+): Partial<IntentOutcome> {
+  if (record.quote !== undefined) {
+    const { plan } = stakeQuoteDocument.decode(record.quote);
+    return { validator: { account: plan.validator, name: plan.validatorName } };
+  }
+  return asked === undefined ? {} : { validator: { account: asked } };
+}
+
 function outcomeOf(
   snapshot: IntentSnapshot,
   context: { readonly request: AnyRequest; readonly reads: ViewReads },
@@ -207,6 +241,7 @@ function outcomeOf(
   return {
     ...(reason === undefined ? {} : { reason }),
     ...(chain === undefined ? {} : { chain }),
+    ...stakeNamesOf(snapshot, context.request),
     ...execution,
   };
 }

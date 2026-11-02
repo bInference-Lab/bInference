@@ -21,5 +21,6 @@
   "orderUnstarted": "❌ 自动订单未生效：{why, select, expired {确认之前它已过期} other {它已先被取消}}",
   "bridgeSent": "✅ 已从 {fromChain} 发出 · 约 {minutes, number} 分钟后在 {chain} 到账 · {explorerLink}",
   "bridgeDelivered": "✅ 已在 {chain} 到账：{recipient} 收到 {received} · {explorerLink}",
-  "bridgeRefunded": "⚠️ 未到账：{venue} 已将 {amount} 退回 {wallet} · {explorerLink}"
+  "bridgeRefunded": "⚠️ 未到账：{venue} 已将 {amount} 退回 {wallet} · {explorerLink}",
+  "unstaked": "✅ 已解除质押 {amount}：{readyAt} 起可领取 · {explorerLink}"
 }

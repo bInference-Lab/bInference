@@ -29,6 +29,7 @@ import {
   swapFacts,
 } from "../testing/card-fixtures.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
+import { stakeValidatorValue } from "../testing/stake-card-fixtures.js";
 import { ownerId, strangerId } from "../testing/update-fixtures.js";
 import { createBotThrottlers } from "../throttle/create-bot-throttlers.js";
 import { type ButtonPress, chatUpdateSchema } from "../updates/chat-update.schema.js";
@@ -349,6 +350,21 @@ describe("the Telegram cards", () => {
       {
         callbackId: "press-9001",
         text: "no bridge binference uses can pay an address on Base from this wallet yet, so nothing was sent; bridge to another chain",
+      },
+    ]);
+  });
+
+  it("say which validator a staking reason names, by its name and address", async () => {
+    const context = await setUp();
+    context.engine.open(ref);
+    context.engine.refuseNext(ref, "nothing_staked", {
+      validator: stakeValidatorValue,
+    });
+    await pressCard(context, confirmData);
+    expect(context.botApi.answers()).toStrictEqual([
+      {
+        callbackId: "press-9001",
+        text: "this wallet has nothing staked with Legend (0x71C7…976F)",
       },
     ]);
   });

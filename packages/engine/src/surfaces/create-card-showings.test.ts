@@ -12,6 +12,7 @@ import {
   testNowMs,
   testSwap,
   testToken,
+  testWallet,
 } from "../intents/test-intents.js";
 import {
   startTestEngine,
@@ -406,7 +407,14 @@ describe("the card showings", () => {
     expect([settling?.closing.outcome, settling?.paper, settling?.live]).toStrictEqual([
       "confirmed",
       undefined,
-      { outcome: { kind: "refused", reason: "nothing_to_sell" }, assets: {} },
+      {
+        outcome: {
+          kind: "refused",
+          reason: "nothing_to_sell",
+          values: { wallet: { type: "text", text: testWallet } },
+        },
+        assets: {},
+      },
     ]);
   });
 

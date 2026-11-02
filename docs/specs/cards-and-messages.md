@@ -546,7 +546,9 @@ such as Base or Robinhood Chain, in both languages.
   stake then shows `card.stake.rate`, the validator's yearly rate as its venue read it before the
   card ([decision 0327](../DECISIONS.md#d0327)), and leaves it out when the venue gives none. An
   unstake, on either venue, then shows `card.stake.unbonding`, `{readyAt}` the date and time in
-  the owner's timezone and `{days}` whole days, rounded up. A stake's card names no cap: a stake
+  the owner's timezone and `{days}` whole days, rounded up: the later of the venue's time at the
+  quote and the card's expiry plus the unbonding time, so a tap late in the card's life is never
+  ready later than the card says. Its receipt, `receipt.unstaked`, names the venue's own time. A stake's card names no cap: a stake
   over a cap never reaches its card.
 - A bridge shows, after `card.bridge.action`, `card.bridge.arrives`, `card.bridge.fees` and
   `card.bridge.read`, and `card.bridge.solana` when the recipient is on Solana.

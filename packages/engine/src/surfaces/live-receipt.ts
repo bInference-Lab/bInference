@@ -10,13 +10,13 @@ import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { BridgeStore } from "../bridges/ports.js";
 import type { LiveOutcome, ReceiptTx } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
-import { type IntentHistory, settledTradeOf } from "../intents/intent-history.js";
+import { type IntentHistory, reasonNamedOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { sendQuoteDocument } from "../intents/send-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import type { InstallStore, TransactionStore } from "../ports.js";
 import { bridgeReceiptOf } from "./bridge-receipt.js";
+import { reasonValuesOf } from "./reason-values.js";
 import { receiptTxOf } from "./receipt-tx.js";
 
 /** How a confirmed live intent ended on chain, with the assets its receipt names. */
@@ -50,6 +50,12 @@ function reconciledOf(source: LiveReceiptSource): LiveReceipt | undefined {
   }
   const { amountIn, amountOut } = settled;
   const tx = receiptTxOf(chains, assetRefParts(amountIn.asset).chain, hash);
+  // An unstake took out the coin it reconciled with, which a claim can take from its ready time.
+  const readyAtMs = record.kind === "stake" ? reasonNamedOf(history)?.readyAtMs : undefined;
+  if (readyAtMs !== undefined) {
+    const outcome = { kind: "unstaked", amount: amountOut, readyAtMs, tx } as const;
+    return { outcome, assets: intentAssetInfos(chains, record, [amountOut.asset]) };
+  }
   const fill = { amountIn, amountOut };
   const assets = intentAssetInfos(chains, record, [amountIn.asset, amountOut.asset]);
   if (record.kind !== "launchToken") {
@@ -103,17 +109,20 @@ async function landedOf(
 // whose order can no longer be drawn.
 const doneAlone: LiveReceipt = { outcome: { kind: "done" }, assets: {} };
 
-// A confirmed intent that ended before anything was sent: why, when it stored a reason, with a send
-// by name's name, which a name's reasons name.
-function unsentOf(record: IntentRecord): LiveReceipt {
-  const { reason, kind, quote } = record;
+// A confirmed intent that ended before anything was sent: why, when it stored a reason, with what
+// its words name, such as a send by name's name or a staking move's validator and least stake.
+function unsentOf(source: LiveReceiptSource): LiveReceipt {
+  const { record, history, chains } = source;
+  const { reason } = record;
   if (reason === undefined) {
     return { outcome: { kind: "unsent" }, assets: {} };
   }
-  const name =
-    kind === "send" && quote !== undefined ? sendQuoteDocument.decode(quote).name?.name : undefined;
-  const refused = { kind: "refused", reason } as const;
-  return { outcome: name === undefined ? refused : { ...refused, name }, assets: {} };
+  const values = reasonValuesOf(record, history);
+  const named = Object.values(values).flatMap((value) =>
+    value.type === "amount" ? [value.amount.asset] : [],
+  );
+  const assets = named.length === 0 ? {} : intentAssetInfos(chains, record, named);
+  return { outcome: { kind: "refused", reason, values }, assets };
 }
 
 // A live intent that failed on chain: its reason, and its last transaction.
@@ -146,7 +155,7 @@ export async function liveReceiptOf(
 ): Promise<LiveReceipt | undefined> {
   const { record } = source;
   if (unsentEndStates.has(record.state)) {
-    return unsentOf(record);
+    return unsentOf(source);
   }
   if (record.isPaper) {
     return undefined;

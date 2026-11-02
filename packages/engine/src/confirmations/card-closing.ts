@@ -63,12 +63,22 @@ export type LiveOutcome =
   | {
       readonly kind: "refused";
       readonly reason: IntentReason;
-      /** The name of a send by name, which its reason's words name (decision 0308). */
-      readonly name?: string;
+      /**
+       * What its reason's words name: a send by name's name (decision 0308), a staking move's
+       * validator, least stake and next ready time (decision 0327).
+       */
+      readonly values?: CardLine["values"];
     }
   | { readonly kind: "unsent" }
   | { readonly kind: "unknown" }
   | { readonly kind: "failed"; readonly reason: IntentReason; readonly tx: ReceiptTx }
+  /** An unstake that landed: the coin it took out, and when a claim can take it (decision 0327). */
+  | {
+      readonly kind: "unstaked";
+      readonly amount: Amount;
+      readonly readyAtMs: number;
+      readonly tx: ReceiptTx;
+    }
   | BridgeOutcome;
 
 /**
@@ -149,9 +159,9 @@ function launchedLine(outcome: AfterOf<"launched">): CardLine {
 }
 
 // The receipt of what followed a confirmation: the paper fill, or how the live intent ended.
-const reasonLine = (reason: IntentReason, name?: string): CardValue => ({
+const reasonLine = (reason: IntentReason, values: CardLine["values"] = {}): CardValue => ({
   type: "line",
-  line: { key: `reason.${reason}`, values: name === undefined ? {} : { name: text(name) } },
+  line: { key: `reason.${reason}`, values },
 });
 
 /** What follows a confirmation, by its kind. */
@@ -176,7 +186,7 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
   done: () => ({ key: "receipt.done", values: {} }),
   refused: (after) => ({
     key: "receipt.refused",
-    values: { reason: reasonLine(after.reason, after.name) },
+    values: { reason: reasonLine(after.reason, after.values) },
   }),
   unsent: () => ({ key: "receipt.unsent", values: {} }),
   unknown: () => ({ key: "receipt.unknown", values: {} }),
@@ -204,6 +214,14 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
       venue: text(after.venue),
       amount: { type: "amount", amount: after.amount },
       wallet: text(after.wallet),
+      explorerLink: txValue(after.tx),
+    },
+  }),
+  unstaked: (after) => ({
+    key: "receipt.unstaked",
+    values: {
+      amount: { type: "amount", amount: after.amount },
+      readyAt: { type: "dateTime", atMs: after.readyAtMs },
       explorerLink: txValue(after.tx),
     },
   }),

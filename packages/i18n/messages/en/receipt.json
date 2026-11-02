@@ -21,5 +21,6 @@
   "orderUnstarted": "❌ Auto order not started: {why, select, expired {it expired before the confirmation} other {it was cancelled first}}",
   "bridgeSent": "✅ Left {fromChain} · arrives on {chain} in about {minutes, number} min · {explorerLink}",
   "bridgeDelivered": "✅ Delivered on {chain}: {recipient} received {received} · {explorerLink}",
-  "bridgeRefunded": "⚠️ Not delivered: {venue} paid {amount} back to {wallet} · {explorerLink}"
+  "bridgeRefunded": "⚠️ Not delivered: {venue} paid {amount} back to {wallet} · {explorerLink}",
+  "unstaked": "✅ Unstaked {amount}: claim it from {readyAt} · {explorerLink}"
 }

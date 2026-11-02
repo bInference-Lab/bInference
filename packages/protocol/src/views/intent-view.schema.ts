@@ -69,6 +69,15 @@ export interface IntentOutcome {
   readonly reason?: string;
   /** The name of the chain a bridge's reason names, the chain it bridges to, as its words show it. */
   readonly chain?: string;
+  /**
+   * The validator a staking move's reason names: its account, and its name once the venue planned
+   * the move, outside content its operator chose.
+   */
+  readonly validator?: { readonly account: AccountRef; readonly name?: string };
+  /** The staking venue's least stake, which `below_min_stake` names. */
+  readonly minStake?: Amount;
+  /** When the wallet's next unbonding part is ready, which `nothing_to_claim` names. */
+  readonly readyAt?: number;
   readonly txHashes?: readonly TxHash[];
   readonly executions?: readonly ExecutionView[];
 }
@@ -173,6 +182,11 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
         .regex(/^[a-z][a-z_]*$/)
         .exactOptional(),
       chain: z.string().min(1).max(100).exactOptional(),
+      validator: z
+        .object({ account: accountRefSchema, name: z.string().min(1).max(64).exactOptional() })
+        .exactOptional(),
+      minStake: amountSchema.exactOptional(),
+      readyAt: epochMsSchema.exactOptional(),
       txHashes: z.array(z.string().refine(isTxHash)).exactOptional(),
       executions: z.array(executionViewSchema).exactOptional(),
     })

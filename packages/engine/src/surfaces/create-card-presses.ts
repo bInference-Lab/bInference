@@ -41,7 +41,11 @@ async function standingOf(
   signal: AbortSignal,
 ): Promise<CardStanding> {
   if (outcome.verdict === "requote_failed") {
-    return { status: "open", reason: outcome.reason, reasonValues: reasonValuesOf(intent.record) };
+    return {
+      status: "open",
+      reason: outcome.reason,
+      reasonValues: reasonValuesOf(intent.record, intent.history),
+    };
   }
   if (outcome.verdict === "locked" || outcome.verdict === "over_cap") {
     return { status: outcome.verdict };
