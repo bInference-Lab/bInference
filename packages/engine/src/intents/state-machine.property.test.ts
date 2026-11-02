@@ -380,7 +380,9 @@ function tableViolations({ before, trigger, nowMs, result }: Outcome): readonly 
 const reasonLists: Readonly<Partial<Record<IntentState, readonly IntentReason[]>>> = {
   rejected_policy: policyReasons.filter((code) => code !== "price_impact"),
   risk_blocked: riskReasons,
-  failed_check: [...checkReasons, ...fillBreaches],
+  // A stake the wallet queue plans again ends `failed_check` with `validator_jailed` once its
+  // validator was jailed after the card (decision 0327).
+  failed_check: [...checkReasons, ...fillBreaches, "validator_jailed"],
   failed_onchain: failureReasons,
 };
 
