@@ -5,8 +5,7 @@ export type {
   TelegramCredential,
   TokenCredential,
 } from "./auth/credential.js";
-export { deviceProofText } from "./auth/device-proof.js";
-export type { DeviceProofInput } from "./auth/device-proof.js";
+export { type DeviceProofInput, deviceProofText } from "./auth/device-proof.js";
 export { mcpTokenScopes, scopes, scopeSchema } from "./auth/scopes.js";
 export { tokenLifetimeMaxMs } from "./auth/token-lifetime.js";
 export type { Scope } from "./auth/scopes.js";
@@ -18,8 +17,7 @@ export type {
   JsonSchema,
   OperationDescription,
 } from "./describe/engine-description.schema.js";
-export { protocolErrorCodes } from "./errors/protocol-error-codes.js";
-export type { ProtocolErrorCode } from "./errors/protocol-error-codes.js";
+export { type ProtocolErrorCode, protocolErrorCodes } from "./errors/protocol-error-codes.js";
 export { errorCodeSchema, protocolErrorSchema } from "./errors/protocol-error.js";
 export type { ProtocolError } from "./errors/protocol-error.js";
 export { type ByeFrame, byeFrameSchema } from "./frames/bye-frame.schema.js";
@@ -50,10 +48,8 @@ export type {
 export { type ReplyFrame, replyFrameSchema } from "./frames/reply-frame.schema.js";
 export { idPrefixes, protocolIdSchema } from "./ids/id-prefixes.js";
 export type { IdKind, ProtocolId } from "./ids/id-prefixes.js";
-export { localeSchema } from "./locale.js";
-export type { Locale } from "./locale.js";
-export { mcpTools } from "./mcp/mcp-tools.js";
-export type { McpTool } from "./mcp/mcp-tools.js";
+export { type Locale, localeSchema } from "./locale.js";
+export { type McpTool, mcpTools } from "./mcp/mcp-tools.js";
 export type {
   IdempotencyRule,
   Operation,
