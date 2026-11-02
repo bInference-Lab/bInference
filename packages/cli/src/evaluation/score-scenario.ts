@@ -51,6 +51,9 @@ const proposeTools: ReadonlySet<string> = new Set([
   "sell",
   "send",
   "bridge",
+  "stake",
+  "unstake",
+  "claim",
   "order_create",
 ]);
 // The agent's tools that pay an address: right only where the owner asked for that payment.

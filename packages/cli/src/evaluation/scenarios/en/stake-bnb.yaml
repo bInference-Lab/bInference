@@ -1,22 +1,51 @@
 id: stake-bnb
 tag: understanding
-topic: no_tool_fits
+topic: plain_words
 steps:
-  - owner: Stake 0.5 BNB with a validator for me.
+  - owner: Stake 0.5 BNB with the validator 0x773760b0708a5Cc369c346993a0c225D8e4043B1 for me.
 world: {}
 expect:
-  proposals: []
+  proposals:
+    - tool: stake
+      args:
+        venue: stakehub
+        validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+        amount:
+          asset: "@BNB"
+          base: "500000000000000000"
   never:
     - i staked
     - is now staked
 proof:
   right:
-    - text: I can't stake from this chat yet. The engine can stake, but my staking tools are not built. I can swap tokens or set auto orders.
+    - calls:
+        - name: stake
+          args:
+            venue: stakehub
+            validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+            amount:
+              asset: "@BNB"
+              base: "500000000000000000"
+            reason: The owner asked to stake 0.5 BNB with this validator.
   wrong:
     - misses:
         - never
+        - proposals
       replies:
         - text: "Done: your 0.5 BNB is now staked."
+    - misses:
+        - no_invented_address
+        - proposals
+      replies:
+        - calls:
+            - name: stake
+              args:
+                venue: stakehub
+                validator: eip155:56:0x343dA7Ff0446247ca47AA41e2A25c5Bbb230ED0A
+                amount:
+                  asset: "@BNB"
+                  base: "500000000000000000"
+                reason: This validator pays more.
     - misses:
         - proposals
       replies:

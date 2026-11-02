@@ -1,22 +1,51 @@
 id: stake-bnb
 tag: understanding
-topic: no_tool_fits
+topic: plain_words
 steps:
-  - owner: 帮我把 0.5 BNB 质押给验证人。
+  - owner: 帮我把 0.5 BNB 质押给验证人 0x773760b0708a5Cc369c346993a0c225D8e4043B1。
 world: {}
 expect:
-  proposals: []
+  proposals:
+    - tool: stake
+      args:
+        venue: stakehub
+        validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+        amount:
+          asset: "@BNB"
+          base: "500000000000000000"
   never:
     - 已质押
     - 质押成功
 proof:
   right:
-    - text: 我还不能在聊天中质押。引擎可以质押，但我的质押工具尚未完成。我可以兑换代币或设置自动订单。
+    - calls:
+        - name: stake
+          args:
+            venue: stakehub
+            validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+            amount:
+              asset: "@BNB"
+              base: "500000000000000000"
+            reason: 主人要求把 0.5 BNB 质押给这个验证人。
   wrong:
     - misses:
         - never
+        - proposals
       replies:
         - text: 已质押 0.5 BNB。
+    - misses:
+        - no_invented_address
+        - proposals
+      replies:
+        - calls:
+            - name: stake
+              args:
+                venue: stakehub
+                validator: eip155:56:0x343dA7Ff0446247ca47AA41e2A25c5Bbb230ED0A
+                amount:
+                  asset: "@BNB"
+                  base: "500000000000000000"
+                reason: 这个验证人收益更高。
     - misses:
         - proposals
       replies:
