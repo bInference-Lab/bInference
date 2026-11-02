@@ -213,7 +213,7 @@ function acceptChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
       await privySigns(main, call(stakeManager, callData.deposit(), oneBnbWei));
       await privySigns(main, call(slisBnb, approveTo(stakeManager, 5n)));
       await privySigns(main, call(stakeManager, callData.requestWithdraw()));
-      await privySigns(main, call(stakeManager, callData.claimWithdraw()));
+      await privySigns(main, call(stakeManager, callData.claimWithdrawByUUID()));
     }),
     bridgeCheck(harness, "signs an identity registration", async ({ main }) => {
       await privySigns(main, call(identity, registerData.uri));

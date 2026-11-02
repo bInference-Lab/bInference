@@ -62,8 +62,10 @@ const stakehub: VenueContracts = {
 };
 
 // Lista's stake manager, from `synclub-contracts/contracts/ListaStakeManager.sol`: `deposit` mints
-// slisBNB to `msg.sender`, a withdrawal request is `msg.sender`'s and its claim pays it. The bot's
-// `claimWithdrawFor` and the whitelisted `instantWithdraw` are left out.
+// slisBNB to `msg.sender`, a withdrawal request is `msg.sender`'s and its claim by the request's own
+// id pays it (decision 0332), so a claim names the request its plan names whatever the order of
+// the sender's requests. `claimWithdraw` by index, the bot's `claimWithdrawFor` and the
+// whitelisted `instantWithdraw` are left out.
 const lista: VenueContracts = {
   chain: bsc,
   names: ["stake-manager"],
@@ -76,7 +78,7 @@ const lista: VenueContracts = {
     },
     {
       contract: "stake-manager",
-      abi: abiOf("claimWithdraw", [["uint256", "_idx"]]),
+      abi: abiOf("claimWithdrawByUUID", [["uint256", "_uuid"]]),
       walletInputs: [],
     },
   ],

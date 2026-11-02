@@ -1,6 +1,6 @@
 # 0325. A stake carries up to 100 BNB in a ceiling rule of its own
 
-Status: Accepted
+Status: Amended by 0332
 
 Accepted by the owner on 2026-11-01 ("Staking up to 100 BNB").
 

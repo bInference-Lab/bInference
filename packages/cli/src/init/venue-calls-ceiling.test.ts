@@ -66,7 +66,7 @@ describe("a ceiling built from the staking, bridge and identity calls on BSC", (
       "Call claim, chain 56",
       "Call deposit, chain 56",
       "Call requestWithdraw, chain 56",
-      "Call claimWithdraw, chain 56",
+      "Call claimWithdrawByUUID, chain 56",
       "Call register, chain 56",
       "Bridge depositV3, chain 56 to 8453, 1",
       "Bridge depositV3, chain 56 to 8453, 2",

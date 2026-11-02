@@ -145,7 +145,11 @@ const onContract = (contract: string, names: readonly string[]): readonly Ceilin
 // StakeHub's and the stake manager's calls, and the identity registry's `register(string)`.
 const testStakingCalls: readonly CeilingCall[] = [
   ...onContract(stakingAddresses.stakeHub, ["delegate", "undelegate", "claim"]),
-  ...onContract(stakingAddresses.stakeManager, ["deposit", "requestWithdraw", "claimWithdraw"]),
+  ...onContract(stakingAddresses.stakeManager, [
+    "deposit",
+    "requestWithdraw",
+    "claimWithdrawByUUID",
+  ]),
   { contract: bridgeAddresses.identity, abi: bridgeAbis.register, walletInputs: [] },
 ];
 

@@ -146,7 +146,7 @@ const staking = parseAbi([
   "function claim(address operatorAddress, uint256 requestNumber)",
   "function deposit() payable",
   "function requestWithdraw(uint256 _amountInSlisBnb)",
-  "function claimWithdraw(uint256 _idx)",
+  "function claimWithdrawByUUID(uint256 _uuid)",
   "function claimWithdrawFor(address _user, uint256 _idx)",
 ]);
 const registry = parseAbi([
@@ -165,7 +165,9 @@ export const stakingAbis: Readonly<Record<string, AbiFunction>> = {
   claim: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "claim" })),
   deposit: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "deposit" })),
   requestWithdraw: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "requestWithdraw" })),
-  claimWithdraw: abiFunctionSchema.parse(getAbiItem({ abi: staking, name: "claimWithdraw" })),
+  claimWithdrawByUUID: abiFunctionSchema.parse(
+    getAbiItem({ abi: staking, name: "claimWithdrawByUUID" }),
+  ),
   depositErc20: abiFunctionSchema.parse(getAbiItem({ abi: relay, name: "depositErc20" })),
 };
 
@@ -177,7 +179,7 @@ export const callData: {
   readonly claim: (validator: Hex) => Hex;
   readonly deposit: () => Hex;
   readonly requestWithdraw: () => Hex;
-  readonly claimWithdraw: () => Hex;
+  readonly claimWithdrawByUUID: () => Hex;
   readonly claimWithdrawFor: (user: Hex) => Hex;
   readonly transferFrom: (from: Hex, to: Hex) => Hex;
   readonly setApprovalForAll: (operator: Hex) => Hex;
@@ -195,8 +197,8 @@ export const callData: {
   deposit: () => encodeFunctionData({ abi: staking, functionName: "deposit" }),
   requestWithdraw: () =>
     encodeFunctionData({ abi: staking, functionName: "requestWithdraw", args: [5n] }),
-  claimWithdraw: () =>
-    encodeFunctionData({ abi: staking, functionName: "claimWithdraw", args: [0n] }),
+  claimWithdrawByUUID: () =>
+    encodeFunctionData({ abi: staking, functionName: "claimWithdrawByUUID", args: [1n] }),
   claimWithdrawFor: (user) =>
     encodeFunctionData({ abi: staking, functionName: "claimWithdrawFor", args: [user, 0n] }),
   transferFrom: (from, to) =>

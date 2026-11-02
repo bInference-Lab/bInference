@@ -100,7 +100,7 @@ describe("the staking, bridge and identity calls on bsc", () => {
       "claim(address,uint256)",
       "deposit()",
       "requestWithdraw(uint256)",
-      "claimWithdraw(uint256)",
+      "claimWithdrawByUUID(uint256)",
       "depositV3(address,address,address,address,uint256,uint256,uint256,address,uint32,uint32,uint32,bytes)",
       "depositErc20(address,address,uint256,bytes32)",
       "register(string)",
