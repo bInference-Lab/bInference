@@ -12,6 +12,7 @@ import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-fac
 import type { PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore } from "../ports.js";
 import { advanceBySimulation } from "../sends/owner-steps.js";
+import { declaredSpenders } from "../venues/declared-spenders.js";
 import { type StakePlanParts, planStakeMove } from "./plan-stake-move.js";
 import { type ResolvedStake, resolveStake, type StakeResolveOptions } from "./resolve-stake.js";
 import { paperStakeView, simulateStake } from "./simulate-stake.js";
@@ -70,7 +71,12 @@ async function simulate(
   const simulation = assessed.record.isPaper
     ? ok(paperStakeView(built.plan, nowMs()))
     : await simulateStake(
-        { simulator: options.simulator, family: resolved.chain.family, nowMs },
+        {
+          simulator: options.simulator,
+          family: resolved.chain.family,
+          spenders: declaredSpenders(resolved.venue, resolved.chain),
+          nowMs,
+        },
         built,
         advance.signal,
       );

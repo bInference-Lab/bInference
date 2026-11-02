@@ -157,7 +157,8 @@ export function stakeRequest(
 const poolReceipt = assetRefSchema.parse("fake:1/token:0x000000e2");
 
 // A liquid unstake's approval of the pool's receipt token to the pool, and the units its request
-// hands the pool (decision 0331); the units are the call's last word.
+// hands the pool (decision 0331); the units are the call's last word. A deposit mints the wallet
+// receipt units at the test pool's rate of 10 for 11 coins.
 function poolEffects(draft: TxDraft, pool: AccountRef) {
   const words = fakeCallOf(draft)?.data.split(",") ?? [];
   const last = words.at(-1) ?? "";
@@ -165,14 +166,19 @@ function poolEffects(draft: TxDraft, pool: AccountRef) {
   if (words[0] === "approve") {
     return { transfers: [], approvals: [{ owner: draft.from, spender: pool, amount }] };
   }
+  if (words[0] === "deposit") {
+    const minted = { asset: poolReceipt, base: ((fakeCallOf(draft)?.value ?? 0n) * 10n) / 11n };
+    return { transfers: [{ from: pool, to: draft.from, amount: minted }], approvals: [] };
+  }
   const handed = words[0] === "requestWithdraw" ? [{ from: draft.from, to: pool, amount }] : [];
   return { transfers: handed, approvals: [] };
 }
 
 /**
  * A simulator that runs each call to the fake staking venue's contract or the fake pool as the
- * chain would, moving its coin from the wallet to the contract, an unstake's approval and receipt
- * units to the pool, and hands every other draft to `inner`.
+ * chain would, moving its coin from the wallet to the contract, a stake's receipt units to the
+ * wallet, an unstake's approval and receipt units to the pool, and hands every other draft to
+ * `inner`.
  */
 export function stakingSimulator(
   inner: Pick<TxSimulator, "simulate">,

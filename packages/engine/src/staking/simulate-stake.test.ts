@@ -18,6 +18,7 @@ const other = assetRefSchema.parse("fake:1/token:0x000000aa");
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
 const hub = accountRefSchema.parse("fake:1:0x000000d1");
 const burn = accountRefSchema.parse("fake:1:0x00000000");
+const stranger = accountRefSchema.parse("fake:1:0x000000f9");
 const whole = 10n ** 18n;
 const live = { signal: new AbortController().signal };
 
@@ -55,7 +56,7 @@ async function judged(plan: StakePlan, step: Partial<SimulatedStep>) {
     fakeDraft(wallet, { to: "0x000000d1", value: plan.value.base, data: "delegate,0x000000c1" }),
   ];
   const simulator = { simulate: async () => Promise.resolve([ran]) };
-  const parts = { simulator, family: createFakeFamily(), nowMs: () => 5 };
+  const parts = { simulator, family: createFakeFamily(), spenders: [hub], nowMs: () => 5 };
   const result = await simulateStake(parts, { plan, steps }, live.signal);
   return result.ok ? "ran" : result.error;
 }
@@ -90,9 +91,9 @@ describe("the simulation of a staking move (decision 0327)", () => {
   });
 
   it("lets an unstake set its own receipt units' allowance, or none, and nothing else (decision 0331)", async () => {
-    const approval = (base: bigint, asset = receipt) => ({
+    const approval = (base: bigint, asset = receipt, spender = hub) => ({
       owner: wallet,
-      spender: hub,
+      spender,
       amount: { asset, base },
     });
     const burned = { transfers: [out({ asset: receipt, base: whole })] };
@@ -101,8 +102,32 @@ describe("the simulation of a staking move (decision 0327)", () => {
       judged(planOf("unstake"), { ...burned, approvals: [approval(whole + 1n)] }),
       judged(planOf("unstake"), { ...burned, approvals: [approval(whole, other)] }),
       judged(planOf("stake"), { approvals: [approval(whole)] }),
+      judged(planOf("unstake"), { ...burned, approvals: [approval(whole, receipt, stranger)] }),
     ]);
-    expect(answers).toStrictEqual(["ran", "effects_differ", "effects_differ", "effects_differ"]);
+    expect(answers).toStrictEqual([
+      "ran",
+      "effects_differ",
+      "effects_differ",
+      "effects_differ",
+      "effects_differ",
+    ]);
+  });
+
+  it("holds an unstake to the receipt units it burns, and a stake to the least units it promises", async () => {
+    const least = { ...planOf("stake"), minShares: { asset: receipt, base: whole } };
+    const minted = (base: bigint) => ({
+      transfers: [
+        out({ asset: coin, base: whole }),
+        { from: hub, to: wallet, amount: { asset: receipt, base } },
+      ],
+    });
+    const answers = await Promise.all([
+      judged(planOf("unstake"), { transfers: [out({ asset: receipt, base: whole + 1n }, burn)] }),
+      judged(least, minted(whole)),
+      judged(least, minted(whole - 1n)),
+      judged(least, { transfers: [out({ asset: coin, base: whole })] }),
+    ]);
+    expect(answers).toStrictEqual(["effects_differ", "ran", "effects_differ", "effects_differ"]);
   });
 
   it("names a call that reverted", async () => {
