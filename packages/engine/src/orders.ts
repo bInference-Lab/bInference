@@ -116,3 +116,15 @@ export type {
 } from "./leaders/tracked-wallet-record.js";
 export type { TrackedWalletStore } from "./leaders/ports.js";
 export { activityItemOf } from "./leaders/activity-item-of.js";
+export {
+  isAnswering,
+  webhookAlertDraftSchema,
+  webhookInboxKey,
+  webhookInboxPayload,
+  webhookRateWindowMs,
+  webhookRepeatWindowMs,
+  webhookRuleKeySchema,
+  webhookTakeSchema,
+} from "./webhooks/webhook-alert.js";
+export type { WebhookAlertDraft, WebhookRuleKey, WebhookTake } from "./webhooks/webhook-alert.js";
+export type { WebhookAlertStore } from "./webhooks/ports.js";

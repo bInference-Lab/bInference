@@ -22,6 +22,7 @@ import type { ScheduleStore } from "../schedules/ports.js";
 import type { UnbondingStore } from "../staking/ports.js";
 import type { DailySummaryStore } from "../summaries/ports.js";
 import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/ports.js";
+import type { WebhookAlertStore } from "../webhooks/ports.js";
 
 /**
  * Every store port of the engine database, as the composition root hands them to the engine, the
@@ -70,4 +71,6 @@ export interface EngineStores {
   readonly bridges: BridgeStore;
   /** The coin each unstake took out, until a claim takes it (decision 0296). */
   readonly unbondings: UnbondingStore;
+  /** The webhook rules as the listener reads them, and each alert their URLs took. */
+  readonly webhookAlerts: WebhookAlertStore;
 }

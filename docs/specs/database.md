@@ -196,7 +196,13 @@ chains.
 A webhook rule's `action JSON` holds its bounds as `webhookRule/create` took them. An agent holds
 at most 20 rules that are `awaiting_confirmation` or `active`. `last_alert_at` is the last
 accepted alert's time. `webhook_events.alert_id` is the body's `id`, or null when it has none,
-and the rate counts a rule's `accepted` rows of the last 60 seconds.
+and the rate counts a rule's `accepted` rows of the last 60 seconds. Per
+[decision 0333](../DECISIONS.md#d0333): a repeat is an `accepted` row of the rule with the same
+`alert_id` or `body_hash` of the last 10 minutes; the listener writes no `rejected` row; a request
+that gets `404` writes no row. An accepted alert's row, its `inbox` entry (`source_key`
+`wh:<webhook_events.id>`, payload `{ rule, event, alertId?, body }` with the body as `{ text }`
+when it is UTF-8, else `{ base64 }`) and the rule's `last_alert_at` are one write, and
+`webhook_events` is also indexed by `(rule_id, outcome, received_at)`.
 
 <a id="section-2-5"></a>
 

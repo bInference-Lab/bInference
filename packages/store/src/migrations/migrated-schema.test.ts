@@ -159,7 +159,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   webhook_rules: names(
     "id agent_id name secret_hash action state rate_per_min fills max_fills expires_at card_id " +
-      "created_at changed_at version",
+      "created_at changed_at version last_alert_at",
   ),
   webhook_events: names("id rule_id alert_id body_hash received_at outcome intent_id"),
   schedules: names(
@@ -281,7 +281,11 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   wallet_activity: ["index|account,at", "unique|account,tx_hash,log_index"],
   launches: ["index|chain,block", "index|chain,launched_at", "index|creator,launched_at"],
   webhook_rules: ["index|state"],
-  webhook_events: ["index|rule_id,alert_id", "index|rule_id,received_at"],
+  webhook_events: [
+    "index|rule_id,alert_id",
+    "index|rule_id,outcome,received_at",
+    "index|rule_id,received_at",
+  ],
   schedules: ["index|agent_id,state", "index|state,next_at"],
   schedule_runs: ["index|at"],
   ledger: ["unique|hash", "unique|id"],

@@ -25,6 +25,7 @@ import { createMemoryTrackedWalletStore } from "./memory-tracked-wallet-store.js
 import { createMemoryTracking } from "./memory-tracking.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 import { createMemoryUnbondingStore } from "./memory-unbonding-store.js";
+import { createMemoryWebhookAlertStore } from "./memory-webhook-alert-store.js";
 
 /**
  * Every engine store port, in memory, over one shared ledger that tests can also append to, with
@@ -59,6 +60,7 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     tracking,
   });
   const intents = createMemoryIntentStore({ ledger, agents, install, agentInbox, orders });
+  const inbox = createMemoryInboxStore();
   return {
     intents,
     orders,
@@ -66,7 +68,7 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     questions: createMemoryQuestionStore({ agentInbox }),
     ledger,
     idempotency: createMemoryIdempotencyStore(),
-    inbox: createMemoryInboxStore(),
+    inbox,
     access: createMemoryAccessStore(),
     agents,
     configJournal: createMemoryConfigJournal(),
@@ -87,5 +89,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     unbondings: createMemoryUnbondingStore({
       hasIntent: (id) => intents.intentNow(id) !== undefined,
     }),
+    webhookAlerts: createMemoryWebhookAlertStore({ inbox }),
   };
 }

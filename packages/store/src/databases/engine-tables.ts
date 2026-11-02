@@ -16,6 +16,7 @@ import type { SummaryTables } from "./summary-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
 import type { UnbondingTables } from "./unbonding-tables.js";
 import type { WalletTables } from "./wallet-tables.js";
+import type { WebhookTables } from "./webhook-tables.js";
 
 // The engine tables the store adapters query, as SQLite returns them: TEXT is a string, INTEGER a
 // number, and a nullable column may be null. The migrations in src/migrations/engine/ define them.
@@ -329,7 +330,8 @@ export interface EngineTables
     SummaryTables,
     BridgeTables,
     UnbondingTables,
-    WalletTables {
+    WalletTables,
+    WebhookTables {
   meta: MetaTable;
   safety: SafetyTable;
   custody: CustodyTable;
