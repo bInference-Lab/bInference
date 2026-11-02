@@ -45,6 +45,11 @@ export interface StakeSources {
   /** The price now of each chain coin the unbondings hold, where one is known. */
   readonly coinPrices: ReadonlyMap<AssetRef, UsdPrice>;
   readonly nowMs: number;
+  /**
+   * Whether a row's coin can be claimed now; by its time alone when absent. A liquid venue's live
+   * row waits for its queue (decision 0331).
+   */
+  readonly isReady?: (row: UnbondingRecord) => boolean;
 }
 
 /** The key of one venue's validator, as the stakes are grouped. */
@@ -116,10 +121,11 @@ function worthOf(group: Group, staked: Amount | undefined): { readonly stakedVal
 
 function waitingOf(group: Group, sources: StakeSources, coin: AssetRef) {
   const price = sources.coinPrices.get(coin);
-  const ready = group.rows.filter((row) => row.readyAtMs <= sources.nowMs);
+  const { isReady = (row: UnbondingRecord) => row.readyAtMs <= sources.nowMs } = sources;
+  const ready = group.rows.filter(isReady);
   return {
     unbonding: group.rows
-      .filter((row) => row.readyAtMs > sources.nowMs)
+      .filter((row) => !isReady(row))
       .map(({ amount, readyAtMs }) => ({ amount, readyAtMs })),
     claimable: { asset: coin, base: sumOf(ready) },
     ...(price === undefined ? {} : { waitingUsdMicros: mulDiv(sumOf(group.rows), price, "down") }),

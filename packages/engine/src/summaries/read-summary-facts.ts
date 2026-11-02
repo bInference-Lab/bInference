@@ -10,6 +10,7 @@ import type { OrderStore } from "../orders/ports.js";
 import { readAllRows } from "../pnl/read-all-rows.js";
 import { limitsChanged } from "../policy/limit-change.js";
 import type { InstallStore, IntentStore } from "../ports.js";
+import { isRowReady } from "../staking/row-ready.js";
 import type { ModeFigures, SummaryFacts } from "./summary-facts.js";
 import { type HoldingsParts, totalsOf } from "./summary-totals.js";
 
@@ -79,7 +80,8 @@ async function stakesAndBridgesOf(
   ]);
   return {
     lateBridges: bridges.filter(({ late }) => late).length,
-    readyClaims: rows.flat().filter(({ readyAtMs }) => readyAtMs <= nowMs).length,
+    readyClaims: rows.flat().filter((row) => isRowReady(row, { nowMs, staking: parts.staking }))
+      .length,
   };
 }
 

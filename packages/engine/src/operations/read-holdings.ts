@@ -6,6 +6,7 @@ import { createPositions } from "../positions/create-positions.js";
 import type { PositionRecord } from "../positions/position-record.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import type { UnbondingStore } from "../staking/ports.js";
+import { isRowReady } from "../staking/row-ready.js";
 import { type HeldPool, stakePricesOf } from "../staking/stake-prices.js";
 import type { UnbondingRecord } from "../staking/unbonding-record.js";
 import type { StakingHost } from "../venues/staking-host.js";
@@ -163,6 +164,7 @@ export async function readHoldings(
       receipts,
       coinPrices,
       nowMs,
+      isReady: (row) => isRowReady(row, { nowMs, staking: parts.staking }),
     }),
   );
   const live = new Set(wallets.map(({ id }) => id));
