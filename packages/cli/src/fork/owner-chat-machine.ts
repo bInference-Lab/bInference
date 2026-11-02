@@ -1,6 +1,7 @@
 import type { NameResolver } from "@binference/chain";
 import { createEvmTxSimulator } from "@binference/chain-evm";
 import type { Fork } from "@binference/chain-evm/fork";
+import type { StakingVenue } from "@binference/chain/staking";
 import { createFakeRiskSource } from "@binference/chain/testing";
 import { BinferenceError } from "@binference/core";
 import {
@@ -9,7 +10,7 @@ import {
   createSeededRandom,
   type MemoryLogger,
 } from "@binference/core/testing";
-import type { EnginePush } from "@binference/engine";
+import type { EnginePush, PositionStore } from "@binference/engine";
 import {
   type AgentInboxMessage,
   createRunningTurns,
@@ -31,6 +32,7 @@ import type { ComposedTelegram } from "../compose/compose-telegram.js";
 import { type LoopbackServing, serveOnLoopback } from "../compose/loopback-serving.js";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { selfHostedBridging } from "../compose/self-hosted-bridging.js";
+import { chainStakingVenues } from "../compose/staking-venues.js";
 import {
   addSkeletonTokens,
   readyEngineOperations,
@@ -44,10 +46,11 @@ import { type RescueRigParts, rescueRigParts } from "./rescue-rig-parts.js";
 import { spaceIdOn } from "./space-id-names.js";
 
 /**
- * The engine on a fork as `binference start` composes it for sends and bridges, with the owner's
- * bot on the synthetic Bot API and the protocol server the runtime signs in to: the rescue rig's
- * live agent with its main and bridge wallets, SPACE ID's names on the fork, and Across and Relay
- * over their live APIs, whose deliveries the test lands.
+ * The engine on a fork as `binference start` composes it for sends, bridges and stakes, with the
+ * owner's bot on the synthetic Bot API and the protocol server the runtime signs in to: the rescue
+ * rig's live agent with its main and bridge wallets, SPACE ID's names on the fork, Across and Relay
+ * over their live APIs, whose deliveries the test lands, and StakeHub from the chain registry. The
+ * executor books into the positions the engine reads.
  */
 export interface OwnerChatMachine extends LoopbackServing {
   readonly composed: ComposedEngine;
@@ -60,12 +63,15 @@ export interface OwnerChatMachine extends LoopbackServing {
   readonly logger: MemoryLogger;
   readonly rig: RescueRigParts;
   readonly arrivals: BridgeArrivals;
+  /** The staking venues the engine and the executor run: StakeHub on the fork's BSC. */
+  readonly stakingVenues: readonly StakingVenue[];
   /** Stops the clients, the bot's relays and the server. */
   stop(): Promise<void>;
 }
 
-// The bridging parts `binference start` composes, over the fork's BSC and the arrivals' network.
-function bridgingOn(fork: Fork, arrivals: BridgeArrivals) {
+// The bridging parts and staking venues `binference start` composes, over the fork's BSC and the
+// arrivals' network.
+function reachOn(fork: Fork, arrivals: BridgeArrivals) {
   const { http } = arrivals;
   const clock = createSystemClock();
   const config = {
@@ -75,7 +81,10 @@ function bridgingOn(fork: Fork, arrivals: BridgeArrivals) {
     maxFeePerGasGwei: { [fork.chain.ref]: "10" },
   };
   const reads = composeChainReads({ chains: selfHostedChains(), config, http, clock });
-  return selfHostedBridging({ http, clock, reads });
+  return {
+    bridging: selfHostedBridging({ http, clock, reads }),
+    stakingVenues: chainStakingVenues(reads),
+  };
 }
 
 // The profile parts on the fork: the rig's custody, stores and prices, a risk source with nothing
@@ -98,14 +107,16 @@ function partsOf(fork: Fork, rig: RescueRigParts) {
 interface Made {
   readonly rig: RescueRigParts;
   readonly names: NameResolver;
-  readonly bridging: ReturnType<typeof bridgingOn>;
+  readonly bridging: ReturnType<typeof reachOn>["bridging"];
+  readonly stakingVenues: readonly StakingVenue[];
+  readonly positions: PositionStore;
   readonly telegram: Awaited<ReturnType<typeof ownerBot>>["telegram"];
   readonly turns: RunningTurns;
   readonly logger: MemoryLogger;
 }
 
 function composedOn(fork: Fork, made: Made): ComposedEngine {
-  const { rig, names, bridging, telegram, turns, logger } = made;
+  const { rig, names, bridging, telegram, turns, logger, stakingVenues, positions } = made;
   const clock = createSystemClock();
   const chains = selfHostedChains();
   const pushes = {
@@ -123,7 +134,7 @@ function composedOn(fork: Fork, made: Made): ComposedEngine {
       publish: (push) => pushes.publish(push),
       settled: (message) => pushes.settled(message),
     }),
-    positions: createMemoryPositionStore(),
+    positions,
     paperBalances: [],
     version: "2026.10.0",
     owner: () => ({ locale: "en", timezone: "UTC" }),
@@ -136,6 +147,7 @@ function composedOn(fork: Fork, made: Made): ComposedEngine {
     nameResolvers: [names],
     destinations: bridging.engine.destinations,
     bridging: bridging.engine,
+    stakingVenues,
     clock,
     random: createSeededRandom(34),
     logger,
@@ -154,16 +166,19 @@ export async function startOwnerChatMachine(
   signal: AbortSignal,
 ): Promise<OwnerChatMachine> {
   const arrivals = createBridgeArrivals(fork);
-  const bridging = bridgingOn(fork, arrivals);
+  const { bridging, stakingVenues } = reachOn(fork, arrivals);
   const names = spaceIdOn(fork);
-  const rig = await rescueRigParts(fork, { nameResolvers: [names], bridging });
+  const positions = createMemoryPositionStore();
+  const reach = { nameResolvers: [names], bridging, stakingVenues, positions };
+  const rig = await rescueRigParts(fork, reach);
   const owned = await ownerBot();
   // One owner record, as the self-hosted engine keeps it: the bot's and the engine's.
   await rig.stores.owners.bind({ userId: ownerId, pairedAtMs: 1 }, { signal });
   const telegram = { ...owned.telegram, owners: rig.stores.owners };
   const turns = createRunningTurns();
   const logger = createMemoryLogger({ subsystem: "engine" });
-  const composed = composedOn(fork, { rig, names, bridging, telegram, turns, logger });
+  const made = { rig, names, bridging, telegram, turns, logger, stakingVenues, positions };
+  const composed = composedOn(fork, made);
   await addSkeletonTokens({ stores: rig.stores });
   const clock = createSystemClock();
   const serving = await serveOnLoopback(composed, { clock, cliSecret: skeletonSecrets.cli });
@@ -186,6 +201,7 @@ export async function startOwnerChatMachine(
     logger,
     rig,
     arrivals,
+    stakingVenues,
     stop,
   };
 }

@@ -17,7 +17,7 @@ import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
 import type { StakingVenue } from "@binference/chain/staking";
 import { createIdSource, err, type Id } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
-import type { EngineOptions, WalletFactsSource } from "@binference/engine";
+import type { EngineOptions, PositionStore, WalletFactsSource } from "@binference/engine";
 import {
   createExecutor,
   createStakingHost,
@@ -220,6 +220,8 @@ export interface RescueRigReach {
   readonly bridging?: SelfHostedBridging;
   /** The staking venues the engine and the executor run, whose ids the agents' venues add. */
   readonly stakingVenues?: readonly StakingVenue[];
+  /** The positions the executor books into, which the engine reads; its own when absent. */
+  readonly positions?: PositionStore;
 }
 
 /** The rescue rig's parts on a fork, which an engine is made from. */
@@ -260,7 +262,7 @@ function executorOn(
   const nonces = createEvmNonceSource({ rpc, chain });
   return createExecutor({
     stores: parts.stores,
-    positions: createMemoryPositionStore(),
+    positions: parts.positions ?? createMemoryPositionStore(),
     queue: createWalletQueue({ transactions: parts.stores.transactions, nonces, clock }),
     custody: parts.custody,
     wallets: parts.wallets,
