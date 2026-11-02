@@ -42,6 +42,7 @@ export {
   unbondingReadyQuerySchema,
   unbondingRecordSchema,
   unbondingToldSchema,
+  unbondingWalletQuerySchema,
 } from "./staking/unbonding-record.js";
 export type {
   UnbondingClaim,
@@ -50,5 +51,6 @@ export type {
   UnbondingReadyQuery,
   UnbondingRecord,
   UnbondingTold,
+  UnbondingWalletQuery,
 } from "./staking/unbonding-record.js";
 export type { UnbondingStore } from "./staking/ports.js";

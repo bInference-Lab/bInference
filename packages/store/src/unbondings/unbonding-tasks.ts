@@ -13,6 +13,8 @@ import {
   unbondingRecordSchema,
   type UnbondingTold,
   unbondingToldSchema,
+  type UnbondingWalletQuery,
+  unbondingWalletQuerySchema,
 } from "@binference/engine/sends";
 import type { SelectQueryBuilder, Selectable } from "kysely";
 import { z } from "zod";
@@ -107,6 +109,22 @@ export const listOpenUnbondingsTask: StoreTask<UnbondingQuery, readonly Unbondin
     output: z.array(unbondingRecordSchema),
     run: (database, query) =>
       rowsOf(database, (select) => ofQuery(select, query).where("claim_intent_id", "is", null)),
+  });
+
+/** One wallet's unbondings in one mode no claim took, of every venue, the soonest ready first. */
+export const openUnbondingsOfTask: StoreTask<UnbondingWalletQuery, readonly UnbondingRecord[]> =
+  defineTask({
+    name: "unbondings.openOf",
+    access: "read",
+    input: unbondingWalletQuerySchema,
+    output: z.array(unbondingRecordSchema),
+    run: (database, query) =>
+      rowsOf(database, (select) =>
+        select
+          .where("wallet_id", "=", query.walletId)
+          .where("paper", "=", query.isPaper ? 1 : 0)
+          .where("claim_intent_id", "is", null),
+      ),
   });
 
 /** The unbondings a claim took, the soonest ready first, then the oldest. */

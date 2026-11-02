@@ -47,10 +47,14 @@ export interface UnbondingTold {
   readonly atMs: number;
 }
 
-/** Which unbondings a claim may take: one wallet's of one venue and validator, in one mode. */
-export interface UnbondingQuery {
+/** One wallet's unbondings in one mode, of every venue and validator. */
+export interface UnbondingWalletQuery {
   readonly walletId: Id<"wal">;
   readonly isPaper: boolean;
+}
+
+/** Which unbondings a claim may take: one wallet's of one venue and validator, in one mode. */
+export interface UnbondingQuery extends UnbondingWalletQuery {
   readonly venue: string;
   readonly validator?: AccountRef;
 }
@@ -105,6 +109,12 @@ export const unbondingReadyQuerySchema: z.ZodType<UnbondingReadyQuery> = z.stric
 export const unbondingToldSchema: z.ZodType<UnbondingTold> = z.strictObject({
   ids: z.array(rowNumberSchema).max(1_000),
   atMs: epochMsSchema,
+});
+
+/** Parses a query of one wallet's unbondings in one mode. */
+export const unbondingWalletQuerySchema: z.ZodType<UnbondingWalletQuery> = z.strictObject({
+  walletId: queryShape.walletId,
+  isPaper: queryShape.isPaper,
 });
 
 /** Parses an unbonding query. */

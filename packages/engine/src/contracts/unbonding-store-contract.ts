@@ -88,6 +88,27 @@ async function listsOpenSoonestFirst(subject: UnbondingStoreSubject): Promise<vo
   assert.deepEqual(await store.listOpen(elsewhere, live()), []);
 }
 
+async function listsWalletOpen(subject: UnbondingStoreSubject): Promise<void> {
+  const { store, intentIds, walletId } = subject;
+  const other = accountRefSchema.parse("fake:1:0x000000c2");
+  const later = await store.open(
+    draftOf(subject, intentIds[0], { readyAtMs: readyAtMs + 1, validator: other }),
+    live(),
+  );
+  const sooner = await store.open(
+    draftOf(subject, intentIds[1], { venue: "other-staking" }),
+    live(),
+  );
+  const paper = await store.open(draftOf(subject, intentIds[2], { isPaper: true }), live());
+  assert.deepEqual(await store.openOf({ walletId, isPaper: false }, live()), [sooner, later]);
+  assert.deepEqual(await store.openOf({ walletId, isPaper: true }, live()), [paper]);
+  const claim = { ...claimOf(subject, intentIds[2], [paper.requestRef]), isPaper: true };
+  await store.claim(claim, live());
+  assert.deepEqual(await store.openOf({ walletId, isPaper: true }, live()), []);
+  const elsewhere = { walletId: fixtureId("wal", 98), isPaper: false };
+  assert.deepEqual(await store.openOf(elsewhere, live()), []);
+}
+
 async function claimsOnce(subject: UnbondingStoreSubject): Promise<void> {
   const { store, intentIds } = subject;
   const first = await store.open(draftOf(subject, intentIds[0]), live());
@@ -131,6 +152,7 @@ async function refusesAborted(subject: UnbondingStoreSubject): Promise<void> {
   const query = { walletId, isPaper: false, venue: "fake-staking", validator };
   await assertRefusesAborted(async (call) => store.open(draftOf(subject, intentIds[0]), call));
   await assertRefusesAborted(async (call) => store.listOpen(query, call));
+  await assertRefusesAborted(async (call) => store.openOf({ walletId, isPaper: false }, call));
   await assertRefusesAborted(async (call) => store.claimedBy(intentIds[0], call));
   await assertRefusesAborted(async (call) =>
     store.claim(claimOf(subject, intentIds[0], ["ref"]), call),
@@ -152,6 +174,11 @@ export function unbondingStoreContract(harness: UnbondingStoreHarness): readonly
       "lists one wallet's open unbondings of a validator in a mode, soonest ready first",
       create,
       listsOpenSoonestFirst,
+    ),
+    checkOn(
+      "lists one wallet's open unbondings of every venue and validator in a mode, soonest ready first",
+      create,
+      listsWalletOpen,
     ),
     checkOn(
       "marks the requests a claim took once, and refuses one another claim took",

@@ -6,6 +6,7 @@ import type {
   UnbondingReadyQuery,
   UnbondingRecord,
   UnbondingTold,
+  UnbondingWalletQuery,
 } from "./unbonding-record.js";
 
 /** What every store call takes: a call on an aborted signal rejects and changes nothing. */
@@ -28,6 +29,11 @@ export interface UnbondingStore {
   open(draft: UnbondingDraft, options: StoreCall): Promise<UnbondingRecord>;
   /** The query's unbondings no claim took, the soonest ready first, then the oldest. */
   listOpen(query: UnbondingQuery, options: StoreCall): Promise<readonly UnbondingRecord[]>;
+  /**
+   * The wallet's unbondings in the mode no claim took, of every venue and validator, the soonest
+   * ready first, then the oldest: the coin it waits for or may claim now.
+   */
+  openOf(query: UnbondingWalletQuery, options: StoreCall): Promise<readonly UnbondingRecord[]>;
   /** The unbondings a claim took, the soonest ready first, then the oldest. */
   claimedBy(claimIntentId: Id<"int">, options: StoreCall): Promise<readonly UnbondingRecord[]>;
   /**

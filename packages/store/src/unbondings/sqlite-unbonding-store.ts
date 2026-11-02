@@ -6,6 +6,7 @@ import {
   claimUnbondingsTask,
   listOpenUnbondingsTask,
   markToldUnbondingsTask,
+  openUnbondingsOfTask,
   openUnbondingTask,
   untoldReadyUnbondingsTask,
 } from "./unbonding-tasks.js";
@@ -14,6 +15,7 @@ import {
 export const unbondingTasks: readonly TaskRunner[] = [
   openUnbondingTask,
   listOpenUnbondingsTask,
+  openUnbondingsOfTask,
   claimedUnbondingsTask,
   claimUnbondingsTask,
   untoldReadyUnbondingsTask,
@@ -25,6 +27,7 @@ export function createSqliteUnbondingStore(host: StoreHost): UnbondingStore {
   return {
     open: bindTask(host, openUnbondingTask),
     listOpen: bindTask(host, listOpenUnbondingsTask),
+    openOf: bindTask(host, openUnbondingsOfTask),
     claimedBy: bindTask(host, claimedUnbondingsTask),
     claim: bindTask(host, claimUnbondingsTask),
     untoldReady: bindTask(host, untoldReadyUnbondingsTask),

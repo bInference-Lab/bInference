@@ -107,6 +107,16 @@ export function createMemoryUnbondingStore(options: MemoryUnbondingStoreOptions)
       memoryCall(call, () =>
         copies(rows.values(), (row) => isOf(row, query) && row.claimIntentId === undefined),
       ),
+    openOf: async (query, call) =>
+      memoryCall(call, () =>
+        copies(
+          rows.values(),
+          (row) =>
+            row.walletId === query.walletId &&
+            row.isPaper === query.isPaper &&
+            row.claimIntentId === undefined,
+        ),
+      ),
     claimedBy: async (claimIntentId, call) =>
       memoryCall(call, () => copies(rows.values(), (row) => row.claimIntentId === claimIntentId)),
     claim: async (taken, call) => memoryCall(call, () => claim(rows, taken, options)),
