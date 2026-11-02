@@ -126,27 +126,39 @@ describe("a live move on a liquid pool (decision 0331)", () => {
     expect(noticeKeysOf(bench).filter((key) => key === "notice.claimedElsewhere")).toHaveLength(1);
   });
 
-  it("leaves open an unstake whose request a confirmed claim of binference names", async () => {
+  it("leaves open an unstake a confirmed claim names, and ends that claim at the queue once its request is gone", async () => {
     const fake = testLiquidFake();
     const bench = await stakeBench(landing(fake), { chains: liquidChains() });
     const stake = await tapped(bench, liquidRequest("stake"));
     await bench.release();
     await driveUntil(bench, stake, { states: stakeEnds });
-    const unstake = await tapped(
-      bench,
-      liquidRequest("unstake", { amount: { asset: testPoolReceipt, base: 10n ** 17n } }),
-    );
-    await bench.release();
-    await driveUntil(bench, unstake, { states: stakeEnds });
+    const tenth = { asset: testPoolReceipt, base: 10n ** 17n };
+    for (const amount of [tenth, tenth]) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the second unstake follows the first
+      const unstake = await tapped(bench, liquidRequest("unstake", { amount }));
+      // oxlint-disable-next-line eslint/no-await-in-loop -- each lands before the next
+      await bench.release();
+      // oxlint-disable-next-line eslint/no-await-in-loop -- each lands before the next
+      await driveUntil(bench, unstake, { states: stakeEnds });
+    }
     fake.wait(testUnbondingSeconds + 1);
     await bench.test.clock.advance(testUnbondingSeconds * 1_000 + dayMs);
-    await tapped(bench, liquidRequest("claim"));
+    const claim = await tapped(bench, liquidRequest("claim"));
+    // Its request goes outside binference, while the second stays released: a new plan passes.
     fake.claimFor(testAccount, "1");
 
-    const closed = await bench.test.engine.tellClaimsReady(live);
+    // The second is told ready; the first, which the claim names, stays open.
+    const told = await bench.test.engine.tellClaimsReady(live);
+    await expect(openRows(bench)).resolves.toHaveLength(2);
+    await bench.release();
+    const ended = await driveUntil(bench, claim, { states: stakeEnds });
 
-    expect(closed).toBe(0);
-    await expect(openRows(bench)).resolves.toHaveLength(1);
+    expect(told).toBe(1);
+    expect([ended, await stakeReasonOf(bench, claim)]).toStrictEqual([
+      "failed_check",
+      "nothing_to_claim",
+    ]);
+    expect(bench.signed).toHaveLength(5);
   });
 
   it("ends decode_mismatch, signing nothing, when the stake would now mint fewer units than its card promised", async () => {

@@ -16,6 +16,7 @@ import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { checkTransferPolicy } from "../sends/check-transfer-policy.js";
 import { ownCapCallOf } from "../staking/stake-ceiling.js";
 import { declaredSpenders } from "../venues/declared-spenders.js";
+import { claimMismatch } from "../venues/stake-plan-checks.js";
 import type { HostPlanned, StakingHost } from "../venues/staking-host.js";
 import { declaredTargetsOf } from "./declared-calls.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
@@ -154,8 +155,9 @@ async function replanOf(
  * (decision 0327), since a validator can be jailed, the venue paused or the stake moved between
  * the card and the queue: a refusal ends the move `failed_check` with the venue's reason and the
  * facts its words name, a plan of another move than the card's with `decode_mismatch`, as is a
- * stake that would mint fewer receipt units than its card promised (decision 0331), and an
- * unstake of more receipt units than the wallet now holds `exceeds_staked`; a venue that does not
+ * stake that would mint fewer receipt units than its card promised (decision 0331), a claim of a
+ * part the wallet no longer holds ready `nothing_to_claim`, and an unstake of more receipt units
+ * than the wallet now holds `exceeds_staked`; a venue that does not
  * answer, or one the engine does not run, signs nothing and waits for the next block. Any other
  * intent goes on.
  */
@@ -175,9 +177,35 @@ export async function takeStake(run: ExecutionRun, snapshot: IntentSnapshot): Pr
   if (mintsFewer(quote.plan, planned.value)) {
     return endRefused(run, snapshot, { reason: "decode_mismatch" });
   }
+  const gone = await cardPartsGone(run, quote);
+  if (gone !== false) {
+    return gone === undefined
+      ? "unread"
+      : endRefused(run, snapshot, { reason: "nothing_to_claim" });
+  }
   return burnsMore(quote.plan, planned.value)
     ? endRefused(run, snapshot, { reason: "exceeds_staked" })
     : "go";
+}
+
+// Whether a claim's card names a part the wallet no longer holds ready, such as one claimed outside
+// binference since (decision 0331); `undefined` while the venue does not answer.
+async function cardPartsGone(
+  run: ExecutionRun,
+  quote: StakeIntentQuote,
+): Promise<boolean | undefined> {
+  const { staking } = run.parts;
+  const venue = staking?.venueOn(quote.venue, run.plan.chain.ref);
+  const { plan } = quote;
+  if (plan.action !== "claim" || staking === undefined || venue === undefined) {
+    return false;
+  }
+  const held = await staking.parts(
+    venue,
+    { wallet: plan.wallet, validator: plan.validator },
+    { signal: run.signal },
+  );
+  return held.ok ? claimMismatch(plan, held.value) !== undefined : undefined;
 }
 
 // Whether the card's stake would now mint fewer receipt units than the least its card promised.
