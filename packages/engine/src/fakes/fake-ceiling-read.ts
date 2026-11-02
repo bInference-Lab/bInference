@@ -71,8 +71,18 @@ export function readOf(
     })),
     launchCalls: [...(calls.launchCalls ?? [])],
     functions: (calls.functions ?? []).map((name) => ({ type: "function", name, inputs: [] })),
+    ...(calls.ownCaps === undefined
+      ? {}
+      : {
+          ownCaps: calls.ownCaps.map((cap) => ({
+            functionName: cap.functionName,
+            maxValueBase: String(cap.maxValueBase),
+          })),
+        }),
   });
+  const { ownCaps } = calls;
   return {
+    ...(ownCaps === undefined ? {} : { ownCaps }),
     chains,
     contracts,
     perTxNativeBase,
@@ -103,6 +113,7 @@ const storedSchema = z.object({
   ),
   launchCalls: z.array(z.string()),
   functions: z.array(z.object({ name: z.string() })),
+  ownCaps: z.array(z.object({ functionName: z.string(), maxValueBase: baseUnits })).optional(),
 });
 
 /** A stored copy of a ceiling the fake wrote, read as `readOf` reads it; undefined for another. */
@@ -111,6 +122,7 @@ export function readStoredOf(policy: JsonValue): CeilingRead | undefined {
   if (!parsed.success) {
     return undefined;
   }
-  const { functions, ...read } = parsed.data;
-  return { ...read, functions: functions.map((item) => item.name), policy };
+  const { functions, ownCaps, ...read } = parsed.data;
+  const caps = ownCaps === undefined || ownCaps.length === 0 ? {} : { ownCaps };
+  return { ...read, ...caps, functions: functions.map((item) => item.name), policy };
 }

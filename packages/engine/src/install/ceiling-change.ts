@@ -116,8 +116,19 @@ export interface CeilingRead {
    * calls (decision 0271).
    */
   readonly functions: readonly string[];
+  /**
+   * Each function its call rules hold to a cap of their own, such as a stake's (decision 0325),
+   * with that cap in native base units; absent when none does, as in a ceiling written before.
+   */
+  readonly ownCaps?: readonly CallCap[];
   /** The ceiling as custody reports it, which a wallet's stored copy of its ceiling mirrors. */
   readonly policy: JsonValue;
+}
+
+/** A function a ceiling's call rule holds to a cap of its own, and that cap in native base units. */
+export interface CallCap {
+  readonly functionName: string;
+  readonly maxValueBase: bigint;
 }
 
 /** Why the owner key's change of a ceiling was not made. */

@@ -13,6 +13,7 @@ import { type Clock, err, jsonValueSchema, ok, type Result, type Secret } from "
 import type { DayCapView } from "@binference/protocol";
 import { z } from "zod";
 import type {
+  CallCap,
   CallsRefusal,
   CallsRequest,
   CeilingRead,
@@ -49,6 +50,8 @@ export interface FakeCalls {
   readonly launchCalls?: readonly string[];
   /** The functions its call rules let a call reach on their contracts; none if absent. */
   readonly functions?: readonly string[];
+  /** The functions its call rules hold to caps of their own; none if absent. */
+  readonly ownCaps?: readonly CallCap[];
 }
 
 /** A ceiling editor in memory, whose ceilings a test sets up and reads. */
