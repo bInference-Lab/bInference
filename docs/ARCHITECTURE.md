@@ -324,6 +324,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `wallet_activity`                     | A tracked wallet's trades; the agent's own get `wallet.not_found`                          |
 | `staking_options`                     | Validators (APR, commission, jail status), the slisBNB rate                                |
 | `bridge_quote`                        | Routes, fees and times to and from other chains                                            |
+| `addresses`                           | The address book: each saved address with its label and the entry id a send names          |
 | `tx_status`, `orders`                 | A transaction's state; the agent's auto orders                                             |
 | `cex_*` (plugin)                      | Binance balances, positions, tickers and open orders through Agent OS                      |
 | `search_web`, `search_x`, `read_page` | Outside content; marks the turn                                                            |

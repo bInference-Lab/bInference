@@ -163,6 +163,28 @@ function stakingOptionsTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
+/**
+ * `addresses`, a read tool (runtime spec, section 5.1): the agent's address book through
+ * `address/list`, so a send or a bridge can name an entry by its id. The owner saved each address
+ * and wrote each label with the owner key, so the answer is a source of addresses, never outside
+ * content.
+ */
+function addressesTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool({
+    name: "addresses",
+    kind: "read",
+    parallel: true,
+    addressSource: "engine",
+    description: agentToolTexts.addresses,
+    args: z.strictObject({}),
+    run: async (_args, { signal }) =>
+      answerOrFailure("addresses", async () => {
+        const book = await client.call("address/list", { agent }, { signal });
+        return answer(jsonOf(ops["address/list"].result, book));
+      }),
+  });
+}
+
 /** What `orders` takes: the state to filter by, and the cursor of the page after the first. */
 interface OrdersArgs {
   readonly state?: OrderState;
@@ -219,6 +241,7 @@ function txStatusTool({ agent, client }: AgentToolParts): AgentTool {
 export function readTools(parts: AgentToolParts): readonly AgentTool[] {
   return [
     tokenSearchTool(parts),
+    addressesTool(parts),
     portfolioTool(parts),
     tokenInfoTool(parts),
     tokenRiskTool(parts),

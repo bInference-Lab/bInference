@@ -92,6 +92,25 @@ describe("the read tools", () => {
     expect(none).not.toHaveProperty("outside");
   });
 
+  it("read the agent's address book clean, each entry with its id and the owner's label", async () => {
+    const entry = {
+      entry: `adr_${wallet.slice(4)}`,
+      agent,
+      address: leader,
+      label: "Mom",
+      usableAt: 1,
+      createdAt: 1,
+    };
+    const outcome = await outcomeOf(
+      callTool({ "address/list": { items: [entry] } }, { name: "addresses", args: {} }),
+    );
+    expect(outcome).toMatchObject({ isError: false });
+    expect(outcome).not.toHaveProperty("outside");
+    expect(JSON.parse(outcome.text)).toMatchObject({
+      items: [{ entry: entry.entry, label: "Mom" }],
+    });
+  });
+
   it("mark token_info of an unlisted token as outside content, names and all", async () => {
     const answers = { "asset/get": { asset: token, ...tokenInfo } };
     const outcome = await outcomeOf(

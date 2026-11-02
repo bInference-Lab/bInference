@@ -312,16 +312,21 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 | `propose` | Creates an intent or an auto order in the engine, which opens a card | Alone, in order; one per turn (section 6.2) | Yes              |
 | `control` | Changes something without moving money or opening a card             | In order                                    | No               |
 
-| Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                  |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `read`    | `token_search`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill`, `launchpads` |
-| `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`                                                                                                                                                               |
-| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242)), `launch_draft` ([decision 0285](../DECISIONS.md#d0285))                                  |
+| Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                               |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `read`    | `token_search`, `addresses`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill`, `launchpads` |
+| `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`                                                                                                                                                                            |
+| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242)), `launch_draft` ([decision 0285](../DECISIONS.md#d0285))                                               |
 
 `wallet_activity` reads only a wallet the agent tracks, the leader of one of its copy orders or the
 account of one of its wallet alerts. For the agent's own wallets the engine answers
 `wallet.not_found`, and the tool tells the model to read them with `portfolio` and `tx_status`
 ([decision 0259](../DECISIONS.md#d0259)).
+
+`addresses` reads the agent's address book (`address/list`), so a `send` or a `bridge` names a
+saved address by its entry id. The owner saved each address and wrote each label with the owner
+key, so its answer is never outside content. `.bnb` names go to `send` as the owner wrote them,
+and the engine reads them; no tool resolves a name for the model.
 
 <a id="section-5-2"></a>
 

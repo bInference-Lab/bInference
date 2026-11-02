@@ -502,7 +502,8 @@ new name here first, in the change that uses it.
   `notes_write`, `workspace_write` (the owner's strategy and persona), `first_chat_end`,
   `alert_create`, `schedule_list`, `schedule_create`, `schedule_cancel`; for staking, bridges and
   sends the propose tools `send`, `approval_revoke`, `stake`, `unstake`, `claim` and `bridge`, and
-  the read tools `staking_options` and `bridge_quote`.
+  the read tools `staking_options`, `bridge_quote` and `addresses` (the address book, whose entry
+  ids a send or a bridge names).
 - **MCP tools**: the MCP server's read and propose tools, one per operation and named
   `binference_`, such as `binference_propose` for `intent/propose`, `binference_staking_options`
   for `staking/options` and `binference_bridge_quote` for `bridge/quote`.

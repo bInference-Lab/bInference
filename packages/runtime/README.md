@@ -175,7 +175,8 @@ fails a check never runs, and the model reads why.
 `createToolBox` holds an agent's tools for its turns.
 
 `agentTools` are the agent's first tools, each mapped onto one operation of the engine and called
-over the runtime's connection: the reads `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
+over the runtime's connection: the reads `addresses` (`address/list`), the address book whose
+entry ids a send or a bridge names, `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
 `token_risk` (`risk/check`), `quote` (`quote/get`), `bridge_quote` (`bridge/quote`),
 `staking_options` (`staking/options`), whose answer is outside content once it lists a validator,
 since the validator's operator wrote its name, `orders` (`order/list`) and `tx_status`
