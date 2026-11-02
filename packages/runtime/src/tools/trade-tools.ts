@@ -11,6 +11,8 @@ import {
   type OrderTerms,
   orderTermsSchema,
   proposalAnswer,
+  type RevokeApprovalTerms,
+  revokeApprovalTermsSchema,
   type SellTerms,
   sellTermsSchema,
   type SendTerms,
@@ -114,6 +116,19 @@ function bridgeTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
+// Always a card, never auto mode: the engine revokes only a spender its registry lists and the
+// wallet's ceiling names, and refuses any other before the card (decision 0309).
+function approvalRevokeTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool<RevokeApprovalTerms>({
+    name: "approval_revoke",
+    kind: "propose",
+    description: agentToolTexts.approval_revoke,
+    args: revokeApprovalTermsSchema,
+    run: async (terms, context) =>
+      proposeIntent(client, { ...terms, agent, kind: "revokeApproval" }, context),
+  });
+}
+
 // A staking move's tool, one per action: the tool names the action and the model the rest.
 function stakingTool({ agent, client }: AgentToolParts, action: "stake" | "unstake"): AgentTool {
   return defineTool<StakeTerms>({
@@ -175,6 +190,7 @@ export function tradeTools(parts: AgentToolParts): readonly AgentTool[] {
     buyTool(parts),
     sellTool(parts),
     sendTool(parts),
+    approvalRevokeTool(parts),
     orderCreateTool(parts),
     stakingTool(parts, "stake"),
     stakingTool(parts, "unstake"),

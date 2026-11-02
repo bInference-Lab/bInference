@@ -180,8 +180,9 @@ entry ids a send or a bridge names, `portfolio` (`portfolio/get`), `token_info` 
 `token_risk` (`risk/check`), `quote` (`quote/get`), `bridge_quote` (`bridge/quote`),
 `staking_options` (`staking/options`), whose answer is outside content once it lists a validator,
 since the validator's operator wrote its name, `orders` (`order/list`) and `tx_status`
-(`intent/get`); the proposals `swap`, `buy`, `sell`, `send`, `bridge`, and `stake`, `unstake`
-and `claim`, which each name their action of a `stake` request (`intent/propose`), and
+(`intent/get`); the proposals `swap`, `buy`, `sell`, `send`, `bridge`, `approval_revoke`, a
+`revokeApproval` request, and `stake`, `unstake` and `claim`, which each name their action of a
+`stake` request (`intent/propose`), and
 `order_create` (`order/create`); and `order_cancel` (`order/cancel`), a control tool that brakes, so it runs in a
 committed turn's batch too. The model writes the terms and its reason; the runtime names the turn's
 agent and no wallet, so the engine acts from the agent's default wallet, and a call that names an

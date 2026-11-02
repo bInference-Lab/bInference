@@ -119,6 +119,11 @@ const sendTerms = {
   to: { name: "alice.bnb" },
   reason: "You asked to pay Alice.",
 };
+const revokeTerms = {
+  token,
+  spender: leader,
+  reason: "You asked to clear the router's allowance.",
+};
 const stakeTerms = {
   venue: "fake-stake",
   validator: leader,
@@ -208,6 +213,11 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   ["buy", buyTerms, [{ op: "intent/propose", args: { ...buyTerms, agent, kind: "buy" }, key }]],
   ["sell", sellTerms, [{ op: "intent/propose", args: { ...sellTerms, agent, kind: "sell" }, key }]],
   ["send", sendTerms, [{ op: "intent/propose", args: { ...sendTerms, agent, kind: "send" }, key }]],
+  [
+    "approval_revoke",
+    revokeTerms,
+    [{ op: "intent/propose", args: { ...revokeTerms, agent, kind: "revokeApproval" }, key }],
+  ],
   [
     "order_create",
     { order: stopLoss },
@@ -368,6 +378,7 @@ describe("the agent's tools", () => {
     ["buy", { ...buyTerms, wallet }],
     ["sell", { ...sellTerms, wallet }],
     ["send", { ...sendTerms, wallet }],
+    ["approval_revoke", { ...revokeTerms, wallet }],
     ["stake", { ...stakeTerms, wallet }],
     ["bridge", { ...bridgeTerms, agent }],
     ["order_create", { order: { ...stopLoss, wallet } }],

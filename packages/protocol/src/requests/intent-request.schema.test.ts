@@ -7,6 +7,7 @@ import {
   claimTermsSchema,
   intentRequestSchema,
   readIntentRequestSchema,
+  revokeApprovalTermsSchema,
   sellTermsSchema,
   sendTermsSchema,
   stakeTermsSchema,
@@ -162,6 +163,7 @@ const termsSchemas = {
   stake: stakeTermsSchema,
   claim: claimTermsSchema,
   bridge: bridgeTermsSchema,
+  revokeApproval: revokeApprovalTermsSchema,
 };
 
 type TermsKind = keyof typeof termsSchemas;
@@ -175,6 +177,7 @@ const termsExamples: Readonly<Record<TermsKind, string>> = {
   stake: "stake with an amount",
   claim: "stake",
   bridge: "bridge",
+  revokeApproval: "revokeApproval",
 };
 
 // What the agent runtime fills besides its agent: the request's kind and, for staking, the action
@@ -187,6 +190,7 @@ const filledBy: Readonly<Record<TermsKind, Readonly<Record<string, string>>>> = 
   stake: { kind: "stake", action: "stake" },
   claim: { kind: "stake", action: "claim" },
   bridge: { kind: "bridge" },
+  revokeApproval: { kind: "revokeApproval" },
 };
 
 // A request's terms: everything but the agent and wallet that act, its kind and its action.

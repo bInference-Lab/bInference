@@ -171,6 +171,9 @@ export type SendTerms = Omit<SendRequest, ActorFields>;
 /** A bridge's terms: what the agent names, without who acts, which its runtime fills. */
 export type BridgeTerms = Omit<BridgeRequest, ActorFields>;
 
+/** An approval revoke's terms: what the agent names, without who acts, which its runtime fills. */
+export type RevokeApprovalTerms = Omit<RevokeApprovalRequest, ActorFields>;
+
 /**
  * A stake's or an unstake's terms: what the agent names, without who acts or the action, which
  * the agent's tool of that action fills.
@@ -334,6 +337,13 @@ export const bridgeTermsSchema: z.ZodType<BridgeTerms> = z.strictObject({
   amount: bridgeShape.amount,
   toChain: bridgeShape.toChain,
   to: bridgeShape.to,
+  reason,
+});
+
+/** Parses an approval revoke's terms, as {@link swapTermsSchema} does a swap's. */
+export const revokeApprovalTermsSchema: z.ZodType<RevokeApprovalTerms> = z.strictObject({
+  token: revokeApprovalShape.token,
+  spender: revokeApprovalShape.spender,
   reason,
 });
 

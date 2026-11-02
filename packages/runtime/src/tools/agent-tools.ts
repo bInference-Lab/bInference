@@ -21,7 +21,8 @@ import { workspaceTools } from "./workspace-tools.js";
  * `token_info`, `token_risk`, `quote`, `bridge_quote`, `staking_options`, `orders`, `tx_status`,
  * the market reads `market_scan`,
  * `chart` and `wallet_activity` (decision 0257), and `schedule_list`; the proposals
- * `swap`, `buy`, `sell`, `send`, `order_create`, `stake`, `unstake`, `claim` and `bridge`;
+ * `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`
+ * and `bridge`;
  * `order_cancel`, which brakes; and the control tools `alert_create`, `schedule_create` and `schedule_cancel` (decision 0247). Each
  * maps onto the engine's operations and names the given agent; no tool takes an agent or a wallet
  * from the model. With web parts, the web tools come after the reads; `notes_search` and `open_skill`
