@@ -1,7 +1,18 @@
-import { type Amount, type AssetRef, amountSchema, assetRefSchema } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefSchema,
+  type Amount,
+  type AssetRef,
+  amountSchema,
+  assetRefSchema,
+  type ChainRef,
+  chainRefSchema,
+} from "@binference/chain";
 import { decimalStringSchema } from "@binference/core";
 import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
+import { epochMsSchema } from "../values/epoch-ms.schema.js";
+import { venueIdSchema } from "../values/plain-id.schema.js";
 import { signedUsdMicrosSchema } from "../values/signed-usd-micros.schema.js";
 import { type AssetInfos, assetInfosSchema } from "./asset-info.schema.js";
 
@@ -28,6 +39,47 @@ export interface PositionView {
   readonly paper: boolean;
 }
 
+/** Coin an unstake took out, and when a claim can take it. */
+interface UnbondingView {
+  readonly amount: Amount;
+  readonly readyAt: number;
+}
+
+/**
+ * What one wallet holds with one validator of a staking venue, in one mode (decision 0329): the
+ * venue's receipt token units, what they are worth in the chain's coin now, the coin unstakes took
+ * out that is not ready yet, and what a claim would take back now. The receipt units are a balance
+ * of the view too, which counts their value once.
+ */
+interface StakingPositionView {
+  readonly wallet: ProtocolId<"wallet">;
+  readonly venue: string;
+  readonly validator?: AccountRef;
+  /** Absent when the venue could not be read, so its receipt token is not known. */
+  readonly staked?: Amount;
+  /** Absent when the venue's pool could not be read. */
+  readonly stakedValue?: Amount;
+  readonly unbonding: readonly UnbondingView[];
+  readonly claimable: Amount;
+  readonly paper: boolean;
+}
+
+/**
+ * A bridge whose deposit is final and whose delivery no read found yet (decision 0297): what left
+ * the wallet, at the value its units left their position with, the chain and account it pays,
+ * since when, and whether it is late. Bridges are live only.
+ */
+interface InTransitView {
+  readonly intent: ProtocolId<"intent">;
+  readonly wallet: ProtocolId<"wallet">;
+  readonly amount: Amount;
+  readonly usdMicros?: bigint;
+  readonly toChain: ChainRef;
+  readonly recipient: AccountRef;
+  readonly sentAt: number;
+  readonly late: boolean;
+}
+
 /**
  * Balances, their dollar values, positions and profit or loss of one agent, wallet or all. Live
  * holdings come first, then paper ones, and the two are never added together.
@@ -35,11 +87,21 @@ export interface PositionView {
 export interface PortfolioView {
   readonly balances: readonly BalanceView[];
   readonly positions: readonly PositionView[];
-  /** The sum of the live balances with a known price; a paper balance never counts. */
+  /**
+   * The sum of the live balances, unbonding coin and bridges in transit with a known value; a
+   * paper one never counts.
+   */
   readonly totalUsdMicros: bigint;
-  /** The sum of the paper balances with a known price; absent when the view holds none. */
+  /**
+   * The sum of the paper balances and unbonding coin with a known value; absent when the view
+   * holds none.
+   */
   readonly paperTotalUsdMicros?: bigint;
   readonly assets: AssetInfos;
+  /** Absent when no wallet of the view holds a stake or unbonding coin. */
+  readonly staking?: readonly StakingPositionView[];
+  /** Absent when no wallet of the view has a bridge in transit. */
+  readonly inTransit?: readonly InTransitView[];
 }
 
 /** Parses one wallet's balance of one asset. */
@@ -48,6 +110,30 @@ export const balanceViewSchema: z.ZodType<BalanceView> = z.object({
   amount: amountSchema,
   usdMicros: decimalStringSchema.exactOptional(),
   paper: z.boolean(),
+});
+
+/** Parses one wallet's stake with one validator. */
+const stakingPositionViewSchema: z.ZodType<StakingPositionView> = z.object({
+  wallet: protocolIdSchema("wallet"),
+  venue: venueIdSchema,
+  validator: accountRefSchema.exactOptional(),
+  staked: amountSchema.exactOptional(),
+  stakedValue: amountSchema.exactOptional(),
+  unbonding: z.array(z.object({ amount: amountSchema, readyAt: epochMsSchema })),
+  claimable: amountSchema,
+  paper: z.boolean(),
+});
+
+/** Parses a bridge in transit. */
+const inTransitViewSchema: z.ZodType<InTransitView> = z.object({
+  intent: protocolIdSchema("intent"),
+  wallet: protocolIdSchema("wallet"),
+  amount: amountSchema,
+  usdMicros: decimalStringSchema.exactOptional(),
+  toChain: chainRefSchema,
+  recipient: accountRefSchema,
+  sentAt: epochMsSchema,
+  late: z.boolean(),
 });
 
 /** Parses a portfolio view. */
@@ -67,4 +153,6 @@ export const portfolioViewSchema: z.ZodType<PortfolioView> = z.object({
   totalUsdMicros: decimalStringSchema,
   paperTotalUsdMicros: decimalStringSchema.exactOptional(),
   assets: assetInfosSchema,
+  staking: z.array(stakingPositionViewSchema).exactOptional(),
+  inTransit: z.array(inTransitViewSchema).exactOptional(),
 });

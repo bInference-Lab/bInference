@@ -206,9 +206,33 @@ export const portfolioView: WireObject = {
       paper: true,
     },
   ],
-  totalUsdMicros: "0",
-  paperTotalUsdMicros: "900000000",
+  totalUsdMicros: "20000000",
+  paperTotalUsdMicros: "960000000",
   assets,
+  staking: [
+    {
+      wallet: ids.wallet,
+      venue: "fake-staking",
+      validator: refs.account,
+      staked: tokenAmount,
+      stakedValue: { asset: refs.native, base: "105000000000000000" },
+      unbonding: [{ amount: { asset: refs.native, base: "100000000000000000" }, readyAt: at }],
+      claimable: { asset: refs.native, base: "0" },
+      paper: true,
+    },
+  ],
+  inTransit: [
+    {
+      intent: ids.intent,
+      wallet: ids.wallet,
+      amount: tokenAmount,
+      usdMicros: "20000000",
+      toChain: "fake:2",
+      recipient: "fake:2:0x0000000c",
+      sentAt: at,
+      late: false,
+    },
+  ],
 };
 
 /** Wraps items as one page of a list. */

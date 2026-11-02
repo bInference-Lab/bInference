@@ -1128,10 +1128,12 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   the venue's least stake `minStake` (an `Amount`) and `readyAt`, when the next part can be
   claimed, as its words show them ([decision 0327](../DECISIONS.md#d0327)).
 - `StakingPositionView`:
-  `{ wallet, venue, validator?, staked: Amount, stakedValue?: Amount, unbonding: [{ amount, readyAt }], claimable: Amount, paper }`:
+  `{ wallet, venue, validator?, staked?: Amount, stakedValue?: Amount, unbonding: [{ amount, readyAt }], claimable: Amount, paper }`:
   `staked` in the venue's own receipt token (a validator's credit shares on StakeHub, slisBNB on
   Lista), `stakedValue` what it is worth in BNB now, `unbonding` what an unstake took out with when
-  each part can be claimed, `claimable` what a claim would take now.
+  each part can be claimed, `claimable` what a claim would take now. `staked` and `stakedValue`
+  are absent when the venue could not be read: the view shows the coin with no value and the
+  totals leave it out, as a token with no price ([decision 0329](../DECISIONS.md#d0329)).
 - `BridgeRouteView`:
   `{ venue, toChain, sentAsset, deliveredAsset, amountIn, expectedOut, minOut, fees: [{ kind: bridge | relayer | gas, amount }], gas: Amount, etaSeconds, quotedAt, expiresAt }`:
   `deliveredAsset` is a CAIP-19 asset of `toChain`, which may differ from `sentAsset`, and
@@ -1143,14 +1145,16 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   chain's read found the bridge paying the wallet back (`refundTx`). `statusUrl` is the venue's own
   page for the deposit.
 - `PortfolioView`:
-  `{ balances: [{ wallet, amount, usdMicros?, paper }], positions: [{ wallet, asset, quantity, costUsdMicros, realizedUsdMicros, unrealizedUsdMicros?, paper }], totalUsdMicros, paperTotalUsdMicros?, assets, staking?: [StakingPositionView], inTransit?: [{ intent, wallet, amount, usdMicros?, toChain, recipient, late }] }`.
+  `{ balances: [{ wallet, amount, usdMicros?, paper }], positions: [{ wallet, asset, quantity, costUsdMicros, realizedUsdMicros, unrealizedUsdMicros?, paper }], totalUsdMicros, paperTotalUsdMicros?, assets, staking?: [StakingPositionView], inTransit?: [{ intent, wallet, amount, usdMicros?, toChain, recipient, sentAt, late }] }`.
   A staked position counts once, at its `stakedValue`, its unbonding and claimable amounts beside
   it. A bridge in transit counts once, at the value its units left their position with, until its
   delivery read, when it leaves the agent, or its refund, which arrives back at its value
   ([decision 0297](../DECISIONS.md#d0297)).
-  Live holdings come first, then paper ones. `totalUsdMicros` sums the live balances with a known
-  price, never a paper one; `paperTotalUsdMicros` sums the paper balances beside it, absent when
-  the view holds none. The two are never added together.
+  A staked position's receipt units are also a balance, valued at the venue's pool, and the
+  unbonding and claimable coin counts at its price now ([decision 0329](../DECISIONS.md#d0329)).
+  Live holdings come first, then paper ones. `totalUsdMicros` sums the live balances, unbonding
+  coin and bridges in transit with a known value, never a paper one; `paperTotalUsdMicros` sums
+  the paper ones beside it, absent when the view holds none. The two are never added together.
 - `PnlView`:
   `{ positions: [{ asset, realizedUsdMicros, unrealizedUsdMicros? }], realizedUsdMicros, unrealizedUsdMicros?, paperPositions?, paperRealizedUsdMicros?, paperUnrealizedUsdMicros?, cards?: [PnlCardView], assets }`.
   The first three are live, the `paper` ones paper, never added together; an unrealized figure is
