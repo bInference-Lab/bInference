@@ -142,6 +142,7 @@ const builders: Builders = {
   launch_read_failed: () => ({ type: "launch_read_failed", reason: "launch_unread" }),
   name_refused: () => ({ type: "name_refused", reason: "name_unresolved" }),
   name_moved: () => ({ type: "name_moved" }),
+  stake_refused: () => ({ type: "stake_refused", reason: "validator_jailed" }),
   queue_took: (facts, at) => ({ type: "queue_took", ...queueFacts(facts, at) }),
   steps_included: () => ({ type: "steps_included" }),
   step_reverted: () => ({ type: "step_reverted" }),

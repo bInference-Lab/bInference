@@ -1,3 +1,4 @@
+import type { StakeRefusal } from "@binference/chain/staking";
 import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type {
@@ -40,6 +41,7 @@ export const triggerTypes = [
   "launch_read_failed",
   "name_refused",
   "name_moved",
+  "stake_refused",
   "queue_took",
   "steps_included",
   "step_reverted",
@@ -178,6 +180,12 @@ export interface TriggerFacts {
    * than its card, or nowhere: nothing is signed.
    */
   readonly name_moved: NoFacts;
+  /**
+   * The wallet queue, taking a staking move, planned it again and its venue refused it, such as a
+   * validator jailed since the card (decision 0327), or `decode_mismatch` when the venue now plans
+   * another move than the card confirmed: nothing is signed.
+   */
+  readonly stake_refused: { readonly reason: StakeRefusal | "decode_mismatch" };
   readonly queue_took: QueueFacts;
   /** Every step's receipt has status 1; for a rescue, every step has its last outcome. */
   readonly steps_included: NoFacts;

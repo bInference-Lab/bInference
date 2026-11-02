@@ -72,6 +72,20 @@ export function failMovedName({
   return status.isPaper ? err("paper_intent") : ok({ reason: "name_moved" });
 }
 
+/**
+ * `confirmed` to `failed_check` with the venue's reason: the wallet queue planned a live staking
+ * move again as it took it and the venue refused it (decision 0327); nothing was signed.
+ */
+export function failStakeAtQueue({
+  status,
+  trigger,
+}: GuardInput<"stake_refused">): Result<IntentChange, TransitionProblem> {
+  if (status.kind !== "stake") {
+    return err("not_stake");
+  }
+  return status.isPaper ? err("paper_intent") : ok({ reason: trigger.reason });
+}
+
 // A tapped intent needs the confirmation of its current card version, unexpired; a fill or an
 // auto-mode intent needs its authorization to still hold.
 function approvalProblem(

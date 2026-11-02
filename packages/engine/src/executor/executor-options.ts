@@ -14,6 +14,7 @@ import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { PositionStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
+import type { StakingHost } from "../venues/staking-host.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import type { WalletQueue } from "../wallet-queue/wallet-queue.js";
 import type { ExecutorBridging } from "./bridge-queue-check.js";
@@ -59,7 +60,14 @@ export interface ExecutorLimits {
 export interface ExecutorOptions {
   readonly stores: Pick<
     EngineStores,
-    "intents" | "agents" | "ledger" | "transactions" | "install" | "orders" | "bridges"
+    | "intents"
+    | "agents"
+    | "ledger"
+    | "transactions"
+    | "install"
+    | "orders"
+    | "bridges"
+    | "unbondings"
   >;
   readonly positions: PositionStore;
   readonly queue: WalletQueue;
@@ -85,6 +93,11 @@ export interface ExecutorOptions {
    * signs.
    */
   readonly bridging?: ExecutorBridging;
+  /**
+   * The staking venues, through their host: what a confirmed staking move is planned again with
+   * before it signs, and its landed move read back with (decision 0327). Without it, no stake signs.
+   */
+  readonly staking?: StakingHost;
   /**
    * Each chain's sending parts. An intent run reads its chain's once, when it reads its plan, and
    * keeps them to its end: a settings reload reaches the runs that start after it (decision 0230).

@@ -1,6 +1,6 @@
 import type { Logger } from "@binference/core";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import type { SettledTrade } from "../intents/event-cause.schema.js";
+import type { ReasonNamed, SettledTrade } from "../intents/event-cause.schema.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
 import type { IntentStateMachine } from "../intents/state-machine.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -47,6 +47,14 @@ export interface ExecutionRun {
 export interface SettlingMove {
   readonly trigger: IntentTrigger<"fills_reconciled">;
   readonly settled: SettledTrade;
+  /** What the receipt names beside the trade, such as an unstake's ready time. */
+  readonly named?: ReasonNamed;
+}
+
+/** A refusal that ends the intent, with what its words name (decision 0327). */
+export interface NamingMove {
+  readonly trigger: IntentTrigger<"stake_refused">;
+  readonly named: ReasonNamed;
 }
 
 /**
@@ -57,11 +65,11 @@ export interface SettlingMove {
 export async function moveIntent(
   run: Pick<ExecutionRun, "parts" | "signal">,
   snapshot: IntentSnapshot,
-  change: IntentTrigger | SettlingMove,
+  change: IntentTrigger | SettlingMove | NamingMove,
 ): Promise<IntentSnapshot | undefined> {
   const { parts, signal } = run;
   const intentId = snapshot.record.id;
-  const { trigger, ...settling } = "settled" in change ? change : { trigger: change };
+  const { trigger, ...settling } = "trigger" in change ? change : { trigger: change };
   const step = parts.machine.apply(snapshot.stored.status, trigger);
   if (!step.ok) {
     parts.log.warn("executor.move_refused", { intentId, errorCode: step.error });

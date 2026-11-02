@@ -14,6 +14,7 @@ import { checkForQueue, type QueueCheck, type SigningTerms } from "./queue-check
 import { resetApproval } from "./reset-approval.js";
 import { type PreparedStep, prepareStep, type SignStop, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
+import { takeStake } from "./stake-queue-check.js";
 import { stuckRulesOf } from "./stuck-rules.js";
 import { launchTermsNow, termsNow } from "./terms-now.js";
 import type { DroppedStep } from "./watch-dropped.js";
@@ -105,10 +106,11 @@ async function checkedForQueue(
     return endUnread(run, snapshot, check.launchFailure);
   }
   const named = await takeSendName(run, snapshot);
-  if (named === "go") {
+  const taken = named === "go" ? await takeStake(run, snapshot) : named;
+  if (taken === "go") {
     return { ...check, terms };
   }
-  return named === "unread" ? "unprepared" : undefined;
+  return taken === "unread" ? "unprepared" : undefined;
 }
 
 // The first step, prepared before the move to `executing`: one whose fee per gas is above the

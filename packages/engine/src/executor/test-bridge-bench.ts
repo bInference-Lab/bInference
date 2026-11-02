@@ -37,7 +37,7 @@ export async function bridgeBench(
     agent: agent ?? {},
     engine: rest,
     prices: new Map([[testToken, { numerator: 1_000_000n, denominator: 1_000_000n }]]),
-    bridging: {
+    routing: {
       chains: fakes.chains,
       bridging: {
         bridges: [fakes.bridge],

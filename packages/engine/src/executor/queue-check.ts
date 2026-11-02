@@ -26,6 +26,7 @@ import type { OrderFillReason } from "../orders/order-fill.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck, PolicyVerdict } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
+import type { StakingHost } from "../venues/staking-host.js";
 import {
   bridgeQuoteOf,
   bridgeTargetsOf,
@@ -36,6 +37,7 @@ import { declaredTargetsOf } from "./declared-calls.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
 import { launchQuoteOf, recheckLaunch } from "./launch-queue-check.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
+import { recheckStake, stakeQuoteOf, stakeTargetsOf } from "./stake-queue-check.js";
 import { recheckTransfer, transferQuoteOf, transferTargetsOf } from "./transfer-queue-check.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
@@ -75,6 +77,8 @@ export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
   readonly venues: readonly VenueDeclaration[];
   /** The bridges' declarations and the chains they deliver to; without them, no bridge signs. */
   readonly bridging?: ExecutorBridging;
+  /** The staking venues, through their host; without it, no stake signs. */
+  readonly staking?: StakingHost;
 }
 
 interface Rechecked {
@@ -102,6 +106,9 @@ async function recheckPolicy(
   }
   if (record.kind === "bridge") {
     return recheckBridge(snapshot, parts, signal);
+  }
+  if (record.kind === "stake") {
+    return recheckStake(snapshot, parts, signal);
   }
   const request = { ...requestDocument.decode(record.request), wallet: record.walletId };
   const resolving = { request, settings, signal, intent: record.id };
@@ -163,6 +170,26 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
   );
 }
 
+// What the signer's targets are read from: the registry, the venues, the bridges and the staking
+// venues the engine runs.
+interface TargetContext {
+  readonly chain: RegisteredChain;
+  readonly chains: ChainRegistry;
+  readonly venues: readonly VenueDeclaration[];
+  readonly bridges: readonly VenueDeclaration[];
+  readonly staking?: StakingHost;
+}
+
+function targetContextOf(parts: QueueCheckParts, chain: RegisteredChain): TargetContext {
+  return {
+    chain,
+    chains: parts.chains,
+    venues: parts.venues,
+    bridges: parts.bridging?.bridges ?? [],
+    ...(parts.staking === undefined ? {} : { staking: parts.staking }),
+  };
+}
+
 /**
  * The registry's set for the intent's steps: the contracts the venues of its quote's route, or a
  * token launch's launchpad (decision 0234), declare on the chain, read from the registry by name
@@ -173,23 +200,19 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
  * role (decision 0303). A venue no declaration names, or one that names a contract the registry
  * lacks, adds none. A swap sends to no one.
  */
-function allowedTargetsOf(
-  snapshot: IntentSnapshot,
-  context: {
-    readonly chain: RegisteredChain;
-    readonly chains: ChainRegistry;
-    readonly venues: readonly VenueDeclaration[];
-    readonly bridges?: readonly VenueDeclaration[];
-  },
-): AllowedTargets {
+function allowedTargetsOf(snapshot: IntentSnapshot, context: TargetContext): AllowedTargets {
   const { chain } = context;
   const transfer = transferQuoteOf(snapshot.record);
   if (transfer !== undefined) {
     return transferTargetsOf(transfer, context);
   }
+  const staked = stakeQuoteOf(snapshot.record);
+  if (staked !== undefined) {
+    return stakeTargetsOf(staked, context);
+  }
   const bridged = bridgeQuoteOf(snapshot.record);
   if (bridged !== undefined) {
-    return bridgeTargetsOf(bridged, { ...context, bridges: context.bridges ?? [] });
+    return bridgeTargetsOf(bridged, context);
   }
   const launch = launchQuoteOf(snapshot.record);
   const quote =
@@ -299,13 +322,7 @@ export async function recoveredFillTerms(
     return undefined;
   }
   const { grant, current } = granted;
-  const bridges = parts.bridging?.bridges ?? [];
-  const allowed = allowedTargetsOf(snapshot, {
-    chain,
-    chains: parts.chains,
-    venues: parts.venues,
-    bridges,
-  });
+  const allowed = allowedTargetsOf(snapshot, targetContextOf(parts, chain));
   return { authorization: { kind: "order", grant, current }, termsHash: grant.termsHash, allowed };
 }
 
@@ -333,12 +350,7 @@ export async function checkForQueue(
     ...(authorizedBy === undefined ? {} : { isAuthorizationValid: terms !== undefined }),
   };
   const isAuto = authorizedBy !== undefined && !isFillAuthorization(authorizedBy);
-  const registry = allowedTargetsOf(snapshot, {
-    chain,
-    chains: parts.chains,
-    venues: parts.venues,
-    bridges: parts.bridging?.bridges ?? [],
-  });
+  const registry = allowedTargetsOf(snapshot, targetContextOf(parts, chain));
   const launch = await launchTargetsOf(snapshot.record, parts, signal);
   const failure = launch.kind === "failed" ? { launchFailure: launch.reason } : {};
   const allowed = launch.kind === "read" ? { ...registry, launch: launch.launch } : registry;
