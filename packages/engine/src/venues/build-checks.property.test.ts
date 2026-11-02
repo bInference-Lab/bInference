@@ -15,6 +15,32 @@ import {
   type TradeBounds,
   type TradeStep,
 } from "./build-checks.js";
+import { landedMismatch } from "./landed-checks.js";
+import { stakeMismatch } from "./stake-checks.js";
+import { claimMismatch, planMismatch } from "./stake-plan-checks.js";
+import {
+  testClaimPlan,
+  testLandedUnstake,
+  testStakeBounds,
+  testStakeReceipt,
+  testStakeStep,
+  testUnstakePlan,
+  testUnstakeRequest,
+} from "./test-stake-steps.js";
+
+const family = createFakeFamily();
+const asset = testUnstakePlan.moved.asset;
+
+// The test unstake takes out 12 units of the coin, its request ready 60 seconds after its plan.
+const shortOf = (base: bigint) => (base > 12n ? "short_unstake" : undefined);
+const unreadyOf = (shift: number) => (shift > 0 ? "unready_part" : undefined);
+
+function landedOf(shares: bigint, shift: number) {
+  if (shares !== 10n) {
+    return "other_shares";
+  }
+  return shift < 0 ? "other_request" : undefined;
+}
 
 const nowMs = 1_800_000_000_000;
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
@@ -76,6 +102,11 @@ function anyCaseOf(own: string): fc.Arbitrary<string> {
 
 function accountAt(text: string): AccountRef {
   return accountRefSchema.parse(`fake:1:${text}`);
+}
+
+// An unstake's call passes only with the plan's shares and no coin.
+function unstakeMismatchOf(shares: bigint, value: bigint): "other_stake" | undefined {
+  return shares === testUnstakePlan.shares?.base && value === 0n ? undefined : "other_stake";
 }
 
 describe("build-step check invariants", () => {
@@ -173,6 +204,56 @@ describe("build-step check invariants", () => {
             ok: false,
             error: "other_approval",
           });
+        },
+      ),
+    );
+  });
+
+  it("refuses every staking call whose shares or coin differ from its plan (decision 0327)", () => {
+    fc.assert(
+      fc.property(
+        fc.bigInt({ min: 0n, max: 2n ** 96n }),
+        fc.bigInt({ min: 0n, max: 2n ** 96n }),
+        (shares, value) => {
+          const step = testStakeStep({ shares, value });
+          expect(stakeMismatch([step], testUnstakePlan, testStakeBounds)).toBe(
+            unstakeMismatchOf(shares, value),
+          );
+        },
+      ),
+    );
+  });
+
+  it("refuses every unstake plan that takes out less than its amount (decision 0327)", () => {
+    const { wallet: owner, validator } = testUnstakePlan;
+    fc.assert(
+      fc.property(fc.bigInt({ min: 0n, max: 2n ** 96n }), (base) => {
+        const request = {
+          action: "unstake",
+          wallet: owner,
+          validator,
+          amount: { asset, base },
+        } as const;
+        expect(planMismatch(testUnstakePlan, request, family)).toBe(shortOf(base));
+      }),
+    );
+  });
+
+  it("passes a claim only of parts ready by its plan, and a landed unstake only as planned (decision 0327)", () => {
+    const at = testUnstakePlan.plannedAtMs;
+    fc.assert(
+      fc.property(
+        fc.integer({ min: -120_000, max: 120_000 }),
+        fc.bigInt({ min: 0n, max: 2n ** 96n }),
+        (shift, shares) => {
+          const part = { ...testUnstakeRequest, readyAtMs: at + shift };
+          expect(claimMismatch(testClaimPlan, [part])).toBe(unreadyOf(shift));
+          const landed = {
+            ...testLandedUnstake,
+            shares: { asset: testStakeReceipt, base: shares },
+            request: { ...testUnstakeRequest, readyAtMs: testUnstakeRequest.readyAtMs + shift },
+          };
+          expect(landedMismatch(landed, testUnstakePlan, family)).toBe(landedOf(shares, shift));
         },
       ),
     );

@@ -17,7 +17,12 @@ import { type Bps, bpsPerWhole, err, mulDiv, ok, type Result } from "@binference
  * The intent stores `decode_mismatch`; the mismatch names the check that failed. `other_launch` is
  * a launch's create call that makes another token, or names other words, metadata, pair or fee;
  * `other_settings` one that writes a launchpad setting other than the card shows, or leaves one
- * out (decision 0238).
+ * out (decision 0238). `other_stake` is a staking call that makes another move than its plan:
+ * another action, validator, coin, share count or claim count (decision 0327). For a staking plan
+ * (decision 0327): `other_plan` is a plan of another move than asked, another action, wallet,
+ * validator, mode or coin; `short_unstake` an unstake that takes out less than its amount;
+ * `unready_part` a claim of a part the wallet does not hold or that is not ready at the plan's
+ * time; `other_receipt` a plan whose shares are not the validator's receipt token.
  */
 export const buildMismatches = [
   "quote_mismatch",
@@ -32,6 +37,11 @@ export const buildMismatches = [
   "late_deadline",
   "other_launch",
   "other_settings",
+  "other_stake",
+  "other_plan",
+  "short_unstake",
+  "unready_part",
+  "other_receipt",
 ] as const;
 
 /** A check of the venue host that what a venue built failed. */

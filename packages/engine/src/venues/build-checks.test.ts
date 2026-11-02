@@ -7,6 +7,7 @@ import {
   type TokenApproval,
   type TxDraft,
 } from "@binference/chain";
+import type { LandedStake, StakeRequest, UnbondingPart } from "@binference/chain/staking";
 import { createFakeFamily, fakeDraft } from "@binference/chain/testing";
 import type { Bps } from "@binference/core";
 import { describe, expect, it } from "vitest";
@@ -19,6 +20,18 @@ import {
   type TradeBounds,
   type TradeStep,
 } from "./build-checks.js";
+import { landedMismatch, type LandedMismatch } from "./landed-checks.js";
+import { stakeMismatch, type StakeStep } from "./stake-checks.js";
+import { claimMismatch, planMismatch, receiptMismatch } from "./stake-plan-checks.js";
+import {
+  testClaimPlan,
+  testLandedUnstake,
+  testStakeBounds,
+  testStakeReceipt,
+  testStakeStep,
+  testUnstakePlan,
+  testUnstakeRequest,
+} from "./test-stake-steps.js";
 
 const nowMs = 1_800_000_000_000;
 const wallet = accountRefSchema.parse("fake:1:0x0000000c");
@@ -202,5 +215,103 @@ describe("build-step checks", () => {
     expect(minOutFloor(2_002n, 50 as Bps)).toBe(1_992n);
     expect(minOutFloor(2_000n, 50 as Bps)).toBe(1_990n);
     expect(minOutFloor(2_000n, 0 as Bps)).toBe(2_000n);
+  });
+});
+
+const check = (steps: readonly StakeStep[]) =>
+  stakeMismatch(steps, testUnstakePlan, testStakeBounds);
+
+describe("build-step checks of a staking move (decision 0327)", () => {
+  it("passes the one call that makes the plan's move for the wallet", () => {
+    expect(check([testStakeStep()])).toBeUndefined();
+  });
+
+  it("names the first check a call breaks", () => {
+    const elsewhere = accountRefSchema.parse("fake:1:0x000000c2");
+    const asks: readonly (readonly [readonly StakeStep[], BuildMismatch])[] = [
+      [[], "step_order"],
+      [[testStakeStep(), testStakeStep()], "step_order"],
+      [[testStakeStep({}, stranger)], "other_sender"],
+      [[testStakeStep({ contract: stranger })], "undeclared_contract"],
+      [[testStakeStep({ credits: stranger })], "other_recipient"],
+      [[testStakeStep({ shares: 11n })], "other_stake"],
+      [[testStakeStep({ validator: elsewhere })], "other_stake"],
+      [[testStakeStep({ value: 1n })], "other_stake"],
+      [[testStakeStep({ action: "claim", shares: undefined, parts: 1 } as never)], "other_stake"],
+    ];
+    expect(asks.map(([steps]) => check(steps))).toStrictEqual(asks.map(([, mismatch]) => mismatch));
+  });
+});
+
+const family = createFakeFamily();
+const { wallet: planWallet, validator } = testUnstakePlan;
+const unstakeOf = (amount: bigint | "whole"): StakeRequest => ({
+  action: "unstake",
+  wallet: planWallet,
+  validator,
+  amount: amount === "whole" ? "whole" : { asset: coin, base: amount },
+});
+const partOf = (ref: string, readyAtMs: number): UnbondingPart => ({
+  ref,
+  amount: { asset: coin, base: 12n },
+  readyAtMs,
+});
+
+describe("the venue host's checks of a staking plan (decision 0327)", () => {
+  it("holds the plan to the move asked, and an unstake to at least its amount", () => {
+    const asks: readonly (readonly [StakeRequest, BuildMismatch | undefined])[] = [
+      [unstakeOf("whole"), undefined],
+      [unstakeOf(12n), undefined],
+      [unstakeOf(13n), "short_unstake"],
+      [{ action: "claim", wallet: planWallet, validator }, "other_plan"],
+      [{ ...unstakeOf("whole"), wallet: stranger }, "other_plan"],
+      [{ ...unstakeOf("whole"), validator: stranger }, "other_plan"],
+    ];
+    expect(asks.map(([request]) => planMismatch(testUnstakePlan, request, family))).toStrictEqual(
+      asks.map(([, mismatch]) => mismatch),
+    );
+    const paid = { ...testUnstakePlan, value: { asset: coin, base: 1n } };
+    expect(planMismatch(paid, unstakeOf("whole"), family)).toBe("other_plan");
+  });
+
+  it("passes a claim only of parts the wallet holds that are ready by its plan", () => {
+    const at = testClaimPlan.plannedAtMs;
+    expect(claimMismatch(testClaimPlan, [partOf("r:1", at)])).toBeUndefined();
+    expect(claimMismatch(testClaimPlan, [partOf("r:1", at + 1)])).toBe("unready_part");
+    expect(claimMismatch(testClaimPlan, [partOf("r:2", at)])).toBe("unready_part");
+    expect(claimMismatch({ ...testClaimPlan, parts: [] }, [partOf("r:1", at)])).toBe(
+      "unready_part",
+    );
+    expect(claimMismatch(testUnstakePlan, [])).toBeUndefined();
+  });
+
+  it("holds the shares to the validator's receipt token", () => {
+    expect(receiptMismatch(testUnstakePlan, testStakeReceipt)).toBeUndefined();
+    expect(receiptMismatch(testUnstakePlan, other)).toBe("other_receipt");
+    expect(receiptMismatch(testClaimPlan, other)).toBeUndefined();
+  });
+
+  it("names the first way a landed move's read-back leaves its plan", () => {
+    const landed = testLandedUnstake;
+    const request = testUnstakeRequest;
+    const asks: readonly (readonly [LandedStake, LandedMismatch | undefined])[] = [
+      [landed, undefined],
+      [{ ...landed, action: "stake" }, "other_move"],
+      [{ ...landed, validator: stranger }, "other_move"],
+      [{ ...landed, moved: { asset: other, base: 12n } }, "other_coin"],
+      [{ ...landed, shares: { asset: other, base: 10n } }, "other_shares"],
+      [{ ...landed, shares: { asset: testStakeReceipt, base: 9n } }, "other_shares"],
+      [{ ...landed, request: { ...request, readyAtMs: request.readyAtMs - 1 } }, "other_request"],
+      [{ ...landed, request: { ...request, amount: { asset: coin, base: 11n } } }, "other_request"],
+      [{ ...landed, claimed: ["r:1"] }, "other_parts"],
+    ];
+    expect(asks.map(([read]) => landedMismatch(read, testUnstakePlan, family))).toStrictEqual(
+      asks.map(([, mismatch]) => mismatch),
+    );
+    const claimed = { action: "claim", validator, moved: { asset: coin, base: 12n } } as const;
+    expect(landedMismatch({ ...claimed, claimed: ["r:1"] }, testClaimPlan, family)).toBeUndefined();
+    expect(landedMismatch({ ...claimed, claimed: ["r:2"] }, testClaimPlan, family)).toBe(
+      "other_parts",
+    );
   });
 });
