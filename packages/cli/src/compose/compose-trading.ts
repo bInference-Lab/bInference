@@ -4,14 +4,19 @@ import { composePrices } from "./chain-prices.js";
 import type { ChainReads } from "./chain-reads.js";
 import { type ComposedSimulators, composeSimulators } from "./chain-simulators.js";
 import { createChainWalletFacts } from "./chain-wallet-facts.js";
-import { type Opened, type Opening, selfHostedFeeds } from "./open-engine-parts.js";
+import {
+  type Opened,
+  type Opening,
+  selfHostedFeeds,
+  selfHostedRatePrices,
+} from "./open-engine-parts.js";
 import { paperBalancesOf } from "./paper-balances.js";
 import { type SelfHostedBridging, selfHostedBridging } from "./self-hosted-bridging.js";
 
 /** What the self-hosted engine trades on, each part over the chains' one set of reads. */
 export interface TradingParts {
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
-  /** Chainlink feeds (decision 0059). */
+  /** Chainlink feeds (decision 0059) and the registry's rate prices (decision 0328). */
   readonly prices: PriceSource;
   /** The install's wallets with their balances, fees and ceilings read on chain. */
   readonly wallets: WalletFactsSource;
@@ -26,7 +31,7 @@ export interface TradingParts {
 }
 
 /**
- * The self-hosted engine's trading parts over the chains' one set of reads: the Chainlink prices,
+ * The self-hosted engine's trading parts over the chains' one set of reads: the prices,
  * the wallets' facts read on chain, the simulators, the stored positions, the paper balances and
  * the bridging parts.
  */
@@ -36,7 +41,11 @@ export function composeTrading(opening: Opening, opened: Opened): TradingParts {
   const { install, intents, positions } = stores;
   return {
     reads,
-    prices: composePrices(reads, { feeds: selfHostedFeeds(), clock }),
+    prices: composePrices(reads, {
+      feeds: selfHostedFeeds(),
+      rates: selfHostedRatePrices(),
+      clock,
+    }),
     wallets: createChainWalletFacts({ install, intents, reads, clock }),
     simulators: composeSimulators(reads, { chains, clock }),
     positions,

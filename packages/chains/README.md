@@ -10,13 +10,15 @@ reads what arrived. `pnpm chains:read` reads them back on each chain, live.
 
 ## API
 
-| Export                                                       | What it does                                                                                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `bsc`                                                        | BNB Smart Chain mainnet as a `ChainDefinition`                                                                                       |
-| `bscPriceFeeds`                                              | BSC's 8-decimal Chainlink USD feeds, each with its heartbeat                                                                         |
-| `ethereum`, `baseMainnet`, `arbitrum`, `robinhood`, `solana` | The chains bridges from BSC deliver to: their stablecoins, WETH, public RPCs and explorers                                           |
-| `bscBridgeRoutes`                                            | The routes Across and Relay serve from BSC, read from each bridge's API: the token that leaves, the chain and the token that arrives |
-| `PriceFeedDefinition`                                        | A feed: its contract, asset, decimals, heartbeat, a stablecoin mark and wrappers                                                     |
+| Export                                                       | What it does                                                                                                                                   |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bsc`                                                        | BNB Smart Chain mainnet as a `ChainDefinition`                                                                                                 |
+| `bscPriceFeeds`                                              | BSC's 8-decimal Chainlink USD feeds, each with its heartbeat                                                                                   |
+| `bscRatePrices`                                              | BSC's tokens priced at BNB's price times their own contract's rate: slisBNB through Lista's stake manager, 1 to 1.2 BNB, within 1% of its feed |
+| `ethereum`, `baseMainnet`, `arbitrum`, `robinhood`, `solana` | The chains bridges from BSC deliver to: their stablecoins, WETH, public RPCs and explorers                                                     |
+| `bscBridgeRoutes`                                            | The routes Across and Relay serve from BSC, read from each bridge's API: the token that leaves, the chain and the token that arrives           |
+| `PriceFeedDefinition`                                        | A feed: its contract, asset, decimals, heartbeat, a stablecoin mark and wrappers                                                               |
+| `RatePriceDefinition`                                        | A rate price: its token, the contract and function that convert it to the coin, the rate's bounds and its Chainlink feed                       |
 
 ## Example
 

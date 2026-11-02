@@ -1079,6 +1079,11 @@ Decided in decisions [0043](DECISIONS.md#d0043) to [0046](DECISIONS.md#d0046),
   - BNB: Chainlink's BNB/USD feed on BSC (the 8-decimal one), read on chain, keyless, refused when
     older than that feed's heartbeat plus a margin.
   - Stablecoins: $1, unless that feed or a stablecoin feed shows a depeg beyond 2%.
+  - A token that redeems for a growing amount of BNB, such as slisBNB: BNB's price times the rate
+    its own contract converts one token at, within the registry's bounds and within 1% of
+    Chainlink's feed of that rate. While the contract is paused, the feed is stale or the two
+    differ, the token has no price, and no trade's quote stands in for it
+    ([decision 0328](DECISIONS.md#d0328)).
   - Other tokens: the trade's own quote into BNB or USDT.
   - No price means the trade is refused. DEX Screener is a cross-check only.
 - **P&L.** Average cost per position; swap fees and gas are part of the cost; realized and

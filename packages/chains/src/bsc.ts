@@ -3,6 +3,7 @@ import type {
   ChainDefinition,
   PoolHookDefinition,
   PriceFeedDefinition,
+  RatePriceDefinition,
 } from "@binference/chain";
 import { registryEntryMakers } from "./entries/registry-entry-makers.js";
 import { bscLaunchpadContracts } from "./launchpads/bsc-launchpads.js";
@@ -148,6 +149,18 @@ const chainlink = createContracts("chainlink", {
   },
 });
 
+// A `custom` feed of slisBNB's rate in BNB, 18 decimals, which reads Lista's stake manager once a
+// day: it answered 1.039342452779596239 at block 131,234,982, as the manager did.
+const chainlinkRates = createContracts(
+  "chainlink",
+  {
+    "https://docs.chain.link/data-feeds/price-feeds/addresses?network=bnb-chain": {
+      "slisbnb-bnb-exchange-rate": "0xea93C82fa07773ed645d8A79eE27041eb867f221",
+    },
+  },
+  "2026-11-02",
+);
+
 const erc8004 = createContracts("erc8004", {
   "https://github.com/erc-8004/erc-8004-contracts": {
     "identity-registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
@@ -251,6 +264,7 @@ export const bsc: ChainDefinition = {
     ...across,
     ...relay,
     ...chainlink,
+    ...chainlinkRates,
     ...erc8004,
     ...spaceid,
     ...multicall3,
@@ -317,4 +331,29 @@ export const bscPriceFeeds: readonly PriceFeedDefinition[] = [
   },
   { contract: "btc-usd", symbol: "BTC", decimals: 8, heartbeatSeconds: 60, isStablecoin: false },
   { contract: "eth-usd", symbol: "ETH", decimals: 8, heartbeatSeconds: 60, isStablecoin: false },
+];
+
+/**
+ * BSC's tokens priced at BNB's price times their own contract's rate (decision 0328). slisBNB
+ * redeems through Lista's stake manager, whose `convertSnBnbToBnb` answers the BNB a slisBNB
+ * amount is worth, both in 18 decimals: 1.0393 BNB for one slisBNB at block 131,229,177
+ * (2026-11-02). The rate starts at 1 and grows only with staking rewards, so a rate under 1 or
+ * over 1.2 is no price. Chainlink's slisBNB / BNB exchange rate feed, updated at least daily,
+ * guards it: the two may differ by at most 1%.
+ */
+export const bscRatePrices: readonly RatePriceDefinition[] = [
+  {
+    symbol: "slisBNB",
+    venue: "lista",
+    contract: "stake-manager",
+    convertFunction: "convertSnBnbToBnb",
+    minRateBps: 10_000,
+    maxRateBps: 12_000,
+    checkFeed: {
+      contract: "slisbnb-bnb-exchange-rate",
+      decimals: 18,
+      heartbeatSeconds: 86_400,
+      maxGapBps: 100,
+    },
+  },
 ];

@@ -57,7 +57,7 @@ confirmed intents an earlier run left; timers run the engine's settle and its ga
 minute, the gas check raising the low-gas alert for a live wallet below twice its reserve; then the
 engine is `ready`, or `locked`. Each enabled chain gets one RPC failover over `chains.rpc` and
 the chain's public RPCs (`composeChainReads`), which every part that reads the chain shares: the
-Chainlink prices, the wallet facts (balances in one Multicall3 call, the fee per gas, the
+Chainlink and rate prices, the wallet facts (balances in one Multicall3 call, the fee per gas, the
 ceiling's cap and the day's trades), the `eth_simulateV1` simulator and the executor. The
 executor (`composeExecutor`) sends live intents through every private relay each enabled chain
 lists or `chains.relays` names and pays at most `chains.maxFeePerGasGwei` without a tap; its

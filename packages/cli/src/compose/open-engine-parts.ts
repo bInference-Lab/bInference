@@ -5,10 +5,17 @@ import {
   createChainRegistry,
   type PoolHookDefinition,
   type PriceFeedDefinition,
+  type RatePriceDefinition,
   type Venue,
 } from "@binference/chain";
 import { createEvmFamily, createEvmSigningScheme } from "@binference/chain-evm";
-import { bsc, bscPoolHooks, bscUnboundFirstBuys, bscPriceFeeds } from "@binference/chains";
+import {
+  bsc,
+  bscPoolHooks,
+  bscPriceFeeds,
+  bscRatePrices,
+  bscUnboundFirstBuys,
+} from "@binference/chains";
 import { BinferenceError, err, ok, type Result, type Secret } from "@binference/core";
 import type { EngineStores, PositionStore, RiskCacheStore } from "@binference/engine";
 import type { BackupFailure } from "@binference/engine/backups";
@@ -235,6 +242,14 @@ export function registryParts(
 /** The Chainlink feeds of each chain this binference serves, as the registry names them. */
 export function selfHostedFeeds(): ReadonlyMap<ChainRef, readonly PriceFeedDefinition[]> {
   return new Map([[chainRefSchema.parse(bsc.id), bscPriceFeeds]]);
+}
+
+/**
+ * The tokens of each chain this binference serves that the registry prices at the coin's price
+ * times their own contract's rate (decision 0328).
+ */
+export function selfHostedRatePrices(): ReadonlyMap<ChainRef, readonly RatePriceDefinition[]> {
+  return new Map([[chainRefSchema.parse(bsc.id), bscRatePrices]]);
 }
 
 /**

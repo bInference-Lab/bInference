@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { bsc, bscCeilingCaps, bscPoolHooks, bscPriceFeeds, bscUnboundFirstBuys } from "./bsc.js";
+import {
+  bsc,
+  bscCeilingCaps,
+  bscPoolHooks,
+  bscPriceFeeds,
+  bscRatePrices,
+  bscUnboundFirstBuys,
+} from "./bsc.js";
 import { checkDefinition } from "./checks/definition-checks.js";
 import { isChecksummed } from "./checks/evm-checksum.js";
 
@@ -36,7 +43,8 @@ describe("bsc price feeds", () => {
     .map((contract) => contract.name);
 
   it("names one feed for each chainlink contract and nothing else", () => {
-    expect(bscPriceFeeds.map((feed) => feed.contract).toSorted()).toStrictEqual(
+    const rateFeeds = bscRatePrices.map((rate) => rate.checkFeed.contract);
+    expect([...bscPriceFeeds.map((feed) => feed.contract), ...rateFeeds].toSorted()).toStrictEqual(
       feedContracts.toSorted(),
     );
   });
@@ -63,6 +71,33 @@ describe("bsc price feeds", () => {
     expect(bsc.tokens.map((token) => token.symbol)).toStrictEqual(
       expect.arrayContaining(stablecoins),
     );
+  });
+});
+
+describe("bsc rate prices", () => {
+  it("prices slisBNB alone, through Lista's stake manager, a token no feed prices", () => {
+    expect(
+      bscRatePrices.map(({ symbol, venue, contract }) => [symbol, venue, contract]),
+    ).toStrictEqual([["slisBNB", "lista", "stake-manager"]]);
+    expect(bscPriceFeeds.map((feed) => feed.symbol)).not.toContain("slisBNB");
+    expect(bsc.tokens.map((token) => token.symbol)).toContain("slisBNB");
+    expect(bsc.contracts.map(({ venue, name }) => `${venue}/${name}`)).toContain(
+      "lista/stake-manager",
+    );
+  });
+
+  it.each(bscRatePrices)("bounds $symbol's rate from 1 coin, never below it", (rate) => {
+    expect(rate.minRateBps).toBe(10_000);
+    expect(rate.maxRateBps).toBeGreaterThan(rate.minRateBps);
+  });
+
+  it.each(bscRatePrices)("guards $symbol's rate with a daily 18-decimal feed within 1%", (rate) => {
+    expect(rate.checkFeed).toStrictEqual({
+      contract: "slisbnb-bnb-exchange-rate",
+      decimals: 18,
+      heartbeatSeconds: 86_400,
+      maxGapBps: 100,
+    });
   });
 });
 
