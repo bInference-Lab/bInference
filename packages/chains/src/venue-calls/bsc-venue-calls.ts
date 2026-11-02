@@ -65,12 +65,18 @@ const stakehub: VenueContracts = {
 // slisBNB to `msg.sender`, a withdrawal request is `msg.sender`'s and its claim by the request's own
 // id pays it (decision 0332), so a claim names the request its plan names whatever the order of
 // the sender's requests. `claimWithdraw` by index, the bot's `claimWithdrawFor` and the
-// whitelisted `instantWithdraw` are left out.
+// whitelisted `instantWithdraw` are left out. A stake may carry up to 100 BNB, the owner's ruling
+// of 2026-11-02, as StakeHub's does (decisions 0325 and 0332).
 const lista: VenueContracts = {
   chain: bsc,
   names: ["stake-manager"],
   calls: [
-    { contract: "stake-manager", abi: abiOf("deposit", [], "payable"), walletInputs: [] },
+    {
+      contract: "stake-manager",
+      abi: abiOf("deposit", [], "payable"),
+      walletInputs: [],
+      maxValueBase: 100n * 10n ** 18n,
+    },
     {
       contract: "stake-manager",
       abi: abiOf("requestWithdraw", [["uint256", "_amountInSlisBnb"]]),

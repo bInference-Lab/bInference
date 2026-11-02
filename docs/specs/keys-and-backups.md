@@ -134,9 +134,9 @@ The policy is the second wall ([rule 18](../ARCHITECTURE.md#rule-18)). It allows
    declares its trades call, matched by `function_name` with its JSON ABI, on the contracts that
    declare it, with a native value at most the per-transaction cap (`defaults.ceiling.perTxBnb`, 1
    BNB by default, [decision 0094](../DECISIONS.md#d0094)), or a cap of the call's own where its
-   venue declares one: StakeHub's `delegate` carries at most 100 BNB in a rule of its own,
-   `Call delegate, own cap, chain <id>`, whatever the per-transaction cap
-   ([decision 0325](../DECISIONS.md#d0325)). An input the venue pins, such as
+   venue declares one: StakeHub's `delegate` and Lista's `deposit` each carry at most 100 BNB in a
+   rule of its own, such as `Call delegate, own cap, chain <id>`, whatever the per-transaction cap
+   ([decisions 0325](../DECISIONS.md#d0325) and [0332](../DECISIONS.md#d0332)). An input the venue pins, such as
    `dagSwapTo.receiver` on OKX's router, must be the wallet itself. Each call holds only while the
    native coin the wallets sent in the last 24 hours stays within the chain's cap. No rule names an
    executor, a token or a Permit2.

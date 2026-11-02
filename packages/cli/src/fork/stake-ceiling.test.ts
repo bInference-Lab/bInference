@@ -1,23 +1,29 @@
 import {
   type AccountRef,
   accountRefSchema,
+  assetRefSchema,
   type ChainRef,
   chainRefSchema,
+  type VenueDeclaration,
 } from "@binference/chain";
 import { decodeEvmDraft } from "@binference/chain-evm";
-import { bscContract, type Fork, withFork } from "@binference/chain-evm/fork";
+import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
 import type { StakePlan, StakingVenue } from "@binference/chain/staking";
 import { bsc } from "@binference/chains";
 import { buildCeiling, registryCeilingChain } from "@binference/custody-privy";
 import { ceilingVerdict, testCaps } from "@binference/custody-privy/testing";
+import { createListaVenue, listaDeclaration } from "@binference/lista";
 import { createStakeHubVenue, stakeHubDeclaration } from "@binference/stakehub";
-import { type Address, parseAbi } from "viem";
+import { type Address, erc20Abi, parseAbi } from "viem";
 import { describe, expect, it } from "vitest";
 
 // A 2 BNB stake on a BSC fork under the ceiling the planner builds from the registry: StakeHub's
-// `delegate` in its own rule up to 100 BNB (decision 0325), every other call at the 1 BNB cap per
-// call. The fake's policy engine judges the stake's own bytes, which then land on the fork.
+// `delegate` and Lista's `deposit` each in its own rule up to 100 BNB (decisions 0325 and 0332),
+// every other call at the 1 BNB cap per call. The fake's policy engine judges the stake's own
+// bytes, which then land on the fork.
 const hub = bscContract("stakehub", "stake-hub");
+const manager = bscContract("lista", "stake-manager");
+const slisBnb = bscToken("slisBNB");
 const multicall = bscContract("multicall3", "multicall3");
 const bscRef: ChainRef = chainRefSchema.parse(bsc.id);
 const rescue = "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
@@ -29,12 +35,16 @@ const listAbi = parseAbi([
 const accountOf = (fork: Fork, address: Address): AccountRef =>
   accountRefSchema.parse(`${fork.chain.ref}:${address}`);
 
-// The ceiling request a wallet that may stake gets from the registry, its native 24-hour cap far
-// above a day's stakes.
+// The ceiling request a wallet that may stake on both venues gets from the registry, its native
+// 24-hour cap far above a day's stakes.
 function stakingCeiling() {
+  const venues: readonly VenueDeclaration[] = [
+    stakeHubDeclaration([bscRef]),
+    listaDeclaration([bscRef]),
+  ];
   const plan = registryCeilingChain({
     definition: bsc,
-    venues: [stakeHubDeclaration([bscRef])],
+    venues,
     perTxNativeCapBase: bnb,
   });
   if (!plan.ok) {
@@ -74,6 +84,22 @@ async function stakePlan(
   throw new Error("None of StakeHub's first validators takes a stake on the fork.");
 }
 
+// A plan of a stake of the amount into Lista's pool, and the least slisBNB it promises.
+async function listaPlan(
+  { fork, venue }: { readonly fork: Fork; readonly venue: StakingVenue },
+  base: bigint,
+  signal: AbortSignal,
+): Promise<{ readonly stake: StakePlan; readonly least: bigint }> {
+  const amount = { asset: fork.chain.nativeAsset, base };
+  const wallet = accountOf(fork, fork.account);
+  const ask = { action: "stake", wallet, validator: accountOf(fork, manager), amount } as const;
+  const planned = await venue.plan(ask, { signal });
+  if (!planned.ok || planned.value.minShares === undefined) {
+    throw new Error("Lista planned no stake with its least slisBNB on the fork.");
+  }
+  return { stake: planned.value, least: planned.value.minShares.base };
+}
+
 async function verdictOf(venue: StakingVenue, plan: StakePlan, fork: Fork) {
   const [draft] = await venue.build(plan, { signal: new AbortController().signal });
   const call = draft === undefined ? undefined : decodeEvmDraft(draft);
@@ -106,6 +132,37 @@ describe("a stake under the planned ceiling on a fork of BSC", () => {
       expect(buildCeiling(stakingCeiling()).ok).toBe(true);
       expect([signed.verdict, refused.verdict]).toStrictEqual(["ALLOW", "DENY"]);
       expect(receipt.status).toBe("success");
+    });
+  });
+
+  it("signs a 2 BNB stake on Lista under its deposit's own cap and lands it, and refuses one past 100 BNB", async ({
+    signal,
+  }) => {
+    await withFork(signal, async (fork) => {
+      const venue = createListaVenue({
+        chain: fork.chain.ref,
+        coin: fork.chain.nativeAsset,
+        receipt: assetRefSchema.parse(`${fork.chain.ref}/erc20:${slisBnb}`),
+        rpc: fork.rpc,
+        contracts: { "stake-manager": accountOf(fork, manager) },
+        stakeHub: accountOf(fork, hub),
+        multicall: accountOf(fork, multicall),
+      });
+      const { stake, least } = await listaPlan({ fork, venue }, 2n * bnb, signal);
+      const signed = await verdictOf(venue, stake, fork);
+      const value = { ...stake.value, base: 100n * bnb + 1n };
+      const refused = await verdictOf(venue, { ...stake, value }, fork);
+      const receipt = await fork.send(signed.call);
+      const minted = await fork.client.readContract({
+        address: slisBnb,
+        abi: erc20Abi,
+        functionName: "balanceOf",
+        args: [fork.account],
+      });
+
+      expect([signed.verdict, refused.verdict]).toStrictEqual(["ALLOW", "DENY"]);
+      expect(receipt.status).toBe("success");
+      expect(minted).toBeGreaterThanOrEqual(least);
     });
   });
 });

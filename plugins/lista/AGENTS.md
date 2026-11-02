@@ -16,7 +16,8 @@ and [0332](../../docs/adr/0332-lista-is-read-and-called-on-chain-and-a-claim-nam
   and `synclub-contracts`' `ListaStakeManager.sol` and `IStakeManager.sol`.
 - It declares `deposit`, `requestWithdraw` and `claimWithdrawByUUID` on the stake manager, and the
   stake manager as its one spender: the registry's `bscVenueCalls.lista` holds the same calls, and
-  the composition root's test checks the two agree. `claimWithdraw` by index, `claimWithdrawFor`
+  the composition root's test checks the two agree. `deposit` carries up to 100 BNB in a ceiling
+  rule of its own (decisions 0325 and 0332); the other calls send no coin. `claimWithdraw` by index, `claimWithdrawFor`
   and `instantWithdraw` are never built.
 - Every move credits the caller. The decoder reads only those three, to the stake manager on its
   chain, in the exact bytes the builder writes, with coin only on a stake; anything else is

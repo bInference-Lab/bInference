@@ -237,6 +237,7 @@ function stakeCapChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] 
   return [
     bridgeCheck(harness, "signs a stake of 100 BNB, the most a stake may carry", async (w) => {
       await privySigns(w.main, call(stakeHub, callData.delegate(validator), 100n * oneBnbWei));
+      await privySigns(w.main, call(stakeManager, callData.deposit(), 100n * oneBnbWei));
     }),
   ];
 }
@@ -276,7 +277,8 @@ function refuseChecks(harness: PrivyCustodyHarness): readonly ContractCheck[] {
         const pastStake = 100n * oneBnbWei + 1n;
         const pastCall = oneBnbWei + oneBnbWei / 10n;
         await privyRefuses(main, call(stakeHub, callData.delegate(validator), pastStake));
-        await privyRefuses(main, call(stakeManager, callData.deposit(), pastCall));
+        await privyRefuses(main, call(stakeManager, callData.deposit(), pastStake));
+        await privyRefuses(main, call(stakeManager, callData.requestWithdraw(), pastCall));
         await privyRefuses(main, call(stakeHub, callData.undelegate(validator), pastCall));
         await privyRefuses(main, call(stakeHub, callData.redelegate(validator, unsaved)));
         await privyRefuses(main, call(stakeManager, callData.claimWithdrawFor(unsaved)));

@@ -23,11 +23,12 @@ const values = fc.constantFrom(
   10n ** 24n,
 );
 
-// Payable calls the ceiling lists: a stake with its own cap, then calls under the cap per call.
+// Payable calls the ceiling lists: the stakes with their own cap, then calls under the cap per call.
 const calls = fc.constantFrom(
   { to: stakingAddresses.stakeHub, data: callData.delegate(validator), cap: stakeCap },
   { to: stakingAddresses.stakeHub, data: callData.undelegate(validator), cap: oneBnbWei },
-  { to: stakingAddresses.stakeManager, data: callData.deposit(), cap: oneBnbWei },
+  { to: stakingAddresses.stakeManager, data: callData.deposit(), cap: stakeCap },
+  { to: stakingAddresses.stakeManager, data: callData.requestWithdraw(), cap: oneBnbWei },
   { to: testAddresses.router, data: swapData(1n), cap: oneBnbWei },
 );
 

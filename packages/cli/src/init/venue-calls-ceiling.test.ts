@@ -64,7 +64,7 @@ describe("a ceiling built from the staking, bridge and identity calls on BSC", (
       "Call delegate, own cap, chain 56",
       "Call undelegate, chain 56",
       "Call claim, chain 56",
-      "Call deposit, chain 56",
+      "Call deposit, own cap, chain 56",
       "Call requestWithdraw, chain 56",
       "Call claimWithdrawByUUID, chain 56",
       "Call register, chain 56",

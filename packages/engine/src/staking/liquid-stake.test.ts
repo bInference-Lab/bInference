@@ -1,6 +1,6 @@
 import type { IntentView, StakeRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { expectOk } from "../intents/test-intents.js";
+import { expectOk, testWallet } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import {
@@ -13,11 +13,20 @@ import {
   testPool,
   testPoolReceipt,
 } from "./test-liquid-stakes.js";
-import { testUnbondingSeconds, testValidator } from "./test-stakes.js";
+import {
+  halfCoin,
+  holdStakeWallet,
+  testUnbondingSeconds,
+  testValidator,
+  withOwnCap,
+} from "./test-stakes.js";
 
 type LiquidTest = Awaited<ReturnType<typeof startLiquidEngine>>;
 
 const units = (base: bigint) => ({ asset: testPoolReceipt, base });
+
+// The fake pool, its deposit declared with a cap of its own, as Lista's is (decision 0332).
+const cappedPool = () => withOwnCap(testLiquidFake(), { contract: "pool", name: "deposit" });
 
 async function propose(test: LiquidTest, request: StakeRequest): Promise<IntentView> {
   return expectOk(await test.engine.handlers["intent/propose"](testCall(request)));
@@ -72,6 +81,21 @@ describe("staking on a liquid pool (decision 0331)", () => {
       "nothing_to_claim",
     ]);
     expect([claim.state, claim.outcome?.reason]).toStrictEqual(["paper_filled", undefined]);
+  });
+
+  it("refuses a stake above what an old ceiling lets one deposit carry, and names how to rewrite it", async () => {
+    const test = await startLiquidEngine(cappedPool());
+    const later = await startLiquidEngine(cappedPool());
+    holdStakeWallet(test);
+    holdStakeWallet(later, [{ functionName: "deposit", maxValueBase: 100n * 10n ** 18n }]);
+    const request = liquidRequest("stake", { amount: { ...halfCoin, base: 15n * 10n ** 17n } });
+
+    const old = await propose(test, request);
+    const rewritten = await propose(later, request);
+
+    expect([old.state, old.outcome?.reason]).toStrictEqual(["failed_check", "stake_over_ceiling"]);
+    expect(liquidWordsOf(old, "en")).toContain(`\`binference ceiling set --wallet ${testWallet}\``);
+    expect(rewritten.state).toBe("awaiting_confirmation");
   });
 
   it("marks the pool in the staking options, which a request on it never names", async () => {

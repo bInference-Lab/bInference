@@ -129,7 +129,8 @@ export const stakingAddresses = {
   depository: "0x4cD00E387622C35bDDB9b4c962C136462338BC31",
 } as const;
 
-// A stake to StakeHub carries up to 100 BNB, as the registry declares (decision 0325).
+// A stake to StakeHub or Lista carries up to 100 BNB, as the registry declares (decisions 0325
+// and 0332).
 const stakeCapBase = 100n * 10n ** 18n;
 
 const onContract = (contract: string, names: readonly string[]): readonly CeilingCall[] =>
@@ -137,7 +138,8 @@ const onContract = (contract: string, names: readonly string[]): readonly Ceilin
     contract,
     abi: stakingAbis[name] ?? bridgeAbis.register,
     walletInputs: [],
-    ...(contract === stakingAddresses.stakeHub && name === "delegate"
+    ...((contract === stakingAddresses.stakeHub && name === "delegate") ||
+    (contract === stakingAddresses.stakeManager && name === "deposit")
       ? { maxValueBase: stakeCapBase }
       : {}),
   }));

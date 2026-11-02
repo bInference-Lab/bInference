@@ -63,25 +63,34 @@ export function testStakingFake(aprBps = 350): FakeStakingVenue {
   });
 }
 
-/** The delegate call of a venue that holds a stake to a cap of its own, 100 coins (decision 0325). */
-const delegateAbi: JsonValue = {
-  type: "function",
-  name: "delegate",
-  inputs: [],
-  outputs: [],
-  stateMutability: "payable",
-};
-
-/** The fake venue as one that declares its stake call with a cap of its own, as StakeHub does. */
-export function withOwnCap(venue: FakeStakingVenue): StakingVenue {
+/**
+ * The fake venue as one that declares its stake call with a cap of its own of 100 coins, as
+ * StakeHub's `delegate` and Lista's `deposit` do (decisions 0325 and 0332): by default the fake
+ * hub's `delegate`.
+ */
+export function withOwnCap<T extends StakingVenue>(
+  venue: T,
+  call: { readonly contract: string; readonly name: string } = {
+    contract: "hub",
+    name: "delegate",
+  },
+): T {
+  const abi: JsonValue = {
+    type: "function",
+    name: call.name,
+    inputs: [],
+    outputs: [],
+    stateMutability: "payable",
+  };
+  const capped = {
+    contract: call.contract,
+    abi,
+    walletInputs: [],
+    maxValueBase: 100n * 10n ** 18n,
+  };
   return {
     ...venue,
-    contracts: venue.contracts.map((entry) => ({
-      ...entry,
-      calls: [
-        { contract: "hub", abi: delegateAbi, walletInputs: [], maxValueBase: 100n * 10n ** 18n },
-      ],
-    })),
+    contracts: venue.contracts.map((entry) => ({ ...entry, calls: [capped] })),
   };
 }
 

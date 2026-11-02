@@ -11,12 +11,12 @@ const okxKeys = {
   passphrase: { fromKeychain: "okx-passphrase" },
 };
 
-// The calls StakeHub's declaration names, each ABI with the cap of its own it carries.
-function stakeHubCalls(): readonly (readonly [unknown, bigint | undefined])[] {
-  const stakeHub = coreVenues(http, { keys: {}, kyberClientId: "binference" }).find(
-    (venue) => venue.id === "stakehub",
+// The calls a staking venue's declaration names, each ABI with the cap of its own it carries.
+function stakingCalls(id: string): readonly (readonly [unknown, bigint | undefined])[] {
+  const venue = coreVenues(http, { keys: {}, kyberClientId: "binference" }).find(
+    (item) => item.id === id,
   );
-  const calls = stakeHub?.contracts.flatMap((item) => item.calls ?? []) ?? [];
+  const calls = venue?.contracts.flatMap((item) => item.calls ?? []) ?? [];
   return calls.map((call) => [call.abi, call.maxValueBase]);
 }
 
@@ -31,11 +31,16 @@ describe("core venues", () => {
     ]);
   });
 
-  it("installs StakeHub with a stake that carries up to 100 BNB in a rule of its own", () => {
-    expect(stakeHubCalls()).toMatchObject([
+  it("installs StakeHub and Lista with a stake that carries up to 100 BNB in a rule of its own", () => {
+    expect(stakingCalls("stakehub")).toMatchObject([
       [{ name: "delegate" }, 100n * 10n ** 18n],
       [{ name: "undelegate" }, undefined],
       [{ name: "claim" }, undefined],
+    ]);
+    expect(stakingCalls("lista")).toMatchObject([
+      [{ name: "deposit" }, 100n * 10n ** 18n],
+      [{ name: "requestWithdraw" }, undefined],
+      [{ name: "claimWithdrawByUUID" }, undefined],
     ]);
   });
 

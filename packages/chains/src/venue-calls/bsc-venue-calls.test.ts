@@ -122,10 +122,11 @@ describe("the staking, bridge and identity calls on bsc", () => {
     expect(uncapped).toStrictEqual([]);
   });
 
-  it("lets only StakeHub's delegate carry more than the wallet's cap per call, up to 100 BNB", () => {
+  it("lets only StakeHub's delegate and Lista's deposit carry more than the cap per call, up to 100 BNB", () => {
     const raised = everyCall().filter((call) => call.maxValueBase !== undefined);
     expect(raised.map((call) => [nameOf(call.abi), call.maxValueBase])).toStrictEqual([
       ["delegate", 100n * 10n ** 18n],
+      ["deposit", 100n * 10n ** 18n],
     ]);
   });
 
