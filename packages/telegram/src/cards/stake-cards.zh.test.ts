@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   askedUnstakeFacts,
   claimFacts,
+  liquidClaimFacts,
+  liquidStakeFacts,
+  liquidStakeRefusalValues,
+  liquidUnstakeFacts,
   longStakeRefusalValues,
   stakeFacts,
   stakeWalletId,
@@ -111,6 +115,50 @@ describe("the answer to a press of a staking card, in Chinese", () => {
     const press = { reason: refusal, values: longStakeRefusalValues } as const;
     const { answer } = await showTransferCard("zh", unstakeFacts, press);
     expect(answer).toBe(words);
+    expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
+  });
+});
+
+describe("a liquid venue's staking cards in the owner's chat, in Chinese (decision 0331)", () => {
+  it("shows a stake, an unstake and a claim by the venue's name, with no validator line", async () => {
+    const shown = await Promise.all(
+      [liquidStakeFacts, liquidUnstakeFacts, liquidClaimFacts].map(async (facts) =>
+        showTransferCard("zh", facts),
+      ),
+    );
+    expect(shown.map(({ lines }) => lines)).toStrictEqual([
+      [
+        header("质押"),
+        "在 Lista 质押 1 BNB，至少获得 0.961 slisBNB",
+        "日后解除质押需等待 7 天才能领取",
+        reason,
+        expiry,
+      ],
+      [
+        header("解除质押"),
+        "从 Lista 解除质押 0.961 slisBNB",
+        "解绑期内锁定：2026年10月13日 14:31:05 起可领取，约 7 天后，在此之前无法取回",
+        "由 Lista 自己的队列放行，可能更久；可以领取时 binference 会通知你",
+        reason,
+        expiry,
+      ],
+      [header("领取"), "领取你在 Lista 解除质押的 1 BNB", reason, expiry],
+    ]);
+  });
+
+  it.each<QuoteFailure>(["nothing_staked", "exceeds_staked", "nothing_to_claim"])(
+    "answers a press of an unstake Lista refused with %s within 200 characters",
+    async (refusal) => {
+      const press = { reason: refusal, values: liquidStakeRefusalValues } as const;
+      const { answer } = await showTransferCard("zh", liquidUnstakeFacts, press);
+      expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
+    },
+  );
+
+  it("keeps Lista's ceiling refusal within 200 characters with its whole command", async () => {
+    const press = { reason: "stake_over_ceiling", values: liquidStakeRefusalValues } as const;
+    const { answer } = await showTransferCard("zh", liquidStakeFacts, press);
+    expect(answer).toContain(`\`binference ceiling set --wallet ${stakeWalletId}\``);
     expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
   });
 });

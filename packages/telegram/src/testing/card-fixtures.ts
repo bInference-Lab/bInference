@@ -31,16 +31,23 @@ export function accountRef(text: string): AccountRef {
 }
 
 /** The fake chain's coin, a verified stablecoin and an unverified token at a real-looking address. */
-export const refs: { readonly bnb: AssetRef; readonly usdt: AssetRef; readonly pepe: AssetRef } = {
+export const refs: {
+  readonly bnb: AssetRef;
+  readonly usdt: AssetRef;
+  readonly pepe: AssetRef;
+  readonly slisBnb: AssetRef;
+} = {
   bnb: assetRef("fake:1/slip44:1"),
   usdt: assetRef("fake:1/erc20:0x55d398326f99059fF775485246999027B3197955"),
   pepe: assetRef("fake:1/erc20:0x6982508145454Ce325dDbE47a25d4ec3d2311933"),
+  slisBnb: assetRef("fake:1/erc20:0xB0b84D294e0C75A6abe60171b70edEb2EFd14A1B"),
 };
 
 const known: Readonly<Record<string, AssetInfo>> = {
   [refs.bnb]: { symbol: "BNB", name: "BNB", decimals: 18, verified: true },
   [refs.usdt]: { symbol: "USDT", name: "Tether USD", decimals: 18, verified: true },
   [refs.pepe]: { symbol: "PEPE", name: "Pepe", decimals: 18, verified: false },
+  [refs.slisBnb]: { symbol: "slisBNB", name: "Staked Lista BNB", decimals: 18, verified: true },
 };
 
 /** The infos of the fixture assets; `pepe` may take another symbol and name. */

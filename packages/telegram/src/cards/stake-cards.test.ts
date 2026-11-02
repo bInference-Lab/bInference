@@ -4,6 +4,10 @@ import { describe, expect, it } from "vitest";
 import {
   askedUnstakeFacts,
   claimFacts,
+  liquidClaimFacts,
+  liquidStakeFacts,
+  liquidStakeRefusalValues,
+  liquidUnstakeFacts,
   longStakeRefusalValues,
   stakeFacts,
   stakeWalletId,
@@ -126,5 +130,57 @@ describe("the answer to a press of a staking card, in English", () => {
       `this wallet's ceiling still holds one stake to less than this, so nothing was staked; write it again with your owner key, \`binference ceiling set --wallet ${stakeWalletId}\`, t…`,
     );
     expect(answer).toHaveLength(maxAnswerLength);
+  });
+});
+
+describe("a liquid venue's staking cards in the owner's chat, in English (decision 0331)", () => {
+  it("shows a stake, an unstake and a claim by the venue's name, with no validator line", async () => {
+    const shown = await Promise.all(
+      [liquidStakeFacts, liquidUnstakeFacts, liquidClaimFacts].map(async (facts) =>
+        showTransferCard("en", facts),
+      ),
+    );
+    expect(shown.map(({ lines }) => lines)).toStrictEqual([
+      [
+        header("stake"),
+        "Stake 1 BNB with Lista for at least 0.961 slisBNB",
+        "Unstaking later takes 7 days before you can claim it",
+        reason,
+        expiry,
+      ],
+      [
+        header("unstake"),
+        "Unstake 0.961 slisBNB from Lista",
+        "Locked while it unbonds: you can claim it from Oct 13, 2026, 14:31:05, in about 7 days, and not sooner",
+        "Lista's own queue releases it and may take longer; binference tells you once you can claim it",
+        reason,
+        expiry,
+      ],
+      [header("claim"), "Claim 1 BNB from your Lista unstake", reason, expiry],
+    ]);
+  });
+
+  it.each<[QuoteFailure, string]>([
+    ["nothing_staked", "this wallet has nothing staked with Lista (0x1adB…7fE6)"],
+    [
+      "exceeds_staked",
+      "that is more than this wallet's stake with Lista (0x1adB…7fE6) is worth; unstake all of it, or less",
+    ],
+    [
+      "nothing_to_claim",
+      "nothing is ready to claim yet; the next part is ready at Oct 13, 2026, 14:31:05",
+    ],
+  ])("answers a press of an unstake Lista refused with %s whole", async (refusal, words) => {
+    const press = { reason: refusal, values: liquidStakeRefusalValues } as const;
+    const { answer } = await showTransferCard("en", liquidUnstakeFacts, press);
+    expect(answer).toBe(words);
+    expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
+  });
+
+  it("cuts Lista's ceiling refusal to 200 characters after its whole command", async () => {
+    const press = { reason: "stake_over_ceiling", values: liquidStakeRefusalValues } as const;
+    const { answer } = await showTransferCard("en", liquidStakeFacts, press);
+    expect(answer).toContain(`\`binference ceiling set --wallet ${stakeWalletId}\``);
+    expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
   });
 });

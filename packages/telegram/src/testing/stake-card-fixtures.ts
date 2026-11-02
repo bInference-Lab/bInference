@@ -91,6 +91,51 @@ export const askedUnstakeFacts: CardFacts = {
   },
 };
 
+const pool = accountRef("fake:1:0x1adB950d8bB3dA4bE104211D5AB038628e477fE6");
+const slisBnb = (thousandths: bigint) => ({ asset: refs.slisBnb, base: thousandths * 10n ** 15n });
+const lista = { kind: "stake", validator: pool, validatorName: "Lista" } as const;
+const listaDetails = { commissionBps: bpsSchema.parse(1_500) } as const;
+
+/**
+ * A stake of 1 BNB into Lista's pool for at least 0.961 slisBNB, a later unstake waiting at least
+ * 7 days (decision 0331).
+ */
+export const liquidStakeFacts: CardFacts = {
+  ...shared,
+  action: {
+    ...lista,
+    action: "stake",
+    amount: bnb(1n),
+    liquid: { venueName: "Lista", minOut: slisBnb(961n) },
+    details: { ...listaDetails, unbondingDays: 7 },
+  },
+};
+
+/** An unstake of 0.961 slisBNB from Lista, its coin ready no sooner than 7 days on. */
+export const liquidUnstakeFacts: CardFacts = {
+  ...shared,
+  action: {
+    ...lista,
+    action: "unstake",
+    amount: slisBnb(961n),
+    liquid: { venueName: "Lista" },
+    readyInDays: 7,
+    details: { ...listaDetails, readyAtMs: swapFacts.card.openedAtMs + 7 * dayMs },
+  },
+};
+
+/** A claim of 1 BNB from a Lista unstake its queue released. */
+export const liquidClaimFacts: CardFacts = {
+  ...shared,
+  action: {
+    ...lista,
+    action: "claim",
+    amount: bnb(1n),
+    liquid: { venueName: "Lista" },
+    details: listaDetails,
+  },
+};
+
 /** The wallet a staking refusal of the fixtures names. */
 export const stakeWalletId = "wal_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 
@@ -148,6 +193,24 @@ export const longStakeRefusalValues: CardLine["values"] = {
       values: {
         moniker: { type: "text", text: "A validator whose moniker is far too long" },
         address: { type: "account", account: validator },
+      },
+    },
+  },
+};
+
+/**
+ * What a staking refusal's words name on a Lista card when the owner presses it: the wallet,
+ * Lista's pool by its name and address, and the next part's ready time.
+ */
+export const liquidStakeRefusalValues: CardLine["values"] = {
+  ...walletAndReady,
+  validator: {
+    type: "line",
+    line: {
+      key: "card.value.validator",
+      values: {
+        moniker: { type: "text", text: "Lista" },
+        address: { type: "account", account: pool },
       },
     },
   },

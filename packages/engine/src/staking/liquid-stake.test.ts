@@ -4,6 +4,7 @@ import { expectOk } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import {
+  liquidCardLines,
   liquidRequest,
   liquidWordsOf,
   refusedBeforePlan,
@@ -43,17 +44,6 @@ async function confirm(test: LiquidTest, view: IntentView): Promise<void> {
 }
 
 describe("staking on a liquid pool (decision 0331)", () => {
-  it("opens a stake's card that names the pool and the least receipt units, with no validator line", async () => {
-    const test = await startLiquidEngine(testLiquidFake());
-
-    const view = await propose(test, liquidRequest("stake"));
-
-    const lines = await testCardText(test, view, "en");
-    expect(lines[1]).toBe("Stake 0.5 FAKE with Pool for at least 0.454545 UNL (0x000000e2)");
-    expect(lines[2]).toBe("Unstaking later takes 7 days before you can claim it");
-    expect(lines.some((line) => line.startsWith("Validator"))).toBe(false);
-  });
-
   it("unstakes receipt units on paper, says the pool's queue may release them later, then claims", async () => {
     const fake = testLiquidFake();
     const test = await startLiquidEngine(fake, { agent: { approvalMode: "auto" } });
@@ -95,6 +85,22 @@ describe("staking on a liquid pool (decision 0331)", () => {
     const answers = await Promise.all(asks.map(async (request) => answerOf(test, request)));
 
     expect(answers).toStrictEqual(["protocol.bad_args", "protocol.bad_args", "protocol.bad_args"]);
+  });
+
+  it("draws a stake's, an unstake's and a claim's cards with the pool's name and no validator", async () => {
+    const cards = await liquidCardLines("en");
+    const [stake, unstake, claim] = cards;
+
+    expect(stake?.slice(1, 3)).toStrictEqual([
+      "Stake 0.5 FAKE with Pool for at least 0.454545 UNL (0x000000e2)",
+      "Unstaking later takes 7 days before you can claim it",
+    ]);
+    expect(unstake?.[1]).toBe("Unstake 0.1 UNL (0x000000e2) from Pool");
+    expect(unstake?.[3]).toBe(
+      "Pool's own queue releases it and may take longer; binference tells you once you can claim it",
+    );
+    expect(claim?.[1]).toBe("Claim 0.11 FAKE from your Pool unstake");
+    expect(cards.flat().some((line) => line.startsWith("Validator"))).toBe(false);
   });
 
   it("names the pool by its name in the words of a refusal before any plan", async () => {

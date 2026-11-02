@@ -15,6 +15,7 @@ import { bpsSchema } from "@binference/core";
 import { createFormatter, reasonNamesOf, unsentReceiptText } from "@binference/i18n";
 import type { IntentView, StakeRequest } from "@binference/protocol";
 import { expectOk, testAgent, testLimits, testNowMs } from "../intents/test-intents.js";
+import { testCardText } from "../money-path/test-launches.js";
 import {
   startTestEngine,
   testCall,
@@ -115,4 +116,36 @@ export async function refusedBeforePlan(): Promise<readonly IntentView[]> {
   await ask(liquidRequest("stake"), testCallers.runtime);
   const over = await ask(liquidRequest("unstake", { amount: units(10n ** 18n) }));
   return [none, over];
+}
+
+// Confirms the view's card as the owner; a view with no card fails the test.
+async function confirmed(test: TestEngine, view: IntentView): Promise<void> {
+  const { card } = view;
+  if (card === undefined) {
+    throw new Error("The intent has no card to confirm.");
+  }
+  const call = { intent: view.intent, card: card.card, cardVersion: card.version };
+  expectOk(await test.engine.handlers["intent/confirm"](testCall(call)));
+}
+
+/**
+ * The lines of a paper stake's, unstake's and claim's cards on a fresh fake pool, in the
+ * language: each confirmed in turn, the claim once the unbonding time passed.
+ */
+export async function liquidCardLines(
+  locale: "en" | "zh",
+): Promise<readonly (readonly string[])[]> {
+  const fake = testLiquidFake();
+  const test = await startLiquidEngine(fake);
+  const ask = async (request: StakeRequest) =>
+    expectOk(await test.engine.handlers["intent/propose"](testCall(request)));
+  const stake = await ask(liquidRequest("stake"));
+  const stakeLines = await testCardText(test, stake, locale);
+  await confirmed(test, stake);
+  const unstake = await ask(liquidRequest("unstake", { amount: units(10n ** 17n) }));
+  const unstakeLines = await testCardText(test, unstake, locale);
+  await confirmed(test, unstake);
+  fake.wait(testUnbondingSeconds + 1);
+  const claim = await ask(liquidRequest("claim"));
+  return [stakeLines, unstakeLines, await testCardText(test, claim, locale)];
 }
