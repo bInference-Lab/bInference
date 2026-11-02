@@ -124,6 +124,16 @@ describe("the read tools", () => {
     });
   });
 
+  it("tell the agent to ask for a saved address when a bridge quote has no recipient to price for", async () => {
+    const refused = new BinferenceError({ code: "address.no_recipient", message: "No recipient." });
+    const args = { amount: { asset: token, base: "1" }, toChain: "fake:2" };
+    const outcome = await outcomeOf(
+      callTool({ "bridge/quote": refused }, { name: "bridge_quote", args }),
+    );
+    expect(outcome).toMatchObject({ isError: true });
+    expect(outcome.text).toContain("Ask the owner which saved address there to use");
+  });
+
   it("all run beside each other", () => {
     const box = agentToolBox({ agent, client: createFakeToolClient({}), turn: toolTurn });
     const reads = [

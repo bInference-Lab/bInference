@@ -337,6 +337,16 @@ export const bridgeTermsSchema: z.ZodType<BridgeTerms> = z.strictObject({
   reason,
 });
 
+/** A bridge's terms as a quote takes them: no reason, and the recipient optional. */
+type BridgeQuoteTerms = Omit<BridgeTerms, "reason" | "to"> & { readonly to?: BridgeTarget };
+
+/** Parses a bridge quote's terms: a bridge's, with no reason and the recipient optional. */
+export const bridgeQuoteTermsSchema: z.ZodType<BridgeQuoteTerms> = z.strictObject({
+  amount: bridgeShape.amount,
+  toChain: bridgeShape.toChain,
+  to: bridgeShape.to.exactOptional(),
+});
+
 /** Parses a stake's or an unstake's terms, as {@link swapTermsSchema} does a swap's. */
 export const stakeTermsSchema: z.ZodType<StakeTerms> = z.strictObject({
   venue: stakeShape.venue,

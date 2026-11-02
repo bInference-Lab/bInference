@@ -1,6 +1,7 @@
 import {
   type AssetSearchTerms,
   assetSearchTermsSchema,
+  bridgeQuoteTermsSchema,
   type OrderState,
   operations,
   orderStateSchema,
@@ -11,7 +12,7 @@ import { z } from "zod";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
-import { answerOrFailure, jsonOf, withUnlistedHidden } from "./tool-answer.js";
+import { answerOrFailure, answerOrRefusal, jsonOf, withUnlistedHidden } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 
 // The agent's read tools (runtime spec, section 5.1). Each maps onto one read operation, named for
@@ -111,6 +112,33 @@ function quoteTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
+// A bridge quote's refusals the agent can act on, by code.
+const bridgeQuoteRefusals: Readonly<Record<string, string>> = {
+  "address.no_recipient":
+    "bridge_quote names no recipient, and the rescue address cannot be paid on that chain. Ask the owner which saved address there to use, then quote again with to.entry.",
+};
+
+/**
+ * `bridge_quote`, a read tool (runtime spec, section 5.1): each bridge route for moving an amount
+ * to another chain through `bridge/quote`, the best least output first, proposing nothing. The
+ * engine prices it, so it marks nothing.
+ */
+function bridgeQuoteTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool({
+    name: "bridge_quote",
+    kind: "read",
+    parallel: true,
+    addressSource: "engine",
+    description: agentToolTexts.bridge_quote,
+    args: bridgeQuoteTermsSchema,
+    run: async (terms, { signal }) =>
+      answerOrRefusal({ tool: "bridge_quote", refusals: bridgeQuoteRefusals }, async () => {
+        const view = await client.call("bridge/quote", { ...terms, agent }, { signal });
+        return answer(jsonOf(ops["bridge/quote"].result, view));
+      }),
+  });
+}
+
 /** What `orders` takes: the state to filter by, and the cursor of the page after the first. */
 interface OrdersArgs {
   readonly state?: OrderState;
@@ -171,6 +199,7 @@ export function readTools(parts: AgentToolParts): readonly AgentTool[] {
     tokenInfoTool(parts),
     tokenRiskTool(parts),
     quoteTool(parts),
+    bridgeQuoteTool(parts),
     ordersTool(parts),
     txStatusTool(parts),
   ];

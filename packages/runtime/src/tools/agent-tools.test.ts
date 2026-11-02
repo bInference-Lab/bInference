@@ -42,6 +42,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "asset/search": { items: [{ asset: coin, ...coinInfo }] },
   "portfolio/get": { balances: [], positions: [], totalUsdMicros: "0", assets: {} },
   "asset/get": { asset: coin, ...coinInfo },
+  "bridge/quote": { items: [], assets: {} },
   "risk/check": { verdict: "pass", flags: [], onCurve: false, checkedAt: 1 },
   "quote/get": {
     route: [{ venue: "fake-swap", shareBps: 10_000 }],
@@ -143,6 +144,11 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   ["token_info", { asset: coin }, [{ op: "asset/get", args: { asset: coin } }]],
   ["token_risk", { asset: token }, [{ op: "risk/check", args: { asset: token } }]],
   ["quote", swapTerms, [{ op: "quote/get", args: { ...swapTerms, agent, kind: "swap" } }]],
+  [
+    "bridge_quote",
+    { amount: bridgeTerms.amount, toChain: bridgeTerms.toChain },
+    [{ op: "bridge/quote", args: { amount: bridgeTerms.amount, toChain: "fake:2", agent } }],
+  ],
   [
     "orders",
     { state: "active", cursor: "c1" },

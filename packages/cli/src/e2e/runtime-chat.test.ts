@@ -272,6 +272,7 @@ describe("the chat relay to the agent runtime process", () => {
         "token_info",
         "token_risk",
         "quote",
+        "bridge_quote",
         "orders",
         "tx_status",
         "market_scan",
