@@ -5,8 +5,8 @@ import type { LandedStake, StakePlan } from "@binference/chain/staking";
  * Why the venue host refused what a staking venue read back of a landed move, against the plan the
  * card confirmed (decision 0327): `other_move` another action or validator; `other_coin` coin of
  * another asset, or a stake that put in other than the coin its call sent; `other_shares` receipt
- * units of another token, none minted by a stake or fewer than its least units (decision 0331),
- * or other than an unstake's planned units;
+ * units of another token, none minted by a stake, or other than an unstake's planned units; a
+ * stake that minted fewer than its least units passes and is booked as it landed (decision 0331);
  * `other_request` an unstake's request of another coin or amount, or ready before the plan's time
  * plus the unbonding time; `other_parts` a claim of other parts than its plan, or a move that names
  * a part of another action. Nothing a refused read-back says is booked.
@@ -35,8 +35,7 @@ function sharesMismatch(landed: LandedStake, plan: StakePlan): boolean {
   if (shares === undefined || shares.asset !== plan.shares.asset) {
     return true;
   }
-  const least = plan.minShares?.base ?? 1n;
-  return plan.action === "stake" ? shares.base < least : shares.base !== plan.shares.base;
+  return plan.action === "stake" ? shares.base < 1n : shares.base !== plan.shares.base;
 }
 
 function requestMismatch(landed: LandedStake, plan: StakePlan): boolean {

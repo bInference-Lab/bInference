@@ -360,7 +360,7 @@ describe("the venue host's checks of a staking plan (decision 0327)", () => {
     );
   });
 
-  it("refuses a stake's read-back that minted fewer units than its card promised (decision 0331)", () => {
+  it("passes a stake's read-back that minted fewer units than its card promised, and refuses none (decision 0331)", () => {
     const { readyAtMs: _readyAtMs, ...unstake } = testUnstakePlan;
     const plan = {
       ...unstake,
@@ -370,9 +370,9 @@ describe("the venue host's checks of a staking plan (decision 0327)", () => {
       minShares: minted(9n),
     };
     const stake = { action: "stake", validator, moved: plan.value } as const;
-    const reads = [10n, 9n, 8n].map((base) =>
+    const reads = [10n, 9n, 8n, 0n].map((base) =>
       landedMismatch({ ...stake, shares: minted(base) }, plan, family),
     );
-    expect(reads).toStrictEqual([undefined, undefined, "other_shares"]);
+    expect(reads).toStrictEqual([undefined, undefined, undefined, "other_shares"]);
   });
 });

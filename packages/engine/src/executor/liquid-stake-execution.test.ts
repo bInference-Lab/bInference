@@ -1,5 +1,6 @@
 import type { ChainRegistry, RegisteredChain } from "@binference/chain";
-import type { StakePlan, StakeRequest, StakingVenue } from "@binference/chain/staking";
+import type { LandedStake, StakePlan, StakeRequest, StakingVenue } from "@binference/chain/staking";
+import { ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { testWallet } from "../intents/test-intents.js";
@@ -51,6 +52,26 @@ function noticeKeysOf(bench: ExecutorBench): readonly string[] {
   return [...bench.test.pushes, ...bench.pushes]
     .filter(({ kind }) => kind === "notice/new")
     .map(({ data }) => /"key":"([^"]+)"/u.exec(JSON.stringify(data))?.[1] ?? "");
+}
+
+// What a stake read back, minting one percent fewer units than it did.
+function lessByOnePercent(landed: LandedStake): LandedStake {
+  const { shares } = landed;
+  return shares === undefined
+    ? landed
+    : { ...landed, shares: { ...shares, base: shares.base - shares.base / 100n } };
+}
+
+// The venue, reading back each landed move one percent short of its units, and the last read-back
+// it gave.
+function mintingLess<T extends StakingVenue>(fake: T) {
+  const seen: { landed: LandedStake | undefined } = { landed: undefined };
+  const landed: StakingVenue["landed"] = async (move, call) => {
+    const read = await fake.landed(move, call);
+    seen.landed = read.ok ? lessByOnePercent(read.value) : undefined;
+    return seen.landed === undefined ? read : ok(seen.landed);
+  };
+  return { venue: { ...fake, landed }, seen };
 }
 
 async function boughtOf(bench: ExecutorBench) {
@@ -171,6 +192,18 @@ describe("a live move on a liquid pool (decision 0331)", () => {
     await expect(driveUntil(bench, intent, { states: stakeEnds })).resolves.toBe("failed_check");
     await expect(stakeReasonOf(bench, intent)).resolves.toBe("decode_mismatch");
     expect(bench.signed).toHaveLength(0);
+  });
+
+  it("books a stake that minted fewer units than its card promised as it landed, and tells the owner", async () => {
+    const { venue, seen } = mintingLess(landing(testLiquidFake()));
+    const bench = await stakeBench(venue, { chains: liquidChains() });
+    const intent = await tapped(bench, liquidRequest("stake"));
+    await bench.release();
+
+    await expect(driveUntil(bench, intent, { states: stakeEnds })).resolves.toBe("reconciled");
+    const [booked] = await boughtOf(bench);
+    expect(booked?.bought).toStrictEqual(seen.landed?.shares);
+    expect(noticeKeysOf(bench)).toContain("notice.stakeMintedFewer");
   });
 
   it("lets the signer reach the pool's declared spender only for a liquid unstake", async () => {

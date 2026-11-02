@@ -2,6 +2,7 @@ import type { LandedStake } from "@binference/chain/staking";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { StakeIntentQuote } from "../intents/stake-quote.js";
 import { isUsablePrice } from "../positions/value-execution.js";
+import { noticePush } from "../pushes/notice-push.js";
 import { bookStake, type StakeBooking } from "../staking/book-stake.js";
 import { type ExecutionRun, moveIntent, nextBlock } from "./executor-run.js";
 import { type LandedStep, landedSteps } from "./reconcile-departures.js";
@@ -95,12 +96,37 @@ export async function bookLandedStake(
   return (await bookStake(parts, booking, { signal: run.signal })) ? booking : undefined;
 }
 
+// The owner's notice of a stake that minted fewer receipt units than its card promised.
+const mintedFewerNoticeKey = "notice.stakeMintedFewer";
+
+// A stake that landed under the least units its card promised, as the pool's rate moved between
+// the queue's plan and the landing, is booked as it landed and told once it reconciled (decision
+// 0331).
+function tellMintedFewer(run: ExecutionRun, reconciled: IntentSnapshot, booking: StakeBooking) {
+  const { plan } = booking.quote;
+  const { shares, moved } = booking;
+  const least = plan.minShares;
+  if (least === undefined || shares === undefined || shares.base >= least.base) {
+    return;
+  }
+  const { id, agentId } = reconciled.record;
+  const notice = {
+    key: mintedFewerNoticeKey,
+    agent: agentId,
+    intent: id,
+    values: { venue: plan.validatorName },
+    amounts: { amount: moved, minted: shares, least },
+  };
+  run.parts.publish(noticePush(notice));
+}
+
 /**
  * Reconciles a finalized staking move (database spec, staking; decision 0327) from what its venue
  * reads back of its landed transaction, never from its plan: a stake's minted receipt units, an
  * unstake's request with the unlock time the venue set from its landing block, and the parts a
  * claim took. The move is booked once, then the intent moves to `reconciled` with the coin and
- * units it moved. While the venue, a read or the coin's price is missing, it tries again each
+ * units it moved, and a stake under the least units its card promised is told to the owner. While
+ * the venue, a read or the coin's price is missing, it tries again each
  * block, up to `settleAfterBlocks`; then it leaves the intent `finalized`, and recovery
  * reconciles it after a restart.
  */
@@ -138,7 +164,11 @@ async function settleStake(
     };
     const ready =
       booking.request === undefined ? {} : { named: { readyAtMs: booking.request.readyAtMs } };
-    await moveIntent(run, finalized, { trigger: { type: "fills_reconciled" }, settled, ...ready });
+    const trigger = { type: "fills_reconciled" } as const;
+    const reconciled = await moveIntent(run, finalized, { trigger, settled, ...ready });
+    if (reconciled !== undefined) {
+      tellMintedFewer(run, reconciled, booking);
+    }
     return;
   }
   parts.log.warn("executor.settle_waits", { intentId });

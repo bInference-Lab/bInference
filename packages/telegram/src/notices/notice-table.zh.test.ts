@@ -85,6 +85,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.claimReady": "你从 0x71C7…976F 解除质押的 2 FAKE 现在可以领取",
   "notice.claimedElsewhere":
     "你从 0x1adB…7fE6 解除质押的 2 FAKE 已在 binference 之外被领取，已回到你的钱包",
+  "notice.stakeMintedFewer": `${warning} 你在 Pool 质押的 2 FAKE 已上链，但兑换率在上链前变动：只铸造了 1.8 FAKE，少于卡片承诺的至少 1.81 FAKE。binference 已按实际铸造的 1.8 FAKE 记账。`,
   "notice.bridgeLate": `${warning} 你跨链到 Base 的 20 FAKE 2 小时后仍未到账。binference 会继续检查。fake-cross 的状态页：https://bridge.test/transfer/0xd1`,
   "notice.bridgeArrived": `${done} 你延迟的跨链已在 Base 到账：0x71C7…976F 收到 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross 未完成你到 Base 的跨链，已将 20 FAKE 退回 Main`,

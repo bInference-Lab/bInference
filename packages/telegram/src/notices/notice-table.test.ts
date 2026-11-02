@@ -86,6 +86,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.claimReady": "2 FAKE you unstaked from 0x71C7…976F can be claimed now",
   "notice.claimedElsewhere":
     "2 FAKE you unstaked from 0x1adB…7fE6 was claimed outside binference and is back in your wallet",
+  "notice.stakeMintedFewer": `${warning} Your stake of 2 FAKE with Pool landed after its rate moved: it minted 1.8 FAKE, less than the 1.81 FAKE its card promised. binference booked the 1.8 FAKE it minted.`,
   "notice.bridgeLate": `${warning} Your bridge of 20 FAKE to Base has not arrived after 2 hours. binference keeps checking. fake-cross's status: https://bridge.test/transfer/0xd1`,
   "notice.bridgeArrived": `${done} Your late bridge to Base arrived: 0x71C7…976F received 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross did not deliver your bridge to Base and paid 20 FAKE back to Main`,
