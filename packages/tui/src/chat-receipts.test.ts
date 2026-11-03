@@ -4,7 +4,9 @@ import {
   bridgeIntent,
   bridgeReceipts,
   bridgeView,
+  receiptView,
   depositHash,
+  filledReceipt,
   solanaRecipient,
 } from "./testing/bridge-receipt-views.js";
 import { type ChatHarness, startChat } from "./testing/chat-harness.js";
@@ -27,9 +29,16 @@ afterEach(async () => {
 // bridge moving into `state`: answers the rows above the prompt.
 async function printedAfter(
   line: CardLineView,
-  options: { readonly state: string; readonly moves: number; readonly agent?: string },
+  options: {
+    readonly state: string;
+    readonly moves: number;
+    readonly agent?: string;
+    readonly kind?: string;
+  },
 ): Promise<readonly string[]> {
-  const chat = startChat({ "intent/get": () => bridgeView(line, options.agent) });
+  const view =
+    options.kind === undefined ? bridgeView(line, options.agent) : receiptView(line, options.kind);
+  const chat = startChat({ "intent/get": () => view });
   chats.push(chat);
   await chat.settle();
   const before = chat.rows().length;
@@ -70,5 +79,28 @@ describe("a bridge's receipts in terminal chat, in English", () => {
     expect(await printedAfter(bridgeReceipts.delivered, other)).toStrictEqual([]);
     const sending = { state: "executing", moves: 1 };
     expect(await printedAfter(bridgeReceipts.sent, sending)).toStrictEqual([]);
+  });
+});
+
+describe("any other intent's receipts in terminal chat, in English", () => {
+  it("prints a trade's receipt with its link once it ends on chain", async () => {
+    const ended = { state: "reconciled", moves: 2, kind: "swap" };
+    expect(await printedAfter(filledReceipt, ended)).toStrictEqual([
+      `${done} Done: 20 USDT → 19.95 USDC · https://bscscan.com/tx/${depositHash}`,
+    ]);
+  });
+
+  it("prints nothing for the sending line, or a card that took effect as it was answered", async () => {
+    const sending: CardLineView = { key: "receipt.confirmed", values: {} };
+    expect(
+      await printedAfter(sending, { state: "finalized", moves: 1, kind: "swap" }),
+    ).toStrictEqual([]);
+    const unfrozen: CardLineView = {
+      key: "receipt.unfrozenAgent",
+      values: { agent: { type: "text", text: "main" } },
+    };
+    expect(
+      await printedAfter(unfrozen, { state: "reconciled", moves: 1, kind: "unfreeze" }),
+    ).toStrictEqual([]);
   });
 });

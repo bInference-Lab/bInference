@@ -59,6 +59,21 @@ export const bridgeReceipts: {
   },
 };
 
+/** The line a swap's card ends with once it reconciled, as `intent/get` gives it. */
+export const filledReceipt: CardLineView = {
+  key: "receipt.filled",
+  values: {
+    result: {
+      type: "line",
+      line: {
+        key: "receipt.result",
+        values: { sold: amount(usdt, 20n * 10n ** 18n), bought: amount(usdc, 19_950_000n) },
+      },
+    },
+    explorerLink: text(`https://bscscan.com/tx/${depositHash}`),
+  },
+};
+
 /** The bridge's view with its receipt line, for the agent the harness chats with or another. */
 export function bridgeView(line: CardLineView, agent: string = harnessAgent): object {
   return {
@@ -71,6 +86,11 @@ export function bridgeView(line: CardLineView, agent: string = harnessAgent): ob
       [usdt]: { symbol: "USDT", name: "Tether USD", decimals: 18, verified: true },
       [usdc]: { symbol: "USDC", name: "USD Coin", decimals: 6, verified: true },
     },
-    bridgeReceipt: line,
+    receipt: line,
   };
+}
+
+/** An intent's view of another kind with its receipt line, for the agent the harness chats with. */
+export function receiptView(line: CardLineView, kind: string): object {
+  return { ...bridgeView(line), kind };
 }
