@@ -15,6 +15,7 @@ import {
 import {
   type AtKill,
   atKillOf,
+  atRest,
   hashesOf,
   landedOf,
   minedOf,
@@ -158,14 +159,6 @@ const notSigned = { isRelayed: false, isOnChain: false, mined: 0, stored: [] };
 // `included` or `final` as far as the engine got.
 const approved = { isRelayed: true, isOnChain: true, mined: 1 };
 const approvalAtRest = "included";
-
-// A transaction in a block as the engine stored it, whether it read the block once or as final.
-function atRest(atKill: AtKill): AtKill {
-  return {
-    ...atKill,
-    stored: atKill.stored.map((state) => (state === "final" ? "included" : state)),
-  };
-}
 
 // A stop before the fill's bytes are stored leaves nothing to send: recovery ends the fill
 // unsigned, the order records the skip, and the next price fills it once. A stop anywhere after

@@ -89,6 +89,17 @@ export async function atKillOf(chain: CrashChain, from: Address, folder: string)
   };
 }
 
+/**
+ * What held at the kill with each transaction in a block as the engine stored it, whether it read
+ * the block once or as final.
+ */
+export function atRest(atKill: AtKill): AtKill {
+  return {
+    ...atKill,
+    stored: atKill.stored.map((state) => (state === "final" ? "included" : state)),
+  };
+}
+
 /** The hashes the relays passed on that anvil holds a successful receipt of. */
 export async function landedOf(chain: CrashChain, sends: readonly RelayedSend[]): Promise<Hex[]> {
   const onChain = [...new Set(sends.filter((send) => send.isOnChain).map(({ hash }) => hash))];

@@ -1,3 +1,4 @@
+import { baseMainnet } from "@binference/chains";
 import { BinferenceError, type Http, type HttpDownload } from "@binference/core";
 
 /** The relays the crash engine's config names: private relays take https URLs only. */
@@ -7,16 +8,22 @@ export const crashRelays: readonly string[] = ["https://a.relay.test", "https://
 export interface CrashEndpoints {
   /** The test's relays, each at `/<name>`. */
   readonly relays: string;
-  /** The fake Privy at `/privy`, KyberSwap's and Flap's APIs and Telegram's Bot API. */
+  /**
+   * The fake Privy at `/privy`, KyberSwap's and Flap's APIs, Telegram's Bot API, and what a test
+   * file routes there, such as Across's API and Base.
+   */
   readonly services: string;
 }
 
 const relayHost = /^([a-z]+)\.relay\.test$/;
+// Base's public RPCs, where a bridge delivers, go to the test's Base.
 const services: Readonly<Record<string, string>> = {
   "https://api.privy.io": "privy",
   "https://aggregator-api.kyberswap.com": "kyberswap",
   "https://funcs.flap.sh": "flap",
   "https://api.telegram.org": "telegram",
+  "https://app.across.to": "across",
+  ...Object.fromEntries(baseMainnet.rpcs.map(({ url }) => [new URL(url).origin, "base"])),
 };
 
 // Where a request of the crash engine goes on loopback: a relay of {@link crashRelays} to the
@@ -46,8 +53,8 @@ function unreachable(signal: AbortSignal): never {
 
 /**
  * The crash engine's outbound Http: a relay of {@link crashRelays} goes to the test's relay of the
- * same name, Privy, KyberSwap's, Flap's and Telegram's APIs go to the test's services, a request
- * to 127.0.0.1 goes as it is, and every other request fails as one that reaches no host, so a run
+ * same name, Privy, KyberSwap's, Flap's, Telegram's and Across's APIs and Base's RPCs go to the
+ * test's services, a request to 127.0.0.1 goes as it is, and every other request fails as one that reaches no host, so a run
  * never reaches the network.
  */
 export function crashHttp(http: Http, endpoints: CrashEndpoints): Http {

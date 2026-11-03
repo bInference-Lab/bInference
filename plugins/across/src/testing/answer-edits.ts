@@ -17,8 +17,11 @@ export interface AnswerEdit {
   readonly expiry?: number;
 }
 
-// The 32-byte word of the deposit's `index`th head in Across's calldata, after the selector.
-function withWord(data: string, index: number, value: bigint): string {
+/**
+ * Across's calldata with the 32-byte word of the deposit's `index`th argument, after the selector,
+ * set to `value`.
+ */
+export function withWord(data: string, index: number, value: bigint): string {
   const start = 10 + index * 64;
   return `${data.slice(0, start)}${value.toString(16).padStart(64, "0")}${data.slice(start + 64)}`;
 }

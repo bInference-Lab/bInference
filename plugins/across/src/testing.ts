@@ -37,6 +37,7 @@ export {
   tooLowAnswer,
   unsupportedChainAnswer,
 } from "./testing/recorded-answers.js";
+export { withWord } from "./testing/answer-edits.js";
 export { availableRoutesAnswer } from "./testing/recorded-routes.js";
 export {
   ethToBaseAnswer,

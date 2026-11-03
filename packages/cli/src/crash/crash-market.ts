@@ -144,7 +144,7 @@ export async function installCrashMarket(call: AnvilCall): Promise<void> {
 }
 
 /**
- * Gives the BNB and USDT feeds a round updated now: the price source refuses one older than its
+ * Gives the BNB, USDT and USDC feeds a round updated now: the price source refuses one older than its
  * heartbeat plus 30 s, and a run takes longer than the BNB feed's 27 s heartbeat.
  */
 export async function freshCrashFeeds(call: AnvilCall): Promise<void> {
@@ -152,6 +152,7 @@ export async function freshCrashFeeds(call: AnvilCall): Promise<void> {
   const feeds = [
     ["bnb-usd", 600n * 10n ** 8n],
     ["usdt-usd", 10n ** 8n],
+    ["usdc-usd", 10n ** 8n],
   ] as const;
   await Promise.all(
     feeds.map(async ([name, answer]) =>

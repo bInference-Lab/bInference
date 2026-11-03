@@ -14,6 +14,7 @@ import {
 import {
   type AtKill,
   atKillOf,
+  atRest,
   hashesOf,
   landedOf,
   minedOf,
@@ -31,12 +32,19 @@ import {
 
 /** What a run at one kill point of an intent the owner proposes and confirms does and must show. */
 export interface IntentKillCase {
-  readonly point: KillPoint;
+  readonly point: KillPoint | "delivery";
+  /**
+   * Waits for `delivery`, a point the chain's side does not see: a bridge's first read of its
+   * delivery. The engine is killed once it settles, with blocks mined until then.
+   */
+  readonly reach?: () => Promise<void>;
+  /** The step whose transaction the kill waits for: the first (0), or the second (1). */
+  readonly step: 0 | 1;
   readonly atKill: AtKill;
   /** The intent's end once the restarted engine recovered it. */
-  readonly state: "cancelled" | "reconciled";
-  /** The distinct transactions that may reach the relays and the chain: none, or the one. */
-  readonly sent: 0 | 1;
+  readonly state: "cancelled" | "reconciled" | "failed_onchain";
+  /** The distinct transactions that reach the relays and the chain: one per step sent. */
+  readonly sent: 0 | 1 | 2;
   /** Whether recovery sends the stored bytes again: the transaction is unmined when it reads. */
   readonly isResent: boolean;
   /** Signatures custody makes before the kill; none after the restart. */
@@ -103,30 +111,39 @@ export interface IntentRun {
   };
 }
 
-// Waits until the store holds the transaction in a block, as the engine read its receipt.
+// Waits until the store holds the step's transaction in a block, as the engine read its receipt.
 async function untilIncluded(
   world: CrashWorld,
-  at: { readonly install: CrashInstall; readonly from: Address },
+  at: { readonly install: CrashInstall; readonly from: Address; readonly step: number },
 ): Promise<void> {
   const atKill = await atKillOf(world.chain, at.from, at.install.machine.folder);
-  if (atKill.stored.at(-1) === "included") {
+  if (atKill.stored[at.step] === "included") {
     return;
   }
   await wait(100);
   return untilIncluded(world, at);
 }
 
-// Kills the engine at the case's point; one at `receipt` waits until the store holds the receipt
-// the engine read.
+// Kills the engine at the case's point of its step: a kill on the second step once custody signed
+// it waits for the first step's send, and one at `receipt` until the store holds the receipt the
+// engine read.
 async function armed(
   world: CrashWorld,
   first: SourceProgram,
-  at: { readonly install: CrashInstall; readonly from: Address; readonly point: KillPoint },
+  at: { readonly install: CrashInstall; readonly from: Address; readonly killCase: IntentKillCase },
 ): Promise<void> {
-  const { point } = at;
+  const { point, step, reach } = at.killCase;
   return armKillWith(first, point, async (kill) => {
-    const killAt = point === "receipt" ? async () => untilIncluded(world, at).then(kill) : kill;
-    return killWhenReached(world, { point }, killAt);
+    if (point === "delivery") {
+      await reach?.();
+      return kill();
+    }
+    if (point === "signed" && step === 1) {
+      await world.chain.nextSend(at.from);
+    }
+    const killAt =
+      point === "receipt" ? async () => untilIncluded(world, { ...at, step }).then(kill) : kill;
+    return killWhenReached(world, { point, fromNonce: step }, killAt);
   });
 }
 
@@ -157,9 +174,15 @@ async function killedRun(
   const first = await harness.startEngine(install);
   const from = (await run.prepare?.(world, install)) ?? install.from;
   const effectBefore = await run.effect?.read(world, install);
-  const killed = armed(world, first, { install, from, point: killCase.point });
+  const killed = armed(world, first, { install, from, killCase });
+  // A kill on the second step waits for the first to land, and one beyond the chain's side for
+  // every step to: blocks are mined until the kill.
+  const miner = new AbortController();
+  const isMined = killCase.step === 1 || killCase.point === "delivery";
+  const mining = isMined ? chain.mine(miner.signal) : Promise.resolve();
   const intent = await goLiveAndPropose(install, run.requestOf);
-  await killed;
+  await killed.finally(() => miner.abort());
+  await mining;
   return {
     install,
     intent,
@@ -244,7 +267,7 @@ const sameHashes = (left: readonly string[], right: readonly string[]): boolean 
 export function sentSummaryOf(outcome: IntentOutcome): SentSummary {
   const hashes = [...new Set(outcome.sends.map(({ hash }) => hash))];
   return {
-    atKill: outcome.atKill,
+    atKill: atRest(outcome.atKill),
     distinct: {
       hashes: hashes.length,
       nonces: new Set(outcome.sends.map(({ nonce }) => nonce)).size,
@@ -265,8 +288,8 @@ export function sentSummaryOf(outcome: IntentOutcome): SentSummary {
 }
 
 /**
- * What a run of the case must show: at most its one transaction reached the chain, mined once,
- * nothing left in the pool, no signature after the restart, and the intent
+ * What a run of the case must show: each step's one transaction reached the chain, mined once
+ * with no nonce repeated, nothing left in the pool, no signature after the restart, and the intent
  * at its end with the transactions it stored, through each state once, with the run's executions
  * recorded once and its effect on the chain made once if it reconciled.
  */
@@ -292,7 +315,7 @@ export function sentOnceOf(killCase: IntentKillCase, run: IntentRun): SentSummar
 
 const unrelayed = { isRelayed: false, isOnChain: false, mined: 0 };
 const unmined = { isRelayed: true, isOnChain: true, mined: 0 };
-const oneSigned = { signatures: 1 } as const;
+const oneSigned = { step: 0, signatures: 1 } as const;
 
 /**
  * The kill points of an intent of one step. A kill before the bytes are stored leaves nothing to

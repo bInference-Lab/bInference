@@ -1,8 +1,8 @@
 name: Crash suite
 
 # The crash suite on Linux, macOS and Windows, every night and on demand: each run kills an engine
-# process at a point of a swap, a send, a stake, a live order fill or a token launch, SIGKILL or
-# TerminateProcess, starts it again and counts what reached the chain. It runs against anvil on a
+# process at a point of a swap, a send, a stake, a bridge, a live order fill or a token launch,
+# SIGKILL or TerminateProcess, starts it again and counts what reached the chain. It runs against anvil on a
 # chain of its own, so the job reaches no network beyond its installs and holds no key. The kill
 # points run in parts on each OS (decision 0290), so 20 runs at each fit a job's time.
 on:
@@ -56,6 +56,9 @@ jobs:
             points: against the usdt
           - name: stakes
             files: packages/cli/src/crash/crash-stakes.test.ts
+            points: ""
+          - name: bridges
+            files: packages/cli/src/crash/crash-bridges.test.ts
             points: ""
         # Foundry's release archive for each runner, checked against its published digest.
         include:

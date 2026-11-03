@@ -21,6 +21,7 @@ import { z } from "zod";
 import { headersOf } from "../e2e/incoming-headers.js";
 import { type CrashFlapApi, createCrashFlapApi } from "./crash-flap-api.js";
 import { crashExecutor, crashRouter, usdtPerWei } from "./crash-market.js";
+import { type CrashApi, createRoutes, type Routes, routedAnswer } from "./crash-routes.js";
 import { type CrashTelegram, createCrashTelegram } from "./crash-telegram.js";
 
 /** Privy, KyberSwap's, Flap's and Telegram's APIs as the crash engines reach them, on loopback. */
@@ -36,6 +37,8 @@ export interface CrashServices {
    * its own, as each owner does: an app holds the aggregations of one install's ceiling.
    */
   readonly serve: (privy: FakePrivy) => void;
+  /** Serves `api` at `/<name>` from now on, as the crash engine's Http routes a host there. */
+  readonly route: (name: string, api: CrashApi) => void;
   /** How many transactions the fake Privy apps have signed. */
   readonly signatures: () => number;
   /**
@@ -242,23 +245,21 @@ function createSignatureBook(): SignatureBook {
 function responderOf(
   served: () => FakePrivy | undefined,
   book: SignatureBook,
-  apis: { readonly flap: CrashFlapApi; readonly telegram: CrashTelegram },
+  apis: { readonly flap: CrashFlapApi; readonly telegram: CrashTelegram; readonly routes: Routes },
 ) {
-  const { flap, telegram } = apis;
+  const { flap, telegram, routes } = apis;
   return async (incoming: IncomingMessage, outgoing: ServerResponse): Promise<void> => {
     const body = await readBody(incoming);
     const path = incoming.url ?? "/";
+    if (await routedAnswer(routes, { path, body, outgoing })) {
+      return;
+    }
     if (path.startsWith("/telegram/")) {
       await telegram.respond({ incoming, path: path.slice("/telegram".length), body, outgoing });
       return;
     }
     if (path.startsWith("/flap/")) {
       flap.respond({ path: path.slice("/flap".length), method: incoming.method, outgoing });
-      return;
-    }
-    if (path.startsWith("/kyberswap/")) {
-      const answer = kyberswapOf(path.slice("/kyberswap".length), body);
-      outgoing.writeHead(answer.status, answer.headers).end(answer.body);
       return;
     }
     const privy = served();
@@ -291,14 +292,16 @@ async function listen(server: Server): Promise<string> {
  * crash engines, which reach them through their Http as they would reach the real services. Privy
  * answers 503 until an app is served. The KyberSwap API routes every buy and sale through one
  * pool at {@link usdtPerWei} and encodes the router's plain `swap` for the recipient and deadline
- * asked; the crash chain's router pays it out.
+ * asked; the crash chain's router pays it out. A test file routes its own services beside them.
  */
 export async function serveCrashServices(): Promise<CrashServices> {
   const book = createSignatureBook();
   const flap = createCrashFlapApi();
   const telegram = createCrashTelegram();
   const app: { privy?: FakePrivy } = {};
-  const respond = responderOf(() => app.privy, book, { flap, telegram });
+  const routes = createRoutes();
+  routes.apis.set("kyberswap", async ({ path, body }) => Promise.resolve(kyberswapOf(path, body)));
+  const respond = responderOf(() => app.privy, book, { flap, telegram, routes });
   const server = createServer((incoming, outgoing) => {
     respond(incoming, outgoing).catch(() => {
       outgoing.writeHead(500).end();
@@ -312,12 +315,16 @@ export async function serveCrashServices(): Promise<CrashServices> {
     serve: (privy) => {
       app.privy = privy;
     },
+    route: (name, api) => {
+      routes.apis.set(name, api);
+    },
     signatures: book.count,
     holdNextSignature: book.arm,
     holdNextRequest: book.armRequest,
     async close() {
       book.release();
       flap.release();
+      routes.held.splice(0).forEach((outgoing) => outgoing.destroy());
       server.closeAllConnections();
       server.close();
       await once(server, "close");

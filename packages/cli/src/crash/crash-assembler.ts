@@ -79,6 +79,7 @@ export type OpName =
   | "swap1"
   | "log1"
   | "log3"
+  | "log4"
   | "call"
   | "create2"
   | "stop"
@@ -118,6 +119,7 @@ export const op: Readonly<Record<OpName, Hex>> = {
   swap1: "0x90",
   log1: "0xa1",
   log3: "0xa3",
+  log4: "0xa4",
   call: "0xf1",
   create2: "0xf5",
   stop: "0x00",
