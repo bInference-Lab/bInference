@@ -24,6 +24,7 @@ import {
   type Id,
   type IdSource,
   idSchema,
+  type Random,
 } from "@binference/core";
 import {
   createMemoryLogger,
@@ -52,6 +53,7 @@ import {
   createMemoryEngineStores,
   createMemoryPositionStore,
   testLimits,
+  testWalletRecord,
 } from "@binference/engine/testing";
 import { createWalletQueue } from "@binference/engine/wallet-queue";
 import { keccak256, toHex } from "viem";
@@ -142,9 +144,17 @@ interface RigParts {
   readonly sends: Rig["sends"];
   readonly relayHttp: Http;
   readonly logger: MemoryLogger;
+  /** Whether the engine and its executor fill live orders and rules; off unless a test says. */
+  readonly liveOrderFills: boolean;
+  /** What the engine makes webhook rule secrets from. */
+  readonly secretRandom: Random;
 }
 
-async function partsOf(fork: Fork, relayHttp: Http): Promise<RigParts> {
+async function partsOf(
+  fork: Fork,
+  run: { readonly relayHttp: Http; readonly liveOrderFills: boolean },
+): Promise<RigParts> {
+  const { relayHttp, liveOrderFills } = run;
   const clock = createSystemClock();
   const native = fork.chain.nativeAsset;
   const address = forkWallet(walletKey).address;
@@ -164,11 +174,17 @@ async function partsOf(fork: Fork, relayHttp: Http): Promise<RigParts> {
     networkFeeCapNativeBase: 10n ** 9n,
     recentOutflows: [],
   });
+  const stores = createMemoryEngineStores();
+  // A live order or rule is held in the agent's wallet as setup stores it.
+  if (liveOrderFills) {
+    const held = { id: wallet, agentId: agent, label: "main", createdAtMs: clock.now() } as const;
+    stores.install.addWallet(testWalletRecord(held));
+  }
   return {
     fork,
     clock,
     chains: selfHostedChains(),
-    stores: createMemoryEngineStores(),
+    stores,
     positions: createMemoryPositionStore(),
     custody: forkCustody(wallet, account, walletKey),
     prices,
@@ -177,6 +193,8 @@ async function partsOf(fork: Fork, relayHttp: Http): Promise<RigParts> {
     sends: [],
     relayHttp,
     logger: createMemoryLogger({ subsystem: "engine" }),
+    liveOrderFills,
+    secretRandom: createSeededRandom(45),
   };
 }
 
@@ -240,8 +258,11 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
   });
 }
 
-async function rigOf(fork: Fork, relayHttp: Http): Promise<Rig> {
-  const parts = await partsOf(fork, relayHttp);
+async function rigOf(
+  fork: Fork,
+  run: { readonly relayHttp: Http; readonly liveOrderFills: boolean },
+): Promise<Rig> {
+  const parts = await partsOf(fork, run);
   const engine = engineOf(parts, executorOf(parts));
   await parts.stores.agents.create(
     {
@@ -283,6 +304,8 @@ export interface ForkRigOptions {
   readonly relayHttp?: (http: Http) => Http;
   /** Blocks are mined in the background from the start; when false, only as the test mines. */
   readonly isMining?: boolean;
+  /** Whether the engine and its executor fill live orders and rules. */
+  readonly liveOrderFills?: boolean;
 }
 
 /**
@@ -295,7 +318,8 @@ export async function onFork(
   test: (rig: Rig, fork: Fork) => Promise<void>,
 ): Promise<void> {
   await withFork(signal, async (fork) => {
-    const rig = await rigOf(fork, options.relayHttp?.(fork.http) ?? fork.http);
+    const relayHttp = options.relayHttp?.(fork.http) ?? fork.http;
+    const rig = await rigOf(fork, { relayHttp, liveOrderFills: options.liveOrderFills === true });
     const miner = new AbortController();
     const mining = options.isMining === false ? Promise.resolve() : startMining(fork, miner.signal);
     try {
