@@ -15,6 +15,7 @@ import { canFire, isLineHeld, unfinishedFills, withinDeadline } from "./fill-fau
 import { chainFailuresInRow, isWaiting, paceRows, stopAfterFailures } from "./fill-pacing.js";
 import { type FillSizeParts, type SizedFill, sizeFill } from "./fill-request.js";
 import { type FillState, rowParts, type Skip, skipFill } from "./fill-skips.js";
+import { orderFillSubject, orderFillTerms } from "./fill-subject.js";
 import { proposedTermsHash } from "./fill-terms-hash.js";
 import type { OrderFillReason } from "./order-fill.js";
 import { isExitOrder, type OrderRecord } from "./order-record.js";
@@ -169,7 +170,7 @@ async function proposeFill(
     authorization: { order: order.id, fillsBefore: order.fills },
     isPaper: order.isPaper,
     decimals: price.decimals,
-    check: checkOf(parts, { order, sized, price }),
+    check: checkOf(parts, { subject: orderFillSubject(parts.orders, order), sized, price }),
     termsHash: async (simulated: IntentSnapshot, call: { readonly signal: AbortSignal }) =>
       proposedTermsHash(parts.intents, { order, simulated, signal: call.signal }),
   };
@@ -218,7 +219,8 @@ async function sizeAndPropose(
 ): Promise<FillOutcome> {
   const { order, price, settings, signal } = run;
   const tokenUsd = price.usdPerBaseUnit === undefined ? {} : { tokenUsd: price.usdPerBaseUnit };
-  const sized = await sizeFill(parts, { order, settings, ...tokenUsd, signal });
+  const terms = orderFillTerms(order);
+  const sized = await sizeFill(parts, { terms, settings, ...tokenUsd, signal });
   if (sized.kind === "empty") {
     // Only an exit order ends with its position; a copy sale of nothing is a skip.
     return isExitOrder(order.request)
@@ -230,7 +232,7 @@ async function sizeAndPropose(
   }
   const first = await proposeFill(parts, { order, sized, price, signal });
   const resized = first.ok
-    ? await resizedSaleOf(parts, { order, sized, snapshot: first.value, signal })
+    ? await resizedSaleOf(parts, { terms, sized, snapshot: first.value, signal })
     : undefined;
   const proposed =
     resized === undefined

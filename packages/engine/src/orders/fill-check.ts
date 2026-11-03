@@ -1,4 +1,5 @@
-import type { Ratio } from "@binference/core";
+import type { ChainRegistry, PriceSource } from "@binference/chain";
+import type { Clock, Ratio } from "@binference/core";
 import type { QuoteView } from "@binference/protocol";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
@@ -7,13 +8,23 @@ import type { FillProposal } from "../money-path/authorize-simulated.js";
 import { tradeSlippageBps } from "../money-path/swap-trade.js";
 import { isUsablePrice } from "../positions/value-execution.js";
 import { checkFill } from "./fill-bounds.js";
-import type { FillPrice, OrderFillsParts } from "./fill-orders.js";
+import type { FillPrice } from "./fill-orders.js";
 import type { SizedFill } from "./fill-request.js";
-import type { OrderRecord } from "./order-record.js";
+import type { FillSubject, FillTerms } from "./fill-subject.js";
+import type { ResumeFence } from "./resume-fence.js";
+
+/** What a fill's check reads: USD prices, the registry, the time and the downtime re-check. */
+export interface FillCheckParts {
+  readonly prices: PriceSource;
+  readonly chains: ChainRegistry;
+  readonly clock: Clock;
+  /** The downtime re-check, which ends a fill whose price was read before a resume. */
+  readonly fence?: Pick<ResumeFence, "resumes">;
+}
 
 // The USD price of the asset across the trade from the token, or none when nothing prices it.
 async function otherUsdOf(
-  parts: Pick<OrderFillsParts, "prices">,
+  parts: Pick<FillCheckParts, "prices">,
   call: {
     readonly snapshot: IntentSnapshot;
     readonly side: "buy" | "sell";
@@ -31,83 +42,59 @@ async function otherUsdOf(
 }
 
 /**
- * The fill's check at `simulated` (decisions 0195 and 0197): the other side's USD price is read
- * before the agent's line; in the line, a fill whose price was read before a resume ends
- * (decision 0268), and its order as it stands now is held to every bound with its quote, and a
- * sale sized in dollars to its dollars at its own quote.
+ * The fill's check at `simulated` (decisions 0195, 0197 and 0338): the other side's USD price is
+ * read before the agent's line; in the line, a fill whose price was read before a resume ends
+ * (decision 0268), and its order or rule as it stands now is held to every bound with its quote,
+ * and a sale sized in dollars to its dollars at its own quote.
  */
 export function checkOf(
-  parts: OrderFillsParts,
-  fill: { readonly order: OrderRecord; readonly sized: SizedFill; readonly price: FillPrice },
+  parts: FillCheckParts,
+  fill: { readonly subject: FillSubject; readonly sized: SizedFill; readonly price: FillPrice },
 ): FillProposal["check"] {
   return async (simulated, outside) => {
-    const { order } = fill;
-    const side = order.request.side;
+    const { side } = fill.subject.terms;
     const otherUsd = await otherUsdOf(parts, { snapshot: simulated, side, ...outside });
     return async ({ signal }) => checkInLine(parts, { ...fill, simulated, otherUsd, signal });
   };
 }
 
-// The fill trades as its order says (invariant 8 for fills): its order's wallet, mode and side, a
-// buy paying what its request spends for the order's token, a sale selling the order's token for
-// something else.
+// The fill trades as its terms say (invariant 8 for fills): their wallet, mode and side, a buy
+// paying what its request spends for the token, a sale selling the token for something else.
 function holdsShape(
-  fill: { readonly order: OrderRecord; readonly sized: SizedFill },
+  fill: { readonly terms: FillTerms; readonly sized: SizedFill },
   simulated: IntentSnapshot,
   view: QuoteView,
 ): boolean {
-  const { order, sized } = fill;
+  const { terms, sized } = fill;
   const { record } = simulated;
-  const { token, side } = order.request;
-  const isOrders =
-    record.walletId === order.walletId && record.isPaper === order.isPaper && record.kind === side;
+  const { token, side } = terms;
+  const isTerms =
+    record.walletId === terms.walletId && record.isPaper === terms.isPaper && record.kind === side;
   const isTokens =
     sized.request.kind === "buy"
       ? view.amountIn.asset === sized.request.spend.asset && view.minOut.asset === token
       : view.amountIn.asset === token && view.minOut.asset !== token;
-  return isOrders && isTokens && view.expectedOut.asset === view.minOut.asset;
-}
-
-// A copy buy the policy valued above its dollars per buy, or did not value, breaks its size
-// (decision 0260).
-function isOverCopyBuy(order: OrderRecord, simulated: IntentSnapshot): boolean {
-  const { request } = order;
-  if (request.kind !== "copy" || request.side !== "buy" || !("usdMicros" in request.size)) {
-    return false;
-  }
-  const value = simulated.record.valueUsdMicros;
-  return value === undefined || value > request.size.usdMicros;
-}
-
-// The order as it stands now, while it has the fills the fill was sized for: a fill it recorded
-// since leaves the fill nothing to fill.
-async function sameFillOf(
-  parts: Pick<OrderFillsParts, "orders">,
-  order: OrderRecord,
-  signal: AbortSignal,
-): Promise<OrderRecord | undefined> {
-  const current = await parts.orders.get(order.id, { signal });
-  return current?.fills === order.fills ? current : undefined;
+  return isTerms && isTokens && view.expectedOut.asset === view.minOut.asset;
 }
 
 // The dollars a sale sized in dollars may receive at most; none for any other fill.
-function dollarSaleOf(order: OrderRecord): bigint | undefined {
-  const { side, size } = order.request;
+function dollarSaleOf(terms: FillTerms): bigint | undefined {
+  const { side, size } = terms;
   return side === "sell" && "usdMicros" in size ? size.usdMicros : undefined;
 }
 
 // Whether a resume came while the fill ran: its trigger may have fired on a price read before the
 // downtime (decision 0268). A DCA buy has no price of its own.
-function isStaleNow(parts: Pick<OrderFillsParts, "fence">, price: FillPrice): boolean {
+function isStaleNow(parts: Pick<FillCheckParts, "fence">, price: FillPrice): boolean {
   const { fence } = parts;
   return price.resumes !== undefined && fence !== undefined && price.resumes < fence.resumes();
 }
 
 // The check in the agent's line, on the other side's price read before it.
 async function checkInLine(
-  parts: OrderFillsParts,
+  parts: FillCheckParts,
   fill: {
-    readonly order: OrderRecord;
+    readonly subject: FillSubject;
     readonly sized: SizedFill;
     readonly price: FillPrice;
     readonly simulated: IntentSnapshot;
@@ -115,23 +102,24 @@ async function checkInLine(
     readonly signal: AbortSignal;
   },
 ): Promise<FillBreach | undefined> {
-  const { order, sized, price, simulated, otherUsd, signal } = fill;
+  const { subject, sized, price, simulated, otherUsd, signal } = fill;
+  const { terms } = subject;
   if (isStaleNow(parts, price)) {
     return "price_stale";
   }
-  const current = await sameFillOf(parts, order, signal);
+  const current = await subject.current(signal);
   const { quote } = simulated.record;
   if (current === undefined || quote === undefined) {
     return "order_inactive";
   }
   const view = quoteDocument.decode(quote);
-  if (!holdsShape(fill, simulated, view) || isOverCopyBuy(fill.order, simulated)) {
+  if (!holdsShape({ terms, sized }, simulated, view) || subject.isOverSize(simulated)) {
     return "fill_bounds";
   }
-  // The agent's maximum for the quote's pair, which holds when the order names none (decision 0197).
+  // The agent's maximum for the quote's pair, which holds when the terms name none (decision 0197).
   const pair = [view.amountIn.asset, view.minOut.asset];
   const agentSlippageBps = tradeSlippageBps({ pair }, simulated.settings.limits, parts.chains);
-  const saleUsd = dollarSaleOf(order);
+  const saleUsd = dollarSaleOf(terms);
   const checked = checkFill(
     current,
     {
@@ -153,9 +141,9 @@ async function checkInLine(
 }
 
 // The first fill of a sale in dollars that broke its size: the only one sized again.
-function isDollarSaleBreach(order: OrderRecord, snapshot: IntentSnapshot): boolean {
+function isDollarSaleBreach(terms: FillTerms, snapshot: IntentSnapshot): boolean {
   const { record } = snapshot;
-  const isDollarSale = order.request.side === "sell" && "usdMicros" in order.request.size;
+  const isDollarSale = terms.side === "sell" && "usdMicros" in terms.size;
   return isDollarSale && record.state === "failed_check" && record.reason === "fill_bounds";
 }
 
@@ -175,18 +163,18 @@ function tokensAtQuote(
  * more than the first size. `undefined` for any other fill, or one nothing can price again.
  */
 export async function resizedSaleOf(
-  parts: Pick<OrderFillsParts, "prices">,
+  parts: Pick<FillCheckParts, "prices">,
   fill: {
-    readonly order: OrderRecord;
+    readonly terms: FillTerms;
     readonly sized: SizedFill;
     readonly snapshot: IntentSnapshot;
     readonly signal: AbortSignal;
   },
 ): Promise<SizedFill | undefined> {
-  const { order, sized, snapshot, signal } = fill;
-  const { size } = order.request;
+  const { terms, sized, snapshot, signal } = fill;
+  const { size } = terms;
   if (
-    !isDollarSaleBreach(order, snapshot) ||
+    !isDollarSaleBreach(terms, snapshot) ||
     !("usdMicros" in size) ||
     sized.request.kind !== "sell"
   ) {
