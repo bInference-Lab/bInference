@@ -27,7 +27,7 @@ import {
   type Model,
   nowMs,
   on,
-  orders,
+  sources,
   render,
   unlimited,
 } from "../testing/request-model.js";
@@ -135,7 +135,7 @@ function fillSpent(m: Model, a: Fill): bigint | undefined {
 function fillOrderOk(m: Model, a: Fill): boolean {
   const fillsLeft = a.maxFills === undefined || a.fills < a.maxFills;
   const signsIn = a.state === "active" || (a.state === "paused" && m.stepIndex > 0);
-  const isActive = signsIn && m.nowMs < a.orderExpiresAtMs;
+  const isActive = signsIn && m.nowMs < a.sourceExpiresAtMs;
   return isActive && fillsLeft && a.fills === a.fillsBefore;
 }
 
@@ -164,18 +164,12 @@ function fillOk(m: Model, a: Fill): boolean {
   const bound =
     lives &&
     a.intent === intents[0] &&
-    a.grantOrder === a.order &&
-    a.grantOrderTerms === a.orderTerms;
+    a.grantSource === a.source &&
+    a.grantSourceTerms === a.sourceTerms;
   if (m.replaces.kind === "cancel" || isRevoke(m, a)) {
     return bound && m.nowMs < a.expiresAtMs + 60_000;
   }
   return bound && fillOrderOk(m, a) && fillSpendOk(m, a);
-}
-
-function advanceOk(m: Model, a: Extract<Authorization, { kind: "webhookRule" }>): boolean {
-  const unexpired = a.expiresAtMs === undefined || m.nowMs < a.expiresAtMs;
-  const fillsLeft = a.maxFills === undefined || a.fills < a.maxFills;
-  return a.state === "active" && unexpired && fillsLeft;
 }
 
 // Decision 0116: a cancel still signs up to a minute after its confirmation expired.
@@ -196,10 +190,7 @@ function authorizationOk(m: Model): boolean {
   if (a.kind === "confirmation") {
     return a.intent === intents[0] && (m.nowMs < a.expiresAtMs || cancelGraceOk(m, a.expiresAtMs));
   }
-  if (a.kind === "fill") {
-    return fillOk(m, a);
-  }
-  return a.kind === "auto" ? autoOk(m, a) : advanceOk(m, a);
+  return a.kind === "fill" ? fillOk(m, a) : autoOk(m, a);
 }
 
 function replacementOk(m: Model): boolean {
@@ -287,17 +278,17 @@ const fillAuthorization: Fill = {
   kind: "fill",
   intent: intents[0] ?? "",
   termsHash: hashes[0] ?? "",
-  grantOrder: orders[0] ?? "",
-  grantOrderTerms: hashes[1] ?? "",
+  grantSource: sources[0] ?? "",
+  grantSourceTerms: hashes[1] ?? "",
   fillsBefore: 1,
   grantedAtMs: nowMs,
   expiresAtMs: nowMs + 60_000,
   cap: gwei,
   maxBase: 10n ** 16n,
-  order: orders[0] ?? "",
-  orderTerms: hashes[1] ?? "",
+  source: sources[0] ?? "",
+  sourceTerms: hashes[1] ?? "",
   state: "active",
-  orderExpiresAtMs: nowMs + 1,
+  sourceExpiresAtMs: nowMs + 1,
   fills: 1,
   maxFills: 2,
 };
@@ -378,9 +369,15 @@ const valid: readonly Model[] = [
     action: { kind: "approve", token: on(token), spender: on(router), amount: 1000n },
     authorization: { ...fillAuthorization, spendToken: on(token), maxBase: 1000n },
   },
+  // A webhook rule's fill signs under its own fill grant, never under the rule alone (decision
+  // 0338).
   {
     ...routerCall,
-    authorization: { kind: "webhookRule", state: "active", termsHash: hashes[0] ?? "", fills: 0 },
+    authorization: {
+      ...fillAuthorization,
+      grantSource: sources[2] ?? "",
+      source: sources[2] ?? "",
+    },
   },
   {
     ...routerCall,
@@ -439,17 +436,17 @@ const fillChange = (field: fc.Arbitrary<Partial<Fill>>): fc.Arbitrary<Change> =>
 const fillChanges: readonly fc.Arbitrary<Change>[] = [
   fillChange(fc.record({ intent: fc.constantFrom(...intents) })),
   fillChange(fc.record({ termsHash: fc.constantFrom(...hashes) })),
-  fillChange(fc.record({ grantOrder: fc.constantFrom(...orders) })),
-  fillChange(fc.record({ order: fc.constantFrom(...orders) })),
-  fillChange(fc.record({ grantOrderTerms: fc.constantFrom(...hashes) })),
-  fillChange(fc.record({ orderTerms: fc.constantFrom(...hashes) })),
+  fillChange(fc.record({ grantSource: fc.constantFrom(...sources) })),
+  fillChange(fc.record({ source: fc.constantFrom(...sources) })),
+  fillChange(fc.record({ grantSourceTerms: fc.constantFrom(...hashes) })),
+  fillChange(fc.record({ sourceTerms: fc.constantFrom(...hashes) })),
   fillChange(fc.record({ fillsBefore: fc.nat(3) })),
   fillChange(fc.record({ fills: fc.nat(3) })),
   fillChange(fc.record({ maxFills: fc.nat(3) })),
   fillChange(fc.record({ state: fc.constantFrom("active", "paused", "filled", "ended") })),
   fillChange(fc.record({ expiresAtMs: time })),
   fillChange(fc.record({ grantedAtMs: time })),
-  fillChange(fc.record({ orderExpiresAtMs: time })),
+  fillChange(fc.record({ sourceExpiresAtMs: time })),
   fillChange(fc.record({ cap: fc.constantFrom(gwei - 1n, gwei, gwei + 1n) })),
   fillChange(fc.record({ maxBase: amount })),
   fillChange(fc.record({ spendToken: someAccount })),
@@ -580,23 +577,6 @@ const change: fc.Arbitrary<Change> = fc.oneof(
     .map((confirmation): Change => (m) => ({
       ...m,
       authorization: { kind: "confirmation", ...confirmation },
-    })),
-  fc
-    .record({
-      kind: fc.constant("webhookRule" as const),
-      state: fc.constantFrom("active", "active", "filled", "deleted"),
-      termsHash: fc.constantFrom(...hashes),
-      expiresAtMs: fc.option(time),
-      fills: fc.nat(3),
-      maxFills: fc.option(fc.nat(3)),
-    })
-    .map(({ expiresAtMs, maxFills, ...advance }): Change => (m) => ({
-      ...m,
-      authorization: {
-        ...advance,
-        ...(expiresAtMs === null ? {} : { expiresAtMs }),
-        ...(maxFills === null ? {} : { maxFills }),
-      },
     })),
   fc
     .record({

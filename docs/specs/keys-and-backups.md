@@ -334,23 +334,30 @@ says without checking it:
 5. The fee per gas is at most the chain's network fee cap from the signer's settings, whatever
    authorized the transaction, and a chain with no cap there signs nothing ([decision
    0143](../DECISIONS.md#d0143)). `termsHash`, the hash of the request, quote and plan that run
-   (spec 6, section 1), matches the authorization's: a confirmation that has not expired, an auto
-   order's fill grant, an active webhook rule whose bounds hold, or the agent's current auto-mode
-   grant for an intent that passes the auto test (spec 6, section 5). A fill grant holds for the
-   intent it names while the order the engine read right before the signature holds the card
-   terms the owner confirmed, is `active`, before its expiry, with a fill left and with the fills
-   it had when the fill was proposed; the transaction pays at most the grant's fee cap per gas and
-   spends at most the grant's most of what the fill spends, a call's native value for the coin or
-   an approval's amount for a token, and sends no coin with a call while the fill spends a token;
-   a send never fills an order; and the grant lasts 60 seconds from the fill's confirmation
-   ([decision 0210](../DECISIONS.md#d0210)). A grant longer than 60 seconds, or granted after now,
-   holds nothing. A step after the fill's first also signs while a freeze pauses its order, so a
-   sale under way finishes. While the signer runs, it signs one fill intent per order and fills
-   before: a step of another intent under the same count breaks rule 5. An approval of the fill's
-   token for 0, which resets one its earlier step set, signs whatever the order became, until 60
-   seconds after the grant expired ([decision 0211](../DECISIONS.md#d0211)). One exception: a cancel (rule 6) of the confirmed
-   intent, or of an order's fill whatever the order became, signs for 60 seconds after its
-   confirmation or grant expired ([decision 0116](../DECISIONS.md#d0116)).
+   (spec 6, section 1), matches the authorization's: a confirmation that has not expired, the fill
+   grant of an auto order's or a webhook rule's fill, or the agent's current auto-mode grant for
+   an intent that passes the auto test (spec 6, section 5). A webhook rule's fill signs only under
+   its own fill grant, never under the rule's card alone ([decision 0338](../DECISIONS.md#d0338)).
+   A fill grant holds for the intent it names while its source, the order or rule the engine read
+   right before the signature, holds the card terms the owner confirmed, is `active`, before its
+   expiry, with a fill left and with the fills it had when the fill was proposed; the transaction
+   pays at most the grant's fee cap per gas and spends at most the grant's most of what the fill
+   spends, a call's native value for the coin or an approval's amount for a token, and sends no
+   coin with a call while the fill spends a token; a send never fills an order or a rule; and the
+   grant lasts 60 seconds from the fill's confirmation ([decision 0210](../DECISIONS.md#d0210)). A
+   grant longer than 60 seconds, or granted after now, holds nothing. A step after the fill's first
+   also signs while a freeze pauses its source, so a sale under way finishes. While the signer
+   runs, it signs one fill intent per source and fills before: a step of another intent under the
+   same count breaks rule 5. An approval of the fill's token for 0, which resets one its earlier
+   step set, signs whatever the source became, until 60 seconds after the grant expired ([decision
+   0211](../DECISIONS.md#d0211)). One exception: a cancel (rule 6) of the confirmed intent, or of a
+   fill whatever its source became, signs for 60 seconds after its confirmation or grant expired
+   ([decision 0116](../DECISIONS.md#d0116)). A fill grant, its source as read now and the fill's
+   terms hash all come from the engine, which the signer checks only against each other, its own
+   clock and fee cap, and its memory of the fills it signed, which a restart clears. Against a
+   compromised engine process, which can forge both the grant and the terms hash, this rule adds no
+   wall for an order's or a rule's fill, as for an auto grant; rules 1 to 4 and the Privy ceiling
+   with its 24-hour caps still bound what it can do.
 6. For a speed-up or a cancel at an already used nonce: the calldata is identical (speed-up) or the
    transaction is a 0-value transfer to the wallet itself (cancel).
 

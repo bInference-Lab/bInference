@@ -17,26 +17,13 @@ import {
   fillSourceNowSchema,
 } from "./fill-grant.js";
 
-/** The life of a webhook rule, as the engine read it right before signing. */
-export interface AdvanceAuthorization {
-  /** `active` while it may fill; any other state authorizes nothing. */
-  readonly state: string;
-  readonly termsHash: string;
-  /** After this the order or rule authorizes nothing; none when it never expires. */
-  readonly expiresAtMs?: number;
-  /** The fills it made so far. */
-  readonly fills: number;
-  /** The most fills it may make; none when it has no such bound. */
-  readonly maxFills?: number;
-}
-
 /**
  * What approved the intent a transaction belongs to, with the facts the hard rules check (keys
- * spec, section 5.2, rule 5): the owner's confirmation of its card; an auto order the owner
- * confirmed in advance, by its fill grant for the intent and its source, the order, as it stands;
- * a webhook rule; or the agent's auto mode: its grant for the intent and the mode as it stands.
- * The terms hash is that of what the owner confirmed, of the fill its grant binds, or of the
- * intent that passed the auto test.
+ * spec, section 5.2, rule 5): the owner's confirmation of its card; an auto order or a webhook
+ * rule the owner confirmed in advance, by the fill grant for the intent and its source as it
+ * stands, never the rule's card alone (decision 0338); or the agent's auto mode: its grant for the
+ * intent and the mode as it stands. The terms hash is that of what the owner confirmed, of the
+ * fill its grant binds, or of the intent that passed the auto test.
  */
 export type SignAuthorization =
   | {
@@ -48,18 +35,11 @@ export type SignAuthorization =
       readonly expiresAtMs: number;
     }
   | { readonly kind: "fill"; readonly grant: FillGrant; readonly current: FillSourceNow }
-  | ({ readonly kind: "webhookRule"; readonly id: Id<"whr"> } & AdvanceAuthorization)
   | {
       readonly kind: "approvalMode";
       readonly grant: AutoModeGrant;
       readonly current: ApprovalModeNow;
     };
-
-/** A {@link AdvanceAuthorization} with its kind and id, as JSON carries it. */
-interface AdvanceWire extends AdvanceAuthorization {
-  readonly kind: "webhookRule";
-  readonly id: string;
-}
 
 /** A {@link SignAuthorization} as JSON carries it: ids as text, amounts as decimal strings. */
 export type SignAuthorizationWire =
@@ -71,7 +51,6 @@ export type SignAuthorizationWire =
       readonly expiresAtMs: number;
     }
   | { readonly kind: "fill"; readonly grant: FillGrantWire; readonly current: FillSourceNowWire }
-  | AdvanceWire
   | {
       readonly kind: "approvalMode";
       readonly grant: AutoModeGrantWire;
@@ -82,15 +61,6 @@ export type SignAuthorizationWire =
 export const termsHashSchema: z.ZodType<string, string> = z.string().regex(/^[0-9a-f]{64}$/);
 
 const epochMsSchema = z.int().nonnegative();
-const countSchema = z.int().nonnegative();
-
-const advanceShape = {
-  state: z.string().regex(/^[a-z_]{1,32}$/),
-  termsHash: termsHashSchema,
-  expiresAtMs: epochMsSchema.exactOptional(),
-  fills: countSchema,
-  maxFills: countSchema.exactOptional(),
-};
 
 /** Decodes a {@link SignAuthorization} from JSON, and encodes it back with `z.encode`. */
 export const signAuthorizationSchema: z.ZodType<SignAuthorization, SignAuthorizationWire> =
@@ -107,7 +77,6 @@ export const signAuthorizationSchema: z.ZodType<SignAuthorization, SignAuthoriza
       grant: fillGrantSchema,
       current: fillSourceNowSchema,
     }),
-    z.strictObject({ kind: z.literal("webhookRule"), id: idSchema("whr"), ...advanceShape }),
     z.strictObject({
       kind: z.literal("approvalMode"),
       grant: autoModeGrantSchema,

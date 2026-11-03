@@ -106,11 +106,7 @@ export type { SignerProcess } from "./signing/ports.js";
 export { privyRequestSchema } from "./signing/privy-request.js";
 export type { PrivyHeaders, PrivyRequest } from "./signing/privy-request.js";
 export { signAuthorizationSchema, termsHashSchema } from "./signing/sign-authorization.js";
-export type {
-  AdvanceAuthorization,
-  SignAuthorization,
-  SignAuthorizationWire,
-} from "./signing/sign-authorization.js";
+export type { SignAuthorization, SignAuthorizationWire } from "./signing/sign-authorization.js";
 export { signStepSchema } from "./signing/sign-step.js";
 export type {
   OriginalCall,

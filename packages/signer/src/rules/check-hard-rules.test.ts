@@ -120,15 +120,17 @@ const tokenFill = withAuthorization(
   fillWith({ grant: { spend: { token: accountOn(token), maxBase: 1000n } } }),
 );
 const fillCancel = withAuthorization(cancel, fillWith({}));
-const webhookRule = withAuthorization(call, {
-  kind: "webhookRule",
-  id: idSchema("whr").parse("whr_0192f3a4-5b6c-7d8e-9f00-112233445566"),
-  state: "active",
-  termsHash: fixtureTermsHash,
-  expiresAtMs: fixtureNowMs + 1,
-  fills: 2,
-  maxFills: 3,
-});
+const ruleId = idSchema("whr").parse("whr_0192f3a4-5b6c-7d8e-9f00-112233445566");
+// A webhook rule's fill, under its own fill grant with the rule as its source (decision 0338).
+const ruleFillWith = (change: {
+  readonly grant?: Partial<FillGrant>;
+  readonly current?: Partial<FillSourceNow>;
+}): SignAuthorization =>
+  fillWith({
+    grant: { source: ruleId, ...change.grant },
+    current: { id: ruleId, ...change.current },
+  });
+const webhookRule = withAuthorization(call, ruleFillWith({}));
 const grant: AutoModeGrant = {
   approvalMode: "auto",
   agent,
@@ -465,7 +467,22 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
     { ...context, nowMs: fixtureNowMs + 2 },
   ],
   [5, "a cancel of a fill a minute after its grant expired", fillCancel, afterExpiry(2)],
-  [5, "an expired webhook rule", webhookRule, { ...context, nowMs: fixtureNowMs + 2 }],
+  [5, "an expired webhook rule fill grant", webhookRule, { ...context, nowMs: fixtureNowMs + 2 }],
+  [
+    5,
+    "a webhook rule fill over its size",
+    withAuthorization(call, ruleFillWith({ grant: { spend: { maxBase: 10n ** 16n - 1n } } })),
+  ],
+  [
+    5,
+    "a webhook rule fill whose rule was deleted",
+    withAuthorization(call, ruleFillWith({ current: { state: "deleted" } })),
+  ],
+  [
+    5,
+    "a webhook rule's fill grant read against an order",
+    withAuthorization(call, ruleFillWith({ current: { id: orderId } })),
+  ],
   [5, "auto mode switched to manual", autoWith({ current: { mode: "manual", version: 5 } })],
   [5, "auto mode at another version", autoWith({ current: { version: 5 } })],
   [5, "an auto grant for another intent", autoWith({ grant: { intent: otherIntent } })],

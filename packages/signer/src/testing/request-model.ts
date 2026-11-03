@@ -7,6 +7,7 @@ import {
   type SignAuthorization,
 } from "@binference/chain";
 import { type Id, idSchema, type JsonValue } from "@binference/core";
+import { z } from "zod";
 import { type DepositCheck, type DepositData, depositCheckOf } from "./deposit-model.js";
 import { calldata } from "./model-calldata.js";
 import { fixtureAddresses } from "./sign-fixtures.js";
@@ -62,8 +63,8 @@ export type Authorization =
       readonly kind: "fill";
       readonly intent: string;
       readonly termsHash: string;
-      readonly grantOrder: string;
-      readonly grantOrderTerms: string;
+      readonly grantSource: string;
+      readonly grantSourceTerms: string;
       readonly fillsBefore: number;
       readonly grantedAtMs: number;
       readonly expiresAtMs: number;
@@ -71,18 +72,10 @@ export type Authorization =
       /** The token the fill spends; none for the native coin. */
       readonly spendToken?: Account;
       readonly maxBase: bigint;
-      readonly order: string;
-      readonly orderTerms: string;
+      readonly source: string;
+      readonly sourceTerms: string;
       readonly state: string;
-      readonly orderExpiresAtMs: number;
-      readonly fills: number;
-      readonly maxFills?: number;
-    }
-  | {
-      readonly kind: "webhookRule";
-      readonly state: string;
-      readonly termsHash: string;
-      readonly expiresAtMs?: number;
+      readonly sourceExpiresAtMs: number;
       readonly fills: number;
       readonly maxFills?: number;
     }
@@ -151,10 +144,15 @@ export const agents: readonly string[] = [
   "agt_0192f3a4-5b6c-7d8e-9f00-112233445566",
   "agt_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff",
 ];
-export const orders: readonly string[] = [
+/** The auto orders and webhook rules a fill grant may name as its source. */
+export const sources: readonly string[] = [
   "ord_0192f3a4-5b6c-7d8e-9f00-112233445566",
   "ord_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff",
+  "whr_0192f3a4-5b6c-7d8e-9f00-112233445566",
 ];
+
+// An auto order's or a webhook rule's id, as a fill grant names its source.
+const sourceIdSchema = z.union([idSchema("ord"), idSchema("whr")]);
 export const nowMs = 1_800_000_000_000;
 export const gwei: bigint = 10n ** 9n;
 export const unlimited: bigint = 2n ** 256n - 1n;
@@ -190,20 +188,16 @@ function authorizationOf(a: Authorization): SignAuthorization {
       current: { agent: idSchema("agt").parse(a.agent), mode, version },
     };
   }
-  if (a.kind === "fill") {
-    return fillAuthorizationOf(a);
-  }
-  const { kind, ...advance } = a;
-  return { kind, id: id("whr"), ...advance };
+  return fillAuthorizationOf(a);
 }
 
 function fillAuthorizationOf(a: Extract<Authorization, { kind: "fill" }>): SignAuthorization {
   const { spendToken, maxBase, maxFills } = a;
   const grant = {
-    source: idSchema("ord").parse(a.grantOrder),
+    source: sourceIdSchema.parse(a.grantSource),
     agent: id("agt"),
     intent: idSchema("int").parse(a.intent),
-    sourceTermsHash: a.grantOrderTerms,
+    sourceTermsHash: a.grantSourceTerms,
     fillsBefore: a.fillsBefore,
     termsHash: a.termsHash,
     grantedAtMs: a.grantedAtMs,
@@ -212,10 +206,10 @@ function fillAuthorizationOf(a: Extract<Authorization, { kind: "fill" }>): SignA
     spend: spendToken === undefined ? { maxBase } : { token: account(spendToken), maxBase },
   };
   const current = {
-    id: idSchema("ord").parse(a.order),
+    id: sourceIdSchema.parse(a.source),
     state: a.state,
-    termsHash: a.orderTerms,
-    expiresAtMs: a.orderExpiresAtMs,
+    termsHash: a.sourceTerms,
+    expiresAtMs: a.sourceExpiresAtMs,
     fills: a.fills,
     ...(maxFills === undefined ? {} : { maxFills }),
   };
