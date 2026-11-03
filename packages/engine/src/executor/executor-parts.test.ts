@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
+import { createIdentityHost } from "../identity/identity-host.js";
+import { identityChains, testRegistry } from "../identity/test-identities.js";
 import { createStoredIntents, type IntentSnapshot } from "../intents/create-stored-intents.js";
 import { planDocument, quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -229,6 +231,18 @@ describe("the queue check", () => {
     );
 
     expect(check.terms?.allowed.unapproved).toStrictEqual(["fake:1:0x0000000f"]);
+    expect(check.terms?.allowed.contracts).toStrictEqual(["fake:1:0x0000000b"]);
+  });
+
+  it("keeps every approval from the identity registry the engine runs, on a swap too", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const snapshot = await tappedSnapshot(bench);
+    const chain = expectOk(identityChains().get(benchChain));
+    const parts = { ...checkPartsOf(bench), identity: createIdentityHost([testRegistry()]) };
+
+    const check = await checkForQueue(snapshot, { parts, chain }, live().signal);
+
+    expect(check.terms?.allowed.unapproved).toStrictEqual(["fake:1:0x000000e5"]);
     expect(check.terms?.allowed.contracts).toStrictEqual(["fake:1:0x0000000b"]);
   });
 

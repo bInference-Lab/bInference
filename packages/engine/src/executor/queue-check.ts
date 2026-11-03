@@ -163,7 +163,8 @@ function quoteHolds(quote: QuoteView, limits: LimitsValues): boolean {
 }
 
 // What the signer's targets are read from: the registry, the venues, the bridges and the staking
-// venues the engine runs.
+// venues the engine runs. The identity registries join the venues for every kind, so the signer
+// keeps every approval from them whatever the intent (decision 0304).
 interface TargetContext {
   readonly chain: RegisteredChain;
   readonly chains: ChainRegistry;
@@ -177,7 +178,7 @@ function targetContextOf(parts: QueueCheckParts, chain: RegisteredChain): Target
   return {
     chain,
     chains: parts.chains,
-    venues: parts.venues,
+    venues: [...parts.venues, ...(parts.identity?.registries ?? [])],
     bridges: parts.bridging?.bridges ?? [],
     ...(parts.staking === undefined ? {} : { staking: parts.staking }),
     ...(parts.identity === undefined ? {} : { identity: parts.identity }),
