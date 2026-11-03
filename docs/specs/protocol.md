@@ -146,7 +146,8 @@ by default, which Tailscale `funnel` publishes. It serves one route and nothing 
   same read. The body is read whole first: over 16 KiB is `413`. Only accepted alerts count as
   repeats and toward the rate. An accepted alert is in the inbox, with its body, before the
   `202`; one that cannot be stored is `503`. No answer has a body. When `engine.webhookPort` is
-  taken, the engine runs without the listener and logs `webhook.listen_failed`.
+  taken, the engine runs without the listener, logs `webhook.listen_failed` and sends the owner
+  `notice.webhookPortTaken`.
 
 <a id="section-3"></a>
 

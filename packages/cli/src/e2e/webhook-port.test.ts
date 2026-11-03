@@ -6,6 +6,7 @@ import { z } from "zod";
 import { runCli } from "../program/run-cli.js";
 import { createSystemHttp } from "../runtime/system-http.js";
 import {
+  connectClient,
   engineLogLines,
   freePort,
   hostWith,
@@ -96,7 +97,7 @@ describe("the engine's webhook listener", () => {
   );
 
   it(
-    "runs without the listener, and says so in its log, when its port is the engine's own",
+    "runs without the listener, and tells the owner, when its port is the engine's own",
     slow,
     async () => {
       const port = await freePort();
@@ -108,6 +109,13 @@ describe("the engine's webhook listener", () => {
       const failed = lines.filter((line) => line.includes('"event":"webhook.listen_failed"'));
       expect(failed).toHaveLength(1);
       expect(failed[0]).toContain('"fields":{"errorCode":"server.listen_failed"}');
+      const client = await connectClient(machine);
+      const notices = await client.call("notice/list", {}, { signal: AbortSignal.timeout(10_000) });
+      client.close();
+      expect(notices.items.map((notice) => [notice.key, notice.values])).toContainEqual([
+        "notice.webhookPortTaken",
+        { port: String(port) },
+      ]);
     },
   );
 

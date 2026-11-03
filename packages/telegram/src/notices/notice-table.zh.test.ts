@@ -71,6 +71,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.signerStopped": `${red} 签名进程已停止，binference 不会签名。请先处理 \`binference logs\` 显示的问题，再运行 \`binference unlock\`。`,
   "notice.signerRefused": `${warning} 签名进程拒绝为一笔交易的一个步骤签名：金额与这笔交易不符。该步骤未发送任何内容。`,
   "notice.privyUnreachable": `${red} binference 启动后五分钟内都无法连接 Privy，因此仍处于锁定状态。请检查本机网络，然后运行 \`binference unlock\`。`,
+  "notice.webhookPortTaken": `${warning} binference 无法为提醒规则接收提醒：端口 7457 已被占用。请在 config.json5 中把 \`engine.webhookPort\` 设为空闲端口，然后重启 binference。`,
   "notice.configInvalid": `${warning} binference 保留了当前运行的设置：config.json5 中 telegram.mode 的值不可用。请运行 \`binference check\` 查看修复方法。`,
   "notice.configChanged": "config.json5 中的设置已更改：owner.locale。它们已立即生效。",
   "notice.unknownTx": `${warning} Main 的随机数 42 被一笔非 binference 签名的交易占用`,

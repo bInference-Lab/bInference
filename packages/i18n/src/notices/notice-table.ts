@@ -212,6 +212,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.signerStopped": { key: "notice.signerStopped", values: {} },
   "notice.signerRefused": { key: "notice.signerRefused", values: { rule: "rule_3" } },
   "notice.privyUnreachable": { key: "notice.privyUnreachable", values: {} },
+  "notice.webhookPortTaken": { key: "notice.webhookPortTaken", values: { port: "7457" } },
   "notice.configInvalid": {
     key: "notice.configInvalid",
     values: { problem: "bad_value", key: "telegram.mode" },

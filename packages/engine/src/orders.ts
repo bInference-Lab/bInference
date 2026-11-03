@@ -129,4 +129,5 @@ export {
 export type { WebhookAlertDraft, WebhookRuleKey, WebhookTake } from "./webhooks/webhook-alert.js";
 export type { WebhookAlertStore } from "./webhooks/ports.js";
 export { createWebhookIntake } from "./webhooks/webhook-intake.js";
+export { webhookPortTakenNotice } from "./webhooks/webhook-port-notice.js";
 export type { WebhookAnswer, WebhookIntake } from "./webhooks/webhook-intake.js";
