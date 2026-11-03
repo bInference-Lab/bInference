@@ -83,7 +83,7 @@
   "intent.launch_picture_too_large": "该发射台会把图片和代币一起写到链上，只接受很小的图片，例如约 1 KB 的 64 x 64 WebP。请让所有者以文件形式发送一张更小的图片。",
   "intent.kind_unavailable": "binference 不提供借贷。请改为兑换、质押或跨链。",
   "intent.pool_venue": "该平台只向一个质押池质押，质押选项中标为 pool: true。请重新发起，不要指定验证者；解除质押的数量请用质押时铸造的凭证代币计，而不是原生币。",
-  "intent.identity_exists": "此 Agent 已有链上身份。运行 `binference agent identity` 查看。",
+  "intent.identity_exists": "此 Agent 的钱包已持有链上身份。若 binference 记录了它，`binference agent identity` 会显示；否则请在身份注册表中查看该钱包。",
   "intent.identity_pending": "此 Agent 的一次登记尚未结束。请确认或拒绝其卡片，或等待它上链，然后再次运行 `binference agent identity`。",
   "order.not_found": "此自动订单不存在。请在控制台查看你的自动订单。",
   "order.wrong_state": "此自动订单已结束或已变化。请刷新查看当前状态。",

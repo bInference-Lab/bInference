@@ -91,7 +91,10 @@ when the registration counts as made.
   could publish one registration with its own text, tied to the owner's wallet for good, for gas
   alone. The opt-in right before the card keeps that window short.
 - A wallet registered outside binference cannot register again, and `identity/get` shows nothing
-  for it, since binference does not search the registry's history for its id.
+  for it, since binference does not search the registry's history for its id. A registration that
+  landed after binference stopped following its dropped step is the same: its gas is booked, no
+  row is stored. The refusal's words say the wallet holds an identity binference may never have
+  recorded, and send the owner to the registry.
 - An upgrade of the registry stops new registrations until binference tests and accepts its
   version.
 - Spec 1 section 7.9 gains the owner-only rule, `file` in `identity/get`'s result and

@@ -83,7 +83,7 @@
   "intent.launch_picture_too_large": "This launchpad writes the picture on chain with the token and takes only a small one, such as a 64 by 64 WebP of about 1 KB. Ask the owner to send a smaller picture as a file.",
   "intent.kind_unavailable": "binference does not lend or borrow. Ask for a swap, a stake or a bridge instead.",
   "intent.pool_venue": "This venue stakes into one pool, where the staking options mark pool: true. Propose it again with no validator, and name an unstake's amount in the receipt token the stake minted, not in the coin.",
-  "intent.identity_exists": "This agent already has an on-chain identity. Run `binference agent identity` to see it.",
+  "intent.identity_exists": "This agent's wallet holds an on-chain identity already. `binference agent identity` shows it if binference recorded it; else check the identity registry for the wallet.",
   "intent.identity_pending": "A registration of this agent has not ended yet. Confirm or deny its card, or let it land, then run `binference agent identity` again.",
   "order.not_found": "This auto order does not exist. Check your auto orders in the console.",
   "order.wrong_state": "This auto order already ended or changed. Refresh to see where it stands.",

@@ -102,7 +102,7 @@
   "wallet_blocked": "该平台拒绝此钱包；请从其他钱包质押",
   "claim_unpayable": "该平台支付领取款项的方式无法被此钱包的代码接收，领取会失败；请从没有代码的钱包领取",
   "stake_over_ceiling": "该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 `binference ceiling set --wallet {wallet}`，然后再质押，或减少金额",
-  "identity_exists": "此 Agent 的钱包已持有链上身份，因此未登记；运行 `binference agent identity` 查看 binference 保存的身份",
+  "identity_exists": "此 Agent 的钱包已持有链上身份，可能是 binference 未记录的身份，因此未登记；请在身份注册表中查看该钱包",
   "registry_changed": "身份注册表现在报告的版本未经 binference 测试，因此未登记；请更新 binference，然后重新登记",
   "identity_ceiling": "此 Agent 主钱包的上限尚不允许身份注册表的调用，因此未登记；运行 `binference agent identity`，它会用你的所有者密钥加入该调用"
 }
