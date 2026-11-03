@@ -1,25 +1,13 @@
-import type { AssetRef, ChainRegistry, Signer } from "@binference/chain";
-import {
-  BinferenceError,
-  type Clock,
-  err,
-  type Id,
-  type IdSource,
-  ok,
-  type Result,
-} from "@binference/core";
+import type { AssetRef } from "@binference/chain";
+import { type BinferenceErrorOptions, err, type Id, ok, type Result } from "@binference/core";
 import type { AssetInfos, OrderRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
-import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
-import { createIntentStateMachine } from "../intents/state-machine.js";
+import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { Proposer } from "../money-path/create-money-path.js";
-import type { LaunchRouting } from "../money-path/launch-routing.js";
-import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
-import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
-import type { AgentStore, IntentStore, WalletFactsSource } from "../ports.js";
-import type { PublishPush } from "../pushes/engine-push.js";
+import { unlistedAssetInfos } from "../money-path/token-facts.js";
 import { autoOrderQuoteDocument } from "./auto-order-quote.js";
-import { type InstallAccountParts, isInstallAccount } from "./install-accounts.js";
+import { isInstallAccount } from "./install-accounts.js";
+import { type OneCardParts, openOneCard, storedUnlessTaken } from "./open-one-card.js";
 import {
   hasPriceTrigger,
   isExitOrder,
@@ -32,31 +20,14 @@ import { orderPush } from "./order-view-of.js";
 import { orderWalletOf } from "./order-wallet-of.js";
 import type { OrderStore } from "./ports.js";
 
-/** What the orders use cases read and write through, and where their pushes go. */
-export interface OrderParts {
+/**
+ * What the orders use cases read and write through, and where their pushes go. No copy order may
+ * follow a wallet of the install (decision 0261).
+ */
+export interface OrderParts extends OneCardParts {
   readonly orders: OrderStore;
-  readonly stored: StoredIntents;
-  readonly agents: AgentStore;
-  /** Which wallets each agent owns, its default first. */
-  readonly wallets: Pick<WalletFactsSource, "wallets">;
-  /** Custody, which holds each wallet's account on each chain. */
-  readonly custody: Pick<Signer, "account">;
-  /** The install's wallets of every agent, which no copy order may follow (decision 0261). */
-  readonly install: InstallAccountParts["install"];
-  readonly chains: ChainRegistry;
-  /** What intents stored of tokens the registry does not list, which order lists show. */
-  readonly intents: Pick<IntentStore, "storedAssets">;
-  readonly clock: Clock;
-  readonly ids: IdSource;
-  readonly publish: PublishPush;
-  /** Whether the engine is locked: the auto test reads it, and an order's card asks either way. */
-  readonly isLocked: () => boolean;
-  /** The card timer: closes an intent's card as expired once its time is up. */
-  readonly expireCard: (intent: Id<"int">, call: { readonly signal: AbortSignal }) => Promise<void>;
   /** Whether the price watcher can price a token now (decision 0194). */
   readonly canPrice: CanPrice;
-  /** Reads what a token the registry does not list answers on chain, for the order's card. */
-  readonly readTokenFacts: ReadTokenFacts;
   /**
    * Whether a live order may fill; while it may not, no live price or DCA order is taken
    * (decisions 0197 and 0246).
@@ -64,8 +35,6 @@ export interface OrderParts {
   readonly liveFills: boolean;
   /** `owner.timezone` now: a DCA order that names no zone runs on the owner's (decision 0246). */
   readonly ownerTimeZone: () => string;
-  /** What sends an order on a launch's token to the agent's launch wallet (decision 0217). */
-  readonly launches?: LaunchRouting;
 }
 
 /**
@@ -209,44 +178,23 @@ async function openOrderCard(
   signal: AbortSignal,
 ): Promise<IntentSnapshot> {
   const { order, proposer, assets } = opening;
-  const machine = createIntentStateMachine({ clock: parts.clock });
-  const step = machine.propose({
-    kind: "autoOrder",
-    proposer: proposer.role,
-    isPaper: order.isPaper,
-    hasOutsideContent: order.hasOutsideContent,
-    agentStatus: "active",
-  });
-  const intent = {
-    id: order.intentId,
-    agentId: order.agentId,
-    walletId: order.walletId,
-    proposerRef: proposer.ref,
-    request: { kind: "autoOrder", order: order.id } as const,
-    ...(Object.keys(assets).length === 0 ? {} : { assets }),
-  };
-  const created = step.ok
-    ? await parts.stored.create({ ...intent, step: step.value }, { signal })
-    : undefined;
-  if (created?.ok !== true) {
-    throw new BinferenceError({
-      code: "engine.order_not_stored",
-      message: `The card of auto order ${order.id} could not be stored.`,
-      details: { order: order.id },
+  const quoteAt = (quotedAtMs: number) =>
+    autoOrderQuoteDocument.encode({
+      order: order.id,
+      request: order.request,
+      expiresAtMs: order.expiresAtMs,
+      ...(order.maxFills === undefined ? {} : { maxFills: order.maxFills }),
+      hasLinkedExits: opening.hasLinkedExits,
+      quotedAtMs,
     });
-  }
-  const quotedAtMs = parts.clock.now();
-  const quote = autoOrderQuoteDocument.encode({
-    order: order.id,
-    request: order.request,
-    expiresAtMs: order.expiresAtMs,
-    ...(order.maxFills === undefined ? {} : { maxFills: order.maxFills }),
-    hasLinkedExits: opening.hasLinkedExits,
-    quotedAtMs,
-  });
-  const advance = { stored: parts.stored, machine, signal };
-  const run = { proposed: created.value, quote, quotedAtMs, isLocked: parts.isLocked() };
-  return openCardUnchecked(advance, run);
+  const notStored: BinferenceErrorOptions = {
+    code: "engine.order_not_stored",
+    message: `The card of auto order ${order.id} could not be stored.`,
+    details: { order: order.id },
+  };
+  const request = { kind: "autoOrder", order: order.id } as const;
+  const card = { record: order, request, proposer, assets, quoteAt, notStored };
+  return openOneCard(parts, card, signal);
 }
 
 // What the order rules read: the time, the registry and the owner's zone now.
@@ -260,17 +208,14 @@ function storedOrder(
   created: Result<OrderRecord, "exists" | "frozen" | "track_limit">,
   draft: OrderDraft,
 ): Result<OrderRecord, "agent.frozen" | "wallet.track_limit"> {
-  if (created.ok) {
-    return created;
-  }
-  if (created.error === "exists") {
-    throw new BinferenceError({
-      code: "engine.order_not_stored",
-      message: `A new auto order's id ${draft.id} is taken.`,
-      details: { order: draft.id },
-    });
-  }
-  return err(created.error === "frozen" ? "agent.frozen" : "wallet.track_limit");
+  const stored = storedUnlessTaken(created, {
+    code: "engine.order_not_stored",
+    message: `A new auto order's id ${draft.id} is taken.`,
+    details: { order: draft.id },
+  });
+  return stored.ok
+    ? stored
+    : err(stored.error === "frozen" ? "agent.frozen" : "wallet.track_limit");
 }
 
 /**
