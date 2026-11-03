@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { showHeldElsewhere } from "./held-elsewhere";
+import { heldElsewhere } from "./held-elsewhere";
+import { rewriteReplies } from "./rewrite-replies";
+import { openDraft } from "./smoke-draft";
 import { control, openPaired, shootThemes } from "./smoke-page";
 
 // Runs after console.spec.ts, whose last test made and confirmed the rule this one shows. The
@@ -16,7 +18,7 @@ test("shows stakes and a bridge in transit in Chinese, in light and in dark", as
   page,
   request,
 }, testInfo) => {
-  await showHeldElsewhere(page);
+  await rewriteReplies(page, heldElsewhere);
   const problems = await openPaired(page, request);
   await page.getByRole("link", { name: "投资组合" }).click();
   const live = page.getByRole("region", { name: "实盘资产" });
@@ -33,6 +35,23 @@ test("shows stakes and a bridge in transit in Chinese, in light and in dark", as
     "在 0x2222…0001 质押 0.4725 FAKE · 市值 $283.50",
   );
   await shootThemes(page, testInfo, "portfolio-staking-zh");
+  expect(problems).toStrictEqual([]);
+});
+
+test("shows the agent's launch draft in Chinese, read-only, in light and in dark", async ({
+  page,
+  request,
+}, testInfo) => {
+  await rewriteReplies(page, openDraft);
+  const problems = await openPaired(page, request);
+  await page.getByRole("link", { name: "对话" }).click();
+  const drafted = page.getByRole("region", { name: /^main 起草了这次代币发射。/u });
+  await expect(drafted).toContainText("请在与机器人的 Telegram 对话中从此草稿开始发射", {
+    timeout: 20_000,
+  });
+  await expect(drafted.getByRole("img", { name: "发射草稿的图片" })).toBeVisible();
+  await expect(drafted.getByRole("button")).toHaveCount(0);
+  await shootThemes(page, testInfo, "draft-zh");
   expect(problems).toStrictEqual([]);
 });
 

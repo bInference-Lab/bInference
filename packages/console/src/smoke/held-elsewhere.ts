@@ -1,11 +1,10 @@
-import type { Page, WebSocketRoute } from "@playwright/test";
-import { type PortfolioAnswer, readCall, readPortfolio, readReply } from "./held-elsewhere.schema";
+import type { ReplyRewrites } from "./rewrite-replies";
+import { type PortfolioAnswer, readPortfolio } from "./smoke-frames.schema";
 
-// The smoke engine trades on paper and runs no staking venue or bridge, so the page's link to it
-// adds the staking portfolio the unit tests read to each `portfolio/get` answer: one unit of a
-// validator's receipt token staked live, worth 1.05 coins, half a coin unbonding and a tenth to
-// claim; 0.45 units staked on paper; 50 TKN bridging to Base, late. Everything else passes
-// as the engine sent it.
+// The smoke engine trades on paper and runs no staking venue or bridge, so the smoke test adds the
+// staking portfolio the unit tests read to each `portfolio/get` answer: one unit of a validator's
+// receipt token staked live, worth 1.05 coins, half a coin unbonding and a tenth to claim; 0.45
+// units staked on paper; 50 TKN bridging to Base, late.
 
 const coin = "fake:1/slip44:1";
 const token = "fake:1/token:0x0000000a";
@@ -83,27 +82,7 @@ function withHeld(answer: PortfolioAnswer): PortfolioAnswer {
   };
 }
 
-function relay(route: WebSocketRoute): void {
-  const server = route.connectToServer();
-  const asked = new Set<string>();
-  route.onMessage((message) => {
-    const call = readCall(message.toString());
-    if (call?.op === "portfolio/get") {
-      asked.add(call.id);
-    }
-    server.send(message);
-  });
-  server.onMessage((message) => {
-    const reply = readReply(message.toString());
-    if (reply === undefined || !asked.delete(reply.id)) {
-      route.send(message);
-      return;
-    }
-    route.send(JSON.stringify({ ...reply, result: withHeld(readPortfolio(reply.result)) }));
-  });
-}
-
-/** Adds the staking portfolio to every `portfolio/get` answer the page reads from now on. */
-export async function showHeldElsewhere(page: Page): Promise<void> {
-  await page.routeWebSocket("**/ws", relay);
-}
+/** Adds the staking portfolio to every `portfolio/get` answer. */
+export const heldElsewhere: ReplyRewrites = {
+  "portfolio/get": (result) => withHeld(readPortfolio(result)),
+};

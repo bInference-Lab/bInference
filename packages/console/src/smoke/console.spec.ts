@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { showHeldElsewhere } from "./held-elsewhere";
+import { heldElsewhere } from "./held-elsewhere";
+import { rewriteReplies } from "./rewrite-replies";
 import { readProposal, readStates } from "./smoke-answers.schema";
+import { openDraft } from "./smoke-draft";
 import { alertTo, control, openPaired, shootThemes } from "./smoke-page";
 
 test("pairs this browser and confirms a paper card in it", async ({ page, request }, testInfo) => {
@@ -98,6 +100,29 @@ test("answers the agent's question once with a button in the chat", async ({
   expect(problems).toStrictEqual([]);
 });
 
+test("shows the agent's launch draft read-only, and asks before a new chat", async ({
+  page,
+  request,
+}, testInfo) => {
+  await rewriteReplies(page, openDraft);
+  const problems = await openPaired(page, request);
+  await page.getByRole("link", { name: "Chat" }).click();
+  const drafted = page.getByRole("region", { name: /^main drafted this token launch\./u });
+  await expect(drafted).toContainText("Launch MCAT (Moon Cat) on flap", { timeout: 20_000 });
+  await expect(drafted).toContainText("Start it from this draft in your Telegram chat");
+  await expect(drafted.getByRole("img", { name: "The picture of the launch draft" })).toBeVisible();
+  await expect(drafted.getByRole("button")).toHaveCount(0);
+  await shootThemes(page, testInfo, "draft");
+
+  await page.getByRole("button", { name: "New chat" }).click();
+  const ask = page.getByRole("region", { name: /^Start a new chat\?/u });
+  await expect(ask).toBeVisible();
+  await shootThemes(page, testInfo, "new-chat-ask");
+  await ask.getByRole("button", { name: "Keep this chat" }).click();
+  await expect(ask).toHaveCount(0);
+  expect(problems).toStrictEqual([]);
+});
+
 test("shows the paper portfolio apart from any live one, in light and in dark", async ({
   page,
   request,
@@ -135,7 +160,7 @@ test("shows stakes and a bridge in transit in the portfolio, in light and in dar
   page,
   request,
 }, testInfo) => {
-  await showHeldElsewhere(page);
+  await rewriteReplies(page, heldElsewhere);
   const problems = await openPaired(page, request);
   await page.getByRole("link", { name: "Portfolio" }).click();
   const live = page.getByRole("region", { name: "Live holdings" });

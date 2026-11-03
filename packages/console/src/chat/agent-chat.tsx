@@ -10,6 +10,7 @@ import { ChatComposer } from "./chat-composer";
 import { chatEntries } from "./chat-entries";
 import { ChatThread, WorkingLine } from "./chat-thread";
 import type { PickedImage } from "./composer-images";
+import { LaunchDraftCard } from "./launch-draft-card";
 import { NewChatButton } from "./new-chat-button";
 import { uploadImage } from "./upload-image";
 import { useChatLive } from "./use-chat-live";
@@ -167,6 +168,7 @@ export function AgentChat(props: {
         <WorkingLine draft={running.draft} startedAt={running.startedAt} />
       )}
       <AgentQuestionCard agent={agent} agentName={agentName} canAnswer={canChat} />
+      <LaunchDraftCard agent={agent} agentName={agentName} />
       <ChatCards agent={agent} />
       <ChatBottom
         actions={actions}

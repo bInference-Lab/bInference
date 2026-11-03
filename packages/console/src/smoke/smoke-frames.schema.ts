@@ -9,15 +9,21 @@ export interface PortfolioAnswer {
   readonly [field: string]: unknown;
 }
 
-/** A reply frame, every field kept, with the id of the call it answers. */
-interface Reply {
+/** What the smoke test answers instead of the engine: the engine's result, none when it failed. */
+export type ReplyRewrite = (result: unknown) => object;
+
+/** An engine's answer to a call: its id, and its result when it replied rather than failed. */
+interface Answer {
   readonly id: string;
-  readonly result: unknown;
-  readonly [field: string]: unknown;
+  readonly result?: unknown;
 }
 
 const callSchema = z.object({ t: z.literal("call"), id: z.string(), op: z.string() });
-const replySchema = z.looseObject({ t: z.literal("reply"), id: z.string(), result: z.unknown() });
+const answerSchema = z.object({
+  t: z.enum(["reply", "fail"]),
+  id: z.string(),
+  result: z.optional(z.unknown()),
+});
 const portfolioSchema = z.looseObject({
   balances: z.array(z.looseObject({ wallet: z.string() })),
   totalUsdMicros: z.string(),
@@ -41,10 +47,10 @@ export function readCall(
   return call.success ? call.data : undefined;
 }
 
-/** A `reply` frame the engine sent; none for any other message. */
-export function readReply(message: string): Reply | undefined {
-  const reply = replySchema.safeParse(jsonOf(message));
-  return reply.success ? reply.data : undefined;
+/** A `reply` or `fail` frame the engine sent; none for any other message. */
+export function readAnswer(message: string): Answer | undefined {
+  const answer = answerSchema.safeParse(jsonOf(message));
+  return answer.success ? answer.data : undefined;
 }
 
 /** Reads a reply's result as a `portfolio/get` answer. */

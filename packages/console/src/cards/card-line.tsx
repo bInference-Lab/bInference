@@ -19,12 +19,18 @@ interface LineIcon {
 
 const variation = String.fromCodePoint(0xfe0f);
 
+// The passed and refused icons, which the console's own words take too.
+const statusIcons = {
+  passed: { Icon: CircleCheckIcon, label: "console.icon.passed", tone: "text-gain" },
+  refused: { Icon: CircleXIcon, label: "console.icon.refused", tone: "text-destructive" },
+} as const satisfies Readonly<Record<string, LineIcon>>;
+
 // Spec 4's status icons, which Telegram shows as emoji, by code point: the console draws each as a
 // thin line icon, as the brand's flat look asks.
 const iconPoints: readonly (readonly [number, LineIcon])[] = [
   [0x1f7e1, { Icon: ClockIcon, label: "console.icon.waiting", tone: "text-gold" }],
-  [0x2705, { Icon: CircleCheckIcon, label: "console.icon.passed", tone: "text-gain" }],
-  [0x274c, { Icon: CircleXIcon, label: "console.icon.refused", tone: "text-destructive" }],
+  [0x2705, statusIcons.passed],
+  [0x274c, statusIcons.refused],
   [0x26a0, { Icon: TriangleAlertIcon, label: "console.icon.warning", tone: "text-gold" }],
   [0x1f9ea, { Icon: FlaskConicalIcon, label: "console.icon.paper", tone: "text-gold" }],
   [0x1f534, { Icon: CircleDotIcon, label: "console.icon.live", tone: "text-destructive" }],
@@ -56,6 +62,21 @@ function linePieces(text: string): readonly LinePiece[] {
   }));
 }
 
+function IconPiece(props: { readonly icon: LineIcon }): React.JSX.Element {
+  const text = useText();
+  const { Icon, label, tone } = props.icon;
+  return (
+    <>
+      <Icon
+        aria-hidden
+        strokeWidth={1.5}
+        className={`inline size-[1.1em] align-[-0.2em] ${tone}`}
+      />
+      <span className="sr-only">{text(label)}</span>
+    </>
+  );
+}
+
 /** How a line's plain pieces are drawn: as they are, or with their `code` spans as code. */
 type PieceStyle = "plain" | "message";
 
@@ -63,7 +84,6 @@ function LinePieces(props: {
   readonly text: string;
   readonly drawn: PieceStyle;
 }): React.JSX.Element {
-  const text = useText();
   return (
     <>
       {linePieces(props.text).map(({ start, piece }) => {
@@ -74,15 +94,9 @@ function LinePieces(props: {
             </span>
           );
         }
-        const { Icon, label, tone } = piece;
         return (
           <span key={start}>
-            <Icon
-              aria-hidden
-              strokeWidth={1.5}
-              className={`inline size-[1.1em] align-[-0.2em] ${tone}`}
-            />
-            <span className="sr-only">{text(label)}</span>
+            <IconPiece icon={piece} />
           </span>
         );
       })}
@@ -104,4 +118,14 @@ export function CardLine(props: { readonly text: string }): React.JSX.Element {
  */
 export function MessageLine(props: { readonly text: string }): React.JSX.Element {
   return <LinePieces text={props.text} drawn="message" />;
+}
+
+/**
+ * A status icon before one of the console's own lines, which carry no emoji: passed or refused,
+ * drawn as the card lines draw theirs, its name read to screen readers only.
+ */
+export function StatusIcon(props: {
+  readonly status: keyof typeof statusIcons;
+}): React.JSX.Element {
+  return <IconPiece icon={statusIcons[props.status]} />;
 }
