@@ -3,7 +3,7 @@ import type { IdentityRegistry } from "@binference/chain/identity";
 import { describe, expect, it } from "vitest";
 import { testAccount } from "../operations/test-engine.js";
 import { createIdentityHost } from "./identity-host.js";
-import { testRegistry } from "./test-identities.js";
+import { identityChains, testRegistry } from "./test-identities.js";
 
 const live = { signal: new AbortController().signal };
 const other = accountRefSchema.parse("fake:1:0x000000f9");
@@ -20,7 +20,7 @@ const fault = (): never => {
 
 describe("the identity host", () => {
   it("reads a standing, and a plugin that throws or answers outside its shape as venue_down", async () => {
-    const host = createIdentityHost([]);
+    const host = createIdentityHost([], identityChains());
     const registry = testRegistry();
     await expect(host.standing(registry, testAccount, live)).resolves.toStrictEqual({
       ok: true,
@@ -41,7 +41,7 @@ describe("the identity host", () => {
   });
 
   it("holds a build to its file and wallet, and refuses one that drifts or throws", () => {
-    const host = createIdentityHost([]);
+    const host = createIdentityHost([], identityChains());
     const registry = testRegistry();
     const draft = registry.build({ wallet: testAccount, file });
     expect(host.build(registry, { wallet: testAccount, file })).toStrictEqual({
@@ -60,8 +60,19 @@ describe("the identity host", () => {
     expect(host.minted(throwing, registry.simulate(draft), testAccount)).toBe(0);
   });
 
+  it("holds a build whose wallet the plugin writes in another case, as the family reads it", () => {
+    const host = createIdentityHost([], identityChains());
+    const registry = testRegistry();
+    const shouted = accountRefSchema.parse("fake:1:0x0000000C");
+    const shouting = broken({
+      build: (request) => ({ ...registry.build(request), from: shouted }),
+    });
+
+    expect(host.build(shouting, { wallet: testAccount, file }).ok).toBe(true);
+  });
+
   it("reads a landing back, not found, down, or outside its shape", async () => {
-    const host = createIdentityHost([]);
+    const host = createIdentityHost([], identityChains());
     const registry = testRegistry();
     const landed = registry.land(registry.build({ wallet: testAccount, file }));
     await expect(
@@ -88,7 +99,7 @@ describe("the identity host", () => {
 
   it("names the registry it runs on a chain and the calls it declares", () => {
     const registry = testRegistry();
-    const host = createIdentityHost([registry]);
+    const host = createIdentityHost([registry], identityChains());
     expect(host.registryOn(registry.chain)).toBe(registry);
     expect(host.registryOn(accountRefSchema.parse("fake:2:0x01").slice(0, 6) as never)).toBe(
       undefined,

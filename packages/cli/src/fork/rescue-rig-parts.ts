@@ -286,7 +286,7 @@ function executorOn(
       chains: selfHostedChains(),
       clock,
     }),
-    identity: createIdentityHost(parts.identityRegistries ?? []),
+    identity: createIdentityHost(parts.identityRegistries ?? [], selfHostedChains()),
   });
 }
 

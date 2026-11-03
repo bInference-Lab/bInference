@@ -1,3 +1,4 @@
+import { isSameAccount } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import type { IdentityRecord } from "../identity/identity-record.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
@@ -31,7 +32,7 @@ async function readBack(
     return read.error === "not_found" ? "mismatch" : undefined;
   }
   const { onchainId, owner, file } = read.value;
-  return owner === quote.wallet && file === quote.file
+  return isSameAccount(owner, quote.wallet, run.plan.chain.family) && file === quote.file
     ? { chain: run.plan.chain.ref, registry: quote.registry, onchainId, txHash: step.txHash, file }
     : "mismatch";
 }

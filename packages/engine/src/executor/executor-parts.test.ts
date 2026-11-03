@@ -238,7 +238,10 @@ describe("the queue check", () => {
     const bench = await startExecutorBench({ hold: true });
     const snapshot = await tappedSnapshot(bench);
     const chain = expectOk(identityChains().get(benchChain));
-    const parts = { ...checkPartsOf(bench), identity: createIdentityHost([testRegistry()]) };
+    const parts = {
+      ...checkPartsOf(bench),
+      identity: createIdentityHost([testRegistry()], identityChains()),
+    };
 
     const check = await checkForQueue(snapshot, { parts, chain }, live().signal);
 

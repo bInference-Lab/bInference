@@ -279,7 +279,7 @@ export function composeExecutor(options: ComposeExecutorOptions): ComposedExecut
     ...stakingOf(options),
     ...(options.identityRegistries === undefined
       ? {}
-      : { identity: createIdentityHost(options.identityRegistries) }),
+      : { identity: createIdentityHost(options.identityRegistries, options.chains) }),
   });
   return { executor, health: () => health.state() };
 }

@@ -85,7 +85,7 @@ function identityPathOf(options: EngineOptions, path: MoneyPathOptions): Identit
   const { stores, chainSimulator, identity } = options;
   return {
     ...path,
-    identity: createIdentityHost(identity?.registries ?? []),
+    identity: createIdentityHost(identity?.registries ?? [], options.chains),
     identities: stores.identities,
     install: stores.install,
     simulator: chainSimulator,

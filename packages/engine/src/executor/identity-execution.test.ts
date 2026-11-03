@@ -120,7 +120,7 @@ async function benchWith(
       identity: { registries: [landing], version: testVersion },
       chainSimulator: registrySimulator(registry),
     },
-    routing: { chains, identity: createIdentityHost([landing]) },
+    routing: { chains, identity: createIdentityHost([landing], chains) },
   });
   holdIdentityWallet(bench.test, registry);
   return bench;
@@ -247,6 +247,22 @@ describe("an identity registration on its wallet's queue", () => {
     );
     expect(got.registration?.onchainId).toBe("0");
     expect(notices(bench)).toStrictEqual([]);
+  });
+
+  it("stores the identity when the registry reads its holder back in another case", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry, {
+      after: () => {
+        registry.tamper("0", { owner: accountRefSchema.parse("fake:1:0x0000000C") });
+      },
+    });
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    const got = expectOk(
+      await bench.test.engine.handlers["identity/get"](testCall({ agent: testAgent })),
+    );
+    expect(got.registration?.onchainId).toBe("0");
   });
 
   it("stores no identity and tells the owner when the registry reads back another file", async () => {

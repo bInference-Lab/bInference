@@ -43,7 +43,7 @@ export interface IdentityHandlersOptions {
 export function createIdentityHandlers(options: IdentityHandlersOptions): IdentityHandlers {
   const allowing = {
     ...options.ceilingParts,
-    identity: createIdentityHost(options.registries),
+    identity: createIdentityHost(options.registries, options.chains),
     identities: options.identities,
   };
   return {

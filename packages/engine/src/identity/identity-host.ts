@@ -1,4 +1,12 @@
-import type { AccountRef, ChainRef, SimulatedStep, TxDraft, TxHash } from "@binference/chain";
+import {
+  type AccountRef,
+  type ChainRef,
+  type ChainRegistry,
+  isSameAccount,
+  type SimulatedStep,
+  type TxDraft,
+  type TxHash,
+} from "@binference/chain";
 import {
   type IdentityRegistry,
   type IdentityStanding,
@@ -63,22 +71,37 @@ async function hosted<T>(
   }
 }
 
-function holdsBuild(registry: IdentityRegistry, draft: TxDraft, request: IdentityBuild): boolean {
+// Whether the draft registers the request's file from its wallet on the registry's chain, the
+// wallet compared as the chain's family compares accounts.
+function holdsBuild(
+  chains: ChainRegistry,
+  checked: { readonly registry: IdentityRegistry; readonly draft: TxDraft },
+  request: IdentityBuild,
+): boolean {
+  const { registry, draft } = checked;
+  const chain = chains.get(registry.chain);
   try {
     const decoded = registry.decode(draft);
     return (
+      chain.ok &&
       decoded.ok &&
       decoded.value.file === request.file &&
-      draft.from === request.wallet &&
-      draft.chain === registry.chain
+      draft.chain === registry.chain &&
+      isSameAccount(draft.from, request.wallet, chain.value.family)
     );
   } catch {
     return false;
   }
 }
 
-/** Creates the identity host over the registries the engine runs. */
-export function createIdentityHost(registries: readonly IdentityRegistry[]): IdentityHost {
+/**
+ * Creates the identity host over the registries the engine runs, on the chain registry, whose
+ * families compare the accounts a plugin answers.
+ */
+export function createIdentityHost(
+  registries: readonly IdentityRegistry[],
+  chains: ChainRegistry,
+): IdentityHost {
   return {
     registries,
     registryOn: (chain) => registries.find((registry) => registry.chain === chain),
@@ -95,14 +118,14 @@ export function createIdentityHost(registries: readonly IdentityRegistry[]): Ide
       try {
         const file = registrationFileSchema.safeParse(request.file);
         const draft = file.success ? registry.build(request) : undefined;
-        return draft !== undefined && holdsBuild(registry, draft, request)
+        return draft !== undefined && holdsBuild(chains, { registry, draft }, request)
           ? ok(draft)
           : err("decode_mismatch");
       } catch {
         return err("decode_mismatch");
       }
     },
-    holds: holdsBuild,
+    holds: (registry, draft, request) => holdsBuild(chains, { registry, draft }, request),
     minted: (registry, step, wallet) => {
       try {
         return registry.minted(step, wallet);

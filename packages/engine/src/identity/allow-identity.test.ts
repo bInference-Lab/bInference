@@ -32,7 +32,7 @@ function partsOf(test: TestEngine, stored?: IdentityRecord): AllowIdentityOption
     clock: test.clock,
     publish: test.engineOptions.publish,
     journal: test.stores.configJournal,
-    identity: createIdentityHost([testRegistry()]),
+    identity: createIdentityHost([testRegistry()], identityChains()),
     identities: { get: async () => Promise.resolve(stored) },
   };
 }
@@ -105,7 +105,7 @@ describe("an agent's opt-in to an identity", () => {
 
   it("is kind_unavailable on an engine that runs no identity registry", async () => {
     const test = await started();
-    const parts = { ...partsOf(test), identity: createIdentityHost([]) };
+    const parts = { ...partsOf(test), identity: createIdentityHost([], identityChains()) };
     const call = testCall({ agent: testAgent, ownerKey: fakeOwnerKeyCode });
 
     await expect(allowIdentity(parts, call)).resolves.toStrictEqual({
