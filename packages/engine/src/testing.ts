@@ -36,6 +36,11 @@ export { modelUsageStoreContract } from "./contracts/model-usage-store-contract.
 export { bridgeStoreContract } from "./contracts/bridge-store-contract.js";
 export type { BridgeStoreHarness, BridgeStoreSubject } from "./contracts/bridge-store-contract.js";
 export { dailySummaryStoreContract } from "./contracts/daily-summary-store-contract.js";
+export { identityStoreContract } from "./contracts/identity-store-contract.js";
+export type {
+  IdentityStoreHarness,
+  IdentityStoreSubject,
+} from "./contracts/identity-store-contract.js";
 export { unbondingStoreContract } from "./contracts/unbonding-store-contract.js";
 export type {
   UnbondingStoreHarness,

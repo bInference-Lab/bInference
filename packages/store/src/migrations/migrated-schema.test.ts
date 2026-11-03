@@ -100,7 +100,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   ceilings: names("wallet_id policy_id policy per_tx_native read_at version"),
   nonces: names("account next_nonce changed_at"),
-  identities: names("agent_id chain registry onchain_id tx_hash registered_at"),
+  identities: names("agent_id chain registry onchain_id tx_hash registered_at file"),
   intents: names(
     "id agent_id wallet_id kind state reason request plan quote risk simulation authorized_by " +
       "outside_content paper proposer created_at changed_at version value_usd_micros assets " +

@@ -19,8 +19,8 @@ import {
 
 /**
  * The {@link IntentStore} on `engine.sqlite`: each call runs one store task, and each write runs
- * in one transaction with its event, ledger entry and card writes; a freeze writes its agents and
- * every move in one.
+ * in one transaction with its event, ledger entry and card writes, a registration's identity
+ * among them; a freeze writes its agents and every move in one.
  */
 export function createSqliteIntentStore(host: StoreHost): IntentStore {
   const assetDocuments = bindTask(host, assetDocumentsTask);

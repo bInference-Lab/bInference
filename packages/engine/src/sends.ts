@@ -16,6 +16,8 @@ export type {
   DepartureRecord,
   DepartureWrite,
 } from "./positions/departure-record.js";
+export { identityRecordSchema, type IdentityRecord } from "./identity/identity-record.js";
+export type { IdentityStore } from "./identity/ports.js";
 export { recheckName, type CardName, type NameRecheck } from "./names/recheck-name.js";
 export { movedBridge } from "./bridges/bridge-move.js";
 export {

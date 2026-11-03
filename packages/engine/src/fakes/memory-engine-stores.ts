@@ -10,6 +10,7 @@ import { createMemoryCardCopyStore } from "./memory-card-copy-store.js";
 import { createMemoryConfigJournal } from "./memory-config-journal.js";
 import { createMemoryDailySummaryStore } from "./memory-daily-summary-store.js";
 import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
+import { createMemoryIdentityStore } from "./memory-identity-store.js";
 import { createMemoryInboxStore } from "./memory-inbox-store.js";
 import { createMemoryInstallStore, type MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentStore, type MemoryIntentStore } from "./memory-intent-store.js";
@@ -90,5 +91,6 @@ export function createMemoryEngineStores(): MemoryEngineStores {
       hasIntent: (id) => intents.intentNow(id) !== undefined,
     }),
     webhookAlerts: createMemoryWebhookAlertStore({ inbox }),
+    identities: createMemoryIdentityStore(intents),
   };
 }

@@ -2,6 +2,7 @@ import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/
 import { intentStateSchema } from "@binference/protocol";
 import { z } from "zod";
 import { type AgentInboxMessage, agentInboxMessageSchema } from "../chat/agent-inbox-record.js";
+import { type IdentityRecord, identityRecordSchema } from "../identity/identity-record.js";
 import {
   type LedgerDraft,
   ledgerDraftSchema,
@@ -77,6 +78,12 @@ export interface IntentChange {
    * moves under their versions and the fill's row.
    */
   readonly order?: OrderFillWrite;
+  /**
+   * The agent's identity a `registerIdentity` intent stores with its move to `reconciled`, once the
+   * registry read it back (decision 0335). An agent that holds one already throws
+   * `store.constraint`, and nothing is written.
+   */
+  readonly identity?: IdentityRecord;
 }
 
 /** Parses an intent change. */
@@ -92,6 +99,7 @@ export const intentChangeSchema: z.ZodType<IntentChange> = z.strictObject({
   closeCard: cardVersionClosingSchema.exactOptional(),
   confirmation: confirmationDraftSchema.exactOptional(),
   order: orderFillWriteSchema.exactOptional(),
+  identity: identityRecordSchema.exactOptional(),
 });
 
 /**

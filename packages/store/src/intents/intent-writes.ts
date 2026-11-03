@@ -20,6 +20,7 @@ import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-f
 import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
 import { writeCardChanges } from "./card-writes.js";
+import { insertIdentity } from "./identity-rows.js";
 import { toIntentEvent, toIntentRecord } from "./intent-rows.js";
 
 interface EventDraft {
@@ -167,8 +168,8 @@ function checkFillWrite(database: DatabaseSync, change: IntentChange): Result<un
 
 /**
  * Moves an intent when its stored version is the one the mover read: its new state and parts,
- * the event, the ledger entry and the card writes, and a fill's order moves and row, all in the
- * caller's transaction.
+ * the event, the ledger entry and the card writes, a fill's order moves and row, and a
+ * registration's identity, all in the caller's transaction.
  */
 export function moveIntent(
   database: DatabaseSync,
@@ -205,6 +206,9 @@ export function moveIntent(
     atMs: change.atMs,
   });
   const committed = commitOf(database, { intent: moved, event }, ledgerEntry);
+  if (change.identity !== undefined) {
+    insertIdentity(database, change.identity);
+  }
   const { order } = change;
   if (order === undefined) {
     return ok(committed);

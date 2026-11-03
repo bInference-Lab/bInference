@@ -56,6 +56,7 @@ import { migration as rescueReach } from "./0054_rescue_reach.js";
 import { migration as stakeUnbondings } from "./0055_stake_unbondings.js";
 import { migration as unbondingsClosedOutside } from "./0056_unbondings_closed_outside.js";
 import { migration as webhookAlerts } from "./0057_webhook_alerts.js";
+import { migration as identities } from "./0058_identities.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -116,4 +117,5 @@ export const engineMigrations: readonly Migration[] = [
   stakeUnbondings,
   unbondingsClosedOutside,
   webhookAlerts,
+  identities,
 ];

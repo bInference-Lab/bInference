@@ -32,8 +32,20 @@ export interface WalletsTable {
   role: Generated<string>;
 }
 
-/** The wallet tables the store adapters query, by name. */
+// `identities`: each agent's one identity in a chain's identity registry (migration 0058).
+interface IdentitiesTable {
+  agent_id: string;
+  chain: string;
+  registry: string;
+  onchain_id: string;
+  tx_hash: string;
+  registered_at: number;
+  file: string;
+}
+
+/** The wallet tables the store adapters query, by name, with the agents' identities. */
 export interface WalletTables {
   wallets: WalletsTable;
   ceilings: CeilingsTable;
+  identities: IdentitiesTable;
 }

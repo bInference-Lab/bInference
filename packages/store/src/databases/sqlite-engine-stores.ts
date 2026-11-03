@@ -10,6 +10,7 @@ import { createSqliteAliveStore } from "../downtime/sqlite-alive-store.js";
 import { createSqliteIdempotencyStore } from "../ingress/sqlite-idempotency-store.js";
 import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
 import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
+import { createSqliteIdentityStore } from "../intents/sqlite-identity-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
 import { createSqliteLaunchStore } from "../launches/sqlite-launch-store.js";
 import { createSqliteTrackedWalletStore } from "../leaders/sqlite-tracked-wallet-store.js";
@@ -59,5 +60,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     bridges: createSqliteBridgeStore(host),
     unbondings: createSqliteUnbondingStore(host),
     webhookAlerts: createSqliteWebhookAlertStore(host),
+    identities: createSqliteIdentityStore(host),
   };
 }

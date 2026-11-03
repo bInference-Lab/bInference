@@ -6,6 +6,7 @@ import {
   stableJson,
 } from "@binference/core";
 import type { IntentWrite } from "../confirmations/stored-intent.js";
+import type { IdentityRecord } from "../identity/identity-record.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
 import type { OrderFillWrite } from "../orders/order-fill.js";
 import { type Sha256Hex, sha256Hex } from "../records/sha256-hex.js";
@@ -48,6 +49,8 @@ export interface IntentMove extends IntentWrite {
   readonly named?: ReasonNamed;
   /** An auto order fill's write on its order, stored with the move (spec 6, section 5). */
   readonly order?: OrderFillWrite;
+  /** The identity a registration stores with its move to `reconciled` (decision 0335). */
+  readonly identity?: IdentityRecord;
 }
 
 /** What a move is stored against: the intent as read, and where new ids come from. */
@@ -246,5 +249,6 @@ export function changeOf(move: IntentMove, context: MoveContext): IntentChange {
     ...cards,
     ...(confirmation === undefined ? {} : { confirmation }),
     ...(move.order === undefined ? {} : { order: move.order }),
+    ...(move.identity === undefined ? {} : { identity: move.identity }),
   };
 }

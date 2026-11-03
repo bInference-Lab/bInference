@@ -1,4 +1,5 @@
 import { BinferenceError, type Id } from "@binference/core";
+import type { IdentityRecord } from "../identity/identity-record.js";
 import type { CardRecord } from "../intents/card-record.js";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
 import type { IntentChange, IntentEventRecord } from "../intents/intent-change.js";
@@ -16,11 +17,16 @@ export interface MemoryIntentTables {
   readonly cards: (id: Id<"int">) => readonly CardRecord[];
   readonly cardByRef: (callbackRef: string) => CardRecord | undefined;
   readonly confirmation: (id: Id<"int">) => StoredConfirmation | undefined;
-  /** Throws, before anything is written, when a move's card or confirmation write would fail. */
+  /**
+   * Throws, before anything is written, when a move's card, confirmation or identity write would
+   * fail: an identity of an agent that holds one already.
+   */
   readonly checkCardWrites: (change: IntentChange) => void;
   readonly saveIntent: (intent: IntentRecord) => void;
+  /** Saves a move's card, confirmation and identity writes. */
   readonly saveCardWrites: (change: IntentChange) => void;
   readonly addEvent: (event: Omit<IntentEventRecord, "id">) => IntentEventRecord;
+  readonly identityOf: (agent: Id<"agt">) => IdentityRecord | undefined;
 }
 
 function checkOpenCard(cards: readonly CardRecord[], change: IntentChange): void {
@@ -76,6 +82,7 @@ export function createMemoryIntentTables(): MemoryIntentTables {
   const events: IntentEventRecord[] = [];
   let cards: readonly CardRecord[] = [];
   const confirmations = new Map<Id<"int">, StoredConfirmation>();
+  const identities = new Map<Id<"agt">, IdentityRecord>();
   return {
     intent: (id) => structuredClone(intents.get(id)),
     intents: () => structuredClone([...intents.values()]),
@@ -88,6 +95,9 @@ export function createMemoryIntentTables(): MemoryIntentTables {
       checkCloseCard(cards, change);
       checkOpenCard(cards, change);
       checkConfirmation(cards, confirmations, change);
+      if (change.identity !== undefined && identities.has(change.identity.agentId)) {
+        throw constraintFault(`agent ${change.identity.agentId} holds an identity already`);
+      }
     },
     saveIntent: (intent) => intents.set(intent.id, structuredClone(intent)),
     saveCardWrites(change) {
@@ -97,7 +107,11 @@ export function createMemoryIntentTables(): MemoryIntentTables {
       if (confirmation !== undefined) {
         confirmations.set(change.id, { ...confirmation, intentId: change.id, atMs: change.atMs });
       }
+      if (change.identity !== undefined) {
+        identities.set(change.identity.agentId, structuredClone(change.identity));
+      }
     },
+    identityOf: (agent) => structuredClone(identities.get(agent)),
     addEvent(event) {
       const stored = { ...structuredClone(event), id: events.length + 1 };
       events.push(stored);

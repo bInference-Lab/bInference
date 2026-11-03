@@ -12,6 +12,7 @@ import { idempotencyTasks } from "../ingress/idempotency-tasks.js";
 import { inboxTasks } from "../ingress/inbox-tasks.js";
 import { installTasks } from "../install/sqlite-install-store.js";
 import { intentTasks } from "../intents/intent-tasks.js";
+import { identityTasks } from "../intents/sqlite-identity-store.js";
 import { launchTasks } from "../launches/sqlite-launch-store.js";
 import { leaderTasks } from "../leaders/sqlite-tracked-wallet-store.js";
 import { ledgerTasks } from "../ledger/ledger-tasks.js";
@@ -39,6 +40,7 @@ export const engineDatabase: DatabaseDefinition = {
   migrations: engineMigrations,
   tasks: [
     ...intentTasks,
+    ...identityTasks,
     ...orderTasks,
     ...ledgerTasks,
     ...idempotencyTasks,

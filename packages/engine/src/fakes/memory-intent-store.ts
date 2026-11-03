@@ -1,4 +1,5 @@
 import { err, type Id, ok, type Result } from "@binference/core";
+import type { IdentityRecord } from "../identity/identity-record.js";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
 import type { ConfirmedIntent, ConfirmedQuery } from "../intents/confirmed-intent.js";
 import type { FreezeCommit, FreezeWrite } from "../intents/freeze-write.js";
@@ -43,6 +44,8 @@ export interface MemoryIntentStore extends IntentStore {
   confirmationNow(id: Id<"int">): StoredConfirmation | undefined;
   /** The intent as it stands now, or `undefined`. */
   intentNow(id: Id<"int">): IntentRecord | undefined;
+  /** The agent's identity a move stored, or `undefined`. */
+  identityNow(agent: Id<"agt">): IdentityRecord | undefined;
 }
 
 function appendTo(
@@ -339,5 +342,6 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
     cardByRef: async (callbackRef, call) => memoryCall(call, () => tables.cardByRef(callbackRef)),
     byDraftRef: async (draftRef, call) =>
       memoryCall(call, () => tables.intents().find((intent) => intent.draftRef === draftRef)),
+    identityNow: (agent) => tables.identityOf(agent),
   };
 }

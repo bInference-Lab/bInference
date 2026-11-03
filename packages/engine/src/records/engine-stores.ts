@@ -3,6 +3,7 @@ import type { ModelUsageStore } from "../billing/ports.js";
 import type { BridgeStore } from "../bridges/ports.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
 import type { AliveStore } from "../downtime/ports.js";
+import type { IdentityStore } from "../identity/ports.js";
 import type { InboxStore } from "../ingress/ports.js";
 import type { LaunchStore } from "../launches/ports.js";
 import type { TrackedWalletStore } from "../leaders/ports.js";
@@ -73,4 +74,6 @@ export interface EngineStores {
   readonly unbondings: UnbondingStore;
   /** The webhook rules as the listener reads them, and each alert their URLs took. */
   readonly webhookAlerts: WebhookAlertStore;
+  /** Each agent's identity in a chain's identity registry (decision 0335). */
+  readonly identities: IdentityStore;
 }
