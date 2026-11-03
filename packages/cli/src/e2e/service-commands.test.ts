@@ -102,6 +102,7 @@ describe("binference start as the background service", () => {
       description: "binference engine",
       program: join(folder, "bin", "node"),
       args: [
+        "--disable-sigusr1",
         ...workerExecArgv,
         join(folder, "bin", "binference.mjs"),
         "start",

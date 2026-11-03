@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { Platform, ServiceDefinition } from "@binference/platform";
+import { engineDebugSwitch } from "@binference/plugin-host";
 import type { CliHost } from "../program/cli-host.js";
 
 /**
@@ -28,7 +29,9 @@ export function serviceLogFile(platform: Platform): string {
 
 /**
  * The background service of the state folder: `binference start --foreground` with this run's
- * `--set` flags, run by the same Node, with the same Node options, from the state folder. The OS
+ * `--set` flags, run by the same Node, with the same Node options and `--disable-sigusr1`, so no
+ * process of the machine can open the engine's debugger with a signal (decision 0343), from the
+ * state folder. The OS
  * waits the shutdown sequence's budget and a margin for it to exit, at most 120 seconds.
  */
 export function engineServiceDefinition(
@@ -38,11 +41,14 @@ export function engineServiceDefinition(
 ): ServiceDefinition {
   const { entry } = host;
   const sets = options.sets.flatMap((set) => ["--set", set]);
+  const nodeOptions = entry.nodeOptions.includes(engineDebugSwitch)
+    ? entry.nodeOptions
+    : [engineDebugSwitch, ...entry.nodeOptions];
   return {
     name: engineServiceName,
     description: "binference engine",
     program: entry.node,
-    args: [...entry.nodeOptions, entry.script, "start", "--foreground", ...sets],
+    args: [...nodeOptions, entry.script, "start", "--foreground", ...sets],
     workingFolder: platform.stateFolder.root,
     logFile: serviceLogFile(platform),
     stopTimeoutMs: Math.min(options.shutdownBudgetMs + exitMarginMs, maxStopTimeoutMs),

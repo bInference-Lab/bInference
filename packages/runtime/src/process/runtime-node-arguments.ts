@@ -13,8 +13,8 @@ const databaseSuffixes = ["", "-wal", "-shm", "-journal"] as const;
  * permission model, which lets it read the program it runs and the store worker bundled beside it,
  * read and write `agent.sqlite` and SQLite's files beside it, each path named alone, start the
  * store's worker threads, and use the network alone, for the engine's IPC socket and the model
- * providers; code from strings off; then the built entry, `runtime-process.mjs`, by its real path
- * with no link on the way. It may start no child process. The engine starts `process.execPath`
+ * providers; its debugger's signal off (decision 0343); code from strings off; then the built
+ * entry, `runtime-process.mjs`, by its real path with no link on the way. It may start no child process. The engine starts `process.execPath`
  * with these arguments, an empty environment and pipes for standard input and output.
  */
 export function runtimeNodeArguments(entry: string, files: RuntimeFiles): readonly string[] {
@@ -26,6 +26,7 @@ export function runtimeNodeArguments(entry: string, files: RuntimeFiles): readon
     `--allow-fs-read=${join(dirname(entry), "agent.worker.mjs")}`,
     ...database.map((file) => `--allow-fs-read=${file}`),
     ...database.map((file) => `--allow-fs-write=${file}`),
+    "--disable-sigusr1",
     "--disallow-code-generation-from-strings",
     entry,
   ];

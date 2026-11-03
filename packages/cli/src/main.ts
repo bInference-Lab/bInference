@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S node --disable-sigusr1
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { programFolders, readSystemFacts, readTextFile } from "@binference/platform";

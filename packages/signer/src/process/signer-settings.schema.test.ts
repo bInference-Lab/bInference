@@ -44,9 +44,10 @@ describe("signer settings", () => {
     expect(readSignerSettings("chains=eip155:56")).toBeUndefined();
   });
 
-  it("starts the entry under the permission model with no grant and code from strings off", () => {
+  it("starts the entry under the permission model with no grant, its debug signal and code from strings off", () => {
     expect(signerNodeArguments("/opt/binference/signer-process.mjs")).toStrictEqual([
       "--permission",
+      "--disable-sigusr1",
       "--disallow-code-generation-from-strings",
       "/opt/binference/signer-process.mjs",
     ]);
