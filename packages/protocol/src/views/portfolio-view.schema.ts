@@ -75,6 +75,11 @@ interface InTransitView {
   readonly amount: Amount;
   readonly usdMicros?: bigint;
   readonly toChain: ChainRef;
+  /**
+   * The destination chain's name as the bridge's card named it, such as Base. An older engine
+   * leaves it out; a surface then names the chain by `toChain`.
+   */
+  readonly chainName?: string;
   readonly recipient: AccountRef;
   readonly sentAt: number;
   readonly late: boolean;
@@ -131,6 +136,7 @@ const inTransitViewSchema: z.ZodType<InTransitView> = z.object({
   amount: amountSchema,
   usdMicros: decimalStringSchema.exactOptional(),
   toChain: chainRefSchema,
+  chainName: z.string().min(1).max(200).exactOptional(),
   recipient: accountRefSchema,
   sentAt: epochMsSchema,
   late: z.boolean(),

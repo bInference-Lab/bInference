@@ -1,5 +1,6 @@
 import type { AccountRef, Amount, ChainRef } from "@binference/chain";
 import type { Id } from "@binference/core";
+import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { IntentStore } from "../ports.js";
 import { type BridgeCursor, type BridgeRecord, openBridgeStates } from "./bridge-record.js";
 import type { BridgeStore } from "./ports.js";
@@ -14,6 +15,8 @@ export interface TransitHolding {
   readonly amount: Amount;
   readonly usdMicros?: bigint;
   readonly toChain: ChainRef;
+  /** The destination chain's name as the bridge's quote holds it, which its card showed. */
+  readonly chainName?: string;
   readonly recipient: AccountRef;
   readonly sentAtMs: number;
   readonly late: boolean;
@@ -53,7 +56,7 @@ async function openBridges(
 
 /**
  * The bridges in transit or late of the wallets named, the oldest deposit first (decision 0329):
- * each bridge's wallet is its intent's. Bridges are live only, so a paper portfolio has none.
+ * each bridge's wallet is its intent's, and its destination's name its quote's. Bridges are live only, so a paper portfolio has none.
  */
 export async function bridgesInTransit(
   parts: TransitParts,
@@ -71,6 +74,11 @@ export async function bridgesInTransit(
         return [];
       }
       const { valueUsdMicros } = bridge;
+      const { quote } = intent;
+      const chainName =
+        intent.kind === "bridge" && quote !== undefined
+          ? bridgeQuoteDocument.decode(quote).chainName
+          : undefined;
       return [
         {
           intentId: bridge.intentId,
@@ -78,6 +86,7 @@ export async function bridgesInTransit(
           amount: bridge.sent,
           ...(valueUsdMicros === undefined ? {} : { usdMicros: valueUsdMicros }),
           toChain: bridge.toChain,
+          ...(chainName === undefined ? {} : { chainName }),
           recipient: bridge.recipient,
           sentAtMs: bridge.sentAtMs,
           late: bridge.state === "late",

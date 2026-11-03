@@ -1238,7 +1238,8 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   chain's read found the bridge paying the wallet back (`refundTx`). `statusUrl` is the venue's own
   page for the deposit.
 - `PortfolioView`:
-  `{ balances: [{ wallet, amount, usdMicros?, paper }], positions: [{ wallet, asset, quantity, costUsdMicros, realizedUsdMicros, unrealizedUsdMicros?, paper }], totalUsdMicros, paperTotalUsdMicros?, assets, staking?: [StakingPositionView], inTransit?: [{ intent, wallet, amount, usdMicros?, toChain, recipient, sentAt, late }] }`.
+  `{ balances: [{ wallet, amount, usdMicros?, paper }], positions: [{ wallet, asset, quantity, costUsdMicros, realizedUsdMicros, unrealizedUsdMicros?, paper }], totalUsdMicros, paperTotalUsdMicros?, assets, staking?: [StakingPositionView], inTransit?: [{ intent, wallet, amount, usdMicros?, toChain, chainName?, recipient, sentAt, late }] }`.
+  `chainName` names the destination chain as the bridge's card did, such as Base.
   A staked position counts once, at its `stakedValue`, its unbonding and claimable amounts beside
   it. A bridge in transit counts once, at the value its units left their position with, until its
   delivery read, when it leaves the agent, or its refund, which arrives back at its value
@@ -1363,7 +1364,7 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   - An intent's `kind` has a new value, `webhookRule`, the card of a webhook rule. A client that
     meets a kind it does not know shows the card's lines from `intent/card`.
   - `IntentView.resolvedName`, `IntentView.delivery` and `IntentView.bridgeReceipt`, `PortfolioView.staking` and
-    `PortfolioView.inTransit`, `WebhookRuleView.ratePerMinute`, `lastAlertAt`, `intent` and
+    `PortfolioView.inTransit` with its `chainName`, `WebhookRuleView.ratePerMinute`, `lastAlertAt`, `intent` and
     `summary`, `webhookRule/list`'s `assets`, `address/list`'s `room`, `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet`, and `engine/status`'s `debugSignalOff` are new optional
     fields.
   - `AlertView.state` has a new value, `ended`, beside `active`, `fired` and `deleted`: an alert

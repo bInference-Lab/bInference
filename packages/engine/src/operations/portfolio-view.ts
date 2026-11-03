@@ -98,13 +98,14 @@ function stakingViewOf(held: StakeHolding): StakingView {
 }
 
 function inTransitViewOf(held: TransitHolding): InTransitView {
-  const { usdMicros } = held;
+  const { usdMicros, chainName } = held;
   return {
     intent: held.intentId,
     wallet: held.walletId,
     amount: held.amount,
     ...(usdMicros === undefined ? {} : { usdMicros }),
     toChain: held.toChain,
+    ...(chainName === undefined ? {} : { chainName }),
     recipient: held.recipient,
     sentAt: held.sentAtMs,
     late: held.late,

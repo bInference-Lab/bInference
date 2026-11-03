@@ -228,6 +228,7 @@ export const portfolioView: WireObject = {
       amount: tokenAmount,
       usdMicros: "20000000",
       toChain: "fake:2",
+      chainName: "Fake Two",
       recipient: "fake:2:0x0000000c",
       sentAt: at,
       late: false,

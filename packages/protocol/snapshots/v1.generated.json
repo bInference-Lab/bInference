@@ -9588,6 +9588,11 @@
                   "toChain": {
                     "type": "string"
                   },
+                  "chainName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
                   "recipient": {
                     "type": "string"
                   },
@@ -10553,6 +10558,11 @@
                   },
                   "toChain": {
                     "type": "string"
+                  },
+                  "chainName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
                   },
                   "recipient": {
                     "type": "string"

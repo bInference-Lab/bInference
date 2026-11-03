@@ -2,6 +2,7 @@ import { accountRefSchema, assetRefSchema, chainRefSchema, isTxHash } from "@bin
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
+import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { BridgeQuery, BridgeRecord } from "./bridge-record.js";
 import { bridgesInTransit } from "./bridges-in-transit.js";
@@ -90,6 +91,34 @@ describe("the bridges in transit", () => {
         late: false,
       },
     ]);
+  });
+
+  it("names each bridge's destination chain as its quote does", async () => {
+    const { parts } = partsOf();
+    const amount = { asset: token, base: 2n };
+    const quote = bridgeQuoteDocument.encode({
+      venue: "fake-bridge",
+      chainName: "Base",
+      amount,
+      recipient,
+      recipientBytes: "0x0c",
+      expectedOut: amount,
+      minOut: amount,
+      fees: [],
+      etaSeconds: 60,
+      quotedAtMs: 1,
+      expiresAtMs: 60_001,
+      deposit: { kind: "bound", contract: recipient, destinationId: "2" },
+    });
+    const named = {
+      ...parts,
+      intents: {
+        get: async () => Promise.resolve({ walletId: ours, kind: "bridge", quote } as IntentRecord),
+      },
+    };
+    const held = await bridgesInTransit(named, new Set([ours]), live);
+    expect(held.map(({ chainName }) => chainName)).toStrictEqual(held.map(() => "Base"));
+    expect(held).toHaveLength(250);
   });
 
   it("reads nothing for no wallet", async () => {
