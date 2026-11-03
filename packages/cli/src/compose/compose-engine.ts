@@ -46,6 +46,7 @@ import { composeServer } from "./compose-server.js";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
 import { composeWebPush, type WebPushParts } from "./compose-web-push.js";
 import { consoleOriginCell } from "./console-origin.js";
+import { chainPartsOf, type EngineChainParts } from "./engine-chain-parts.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
 
@@ -67,9 +68,6 @@ export type EngineParts = Pick<
 >;
 
 /** What the token risk step runs on besides the venue host. */
-// The engine's options a bridge needs: its bridges, its destinations and their readers.
-type BridgingKey = "bridges" | "destinations" | "codeReaders" | "deliveryReaders";
-
 interface RiskParts {
   readonly cache: RiskCacheStore;
   /** How long a source's report holds: config's `risk.cacheTtlSec`, in milliseconds. */
@@ -79,7 +77,7 @@ interface RiskParts {
 }
 
 /** What the engine and its protocol server are built from besides the profile parts. */
-export interface ComposeEngineOptions {
+export interface ComposeEngineOptions extends EngineChainParts {
   readonly chains: ChainRegistry;
   /**
    * The launchpads the registry lists, on each chain, as running a launch's first buy inside its
@@ -120,17 +118,6 @@ export interface ComposeEngineOptions {
   readonly liveOrderFills?: boolean;
   /** Whether a launch feed runs, whose records `market/scan` reads (decision 0256). */
   readonly launchFeed?: boolean;
-  /** The name resolvers `name/resolve` and sends by name ask; every name is refused without. */
-  readonly nameResolvers?: EngineOptions["nameResolvers"];
-  /** The chains a bridge delivers to, where an address may be saved too; none when absent. */
-  readonly destinations?: EngineOptions["destinations"];
-  /**
-   * The bridges, the chains they deliver to, the code readers and the delivery readers; nothing
-   * bridges without them.
-   */
-  readonly bridging?: Pick<EngineOptions, BridgingKey>;
-  /** The staking venues, each on its chain; nothing stakes without them (decision 0327). */
-  readonly stakingVenues?: EngineOptions["stakingVenues"];
   /** The quote assets, whose leader buys no copy order follows (decision 0260). */
   readonly quoteAssets?: EngineOptions["quoteAssets"];
   /** Reads what a token the registry does not list answers on chain, for its cards. */
@@ -267,20 +254,6 @@ function custodyPartsOf(parts: EngineParts) {
   };
 }
 
-// Where the engine finds an address and bridges to one: the name resolvers, the chains a bridge
-// delivers to, and the bridges with their readers and the log of their follower.
-function addressPartsOf(
-  options: Pick<ComposeEngineOptions, "nameResolvers" | "destinations" | "bridging" | "logger">,
-): Pick<EngineOptions, "nameResolvers" | BridgingKey | "bridgeLog"> {
-  const { nameResolvers, destinations, bridging, logger } = options;
-  return {
-    ...(nameResolvers === undefined ? {} : { nameResolvers }),
-    ...(destinations === undefined ? {} : { destinations }),
-    ...bridging,
-    ...(bridging === undefined ? {} : { bridgeLog: logger.child("bridges") }),
-  };
-}
-
 // The engine on the profile parts, its venue host and risk check, publishing through `publish`.
 function engineOf(
   parts: EngineParts,
@@ -313,8 +286,7 @@ function engineOf(
     canPrice: options.canPrice,
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
-    ...addressPartsOf(options),
-    stakingVenues: options.stakingVenues ?? [],
+    ...chainPartsOf(options),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     readTokenFacts: options.readTokenFacts,
     ...(options.readTokenCode === undefined ? {} : { launchTokenCode: options.readTokenCode }),
