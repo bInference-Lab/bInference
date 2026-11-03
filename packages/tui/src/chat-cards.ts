@@ -34,6 +34,15 @@ async function writtenText(context: ChatContext, view: IntentView): Promise<stri
     const scope = request.agent === undefined ? "install" : "agent";
     return context.words("tui.card.unfrozen", { scope });
   }
+  if (request.kind === "webhookRule") {
+    const rules = context.client.call("webhookRule/list", {}, callOptions(context));
+    // A rule the list no longer holds ended before the tap; a failed read leaves its state unsaid.
+    const outcome = await rules.then(
+      ({ items }) => items.find(({ rule }) => rule === request.rule)?.state ?? "ended",
+      () => "unread",
+    );
+    return context.words("tui.card.webhookRuleConfirmed", { outcome });
+  }
   if (request.kind !== "autoOrder") {
     return undefined;
   }

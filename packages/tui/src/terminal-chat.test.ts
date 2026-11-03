@@ -265,6 +265,26 @@ describe("terminal chat", () => {
     ]);
   });
 
+  it("says whether a confirmed alert rule became active, from the rules as they stand", async () => {
+    const rule = "whr_0190f1c2-3a4b-7c5d-8e6f-000000000006";
+    const confirmed = { state: "reconciled", request: { kind: "webhookRule", rule } };
+    const outcomes = await Promise.all(
+      [[{ rule, state: "active" }], []].map(async (items) => {
+        const engine = cardEngine(confirmed);
+        const chat = await opened({ ...engine.answers, "webhookRule/list": () => ({ items }) });
+        chat.press(ctrlY);
+        await chat.settle();
+        chat.push("intent", "intent/changed", { intent });
+        await chat.settle();
+        return chat.rows().at(-2);
+      }),
+    );
+    expect(outcomes).toStrictEqual([
+      "Confirmed. The alert rule is active: its URL takes alerts now, and each fills on paper.",
+      "Confirmed. The alert rule did not start: it was deleted or expired first.",
+    ]);
+  });
+
   it("keeps a confirmed auto order confirmed when its order cannot be read", async () => {
     const confirmed = { state: "reconciled", request: { kind: "autoOrder", order } };
     const chat = await opened(cardEngine(confirmed).answers);
