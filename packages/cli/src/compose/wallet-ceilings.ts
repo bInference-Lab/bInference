@@ -1,16 +1,23 @@
 import {
+  type ChainRef,
   type ChainRegistry,
   isBridgeVenue,
   type VenueDeclaration,
   type WalletRole,
 } from "@binference/chain";
-import { BinferenceError } from "@binference/core";
-import { type HeldCaps, readCeiling } from "@binference/custody-privy";
-import type { InstallStore } from "@binference/engine/install";
+import { BinferenceError, err, ok, type Result } from "@binference/core";
+import {
+  type CeilingChainPlan,
+  type HeldCaps,
+  readCeiling,
+  registryCeilingChain,
+} from "@binference/custody-privy";
+import type { CeilingCalls, InstallStore } from "@binference/engine/install";
 import { z } from "zod";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { type CeilingDraft, ceilingRequestOf } from "../init/ceiling-request.js";
 import { launchPlansOf } from "./launch-plans.js";
+import { selfHostedBridgePlan } from "./self-hosted-destinations.js";
 
 /** What a new wallet's ceiling is planned from: the registry, the config and the venues run. */
 export interface WalletCeilingOptions {
@@ -23,29 +30,76 @@ export interface WalletCeilingOptions {
 /**
  * The venues a wallet's ceiling is planned from, among those this install runs: a bridge wallet's
  * every bridge venue, whichever venues the agent uses, so its ceiling always holds their deposits
- * (decision 0307); any other wallet's the venues named.
+ * (decision 0307); any other wallet's the venues named. A named venue the install does not run is
+ * `venue_not_run`, never left out, so no rewrite drops the rules of a venue it cannot plan.
  */
 export function ceilingVenuesOf(
   installed: readonly VenueDeclaration[],
   wallet: { readonly venues: readonly string[]; readonly role?: WalletRole | undefined },
-): readonly VenueDeclaration[] {
-  return wallet.role === "bridge"
-    ? installed.filter(isBridgeVenue)
-    : installed.filter((venue) => wallet.venues.includes(venue.id));
+): Result<readonly VenueDeclaration[], "venue_not_run"> {
+  if (wallet.role === "bridge") {
+    return ok(installed.filter(isBridgeVenue));
+  }
+  const run = new Set(installed.map((venue) => venue.id));
+  return wallet.venues.every((venue) => run.has(venue))
+    ? ok(installed.filter((venue) => wallet.venues.includes(venue.id)))
+    : err("venue_not_run");
+}
+
+/**
+ * What a contract call may do on a chain a ceiling enables, for the venues {@link ceilingVenuesOf}
+ * gives, under the cap given, with the bridge deposits their routes reach from the chain (decision
+ * 0302), and on a launch wallet's what its launch rules allow. A named venue the install does not
+ * run is `venue_not_run`; a chain the registry lacks is a fault.
+ */
+export function ceilingCallsOn(
+  options: Pick<WalletCeilingOptions, "chains" | "venues">,
+  chain: ChainRef,
+  calls: Omit<CeilingCalls, "ceiling">,
+): Result<CeilingChainPlan, "venue_not_run"> {
+  const registered = options.chains.list().find((item) => item.ref === chain);
+  const venues = ceilingVenuesOf(options.venues, calls);
+  if (!venues.ok) {
+    return venues;
+  }
+  const bridges = selfHostedBridgePlan(chain);
+  const built =
+    registered === undefined
+      ? undefined
+      : registryCeilingChain({
+          definition: registered.definition,
+          venues: venues.value,
+          perTxNativeCapBase: calls.perTxNativeBase,
+          ...(calls.role === undefined ? {} : { role: calls.role }),
+          ...(bridges === undefined ? {} : { bridges }),
+        });
+  if (built?.ok !== true) {
+    throw new BinferenceError({
+      code: "cli.ceiling_unbuilt",
+      message: `The registry gives no contract calls a ceiling on ${chain} can have.`,
+      details: { chain },
+    });
+  }
+  const [plan] = calls.role === "launch" ? launchPlansOf([built.value], options.venues) : [];
+  return ok(plan ?? built.value);
 }
 
 /**
  * A new wallet's ceiling on each enabled chain, as init builds the first one, for the venues
  * {@link ceilingVenuesOf} gives; a launch wallet's with the launch rules of every launchpad it runs
- * too (decision 0217). A config init would refuse is a fault here.
+ * too (decision 0217). A named venue the install does not run is `venue_not_run`; a config init
+ * would refuse is a fault here.
  */
 export function ceilingChainsOf(
   options: WalletCeilingOptions,
   wallet: { readonly venues: readonly string[]; readonly role?: WalletRole },
-): Pick<CeilingDraft, "chains" | "capPlans"> {
+): Result<Pick<CeilingDraft, "chains" | "capPlans">, "venue_not_run"> {
   const named = ceilingVenuesOf(options.venues, wallet);
+  if (!named.ok) {
+    return named;
+  }
   const request = ceilingRequestOf(options.chains, options.config, {
-    venues: named,
+    venues: named.value,
     rescue: "",
     ...(wallet.role === undefined ? {} : { role: wallet.role }),
   });
@@ -58,7 +112,7 @@ export function ceilingChainsOf(
   }
   const { chains, capPlans } = request.value;
   const isLaunch = wallet.role === "launch";
-  return { chains: isLaunch ? launchPlansOf(chains, options.venues) : chains, capPlans };
+  return ok({ chains: isLaunch ? launchPlansOf(chains, options.venues) : chains, capPlans });
 }
 
 const storedPolicy = z.object({ rules: z.array(z.json()) });

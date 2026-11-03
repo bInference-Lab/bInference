@@ -32,7 +32,7 @@ export interface MadeWallet {
 }
 
 /**
- * Why custody made no wallet: the code is not the install's owner key, or the recipients are more
- * than a ceiling can list.
+ * Why custody made no wallet: the code is not the install's owner key, the recipients are more
+ * than a ceiling can list, or the agent names a venue the install does not run.
  */
-export type WalletRefusal = "bad_owner_key" | "bad_recipients";
+export type WalletRefusal = "bad_owner_key" | "bad_recipients" | "venue_not_run";

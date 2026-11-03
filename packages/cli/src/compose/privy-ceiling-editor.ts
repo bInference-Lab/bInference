@@ -58,7 +58,10 @@ export interface PrivyCeilingEditorOptions extends OwnerKeyHolder {
    * What a contract call may do on a chain for the venues named: call and approve their registry
    * contracts, none for venues with none there, sending at most the cap.
    */
-  readonly callsOn: (chain: ChainRef, calls: Omit<CeilingCalls, "ceiling">) => CeilingChainPlan;
+  readonly callsOn: (
+    chain: ChainRef,
+    calls: Omit<CeilingCalls, "ceiling">,
+  ) => Result<CeilingChainPlan, "venue_not_run">;
   /**
    * The plan of a chain's 24-hour caps, each the micro-dollars given at its floor price, else as
    * init sizes them: for a ceiling that names none on the chain yet, or caps the owner resizes.
@@ -274,7 +277,11 @@ async function planOne(
     return held;
   }
   const refs = held.value.rules.chainIds.map((id) => chainRefSchema.parse(`eip155:${id}`));
-  const plans = refs.map((chain) => options.callsOn(chain, calls));
+  const made = refs.map((chain) => options.callsOn(chain, calls));
+  const plans = made.flatMap((plan) => (plan.ok ? [plan.value] : []));
+  if (plans.length < made.length) {
+    return err("venue_not_run");
+  }
   if (plans.some((plan) => plan.calls.length === 0)) {
     return err(calls.role === "bridge" ? "no_bridge_calls" : "no_calls");
   }

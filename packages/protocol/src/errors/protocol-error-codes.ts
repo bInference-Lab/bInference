@@ -113,6 +113,7 @@ export const protocolErrorCodes = [
   "wallet.ceiling_too_large",
   "wallet.ceiling_bad_bridge",
   "wallet.ceiling_uncapped",
+  "wallet.venue_not_run",
   "limit.needs_launch_wallet",
   "limit.needs_bridge_wallet",
   "limit.bridge_ceiling",

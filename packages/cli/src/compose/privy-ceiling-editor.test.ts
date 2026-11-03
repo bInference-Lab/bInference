@@ -5,6 +5,7 @@ import {
   type WalletRole,
 } from "@binference/chain";
 import { bsc } from "@binference/chains";
+import { ok, type Result } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   buildCeiling,
@@ -45,16 +46,16 @@ function callsOn(
     readonly perTxNativeBase: bigint;
     readonly role?: WalletRole;
   },
-): CeilingChainPlan {
+): Result<CeilingChainPlan, "venue_not_run"> {
   const isMain = calls.role !== "bridge";
   const swap = isMain && calls.venues.includes("swap");
   const bridge = isMain && calls.venues.includes("bridge");
-  return {
+  return ok({
     chain: testChain,
     calls: swap ? testCalls : [],
     spenders: [...(swap ? [router] : []), ...(bridge ? [spokePool] : [])],
     perTxNativeCapBase: calls.perTxNativeBase,
-  };
+  });
 }
 
 const nativeAsset = assetRefSchema.parse("eip155:56/slip44:714");

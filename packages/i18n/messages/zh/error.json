@@ -109,6 +109,7 @@
   "wallet.ceiling_too_large": "上限超出了 Privy 为一个钱包保存的大小，因此没有任何更改。请删除为其他链保存的地址或一个跨链平台，然后重试。",
   "wallet.ceiling_bad_bridge": "某个平台声明的跨链存款无法放入任何上限，因此没有任何更改。请从上限中移除该跨链平台，然后运行 `binference report` 告诉我们。",
   "wallet.ceiling_uncapped": "某条跨链路由需要为其代币设置 24 小时上限，但 binference 无法创建，因此没有任何更改。请从上限中移除该跨链平台，或运行 `binference check` 查看上限。",
+  "wallet.venue_not_run": "该更改指定了本 binference 未运行的平台，因此没有更改任何上限。请运行 `binference ceiling` 查看每个上限包含的平台，然后只指定本 binference 运行的平台，或更新 binference。",
   "limit.needs_launch_wallet": "在发射项目自身的联合曲线上实盘交易需要发射钱包。请用 `binference wallet create --launch` 创建发射钱包并充值，然后再试。",
   "limit.needs_bridge_wallet": "通过存入不指定收款人的平台（如 Relay）实盘跨链需要跨链钱包。请用 `binference wallet create --bridge` 创建跨链钱包，并从外部为它充值，然后再试。",
   "limit.bridge_ceiling": "请用你的所有者密钥重新写入跨链钱包的上限：`binference ceiling set --wallet ID --venues VENUES`。它缺少此跨链桥的存入，托管方会拒绝这些存入。",

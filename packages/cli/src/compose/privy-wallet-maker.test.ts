@@ -1,6 +1,6 @@
 import { type AccountRef, accountRefSchema, type WalletRole } from "@binference/chain";
 import { bsc, bscVenueCalls } from "@binference/chains";
-import { type Http, type Id, idSchema, type Result } from "@binference/core";
+import { type Http, type Id, idSchema, ok, type Result } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   createPrivyApi,
@@ -69,10 +69,12 @@ const bridgePlans = {
 const roleDrafts: Readonly<
   Record<
     WalletRole,
-    (wallet: { readonly venues: readonly string[] }) => Pick<CeilingDraft, "chains" | "capPlans">
+    (wallet: {
+      readonly venues: readonly string[];
+    }) => Result<Pick<CeilingDraft, "chains" | "capPlans">, "venue_not_run">
   >
 > = {
-  launch: () => launchDraft,
+  launch: () => ok(launchDraft),
   bridge: (wallet) => ceilingChainsOf(bridgePlans, { ...wallet, role: "bridge" }),
 };
 
@@ -143,7 +145,7 @@ async function subject() {
     clock,
     custody: async () => Promise.resolve(custody),
     ceilingChains: (wallet: { readonly venues: readonly string[]; readonly role?: WalletRole }) =>
-      wallet.role === undefined ? draft : roleDrafts[wallet.role](wallet),
+      wallet.role === undefined ? ok(draft) : roleDrafts[wallet.role](wallet),
     heldCaps: counted.heldCaps,
     onMade: (wallet, made) => signedFor.set(wallet, made),
     addresses: selfHostedCeilingAddresses([bsc]),
@@ -241,7 +243,7 @@ describe("the Privy wallet maker", () => {
       }),
       clock: createManualClock(1),
       custody: async () => Promise.resolve(undefined),
-      ceilingChains: () => draft,
+      ceilingChains: () => ok(draft),
       heldCaps: async () => Promise.resolve([]),
       onMade: () => undefined,
       addresses: selfHostedCeilingAddresses([bsc]),

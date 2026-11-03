@@ -5,6 +5,7 @@ import {
   type WalletRole,
 } from "@binference/chain";
 import { bsc } from "@binference/chains";
+import { ok, type Result } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   type BridgeDeposit,
@@ -52,15 +53,19 @@ function callsOnWith(routes: { readonly withEth: boolean }) {
       readonly perTxNativeBase: bigint;
       readonly role?: WalletRole;
     },
-  ): CeilingChainPlan => ({
-    chain: testChain,
-    // A launch wallet's ceiling here also calls the deposit as a plain call, which no ceiling holds.
-    calls:
-      calls.role === "launch" ? [...testCalls, { ...testBridgeCall, walletInputs: [] }] : testCalls,
-    spenders: [router, ...(calls.venues.includes("across") ? [spokePool] : [])],
-    perTxNativeCapBase: calls.perTxNativeBase,
-    ...(calls.venues.includes("across") ? { bridges: depositsOf(routes) } : {}),
-  });
+  ): Result<CeilingChainPlan, "venue_not_run"> =>
+    ok({
+      chain: testChain,
+      // A launch wallet's ceiling here also calls the deposit as a plain call, which no ceiling
+      // holds.
+      calls:
+        calls.role === "launch"
+          ? [...testCalls, { ...testBridgeCall, walletInputs: [] }]
+          : testCalls,
+      spenders: [router, ...(calls.venues.includes("across") ? [spokePool] : [])],
+      perTxNativeCapBase: calls.perTxNativeBase,
+      ...(calls.venues.includes("across") ? { bridges: depositsOf(routes) } : {}),
+    });
 }
 
 // The plan the install's binference sizes now: the test token, then ETH, joined later at the end.

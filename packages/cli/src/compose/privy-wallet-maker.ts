@@ -48,7 +48,7 @@ export interface PrivyWalletMakerOptions {
    */
   readonly ceilingChains: (
     wallet: Pick<WalletRequest, "venues" | "role">,
-  ) => Pick<CeilingDraft, "chains" | "capPlans">;
+  ) => Result<Pick<CeilingDraft, "chains" | "capPlans">, "venue_not_run">;
   /** The 24-hour caps the install's live ceilings name now, which a new ceiling names too. */
   readonly heldCaps: (signal: AbortSignal) => Promise<readonly HeldCaps[]>;
   /** Signs for each wallet made from then on, under the engine's id. */
@@ -178,7 +178,10 @@ async function make(
     return quorums;
   }
   const draft = options.ceilingChains(request);
-  const chains = await capsOf(options, draft, { owner: quorums.value.owner, signal });
+  if (!draft.ok) {
+    return draft;
+  }
+  const chains = await capsOf(options, draft.value, { owner: quorums.value.owner, signal });
   const [first] = chains;
   const ceiling = ceilingOf(options, chains, request);
   if (!ceiling.ok) {

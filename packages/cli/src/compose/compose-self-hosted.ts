@@ -8,6 +8,7 @@ import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
 import { isPublicEndpoint } from "../runtime/public-address.js";
+import { selfHostedCeilingVenues } from "./ceiling-venues.js";
 import { rpcHealthOf } from "./chain-reads.js";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
@@ -159,8 +160,10 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   const signerStopped = { run: (): void => undefined };
   const signerRefused = { run: (_notice: SignerRefusalNotice): void => undefined };
   const sealKey = sealKeyOf(opened);
+  const bridges = parts.bridging.executor.bridges;
   const custody = composeCustody(opening, opened, {
     chains,
+    venues: selfHostedCeilingVenues({ venues: opened.venues, reads: parts.reads, bridges }),
     onStopped: () => signerStopped.run(),
     onRefusal: (notice) => signerRefused.run(notice),
     sealKey,

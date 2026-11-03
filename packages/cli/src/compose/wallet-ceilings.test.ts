@@ -9,8 +9,10 @@ import { selfHostedChains } from "./open-engine-parts.js";
 import { ceilingChainsOf, ceilingVenuesOf } from "./wallet-ceilings.js";
 
 const installed = [createFakeVenue(), createFakeBridgeVenue()];
-const ids = (role?: "launch" | "bridge", venues: readonly string[] = ["fake-swap"]) =>
-  ceilingVenuesOf(installed, { venues, role }).map((venue) => venue.id);
+const ids = (role?: "launch" | "bridge", venues: readonly string[] = ["fake-swap"]) => {
+  const planned = ceilingVenuesOf(installed, { venues, role });
+  return planned.ok ? planned.value.map((venue) => venue.id) : planned.error;
+};
 
 // Relay as its plugin will declare it, from the registry's calls on BNB Smart Chain.
 const relay = { id: "relay", contracts: [bscVenueCalls["relay"]].flatMap((item) => item ?? []) };
@@ -21,6 +23,14 @@ const config = configSchema.parse({
 const venues = [...coreVenues(createScriptedHttp([]), config.venues), relay];
 const plans = { chains: selfHostedChains(), config, venues };
 
+// The chains of a draft the install could plan.
+function draftOf(drafted: ReturnType<typeof ceilingChainsOf>) {
+  if (!drafted.ok) {
+    throw new Error(`Expected a draft, not ${drafted.error}.`);
+  }
+  return drafted.value.chains;
+}
+
 describe("the venues a wallet's ceiling is planned from", () => {
   it("gives a bridge wallet every bridge venue the install runs, whichever the agent uses", () => {
     expect(ids("bridge")).toStrictEqual(["fake-bridge"]);
@@ -30,11 +40,18 @@ describe("the venues a wallet's ceiling is planned from", () => {
   it("gives any other wallet the venues named", () => {
     expect([ids(), ids("launch")]).toStrictEqual([["fake-swap"], ["fake-swap"]]);
   });
+
+  it("refuses a venue the install does not run, rather than leaving its rules out", () => {
+    expect([
+      ids(undefined, ["fake-swap", "stakehub"]),
+      ids("launch", ["pancakeswap"]),
+    ]).toStrictEqual(["venue_not_run", "venue_not_run"]);
+  });
 });
 
 describe("a bridge wallet's ceiling as the CLI plans it", () => {
   it("holds Relay's token deposit and its depository though the agent uses only KyberSwap", () => {
-    const [chain] = ceilingChainsOf(plans, { venues: ["kyberswap"], role: "bridge" }).chains;
+    const [chain] = draftOf(ceilingChainsOf(plans, { venues: ["kyberswap"], role: "bridge" }));
 
     expect(chain?.calls.map((call) => [call.abi.name, call.walletInputs])).toStrictEqual([
       ["depositErc20", ["depositor"]],
@@ -43,7 +60,7 @@ describe("a bridge wallet's ceiling as the CLI plans it", () => {
   });
 
   it("holds no Relay call in a main wallet's ceiling though the agent names Relay", () => {
-    const [chain] = ceilingChainsOf(plans, { venues: ["kyberswap", "relay"] }).chains;
+    const [chain] = draftOf(ceilingChainsOf(plans, { venues: ["kyberswap", "relay"] }));
 
     expect(chain?.calls.map((call) => call.abi.name)).not.toContain("depositErc20");
     expect(chain?.spenders).not.toContain("0x4cD00E387622C35bDDB9b4c962C136462338BC31");

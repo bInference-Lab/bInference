@@ -109,6 +109,7 @@
   "wallet.ceiling_too_large": "The ceiling would be larger than Privy keeps for one wallet, so nothing changed. Remove addresses saved for other chains, or a bridge venue, then try again.",
   "wallet.ceiling_bad_bridge": "A venue declares a bridge deposit no ceiling can hold, so nothing changed. Remove that bridge venue from the ceiling, then run `binference report` to tell us.",
   "wallet.ceiling_uncapped": "A bridge route needs a 24-hour cap on its token that binference could not make, so nothing changed. Remove the bridge venue from the ceiling, or run `binference check` to see the caps.",
+  "wallet.venue_not_run": "The change names a venue this binference does not run, so no ceiling changed. Run `binference ceiling` to see the venues each ceiling holds, then name only venues this binference runs, or update binference.",
   "limit.needs_launch_wallet": "Live trades on a launch's own curve need a launch wallet. Make one with `binference wallet create --launch`, fund it, then try again.",
   "limit.needs_bridge_wallet": "Live bridges through a venue whose deposit names no recipient, such as Relay, need a bridge wallet. Make one with `binference wallet create --bridge`, fund it from outside, then try again.",
   "limit.bridge_ceiling": "Write the bridge wallet's ceiling again with your owner key: `binference ceiling set --wallet ID --venues VENUES`. It lacks this bridge's deposits, so custody would refuse them.",

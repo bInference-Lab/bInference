@@ -1,4 +1,4 @@
-import type { ChainRef, ChainRegistry } from "@binference/chain";
+import type { ChainRef, ChainRegistry, VenueDeclaration } from "@binference/chain";
 import { type JsonValue, ok, type Result } from "@binference/core";
 import type { CeilingRead } from "@binference/engine/install";
 import type { SignerRefusalNotice } from "@binference/signer";
@@ -41,6 +41,8 @@ export function composeCustody(
   opened: Opened,
   parts: {
     readonly chains: ChainRegistry;
+    /** The venues every ceiling custody writes is planned from (`selfHostedCeilingVenues`). */
+    readonly venues: readonly VenueDeclaration[];
     readonly onStopped: () => void;
     readonly onRefusal: (notice: SignerRefusalNotice) => void;
     readonly sealKey: SealKeyKeeper;
@@ -57,7 +59,7 @@ export function composeCustody(
     startSigner: host.startSigner ?? startBuiltSigner,
     onRefusal,
     config: opened.config,
-    venues: opened.venues,
+    venues: parts.venues,
     install: opened.stores.install,
     chains,
     logger: opened.log.logger,

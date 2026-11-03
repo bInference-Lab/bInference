@@ -148,14 +148,17 @@ export type CeilingRefusal =
  * enables no contract to call, `bad_bridge` for a bridge deposit a venue declares that no ceiling
  * can hold, `uncapped_token` for a bridge route whose token has no 24-hour cap custody could
  * make (decision 0305), and `no_bridge_calls` for a bridge wallet's ceiling no venue the install
- * runs gives a deposit, which would leave it allowing nothing (decision 0307). Nothing was changed.
+ * runs gives a deposit, which would leave it allowing nothing (decision 0307), and
+ * `venue_not_run` for a venue the change names that the install does not run, whose rules would
+ * otherwise leave the ceiling unsaid. Nothing was changed.
  */
 export type CallsRefusal =
   | CeilingRefusal
   | "no_calls"
   | "no_bridge_calls"
   | "bad_bridge"
-  | "uncapped_token";
+  | "uncapped_token"
+  | "venue_not_run";
 
 /**
  * Why a change signed ahead was not sent: a ceiling lists other recipients than it did when the

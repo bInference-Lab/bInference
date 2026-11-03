@@ -54,6 +54,7 @@ export const callsRefusalCodes: Readonly<Record<CallsRefusal, ProtocolErrorCode>
   too_large: "wallet.ceiling_too_large",
   bad_bridge: "wallet.ceiling_bad_bridge",
   uncapped_token: "wallet.ceiling_uncapped",
+  venue_not_run: "wallet.venue_not_run",
 };
 
 function isCapsChange(changes: CeilingChanges): boolean {

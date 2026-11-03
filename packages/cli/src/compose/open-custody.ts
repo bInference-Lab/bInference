@@ -10,16 +10,13 @@ import {
   type Secret,
 } from "@binference/core";
 import {
-  type CeilingChainPlan,
   type ChainCapPlan,
   checkPrivyApp,
   createPrivyApi,
   createPrivyOwnerSigner,
   privyApiOrigin,
-  registryCeilingChain,
 } from "@binference/custody-privy";
 import type {
-  CeilingCalls,
   CeilingEditor,
   InstallFacts,
   InstallStore,
@@ -33,7 +30,6 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { capAssetsOn, capPlanOf, initialDayCapUsd } from "../init/ceiling-request.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
 import { checkAttached } from "./check-attached.js";
-import { launchPlansOf } from "./launch-plans.js";
 import { installOwnerKey } from "./owner-authorize.js";
 import {
   createPrivyCeilingEditor,
@@ -42,10 +38,10 @@ import {
 import { createPrivySignerRevoker } from "./privy-signer-revoker.js";
 import { createPrivyWalletExporter } from "./privy-wallet-exporter.js";
 import { createPrivyWalletMaker } from "./privy-wallet-maker.js";
-import { selfHostedBridgePlan, selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
+import { selfHostedCeilingAddresses } from "./self-hosted-destinations.js";
 import { signedWalletsOf } from "./signed-wallets.js";
 import type { StartedSigner, StartSigner } from "./start-signer.js";
-import { ceilingChainsOf, ceilingVenuesOf, heldCapsOf } from "./wallet-ceilings.js";
+import { ceilingCallsOn, ceilingChainsOf, heldCapsOf } from "./wallet-ceilings.js";
 
 /**
  * Custody once the keys opened: the `privy-owner` adapter, its ceilings, its wallet maker, its
@@ -152,38 +148,6 @@ async function startCheckedSigner(
   return err("signer_failed");
 }
 
-// What a contract call may do on a chain a ceiling enables, for the venues `ceilingVenuesOf` gives,
-// under the cap given, with the bridge deposits their routes reach from the chain (decision 0302),
-// and on a launch wallet's what its launch rules allow. A chain the registry lacks is a fault here.
-function callsOn(
-  options: OpenCustodyOptions,
-  chain: ChainRef,
-  calls: Omit<CeilingCalls, "ceiling">,
-): CeilingChainPlan {
-  const registered = options.chains.list().find((item) => item.ref === chain);
-  const venues = ceilingVenuesOf(options.venues, calls);
-  const bridges = selfHostedBridgePlan(chain);
-  const built =
-    registered === undefined
-      ? undefined
-      : registryCeilingChain({
-          definition: registered.definition,
-          venues,
-          perTxNativeCapBase: calls.perTxNativeBase,
-          ...(calls.role === undefined ? {} : { role: calls.role }),
-          ...(bridges === undefined ? {} : { bridges }),
-        });
-  if (built?.ok !== true) {
-    throw new BinferenceError({
-      code: "cli.ceiling_unbuilt",
-      message: `The registry gives no contract calls a ceiling on ${chain} can have.`,
-      details: { chain },
-    });
-  }
-  const [plan] = calls.role === "launch" ? launchPlansOf([built.value], options.venues) : [];
-  return plan ?? built.value;
-}
-
 // The plan of a chain's 24-hour caps, at the size given or as init sizes them; a chain the
 // registry lacks is a fault.
 function capPlanOn(
@@ -229,7 +193,7 @@ function ceilingEditorOf(
   return createPrivyCeilingEditor({
     ...parts,
     clock: options.clock,
-    callsOn: (chain, calls) => callsOn(options, chain, calls),
+    callsOn: (chain, calls) => ceilingCallsOn(options, chain, calls),
     capPlanOn: (chain, dayUsdMicros) => capPlanOn(options, chain, dayUsdMicros),
     capAssetsOn: (chain) => capAssetsOn(options.chains, chain),
     heldCaps: async (read) => heldCapsOf(options.install, read),

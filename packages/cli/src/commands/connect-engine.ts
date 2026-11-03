@@ -181,6 +181,7 @@ const policyCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "wallet.ceiling_too_large",
   "wallet.ceiling_bad_bridge",
   "wallet.ceiling_uncapped",
+  "wallet.venue_not_run",
 ]);
 
 function isCallCode(code: string): code is ProtocolErrorCode {

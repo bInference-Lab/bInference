@@ -39,6 +39,7 @@ export interface MakeWalletOptions extends RescueCeilingsOptions {
 const refusalCodes: Readonly<Record<WalletRefusal, ProtocolErrorCode>> = {
   bad_owner_key: "wallet.bad_owner_key",
   bad_recipients: "address.chain_full",
+  venue_not_run: "wallet.venue_not_run",
 };
 
 // The rescue address in effect, a new one that waits, and the agent's saved addresses, none of them
