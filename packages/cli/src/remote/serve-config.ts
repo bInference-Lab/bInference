@@ -84,7 +84,9 @@ function funnelOf(layers: readonly Layer[]): ReadonlySet<string> {
  */
 export function serveConfigOf(stdout: string): ServeConfig | undefined {
   const status =
-    stdout.trim() === "null" ? serveStatusSchema.parse({}) : tailscaleJson(stdout, serveStatusSchema);
+    stdout.trim() === "null"
+      ? serveStatusSchema.parse({})
+      : tailscaleJson(stdout, serveStatusSchema);
   if (status === undefined) {
     return undefined;
   }
