@@ -10,6 +10,7 @@ import { configFinding, engineFinding, unlockFinding } from "./install-findings.
 import { modelImagesFinding } from "./model-images-finding.js";
 import { modelPriceFinding } from "./model-price-finding.js";
 import { modelReachFinding } from "./model-reach-finding.js";
+import { remoteFindings } from "./remote-findings.js";
 import { roleWalletFindings } from "./role-wallet-findings.js";
 import { rpcFindings } from "./rpc-keyed-finding.js";
 
@@ -83,7 +84,19 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
   const engine = await engineFinding({ host, platform, signal });
   const rpc = await rpcFindings({ host, platform, signal }, config.config);
   const roles = await roleWalletFindings({ host, platform, signal });
-  return [config.finding, ...access, ...unlock, ...prices, reach, images, engine, ...rpc, ...roles];
+  const remote = await remoteFindings({ host, platform, signal }, config.config);
+  return [
+    config.finding,
+    ...access,
+    ...unlock,
+    ...prices,
+    reach,
+    images,
+    engine,
+    ...rpc,
+    ...roles,
+    ...remote,
+  ];
 }
 
 /**
@@ -99,7 +112,8 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
  * (a warning naming each extra launch or bridge wallet a rebuild adopted, decisions 0218 and 0307)
  * and `wallets.launch_calls` and `wallets.bridge_calls` (a warning naming each launch or bridge
  * wallet whose ceiling lacks calls its venues need, with the owner key's fix, decisions 0271 and
- * 0307). `--fix` makes owner-only every path others can open, the one fix the config spec names
+ * 0307), and `remote.funnel`, `remote.loopback` and `remote.serve` (decision 0341). `--fix` makes
+ * owner-only every path others can open, the one fix the config spec names
  * for it. It then says what the wallets' ceiling promises against a machine whose keys are stolen
  * (decision 0149), and that a launch wallet and a bridge wallet are the exceptions (decisions
  * 0217, 0218 and 0307). Exits 1 while a problem remains, else
