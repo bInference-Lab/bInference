@@ -69,6 +69,7 @@ import type { UploadShelf } from "../uploads/upload-shelf.js";
 import { createEngineWithFills, type Engine, type EngineOptions } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
 import { hostsOf, readsOf, stepsOf } from "./test-engine-parts.js";
+import { switchesOf } from "./test-engine-switches.js";
 
 /**
  * The owner's CLI and an MCP client, as the server signs them in, and the agent runtime the engine
@@ -272,22 +273,6 @@ function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter
   return {
     ...(exporter === undefined ? {} : { exporter }),
     ...(revoker === undefined ? {} : { revoker }),
-  };
-}
-
-// Whether live orders fill and a launch feed runs, the uploads, the bot's photos and quote assets,
-// as the test asks.
-function switchesOf(options: TestEngineOptions): Partial<EngineOptions> {
-  return {
-    liveOrderFills: options.liveOrderFills === true,
-    ...options.bridging,
-    ...(options.stakingVenues === undefined ? {} : { stakingVenues: options.stakingVenues }),
-    ...(options.identity === undefined ? {} : { identity: options.identity }),
-    ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
-    ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
-    ...(options.launchFeed === true ? { launchFeed: true } : {}),
-    ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
-    ...(options.botImages === undefined ? {} : { botImages: options.botImages }),
   };
 }
 
