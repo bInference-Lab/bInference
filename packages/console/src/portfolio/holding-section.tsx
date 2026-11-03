@@ -16,6 +16,7 @@ import {
   TableRow,
 } from "../components/ui/table";
 import { useFormatter, useText, type Words } from "../i18n/console-text";
+import { HeldElsewhere } from "./held-elsewhere";
 import { PnlCard } from "./pnl-card";
 import type { HoldingSection, WalletHoldings } from "./portfolio-sections";
 
@@ -137,10 +138,16 @@ function SectionTotal(props: { readonly section: HoldingSection }): React.JSX.El
   );
 }
 
+// Whether the section holds what its total counts: balances, stakes or bridges in transit.
+function hasTotal(section: HoldingSection): boolean {
+  return [section.wallets, section.stakes, section.transits].some((part) => part.length > 0);
+}
+
 /**
  * One mode's part of an agent's portfolio in its own section: each wallet's balances with their
- * USD value, or a word that a balance has no price; the mode's own total; then its open positions
- * and those closed in the last 7 days as P&L cards.
+ * USD value, or a word that a balance has no price; its stakes with their unbonding parts and,
+ * live only, its bridges in transit with their destination chain (decision 0329); the mode's own
+ * total; then its open positions and those closed in the last 7 days as P&L cards.
  */
 export function HoldingSectionView(props: {
   readonly section: HoldingSection;
@@ -168,7 +175,8 @@ export function HoldingSectionView(props: {
           assets={assets}
         />
       ))}
-      {section.wallets.length === 0 ? null : <SectionTotal section={section} />}
+      <HeldElsewhere section={section} display={display} />
+      {hasTotal(section) ? <SectionTotal section={section} /> : null}
       <CardList
         title={text("console.portfolio.open")}
         empty={text("console.portfolio.noOpen")}

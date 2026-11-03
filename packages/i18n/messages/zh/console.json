@@ -109,6 +109,8 @@
   "portfolio.noPrice": "暂无价格",
   "portfolio.total": "{mode, select, paper {模拟总计} other {实盘总计}}：{total}",
   "portfolio.unpriced": "暂无价格的资产不计入总计。",
+  "portfolio.staking": "质押",
+  "portfolio.inTransit": "在途",
   "portfolio.open": "持仓",
   "portfolio.noOpen": "没有持仓。",
   "portfolio.closed": "最近 7 天已清仓",

@@ -5,6 +5,10 @@ import { useLiveTopics } from "../connection/use-live-topics";
 import { fakeClient } from "../testing/fake-client";
 import { fixture, portfolioAnswer, portfolioAnswers } from "../testing/portfolio-fixture";
 import { renderSignedIn, settle } from "../testing/render-signed-in";
+import {
+  stakingPortfolioAnswer,
+  stakingPortfolioAnswers,
+} from "../testing/staking-portfolio-fixture";
 import { PortfolioScreen } from "./portfolio-screen";
 
 afterEach(cleanup);
@@ -23,6 +27,12 @@ function rowsOf(table: HTMLElement): readonly (readonly string[])[] {
         .queryAllByRole("cell")
         .map((cell) => cell.textContent),
     );
+}
+
+function itemTexts(list: HTMLElement): readonly (readonly string[])[] {
+  return within(list)
+    .getAllByRole("listitem")
+    .map((item) => [...item.querySelectorAll("p")].map((line) => line.textContent));
 }
 
 function cardTexts(list: HTMLElement): readonly (readonly string[])[] {
@@ -186,5 +196,64 @@ describe("the portfolio screen", () => {
     renderSignedIn(<PortfolioScreen />, { client });
     await settle();
     expect(screen.getByRole("alert").textContent).toMatch(/^The console could not load this\./u);
+  });
+});
+
+describe("the portfolio screen's stakes and bridges in transit", () => {
+  it("shows each mode's stakes and the live bridges as portfolio/get answers them", async () => {
+    const { client } = fakeClient(stakingPortfolioAnswers);
+    renderSignedIn(<PortfolioScreen />, { client });
+    await settle();
+    const live = screen.getByRole("region", { name: "Live holdings" });
+    expect(itemTexts(within(live).getByRole("list", { name: "Staking" }))).toStrictEqual([
+      [
+        "1.05 BNB staked with 0x2222…0001 · worth $630.00",
+        "0.5 BNB unbonding, claimable from Oct 17, 2026, 09:30:00",
+        "0.1 BNB ready to claim",
+      ],
+    ]);
+    expect(itemTexts(within(live).getByRole("list", { name: "In transit" }))).toStrictEqual([
+      ["50 USDT to 0x4444…0001 on Base · since Oct 10, 2026, 09:30:00 · late"],
+    ]);
+    expect(within(live).getByText("Live total: $1,040.00")).toBeDefined();
+    const paper = screen.getByRole("region", { name: "Paper holdings" });
+    expect(itemTexts(within(paper).getByRole("list", { name: "Staking" }))).toStrictEqual([
+      ["0.4725 BNB staked with 0x2222…0001 · worth $283.50"],
+    ]);
+    expect(within(paper).queryByRole("list", { name: "In transit" })).toBeNull();
+    expect(within(paper).getByText("Paper total: $283.50")).toBeDefined();
+  });
+
+  it("names a bridge's chain by its reference when the engine gives no name", async () => {
+    const answer = stakingPortfolioAnswer;
+    const unnamed = answer.inTransit.map(({ chainName: _name, ...rest }) => rest);
+    const { client } = fakeClient({
+      ...stakingPortfolioAnswers,
+      "portfolio/get": () => ({ ...answer, staking: [], inTransit: unnamed }),
+    });
+    renderSignedIn(<PortfolioScreen />, { client });
+    await settle();
+    const live = screen.getByRole("region", { name: "Live holdings" });
+    expect(within(live).getByText(/ on eip155:8453 · /u)).toBeDefined();
+    expect(within(live).queryByRole("list", { name: "Staking" })).toBeNull();
+  });
+
+  it("shows a section that holds only a bridge in transit, with its total", async () => {
+    const answer = stakingPortfolioAnswer;
+    const { client } = fakeClient({
+      ...stakingPortfolioAnswers,
+      "portfolio/get": () => ({
+        ...answer,
+        balances: [],
+        staking: [],
+        totalUsdMicros: 50_000_000n,
+      }),
+    });
+    renderSignedIn(<PortfolioScreen />, { client });
+    await settle();
+    expect(screen.queryByRole("region", { name: "Paper holdings" })).toBeNull();
+    const live = screen.getByRole("region", { name: "Live holdings" });
+    expect(within(live).queryByRole("table")).toBeNull();
+    expect(within(live).getByText("Live total: $50.00")).toBeDefined();
   });
 });

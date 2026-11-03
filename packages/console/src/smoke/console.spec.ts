@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showHeldElsewhere } from "./held-elsewhere";
 import { readProposal, readStates } from "./smoke-answers.schema";
 import { alertTo, control, openPaired, shootThemes } from "./smoke-page";
 
@@ -124,6 +125,35 @@ test("shows the paper portfolio apart from any live one, in light and in dark", 
     fullPage: true,
     animations: "disabled",
   });
+  expect(problems).toStrictEqual([]);
+});
+
+test("shows stakes and a bridge in transit in the portfolio, in light and in dark", async ({
+  page,
+  request,
+}, testInfo) => {
+  await showHeldElsewhere(page);
+  const problems = await openPaired(page, request);
+  await page.getByRole("link", { name: "Portfolio" }).click();
+  const live = page.getByRole("region", { name: "Live holdings" });
+  const staked = live.getByRole("list", { name: "Staking" }).getByRole("listitem");
+  await expect(staked).toHaveText(
+    [
+      "1.05 FAKE staked with 0x2222…0001 · worth $630.00" +
+        "0.5 FAKE unbonding, claimable from Oct 17, 2026, 09:30:00" +
+        "0.1 FAKE ready to claim",
+    ],
+    { timeout: 20_000 },
+  );
+  await expect(live.getByRole("list", { name: "In transit" })).toHaveText(
+    /^50 TKN to 0x4444…0001 on Base · since Oct 10, 2026, 09:30:00 · late$/u,
+  );
+  const paper = page.getByRole("region", { name: "Paper holdings" });
+  await expect(paper.getByRole("list", { name: "Staking" })).toHaveText(
+    "0.4725 FAKE staked with 0x2222…0001 · worth $283.50",
+  );
+  await expect(paper.getByRole("list", { name: "In transit" })).toHaveCount(0);
+  await shootThemes(page, testInfo, "portfolio-staking");
   expect(problems).toStrictEqual([]);
 });
 

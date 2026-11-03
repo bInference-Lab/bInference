@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { showHeldElsewhere } from "./held-elsewhere";
 import { control, openPaired, shootThemes } from "./smoke-page";
 
 // Runs after console.spec.ts, whose last test made and confirmed the rule this one shows. The
@@ -9,6 +10,30 @@ test.beforeEach(async ({ request }) => {
 
 test.afterEach(async ({ request }) => {
   await request.post(`${control}/locale?locale=en`);
+});
+
+test("shows stakes and a bridge in transit in Chinese, in light and in dark", async ({
+  page,
+  request,
+}, testInfo) => {
+  await showHeldElsewhere(page);
+  const problems = await openPaired(page, request);
+  await page.getByRole("link", { name: "投资组合" }).click();
+  const live = page.getByRole("region", { name: "实盘资产" });
+  await expect(live.getByRole("list", { name: "质押" })).toContainText(
+    "在 0x2222…0001 质押 1.05 FAKE · 市值 $630.00",
+    { timeout: 20_000 },
+  );
+  await expect(live.getByRole("list", { name: "质押" })).toContainText("0.5 FAKE 解绑中");
+  await expect(live.getByRole("list", { name: "在途" })).toContainText(
+    "50 TKN 跨链到 Base 的 0x4444…0001",
+  );
+  const paper = page.getByRole("region", { name: "模拟资产" });
+  await expect(paper.getByRole("list", { name: "质押" })).toHaveText(
+    "在 0x2222…0001 质押 0.4725 FAKE · 市值 $283.50",
+  );
+  await shootThemes(page, testInfo, "portfolio-staking-zh");
+  expect(problems).toStrictEqual([]);
 });
 
 test("shows the alert rules screen in Chinese, in light and in dark", async ({

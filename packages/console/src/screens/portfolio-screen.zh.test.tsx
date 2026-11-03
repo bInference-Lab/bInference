@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { fakeClient } from "../testing/fake-client";
 import { portfolioAnswers } from "../testing/portfolio-fixture";
 import { renderSignedIn, settle } from "../testing/render-signed-in";
+import { stakingPortfolioAnswers } from "../testing/staking-portfolio-fixture";
 import { PortfolioScreen } from "./portfolio-screen";
 
 afterEach(cleanup);
@@ -40,6 +41,27 @@ describe("the portfolio screen in Chinese", () => {
     ]);
     expect(linesOf(within(paper).getByRole("list", { name: "持仓" }))[0]).toBe("BNB · main模拟");
     expect(within(paper).getByText("最近 7 天没有已清仓的持仓。")).toBeDefined();
+  });
+
+  it("shows each mode's stakes and the live bridges in the owner's language", async () => {
+    const { client } = fakeClient(stakingPortfolioAnswers);
+    renderSignedIn(<PortfolioScreen />, { client, locale: "zh" });
+    await settle();
+    const live = screen.getByRole("region", { name: "实盘资产" });
+    expect(linesOf(within(live).getByRole("list", { name: "质押" }))).toStrictEqual([
+      "在 0x2222…0001 质押 1.05 BNB · 市值 $630.00",
+      expect.stringMatching(/^0\.5 BNB 解绑中，2026.+起可领取$/u),
+      "0.1 BNB 可以领取",
+    ]);
+    expect(linesOf(within(live).getByRole("list", { name: "在途" }))).toStrictEqual([
+      expect.stringMatching(/^50 USDT 跨链到 Base 的 0x4444…0001 · 自 2026.+ · 已延迟$/u),
+    ]);
+    expect(within(live).getByText("实盘总计：$1,040.00")).toBeDefined();
+    const paper = screen.getByRole("region", { name: "模拟资产" });
+    expect(linesOf(within(paper).getByRole("list", { name: "质押" }))).toStrictEqual([
+      "在 0x2222…0001 质押 0.4725 BNB · 市值 $283.50",
+    ]);
+    expect(within(paper).queryByRole("list", { name: "在途" })).toBeNull();
   });
 
   it("says an agent holds nothing yet", async () => {

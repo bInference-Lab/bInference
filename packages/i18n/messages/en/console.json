@@ -109,6 +109,8 @@
   "portfolio.noPrice": "No price now",
   "portfolio.total": "{mode, select, paper {Paper total} other {Live total}}: {total}",
   "portfolio.unpriced": "Holdings with no price now are left out of the total.",
+  "portfolio.staking": "Staking",
+  "portfolio.inTransit": "In transit",
   "portfolio.open": "Positions",
   "portfolio.noOpen": "No open positions.",
   "portfolio.closed": "Closed in the last 7 days",
