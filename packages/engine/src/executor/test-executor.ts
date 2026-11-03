@@ -9,11 +9,9 @@ import {
   type TxPreparer,
   type Signer,
   type UsdPrice,
-  type Venue,
 } from "@binference/chain";
 import {
   createFakeNetwork,
-  createFakeVenue,
   type FakeNetwork,
   type FakeNetworkOptions,
   type FakeSent,
@@ -28,9 +26,8 @@ import type { IntentRequest } from "@binference/protocol";
 import type { AgentDraft } from "../agents/agent-record.js";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
-import { createFakeWalletFacts } from "../fakes/fake-wallet-facts.js";
 import type { IntentState } from "../intents/intent-state.js";
-import { expectOk, testAgent, testCoin, testSwap, testWallet } from "../intents/test-intents.js";
+import { expectOk, testCoin, testSwap } from "../intents/test-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
@@ -39,15 +36,14 @@ import {
   type TestEngineOptions,
   testAccount,
   testCall,
-  testChains,
 } from "../operations/test-engine.js";
 import type { Executor, IntentStore, TransactionStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
-import type { VenueHost } from "../venues/venue-host.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { createWalletQueue } from "../wallet-queue/wallet-queue.js";
 import { createExecutor, type RunningExecutor } from "./create-executor.js";
 import type { ExecutorLimits, ExecutorOptions } from "./executor-options.js";
+import { type BenchLaunch, launchPartsOf } from "./test-bench-launch.js";
 import { swapCoinReceived, swapTransfers } from "./test-swap-transfers.js";
 
 /** The fake chain the test engine trades on. */
@@ -120,21 +116,6 @@ export interface BenchOptions {
   readonly routing?: Partial<Pick<ExecutorOptions, "chains" | "bridging" | "staking" | "identity">>;
 }
 
-/** The parts of a bench whose executor signs a launch wallet's curve trades. */
-interface BenchLaunch {
-  readonly venues: readonly Venue[];
-  readonly curves: Pick<VenueHost, "curves">;
-  readonly chains: ReturnType<typeof testChains>;
-  readonly wallets: readonly Id<"wal">[];
-}
-
-const facts: Omit<WalletFacts, "recentOutflows"> = {
-  nativeBalanceBase: 10n ** 18n,
-  ceilingPerTxNativeBase: 10n ** 18n,
-  feePerGasNativeBase: 50_000_000n,
-  networkFeeCapNativeBase: 1_000_000_000n,
-};
-
 function countingSigner(custody: Signer, note: (request: SignRequest) => void) {
   const counting: Signer = {
     account: async (wallet, chain, options) => custody.account(wallet, chain, options),
@@ -204,17 +185,6 @@ function sendingOf(
     receipts: options.receipts?.(network) ?? network,
   };
   return new Map(options.withoutRelays === true ? [] : [[benchChain, sending]]);
-}
-
-// The agent's wallets, the registry and the venues the executor reads, and the launchpads' curve
-// reads when the bench trades on a launch's own curve.
-function launchPartsOf(options: Pick<BenchOptions, "launch" | "recentOutflows">) {
-  const { launch, recentOutflows = [] } = options;
-  const held = new Map([[testAgent, launch?.wallets ?? [testWallet]]]);
-  const wallets = createFakeWalletFacts(held, { ...facts, recentOutflows });
-  return launch === undefined
-    ? { wallets, chains: testChains(), venues: [createFakeVenue()] }
-    : { wallets, chains: launch.chains, venues: launch.venues, curves: launch.curves };
 }
 
 /** Builds an executor over the bench's engine and network, noting what it signs, pushes, sends. */
