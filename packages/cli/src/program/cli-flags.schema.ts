@@ -27,6 +27,12 @@ export interface AgentFlags extends CommonOptions {
   readonly agent?: ProtocolId<"agent">;
 }
 
+/** What `agent identity` takes: the agent, and the owner's words `--description` gives about it. */
+export interface AgentIdentityFlags extends AgentFlags {
+  /** Published in the registration file for good; none when left out. */
+  readonly description?: string;
+}
+
 /** What `wallet address` takes: the agent, and the wallet `--wallet` names. */
 export interface WalletAddressFlags extends AgentFlags {
   /** The agent's default wallet when left out. */
@@ -152,6 +158,16 @@ export const startFlagsSchema: z.ZodType<StartFlags> = z
 export const agentFlagsSchema: z.ZodType<AgentFlags> = z.object({
   ...commonShape,
   agent: protocolIdSchema("agent").exactOptional(),
+});
+
+/**
+ * Parses the options of `agent identity`: a description of 1 to 280 characters, as the engine
+ * takes.
+ */
+export const agentIdentityFlagsSchema: z.ZodType<AgentIdentityFlags> = z.object({
+  ...commonShape,
+  agent: protocolIdSchema("agent").exactOptional(),
+  description: z.string().min(1).max(280).exactOptional(),
 });
 
 /** Parses the options commander read for `wallet address`. */

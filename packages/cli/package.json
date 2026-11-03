@@ -36,6 +36,7 @@
     "@binference/custody-privy": "workspace:*",
     "@binference/dexscreener": "workspace:*",
     "@binference/engine": "workspace:*",
+    "@binference/erc8004": "workspace:*",
     "@binference/flap": "workspace:*",
     "@binference/geckoterminal": "workspace:*",
     "@binference/geniusfun": "workspace:*",

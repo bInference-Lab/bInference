@@ -21,7 +21,11 @@ export const endedStates: readonly string[] = [
   "cancelled",
 ];
 
-function call<Args>(args: Args, signal: AbortSignal) {
+/** An engine call of the owner's CLI with its args, as the rig's handlers take it. */
+export function ownerCall<Args>(
+  args: Args,
+  signal: AbortSignal,
+): { readonly args: Args; readonly caller: typeof owner; readonly signal: AbortSignal } {
   return { args, caller: owner, signal };
 }
 
@@ -41,7 +45,7 @@ export async function proposeOn(
   request: IntentRequest,
   signal: AbortSignal,
 ): Promise<IntentView> {
-  return expectValue(await rig.engine.handlers["intent/propose"](call(request, signal)));
+  return expectValue(await rig.engine.handlers["intent/propose"](ownerCall(request, signal)));
 }
 
 /** The intent's card in English, a line each, as the owner reads it. */
@@ -51,7 +55,7 @@ export async function cardTextOf(
   signal: AbortSignal,
 ): Promise<readonly string[]> {
   const drawn = expectValue(
-    await rig.engine.handlers["intent/card"](call({ intent: view.intent }, signal)),
+    await rig.engine.handlers["intent/card"](ownerCall({ intent: view.intent }, signal)),
   );
   const display = {
     formatter: createFormatter({ locale: "en", timeZone: "UTC" }),
@@ -72,7 +76,7 @@ export async function confirmOn(
   }
   expectValue(
     await rig.engine.handlers["intent/confirm"](
-      call({ intent: view.intent, card, cardVersion: 1 }, signal),
+      ownerCall({ intent: view.intent, card, cardVersion: 1 }, signal),
     ),
   );
 }

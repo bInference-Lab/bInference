@@ -242,6 +242,8 @@ export interface SkeletonOptions {
   readonly tokenFacts?: ComposeEngineOptions["readTokenFacts"];
   /** The chains a bridge delivers to, where an address may be saved too; none when left out. */
   readonly destinations?: ComposeEngineOptions["destinations"];
+  /** The identity registries and the release version; nothing registers when left out. */
+  readonly identity?: ComposeEngineOptions["identity"];
   /** The agents' workspace files; in memory when left out. */
   readonly workspace?: ComposeEngineOptions["workspace"];
   /** Whether a launch feed runs, whose stored launches `market/scan` reads; none when left out. */
@@ -249,16 +251,25 @@ export interface SkeletonOptions {
 }
 
 // The owner's bot and the handlers it alone runs, the HTTP listener with the console's files,
-// browser push and the runtime's running turns, when the options name them.
+// browser push, the runtime's running turns, the destinations and the identity registries, when
+// the options name them.
 function surfacesOf(
   options: SkeletonOptions,
 ): Pick<
   ComposeEngineOptions,
-  "telegram" | "ownerChat" | "http" | "consoleFiles" | "webPush" | "turns" | "destinations"
+  | "telegram"
+  | "ownerChat"
+  | "http"
+  | "consoleFiles"
+  | "webPush"
+  | "turns"
+  | "destinations"
+  | "identity"
 > {
-  const { telegram, ownerChat, webPush, turns, destinations } = options;
+  const { telegram, ownerChat, webPush, turns, destinations, identity } = options;
   return {
     ...(destinations === undefined ? {} : { destinations }),
+    ...(identity === undefined ? {} : { identity }),
     ...(telegram === undefined ? {} : { telegram }),
     ...(turns === undefined ? {} : { turns }),
     ...(ownerChat === undefined ? {} : { ownerChat }),

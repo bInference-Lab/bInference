@@ -14,12 +14,14 @@ import {
   evmAccountRef,
 } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
+import type { IdentityRegistry } from "@binference/chain/identity";
 import type { StakingVenue } from "@binference/chain/staking";
 import { createIdSource, err, type Id } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import type { EngineOptions, PositionStore, WalletFactsSource } from "@binference/engine";
 import {
   createExecutor,
+  createIdentityHost,
   createStakingHost,
   type ExecutorOptions,
 } from "@binference/engine/executor";
@@ -220,6 +222,8 @@ export interface RescueRigReach {
   readonly bridging?: SelfHostedBridging;
   /** The staking venues the engine and the executor run, whose ids the agents' venues add. */
   readonly stakingVenues?: readonly StakingVenue[];
+  /** The identity registries the engine and the executor run, whose ids the agents' venues add. */
+  readonly identityRegistries?: readonly IdentityRegistry[];
   /** The positions the executor books into, which the engine reads; its own when absent. */
   readonly positions?: PositionStore;
 }
@@ -245,7 +249,7 @@ interface RigExecutorOut {
 }
 
 // The executor on the fork: anvil as the one relay, receipts at the finalized tag, and the rig's
-// stores, custody, prices, names, bridges and staking venues.
+// stores, custody, prices, names, bridges, staking venues and identity registries.
 function executorOn(
   fork: Fork,
   parts: Omit<RescueRigParts, "executor" | "rigWallets" | "rescue" | "asked"> & RescueRigReach,
@@ -282,6 +286,7 @@ function executorOn(
       chains: selfHostedChains(),
       clock,
     }),
+    identity: createIdentityHost(parts.identityRegistries ?? []),
   });
 }
 
@@ -304,7 +309,9 @@ export async function rescueRigParts(fork: Fork, reach: RescueRigReach): Promise
     { signal: AbortSignal.timeout(5_000) },
   );
   rigWallets.forEach((item) => stores.install.addWallet(walletRecord(item, atMs)));
-  const venues = (reach.stakingVenues ?? []).map(({ id }) => id);
+  const venues = [...(reach.stakingVenues ?? []), ...(reach.identityRegistries ?? [])].map(
+    ({ id }) => id,
+  );
   await storeAgents(stores, fork, { atMs, venues });
   const shared = { stores, custody, wallets: forkWalletFacts(fork), prices: rigPrices(fork) };
   return {

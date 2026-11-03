@@ -221,6 +221,7 @@ The reference of every key, generated from the schema, is
 | `binference deny <intent>`               | Cancels the intent's card, as its button does                       |
 | `binference live`                        | Goes live once the disclaimer is typed back, over IPC only          |
 | `binference paper`                       | Switches the agent back to paper mode                               |
+| `binference agent identity`              | The agent's on-chain identity, or the card that registers it        |
 | `binference wallet list`                 | The agent wallets with their labels and addresses                   |
 | `binference wallet address`              | The address to fund the agent's default wallet at                   |
 | `binference wallet create --label x`     | A new wallet under its own ceiling; asks for the owner key          |

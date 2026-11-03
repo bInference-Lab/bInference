@@ -20,6 +20,7 @@ import type { ComposedTelegram } from "./compose-telegram.js";
 import { composeTrading, type TradingParts } from "./compose-trading.js";
 import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
 import { engineHandlers } from "./engine-handlers.js";
+import { chainIdentityRegistries } from "./identity-registries.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { chainNameResolvers } from "./name-resolvers.js";
 import { botParts } from "./open-bot.js";
@@ -110,6 +111,7 @@ function composeSending(
     nameResolvers: chainNameResolvers(parts.reads),
     bridging: parts.bridging.executor,
     stakingVenues: chainStakingVenues(parts.reads, selfHostedRatePrices()),
+    identityRegistries: chainIdentityRegistries(parts.reads),
     ...(host.testOrders === undefined ? {} : { liveOrderFills: true }),
   });
   // The executor finishes a signature or a send under way within the shutdown's budget.
@@ -163,7 +165,11 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   const bridges = parts.bridging.executor.bridges;
   const custody = composeCustody(opening, opened, {
     chains,
-    venues: selfHostedCeilingVenues({ venues: opened.venues, reads: parts.reads, bridges }),
+    venues: selfHostedCeilingVenues({
+      venues: [...opened.venues, ...chainIdentityRegistries(parts.reads)],
+      reads: parts.reads,
+      bridges,
+    }),
     onStopped: () => signerStopped.run(),
     onRefusal: (notice) => signerRefused.run(notice),
     sealKey,
@@ -232,12 +238,14 @@ function webPushOf(opening: Opening, opened: Opened) {
   return key === undefined ? {} : { webPush: { key, http: opening.host.http, isPublicEndpoint } };
 }
 
-// What the engine reads on the chains besides prices: tokens' facts, names and staking venues.
-function chainReadParts(reads: TradingParts["reads"]) {
+// What the engine reads on the chains besides prices: tokens' facts, names, staking venues and
+// identity registries, whose registration files carry the release version.
+function chainReadParts(reads: TradingParts["reads"], version: string) {
   return {
     ...chainTokenReads(reads),
     nameResolvers: chainNameResolvers(reads),
     stakingVenues: chainStakingVenues(reads, selfHostedRatePrices()),
+    identity: { registries: chainIdentityRegistries(reads), version },
   };
 }
 
@@ -274,7 +282,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       state: locked.state,
       isLocked: () => locked.lock.isLocked(),
       ...pricingOf(host, wiring.priceWatchers.canPrice),
-      ...chainReadParts(parts.reads),
+      ...chainReadParts(parts.reads, host.version),
       bridging: parts.bridging.engine,
       workspace: stateWorkspace(opening.platform),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),

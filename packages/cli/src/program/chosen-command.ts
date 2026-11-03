@@ -2,6 +2,7 @@ import type { MessageValues } from "@binference/i18n";
 import type { ProtocolId } from "@binference/protocol";
 import type {
   AddressAddFlags,
+  AgentIdentityFlags,
   WalletCreateFlags,
   AgentFlags,
   CeilingSetFlags,
@@ -42,6 +43,7 @@ export type ChosenCommand =
     }
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
   | { readonly name: "chat"; readonly options: AgentFlags }
+  | { readonly name: "agentIdentity"; readonly options: AgentIdentityFlags }
   | {
       readonly name: "walletAddress" | "walletExport" | "ceiling";
       readonly options: WalletAddressFlags;

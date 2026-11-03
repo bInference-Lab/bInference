@@ -5,5 +5,6 @@ export { defaultExecutorLimits } from "./executor/executor-options.js";
 export type { ChainSending, ExecutorLimits, ExecutorOptions } from "./executor/executor-options.js";
 export { signerRefusedNotice } from "./executor/signer-refused-notice.js";
 export type { ExecutorBridging } from "./executor/bridge-queue-check.js";
+export { createIdentityHost } from "./identity/identity-host.js";
 export { createStakingHost } from "./venues/staking-host.js";
 export type { StakingHost, StakingHostOptions } from "./venues/staking-host.js";

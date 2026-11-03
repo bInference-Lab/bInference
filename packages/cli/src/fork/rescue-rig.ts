@@ -33,8 +33,9 @@ export interface RescueRig {
  * The rescue rig on a fork: an engine and its executor on memory stores and the fork's BSC, with
  * two agents, three wallets whose keys sign here, a bridge wallet among them, and the owner's
  * rescue address in effect. Its executor checks a send again at the engine's prices, and both read
- * a send's name through `nameResolvers`, none when absent, bridge through `bridging`'s parts and
- * stake through `stakingVenues`, whose ids the agents' venues add.
+ * a send's name through `nameResolvers`, none when absent, bridge through `bridging`'s parts,
+ * stake through `stakingVenues` and register through `identityRegistries`, whose ids the agents'
+ * venues add; a registration file names the release `fork`.
  */
 export async function rescueRigOf(
   fork: Fork,
@@ -42,8 +43,13 @@ export async function rescueRigOf(
 ): Promise<RescueRig> {
   const clock = createSystemClock();
   const chains = selfHostedChains();
-  const { nameResolvers = [], bridging, stakingVenues = [] } = given;
-  const reach = { nameResolvers, stakingVenues, ...(bridging === undefined ? {} : { bridging }) };
+  const { nameResolvers = [], bridging, stakingVenues = [], identityRegistries = [] } = given;
+  const reach = {
+    nameResolvers,
+    stakingVenues,
+    identityRegistries,
+    ...(bridging === undefined ? {} : { bridging }),
+  };
   const parts = await rescueRigParts(fork, reach);
   const { stores, custody, rescue, asked } = parts;
   const engine = createEngine({
@@ -63,6 +69,7 @@ export async function rescueRigOf(
     executor: parts.executor({ publish: () => undefined }),
     nameResolvers,
     stakingVenues,
+    identity: { registries: identityRegistries, version: "fork" },
     ...bridging?.engine,
     ...forkEngineBasics(fork, 62),
   });

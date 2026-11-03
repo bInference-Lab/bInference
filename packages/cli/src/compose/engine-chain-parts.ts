@@ -17,23 +17,29 @@ export interface EngineChainParts {
   readonly bridging?: Pick<EngineOptions, BridgingKey>;
   /** The staking venues, each on its chain; nothing stakes without them (decision 0327). */
   readonly stakingVenues?: EngineOptions["stakingVenues"];
+  /**
+   * The identity registries and the release version; no agent registers without them (decision
+   * 0335).
+   */
+  readonly identity?: EngineOptions["identity"];
   readonly logger: Logger;
 }
 
 /**
  * The engine's options of the parts it finds on the chains: the name resolvers, the chains a
- * bridge delivers to, the bridges with their readers and the log of their follower, and the
- * staking venues, none when absent.
+ * bridge delivers to, the bridges with their readers and the log of their follower, the staking
+ * venues and the identity registries, none when absent.
  */
 export function chainPartsOf(
   parts: EngineChainParts,
-): Pick<EngineOptions, "nameResolvers" | BridgingKey | "bridgeLog" | "stakingVenues"> {
-  const { nameResolvers, destinations, bridging, logger } = parts;
+): Pick<EngineOptions, "nameResolvers" | BridgingKey | "bridgeLog" | "stakingVenues" | "identity"> {
+  const { nameResolvers, destinations, bridging, logger, identity } = parts;
   return {
     ...(nameResolvers === undefined ? {} : { nameResolvers }),
     ...(destinations === undefined ? {} : { destinations }),
     ...bridging,
     ...(bridging === undefined ? {} : { bridgeLog: logger.child("bridges") }),
     stakingVenues: parts.stakingVenues ?? [],
+    ...(identity === undefined ? {} : { identity }),
   };
 }

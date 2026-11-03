@@ -3,6 +3,7 @@ import type { Formatter, MessageValues } from "@binference/i18n";
 import type { OwnerInfo } from "@binference/protocol";
 import { CommanderError } from "commander";
 import { runAddressAdd, runAddressList, runAddressRemove } from "../commands/address-command.js";
+import { runAgentIdentity } from "../commands/agent-identity-command.js";
 import { runApproval } from "../commands/approval-command.js";
 import { runBackupCreate, runBackupList } from "../commands/backup-command.js";
 import { runBackupRestore } from "../commands/backup-restore-command.js";
@@ -131,6 +132,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   telegramPair: async (context) => runTelegramPair(context),
   console: async (context) => runConsole(context),
   chat: async (context, chosen) => runChat(context, chosen.options),
+  agentIdentity: runAgentIdentity,
   backupCreate: async (context) => runBackupCreate(context),
   backupList: async (context) => runBackupList(context),
   backupRestore: runBackupRestore,

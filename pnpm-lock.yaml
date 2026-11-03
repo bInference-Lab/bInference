@@ -548,6 +548,9 @@ importers:
       '@binference/engine':
         specifier: workspace:*
         version: link:../engine
+      '@binference/erc8004':
+        specifier: workspace:*
+        version: link:../../plugins/erc8004
       '@binference/flap':
         specifier: workspace:*
         version: link:../../plugins/flap

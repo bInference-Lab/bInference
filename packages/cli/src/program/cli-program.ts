@@ -1,6 +1,7 @@
 import type { ProtocolId } from "@binference/protocol";
 import { Argument, Command, InvalidArgumentError, Option, type OptionValues } from "commander";
 import { addAddressCommands } from "./address-commands.js";
+import { addAgentGroupCommands } from "./agent-group-commands.js";
 import { addBackupCommands } from "./backup-commands.js";
 import { addCeilingCommands } from "./ceiling-commands.js";
 import type { ApprovalModeChoice, ProgramOptions } from "./chosen-command.js";
@@ -192,6 +193,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
       choose({ name: "logs", options: logsFlagsSchema.parse(flags) }),
     );
   addAgentCommands(program, options);
+  addAgentGroupCommands(program, options);
   addCardCommands(program, options);
   addWalletCommands(program, options);
   addCeilingCommands(program, options);
