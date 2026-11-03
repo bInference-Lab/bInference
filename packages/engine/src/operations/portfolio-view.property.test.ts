@@ -163,6 +163,9 @@ const balancesOf = (view: PortfolioView) =>
   );
 
 // The live and the paper view's balances side by side, in one portfolio with no stake or bridge.
+// A view with nothing paper leaves its paper total out, which reads as zero.
+const paperTotalOf = (view: PortfolioView): bigint => view.paperTotalUsdMicros ?? 0n;
+
 function bothOf(liveView: PortfolioView, paperView: PortfolioView): PortfolioView {
   return portfolioViewOf(
     [
@@ -268,7 +271,7 @@ describe("each dollar of a portfolio counts once", () => {
         const liveView = viewOf(live, { paper: false });
         const paperView = viewOf(settled, { paper: true });
         const both = bothOf(liveView, paperView);
-        expect([both.totalUsdMicros, both.paperTotalUsdMicros]).toStrictEqual([
+        expect([both.totalUsdMicros, paperTotalOf(both)]).toStrictEqual([
           totalOf(liveView.balances),
           totalOf(paperView.balances),
         ]);
