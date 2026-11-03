@@ -59,6 +59,26 @@ describe("sqlite webhook alert store", () => {
     },
   );
 
+  it("takes two identical alerts at once as one accepted and one repeat", async () => {
+    const { alerts, plant } = openStore();
+    const rule: WebhookRuleKey = {
+      id: "whr_0190f1c2-3a4b-7c5d-8e6f-000000000001" as WebhookRuleKey["id"],
+      secretHash: "a".repeat(64) as WebhookRuleKey["secretHash"],
+      state: "active",
+      ratePerMinute: 60,
+    };
+    await plant(rule);
+    const draft = {
+      rule: rule.id,
+      secretHash: rule.secretHash,
+      body: { text: "buy" },
+      bodyHash: "b".repeat(64) as WebhookRuleKey["secretHash"],
+      receivedAtMs: 5_000,
+    };
+    const taken = await Promise.all([alerts.take(draft, live), alerts.take(draft, live)]);
+    expect(taken.map((outcome) => outcome.kind).toSorted()).toStrictEqual(["accepted", "repeat"]);
+  });
+
   it("keeps the last accepted alert's time on its rule", async () => {
     const { alerts, plant, kysely, execute } = openStore();
     const rule: WebhookRuleKey = {

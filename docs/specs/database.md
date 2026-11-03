@@ -202,7 +202,9 @@ and the rate counts a rule's `accepted` rows of the last 60 seconds. Per
 that gets `404` writes no row. An accepted alert's row, its `inbox` entry (`source_key`
 `wh:<webhook_events.id>`, payload `{ rule, event, alertId?, body }` with the body as `{ text }`
 when it is UTF-8, else `{ base64 }`) and the rule's `last_alert_at` are one write, and
-`webhook_events` is also indexed by `(rule_id, outcome, received_at)`.
+`webhook_events` is also indexed by `(rule_id, outcome, received_at)` and `(received_at)`, and its `id`
+is never reused after a prune (`AUTOINCREMENT`), since the inbox entry keyed on it outlives the
+row. The `inbox` is also indexed by `handled_at` where it is set, for its prune.
 
 <a id="section-2-5"></a>
 

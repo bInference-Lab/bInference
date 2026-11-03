@@ -197,6 +197,19 @@ async function prunesEvents(harness: WebhookAlertStoreHarness): Promise<void> {
   assert.equal(again.kind, "accepted");
 }
 
+// Event rows are never numbered again after a prune: an accepted alert's inbox entry is keyed on
+// its row and outlives it.
+async function numbersAfterAPrune(harness: WebhookAlertStoreHarness): Promise<void> {
+  const rule = ruleOf(1);
+  const subject = await planted(harness, [rule]);
+  const first = await subject.alerts.take(alertOf(rule), live());
+  assert.equal(await subject.alerts.prune(t0 + 1, live()), 1);
+  const next = await subject.alerts.take(alertOf(rule, { receivedAtMs: t0 + 2 }), live());
+  assert.ok(first.kind === "accepted" && next.kind === "accepted");
+  assert.notEqual(next.event, first.event);
+  assert.equal(await alertsInInbox(subject), 2);
+}
+
 async function refusesAborted(harness: WebhookAlertStoreHarness): Promise<void> {
   const rule = ruleOf(1);
   const subject = await planted(harness, [rule]);
@@ -223,6 +236,7 @@ export function webhookAlertStoreContract(
     checkOn("refuses an alert past the rule's rate in any 60 seconds", self, holdsTheRate),
     checkOn("records nothing for a rule that is not answering", self, goneWhenNotAnswering),
     checkOn("prunes the rows received before a time", self, prunesEvents),
+    checkOn("never numbers a row again after a prune", self, numbersAfterAPrune),
     checkOn("refuses every call on an aborted signal and stores nothing", self, refusesAborted),
   ];
 }

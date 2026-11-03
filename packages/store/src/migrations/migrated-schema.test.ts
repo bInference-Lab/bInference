@@ -282,6 +282,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   launches: ["index|chain,block", "index|chain,launched_at", "index|creator,launched_at"],
   webhook_rules: ["index|state"],
   webhook_events: [
+    "index|received_at",
     "index|rule_id,alert_id",
     "index|rule_id,outcome,received_at",
     "index|rule_id,received_at",
@@ -289,7 +290,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   schedules: ["index|agent_id,state", "index|state,next_at"],
   schedule_runs: ["index|at"],
   ledger: ["unique|hash", "unique|id"],
-  inbox: ["unique|source_key"],
+  inbox: ["index|handled_at|partial", "unique|source_key"],
   outbox: ["index|state,next_at"],
   notices: ["index|at"],
   agent_inbox: ["index|agent_id,taken_at"],
