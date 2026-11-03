@@ -96,6 +96,12 @@ export interface CliHost {
     options: RunWithinOptions,
   ) => Promise<ProgramExit>;
   /**
+   * Folders to look in for an outside program, such as Tailscale's CLI, after the `PATH` of
+   * `env`: where installers put programs a background service's `PATH` lacks. The entry file
+   * names this OS's own; tests name none, so no test reaches a real program.
+   */
+  readonly programFolders?: readonly string[];
+  /**
    * The folder of the console's build, which the engine serves; when left out, or before the
    * console is built, the engine serves no console.
    */
