@@ -221,18 +221,16 @@ export type { FileTicket } from "./views/file-ticket.schema.js";
 export { chatSurfaceSchema, inboxMessageViewSchema } from "./views/inbox-message-view.schema.js";
 export {
   choicePlaceSchema,
+  type QuestionAnswerView,
+  type QuestionCloseReason,
   questionLimits,
+  type QuestionState,
+  type QuestionView,
   questionViewSchema,
 } from "./views/question-view.schema.js";
 export { questionChoicesSchema } from "./operations/question-operations.schema.js";
 export { questionPushOf } from "./views/question-push.schema.js";
 export type { QuestionClosedPush, QuestionPush } from "./views/question-push.schema.js";
-export type {
-  QuestionAnswerView,
-  QuestionCloseReason,
-  QuestionState,
-  QuestionView,
-} from "./views/question-view.schema.js";
 export type { ChatSurface, InboxMessageView } from "./views/inbox-message-view.schema.js";
 export { type IntentKind, intentKindSchema } from "./views/intent-kind.schema.js";
 export { intentStates, intentStateSchema, unsentEndStates } from "./views/intent-state.schema.js";
@@ -282,18 +280,16 @@ export type { PoolFee, QuoteView, RouteLeg, TradePlace } from "./views/quote-vie
 export { maxInsiders, riskViewSchema } from "./views/risk-view.schema.js";
 export type { RiskFlag, RiskView } from "./views/risk-view.schema.js";
 export {
+  type ScheduleRun,
   scheduleRunSchema,
+  type ScheduleSkip,
   scheduleSkips,
+  type ScheduleState,
   scheduleStates,
+  type ScheduleView,
   scheduleViewSchema,
+  type ScheduleWhen,
   scheduleWhenSchema,
-} from "./views/schedule-view.schema.js";
-export type {
-  ScheduleRun,
-  ScheduleSkip,
-  ScheduleState,
-  ScheduleView,
-  ScheduleWhen,
 } from "./views/schedule-view.schema.js";
 export { type WalletView, walletViewSchema } from "./views/wallet-view.schema.js";
 export { webhookRuleViewSchema } from "./views/webhook-rule-view.schema.js";
