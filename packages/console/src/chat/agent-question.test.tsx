@@ -64,6 +64,19 @@ describe("the agent's question in the chat", () => {
     expect(questionCard().textContent).toContain("Answered: Hours");
   });
 
+  it("answers once when the owner presses twice before the engine replies", async () => {
+    const engine = engineWith(() => ({ question: view }));
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "Hours" }));
+    fireEvent.click(screen.getByRole("button", { name: "Days" }));
+    await settle();
+    expect(engine.calls.filter(({ op }) => op === "chat/answer")).toStrictEqual([
+      { op: "chat/answer", args: { agent, question, choice: 1 } },
+    ]);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
   it("shows a question as its push arrives", async () => {
     const state: { open: object } = { open: {} };
     const engine = engineWith(() => state.open);

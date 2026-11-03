@@ -72,7 +72,7 @@ test("chats with an image and confirms the card the agent opens inline", async (
   expect(problems).toStrictEqual([]);
 });
 
-test("answers the agent's question with a button in the chat", async ({
+test("answers the agent's question once with a button in the chat", async ({
   page,
   request,
 }, testInfo) => {
@@ -84,14 +84,17 @@ test("answers the agent's question with a button in the chat", async ({
   const asked = page.getByRole("region", { name: "main asks" });
   await expect(asked).toContainText("How long do you like to hold a token?", { timeout: 20_000 });
   await expect(asked).toContainText("Or write your own answer.");
-  await page.screenshot({ path: testInfo.outputPath("question.png"), fullPage: true });
+  await shootThemes(page, testInfo, "question");
 
-  await asked.getByRole("button", { name: "Hours" }).click();
+  // A double press sends one answer, so the runtime takes one turn for it.
+  await asked.getByRole("button", { name: "Hours" }).dblclick();
   await expect(asked).toContainText("Answered: Hours");
   await expect(asked.getByRole("button")).toHaveCount(0);
+  await expect(asked.getByRole("status")).toHaveCount(0);
   const log = page.getByRole("log", { name: "Chat with main" });
   await expect(log).toContainText("Hours it is.", { timeout: 20_000 });
-  await page.screenshot({ path: testInfo.outputPath("question-answered.png"), fullPage: true });
+  await expect(log.getByText("Hours it is.")).toHaveCount(1);
+  await shootThemes(page, testInfo, "question-answered");
   expect(problems).toStrictEqual([]);
 });
 

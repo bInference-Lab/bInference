@@ -3,15 +3,11 @@ import type { ProtocolId, QuestionView } from "@binference/protocol";
 import { Button } from "../components/ui/button";
 import { errorWords } from "../connection/error-words";
 import { useText, type Words } from "../i18n/console-text";
-import { type EndedQuestion, useAgentQuestion } from "./use-agent-question";
+import { type EndedQuestion, isClosedRefusal, useAgentQuestion } from "./use-agent-question";
 
 // The most of the agent's words a question shows, and of each choice (spec 4, section 8.2).
 const mostText = 500;
 const mostChoice = 64;
-
-function isClosedRefusal(error: Error | null): boolean {
-  return error !== null && "code" in error && error.code === "question.closed";
-}
 
 // The last line of a question that closed: the choice pressed, an answer written in the chat, or
 // why it closed unanswered.
@@ -62,7 +58,7 @@ export function AgentQuestionCard(props: {
 }): React.JSX.Element | null {
   const text = useText();
   const { agentName } = props;
-  const { open, ended, answer } = useAgentQuestion(props.agent);
+  const { open, ended, answer, press } = useAgentQuestion(props.agent);
   if (open === undefined) {
     return ended === undefined ? null : (
       <QuestionFrame view={ended.view} agentName={agentName}>
@@ -81,7 +77,7 @@ export function AgentQuestionCard(props: {
             variant="secondary"
             size="sm"
             disabled={!props.canAnswer || answer.isPending}
-            onClick={() => answer.mutate({ question: open, place })}
+            onClick={() => press(open, place)}
           >
             {displayOutsideText(choice, mostChoice)}
           </Button>

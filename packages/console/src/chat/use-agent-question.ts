@@ -11,7 +11,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useEngine } from "../connection/engine-context";
 import { useTopic } from "../connection/use-topic";
 
@@ -36,24 +36,50 @@ export interface AgentQuestion {
   readonly open?: QuestionView;
   /** The last question this page showed, once it closed, until the next question. */
   readonly ended?: EndedQuestion;
-  /** Answers the open question with the choice at `place`. */
+  /** The answer by a button: whether it is on its way, and why the engine refused it. */
   readonly answer: AnswerAction;
+  /**
+   * Answers the question with the choice at `place`, once: a later press on the same question
+   * sends nothing, unless the first failed for a reason other than the question having closed.
+   */
+  readonly press: (question: QuestionView, place: number) => void;
 }
 
 function questionKey(agent: ProtocolId<"agent">): readonly string[] {
   return ["question", agent];
 }
 
-function useAnswer(agent: ProtocolId<"agent">): AnswerAction {
+/** Whether the engine refused an answer because the question had closed. */
+export function isClosedRefusal(error: Error | null): boolean {
+  return error !== null && "code" in error && error.code === "question.closed";
+}
+
+// The answer by a button, sent once per question: the mutation's state changes only after the
+// next render, so a second press before it finds the question already pressed.
+function useAnswer(agent: ProtocolId<"agent">): Pick<AgentQuestion, "answer" | "press"> {
   const { client } = useEngine();
-  return useMutation({
-    mutationFn: async (answer: Press) =>
+  const pressed = useRef<string | undefined>(undefined);
+  const answer = useMutation({
+    mutationFn: async (press: Press) =>
       client.call(
         "chat/answer",
-        { agent, question: answer.question.question, choice: answer.place },
+        { agent, question: press.question.question, choice: press.place },
         { signal: AbortSignal.timeout(60_000) },
       ),
+    onError: (error) => {
+      if (!isClosedRefusal(error)) {
+        pressed.current = undefined;
+      }
+    },
   });
+  const press = (question: QuestionView, place: number): void => {
+    if (pressed.current === question.question) {
+      return;
+    }
+    pressed.current = question.question;
+    answer.mutate({ question, place });
+  };
+  return { answer, press };
 }
 
 /**
@@ -72,7 +98,7 @@ export function useAgentQuestion(agent: ProtocolId<"agent">): AgentQuestion {
       (await client.call("chat/openQuestion", { agent }, { signal })).question ?? null,
     retry: false,
   });
-  const answer = useAnswer(agent);
+  const { answer, press } = useAnswer(agent);
   const reload = async (): Promise<void> => queries.invalidateQueries({ queryKey: key });
   useTopic(`chat:${agent}`, {
     onPush: (frame) => {
@@ -95,5 +121,6 @@ export function useAgentQuestion(agent: ProtocolId<"agent">): AgentQuestion {
     ...(shown === undefined ? {} : { open: shown }),
     ...(ended === undefined ? {} : { ended }),
     answer,
+    press,
   };
 }
