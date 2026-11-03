@@ -1,17 +1,10 @@
 import { BinferenceError, jsonValueSchema } from "@binference/core";
-import {
-  type BackupView,
-  backupViewSchema,
-  operations,
-  protocolErrorCodes,
-  type ProtocolErrorCode,
-  type ProtocolId,
-} from "@binference/protocol";
+import { type BackupView, backupViewSchema, operations } from "@binference/protocol";
 import { z } from "zod";
 import type { ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { withEngine, withEngineWithin } from "./connect-engine.js";
-import { type JobEnd, type JobEnds, watchJobEnds } from "./job-ends.js";
+import { type JobEnd, jobEndOrError, reportJobFailure, watchJobEnds } from "./job-ends.js";
 
 // A backup by hand may take a while on a large install: the command waits up to 10 minutes.
 const createBudgetMs = 10 * 60_000;
@@ -27,19 +20,10 @@ function backupValues(run: CommandRun, backup: BackupView) {
   };
 }
 
-function isProtocolCode(code: string): code is ProtocolErrorCode {
-  return protocolErrorCodes.some((known) => known === code);
-}
-
 function reportEnd(run: CommandRun, end: JobEnd): ExitCode {
   const { output } = run;
   if (end.kind === "failed") {
-    const { code } = end.push.error;
-    if (isProtocolCode(code)) {
-      output.refuse(code);
-    } else {
-      output.fail({ code, key: "connect.failed", values: { code } });
-    }
+    reportJobFailure(output, end.push);
     return 1;
   }
   const backup = backupViewSchema.parse(end.push.result);
@@ -58,19 +42,6 @@ function reportUnended(run: CommandRun, error: Error): ExitCode {
   return 1;
 }
 
-// The job's end, or why the wait for it ended first.
-async function endOrError(
-  ends: JobEnds,
-  job: ProtocolId<"longJob">,
-  signal: AbortSignal,
-): Promise<JobEnd | Error> {
-  try {
-    return await ends.of(job, signal);
-  } catch (error) {
-    return error instanceof Error ? error : new Error("The wait for the backup ended.");
-  }
-}
-
 /**
  * `binference backup create`: takes a backup now through `backup/create` over IPC (keys spec,
  * section 7), kept until the owner removes it, its second copy in `backups.copyTo` when set. The
@@ -86,7 +57,7 @@ export async function runBackupCreate(run: CommandRun): Promise<ExitCode> {
       const ends = watchJobEnds(client, host.clock);
       try {
         const { job } = await client.call("backup/create", {}, { signal });
-        const end = await endOrError(ends, job, signal);
+        const end = await jobEndOrError(ends, job, signal);
         return end instanceof Error ? reportUnended(run, end) : reportEnd(run, end);
       } finally {
         ends.close();

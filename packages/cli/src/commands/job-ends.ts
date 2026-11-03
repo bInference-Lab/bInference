@@ -5,9 +5,12 @@ import {
   jobDonePushSchema,
   type JobFailedPush,
   jobFailedPushSchema,
+  protocolErrorCodes,
+  type ProtocolErrorCode,
   type ProtocolId,
   type PushFrame,
 } from "@binference/protocol";
+import type { CliOutput } from "../program/cli-output.js";
 
 /** How a long job ended, as its push on the `job` topic says. */
 export type JobEnd =
@@ -101,4 +104,34 @@ export function watchJobEnds(client: ProtocolClient, clock: Clock): JobEnds {
     },
     close: unsubscribe,
   };
+}
+
+/**
+ * The end of `job`, or the error the wait for it ended with first: the client's once the engine
+ * stopped, or the signal's once the command's time ran out.
+ */
+export async function jobEndOrError(
+  ends: JobEnds,
+  job: ProtocolId<"longJob">,
+  signal: AbortSignal,
+): Promise<JobEnd | Error> {
+  try {
+    return await ends.of(job, signal);
+  } catch (error) {
+    return error instanceof Error ? error : new Error("The wait for the job ended.");
+  }
+}
+
+function isProtocolCode(code: string): code is ProtocolErrorCode {
+  return protocolErrorCodes.some((known) => known === code);
+}
+
+/** Tells why a job failed: the message of its protocol error code, else the code itself. */
+export function reportJobFailure(output: CliOutput, push: JobFailedPush): void {
+  const { code } = push.error;
+  if (isProtocolCode(code)) {
+    output.refuse(code);
+  } else {
+    output.fail({ code, key: "connect.failed", values: { code } });
+  }
 }
