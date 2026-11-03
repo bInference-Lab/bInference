@@ -1,6 +1,6 @@
 # 0290. The nightly crash suite runs in four parts on each OS
 
-Status: Accepted
+Status: Amended by 0339
 
 Accepted by the tech lead on 2026-10-21.
 

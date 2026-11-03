@@ -60,7 +60,14 @@ Rules for this package:
   `binference init` set up (decision 0135). They kill it at each kill point and start it again.
   The engine reaches the chain only through the test's relays and RPC in front of anvil, which
   count every send and place the kills; Privy and KyberSwap's API are the test's, on loopback,
-  where Privy counts each signature; the signer runs in the engine with its agent key. Like
+  where Privy counts each signature; the signer runs in the engine with its agent key. A venue
+  whose views a bare chain cannot hold, such as StakeHub or Lista, is a stand-in
+  (`crash-stand-ins.ts`): code at its address that anvil runs, beside a model of its state that
+  answers its views at the block a call names and readies the code for each move before a relay
+  passes it on. A test file serves an outside API of its own, such as Across's, through the
+  services' routes; only the crash engine sets the host's `testRelaySolver`, the key its Relay
+  answers sign with (decision 0339). A run of any intent the owner proposes and confirms goes through
+  `crash-intent-runs.ts`, which kills the engine at the run's point and reads what it booked. Like
   `src/main.ts`, the crash engine reads `process` itself. They run in `pnpm test:crash`, never in
   `pnpm check`.
 - The image test in `src/image/` builds the Docker image from the repo root's `Dockerfile`
