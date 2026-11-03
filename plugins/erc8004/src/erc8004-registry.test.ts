@@ -3,6 +3,7 @@ import {
   BinferenceError,
   chainRefSchema,
   type IdentityRegistry,
+  type TxHash,
 } from "@binference/plugin-sdk";
 import { encodeEvmDraft } from "@binference/plugin-sdk/evm";
 import { identityRegistryContract } from "@binference/plugin-sdk/testing";
@@ -129,6 +130,15 @@ describe("createErc8004Registry", () => {
     await expect(registry.landed({ wallet, txHash }, live)).resolves.toMatchObject({
       ok: true,
       value: { onchainId: "0", owner: other },
+    });
+  });
+
+  it("reads a receipt no node holds yet as a fault to read again, never as not found", async () => {
+    const { registry } = setup();
+    const lagging = `0x${"cd".repeat(32)}` as TxHash;
+
+    await expect(registry.landed({ wallet, txHash: lagging }, live)).rejects.toMatchObject({
+      code: "erc8004.read_failed",
     });
   });
 

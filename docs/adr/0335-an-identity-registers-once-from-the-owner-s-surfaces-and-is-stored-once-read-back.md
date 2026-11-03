@@ -66,9 +66,11 @@ when the registration counts as made.
   reads it back: the receipt's `Registered` event from the registry, naming the wallet as owner,
   gives the id; `ownerOf(id)` reads the wallet and `tokenURI(id)` the card's file. Then one write
   stores the `identities` row (engine migration 0058) and moves the intent to `reconciled`, with
-  `receipt.identity` naming the id. A read that fails is tried again each block up to
+  `receipt.identity` naming the id. A read that fails, a node that holds no receipt yet among
+  them, is tried again each block up to
   `settleAfterBlocks`, then the intent stays `finalized` and recovery tries again. A read that
-  differs is logged as `executor.identity_mismatch`, stores no row, and tells the owner with
+  differs, a read receipt that reverted or holds no `Registered` event naming the wallet among
+  them, is logged as `executor.identity_mismatch`, stores no row, and tells the owner with
   `notice.identityMismatch`. `identity/get` answers the stored row.
 
 ## Consequences

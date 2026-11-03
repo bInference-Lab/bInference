@@ -28,7 +28,8 @@ and [0335](../../docs/adr/0335-an-identity-registers-once-from-the-owner-s-surfa
   registering wallet and one `binference` service carrying the release version.
 - `src/registry/` reads the chain: the version and a wallet's balance of identity tokens at one
   latest block, and a landed registration from its own `Registered` event, then the holder and the
-  file at the latest block. A view that reverts, or an answer outside its shape, is
-  `erc8004.read_failed`. It caches nothing.
+  file at the latest block. A view that reverts, an answer outside its shape, or a node that holds
+  no receipt of the transaction yet is `erc8004.read_failed`, so the caller reads again. It caches
+  nothing.
 - Unit tests read a registry world in `src/testing/`, never the network. The fork test in
   `src/fork/` registers from anvil's account on the pinned BSC fork and reads it back.

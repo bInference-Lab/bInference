@@ -1,7 +1,7 @@
 import type { TxDraft } from "@binference/chain";
 import type { IdentityRegistry } from "@binference/chain/identity";
 import type { FakeIdentityRegistry } from "@binference/chain/testing";
-import type { Id } from "@binference/core";
+import { BinferenceError, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { createIdentityHost } from "../identity/identity-host.js";
 import {
@@ -31,8 +31,14 @@ const limits = testLimits;
 
 // The fake registry as the engine and the executor run it: a registration lands in it under the
 // hash the network gave its transaction once the executor reads it back, and `after` runs then.
-function landingOnRead(registry: FakeIdentityRegistry, after: () => void): IdentityRegistry {
+// The first `lagging` reads back reject, as a node a few blocks behind holds no receipt yet.
+function landingOnRead(
+  registry: FakeIdentityRegistry,
+  after: () => void,
+  lagging = 0,
+): IdentityRegistry {
   const built: TxDraft[] = [];
+  const lag = { left: lagging };
   return {
     ...registry,
     build: (request) => {
@@ -41,6 +47,10 @@ function landingOnRead(registry: FakeIdentityRegistry, after: () => void): Ident
       return draft;
     },
     landed: async (request, options) => {
+      if (lag.left > 0) {
+        lag.left -= 1;
+        throw new BinferenceError({ code: "erc8004.read_failed", message: "No receipt yet." });
+      }
       const [draft] = built;
       if (draft !== undefined) {
         registry.land(draft, request.txHash);
@@ -54,9 +64,10 @@ function landingOnRead(registry: FakeIdentityRegistry, after: () => void): Ident
 async function benchWith(
   registry: FakeIdentityRegistry,
   after: () => void = () => undefined,
+  lagging = 0,
 ): Promise<ExecutorBench> {
   const chains = identityChains();
-  const landing = landingOnRead(registry, after);
+  const landing = landingOnRead(registry, after, lagging);
   const bench = await startExecutorBench({
     hold: true,
     agent: { limits },
@@ -147,6 +158,19 @@ describe("an identity registration on its wallet's queue", () => {
     expect(eventsOf(bench)).toContain("executor.identity_unread:");
     registry.up();
     await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+  });
+
+  it("reads back again while a lagging node holds no receipt, then stores the identity", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry, () => undefined, 2);
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    const got = expectOk(
+      await bench.test.engine.handlers["identity/get"](testCall({ agent: testAgent })),
+    );
+    expect(got.registration?.onchainId).toBe("0");
+    expect(notices(bench)).toStrictEqual([]);
   });
 
   it("stores no identity and tells the owner when the registry reads back another file", async () => {

@@ -161,7 +161,8 @@ export async function readStanding(
 }
 
 // The id the transaction's `Registered` event from the registry gave the wallet; none for a revert,
-// a transaction with no such event, or one that registered for another owner.
+// a transaction with no such event, or one that registered for another owner. A node that holds no
+// receipt yet, a few blocks behind, cannot say: that is a fault, read again later, never a miss.
 async function registeredId(
   read: RegistryRead,
   request: { readonly owner: Address; readonly txHash: TxHash },
@@ -171,12 +172,16 @@ async function registeredId(
     params: [request.txHash],
     result: receiptSchema,
     signal: read.signal,
+    atHead: true,
   });
   if (reply.kind === "error") {
     throw unreadable("a transaction's receipt could not be read.");
   }
   const receipt = reply.value;
-  if (receipt === null || BigInt(receipt.status) !== 1n) {
+  if (receipt === null) {
+    throw unreadable("the node holds no receipt of the transaction yet.");
+  }
+  if (BigInt(receipt.status) !== 1n) {
     return undefined;
   }
   for (const log of receipt.logs) {
@@ -192,8 +197,9 @@ async function registeredId(
 /**
  * What the transaction's registration from the wallet made: the id its `Registered` event gave,
  * then who holds that id and the file the registry holds for it, at the latest block. A receipt
- * that is missing, reverted, or holds no `Registered` event from the registry naming the wallet
- * is `not_found`. Rejects as {@link readStanding} does.
+ * read that is reverted, or holds no `Registered` event from the registry naming the wallet, is
+ * `not_found`; a node that holds no receipt yet rejects with `erc8004.read_failed`, so the
+ * caller reads it again. Rejects as {@link readStanding} does.
  */
 export async function readLanded(
   read: RegistryRead,
