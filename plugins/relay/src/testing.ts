@@ -22,3 +22,5 @@ export {
   recordedRefundCheck,
   recordedSolanaFillCheck,
 } from "./testing/recorded-settlements.js";
+export { signedQuoteFor, signedQuoteOutput } from "./testing/signed-quote.js";
+export type { SignedQuoteAsk } from "./testing/signed-quote.js";

@@ -1,6 +1,6 @@
 import { notFoundAnswer, usdcToBaseAnswer, withWord } from "@binference/across/testing";
 import { bsc } from "@binference/chains";
-import { type HttpResponse, type JsonValue, jsonValueSchema } from "@binference/core";
+import type { HttpResponse, JsonValue } from "@binference/core";
 import {
   type Address,
   decodeEventLog,
@@ -16,6 +16,7 @@ import { z } from "zod";
 import { createRecordedChain, type RecordedChain } from "../compose/test-recorded-chain.js";
 import { type AcrossDeposited, acrossStatusOf, landBaseFill } from "../fork/across-base-fills.js";
 import { assemble, fail, type Item, op, p, pullFromCaller } from "./crash-assembler.js";
+import { contractLogIn, crashHexSchema } from "./crash-contract-log.js";
 import { crashContract } from "./crash-market.js";
 import type { CrashApi } from "./crash-routes.js";
 import { crashBalanceSlot, crashTokenCode } from "./crash-token.js";
@@ -135,35 +136,13 @@ function quoteOf(query: URLSearchParams): HttpResponse {
   };
 }
 
-const receiptSchema = z
-  .looseObject({
-    status: z.string(),
-    logs: z.array(
-      z.looseObject({ address: z.string(), topics: z.array(jsonValueSchema), data: z.string() }),
-    ),
-  })
-  .nullable();
-const hexSchema = z.custom<Hex>(
-  (value) => typeof value === "string" && /^0x[0-9a-f]*$/iu.test(value),
-);
-
 // The deposit the SpokePool logged in the transaction; none while it is unmined.
 async function depositIn(anvil: AnvilCall, hash: Hex): Promise<AcrossDeposited | undefined> {
-  const receipt = receiptSchema.parse(await anvil("eth_getTransactionReceipt", [hash]));
-  const log = receipt?.logs.find(({ address }) => getAddress(address) === crashSpokePool);
-  if (receipt?.status !== "0x1" || log === undefined) {
+  const log = await contractLogIn(anvil, { hash, contract: crashSpokePool });
+  if (log === undefined) {
     return undefined;
   }
-  const topics = z.array(hexSchema).parse(log.topics);
-  const [first, ...rest] = topics;
-  if (first === undefined) {
-    return undefined;
-  }
-  const { args } = decodeEventLog({
-    abi: depositEvents,
-    data: hexSchema.parse(log.data),
-    topics: [first, ...rest],
-  });
+  const { args } = decodeEventLog({ abi: depositEvents, data: log.data, topics: [...log.topics] });
   return { ...args, hash };
 }
 
@@ -179,6 +158,8 @@ export interface CrashAcross {
   readonly api: CrashApi;
   /** Base's RPC, served at `/base`. */
   readonly base: CrashApi;
+  /** Base's recorded chain, where another bridge's fill lands too. */
+  readonly baseChain: RecordedChain;
   /**
    * Holds the next deposit status request unanswered, as a follower that asked when the engine
    * was killed; resolves once it came.
@@ -191,7 +172,7 @@ export interface CrashAcross {
 // Across's deposit status: filled, and the fill landed on Base, once the deposit is mined; Across's
 // "not found" before then.
 async function statusOf(anvil: AnvilCall, base: RecordedChain, query: URLSearchParams) {
-  const deposited = await depositIn(anvil, hexSchema.parse(query.get("depositTxnRef")));
+  const deposited = await depositIn(anvil, crashHexSchema.parse(query.get("depositTxnRef")));
   if (deposited === undefined) {
     return json(404, notFoundAnswer);
   }
@@ -236,6 +217,7 @@ export async function installCrashAcross(anvil: AnvilCall): Promise<CrashAcross>
       new Promise((resolve) => {
         holds.next = resolve;
       }),
+    baseChain: base,
     plainOnBase: (address) => {
       base.answer("eth_getCode", [getAddress(address), "latest"], "0x");
     },

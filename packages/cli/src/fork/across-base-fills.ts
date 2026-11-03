@@ -1,7 +1,7 @@
 import { filledAnswer } from "@binference/across/testing";
 import { accountRefParts, chainRefSchema } from "@binference/chain";
 import { baseMainnet } from "@binference/chains";
-import { jsonValueSchema } from "@binference/core";
+import { type JsonValue, jsonValueSchema } from "@binference/core";
 import {
   type Address,
   encodeAbiParameters,
@@ -93,18 +93,30 @@ function fillLogs(deposited: AcrossDeposited) {
   return [transfer, fill];
 }
 
+/** A transaction a test lands on Base: its hash, who sent it to which contract, and its logs. */
+export interface BaseLanding {
+  readonly hash: Hex;
+  readonly from: Address;
+  readonly to: Address;
+  readonly logs: readonly {
+    readonly address: Address;
+    readonly topics: readonly JsonValue[];
+    readonly data: Hex;
+  }[];
+}
+
 /**
- * Lands Across's fill of the deposit on Base's recorded chain: its receipt and transaction, and
- * the heads that make it final; answers the fill's hash.
+ * Lands a transaction on Base's recorded chain, as a bridge's fill lands: its receipt and
+ * transaction in a block, and the heads that make that block final.
  */
-export function landBaseFill(base: RecordedChain, deposited: AcrossDeposited): Hex {
-  const hash = keccak256(stringToHex(`across fill of ${deposited.hash}`));
+export function landOnBase(base: RecordedChain, landing: BaseLanding): void {
+  const { hash } = landing;
   const blockHash = keccak256(stringToHex(`base block of ${hash}`));
   const placed = { blockNumber: toHex(blocks.fill), blockHash, transactionHash: hash };
-  const logs = fillLogs(deposited).map((log, index) =>
-    Object.assign(log, placed, { transactionIndex: "0x0", logIndex: toHex(index) }),
+  const logs = landing.logs.map((log, index) =>
+    Object.assign({}, log, placed, { transactionIndex: "0x0", logIndex: toHex(index) }),
   );
-  const route = { from: recordedRelayer, to: baseSpokePool, transactionIndex: "0x0" };
+  const route = { from: landing.from, to: landing.to, transactionIndex: "0x0" };
   const fees = { gasUsed: "0x1a60c", effectiveGasPrice: "0x21a5eda", type: "0x2" };
   base.answer("eth_getTransactionReceipt", [hash], {
     ...placed,
@@ -117,6 +129,15 @@ export function landBaseFill(base: RecordedChain, deposited: AcrossDeposited): H
   base.answer("eth_blockNumber", [], toHex(blocks.latest));
   const final = { number: toHex(blocks.final), hash: keccak256(stringToHex("base final")) };
   base.answer("eth_getBlockByNumber", ["finalized", false], final);
+}
+
+/**
+ * Lands Across's fill of the deposit on Base's recorded chain: its receipt and transaction, and
+ * the heads that make it final; answers the fill's hash.
+ */
+export function landBaseFill(base: RecordedChain, deposited: AcrossDeposited): Hex {
+  const hash = keccak256(stringToHex(`across fill of ${deposited.hash}`));
+  landOnBase(base, { hash, from: recordedRelayer, to: baseSpokePool, logs: fillLogs(deposited) });
   return hash;
 }
 

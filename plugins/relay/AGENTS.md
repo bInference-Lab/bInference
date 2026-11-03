@@ -26,6 +26,9 @@ apply here. Rules for this plugin ([decisions 0322 and 0323](../../docs/DECISION
   there and a case in `relay-api.test.ts`. The owner's key, when there is one, goes as
   `x-api-key` on every request. A quote whose answer names a code Relay's errors guide calls
   passing is asked once more after a pause.
+- Relay's solver comes from the bridge's options: the composition root names `relaySolver`, as
+  Relay's contract addresses page lists it, and only the crash suite's engine names a key of its
+  own (decision 0339). Every check below that names the solver reads that one.
 - It never sends Relay's bytes. A quote is taken only when Relay's solver signed its order id
   (`order/order-signature.ts`, else `relay.unsigned_order`), its order is the one its id names,
   worked out here from the order's data (`order/order-id.ts`), and it pays exactly the asked input

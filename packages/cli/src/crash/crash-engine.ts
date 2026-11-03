@@ -9,14 +9,16 @@ import { createSystemRandom } from "../runtime/system-random.js";
 import { crashEnvSchema } from "./crash-engine.schema.js";
 import { crashDownload, crashHttp } from "./crash-http.js";
 import { crashTestOrders } from "./crash-orders.js";
+import { crashRelaySolver } from "./crash-relay.js";
 import { startCrashSigner } from "./crash-signer.js";
 
 // The crash suite's engine process: `binference start --foreground` as `src/main.ts` runs it,
 // started as a program of its own so the test can kill it outright. Its outside world is the
-// test's: the chain and relays, Privy, KyberSwap's, Flap's and Telegram's APIs on loopback, the
-// signer's service with its hard rules in this process, on the agent key the engine hands it, and,
-// for a run of live order fills, the prices that fire them, and for a run of the owner's chat, an
-// agent runtime on a scripted model. Like `main.ts`, it alone reads `process`.
+// test's: the chain and relays, Privy, KyberSwap's, Flap's and Telegram's APIs on loopback and
+// what a test file routes there, with the crash suite's own Relay solver; the signer's service
+// with its hard rules in this process, on the agent key the engine hands it; and, for a run of
+// live order fills, the prices that fire them, and for a run of the owner's chat, an agent runtime
+// on a scripted model. Like `main.ts`, it alone reads `process`.
 const env = crashEnvSchema.parse(process.env);
 const version = "crash";
 const http = createSystemHttp({ version });
@@ -42,6 +44,7 @@ const host: CliHost = {
     script: fileURLToPath(import.meta.url),
   },
   startSigner: startCrashSigner,
+  testRelaySolver: crashRelaySolver,
   // The suite's engines never take the owner's webhook port.
   webhookPort: 0,
   ...(env.CRASH_FILLS === "1" ? { testOrders: crashTestOrders() } : {}),

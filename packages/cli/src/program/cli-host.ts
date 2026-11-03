@@ -9,6 +9,7 @@ import type {
   SystemFacts,
 } from "@binference/platform";
 import type { ChatTerminal } from "@binference/tui";
+import type { Address } from "viem";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
 import type { StartSigner } from "../compose/start-signer.js";
@@ -112,6 +113,13 @@ export interface CliHost {
    * orders never fill: no config key or variable turns them on.
    */
   readonly testOrders?: TestOrders;
+  /**
+   * Only the crash suite's engine sets it: the key its own Relay answers sign orders with, in
+   * place of Relay's solver, so a forced stop can land during a Relay bridge (decision 0339). Left
+   * out, as the entry file leaves it, the bridge takes Relay's solver alone: no config key or
+   * variable names another.
+   */
+  readonly testRelaySolver?: Address;
   /**
    * Only engines a test starts set it: the port the webhook listener binds in place of
    * `engine.webhookPort`, 0 for a free one the system picks, so a test never takes the owner's

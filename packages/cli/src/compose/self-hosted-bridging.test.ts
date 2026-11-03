@@ -1,7 +1,10 @@
+import { fileURLToPath } from "node:url";
 import { chainRefSchema, type TxHash } from "@binference/chain";
 import { arbitrum, baseMainnet, bsc, ethereum, robinhood, solana } from "@binference/chains";
 import { createSecret, type HttpRequest } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
+import { readTextFile } from "@binference/platform";
+import { recordedFillCheck } from "@binference/relay/testing";
 import { describe, expect, it } from "vitest";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
 import { composeChainReads } from "./chain-reads.js";
@@ -30,6 +33,20 @@ async function relayStatus(bridging: ReturnType<typeof selfHostedBridging>) {
   const relay = bridging.engine.bridges.find(({ bridge }) => bridge.id === "relay");
   const deposit = { chain: bscRef, hash: `0x${"11".repeat(32)}` as TxHash };
   return relay?.bridge.status(deposit, { signal: new AbortController().signal });
+}
+
+// The hosted Relay bridge.
+function relayOf(bridging: ReturnType<typeof selfHostedBridging>) {
+  return bridging.engine.bridges.find(({ bridge }) => bridge.id === "relay")?.bridge;
+}
+
+// A file of the package as text; one that cannot be read is a fault of the test.
+async function textOf(file: string, signal: AbortSignal): Promise<string> {
+  const read = await readTextFile(file, signal);
+  if (!read.ok) {
+    throw new Error(`The test cannot read ${file}.`);
+  }
+  return read.value;
 }
 
 describe("this binference's bridging parts", () => {
@@ -75,6 +92,25 @@ describe("this binference's bridging parts", () => {
     ]);
   });
 
+  it("counts a Relay fill only from Relay's own solver, unless the crash suite's engine names its key", () => {
+    const reads = readsOn([bscRef]);
+    const shipped = relayOf(selfHostedBridging({ http: refusing, clock, reads }));
+    const testRelaySolver = `0x${"77".repeat(20)}` as const;
+    const crashed = relayOf(selfHostedBridging({ http: refusing, clock, reads, testRelaySolver }));
+
+    expect(shipped?.settlement(recordedFillCheck)).toStrictEqual({ ok: true, value: 343_283n });
+    expect(crashed?.settlement(recordedFillCheck)).toStrictEqual({ ok: false, error: "not_own" });
+  });
+
+  it("names no other Relay solver in the entry file, a config key or a variable", async () => {
+    const signal = AbortSignal.timeout(5_000);
+    const files = ["../main.ts", "../../docs/config-keys.generated.md"].map((path) =>
+      fileURLToPath(new URL(path, import.meta.url)),
+    );
+    const texts = await Promise.all(files.map(async (file) => textOf(file, signal)));
+
+    expect(texts.map((text) => /solver/iu.test(text))).toStrictEqual([false, false]);
+  });
   it("runs no bridge while BNB Smart Chain is off, and still reads the destinations", () => {
     const bridging = selfHostedBridging({ http: refusing, clock, reads: readsOn([]) });
 

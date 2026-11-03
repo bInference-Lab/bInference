@@ -10,6 +10,7 @@ import type { Clock, Http, Secret } from "@binference/core";
 import type { EngineOptions } from "@binference/engine";
 import type { ExecutorBridging } from "@binference/engine/executor";
 import { createRelayBridge, relayId, relaySolver } from "@binference/relay";
+import type { Address } from "viem";
 import { bridgeContractsOf, bridgeRoutesOf } from "./bridge-routes.js";
 import type { ChainReads } from "./chain-reads.js";
 import { deliveryReaderOf } from "./delivery-readers.js";
@@ -31,6 +32,8 @@ interface BridgingParts {
   readonly reads: ReadonlyMap<ChainRef, ChainReads>;
   /** The owner's Relay API key; Relay runs keyless without one (decision 0322). */
   readonly relayKey?: Secret;
+  /** The crash suite's own key in place of Relay's solver (decision 0339); Relay's when absent. */
+  readonly testRelaySolver?: Address;
 }
 
 // The bridges that leave from the chains this binference reads, each on the routes the registry
@@ -54,7 +57,7 @@ function hostedBridges(parts: BridgingParts) {
     chains: [source],
     routes: relayRoutes,
     depositories: bridgeContractsOf(relayId, "depository"),
-    solver: relaySolver,
+    solver: parts.testRelaySolver ?? relaySolver,
   });
   return [
     { bridge: across, routes },

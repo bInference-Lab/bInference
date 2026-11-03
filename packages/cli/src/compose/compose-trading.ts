@@ -55,6 +55,9 @@ export function composeTrading(opening: Opening, opened: Opened): TradingParts {
       clock,
       reads,
       ...(opened.relayKey === undefined ? {} : { relayKey: opened.relayKey }),
+      ...(opening.host.testRelaySolver === undefined
+        ? {}
+        : { testRelaySolver: opening.host.testRelaySolver }),
     }),
   };
 }

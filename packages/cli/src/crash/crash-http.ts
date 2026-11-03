@@ -23,6 +23,7 @@ const services: Readonly<Record<string, string>> = {
   "https://funcs.flap.sh": "flap",
   "https://api.telegram.org": "telegram",
   "https://app.across.to": "across",
+  "https://api.relay.link": "relay",
   ...Object.fromEntries(baseMainnet.rpcs.map(({ url }) => [new URL(url).origin, "base"])),
 };
 
@@ -53,7 +54,7 @@ function unreachable(signal: AbortSignal): never {
 
 /**
  * The crash engine's outbound Http: a relay of {@link crashRelays} goes to the test's relay of the
- * same name, Privy, KyberSwap's, Flap's, Telegram's and Across's APIs and Base's RPCs go to the
+ * same name, Privy, KyberSwap's, Flap's, Telegram's, Across's and Relay's APIs and Base's RPCs go to the
  * test's services, a request to 127.0.0.1 goes as it is, and every other request fails as one that reaches no host, so a run
  * never reaches the network.
  */
