@@ -1,79 +1,12 @@
-import type { Amount, ChainRef, ChainRegistry } from "@binference/chain";
-import { amountValue, type CardDisplay, cardLineText } from "@binference/i18n";
-import type { CardValueView, PortfolioView } from "@binference/protocol";
+import type { ChainRef, ChainRegistry } from "@binference/chain";
+import { cardLineText, stakeLines, transitLine } from "@binference/i18n";
+import type { PortfolioView } from "@binference/protocol";
 import type { CommandContext } from "./command-context.js";
 
-type Values = Readonly<Record<string, CardValueView>>;
-type Stake = NonNullable<PortfolioView["staking"]>[number];
-type Transit = NonNullable<PortfolioView["inTransit"]>[number];
-
-function line(display: CardDisplay, key: string, values: Values): string {
-  return cardLineText({ key, values }, display);
-}
-
 // A chain as a reply names it: the registry's name, or its reference when the registry lacks it.
-function chainValue(chains: ChainRegistry, chain: ChainRef): CardValueView {
+function chainName(chains: ChainRegistry, chain: ChainRef): string {
   const registered = chains.get(chain);
-  return { type: "text", text: registered.ok ? registered.value.definition.name : chain };
-}
-
-// The dollars the stake's receipt units are worth as their balance, when it has a price.
-function usdOf(view: PortfolioView, stake: Stake, staked: Amount): CardValueView | undefined {
-  const balance = view.balances.find(
-    ({ wallet, paper, amount }) =>
-      wallet === stake.wallet && paper === stake.paper && amount.asset === staked.asset,
-  );
-  return balance?.usdMicros === undefined
-    ? undefined
-    : { type: "usd", usdMicros: balance.usdMicros };
-}
-
-// The stake's units as the coin they are worth, and their dollars or that the value is unknown.
-function stakedLine(display: CardDisplay, view: PortfolioView, stake: Stake): readonly string[] {
-  const { staked } = stake;
-  if (staked === undefined || staked.base === 0n) {
-    return [];
-  }
-  const validator: CardValueView =
-    stake.validator === undefined
-      ? { type: "text", text: stake.venue }
-      : { type: "account", account: stake.validator };
-  const usd = usdOf(view, stake, staked);
-  const amount = amountValue(stake.stakedValue ?? staked, display.assets);
-  return [
-    line(display, "positions.staked", {
-      amount,
-      validator,
-      hasValue: { type: "choice", choice: usd === undefined ? "no" : "yes" },
-      ...(usd === undefined ? {} : { value: usd }),
-    }),
-  ];
-}
-
-// What one stake holds: its units, each part not ready yet, and what a claim takes now.
-function stakeLines(display: CardDisplay, view: PortfolioView, stake: Stake): readonly string[] {
-  const { assets } = display;
-  const waiting = stake.unbonding.map((part) =>
-    line(display, "positions.unbonding", {
-      amount: amountValue(part.amount, assets),
-      readyAt: { type: "dateTime", atMs: part.readyAt },
-    }),
-  );
-  const claimable =
-    stake.claimable.base === 0n
-      ? []
-      : [line(display, "positions.claimable", { amount: amountValue(stake.claimable, assets) })];
-  return [...stakedLine(display, view, stake), ...waiting, ...claimable];
-}
-
-function transitLine(context: CommandContext, display: CardDisplay, transit: Transit): string {
-  return line(display, "positions.bridge", {
-    amount: amountValue(transit.amount, display.assets),
-    recipient: { type: "account", account: transit.recipient },
-    chain: chainValue(context.chains, transit.toChain),
-    since: { type: "dateTime", atMs: transit.sentAt },
-    late: { type: "choice", choice: transit.late ? "yes" : "no" },
-  });
+  return registered.ok ? registered.value.definition.name : chain;
 }
 
 // A heading and its lines as one block, or none without a line.
@@ -100,11 +33,16 @@ export function stakingBlocks(
   return [
     ...blockOf(
       context.words("cmd.positions.staking"),
-      stakes.flatMap((stake) => stakeLines(display, view, stake)),
+      stakes.flatMap((stake) => stakeLines(view, stake)).map((line) => cardLineText(line, display)),
     ),
     ...blockOf(
       context.words("cmd.positions.inTransit"),
-      transits.map((transit) => transitLine(context, display, transit)),
+      transits.map((transit) =>
+        cardLineText(
+          transitLine(view, transit, chainName(context.chains, transit.toChain)),
+          display,
+        ),
+      ),
     ),
   ];
 }

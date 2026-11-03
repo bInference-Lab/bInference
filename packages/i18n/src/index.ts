@@ -1,4 +1,5 @@
 export { amountValue, assetValue } from "./cards/asset-values.js";
+export { stakeLines, transitLine } from "./cards/held-elsewhere-lines.js";
 export { assetText, cardLineText } from "./cards/card-text.js";
 export type { CardDisplay } from "./cards/card-text.js";
 export { addressPartOf, shortAddress } from "./cards/short-address.js";
