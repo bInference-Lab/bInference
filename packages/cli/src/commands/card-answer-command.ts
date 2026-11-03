@@ -1,4 +1,5 @@
 import type { Amount } from "@binference/chain";
+import type { ProtocolClient } from "@binference/client";
 import { jsonValueSchema } from "@binference/core";
 import {
   cardLineText,
@@ -17,6 +18,8 @@ import {
   type ProtocolId,
   type UnfreezeRequest,
   unsentEndStates,
+  type WebhookRuleCardRequest,
+  type WebhookRuleView,
 } from "@binference/protocol";
 import { z } from "zod";
 import type { CommonOptions } from "../program/cli-flags.schema.js";
@@ -33,7 +36,13 @@ export interface CardAnswerRequest {
 }
 
 /** The request of an intent whose confirmation sends nothing on chain. */
-type Written = UnfreezeRequest | AutoOrderRequest;
+type Written = UnfreezeRequest | AutoOrderRequest | WebhookRuleCardRequest;
+
+/**
+ * Where the auto order or alert rule a confirmed card started stands after the tap: its state,
+ * `ended` for a rule no longer listed, or `unread`.
+ */
+type StartedState = OrderView["state"] | WebhookRuleView["state"] | "ended" | "unread";
 
 // As a card shows a token's symbol: set by whoever deployed the token, so cut and made visible.
 const symbolLength = 16;
@@ -72,20 +81,44 @@ function reportUnfrozen(
   return 0;
 }
 
-// What a confirmed card that sends nothing took effect as: an unfreeze, or the order an auto
-// order's card confirmed, as it stands after the tap, active or ended before it; `undefined` when
-// that order could not be read.
+// What a confirmed card that sends nothing took effect as: an unfreeze, or the auto order or
+// alert rule its card confirmed, in the state it stands in after the tap.
 function reportWritten(
   output: CliOutput,
   view: { readonly intent: ProtocolId<"intent">; readonly request: Written },
-  order: OrderView | undefined,
+  started: StartedState,
 ): ExitCode {
   const { intent, request } = view;
   if (request.kind === "unfreeze") {
     return reportUnfrozen(output, intent, request.agent);
   }
-  output.say("confirm.order", { intent, state: order?.state ?? "unread" });
+  const key = request.kind === "autoOrder" ? "confirm.order" : "confirm.webhookRule";
+  output.say(key, { intent, state: started });
   return 0;
+}
+
+// The state of the auto order or alert rule a confirmed card started, read after the tap: a rule
+// the list no longer holds ended before it, and a failed read leaves the state unsaid.
+async function startedStateOf(
+  client: ProtocolClient,
+  request: IntentView["request"],
+  signal: AbortSignal,
+): Promise<StartedState> {
+  if (request.kind === "autoOrder") {
+    const order = client.call("order/get", { order: request.order }, { signal });
+    return order.then(
+      ({ state }) => state,
+      () => "unread",
+    );
+  }
+  if (request.kind !== "webhookRule") {
+    return "unread";
+  }
+  const rules = client.call("webhookRule/list", {}, { signal });
+  return rules.then(
+    ({ items }) => items.find(({ rule }) => rule === request.rule)?.state ?? "ended",
+    () => "unread",
+  );
 }
 
 // A confirmed intent that will send or fill nothing: why it ended before, on standard error with
@@ -93,7 +126,7 @@ function reportWritten(
 function reportEnded(
   run: CommandRun,
   view: IntentView,
-  order: OrderView | undefined,
+  started: StartedState,
 ): ExitCode | undefined {
   const { intent, request } = view;
   if (unsentEndStates.has(view.state)) {
@@ -101,22 +134,18 @@ function reportEnded(
     run.output.explain("confirm.unsent", { intent, receipt });
     return 1;
   }
-  return request.kind === "unfreeze" || request.kind === "autoOrder"
-    ? reportWritten(run.output, { intent, request }, order)
-    : undefined;
+  const isWritten =
+    request.kind === "unfreeze" || request.kind === "autoOrder" || request.kind === "webhookRule";
+  return isWritten ? reportWritten(run.output, { intent, request }, started) : undefined;
 }
 
-function reportConfirmed(
-  run: CommandRun,
-  view: IntentView,
-  order: OrderView | undefined,
-): ExitCode {
+function reportConfirmed(run: CommandRun, view: IntentView, started: StartedState): ExitCode {
   const { output, formatter } = run;
   printView(output, view);
   if (view.state === "awaiting_confirmation" && view.card !== undefined) {
     return reportReopened(run, view, view.card);
   }
-  const ended = reportEnded(run, view, order);
+  const ended = reportEnded(run, view, started);
   if (ended !== undefined) {
     return ended;
   }
@@ -214,13 +243,7 @@ async function confirm(run: CommandRun, request: CardAnswerRequest): Promise<Exi
   return withEngine(run.host, run.output, async (client, signal) => {
     const args = { intent, card, cardVersion: version };
     const view = await client.call("intent/confirm", args, { signal });
-    const asked = view.request;
-    // The card is confirmed by now: a failed read of its order leaves the order's state unsaid.
-    const order =
-      asked.kind === "autoOrder"
-        ? await client.call("order/get", { order: asked.order }, { signal }).catch(() => undefined)
-        : undefined;
-    return reportConfirmed(run, view, order);
+    return reportConfirmed(run, view, await startedStateOf(client, view.request, signal));
   });
 }
 
@@ -230,8 +253,9 @@ async function confirm(run: CommandRun, request: CardAnswerRequest): Promise<Exi
  * line by line as the engine draws it through `intent/card`, and asks yes or no unless `--yes`
  * says yes before; without `--yes` it needs someone at the terminal, so `--json` alone is
  * refused. It then confirms that version through `intent/confirm`; a confirmed paper intent shows
- * its paper fill, a confirmed unfreeze what it unfroze, and an auto order's card whether its order
- * became active, read through `order/get`; one that ended before it sent or filled, such as a paper
+ * its paper fill, a confirmed unfreeze what it unfroze, an auto order's card whether its order
+ * became active, read through `order/get`, and an alert rule's card whether its rule did, read
+ * through `webhookRule/list`; one that ended before it sent or filled, such as a paper
  * sale its holding no longer covers, says why on standard error and exits 1; a worse re-quote
  * opens the next card
  * version and exits 1 with its terms, to be checked and confirmed again. Deny cancels through

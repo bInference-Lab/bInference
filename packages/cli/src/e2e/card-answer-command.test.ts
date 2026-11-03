@@ -151,6 +151,36 @@ describe.each(skeletonCompositions)(
       expect(orders.items.map(({ state }) => state)).toStrictEqual(["active", "active"]);
     });
 
+    it("says an alert rule is active once its card is confirmed, never sending", slow, async () => {
+      const { machine, skeleton } = await servedMachine();
+      const rule = { agent, token, side: "buy", size: { base: 10n ** 15n } } as const;
+      const intents: ProtocolId<"intent">[] = [];
+      for (const name of ["first", "second"]) {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- each rule's card opens in order
+        await skeleton.client.call("webhookRule/create", { ...rule, name }, live());
+        // oxlint-disable-next-line eslint/no-await-in-loop -- each card is read once it opened
+        const { items } = await skeleton.client.call("webhookRule/list", {}, live());
+        intents.push(items.at(-1)?.intent as ProtocolId<"intent">);
+      }
+      const [first, second] = intents as [ProtocolId<"intent">, ProtocolId<"intent">];
+      const inEnglish = await runOn(machine, ["confirm", first, "--yes"]);
+      const inChinese = await runOn(machine, ["confirm", second, "--yes"], {
+        LANG: "zh_CN.UTF-8",
+      });
+      expect([inEnglish.code, inChinese.code]).toStrictEqual([0, 0]);
+      expect(inEnglish.stdout).toContain(
+        `\nConfirmed ${first}. The alert rule is active: its URL takes alerts now, and each ` +
+          "fills on paper.\n",
+      );
+      const activeInZh = inZh.message("cli.confirm.webhookRule", {
+        intent: second,
+        state: "active",
+      });
+      expect(inChinese.stdout).toContain(`\n${activeInZh}\n`);
+      const { items } = await skeleton.client.call("webhookRule/list", {}, live());
+      expect(items.map(({ state }) => state)).toStrictEqual(["active", "active"]);
+    });
+
     it("shows why auto mode asks, in the owner's language", slow, async () => {
       const { machine, skeleton } = await servedMachine();
       await skeleton.client.call("approval/set", { agent, mode: "auto" }, live());
