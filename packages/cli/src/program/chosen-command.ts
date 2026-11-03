@@ -18,6 +18,7 @@ import type {
 } from "./cli-flags.schema.js";
 import type { CliHost } from "./cli-host.js";
 import type { McpFlags, McpSessionFlags, McpSetupFlags } from "./mcp-flags.schema.js";
+import type { WebhookCreateFlags, WebhookEventsFlags } from "./webhook-flags.schema.js";
 
 /** The approval mode `binference approval` sets. */
 export type ApprovalModeChoice = "manual" | "auto";
@@ -68,6 +69,18 @@ export type ChosenCommand =
       readonly name: "addressRemove";
       readonly options: CommonOptions;
       readonly entry: ProtocolId<"addressBook">;
+    }
+  | { readonly name: "webhookList"; readonly options: CommonOptions }
+  | { readonly name: "webhookCreate"; readonly options: WebhookCreateFlags }
+  | {
+      readonly name: "webhookEvents";
+      readonly options: WebhookEventsFlags;
+      readonly rule: ProtocolId<"webhookRule">;
+    }
+  | {
+      readonly name: "webhookRotate" | "webhookDelete";
+      readonly options: CommonOptions;
+      readonly rule: ProtocolId<"webhookRule">;
     }
   | { readonly name: "check"; readonly options: CheckFlags }
   | { readonly name: "uninstall"; readonly options: UninstallFlags }

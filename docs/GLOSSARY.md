@@ -93,6 +93,8 @@ new name here first, in the change that uses it.
 - **tracked wallet**: a wallet an active copy order or wallet alert names; the leader watcher reads
   its trades from each block.
 - **webhook rule**: a rule confirmed once that lets an inbound webhook fill inside its bounds.
+  The owner sees it as an **alert rule**. Its **events** are the alerts its URL took and what each
+  became: filled, skipped and why, a repeat, or over its rate.
 - **schedule**: a model turn that runs at set times. It moves no money.
 - **paper mode**: real quotes, checks and cards, with fills recorded at the confirmed quote and
   nothing sent on chain. New agents start in it; **live** is the opposite.
@@ -494,7 +496,8 @@ new name here first, in the change that uses it.
 - **commands**: `binference init`, `start`, `status`, `health`, `logs`, `approval`, `confirm`,
   `deny`, `wallet list`, `wallet address`, `wallet create`, `wallet create --launch`, `wallet create --bridge`, `wallet export`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
-  `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
+  `safety status`, `address list`, `address add`, `address remove`, `webhook list`,
+  `webhook create`, `webhook events`, `webhook rotate`, `webhook delete`, `limit`, `limit set`,
   `limit cancel`, `telegram pair`, `unlock`, `expose`, `expose --webhooks`, `expose --off`, `uninstall`, `uninstall --state`, `reset`,
   `agent identity`, `plugin add`, `plugin list`, `plugin enable`, `plugin disable`,
   `plugin remove`.

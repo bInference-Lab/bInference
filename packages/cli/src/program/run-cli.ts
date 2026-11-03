@@ -37,6 +37,13 @@ import { runUninstall } from "../commands/uninstall-command.js";
 import { runUnlock } from "../commands/unlock-command.js";
 import { runWalletAddress, runWalletCreate, runWalletList } from "../commands/wallet-command.js";
 import { runWalletExport } from "../commands/wallet-export-command.js";
+import {
+  runWebhookDelete,
+  runWebhookEvents,
+  runWebhookList,
+  runWebhookRotate,
+} from "../commands/webhook-command.js";
+import { runWebhookCreate } from "../commands/webhook-create-command.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { loadConfig } from "../config/load-config.js";
 import type { ChosenCommand } from "./chosen-command.js";
@@ -142,6 +149,11 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   addressList: runAddressList,
   addressAdd: runAddressAdd,
   addressRemove: runAddressRemove,
+  webhookList: async (context) => runWebhookList(context),
+  webhookCreate: async (context, chosen) => runWebhookCreate(context, chosen.options),
+  webhookEvents: runWebhookEvents,
+  webhookRotate: runWebhookRotate,
+  webhookDelete: runWebhookDelete,
   limit: runLimit,
   limitSet: runLimitSet,
   limitCancel: runLimitCancel,

@@ -27,6 +27,7 @@ import { addSafetyCommands } from "./safety-commands.js";
 import { addServiceCommands } from "./service-commands.js";
 import { addSignerCommands } from "./signer-commands.js";
 import { addTelegramCommands } from "./telegram-commands.js";
+import { addWebhookCommands } from "./webhook-commands.js";
 
 function linesOf(value: string): number {
   const lines = Number(value);
@@ -211,6 +212,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addOwnerKeyCommands(program, options);
   addServiceCommands(program, options);
   addAddressCommands(program, options);
+  addWebhookCommands(program, options);
   addLimitCommands(program, options);
   addConfigCommands(program, options);
   addMcpCommands(program, options);

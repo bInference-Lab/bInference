@@ -240,6 +240,11 @@ The reference of every key, generated from the schema, is
 | `binference address list`                | The agent's saved addresses and when a send may pay each            |
 | `binference address add <address>`       | Saves an address for its chain (`--chain`); asks for the owner key  |
 | `binference address remove <entry>`      | Takes an address out of the book: nothing is sent to it again       |
+| `binference webhook list`                | The alert rules active or waiting for their card                    |
+| `binference webhook create`              | Makes an alert rule, shows its URL once, then its card              |
+| `binference webhook events <rule>`       | What each alert to a rule's URL became, newest first                |
+| `binference webhook rotate <rule>`       | A new URL for a rule, shown once; the old one no longer works       |
+| `binference webhook delete <rule>`       | Ends a rule; its URL no longer works                                |
 | `binference limit`                       | The agent's limits in effect, and the looser ones that wait         |
 | `binference limit set <key=value>`       | Stricter limits apply now, looser ones in 24 hours                  |
 | `binference limit cancel`                | Drops the looser limits that wait                                   |
