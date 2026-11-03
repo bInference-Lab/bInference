@@ -13,6 +13,8 @@ export interface NodeProgram {
   readonly exited: Promise<number | undefined>;
   /** Ends the program at once: `SIGKILL` on macOS and Linux, `TerminateProcess` on Windows. */
   kill(): void;
+  /** The program's process id, once the OS started it. */
+  readonly pid?: number;
 }
 
 /** What one Node program starts with. */
@@ -26,6 +28,8 @@ export interface NodeProgramOptions {
   readonly parentEnv: Readonly<Record<string, string | undefined>>;
   /** Variables the program gets besides those. */
   readonly env?: Readonly<Record<string, string>>;
+  /** The folder it runs in; this process's own when absent. */
+  readonly cwd?: string;
   /** Ends the program at once when it aborts. */
   readonly signal: AbortSignal;
 }
@@ -69,6 +73,7 @@ export function startNodeProgram(options: NodeProgramOptions): NodeProgram {
     buffer: false,
     reject: false,
     windowsHide: true,
+    ...(options.cwd === undefined ? {} : { cwd: options.cwd }),
     cancelSignal: options.signal,
     killSignal: "SIGKILL",
   });
@@ -94,5 +99,6 @@ export function startNodeProgram(options: NodeProgramOptions): NodeProgram {
     kill: () => {
       child.kill("SIGKILL");
     },
+    ...(child.pid === undefined ? {} : { pid: child.pid }),
   };
 }

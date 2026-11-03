@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { startNodeProgram } from "./node-program.js";
 
-// Echoes each line back in capitals, prints its variables' names at "env", and exits 3 once its
-// input ends.
+// Echoes each line back in capitals, prints its variables' names at "env" and its folder at
+// "cwd", and exits 3 once its input ends.
 const echo = `
 process.stdin.setEncoding("utf8");
 let text = "";
@@ -11,7 +11,8 @@ process.stdin.on("data", (chunk) => {
   const lines = text.split("\\n");
   text = lines.pop();
   for (const line of lines) {
-    process.stdout.write(line === "env" ? JSON.stringify(Object.keys(process.env)) + "\\n" : line.toUpperCase() + "\\n");
+    const answer = line === "env" ? JSON.stringify(Object.keys(process.env)) : line === "cwd" ? process.cwd() : line.toUpperCase();
+    process.stdout.write(answer + "\\n");
   }
 });
 process.stdin.on("end", () => { process.exitCode = 3; });
@@ -43,6 +44,22 @@ describe("a Node program", () => {
     await program.write("hello\n");
     await program.write("signer\n");
     await expect(firstLines(program.output, 2)).resolves.toStrictEqual(["HELLO", "SIGNER"]);
+    await program.end();
+    await expect(program.exited).resolves.toBe(3);
+  });
+
+  it("runs in the folder it is given and names its process id", async () => {
+    const folder = import.meta.dirname;
+    const program = startNodeProgram({
+      args: ["--input-type=module", "-e", echo],
+      parentEnv: {},
+      cwd: folder,
+      signal: live(),
+    });
+    await program.write("cwd\n");
+
+    await expect(firstLines(program.output, 1)).resolves.toStrictEqual([folder]);
+    expect(program.pid).toBeGreaterThan(0);
     await program.end();
     await expect(program.exited).resolves.toBe(3);
   });

@@ -7,12 +7,14 @@ import { createLaunchdServiceManager } from "./posix/launchd-service-manager.js"
 import { createPosixFileAccess } from "./posix/posix-file-access.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
 import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
+import { posixResidentBytes } from "./posix/posix-resident-memory.js";
 import { createSystemdServiceManager } from "./posix/systemd-service-manager.js";
 import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
 import { createSchtasksServiceManager } from "./win32/schtasks-service-manager.js";
 import { createWin32FileAccess } from "./win32/win32-file-access.js";
 import { createWin32FilePermissions } from "./win32/win32-file-permissions.js";
 import { createWin32IpcEndpoint } from "./win32/win32-ipc-endpoint.js";
+import { win32ResidentBytes } from "./win32/win32-resident-memory.js";
 
 /** What names an IPC endpoint. */
 export interface IpcEndpointOptions {
@@ -49,6 +51,11 @@ export interface Platform {
   readonly hasDesktopSession: boolean;
   /** This OS's service manager; the clock times its waits for a service to start or stop. */
   readonly serviceManager: (clock: Clock) => ServiceManager;
+  /**
+   * The resident memory of a running process in bytes, as the OS counts it: `/proc` on Linux,
+   * `ps` on macOS, `tasklist` on Windows; `undefined` once it ended or when it cannot be read.
+   */
+  readonly residentBytes: (pid: number, signal: AbortSignal) => Promise<number | undefined>;
 }
 
 type ServiceManagerOf = Platform["serviceManager"];
@@ -94,6 +101,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       keychain,
       hasDesktopSession: true,
       serviceManager: (clock) => createSchtasksServiceManager({ clock }),
+      residentBytes: win32ResidentBytes,
     };
   }
   if (process.platform === "darwin" || process.platform === "linux") {
@@ -108,6 +116,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       keychain,
       hasDesktopSession: process.platform === "darwin" || hasDisplay(options),
       serviceManager: posixServiceManager(options, permissions),
+      residentBytes: posixResidentBytes,
     };
   }
   throw new BinferenceError({
