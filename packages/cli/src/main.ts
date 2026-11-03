@@ -9,6 +9,16 @@ import { createSystemHttp } from "./runtime/system-http.js";
 import { createSystemRandom } from "./runtime/system-random.js";
 import { createTerminalPrompter } from "./term/terminal-prompter.js";
 
+// In the Docker image a command run as root, such as `docker exec` into the engine's container or
+// its health check, drops to the image's own user before it does anything (decision 0344), so no
+// file in the state folder is ever made by root.
+const imageUser = Number(process.env["BINFERENCE_IMAGE_USER"] ?? Number.NaN);
+if (process.getuid?.() === 0 && Number.isSafeInteger(imageUser) && imageUser > 0) {
+  process.setgroups?.([]);
+  process.setgid?.(imageUser);
+  process.setuid?.(imageUser);
+}
+
 // The background service runs this file again with the same Node and Node options.
 const entry = {
   node: process.execPath,

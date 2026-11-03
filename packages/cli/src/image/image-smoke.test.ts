@@ -27,11 +27,13 @@ const names = {
   buildStage: `binference-smoke-build:${run}`,
   network: `bnf-smoke-${run}`,
   state: `bnf-smoke-state-${run}`,
+  plugins: `bnf-smoke-plugins-${run}`,
   certs: `bnf-smoke-certs-${run}`,
   edge: `bnf-smoke-edge-${run}`,
   engine: `bnf-smoke-engine-${run}`,
 };
 const stateFolder = "/var/lib/binference/.binference";
+const pluginsFolder = "/var/lib/binference-plugins";
 const buildMs = 900_000;
 const commandMs = 120_000;
 const privy = createFakePrivy({ clock: createSystemClock(), random: createSystemRandom() });
@@ -88,12 +90,14 @@ async function waitFor(check: () => Promise<boolean>, until: number): Promise<bo
   return waitFor(check, until);
 }
 
-// The engine container: the image's own command, on the test's network and state volume, with a
-// read-only root and the edge's certificate trusted.
+// The engine container, as the server guide runs it, on the test's network and volumes, with a
+// read-only root and the edge's certificate trusted: detached, the image entry as root under
+// Docker's init (decision 0344); else the image's own command.
 function engineRun(command: readonly string[], options: { readonly detach: boolean }) {
+  const engine = ["-d", "--name", names.engine, "--stop-timeout", "45", "--init", "--user", "root"];
   return [
     "run",
-    ...(options.detach ? ["-d", "--name", names.engine, "--stop-timeout", "45"] : ["--rm"]),
+    ...(options.detach ? [...engine, "--entrypoint", "binference-image"] : ["--rm"]),
     "--network",
     names.network,
     "--read-only",
@@ -101,6 +105,8 @@ function engineRun(command: readonly string[], options: { readonly detach: boole
     "/tmp",
     "-v",
     `${names.state}:${stateFolder}`,
+    "-v",
+    `${names.plugins}:${pluginsFolder}`,
     "-v",
     `${names.certs}:${edgeCertFolder}:ro`,
     "-e",
@@ -206,10 +212,64 @@ async function paperTrade(): Promise<string> {
   return exit.exitCode === 0 ? exit.stdout.trim() : exit.stderr;
 }
 
+// Each process of the engine container: its user id and its command line, read from /proc.
+const processesProgram = [
+  'const fs = require("node:fs");',
+  "const rows = fs.readdirSync('/proc').filter((name) => /^\\d+$/.test(name)).flatMap((pid) => {",
+  "  try {",
+  "    const uid = /Uid:\\s+(\\d+)/.exec(fs.readFileSync(`/proc/${pid}/status`, 'utf8'))[1];",
+  "    const cmd = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').split('\\0').join(' ').trim();",
+  "    return [{ pid: Number(pid), uid: Number(uid), cmd }];",
+  "  } catch { return []; }",
+  "});",
+  "process.stdout.write(JSON.stringify(rows));",
+].join("\n");
+
+const processesSchema = z.array(z.object({ pid: z.number(), uid: z.number(), cmd: z.string() }));
+
+// The listing runs as the plugin user, so it never counts itself among root's processes.
+async function processes(): Promise<z.infer<typeof processesSchema>> {
+  const exec = ["exec", "-u", "binference-plugin", names.engine];
+  const listed = await dockerOk([...exec, "node", "-e", processesProgram]);
+  return processesSchema
+    .parse(JSON.parse(listed))
+    .filter(({ cmd }) => !cmd.includes(processesProgram.slice(0, 20)))
+    .toSorted((left, right) => left.pid - right.pid);
+}
+
+// Plants a link to the state folder in the plugin user's own run folder and ends the launcher,
+// as a plugin with native code could, so the image entry starts it again.
+async function plantAndEndLauncher(): Promise<void> {
+  const launcher = (await processes()).find(({ cmd }) => cmd.endsWith("plugin-launcher.mjs"));
+  const asPlugin = ["exec", "-u", "binference-plugin", names.engine];
+  await dockerOk([...asPlugin, "ln", "-s", stateFolder, `${pluginsFolder}/run/planted`]);
+  const end = `process.kill(${String(launcher?.pid ?? 0)}, "SIGKILL")`;
+  await dockerOk([...asPlugin, "node", "-e", end]);
+}
+
+async function launcherRuns(): Promise<boolean> {
+  const running = await processes();
+  return running.some(({ uid, cmd }) => uid === 10_002 && cmd.endsWith("plugin-launcher.mjs"));
+}
+
+async function stateOwner(): Promise<string> {
+  return (await dockerOk(["exec", names.engine, "stat", "-c", "%u %a", stateFolder])).trim();
+}
+
+const checkSchema = z.object({
+  findings: z.array(z.object({ check: z.string() }).loose()),
+});
+
+async function sandboxFinding(): Promise<unknown> {
+  const checked = await docker(["exec", names.engine, "binference", "check", "--json"]);
+  const { findings } = checkSchema.parse(lastJson(checked.stdout));
+  return findings.find(({ check }) => check === "plugins.sandbox");
+}
+
 async function removeAll(): Promise<void> {
   await docker(["rm", "--force", names.engine, names.edge]);
   await docker(["network", "rm", names.network]);
-  await docker(["volume", "rm", names.state, names.certs]);
+  await docker(["volume", "rm", names.state, names.plugins, names.certs]);
   await docker(["image", "rm", names.image, names.buildStage]);
 }
 
@@ -219,6 +279,7 @@ describe("the Docker image", () => {
     await dockerOk(["build", "--target", "build", "--tag", names.buildStage, root], buildMs);
     await dockerOk(["network", "create", names.network]);
     await dockerOk(["volume", "create", names.state]);
+    await dockerOk(["volume", "create", names.plugins]);
     await dockerOk(["volume", "create", names.certs]);
   }, 2 * buildMs);
 
@@ -234,10 +295,21 @@ describe("the Docker image", () => {
       Entrypoint: ["binference"],
       Cmd: ["start", "--foreground"],
     });
-    expect(Object.keys(image.Config.Volumes)).toEqual([stateFolder]);
+    expect(Object.keys(image.Config.Volumes).toSorted()).toEqual([pluginsFolder, stateFolder]);
     expect(image.Size).toBeLessThan(200 * 1024 * 1024);
     const id = await dockerOk(["run", "--rm", "--entrypoint", "id", names.image]);
     expect(id.trim()).toBe("uid=10001(binference) gid=10001(binference) groups=10001(binference)");
+    const pluginUser = await dockerOk([
+      "run",
+      "--rm",
+      "--entrypoint",
+      "id",
+      names.image,
+      "binference-plugin",
+    ]);
+    expect(pluginUser.trim()).toBe(
+      "uid=10002(binference-plugin) gid=10002(binference-plugin) groups=10002(binference-plugin)",
+    );
   });
 
   it("says which folder it cannot write when the state volume is read-only", async () => {
@@ -266,10 +338,41 @@ describe("the Docker image", () => {
     });
 
     await dockerOk(engineRun([], { detach: true }));
-    expect(await waitFor(engineReady, Date.now() + 120_000)).toBe(true);
+    const ready = await waitFor(engineReady, Date.now() + 120_000);
+    const logs = await docker(["logs", names.engine]);
+    expect(ready, `${logs.stdout}${logs.stderr}`).toBe(true);
     expect(await waitFor(dockerSaysHealthy, Date.now() + 90_000)).toBe(true);
 
     expect(await paperTrade()).toBe(JSON.stringify({ mode: "paper", state: "paper_filled" }));
+
+    // A plugin runs under the plugin user, through the launcher, and cannot signal the engine.
+    expect(await sandboxFinding()).toStrictEqual({
+      check: "plugins.sandbox",
+      level: "ok",
+      ownUser: true,
+    });
+    // As root run only Docker's init and the image entry; the launcher runs as the plugin user,
+    // the engine and its processes as binference.
+    const running = await processes();
+    const asRoot = running.filter(({ uid }) => uid === 0).map(({ cmd }) => cmd);
+    expect(asRoot).toHaveLength(2);
+    expect(asRoot[0]).toContain("docker-init");
+    expect(asRoot[1]).toMatch(/node \/usr\/local\/bin\/binference-image$/);
+    const asPlugin = running.filter(({ uid }) => uid === 10_002).map(({ cmd }) => cmd);
+    expect(asPlugin).toStrictEqual([expect.stringMatching(/plugin-launcher\.mjs$/)]);
+    expect(running.filter(({ uid }) => uid === 10_001).map(({ cmd }) => cmd)).toContainEqual(
+      expect.stringMatching(/main\.mjs start --foreground$/),
+    );
+    // A command run as root in the container drops to binference first.
+    const id = await dockerOk(["exec", names.engine, "binference", "health", "--json"]);
+    expect(lastJson(id)).toMatchObject({ state: "ready" });
+
+    // Root touches no path the plugin user can write: a planted link and an ended launcher leave
+    // the state folder as it was, and the launcher comes back.
+    await plantAndEndLauncher();
+    expect(await waitFor(launcherRuns, Date.now() + 30_000)).toBe(true);
+    expect(await stateOwner()).toBe("10001 700");
+    expect(await sandboxFinding()).toMatchObject({ check: "plugins.sandbox", level: "ok" });
 
     const stopped = Date.now();
     await dockerOk(["stop", names.engine], 60_000);

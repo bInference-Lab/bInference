@@ -107,12 +107,25 @@ Mount the same secrets folder every time the engine starts.
 ## 5. Start the engine
 
 ```sh
+docker volume create binference-plugins
 docker run -d --name binference --restart unless-stopped \
   --network host --read-only --tmpfs /tmp --stop-timeout 45 \
+  --init --user root --entrypoint binference-image \
   -e TZ=Asia/Shanghai \
   -v binference-state:/var/lib/binference/.binference \
+  -v binference-plugins:/var/lib/binference-plugins \
   binference
 ```
+
+- `--user root --entrypoint binference-image` starts the image entry, the one process that runs as
+  root. It starts the engine as the `binference` user and a plugin launcher as
+  `binference-plugin`, a user of its own for community plugins, so a plugin can never stop or
+  inspect the engine. It takes no arguments and starts nothing else. `--init` lets Docker clean
+  up after a plugin that ends. Started without these flags, the engine runs and runs no plugin.
+- `docker exec binference binference ...` and the health check run as root in this container,
+  and each `binference` command drops to the `binference` user before it does anything, so
+  nothing in your state folder is ever made by root.
+- `binference-plugins` holds the plugins' files and each plugin's own data, apart from your state.
 
 - `--stop-timeout 45` gives the engine time to finish what it is sending and close its databases.
   Docker's default of 10 seconds can cut that short.

@@ -89,12 +89,19 @@ docker run --rm --network host --read-only --tmpfs /tmp \
 ## 5. 启动引擎
 
 ```sh
+docker volume create binference-plugins
 docker run -d --name binference --restart unless-stopped \
   --network host --read-only --tmpfs /tmp --stop-timeout 45 \
+  --init --user root --entrypoint binference-image \
   -e TZ=Asia/Shanghai \
   -v binference-state:/var/lib/binference/.binference \
+  -v binference-plugins:/var/lib/binference-plugins \
   binference
 ```
+
+- `--user root --entrypoint binference-image` 启动镜像入口，它是唯一以 root 运行的进程。它以 `binference` 用户启动引擎，以 `binference-plugin` 用户启动插件启动器。`binference-plugin` 是社区插件专用的用户，因此插件永远无法停止或调试引擎。镜像入口不接受任何参数，也不启动其他进程。`--init` 让 Docker 清理结束的插件进程。不带这些参数启动时，引擎照常运行，但不运行任何插件。
+- 在这个容器中，`docker exec binference binference ...` 和健康检查以 root 运行，每条 `binference` 命令都会先切换到 `binference` 用户再做任何事，因此你的状态文件夹中不会出现 root 创建的文件。
+- `binference-plugins` 保存插件的文件和每个插件自己的数据，与你的状态数据分开。
 
 - `--stop-timeout 45` 让引擎有时间发完正在发送的内容并关闭数据库。Docker 默认的 10 秒可能不够。
 - `--restart unless-stopped` 在崩溃或服务器重启后再次启动它。

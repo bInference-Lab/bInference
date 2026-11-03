@@ -813,7 +813,9 @@ Also:
   grant;
 - the install step refuses symlinks inside a plugin;
 - the Docker image and the hardened setup run plugins as their own OS user, the only thing that
-  stops a plugin from signalling the engine.
+  stops a plugin from signalling the engine. The image's root entry starts the engine as
+  `binference` and a plugin launcher as `binference-plugin`, which starts each plugin the engine
+  names by its id ([decision 0344](DECISIONS.md#d0344)).
 
 **The plugin host ([decision 0300](DECISIONS.md#d0300)).** The engine part that runs community
 plugins starts each in a Node process of its own, with the grants above, a heap of at most
