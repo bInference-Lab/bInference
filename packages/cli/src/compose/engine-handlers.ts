@@ -89,6 +89,7 @@ export function engineHandlers(
       state: wiring.locked.state,
       lock: wiring.locked.lock,
       health: () => probe.read(),
+      nodeOptions: opening.host.entry.nodeOptions,
       stop: () => wiring.stopper.stop(),
     }),
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),

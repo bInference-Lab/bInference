@@ -117,6 +117,7 @@ export type HostParts = Partial<
     | "prompter"
     | "startSigner"
     | "startRuntime"
+    | "pluginPrograms"
     | "serviceManager"
     | "keychain"
     | "runProgram"

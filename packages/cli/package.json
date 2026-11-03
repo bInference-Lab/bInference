@@ -48,6 +48,7 @@
     "@binference/mcp": "workspace:*",
     "@binference/okx": "workspace:*",
     "@binference/platform": "workspace:*",
+    "@binference/plugin-host": "workspace:*",
     "@binference/plugin-sdk": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/relay": "workspace:*",

@@ -10,6 +10,7 @@ import { configFinding, engineFinding, unlockFinding } from "./install-findings.
 import { modelImagesFinding } from "./model-images-finding.js";
 import { modelPriceFinding } from "./model-price-finding.js";
 import { modelReachFinding } from "./model-reach-finding.js";
+import { pluginSandboxFinding } from "./plugin-sandbox-finding.js";
 import { remoteFindings } from "./remote-findings.js";
 import { roleWalletFindings } from "./role-wallet-findings.js";
 import { rpcFindings } from "./rpc-keyed-finding.js";
@@ -85,6 +86,7 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
   const rpc = await rpcFindings({ host, platform, signal }, config.config);
   const roles = await roleWalletFindings({ host, platform, signal });
   const remote = await remoteFindings({ host, platform, signal }, config.config);
+  const sandbox = await pluginSandboxFinding({ host, platform, signal });
   return [
     config.finding,
     ...access,
@@ -96,6 +98,7 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
     ...rpc,
     ...roles,
     ...remote,
+    sandbox,
   ];
 }
 

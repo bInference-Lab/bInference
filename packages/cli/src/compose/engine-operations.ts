@@ -2,6 +2,7 @@ import { BinferenceError, createSecret, ok } from "@binference/core";
 import type { AgentStore } from "@binference/engine";
 import type { InstallStore } from "@binference/engine/install";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
+import { engineDebugSwitch } from "@binference/plugin-host";
 import { type EngineState, protocolVersion, type ResultOf } from "@binference/protocol";
 import type { EngineLock } from "../unlock/engine-lock.js";
 import type { LockReason } from "../unlock/unlock-keys.js";
@@ -18,6 +19,8 @@ export interface EngineOperationsOptions {
   /** Opens the agent key for `engine/unlock`. */
   readonly lock: Pick<EngineLock, "unlock">;
   readonly health: () => readonly HealthSignal[];
+  /** The Node options the engine's process runs with, which `debugSignalOff` reads. */
+  readonly nodeOptions: readonly string[];
   /**
    * Starts the shutdown sequence. It must not wait for the sequence: the sequence closes the
    * server that answers the call.
@@ -73,8 +76,8 @@ function agentsOf(
 
 /**
  * The handlers of `engine/status`, `engine/stop` and `engine/unlock`. Status answers the state, the
- * release, the protocol version, the agents that are not archived with their launch and bridge wallets, and
- * the health signals; the
+ * release, the protocol version, the agents that are not archived with their launch and bridge wallets,
+ * the health signals and whether the engine runs with its debug signal off; the
  * engine counts as frozen when it has agents and every one of them is frozen. Stop starts the
  * shutdown sequence and answers at once. Unlock opens the agent key, with the passphrase in the
  * `manual` mode, and fails with `engine.locked` and the reason in `details.reason` while it stays
@@ -95,6 +98,7 @@ export function createEngineOperations(options: EngineOperationsOptions): Engine
         frozen: agents.length > 0 && agents.every((agent) => agent.frozen),
         agents,
         health: options.health(),
+        debugSignalOff: options.nodeOptions.includes(engineDebugSwitch),
       });
     },
     "engine/unlock": async ({ args, signal }) => {

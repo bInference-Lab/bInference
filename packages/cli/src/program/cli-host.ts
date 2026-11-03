@@ -12,6 +12,7 @@ import type { ChatTerminal } from "@binference/tui";
 import type { Address } from "viem";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
+import type { PluginPrograms } from "../compose/plugin-sandbox.js";
 import type { StartSigner } from "../compose/start-signer.js";
 import type { Prompter } from "../term/prompter.js";
 
@@ -72,6 +73,11 @@ export interface CliHost {
   readonly workerExecArgv?: readonly string[];
   /** Starts the signer once the agent key opens; the built signer's process when left out. */
   readonly startSigner?: StartSigner;
+  /**
+   * The plugin program and the probe plugin the sandbox check runs; the built ones when left
+   * out. Tests pass a build of their own.
+   */
+  readonly pluginPrograms?: PluginPrograms;
   /** Starts the agent runtime's process; the built runtime when left out. */
   readonly startRuntime?: StartRuntime;
   /** How this binference was started, which the background service runs again. */

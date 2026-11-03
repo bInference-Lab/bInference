@@ -56,6 +56,7 @@ function operationsWith(
     version: "2026.10.0",
     state: () => "ready",
     health: () => [{ signal: "memory", state: "ok" }],
+    nodeOptions: ["--disable-sigusr1"],
     stop: () => {
       stops.count += 1;
     },
@@ -135,6 +136,7 @@ describe("the engine's own operations", () => {
           { id: agentId(2), mode: "live", frozen: true },
         ],
         health: [{ signal: "memory", state: "ok" }],
+        debugSignalOff: true,
       },
     });
   });

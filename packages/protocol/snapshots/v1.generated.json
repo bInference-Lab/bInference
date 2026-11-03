@@ -747,6 +747,9 @@
                   "state"
                 ]
               }
+            },
+            "debugSignalOff": {
+              "type": "boolean"
             }
           },
           "required": [

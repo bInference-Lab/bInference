@@ -56,7 +56,8 @@ From lowest to highest; a higher layer replaces a lower one key by key:
 3. Environment variables: `BINFERENCE_` plus the key path in capitals, with `__` between segments.
    `BINFERENCE_ENGINE__PORT=7460` sets `engine.port`. Arrays and objects take JSON:
    `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`. `BINFERENCE_HOME`, `BINFERENCE_MCP_TOKEN` (an
-   MCP session's secret, [decision 0159](../DECISIONS.md#d0159)) and every `BINFERENCE_INIT_*`
+   MCP session's secret, [decision 0159](../DECISIONS.md#d0159)), `BINFERENCE_PLUGIN_LAUNCHER`
+   (the image's plugin launcher, [decision 0344](../DECISIONS.md#d0344)) and every `BINFERENCE_INIT_*`
    variable (an answer of `binference init`, [decision 0224](../DECISIONS.md#d0224)) are not
    config keys.
 4. CLI flags: `--set engine.port=7460`, repeatable.

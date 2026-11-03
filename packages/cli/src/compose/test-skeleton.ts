@@ -307,6 +307,7 @@ export function readyEngineOperations(
     state: () => "ready",
     lock: { unlock: async () => Promise.resolve(ok(undefined)) },
     health: () => [],
+    nodeOptions: ["--disable-sigusr1"],
     stop: () => undefined,
   });
 }

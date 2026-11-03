@@ -60,6 +60,11 @@ interface EngineStatus {
     readonly bridgeWallet?: ProtocolId<"wallet">;
   }[];
   readonly health: readonly HealthSignal[];
+  /**
+   * Whether the engine's Node runs with its debug signal off (`--disable-sigusr1`, decision 0343),
+   * which community plugins need; absent from an engine older than the field.
+   */
+  readonly debugSignalOff?: boolean;
 }
 
 /** A frozen agent in `safety/status`, and when it was frozen. */
@@ -217,6 +222,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
           unpricedTokens: z.int().nonnegative().exactOptional(),
         }),
       ),
+      debugSignalOff: z.boolean().exactOptional(),
     }),
   },
   "engine/describe": {

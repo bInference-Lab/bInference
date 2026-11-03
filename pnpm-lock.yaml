@@ -584,6 +584,9 @@ importers:
       '@binference/platform':
         specifier: workspace:*
         version: link:../platform
+      '@binference/plugin-host':
+        specifier: workspace:*
+        version: link:../plugin-host
       '@binference/plugin-sdk':
         specifier: workspace:*
         version: link:../plugin-sdk
