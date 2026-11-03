@@ -44,6 +44,8 @@ export interface CrashInstall {
   readonly from: Address;
   /** The port each engine of the install listens on for HTTP, as `engine.port` sets it. */
   readonly port: number;
+  /** The port each engine of the install takes for webhooks, never the owner's own. */
+  readonly webhookPort: number;
   /** The start code of the bot's pairing link init printed, which pairs the owner's Telegram. */
   readonly pairingCode: string;
 }
@@ -103,7 +105,7 @@ export async function setUpCrashInstall(
   await freshCrashFeeds(async (method, params) => world.chain.call(method, params));
   const { link } = initAnswerSchema.parse(JSON.parse(init.stdout)).pairing;
   const pairingCode = new URL(link).searchParams.get("start") ?? "";
-  return { machine, from, port: await freePort(), pairingCode };
+  return { machine, from, port: await freePort(), webhookPort: await freePort(), pairingCode };
 }
 
 /**
@@ -126,6 +128,7 @@ export async function startCrashEngine(
       CRASH_RELAYS: world.chain.relays,
       CRASH_SERVICES: world.services.origin,
       CRASH_PORT: String(install.port),
+      CRASH_WEBHOOK_PORT: String(install.webhookPort),
       ...(run.fills === true ? { CRASH_FILLS: "1" } : {}),
       ...(run.chat === true ? { CRASH_CHAT: "1" } : {}),
       ...secretEnv(install.machine),

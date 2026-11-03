@@ -45,8 +45,9 @@ const host: CliHost = {
   },
   startSigner: startCrashSigner,
   testRelaySolver: crashRelaySolver,
-  // The suite's engines never take the owner's webhook port.
-  webhookPort: 0,
+  // The suite's engines never take the owner's webhook port: each install has one of its own,
+  // which a restarted engine takes again.
+  webhookPort: Number(env.CRASH_WEBHOOK_PORT),
   ...(env.CRASH_FILLS === "1" ? { testOrders: crashTestOrders() } : {}),
   ...(env.CRASH_CHAT === "1"
     ? {
