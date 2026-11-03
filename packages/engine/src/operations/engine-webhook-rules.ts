@@ -90,6 +90,7 @@ export function webhookFillsOf(
     rules: stores.webhookRules,
     inbox: stores.inbox,
     agents: stores.agents,
+    intents: stores.intents,
     custody,
     prices,
     chains,

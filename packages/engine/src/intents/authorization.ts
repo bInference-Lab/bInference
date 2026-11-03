@@ -23,6 +23,13 @@ export interface WebhookRuleAuthorization {
   readonly webhookRule: Id<"whr">;
   readonly event: number;
   readonly alertId?: string;
+  /**
+   * The fills the rule had recorded when the engine proposed the fill: a live fill's grant holds
+   * only while the rule still has them (decision 0342). Absent on fills stored before it.
+   */
+  readonly fillsBefore?: number;
+  /** The fill's terms hash, stored as the fill is confirmed (decision 0342); absent before then. */
+  readonly termsHash?: string;
 }
 
 /** The order or webhook rule a fill runs under; the owner confirmed it once, in advance. */

@@ -11,6 +11,7 @@ import { isUsablePrice } from "../positions/value-execution.js";
 import type { AlertFillRecord } from "./alert-fill-record.js";
 import type { AlertSkip } from "./end-alert.js";
 import { ruleFillSubject, ruleFillTerms } from "./rule-fill-subject.js";
+import { proposedRuleTermsHash } from "./rule-fill-terms-hash.js";
 import type { WebhookFillParts } from "./webhook-fills.js";
 import type { WebhookRuleRecord } from "./webhook-rule-record.js";
 
@@ -49,8 +50,9 @@ async function tokenUsdOf(
   return price.ok && isUsablePrice(price.value) ? { tokenUsd: price.value } : {};
 }
 
-// The fill's proposal: authorized by its rule and keyed on its alert's row (decision 0338), on
-// paper, held in the agent's line to the rule as it stands.
+// The fill's proposal: authorized by its rule and keyed on its alert's row (decision 0338), in the
+// rule's mode, held in the agent's line to the rule as it stands, bound to the rule's fills before
+// it and its terms hash as it is confirmed (decision 0342).
 function proposalOf(
   parts: WebhookFillParts,
   fill: {
@@ -63,12 +65,14 @@ function proposalOf(
   const { rule, alert, sized, decimals } = fill;
   const subject = ruleFillSubject({ rules: parts.rules, now: () => parts.clock.now() }, rule);
   const alertId = alert.alertId === undefined ? {} : { alertId: alert.alertId };
+  const { event } = alert;
   return {
-    authorization: { webhookRule: rule.id, event: alert.event, ...alertId },
+    authorization: { webhookRule: rule.id, event, ...alertId, fillsBefore: rule.fills },
     isPaper: rule.isPaper,
     decimals,
     check: checkOf(parts, { subject, sized, price: { decimals } }),
-    termsHash: async () => Promise.resolve(undefined),
+    termsHash: async (simulated, { signal }) =>
+      proposedRuleTermsHash(parts.intents, { rule, event, simulated, signal }),
   };
 }
 

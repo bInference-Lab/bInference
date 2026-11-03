@@ -5,6 +5,7 @@ import { testCall, type TestEngine } from "../operations/test-engine.js";
 import { fillIntentsOf, noticesOf, startFillEngine } from "../orders/test-fills.js";
 import { freeze, tapCard } from "../orders/test-orders.js";
 import { present } from "../surfaces/test-venues.js";
+import { ruleFillTermsHash } from "./rule-fill-terms-hash.js";
 import { alertTo, createdRule, type CreatedRule, testRuleRequest } from "./test-webhook-rules.js";
 
 const live = { signal: new AbortController().signal };
@@ -54,9 +55,23 @@ describe("a webhook rule's fills", () => {
       amount: { percentBps: 5_000 },
     });
     expect((await ruleOf(test, created))?.fills).toBe(1);
-    expect(await alertsOf(test, created)).toMatchObject([
-      { outcome: "filled", alertId: "a-1", intentId: filled[0]?.id },
-    ]);
+    const [alert] = await alertsOf(test, created);
+    expect(alert).toMatchObject({ outcome: "filled", alertId: "a-1", intentId: filled[0]?.id });
+    // Its terms bind the rule's card, the rule's fills before it and the alert's row (0342).
+    const card = await test.stores.intents.confirmation(created.intent, live);
+    const binding = {
+      rule: created.rule,
+      ruleTermsHash: present(card).termsHash,
+      fillsBefore: 0,
+      event: present(alert).event,
+    };
+    expect(present(first).authorizedBy).toStrictEqual({
+      webhookRule: created.rule,
+      event: present(alert).event,
+      alertId: "a-1",
+      fillsBefore: 0,
+      termsHash: ruleFillTermsHash(present(first), binding),
+    });
     expect(ruleNotices(test)).toMatchObject([
       {
         key: "notice.fill",

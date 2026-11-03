@@ -8,7 +8,7 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { FillCheckParts } from "../orders/fill-check.js";
 import type { FillSizeParts } from "../orders/fill-request.js";
-import type { AgentStore } from "../ports.js";
+import type { AgentStore, IntentStore } from "../ports.js";
 import type { AlertFillRecord } from "./alert-fill-record.js";
 import { type AlertEndParts, announceAlerts, endAlertSkipped } from "./end-alert.js";
 import { fillAlert } from "./fill-alert.js";
@@ -28,6 +28,8 @@ export interface WebhookFills {
 export interface WebhookFillParts extends FillSizeParts, FillCheckParts, AlertEndParts {
   readonly inbox: Pick<InboxStore, "unhandled" | "markHandled">;
   readonly agents: Pick<AgentStore, "get">;
+  /** Each rule card's confirmation, which a fill's terms hash binds (decision 0342). */
+  readonly intents: Pick<IntentStore, "confirmation">;
   readonly stored: StoredIntents;
   readonly moneyPath: MoneyPath;
   /** The rolling cap, whose use a skip for it tells. */
