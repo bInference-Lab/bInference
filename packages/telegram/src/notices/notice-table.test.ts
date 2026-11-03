@@ -93,6 +93,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.bridgeArrived": `${done} Your late bridge to Base arrived: 0x71C7…976F received 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross did not deliver your bridge to Base and paid 20 FAKE back to Main`,
   "notice.identityMismatch": `${warning} The identity registration of main landed, but the registry does not read back the account and registration file its card showed, so binference stored no identity. Check the registry before you rely on it.`,
+  "notice.identityDuplicate": `${warning} A second identity registration of main landed, but binference keeps one identity per agent, so it stored none for this one. The wallet holds two identities now; check the registry.`,
   "notice.bridgeLapsed": `${warning} Your bridge to Base was not sent before its confirmation ran out: its quote expired, so propose it again. Nothing was signed.`,
   "notice.bridgeKeyNeeded": `${warning} fake-cross no longer says where your bridges stand without an API key it accepts. Until you set one, binference cannot tell when they arrive, and tells you of each one still out after 2 hours. Set venues.keys.fake-cross in config.json5 to a key from fake-cross's dashboard, then restart binference.`,
   "notice.rescueNotBridged":

@@ -234,6 +234,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   ...stakeNoticeTable,
   ...bridgeNoticeTable,
   "notice.identityMismatch": { key: "notice.identityMismatch", values: agent },
+  "notice.identityDuplicate": { key: "notice.identityDuplicate", values: agent },
   "notice.launchStopped": {
     key: "notice.launchStopped",
     values: { ...padLaunch, reason: "pin_timeout" },

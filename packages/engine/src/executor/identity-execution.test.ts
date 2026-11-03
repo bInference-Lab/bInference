@@ -3,6 +3,7 @@ import type { IdentityRegistry } from "@binference/chain/identity";
 import type { FakeIdentityRegistry } from "@binference/chain/testing";
 import { BinferenceError, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { createIdentityHost } from "../identity/identity-host.js";
 import {
   holdIdentityWallet,
@@ -14,6 +15,7 @@ import {
 } from "../identity/test-identities.js";
 import { expectOk, testAgent, testLimits } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
+import type { IntentStore } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import {
   driveUntil,
@@ -61,15 +63,57 @@ function landingOnRead(
   };
 }
 
+// The executor's intent store with another registration of the agent signed and on its way, as a
+// first registration whose step no stuck rule could move leaves it.
+function withRegistrationOnItsWay(store: IntentStore): IntentStore {
+  return {
+    ...store,
+    list: async (query, options) => {
+      const found = await store.list(query, options);
+      if (!query.states.includes("executing")) {
+        return found;
+      }
+      const mine = { states: ["confirmed" as const], limit: 1 };
+      const [first] = await store.list({ ...query, ...mine }, options);
+      return first === undefined
+        ? found
+        : [...found, { ...first, id: fixtureId("int", 0x99), state: "executing" as const }];
+    },
+  };
+}
+
+// The executor's intent store over an agent that holds an identity already: a move that stores
+// another breaks the table's key, as the SQLite store's does.
+function withIdentityHeld(store: IntentStore): IntentStore {
+  return {
+    ...store,
+    transition: async (change, options) => {
+      if (change.identity !== undefined) {
+        throw new BinferenceError({ code: "store.constraint", message: "Held already." });
+      }
+      return store.transition(change, options);
+    },
+  };
+}
+
+// How a bench differs: what runs once a registration lands, how many reads back lag, and the
+// executor's intent store.
+interface BenchWith {
+  readonly after?: () => void;
+  readonly lagging?: number;
+  readonly intents?: (store: IntentStore) => IntentStore;
+}
+
 async function benchWith(
   registry: FakeIdentityRegistry,
-  after: () => void = () => undefined,
-  lagging = 0,
+  given: BenchWith = {},
 ): Promise<ExecutorBench> {
+  const { after = () => undefined, lagging = 0, intents } = given;
   const chains = identityChains();
   const landing = landingOnRead(registry, after, lagging);
   const bench = await startExecutorBench({
     hold: true,
+    ...(intents === undefined ? {} : { intents }),
     agent: { limits },
     engine: {
       chains,
@@ -137,6 +181,27 @@ describe("an identity registration on its wallet's queue", () => {
     expect(bench.signed).toHaveLength(0);
   });
 
+  it("ends with identity_exists while another registration of the agent is on its way", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry, { intents: withRegistrationOnItsWay });
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("failed_check");
+    await expect(reasonOf(bench, intent)).resolves.toBe("identity_exists");
+    expect(bench.signed).toHaveLength(0);
+  });
+
+  it("tells the owner of a second identity binference cannot store, and never throws on it", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry, { intents: withIdentityHeld });
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    expect(notices(bench)).toMatchObject([
+      { key: "notice.identityDuplicate", values: { agent: "main" } },
+    ]);
+  });
+
   it("ends with registry_changed when the registry reports another version at the queue", async () => {
     const registry = testRegistry();
     const bench = await benchWith(registry);
@@ -162,7 +227,7 @@ describe("an identity registration on its wallet's queue", () => {
 
   it("reads back again while a lagging node holds no receipt, then stores the identity", async () => {
     const registry = testRegistry();
-    const bench = await benchWith(registry, () => undefined, 2);
+    const bench = await benchWith(registry, { lagging: 2 });
     const intent = await tapped(bench, registerRequest());
     await bench.release();
     await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
@@ -175,8 +240,10 @@ describe("an identity registration on its wallet's queue", () => {
 
   it("stores no identity and tells the owner when the registry reads back another file", async () => {
     const registry = testRegistry();
-    const bench = await benchWith(registry, () => {
-      registry.tamper("0", { file: "data:,another" });
+    const bench = await benchWith(registry, {
+      after: () => {
+        registry.tamper("0", { file: "data:,another" });
+      },
     });
     const intent = await tapped(bench, registerRequest());
     await bench.release();

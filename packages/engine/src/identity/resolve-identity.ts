@@ -9,15 +9,19 @@ import type { ProtocolErrorCode, RegisterIdentityRequest } from "@binference/pro
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { WalletRecord } from "../install/install-record.js";
 import { defaultWalletIn } from "../install/role-wallet.js";
+import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { WalletFacts } from "../money-path/wallet-facts.js";
 import type { InstallStore, WalletFactsSource } from "../ports.js";
 import type { IdentityHost } from "./identity-host.js";
+import { hasRegistrationIn, openRegistrationStates } from "./open-registrations.js";
 import type { IdentityStore } from "./ports.js";
 
 /** What an identity registration is resolved with. */
 export interface IdentityResolveOptions {
   readonly identity: IdentityHost;
   readonly identities: IdentityStore;
+  /** The stored intents, among which an open registration of the agent waits. */
+  readonly stored: Pick<StoredIntents, "list">;
   readonly custody: Signer;
   readonly wallets: WalletFactsSource;
   readonly install: Pick<InstallStore, "read">;
@@ -103,6 +107,7 @@ async function standingOf(
  * owner's description, that wallet and binference's version) and the wallet's facts in the
  * intent's mode. No registry is `intent.kind_unavailable`; an agent whose identity binference
  * holds, or a live one whose wallet the registry finds holding one, is `intent.identity_exists`;
+ * one with a registration that has not ended, `intent.identity_pending`;
  * a registry that cannot be read `quote.venue_down`; an agent with no main wallet there
  * `wallet.not_found`. None stores anything.
  */
@@ -117,6 +122,10 @@ export async function resolveIdentity(
   }
   if ((await options.identities.get(request.agent, { signal })) !== undefined) {
     return err("intent.identity_exists");
+  }
+  const open = { agent: request.agent, states: openRegistrationStates };
+  if (await hasRegistrationIn(options.stored, open, signal)) {
+    return err("intent.identity_pending");
   }
   const { registry, chain } = served;
   const main = await mainWallet(options, { ...resolving, chain });

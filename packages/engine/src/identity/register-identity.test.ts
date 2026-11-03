@@ -90,6 +90,29 @@ describe("an identity registration", () => {
     },
   );
 
+  it("opens one card when two registrations of an agent come at once, the other pending", async () => {
+    const test = await startIdentityEngine(testRegistry());
+    const ask = async () =>
+      test.engine.handlers["identity/register"](testCall({ agent: testAgent }));
+
+    const answers = await Promise.all([ask(), ask()]);
+
+    expect(answers).toMatchObject([
+      { ok: true, value: { state: "awaiting_confirmation" } },
+      { ok: false, error: "intent.identity_pending" },
+    ]);
+    const open = { states: ["awaiting_confirmation" as const], limit: 10 };
+    await expect(test.stores.intents.list(open, live)).resolves.toHaveLength(1);
+  });
+
+  it("refuses a registration while the agent's last one has not ended", async () => {
+    const test = await startIdentityEngine(testRegistry());
+    await registered(test);
+    await expect(
+      test.engine.handlers["identity/register"](testCall({ agent: testAgent })),
+    ).resolves.toStrictEqual({ ok: false, error: "intent.identity_pending" });
+  });
+
   it("refuses a wallet that holds an identity already, before anything is stored", async () => {
     const registry = testRegistry();
     registry.registerOutside(testAccount);

@@ -84,6 +84,7 @@
   "intent.kind_unavailable": "binference does not lend or borrow. Ask for a swap, a stake or a bridge instead.",
   "intent.pool_venue": "This venue stakes into one pool, where the staking options mark pool: true. Propose it again with no validator, and name an unstake's amount in the receipt token the stake minted, not in the coin.",
   "intent.identity_exists": "This agent already has an on-chain identity. Run `binference agent identity` to see it.",
+  "intent.identity_pending": "A registration of this agent has not ended yet. Confirm or deny its card, or let it land, then run `binference agent identity` again.",
   "order.not_found": "This auto order does not exist. Check your auto orders in the console.",
   "order.wrong_state": "This auto order already ended or changed. Refresh to see where it stands.",
   "order.kind_unavailable": "This kind of auto order is not available yet. Use a limit, take-profit, stop-loss or trailing stop order.",

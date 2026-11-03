@@ -261,7 +261,8 @@ Rules for this package:
   `IdentityHost`, the only caller of the identity plugins, which copies every answer through its
   schema and holds each built call to its file and wallet. A registration resolves the agent's main
   wallet, refuses before anything is stored an agent whose identity binference holds or whose
-  wallet the registry reads holding one (`intent.identity_exists`), quotes its registration file,
+  wallet the registry reads holding one (`intent.identity_exists`) or one with a registration
+  that has not ended (`intent.identity_pending`, proposals taken one at a time), quotes its registration file,
   holds the registry to its tested version (`registry_changed`) and the wallet's stored ceiling to
   its call (`identity_ceiling`), and opens a card that never passes the auto test. The queue
   reads the registry again (`identity_refused`), and the reconciliation reads the landed

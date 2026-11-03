@@ -9,6 +9,7 @@ import {
 } from "@binference/chain";
 import type { IdentityRegistry, IdentityStanding } from "@binference/chain/identity";
 import type { IdentityHost } from "../identity/identity-host.js";
+import { hasRegistrationIn, sentRegistrationStates } from "../identity/open-registrations.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { type IdentityQuote, identityQuoteDocument } from "../intents/identity-quote.js";
 import { planDocument } from "../intents/intent-documents.schema.js";
@@ -160,8 +161,8 @@ function refusalOf(
 
 /**
  * Reads a confirmed registration's registry again as its wallet's queue takes it, before any
- * signature (decision 0335): a wallet that holds an identity now ends it `failed_check` with
- * `identity_exists`, a registry that reports another version than binference was tested with with
+ * signature (decision 0335): another registration of the agent that is signed and on its way, or a
+ * wallet that holds an identity now, ends it `failed_check` with `identity_exists`, a registry that reports another version than binference was tested with with
  * `registry_changed`, and a stored call that no longer decodes as the card's file from its wallet
  * with `decode_mismatch`; a registry that does not answer, or one the engine does not run, signs
  * nothing and waits for the next block. Any other intent goes on.
@@ -173,6 +174,11 @@ export async function takeIdentity(
   const quote = identityQuoteOf(snapshot.record);
   if (quote === undefined) {
     return "go";
+  }
+  const { id, agentId } = snapshot.record;
+  const sent = { agent: agentId, states: sentRegistrationStates, except: id };
+  if (await hasRegistrationIn(run.parts.intents, sent, run.signal)) {
+    return endRefused(run, snapshot, "identity_exists");
   }
   const read = await readNow(run, quote);
   if (read === undefined) {

@@ -1,3 +1,4 @@
+import { BinferenceError } from "@binference/core";
 import type { IdentityRecord } from "../identity/identity-record.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IdentityQuote } from "../intents/identity-quote.js";
@@ -8,6 +9,9 @@ import { type LandedStep, reconcileDepartures } from "./reconcile-departures.js"
 
 /** The owner's notice of a registration the registry does not read back as its card (decision 0335). */
 const mismatchNoticeKey = "notice.identityMismatch";
+
+/** The owner's notice of a registration that landed for an agent binference holds an identity of. */
+const duplicateNoticeKey = "notice.identityDuplicate";
 
 // What the registration's landed step read back: the identity to store, `mismatch` when the
 // registry holds another holder or file than the card, or `undefined` while it cannot be read.
@@ -32,15 +36,40 @@ async function readBack(
     : "mismatch";
 }
 
-// A registration the registry does not read back as its card stores no identity: it reconciles,
-// and the owner is told.
-async function settleMismatch(run: ExecutionRun, finalized: IntentSnapshot): Promise<void> {
+// A registration the registry does not read back as its card, or one that landed for an agent
+// binference holds an identity of already, stores no identity: it reconciles, and the owner is
+// told which.
+async function settleMismatch(
+  run: ExecutionRun,
+  finalized: IntentSnapshot,
+  key: string = mismatchNoticeKey,
+): Promise<void> {
   const { id, agentId } = finalized.record;
   run.parts.log.warn("executor.identity_mismatch", { intentId: id });
   const moved = await moveIntent(run, finalized, { type: "fills_reconciled" });
   if (moved !== undefined) {
     const values = { agent: finalized.settings.agent.name };
-    run.parts.publish(noticePush({ key: mismatchNoticeKey, agent: agentId, intent: id, values }));
+    run.parts.publish(noticePush({ key, agent: agentId, intent: id, values }));
+  }
+}
+
+// The move to `reconciled` with the identity it stores; an agent that holds one already, as after
+// a second registration that slipped past every check, breaks the store's key, which is told as
+// a duplicate rather than thrown on every try.
+async function storeIdentity(
+  run: ExecutionRun,
+  finalized: IntentSnapshot,
+  identity: IdentityRecord,
+): Promise<void> {
+  const trigger = { type: "fills_reconciled" } as const;
+  const named = { identityId: identity.onchainId };
+  try {
+    await moveIntent(run, finalized, { trigger, identity, named });
+  } catch (error) {
+    if (!(error instanceof BinferenceError) || error.code !== "store.constraint") {
+      throw error;
+    }
+    await settleMismatch(run, finalized, duplicateNoticeKey);
   }
 }
 
@@ -63,9 +92,7 @@ async function settleRegistration(
   }
   if (read !== undefined) {
     const { agentId, changedAtMs } = finalized.record;
-    const identity = { ...read, agentId, registeredAtMs: changedAtMs };
-    const trigger = { type: "fills_reconciled" } as const;
-    await moveIntent(run, finalized, { trigger, identity, named: { identityId: read.onchainId } });
+    await storeIdentity(run, finalized, { ...read, agentId, registeredAtMs: changedAtMs });
     return;
   }
   if (attempt >= run.parts.limits.settleAfterBlocks) {

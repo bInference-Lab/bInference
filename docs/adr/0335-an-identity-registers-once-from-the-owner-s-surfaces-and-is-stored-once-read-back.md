@@ -37,7 +37,12 @@ when the registration counts as made.
   store holds the agent's registration, or when the registry's `balanceOf` reads that the wallet
   holds an identity token already, such as one made before a rebuild or outside binference. When
   the wallet queue takes the confirmed step, `balanceOf` is read again, and a token found ends the
-  intent `failed_check` with the new reason `identity_exists`.
+  intent `failed_check` with the new reason `identity_exists`. One registration of an agent runs
+  at a time: a proposal while another has not ended fails `intent.identity_pending`, storing
+  nothing, proposals are taken one after another so two at once cannot both pass, and the queue
+  ends one `identity_exists` while another of the agent is signed and on its way. A second
+  registration that lands all the same stores no row: it reconciles, and the owner gets
+  `notice.identityDuplicate`.
 - **The version binference was tested with.** The registry's `getVersion()` must answer "2.0.0"
   at the quote and again at the queue take; any other answer ends the intent `failed_check` with
   the new reason `registry_changed`, before the card or before the signature. A new version joins

@@ -92,6 +92,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.bridgeArrived": `${done} 你延迟的跨链已在 Base 到账：0x71C7…976F 收到 19.96 FAKE`,
   "notice.bridgeRefunded": `${warning} fake-cross 未完成你到 Base 的跨链，已将 20 FAKE 退回 Main`,
   "notice.identityMismatch": `${warning} main 的身份登记已上链，但注册表读回的账户和注册文件与卡片不符，因此 binference 未保存该身份。依赖它之前请先核对注册表。`,
+  "notice.identityDuplicate": `${warning} main 的第二次身份登记已上链，但 binference 每个 Agent 只保存一个身份，因此没有保存这一次。该钱包现在持有两个身份，请核对注册表。`,
   "notice.bridgeLapsed": `${warning} 你到 Base 的跨链在确认过期前未发送：它的报价已过期，请重新发起。未签名任何内容。`,
   "notice.bridgeKeyNeeded": `${warning} 平台 fake-cross 现在只在收到有效的 API 密钥时才告知跨链进度。设置之前，binference 无法得知你的跨链何时到账，2 小时后仍未到账的每笔跨链都会通知你。请在 config.json5 中把 venues.keys.fake-cross 设为 fake-cross 控制面板中的密钥，然后重启 binference。`,
   "notice.rescueNotBridged":
