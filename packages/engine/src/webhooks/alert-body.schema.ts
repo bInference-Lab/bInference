@@ -8,7 +8,8 @@ export interface AlertBody {
   readonly alertId?: string;
 }
 
-const utf8 = new TextDecoder("utf-8", { fatal: true });
+// A leading byte order mark stays in the text, so the stored text is the body as it came.
+const utf8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
 const alertIdSchema = z.string().min(1).max(maxWebhookAlertIdLength);
 

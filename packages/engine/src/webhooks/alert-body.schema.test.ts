@@ -26,6 +26,11 @@ describe("an alert's body", () => {
     expect(readAlertBody(utf8(text))).toStrictEqual({ body: { text } });
   });
 
+  it("keeps a leading byte order mark in the text, as the sender sent it", () => {
+    const marked = new Uint8Array([0xef, 0xbb, 0xbf, 0x41]);
+    expect(readAlertBody(marked)).toStrictEqual({ body: { text: "\ufeffA" } });
+  });
+
   it("keeps bytes that are not UTF-8 in base64, with no id", () => {
     expect(readAlertBody(new Uint8Array([0x7b, 0xff, 0x7d]))).toStrictEqual({
       body: { base64: "e/99" },
