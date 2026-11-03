@@ -1,6 +1,6 @@
 import { BinferenceError } from "@binference/core";
 import { execa } from "execa";
-import { whichCommand } from "which-command";
+import { findProgram } from "./find-program.js";
 
 /** How a program in the terminal ended: its exit code, or the signal that ended it. */
 export interface TerminalExit {
@@ -28,11 +28,6 @@ export interface TerminalProgramOptions {
   readonly signal: AbortSignal;
 }
 
-// Windows names ignore case, so its PATH may be spelled `Path`.
-function pathOf(env: TerminalProgramOptions["env"]): string | undefined {
-  return Object.entries(env).find(([name]) => name.toUpperCase() === "PATH")?.[1];
-}
-
 /**
  * Starts a program on this process's standard input, output and error, with no shell, an
  * argument array and only the environment given, for a person to use until it ends. Throws
@@ -41,8 +36,7 @@ function pathOf(env: TerminalProgramOptions["env"]): string | undefined {
 export async function startTerminalProgram(
   options: TerminalProgramOptions,
 ): Promise<TerminalProgram> {
-  const path = pathOf(options.env);
-  const found = await whichCommand(options.file, path === undefined ? {} : { path });
+  const found = await findProgram(options.file, options.env);
   if (found === undefined) {
     throw new BinferenceError({
       code: "platform.command_failed",

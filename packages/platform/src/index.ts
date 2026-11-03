@@ -36,6 +36,7 @@ export { realFilePath } from "./real-file-path.js";
 export { runCommand, runCommandToExit, runCommandWithin } from "./run-command.js";
 export { holdsRunningFiles, readSystemFacts } from "./system-facts.js";
 export type { SystemFacts } from "./system-facts.js";
+export { findProgram, type ProgramEnv } from "./find-program.js";
 export { startTerminalProgram } from "./terminal-program.js";
 export type { TerminalExit, TerminalProgram, TerminalProgramOptions } from "./terminal-program.js";
 export type { ProgramExit, RunProgram, RunToExit, RunWithinOptions } from "./run-command.js";
