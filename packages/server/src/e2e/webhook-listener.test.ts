@@ -6,6 +6,7 @@ import { openRawSocket } from "./raw-socket.js";
 import {
   hook,
   type ListenerOptions,
+  type StartedListener,
   ruleId,
   secret,
   startListener,
@@ -43,14 +44,15 @@ interface PairTimes {
 }
 
 // Sends a wrong secret, then an unknown rule, `rounds` times, one request at a time, so a change
-// in the machine's load reaches both alike, and keeps each answer's time in milliseconds.
-async function timePairs(
-  post: (path: string) => Promise<LocalAnswer>,
-  rounds: number,
-): Promise<PairTimes> {
+// in the machine's load reaches both alike, and keeps each answer's time in milliseconds. The
+// clock moves on between rounds, so the intake's read budget never runs out and each request
+// reads its rule.
+async function timePairs(started: StartedListener, rounds: number): Promise<PairTimes> {
+  const { post, clock } = started;
   const empty: PairTimes = { wrong: [], unknown: [] };
   return Array.from({ length: rounds }).reduce<Promise<PairTimes>>(async (previous) => {
     const times = await previous;
+    await clock.advance(1_000);
     const wrong = await timed(async () => post(hook(ruleId, wrongSecret)));
     const unknown = await timed(async () => post(hook(unknownRule, secret)));
     return { wrong: [...times.wrong, wrong], unknown: [...times.unknown, unknown] };
@@ -131,9 +133,13 @@ describe("the webhook listener", () => {
     expect(await alerts()).toStrictEqual([]);
   });
 
+  // This shows that neither path does gross work the other skips, such as a write. It cannot see
+  // the decoy comparison, about 100 ns against a band of 0.5 ms, and it runs on the in-memory
+  // store, where a found rule costs what a missing one does; on SQLite a found row costs a few
+  // microseconds more. The intake test that counts the store's calls is the proof that both
+  // paths make the same read and the same comparison (decision 0333).
   it("answers a wrong secret and an unknown rule in the same time band", async () => {
-    const { post } = await start();
-    const { wrong, unknown } = await timePairs(post, 120);
+    const { wrong, unknown } = await timePairs(await start(), 120);
     // The first rounds warm the sockets and the code paths; the medians of the rest are compared.
     const [wrongMs, unknownMs] = [median(wrong.slice(10)), median(unknown.slice(10))];
     const band = Math.max(0.5, 0.25 * Math.max(wrongMs, unknownMs));
@@ -259,10 +265,11 @@ describe("the webhook listener", () => {
   });
 
   it("binds loopback only and takes nothing once closed", async () => {
-    const { port, listener, post } = await start();
+    const { address, listener, post } = await start();
+    expect(address.host).toBe("127.0.0.1");
+    expect(address.port).toBeGreaterThan(0);
     await listener.close();
     await expect(post(hook(ruleId, secret))).rejects.toThrow("ECONNREFUSED");
     await expect(listener.close()).resolves.toBeUndefined();
-    expect(port).toBeGreaterThan(0);
   });
 });

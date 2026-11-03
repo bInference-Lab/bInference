@@ -4,6 +4,29 @@ import { hook, openRaw, postHead, ruleId, secret, startListener } from "./webhoo
 
 const opened: (() => Promise<void>)[] = [];
 
+const unset = (): void => undefined;
+
+// A promise the test resolves when it chooses.
+function deferred(): { readonly promise: Promise<void>; readonly resolve: () => void } {
+  let resolve = unset;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve: () => resolve() };
+}
+
+// Settles only when the signal aborts, as a store write that hangs does.
+async function waitForAbort(signal: AbortSignal): Promise<never> {
+  return new Promise<never>((_resolve, reject) => {
+    signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+  });
+}
+
+// One chunk of a chunked body.
+function chunk(part: string): string {
+  return `${part.length.toString(16)}\r\n${part}\r\n`;
+}
+
 // The head of a POST that asks before it sends its body.
 function expecting(path: string, length: number): string {
   return `${postHead(path, length).slice(0, -2)}Expect: 100-continue\r\n\r\n`;
@@ -81,5 +104,39 @@ describe("the webhook listener's connections", () => {
     asking.socket.write(body);
     await asking.closed;
     expect(asking.received()).toMatch(/^HTTP\/1\.1 100 Continue\r\n\r\nHTTP\/1\.1 202 /);
+  });
+
+  it.each([
+    ["one byte more than 16 KiB", 16_385, /^HTTP\/1\.1 413 /],
+    ["16 KiB", 16_384, /^HTTP\/1\.1 202 /],
+  ])("counts a chunked body as it arrives: %s", async (_name, size, status) => {
+    const { port } = await startListener(opened);
+    const head = `POST ${hook(ruleId, secret)} HTTP/1.1\r\nHost: 127.0.0.1\r\n`;
+    const body = `{"id":"big","pad":"${"x".repeat(size - 21)}"}`;
+    const half = body.length >> 1;
+    const chunked = `${chunk(body.slice(0, half))}${chunk(body.slice(half))}0\r\n\r\n`;
+    const sent = await openRaw(port, `${head}Transfer-Encoding: chunked\r\n\r\n${chunked}`);
+    await sent.closed;
+    expect(sent.received()).toMatch(status);
+  });
+
+  it("cuts a request still under way once the close's grace has passed", async () => {
+    const taking = deferred();
+    const { port, listener, clock } = await startListener(opened, {
+      limits: { takeTimeoutMs: 600_000 },
+      store: (store) => ({
+        ...store,
+        take: async (_draft, call) => {
+          taking.resolve();
+          return waitForAbort(call.signal);
+        },
+      }),
+    });
+    const held = await openRaw(port, `${postHead(hook(ruleId, secret), 2)}{}`);
+    await taking.promise;
+    const closed = listener.close();
+    await clock.advance(5_000);
+    await expect(closed).resolves.toBeUndefined();
+    await held.closed;
   });
 });
