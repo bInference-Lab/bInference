@@ -1,6 +1,6 @@
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
-import { fixtureId } from "../contracts/store-fixtures.js";
+import { fixtureId, inOrder } from "../contracts/store-fixtures.js";
 import { createMemoryInboxStore } from "../fakes/memory-inbox-store.js";
 import { createMemoryWebhookAlertStore } from "../fakes/memory-webhook-alert-store.js";
 import { sha256Hex } from "../records/sha256-hex.js";
@@ -115,6 +115,29 @@ describe("the webhook intake", () => {
       { rule: fixtureId("whr", 1), event: 1, body: { text: "BNBUSDT crossed 600" } },
       { rule: fixtureId("whr", 1), event: 3, body: { base64: "//4B" } },
     ]);
+  });
+
+  it("records ten times the rule's rate of refusals a minute, then answers 429 with no write", async () => {
+    const { take, calls, clock } = setUp([ruleOf(1)]);
+    const answers = await inOrder(Array.from({ length: 30 }), async () => take());
+    expect(answers[0]).toBe("accepted");
+    expect(answers.slice(1, 11)).toStrictEqual(Array.from({ length: 10 }, () => "repeat"));
+    expect(answers.slice(11)).toStrictEqual(Array.from({ length: 19 }, () => "rate"));
+    expect(calls.filter((call) => call === "take")).toHaveLength(11);
+    await clock.advance(60_000);
+    await expect(take()).resolves.toBe("repeat");
+    expect(calls.filter((call) => call === "take")).toHaveLength(12);
+  });
+
+  it("answers not found with no read past its reads for the second, the same answer", async () => {
+    const { take, calls, clock } = setUp([ruleOf(1)]);
+    const strangers = Array.from({ length: 60 }, (_, n) => fixtureId("whr", n + 2));
+    const answers = await inOrder(strangers, async (ruleId) => take({ ruleId }));
+    expect(new Set(answers)).toStrictEqual(new Set(["not_found"]));
+    expect(calls.filter((call) => call === "findRule")).toHaveLength(50);
+    await expect(take()).resolves.toBe("not_found");
+    await clock.advance(1_000);
+    await expect(take()).resolves.toBe("accepted");
   });
 
   it("answers not found when the rule's URL changed after the read", async () => {
