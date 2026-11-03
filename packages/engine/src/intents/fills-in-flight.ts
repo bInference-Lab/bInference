@@ -13,9 +13,10 @@ export const inFlightStates: readonly IntentState[] = [
 ];
 
 /**
- * Which live order fills of an agent hold its line (decision 0211): those the executor holds and
- * whose order has not counted them, and those whose dropped step is still watched, ended
- * `failed_onchain` with `stuck_dropped` at or after `droppedSinceMs`, with no late landing.
+ * Which live fills of an agent's auto orders and webhook rules hold its line (decisions 0211 and
+ * 0342): those the executor holds that their order or alert has not counted, and those whose
+ * dropped step is still watched, ended `failed_onchain` with `stuck_dropped` at or after
+ * `droppedSinceMs`, with no late landing.
  */
 export interface FillsInFlightQuery {
   readonly agentId: Id<"agt">;
@@ -28,10 +29,12 @@ export const fillsInFlightQuerySchema: z.ZodType<FillsInFlightQuery> = z.strictO
   droppedSinceMs: epochMsSchema,
 });
 
-const orderAuthorizationShape = z.looseObject({ order: idSchema("ord") });
+const fillAuthorizationShape = z.union([
+  z.looseObject({ order: idSchema("ord") }),
+  z.looseObject({ webhookRule: idSchema("whr") }),
+]);
 
-/** Whether an intent's stored authorization is an auto order's. */
-export function isOrderAuthorized(authorizedBy: JsonValue | undefined): boolean {
-  const parsed = orderAuthorizationShape.safeParse(authorizedBy);
-  return parsed.success;
+/** Whether an intent's stored authorization is an auto order's or a webhook rule's. */
+export function isFillAuthorized(authorizedBy: JsonValue | undefined): boolean {
+  return fillAuthorizationShape.safeParse(authorizedBy).success;
 }

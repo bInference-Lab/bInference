@@ -3,18 +3,36 @@ import {
   type FillsInFlightQuery,
   fillsInFlightQuerySchema,
   inFlightStates,
-  isOrderAuthorized,
+  isFillAuthorized,
 } from "@binference/engine/outflows";
+import type { Kysely } from "kysely";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { toIntentRecord } from "./intent-rows.js";
 
+// The intents an order's `filled` row or a rule's `filled` alert counts: their fills hold no line.
+function countedFills(kysely: Kysely<EngineTables>) {
+  return kysely
+    .selectFrom("order_fills")
+    .select("intent_id")
+    .where("outcome", "=", "filled")
+    .where("intent_id", "is not", null)
+    .union(
+      kysely
+        .selectFrom("webhook_events")
+        .select("intent_id")
+        .where("fill_outcome", "=", "filled")
+        .where("intent_id", "is not", null),
+    );
+}
+
 /**
- * Reads every live order fill of an agent that holds its line (decision 0211), with no page
- * limit: the engine's live intents under an order that no `filled` row counts yet, in a state the
- * executor holds, or ended `stuck_dropped` since the query's time with no late landing.
+ * Reads every live fill of an agent's auto orders and webhook rules that holds its line (decisions
+ * 0211 and 0342), with no page limit: the engine's live intents under an order or a rule that no
+ * `filled` row or alert counts yet, in a state the executor holds, or ended `stuck_dropped` since
+ * the query's time with no late landing.
  */
 export const fillsInFlightTask: StoreTask<FillsInFlightQuery, readonly IntentRecord[]> = defineTask(
   {
@@ -48,22 +66,12 @@ export const fillsInFlightTask: StoreTask<FillsInFlightQuery, readonly IntentRec
             ]),
           ]),
         )
-        .where((row) =>
-          row.not(
-            row.exists(
-              row
-                .selectFrom("order_fills")
-                .select("id")
-                .whereRef("order_fills.intent_id", "=", "intents.id")
-                .where("order_fills.outcome", "=", "filled"),
-            ),
-          ),
-        )
+        .where("id", "not in", countedFills(kysely))
         .orderBy("changed_at")
         .orderBy("id");
       return execute(select)
         .rows.map(toIntentRecord)
-        .filter(({ authorizedBy }) => isOrderAuthorized(authorizedBy));
+        .filter(({ authorizedBy }) => isFillAuthorized(authorizedBy));
     },
   },
 );

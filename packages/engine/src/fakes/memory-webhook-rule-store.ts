@@ -17,6 +17,14 @@ import {
   type WebhookRuleRecord,
 } from "../webhooks/webhook-rule-record.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
+import {
+  alertOf,
+  assertCarried,
+  type Ended,
+  isFilledBy,
+  isLandingOverDrop,
+  type MemoryFillCarrier,
+} from "./memory-alert-ends.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import type { MemoryEventRow, MemoryWebhookAlertStore } from "./memory-webhook-alert-store.js";
@@ -34,13 +42,12 @@ export interface MemoryWebhookRuleStoreOptions {
 
 /** An in-memory {@link WebhookRuleStore}, which the intent store beside it writes fills through. */
 export interface MemoryWebhookRuleStore extends WebhookRuleStore {
-  /**
-   * Checks a fill's write on its alert and rule before the intent store writes anything: `stale`
-   * when the alert ended or its rule moved; a broken write throws `store.constraint`.
-   */
-  checkFillNow(write: AlertFillWrite): Result<undefined, "stale">;
-  /** Writes a fill's alert and rule, as the intent store's move writes them. */
-  saveFillNow(write: AlertFillWrite): void;
+  /** Checks a rule fill's alert and rule before anything is written: `stale` when either moved. */
+  checkFillNow(write: AlertFillWrite, by: MemoryFillCarrier): Result<undefined, "stale">;
+  /** Writes a rule fill's alert and rule, as the intent store's move or late landing writes them. */
+  saveFillNow(write: AlertFillWrite, by: MemoryFillCarrier): void;
+  /** Whether an alert ended `filled` by this intent, which then holds no agent's line. */
+  isFilledByNow(intent: Id<"int">): boolean;
   /** Stores a rule as no operation could, in place of one with the same id: a test's live rule. */
   plant(record: WebhookRuleRecord, secretHash: Sha256Hex): void;
 }
@@ -50,24 +57,10 @@ interface Rule {
   readonly secretHash: Sha256Hex;
 }
 
-type Ended = Pick<AlertFillRecord, "outcome" | "reason" | "intentId" | "notices" | "announcedAtMs">;
-
 interface State {
   readonly options: MemoryWebhookRuleStoreOptions;
   readonly rules: Map<Id<"whr">, Rule>;
   readonly ended: Map<number, Ended>;
-}
-
-function alertOf(row: MemoryEventRow, end: Ended | undefined): AlertFillRecord {
-  const { draft } = row;
-  return structuredClone({
-    event: row.id,
-    ruleId: draft.rule,
-    ...(draft.alertId === undefined ? {} : { alertId: draft.alertId }),
-    receivedAtMs: draft.receivedAtMs,
-    wasEngineLocked: draft.isEngineLocked === true,
-    ...end,
-  });
 }
 
 // Keeps the rule, and plants its key where the listener reads it, as the SQLite row serves both.
@@ -196,12 +189,16 @@ function checkMove(state: State, move: WebhookRuleMove): Result<Rule, WebhookRul
 
 type EndRefusal = "ended" | "not_found" | "stale";
 
-function checkEnd(state: State, write: AlertFillWrite): Result<Rule | undefined, EndRefusal> {
+function checkEnd(
+  state: State,
+  write: AlertFillWrite,
+  options: { readonly reopens: boolean } = { reopens: false },
+): Result<Rule | undefined, EndRefusal> {
   const row = acceptedRow(state, write.event);
   if (row === undefined) {
     return err("not_found");
   }
-  if (state.ended.has(write.event)) {
+  if (state.ended.has(write.event) && !options.reopens) {
     return err("ended");
   }
   if (write.move === undefined) {
@@ -263,15 +260,23 @@ function markAnnounced(state: State, { events, atMs }: AlertAnnouncement): void 
   });
 }
 
-function checkFill(state: State, write: AlertFillWrite): Result<undefined, "stale"> {
-  if (write.outcome !== "filled" || write.move === undefined) {
-    throw constraintFault("a fill's write counts the fill on its rule");
-  }
-  const checked = checkEnd(state, write);
-  if (!checked.ok && checked.error === "not_found") {
+// A rule fill's write on its alert (decisions 0338 and 0342): it names the intent that carries it,
+// and a fill counts on its rule unless the rule was deleted meanwhile. An alert that ended is
+// `stale`, but for a late landing over its own drop, as is a rule another write moved.
+function checkFill(
+  state: State,
+  write: AlertFillWrite,
+  by: MemoryFillCarrier,
+): Result<Rule | undefined, "stale"> {
+  const row = acceptedRow(state, write.event);
+  if (row === undefined) {
     throw constraintFault(`alert ${String(write.event)} is no accepted alert`);
   }
-  return checked.ok ? ok(undefined) : err("stale");
+  const isRuleDeleted = state.rules.get(row.draft.rule)?.record.state === "deleted";
+  assertCarried(write, { by, isRuleDeleted });
+  const reopens = isLandingOverDrop(state.ended.get(write.event), write, by);
+  const checked = checkEnd(state, write, { reopens });
+  return checked.ok ? checked : err("stale");
 }
 
 function alertsOf(state: State, ruleId: Id<"whr">, limit: number): readonly AlertFillRecord[] {
@@ -316,12 +321,16 @@ export function createMemoryWebhookRuleStore(
     unannounced: async (limit, call) => memoryCall(call, () => unannounced(state, limit)),
     markAnnounced: async (announcement, call) =>
       memoryCall(call, () => markAnnounced(state, announcement)),
-    checkFillNow: (write) => checkFill(state, write),
+    checkFillNow: (write, by) => {
+      const checked = checkFill(state, write, by);
+      return checked.ok ? ok(undefined) : checked;
+    },
+    isFilledByNow: (intent) => isFilledBy(state.ended.values(), intent),
     plant: (record, secretHash) => {
       saveRule(state, { record, secretHash });
     },
-    saveFillNow(write) {
-      const checked = checkEnd(state, write);
+    saveFillNow(write, by) {
+      const checked = checkFill(state, write, by);
       if (!checked.ok) {
         throw constraintFault(`alert ${String(write.event)} cannot take its fill`);
       }

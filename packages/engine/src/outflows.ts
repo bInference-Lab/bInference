@@ -7,6 +7,6 @@ export type { LateLanding } from "./intents/late-landing.js";
 export {
   fillsInFlightQuerySchema,
   inFlightStates,
-  isOrderAuthorized,
+  isFillAuthorized,
 } from "./intents/fills-in-flight.js";
 export type { FillsInFlightQuery } from "./intents/fills-in-flight.js";

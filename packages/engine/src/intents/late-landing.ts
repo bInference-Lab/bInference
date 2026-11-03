@@ -2,6 +2,7 @@ import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
 import { type OrderFillWrite, orderFillWriteSchema } from "../orders/order-fill.js";
 import { epochMsSchema } from "../records/record-fields.js";
+import { type AlertFillWrite, alertFillWriteSchema } from "../webhooks/alert-fill-record.js";
 
 /**
  * A step the drop rule ended that landed after all (decision 0147): a record of its own, linked to
@@ -18,6 +19,12 @@ export interface LateLanding {
    * its `filled` row (decision 0211). Absent for any other intent.
    */
   readonly order?: OrderFillWrite;
+  /**
+   * A webhook rule's live fill that landed late ends its alert `filled` in the same write, over
+   * the `stuck_dropped` skip its drop wrote, and counts on its rule (decision 0342). Absent for
+   * any other intent.
+   */
+  readonly alert?: AlertFillWrite;
 }
 
 /** Parses a late landing. */
@@ -26,4 +33,5 @@ export const lateLandingSchema: z.ZodType<LateLanding> = z.strictObject({
   txId: idSchema("tx"),
   atMs: epochMsSchema,
   order: orderFillWriteSchema.exactOptional(),
+  alert: alertFillWriteSchema.exactOptional(),
 });

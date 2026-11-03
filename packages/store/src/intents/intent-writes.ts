@@ -20,7 +20,7 @@ import { appendLedgerEntry } from "../ledger/ledger-rows.js";
 import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
 import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
-import { checkAlertEnd, writeAlertEnd } from "../webhooks/webhook-rule-writes.js";
+import { checkAlertEnd, isRuleDeleted, writeAlertEnd } from "../webhooks/webhook-rule-writes.js";
 import { writeCardChanges } from "./card-writes.js";
 import { insertIdentity } from "./identity-rows.js";
 import { toIntentEvent, toIntentRecord } from "./intent-rows.js";
@@ -156,21 +156,31 @@ export function readMoved(
   return current.version === change.expectedVersion ? ok(current) : err("stale");
 }
 
-// A webhook rule fill's write names the moving intent and counts the fill on its rule; an alert
-// that ended, or a rule another write moved, is the move's `stale` (decision 0338).
-function checkRuleFill(
+/**
+ * A webhook rule fill's write on its alert, carried by its intent's move or its late landing
+ * (decisions 0338 and 0342): it names that intent, and a fill counts on its rule unless the rule
+ * was deleted meanwhile. An alert that ended, but for a late landing over its own drop, or a rule
+ * another write moved, is `stale`.
+ */
+export function checkRuleFill(
   database: DatabaseSync,
-  fill: { readonly alert: AlertFillWrite; readonly intent: string },
+  fill: {
+    readonly alert: AlertFillWrite;
+    readonly intent: string;
+    readonly isLanding: boolean;
+  },
 ): Result<undefined, "stale"> {
-  const { alert, intent } = fill;
-  if (alert.outcome !== "filled" || alert.intentId !== intent || alert.move === undefined) {
+  const { alert, intent, isLanding } = fill;
+  const counts =
+    alert.outcome === "skipped" || alert.move !== undefined || isRuleDeleted(database, alert.event);
+  if (alert.intentId !== intent || !counts) {
     throw new BinferenceError({
       code: "store.constraint",
-      message: "A rule fill's write names its own intent and counts the fill on its rule.",
+      message: "A rule fill's write names its own intent and counts a fill on its rule.",
       details: { intent },
     });
   }
-  const checked = checkAlertEnd(database, alert);
+  const checked = checkAlertEnd(database, alert, isLanding ? { overDropOf: intent } : {});
   if (!checked.ok && checked.error === "not_found") {
     throw new BinferenceError({
       code: "store.constraint",
@@ -185,7 +195,8 @@ function checkRuleFill(
 // at another version, is the move's `stale`.
 function checkFillWrite(database: DatabaseSync, change: IntentChange): Result<undefined, "stale"> {
   const { order, alert } = change;
-  if (alert !== undefined && !checkRuleFill(database, { alert, intent: change.id }).ok) {
+  const ruleFill = { intent: change.id, isLanding: false };
+  if (alert !== undefined && !checkRuleFill(database, { alert, ...ruleFill }).ok) {
     return err("stale");
   }
   if (order === undefined) {

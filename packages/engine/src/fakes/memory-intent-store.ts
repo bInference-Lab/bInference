@@ -299,6 +299,7 @@ function confirmedSince(
 export function createMemoryIntentStore(options: MemoryIntentStoreOptions): MemoryIntentStore {
   const tables = createMemoryIntentTables();
   const landings = new Map<Id<"int">, LateLanding>();
+
   return {
     confirmationNow: (id) => tables.confirmation(id),
     intentNow: (id) => tables.intent(id),
@@ -316,7 +317,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
       ),
     fillsInFlight: async (query, call) =>
       memoryCall(call, () =>
-        fillsInFlightOf({ tables, landings, orders: options.orders }, query).toSorted(byChange),
+        fillsInFlightOf({ tables, landings, stores: options }, query).toSorted(byChange),
       ),
     storedAssets: async (assets, call) =>
       memoryCall(call, () => newestStoredAssets(tables.intents(), assets)),
@@ -324,7 +325,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
       memoryCall(call, () => confirmedSince(tables, landings, query)),
     recordLandedLate: async (landing, call) =>
       memoryCall(call, () =>
-        recordLandedLate({ tables, landings, orders: options.orders }, structuredClone(landing)),
+        recordLandedLate({ tables, landings, stores: options }, structuredClone(landing)),
       ),
     events: async (id, call) => memoryCall(call, () => tables.events(id)),
     cards: async (id, call) =>

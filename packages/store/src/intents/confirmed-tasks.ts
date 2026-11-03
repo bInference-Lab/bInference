@@ -17,6 +17,8 @@ import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
+import { writeAlertEnd } from "../webhooks/webhook-rule-writes.js";
+import { checkRuleFill } from "./intent-writes.js";
 
 // The outflows a restore carried for one agent and mode (keys spec, section 7.4), as confirmed
 // intents; each counts in the place of the database's own count of the same intent.
@@ -114,8 +116,9 @@ function checkLandedOrder(database: DatabaseSync, order: OrderFillWrite): boolea
 }
 
 /**
- * Links a late landing to its intent (decision 0147), leaving the intent as it is: an intent with
- * one already is `exists`, an unknown intent `not_found`.
+ * Links a late landing to its intent (decision 0147), leaving the intent as it is, with its order's
+ * write (decision 0211) or its rule fill's alert end (decision 0342): an intent with one already is
+ * `exists`, an unknown intent `not_found`, and an order, alert or rule another write moved `stale`.
  */
 export const recordLandedLateTask: StoreTask<
   LateLanding,
@@ -142,13 +145,18 @@ export const recordLandedLateTask: StoreTask<
     if (earlier !== undefined) {
       return err("exists");
     }
-    const { order } = landing;
-    if (order !== undefined && !checkLandedOrder(database, order)) {
+    const { order, alert } = landing;
+    const ruleFill = { intent: landing.intentId, isLanding: true };
+    const isAlertStale = alert !== undefined && !checkRuleFill(database, { alert, ...ruleFill }).ok;
+    if (isAlertStale || (order !== undefined && !checkLandedOrder(database, order))) {
       return err("stale");
     }
     if (order !== undefined) {
       writeOrderMoves(database, order.moves);
       insertOrderFill(database, order.fill);
+    }
+    if (alert !== undefined) {
+      writeAlertEnd(database, alert);
     }
     execute(
       kysely

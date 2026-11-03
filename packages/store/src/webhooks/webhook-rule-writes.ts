@@ -11,7 +11,7 @@ import {
 } from "@binference/engine/orders";
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
-import type { WebhookRulesTable } from "../databases/webhook-tables.js";
+import type { WebhookEventsTable, WebhookRulesTable } from "../databases/webhook-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { isAgentFrozen } from "../orders/order-writes.js";
 import { jsonText } from "../rows/column-values.js";
@@ -163,20 +163,39 @@ export function writeRuleMove(database: DatabaseSync, move: WebhookRuleMove): We
   return toRuleRecord(row);
 }
 
+/** Whether the rule of an accepted alert was deleted: a fill landing on it moves it no more. */
+export function isRuleDeleted(database: DatabaseSync, event: number): boolean {
+  const row = acceptedRow(database, event);
+  return row !== undefined && ruleRow(database, row.rule_id)?.state === "deleted";
+}
+
+// Whether a late landing turns the `stuck_dropped` skip its own drop wrote into the fill it was
+// (decision 0342).
+function isOwnDrop(row: Selectable<WebhookEventsTable>, intent: string | undefined): boolean {
+  return (
+    intent !== undefined &&
+    row.fill_outcome === "skipped" &&
+    row.fill_reason === "stuck_dropped" &&
+    row.intent_id === intent
+  );
+}
+
 /**
  * Checks an alert's end before anything is written: an alert that is no accepted alert is
- * `not_found`, one that ended `ended`, and its rule's move that would not land `stale`. A move of
- * another rule than the alert's throws.
+ * `not_found`, one that ended `ended`, but a fill over the drop of `overDropOf`, a late landing's,
+ * and its rule's move that would not land `stale`. A move of another rule than the alert's throws.
  */
 export function checkAlertEnd(
   database: DatabaseSync,
   write: AlertFillWrite,
+  options: { readonly overDropOf?: string } = {},
 ): Result<undefined, "ended" | "not_found" | "stale"> {
   const row = acceptedRow(database, write.event);
   if (row === undefined) {
     return err("not_found");
   }
-  if (row.fill_outcome !== null) {
+  const reopens = write.outcome === "filled" && isOwnDrop(row, options.overDropOf);
+  if (row.fill_outcome !== null && !reopens) {
     return err("ended");
   }
   if (write.move === undefined) {
@@ -199,6 +218,7 @@ export function writeAlertEnd(database: DatabaseSync, write: AlertFillWrite): vo
         fill_reason: write.reason ?? null,
         intent_id: write.intentId ?? null,
         notices: write.notices === undefined ? null : jsonText([...write.notices]),
+        announced_at: null,
       })
       .where("id", "=", write.event),
   );

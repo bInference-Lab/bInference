@@ -19,7 +19,8 @@ export function ordersOf(stores: MemoryFillStores): MemoryOrderStore {
   return stores.orders;
 }
 
-function rulesOf(stores: MemoryFillStores): MemoryWebhookRuleStore {
+/** The rule store beside the intent store, which a write that ends a rule fill's alert needs. */
+export function rulesOf(stores: MemoryFillStores): MemoryWebhookRuleStore {
   if (stores.webhookRules === undefined) {
     throw constraintFault("a write fills a webhook rule this store holds none of");
   }
@@ -35,8 +36,9 @@ export function checkFillWrites(
   stores: MemoryFillStores,
   change: IntentChange,
 ): Result<{ readonly orders?: readonly OrderRecord[] }, "stale"> {
+  const by = { intent: change.id, isLanding: false };
   const alert =
-    change.alert === undefined ? ok(undefined) : rulesOf(stores).checkFillNow(change.alert);
+    change.alert === undefined ? ok(undefined) : rulesOf(stores).checkFillNow(change.alert, by);
   if (!alert.ok || change.order === undefined) {
     return alert.ok ? ok({}) : alert;
   }
@@ -55,6 +57,6 @@ export function saveFillWrites(
     stores.orders?.saveFillNow(change.order.fill);
   }
   if (change.alert !== undefined) {
-    rulesOf(stores).saveFillNow(change.alert);
+    rulesOf(stores).saveFillNow(change.alert, { intent: change.id, isLanding: false });
   }
 }
