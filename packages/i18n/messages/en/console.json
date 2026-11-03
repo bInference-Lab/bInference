@@ -32,6 +32,7 @@
   "confirmations.empty": "Nothing waits for your confirmation.",
   "confirmations.confirm": "Confirm",
   "confirmations.cancel": "Cancel",
+  "confirmations.closed": "Closed since you opened this page",
   "confirmations.noScope": "This connection can read cards but not answer them.",
   "confirmations.failed": "Not answered: {reason}",
   "ledger.title": "Ledger",

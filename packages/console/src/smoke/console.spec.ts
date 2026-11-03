@@ -22,7 +22,11 @@ test("pairs this browser and confirms a paper card in it", async ({ page, reques
   await expect(page.getByText("Nothing waits for your confirmation.")).toBeVisible();
   const settled = await request.get(`${control}/intent?intent=${intent}`);
   expect(await settled.json()).toStrictEqual({ state: "paper_filled" });
-  await page.screenshot({ path: testInfo.outputPath("confirmed.png"), fullPage: true });
+  // The card stays, its receipt in place of its buttons.
+  const closed = page.getByRole("region", { name: "Closed since you opened this page" });
+  await expect(closed).toContainText("Paper fill: ");
+  await expect(closed.getByRole("button")).toHaveCount(0);
+  await shootThemes(page, testInfo, "receipt");
 
   await page.goto("/ledger");
   await expect(page.getByRole("heading", { name: "Ledger" })).toBeVisible();
@@ -70,7 +74,10 @@ test("chats with an image and confirms the card the agent opens inline", async (
     .poll(async () => (await states()).filter((each) => each === "paper_filled").length)
     .toBe(2);
   expect(await states()).not.toContain("awaiting_confirmation");
-  await page.screenshot({ path: testInfo.outputPath("chat-confirmed.png"), fullPage: true });
+  await expect(
+    page.getByRole("region", { name: "Closed since you opened this page" }),
+  ).toContainText("Paper fill: ");
+  await shootThemes(page, testInfo, "chat-receipt");
   expect(problems).toStrictEqual([]);
 });
 

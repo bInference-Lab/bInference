@@ -32,6 +32,7 @@
   "confirmations.empty": "没有等待你确认的操作。",
   "confirmations.confirm": "确认",
   "confirmations.cancel": "取消",
+  "confirmations.closed": "打开本页后已关闭的卡片",
   "confirmations.noScope": "此连接可以查看卡片，但不能回复。",
   "confirmations.failed": "未回复：{reason}",
   "ledger.title": "账本",

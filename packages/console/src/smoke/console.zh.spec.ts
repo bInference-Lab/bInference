@@ -55,6 +55,21 @@ test("shows the agent's launch draft in Chinese, read-only, in light and in dark
   expect(problems).toStrictEqual([]);
 });
 
+test("confirms a paper card in Chinese and keeps it with its receipt", async ({
+  page,
+  request,
+}, testInfo) => {
+  const problems = await openPaired(page, request);
+  await expect(page.getByRole("heading", { name: "待确认" })).toBeVisible();
+  await request.post(`${control}/propose`);
+  await page.getByRole("button", { name: "确认" }).click();
+  const closed = page.getByRole("region", { name: "打开本页后已关闭的卡片" });
+  await expect(closed).toContainText("模拟成交：", { timeout: 20_000 });
+  await expect(closed.getByRole("button")).toHaveCount(0);
+  await shootThemes(page, testInfo, "receipt-zh");
+  expect(problems).toStrictEqual([]);
+});
+
 test("shows the alert rules screen in Chinese, in light and in dark", async ({
   page,
   request,

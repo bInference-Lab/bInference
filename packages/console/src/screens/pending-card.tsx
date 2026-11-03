@@ -90,27 +90,51 @@ function cardTimesOf(intent: IntentView, shown: CardLinesView | undefined): Card
       };
 }
 
-/**
- * One card that waits for the owner, drawn line by line as Telegram draws it (spec 4), its status
- * icons as line icons, with Confirm and Cancel for a connection that holds the `confirm` scope. A Confirm names the card
- * version it shows, so a new quote is never confirmed unseen.
- */
-export function PendingCard(props: { readonly intent: IntentView }): React.JSX.Element {
-  const { intent } = props;
-  const { isFocused, showIn } = useFocusedCard(intent.intent);
-  const { client } = useEngine();
-  const text = useText();
+// The line a closed card ends with in place of its buttons (decision 0346): how it closed and what
+// followed, as Telegram's copies show it; nothing until the engine draws it.
+function ReceiptLine(props: { readonly intent: IntentView }): React.JSX.Element | null {
   const formatter = useFormatter();
-  const card = useQuery({
+  const { receipt, assets } = props.intent;
+  return receipt === undefined ? null : (
+    <p className="text-sm">
+      <CardLine text={cardLineText(receipt, { formatter, assets })} />
+    </p>
+  );
+}
+
+// The card version's lines as the engine draws them; a closed card keeps those the page read while
+// it waited.
+function useCardLines(intent: IntentView, card: { readonly isClosed: boolean }) {
+  const { client } = useEngine();
+  return useQuery({
     queryKey: ["intents", "card", intent.intent, intent.card?.version],
     queryFn: async ({ signal }) =>
       client.call("intent/card", { intent: intent.intent }, { signal }),
+    enabled: !card.isClosed,
   });
+}
+
+/**
+ * One card, drawn line by line as Telegram draws it (spec 4), its status icons as line icons:
+ * while it waits, with Confirm and Cancel for a connection that holds the `confirm` scope, a
+ * Confirm naming the card version it shows, so a new quote is never confirmed unseen; once it
+ * closed, the line its copies end with in place of the buttons.
+ */
+export function PendingCard(props: {
+  readonly intent: IntentView;
+  /** The card closed since the page showed it waiting. */
+  readonly isClosed?: boolean;
+}): React.JSX.Element {
+  const { intent, isClosed = false } = props;
+  const { isFocused, showIn } = useFocusedCard(intent.intent);
+  const text = useText();
+  const formatter = useFormatter();
+  const card = useCardLines(intent, { isClosed });
   const answer = useAnswer(intent.intent);
   const lines = consoleLines(card.data, formatter);
   const [header, ...rest] = lines;
   const shown = card.data;
-  const seconds = useSecondsLeft(cardTimesOf(intent, shown));
+  const seconds = useSecondsLeft(isClosed ? undefined : cardTimesOf(intent, shown));
   return (
     <Card
       ref={showIn}
@@ -138,7 +162,11 @@ export function PendingCard(props: { readonly intent: IntentView }): React.JSX.E
         )}
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
-        <AnswerButtons answer={answer} shown={shown} seconds={seconds} />
+        {isClosed ? (
+          <ReceiptLine intent={intent} />
+        ) : (
+          <AnswerButtons answer={answer} shown={shown} seconds={seconds} />
+        )}
       </CardFooter>
     </Card>
   );
