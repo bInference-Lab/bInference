@@ -125,6 +125,14 @@ export type {
   UnbondingPart,
 } from "@binference/chain/staking";
 export { stakePlanSchema, stakeRefusals } from "@binference/chain/staking";
+export type {
+  DecodedRegistration,
+  IdentityRegistry,
+  IdentityStanding,
+  LandedRegistration,
+  RegistrationCard,
+} from "@binference/chain/identity";
+export { registrationFileMaxLength } from "@binference/chain/identity";
 export {
   BinferenceError,
   bpsSchema,
@@ -149,6 +157,7 @@ export type {
 export { defineBridge } from "./define-bridge.js";
 export { defineData } from "./define-data.js";
 export { defineLaunchpad, defineVenue } from "./define-venue.js";
+export { defineIdentity } from "./define-identity.js";
 export { defineStaking } from "./define-staking.js";
 export { lintSkill } from "./skills/lint-skill.js";
 export type { SkillFinding } from "./skills/lint-skill.js";

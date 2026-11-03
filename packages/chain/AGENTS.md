@@ -65,3 +65,8 @@ Rules for this package:
   before the unstake's call, and lets its own queue say when a part is ready (decision 0331). It
   and its terms are exported from `@binference/chain/staking`, since the root entry is at its size
   limit.
+- `IdentityRegistry` (`src/identity/ports.ts`, decision 0335) writes an agent's registration file,
+  reads a wallet's standing (the registry's version and the identity tokens it holds), builds the
+  one call that registers a file and mints the token to the wallet that signs, decodes only that
+  call, counts the tokens a simulated step minted from the step's raw logs, and reads back a landed
+  registration. It and its terms are exported from `@binference/chain/identity`.

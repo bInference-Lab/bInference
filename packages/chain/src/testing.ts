@@ -116,6 +116,13 @@ export { bridgeContract } from "./contracts/bridge-contract.js";
 export type { BridgeHarness, BridgeSubject } from "./contracts/bridge-contract.js";
 export { createFakeBridge, fakeSettlementCases } from "./fakes/fake-bridge.js";
 export type { FakeBridge, FakeBridgeRoute } from "./fakes/fake-bridge.js";
+export { identityRegistryContract } from "./contracts/identity-registry-contract.js";
+export type {
+  IdentityRegistryHarness,
+  IdentityRegistrySubject,
+} from "./contracts/identity-registry-contract.js";
+export { createFakeIdentityRegistry } from "./fakes/fake-identity-registry.js";
+export type { FakeIdentityOptions, FakeIdentityRegistry } from "./fakes/fake-identity-registry.js";
 export { stakingVenueContract } from "./contracts/staking-venue-contract.js";
 export type { StakingVenueHarness, StakingVenueSubject } from "./contracts/staking-venue-checks.js";
 export { createFakeLiquidStakingVenue } from "./fakes/fake-liquid-staking-venue.js";

@@ -1,6 +1,7 @@
 export {
   bridgeContract,
   curveReaderContract,
+  identityRegistryContract,
   insiderReaderContract,
   launcherContract,
   launchReaderContract,
@@ -20,6 +21,8 @@ export type {
   BridgeSubject,
   CurveReaderHarness,
   CurveReaderSubject,
+  IdentityRegistryHarness,
+  IdentityRegistrySubject,
   InsiderReaderHarness,
   InsiderReaderSubject,
   LauncherHarness,

@@ -9947,6 +9947,7 @@
         "packages/chain-evm/src/index.ts",
         "packages/chain-evm/src/replay.ts",
         "packages/chain-solana/src/index.ts",
+        "packages/chain/src/identity.ts",
         "packages/chain/src/index.ts",
         "packages/chain/src/staking.ts",
         "packages/chain/src/testing.ts",
