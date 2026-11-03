@@ -23,7 +23,7 @@ const live = { signal: new AbortController().signal };
 /** The planted rule's id and secret, and an id no rule has. */
 export const ruleId = "whr_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 export const unknownRule = "whr_0190f1c2-3a4b-7c5d-8e6f-000000000002";
-export const secret = "q3Zr_x9-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
+export const secret = "q3Zr_x9-AbCdEfGhIjKlMnOpQrStUvWxYz012345678";
 
 /** The route's path for a rule id and a secret. */
 export const hook = (rule: string, key: string): string => `/hook/${rule}/${key}`;
@@ -84,6 +84,8 @@ export async function startListener(
 export interface RawConnection {
   readonly socket: Socket;
   readonly received: () => string;
+  /** Resolves once what it received holds `text`. */
+  readonly next: (text: string) => Promise<void>;
   readonly closed: Promise<void>;
 }
 
@@ -91,7 +93,18 @@ export interface RawConnection {
 export async function openRaw(port: number, text = ""): Promise<RawConnection> {
   const socket = connect({ host: "127.0.0.1", port });
   const chunks: Buffer[] = [];
-  socket.on("data", (chunk: Buffer) => chunks.push(chunk));
+  const received = (): string => Buffer.concat(chunks).toString("utf8");
+  const waits: { readonly awaited: string; readonly resolve: () => void }[] = [];
+  socket.on("data", (chunk: Buffer) => {
+    chunks.push(chunk);
+    waits.filter((wait) => received().includes(wait.awaited)).forEach((wait) => wait.resolve());
+  });
+  const next = async (awaited: string): Promise<void> =>
+    received().includes(awaited)
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => {
+          waits.push({ awaited, resolve });
+        });
   const closed = new Promise<void>((resolve) => {
     socket.once("close", () => resolve());
   });
@@ -103,7 +116,7 @@ export async function openRaw(port: number, text = ""): Promise<RawConnection> {
   if (text !== "") {
     socket.write(text);
   }
-  return { socket, received: () => Buffer.concat(chunks).toString("utf8"), closed };
+  return { socket, received, next, closed };
 }
 
 /** The request line and headers of a POST to `path` that declares `length` body bytes. */

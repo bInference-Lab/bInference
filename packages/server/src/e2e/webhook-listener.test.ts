@@ -19,7 +19,7 @@ afterEach(async () => {
 });
 
 const start = async (options: ListenerOptions = {}) => startListener(opened, options);
-const wrongSecret = `${secret.slice(0, -1)}8`;
+const wrongSecret = `${secret.slice(0, -1)}9`;
 
 // What an answer shows a sender, without the time it was sent.
 function shown(answer: LocalAnswer) {

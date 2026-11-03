@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { Duplex } from "node:stream";
-import { BinferenceError, type Clock, type Logger } from "@binference/core";
+import { BinferenceError, type Clock, isId, type Logger } from "@binference/core";
 import type { WebhookAnswer, WebhookIntake } from "@binference/engine/orders";
 import { bindListener, type ServerAddress } from "./bind-listener.js";
 import { refuseUpgrade } from "./http-routes.js";
@@ -12,7 +12,10 @@ export const maxWebhookBodyBytes = 16_384;
 
 /** The webhook listener's bounds. */
 export interface WebhookListenerLimits {
-  /** Open connections; the listener closes each one past it at once. */
+  /**
+   * Open connections; the listener closes each one past it at once. Each holds at most a 16 KiB
+   * body, and every answer closes its connection.
+   */
   readonly maxConnections: number;
   /**
    * How long a request has to arrive whole, headers and body; Node answers 408 and closes the
@@ -29,8 +32,8 @@ export interface WebhookListenerLimits {
 
 /** The bounds the engine runs the listener with. */
 const defaultWebhookListenerLimits: WebhookListenerLimits = {
-  maxConnections: 64,
-  requestTimeoutMs: 10_000,
+  maxConnections: 512,
+  requestTimeoutMs: 5_000,
   checkIntervalMs: 1_000,
   takeTimeoutMs: 10_000,
   closeGraceMs: 5_000,
@@ -69,24 +72,45 @@ const statuses: Readonly<Record<WebhookAnswer | "too_large" | "unavailable", num
   unavailable: 503,
 };
 
-const answerHeaders = { ...resourceHeaders, "cache-control": "no-store", "content-length": "0" };
+// Every answer closes its connection: a sender sends one alert per connection, and no idle
+// connection holds a place.
+const answerHeaders = {
+  ...resourceHeaders,
+  "cache-control": "no-store",
+  "content-length": "0",
+  connection: "close",
+};
 
 // The one route: `POST /hook/:ruleId/:secret`, read from the target as sent, never normalized,
 // so no other path, dot segment or encoding reaches the intake.
 const routePattern = /^\/hook\/([^/?#]+)\/([^/?#]+)(?:\?[^#]*)?$/;
 
+// A rule's secret is 32 bytes in base64url, without padding.
+const secretPattern = /^[\w-]{43}$/;
+
+/**
+ * The route's rule id and secret, or `undefined` for any request the listener refuses from its
+ * request line alone: another method or path, a rule id that is no `whr_` id, or a secret that is
+ * not 43 base64url characters. Their forms are public, so refusing them early tells nothing.
+ */
 function routeOf(request: IncomingMessage): { ruleId: string; secret: string } | undefined {
   if (request.method !== "POST") {
     return undefined;
   }
   const match = routePattern.exec(request.url ?? "");
   const [, ruleId, secret] = match ?? [];
-  return ruleId === undefined || secret === undefined ? undefined : { ruleId, secret };
+  if (ruleId === undefined || secret === undefined) {
+    return undefined;
+  }
+  return isId("whr", ruleId) && secretPattern.test(secret) ? { ruleId, secret } : undefined;
 }
 
 function answer(response: ServerResponse, status: keyof typeof statuses): void {
-  const close = status === "too_large" ? { connection: "close" } : {};
-  response.writeHead(statuses[status], { ...answerHeaders, ...close }).end();
+  response.writeHead(statuses[status], answerHeaders).end();
+}
+
+function declaredBytes(request: IncomingMessage): number {
+  return Number(request.headers["content-length"] ?? "0");
 }
 
 interface Answering {
@@ -109,7 +133,6 @@ async function answerRequest(
 ): Promise<void> {
   const route = routeOf(request);
   if (route === undefined) {
-    request.resume();
     answer(response, "not_found");
     return;
   }
@@ -130,6 +153,21 @@ async function answerRequest(
     answering.logger.error("webhook.take_failed", { errorCode: errorCodeOf(error) });
     answer(response, "unavailable");
   }
+}
+
+// A sender that asks before it sends its body (`Expect: 100-continue`) is told to send it only
+// for the route with a body in bounds; anything else is answered at once and gets no `100`.
+function serveContinue(request: IncomingMessage, response: ServerResponse, answering: Answering) {
+  if (routeOf(request) === undefined) {
+    answer(response, "not_found");
+    return;
+  }
+  if (declaredBytes(request) > maxWebhookBodyBytes) {
+    answer(response, "too_large");
+    return;
+  }
+  response.writeContinue();
+  serveRequest(request, response, answering);
 }
 
 // A fault left in answering a request ends its connection; it never reaches the process.
@@ -180,8 +218,12 @@ export function createWebhookListener(options: WebhookListenerOptions): WebhookL
       requestTimeout: limits.requestTimeoutMs,
       headersTimeout: limits.requestTimeoutMs,
       connectionsCheckingInterval: limits.checkIntervalMs,
+      keepAliveTimeout: 1_000,
     },
     (request, response) => serveRequest(request, response, answering),
+  );
+  server.on("checkContinue", (request: IncomingMessage, response: ServerResponse) =>
+    serveContinue(request, response, answering),
   );
   server.maxConnections = limits.maxConnections;
   server.on("upgrade", (_request: IncomingMessage, socket: Duplex) => refuseUpgrade(socket, 404));
