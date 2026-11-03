@@ -56,12 +56,16 @@ async function upload(
     return;
   }
   const body = await readLimitedBody(request, maxImageBytes);
-  if (body === undefined) {
+  if (!body.ok) {
+    if (body.error === "cut") {
+      response.destroy();
+      return;
+    }
     response.setHeader("connection", "close");
     refuse(response, "too_large");
     return;
   }
-  const kept = context.uploads.receive(context.ticket, body, context.admits);
+  const kept = context.uploads.receive(context.ticket, body.value, context.admits);
   if (!kept.ok) {
     refuse(response, kept.error);
     return;

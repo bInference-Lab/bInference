@@ -14,8 +14,13 @@ export const maxWebhookBodyBytes = 16_384;
 export interface WebhookListenerLimits {
   /** Open connections; the listener closes each one past it at once. */
   readonly maxConnections: number;
-  /** How long a request has to arrive whole, headers and body; Node answers 408 after it. */
+  /**
+   * How long a request has to arrive whole, headers and body; Node answers 408 and closes the
+   * connection after it, at its next check.
+   */
   readonly requestTimeoutMs: number;
+  /** How often Node checks each connection against `requestTimeoutMs`. */
+  readonly checkIntervalMs: number;
   /** How long one alert has to be recorded once it arrived; past it the answer is 503. */
   readonly takeTimeoutMs: number;
   /** How long `close` lets requests under way finish before it cuts their connections. */
@@ -26,6 +31,7 @@ export interface WebhookListenerLimits {
 const defaultWebhookListenerLimits: WebhookListenerLimits = {
   maxConnections: 64,
   requestTimeoutMs: 10_000,
+  checkIntervalMs: 1_000,
   takeTimeoutMs: 10_000,
   closeGraceMs: 5_000,
 };
@@ -90,6 +96,12 @@ interface Answering {
   readonly logger: Logger;
 }
 
+// The path holds the rule's secret: a log line names the fault only.
+function errorCodeOf(error: ErrorOptions["cause"]): string {
+  return error instanceof BinferenceError ? error.code : "unexpected";
+}
+
+// Never rejects: a body cut off ends the connection with no answer, as its sender is gone.
 async function answerRequest(
   request: IncomingMessage,
   response: ServerResponse,
@@ -102,20 +114,30 @@ async function answerRequest(
     return;
   }
   const body = await readLimitedBody(request, maxWebhookBodyBytes);
-  if (body === undefined) {
+  if (!body.ok) {
+    if (body.error === "cut") {
+      response.destroy();
+      return;
+    }
     answer(response, "too_large");
     return;
   }
   const timeout = AbortSignal.timeout(answering.limits.takeTimeoutMs);
   const signal = AbortSignal.any([answering.lifetime, timeout]);
   try {
-    answer(response, await answering.intake.take({ ...route, body }, { signal }));
+    answer(response, await answering.intake.take({ ...route, body: body.value }, { signal }));
   } catch (error) {
-    // The path holds the rule's secret: a log line names the fault only.
-    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
-    answering.logger.error("webhook.take_failed", { errorCode });
+    answering.logger.error("webhook.take_failed", { errorCode: errorCodeOf(error) });
     answer(response, "unavailable");
   }
+}
+
+// A fault left in answering a request ends its connection; it never reaches the process.
+function serveRequest(request: IncomingMessage, response: ServerResponse, answering: Answering) {
+  answerRequest(request, response, answering).catch((error: ErrorOptions["cause"]) => {
+    answering.logger.error("webhook.answer_failed", { errorCode: errorCodeOf(error) });
+    response.destroy();
+  });
 }
 
 async function shutdown(server: Server, clock: Clock, graceMs: number): Promise<void> {
@@ -154,8 +176,12 @@ export function createWebhookListener(options: WebhookListenerOptions): WebhookL
   const { intake, logger } = options;
   const answering: Answering = { intake, logger, limits, lifetime: lifetime.signal };
   const server = createServer(
-    { requestTimeout: limits.requestTimeoutMs, headersTimeout: limits.requestTimeoutMs },
-    (request, response) => void answerRequest(request, response, answering),
+    {
+      requestTimeout: limits.requestTimeoutMs,
+      headersTimeout: limits.requestTimeoutMs,
+      connectionsCheckingInterval: limits.checkIntervalMs,
+    },
+    (request, response) => serveRequest(request, response, answering),
   );
   server.maxConnections = limits.maxConnections;
   server.on("upgrade", (_request: IncomingMessage, socket: Duplex) => refuseUpgrade(socket, 404));

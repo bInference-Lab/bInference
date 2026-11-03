@@ -1,61 +1,24 @@
 import { performance } from "node:perf_hooks";
-import { idSchema } from "@binference/core";
-import { createManualClock, createMemoryLogger } from "@binference/core/testing";
-import { sha256Hex } from "@binference/engine";
-import { createWebhookIntake, type WebhookAlertStore } from "@binference/engine/orders";
-import { createMemoryInboxStore, createMemoryWebhookAlertStore } from "@binference/engine/testing";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  createWebhookListener,
-  maxWebhookBodyBytes,
-  type WebhookListenerLimits,
-} from "../webhook-listener.js";
+import { maxWebhookBodyBytes } from "../webhook-listener.js";
 import { type LocalAnswer, requestLocal } from "./local-http.js";
 import { openRawSocket } from "./raw-socket.js";
+import {
+  hook,
+  type ListenerOptions,
+  ruleId,
+  secret,
+  startListener,
+  unknownRule,
+} from "./webhook-fixtures.js";
 
-const live = { signal: new AbortController().signal };
-const ruleId = "whr_0190f1c2-3a4b-7c5d-8e6f-000000000001";
-const unknownRule = "whr_0190f1c2-3a4b-7c5d-8e6f-000000000002";
-const secret = "q3Zr_x9-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789";
 const opened: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(opened.splice(0).map(async (close) => close()));
 });
 
-async function start(
-  options: {
-    readonly store?: (store: WebhookAlertStore) => WebhookAlertStore;
-    readonly limits?: Partial<WebhookListenerLimits>;
-  } = {},
-) {
-  const inbox = createMemoryInboxStore();
-  const memory = createMemoryWebhookAlertStore({ inbox });
-  memory.plant({
-    id: idSchema("whr").parse(ruleId),
-    secretHash: sha256Hex(secret),
-    state: "active",
-    ratePerMinute: 2,
-  });
-  const clock = createManualClock(1_760_000_000_000);
-  const store = options.store?.(memory) ?? memory;
-  const logger = createMemoryLogger({ subsystem: "webhook" });
-  const listener = createWebhookListener({
-    port: 0,
-    intake: createWebhookIntake({ store, clock }),
-    clock,
-    logger,
-    ...(options.limits === undefined ? {} : { limits: options.limits }),
-  });
-  const { port } = await listener.start(live.signal);
-  opened.push(async () => listener.close());
-  const post = async (path: string, body: string | Uint8Array = '{"id":"tv-1"}') =>
-    requestLocal(port, { path, method: "POST", body });
-  const alerts = async () => inbox.unhandled({ keyPrefix: "wh:", limit: 100 }, live);
-  return { port, post, alerts, clock, logger, listener };
-}
-
-const hook = (rule: string, key: string): string => `/hook/${rule}/${key}`;
+const start = async (options: ListenerOptions = {}) => startListener(opened, options);
 const wrongSecret = `${secret.slice(0, -1)}8`;
 
 // What an answer shows a sender, without the time it was sent.
