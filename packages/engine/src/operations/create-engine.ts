@@ -8,18 +8,12 @@ import type {
 } from "@binference/chain";
 import type { StakingVenue } from "@binference/chain/staking";
 import type { Clock, IdSource, Random, WorkspaceFiles } from "@binference/core";
-import {
-  type AddressBookHandlers,
-  createAddressBookHandlers,
-} from "../address-book/address-book-handlers.js";
+import { createAddressBookHandlers } from "../address-book/address-book-handlers.js";
 import type { DestinationChain } from "../address-book/destination-chain.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
 import type { AlertFiring } from "../alerts/fire-alerts.js";
-import { type ApprovalHandlers, createApprovalHandlers } from "../approval/approval-handlers.js";
-import {
-  type ConfigHistoryHandlers,
-  createConfigHistoryHandlers,
-} from "../audit/config-history-handlers.js";
+import { createApprovalHandlers } from "../approval/approval-handlers.js";
+import { createConfigHistoryHandlers } from "../audit/config-history-handlers.js";
 import type { ModelBudgetParts } from "../billing/model-budget.js";
 import { type BridgeWork, type BridgeOptions, bridgeWorkOf } from "../bridges/engine-bridging.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
@@ -40,14 +34,14 @@ import type {
 } from "../install/ports.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { LaunchDraftDesk } from "../launches/launch-draft-desk.js";
-import { createLimitHandlers, type LimitHandlers } from "../limits/limit-handlers.js";
+import { createLimitHandlers } from "../limits/limit-handlers.js";
 import type { MarketParts } from "../market/market-handlers.js";
 import type { PinFollow } from "../money-path/follow-launch-pin.js";
 import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
 import type { ReadTokenCode } from "../money-path/token-code.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
-import { createNameHandlers, type NameHandlers } from "../names/name-handlers.js";
+import { createNameHandlers } from "../names/name-handlers.js";
 import type { CopyOrders } from "../orders/copy-orders.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import { createDcaOrders, type DcaOrders } from "../orders/dca-orders.js";
@@ -59,16 +53,9 @@ import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource }
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { PruneWork } from "../records/prune-records.js";
-import {
-  createRescueAddressHandlers,
-  type RescueAddressHandlers,
-} from "../safety/rescue-address-handlers.js";
+import { createRescueAddressHandlers } from "../safety/rescue-address-handlers.js";
 import { rescueReadsOf, settleRescueCeilings } from "../safety/rescue-ceilings.js";
-import type { SafetyHandlers } from "../safety/safety-handlers.js";
-import {
-  createSendLevelHandlers,
-  type SendLevelHandlers,
-} from "../send-levels/send-level-handlers.js";
+import { createSendLevelHandlers } from "../send-levels/send-level-handlers.js";
 import { type StakeWork, stakeWorkOf } from "../staking/engine-staking.js";
 import type { DailySummaries } from "../summaries/daily-summaries.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
@@ -76,44 +63,23 @@ import type { ImageOptions } from "../uploads/image-options.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
+import type { EngineHandlers } from "./engine-handlers.js";
 import {
   executeOf,
   launchRoutingOf,
   requoteOptions,
   storedIntentsOf,
 } from "./engine-intent-parts.js";
-import {
-  launchDraftsOf,
-  type LaunchDraftHandlers,
-  withSharedParts,
-} from "./engine-launch-drafts.js";
+import { launchDraftsOf, withSharedParts } from "./engine-launch-drafts.js";
 import { moneyPathOf } from "./engine-money-path.js";
 import { cardTimerOf, copyOrdersOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
-import { type EngineChatHandlers, engineChatOf, safetyHandlersOf } from "./engine-parts.js";
+import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { startupWorkOf } from "./engine-repairs.js";
 import { dailySummariesOf } from "./engine-summaries.js";
 import { timedWorkOf } from "./engine-timers.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
-import { createLedgerHandlers, type LedgerHandlers } from "./ledger-handlers.js";
-import { type SettingsHandlers, settingsHandlers } from "./settings-handlers.js";
-
-/** The operation handlers the engine gives the protocol server, by operation name. */
-export interface EngineHandlers
-  extends
-    EngineChatHandlers,
-    IntentHandlers,
-    OrderHandlers,
-    LedgerHandlers,
-    ConfigHistoryHandlers,
-    SettingsHandlers,
-    ApprovalHandlers,
-    LimitHandlers,
-    SendLevelHandlers,
-    AddressBookHandlers,
-    RescueAddressHandlers,
-    SafetyHandlers,
-    LaunchDraftHandlers,
-    NameHandlers {}
+import { createLedgerHandlers } from "./ledger-handlers.js";
+import { settingsHandlers } from "./settings-handlers.js";
 
 /**
  * The engine's use cases behind the protocol: the money path, confirmations, paper mode, the mode
