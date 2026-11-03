@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { fakeClient } from "../testing/fake-client";
 import { renderSignedIn, settle } from "../testing/render-signed-in";
@@ -40,5 +40,28 @@ describe("the chat screen, in Chinese", () => {
     fireEvent.paste(box, { clipboardData: { files: [gif] } });
     expect(screen.getByRole("alert").textContent).toBe("cat.gif 不是 PNG、JPEG 或 WebP 图片。");
     expect(screen.getByRole("button", { name: "添加图片" })).toBeDefined();
+  });
+
+  it("asks before a new chat in the owner's language", async () => {
+    const engine = fakeClient({
+      "agent/list": () => ({
+        items: [{ agent, name: "main", mode: "paper", locale: "zh", createdAt: 1, changedAt: 1 }],
+      }),
+      "chat/messages": () => ({ items: [] }),
+      "intent/list": () => ({ items: [] }),
+      "chat/clear": () => ({ session: "ses_0190f1c2-3a4b-7c5d-8e6f-000000000002" }),
+    });
+    renderSignedIn(<ChatScreen />, { client: engine.client, locale: "zh" });
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "新对话" }));
+    const ask = screen.getByRole("region", { name: /^开始新对话？/u });
+    expect(ask.textContent).toBe(
+      "开始新对话？Agent 会忘记这段对话，它的笔记和文件仍然保留。保留当前对话开始新对话",
+    );
+    fireEvent.click(within(ask).getByRole("button", { name: "开始新对话" }));
+    await settle();
+    expect(engine.calls.filter((call) => call.op === "chat/clear")).toStrictEqual([
+      { op: "chat/clear", args: { agent } },
+    ]);
   });
 });

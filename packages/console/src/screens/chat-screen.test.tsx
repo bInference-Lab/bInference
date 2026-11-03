@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ConsoleRoutes } from "../app/console-router";
 import { type FakeAnswers, fakeClient } from "../testing/fake-client";
@@ -127,6 +127,8 @@ describe("the chat screen", () => {
     act(() => engine.push(`chat:${agent}`, "chat/turnStarted", { agent, session, turn }));
     fireEvent.click(screen.getByRole("button", { name: "Stop" }));
     fireEvent.click(screen.getByRole("button", { name: "New chat" }));
+    const ask = screen.getByRole("region", { name: /^Start a new chat\?/u });
+    fireEvent.click(within(ask).getByRole("button", { name: "Start new chat" }));
     await settle();
     const brakes = new Set(["chat/stop", "chat/clear"]);
     expect(engine.calls.filter((call) => brakes.has(call.op))).toStrictEqual([
@@ -135,6 +137,23 @@ describe("the chat screen", () => {
     ]);
     expect(screen.getByRole("status").textContent).toContain("A new chat has started.");
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+  });
+
+  it("asks before a new chat, and keeps this one when the owner says so", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "New chat" }));
+    const ask = screen.getByRole("region", { name: /^Start a new chat\?/u });
+    expect(ask.textContent).toBe(
+      "Start a new chat? The agent forgets this conversation; its notes and files stay." +
+        "Keep this chatStart new chat",
+    );
+    fireEvent.click(within(ask).getByRole("button", { name: "Keep this chat" }));
+    await settle();
+    expect(engine.calls.filter((call) => call.op === "chat/clear")).toStrictEqual([]);
+    expect(screen.queryByRole("region", { name: /^Start a new chat\?/u })).toBeNull();
+    expect(screen.getByRole("button", { name: "New chat" })).toBeDefined();
   });
 
   it("says why a message was not sent, and keeps what the owner wrote", async () => {

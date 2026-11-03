@@ -1,8 +1,6 @@
 import type { ProtocolId } from "@binference/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { RotateCcwIcon } from "lucide-react";
 import { Alert, AlertDescription } from "../components/ui/alert";
-import { Button } from "../components/ui/button";
 import { useEngine } from "../connection/engine-context";
 import { errorWords } from "../connection/error-words";
 import { MessageText, useText } from "../i18n/console-text";
@@ -12,6 +10,7 @@ import { ChatComposer } from "./chat-composer";
 import { chatEntries } from "./chat-entries";
 import { ChatThread, WorkingLine } from "./chat-thread";
 import type { PickedImage } from "./composer-images";
+import { NewChatButton } from "./new-chat-button";
 import { uploadImage } from "./upload-image";
 import { useChatLive } from "./use-chat-live";
 import { transcriptKey, useTranscript } from "./use-transcript";
@@ -92,17 +91,7 @@ function ChatTop(props: {
   const { clear } = props.actions;
   return (
     <>
-      <div className="flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={!props.canChat || clear.isPending}
-          onClick={() => clear.mutate()}
-        >
-          <RotateCcwIcon data-icon="inline-start" strokeWidth={1.5} aria-hidden />
-          {text("console.chat.clear")}
-        </Button>
-      </div>
+      <NewChatButton canStart={props.canChat && !clear.isPending} start={() => clear.mutate()} />
       {props.historyError === null ? null : (
         <Alert>
           <AlertDescription>
@@ -156,7 +145,8 @@ function ChatBottom(props: {
 
 /**
  * The chat with one agent: the thread, the running turn, the agent's question with its answer
- * buttons, the agent's cards inline with Confirm and Cancel, and the composer. New chat starts a new session; the agent keeps its notes and files.
+ * buttons, the agent's cards inline with Confirm and Cancel, and the composer. New chat asks
+ * once more, then starts a new session; the agent keeps its notes and files.
  */
 export function AgentChat(props: {
   readonly agent: ProtocolId<"agent">;
