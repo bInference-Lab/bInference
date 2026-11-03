@@ -36,6 +36,8 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - The smoke test (`pnpm test:console`) lives in `src/smoke/`: Playwright on headless Chromium
   only, one worker, never a window, against the skeleton's engine on loopback
   (`packages/cli/src/console-smoke/smoke-engine.ts`), which serves the built console and a
-  control listener the test drives. It pairs a browser, confirms a paper card, and fails on any
-  error or warning the page logs. It is not part of `pnpm test`; its screenshots go to
+  control listener the test drives. It pairs a browser, confirms a paper card, makes an alert rule
+  whose alert the engine's webhook listener takes and fills on paper, and fails on any error or
+  warning the page logs. The control listener sets the owner's language, which the signed-in
+  console speaks, for the Chinese screenshots. It is not part of `pnpm test`; its screenshots go to
   `smoke-results/`, which git leaves out.

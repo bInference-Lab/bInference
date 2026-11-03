@@ -14,6 +14,13 @@ export function readProposal(body: unknown): string {
   return proposedSchema.parse(body).intent;
 }
 
+const alertSchema = z.object({ status: z.number(), fills: z.number() });
+
+/** Reads the control listener's answer to `/alert`: the listener's answer and the rule's fills. */
+export function readAlert(body: unknown): { readonly status: number; readonly fills: number } {
+  return alertSchema.parse(body);
+}
+
 const statesSchema = z.object({ states: z.array(z.string()) });
 
 /** Reads the control listener's answer to `/states`: the state of each of the agent's intents. */

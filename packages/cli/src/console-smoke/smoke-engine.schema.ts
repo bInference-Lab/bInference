@@ -12,6 +12,18 @@ export interface SmokeEnv {
 
 const port = z.string().regex(/^[1-9]\d{0,4}$/);
 
+/** What the browser test asks the control listener's `/alert` to send: a rule's URL and a body. */
+export interface SmokeAlertRequest {
+  readonly url: string;
+  readonly body: string;
+}
+
+/** Parses the body of an `/alert` request. */
+export const smokeAlertSchema: z.ZodType<SmokeAlertRequest> = z.object({
+  url: z.url(),
+  body: z.string().max(16_384),
+});
+
 /** Parses the smoke engine's environment; every other variable is left out. */
 export const smokeEnvSchema: z.ZodType<SmokeEnv> = z.object({
   SMOKE_PORT: port,

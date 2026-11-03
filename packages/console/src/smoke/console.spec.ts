@@ -1,21 +1,6 @@
-import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
-import { readPairing, readProposal, readStates } from "./smoke-answers.schema";
-
-const control = "http://127.0.0.1:7492";
-
-// Pairs the page with the engine through a fresh link, and gathers every error or warning it logs.
-async function openPaired(page: Page, request: APIRequestContext): Promise<readonly string[]> {
-  const problems: string[] = [];
-  page.on("console", (message) => {
-    if (message.type() === "error" || message.type() === "warning") {
-      problems.push(message.text());
-    }
-  });
-  page.on("pageerror", (error) => problems.push(String(error)));
-  const pairing = await request.post(`${control}/pair`);
-  await page.goto(readPairing(await pairing.json()));
-  return problems;
-}
+import { expect, test } from "@playwright/test";
+import { readProposal, readStates } from "./smoke-answers.schema";
+import { alertTo, control, openPaired, shootThemes } from "./smoke-page";
 
 test("pairs this browser and confirms a paper card in it", async ({ page, request }, testInfo) => {
   const problems = await openPaired(page, request);
@@ -139,5 +124,53 @@ test("shows the paper portfolio apart from any live one, in light and in dark", 
     fullPage: true,
     animations: "disabled",
   });
+  expect(problems).toStrictEqual([]);
+});
+
+// Runs last: the rule's card and its fill are intents of the agent the tests before it count.
+test("makes an alert rule, fills an alert on paper, and refuses its old URL once rotated", async ({
+  page,
+  request,
+}, testInfo) => {
+  const problems = await openPaired(page, request);
+  await page.getByRole("link", { name: "Alert rules" }).click();
+  await expect(page.getByRole("heading", { name: "Alert rules", level: 1 })).toBeVisible();
+  const form = page.getByRole("form", { name: "New alert rule" });
+  await form.getByLabel("Name", { exact: true }).fill("TKN breakout");
+  await form.getByLabel("Token", { exact: true }).fill("TKN");
+  await form.getByLabel("A buy spends", { exact: true }).fill("FAKE");
+  await form.getByLabel("Each fill is sized in").selectOption("amount");
+  await form.getByLabel("Each fill", { exact: true }).fill("0.001");
+  await form.getByLabel("Alerts a minute, 1 to 60").fill("5");
+  await form.getByRole("button", { name: "Create rule" }).click();
+
+  const shown = form.getByLabel("Alert rule URL");
+  await expect(shown).toBeVisible();
+  const url = await shown.inputValue();
+  expect(url).toMatch(/\/hook\/whr_[^/]+\/[\w-]{43}$/u);
+  const rule = page.getByRole("listitem").filter({ hasText: "TKN breakout" });
+  await expect(rule).toContainText("Waits for its card");
+  await shootThemes(page, testInfo, "rules-created");
+  await form.getByRole("button", { name: "I copied it" }).click();
+  await expect(shown).toHaveCount(0);
+
+  await rule.getByRole("button", { name: "Confirm" }).click();
+  await expect(rule).toContainText("Active");
+  const tradingView = '{"id":"tv-1","ticker":"TKNUSDT","action":"buy"}';
+  expect(await alertTo(request, url, tradingView)).toStrictEqual({ status: 202, fills: 1 });
+  await page.reload();
+  await rule.getByRole("button", { name: "Alerts" }).click();
+  const events = rule.getByRole("table", { name: "Alerts to TKN breakout" });
+  await expect(events).toContainText("Filled on paper");
+
+  await rule.getByRole("button", { name: "Rotate URL" }).click();
+  await rule.getByRole("button", { name: "Rotate now" }).click();
+  const rotated = rule.getByLabel("Alert rule URL");
+  await expect(rotated).toBeVisible();
+  const newUrl = await rotated.inputValue();
+  expect(newUrl).not.toBe(url);
+  expect(await alertTo(request, url, "TKN up again")).toStrictEqual({ status: 404, fills: 1 });
+  expect((await alertTo(request, newUrl, "TKN up once more")).status).toBe(202);
+  await shootThemes(page, testInfo, "rules-rotated");
   expect(problems).toStrictEqual([]);
 });
