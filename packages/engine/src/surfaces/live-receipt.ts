@@ -105,6 +105,31 @@ async function landedOf(
       };
 }
 
+// An identity registration that reconciled with the id its registry read back (decision 0335),
+// linked to its transaction; one that stored no id shows as landed.
+function registeredOf(
+  source: LiveReceiptSource,
+  landed: LiveReceipt | undefined,
+): LiveReceipt | undefined {
+  const agentId = reasonNamedOf(source.history)?.identityId;
+  if (source.record.kind !== "registerIdentity" || agentId === undefined || landed === undefined) {
+    return undefined;
+  }
+  const { outcome } = landed;
+  return outcome.kind === "landed"
+    ? { outcome: { kind: "registered", agentId, tx: outcome.tx }, assets: {} }
+    : undefined;
+}
+
+// A live intent that reconciled: its trade, an identity's id, its last transaction, or done.
+async function reconciledReceiptOf(
+  source: LiveReceiptSource,
+  call: { readonly signal: AbortSignal },
+): Promise<LiveReceipt> {
+  const landed = reconciledOf(source) ?? (await landedOf(source, call));
+  return registeredOf(source, landed) ?? landed ?? doneAlone;
+}
+
 // A confirmed intent that reconciled with nothing sent on chain, such as an auto order's card
 // whose order can no longer be drawn.
 const doneAlone: LiveReceipt = { outcome: { kind: "done" }, assets: {} };
@@ -165,7 +190,7 @@ export async function liveReceiptOf(
     return bridged;
   }
   if (record.state === "reconciled") {
-    return reconciledOf(source) ?? (await landedOf(source, call)) ?? doneAlone;
+    return reconciledReceiptOf(source, call);
   }
   if (record.state === "failed_onchain") {
     return failedOf(source, call);

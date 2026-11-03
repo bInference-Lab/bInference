@@ -1292,8 +1292,9 @@ address.
 
 **ERC-8004 identity ([decision 0071](DECISIONS.md#d0071)).** Opt-in per agent.
 `binference agent identity` registers the agent in BSC's ERC-8004 identity registry with one tapped
-transaction. The agent's card (name, description, accounts, binference version) is stored on chain
-as a data URI, so nothing needs hosting. Reputation and validation registries come later.
+transaction, which only the owner starts ([decision 0335](DECISIONS.md#d0335)). The agent's card
+(name, the owner's description, the registering wallet, binference version;
+[decision 0334](DECISIONS.md#d0334)) is stored on chain as a data URI, so nothing needs hosting. Reputation and validation registries come later.
 
 <a id="section-29"></a>
 

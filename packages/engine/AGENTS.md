@@ -252,6 +252,17 @@ Rules for this package:
   is `name.resolver_down`. `recheckName` (exported from `@binference/engine/sends`) is the second
   read of a send by name before it signs: only the card's address, still a plain account or a
   smart-account wallet as the card showed it, passes.
+- Identity (`src/identity/`, decisions 0334 and 0335): `identity/register` runs the owner's
+  registration alone (`intent.owner_only` for the agent runtime and MCP clients) through the
+  `IdentityHost`, the only caller of the identity plugins, which copies every answer through its
+  schema and holds each built call to its file and wallet. A registration resolves the agent's main
+  wallet, refuses before anything is stored an agent whose identity binference holds or whose
+  wallet the registry reads holding one (`intent.identity_exists`), quotes its registration file,
+  holds the registry to its tested version (`registry_changed`) and the wallet's stored ceiling to
+  its call (`ceiling_lacks_call`), and opens a card that never passes the auto test. The queue
+  reads the registry again (`identity_refused`), and the reconciliation reads the landed
+  registration back and stores its identity in the move to `reconciled`; one read back otherwise
+  stores none and tells the owner with `notice.identityMismatch`.
 - The address book lives in the agent's settings: the policy reads every live entry, on every
   chain, and counts one as saved only once the owner key put it in the ceiling. Level 2 lets a send
   pay an entry only from its `usableAtMs`, 24 hours after it was saved. Its handlers

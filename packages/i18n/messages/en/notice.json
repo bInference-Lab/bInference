@@ -84,5 +84,6 @@
   "claimReady": "{amount} you unstaked from {validator} can be claimed now",
   "claimedElsewhere": "{amount} you unstaked from {validator} was claimed outside binference and is back in your wallet",
   "stakeMintedFewer": "⚠️ Your stake of {amount} with {venue} landed after its rate moved: it minted {minted}, less than the {least} its card promised. binference booked the {minted} it minted.",
-  "stakeApprovalLeft": "⚠️ Your unstake from {venue} stopped after its approval landed: {venue} may still take {approved} from this wallet, but only for an unstake the wallet itself asks for. Propose the unstake again if you still want it; it sets the approval anew."
+  "stakeApprovalLeft": "⚠️ Your unstake from {venue} stopped after its approval landed: {venue} may still take {approved} from this wallet, but only for an unstake the wallet itself asks for. Propose the unstake again if you still want it; it sets the approval anew.",
+  "identityMismatch": "⚠️ The identity registration of {agent} landed, but the registry does not read back the account and registration file its card showed, so binference stored no identity. Check the registry before you rely on it."
 }

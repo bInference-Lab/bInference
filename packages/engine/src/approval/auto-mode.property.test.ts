@@ -277,15 +277,18 @@ function callerOf(c: Case): EngineCaller {
   return turns[c.turn];
 }
 
-// The refusal a request the money path does not route meets: a launch the agent or an MCP client
-// proposes is the owner's alone (decision 0236), a lend is never served (decision 0296), and every
-// other has no route.
+// The refusal a request the money path does not route meets: a launch or an identity the agent or
+// an MCP client proposes is the owner's alone (decisions 0236 and 0335), a lend is never served
+// (decision 0296), an identity with no registry is unavailable, and every other has no route.
 function refusalOf(c: Case): string {
   const { kind } = requestOf(c);
-  if (kind === "lend") {
-    return "intent.kind_unavailable";
+  const isOwners = kind === "launchToken" || kind === "registerIdentity";
+  if (isOwners && c.caller !== "cli") {
+    return "intent.owner_only";
   }
-  return kind === "launchToken" && c.caller !== "cli" ? "intent.owner_only" : "quote.no_route";
+  return kind === "lend" || kind === "registerIdentity"
+    ? "intent.kind_unavailable"
+    : "quote.no_route";
 }
 
 // A stake within both caps and a claim run alone for the agent runtime in a clean turn, under the

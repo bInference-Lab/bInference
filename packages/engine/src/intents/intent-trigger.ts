@@ -42,6 +42,7 @@ export const triggerTypes = [
   "name_refused",
   "name_moved",
   "stake_refused",
+  "identity_refused",
   "queue_took",
   "steps_included",
   "step_reverted",
@@ -186,6 +187,14 @@ export interface TriggerFacts {
    * another move than the card confirmed: nothing is signed.
    */
   readonly stake_refused: { readonly reason: StakeRefusal | "decode_mismatch" };
+  /**
+   * The wallet queue, taking an identity registration, read the registry again and its wallet
+   * holds an identity now, or the registry reports another version, or the call no longer decodes
+   * as the card's (decision 0335): nothing is signed.
+   */
+  readonly identity_refused: {
+    readonly reason: "identity_exists" | "registry_changed" | "decode_mismatch";
+  };
   readonly queue_took: QueueFacts;
   /** Every step's receipt has status 1; for a rescue, every step has its last outcome. */
   readonly steps_included: NoFacts;

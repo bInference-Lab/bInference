@@ -26,6 +26,8 @@ import type { Downtime } from "../downtime/downtime.js";
 import type { HeldWallet } from "../executor/held-wallets.js";
 import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
+import { createIdentityHandlers } from "../identity/identity-handlers.js";
+import type { IdentityOptions } from "../identity/identity-options.js";
 import type {
   CeilingEditor,
   SignerRevoker,
@@ -250,6 +252,12 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
    * unstake and claim is `protocol.bad_args`.
    */
   readonly stakingVenues?: readonly StakingVenue[];
+  /**
+   * The identity registries the engine runs and binference's release version, which a
+   * registration file publishes (decisions 0334 and 0335); without it, a registration is
+   * `intent.kind_unavailable`.
+   */
+  readonly identity?: IdentityOptions;
   readonly clock: Clock;
   readonly ids: IdSource;
   /** Where each card version's callback reference comes from (spec 4, section 2). */
@@ -422,6 +430,13 @@ export function createEngineWithFills(given: EngineOptions): {
       ...chat.handlers,
       ...drafts.handlers,
       ...createNameHandlers({ resolvers: options.nameResolvers ?? [], clock: options.clock }),
+      ...createIdentityHandlers({
+        moneyPath: intents.moneyPath,
+        identities: options.stores.identities,
+        agents: options.stores.agents,
+        chains: options.chains,
+        ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
+      }),
     },
     answer: intents.answer,
     launchDrafts: drafts.desk,

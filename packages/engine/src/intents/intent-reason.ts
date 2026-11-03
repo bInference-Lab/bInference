@@ -90,7 +90,11 @@ export type RiskReason = (typeof riskReasons)[number];
  * `nothing_to_claim`, `staking_paused`, `wallet_blocked` or `claim_unpayable`; the wallet queue
  * ends one the venue refuses as it plans it again with the same reason. A stake above what the
  * wallet's stored ceiling lets one stake carry, as a ceiling written before decision 0325 holds
- * every stake to the cap per call, ends `stake_over_ceiling` before its card (decision 0327).
+ * every stake to the cap per call, ends `stake_over_ceiling` before its card (decision 0327). An
+ * identity registration whose wallet the registry finds holding an identity already, as the wallet
+ * queue takes it, ends `identity_exists`, and one whose registry reports another version than the
+ * one binference was tested with ends `registry_changed`, before its card or before its signature
+ * (decision 0335).
  */
 export const checkReasons = [
   "no_route",
@@ -139,6 +143,8 @@ export const checkReasons = [
   "wallet_blocked",
   "claim_unpayable",
   "stake_over_ceiling",
+  "identity_exists",
+  "registry_changed",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

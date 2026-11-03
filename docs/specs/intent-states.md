@@ -103,6 +103,7 @@ transaction as the write ([ENGINEERING.md section 10](../ENGINEERING.md#section-
 | `confirmed`                  | `failed_check`          | paper mode, at the fill                                                                              | the paper portfolio holds less of a sale's or a swap's input than its confirmed quote spends; the reason `nothing_to_sell` is stored, and nothing moves                                                                                                                                                                                                         |
 | `confirmed`                  | `failed_check`          | wallet queue takes it                                                                                | a launch wallet's curve trade whose launch its launchpad cannot read now (`launch_unread`), or whose launchpad no longer holds the token on that curve (`launch_moved`); nothing is signed and the owner gets `notice.launchUnsent` ([decision 0218](../DECISIONS.md#d0218))                                                                                    |
 | `confirmed`                  | `failed_check`          | wallet queue takes it                                                                                | a send by name whose name, read again, points elsewhere than its card or nowhere (`name_moved`); nothing is signed and the owner gets `notice.nameMoved`                                                                                                                                                                                                        |
+| `confirmed`                  | `failed_check`          | wallet queue takes it                                                                                | an identity registration whose wallet holds an identity now (`identity_exists`), whose registry reports an untested version (`registry_changed`) or whose stored call no longer decodes as its card's (`decode_mismatch`); nothing is signed ([decision 0335](../DECISIONS.md#d0335))                                                                           |
 | `confirmed`                  | `failed_check`          | wallet queue takes it                                                                                | a staking move whose venue, planned again, refuses it with one of its check reasons (a validator jailed since the card `validator_jailed`), plans another move than the card's (`decode_mismatch`), or an unstake of more of the venue's receipt units than the wallet holds now (`exceeds_staked`); nothing is signed ([decision 0327](../DECISIONS.md#d0327)) |
 | `confirmed`                  | `executing`             | wallet queue takes it                                                                                | the agent is live, or the intent is a rescue; the confirmation record exists and is unexpired; the policy still passes (rechecked)                                                                                                                                                                                                                              |
 | `confirmed`                  | `reconciled`            | the unfreeze is written                                                                              | an unfreeze: the agents its card named, and the install for a whole-install unfreeze, are unfrozen in the same write ([decision 0128](../DECISIONS.md#d0128))                                                                                                                                                                                                   |
@@ -184,7 +185,11 @@ what the wallet's stored ceiling lets one stake carry, [decision 0327](../DECISI
 the venue's plan, before any card; and the venue's reasons again when the wallet queue takes a
 staking move;
 `spender_unlisted` (an approval revoke whose spender the chain registry does not list,
-[decision 0309](../DECISIONS.md#d0309)) at its quote, before any card; `no_route`, `venue_down`, `decode_mismatch`,
+[decision 0309](../DECISIONS.md#d0309)) at its quote, before any card; for an identity
+registration, `registry_changed` (its registry reports another version than binference was
+tested with) and `ceiling_lacks_call` (its wallet's ceiling does not allow the registry's call)
+at its quote, before any card, and `identity_exists` and `registry_changed` again when the
+wallet queue takes it ([decision 0335](../DECISIONS.md#d0335)); `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a
 token the wallet holds none of, or whose share rounds to zero; or a paper sale or swap whose paper
 portfolio holds less of its input at the fill than its confirmed quote spends), `balance_unread` (a
@@ -538,8 +543,16 @@ and `step_unsent` (a step never signed after an earlier one landed,
   write that checks the confirmation; a card that ends otherwise ends the rule. Each accepted alert
   of an active rule is a fill with `authorizedBy: { webhookRule, alertId }`, run as an auto order's
   fill, and a live one follows the live fills switch.
-- **Identity registration** ([decision 0071](../DECISIONS.md#d0071)) is a single step to the
-  ERC-8004 registry.
+- **Identity registration** ([decisions 0071](../DECISIONS.md#d0071) and
+  [0335](../DECISIONS.md#d0335)) is a single step to the ERC-8004 registry, from the agent's main
+  wallet, which only the owner proposes: the agent runtime's and an MCP client's are
+  `intent.owner_only`, storing nothing. An agent whose identity binference holds, or whose wallet
+  the registry reads holding one, is `intent.identity_exists`, storing nothing. Its quote is its
+  registration file with every field the card shows; it moves no funds, so it stores no value and
+  counts against neither cap, and never passes the auto test. It reconciles once the registry
+  reads back the id its `Registered` event gave, held by the wallet with the card's file, and that
+  identity is stored with the move; one read back otherwise reconciles with none stored, and the
+  owner gets `notice.identityMismatch`.
 - **Token launch** ([decision 0082](../DECISIONS.md#d0082)): the image and metadata are uploaded and
   pinned through the launchpad's own API first; the intent waits in `quoted` until the launchpad
   reports the pin (a gateway read before that can break the image for good). Then the create

@@ -156,6 +156,7 @@ const ownQuoteKinds: ReadonlySet<string> = new Set([
   "autoOrder",
   "launchToken",
   "stake",
+  "registerIdentity",
 ]);
 
 function cardViewOf(snapshot: IntentSnapshot): CardView | undefined {

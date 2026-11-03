@@ -56,6 +56,8 @@ export interface ReasonNamed {
   readonly minStake?: Amount;
   readonly readyAtMs?: number;
   readonly pool?: NamedPool;
+  /** The id an identity registry gave a registration that reconciled (decision 0335). */
+  readonly identityId?: string;
 }
 
 /**
@@ -112,6 +114,7 @@ interface ReasonNamedWire {
   readonly minStake?: { readonly asset: string; readonly base: string };
   readonly readyAtMs?: number;
   readonly pool?: NamedPoolWire;
+  readonly identityId?: string;
 }
 
 const namedPoolSchema: z.ZodType<NamedPool, NamedPoolWire> = z.strictObject({
@@ -123,6 +126,10 @@ const reasonNamedSchema: z.ZodType<ReasonNamed, ReasonNamedWire> = z.strictObjec
   minStake: amountSchema.exactOptional(),
   readyAtMs: epochMsSchema.exactOptional(),
   pool: namedPoolSchema.exactOptional(),
+  identityId: z
+    .string()
+    .regex(/^(?:0|[1-9]\d{0,77})$/)
+    .exactOptional(),
 });
 
 // Causes carry more than the engine reads back, such as the trigger and who acted.

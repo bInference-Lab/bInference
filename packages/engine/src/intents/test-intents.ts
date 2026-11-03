@@ -4,11 +4,19 @@ import { createManualClock } from "@binference/core/testing";
 import type { IntentRequest } from "@binference/protocol";
 import type { AgentDraft } from "../agents/agent-record.js";
 import type { LimitsValues } from "../agents/limits-record.js";
+import type { CardRules } from "./card-rules.js";
 import type { NewIntent } from "./intent-draft-of.js";
 import { createIntentStateMachine } from "./state-machine.js";
 
 /** The time the test intents and the test engine start at. */
 export const testNowMs = 1_800_000_000_000;
+/** The default card rules: 60 s for a trade's card, 10 min for any other, re-quotes past 10 s. */
+export const testCardRules: CardRules = {
+  tradeExpiryMs: 60_000,
+  otherExpiryMs: 600_000,
+  requoteAfterMs: 10_000,
+  requoteToleranceBps: bpsSchema.parse(50),
+};
 /** The test agent, as `testAgentDraft` stores it. */
 export const testAgent: Id<"agt"> = idSchema("agt").parse(
   "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001",

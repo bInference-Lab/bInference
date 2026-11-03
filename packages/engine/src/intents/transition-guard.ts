@@ -41,7 +41,8 @@ export type TransitionProblem =
   | "pin_missing"
   | "not_launch"
   | "not_send"
-  | "not_stake";
+  | "not_stake"
+  | "not_identity";
 
 /** What a transition writes besides the new state. */
 export interface IntentChange {

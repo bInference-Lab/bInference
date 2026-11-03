@@ -1,4 +1,5 @@
 import type { Logger } from "@binference/core";
+import type { IdentityRecord } from "../identity/identity-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { ReasonNamed, SettledTrade } from "../intents/event-cause.schema.js";
 import type { IntentTrigger } from "../intents/intent-trigger.js";
@@ -51,6 +52,16 @@ export interface SettlingMove {
   readonly named?: ReasonNamed;
 }
 
+/**
+ * A registration's move to `reconciled` with the identity its registry read back, stored in the
+ * move's own write, and the id its receipt names (decision 0335).
+ */
+export interface RegisteringMove {
+  readonly trigger: IntentTrigger<"fills_reconciled">;
+  readonly identity: IdentityRecord;
+  readonly named: ReasonNamed;
+}
+
 /** A refusal that ends the intent, with what its words name (decision 0327). */
 export interface NamingMove {
   readonly trigger: IntentTrigger<"stake_refused">;
@@ -65,7 +76,7 @@ export interface NamingMove {
 export async function moveIntent(
   run: Pick<ExecutionRun, "parts" | "signal">,
   snapshot: IntentSnapshot,
-  change: IntentTrigger | SettlingMove | NamingMove,
+  change: IntentTrigger | SettlingMove | NamingMove | RegisteringMove,
 ): Promise<IntentSnapshot | undefined> {
   const { parts, signal } = run;
   const intentId = snapshot.record.id;

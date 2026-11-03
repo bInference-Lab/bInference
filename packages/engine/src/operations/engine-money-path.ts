@@ -2,6 +2,9 @@ import type { BridgePathOptions } from "../bridges/propose-bridge.js";
 import { withBridges } from "../bridges/with-bridges.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { LowGasAlerts } from "../gas/low-gas-alerts.js";
+import { createIdentityHost } from "../identity/identity-host.js";
+import type { IdentityPathOptions } from "../identity/propose-identity.js";
+import { withIdentities } from "../identity/with-identities.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { createMoneyPath, type MoneyPathOptions } from "../money-path/create-money-path.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
@@ -75,6 +78,21 @@ function stakePathOf(options: EngineOptions, path: MoneyPathOptions): StakePathO
   };
 }
 
+// What an identity registration runs on beyond the money path's ports: the registries through
+// their host, the stored identities, the install and the chain's simulator on live balances
+// (decision 0335). An engine without identity options runs no registry.
+function identityPathOf(options: EngineOptions, path: MoneyPathOptions): IdentityPathOptions {
+  const { stores, chainSimulator, identity } = options;
+  return {
+    ...path,
+    identity: createIdentityHost(identity?.registries ?? []),
+    identities: stores.identities,
+    install: stores.install,
+    simulator: chainSimulator,
+    version: identity?.version ?? "",
+  };
+}
+
 /**
  * The money path every proposal and order fill runs through, from the engine's options, with
  * sends and approval revokes, and bridges, on their own paths (spec 6, section 5), and token
@@ -119,5 +137,6 @@ export function moneyPathOf(
   const transfers = withTransfers(createMoneyPath(path), transferPathOf(options, path));
   const bridges = withBridges(transfers, bridgePathOf(options, path));
   const stakes = withStakes(bridges, stakePathOf(options, path));
-  return withLaunches(stakes, launchPathOf(options, path));
+  const identities = withIdentities(stakes, identityPathOf(options, path));
+  return withLaunches(identities, launchPathOf(options, path));
 }

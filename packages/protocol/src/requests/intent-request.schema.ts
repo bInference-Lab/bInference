@@ -116,9 +116,14 @@ export interface CexOrderRequest extends RequestBase {
   readonly price?: string;
 }
 
-/** Registers the agent in the chain's agent identity registry. */
+/**
+ * Registers the agent in the chain's agent identity registry (decision 0335). Only the owner
+ * proposes one; its registration file is public for good.
+ */
 export interface RegisterIdentityRequest extends RequestBase {
   readonly kind: "registerIdentity";
+  /** The owner's words about the agent, 1 to 280 characters, which the file publishes. */
+  readonly description?: string;
 }
 
 /** Web links a launched token shows. */
@@ -288,10 +293,8 @@ const cexOrderShape = {
   price: exchangeDecimal.exactOptional(),
 };
 
-const registerIdentityShape = {
-  ...requestBase,
-  kind: z.literal("registerIdentity"),
-};
+const identityFields = { description: z.string().min(1).max(280).exactOptional() };
+const identityShape = { ...requestBase, kind: z.literal("registerIdentity"), ...identityFields };
 
 const launchTokenShape = {
   ...requestBase,
@@ -402,7 +405,7 @@ export const intentRequestSchema: z.ZodType<IntentRequest> = z.discriminatedUnio
   z.strictObject(stakeShape),
   z.strictObject(bridgeShape),
   z.strictObject(cexOrderShape),
-  z.strictObject(registerIdentityShape),
+  z.strictObject(identityShape),
   z.strictObject(launchTokenShape),
 ]);
 
@@ -420,6 +423,6 @@ export const readIntentRequestSchema: z.ZodType<IntentRequest> = z.discriminated
   z.object(stakeShape),
   z.object(bridgeShape),
   z.object(cexOrderShape),
-  z.object(registerIdentityShape),
+  z.object(identityShape),
   z.object(launchTokenShape),
 ]);

@@ -3,6 +3,7 @@ import type { StakeIntentQuote } from "../intents/stake-quote.js";
 import type { DepartureDraft } from "../positions/departure-record.js";
 import { bridgeQuoteOf } from "./bridge-queue-check.js";
 import { type ExecutionRun, nextBlock } from "./executor-run.js";
+import { identityQuoteOf } from "./identity-queue-check.js";
 import { bridgeDeparturesOf, reconcileBridge } from "./reconcile-bridge.js";
 import {
   type LandedStep,
@@ -10,6 +11,7 @@ import {
   paidSteps,
   reconcileDepartures,
 } from "./reconcile-departures.js";
+import { gasDepartures, reconcileIdentity } from "./reconcile-identity.js";
 import { bookLandedStake, reconcileStake } from "./reconcile-stake.js";
 import { reconcileTrade } from "./reconcile-trade.js";
 import { stakeQuoteOf } from "./stake-queue-check.js";
@@ -31,7 +33,8 @@ function departuresOf(
 }
 
 // What a dropped step that landed after all took out of its wallet, as its reconciliation would
-// store it: a send's, a revoke's or a bridge's source leg; `undefined` for a trade.
+// store it: a send's, a revoke's, a registration's or a bridge's source leg; `undefined` for a
+// trade.
 async function lateDeparturesOf(
   run: ExecutionRun,
   dropped: IntentSnapshot,
@@ -41,6 +44,11 @@ async function lateDeparturesOf(
     // A dropped deposit that landed reverted takes only its gas (decision 0320).
     const landed = await paidSteps(run, dropped);
     return bridgeDeparturesOf(dropped, bridge, { landed, depositStep: run.plan.steps.length - 1 });
+  }
+  // A registration that landed after all takes its gas; its identity stays unstored, and the
+  // registry refuses the wallet a second one (decision 0335).
+  if (identityQuoteOf(dropped.record) !== undefined) {
+    return gasDepartures(dropped, await landedSteps(run, dropped));
   }
   const transfer = transferQuoteOf(dropped.record);
   return transfer === undefined
@@ -99,7 +107,8 @@ export async function departLateLanding(
  * Reconciles a finalized live intent (ARCHITECTURE.md section 7, step 9): a send or an approval
  * revoke as departures (decision 0127), what its landed step took out of its wallet, a bridge as
  * its source leg's departures and the delivery it follows (decision 0297), a staking move from its
- * venue's read-back (decision 0327), and any other intent as the trade it settled.
+ * venue's read-back (decision 0327), an identity registration from its registry's read-back
+ * (decision 0335), and any other intent as the trade it settled.
  */
 export async function reconcileFinalized(
   run: ExecutionRun,
@@ -113,6 +122,11 @@ export async function reconcileFinalized(
   const staked = stakeQuoteOf(finalized.record);
   if (staked !== undefined) {
     await reconcileStake(run, finalized, staked);
+    return;
+  }
+  const registered = identityQuoteOf(finalized.record);
+  if (registered !== undefined) {
+    await reconcileIdentity(run, finalized, registered);
     return;
   }
   const transfer = transferQuoteOf(finalized.record);

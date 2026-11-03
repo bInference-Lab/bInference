@@ -7,6 +7,7 @@ import { launchWarningKey } from "../venues/launch-settings.schema.js";
 import { bridgeDetailLines, bridgeTokenWarning } from "./bridge-card-lines.js";
 import { actionLine, actionVerb, type CardAction } from "./card-action.js";
 import type { CardKey, CardLine, CardValue } from "./card-line.js";
+import { identityDetailLines } from "./identity-card-lines.js";
 import { launchDetailLines } from "./launch-card-lines.js";
 import { reverseDiffersLine, sendNameLines } from "./send-card-lines.js";
 import { stakeDetailLines } from "./stake-card-lines.js";
@@ -227,6 +228,7 @@ function warningLines(facts: CardFacts): readonly CardLine[] {
     ]),
     ...optional(warnings.reverseDiffers, reverseDiffersLine),
     ...(facts.action.kind === "bridge" ? bridgeTokenWarning(facts.action) : []),
+    ...shown([[facts.action.kind === "registerIdentity", "card.identity.public"]]),
     ...shown([[facts.check?.isTokenVerified === false, "card.warn.unverified"]]),
     ...taxLines(warnings.taxBps),
     ...poolFeeLines(warnings.poolFees),
@@ -280,6 +282,7 @@ export function drawCard(facts: CardFacts): Card {
     ...(facts.action.kind === "send" ? sendNameLines(facts.action) : []),
     ...(facts.action.kind === "bridge" ? bridgeDetailLines(facts.action) : []),
     ...(facts.action.kind === "stake" ? stakeDetailLines(facts.action) : []),
+    ...(facts.action.kind === "registerIdentity" ? identityDetailLines(facts.action) : []),
     ...optional(facts.roleWallet, ({ role, label }) => ({
       key: roleWalletKeys[role],
       values: { wallet: { type: "text", text: label } },

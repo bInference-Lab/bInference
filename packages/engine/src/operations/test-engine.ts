@@ -171,6 +171,8 @@ export interface TestEngineOptions {
   readonly bridging?: Pick<EngineOptions, "bridges" | "codeReaders" | "deliveryReaders">;
   /** The staking venues the engine runs; none when absent. */
   readonly stakingVenues?: EngineOptions["stakingVenues"];
+  /** The identity registries and the version a registration file names; none when absent. */
+  readonly identity?: EngineOptions["identity"];
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */
@@ -275,25 +277,12 @@ function custodyParts(options: TestEngineOptions): Pick<EngineOptions, "exporter
 
 // Whether live orders fill and a launch feed runs, the uploads, the bot's photos and quote assets,
 // as the test asks.
-function switchesOf(
-  options: TestEngineOptions,
-): Pick<
-  EngineOptions,
-  | "liveOrderFills"
-  | "launchFeed"
-  | "uploads"
-  | "botImages"
-  | "quoteAssets"
-  | "destinations"
-  | "bridges"
-  | "codeReaders"
-  | "deliveryReaders"
-  | "stakingVenues"
-> {
+function switchesOf(options: TestEngineOptions): Partial<EngineOptions> {
   return {
     liveOrderFills: options.liveOrderFills === true,
     ...options.bridging,
     ...(options.stakingVenues === undefined ? {} : { stakingVenues: options.stakingVenues }),
+    ...(options.identity === undefined ? {} : { identity: options.identity }),
     ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),

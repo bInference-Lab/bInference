@@ -11,6 +11,7 @@ import type {
 } from "@binference/chain";
 import type { Clock, IdSource, Logger } from "@binference/core";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import type { IdentityHost } from "../identity/identity-host.js";
 import type { PositionStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
@@ -98,6 +99,11 @@ export interface ExecutorOptions {
    * before it signs, and its landed move read back with (decision 0327). Without it, no stake signs.
    */
   readonly staking?: StakingHost;
+  /**
+   * The identity registries, through their host: what a confirmed registration's registry is read
+   * again with and read back from (decision 0335); without it, no registration signs.
+   */
+  readonly identity?: IdentityHost;
   /**
    * Each chain's sending parts. An intent run reads its chain's once, when it reads its plan, and
    * keeps them to its end: a settings reload reaches the runs that start after it (decision 0230).

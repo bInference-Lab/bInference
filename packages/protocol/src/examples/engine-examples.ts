@@ -166,10 +166,14 @@ export const agentExamples: { readonly [N in keyof AgentOperationShapes]: WireEx
         onchainId: "42",
         txHash: "0xabc124",
         registeredAt: at,
+        file: "data:application/json;base64,e30=",
       },
     },
   },
-  "identity/register": { args: { agent: ids.agent }, result: intentView },
+  "identity/register": {
+    args: { agent: ids.agent, description: "Buys dips on BSC" },
+    result: intentView,
+  },
 };
 
 /** An example call of every wallet, ceiling, signer and address book operation. */

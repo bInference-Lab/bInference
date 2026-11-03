@@ -79,6 +79,8 @@ export type LiveOutcome =
       readonly readyAtMs: number;
       readonly tx: ReceiptTx;
     }
+  /** An identity registration that reconciled: the id its registry gave (decision 0335). */
+  | { readonly kind: "registered"; readonly agentId: string; readonly tx: ReceiptTx }
   | BridgeOutcome;
 
 /**
@@ -224,6 +226,10 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
       readyAt: { type: "dateTime", atMs: after.readyAtMs },
       explorerLink: txValue(after.tx),
     },
+  }),
+  registered: (after) => ({
+    key: "receipt.identity",
+    values: { agentId: text(after.agentId), explorerLink: txValue(after.tx) },
   }),
   unfrozen: (after) =>
     after.scope === "agent"

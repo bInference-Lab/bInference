@@ -20,6 +20,7 @@ import type {
 } from "../confirmations/draw-card.js";
 import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { CardRecord } from "../intents/card-record.js";
+import { identityQuoteDocument } from "../intents/identity-quote.js";
 import {
   quoteDocument,
   requestDocument,
@@ -40,6 +41,7 @@ import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-orde
 import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { bridgeCardFacts } from "./bridge-card-facts.js";
+import { identityCardFacts } from "./identity-card-facts.js";
 import { launchCardFacts } from "./launch-card-facts.js";
 import { orderActionOf } from "./order-action-of.js";
 import { stakeCardFacts } from "./stake-card-facts.js";
@@ -314,6 +316,11 @@ const ownQuoteFacts: ReadonlyMap<
     "stake",
     (quote, source) =>
       stakeCardFacts(stakeQuoteDocument.decode(quote), source, baseWarnings(source)),
+  ],
+  [
+    "registerIdentity",
+    (quote, source) =>
+      identityCardFacts(identityQuoteDocument.decode(quote), source, baseWarnings(source)),
   ],
 ]);
 

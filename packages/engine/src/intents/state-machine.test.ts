@@ -1,4 +1,4 @@
-import type { Bps, Clock, Id, Result } from "@binference/core";
+import type { Clock, Id, Result } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
@@ -11,13 +11,9 @@ import {
   type IntentStateMachine,
   type IntentStep,
 } from "./state-machine.js";
+import { testCardRules } from "./test-intents.js";
 
-const cards: CardRules = {
-  tradeExpiryMs: 60_000,
-  otherExpiryMs: 600_000,
-  requoteAfterMs: 10_000,
-  requoteToleranceBps: 50 as Bps,
-};
+const cards: CardRules = testCardRules;
 
 const autoFacts: AutoModeFacts = {
   approvalMode: "auto",

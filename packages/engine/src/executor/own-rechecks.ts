@@ -1,6 +1,7 @@
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentKind } from "../intents/intent-kind.js";
 import { type BridgeRecheckParts, recheckBridge } from "./bridge-queue-check.js";
+import { type IdentityRecheckParts, recheckIdentity } from "./identity-queue-check.js";
 import { type LaunchRecheckParts, recheckLaunch } from "./launch-queue-check.js";
 import { recheckStake, type StakeRecheckParts } from "./stake-queue-check.js";
 import { recheckTransfer } from "./transfer-queue-check.js";
@@ -12,7 +13,10 @@ export interface OwnRecheck {
 }
 
 /** What every kind with a path of its own reads as the queue checks it again. */
-export type OwnRecheckParts = LaunchRecheckParts & BridgeRecheckParts & StakeRecheckParts;
+export type OwnRecheckParts = LaunchRecheckParts &
+  BridgeRecheckParts &
+  StakeRecheckParts &
+  IdentityRecheckParts;
 
 type Recheck = (
   snapshot: IntentSnapshot,
@@ -27,13 +31,14 @@ const ownRechecks: Partial<Readonly<Record<IntentKind, Recheck>>> = {
   revokeApproval: recheckTransfer,
   bridge: recheckBridge,
   stake: recheckStake,
+  registerIdentity: recheckIdentity,
 };
 
 /**
  * The policy run again on a confirmed intent of a kind with a path of its own as the wallet queue
- * takes it (spec 6, `queue_took`): a token launch, a send or an approval revoke, a bridge or a
- * staking move, each on the terms its card confirmed. `undefined` for a trade, which the queue
- * checks on its route.
+ * takes it (spec 6, `queue_took`): a token launch, a send or an approval revoke, a bridge, a
+ * staking move or an identity registration, each on the terms its card confirmed. `undefined` for
+ * a trade, which the queue checks on its route.
  */
 export async function recheckOwnKind(
   snapshot: IntentSnapshot,

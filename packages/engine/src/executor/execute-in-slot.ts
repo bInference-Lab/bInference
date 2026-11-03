@@ -10,6 +10,7 @@ import { endFailedStep } from "./end-failed-step.js";
 import { endRefusedFill } from "./end-refused-fill.js";
 import { endUnsent } from "./end-unsent.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
+import { takeIdentity } from "./identity-queue-check.js";
 import { takeSendName } from "./name-queue-check.js";
 import { checkForQueue, type QueueCheck, type SigningTerms } from "./queue-check.js";
 import { resetApproval } from "./reset-approval.js";
@@ -107,7 +108,8 @@ async function checkedForQueue(
     return endUnread(run, snapshot, check.launchFailure);
   }
   const named = await takeSendName(run, snapshot);
-  const taken = named === "go" ? await takeStake(run, snapshot) : named;
+  const staked = named === "go" ? await takeStake(run, snapshot) : named;
+  const taken = staked === "go" ? await takeIdentity(run, snapshot) : staked;
   if (taken === "go") {
     return { ...check, terms };
   }

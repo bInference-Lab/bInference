@@ -502,6 +502,7 @@
         "intent.launch_picture_too_large",
         "intent.kind_unavailable",
         "intent.pool_venue",
+        "intent.identity_exists",
         "order.not_found",
         "order.wrong_state",
         "order.kind_unavailable",
@@ -5667,6 +5668,11 @@
                   "type": "integer",
                   "minimum": 0,
                   "maximum": 9007199254740991
+                },
+                "file": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 16384
                 }
               },
               "required": [
@@ -5708,6 +5714,11 @@
             "agent": {
               "type": "string",
               "pattern": "^agt_"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 280
             }
           },
           "required": [
@@ -6388,6 +6399,11 @@
                         "kind": {
                           "type": "string",
                           "const": "registerIdentity"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 280
                         }
                       },
                       "required": [
@@ -13670,6 +13686,11 @@
                 "kind": {
                   "type": "string",
                   "const": "registerIdentity"
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 280
                 }
               },
               "required": [
@@ -14455,6 +14476,11 @@
                         "kind": {
                           "type": "string",
                           "const": "registerIdentity"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 280
                         }
                       },
                       "required": [
@@ -16292,6 +16318,11 @@
                         "kind": {
                           "type": "string",
                           "const": "registerIdentity"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 280
                         }
                       },
                       "required": [
@@ -18664,6 +18695,11 @@
                               "kind": {
                                 "type": "string",
                                 "const": "registerIdentity"
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 280
                               }
                             },
                             "required": [
@@ -20523,6 +20559,11 @@
                         "kind": {
                           "type": "string",
                           "const": "registerIdentity"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 280
                         }
                       },
                       "required": [
@@ -22366,6 +22407,11 @@
                         "kind": {
                           "type": "string",
                           "const": "registerIdentity"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 280
                         }
                       },
                       "required": [
@@ -24208,6 +24254,11 @@
                         "kind": {
                           "type": "string",
                           "const": "registerIdentity"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 280
                         }
                       },
                       "required": [
@@ -35141,6 +35192,11 @@
                                       "kind": {
                                         "type": "string",
                                         "const": "registerIdentity"
+                                      },
+                                      "description": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 280
                                       }
                                     },
                                     "required": [

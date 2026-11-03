@@ -101,5 +101,7 @@
   "staking_paused": "the venue is paused and takes no stake, unstake or claim now; try again later",
   "wallet_blocked": "the venue refuses this wallet; stake from another wallet",
   "claim_unpayable": "the venue pays a claim in a way this wallet's code cannot receive, so the claim would fail; claim from a wallet without code",
-  "stake_over_ceiling": "this wallet's ceiling still holds one stake to less than this, so nothing was staked; write it again with your owner key, `binference ceiling set --wallet {wallet}`, then stake again, or stake less"
+  "stake_over_ceiling": "this wallet's ceiling still holds one stake to less than this, so nothing was staked; write it again with your owner key, `binference ceiling set --wallet {wallet}`, then stake again, or stake less",
+  "identity_exists": "this agent's wallet already holds an on-chain identity, so nothing was registered; run `binference agent identity` to see what binference holds of it",
+  "registry_changed": "the identity registry now reports a version binference was not tested with, so nothing was registered; update binference, then register again"
 }

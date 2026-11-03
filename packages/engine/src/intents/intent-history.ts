@@ -10,6 +10,7 @@ import {
   readEventCause,
   type SettledTrade,
 } from "./event-cause.schema.js";
+import { identityQuoteDocument } from "./identity-quote.js";
 import type { IntentEventRecord } from "./intent-change.js";
 import { authorizationDocument, quoteDocument } from "./intent-documents.schema.js";
 import type { IntentKind } from "./intent-kind.js";
@@ -34,9 +35,10 @@ function causes(history: IntentHistory): readonly EventCause[] {
 
 // When each kind whose quote is a document of its own was quoted. A rescue's quote values what it
 // moves, an unfreeze's names its agents, an auto order's holds its terms, a send's names its target,
-// a revoke's its spender, a bridge's its payee, whose least output a tap never quotes again, and
-// a staking move's its venue's plan: none has a minimum out (decisions 0044, 0128, 0189, 0309 and
-// 0327). A launch's first buy is the first trade of its token, so a tap never quotes it again.
+// a revoke's its spender, a bridge's its payee, whose least output a tap never quotes again, a
+// staking move's its venue's plan, and an identity registration's its file: none has a minimum out
+// (decisions 0044, 0128, 0189, 0309, 0327 and 0335). A launch's first buy is the first trade of
+// its token, so a tap never quotes it again.
 const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new Map([
   ["rescue", (quote) => rescueQuoteDocument.decode(quote).quotedAtMs],
   ["unfreeze", (quote) => unfreezeQuoteDocument.decode(quote).quotedAtMs],
@@ -46,6 +48,7 @@ const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new
   ["revokeApproval", (quote) => revokeQuoteDocument.decode(quote).quotedAtMs],
   ["bridge", (quote) => bridgeQuoteDocument.decode(quote).quotedAtMs],
   ["stake", (quote) => stakeQuoteDocument.decode(quote).plan.plannedAtMs],
+  ["registerIdentity", (quote) => identityQuoteDocument.decode(quote).quotedAtMs],
 ]);
 
 function quoteTermsOf(record: IntentRecord): QuoteTerms | undefined {

@@ -115,7 +115,7 @@ export interface BenchOptions {
    * What the executor bridges with or plans a staking move again with, over the registry that
    * lists the bridge's or the staking venue's contracts.
    */
-  readonly routing?: Partial<Pick<ExecutorOptions, "chains" | "bridging" | "staking">>;
+  readonly routing?: Partial<Pick<ExecutorOptions, "chains" | "bridging" | "staking" | "identity">>;
 }
 
 /** The parts of a bench whose executor signs a launch wallet's curve trades. */

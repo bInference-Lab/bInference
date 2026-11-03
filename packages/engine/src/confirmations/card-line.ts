@@ -40,6 +40,9 @@ export const cardKeys = [
   "card.bridge.read",
   "card.cex.action",
   "card.identity.action",
+  "card.identity.file",
+  "card.identity.noDescription",
+  "card.identity.public",
   "card.launch.action",
   "card.launch.token",
   "card.launch.firstBuyMin",
@@ -134,6 +137,7 @@ export const cardKeys = [
   "receipt.bridgeDelivered",
   "receipt.bridgeRefunded",
   "receipt.unstaked",
+  "receipt.identity",
   "receipt.result",
   "receipt.tx",
   // The P&L card's lines (spec 4, section 3.7).

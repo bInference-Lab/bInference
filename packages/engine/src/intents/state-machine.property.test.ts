@@ -1,4 +1,4 @@
-import type { Bps, Id, Result } from "@binference/core";
+import type { Id, Result } from "@binference/core";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import type { Authorization } from "./authorization.js";
@@ -6,11 +6,11 @@ import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import { type IntentEvent, needsLedgerEntry } from "./intent-event.js";
 import { type IntentKind, intentKinds } from "./intent-kind.js";
+import type { IntentReason } from "./intent-reason.js";
 import {
   checkReasons,
   failureReasons,
   fillBreaches,
-  type IntentReason,
   policyReasons,
   riskReasons,
 } from "./intent-reason.js";
@@ -24,15 +24,11 @@ import {
   triggerTypes,
 } from "./intent-trigger.js";
 import { createIntentStateMachine, type IntentProposal, type IntentStep } from "./state-machine.js";
+import { testCardRules } from "./test-intents.js";
 import type { GuardInput, TransitionProblem } from "./transition-guard.js";
 import { listTransitions, transitionTable } from "./transition-table.js";
 
-const cards: CardRules = {
-  tradeExpiryMs: 60_000,
-  otherExpiryMs: 600_000,
-  requoteAfterMs: 10_000,
-  requoteToleranceBps: 50 as Bps,
-};
+const cards: CardRules = testCardRules;
 const order = "ord_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"ord">;
 const rule = "whr_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"whr">;
 const rules = listTransitions();
@@ -143,6 +139,7 @@ const builders: Builders = {
   name_refused: () => ({ type: "name_refused", reason: "name_unresolved" }),
   name_moved: () => ({ type: "name_moved" }),
   stake_refused: () => ({ type: "stake_refused", reason: "validator_jailed" }),
+  identity_refused: () => ({ type: "identity_refused", reason: "identity_exists" }),
   queue_took: (facts, at) => ({ type: "queue_took", ...queueFacts(facts, at) }),
   steps_included: () => ({ type: "steps_included" }),
   step_reverted: () => ({ type: "step_reverted" }),

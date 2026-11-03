@@ -1,4 +1,4 @@
-import { BinferenceError, err, ok, type Result } from "@binference/core";
+import { BinferenceError, err, type JsonValue, ok, type Result } from "@binference/core";
 import { type AccountRef, accountRefParts, accountRefSchema } from "../caip/account-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { IdentityRegistry } from "../identity/ports.js";
@@ -24,8 +24,12 @@ export interface FakeIdentityOptions {
 export interface FakeIdentityRegistry extends IdentityRegistry {
   /** Runs the draft unsent: a registration mints one identity token to its wallet. */
   simulate(draft: TxDraft): SimulatedStep;
-  /** Lands the draft as a transaction, minting its identity, and answers its hash. */
-  land(draft: TxDraft): TxHash;
+  /**
+   * Lands the draft as a transaction, minting its identity, and answers its hash: `hash` when
+   * given, as a fake network names it, else one of the fake's own. A hash landed once answers as it
+   * did, minting nothing more.
+   */
+  land(draft: TxDraft, hash?: TxHash): TxHash;
   /** Mints an identity to the wallet outside binference, as another app would. */
   registerOutside(wallet: AccountRef): void;
   /** Sets the version the registry reports from now on. */
@@ -36,6 +40,16 @@ export interface FakeIdentityRegistry extends IdentityRegistry {
   down(): void;
   up(): void;
 }
+
+const registryName = "identity-registry";
+// The one call the fake declares, as a registry's plugin declares its call for a ceiling.
+const registerAbi: JsonValue = {
+  type: "function",
+  name: "register",
+  inputs: [{ name: "agentURI", type: "string" }],
+  outputs: [],
+  stateMutability: "nonpayable",
+};
 
 /** The registry version the fake was tested with. */
 const testedVersion = "2.0.0";
@@ -57,7 +71,7 @@ interface FakeBook {
   readonly landing: (
     hash: TxHash,
   ) => { readonly wallet: AccountRef; readonly onchainId: string } | undefined;
-  readonly land: (wallet: AccountRef, file: string) => TxHash;
+  readonly land: (wallet: AccountRef, file: string, hash?: TxHash) => TxHash;
   readonly set: (change: { readonly version?: string; readonly isDown?: boolean }) => void;
 }
 
@@ -91,12 +105,14 @@ function createBook(options: FakeIdentityOptions): FakeBook {
     mint,
     put: (onchainId, token) => tokens.set(onchainId, token),
     landing: (hash) => landings.get(hash),
-    land: (wallet, file) => {
-      const hash = `fake-identity-${landings.size}`;
+    land: (wallet, file, given) => {
+      const hash = given ?? `fake-identity-${landings.size}`;
       if (!isTxHash(hash)) {
         throw fault("A fake hash is malformed.");
       }
-      landings.set(hash, { wallet, onchainId: mint(wallet, file) });
+      if (!landings.has(hash)) {
+        landings.set(hash, { wallet, onchainId: mint(wallet, file) });
+      }
       return hash;
     },
     set: (change) => Object.assign(state, change),
@@ -146,7 +162,14 @@ function simulateIn(book: FakeBook, draft: TxDraft): SimulatedStep {
 function registryOf(book: FakeBook): IdentityRegistry {
   return {
     id: "fake-identity",
-    contracts: [{ chain: book.chain, names: ["identity-registry"] }],
+    contracts: [
+      {
+        chain: book.chain,
+        names: [registryName],
+        calls: [{ contract: registryName, abi: registerAbi, walletInputs: [] }],
+        unapproved: [registryName],
+      },
+    ],
     chain: book.chain,
     registry: book.registry,
     testedVersion,
@@ -185,12 +208,12 @@ export function createFakeIdentityRegistry(options: FakeIdentityOptions): FakeId
   return {
     ...registryOf(book),
     simulate: (draft) => simulateIn(book, draft),
-    land: (draft) => {
+    land: (draft, hash) => {
       const decoded = decodeIn(book, draft);
       if (!decoded.ok) {
         throw fault("The fake registry was handed another call.");
       }
-      return book.land(draft.from, decoded.value.file);
+      return book.land(draft.from, decoded.value.file, hash);
     },
     registerOutside: (wallet) => {
       book.mint(wallet, "data:,");

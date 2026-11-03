@@ -59,6 +59,11 @@ const textLengths: Readonly<Record<string, number>> = {
   explorerLink: 200,
   // A validator's moniker, which anyone running a validator sets (spec 4, section 3.9).
   moniker: 32,
+  // An identity's registration file shows every field it publishes whole: the agent's name, its
+  // account and binference's version (decision 0334); its description shows as a launch's does.
+  agentName: 64,
+  account: 128,
+  version: 64,
 };
 const ratioDecimals = 2;
 // A receipt's transaction hash shows short, as an address does: `0xabab…cdcd`.

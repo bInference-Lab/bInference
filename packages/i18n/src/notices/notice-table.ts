@@ -233,6 +233,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.nameMoved": { key: "notice.nameMoved", values: movedName },
   ...stakeNoticeTable,
   ...bridgeNoticeTable,
+  "notice.identityMismatch": { key: "notice.identityMismatch", values: agent },
   "notice.launchStopped": {
     key: "notice.launchStopped",
     values: { ...padLaunch, reason: "pin_timeout" },

@@ -2,6 +2,7 @@ import type { AccountRef, Amount, AssetRef } from "@binference/chain";
 import { type Bps, bpsPerWhole } from "@binference/core";
 import { type BridgeAction, bridgeActionLine } from "./bridge-card-lines.js";
 import type { CardLine, CardValue } from "./card-line.js";
+import type { IdentityDetails } from "./identity-card-lines.js";
 import type { LaunchDetails } from "./launch-card-lines.js";
 import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
 import { type CardPayee, type CardSentName, sendActionLine } from "./send-card-lines.js";
@@ -69,7 +70,8 @@ export interface CardActionFacts {
     /** The limit price, or the price the plugin quoted for a market order. */
     readonly price: string;
   };
-  readonly registerIdentity: { readonly agent: string };
+  /** `details` holds every field its registration file publishes (decision 0334). */
+  readonly registerIdentity: { readonly agent: string; readonly details?: IdentityDetails };
   /**
    * `firstBuy` is zero when the request asks for no first buy. `details` holds every other
    * setting, each on a line of its own under the action line (decision 0235).

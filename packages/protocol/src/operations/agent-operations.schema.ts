@@ -81,6 +81,16 @@ interface IdentityRegistration {
   readonly onchainId: string;
   readonly txHash: TxHash;
   readonly registeredAt: number;
+  /**
+   * The registration file, a data URI, as the registering transaction stored it; an engine before
+   * decision 0335 sent none.
+   */
+  readonly file?: string;
+}
+
+/** The args of `identity/register`: the owner's words about the agent, which the file publishes. */
+interface RegisterIdentityArgs extends AgentArgs {
+  readonly description?: string;
 }
 
 /** The agent operations of protocol spec section 7.2, and the identity ones of section 7.9. */
@@ -111,7 +121,10 @@ export interface AgentOperationShapes {
     readonly result: { readonly registration?: IdentityRegistration };
   };
   /** The registration is an intent awaiting a tap. */
-  readonly "identity/register": { readonly args: AgentArgs; readonly result: IntentView };
+  readonly "identity/register": {
+    readonly args: RegisterIdentityArgs;
+    readonly result: IntentView;
+  };
 }
 
 const agentName = z.string().min(1).max(64);
@@ -222,6 +235,7 @@ export const agentOperations: OperationTable<AgentOperationShapes> = {
           onchainId: z.string().min(1),
           txHash: z.string().refine(isTxHash),
           registeredAt: epochMsSchema,
+          file: z.string().min(1).max(16_384).exactOptional(),
         })
         .exactOptional(),
     }),
@@ -230,7 +244,10 @@ export const agentOperations: OperationTable<AgentOperationShapes> = {
     ...writeFlags,
     name: "identity/register",
     scope: "propose",
-    args: agentArgsSchema,
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      description: z.string().min(1).max(280).exactOptional(),
+    }),
     result: intentViewSchema,
   },
 };

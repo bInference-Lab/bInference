@@ -13,6 +13,7 @@ import type { Clock } from "@binference/core";
 import type { QuoteView } from "@binference/protocol";
 import type { LimitsValues } from "../agents/limits-record.js";
 import { autoModeGrantOf } from "../approval/auto-mode-grant-of.js";
+import type { IdentityHost } from "../identity/identity-host.js";
 import { isFillAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
@@ -30,6 +31,7 @@ import type { StakingHost } from "../venues/staking-host.js";
 import { bridgeQuoteOf, bridgeTargetsOf, type ExecutorBridging } from "./bridge-queue-check.js";
 import { declaredTargetsOf } from "./declared-calls.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
+import { identityQuoteOf, identityTargetsOf } from "./identity-queue-check.js";
 import { launchQuoteOf } from "./launch-queue-check.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
 import { recheckOwnKind } from "./own-rechecks.js";
@@ -75,6 +77,8 @@ export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
   readonly bridging?: ExecutorBridging;
   /** The staking venues, through their host; without it, no stake signs. */
   readonly staking?: StakingHost;
+  /** The identity registries, through their host; without it, no registration signs. */
+  readonly identity?: IdentityHost;
 }
 
 interface Rechecked {
@@ -166,6 +170,7 @@ interface TargetContext {
   readonly venues: readonly VenueDeclaration[];
   readonly bridges: readonly VenueDeclaration[];
   readonly staking?: StakingHost;
+  readonly identity?: IdentityHost;
 }
 
 function targetContextOf(parts: QueueCheckParts, chain: RegisteredChain): TargetContext {
@@ -175,6 +180,7 @@ function targetContextOf(parts: QueueCheckParts, chain: RegisteredChain): Target
     venues: parts.venues,
     bridges: parts.bridging?.bridges ?? [],
     ...(parts.staking === undefined ? {} : { staking: parts.staking }),
+    ...(parts.identity === undefined ? {} : { identity: parts.identity }),
   };
 }
 
@@ -201,6 +207,10 @@ function allowedTargetsOf(snapshot: IntentSnapshot, context: TargetContext): All
   const bridged = bridgeQuoteOf(snapshot.record);
   if (bridged !== undefined) {
     return bridgeTargetsOf(bridged, context);
+  }
+  const registered = identityQuoteOf(snapshot.record);
+  if (registered !== undefined) {
+    return identityTargetsOf(registered, context);
   }
   const launch = launchQuoteOf(snapshot.record);
   const quote =

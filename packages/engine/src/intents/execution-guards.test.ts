@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   cancelIntent,
   cancelUnsent,
+  failIdentityAtQueue,
   failMovedName,
   failOnchain,
   failUnsent,
@@ -288,6 +289,32 @@ describe("a step that was never signed", () => {
     expect(failUnsent(unsent(laterStep, "rescue"))).toStrictEqual({
       ok: false,
       error: "rescue_retries",
+    });
+  });
+});
+
+function refusedIdentity(status: IntentStatus): GuardInput<"identity_refused"> {
+  return { status, trigger: { type: "identity_refused", reason: "registry_changed" }, nowMs: 0 };
+}
+
+describe("an identity registration the queue read again", () => {
+  it("ends a live registration with the registry's reason and nothing signed", () => {
+    const status = { ...confirmed, kind: "registerIdentity" } as const;
+    expect(failIdentityAtQueue(refusedIdentity(status))).toStrictEqual({
+      ok: true,
+      value: { reason: "registry_changed" },
+    });
+  });
+
+  it("refuses any other kind, and a paper registration, which never reaches a queue", () => {
+    expect(failIdentityAtQueue(refusedIdentity(confirmed))).toStrictEqual({
+      ok: false,
+      error: "not_identity",
+    });
+    const paper = { ...confirmed, kind: "registerIdentity", isPaper: true } as const;
+    expect(failIdentityAtQueue(refusedIdentity(paper))).toStrictEqual({
+      ok: false,
+      error: "paper_intent",
     });
   });
 });

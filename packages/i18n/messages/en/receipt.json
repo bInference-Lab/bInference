@@ -22,5 +22,6 @@
   "bridgeSent": "✅ Left {fromChain} · arrives on {chain} in about {minutes, number} min · {explorerLink}",
   "bridgeDelivered": "✅ Delivered on {chain}: {recipient} received {received} · {explorerLink}",
   "bridgeRefunded": "⚠️ Not delivered: {venue} paid {amount} back to {wallet} · {explorerLink}",
-  "unstaked": "✅ Unstaked {amount}: claim it from {readyAt} · {explorerLink}"
+  "unstaked": "✅ Unstaked {amount}: claim it from {readyAt} · {explorerLink}",
+  "identity": "✅ Registered as agent {agentId} in the ERC-8004 identity registry · {explorerLink}"
 }

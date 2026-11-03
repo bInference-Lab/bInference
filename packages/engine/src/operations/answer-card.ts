@@ -179,6 +179,8 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   wallet_blocked: "quote.no_route",
   claim_unpayable: "quote.no_route",
   stake_over_ceiling: "limit.over_ceiling",
+  identity_exists: "intent.identity_exists",
+  registry_changed: "quote.no_route",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

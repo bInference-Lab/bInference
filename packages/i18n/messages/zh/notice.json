@@ -84,5 +84,6 @@
   "claimReady": "你从 {validator} 解除质押的 {amount} 现在可以领取",
   "claimedElsewhere": "你从 {validator} 解除质押的 {amount} 已在 binference 之外被领取，已回到你的钱包",
   "stakeMintedFewer": "⚠️ 你在 {venue} 质押的 {amount} 已上链，但兑换率在上链前变动：只铸造了 {minted}，少于卡片承诺的至少 {least}。binference 已按实际铸造的 {minted} 记账。",
-  "stakeApprovalLeft": "⚠️ 你在 {venue} 的解除质押在授权上链后停止：{venue} 仍可从此钱包动用 {approved}，但只能用于此钱包自己发起的解除质押。如仍需要，请重新发起解除质押，它会重新设置该授权。"
+  "stakeApprovalLeft": "⚠️ 你在 {venue} 的解除质押在授权上链后停止：{venue} 仍可从此钱包动用 {approved}，但只能用于此钱包自己发起的解除质押。如仍需要，请重新发起解除质押，它会重新设置该授权。",
+  "identityMismatch": "⚠️ {agent} 的身份登记已上链，但注册表读回的账户和注册文件与卡片不符，因此 binference 未保存该身份。依赖它之前请先核对注册表。"
 }

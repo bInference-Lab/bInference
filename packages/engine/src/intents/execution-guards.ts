@@ -86,6 +86,21 @@ export function failStakeAtQueue({
   return status.isPaper ? err("paper_intent") : ok({ reason: trigger.reason });
 }
 
+/**
+ * `confirmed` to `failed_check` with the registry's reason: the wallet queue read a live identity
+ * registration's registry again as it took it and found it refused (decision 0335); nothing was
+ * signed.
+ */
+export function failIdentityAtQueue({
+  status,
+  trigger,
+}: GuardInput<"identity_refused">): Result<IntentChange, TransitionProblem> {
+  if (status.kind !== "registerIdentity") {
+    return err("not_identity");
+  }
+  return status.isPaper ? err("paper_intent") : ok({ reason: trigger.reason });
+}
+
 // A tapped intent needs the confirmation of its current card version, unexpired; a fill or an
 // auto-mode intent needs its authorization to still hold.
 function approvalProblem(
