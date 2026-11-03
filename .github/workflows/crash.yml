@@ -49,7 +49,9 @@ jobs:
               packages/cli/src/crash/crash-webhook-fills.test.ts
             points: ""
           - name: live fills
-            files: packages/cli/src/crash/crash-fills.test.ts
+            files: >-
+              packages/cli/src/crash/crash-fills.test.ts
+              packages/cli/src/crash/crash-live-webhook-fills.test.ts
             points: ""
           - name: coin launches
             files: packages/cli/src/crash/crash-launch.test.ts
