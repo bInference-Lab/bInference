@@ -175,6 +175,7 @@ export async function createWebhookRule(
   if (!placed.ok) {
     return placed;
   }
+  const base = await parts.webhookBase(signal);
   const { secret, secretHash } = newWebhookSecret(parts.secretRandom);
   const draft = draftOf(parts, request, placed.value);
   const stored = await parts.rules.create({ ...draft, secretHash }, { signal });
@@ -184,6 +185,6 @@ export async function createWebhookRule(
   }
   const opening = { rule: created.value, assets: placed.value.assets, proposer };
   const intent = await openRuleCard(parts, opening, signal);
-  const url = webhookUrlOf(parts.webhookBase(), created.value.id, secret);
+  const url = webhookUrlOf(base, created.value.id, secret);
   return ok({ rule: created.value, intent, url });
 }

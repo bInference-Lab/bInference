@@ -9,6 +9,7 @@ import { createEngineOperations } from "./engine-operations.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createModelOperations } from "./model-operations.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
+import { composeRemoteOperations } from "./remote-operations.js";
 import { composeSkillOperations } from "./skill-operations.js";
 import { createTelegramPair } from "./telegram-pair.js";
 
@@ -38,10 +39,25 @@ interface EngineWiring {
   readonly watcher: () => HealthSignal;
 }
 
+// The change of `config.json5`, and remote access, which records what it published through it.
+function configHandlersOf(
+  opening: Opening,
+  opened: Opened,
+  publish: (push: EnginePush) => void,
+): EngineHandlerTable {
+  const configChange = composeConfigChange(opening.platform, {
+    settings: opened.settings,
+    validate: opened.readConfigFrom,
+    reload: opened.configReload,
+  });
+  const remote = { publish, configChange: configChange["config/change"] };
+  return { ...configChange, ...composeRemoteOperations(opening, opened, remote) };
+}
+
 /**
  * The engine's own operations: its status with the health signals, its stop, its unlock, a new
- * pairing link for the owner's bot, the backups, the skills, the change of `config.json5`, and the
- * models each agent uses.
+ * pairing link for the owner's bot, the backups, the skills, the change of `config.json5`, remote
+ * access, and the models each agent uses.
  */
 export function engineHandlers(
   opening: Opening,
@@ -78,11 +94,7 @@ export function engineHandlers(
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
     ...composeBackupOperations(opening, opened, (push) => wiring.jobs.publish(push)),
     ...composeSkillOperations(opening, opened, (push) => wiring.jobs.publish(push)),
-    ...composeConfigChange(opening.platform, {
-      settings: opened.settings,
-      validate: opened.readConfigFrom,
-      reload: opened.configReload,
-    }),
+    ...configHandlersOf(opening, opened, (push) => wiring.jobs.publish(push)),
     ...createModelOperations({
       models: wiring.models,
       agents: opened.stores.agents,

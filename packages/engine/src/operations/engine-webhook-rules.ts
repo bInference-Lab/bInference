@@ -49,7 +49,7 @@ function webhookRulePartsOf(options: EngineOptions, orders: OrderParts): Webhook
     publish,
     isLocked,
     expireCard,
-    webhookBase: options.webhookBase ?? (() => loopbackWebhookBase),
+    webhookBase: options.webhookBase ?? (async () => Promise.resolve(loopbackWebhookBase)),
     ...(orders.launches === undefined ? {} : { launches: orders.launches }),
   };
 }

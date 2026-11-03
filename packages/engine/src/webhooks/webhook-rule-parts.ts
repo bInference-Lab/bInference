@@ -9,7 +9,8 @@ export interface WebhookRuleParts extends OneCardParts {
   readonly secretRandom: Random;
   /**
    * The base of every rule's URL: the published webhook address (`remote/status`'s `webhookUrl`)
-   * when there is one, else the loopback listener's, read on each use.
+   * when there is one, else the loopback listener's, read each time a URL is shown, before
+   * anything is stored; a rejection, when the published address cannot be read, stores nothing.
    */
-  readonly webhookBase: () => string;
+  readonly webhookBase: (signal: AbortSignal) => Promise<string>;
 }

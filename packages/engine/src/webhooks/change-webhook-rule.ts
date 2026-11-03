@@ -98,6 +98,7 @@ export async function rotateWebhookUrl(
   parts: WebhookRuleParts,
   call: { readonly rule: Id<"whr">; readonly by: Answerer; readonly signal: AbortSignal },
 ): Promise<Result<string, ProtocolErrorCode>> {
+  const base = await parts.webhookBase(call.signal);
   const rotated = await changeRule(parts, {
     rule: call.rule,
     signal: call.signal,
@@ -110,7 +111,7 @@ export async function rotateWebhookUrl(
         atMs: parts.clock.now(),
         secretHash,
       };
-      return { move, answer: webhookUrlOf(parts.webhookBase(), rule.id, secret) };
+      return { move, answer: webhookUrlOf(base, rule.id, secret) };
     },
   });
   if (!rotated.ok) {

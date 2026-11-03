@@ -279,10 +279,12 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
    */
   readonly secretRandom?: Random;
   /**
-   * The base of every webhook rule's URL, read on each use: the published webhook address when
-   * there is one, else the loopback listener's. Absent: the listener's default loopback address.
+   * The base of every webhook rule's URL, read each time a URL is shown, before anything is
+   * stored: the published webhook address when there is one, else the loopback listener's
+   * (decision 0340). It rejects, with a `remote` code, when the published address cannot be
+   * read, and nothing is stored then. Absent: the listener's default loopback address.
    */
-  readonly webhookBase?: () => string;
+  readonly webhookBase?: (signal: AbortSignal) => Promise<string>;
   /** Where pushes go: the protocol server, which numbers them with a `seq` per topic. */
   readonly publish: PublishPush;
   /**

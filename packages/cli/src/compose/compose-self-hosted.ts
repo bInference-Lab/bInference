@@ -8,7 +8,6 @@ import type { EngineState } from "@binference/protocol";
 import type { ProtocolServer } from "@binference/server";
 import type { SignerRefusalNotice } from "@binference/signer";
 import { isPublicEndpoint } from "../runtime/public-address.js";
-import { createSystemRandom } from "../runtime/system-random.js";
 import { selfHostedCeilingVenues } from "./ceiling-venues.js";
 import { rpcHealthOf } from "./chain-reads.js";
 import { type ComposedCustody, composeCustody } from "./compose-custody.js";
@@ -34,6 +33,7 @@ import {
 import { pricingOf } from "./order-pricing.js";
 import { ownerChatHandlers } from "./owner-locale-change.js";
 import { publishedParts } from "./published-parts.js";
+import { webhookPartsOf } from "./remote-reading.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
 import { chainReadParts } from "./self-hosted-chain-reads.js";
@@ -239,16 +239,6 @@ function webPushOf(opening: Opening, opened: Opened) {
   return key === undefined ? {} : { webPush: { key, http: opening.host.http, isPublicEndpoint } };
 }
 
-// A rule's secret comes from the OS generator, never `host.random`, which tests seed: the secret
-// alone keeps strangers out. Its URL starts with the listener's loopback address at its port,
-// until a published webhook address exists.
-function webhookPartsOf(port: number) {
-  return {
-    secretRandom: createSystemRandom(),
-    webhookBase: () => `http://127.0.0.1:${String(port)}`,
-  };
-}
-
 // The engine and its protocol server over the wired parts.
 function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { host } = opening;
@@ -291,7 +281,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       handlers: ownHandlersOf(opening, opened, wiring),
       clock: host.clock,
       random: host.random,
-      webhooks: webhookPartsOf(host.webhookPort ?? opened.config.engine.webhookPort),
+      webhooks: webhookPartsOf(opening, opened),
       logger: log.logger,
       executor: sending.executor,
       heldWallets: () => sending.executor.heldWallets(),
