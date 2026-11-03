@@ -1,4 +1,5 @@
 import type { AccountRef, AssetRef, ChainRef, Clock, Http, Secret } from "@binference/plugin-sdk";
+import type { Address } from "viem";
 
 /**
  * A route Relay serves, as the registry lists it (decision 0301): the token that leaves the source
@@ -38,4 +39,10 @@ export interface RelayOptions {
    * names the order a deposit pays (decision 0320).
    */
   readonly depositories: Readonly<Partial<Record<ChainRef, AccountRef>>>;
+  /**
+   * Relay's solver: the key whose signature an order's id must carry, which an order must name,
+   * and whose transfers alone pay a fill or a refund. The composition root names
+   * {@link relaySolver}, as Relay's contract addresses page lists it.
+   */
+  readonly solver: Address;
 }

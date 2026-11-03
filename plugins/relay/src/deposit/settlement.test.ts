@@ -1,5 +1,6 @@
 import { accountRefSchema, type SettlementCheck } from "@binference/plugin-sdk";
 import { describe, expect, it } from "vitest";
+import { relaySolver } from "../relay-chains.js";
 import { bsc, depository } from "../testing/bridge-fixtures.js";
 import {
   recordedBareTransferCheck,
@@ -10,8 +11,9 @@ import {
 import { relaySettlement } from "./settlement.js";
 
 const depositories = { [bsc]: depository };
+const parts = { depositories, solver: relaySolver };
 const notOwn = { ok: false, error: "not_own" };
-const settle = (check: SettlementCheck) => relaySettlement(check, depositories);
+const settle = (check: SettlementCheck) => relaySettlement(check, parts);
 
 describe("a Relay settlement matched by the chains' own events", () => {
   it("takes a Base fill as what Relay's solver sent the recipient in the delivered token", () => {
@@ -54,7 +56,9 @@ describe("a Relay settlement matched by the chains' own events", () => {
     const amountIn = { ...recordedFillCheck.amountIn, base: recordedFillCheck.amountIn.base + 1n };
     expect(settle({ ...recordedFillCheck, wallet })).toStrictEqual(notOwn);
     expect(settle({ ...recordedFillCheck, amountIn })).toStrictEqual(notOwn);
-    expect(relaySettlement(recordedFillCheck, {})).toStrictEqual(notOwn);
+    expect(
+      relaySettlement(recordedFillCheck, { depositories: {}, solver: relaySolver }),
+    ).toStrictEqual(notOwn);
   });
 
   it("takes no Solana fill whose memos name another order", () => {

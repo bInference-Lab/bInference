@@ -9,8 +9,8 @@ import {
   type Result,
   type SettlementCheck,
 } from "@binference/plugin-sdk";
-import { decodeEventLog, type Hex, isHex, parseAbi } from "viem";
-import { memoProgram, relayChainOf, relaySolver } from "../relay-chains.js";
+import { type Address, decodeEventLog, type Hex, isHex, parseAbi } from "viem";
+import { memoProgram, relayChainOf } from "../relay-chains.js";
 import { lowerHex } from "../wire-values.schema.js";
 
 // The events a Relay settlement is read from: the depository's deposit on the source chain, from
@@ -83,11 +83,15 @@ function orderPaid(check: SettlementCheck, depositories: Depositories): Hex | un
 }
 
 // What Relay's solver paid `to` in `token` by the token's own transfer events, on an EVM chain.
-function solverPaid(events: readonly ChainEvent[], token: string, to: string): bigint {
+function solverPaid(
+  events: readonly ChainEvent[],
+  paid: { readonly token: string; readonly to: string; readonly solver: Address },
+): bigint {
+  const { token, to } = paid;
   return eventsOf(events, token).reduce(
     (sum, event) =>
       event.eventName === "Transfer" &&
-      event.args.from.toLowerCase() === relaySolver &&
+      event.args.from.toLowerCase() === paid.solver.toLowerCase() &&
       event.args.to.toLowerCase() === to
         ? sum + event.args.value
         : sum,
@@ -108,23 +112,27 @@ function memoNames(check: SettlementCheck, orderId: Hex): boolean {
 // sent the recipient, never more than the order's least output, which with no slippage is all it
 // pays, so another order's payment in the same transaction never counts here; on Solana the whole
 // payment, when its memo names the deposit's order.
-function filledOf(check: SettlementCheck, orderId: Hex): bigint {
+function filledOf(
+  check: SettlementCheck,
+  paid: { readonly orderId: Hex; readonly solver: Address },
+): bigint {
+  const { orderId, solver } = paid;
   const chain = relayChainOf(check.settlement.ref.chain);
   if (chain?.vm === "svm") {
     return memoNames(check, orderId) ? wholeSolanaPayment : 0n;
   }
   const token = assetRefParts(check.minOut.asset).assetReference.toLowerCase();
-  const paid =
+  const sent =
     chain === undefined
       ? 0n
-      : solverPaid(check.settlement.events, token, addressOf(check.recipient));
-  return paid < check.minOut.base ? paid : check.minOut.base;
+      : solverPaid(check.settlement.events, { token, to: addressOf(check.recipient), solver });
+  return sent < check.minOut.base ? sent : check.minOut.base;
 }
 
 // What the refund paid the wallet back: the token sent, by Relay's solver, never more than sent.
-function refundedOf(check: SettlementCheck): bigint {
+function refundedOf(check: SettlementCheck, solver: Address): bigint {
   const token = assetRefParts(check.amountIn.asset).assetReference.toLowerCase();
-  const paid = solverPaid(check.settlement.events, token, addressOf(check.wallet));
+  const paid = solverPaid(check.settlement.events, { token, to: addressOf(check.wallet), solver });
   return paid < check.amountIn.base ? paid : check.amountIn.base;
 }
 
@@ -140,12 +148,14 @@ function refundedOf(check: SettlementCheck): bigint {
  */
 export function relaySettlement(
   check: SettlementCheck,
-  depositories: Depositories,
+  parts: { readonly depositories: Depositories; readonly solver: Address },
 ): Result<bigint, "not_own"> {
-  const orderId = orderPaid(check, depositories);
+  const { solver } = parts;
+  const orderId = orderPaid(check, parts.depositories);
   if (orderId === undefined) {
     return err("not_own");
   }
-  const paid = check.kind === "fill" ? filledOf(check, orderId) : refundedOf(check);
+  const paid =
+    check.kind === "fill" ? filledOf(check, { orderId, solver }) : refundedOf(check, solver);
   return paid > 0n ? ok(paid) : err("not_own");
 }

@@ -1,4 +1,5 @@
 import { type ChainRef, chainRefSchema } from "@binference/plugin-sdk";
+import type { Address } from "viem";
 
 /** How Relay names one chain: its numeric id, its protocol id in orders, and its machine. */
 export interface RelayChain {
@@ -44,7 +45,7 @@ export function relayChainNamed(protocol: string): RelayChain | undefined {
  * it, and it pays each fill and each refund of the routes the registry lists from its own
  * balance, so a settlement's token transfer comes from it.
  */
-export const relaySolver = "0xf70da97812cb96acdf810712aa562db8dfa3dbef";
+export const relaySolver: Address = "0xf70da97812cb96acdf810712aa562db8dfa3dbef";
 
 /**
  * The extra data Relay wrote on an EVM leg of every order it quoted on 2026-11-01, a 32-byte word

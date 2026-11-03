@@ -108,7 +108,8 @@ export async function quoteBridge(
   if (!answer.ok) {
     return answer;
   }
-  if (!(await isSignedBySolver(answer.value.orderId, answer.value.orderSignature))) {
+  const { orderId, orderSignature } = answer.value;
+  if (!(await isSignedBySolver(orderId, orderSignature, ask.solver))) {
     throw unsignedOrder();
   }
   const quotedAtMs = parts.options.clock.now();

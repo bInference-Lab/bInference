@@ -77,6 +77,6 @@ export function createRelayBridge(options: RelayOptions): Bridge {
     decode: (draft) => decodeDeposit(draft),
     status: async (deposit, { signal }) => depositStatus(deposit, { api, destinations }, signal),
     pageOf: (deposit) => depositPageOf(deposit),
-    settlement: (check) => relaySettlement(check, options.depositories),
+    settlement: (check) => relaySettlement(check, options),
   });
 }

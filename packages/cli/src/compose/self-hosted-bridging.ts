@@ -9,7 +9,7 @@ import { bsc } from "@binference/chains";
 import type { Clock, Http, Secret } from "@binference/core";
 import type { EngineOptions } from "@binference/engine";
 import type { ExecutorBridging } from "@binference/engine/executor";
-import { createRelayBridge, relayId } from "@binference/relay";
+import { createRelayBridge, relayId, relaySolver } from "@binference/relay";
 import { bridgeContractsOf, bridgeRoutesOf } from "./bridge-routes.js";
 import type { ChainReads } from "./chain-reads.js";
 import { deliveryReaderOf } from "./delivery-readers.js";
@@ -54,6 +54,7 @@ function hostedBridges(parts: BridgingParts) {
     chains: [source],
     routes: relayRoutes,
     depositories: bridgeContractsOf(relayId, "depository"),
+    solver: relaySolver,
   });
   return [
     { bridge: across, routes },

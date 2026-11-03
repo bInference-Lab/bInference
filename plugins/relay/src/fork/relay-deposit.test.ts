@@ -27,6 +27,7 @@ import {
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createRelayBridge } from "../relay-bridge.js";
+import { relaySolver } from "../relay-chains.js";
 
 const apiOrigin = "https://api.relay.link";
 const apiTimeoutMs = 20_000;
@@ -94,6 +95,7 @@ async function bridgeOn(fork: Fork, arrives: AssetRef): Promise<Bridge> {
     chains: [fork.chain.ref],
     routes: [{ leaves: tokenOn(fork, "USDC"), arrives, decimals }],
     depositories: { [fork.chain.ref]: accountRefSchema.parse(`${fork.chain.ref}:${depository}`) },
+    solver: relaySolver,
   });
 }
 

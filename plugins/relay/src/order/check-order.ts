@@ -1,7 +1,7 @@
 import type { Address } from "viem";
 import type { RelayCurrency, RelayQuote } from "../api/quote-answer.schema.js";
 import { readDepositErc20 } from "../deposit/deposit-call.js";
-import { relayChainNamed, relayLegData, relaySolver } from "../relay-chains.js";
+import { relayChainNamed, relayLegData } from "../relay-chains.js";
 import type { RelayAsk } from "../routes/route-query.js";
 import { orderIdOf } from "./order-id.js";
 import type { OrderRefund, RelayOrder } from "./relay-order.schema.js";
@@ -26,8 +26,11 @@ const isSameEvm = (left: string, right: string): boolean => isSame("evm", left, 
 const bpsPerWhole = 10_000n;
 
 // The order is the one its id names, worked out from its data, and Relay's solver takes it.
-function isOwnOrder(quote: RelayQuote): boolean {
-  return orderIdOf(quote.order) === quote.orderId && quote.order.solver === relaySolver;
+function isOwnOrder(quote: RelayQuote, ask: RelayAsk): boolean {
+  return (
+    orderIdOf(quote.order) === quote.orderId &&
+    quote.order.solver.toLowerCase() === ask.solver.toLowerCase()
+  );
 }
 
 // The order is paid exactly the asked input on the asked chain, and pays the asked recipient in
@@ -192,7 +195,7 @@ export function orderProblemOf(
   depository: Address,
 ): OrderProblem | undefined {
   const checks: readonly (readonly [OrderProblem, () => boolean])[] = [
-    ["not_its_order", () => isOwnOrder(quote)],
+    ["not_its_order", () => isOwnOrder(quote, ask)],
     ["other_payment", () => paysAsked(quote.order, ask)],
     ["other_refund", () => refundsOwn(quote.order, ask)],
     ["other_deposit", () => paymentAsked(quote, ask, depository)],

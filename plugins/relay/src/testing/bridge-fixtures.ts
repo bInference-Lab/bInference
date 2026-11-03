@@ -20,6 +20,7 @@ import {
 import type { Hex } from "viem";
 import { z } from "zod";
 import { quoteUrl, requestsUrlOf } from "../api/relay-api.js";
+import { relaySolver } from "../relay-chains.js";
 import type { RelayOptions, RelayRoute } from "../relay-options.js";
 import tooLow from "./recorded/error-amount-too-low.json" with { type: "json" };
 import noLiquidity from "./recorded/error-insufficient-liquidity.json" with { type: "json" };
@@ -218,5 +219,6 @@ export function recordedOptions(http: Http = recordedApi()): RelayOptions {
     chains: [bsc],
     routes: recordedRoutes,
     depositories: { [bsc]: depository },
+    solver: relaySolver,
   };
 }

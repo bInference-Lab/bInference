@@ -31,6 +31,8 @@ export interface RelayAsk {
   readonly recipient: string;
   /** The token that arrives: a checksummed address on an EVM chain, a mint on Solana. */
   readonly currencyOut: string;
+  /** Relay's solver, which the order must name and sign. */
+  readonly solver: Address;
 }
 
 // An account of a chain Relay names, as Relay writes it there; none for another chain's account.
@@ -102,6 +104,7 @@ export function relayAskOf(
     amount: request.amountIn.base,
     recipient,
     currencyOut: arrives.currency,
+    solver: options.solver,
   };
 }
 

@@ -8,6 +8,7 @@ import { bridgeContract, draftAt, successOf } from "@binference/plugin-sdk/testi
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { createRelayBridge, relayDeclaration } from "./relay-bridge.js";
+import { relaySolver } from "./relay-chains.js";
 import {
   base,
   bsc,
@@ -194,6 +195,7 @@ describe("the Relay bridge", () => {
     const http = recordedApi();
     const clock = recordedOptions().clock;
     const depositories = { [bsc]: depository };
+    const solver = relaySolver;
     const toNowhere = [
       {
         leaves: tokens.usdc,
@@ -202,10 +204,17 @@ describe("the Relay bridge", () => {
       },
     ];
     expect(() =>
-      createRelayBridge({ http, clock, chains: [bsc], routes: toNowhere, depositories }),
+      createRelayBridge({ http, clock, chains: [bsc], routes: toNowhere, depositories, solver }),
     ).toThrow(expect.objectContaining({ code: "relay.bad_options" }));
     expect(() =>
-      createRelayBridge({ http, clock, chains: [base], routes: recordedRoutes, depositories }),
+      createRelayBridge({
+        http,
+        clock,
+        chains: [base],
+        routes: recordedRoutes,
+        depositories,
+        solver,
+      }),
     ).toThrow(expect.objectContaining({ code: "relay.bad_options" }));
   });
 
