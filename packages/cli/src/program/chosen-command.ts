@@ -9,6 +9,7 @@ import type {
   CheckFlags,
   CommonOptions,
   ConfigSetFlags,
+  ExposeFlags,
   InitFlags,
   LogsFlags,
   StartFlags,
@@ -56,6 +57,7 @@ export type ChosenCommand =
   | { readonly name: "backupCreate" | "backupList"; readonly options: CommonOptions }
   | { readonly name: "backupRestore"; readonly options: StartFlags; readonly file: string }
   | { readonly name: "reset"; readonly options: StartFlags }
+  | { readonly name: "expose"; readonly options: ExposeFlags }
   | { readonly name: "signerRevoke"; readonly options: CommonOptions; readonly signer: string }
   | { readonly name: "ownerKeyCreate"; readonly options: CommonOptions }
   | { readonly name: "rescueSet"; readonly options: CommonOptions; readonly address: string }

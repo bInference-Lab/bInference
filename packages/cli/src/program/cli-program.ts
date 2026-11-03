@@ -9,6 +9,7 @@ import {
   agentFlagsSchema,
   checkFlagsSchema,
   commonFlagsSchema,
+  exposeFlagsSchema,
   initFlagsSchema,
   logsFlagsSchema,
   maxLogLines,
@@ -156,6 +157,12 @@ function addInstallCommands(program: Command, options: ProgramOptions): void {
     .option("--set <key=value>", message("option.set"), addSet, [])
     .action((flags: OptionValues) =>
       choose({ name: "reset", options: startFlagsSchema.parse(flags) }),
+    );
+  withCommon(program.command("expose").description(message("command.expose")), message)
+    .option("--webhooks", message("option.webhooks"))
+    .option("--off", message("option.off"))
+    .action((flags: OptionValues) =>
+      choose({ name: "expose", options: exposeFlagsSchema.parse(flags) }),
     );
   withCommon(program.command("uninstall").description(message("command.uninstall")), message)
     .option("--state", message("option.state"))

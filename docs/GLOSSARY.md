@@ -495,7 +495,7 @@ new name here first, in the change that uses it.
   `deny`, `wallet list`, `wallet address`, `wallet create`, `wallet create --launch`, `wallet create --bridge`, `wallet export`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
   `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `limit`, `limit set`,
-  `limit cancel`, `telegram pair`, `unlock`, `expose`, `uninstall`, `uninstall --state`, `reset`,
+  `limit cancel`, `telegram pair`, `unlock`, `expose`, `expose --webhooks`, `expose --off`, `uninstall`, `uninstall --state`, `reset`,
   `agent identity`, `plugin add`, `plugin list`, `plugin enable`, `plugin disable`,
   `plugin remove`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,

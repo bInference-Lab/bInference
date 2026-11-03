@@ -1154,6 +1154,12 @@ Decided in decisions [0050](DECISIONS.md#d0050) to [0053](DECISIONS.md#d0053).
   webhooks use `funnel`, and only the webhook path is public, on a listener separate from the
   engine's own port, which stays on loopback. `binference check` verifies both. `remote.publicUrl`
   names the HTTPS address the engine's port is published at; `/console` opens the Mini App there.
+  The Mini App takes port 443 and the webhook path `/hook/` on port 8443, each a whole port
+  binference set or none; `binference expose --webhooks` asks before the public part, `--off`
+  takes off only binference's handlers and names whatever still publishes the engine's ports,
+  `check` reads Tailscale whatever `remote.mini` and `remote.webhooks` record, and the engine
+  never publishes on its own (decisions [0340](DECISIONS.md#d0340) and
+  [0341](DECISIONS.md#d0341)).
 - **Mini App (decisions [0052](DECISIONS.md#d0052), [0089](DECISIONS.md#d0089),
   [0160](DECISIONS.md#d0160), [0161](DECISIONS.md#d0161)).** `/console` sends a button that opens
   the console inside Telegram, with a single-use launch ticket in its fragment. The engine verifies

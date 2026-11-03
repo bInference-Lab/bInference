@@ -73,6 +73,13 @@ export interface UninstallFlags extends CommonOptions {
   readonly state: boolean;
 }
 
+/** What `expose` takes: `--webhooks` publishes the webhook path too, `--off` takes both off. */
+export interface ExposeFlags extends CommonOptions {
+  readonly webhooks: boolean;
+  /** Wins over `--webhooks`: it only ever takes binference's handlers off. */
+  readonly off: boolean;
+}
+
 /** What `check` takes: `--fix` repairs what the check may repair. */
 export interface CheckFlags extends CommonOptions {
   readonly fix: boolean;
@@ -217,6 +224,13 @@ export const checkFlagsSchema: z.ZodType<CheckFlags> = z.object({
 export const uninstallFlagsSchema: z.ZodType<UninstallFlags> = z.object({
   ...commonShape,
   state: z.boolean().default(false),
+});
+
+/** Parses the options commander read for `expose`. */
+export const exposeFlagsSchema: z.ZodType<ExposeFlags> = z.object({
+  ...commonShape,
+  webhooks: z.boolean().default(false),
+  off: z.boolean().default(false),
 });
 
 /** Parses the options commander read for `logs`; 100 lines unless `--lines` says otherwise. */
