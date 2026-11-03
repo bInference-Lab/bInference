@@ -159,9 +159,13 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   ),
   webhook_rules: names(
     "id agent_id name secret_hash action state rate_per_min fills max_fills expires_at card_id " +
-      "created_at changed_at version last_alert_at",
+      "created_at changed_at version last_alert_at wallet_id intent_id paper url_changed_at " +
+      "old_url_last_event notice_window_at notices_sent notices_held",
   ),
-  webhook_events: names("id rule_id alert_id body_hash received_at outcome intent_id"),
+  webhook_events: names(
+    "id rule_id alert_id body_hash received_at outcome intent_id engine_locked fill_outcome " +
+      "fill_reason notices announced_at",
+  ),
   schedules: names(
     "id agent_id when prompt state next_at zone last_at last_due_at last_outcome last_reason " +
       "last_message_id created_by outside_content created_at changed_at",
@@ -280,12 +284,14 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   alert_fires: ["index|agent_id,at"],
   wallet_activity: ["index|account,at", "unique|account,tx_hash,log_index"],
   launches: ["index|chain,block", "index|chain,launched_at", "index|creator,launched_at"],
-  webhook_rules: ["index|state"],
+  webhook_rules: ["index|agent_id,state", "index|state", "unique|intent_id|partial"],
   webhook_events: [
+    "index|id|partial",
     "index|received_at",
     "index|rule_id,alert_id",
     "index|rule_id,outcome,received_at",
     "index|rule_id,received_at",
+    "unique|intent_id|partial",
   ],
   schedules: ["index|agent_id,state", "index|state,next_at"],
   schedule_runs: ["index|at"],

@@ -35,7 +35,8 @@ export function readOrder(database: DatabaseSync, id: Id<"ord">): OrderRecord | 
   return row === undefined ? undefined : toOrderRecord(row);
 }
 
-function isAgentFrozen(database: DatabaseSync, agentId: string): boolean | undefined {
+/** Whether an agent is frozen now; `undefined` for an agent the database does not hold. */
+export function isAgentFrozen(database: DatabaseSync, agentId: string): boolean | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const agent = takeFirst(
     kysely.selectFrom("agents").select("frozen_at").where("id", "=", agentId),

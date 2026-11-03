@@ -127,7 +127,36 @@ export {
   webhookTakeSchema,
 } from "./webhooks/webhook-alert.js";
 export type { WebhookAlertDraft, WebhookRuleKey, WebhookTake } from "./webhooks/webhook-alert.js";
-export type { WebhookAlertStore } from "./webhooks/ports.js";
+export type { WebhookAlertStore, WebhookRuleStore } from "./webhooks/ports.js";
+export {
+  maxWebhookRulesPerAgent,
+  webhookRuleDraftSchema,
+  webhookRuleMoveSchema,
+  webhookRuleQuerySchema,
+  webhookRuleRecordSchema,
+  webhookRuleRequestDocument,
+} from "./webhooks/webhook-rule-record.js";
+export type {
+  WebhookRuleCreateRefusal,
+  WebhookRuleDraft,
+  WebhookRuleMove,
+  WebhookRuleMoveRefusal,
+  WebhookRuleQuery,
+  WebhookRuleRecord,
+  WebhookRuleState,
+} from "./webhooks/webhook-rule-record.js";
+export {
+  alertAnnouncementSchema,
+  alertFillQuerySchema,
+  alertFillRecordSchema,
+  alertFillWriteSchema,
+} from "./webhooks/alert-fill-record.js";
+export type {
+  AlertAnnouncement,
+  AlertFillQuery,
+  AlertFillRecord,
+  AlertFillWrite,
+} from "./webhooks/alert-fill-record.js";
 export { createWebhookIntake } from "./webhooks/webhook-intake.js";
 export { webhookPortTakenNotice } from "./webhooks/webhook-port-notice.js";
 export type { WebhookAnswer, WebhookIntake } from "./webhooks/webhook-intake.js";

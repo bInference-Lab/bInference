@@ -10,6 +10,7 @@ import type { IdentityRecord } from "../identity/identity-record.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
 import type { OrderFillWrite } from "../orders/order-fill.js";
 import { type Sha256Hex, sha256Hex } from "../records/sha256-hex.js";
+import type { AlertFillWrite } from "../webhooks/alert-fill-record.js";
 import type { CardOpening, CardRecord, CardVersionClosing } from "./card-record.js";
 import type { ConfirmationDraft } from "./confirmation-record.js";
 import {
@@ -51,6 +52,8 @@ export interface IntentMove extends IntentWrite {
   readonly order?: OrderFillWrite;
   /** The identity a registration stores with its move to `reconciled` (decision 0335). */
   readonly identity?: IdentityRecord;
+  /** A webhook rule fill's write on its alert and rule, stored with the move (decision 0338). */
+  readonly alert?: AlertFillWrite;
 }
 
 /** What a move is stored against: the intent as read, and where new ids come from. */
@@ -250,5 +253,6 @@ export function changeOf(move: IntentMove, context: MoveContext): IntentChange {
     ...(confirmation === undefined ? {} : { confirmation }),
     ...(move.order === undefined ? {} : { order: move.order }),
     ...(move.identity === undefined ? {} : { identity: move.identity }),
+    ...(move.alert === undefined ? {} : { alert: move.alert }),
   };
 }

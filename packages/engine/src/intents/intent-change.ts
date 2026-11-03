@@ -17,6 +17,7 @@ import {
   rowNumberSchema,
   rowVersionSchema,
 } from "../records/record-fields.js";
+import { type AlertFillWrite, alertFillWriteSchema } from "../webhooks/alert-fill-record.js";
 import {
   type CardVersionClosing,
   cardVersionClosingSchema,
@@ -84,6 +85,11 @@ export interface IntentChange {
    * `store.constraint`, and nothing is written.
    */
   readonly identity?: IdentityRecord;
+  /**
+   * A webhook rule fill's write on its alert, stored with the move (decision 0338): the alert's
+   * row ended `filled` and its rule's move that counts the fill.
+   */
+  readonly alert?: AlertFillWrite;
 }
 
 /** Parses an intent change. */
@@ -100,6 +106,7 @@ export const intentChangeSchema: z.ZodType<IntentChange> = z.strictObject({
   confirmation: confirmationDraftSchema.exactOptional(),
   order: orderFillWriteSchema.exactOptional(),
   identity: identityRecordSchema.exactOptional(),
+  alert: alertFillWriteSchema.exactOptional(),
 });
 
 /**

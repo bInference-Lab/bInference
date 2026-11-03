@@ -41,7 +41,7 @@ function setUp(rules: readonly WebhookRuleKey[]) {
     prune: async (beforeMs, call) => store.prune(beforeMs, call),
   };
   const clock = createManualClock(now);
-  const intake = createWebhookIntake({ store: counted, clock });
+  const intake = createWebhookIntake({ store: counted, clock, isLocked: () => false });
   const take = async (request: Partial<WebhookRequest> = {}) =>
     intake.take({ ruleId: fixtureId("whr", 1), secret, body, ...request }, live);
   return { inbox, store, calls, clock, take };
@@ -150,7 +150,11 @@ describe("the webhook intake", () => {
         return found;
       },
     };
-    const intake = createWebhookIntake({ store: rotating, clock: createManualClock(now) });
+    const intake = createWebhookIntake({
+      store: rotating,
+      clock: createManualClock(now),
+      isLocked: () => false,
+    });
     const request = { ruleId: fixtureId("whr", 1), secret, body };
     await expect(intake.take(request, live)).resolves.toBe("not_found");
     await expect(take()).resolves.toBe("not_found");

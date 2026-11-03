@@ -16,14 +16,23 @@ import type { Opened, Opening } from "./open-engine-parts.js";
 export async function listenForWebhooks(
   opening: Opening,
   opened: Opened,
-  publish: PublishPush,
+  engine: {
+    readonly publish: PublishPush;
+    /** Whether the engine is locked, which each alert keeps from its arrival (decision 0336). */
+    readonly isLocked: () => boolean;
+  },
 ): Promise<ServerAddress | undefined> {
+  const { publish, isLocked } = engine;
   const { host, closers, signal } = opening;
   const logger = opened.log.logger.child("webhook");
   const port = host.webhookPort ?? opened.config.engine.webhookPort;
   const listener = createWebhookListener({
     port,
-    intake: createWebhookIntake({ store: opened.stores.webhookAlerts, clock: host.clock }),
+    intake: createWebhookIntake({
+      store: opened.stores.webhookAlerts,
+      clock: host.clock,
+      isLocked,
+    }),
     clock: host.clock,
     logger,
   });

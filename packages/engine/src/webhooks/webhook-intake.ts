@@ -57,15 +57,18 @@ const answers: Readonly<Record<WebhookTake["kind"], WebhookAnswer>> = {
  * secret's SHA-256 is compared in constant time with the rule's stored hash, or with a decoy's
  * when no rule has the id, so a wrong secret and an unknown rule make the same read and the same
  * comparison before the same answer. Only a rule that is `active` and not expired answers; its
- * alert is then recorded through the store, which judges repeats and the rate in the same write.
+ * alert is then recorded through the store, which judges repeats and the rate in the same write,
+ * with whether the engine was locked as it arrived.
  * Past `webhookReadsPerSecond` reads a second, a request is a 404 with no read; past its rule's
  * refusals for the minute, an alert is a 429 with no write (`intake-bounds.ts`).
  */
 export function createWebhookIntake(options: {
   readonly store: WebhookAlertStore;
   readonly clock: Clock;
+  /** Whether the engine is locked now; an alert taken while it is skips its fill (decision 0336). */
+  readonly isLocked: () => boolean;
 }): WebhookIntake {
-  const { store, clock } = options;
+  const { store, clock, isLocked } = options;
   const reads = createReadBudget(clock);
   const refusals = createRefusalCounts(clock);
   // The rule whose URL the request names, when its secret matches and it answers now.
@@ -93,7 +96,14 @@ export function createWebhookIntake(options: {
       }
       const read = readAlertBody(request.body);
       const bodyHash = sha256HexOfBytes(request.body);
-      const draft = { rule: rule.id, secretHash, ...read, bodyHash, receivedAtMs };
+      const draft = {
+        rule: rule.id,
+        secretHash,
+        ...read,
+        bodyHash,
+        receivedAtMs,
+        ...(isLocked() ? { isEngineLocked: true as const } : {}),
+      };
       const taken = await store.take(draft, call);
       if (taken.kind === "repeat" || taken.kind === "rate") {
         refusals.count(rule.id);

@@ -70,7 +70,10 @@ export function orderMove(n: number, version: number, state: OrderMove["state"])
  * Stores intent `n` of the subject's agent with its first card version confirmed on Telegram, as
  * an order's `autoOrder` intent is once the owner taps Confirm.
  */
-export async function confirmedCard(subject: OrderStoreSubject, n: number): Promise<Id<"crd">> {
+export async function confirmedCard(
+  subject: PlantedPair & Pick<OrderStoreSubject, "intents">,
+  n: number,
+): Promise<Id<"crd">> {
   const { intents } = subject;
   assert.ok((await intents.create(intentDraft(subject, n), live())).ok);
   const opened = { ...intentMove(n, 0, "awaiting_confirmation"), openCard: cardOf(n, 1) };
@@ -82,7 +85,7 @@ export async function confirmedCard(subject: OrderStoreSubject, n: number): Prom
 
 /** The agent's row version now, which a freeze names. */
 export async function agentVersion(
-  subject: OrderStoreSubject,
+  subject: Pick<OrderStoreSubject, "agents">,
   agentId: Id<"agt">,
 ): Promise<number> {
   const agent = (await subject.agents.list(live())).find(({ id }) => id === agentId);

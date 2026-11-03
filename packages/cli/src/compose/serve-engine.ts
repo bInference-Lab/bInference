@@ -175,7 +175,8 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
       ? { ok: false, refusal: "port_taken", port: config.engine.port }
       : { ok: false, refusal: "already_running", folder: platform.stateFolder.root };
   }
-  const webhooks = await listenForWebhooks(opening, opened, publish);
+  const isLocked = () => locked.lock.isLocked();
+  const webhooks = await listenForWebhooks(opening, opened, { publish, isLocked });
   const unlocked = await locked.lock.unlock({ signal });
   await executor.recover({ signal });
   // Before the repairs and the timers: the re-check counts the skips they record, and no price

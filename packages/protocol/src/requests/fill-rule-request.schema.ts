@@ -108,10 +108,17 @@ type TermsOf<Request> = Request extends unknown ? Omit<Request, "agent" | "walle
  */
 export type OrderTerms = TermsOf<OrderRequest & { readonly reason: string }>;
 
-/** What `webhookRule/create` asks for: a named rule whose alerts fill inside its bounds. */
+/**
+ * What `webhookRule/create` asks for: a named rule whose alerts fill inside its bounds (decision
+ * 0299). Absent `expiresAt`: 30 days ahead; absent `maxFills`: no limit until it expires.
+ */
 export interface WebhookRuleRequest extends FillBounds {
-  /** The alert's name, which the sender's webhook carries. */
+  /** The alert's name, 1 to 64 characters, shown on its card. */
   readonly name: string;
+  /** What a buy spends, as an auto order's `spend`; a sale names none. Absent: the chain's coin. */
+  readonly spend?: AssetRef;
+  /** The alerts the rule accepts in any 60 seconds, 1 to 60. Absent: 1. */
+  readonly ratePerMinute?: number;
 }
 
 const boundsFields = {
@@ -167,7 +174,12 @@ const stopLossShape = { ...orderBase, ...stopLossFields };
 const trailingShape = { ...orderBase, ...trailingFields };
 const dcaShape = { ...orderBase, ...dcaFields };
 const copyShape = { ...orderBase, ...copyFields };
-const webhookRuleShape = { ...fillBounds, name: z.string().min(1).max(64) };
+const webhookRuleShape = {
+  ...fillBounds,
+  name: z.string().min(1).max(64),
+  spend,
+  ratePerMinute: z.int().min(1).max(60).exactOptional(),
+};
 
 /** Parses the args of `order/create`. Unknown fields are refused. */
 export const orderRequestSchema: z.ZodType<OrderRequest> = z.discriminatedUnion("kind", [

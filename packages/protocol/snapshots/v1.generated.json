@@ -30759,6 +30759,14 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 64
+            },
+            "spend": {
+              "type": "string"
+            },
+            "ratePerMinute": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60
             }
           },
           "required": [
@@ -30987,6 +30995,14 @@
                         "type": "string",
                         "minLength": 1,
                         "maxLength": 64
+                      },
+                      "spend": {
+                        "type": "string"
+                      },
+                      "ratePerMinute": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 60
                       }
                     },
                     "required": [

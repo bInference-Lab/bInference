@@ -96,4 +96,28 @@ describe("sqlite webhook alert store", () => {
       execute(kysely.selectFrom("webhook_rules").select("last_alert_at")).rows[0]?.last_alert_at;
     expect(lastAt()).toBe(5_000);
   });
+
+  it("refuses an alert's end that breaks its row: a skip with no reason, notices that are not JSON", async () => {
+    const { alerts, plant, kysely, execute } = openStore();
+    const rule: WebhookRuleKey = {
+      id: "whr_0190f1c2-3a4b-7c5d-8e6f-000000000001" as WebhookRuleKey["id"],
+      secretHash: "a".repeat(64) as WebhookRuleKey["secretHash"],
+      state: "active",
+      ratePerMinute: 5,
+    };
+    await plant(rule);
+    const bodyHash = "b".repeat(64) as WebhookRuleKey["secretHash"];
+    const alert = { rule: rule.id, secretHash: rule.secretHash, body: { text: "buy" }, bodyHash };
+    expect((await alerts.take({ ...alert, receivedAtMs: 5_000 }, live)).kind).toBe("accepted");
+    const end = (set: Readonly<Record<string, string | number>>) => () =>
+      execute(kysely.updateTable("webhook_events").set(set).where("rule_id", "=", rule.id));
+    expect(end({ fill_outcome: "skipped" })).toThrow("CHECK");
+    expect(end({ fill_outcome: "filled" })).toThrow("CHECK");
+    expect(end({ fill_reason: "late" })).toThrow("CHECK");
+    expect(end({ fill_outcome: "skipped", fill_reason: "Late!" })).toThrow("CHECK");
+    expect(end({ fill_outcome: "skipped", fill_reason: "late", notices: "{" })).toThrow("CHECK");
+    expect(end({ announced_at: 6_000 })).toThrow("CHECK");
+    expect(end({ engine_locked: 2 })).toThrow("CHECK");
+    expect(end({ fill_outcome: "skipped", fill_reason: "late", notices: "[]" })).not.toThrow();
+  });
 });

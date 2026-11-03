@@ -30,6 +30,7 @@ import { cardCopyTasks } from "../surfaces/sqlite-card-copy-store.js";
 import { ownerTasks } from "../surfaces/sqlite-owner-store.js";
 import { transactionTasks } from "../transactions/sqlite-transaction-store.js";
 import { unbondingTasks } from "../unbondings/sqlite-unbonding-store.js";
+import { webhookRuleTasks } from "../webhooks/webhook-rule-tasks.js";
 import { webhookTasks } from "../webhooks/webhook-tasks.js";
 import { workerUrl, type DatabaseDefinition } from "./database-definition.js";
 
@@ -65,6 +66,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...bridgeTasks,
     ...unbondingTasks,
     ...webhookTasks,
+    ...webhookRuleTasks,
     ...scheduleTasks,
     ...alertTasks,
     ...leaderTasks,

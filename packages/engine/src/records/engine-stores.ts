@@ -23,7 +23,7 @@ import type { ScheduleStore } from "../schedules/ports.js";
 import type { UnbondingStore } from "../staking/ports.js";
 import type { DailySummaryStore } from "../summaries/ports.js";
 import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/ports.js";
-import type { WebhookAlertStore } from "../webhooks/ports.js";
+import type { WebhookAlertStore, WebhookRuleStore } from "../webhooks/ports.js";
 
 /**
  * Every store port of the engine database, as the composition root hands them to the engine, the
@@ -76,4 +76,6 @@ export interface EngineStores {
   readonly webhookAlerts: WebhookAlertStore;
   /** Each agent's identity in a chain's identity registry (decision 0335). */
   readonly identities: IdentityStore;
+  /** The webhook rules, and what became of each alert they accepted (decision 0338). */
+  readonly webhookRules: WebhookRuleStore;
 }

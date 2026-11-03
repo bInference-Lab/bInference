@@ -142,6 +142,7 @@ export const takeAlertTask: StoreTask<WebhookAlertDraft, WebhookTake> = defineTa
         body_hash: draft.bodyHash,
         received_at: draft.receivedAtMs,
         outcome,
+        engine_locked: draft.isEngineLocked === true ? 1 : 0,
         intent_id: null,
       }),
     );

@@ -1,7 +1,7 @@
 // The intent state machine's store adapter: the one file that writes intents.state. Every write
 // runs inside one store task's transaction, so a move is written whole or not at all.
 import type { DatabaseSync } from "node:sqlite";
-import { err, type Id, type JsonValue, ok, type Result } from "@binference/core";
+import { BinferenceError, err, type Id, type JsonValue, ok, type Result } from "@binference/core";
 import type {
   IntentChange,
   IntentCommit,
@@ -12,6 +12,7 @@ import type {
   LedgerDraft,
   LedgerEntry,
 } from "@binference/engine";
+import type { AlertFillWrite } from "@binference/engine/orders";
 import { settleIntent } from "../agent-inbox/agent-inbox-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
@@ -19,6 +20,7 @@ import { appendLedgerEntry } from "../ledger/ledger-rows.js";
 import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
 import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
+import { checkAlertEnd, writeAlertEnd } from "../webhooks/webhook-rule-writes.js";
 import { writeCardChanges } from "./card-writes.js";
 import { insertIdentity } from "./identity-rows.js";
 import { toIntentEvent, toIntentRecord } from "./intent-rows.js";
@@ -154,10 +156,38 @@ export function readMoved(
   return current.version === change.expectedVersion ? ok(current) : err("stale");
 }
 
+// A webhook rule fill's write names the moving intent and counts the fill on its rule; an alert
+// that ended, or a rule another write moved, is the move's `stale` (decision 0338).
+function checkRuleFill(
+  database: DatabaseSync,
+  fill: { readonly alert: AlertFillWrite; readonly intent: string },
+): Result<undefined, "stale"> {
+  const { alert, intent } = fill;
+  if (alert.outcome !== "filled" || alert.intentId !== intent || alert.move === undefined) {
+    throw new BinferenceError({
+      code: "store.constraint",
+      message: "A rule fill's write names its own intent and counts the fill on its rule.",
+      details: { intent },
+    });
+  }
+  const checked = checkAlertEnd(database, alert);
+  if (!checked.ok && checked.error === "not_found") {
+    throw new BinferenceError({
+      code: "store.constraint",
+      message: "A rule fill names no accepted alert.",
+      details: { intent },
+    });
+  }
+  return checked.ok ? ok(undefined) : err("stale");
+}
+
 // A fill's order write, checked before anything is written: an order a move may not take, or one
 // at another version, is the move's `stale`.
 function checkFillWrite(database: DatabaseSync, change: IntentChange): Result<undefined, "stale"> {
-  const { order } = change;
+  const { order, alert } = change;
+  if (alert !== undefined && !checkRuleFill(database, { alert, intent: change.id }).ok) {
+    return err("stale");
+  }
   if (order === undefined) {
     return ok(undefined);
   }
@@ -209,7 +239,10 @@ export function moveIntent(
   if (change.identity !== undefined) {
     insertIdentity(database, change.identity);
   }
-  const { order } = change;
+  const { order, alert } = change;
+  if (alert !== undefined) {
+    writeAlertEnd(database, alert);
+  }
   if (order === undefined) {
     return ok(committed);
   }

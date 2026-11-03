@@ -23,7 +23,14 @@ import {
   writesAFrozenFillsRow,
   refusesAnActiveOrderOfAFrozenAgent,
 } from "./order-freeze-checks.js";
-import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
+import {
+  assertReadBack,
+  assertRefusesAborted,
+  checkOn,
+  fixtureId,
+  inOrder,
+  live,
+} from "./store-fixtures.js";
 
 const id = (n: number) => fixtureId("ord", n);
 
@@ -48,8 +55,7 @@ async function createsOrders(subject: OrderStoreSubject): Promise<void> {
     version: 0,
   };
   assert.deepEqual(created.value, expected);
-  assert.deepEqual(await store.get(draft.id, live()), expected);
-  assert.deepEqual(await store.byIntent(draft.intentId, live()), expected);
+  await assertReadBack(store, draft, created.value);
   assert.deepEqual(await store.create({ ...draft, atMs: 999 }, live()), {
     ok: false,
     error: "exists",

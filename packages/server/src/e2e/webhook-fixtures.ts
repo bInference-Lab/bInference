@@ -67,7 +67,7 @@ export async function startListener(
   const logger = createMemoryLogger({ subsystem: "webhook" });
   const listener = createWebhookListener({
     port: 0,
-    intake: createWebhookIntake({ store, clock }),
+    intake: createWebhookIntake({ store, clock, isLocked: () => false }),
     clock,
     logger,
     ...(options.limits === undefined ? {} : { limits: options.limits }),

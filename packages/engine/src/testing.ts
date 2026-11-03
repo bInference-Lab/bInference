@@ -122,6 +122,9 @@ export type {
   WebhookAlertStoreHarness,
   WebhookAlertSubject,
 } from "./contracts/webhook-alert-store-contract.js";
+export { webhookRuleStoreContract } from "./contracts/webhook-rule-store-contract.js";
+export type { WebhookRuleStoreHarness } from "./contracts/webhook-rule-store-contract.js";
+export type { WebhookRuleStoreSubject } from "./contracts/webhook-rule-fixtures.js";
 export { cardCopyStoreContract } from "./contracts/card-copy-store-contract.js";
 export type { CardCopyStoreHarness, CardVersionKey } from "./contracts/card-copy-store-contract.js";
 export { noticeStoreContract } from "./contracts/notice-store-contract.js";
@@ -164,6 +167,10 @@ export { createMemoryIdempotencyStore } from "./fakes/memory-idempotency-store.j
 export { createMemoryInboxStore } from "./fakes/memory-inbox-store.js";
 export { createMemoryWebhookAlertStore } from "./fakes/memory-webhook-alert-store.js";
 export type { MemoryWebhookAlertStore } from "./fakes/memory-webhook-alert-store.js";
+export { createMemoryWebhookRuleStore } from "./fakes/memory-webhook-rule-store.js";
+export type { MemoryWebhookRuleStore } from "./fakes/memory-webhook-rule-store.js";
+export { createMemoryWebhookStores } from "./fakes/memory-webhook-stores.js";
+export type { MemoryWebhookStores } from "./fakes/memory-webhook-stores.js";
 export { createMemoryNoticeStore } from "./fakes/memory-notice-store.js";
 export { createMemoryOwnerStore } from "./fakes/memory-owner-store.js";
 export { createMemoryAliveStore } from "./fakes/memory-alive-store.js";

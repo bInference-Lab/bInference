@@ -27,6 +27,7 @@ import type { StoreHost } from "../tasks/store-host.js";
 import { createSqliteTransactionStore } from "../transactions/sqlite-transaction-store.js";
 import { createSqliteUnbondingStore } from "../unbondings/sqlite-unbonding-store.js";
 import { createSqliteWebhookAlertStore } from "../webhooks/sqlite-webhook-alert-store.js";
+import { createSqliteWebhookRuleStore } from "../webhooks/sqlite-webhook-rule-store.js";
 
 /**
  * Every engine store port on `engine.sqlite`, for the composition root: pass the handle that
@@ -61,5 +62,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     unbondings: createSqliteUnbondingStore(host),
     webhookAlerts: createSqliteWebhookAlertStore(host),
     identities: createSqliteIdentityStore(host),
+    webhookRules: createSqliteWebhookRuleStore(host),
   };
 }

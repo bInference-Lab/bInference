@@ -12,7 +12,8 @@ import {
 } from "../webhooks/webhook-alert.js";
 import { memoryCall } from "./memory-call.js";
 
-interface EventRow {
+/** One alert the in-memory store recorded. */
+export interface MemoryEventRow {
   readonly id: number;
   readonly draft: WebhookAlertDraft;
   readonly outcome: "accepted" | "repeat" | "rate";
@@ -22,9 +23,11 @@ interface EventRow {
 export interface MemoryWebhookAlertStore extends WebhookAlertStore {
   /** Stores a rule as its operations would, in place of one with the same id. */
   plant(rule: WebhookRuleKey): void;
+  /** The alerts it holds now, oldest first, which the rule store beside it reads. */
+  eventsNow(): readonly MemoryEventRow[];
 }
 
-function isRepeat(event: EventRow, draft: WebhookAlertDraft): boolean {
+function isRepeat(event: MemoryEventRow, draft: WebhookAlertDraft): boolean {
   return (
     event.draft.bodyHash === draft.bodyHash ||
     (draft.alertId !== undefined && event.draft.alertId === draft.alertId)
@@ -34,8 +37,8 @@ function isRepeat(event: EventRow, draft: WebhookAlertDraft): boolean {
 function outcomeOf(
   rule: WebhookRuleKey,
   draft: WebhookAlertDraft,
-  events: readonly EventRow[],
-): EventRow["outcome"] {
+  events: readonly MemoryEventRow[],
+): MemoryEventRow["outcome"] {
   const accepted = events.filter(
     (event) => event.draft.rule === draft.rule && event.outcome === "accepted",
   );
@@ -51,8 +54,8 @@ function outcomeOf(
 function rowOf(
   rule: WebhookRuleKey | undefined,
   draft: WebhookAlertDraft,
-  past: { readonly events: readonly EventRow[]; readonly id: number },
-): EventRow | undefined {
+  past: { readonly events: readonly MemoryEventRow[]; readonly id: number },
+): MemoryEventRow | undefined {
   if (
     rule === undefined ||
     rule.secretHash !== draft.secretHash ||
@@ -63,7 +66,7 @@ function rowOf(
   return { id: past.id, draft, outcome: outcomeOf(rule, draft, past.events) };
 }
 
-function takeOf(row: EventRow | undefined): WebhookTake {
+function takeOf(row: MemoryEventRow | undefined): WebhookTake {
   if (row === undefined) {
     return { kind: "gone" };
   }
@@ -80,7 +83,7 @@ export function createMemoryWebhookAlertStore(options: {
   readonly inbox: InboxStore;
 }): MemoryWebhookAlertStore {
   const rules = new Map<string, WebhookRuleKey>();
-  let events: readonly EventRow[] = [];
+  let events: readonly MemoryEventRow[] = [];
   let lastEvent = 0;
   const record = (draft: WebhookAlertDraft): WebhookTake => {
     const row = rowOf(rules.get(draft.rule), draft, { events, id: lastEvent + 1 });
@@ -94,6 +97,7 @@ export function createMemoryWebhookAlertStore(options: {
     plant(rule) {
       rules.set(rule.id, structuredClone(rule));
     },
+    eventsNow: () => events,
     findRule: async (id, call) =>
       memoryCall(call, () => {
         const rule = rules.get(id);

@@ -1,3 +1,4 @@
+import type { Id } from "@binference/core";
 import type { EngineStores } from "../records/engine-stores.js";
 import { createMemoryAccessStore } from "./memory-access-store.js";
 import { createMemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
@@ -26,7 +27,8 @@ import { createMemoryTrackedWalletStore } from "./memory-tracked-wallet-store.js
 import { createMemoryTracking } from "./memory-tracking.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
 import { createMemoryUnbondingStore } from "./memory-unbonding-store.js";
-import { createMemoryWebhookAlertStore } from "./memory-webhook-alert-store.js";
+import type { MemoryWebhookRuleStore } from "./memory-webhook-rule-store.js";
+import { createMemoryWebhookStores } from "./memory-webhook-stores.js";
 
 /**
  * Every engine store port, in memory, over one shared ledger that tests can also append to, with
@@ -38,6 +40,34 @@ export interface MemoryEngineStores extends EngineStores {
   readonly install: MemoryInstallStore;
   readonly intents: MemoryIntentStore;
   readonly orders: MemoryOrderStore;
+  readonly webhookRules: MemoryWebhookRuleStore;
+}
+
+// The stores that write into no other store's rows but the agents', the inbox and the tracking.
+function sideStores(parts: {
+  readonly agents: MemoryAgentStore;
+  readonly agentInbox: ReturnType<typeof createMemoryAgentInboxStore>;
+  readonly tracking: ReturnType<typeof createMemoryTracking>;
+}) {
+  const { agents, agentInbox, tracking } = parts;
+  return {
+    questions: createMemoryQuestionStore({ agentInbox }),
+    idempotency: createMemoryIdempotencyStore(),
+    access: createMemoryAccessStore(),
+    configJournal: createMemoryConfigJournal(),
+    transactions: createMemoryTransactionStore(),
+    notices: createMemoryNoticeStore({ agents }),
+    owners: createMemoryOwnerStore(),
+    cardCopies: createMemoryCardCopyStore(),
+    agentTopics: createMemoryAgentTopicStore(),
+    modelUsage: createMemoryModelUsageStore({ agents }),
+    schedules: createMemoryScheduleStore({ agents, agentInbox }),
+    alerts: createMemoryAlertStore({ agents, agentInbox, tracking }),
+    trackedWallets: createMemoryTrackedWalletStore(tracking),
+    launches: createMemoryLaunchStore(),
+    alive: createMemoryAliveStore(),
+    dailySummaries: createMemoryDailySummaryStore({ agents }),
+  };
 }
 
 /**
@@ -60,37 +90,33 @@ export function createMemoryEngineStores(): MemoryEngineStores {
     intentNow: (id) => intents.intentNow(id),
     tracking,
   });
-  const intents = createMemoryIntentStore({ ledger, agents, install, agentInbox, orders });
   const inbox = createMemoryInboxStore();
+  // A rule fill's move writes its alert and rule, and a move into `active` reads a confirmation.
+  const confirmation = (id: Id<"int">) => intents.confirmationNow(id);
+  const webhooks = createMemoryWebhookStores({ agents, install, inbox, confirmation });
+  const { webhookRules } = webhooks;
+  const intents = createMemoryIntentStore({
+    ledger,
+    agents,
+    install,
+    agentInbox,
+    orders,
+    webhookRules,
+  });
   return {
+    ...sideStores({ agents, agentInbox, tracking }),
     intents,
     orders,
     agentInbox,
-    questions: createMemoryQuestionStore({ agentInbox }),
     ledger,
-    idempotency: createMemoryIdempotencyStore(),
     inbox,
-    access: createMemoryAccessStore(),
     agents,
-    configJournal: createMemoryConfigJournal(),
-    transactions: createMemoryTransactionStore(),
     install,
-    notices: createMemoryNoticeStore({ agents }),
-    owners: createMemoryOwnerStore(),
-    cardCopies: createMemoryCardCopyStore(),
-    agentTopics: createMemoryAgentTopicStore(),
-    modelUsage: createMemoryModelUsageStore({ agents }),
-    schedules: createMemoryScheduleStore({ agents, agentInbox }),
-    alerts: createMemoryAlertStore({ agents, agentInbox, tracking }),
-    trackedWallets: createMemoryTrackedWalletStore(tracking),
-    launches: createMemoryLaunchStore(),
-    alive: createMemoryAliveStore(),
-    dailySummaries: createMemoryDailySummaryStore({ agents }),
     bridges: createMemoryBridgeStore({ hasIntent: (id) => intents.intentNow(id) !== undefined }),
     unbondings: createMemoryUnbondingStore({
       hasIntent: (id) => intents.intentNow(id) !== undefined,
     }),
-    webhookAlerts: createMemoryWebhookAlertStore({ inbox }),
+    ...webhooks,
     identities: createMemoryIdentityStore(intents),
   };
 }

@@ -19,10 +19,12 @@ import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { constraintFault, memoryCall } from "./memory-call.js";
 import { fillsInFlightOf, recordLandedLate } from "./memory-fill-landings.js";
+import { checkFillWrites, ordersOf, saveFillWrites } from "./memory-fill-writes.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentTables, type MemoryIntentTables } from "./memory-intent-tables.js";
 import type { MemoryLedgerStore } from "./memory-ledger-store.js";
 import type { MemoryOrderStore } from "./memory-order-store.js";
+import type { MemoryWebhookRuleStore } from "./memory-webhook-rule-store.js";
 
 /**
  * What an in-memory intent store writes its ledger entries to, the agents and the install a
@@ -35,6 +37,8 @@ export interface MemoryIntentStoreOptions {
   readonly install: MemoryInstallStore;
   /** The orders of the same database; a freeze that moves an order needs them. */
   readonly orders?: MemoryOrderStore;
+  /** The webhook rules of the same database; a rule fill's move writes its alert and rule. */
+  readonly webhookRules?: MemoryWebhookRuleStore;
   readonly agentInbox?: MemoryAgentInboxStore;
 }
 
@@ -152,10 +156,7 @@ function writeMove(
     cause: change.cause,
     atMs: change.atMs,
   });
-  if (change.order !== undefined && orders !== undefined) {
-    options.orders?.saveNow(orders);
-    options.orders?.saveFillNow(change.order.fill);
-  }
+  saveFillWrites(options, change, orders);
   return commitOf(tables, options, {
     intent,
     event,
@@ -173,14 +174,6 @@ function transition(
   return checked.ok ? ok(writeMove(tables, options, checked.value)) : checked;
 }
 
-// The order store beside this one, which a write that moves orders needs.
-function ordersOf(options: MemoryIntentStoreOptions): MemoryOrderStore {
-  if (options.orders === undefined) {
-    throw constraintFault("a write moves orders this store holds none of");
-  }
-  return options.orders;
-}
-
 // A move checked as it stands, with a fill's skip row, which lands with the freeze's cancel of its
 // intent (decision 0197).
 function checkedMove(
@@ -189,11 +182,11 @@ function checkedMove(
   change: IntentChange,
 ): Result<CheckedMove, "not_found" | "stale"> {
   const current = checkMove(tables, change);
-  if (!current.ok || change.order === undefined) {
-    return current.ok ? ok({ change, current: current.value }) : current;
+  if (!current.ok) {
+    return current;
   }
-  const fill = ordersOf(options).checkWriteNow(change.order);
-  return fill.ok ? ok({ change, current: current.value, orders: fill.value }) : fill;
+  const fills = checkFillWrites(options, change);
+  return fills.ok ? ok({ change, current: current.value, ...fills.value }) : fills;
 }
 
 // Every move is checked before the agents are marked, and nothing is written before both pass.

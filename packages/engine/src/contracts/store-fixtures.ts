@@ -8,6 +8,22 @@ export function live(): { readonly signal: AbortSignal } {
   return { signal: new AbortController().signal };
 }
 
+/** A store whose records each belong to the intent that carries their card. */
+export interface ReadsByIntent<RecordId, Stored> {
+  get(id: RecordId, call: { readonly signal: AbortSignal }): Promise<Stored | undefined>;
+  byIntent(intent: Id<"int">, call: { readonly signal: AbortSignal }): Promise<Stored | undefined>;
+}
+
+/** Checks that a store reads a new record back as `expected`, by its id and by its intent. */
+export async function assertReadBack<RecordId, Stored>(
+  store: ReadsByIntent<RecordId, Stored>,
+  keys: { readonly id: RecordId; readonly intentId: Id<"int"> },
+  expected: Stored,
+): Promise<void> {
+  assert.deepEqual(await store.get(keys.id, live()), expected);
+  assert.deepEqual(await store.byIntent(keys.intentId, live()), expected);
+}
+
 /** A valid id with the given prefix, the same for the same `n`. */
 export function fixtureId<P extends string>(prefix: P, n: number): Id<P> {
   return idSchema(prefix).parse(

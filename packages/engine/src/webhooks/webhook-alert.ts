@@ -64,6 +64,8 @@ export interface WebhookAlertDraft {
   readonly body: WebhookBody;
   readonly bodyHash: Sha256Hex;
   readonly receivedAtMs: number;
+  /** True when the engine was locked as the alert arrived: its fill then skips (decision 0336). */
+  readonly isEngineLocked?: true;
 }
 
 /** Parses an alert to record. */
@@ -74,6 +76,7 @@ export const webhookAlertDraftSchema: z.ZodType<WebhookAlertDraft> = z.strictObj
   body: webhookBodySchema,
   bodyHash: sha256HexSchema,
   receivedAtMs: epochMsSchema,
+  isEngineLocked: z.literal(true).exactOptional(),
 });
 
 /**
