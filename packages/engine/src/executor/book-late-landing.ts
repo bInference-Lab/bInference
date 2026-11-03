@@ -3,11 +3,14 @@ import type { Id } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import type { LateLanding } from "../intents/late-landing.js";
-import { announceOrder, fillOrderOf } from "../orders/fill-ends.js";
+import { announceOrder, fillOrderOf, fillRuleOf } from "../orders/fill-ends.js";
 import { landedFillWrite } from "../orders/fill-landed.js";
 import type { OrderFillWrite } from "../orders/order-fill.js";
 import { orderPush } from "../orders/order-view-of.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import type { AlertFillWrite } from "../webhooks/alert-fill-record.js";
+import { announceAlerts } from "../webhooks/end-alert.js";
+import { landedRuleFillWrite } from "../webhooks/rule-fill-landed.js";
 import { bridgeQuoteOf } from "./bridge-queue-check.js";
 import { type ExecutionRun, nextBlock, readSafely } from "./executor-run.js";
 import { departLateLanding } from "./reconcile-finalized.js";
@@ -117,9 +120,37 @@ async function lateFillWrite(
   return landedFillWrite(parts, call);
 }
 
-// Links the late landing, with an order's fill counted in the same write when the whole trade
-// landed; a write that lost a race to another of its order is tried again on a fresh read. A
-// second landing of one intent links and counts nothing more.
+// The alert write of a rule's live fill whose dropped step landed after all, the whole trade in
+// blocks: its alert `filled` over its drop's skip, counted on its rule, as its confirmed quote said
+// it would trade (decision 0342). `undefined` for any other intent, or a rule gone.
+async function lateRuleFillWrite(
+  run: ExecutionRun,
+  late: { readonly dropped: IntentSnapshot; readonly atMs: number },
+): Promise<AlertFillWrite | undefined> {
+  const { parts, signal } = run;
+  const { dropped, atMs } = late;
+  const fill = fillRuleOf(dropped);
+  const rule = fill === undefined ? undefined : await parts.rules.get(fill.rule, { signal });
+  const quote = dropped.record.quote;
+  if (fill === undefined || rule === undefined || quote === undefined) {
+    return undefined;
+  }
+  const { amountIn, minOut } = quoteDocument.decode(quote);
+  const settled = { amountIn, amountOut: minOut };
+  const landed = { intents: parts.stores.intents, prices: parts.prices, chains: parts.chains };
+  return landedRuleFillWrite(landed, {
+    rule,
+    event: fill.event,
+    snapshot: dropped,
+    settled,
+    atMs,
+    signal,
+  });
+}
+
+// Links the late landing, with an order's fill or a rule's alert counted in the same write when
+// the whole trade landed; a write that lost a race to another of its order or rule is tried again
+// on a fresh read. A second landing of one intent links and counts nothing more.
 async function linkLanding(
   run: ExecutionRun,
   late: {
@@ -131,12 +162,19 @@ async function linkLanding(
 ): Promise<void> {
   const { parts, signal } = run;
   const { dropped, landing, isWhole, left } = late;
-  const order = isWhole ? await lateFillWrite(run, { dropped, atMs: landing.atMs }) : undefined;
-  const write = order === undefined ? landing : { ...landing, order };
+  const landed = { dropped, atMs: landing.atMs };
+  const order = isWhole ? await lateFillWrite(run, landed) : undefined;
+  const alert = isWhole && order === undefined ? await lateRuleFillWrite(run, landed) : undefined;
+  const write = {
+    ...landing,
+    ...(order === undefined ? {} : { order }),
+    ...(alert === undefined ? {} : { alert }),
+  };
   const linked = await parts.stores.intents.recordLandedLate(write, { signal });
   const intentId = landing.intentId;
   if (linked.ok) {
     await announceCount(run, order === undefined ? { intentId } : { intentId, order });
+    await announceRuleCount(run, alert);
     return;
   }
   if (linked.error === "stale" && left > 1) {
@@ -167,11 +205,23 @@ async function announceCount(
   await announceOrder({ orders, clock, publish }, order.fill.orderId, signal);
 }
 
+// The owner hears a late rule fill counted on its alert.
+async function announceRuleCount(run: ExecutionRun, alert: AlertFillWrite | undefined) {
+  if (alert === undefined) {
+    return;
+  }
+  const { parts, signal } = run;
+  const { rules, clock, publish } = parts;
+  const ended = await rules.alert(alert.event, { signal });
+  parts.log.info("executor.landed_late_counted", { intentId: alert.intentId ?? "" });
+  await announceAlerts({ rules, clock, publish }, ended === undefined ? [] : [ended], signal);
+}
+
 /**
  * Books a dropped step that landed after all (decision 0147). Its receipt is recorded, and a late
  * landing linked to the intent, which stays `failed_onchain`, makes the rolling 24-hour cap count
  * the intent again at once. An order's fill whose whole trade is in blocks counts on its order in
- * that same write, once (decision 0211). Once every step of the plan is in a block and those
+ * that same write, once (decision 0211), and a rule's fill on its alert and rule (decision 0342). Once every step of the plan is in a block and those
  * blocks are final, the trade goes into the positions and realized P&L as a reconciliation books
  * it, and a send's, a revoke's or a bridge's as its departures, a bridge's with a reverted deposit
  * as its gas alone; a trade whose steps did not all land, or whose

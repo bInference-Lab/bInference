@@ -1,11 +1,14 @@
-import { createFakeVenue } from "@binference/chain/testing";
+import type { ReceiptReader } from "@binference/chain";
+import { createFakeVenue, type FakeNetwork } from "@binference/chain/testing";
 import { type Bps, bpsPerWhole, type Ratio } from "@binference/core";
 import type { FillSize, WebhookRuleRequest } from "@binference/protocol";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
+import { flush } from "../executor/test-executor.js";
+import { inFlightStates } from "../intents/fills-in-flight.js";
 import { quoteDocument, requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { testLimits, testToken } from "../intents/test-intents.js";
+import { testCoin, testLimits, testToken } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import { testCall } from "../operations/test-engine.js";
 import {
@@ -15,6 +18,7 @@ import {
   startFillEngine,
   wholeToken,
 } from "../orders/test-fills.js";
+import { liveFillsOf, startLiveFills } from "../orders/test-live-fills.js";
 import { freeze, tapCard } from "../orders/test-orders.js";
 import type { AlertFillRecord } from "./alert-fill-record.js";
 import { webhookFillWindowMs } from "./fill-alert.js";
@@ -354,5 +358,128 @@ describe("a webhook rule's fills, for every rule, holding, price, deny list and 
     await test.engine.fillWebhookAlerts(live);
     expect(await fillIntentsOf(test)).toMatchObject([{ state: "paper_filled" }]);
     expect(await runViolations(item)).toStrictEqual([]);
+  });
+});
+
+/** One step of a live rule's day: an alert after a gap, or a block, which settles what was sent. */
+type LiveStep = { readonly kind: "alert"; readonly gapMs: number } | { readonly kind: "block" };
+
+/** A live rule's day: its steps, and whether each transaction a block holds reverts, in order. */
+interface LiveCase {
+  readonly steps: readonly LiveStep[];
+  readonly reverts: readonly boolean[];
+}
+
+const liveCases: fc.Arbitrary<LiveCase> = fc.record({
+  steps: fc.array(
+    fc.oneof(
+      {
+        weight: 2,
+        arbitrary: fc.record({
+          kind: fc.constant("alert" as const),
+          gapMs: fc.integer({ min: 1_000, max: 70_000 }),
+        }),
+      },
+      { weight: 3, arbitrary: fc.constant({ kind: "block" as const }) },
+    ),
+    { minLength: 20, maxLength: 80 },
+  ),
+  // Most transactions revert, so many days reach a rule's fifth failure since its last fill.
+  reverts: fc.array(
+    fc.oneof(
+      { weight: 4, arbitrary: fc.constant(true) },
+      { weight: 1, arbitrary: fc.constant(false) },
+    ),
+    { minLength: 12, maxLength: 12 },
+  ),
+});
+
+// Receipts whose status follows the case: the nth transaction read reverts as `reverts[n]` says,
+// and every one after the list succeeds.
+function receiptsOf(reverts: readonly boolean[]) {
+  const seen = new Map<string, boolean>();
+  return (network: FakeNetwork): ReceiptReader => ({
+    ...network,
+    receipt: async (chain, hash, call) => {
+      const receipt = await network.receipt(chain, hash, call);
+      if (receipt === undefined) {
+        return undefined;
+      }
+      const reverted = seen.get(hash) ?? reverts[seen.size] === true;
+      seen.set(hash, reverted);
+      return reverted ? { ...receipt, status: "reverted" } : receipt;
+    },
+  });
+}
+
+// What breaks a live rule's line in its fill ends, oldest first: a fill after the fifth failure
+// since its last fill, or a rule that lived past it, or one that ended before it.
+function lineViolations(
+  ends: readonly AlertFillRecord[],
+  rule: WebhookRuleRecord,
+): readonly string[] {
+  // A page of a rule's fills holds fills and failures alone, so each end's failures in a row are
+  // the ends since the last fill.
+  const inRows = ends.map((_, index) => {
+    const lastFill = ends.slice(0, index + 1).findLastIndex(({ outcome }) => outcome === "filled");
+    return index - lastFill;
+  });
+  const stoppedAt = inRows.findIndex((inRow) => inRow >= 5);
+  const isStopped = stoppedAt !== -1;
+  return [
+    !isStopped || stoppedAt === ends.length - 1
+      ? ""
+      : "a fill ended after the rule's fifth failure",
+    isStopped === (rule.state === "deleted")
+      ? ""
+      : "the rule's end does not follow its fifth failure",
+  ].filter((text) => text !== "");
+}
+
+// Runs a live rule's day, and answers what broke: two live fills of the agent at once, or a line
+// that did not stop at the fifth failure since its last fill.
+async function liveViolations(item: LiveCase): Promise<readonly string[]> {
+  const bench = await startLiveFills({ receipts: receiptsOf(item.reverts) });
+  const created = await createdRule(bench.test, liveRule);
+  await tapCard(bench.test, created.intent, "confirm");
+  const atOnce = await item.steps.reduce<Promise<number>>(async (done, step, index) => {
+    const most = await done;
+    if (step.kind === "block") {
+      bench.network.mine();
+      await bench.test.clock.advance(1_000);
+    } else {
+      await bench.test.clock.advance(step.gapMs);
+      await alertTo(bench.test, created.url, `alert ${String(index)}`);
+      await bench.test.engine.fillWebhookAlerts(live);
+    }
+    await flush();
+    const held = await liveFillsOf(bench);
+    return Math.max(most, held.filter(({ state }) => inFlightStates.includes(state)).length);
+  }, Promise.resolve(0));
+  const rule = await bench.test.stores.webhookRules.get(created.rule, live);
+  const query = { ruleId: created.rule, limit: 100, onlyFills: true };
+  const ends = await bench.test.stores.webhookRules.alerts(query, live);
+  return [
+    atOnce <= 1 ? "" : "two live fills of the agent at once",
+    ...(rule === undefined ? ["the rule is gone"] : lineViolations(ends.toReversed(), rule)),
+  ].filter((text) => text !== "");
+}
+
+// A live rule that buys the test token with 0.001 of the coin on each alert, 60 a minute.
+const liveRule = testRuleRequest({
+  side: "buy",
+  spend: testCoin,
+  size: { base: 10n ** 15n },
+  ratePerMinute: 60,
+});
+
+describe("a live webhook rule's line, for every run of alerts, blocks and failures", () => {
+  it("holds one live fill of its agent at a time and stops at its fifth failure since its last fill", async () => {
+    await fc.assert(
+      fc.asyncProperty(liveCases, async (item) => {
+        expect(await liveViolations(item)).toStrictEqual([]);
+      }),
+      { numRuns: 25 },
+    );
   });
 });

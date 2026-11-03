@@ -26,8 +26,9 @@ import { swapSubjectOf } from "../money-path/swap-trade.js";
 import type { OrderFillReason } from "../orders/order-fill.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck, PolicyVerdict } from "../policy/check-policy.js";
-import type { IntentStore } from "../ports.js";
+import type { AgentStore, IntentStore } from "../ports.js";
 import type { StakingHost } from "../venues/staking-host.js";
+import type { WebhookRuleStore } from "../webhooks/ports.js";
 import { bridgeQuoteOf, bridgeTargetsOf, type ExecutorBridging } from "./bridge-queue-check.js";
 import { declaredTargetsOf } from "./declared-calls.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
@@ -67,6 +68,10 @@ export interface QueueCheckParts extends ResolveOptions, LaunchTargetParts {
   readonly intents: IntentStore;
   /** The auto orders, whose fill grants a live fill signs under (decision 0210). */
   readonly orders: Pick<OrderStore, "get">;
+  /** The webhook rules, whose fill grants a live rule fill signs under (decision 0342). */
+  readonly rules: Pick<WebhookRuleStore, "get">;
+  /** The agents, whose freeze pauses a rule's live fill (decision 0342). */
+  readonly agents: Pick<AgentStore, "get">;
   /** Whether live order fills may sign; off, the queue ends each one (decision 0211). */
   readonly liveFills: boolean;
   readonly policy: PolicyCheck;

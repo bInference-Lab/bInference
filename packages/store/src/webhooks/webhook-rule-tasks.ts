@@ -1,4 +1,5 @@
 import { type Id, idSchema, ok, type Result } from "@binference/core";
+import { failureReasons } from "@binference/engine";
 import {
   type AlertAnnouncement,
   alertAnnouncementSchema,
@@ -40,6 +41,7 @@ import {
   checkAlertEnd,
   checkRuleMove,
   createRule,
+  isUnvaluedFill,
   writeAlertEnd,
   writeRuleMove,
 } from "./webhook-rule-writes.js";
@@ -148,6 +150,14 @@ export const alertsTask: StoreTask<AlertFillQuery, readonly AlertFillRecord[]> =
         .selectAll()
         .where("rule_id", "=", query.ruleId)
         .where("outcome", "=", "accepted")
+        .$if(query.onlyFills === true, (fills) =>
+          fills.where((eb) =>
+            eb.or([
+              eb("fill_outcome", "=", "filled"),
+              eb("fill_reason", "in", [...failureReasons]),
+            ]),
+          ),
+        )
         .orderBy("id", "desc")
         .limit(query.limit),
     ).rows;
@@ -173,17 +183,21 @@ export const eventsTask: StoreTask<WebhookEventQuery, readonly WebhookEventRecor
   },
 });
 
-/** Ends an accepted alert as a skip, with its rule's move, in one transaction. */
+/**
+ * Ends an accepted alert as a skip, with its rule's move, in one transaction; or as the count of a
+ * live fill at `finalized` its reconciliation could not value, on its rule or a deleted one
+ * (decision 0342).
+ */
 export const endAlertTask: StoreTask<
   AlertFillWrite,
-  Result<AlertFillRecord, "ended" | "not_found" | "stale">
+  Result<AlertFillRecord, "ended" | "not_found" | "stale" | "held">
 > = defineTask({
   name: "webhookRules.endAlert",
   access: "write",
   input: alertFillWriteSchema,
-  output: resultSchema(alertFillRecordSchema, ["ended", "not_found", "stale"]),
+  output: resultSchema(alertFillRecordSchema, ["ended", "not_found", "stale", "held"]),
   run(database, write) {
-    if (write.outcome !== "skipped") {
+    if (write.outcome !== "skipped" && !isUnvaluedFill(database, write)) {
       throw refused("A fill ends its alert with its intent's move.", {});
     }
     const checked = checkAlertEnd(database, write);

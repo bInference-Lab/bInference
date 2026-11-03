@@ -616,13 +616,15 @@ Webhook rules follow [decision 0299](../DECISIONS.md#d0299):
   card's timer or a freeze ends it as `deleted`. Its URL is `<webhook base>/hook/<rule>/<secret>`,
   the base `remote/status`'s `webhookUrl`, else the loopback listener's.
 - It refuses, storing nothing, what `order/create` refuses for a buy or sell order of the same
-  token (section 7.5, auto orders), `order.live_fills_off` for a live agent while live webhook
-  fills are off, which they are until a later release builds them: a rule fills on paper only,
-  in the mode its agent had when it was made ([decisions 0337](../DECISIONS.md#d0337) and
-  [0338](../DECISIONS.md#d0338)), `protocol.bad_args` for a rate outside 1 to 60 or a `name` that is empty or too
-  long, and `webhook.too_many` for an agent's 21st rule active or awaiting its card.
+  token (section 7.5, auto orders), `order.live_fills_off` for a live agent while live fills
+  are off, which they are in every install until the second step of turning them on: a rule
+  fills in the mode its agent had when it was made ([decisions 0337](../DECISIONS.md#d0337) and
+  [0342](../DECISIONS.md#d0342)), `protocol.bad_args` for a rate outside 1 to 60 or a `name`
+  that is empty or too long, and `webhook.too_many` for an agent's 21st rule active or awaiting
+  its card.
 - Each accepted alert becomes a fill intent authorized by the rule
-  (`authorizedBy: { webhookRule, event, alertId? }`, keyed on the alert's `webhook_events` row,
+  (`authorizedBy: { webhookRule, event, alertId?, fillsBefore, termsHash? }`, keyed on the
+  alert's `webhook_events` row,
   [decision 0338](../DECISIONS.md#d0338)), through the fill path of an auto order (spec 6,
   section 5). `webhookRule/delete` and `webhookRule/rotateUrl` of a rule that is not active or
   awaiting its card fail `webhook.not_found`; a rotation answers the new URL once, and the old

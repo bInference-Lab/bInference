@@ -93,7 +93,8 @@ export function createMemoryEngineStores(): MemoryEngineStores {
   const inbox = createMemoryInboxStore();
   // A rule fill's move writes its alert and rule, and a move into `active` reads a confirmation.
   const confirmation = (id: Id<"int">) => intents.confirmationNow(id);
-  const webhooks = createMemoryWebhookStores({ agents, install, inbox, confirmation });
+  const intentsNow = () => intents.intentsNow();
+  const webhooks = createMemoryWebhookStores({ agents, install, inbox, confirmation, intentsNow });
   const { webhookRules } = webhooks;
   const intents = createMemoryIntentStore({
     ledger,

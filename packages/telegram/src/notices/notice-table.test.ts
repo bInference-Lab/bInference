@@ -125,6 +125,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.webhookHeld":
     'main · Alert rule "BNB breakout": 12 more fills or skips this hour, see the console',
   "notice.webhookSkipped": `${warning} Alert rule "BNB breakout" skipped an alert: it could not start within a minute of its time, so it is not made up later. The rule stays active.`,
+  "notice.webhookRuleCancelled": `${warning} Alert rule "BNB breakout" ended: you withdrew its fill before it was sent, and nothing was traded. The rule is deleted, so its URL takes no more alerts.`,
+  "notice.webhookRuleFailing": `${warning} Alert rule "BNB breakout" ended: its last 5 fills failed on chain. The rule is deleted, so its URL takes no more alerts. Check the token, and make a new rule if you still want one.`,
   "notice.ordersEnded": "Take-profit sold all your PEPE, so your 2 other exit orders on it ended",
   "notice.exitEnded": "Trailing stop on PEPE ended: the wallet holds none of it any more",
 };

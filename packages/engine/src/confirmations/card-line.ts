@@ -79,6 +79,7 @@ export const cardKeys = [
   "card.webhookRule.sell",
   "card.webhookRule.limits",
   "card.webhookRule.url",
+  "card.webhookRule.live",
   "card.webhookRule.paper",
   "card.webhookRule.slippage",
   "order.kind",

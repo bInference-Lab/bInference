@@ -1,5 +1,5 @@
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
-import { fillOrderOf } from "../orders/fill-ends.js";
+import { isLiveFill } from "../orders/fill-ends.js";
 import { holdingStates, inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
@@ -167,8 +167,9 @@ async function endUnsentAfterReset(
 // landed, and no reset of its approval was stored, which only a lapsed grant makes.
 function goesOnWithFill(run: ExecutionRun, walk: Walk): boolean {
   const { snapshot, steps, index } = walk;
-  const isLiveFill = !snapshot.record.isPaper && fillOrderOf(snapshot) !== undefined;
-  return isLiveFill && index > 0 && !steps.has(index) && !steps.has(run.plan.steps.length);
+  return (
+    isLiveFill(snapshot) && index > 0 && !steps.has(index) && !steps.has(run.plan.steps.length)
+  );
 }
 
 // A live fill's later steps go on under its grant, as its first run would have (decision 0211);

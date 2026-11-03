@@ -15,6 +15,7 @@ import type { WebhookEventsTable, WebhookRulesTable } from "../databases/webhook
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { isAgentFrozen } from "../orders/order-writes.js";
 import { jsonText } from "../rows/column-values.js";
+import { isHeldFromSkip, namesOwnFill } from "./alert-fill-guards.js";
 import { acceptedRow, refused, ruleRow, ruleRowOf, toRuleRecord } from "./webhook-rule-rows.js";
 
 /**
@@ -169,6 +170,27 @@ export function isRuleDeleted(database: DatabaseSync, event: number): boolean {
   return row !== undefined && ruleRow(database, row.rule_id)?.state === "deleted";
 }
 
+/**
+ * Whether an alert's end written alone is the count of a live fill its reconciliation could not
+ * value (decision 0342): a fill naming this alert's own live fill at `finalized`, counted on its
+ * rule or on a deleted one.
+ */
+export function isUnvaluedFill(database: DatabaseSync, write: AlertFillWrite): boolean {
+  if (
+    write.outcome !== "filled" ||
+    write.intentId === undefined ||
+    !namesOwnFill(database, write)
+  ) {
+    return false;
+  }
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const intent = takeFirst(
+    kysely.selectFrom("intents").select(["paper", "state"]).where("id", "=", write.intentId),
+  );
+  const counts = write.move !== undefined || isRuleDeleted(database, write.event);
+  return intent?.paper === 0 && intent.state === "finalized" && counts;
+}
+
 // Whether a late landing turns the `stuck_dropped` skip its own drop wrote into the fill it was
 // (decision 0342).
 function isOwnDrop(row: Selectable<WebhookEventsTable>, intent: string | undefined): boolean {
@@ -182,14 +204,16 @@ function isOwnDrop(row: Selectable<WebhookEventsTable>, intent: string | undefin
 
 /**
  * Checks an alert's end before anything is written: an alert that is no accepted alert is
- * `not_found`, one that ended `ended`, but a fill over the drop of `overDropOf`, a late landing's,
- * and its rule's move that would not land `stale`. A move of another rule than the alert's throws.
+ * `not_found`, one that ended `ended`, but a fill over the drop of `overDropOf`, a late landing's;
+ * a skip of an alert whose live fill the executor holds, by any but that fill, `held` (decision
+ * 0342); and its rule's move that would not land `stale`. A move of another rule than the alert's
+ * throws.
  */
 export function checkAlertEnd(
   database: DatabaseSync,
   write: AlertFillWrite,
   options: { readonly overDropOf?: string } = {},
-): Result<undefined, "ended" | "not_found" | "stale"> {
+): Result<undefined, "ended" | "not_found" | "stale" | "held"> {
   const row = acceptedRow(database, write.event);
   if (row === undefined) {
     return err("not_found");
@@ -197,6 +221,9 @@ export function checkAlertEnd(
   const reopens = write.outcome === "filled" && isOwnDrop(row, options.overDropOf);
   if (row.fill_outcome !== null && !reopens) {
     return err("ended");
+  }
+  if (isHeldFromSkip(database, { row, write })) {
+    return err("held");
   }
   if (write.move === undefined) {
     return ok(undefined);

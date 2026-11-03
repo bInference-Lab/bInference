@@ -20,7 +20,9 @@ const chainFailures: ReadonlySet<string> = new Set<string>(failureReasons);
  * reverted, cancelled or dropped while stuck, its nonce taken, or a step never sent after an
  * earlier one landed.
  */
-export function chainFailuresInRow(rows: readonly OrderFillRecord[]): number {
+export function chainFailuresInRow(
+  rows: readonly Partial<Pick<OrderFillRecord, "outcome" | "reason">>[],
+): number {
   const filled = rows.findIndex(({ outcome }) => outcome === "filled");
   const since = filled === -1 ? rows : rows.slice(0, filled);
   return since.filter(({ reason }) => reason !== undefined && chainFailures.has(reason)).length;
@@ -35,6 +37,16 @@ function waitAfter(skips: number): number {
 function skipsInRow(rows: readonly OrderFillRecord[]): number {
   const filled = rows.findIndex(({ outcome }) => outcome === "filled");
   return filled === -1 ? rows.length : filled;
+}
+
+/**
+ * How long after its last failure a source whose fills failed on chain `failures` times since its
+ * last fill waits (decision 0211): none until the second, then 15 seconds, doubling up to 5
+ * minutes.
+ */
+export function waitAfterFailures(failures: number): number {
+  const skips = failures - backOffAfterFailures + 1;
+  return skips > 0 ? waitAfter(skips) : 0;
 }
 
 /**

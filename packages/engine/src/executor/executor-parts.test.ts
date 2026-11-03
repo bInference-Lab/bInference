@@ -67,6 +67,8 @@ function checkPartsOf(
     chains,
     intents: bench.test.stores.intents,
     orders: bench.test.stores.orders,
+    rules: bench.test.stores.webhookRules,
+    agents: bench.test.stores.agents,
     liveFills: false,
     policy: createPolicyCheck({
       prices: createFakePriceSource(

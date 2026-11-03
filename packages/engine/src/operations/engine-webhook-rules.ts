@@ -50,6 +50,7 @@ function webhookRulePartsOf(options: EngineOptions, orders: OrderParts): Webhook
     isLocked,
     expireCard,
     webhookBase: options.webhookBase ?? (async () => Promise.resolve(loopbackWebhookBase)),
+    liveFills: options.liveOrderFills === true,
     ...(orders.launches === undefined ? {} : { launches: orders.launches }),
   };
 }
@@ -97,6 +98,7 @@ export function webhookFillsOf(
     clock,
     publish,
     isLocked,
+    liveFills: options.liveOrderFills === true,
     inLine: async (agent, work) => fills.inLine(agent, work),
   });
 }

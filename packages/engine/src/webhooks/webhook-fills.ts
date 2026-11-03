@@ -11,7 +11,7 @@ import type { FillSizeParts } from "../orders/fill-request.js";
 import type { AgentStore, IntentStore } from "../ports.js";
 import type { AlertFillRecord } from "./alert-fill-record.js";
 import { type AlertEndParts, announceAlerts, endAlertSkipped } from "./end-alert.js";
-import { fillAlert } from "./fill-alert.js";
+import { fillAlert, isLeftToItsFill } from "./fill-alert.js";
 import { webhookInboxPrefix } from "./webhook-alert.js";
 import type { WebhookRuleRecord } from "./webhook-rule-record.js";
 
@@ -28,14 +28,19 @@ export interface WebhookFills {
 export interface WebhookFillParts extends FillSizeParts, FillCheckParts, AlertEndParts {
   readonly inbox: Pick<InboxStore, "unhandled" | "markHandled">;
   readonly agents: Pick<AgentStore, "get">;
-  /** Each rule card's confirmation, which a fill's terms hash binds (decision 0342). */
-  readonly intents: Pick<IntentStore, "confirmation">;
+  /**
+   * Each rule card's confirmation, which a fill's terms hash binds, and the live fills that hold
+   * an agent's line (decision 0342).
+   */
+  readonly intents: Pick<IntentStore, "confirmation" | "fillsInFlight" | "get">;
   readonly stored: StoredIntents;
   readonly moneyPath: MoneyPath;
   /** The rolling cap, whose use a skip for it tells. */
   readonly gate: Pick<CapGate, "spent">;
   /** Whether the engine is locked: a locked engine fills no alert (decision 0336). */
   readonly isLocked: () => boolean;
+  /** Whether a live rule's alert may fill; off, each is skipped `live_fills_off` (decision 0342). */
+  readonly liveFills: boolean;
   /** Runs one fill in its agent's one line of fills, which the auto orders' fills share. */
   readonly inLine: <T>(agent: Id<"agt">, run: () => Promise<T>) => Promise<T>;
 }
@@ -91,7 +96,10 @@ const agentsAtOnce = 4;
 interface EntryFailures {
   /** Marks an entry handled, and forgets its failures. */
   handled(entry: InboxEntry, signal: AbortSignal): Promise<void>;
-  /** Counts a failed run of an entry; its last ends its alert `fill_failed` and handles it. */
+  /**
+   * Counts a failed run of an entry; its last ends its alert `fill_failed`, unless its own live
+   * fill holds it, and handles it.
+   */
   failed(taken: TakenEntry, signal: AbortSignal): Promise<void>;
 }
 
@@ -105,7 +113,7 @@ function createEntryFailures(parts: WebhookFillParts): EntryFailures {
   };
   return {
     handled,
-    async failed({ entry, alert }, signal) {
+    async failed({ entry, alert, rule }, signal) {
       if (counts.size > pageSize * entryTries) {
         counts.clear();
       }
@@ -114,7 +122,8 @@ function createEntryFailures(parts: WebhookFillParts): EntryFailures {
         counts.set(entry.id, count);
         return;
       }
-      if (alert !== undefined) {
+      // An alert its own live fill holds is the executor's to end (decision 0342).
+      if (alert !== undefined && !(await isLeftToItsFill(parts, { rule, alert, signal }))) {
         const skip = { event: alert.event, reason: "fill_failed" as const, tells: true };
         await endAlertSkipped(parts, { ruleId: alert.ruleId, skip, signal });
       }

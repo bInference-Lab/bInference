@@ -18,6 +18,7 @@ import { orderPush } from "../orders/order-view-of.js";
 import type { AgentStore, ConfirmationStore, IntentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { intentPushes } from "../pushes/intent-pushes.js";
+import type { AlertFillWrite } from "../webhooks/alert-fill-record.js";
 import type { StoredConfirmation } from "./confirmation-record.js";
 import type { FreezeCommit, FreezeWrite } from "./freeze-write.js";
 import { changeOf, type IntentMove } from "./intent-change-of.js";
@@ -111,6 +112,15 @@ export interface StoredIntentsOptions {
     move: IntentMove,
     options: { readonly signal: AbortSignal },
   ) => Promise<OrderFillWrite | undefined>;
+  /**
+   * The write on its alert of a move that ends a live webhook rule fill, which lands with the move
+   * (decision 0342); a move carries none when absent.
+   */
+  readonly ruleFillEnd?: (
+    before: IntentSnapshot,
+    move: IntentMove,
+    options: { readonly signal: AbortSignal },
+  ) => Promise<AlertFillWrite | undefined>;
 }
 
 // A write's pushes and those of the orders a fill moved, then the settle message it stored, if any.
@@ -213,15 +223,24 @@ async function changeFor(
     return undefined;
   }
   const { record, history } = before;
-  const { ids, random, fillEnd } = options;
-  const order = await fillEnd?.(before, move, { signal });
-  const withOrder = order === undefined ? move : { ...move, order };
-  return changeOf(withOrder, {
-    record,
-    history,
-    ids,
-    ...(random === undefined ? {} : { random }),
-  });
+  const { ids, random, fillEnd, ruleFillEnd } = options;
+  const [order, alert] = await Promise.all([
+    fillEnd?.(before, move, { signal }),
+    ruleFillEnd?.(before, move, { signal }),
+  ]);
+  const ends = {
+    ...(order === undefined ? {} : { order }),
+    ...(alert === undefined ? {} : { alert }),
+  };
+  return changeOf(
+    { ...move, ...ends },
+    {
+      record,
+      history,
+      ids,
+      ...(random === undefined ? {} : { random }),
+    },
+  );
 }
 
 async function moveIntent(

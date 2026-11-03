@@ -3,7 +3,7 @@ import { err, ok, type Result } from "@binference/core";
 import type { LaunchReadFailure } from "../intents/intent-reason.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { ExecutionRun } from "./executor-run.js";
-import { fillGrantHolds, orderNowFor } from "./fill-terms.js";
+import { fillGrantHolds, sourceNowFor } from "./fill-terms.js";
 import { launchTargetsOf } from "./launch-targets.js";
 import type { SigningTerms } from "./queue-check.js";
 import { isRescueAddressInEffect } from "./rescue-queue-check.js";
@@ -38,20 +38,21 @@ async function autoTermsNow(
   return held.ok ? { ...terms, authorization: { ...authorization, current } } : undefined;
 }
 
-// A fill grant holds while its order, read now, is still active as the owner confirmed it and
-// recorded no fill since the grant (decision 0210); a later step also while a freeze pauses it
-// (decision 0211).
+// A fill grant holds while its order or rule, read now, is still active as the owner confirmed it
+// and recorded no fill since the grant (decisions 0210 and 0342); a later step also while a freeze
+// pauses it (decision 0211).
 async function fillTermsNow(
   run: ExecutionRun,
   terms: SigningTerms,
-  stepIndex: number,
+  signing: { readonly record: IntentRecord; readonly stepIndex: number },
 ): Promise<SigningTerms | undefined> {
   const { authorization } = terms;
   if (authorization.kind !== "fill") {
     return terms;
   }
   const { parts, signal } = run;
-  const current = await orderNowFor(parts, authorization.grant, signal);
+  const { stepIndex } = signing;
+  const current = await sourceNowFor(parts, signing.record, signal);
   const held =
     current === undefined
       ? undefined
@@ -118,7 +119,7 @@ export async function termsNow(
     return run.parts.clock.now() < authorization.expiresAtMs ? terms : undefined;
   }
   return authorization.kind === "fill"
-    ? fillTermsNow(run, terms, signing.index ?? 0)
+    ? fillTermsNow(run, terms, { record: signing.record, stepIndex: signing.index ?? 0 })
     : autoTermsNow(run, terms, signing.record);
 }
 

@@ -8,9 +8,10 @@ import {
   type FillSourceNow,
   type SignAuthorization,
 } from "@binference/chain";
-import { type Clock, isId } from "@binference/core";
+import type { Clock } from "@binference/core";
+import type { OrderAuthorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
-import { quoteDocument } from "../intents/intent-documents.schema.js";
+import { authorizationDocument, quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { fillTermsHash } from "../orders/fill-terms-hash.js";
@@ -18,22 +19,22 @@ import type { OrderFillReason } from "../orders/order-fill.js";
 import type { OrderRecord } from "../orders/order-record.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { IntentStore } from "../ports.js";
+import {
+  ruleBindingOf,
+  type RuleFillTermsParts,
+  ruleNowFor,
+  type SourceBinding,
+} from "./rule-fill-terms.js";
 
-/** What a fill's terms read: its order, the order's confirmation, the chains and the time. */
-export interface FillTermsParts {
+/**
+ * What a fill's terms read: its order or rule, the source's confirmation, whether a rule's agent
+ * is frozen, the chains and the time.
+ */
+export interface FillTermsParts extends RuleFillTermsParts {
   readonly chains: ChainRegistry;
   readonly orders: Pick<OrderStore, "get">;
   readonly intents: Pick<IntentStore, "confirmation">;
   readonly clock: Clock;
-}
-
-/** What binds a fill to its order: the order, its confirmed terms and its fills before the fill. */
-interface FillBinding {
-  readonly order: OrderRecord;
-  readonly orderTermsHash: string;
-  readonly fillsBefore: number;
-  /** The fill's terms hash, as its confirmation stored it and its record hashes again. */
-  readonly termsHash: string;
 }
 
 // What a fill spends and the most of it, its confirmed quote's input: the chain's coin, or a token
@@ -63,44 +64,58 @@ function orderNowOf(order: OrderRecord, orderTermsHash: string): FillSourceNow {
   };
 }
 
-// The order a live fill fills, with the terms hash of its confirmed card; `undefined` when the
-// intent is no live order fill, names no fills before it, or its order or card is gone.
+// The order of a live order fill, with the terms hash of its confirmed card; `undefined` when it
+// names no fills before it, or its order or card is gone.
+async function orderBindingOf(
+  parts: FillTermsParts,
+  call: {
+    readonly snapshot: IntentSnapshot;
+    readonly fill: OrderAuthorization;
+    readonly signal: AbortSignal;
+  },
+): Promise<SourceBinding | undefined> {
+  const { snapshot, fill, signal } = call;
+  const order = await parts.orders.get(fill.order, { signal });
+  const card =
+    order === undefined ? undefined : await parts.intents.confirmation(order.intentId, { signal });
+  const { fillsBefore } = fill;
+  if (order === undefined || card === undefined || fillsBefore === undefined) {
+    return undefined;
+  }
+  const sourceTermsHash = card.termsHash;
+  const binding = { order: order.id, orderTermsHash: sourceTermsHash, fillsBefore };
+  // The fill as it reads now hashes to what its confirmation stored, or nothing signs it.
+  const termsHash = fillTermsHash(snapshot.record, binding);
+  return termsHash === fill.termsHash
+    ? { current: orderNowOf(order, sourceTermsHash), sourceTermsHash, fillsBefore, termsHash }
+    : undefined;
+}
+
+// The order or rule a live fill fills, with the terms hash of its confirmed card; `undefined` when
+// the intent is no live fill, or its source no longer binds it.
 async function bindingOf(
   parts: FillTermsParts,
   snapshot: IntentSnapshot,
   signal: AbortSignal,
-): Promise<FillBinding | undefined> {
+): Promise<SourceBinding | undefined> {
   const { authorizedBy } = snapshot.stored.status;
   const { record } = snapshot;
-  if (
-    record.isPaper ||
-    authorizedBy === undefined ||
-    !("order" in authorizedBy) ||
-    authorizedBy.fillsBefore === undefined ||
-    record.quote === undefined
-  ) {
+  if (record.isPaper || authorizedBy === undefined || record.quote === undefined) {
     return undefined;
   }
-  const order = await parts.orders.get(authorizedBy.order, { signal });
-  const card =
-    order === undefined ? undefined : await parts.intents.confirmation(order.intentId, { signal });
-  if (order === undefined || card === undefined) {
-    return undefined;
+  if ("order" in authorizedBy) {
+    return orderBindingOf(parts, { snapshot, fill: authorizedBy, signal });
   }
-  const { fillsBefore } = authorizedBy;
-  const binding = { order: order.id, orderTermsHash: card.termsHash, fillsBefore };
-  // The fill as it reads now hashes to what its confirmation stored, or nothing signs it.
-  const termsHash = fillTermsHash(snapshot.record, binding);
-  return termsHash === authorizedBy.termsHash
-    ? { order, orderTermsHash: card.termsHash, fillsBefore, termsHash }
+  return "webhookRule" in authorizedBy
+    ? ruleBindingOf(parts, { snapshot, fill: authorizedBy, signal })
     : undefined;
 }
 
 /**
- * The fill grant of a confirmed live fill (decision 0210): granted when the fill moved to
- * `confirmed`, for a trade card's lifetime, up to the chain's network fee cap, for at most what
- * its confirmed quote spends, bound to its order's confirmed terms and the fills its order had
- * before it. `undefined` for any other intent.
+ * The fill grant of a confirmed live fill of an order or a rule (decisions 0210 and 0342): granted
+ * when the fill moved to `confirmed`, for a trade card's lifetime, up to the chain's network fee
+ * cap, for at most what its confirmed quote spends, bound to its source's confirmed terms and the
+ * fills its source had before it. `undefined` for any other intent.
  */
 export async function fillGrantOf(
   parts: FillTermsParts,
@@ -115,10 +130,10 @@ export async function fillGrantOf(
     return undefined;
   }
   const grant: FillGrant = {
-    source: binding.order.id,
+    source: binding.current.id,
     agent: record.agentId,
     intent: record.id,
-    sourceTermsHash: binding.orderTermsHash,
+    sourceTermsHash: binding.sourceTermsHash,
     fillsBefore: binding.fillsBefore,
     termsHash: binding.termsHash,
     grantedAtMs: confirmed.atMs,
@@ -126,7 +141,7 @@ export async function fillGrantOf(
     networkFeeCapNativeBase: call.networkFeeCapNativeBase,
     spend,
   };
-  return { grant, current: orderNowOf(binding.order, binding.orderTermsHash) };
+  return { grant, current: binding.current };
 }
 
 // A fill grant against its order now, as the signer checks it, for a step that spends what the
@@ -183,6 +198,15 @@ function earlyRefusal(facts: {
   return facts.isAgentLive ? facts.policyReason : "paper_only";
 }
 
+// Why a source no longer holds its fill's grant: a rule its owner rotated or its agent's freeze
+// paused (decision 0342), or an order or rule that ended.
+function inactiveReasonOf(current: FillSourceNow): OrderFillReason {
+  if (current.state === "url_rotated") {
+    return "url_rotated";
+  }
+  return current.state === "paused" ? "frozen" : "order_inactive";
+}
+
 /**
  * The queue's check of a confirmed live fill (decisions 0210 and 0211): its grant's terms while
  * its order holds them, or the reason it ends at once, so its agent's line is free and the owner
@@ -214,25 +238,33 @@ export async function checkFillForQueue(
   }
   const checked = grantCheck(made.grant, made.current, { nowMs: parts.clock.now(), stepIndex: 0 });
   if (!checked.ok) {
-    return checked.error === "expired" ? {} : { refusal: "order_inactive" };
+    return checked.error === "expired" ? {} : { refusal: inactiveReasonOf(made.current) };
   }
   const authorization = { kind: "fill", grant: made.grant, current: made.current } as const;
   return { terms: { authorization, termsHash: made.grant.termsHash } };
 }
 
 /**
- * The order now of a fill grant, read again right before one more signature: its state, expiry
- * and fills as they stand, with its confirmed card's terms hash. `undefined` once the order or its
- * card is gone.
+ * The source now of a live fill's grant, read again right before one more signature: its order's
+ * or rule's state, expiry and fills as they stand, with its confirmed card's terms hash, a rule's
+ * read for the fill's alert (decision 0342). `undefined` once the source or its card is gone.
  */
-export async function orderNowFor(
+export async function sourceNowFor(
   parts: FillTermsParts,
-  grant: FillGrant,
+  record: Pick<IntentRecord, "authorizedBy">,
   signal: AbortSignal,
 ): Promise<FillSourceNow | undefined> {
-  const order = isId("ord", grant.source)
-    ? await parts.orders.get(grant.source, { signal })
-    : undefined;
+  const fill =
+    record.authorizedBy === undefined
+      ? undefined
+      : authorizationDocument.decode(record.authorizedBy);
+  if (fill !== undefined && "webhookRule" in fill) {
+    return ruleNowFor(parts, fill, signal);
+  }
+  const order =
+    fill !== undefined && "order" in fill
+      ? await parts.orders.get(fill.order, { signal })
+      : undefined;
   const card =
     order === undefined ? undefined : await parts.intents.confirmation(order.intentId, { signal });
   return order === undefined || card === undefined ? undefined : orderNowOf(order, card.termsHash);

@@ -9,6 +9,7 @@ import { createPaperFills } from "../paper/paper-fills.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { writeUnfreeze } from "../safety/write-unfreeze.js";
 import { fillStakeOnPaper } from "../staking/fill-stake-on-paper.js";
+import { createRuleFillEnd } from "../webhooks/rule-fill-end.js";
 import { createRuleFillOnPaper } from "../webhooks/rule-fill-on-paper.js";
 import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { EngineOptions } from "./create-engine.js";
@@ -83,7 +84,8 @@ export function executeOf(
 
 /**
  * The one writer of intents, which tells the chat relay of each settle message it stores, and
- * writes the skip of an order's fill with the move that ends its intent (decision 0197).
+ * writes the skip of an order's fill, or of a live rule fill, with the move that ends its intent
+ * (decisions 0197 and 0342).
  */
 export function storedIntentsOf(
   options: EngineOptions,
@@ -92,8 +94,19 @@ export function storedIntentsOf(
   const { stores, ids, random, publish } = options;
   const { intents, agents } = stores;
   const fillEnd = fillEndOf(options, parts.gate);
+  const spent: CapGate["spent"] = async (snapshot, call) => parts.gate.spent(snapshot, call);
+  const ruleFillEnd = createRuleFillEnd({ rules: stores.webhookRules, spent });
   const { settled } = parts;
-  return createStoredIntents({ intents, agents, ids, random, publish, settled, fillEnd });
+  return createStoredIntents({
+    intents,
+    agents,
+    ids,
+    random,
+    publish,
+    settled,
+    fillEnd,
+    ruleFillEnd,
+  });
 }
 
 /**

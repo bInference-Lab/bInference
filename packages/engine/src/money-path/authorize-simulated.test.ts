@@ -121,12 +121,15 @@ describe("the authorization of an auto order's fill", () => {
     });
   });
 
-  it("ends a live webhook rule fill live_fills_off with live fills on, before any check or signature", async () => {
+  it("holds a live webhook rule fill to the same switch, and checks it once live fills are on", async () => {
     const simulated = await simulatedLiveFill();
+    const rule = fixtureId("whr", 1);
 
-    const ruled = await authorized(simulated, { liveFills: true, rule: fixtureId("whr", 1) });
+    const off = await authorized(simulated, { liveFills: false, rule });
+    const on = await authorized(simulated, { liveFills: true, rule });
 
-    expect(ruled).toMatchObject({ states: [["failed_check", "live_fills_off"]], checks: [] });
+    expect(off).toMatchObject({ states: [["failed_check", "live_fills_off"]], checks: [] });
+    expect(on).toMatchObject({ states: [["confirmed", undefined]], checks: [true] });
   });
 
   it("confirms a paper fill whether live fills are on or off", async () => {

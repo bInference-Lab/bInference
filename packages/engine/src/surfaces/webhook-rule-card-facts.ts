@@ -26,6 +26,7 @@ export function webhookRuleActionOf(
     ratePerMinute: quote.ratePerMinute,
     ...(quote.maxFills === undefined ? {} : { maxFills: quote.maxFills }),
     expiresAtMs: quote.expiresAtMs,
+    isPaper: quote.isPaper,
   };
 }
 

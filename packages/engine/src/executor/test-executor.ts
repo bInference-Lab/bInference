@@ -41,6 +41,7 @@ import type { Executor, IntentStore, TransactionStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { createWalletQueue } from "../wallet-queue/wallet-queue.js";
+import type { WebhookRuleStore } from "../webhooks/ports.js";
 import { createExecutor, type RunningExecutor } from "./create-executor.js";
 import type { ExecutorLimits, ExecutorOptions } from "./executor-options.js";
 import { type BenchLaunch, launchPartsOf } from "./test-bench-launch.js";
@@ -88,6 +89,8 @@ export interface BenchOptions {
   readonly withoutRelays?: boolean;
   /** Wraps the intent store the executor writes through, not the engine's. */
   readonly intents?: (store: IntentStore) => IntentStore;
+  /** Wraps the webhook rule store the executor reads and writes through, not the engine's. */
+  readonly webhookRules?: (store: WebhookRuleStore) => WebhookRuleStore;
   /** What a swap's output comes to on chain; the fake venue's quote, twice the input, if absent. */
   readonly fillOut?: (amountInBase: bigint) => bigint;
   /** Wraps what the executor reads receipts, transfers and nonces through. */
@@ -167,7 +170,8 @@ function storesOf(test: TestEngine, options: BenchOptions) {
   const stored = test.stores.transactions;
   const transactions = options.transactions?.(stored) ?? stored;
   const intents = options.intents?.(test.stores.intents) ?? test.stores.intents;
-  return { ...test.stores, transactions, intents };
+  const webhookRules = options.webhookRules?.(test.stores.webhookRules) ?? test.stores.webhookRules;
+  return { ...test.stores, transactions, intents, webhookRules };
 }
 
 const coinPrice = { numerator: 600n, denominator: 10n ** 12n };

@@ -541,16 +541,26 @@ and `step_unsent` (a step never signed after an earlier one landed,
   is the rule's bounds, it passes policy, quote, risk and simulation with nothing to check, never
   passes the auto test (`kind`), and opens one card. On the Confirm the rule becomes `active` in one
   write that checks the confirmation; a card that ends otherwise ends the rule. Each accepted alert
-  of an active rule is a fill with `authorizedBy: { webhookRule, event, alertId? }`, keyed on the
-  alert's `webhook_events` row, which one fill at most counts ([decision 0338](../DECISIONS.md#d0338)),
+  of an active rule is a fill with
+  `authorizedBy: { webhookRule, event, alertId?, fillsBefore, termsHash? }`, keyed on the alert's
+  `webhook_events` row, which one fill at most counts ([decision 0338](../DECISIONS.md#d0338)),
   run as an auto order's fill, sized from the rule's bounds alone, in its agent's one line of fills,
   and counted on its rule in the paper fill's own write. A fill that cannot start within a minute
   of its alert's arrival, or stamped later than now, is skipped as `late`, one the engine was
   locked for as it arrived as `engine_locked`, an alert its rule's old URL took, by its row, as
   `url_rotated`
-  ([decisions 0336](../DECISIONS.md#d0336) and [0337](../DECISIONS.md#d0337)). Live webhook fills
-  are not built: a live rule's fill ends `failed_check` with `live_fills_off`, whatever the live
-  fills switch says.
+  ([decisions 0336](../DECISIONS.md#d0336) and [0337](../DECISIONS.md#d0337)). A live rule's fill
+  runs only while live fills are on, else it ends `failed_check` with `live_fills_off`
+  ([decision 0342](../DECISIONS.md#d0342)). It signs under a fill grant whose source is the rule,
+  its terms hash a `ruleFill` document stored as it is confirmed, and holds its agent's line until
+  its alert ends: an alert behind a settling live fill, or while a rule whose fills failed on chain
+  twice since its last fill backs off, is skipped as `fill_waiting`, the failures counted from the
+  rule's fills alone. The move that ends the fill writes its alert, and nothing else ends an alert
+  whose live fill is confirmed: `filled` and counted on its rule as it reconciles, or after the
+  settle wait at its quote when its trade cannot be valued; a skip with the lapse, the failure, the
+  queue's refusal, `frozen` or `owner_cancelled`, the last ending the rule with
+  `notice.webhookRuleCancelled`, and the fifth failure since its last fill ending it with
+  `notice.webhookRuleFailing`; a late landing turns its `stuck_dropped` skip into the fill.
 - **Identity registration** ([decisions 0071](../DECISIONS.md#d0071) and
   [0335](../DECISIONS.md#d0335)) is a single step to the ERC-8004 registry, from the agent's main
   wallet, which only the owner proposes: the agent runtime's and an MCP client's are

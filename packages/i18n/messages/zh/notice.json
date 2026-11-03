@@ -77,6 +77,8 @@
   "copyHeld": "本小时另有 {count, plural, other {# 笔跟单交易}}被跳过，请在控制台查看",
   "webhookHeld": "提醒规则“{name}”：本小时另有 {count, plural, other {# 次成交或跳过}}，请在控制台查看",
   "webhookSkipped": "⚠️ {orderKind}已跳过一次提醒：{reason}。规则仍然有效。",
+  "webhookRuleCancelled": "⚠️ {orderKind}已结束：你在发送之前撤回了它的成交，未进行任何交易。该规则已删除，其地址不再接收提醒。",
+  "webhookRuleFailing": "⚠️ {orderKind}已结束：最近 {count} 次成交都在链上失败。该规则已删除，其地址不再接收提醒。请检查该代币；如仍需要，请新建规则。",
   "ordersEnded": "{orderKind}已卖出你持有的全部 {token}，该持仓的其他 {count, plural, other {# 个平仓订单}}已结束",
   "exitEnded": "{token} 的{orderKind}已结束：钱包中已没有这种代币",
   "orderOverfilled": "🔴 {orderKind}的成交次数超过了上限：已成交 {fills} 次，上限 {maxFills} 次。请检查钱包和订单。",

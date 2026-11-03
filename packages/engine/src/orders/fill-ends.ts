@@ -109,8 +109,24 @@ export function fillOrderOf(snapshot: IntentSnapshot): Id<"ord"> | undefined {
     : undefined;
 }
 
+/** The webhook rule and the alert row whose fill an intent is; `undefined` for any other intent. */
+export function fillRuleOf(
+  snapshot: IntentSnapshot,
+): { readonly rule: Id<"whr">; readonly event: number } | undefined {
+  const { authorizedBy } = snapshot.stored.status;
+  return authorizedBy !== undefined && "webhookRule" in authorizedBy
+    ? { rule: authorizedBy.webhookRule, event: authorizedBy.event }
+    : undefined;
+}
+
+/** Whether an intent is a live fill of an auto order or a webhook rule (decisions 0210 and 0342). */
+export function isLiveFill(snapshot: IntentSnapshot): boolean {
+  const isFill = fillOrderOf(snapshot) !== undefined || fillRuleOf(snapshot) !== undefined;
+  return !snapshot.record.isPaper && isFill;
+}
+
 /** Why a step ended a fill without filling, and whether the owner hears it on the row. */
-interface SkipEnd {
+export interface SkipEnd {
   readonly reason: OrderFillReason;
   /** False when the executor tells the owner of the end itself; once per reason in a row else. */
   readonly tells?: false;
@@ -145,10 +161,12 @@ function liveEndOf(step: IntentStep): SkipEnd | undefined {
     : undefined;
 }
 
-// Why a step ends a fill without filling: its refusal's reason, `frozen` for a freeze's cancel, or
-// the end of a live fill the executor ran. Any other end, such as a cancel the fill made itself,
-// is no skip.
-function skipEndOf(before: IntentSnapshot, move: IntentMove): SkipEnd | undefined {
+/**
+ * Why a step ends a fill of an order or a rule without filling: the owner's cancel, its refusal's
+ * reason, `frozen` for a freeze's cancel, or the end of a live fill the executor ran. Any other
+ * end, such as a cancel the fill made itself, is no skip.
+ */
+export function skipEndOf(before: IntentSnapshot, move: IntentMove): SkipEnd | undefined {
   const { status, event } = move.step;
   if (isOwnerCancel(move)) {
     return { reason: "owner_cancelled" };

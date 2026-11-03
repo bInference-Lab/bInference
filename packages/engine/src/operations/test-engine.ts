@@ -39,6 +39,7 @@ import {
   type MemoryEngineStores,
 } from "../fakes/memory-engine-stores.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
+import type { InboxStore } from "../ingress/ports.js";
 import type { CeilingEditor, SignerRevoker, WalletExporter } from "../install/ports.js";
 import type { SimulationFailure } from "../intents/intent-reason.js";
 import {
@@ -66,6 +67,7 @@ import type {
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { UploadShelf } from "../uploads/upload-shelf.js";
+import type { WebhookRuleStore } from "../webhooks/ports.js";
 import { createEngineWithFills, type Engine, type EngineOptions } from "./create-engine.js";
 import type { EngineCall, EngineCaller } from "./engine-call.js";
 import { hostsOf, readsOf, stepsOf } from "./test-engine-parts.js";
@@ -122,6 +124,10 @@ export interface TestEngineOptions {
   readonly agents?: (store: AgentStore) => AgentStore;
   /** Wraps the order store the engine reads and writes through, as `intents` does. */
   readonly orders?: (store: OrderStore) => OrderStore;
+  /** Wraps the inbox store the engine reads and writes through, as `intents` does. */
+  readonly inbox?: (store: InboxStore) => InboxStore;
+  /** Wraps the webhook rule store the engine reads and writes through, as `intents` does. */
+  readonly webhookRules?: (store: WebhookRuleStore) => WebhookRuleStore;
   /** What the paper portfolio opens with: 1 coin when absent, nothing when empty. */
   readonly paper?: readonly Amount[];
   /** Takes the confirmed live intents; a fake that keeps them when absent. */
@@ -200,9 +206,12 @@ export interface TestEngine {
   readonly turns: RunningTurns;
   /**
    * Starts a new engine on the same stores and fakes, as a restart does: nothing it kept in
-   * memory survives, and it opens no paper portfolio again; with live fills turned as told.
+   * memory survives, and it opens no paper portfolio again; with live fills turned and the lock
+   * read as told.
    */
-  readonly restart: (changed?: Pick<EngineOptions, "liveOrderFills">) => TestRunningEngine;
+  readonly restart: (
+    changed?: Partial<Pick<EngineOptions, "liveOrderFills" | "isLocked">>,
+  ) => TestRunningEngine;
 }
 
 /** What the fake wallet facts say of the test wallet unless a test changes them. */
@@ -236,13 +245,20 @@ export function testChains(otherVenues: readonly string[] = []): ChainRegistry {
   });
 }
 
-// The stores the engine sees, with the intent and agent stores wrapped as the test asks.
+// A store as the test wraps it, or as it is.
+function wrap<T>(store: T, by: ((store: T) => T) | undefined): T {
+  return by === undefined ? store : by(store);
+}
+
+// The stores the engine sees, with the stores wrapped as the test asks.
 function wrapped(stores: MemoryEngineStores, options: TestEngineOptions): EngineStores {
   return {
     ...stores,
-    intents: options.intents?.(stores.intents) ?? stores.intents,
-    agents: options.agents?.(stores.agents) ?? stores.agents,
-    orders: options.orders?.(stores.orders) ?? stores.orders,
+    intents: wrap(stores.intents, options.intents),
+    agents: wrap(stores.agents, options.agents),
+    orders: wrap(stores.orders, options.orders),
+    inbox: wrap(stores.inbox, options.inbox),
+    webhookRules: wrap(stores.webhookRules, options.webhookRules),
   };
 }
 
@@ -286,7 +302,7 @@ function testTurns(): RunningTurns {
 // A new engine on the same stores, with ids of its own, as a restart starts one.
 function restartOf(
   options: EngineOptions,
-): (changed?: Pick<EngineOptions, "liveOrderFills">) => TestRunningEngine {
+): (changed?: Partial<Pick<EngineOptions, "liveOrderFills" | "isLocked">>) => TestRunningEngine {
   const ids = createIdSource({ clock: options.clock, random: createSeededRandom(5) });
   return (changed = {}) => runningEngineOf({ ...options, ...changed, ids });
 }

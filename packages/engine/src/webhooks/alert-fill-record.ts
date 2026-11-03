@@ -1,5 +1,6 @@
 import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { z } from "zod";
+import { failureReasons } from "../intents/intent-reason.js";
 import { type OrderFillReason, orderFillReasonSchema } from "../orders/order-fill.js";
 import { epochMsSchema, pageLimitSchema, rowNumberSchema } from "../records/record-fields.js";
 import { type WebhookRuleMove, webhookRuleMoveSchema } from "./webhook-rule-record.js";
@@ -84,13 +85,27 @@ export const alertFillWriteSchema: z.ZodType<AlertFillWrite> = z
 export interface AlertFillQuery {
   readonly ruleId: Id<"whr">;
   readonly limit: number;
+  /**
+   * Only the alerts a live fill of the rule ended: filled, or skipped as the fill failed on chain
+   * (decision 0342), so skips before any fill never push failures out of a page.
+   */
+  readonly onlyFills?: boolean;
 }
 
 /** Parses a page of a rule's alerts. */
 export const alertFillQuerySchema: z.ZodType<AlertFillQuery> = z.strictObject({
   ruleId: idSchema("whr"),
   limit: pageLimitSchema,
+  onlyFills: z.boolean().exactOptional(),
 });
+
+/** Whether an alert's end is its fill's: filled, or skipped as the fill failed on chain. */
+export function isFillEnd(alert: Pick<AlertFillRecord, "outcome" | "reason">): boolean {
+  const failures: readonly string[] = failureReasons;
+  return (
+    alert.outcome === "filled" || (alert.reason !== undefined && failures.includes(alert.reason))
+  );
+}
 
 /** The rows whose notices went out at `atMs`. */
 export interface AlertAnnouncement {

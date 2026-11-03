@@ -9,6 +9,7 @@ import { createFillEnd } from "../orders/fill-ends.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor } from "../ports.js";
 import { createPositions } from "../positions/create-positions.js";
+import { createRuleFillEnd } from "../webhooks/rule-fill-end.js";
 import { executeInSlot } from "./execute-in-slot.js";
 import { executeRescue, recoverRescue, rescueGroupsOf } from "./execute-rescue.js";
 import { defaultExecutorLimits, type ExecutorOptions } from "./executor-options.js";
@@ -74,19 +75,22 @@ interface Taken {
   readonly account: AccountRef;
 }
 
-// The executor's writer of intents adds to each move of an order's live fill its write on the
-// order: the fill as it reconciles, or the skip as it ends otherwise (decision 0210). Each settle
-// message a move that ends an intent stores goes to `settled`, so the agent runtime hears of it.
+// The executor's writer of intents adds to each move of a live fill its write on its order or its
+// rule's alert: the fill as it reconciles, or the skip as it ends otherwise (decisions 0210 and
+// 0342). Each settle message a move that ends an intent stores goes to `settled`, so the agent
+// runtime hears of it.
 function storedOf(options: ExecutorOptions) {
   const { stores, ids, publish, positions, prices, chains, settled } = options;
   const landed = { intents: stores.intents, positions, prices, chains };
   const fillEnd = createFillEnd({ orders: stores.orders, ids, landed });
+  const ruleFillEnd = createRuleFillEnd({ rules: stores.webhookRules, landed });
   return createStoredIntents({
     intents: stores.intents,
     agents: stores.agents,
     ids,
     publish,
     fillEnd,
+    ruleFillEnd,
     ...(settled === undefined ? {} : { settled }),
   });
 }
@@ -98,6 +102,8 @@ function partsOf(options: ExecutorOptions): ExecutorParts {
     ...options,
     intents: stores.intents,
     orders: stores.orders,
+    rules: stores.webhookRules,
+    agents: stores.agents,
     liveFills: options.liveOrderFills === true,
     spent: async (snapshot, call) => gate.spent(snapshot, call),
     stored: storedOf(options),

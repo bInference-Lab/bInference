@@ -62,6 +62,16 @@ export const orderNoticeTable: Readonly<
       reason: { key: "reason.late", values: {} },
     },
   },
+  "notice.webhookRuleCancelled": {
+    key: "notice.webhookRuleCancelled",
+    values: {},
+    parts: { orderKind: { key: "fill.webhookRule", values: { name: "BNB breakout" } } },
+  },
+  "notice.webhookRuleFailing": {
+    key: "notice.webhookRuleFailing",
+    values: { count: "5" },
+    parts: { orderKind: { key: "fill.webhookRule", values: { name: "BNB breakout" } } },
+  },
   "notice.ordersEnded": {
     key: "notice.ordersEnded",
     values: { token: "PEPE", count: "2" },

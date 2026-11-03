@@ -1,4 +1,5 @@
-import type { AccountRef, Amount, RelaySender } from "@binference/chain";
+import type { AccountRef, Amount, ReceiptReader, RelaySender } from "@binference/chain";
+import type { FakeNetwork } from "@binference/chain/testing";
 import type { Id, JsonValue } from "@binference/core";
 import type { OrderRequest } from "@binference/protocol";
 import {
@@ -10,6 +11,7 @@ import {
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { testAgent, testCoin, testNowMs, testWallet } from "../intents/test-intents.js";
+import type { TestEngineOptions } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import type { OrderFills } from "./fill-orders.js";
 import type { OrderRecord } from "./order-record.js";
@@ -39,6 +41,8 @@ export async function startLiveFills(
     readonly limits?: NonNullable<BenchOptions["limits"]>;
     /** Wraps the intent store the executor reads and writes through, not the engine's. */
     readonly executorIntents?: (store: IntentStore) => IntentStore;
+    /** Wraps the webhook rule store the executor reads and writes through, not the engine's. */
+    readonly webhookRules?: NonNullable<BenchOptions["webhookRules"]>;
     /** Whether the executor signs live fills; on unless told off. */
     readonly executorFills?: boolean;
     /** Wraps what the executor reads receipts, transfers and nonces through. */
@@ -47,10 +51,21 @@ export async function startLiveFills(
     readonly recentOutflows?: NonNullable<BenchOptions["recentOutflows"]>;
     /** The USD prices; the coin at $600 and the test token at $0.80 when absent. */
     readonly prices?: typeof fillPrices;
+    /** Wraps the inbox and webhook rule stores the engine reads and writes through. */
+    readonly engineStores?: Pick<TestEngineOptions, "inbox" | "webhookRules">;
   } = {},
 ): Promise<ExecutorBench> {
-  const { held, intents, executorFills = true, executorIntents, prices, ...rest } = options;
+  const {
+    held,
+    intents,
+    executorFills = true,
+    executorIntents,
+    prices,
+    engineStores,
+    ...rest
+  } = options;
   const engine = {
+    ...engineStores,
     liveOrderFills: true,
     prices: prices ?? fillPrices,
     ...(held === undefined ? {} : { held }),
@@ -114,6 +129,29 @@ export async function liveFillsOf(
   return all.filter(
     (record) => record.kind === kind && record.proposer === "engine" && !record.isPaper,
   );
+}
+
+/**
+ * Receipts whose transfers no node answers while it is silent, so no trade can be valued, until
+ * `speak` lets them answer.
+ */
+export function silentTransfers(): {
+  readonly speak: () => void;
+  readonly wrap: (network: FakeNetwork) => ReceiptReader;
+} {
+  const state = { isSilent: true };
+  return {
+    speak: () => {
+      state.isSilent = false;
+    },
+    wrap: (network) => ({
+      ...network,
+      transfers: async (chain, hash, options) =>
+        state.isSilent
+          ? Promise.reject(new Error("The node did not answer."))
+          : network.transfers(chain, hash, options),
+    }),
+  };
 }
 
 /** The notices the executor sent, oldest first. */

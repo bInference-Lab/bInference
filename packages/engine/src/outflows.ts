@@ -8,5 +8,6 @@ export {
   fillsInFlightQuerySchema,
   inFlightStates,
   isFillAuthorized,
+  ruleFillOfAuthorization,
 } from "./intents/fills-in-flight.js";
 export type { FillsInFlightQuery } from "./intents/fills-in-flight.js";

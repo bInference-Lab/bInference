@@ -227,8 +227,9 @@ Rules for this package:
   a JSON object's `id` is read from it. The `WebhookAlertStore` judges a repeat and the rate on the
   rule's accepted alerts and writes the alert's row, and an accepted alert's inbox entry with its
   body, in one write; nothing there reaches the money path.
-- Webhook rules (`src/webhooks/`, decisions 0336 to 0338) are made by the owner's surfaces only,
-  in paper mode, each with one card that a `webhookRule` intent carries; the `WebhookRuleStore`
+- Webhook rules (`src/webhooks/`, decisions 0336 to 0338 and 0342) are made by the owner's
+  surfaces only, in their agent's mode, a live one only while the engine's `liveOrderFills` is on,
+  each with one card that a `webhookRule` intent carries; the `WebhookRuleStore`
   moves a rule into `active` only on that card's confirmation, for an agent that is not frozen. A
   rule's secret comes from `secretRandom`, the OS generator the composition root passes, never
   `random`; only its SHA-256 is kept. `createWebhookFills` fills each accepted alert in its agent's
@@ -241,7 +242,15 @@ Rules for this package:
   `url_rotated`. A run fills each agent's alerts in arrival order, four agents at once; an entry
   that fails three runs ends `fill_failed`, a fill past its deadline cancels its intent, and the
   start cancels what a stop left (`repair-rule-fills.ts`). The fill that uses a rule's last fill
-  ends the rule. A change to a bound or the window changes `webhook-fills.property.test.ts`.
+  ends the rule. A live rule's fill signs under a fill grant with the rule as its source
+  (`executor/rule-fill-terms.ts`), its terms hash a `ruleFill` document
+  (`rule-fill-terms-hash.ts`), holds its agent's line as an order's does (`rule-fill-line.ts`),
+  and the one writer of intents ends its alert with the move that ends it (`rule-fill-end.ts`),
+  counting it on its rule as it reconciles (`rule-fill-landed.ts`), and its rule's fifth failure
+  since its last fill ends the rule in that move. Once a live fill is confirmed, nothing else ends
+  its alert: the runner leaves it to the fill (`isLeftToItsFill`), and the store refuses a skip
+  over it. A change to a bound or the
+  window changes `webhook-fills.property.test.ts`.
 - Launches (`src/launches/`, decisions 0254 to 0256) are what the launch feed stored behind the
   `LaunchStore` port: `launch/list` and `market/scan` with `source: launches` read them, their
   filters naming only launchpads the venue host runs, and `tellLaunches` pushes each launch stored

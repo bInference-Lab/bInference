@@ -1,11 +1,11 @@
 import type { Clock } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
-import { flush, startExecutorBench } from "../executor/test-executor.js";
+import { flush } from "../executor/test-executor.js";
 import type { IntentChange } from "../intents/intent-change.js";
-import { testAgent, testAgentDraft, testLimits, testNowMs } from "../intents/test-intents.js";
+import { testAgent, testAgentDraft, testLimits } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
-import { fillIntentsOf, fillPrices, startFillEngine } from "../orders/test-fills.js";
+import { fillIntentsOf, startFillEngine } from "../orders/test-fills.js";
 import { tapCard } from "../orders/test-orders.js";
 import type { AgentStore, IntentStore } from "../ports.js";
 import { sha256Hex } from "../records/sha256-hex.js";
@@ -272,7 +272,7 @@ describe("a webhook alert's time and lock", () => {
   });
 });
 
-describe("a live webhook rule, which no operation makes yet", () => {
+describe("a live webhook rule while live fills are off", () => {
   it("ends its alert live_fills_off before any intent is stored", async () => {
     const test = await startFillEngine();
     const created = await activeRule(test);
@@ -283,34 +283,6 @@ describe("a live webhook rule, which no operation makes yet", () => {
 
     expect(await fillIntentsOf(test)).toStrictEqual([]);
     expect(await alertsOf(test, fixtureId("whr", 3))).toMatchObject([
-      { outcome: "skipped", reason: "live_fills_off" },
-    ]);
-  });
-
-  it("never reaches signing, with live order fills on", async () => {
-    const bench = await startExecutorBench({
-      engine: { liveOrderFills: true, prices: fillPrices },
-    });
-    const paper = await startFillEngine();
-    const made = await activeRule(
-      paper,
-      testRuleRequest({ side: "buy", size: { base: 10n ** 15n } }),
-    );
-    const record = {
-      ...(await recordOf(paper, made.rule)),
-      isPaper: false,
-      createdAtMs: testNowMs,
-    };
-    const secret = "l".repeat(43);
-    bench.test.stores.webhookRules.plant(record, sha256Hex(secret));
-    await alertTo(bench.test, webhookUrlOf("http://127.0.0.1:7457", record.id, secret), "live");
-
-    await bench.test.engine.fillWebhookAlerts(live);
-    await bench.release();
-    await flush();
-
-    expect(bench.signed).toStrictEqual([]);
-    expect(await alertsOf(bench.test, record.id)).toMatchObject([
       { outcome: "skipped", reason: "live_fills_off" },
     ]);
   });

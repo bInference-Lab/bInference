@@ -70,6 +70,7 @@
   "webhookRule.sell": "{sell} on each alert",
   "webhookRule.limits": "{maxFills, plural, =0 {No fill limit} one {Up to # fill} other {Up to # fills}} until {expiry}",
   "webhookRule.url": "Its URL works once you confirm; anyone who has it can fire this rule inside its bounds",
+  "webhookRule.live": "Each fill trades live funds with no tap, inside these bounds and the agent's caps",
   "webhookRule.paper": "It fills on paper only, even after this agent goes live: alert rules trade no live funds yet",
   "webhookRule.slippage": "Each fill takes at most {slippage} slippage",
   "place.curve": "the {launchpad} curve",

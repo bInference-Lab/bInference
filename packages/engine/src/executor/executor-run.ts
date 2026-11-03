@@ -7,8 +7,9 @@ import type { IntentTrigger } from "../intents/intent-trigger.js";
 import type { IntentStateMachine } from "../intents/state-machine.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
-import type { IntentStore } from "../ports.js";
+import type { AgentStore, IntentStore } from "../ports.js";
 import type { Positions } from "../positions/create-positions.js";
+import type { WebhookRuleStore } from "../webhooks/ports.js";
 import type { ExecutorLimits, ExecutorOptions } from "./executor-options.js";
 import type { HeldWallets } from "./held-wallets.js";
 import type { IntentPlan } from "./intent-plan.js";
@@ -19,6 +20,10 @@ export interface ExecutorParts extends ExecutorOptions {
   readonly intents: IntentStore;
   /** The auto orders, whose live fills the executor signs under their grants and records. */
   readonly orders: OrderStore;
+  /** The webhook rules, whose live fills the executor signs under their grants (decision 0342). */
+  readonly rules: WebhookRuleStore;
+  /** The agents, whose freeze pauses a rule's live fill (decision 0342). */
+  readonly agents: AgentStore;
   /** Whether live order fills may sign (decision 0211). */
   readonly liveFills: boolean;
   /** What the agent used of the rolling cap, which a fill's skip for the cap tells. */

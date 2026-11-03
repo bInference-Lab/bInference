@@ -2,6 +2,7 @@ import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/ch
 import { type Clock, createDeadline, type Id } from "@binference/core";
 import type { IntentState } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
+import type { IntentRecord } from "../intents/intent-record.js";
 import type { IntentStore } from "../ports.js";
 import { fillOrderOf } from "./fill-ends.js";
 import type { OrderRecord } from "./order-record.js";
@@ -86,20 +87,35 @@ function droppedWatchMs(chains: ChainRegistry, token: AssetRef): number {
   return chain.ok ? droppedWatchBlocks * chain.value.definition.blockTimeMs : 86_400_000;
 }
 
+/** An auto order or a webhook rule as its line of fills reads it: its agent, mode and token. */
+export interface LineHolder {
+  readonly agentId: Id<"agt">;
+  readonly isPaper: boolean;
+  readonly request: { readonly token: AssetRef };
+}
+
 /**
- * Whether an agent has a live order fill that holds its line (decisions 0210 and 0211): one the
- * executor holds whose order has not counted it, or one whose dropped step is still watched. The
- * store answers every such fill, with no page limit, so it holds after a stop too, and two exit
- * fills of one position never run at once (spec 6, invariant 11).
+ * The live fills of an order's or rule's agent that hold its line (decisions 0210, 0211 and 0342):
+ * those the executor holds that their order or alert has not counted, and those whose dropped step
+ * is still watched. The store answers every such fill, with no page limit, so it holds after a
+ * stop too, and two exit fills of one position never run at once (spec 6, invariant 11). A paper
+ * holder never waits behind one, and reads none.
  */
-async function hasUnsettledLiveFill(
-  intents: Pick<IntentStore, "fillsInFlight">,
-  agentId: Id<"agt">,
-  call: { readonly nowMs: number; readonly watchMs: number; readonly signal: AbortSignal },
-): Promise<boolean> {
-  const droppedSinceMs = Math.max(0, call.nowMs - call.watchMs);
-  const held = await intents.fillsInFlight({ agentId, droppedSinceMs }, { signal: call.signal });
-  return held.length > 0;
+export async function fillsHoldingLine(
+  parts: {
+    readonly intents: Pick<IntentStore, "fillsInFlight">;
+    readonly chains: ChainRegistry;
+    readonly clock: Clock;
+  },
+  holder: LineHolder,
+  signal: AbortSignal,
+): Promise<readonly IntentRecord[]> {
+  if (holder.isPaper) {
+    return [];
+  }
+  const watchMs = droppedWatchMs(parts.chains, holder.request.token);
+  const droppedSinceMs = Math.max(0, parts.clock.now() - watchMs);
+  return parts.intents.fillsInFlight({ agentId: holder.agentId, droppedSinceMs }, { signal });
 }
 
 /** How long a fill has, from its start in its agent's line to its end (decision 0197). */
@@ -147,12 +163,7 @@ export async function isLineHeld(
   order: OrderRecord,
   signal: AbortSignal,
 ): Promise<boolean> {
-  if (order.isPaper) {
-    return false;
-  }
-  const watchMs = droppedWatchMs(parts.chains, order.request.token);
-  const call = { nowMs: parts.clock.now(), watchMs, signal };
-  return hasUnsettledLiveFill(parts.intents, order.agentId, call);
+  return (await fillsHoldingLine(parts, order, signal)).length > 0;
 }
 
 /**

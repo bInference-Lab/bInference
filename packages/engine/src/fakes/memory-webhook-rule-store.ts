@@ -1,10 +1,12 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
+import type { IntentRecord } from "../intents/intent-record.js";
 import type { Sha256Hex } from "../records/sha256-hex.js";
-import type {
-  AlertAnnouncement,
-  AlertFillRecord,
-  AlertFillWrite,
+import {
+  type AlertFillQuery,
+  type AlertFillRecord,
+  type AlertFillWrite,
+  isFillEnd,
 } from "../webhooks/alert-fill-record.js";
 import type { WebhookRuleStore } from "../webhooks/ports.js";
 import {
@@ -20,10 +22,14 @@ import type { MemoryAgentStore } from "./memory-agent-store.js";
 import {
   alertOf,
   assertCarried,
+  assertEndsAlone,
+  isHeldFromSkip,
   type Ended,
   isFilledBy,
   isLandingOverDrop,
+  markAnnouncedIn,
   type MemoryFillCarrier,
+  unannouncedOf,
 } from "./memory-alert-ends.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
@@ -36,6 +42,8 @@ export interface MemoryWebhookRuleStoreOptions {
   readonly install: Pick<MemoryInstallStore, "walletNow">;
   /** The confirmation an intent holds, as the intent store beside it keeps it. */
   readonly confirmation: (intent: Id<"int">) => StoredConfirmation | undefined;
+  /** The intents as the intent store beside it keeps them. */
+  readonly intentsNow: () => readonly IntentRecord[];
   /** The alert store whose URLs the rules answer, and whose alerts they fill. */
   readonly alerts: MemoryWebhookAlertStore;
 }
@@ -187,7 +195,7 @@ function checkMove(state: State, move: WebhookRuleMove): Result<Rule, WebhookRul
   return refusal === undefined ? ok(movedOf(state, rule, move)) : err(refusal);
 }
 
-type EndRefusal = "ended" | "not_found" | "stale";
+type EndRefusal = "ended" | "not_found" | "stale" | "held";
 
 function checkEnd(
   state: State,
@@ -225,8 +233,18 @@ function saveEnd(state: State, write: AlertFillWrite, rule: Rule | undefined): v
 }
 
 function endAlert(state: State, write: AlertFillWrite): Result<AlertFillRecord, EndRefusal> {
-  if (write.outcome !== "skipped") {
-    throw constraintFault("a fill ends its alert with its intent's move");
+  const rule = acceptedRow(state, write.event)?.draft.rule;
+  const isRuleDeleted = rule !== undefined && state.rules.get(rule)?.record.state === "deleted";
+  const intent = state.options.intentsNow().find(({ id }) => id === write.intentId);
+  const own = {
+    ...(intent === undefined ? {} : { intent }),
+    ...(rule === undefined ? {} : { rule }),
+  };
+  assertEndsAlone(write, { ...own, isRuleDeleted });
+  // A skip written alone never ends an alert its live fill holds; a fill's own move carries its
+  // end, which the intent store checks before it moves anything.
+  if (rule !== undefined && isHeldFromSkip(state.options.intentsNow(), { write, rule })) {
+    return err("held");
   }
   const checked = checkEnd(state, write);
   if (!checked.ok) {
@@ -238,26 +256,6 @@ function endAlert(state: State, write: AlertFillWrite): Result<AlertFillRecord, 
     throw constraintFault(`alert ${String(write.event)} did not read back`);
   }
   return ok(now);
-}
-
-function unannounced(state: State, limit: number): readonly AlertFillRecord[] {
-  return state.options.alerts
-    .eventsNow()
-    .filter((row) => {
-      const end = state.ended.get(row.id);
-      return end?.notices !== undefined && end.announcedAtMs === undefined;
-    })
-    .slice(0, limit)
-    .map((row) => alertOf(row, state.ended.get(row.id)));
-}
-
-function markAnnounced(state: State, { events, atMs }: AlertAnnouncement): void {
-  events.forEach((event) => {
-    const end = state.ended.get(event);
-    if (end?.notices !== undefined && end.announcedAtMs === undefined) {
-      state.ended.set(event, { ...end, announcedAtMs: atMs });
-    }
-  });
 }
 
 // A rule fill's write on its alert (decisions 0338 and 0342): it names the intent that carries it,
@@ -279,13 +277,14 @@ function checkFill(
   return checked.ok ? checked : err("stale");
 }
 
-function alertsOf(state: State, ruleId: Id<"whr">, limit: number): readonly AlertFillRecord[] {
+function alertsOf(state: State, query: AlertFillQuery): readonly AlertFillRecord[] {
   return state.options.alerts
     .eventsNow()
-    .filter((row) => row.draft.rule === ruleId && row.outcome === "accepted")
+    .filter((row) => row.draft.rule === query.ruleId && row.outcome === "accepted")
     .toReversed()
-    .slice(0, limit)
-    .map((row) => alertOf(row, state.ended.get(row.id)));
+    .map((row) => alertOf(row, state.ended.get(row.id)))
+    .filter((alert) => query.onlyFills !== true || isFillEnd(alert))
+    .slice(0, query.limit);
 }
 
 function findByIntent(state: State, intent: Id<"int">): WebhookRuleRecord | undefined {
@@ -313,14 +312,16 @@ export function createMemoryWebhookRuleStore(
         return checked.ok ? ok(saveRule(state, checked.value)) : checked;
       }),
     alert: async (event, call) => memoryCall(call, () => alertNow(state, event)),
-    alerts: async ({ ruleId, limit }, call) =>
-      memoryCall(call, () => alertsOf(state, ruleId, limit)),
+    alerts: async (query, call) => memoryCall(call, () => alertsOf(state, query)),
     events: async (query, call) =>
       memoryCall(call, () => memoryEventsOf(state.options.alerts.eventsNow(), state.ended, query)),
     endAlert: async (write, call) => memoryCall(call, () => endAlert(state, write)),
-    unannounced: async (limit, call) => memoryCall(call, () => unannounced(state, limit)),
+    unannounced: async (limit, call) =>
+      memoryCall(call, () => unannouncedOf(state.options.alerts.eventsNow(), state.ended, limit)),
     markAnnounced: async (announcement, call) =>
-      memoryCall(call, () => markAnnounced(state, announcement)),
+      memoryCall(call, () => {
+        markAnnouncedIn(state.ended, announcement);
+      }),
     checkFillNow: (write, by) => {
       const checked = checkFill(state, write, by);
       return checked.ok ? ok(undefined) : checked;

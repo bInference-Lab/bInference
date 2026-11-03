@@ -22,19 +22,21 @@ export interface CreatedWebhookRule {
 // A rule accepts one alert a minute unless it names its rate (decision 0299).
 const defaultRatePerMinute = 1;
 
-// The rule's agent, which takes rules: stored, in use, not frozen, and in paper mode, since live
-// webhook fills are not built yet, so no live rule is taken (decisions 0299 and 0338).
-async function agentRefusalOf(
+// The rule's agent, which takes rules: stored, in use and not frozen; and the mode the rule fills
+// in, the agent's now. A live agent's rule is taken only while live fills are on (decisions 0299
+// and 0342).
+async function agentModeOf(
   parts: WebhookRuleParts,
   agent: WebhookRuleRequest["agent"],
   signal: AbortSignal,
-): Promise<ProtocolErrorCode | undefined> {
+): Promise<Result<{ readonly isPaper: boolean }, ProtocolErrorCode>> {
   const settings = await parts.agents.get(agent, { signal });
   const refusal = agentRefusal(settings);
   if (refusal !== undefined) {
-    return refusal;
+    return err(refusal);
   }
-  return settings?.agent.mode === "live" ? "order.live_fills_off" : undefined;
+  const isPaper = settings?.agent.mode !== "live";
+  return isPaper || parts.liveFills ? ok({ isPaper }) : err("order.live_fills_off");
 }
 
 /** A checked request's wallet, canonical token and spend, and what its unlisted tokens answered. */
@@ -43,6 +45,8 @@ interface Placed {
   readonly token: WebhookRuleRequest["token"];
   readonly spend?: WebhookRuleRequest["token"];
   readonly assets: AssetInfos;
+  /** The mode the rule fills in, its agent's when it is made (decision 0337). */
+  readonly isPaper: boolean;
 }
 
 // The wallet that holds the rule, as an order's, and the info of its tokens for its card.
@@ -56,11 +60,12 @@ async function placedOf(
     return bounds;
   }
   const { token, spend, chain } = bounds.value;
-  const refusal = await agentRefusalOf(parts, request.agent, signal);
-  if (refusal !== undefined) {
-    return err(refusal);
+  const mode = await agentModeOf(parts, request.agent, signal);
+  if (!mode.ok) {
+    return mode;
   }
-  const asked = { request: { ...request, token }, chain, isPaper: true };
+  const { isPaper } = mode.value;
+  const asked = { request: { ...request, token }, chain, isPaper };
   const wallet = await orderWalletOf(parts, asked, signal);
   if (!wallet.ok) {
     return wallet;
@@ -71,7 +76,7 @@ async function placedOf(
     return assets;
   }
   const spent = spend === undefined ? {} : { spend };
-  return ok({ wallet: wallet.value, token, ...spent, assets: assets.value });
+  return ok({ wallet: wallet.value, token, ...spent, assets: assets.value, isPaper });
 }
 
 // The rule as it is stored, its defaults filled: its wallet, expiry and rate in its request too.
@@ -101,7 +106,7 @@ function draftOf(
     ...(request.maxFills === undefined ? {} : { maxFills: request.maxFills }),
     expiresAtMs,
     intentId: parts.ids.next("int"),
-    isPaper: true,
+    isPaper: placed.isPaper,
     atMs,
   };
 }
@@ -155,11 +160,11 @@ function storedRule(
 /**
  * Creates a webhook rule (decisions 0053, 0299 and 0337): checks its bounds as `order/create`
  * checks a buy or sell order of the same token and fills its defaults (30 days, one alert a
- * minute, no fill limit), stores it `awaiting_confirmation` in paper mode with the SHA-256 of a new
- * secret, then its `webhookRule` intent, which always opens one card. The rule is `active` only on
- * that card's Confirm. It answers the rule's URL, which holds the secret, this once. A refusal
- * stores nothing: an unknown, archived or frozen agent, a live agent (`order.live_fills_off`,
- * since live webhook fills are not built), a wallet that is not the agent's, a broken bound, a
+ * minute, no fill limit), stores it `awaiting_confirmation` in its agent's mode with the SHA-256 of
+ * a new secret, then its `webhookRule` intent, which always opens one card. The rule is `active`
+ * only on that card's Confirm. It answers the rule's URL, which holds the secret, this once. A
+ * refusal stores nothing: an unknown, archived or frozen agent, a live agent while live fills are
+ * off (`order.live_fills_off`, decision 0342), a wallet that is not the agent's, a broken bound, a
  * token that answers no symbol or decimals, or an agent's 21st rule (`webhook.too_many`).
  */
 export async function createWebhookRule(

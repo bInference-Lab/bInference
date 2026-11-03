@@ -77,6 +77,8 @@
   "copyHeld": "{count, plural, one {# more copy trade} other {# more copy trades}} skipped this hour, see the console",
   "webhookHeld": "Alert rule \"{name}\": {count, plural, one {# more fill or skip} other {# more fills or skips}} this hour, see the console",
   "webhookSkipped": "⚠️ {orderKind} skipped an alert: {reason}. The rule stays active.",
+  "webhookRuleCancelled": "⚠️ {orderKind} ended: you withdrew its fill before it was sent, and nothing was traded. The rule is deleted, so its URL takes no more alerts.",
+  "webhookRuleFailing": "⚠️ {orderKind} ended: its last {count} fills failed on chain. The rule is deleted, so its URL takes no more alerts. Check the token, and make a new rule if you still want one.",
   "ordersEnded": "{orderKind} sold all your {token}, so {count, plural, one {your other exit order on it ended} other {your # other exit orders on it ended}}",
   "exitEnded": "{orderKind} on {token} ended: the wallet holds none of it any more",
   "orderOverfilled": "🔴 {orderKind} filled more often than it allows: {fills} fills of {maxFills}. Check the wallet and the order.",

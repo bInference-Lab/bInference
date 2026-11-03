@@ -5,11 +5,12 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { SettledTrade } from "../intents/event-cause.schema.js";
 import { quoteDocument, simulationDocument } from "../intents/intent-documents.schema.js";
 import { endLateExits } from "../orders/end-exit-orders.js";
-import { announceOrder, fillOrderOf } from "../orders/fill-ends.js";
+import { announceOrder, fillOrderOf, fillRuleOf, isLiveFill } from "../orders/fill-ends.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
 import { noticePush } from "../pushes/notice-push.js";
 import { inBlockStates } from "../wallet-queue/lowest-free-nonce.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
+import { announceAlerts } from "../webhooks/end-alert.js";
 import { countUnsettledFill } from "./count-unsettled-fill.js";
 import { type ExecutionRun, moveIntent, nextBlock, readSafely } from "./executor-run.js";
 import { launchQuoteOf } from "./launch-queue-check.js";
@@ -261,12 +262,26 @@ export async function bookTrade(
   return { trade, steps };
 }
 
+// After a live rule fill reconciled with its write on its alert (decision 0342): the owner hears the
+// fill's notices.
+async function announceRuleFill(run: ExecutionRun, reconciled: IntentSnapshot): Promise<void> {
+  const fill = fillRuleOf(reconciled);
+  if (fill === undefined) {
+    return;
+  }
+  const { parts, signal } = run;
+  const { rules, clock, publish } = parts;
+  const ended = await rules.alert(fill.event, { signal });
+  await announceAlerts({ rules, clock, publish }, ended === undefined ? [] : [ended], signal);
+}
+
 // After an order's live fill reconciled with its write on the order (decision 0210): the owner
 // hears the fill's notices, and a sale that emptied its position ends the exit orders on it that
 // became active after the write read them.
 async function announceFill(run: ExecutionRun, reconciled: IntentSnapshot): Promise<void> {
   const orderId = fillOrderOf(reconciled);
   if (orderId === undefined) {
+    await announceRuleFill(run, reconciled);
     return;
   }
   const { parts, signal } = run;
@@ -308,8 +323,9 @@ async function settleOnce(run: ExecutionRun, snapshot: IntentSnapshot): Promise<
  * so does one whose block holds another intent's transaction of the wallet, with
  * `notice.blockShared`: the native coin read for that block may count for both.
  * While a read or a price fails it tries again each block, up to `settleAfterBlocks`; then it
- * leaves the intent `finalized`, and recovery reconciles it after a restart. An order's live fill
- * is counted on its order then, its line freed with the owner's notice, and keeps trying every
+ * leaves the intent `finalized`, and recovery reconciles it after a restart. A live fill is
+ * counted on its order or its rule's alert then, its line freed with the owner's notice, and keeps
+ * trying every
  * `settleAfterBlocks` blocks while the engine runs (decision 0211). When no node, nor the owner's
  * tracing RPC, can say the native coin the trade received any more (decision 0108), the owner
  * gets an alarm notice and the intent stays `finalized`, with nothing recorded but a fill's count.
@@ -320,7 +336,7 @@ export async function reconcileTrade(
   attempt = 0,
 ): Promise<void> {
   const { settleAfterBlocks } = run.parts.limits;
-  const isFill = fillOrderOf(finalized) !== undefined;
+  const isFill = isLiveFill(finalized);
   if (attempt === settleAfterBlocks) {
     run.parts.log.warn("executor.settle_late", { intentId: finalized.record.id });
     await countUnsettledFill(run, finalized);

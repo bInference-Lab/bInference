@@ -109,3 +109,78 @@ export async function holdsTheLineForARuleFill(subject: WebhookRuleStoreSubject)
   assert.ok((await intents.transition(filled, live())).ok);
   assert.deepEqual(await intents.fillsInFlight(query, live()), []);
 }
+
+/**
+ * Checks that a live rule fill its reconciliation could not value counts on its alert and rule
+ * alone, once it is `finalized` (decision 0342); a fill of an intent still under way, or one
+ * that skips its rule's count, ends nothing alone.
+ */
+export async function countsAnUnvaluedRuleFill(subject: WebhookRuleStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  const rule = await activeRule(subject, 1);
+  const event = await acceptedEvent(subject, { n: 1, atMs: 5_000 });
+  const finalized = { ...liveRuleFill(subject, 7, event), state: "finalized" as const };
+  assert.ok((await intents.create(finalized, live())).ok);
+  assert.ok((await intents.create(liveRuleFill(subject, 8, event), live())).ok);
+  const counted = { ...ruleMove(1, rule.version, "active"), fills: 1 };
+  const early = { ...endOf(8, event), move: counted };
+  await assert.rejects(store.endAlert(early, live()), { code: "store.constraint" });
+  await assert.rejects(store.endAlert(endOf(7, event), live()), { code: "store.constraint" });
+  const ended = await store.endAlert({ ...endOf(7, event), move: counted }, live());
+  assert.deepEqual(ended.ok ? [ended.value.outcome, ended.value.intentId] : [], [
+    "filled",
+    fixtureId("int", 7),
+  ]);
+  assert.equal((await store.get(ruleId(1), live()))?.fills, 1);
+}
+
+/**
+ * Checks that a page of a rule's fills holds only the alerts a fill ended, filled or failed on
+ * chain, newest first, its limit counted after the rest are left out (decision 0342), so the
+ * alerts skipped between fills never push a failure out of a rule's count.
+ */
+export async function pagesARuleFillsAlone(subject: WebhookRuleStoreSubject): Promise<void> {
+  const { store } = subject;
+  await activeRule(subject, 1);
+  const reasons = ["reverted", "fill_waiting", "late", "stuck_dropped", "fill_waiting"] as const;
+  const events = await reasons.reduce<Promise<readonly number[]>>(async (done, reason, index) => {
+    const before = await done;
+    const event = await acceptedEvent(subject, { n: 1, atMs: 5_000 + index });
+    const skip = { event, outcome: "skipped" as const, reason };
+    assert.ok((await store.endAlert(skip, live())).ok);
+    return [...before, event];
+  }, Promise.resolve([]));
+  const pageOf = async (limit: number) =>
+    (await store.alerts({ ruleId: ruleId(1), limit, onlyFills: true }, live())).map(
+      ({ event }) => event,
+    );
+  assert.deepEqual(await pageOf(10), [events[3], events[0]]);
+  assert.deepEqual(await pageOf(1), [events[3]]);
+  assert.equal((await store.alerts({ ruleId: ruleId(1), limit: 10 }, live())).length, 5);
+}
+
+/**
+ * Checks that an alert whose live fill the executor holds ends only by that fill's own move
+ * (decision 0342): a skip written alone, or one naming another intent, is `held` and writes
+ * nothing; an unvalued count naming another alert's fill ends nothing; the fill's own move ends it.
+ */
+export async function keepsAHeldAlertForItsFill(subject: WebhookRuleStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  const rule = await activeRule(subject, 1);
+  const event = await acceptedEvent(subject, { n: 1, atMs: 5_000 });
+  const other = await acceptedEvent(subject, { n: 1, atMs: 5_001 });
+  assert.ok((await intents.create(liveRuleFill(subject, 7, event), live())).ok);
+  const elsewhere = { ...liveRuleFill(subject, 8, other), state: "finalized" as const };
+  assert.ok((await intents.create(elsewhere, live())).ok);
+  const late = { event, outcome: "skipped" as const, reason: "late" as const };
+  assert.deepEqual(await store.endAlert(late, live()), { ok: false, error: "held" });
+  const stranger = { ...late, intentId: fixtureId("int", 8) };
+  assert.deepEqual(await store.endAlert(stranger, live()), { ok: false, error: "held" });
+  const counted = { ...ruleMove(1, rule.version, "active"), fills: 1 };
+  const borrowed = { ...endOf(8, event), move: counted };
+  await assert.rejects(store.endAlert(borrowed, live()), { code: "store.constraint" });
+  assert.equal((await store.alert(event, live()))?.outcome, undefined);
+  const own = { ...intentMove(7, 0, "finalized"), alert: { ...endOf(7, event), move: counted } };
+  assert.ok((await intents.transition(own, live())).ok);
+  assert.equal((await store.alert(event, live()))?.intentId, fixtureId("int", 7));
+}

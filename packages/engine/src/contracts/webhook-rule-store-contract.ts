@@ -14,8 +14,11 @@ import {
 } from "./webhook-rule-checks.js";
 import {
   endsALiveRuleFillsAlert,
+  countsAnUnvaluedRuleFill,
+  keepsAHeldAlertForItsFill,
   holdsTheLineForARuleFill,
   landsADroppedRuleFill,
+  pagesARuleFillsAlone,
 } from "./webhook-rule-fill-checks.js";
 import {
   acceptedEvent,
@@ -212,6 +215,9 @@ export function webhookRuleStoreContract(
     checkOn("ends a live rule fill's alert with its intent's move", fresh, endsALiveRuleFillsAlert),
     checkOn("turns a dropped rule fill's skip into its late fill", fresh, landsADroppedRuleFill),
     checkOn("holds the agent's line until a rule fill is filled", fresh, holdsTheLineForARuleFill),
+    checkOn("counts an unvalued live rule fill alone", fresh, countsAnUnvaluedRuleFill),
+    checkOn("keeps an alert held by its live fill for that fill", fresh, keepsAHeldAlertForItsFill),
+    checkOn("pages a rule's fill ends alone", fresh, pagesARuleFillsAlone),
     checkOn(
       "lists a rule's alerts and announces their notices once",
       fresh,

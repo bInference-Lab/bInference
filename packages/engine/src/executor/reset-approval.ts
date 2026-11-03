@@ -1,7 +1,7 @@
 import type { TxDraft } from "@binference/chain";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { fillOrderOf } from "../orders/fill-ends.js";
+import { isLiveFill } from "../orders/fill-ends.js";
 import { noticePush } from "../pushes/notice-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
@@ -57,8 +57,7 @@ export async function resetApproval(
 ): Promise<void> {
   const { snapshot, index } = taken;
   const { record } = snapshot;
-  const draft =
-    index > 0 && fillOrderOf(snapshot) !== undefined ? resetDraftOf(run, index) : undefined;
+  const draft = index > 0 && isLiveFill(snapshot) ? resetDraftOf(run, index) : undefined;
   if (draft === undefined) {
     return;
   }

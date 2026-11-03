@@ -69,6 +69,7 @@ export interface ExecutorOptions {
     | "orders"
     | "bridges"
     | "unbondings"
+    | "webhookRules"
   >;
   readonly positions: PositionStore;
   readonly queue: WalletQueue;

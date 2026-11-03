@@ -38,3 +38,16 @@ const fillAuthorizationShape = z.union([
 export function isFillAuthorized(authorizedBy: JsonValue | undefined): boolean {
   return fillAuthorizationShape.safeParse(authorizedBy).success;
 }
+
+const ruleFillShape = z.looseObject({ webhookRule: idSchema("whr"), event: z.int().positive() });
+
+/**
+ * The webhook rule and alert row a stored authorization names, when it is a rule fill's (decision
+ * 0342); `undefined` for any other.
+ */
+export function ruleFillOfAuthorization(
+  authorizedBy: JsonValue | undefined,
+): { readonly rule: Id<"whr">; readonly event: number } | undefined {
+  const parsed = ruleFillShape.safeParse(authorizedBy);
+  return parsed.success ? { rule: parsed.data.webhookRule, event: parsed.data.event } : undefined;
+}

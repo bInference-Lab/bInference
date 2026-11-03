@@ -1,22 +1,13 @@
 import type { Id } from "@binference/core";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import { cancelUnsigned } from "../orders/cancel-order.js";
+import { fillRuleOf } from "../orders/fill-ends.js";
 import { unfinishedFills } from "../orders/fill-faults.js";
 import { type AlertEndParts, endAlertSkipped } from "./end-alert.js";
 
 /** What cancelling the rule fills a stop or a deadline left reads and writes through. */
 export interface RepairRuleFillsParts extends AlertEndParts {
   readonly stored: StoredIntents;
-}
-
-// The rule and the alert row a webhook rule's fill fills; `undefined` for any other intent.
-function ruleFillOf(
-  snapshot: IntentSnapshot,
-): { readonly rule: Id<"whr">; readonly event: number } | undefined {
-  const { authorizedBy } = snapshot.stored.status;
-  return authorizedBy !== undefined && "webhookRule" in authorizedBy
-    ? { rule: authorizedBy.webhookRule, event: authorizedBy.event }
-    : undefined;
 }
 
 // Cancels each fill unsigned and ends its alert `fill_failed`, told once per reason in a row; an
@@ -29,7 +20,7 @@ async function cancelEach(
   const { cause, signal } = call;
   return left.reduce<Promise<number>>(async (counted, snapshot) => {
     const count = await counted;
-    const fill = ruleFillOf(snapshot);
+    const fill = fillRuleOf(snapshot);
     if (fill === undefined) {
       return count;
     }
@@ -52,7 +43,7 @@ async function leftFills(
   signal: AbortSignal,
 ): Promise<readonly IntentSnapshot[]> {
   const isFill = (snapshot: IntentSnapshot): boolean => {
-    const fill = ruleFillOf(snapshot);
+    const fill = fillRuleOf(snapshot);
     return fill !== undefined && (query.event === undefined || fill.event === query.event);
   };
   const agent = query.agentId === undefined ? {} : { agentId: query.agentId };

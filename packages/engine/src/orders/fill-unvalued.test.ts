@@ -1,5 +1,3 @@
-import type { ReceiptReader } from "@binference/chain";
-import type { FakeNetwork } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { driveUntil, flush } from "../executor/test-executor.js";
@@ -10,26 +8,10 @@ import {
   fillOnce,
   limitBuy,
   liveFillsOf,
+  silentTransfers,
   startLiveFills,
 } from "./test-live-fills.js";
 import { storedOrder } from "./test-orders.js";
-
-// Receipts whose transfers no node answers while it is silent, so no trade can be valued.
-function silentTransfers() {
-  const state = { isSilent: true };
-  return {
-    speak: () => {
-      state.isSilent = false;
-    },
-    wrap: (network: FakeNetwork): ReceiptReader => ({
-      ...network,
-      transfers: async (chain, hash, options) =>
-        state.isSilent
-          ? Promise.reject(new Error("The node did not answer."))
-          : network.transfers(chain, hash, options),
-    }),
-  };
-}
 
 describe("a live fill whose trade cannot be valued", () => {
   it("is counted on its order after the settle wait, frees the line, and settles once valued", async () => {

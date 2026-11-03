@@ -13,4 +13,6 @@ export interface WebhookRuleParts extends OneCardParts {
    * anything is stored; a rejection, when the published address cannot be read, stores nothing.
    */
   readonly webhookBase: (signal: AbortSignal) => Promise<string>;
+  /** Whether a live agent's rule may be made: off while live fills are off (decision 0342). */
+  readonly liveFills: boolean;
 }

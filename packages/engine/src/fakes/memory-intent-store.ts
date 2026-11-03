@@ -48,6 +48,8 @@ export interface MemoryIntentStore extends IntentStore {
   confirmationNow(id: Id<"int">): StoredConfirmation | undefined;
   /** The intent as it stands now, or `undefined`. */
   intentNow(id: Id<"int">): IntentRecord | undefined;
+  /** Every intent as it stands now, in table order. */
+  intentsNow(): readonly IntentRecord[];
   /** The agent's identity a move stored, or `undefined`. */
   identityNow(agent: Id<"agt">): IdentityRecord | undefined;
 }
@@ -303,6 +305,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
   return {
     confirmationNow: (id) => tables.confirmation(id),
     intentNow: (id) => tables.intent(id),
+    intentsNow: () => tables.intents(),
     create: async (draft, call) => memoryCall(call, () => create(tables, options, draft)),
     get: async (id, call) => memoryCall(call, () => tables.intent(id)),
     transition: async (change, call) => memoryCall(call, () => transition(tables, options, change)),

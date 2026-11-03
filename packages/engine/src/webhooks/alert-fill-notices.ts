@@ -4,6 +4,7 @@ import type { AssetInfos } from "@binference/protocol";
 import type { PaperFill } from "../intents/event-cause.schema.js";
 import { countNotice, type NoticeHour } from "../notices/notice-hour.js";
 import { plainResultOf, skipReasonPart } from "../orders/fill-notices.js";
+import { stopAfterFailures } from "../orders/fill-pacing.js";
 import type { OrderFillReason } from "../orders/order-fill.js";
 import { type Notice, type NoticePart, noticePush } from "../pushes/notice-push.js";
 import type { WebhookRuleRecord } from "./webhook-rule-record.js";
@@ -11,8 +12,8 @@ import type { WebhookRuleRecord } from "./webhook-rule-record.js";
 // Dollars read the same in every language (`$1.20`), so the notice carries them as text.
 const dollars = createFormatter({ locale: "en", timeZone: "UTC" });
 
-// The rule as a fill notice names its order: `fill.webhookRule` (spec 4, section 4.4).
-function ruleKindOf(rule: Pick<WebhookRuleRecord, "request">): NoticePart {
+/** The rule as a fill notice names its order: `fill.webhookRule` (spec 4, section 4.4). */
+export function ruleOrderKind(rule: Pick<WebhookRuleRecord, "request">): NoticePart {
   return { key: "fill.webhookRule", values: { name: rule.request.name } };
 }
 
@@ -35,9 +36,21 @@ export function ruleFillNotice(
     key: "notice.fill",
     agent: rule.agentId,
     values: { mode: rule.isPaper ? "paper" : "live" },
-    parts: { orderKind: ruleKindOf(rule), result },
+    parts: { orderKind: ruleOrderKind(rule), result },
     ...(Object.keys(assets).length === 0 ? {} : { assets }),
   };
+}
+
+/**
+ * `notice.orderOverfilled` for a live fill that landed past its rule's most fills (decision 0342),
+ * the owner's alarm no setting mutes, with the count and the most, its order named as the rule.
+ */
+export function ruleOverfilledNotice(
+  rule: Pick<WebhookRuleRecord, "agentId" | "request" | "fills" | "maxFills">,
+): JsonValue {
+  const values = { fills: String(rule.fills + 1), maxFills: String(rule.maxFills ?? 0) };
+  const notice = { key: "notice.orderOverfilled", agent: rule.agentId, values };
+  return noticePush({ ...notice, parts: { orderKind: ruleOrderKind(rule) } }).data;
 }
 
 /**
@@ -56,8 +69,28 @@ export function ruleSkippedNotice(
     key: "notice.webhookSkipped",
     agent: rule.agentId,
     values: {},
-    parts: { orderKind: ruleKindOf(rule), reason: skipReasonPart(skip) },
+    parts: { orderKind: ruleOrderKind(rule), reason: skipReasonPart(skip) },
   };
+}
+
+/**
+ * The notice that tells a live rule ended `deleted` with its fill (decision 0342), so its URL takes
+ * no more alerts: `notice.webhookRuleCancelled` for the owner's cancel of the fill before it was
+ * sent, `notice.webhookRuleFailing` for its fifth fill failed on chain since its last fill.
+ */
+export function ruleEndedNotice(
+  rule: Pick<WebhookRuleRecord, "agentId" | "request">,
+  end: "owner_cancelled" | "fills_failing",
+): Notice {
+  const parts = { orderKind: ruleOrderKind(rule) };
+  return end === "owner_cancelled"
+    ? { key: "notice.webhookRuleCancelled", agent: rule.agentId, values: {}, parts }
+    : {
+        key: "notice.webhookRuleFailing",
+        agent: rule.agentId,
+        values: { count: String(stopAfterFailures) },
+        parts,
+      };
 }
 
 // The line that tells how many of a rule's notices its notice hour held back (decision 0337).

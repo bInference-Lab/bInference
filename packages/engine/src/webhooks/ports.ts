@@ -85,13 +85,16 @@ export interface WebhookRuleStore {
   events(query: WebhookEventQuery, options: StoreCall): Promise<readonly WebhookEventRecord[]>;
   /**
    * Ends an accepted alert's fill as skipped, with its rule's move if it names one, in one write.
-   * An alert that already ended is `ended`, one with no accepted row `not_found`, and a rule at
-   * another version `stale`; each writes nothing. A fill is written with its intent's move.
+   * An alert that already ended is `ended`, one with no accepted row `not_found`, one whose live
+   * fill the executor holds `held`, since only that fill's own move ends it, and a rule at another
+   * version `stale`; each writes nothing. A fill is written with its intent's move, but for the
+   * count of the alert's own live fill at `finalized` its reconciliation could not value, on its
+   * rule or a deleted one (decision 0342); any other fill throws `store.constraint`.
    */
   endAlert(
     write: AlertFillWrite,
     options: StoreCall,
-  ): Promise<Result<AlertFillRecord, "ended" | "not_found" | "stale">>;
+  ): Promise<Result<AlertFillRecord, "ended" | "not_found" | "stale" | "held">>;
   /** Accepted alerts whose notices were never announced, the oldest first, at most `limit`. */
   unannounced(limit: number, options: StoreCall): Promise<readonly AlertFillRecord[]>;
   /** Marks the notices of alerts announced; one announced before keeps its time. */

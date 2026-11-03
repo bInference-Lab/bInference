@@ -70,6 +70,7 @@
   "webhookRule.sell": "每次提醒时{sell}",
   "webhookRule.limits": "{maxFills, plural, =0 {不限成交次数} other {最多成交 # 次}}，截至 {expiry}",
   "webhookRule.url": "确认后其地址才会生效；任何持有该地址的人都可以在规则范围内触发此规则",
+  "webhookRule.live": "每次成交都用实盘资金交易，无需你点按确认，并受这些范围和 Agent 限额约束",
   "webhookRule.paper": "它只在模拟模式下成交，即使此 Agent 转为实盘也是如此：提醒规则暂不交易实盘资金",
   "webhookRule.slippage": "每次成交的滑点最多 {slippage}",
   "place.curve": "{launchpad} 联合曲线",

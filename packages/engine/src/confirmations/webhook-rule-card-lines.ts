@@ -17,6 +17,8 @@ export interface WebhookRuleAction {
   /** Absent: no limit on its fills. */
   readonly maxFills?: number;
   readonly expiresAtMs: number;
+  /** The mode it fills in, its agent's when it was made (decision 0337). */
+  readonly isPaper: boolean;
 }
 
 const asset = (token: AssetRef): CardValue => ({ type: "asset", asset: token });
@@ -57,7 +59,8 @@ export function webhookRuleActionLine(action: WebhookRuleAction): CardLine {
 /**
  * The lines under a rule's action (spec 4, section 3.9; decisions 0337 and 0338): how many fills
  * it allows until when, the most slippage each fill takes when the rule names it, that its URL
- * works once confirmed for anyone who holds it, and that it fills on paper only.
+ * works once confirmed for anyone who holds it, and that it fills on paper only, or, for a live
+ * rule, live funds with no tap (decision 0342).
  */
 export function webhookRuleDetailLines(action: WebhookRuleAction): readonly CardLine[] {
   const { maxSlippageBps } = action.request;
@@ -78,6 +81,6 @@ export function webhookRuleDetailLines(action: WebhookRuleAction): readonly Card
           } as const,
         ]),
     { key: "card.webhookRule.url", values: {} },
-    { key: "card.webhookRule.paper", values: {} },
+    { key: action.isPaper ? "card.webhookRule.paper" : "card.webhookRule.live", values: {} },
   ];
 }
