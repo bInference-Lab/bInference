@@ -122,7 +122,9 @@ async function showsPosition(chat: Chat, staked: IntentView): Promise<void> {
     `${liveMark} Live positions`,
     "",
     expect.stringMatching(new RegExp(`^\\S+ \\(${units}\\) · rescue 0 · ${liveMark} Live$`, "u")),
-    expect.stringMatching(new RegExp(`^Holding [\\d.]+ \\S+ \\(${units}\\)$`, "u")),
+    expect.stringMatching(
+      new RegExp(`^Holding [\\d.]+ \\S+ \\(${units}\\) · value \\$600\\.00$`, "u"),
+    ),
   ]);
 }
 
