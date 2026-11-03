@@ -29,7 +29,7 @@ export function createFillSingleUse(): FillSingleUse {
   return {
     admit(input, nowMs) {
       const { authorization } = input;
-      if (authorization.kind !== "order") {
+      if (authorization.kind !== "fill") {
         return true;
       }
       for (const [key, count] of taken) {
@@ -38,7 +38,7 @@ export function createFillSingleUse(): FillSingleUse {
         }
       }
       const { grant } = authorization;
-      const key = `${grant.order}:${String(grant.fillsBefore)}`;
+      const key = `${grant.source}:${String(grant.fillsBefore)}`;
       const held = taken.get(key);
       if (held !== undefined && held.intent !== input.intent) {
         return false;

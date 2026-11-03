@@ -5,7 +5,7 @@ import {
   type ApprovalModeNow,
   type AutoModeGrant,
   type FillGrant,
-  type OrderNow,
+  type FillSourceNow,
   type SignStep,
   type SignAuthorization,
 } from "@binference/chain";
@@ -87,10 +87,10 @@ const agent = idSchema("agt").parse("agt_0192f3a4-5b6c-7d8e-9f00-112233445566");
 const orderId = idSchema("ord").parse("ord_0192f3a4-5b6c-7d8e-9f00-112233445566");
 const orderTermsHash = "ef".repeat(32);
 const fillGrant: FillGrant = {
-  order: orderId,
+  source: orderId,
   agent,
   intent: call.intent,
-  orderTermsHash,
+  sourceTermsHash: orderTermsHash,
   fillsBefore: 2,
   termsHash: fixtureTermsHash,
   grantedAtMs: fixtureNowMs - 1,
@@ -98,7 +98,7 @@ const fillGrant: FillGrant = {
   networkFeeCapNativeBase: gwei,
   spend: { maxBase: 10n ** 16n },
 };
-const orderNow: OrderNow = {
+const orderNow: FillSourceNow = {
   id: orderId,
   state: "active",
   termsHash: orderTermsHash,
@@ -108,9 +108,9 @@ const orderNow: OrderNow = {
 };
 const fillWith = (change: {
   readonly grant?: Partial<FillGrant>;
-  readonly current?: Partial<OrderNow>;
+  readonly current?: Partial<FillSourceNow>;
 }): SignAuthorization => ({
-  kind: "order",
+  kind: "fill",
   grant: { ...fillGrant, ...change.grant },
   current: { ...orderNow, ...change.current },
 });
@@ -417,7 +417,7 @@ const breaking: readonly (readonly [HardRule, string, AuthorizeInput, HardRuleCo
     withAuthorization(
       call,
       fillWith({
-        grant: { order: idSchema("ord").parse("ord_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff") },
+        grant: { source: idSchema("ord").parse("ord_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff") },
       }),
     ),
   ],

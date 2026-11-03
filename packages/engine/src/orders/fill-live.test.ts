@@ -30,13 +30,13 @@ const live = { signal: new AbortController().signal };
 function grantChecksOf(signed: readonly SignRequest[], nowMs: number) {
   return signed.map((request) => {
     const { authorization } = request;
-    if (authorization.kind !== "order") {
+    if (authorization.kind !== "fill") {
       return "no fill grant";
     }
     const check = {
       intent: request.intent,
       termsHash: request.termsHash,
-      order: authorization.current,
+      source: authorization.current,
       action: request.step.action,
       isCancel: request.step.replaces?.kind === "cancel",
       stepIndex: request.step.index,
@@ -62,8 +62,8 @@ describe("an auto order's live fill", () => {
     expect(before).toMatchObject({ state: "active", fills: 0 });
     expect(grantChecksOf(bench.signed, signedAtMs)).toStrictEqual(["holds"]);
     expect(bench.signed[0]?.authorization).toMatchObject({
-      kind: "order",
-      grant: { order: order.id, fillsBefore: 0, spend: { maxBase: 10n ** 15n } },
+      kind: "fill",
+      grant: { source: order.id, fillsBefore: 0, spend: { maxBase: 10n ** 15n } },
       current: { id: order.id, state: "active", fills: 0, maxFills: 1 },
     });
 

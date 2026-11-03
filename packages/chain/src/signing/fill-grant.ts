@@ -3,26 +3,30 @@ import { z } from "zod";
 import { type AccountRef, accountRefParts, accountRefSchema } from "../caip/account-ref.js";
 import type { StepAction } from "./sign-step.js";
 
+/** The auto order or webhook rule a fill runs under, which the owner confirmed once, in advance. */
+type FillSourceId = Id<"ord"> | Id<"whr">;
+
 /**
- * The fill grant: what the signer checks before it signs a step of an auto order's live fill
- * (keys spec, section 5.2, rule 5), as a confirmation record is for a tapped intent. The engine
- * makes it when the fill's check at `simulated` named no breach and the fill moved to
- * `confirmed`. It binds one fill intent and its terms to the order the owner confirmed: that
- * order's terms hash, and the fills the order had recorded then, so no grant outlives the next
- * fill the order records. It holds for transactions that pay at most the network fee cap per gas
- * and spend at most the fill's size of what the fill spends, for a trade card's lifetime.
+ * The fill grant: what the signer checks before it signs a step of a live fill of an auto order
+ * or a webhook rule (keys spec, section 5.2, rule 5), as a confirmation record is for a tapped
+ * intent. The engine makes it when the fill's check at `simulated` named no breach and the fill
+ * moved to `confirmed`. It binds one fill intent and its terms to the order or rule the owner
+ * confirmed, its source: the source's terms hash, and the fills the source had recorded then, so
+ * no grant outlives the next fill the source records. It holds for transactions that pay at most
+ * the network fee cap per gas and spend at most the fill's size of what the fill spends, for a
+ * trade card's lifetime.
  */
 export interface FillGrant {
-  readonly order: Id<"ord">;
+  readonly source: FillSourceId;
   readonly agent: Id<"agt">;
   readonly intent: Id<"int">;
-  /** The SHA-256 of the order's card terms the owner confirmed, in hex. */
-  readonly orderTermsHash: string;
-  /** The fills the order had recorded when the fill was authorized. */
+  /** The SHA-256 of the source's card terms the owner confirmed, in hex. */
+  readonly sourceTermsHash: string;
+  /** The fills the source had recorded when the fill was authorized. */
   readonly fillsBefore: number;
   /**
-   * The SHA-256 of the fill's own terms, in hex: the intent, its order with the order's terms hash
-   * and `fillsBefore`, the request, the quote and the plan.
+   * The SHA-256 of the fill's own terms, in hex: the intent, its source with the source's terms
+   * hash and `fillsBefore`, the request, the quote and the plan.
    */
   readonly termsHash: string;
   /** When the fill moved to `confirmed`, in epoch milliseconds. */
@@ -41,21 +45,27 @@ export interface FillGrant {
 /** A {@link FillGrant} as JSON carries it: ids as text, amounts as decimal strings. */
 export interface FillGrantWire extends Omit<
   FillGrant,
-  "order" | "agent" | "intent" | "networkFeeCapNativeBase" | "spend"
+  "source" | "agent" | "intent" | "networkFeeCapNativeBase" | "spend"
 > {
-  readonly order: string;
+  readonly source: string;
   readonly agent: string;
   readonly intent: string;
   readonly networkFeeCapNativeBase: string;
   readonly spend: { readonly token?: string; readonly maxBase: string };
 }
 
-/** The order as the engine read it right before asking for the signature. */
-export interface OrderNow {
-  readonly id: Id<"ord">;
-  /** `active` while it may fill; any other state authorizes nothing but a cancel. */
+/**
+ * A fill's source as the engine read it right before asking for the signature: an auto order, or
+ * a webhook rule, which the engine reads as `paused` while its agent is frozen.
+ */
+export interface FillSourceNow {
+  readonly id: FillSourceId;
+  /**
+   * `active` while it may fill, or `paused` by a freeze, which lets only a later step of a trade
+   * finish; any other state authorizes nothing but a cancel or the reset of an approval.
+   */
   readonly state: string;
-  /** The SHA-256 of the order's card terms its stored confirmation holds, in hex. */
+  /** The SHA-256 of the source's card terms its stored confirmation holds, in hex. */
   readonly termsHash: string;
   readonly expiresAtMs: number;
   /** The fills it recorded so far. */
@@ -64,20 +74,21 @@ export interface OrderNow {
   readonly maxFills?: number;
 }
 
-/** An {@link OrderNow} as JSON carries it. */
-export interface OrderNowWire extends Omit<OrderNow, "id"> {
+/** A {@link FillSourceNow} as JSON carries it. */
+export interface FillSourceNowWire extends Omit<FillSourceNow, "id"> {
   readonly id: string;
 }
 
 const countSchema = z.int().nonnegative();
 const hashSchema = z.string().regex(/^[0-9a-f]{64}$/);
+const sourceSchema: z.ZodType<FillSourceId, string> = z.union([idSchema("ord"), idSchema("whr")]);
 
 /** Decodes a {@link FillGrant} from JSON, and encodes it back with `z.encode`. */
 export const fillGrantSchema: z.ZodType<FillGrant, FillGrantWire> = z.strictObject({
-  order: idSchema("ord"),
+  source: sourceSchema,
   agent: idSchema("agt"),
   intent: idSchema("int"),
-  orderTermsHash: hashSchema,
+  sourceTermsHash: hashSchema,
   fillsBefore: countSchema,
   termsHash: hashSchema,
   grantedAtMs: countSchema,
@@ -89,9 +100,9 @@ export const fillGrantSchema: z.ZodType<FillGrant, FillGrantWire> = z.strictObje
   }),
 });
 
-/** Decodes an {@link OrderNow} from JSON. */
-export const orderNowSchema: z.ZodType<OrderNow, OrderNowWire> = z.strictObject({
-  id: idSchema("ord"),
+/** Decodes a {@link FillSourceNow} from JSON. */
+export const fillSourceNowSchema: z.ZodType<FillSourceNow, FillSourceNowWire> = z.strictObject({
+  id: sourceSchema,
   state: z.string().regex(/^[a-z_]{1,32}$/),
   termsHash: hashSchema,
   expiresAtMs: countSchema,
@@ -99,20 +110,20 @@ export const orderNowSchema: z.ZodType<OrderNow, OrderNowWire> = z.strictObject(
   maxFills: countSchema.exactOptional(),
 });
 
-/** What a fill grant is checked against: the signing request, the order now and the time. */
+/** What a fill grant is checked against: the signing request, the source now and the time. */
 export interface FillGrantCheck {
   /** The intent the signing request names. */
   readonly intent: Id<"int">;
   /** The terms hash the signing request carries. */
   readonly termsHash: string;
-  readonly order: OrderNow;
+  readonly source: FillSourceNow;
   /** What the step does, which the hard rules hold the transaction to. */
   readonly action: StepAction;
   /** Whether the transaction is a cancel at a used nonce, which moves nothing. */
   readonly isCancel: boolean;
   /**
    * The step's place in the fill's plan, from 0; the first step when absent. A later step runs
-   * only once the steps before it landed, and finishes its trade while a freeze pauses the order
+   * only once the steps before it landed, and finishes its trade while a freeze pauses the source
    * (decision 0211).
    */
   readonly stepIndex?: number;
@@ -126,18 +137,18 @@ export interface FillGrantCheck {
 
 /**
  * Why a fill grant authorizes no signature: it was granted later than now or lasts longer than a
- * trade card's 60 seconds, it names another intent or another order, the order's
- * confirmed terms changed, the order no longer may fill, it recorded a fill since the grant, the
- * request carries other terms, the transaction pays more fee per gas than the cap, it spends what
- * the fill does not or more than its size, or the grant expired.
+ * trade card's 60 seconds, it names another intent or another source, the source's confirmed
+ * terms changed, the source no longer may fill, it recorded a fill since the grant, the request
+ * carries other terms, the transaction pays more fee per gas than the cap, it spends what the
+ * fill does not or more than its size, or the grant expired.
  */
 export type FillGrantProblem =
   | "lifetime"
   | "intent_mismatch"
-  | "order_mismatch"
-  | "order_changed"
-  | "order_inactive"
-  | "order_filled_since"
+  | "source_mismatch"
+  | "source_changed"
+  | "source_inactive"
+  | "filled_since"
   | "terms_mismatch"
   | "over_fee_cap"
   | "over_size"
@@ -156,35 +167,36 @@ function lifetimeProblem(grant: FillGrant, nowMs: number): FillGrantProblem | un
   return isWithin ? undefined : "lifetime";
 }
 
-// Whether the grant is this intent's, under the order the owner confirmed.
+// Whether the grant is this intent's, under the order or rule the owner confirmed.
 function bindingProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProblem | undefined {
-  const { order } = check;
+  const { source } = check;
   if (grant.intent !== check.intent) {
     return "intent_mismatch";
   }
-  if (grant.order !== order.id) {
-    return "order_mismatch";
+  if (grant.source !== source.id) {
+    return "source_mismatch";
   }
-  if (grant.orderTermsHash !== order.termsHash) {
-    return "order_changed";
+  if (grant.sourceTermsHash !== source.termsHash) {
+    return "source_changed";
   }
   return grant.termsHash === check.termsHash ? undefined : "terms_mismatch";
 }
 
-// The states an order lets a step of its fill sign in: active, or paused by a freeze for a later
+// The states a source lets a step of its fill sign in: active, or paused by a freeze for a later
 // step, which finishes a trade whose first step landed (decision 0211).
 function signsIn(state: string, stepIndex: number): boolean {
   return state === "active" || (state === "paused" && stepIndex > 0);
 }
 
-// Whether the order may still fill, and has recorded no fill since the grant.
-function orderProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProblem | undefined {
-  const { order, nowMs } = check;
-  const hasFillLeft = order.maxFills === undefined || order.fills < order.maxFills;
-  if (!signsIn(order.state, check.stepIndex ?? 0) || nowMs >= order.expiresAtMs || !hasFillLeft) {
-    return "order_inactive";
+// Whether the source may still fill, and has recorded no fill since the grant.
+function sourceProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProblem | undefined {
+  const { source, nowMs } = check;
+  const hasFillLeft = source.maxFills === undefined || source.fills < source.maxFills;
+  const isOpen = signsIn(source.state, check.stepIndex ?? 0) && nowMs < source.expiresAtMs;
+  if (!isOpen || !hasFillLeft) {
+    return "source_inactive";
   }
-  return order.fills === grant.fillsBefore ? undefined : "order_filled_since";
+  return source.fills === grant.fillsBefore ? undefined : "filled_since";
 }
 
 // One account on one chain; an EVM address compares without case.
@@ -220,7 +232,7 @@ function signingProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProbl
 }
 
 // A cancel moves nothing: it replaces the fill's transaction at its nonce. It signs for the
-// fill's own terms whatever the order became, until a minute after the grant expired.
+// fill's own terms whatever the source became, until a minute after the grant expired.
 function cancelProblem(grant: FillGrant, check: FillGrantCheck): FillGrantProblem | undefined {
   return check.nowMs < grant.expiresAtMs + cancelGraceMs ? undefined : "expired";
 }
@@ -238,12 +250,12 @@ function isRevoke(grant: FillGrant, action: StepAction): boolean {
 }
 
 /**
- * Checks a fill grant against a signing request and the order as it stands, in the order of
- * {@link FillGrantProblem}, and names the first problem. A grant binds one fill of one order:
- * once the order recorded a fill, ended, expired or used its last fill, every grant made before
- * signs nothing more but a cancel or a reset of its approval to 0, and a pause by a freeze lets
- * only a later step of a trade whose first step landed finish it (decision 0211). The signer's rule 5 runs this check, and the engine's
- * tests hold the grants it makes to it.
+ * Checks a fill grant against a signing request and its source as it stands, in the order of
+ * {@link FillGrantProblem}, and names the first problem. A grant binds one fill of one order or
+ * rule: once the source recorded a fill, ended, expired or used its last fill, every grant made
+ * before signs nothing more but a cancel or a reset of its approval to 0, and a pause by a freeze
+ * lets only a later step of a trade whose first step landed finish it (decision 0211). The
+ * signer's rule 5 runs this check, and the engine's tests hold the grants it makes to it.
  */
 export function checkFillGrant(
   grant: FillGrant,
@@ -255,6 +267,6 @@ export function checkFillGrant(
     bound ??
     (movesNothing
       ? cancelProblem(grant, check)
-      : (orderProblem(grant, check) ?? signingProblem(grant, check)));
+      : (sourceProblem(grant, check) ?? signingProblem(grant, check)));
   return problem === undefined ? ok(grant) : err(problem);
 }

@@ -5,7 +5,7 @@ import {
   checkAutoModeGrant,
   checkFillGrant,
   type FillGrant,
-  type OrderNow,
+  type FillSourceNow,
   type SignAuthorization,
 } from "@binference/chain";
 import type { RuleView } from "./hard-rule.js";
@@ -68,14 +68,14 @@ function isFeeUnderCap(view: RuleView): boolean {
 // The fill grant holds as `checkFillGrant` of `@binference/chain` reads it, against the order as
 // the engine read it right before signing: one fill of an active order the owner confirmed, which
 // recorded no fill since, spending at most the fill's size (decision 0210).
-function fillHolds(view: RuleView, grant: FillGrant, current: OrderNow): boolean {
+function fillHolds(view: RuleView, grant: FillGrant, current: FillSourceNow): boolean {
   const { intent, termsHash, step } = view.input;
   const isCancel = step.replaces?.kind === "cancel";
   const fee = view.transaction.feePerGas;
   const check = {
     intent,
     termsHash,
-    order: current,
+    source: current,
     action: step.action,
     isCancel,
     stepIndex: step.index,
@@ -86,7 +86,7 @@ function fillHolds(view: RuleView, grant: FillGrant, current: OrderNow): boolean
 }
 
 function termsHashOf(authorization: SignAuthorization): string {
-  if (authorization.kind === "approvalMode" || authorization.kind === "order") {
+  if (authorization.kind === "approvalMode" || authorization.kind === "fill") {
     return authorization.grant.termsHash;
   }
   return authorization.termsHash;
@@ -115,7 +115,7 @@ export function authorizationHolds(view: RuleView): boolean {
   if (authorization.kind === "approvalMode") {
     return autoHolds(view, authorization.grant, authorization.current);
   }
-  if (authorization.kind === "order") {
+  if (authorization.kind === "fill") {
     return fillHolds(view, authorization.grant, authorization.current);
   }
   return advanceHolds(authorization, view.nowMs);

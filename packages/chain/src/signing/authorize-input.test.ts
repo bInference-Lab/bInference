@@ -69,12 +69,12 @@ const steps: readonly SignStep[] = [
 const authorizations: readonly SignAuthorization[] = [
   base.authorization,
   {
-    kind: "order",
+    kind: "fill",
     grant: {
-      order: idSchema("ord").parse(`ord_${uuid}`),
+      source: idSchema("ord").parse(`ord_${uuid}`),
       agent: idSchema("agt").parse(`agt_${uuid}`),
       intent: idSchema("int").parse(`int_${uuid}`),
-      orderTermsHash: termsHash,
+      sourceTermsHash: termsHash,
       fillsBefore: 2,
       termsHash,
       grantedAtMs: nowMs,

@@ -18,12 +18,12 @@ const other = idSchema("int").parse("int_0192f3a4-5b6c-7d8e-9f00-aabbccddeeff");
 // A fill of `intent` under its order's grant at its first fill, as the engine would send it.
 function fillOf(input: AuthorizeInput, intent = input.intent): AuthorizeInput {
   const authorization: SignAuthorization = {
-    kind: "order",
+    kind: "fill",
     grant: {
-      order,
+      source: order,
       agent,
       intent,
-      orderTermsHash: "ef".repeat(32),
+      sourceTermsHash: "ef".repeat(32),
       fillsBefore: 0,
       termsHash: fixtureTermsHash,
       grantedAtMs: fixtureNowMs - 1,
@@ -68,7 +68,7 @@ describe("the signer's single use of a fill grant", () => {
 // The second fill's grant made again later, as a new confirmation would make it.
 function renewed(input: AuthorizeInput): SignAuthorization {
   const { authorization } = input;
-  return authorization.kind === "order"
+  return authorization.kind === "fill"
     ? {
         ...authorization,
         grant: {

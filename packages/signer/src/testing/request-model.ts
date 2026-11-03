@@ -200,10 +200,10 @@ function authorizationOf(a: Authorization): SignAuthorization {
 function fillAuthorizationOf(a: Extract<Authorization, { kind: "fill" }>): SignAuthorization {
   const { spendToken, maxBase, maxFills } = a;
   const grant = {
-    order: idSchema("ord").parse(a.grantOrder),
+    source: idSchema("ord").parse(a.grantOrder),
     agent: id("agt"),
     intent: idSchema("int").parse(a.intent),
-    orderTermsHash: a.grantOrderTerms,
+    sourceTermsHash: a.grantOrderTerms,
     fillsBefore: a.fillsBefore,
     termsHash: a.termsHash,
     grantedAtMs: a.grantedAtMs,
@@ -219,7 +219,7 @@ function fillAuthorizationOf(a: Extract<Authorization, { kind: "fill" }>): SignA
     fills: a.fills,
     ...(maxFills === undefined ? {} : { maxFills }),
   };
-  return { kind: "order", grant, current };
+  return { kind: "fill", grant, current };
 }
 
 function transactionOf(m: Model): JsonValue {

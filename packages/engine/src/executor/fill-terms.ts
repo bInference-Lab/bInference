@@ -5,10 +5,10 @@ import {
   checkFillGrant,
   fillGrantLifetimeMs,
   type FillGrant,
-  type OrderNow,
+  type FillSourceNow,
   type SignAuthorization,
 } from "@binference/chain";
-import type { Clock } from "@binference/core";
+import { type Clock, isId } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -52,7 +52,7 @@ function spendOf(parts: FillTermsParts, record: IntentRecord): FillGrant["spend"
 }
 
 /** The order as the signer reads it: its state, confirmed terms, expiry and fills now. */
-function orderNowOf(order: OrderRecord, orderTermsHash: string): OrderNow {
+function orderNowOf(order: OrderRecord, orderTermsHash: string): FillSourceNow {
   return {
     id: order.id,
     state: order.state,
@@ -106,7 +106,7 @@ export async function fillGrantOf(
   parts: FillTermsParts,
   snapshot: IntentSnapshot,
   call: { readonly networkFeeCapNativeBase: bigint; readonly signal: AbortSignal },
-): Promise<{ readonly grant: FillGrant; readonly current: OrderNow } | undefined> {
+): Promise<{ readonly grant: FillGrant; readonly current: FillSourceNow } | undefined> {
   const { record, history } = snapshot;
   const confirmed = history.events.find((event) => event.toState === "confirmed");
   const binding = await bindingOf(parts, snapshot, call.signal);
@@ -115,10 +115,10 @@ export async function fillGrantOf(
     return undefined;
   }
   const grant: FillGrant = {
-    order: binding.order.id,
+    source: binding.order.id,
     agent: record.agentId,
     intent: record.id,
-    orderTermsHash: binding.orderTermsHash,
+    sourceTermsHash: binding.orderTermsHash,
     fillsBefore: binding.fillsBefore,
     termsHash: binding.termsHash,
     grantedAtMs: confirmed.atMs,
@@ -133,7 +133,7 @@ export async function fillGrantOf(
 // grant allows: the signer holds each step's own spend to it.
 function grantCheck(
   grant: FillGrant,
-  current: OrderNow,
+  current: FillSourceNow,
   at: { readonly nowMs: number; readonly stepIndex: number },
 ) {
   const { nowMs, stepIndex } = at;
@@ -142,7 +142,7 @@ function grantCheck(
   const check = {
     intent: grant.intent,
     termsHash: grant.termsHash,
-    order: current,
+    source: current,
     action,
     isCancel: false,
     stepIndex,
@@ -157,10 +157,10 @@ function grantCheck(
  */
 export function fillGrantHolds(
   grant: FillGrant,
-  current: OrderNow,
+  current: FillSourceNow,
   at: { readonly nowMs: number; readonly stepIndex: number },
 ): SignAuthorization | undefined {
-  return grantCheck(grant, current, at).ok ? { kind: "order", grant, current } : undefined;
+  return grantCheck(grant, current, at).ok ? { kind: "fill", grant, current } : undefined;
 }
 
 /** What the queue reads of a live fill as it takes it: what signs it, or why it ends at once. */
@@ -216,7 +216,7 @@ export async function checkFillForQueue(
   if (!checked.ok) {
     return checked.error === "expired" ? {} : { refusal: "order_inactive" };
   }
-  const authorization = { kind: "order", grant: made.grant, current: made.current } as const;
+  const authorization = { kind: "fill", grant: made.grant, current: made.current } as const;
   return { terms: { authorization, termsHash: made.grant.termsHash } };
 }
 
@@ -229,8 +229,10 @@ export async function orderNowFor(
   parts: FillTermsParts,
   grant: FillGrant,
   signal: AbortSignal,
-): Promise<OrderNow | undefined> {
-  const order = await parts.orders.get(grant.order, { signal });
+): Promise<FillSourceNow | undefined> {
+  const order = isId("ord", grant.source)
+    ? await parts.orders.get(grant.source, { signal })
+    : undefined;
   const card =
     order === undefined ? undefined : await parts.intents.confirmation(order.intentId, { signal });
   return order === undefined || card === undefined ? undefined : orderNowOf(order, card.termsHash);

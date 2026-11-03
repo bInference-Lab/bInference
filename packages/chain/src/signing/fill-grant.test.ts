@@ -7,8 +7,8 @@ import {
   type FillGrant,
   type FillGrantCheck,
   fillGrantSchema,
-  type OrderNow,
-  orderNowSchema,
+  type FillSourceNow,
+  fillSourceNowSchema,
 } from "./fill-grant.js";
 
 const nowMs = 1_800_000_000_000;
@@ -23,10 +23,10 @@ const fillTerms = "a".repeat(64);
 const orderTerms = "b".repeat(64);
 
 const grant: FillGrant = {
-  order,
+  source: order,
   agent,
   intent,
-  orderTermsHash: orderTerms,
+  sourceTermsHash: orderTerms,
   fillsBefore: 1,
   termsHash: fillTerms,
   grantedAtMs: nowMs,
@@ -35,7 +35,7 @@ const grant: FillGrant = {
   spend: { maxBase: 10n ** 16n },
 };
 
-const current: OrderNow = {
+const current: FillSourceNow = {
   id: order,
   state: "active",
   termsHash: orderTerms,
@@ -47,7 +47,7 @@ const current: OrderNow = {
 const signing: FillGrantCheck = {
   intent,
   termsHash: fillTerms,
-  order: current,
+  source: current,
   action: { kind: "call", nativeValue: 10n ** 16n },
   isCancel: false,
   stepIndex: 0,
@@ -57,12 +57,12 @@ const signing: FillGrantCheck = {
 
 function problemOf(
   changes: Partial<FillGrantCheck>,
-  orderNow: Partial<OrderNow> = {},
+  orderNow: Partial<FillSourceNow> = {},
   granted: Partial<FillGrant> = {},
 ) {
   const checked = checkFillGrant(
     { ...grant, ...granted },
-    { ...signing, ...changes, order: { ...current, ...orderNow } },
+    { ...signing, ...changes, source: { ...current, ...orderNow } },
   );
   return checked.ok ? "holds" : checked.error;
 }
@@ -75,23 +75,23 @@ describe("the fill grant", () => {
 
   it("names a request for another intent, order or terms, or an order whose card changed", () => {
     expect(problemOf({ intent: otherIntent })).toBe("intent_mismatch");
-    expect(problemOf({}, { id: otherOrder })).toBe("order_mismatch");
-    expect(problemOf({}, { termsHash: "c".repeat(64) })).toBe("order_changed");
+    expect(problemOf({}, { id: otherOrder })).toBe("source_mismatch");
+    expect(problemOf({}, { termsHash: "c".repeat(64) })).toBe("source_changed");
     expect(problemOf({ termsHash: "c".repeat(64) })).toBe("terms_mismatch");
   });
 
   it("signs nothing once its order is no longer active, expired or used its last fill", () => {
-    expect(problemOf({}, { state: "paused" })).toBe("order_inactive");
-    expect(problemOf({}, { state: "filled" })).toBe("order_inactive");
-    expect(problemOf({}, { expiresAtMs: signing.nowMs })).toBe("order_inactive");
-    expect(problemOf({}, { fills: 2 })).toBe("order_inactive");
+    expect(problemOf({}, { state: "paused" })).toBe("source_inactive");
+    expect(problemOf({}, { state: "filled" })).toBe("source_inactive");
+    expect(problemOf({}, { expiresAtMs: signing.nowMs })).toBe("source_inactive");
+    expect(problemOf({}, { fills: 2 })).toBe("source_inactive");
   });
 
   it("signs nothing once its order recorded a fill since the grant", () => {
-    expect(problemOf({}, { fills: 2, maxFills: 5 })).toBe("order_filled_since");
-    expect(problemOf({}, { fills: 0 })).toBe("order_filled_since");
+    expect(problemOf({}, { fills: 2, maxFills: 5 })).toBe("filled_since");
+    expect(problemOf({}, { fills: 0 })).toBe("filled_since");
     const { maxFills: _bound, ...unbounded } = current;
-    expect(checkFillGrant(grant, { ...signing, order: unbounded }).ok).toBe(true);
+    expect(checkFillGrant(grant, { ...signing, source: unbounded }).ok).toBe(true);
   });
 
   it("signs a transaction at the fee cap per gas, and none above it", () => {
@@ -125,8 +125,8 @@ describe("the fill grant", () => {
 
   it("lets a later step finish its trade while a freeze pauses the order, never a first step", () => {
     expect(problemOf({ stepIndex: 1 }, { state: "paused" })).toBe("holds");
-    expect(problemOf({ stepIndex: 0 }, { state: "paused" })).toBe("order_inactive");
-    expect(problemOf({ stepIndex: 1 }, { state: "cancelled" })).toBe("order_inactive");
+    expect(problemOf({ stepIndex: 0 }, { state: "paused" })).toBe("source_inactive");
+    expect(problemOf({ stepIndex: 1 }, { state: "cancelled" })).toBe("source_inactive");
     expect(problemOf({ stepIndex: 1, nowMs: nowMs + 60_000 }, { state: "paused" })).toBe("expired");
   });
 
@@ -137,7 +137,7 @@ describe("the fill grant", () => {
     expect(problemOf(late, { state: "cancelled" }, sale)).toBe("holds");
     expect(problemOf({ ...late, nowMs: nowMs + 120_000 }, {}, sale)).toBe("expired");
     const other = { ...reset, token: spender };
-    expect(problemOf({ action: other }, { state: "cancelled" }, sale)).toBe("order_inactive");
+    expect(problemOf({ action: other }, { state: "cancelled" }, sale)).toBe("source_inactive");
   });
 
   it("signs nothing under a grant from the future or one that outlasts a trade card", () => {
@@ -150,6 +150,8 @@ describe("the fill grant", () => {
     const wire = z.encode(fillGrantSchema, grant);
     expect(wire.networkFeeCapNativeBase).toBe("1000000000");
     expect(fillGrantSchema.parse(JSON.parse(JSON.stringify(wire)))).toStrictEqual(grant);
-    expect(orderNowSchema.parse(z.encode(orderNowSchema, current))).toStrictEqual(current);
+    expect(fillSourceNowSchema.parse(z.encode(fillSourceNowSchema, current))).toStrictEqual(
+      current,
+    );
   });
 });

@@ -92,15 +92,15 @@ export {
   checkFillGrant,
   fillGrantLifetimeMs,
   fillGrantSchema,
-  orderNowSchema,
+  fillSourceNowSchema,
 } from "./signing/fill-grant.js";
 export type {
   FillGrant,
   FillGrantCheck,
   FillGrantProblem,
   FillGrantWire,
-  OrderNow,
-  OrderNowWire,
+  FillSourceNow,
+  FillSourceNowWire,
 } from "./signing/fill-grant.js";
 export type { SignerProcess } from "./signing/ports.js";
 export { privyRequestSchema } from "./signing/privy-request.js";

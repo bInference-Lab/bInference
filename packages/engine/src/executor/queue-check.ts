@@ -322,7 +322,7 @@ export async function recoveredFillTerms(
   }
   const { grant, current } = granted;
   const allowed = allowedTargetsOf(snapshot, targetContextOf(parts, chain));
-  return { authorization: { kind: "order", grant, current }, termsHash: grant.termsHash, allowed };
+  return { authorization: { kind: "fill", grant, current }, termsHash: grant.termsHash, allowed };
 }
 
 /**

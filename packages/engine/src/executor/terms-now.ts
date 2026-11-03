@@ -47,7 +47,7 @@ async function fillTermsNow(
   stepIndex: number,
 ): Promise<SigningTerms | undefined> {
   const { authorization } = terms;
-  if (authorization.kind !== "order") {
+  if (authorization.kind !== "fill") {
     return terms;
   }
   const { parts, signal } = run;
@@ -77,9 +77,9 @@ async function undoTermsNow(
 ): Promise<SigningTerms | undefined> {
   const { kind } = terms.authorization;
   if (signing.kind === "revoke") {
-    return kind === "order" ? terms : undefined;
+    return kind === "fill" ? terms : undefined;
   }
-  return kind === "confirmation" || kind === "order"
+  return kind === "confirmation" || kind === "fill"
     ? terms
     : autoTermsNow(run, terms, signing.record);
 }
@@ -117,7 +117,7 @@ export async function termsNow(
   if (authorization.kind === "confirmation") {
     return run.parts.clock.now() < authorization.expiresAtMs ? terms : undefined;
   }
-  return authorization.kind === "order"
+  return authorization.kind === "fill"
     ? fillTermsNow(run, terms, signing.index ?? 0)
     : autoTermsNow(run, terms, signing.record);
 }
