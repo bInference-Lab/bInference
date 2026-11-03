@@ -963,9 +963,10 @@ sets `serve` for `mini` and `funnel` for `webhooks`, writes `remote.publicUrl` a
 `registerIdentity` intent whose one step registers the agent in the ERC-8004 identity registry
 the chain registry lists. Its registration file, stored on chain as a data URI, holds the agent's
 name, `description` (at most 280 characters, the owner's words, none when absent), the
-addresses of its live wallets and binference's version; its card shows every field. A paper agent's
-ends `rejected_policy` with `paper_only`, and an agent that has a registration fails
-`intent.identity_exists`, storing nothing.
+address of the wallet that registers it, its live main wallet on the registry's chain, and
+binference's release version ([decision 0334](../DECISIONS.md#d0334)); its card shows every
+field. A paper agent's ends `rejected_policy` with `paper_only`, and an agent that has a
+registration fails `intent.identity_exists`, storing nothing.
 
 The owner's Telegram chat may run `config/change` past its `admin` scope for one patch alone,
 `{ owner: { locale } }`, which a `/lang` button sends ([decision 0134](../DECISIONS.md#d0134)).

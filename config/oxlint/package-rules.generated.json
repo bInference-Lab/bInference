@@ -10005,6 +10005,8 @@
         "plugins/brew/src/testing.ts",
         "plugins/dexscreener/src/index.ts",
         "plugins/dexscreener/src/testing.ts",
+        "plugins/erc8004/src/index.ts",
+        "plugins/erc8004/src/testing.ts",
         "plugins/flap/src/index.ts",
         "plugins/flap/src/testing.ts",
         "plugins/geckoterminal/src/index.ts",

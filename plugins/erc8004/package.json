@@ -1,0 +1,34 @@
+{
+  "name": "@binference/erc8004",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The ERC-8004 agent identity registry: writes an agent's registration file, reads a wallet's standing, and builds the one register call that mints the identity to the wallet that signs.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts",
+      "types": "./dist/testing.d.mts",
+      "default": "./dist/testing.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/plugin-sdk": "workspace:*",
+    "viem": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@binference/chain-evm": "workspace:*"
+  }
+}
