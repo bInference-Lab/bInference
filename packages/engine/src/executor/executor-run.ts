@@ -1,4 +1,5 @@
 import type { Logger } from "@binference/core";
+import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IdentityRecord } from "../identity/identity-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { ReasonNamed, SettledTrade } from "../intents/event-cause.schema.js";
@@ -20,6 +21,8 @@ export interface ExecutorParts extends ExecutorOptions {
   readonly orders: OrderStore;
   /** Whether live order fills may sign (decision 0211). */
   readonly liveFills: boolean;
+  /** What the agent used of the rolling cap, which a fill's skip for the cap tells. */
+  readonly spent: CapGate["spent"];
   readonly stored: StoredIntents;
   readonly machine: IntentStateMachine;
   readonly policy: PolicyCheck;

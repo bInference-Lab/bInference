@@ -1,5 +1,6 @@
 import type { AccountRef } from "@binference/chain";
 import { BinferenceError, type Id } from "@binference/core";
+import { createCapGate } from "../confirmations/cap-gate.js";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { rescueQuoteDocument } from "../intents/rescue-quote.js";
@@ -92,11 +93,13 @@ function storedOf(options: ExecutorOptions) {
 
 function partsOf(options: ExecutorOptions): ExecutorParts {
   const { stores, clock } = options;
+  const gate = createCapGate({ intents: stores.intents, clock });
   return {
     ...options,
     intents: stores.intents,
     orders: stores.orders,
     liveFills: options.liveOrderFills === true,
+    spent: async (snapshot, call) => gate.spent(snapshot, call),
     stored: storedOf(options),
     machine: createIntentStateMachine({ clock }),
     policy: createPolicyCheck({ prices: options.prices, clock }),

@@ -3,12 +3,13 @@ import { createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { testSnapshot } from "../approval/test-snapshot.js";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { flush } from "../executor/test-executor.js";
 import type { ExecutorBench } from "../executor/test-executor.js";
 import { createStoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
-import { expectOk } from "../intents/test-intents.js";
+import { expectOk, testLimits, testNowMs } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { createFillEnd } from "./fill-ends.js";
@@ -108,6 +109,39 @@ describe("a confirmed live fill the queue refuses", () => {
     expect(bench.signed).toStrictEqual([]);
     expect(await fillRowsOf(bench.test, order.id)).toMatchObject([
       { outcome: "skipped", reason: "live_fills_off" },
+    ]);
+  });
+
+  it("ends at once when the rolling cap was used up meanwhile, telling what it used", async () => {
+    const cap = testLimits.rollingDayUsdMicros;
+    const other = fixtureId("int", 99);
+    const used = {
+      intentId: other,
+      state: "confirmed",
+      confirmedAtMs: testNowMs,
+      valueUsdMicros: cap,
+    } as const;
+    const bench = await startLiveFills({
+      recentOutflows: [{ atMs: testNowMs, valueUsdMicros: cap }],
+      executorIntents: (store) => ({ ...store, confirmedSince: async () => [used] }),
+    });
+    const order = await activeOrderOf(bench);
+
+    await fillOnce(bench, order.id);
+    const [fill] = await liveFillsOf(bench);
+
+    expect(fill?.state).toBe("cancelled");
+    expect(bench.signed).toStrictEqual([]);
+    expect(await fillRowsOf(bench.test, order.id)).toMatchObject([
+      { outcome: "skipped", reason: "daily_cap", intentId: fill?.id as Id<"int"> },
+    ]);
+    expect(executorNotices(bench)).toMatchObject([
+      {
+        key: "notice.skipped",
+        parts: {
+          reason: { key: "reason.daily_cap", values: { used: "$5,000.00", cap: "$5,000.00" } },
+        },
+      },
     ]);
   });
 

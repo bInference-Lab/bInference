@@ -43,6 +43,8 @@ export async function startLiveFills(
     readonly executorFills?: boolean;
     /** Wraps what the executor reads receipts, transfers and nonces through. */
     readonly receipts?: NonNullable<BenchOptions["receipts"]>;
+    /** The agent's outflows of the last 24 hours as the executor reads them; none when absent. */
+    readonly recentOutflows?: NonNullable<BenchOptions["recentOutflows"]>;
     /** The USD prices; the coin at $600 and the test token at $0.80 when absent. */
     readonly prices?: typeof fillPrices;
   } = {},

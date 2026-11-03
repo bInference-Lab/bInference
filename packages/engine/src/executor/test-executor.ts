@@ -104,6 +104,8 @@ export interface BenchOptions {
   readonly idSeed?: number;
   /** Whether the executor signs live order fills; off when absent, as in the shipped engine. */
   readonly liveOrderFills?: boolean;
+  /** The agent's outflows of the last 24 hours as the executor's wallet facts read them; none. */
+  readonly recentOutflows?: WalletFacts["recentOutflows"];
   /** How the bench's test engine differs from the default, beside its agent and executor. */
   readonly engine?: Omit<TestEngineOptions, "agent" | "executor">;
   /**
@@ -126,12 +128,11 @@ interface BenchLaunch {
   readonly wallets: readonly Id<"wal">[];
 }
 
-const facts: WalletFacts = {
+const facts: Omit<WalletFacts, "recentOutflows"> = {
   nativeBalanceBase: 10n ** 18n,
   ceilingPerTxNativeBase: 10n ** 18n,
   feePerGasNativeBase: 50_000_000n,
   networkFeeCapNativeBase: 1_000_000_000n,
-  recentOutflows: [],
 };
 
 function countingSigner(custody: Signer, note: (request: SignRequest) => void) {
@@ -207,13 +208,13 @@ function sendingOf(
 
 // The agent's wallets, the registry and the venues the executor reads, and the launchpads' curve
 // reads when the bench trades on a launch's own curve.
-function launchPartsOf(launch: BenchLaunch | undefined) {
-  if (launch === undefined) {
-    const wallets = createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts);
-    return { wallets, chains: testChains(), venues: [createFakeVenue()] };
-  }
-  const wallets = createFakeWalletFacts(new Map([[testAgent, launch.wallets]]), facts);
-  return { wallets, chains: launch.chains, venues: launch.venues, curves: launch.curves };
+function launchPartsOf(options: Pick<BenchOptions, "launch" | "recentOutflows">) {
+  const { launch, recentOutflows = [] } = options;
+  const held = new Map([[testAgent, launch?.wallets ?? [testWallet]]]);
+  const wallets = createFakeWalletFacts(held, { ...facts, recentOutflows });
+  return launch === undefined
+    ? { wallets, chains: testChains(), venues: [createFakeVenue()] }
+    : { wallets, chains: launch.chains, venues: launch.venues, curves: launch.curves };
 }
 
 /** Builds an executor over the bench's engine and network, noting what it signs, pushes, sends. */
@@ -232,7 +233,7 @@ export function executorOf(
     queue: createWalletQueue({ transactions, nonces: network, clock: test.clock }),
     custody,
     prices: createFakePriceSource(options.prices ?? new Map([[testCoin, coinPrice]])),
-    ...launchPartsOf(options.launch),
+    ...launchPartsOf(options),
     ...options.routing,
     sending: sendingOf({ network, transactions }, notes, options),
     clock: test.clock,
