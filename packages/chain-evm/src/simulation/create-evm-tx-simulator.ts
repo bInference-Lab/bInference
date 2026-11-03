@@ -1,7 +1,7 @@
 import type { SimulatedStep, TxDraft, TxSimulator } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import { decodeEvmDraft } from "../drafts/evm-draft.js";
-import type { EvmChain } from "../evm-chain.js";
+import { type EvmChain, evmAccountRef } from "../evm-chain.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { heldBalances } from "./held-balances.js";
 import { type EvmCall, simulate } from "./simulate.js";
@@ -27,7 +27,7 @@ function callOf(chain: EvmChain, draft: TxDraft): EvmCall {
 /**
  * Creates the `TxSimulator` of one EVM chain over `eth_simulateV1` with transfer traces (see
  * {@link simulate}). Validation is off, so no fee is charged and the transfers are the drafts'
- * own effects. The `balances` a run is given become state overrides of the first draft's sender
+ * own effects. Each step carries every log it emitted, its emitter a checksummed account. The `balances` a run is given become state overrides of the first draft's sender
  * (see {@link heldBalances}). A draft of another chain, or one the EVM family cannot read, is a
  * `chain.bad_draft` fault, a balance of another chain's asset a `chain.bad_balances` fault, and a
  * node that refuses the simulation a `chain.simulation_failed` fault.
@@ -44,11 +44,16 @@ export function createEvmTxSimulator(options: EvmTxSimulatorOptions): TxSimulato
           ? {}
           : await heldBalances(rpc, { chain, holder: first.from, amounts: balances, signal });
       const simulation = await simulate(rpc, { chain, calls, ...held, signal });
-      return simulation.calls.map(({ status, gasUsed, transfers, approvals }) => ({
+      return simulation.calls.map(({ status, gasUsed, transfers, approvals, logs }) => ({
         status,
         gasUsed,
         transfers,
         approvals,
+        logs: logs.map(({ address, topics, data }) => ({
+          emitter: evmAccountRef(chain, address),
+          topics,
+          data,
+        })),
       }));
     },
   };

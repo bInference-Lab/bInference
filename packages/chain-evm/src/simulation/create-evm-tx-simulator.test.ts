@@ -1,7 +1,7 @@
 import { accountRefSchema, assetRefSchema, type TxDraft } from "@binference/chain";
 import { txSimulatorContract } from "@binference/chain/testing";
 import { createManualClock } from "@binference/core/testing";
-import { type Address, type Hex, pad, toEventSelector, toHex } from "viem";
+import { type Address, getAddress, type Hex, pad, toEventSelector, toHex } from "viem";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { encodeEvmDraft } from "../drafts/evm-draft.js";
@@ -117,7 +117,7 @@ describe("createEvmTxSimulator", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("simulates each draft's call in order and reads what it moved and allowed", async () => {
+  it("simulates each draft's call in order and reads what it moved, allowed and logged", async () => {
     const { http, simulator } = setup();
     await expect(simulator.simulate([swap], live)).resolves.toStrictEqual([
       {
@@ -129,6 +129,18 @@ describe("createEvmTxSimulator", () => {
             owner: account(user),
             spender: account(router),
             amount: { asset: `${chain.ref}/erc20:${usdt}`, base: 7n },
+          },
+        ],
+        logs: [
+          {
+            emitter: account(getAddress(nativeEmitter)),
+            topics: [transferTopic, pad(user), pad(router)],
+            data: word(10n ** 17n),
+          },
+          {
+            emitter: account(usdt),
+            topics: [approvalTopic, pad(user), pad(router)],
+            data: word(7n),
           },
         ],
       },
