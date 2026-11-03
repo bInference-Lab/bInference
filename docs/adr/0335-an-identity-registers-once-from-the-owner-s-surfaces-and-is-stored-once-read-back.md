@@ -42,12 +42,18 @@ when the registration counts as made.
   at the quote and again at the queue take; any other answer ends the intent `failed_check` with
   the new reason `registry_changed`, before the card or before the signature. A new version joins
   the plugin after a fork test.
-- **The ceiling.** The `erc8004` venue joins the core venues, so every new main wallet's ceiling
-  allows `register(string)`, and the policy's venue rule treats it as any venue. A wallet whose
-  stored ceiling lacks the call ends `failed_check` with `ceiling_lacks_call` before the card; its
-  words name `binference ceiling set`, which writes it with the owner key.
+- **The ceiling, by the owner's opt-in.** The `erc8004` venue is no core venue, so no wallet's
+  ceiling allows `register(string)` until its owner opts the agent in. `identity/allow`, with the
+  owner key over IPC, writes the registry's one call into the ceiling of the agent's main wallet
+  and no other wallet's, read back, journaled and announced as `ceiling/set` is; a ceiling that
+  holds the call already is left as it is. `binference agent identity` runs it before it proposes
+  a live agent's registration. A registration whose main wallet's stored ceiling lacks the call
+  ends `failed_check` with the new reason `identity_ceiling` before the card; its words name
+  `binference agent identity`. Once binference holds the agent's identity, a ceiling planned
+  again for it, by `ceiling/set` or a destination save, leaves the registry out.
 - **The policy.** `paper_only` in paper mode and `frozen` for a frozen agent, as spec 6 orders
-  them. The step moves no funds, so it stores no value and counts against neither cap, as an
+  them. No venue rule judges a registration: the opt-in is the owner key's write, not a 24-hour
+  loosening of the agent's limits. The step moves no funds, so it stores no value and counts against neither cap, as an
   approval revoke does; its gas leaves the wallet as a departure.
 - **The host holds the plugin.** The engine reaches the registry only through an `IdentityRegistry`
   port of `@binference/chain`, which `plugins/erc8004` implements, with a contract suite and a
@@ -67,7 +73,13 @@ when the registration counts as made.
 
 ## Consequences
 
-- An identity can only appear from the owner's tap, never from content the agent read.
+- The engine opens a registration only from the owner's surfaces, never from content the agent
+  read, and only for an agent whose owner opted in.
+- The ceiling is the bound under a stolen engine key. An agent that never opted in has no rule
+  that lets such a key register it, and an agent that registered loses the rule at its next
+  rewrite. Between the opt-in and the registration, and after it until that rewrite, a stolen key
+  could publish one registration with its own text, tied to the owner's wallet for good, for gas
+  alone. The opt-in right before the card keeps that window short.
 - A wallet registered outside binference cannot register again, and `identity/get` shows nothing
   for it, since binference does not search the registry's history for its id.
 - An upgrade of the registry stops new registrations until binference tests and accepts its
@@ -75,9 +87,16 @@ when the registration counts as made.
 - Spec 1 section 7.9 gains the owner-only rule, `file` in `identity/get`'s result and
   `description` in the request; spec 6 gains `identity_exists` and `registry_changed`; the
   glossary gains `notice.identityMismatch`.
-- Wallets made before this change need `binference ceiling set` once before they can register.
+- An agent registers by `binference agent identity` alone, whatever its wallets' age: the opt-in
+  writes the call the registration needs.
 
 ## Alternatives
+
+- **Make the registry a core venue.** Every main wallet's ceiling would allow `register(string)`
+  with any file, so a stolen engine key could publish words for any agent, opted in or not. Lost
+  to the opt-in.
+- **Judge a registration by the agent's venues.** Adding `erc8004` to the agent's limits is a
+  loosening, which waits 24 hours, and the owner key's write is the stronger opt-in. Lost.
 
 - **Let the agent propose a registration with its own description.** The card shows every field,
   but a description from a turn that read outside content would be published for good on one tap.

@@ -15,7 +15,6 @@ import {
   type ChainCapPlan,
   registryCeilingChain,
 } from "@binference/custody-privy";
-import { erc8004Declaration } from "@binference/erc8004";
 import { flapDeclaration } from "@binference/flap";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { listaDeclaration } from "@binference/lista";
@@ -30,9 +29,9 @@ import { type InitStep, refused } from "./init-context.js";
 /**
  * The core venues this binference installs, by what each declares: its id and its registry
  * contracts per chain. KyberSwap, the Flap launchpad, StakeHub, whose `delegate` carries up to
- * 100 BNB in a ceiling rule of its own (decision 0325), Lista (decision 0332) and the ERC-8004
- * identity registry (decision 0335) need no key; OKX is installed only when
- * `venues.keys.okx` names the owner's key. Each venue is made only to read its declaration;
+ * 100 BNB in a ceiling rule of its own (decision 0325), and Lista (decision 0332) need no key; OKX
+ * is installed only when `venues.keys.okx` names the owner's key. The identity registry is no core
+ * venue: only an agent whose owner opts in carries its call (decision 0335). Each venue is made only to read its declaration;
  * nothing is called, no chain is read and no key is read.
  */
 export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDeclaration[] {
@@ -47,7 +46,6 @@ export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDecl
     flapDeclaration([chain.ref]),
     stakeHubDeclaration([chain.ref]),
     listaDeclaration([chain.ref]),
-    erc8004Declaration([chain.ref]),
   ];
   return venues.keys.okx === undefined
     ? keyless

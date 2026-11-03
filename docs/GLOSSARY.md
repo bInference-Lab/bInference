@@ -257,7 +257,8 @@ new name here first, in the change that uses it.
   it is **late**, and the owner is told once. A **refund** is the bridge paying the deposit back
   to the agent's wallet instead.
 - **identity**: an agent's opt-in entry in the ERC-8004 identity registry, made with one tapped
-  transaction that only the owner starts. Its **registration file** (the agent's name, the owner's
+  transaction that only the owner starts, once the owner key opted the agent in by writing the
+  registry's call into its main wallet's ceiling (`identity/allow`). Its **registration file** (the agent's name, the owner's
   description, the wallet that registers it and binference's version) is stored on chain as a data
   URI.
 - **launch contract**: a contract a launchpad makes with each launch, such as a token's own curve.

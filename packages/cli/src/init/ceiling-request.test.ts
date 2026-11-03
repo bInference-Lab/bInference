@@ -21,14 +21,13 @@ function stakingCalls(id: string): readonly (readonly [unknown, bigint | undefin
 }
 
 describe("core venues", () => {
-  it("installs KyberSwap, the Flap launchpad, StakeHub, Lista and the identity registry while no OKX key is set", () => {
+  it("installs KyberSwap, the Flap launchpad, StakeHub and Lista while no OKX key is set, and no identity registry", () => {
     const venues = coreVenues(http, { keys: {}, kyberClientId: "binference" });
     expect(venues.map((venue) => venue.id)).toStrictEqual([
       "kyberswap",
       "flap",
       "stakehub",
       "lista",
-      "erc8004",
     ]);
   });
 
@@ -77,7 +76,6 @@ describe("core venues", () => {
       [["flap", "eip155:56", ["portal"], ["portal"]]],
       [["stakehub", "eip155:56", ["stake-hub"], undefined]],
       [["lista", "eip155:56", ["stake-manager"], ["stake-manager"]]],
-      [["erc8004", "eip155:56", ["identity-registry"], undefined]],
       [["okx", "eip155:56", ["dex-router", "token-approve"], ["token-approve"]]],
     ]);
   });
