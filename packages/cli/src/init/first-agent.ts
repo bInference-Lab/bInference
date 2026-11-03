@@ -9,8 +9,8 @@ import { type Id, ok } from "@binference/core";
 import type { AgentDraft, GasReserve, LimitsValues } from "@binference/engine";
 import { noticeSettingsDocument } from "@binference/engine/notices";
 import { sendLevelSchema } from "@binference/engine/sends";
+import { baseUnitsOf } from "@binference/i18n";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
-import { baseUnitsOf } from "./base-units.js";
 import { type InitStep, refused } from "./init-context.js";
 
 // The first agent's name, unique among the install's agents.

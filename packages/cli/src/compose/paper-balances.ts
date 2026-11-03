@@ -1,7 +1,7 @@
 import type { Amount, ChainRef } from "@binference/chain";
 import { erc20AssetRef, parseEvmAddress } from "@binference/chain-evm";
 import { BinferenceError } from "@binference/core";
-import { baseUnitsOf } from "../init/base-units.js";
+import { baseUnitsOf } from "@binference/i18n";
 import type { ChainReads } from "./chain-reads.js";
 
 function refuse(symbol: string): BinferenceError {

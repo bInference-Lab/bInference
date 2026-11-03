@@ -16,6 +16,7 @@ import {
   registryCeilingChain,
 } from "@binference/custody-privy";
 import { flapDeclaration } from "@binference/flap";
+import { baseUnitsOf } from "@binference/i18n";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { listaDeclaration } from "@binference/lista";
 import { okxDeclaration } from "@binference/okx";
@@ -23,7 +24,6 @@ import { stakeHubDeclaration } from "@binference/stakehub";
 import { selfHostedBridgePlan } from "../compose/self-hosted-destinations.js";
 import type { VenuesConfig } from "../config/schema/chains-venues.schema.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
-import { baseUnitsOf } from "./base-units.js";
 import { type InitStep, refused } from "./init-context.js";
 
 /**

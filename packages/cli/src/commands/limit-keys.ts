@@ -1,9 +1,8 @@
 import { type ChainRef, type ChainRegistry, isChainRef } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
-import { type LimitField, type LimitUnit, limitUnits } from "@binference/i18n";
+import { baseUnitsOf, type LimitField, type LimitUnit, limitUnits } from "@binference/i18n";
 import { type LimitChanges, limitChangesSchema } from "@binference/protocol";
 import { usdSchema } from "../config/schema/value-formats.schema.js";
-import { baseUnitsOf } from "../init/base-units.js";
 
 /** The key `defaults` gives each limit in config.json5, in the units the limit is set in. */
 export const limitConfigKeys: Readonly<Record<LimitField, string>> = {

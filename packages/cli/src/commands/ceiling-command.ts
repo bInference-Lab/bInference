@@ -1,6 +1,6 @@
 import { accountRefParts, type ChainRef } from "@binference/chain";
 import { jsonValueSchema } from "@binference/core";
-import { displayOutsideText } from "@binference/i18n";
+import { baseUnitsOf, displayOutsideText } from "@binference/i18n";
 import {
   type CeilingChanges,
   type CeilingView,
@@ -9,7 +9,6 @@ import {
 } from "@binference/protocol";
 import { z } from "zod";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
-import { baseUnitsOf } from "../init/base-units.js";
 import type { CeilingSetFlags, WalletAddressFlags } from "../program/cli-flags.schema.js";
 import type { ExitCode, StepOutcome } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
