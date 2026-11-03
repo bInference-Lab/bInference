@@ -167,6 +167,19 @@ const erc8004 = createContracts("erc8004", {
   },
 });
 
+// The contract the registry's proxy ran when the plugin was tested on a fork, read from the
+// proxy's EIP-1967 implementation slot at block 131447490: another one stops new registrations
+// (decision 0335). No call goes to it.
+const erc8004Implementation = createContracts(
+  "erc8004",
+  {
+    "https://bscscan.com/address/0x8004A169FB4a3325136EB29fA0ceB6D2e539a432#code": {
+      "identity-registry-implementation": "0x7274e874CA62410a93Bd8bf61c69d8045E399c02",
+    },
+  },
+  "2026-11-03",
+);
+
 // Only the registry and the `.bnb` base registrar are fixed: each name's resolver is read from the
 // registry at the time of use, and the registrar answers when a name's registration ends.
 const spaceid = createContracts("spaceid", {
@@ -266,6 +279,7 @@ export const bsc: ChainDefinition = {
     ...chainlink,
     ...chainlinkRates,
     ...erc8004,
+    ...erc8004Implementation,
     ...spaceid,
     ...multicall3,
   ],

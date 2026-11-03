@@ -47,7 +47,8 @@ function built(subject: IdentityRegistrySubject): {
 async function readsFreshWallet(harness: IdentityRegistryHarness): Promise<void> {
   const { registry, wallet } = await harness.create();
   const standing = await registry.standing(wallet, live());
-  assert.deepEqual(standing, { version: registry.testedVersion, held: 0n });
+  assert.deepEqual([standing.version, standing.held], [registry.testedVersion, 0n]);
+  assert.equal(standing.implementation, registry.testedImplementation);
   assert.equal(accountRefParts(registry.registry).chain, registry.chain);
 }
 
@@ -110,7 +111,7 @@ export function identityRegistryContract(
 ): readonly ContractCheck[] {
   return [
     {
-      name: "reads the version it was tested with, and no identity held by a fresh wallet",
+      name: "reads the version and the implementation it was tested with, and no identity held by a fresh wallet",
       run: async () => readsFreshWallet(harness),
     },
     {

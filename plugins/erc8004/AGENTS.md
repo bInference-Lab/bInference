@@ -26,8 +26,9 @@ and [0335](../../docs/adr/0335-an-identity-registers-once-from-the-owner-s-surfa
 - The registration file (`src/file/`) is ERC-8004's `registration-v1` JSON, compact, as a base64
   `data:` URI, with the fields decision 0334 sets and no others: one `wallet` service naming the
   registering wallet and one `binference` service carrying the release version.
-- `src/registry/` reads the chain: the version and a wallet's balance of identity tokens at one
-  latest block, and a landed registration from its own `Registered` event, then the holder and the
+- `src/registry/` reads the chain: the version, a wallet's balance of identity tokens and the
+  proxy's EIP-1967 implementation slot at one latest block, the implementation held to the one
+  the chain registry pins as `identity-registry-implementation`, and a landed registration from its own `Registered` event, then the holder and the
   file at the latest block. A view that reverts, an answer outside its shape, or a node that holds
   no receipt of the transaction yet is `erc8004.read_failed`, so the caller reads again. It caches
   nothing.

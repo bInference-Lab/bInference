@@ -24,7 +24,7 @@ describe("the identity host", () => {
     const registry = testRegistry();
     await expect(host.standing(registry, testAccount, live)).resolves.toStrictEqual({
       ok: true,
-      value: { version: "2.0.0", held: 0n },
+      value: { version: "2.0.0", held: 0n, implementation: "fake:1:0x000000e6" },
     });
     const throwing = broken({ standing: async () => Promise.reject(new Error("down")) });
     const shapeless = broken({

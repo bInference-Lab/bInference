@@ -45,8 +45,11 @@ when the registration counts as made.
   `notice.identityDuplicate`.
 - **The version binference was tested with.** The registry's `getVersion()` must answer "2.0.0"
   at the quote and again at the queue take; any other answer ends the intent `failed_check` with
-  the new reason `registry_changed`, before the card or before the signature. A new version joins
-  the plugin after a fork test.
+  the new reason `registry_changed`, before the card or before the signature. A version string is
+  the implementation's own constant, so the proxy's EIP-1967 implementation slot is read at the
+  same block, and the contract it names must be the one the chain registry pins
+  (`identity-registry-implementation`, read on chain at block 131447490); another one is
+  `registry_changed` too. A new version or implementation joins after a fork test.
 - **The ceiling, by the owner's opt-in.** The `erc8004` venue is no core venue, so no wallet's
   ceiling allows `register(string)` until its owner opts the agent in. `identity/allow`, with the
   owner key over IPC, writes the registry's one call into the ceiling of the agent's main wallet

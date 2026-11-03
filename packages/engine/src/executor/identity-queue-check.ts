@@ -2,6 +2,7 @@ import {
   type AccountRef,
   type AllowedTargets,
   accountRefParts,
+  type ChainFamily,
   accountRefSchema,
   declaredContracts,
   type RegisteredChain,
@@ -10,6 +11,7 @@ import {
 import type { IdentityRegistry, IdentityStanding } from "@binference/chain/identity";
 import type { IdentityHost } from "../identity/identity-host.js";
 import { hasRegistrationIn, sentRegistrationStates } from "../identity/open-registrations.js";
+import { isTestedRegistry } from "../identity/tested-registry.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { type IdentityQuote, identityQuoteDocument } from "../intents/identity-quote.js";
 import { planDocument } from "../intents/intent-documents.schema.js";
@@ -141,13 +143,13 @@ async function readNow(
 function refusalOf(
   snapshot: IntentSnapshot,
   quote: IdentityQuote,
-  read: NonNullable<Awaited<ReturnType<typeof readNow>>>,
+  read: NonNullable<Awaited<ReturnType<typeof readNow>>> & { readonly family: ChainFamily },
 ): "identity_exists" | "registry_changed" | "decode_mismatch" | undefined {
-  const { host, registry, standing } = read;
+  const { host, registry, standing, family } = read;
   if (standing.held > 0n) {
     return "identity_exists";
   }
-  if (standing.version !== registry.testedVersion) {
+  if (!isTestedRegistry(registry, standing, family)) {
     return "registry_changed";
   }
   const { plan } = snapshot.record;
@@ -162,8 +164,9 @@ function refusalOf(
 /**
  * Reads a confirmed registration's registry again as its wallet's queue takes it, before any
  * signature (decision 0335): another registration of the agent that is signed and on its way, or a
- * wallet that holds an identity now, ends it `failed_check` with `identity_exists`, a registry that reports another version than binference was tested with with
- * `registry_changed`, and a stored call that no longer decodes as the card's file from its wallet
+ * wallet that holds an identity now, ends it `failed_check` with `identity_exists`, a registry
+ * that reports another version than binference was tested with, or whose proxy runs another
+ * contract than the chain registry pins, with `registry_changed`, and a stored call that no longer decodes as the card's file from its wallet
  * with `decode_mismatch`; a registry that does not answer, or one the engine does not run, signs
  * nothing and waits for the next block. Any other intent goes on.
  */
@@ -185,6 +188,6 @@ export async function takeIdentity(
     run.parts.log.warn("executor.identity_unread", { intentId: snapshot.record.id });
     return "unread";
   }
-  const refusal = refusalOf(snapshot, quote, read);
+  const refusal = refusalOf(snapshot, quote, { ...read, family: run.plan.chain.family });
   return refusal === undefined ? "go" : endRefused(run, snapshot, refusal);
 }

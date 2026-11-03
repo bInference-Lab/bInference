@@ -66,7 +66,8 @@ Rules for this package:
   and its terms are exported from `@binference/chain/staking`, since the root entry is at its size
   limit.
 - `IdentityRegistry` (`src/identity/ports.ts`, decision 0335) writes an agent's registration file,
-  reads a wallet's standing (the registry's version and the identity tokens it holds), builds the
+  reads a wallet's standing (the registry's version, the identity tokens it holds and the contract
+  its proxy runs, held to the one the plugin pins), builds the
   one call that registers a file and mints the token to the wallet that signs, decodes only that
   call, counts the tokens a simulated step minted from the step's raw logs, and reads back a landed
   registration. It and its terms are exported from `@binference/chain/identity`.

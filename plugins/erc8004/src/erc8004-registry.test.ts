@@ -10,7 +10,7 @@ import { identityRegistryContract } from "@binference/plugin-sdk/testing";
 import { encodeFunctionData, parseAbiItem } from "viem";
 import { describe, expect, it } from "vitest";
 import { createErc8004Registry, erc8004Declaration } from "./erc8004-registry.js";
-import { createRegistryWorld, registryAddress } from "./testing.js";
+import { createRegistryWorld, implementationAddress, registryAddress } from "./testing.js";
 
 const chain = chainRefSchema.parse("eip155:56");
 const wallet = accountRefSchema.parse("eip155:56:0x5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
@@ -21,7 +21,12 @@ const card = { name: "Scout", description: "Buys dips", wallet, version: "2026.1
 
 function setup() {
   const world = createRegistryWorld(chain);
-  const contracts = { "identity-registry": registryRef };
+  const contracts = {
+    "identity-registry": registryRef,
+    "identity-registry-implementation": accountRefSchema.parse(
+      `eip155:56:${implementationAddress}`,
+    ),
+  };
   const registry = createErc8004Registry({ chain, rpc: world.rpc, contracts });
   return { world, registry };
 }
@@ -133,6 +138,17 @@ describe("createErc8004Registry", () => {
     });
   });
 
+  it("reads the contract the registry's proxy runs now, which an upgrade changes", async () => {
+    const { world, registry } = setup();
+    const upgraded = "0x1111111111111111111111111111111111111111";
+    world.upgrade(upgraded);
+
+    await expect(registry.standing(wallet, live)).resolves.toMatchObject({
+      implementation: `eip155:56:${upgraded}`,
+    });
+    expect(registry.testedImplementation).toBe(`eip155:56:${implementationAddress}`);
+  });
+
   it("reads a receipt no node holds yet as a fault to read again, never as not found", async () => {
     const { registry } = setup();
     const lagging = `0x${"cd".repeat(32)}` as TxHash;
@@ -157,6 +173,7 @@ describe("createErc8004Registry", () => {
     await expect(broken.registry.standing(wallet, live)).resolves.toStrictEqual({
       version: "2.1.0",
       held: 0n,
+      implementation: `eip155:56:${implementationAddress}`,
     });
     broken.world.breakRegistry();
     await expect(broken.registry.standing(wallet, live)).rejects.toMatchObject({

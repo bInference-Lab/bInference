@@ -19,6 +19,7 @@ import {
   type Hex,
   isAddress,
   parseAbi,
+  zeroAddress,
 } from "viem";
 import { z } from "zod";
 import type { RegistryAt } from "../calls/register-call.js";
@@ -109,6 +110,25 @@ function uriView(id: bigint): View<string> {
   };
 }
 
+// The EIP-1967 slot in which a proxy keeps the contract it runs.
+const implementationSlot = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+
+// The contract the registry's proxy runs at the block, or `undefined` for a registry no proxy
+// fronts, whose slot is empty.
+async function implementationAt(read: RegistryRead, block: Hex): Promise<Address | undefined> {
+  const reply = await read.rpc.request({
+    method: "eth_getStorageAt",
+    params: [read.registry.address, implementationSlot, block],
+    result: hexSchema,
+    signal: read.signal,
+  });
+  if (reply.kind === "error" || reply.value.length !== 66) {
+    throw unreadable("the proxy's implementation could not be read.");
+  }
+  const address = getAddress(`0x${reply.value.slice(-40)}`);
+  return address === zeroAddress ? undefined : address;
+}
+
 async function latestBlock(read: RegistryRead): Promise<Hex> {
   const reply = await read.rpc.request({
     method: "eth_blockNumber",
@@ -142,8 +162,8 @@ async function viewAt<T>(read: RegistryRead, block: Hex, view: View<T>): Promise
 }
 
 /**
- * The registry's version and the wallet's count of its identity tokens, both at the latest
- * block. Rejects when no node answers, when the registry reverts or answers outside its shape
+ * The registry's version, the wallet's count of its identity tokens and the contract its proxy
+ * runs, all at one latest block. Rejects when no node answers, when the registry reverts or answers outside its shape
  * (`erc8004.read_failed`), and with the signal's reason once it aborts.
  */
 export async function readStanding(
@@ -153,11 +173,15 @@ export async function readStanding(
   read.signal.throwIfAborted();
   const owner = walletAddress(wallet);
   const block = await latestBlock(read);
-  const [version, held] = await Promise.all([
+  const [version, held, implementation] = await Promise.all([
     viewAt(read, block, versionView),
     viewAt(read, block, balanceView(owner)),
+    implementationAt(read, block),
   ]);
-  return { version, held };
+  const { chain } = read.registry;
+  return implementation === undefined
+    ? { version, held }
+    : { version, held, implementation: accountRefSchema.parse(`${chain}:${implementation}`) };
 }
 
 // The id the transaction's `Registered` event from the registry gave the wallet; none for a revert,

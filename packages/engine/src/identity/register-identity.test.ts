@@ -1,3 +1,4 @@
+import { accountRefSchema } from "@binference/chain";
 import type { IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -145,6 +146,16 @@ describe("an identity registration", () => {
     await expect(registered(test)).resolves.toMatchObject({
       state: "rejected_policy",
       outcome: { reason: "paper_only" },
+    });
+  });
+
+  it("ends one whose registry's proxy runs another contract with registry_changed, though it reports the version", async () => {
+    const registry = testRegistry();
+    registry.upgrade(accountRefSchema.parse("fake:1:0x000000e7"));
+    const test = await startIdentityEngine(registry);
+    await expect(registered(test)).resolves.toMatchObject({
+      state: "failed_check",
+      outcome: { reason: "registry_changed" },
     });
   });
 

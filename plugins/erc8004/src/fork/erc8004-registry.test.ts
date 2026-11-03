@@ -20,6 +20,7 @@ import { createErc8004Registry, erc8004TestedVersion } from "../erc8004-registry
 // account registers, and a fresh address stands for another wallet. Nothing is reached but the
 // fork.
 const registryAddress = bscContract("erc8004", "identity-registry");
+const implementation = bscContract("erc8004", "identity-registry-implementation");
 const other = getAddress(keccak256(stringToHex("binference fork other")).slice(0, 42));
 
 function refOf(fork: Fork, address: Address): AccountRef {
@@ -27,7 +28,10 @@ function refOf(fork: Fork, address: Address): AccountRef {
 }
 
 function registryOn(fork: Fork): IdentityRegistry {
-  const contracts = { "identity-registry": refOf(fork, registryAddress) };
+  const contracts = {
+    "identity-registry": refOf(fork, registryAddress),
+    "identity-registry-implementation": refOf(fork, implementation),
+  };
   return createErc8004Registry({ chain: fork.chain.ref, rpc: fork.rpc, contracts });
 }
 
@@ -105,14 +109,18 @@ describe("the ERC-8004 identity registry on a fork of BSC", () => {
     });
   });
 
-  it("runs the version the plugin was tested with, and reads a registered file back whole", async ({
+  it("runs the version and the implementation the plugin was tested with, and reads a registered file back whole", async ({
     signal,
   }) => {
     await withFork(signal, async (fork) => {
       const registry = registryOn(fork);
       const wallet = refOf(fork, fork.account);
       const standing = await registry.standing(wallet, { signal });
-      expect(standing).toStrictEqual({ version: erc8004TestedVersion, held: 0n });
+      expect(standing).toStrictEqual({
+        version: erc8004TestedVersion,
+        held: 0n,
+        implementation: refOf(fork, implementation),
+      });
       const card = { name: "Fork scout", description: "Reads dips", wallet, version: "0.0.0" };
       const file = registry.fileOf(card);
       const txHash = await land(fork, registry.build({ wallet, file }));

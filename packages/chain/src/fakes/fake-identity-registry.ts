@@ -18,6 +18,8 @@ export interface FakeIdentityOptions {
   readonly address: string;
   /** The version it reports; the version it was tested with when absent. */
   readonly version?: string;
+  /** The contract its proxy runs, and was tested with; none, as for a registry no proxy fronts. */
+  readonly implementation?: AccountRef;
 }
 
 /** A fake identity registry a test registers through, tampers with and takes down. */
@@ -34,6 +36,8 @@ export interface FakeIdentityRegistry extends IdentityRegistry {
   registerOutside(wallet: AccountRef): void;
   /** Sets the version the registry reports from now on. */
   setVersion(version: string): void;
+  /** Points its proxy at another contract from now on, as an upgrade would. */
+  upgrade(implementation: AccountRef): void;
   /** Moves an identity to another holder, or sets the file it holds. */
   tamper(onchainId: string, change: Partial<Omit<LandedRegistration, "onchainId">>): void;
   /** Every later read rejects as a chain that does not answer, until `up`. */
@@ -62,6 +66,7 @@ interface FakeBook {
   readonly address: string;
   readonly registry: AccountRef;
   readonly version: () => string;
+  readonly implementation: () => AccountRef | undefined;
   readonly readable: (signal: AbortSignal) => void;
   readonly token: (onchainId: string) => Omit<LandedRegistration, "onchainId"> | undefined;
   readonly held: (wallet: AccountRef) => number;
@@ -72,7 +77,11 @@ interface FakeBook {
     hash: TxHash,
   ) => { readonly wallet: AccountRef; readonly onchainId: string } | undefined;
   readonly land: (wallet: AccountRef, file: string, hash?: TxHash) => TxHash;
-  readonly set: (change: { readonly version?: string; readonly isDown?: boolean }) => void;
+  readonly set: (change: {
+    readonly version?: string;
+    readonly isDown?: boolean;
+    readonly implementation?: AccountRef;
+  }) => void;
 }
 
 function fault(problem: string): BinferenceError {
@@ -82,7 +91,11 @@ function fault(problem: string): BinferenceError {
 function createBook(options: FakeIdentityOptions): FakeBook {
   const tokens = new Map<string, Omit<LandedRegistration, "onchainId">>();
   const landings = new Map<TxHash, { readonly wallet: AccountRef; readonly onchainId: string }>();
-  const state = { version: options.version ?? testedVersion, isDown: false };
+  const state: { version: string; isDown: boolean; implementation?: AccountRef } = {
+    version: options.version ?? testedVersion,
+    isDown: false,
+    ...(options.implementation === undefined ? {} : { implementation: options.implementation }),
+  };
   const mint = (wallet: AccountRef, file: string) => {
     const onchainId = String(tokens.size);
     tokens.set(onchainId, { owner: wallet, file });
@@ -93,6 +106,7 @@ function createBook(options: FakeIdentityOptions): FakeBook {
     address: options.address,
     registry: accountRefSchema.parse(`${options.chain}:${options.address}`),
     version: () => state.version,
+    implementation: () => state.implementation,
     readable: (signal) => {
       signal.throwIfAborted();
       if (state.isDown) {
@@ -158,6 +172,12 @@ function simulateIn(book: FakeBook, draft: TxDraft): SimulatedStep {
   };
 }
 
+// The contract the book's proxy ran when the fake was made, which it was tested with.
+function testedImplementationOf(book: FakeBook): Pick<IdentityRegistry, "testedImplementation"> {
+  const implementation = book.implementation();
+  return implementation === undefined ? {} : { testedImplementation: implementation };
+}
+
 // The port's reads and calls over the book.
 function registryOf(book: FakeBook): IdentityRegistry {
   return {
@@ -173,10 +193,13 @@ function registryOf(book: FakeBook): IdentityRegistry {
     chain: book.chain,
     registry: book.registry,
     testedVersion,
+    ...testedImplementationOf(book),
     fileOf: (card) => fileOf(book, card),
     standing: async (wallet, { signal }) => {
       book.readable(signal);
-      return Promise.resolve({ version: book.version(), held: BigInt(book.held(wallet)) });
+      const implementation = book.implementation();
+      const held = { version: book.version(), held: BigInt(book.held(wallet)) };
+      return Promise.resolve(implementation === undefined ? held : { ...held, implementation });
     },
     build: ({ wallet, file }) =>
       fakeDraft(wallet, {
@@ -220,6 +243,9 @@ export function createFakeIdentityRegistry(options: FakeIdentityOptions): FakeId
     },
     setVersion: (version) => {
       book.set({ version });
+    },
+    upgrade: (implementation) => {
+      book.set({ implementation });
     },
     tamper: (onchainId, change) => {
       const token = book.token(onchainId);

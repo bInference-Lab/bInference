@@ -22,6 +22,7 @@ import {
   type ResolvedIdentity,
   resolveIdentity,
 } from "./resolve-identity.js";
+import { isTestedRegistry } from "./tested-registry.js";
 
 /** What an identity registration is resolved, checked, simulated and stored through. */
 export interface IdentityPathOptions extends IdentityResolveOptions, TransferPolicyParts {
@@ -63,15 +64,15 @@ async function judge(run: IdentityRun, proposed: IntentSnapshot) {
   return advanceByVerdict(advance, proposed, verdict);
 }
 
-// The registry's version, then the wallet's stored ceiling, then the call the host holds to the
-// file and the wallet (decision 0335).
+// The registry's version and implementation, then the wallet's stored ceiling, then the call the
+// host holds to the file and the wallet (decision 0335).
 function planOf(run: IdentityRun): Result<PlannedIdentity, QuoteFailure> {
   const { options, resolved } = run;
   const { registry, standing, walletRecord, card, account } = resolved;
   if (standing === undefined) {
     return err("venue_down");
   }
-  if (standing.version !== registry.testedVersion) {
+  if (!isTestedRegistry(registry, standing, resolved.chain.family)) {
     return err("registry_changed");
   }
   const calls = options.identity.callsOf(registry);

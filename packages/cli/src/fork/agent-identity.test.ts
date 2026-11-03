@@ -23,6 +23,7 @@ import { fundedMain } from "./stake-rig-steps.js";
 // executor on a fork of BSC: its card, the owner's tap, the main wallet's signature, and the
 // registration file read back from the registry. A second registration is refused before a card.
 const registryAddress = bscContract("erc8004", "identity-registry");
+const implementation = bscContract("erc8004", "identity-registry-implementation");
 const tokenUri = parseAbi(["function tokenURI(uint256 tokenId) view returns (string)"]);
 const [rigAgent] = rescueAgents;
 const description = "Buys dips on BSC";
@@ -33,7 +34,12 @@ function registryOn(fork: Fork): IdentityRegistry {
   return createErc8004Registry({
     chain: fork.chain.ref,
     rpc: fork.rpc,
-    contracts: { "identity-registry": ref },
+    contracts: {
+      "identity-registry": ref,
+      "identity-registry-implementation": accountRefSchema.parse(
+        `${fork.chain.ref}:${implementation}`,
+      ),
+    },
   });
 }
 

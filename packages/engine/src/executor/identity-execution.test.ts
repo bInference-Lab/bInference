@@ -1,4 +1,4 @@
-import type { TxDraft } from "@binference/chain";
+import { accountRefSchema, type TxDraft } from "@binference/chain";
 import type { IdentityRegistry } from "@binference/chain/identity";
 import type { FakeIdentityRegistry } from "@binference/chain/testing";
 import { BinferenceError, type Id } from "@binference/core";
@@ -207,6 +207,17 @@ describe("an identity registration on its wallet's queue", () => {
     const bench = await benchWith(registry);
     const intent = await tapped(bench, registerRequest());
     registry.setVersion("2.1.0");
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("failed_check");
+    await expect(reasonOf(bench, intent)).resolves.toBe("registry_changed");
+    expect(bench.signed).toHaveLength(0);
+  });
+
+  it("ends with registry_changed when the registry's proxy runs another contract at the queue", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry);
+    const intent = await tapped(bench, registerRequest());
+    registry.upgrade(accountRefSchema.parse("fake:1:0x000000e7"));
     await bench.release();
     await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("failed_check");
     await expect(reasonOf(bench, intent)).resolves.toBe("registry_changed");

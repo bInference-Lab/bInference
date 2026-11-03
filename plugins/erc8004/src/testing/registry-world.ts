@@ -32,6 +32,9 @@ import { z } from "zod";
 /** ERC-8004's identity registry on BSC, as the chain registry lists it. */
 export const registryAddress: Address = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432";
 
+/** The contract the registry's proxy runs in the world until a test upgrades it. */
+export const implementationAddress: Address = "0x7274e874CA62410a93Bd8bf61c69d8045E399c02";
+
 // The calls and events of the reference registry, written here apart from the plugin's own.
 const abi = parseAbi([
   "function register(string agentURI) returns (uint256 agentId)",
@@ -54,6 +57,8 @@ export interface RegistryWorld {
   landReverted(draft: TxDraft): TxHash;
   /** Sets the version the registry reports. */
   setVersion(version: string): void;
+  /** Points the registry's proxy at another contract, as an upgrade would. */
+  upgrade(implementation: Address): void;
   /** Gives the id another holder, as a transfer would. */
   move(id: bigint, to: Address): void;
   /** Makes every view of the registry revert. */
@@ -74,6 +79,7 @@ interface WorldState {
   readonly uris: Map<bigint, string>;
   readonly receipts: Map<Hex, { readonly status: Hex; readonly logs: readonly Log[] }>;
   version: string;
+  implementation: Address;
   isBroken: boolean;
   isDown: boolean;
 }
@@ -154,6 +160,9 @@ function valueOf<T>(state: WorldState, { method, params }: RpcCall<T>): Hex | Re
   if (method === "eth_getTransactionReceipt") {
     return state.receipts.get(receiptParams.parse(params)[0]) ?? null;
   }
+  if (method === "eth_getStorageAt") {
+    return pad(state.implementation, { size: 32 });
+  }
   const [{ to, data }] = callParams.parse(params);
   return answerView(state, to, data);
 }
@@ -233,6 +242,7 @@ export function createRegistryWorld(chain: ChainRef): RegistryWorld {
     uris: new Map(),
     receipts: new Map(),
     version: "2.0.0",
+    implementation: implementationAddress,
     isBroken: false,
     isDown: false,
   };
@@ -243,6 +253,9 @@ export function createRegistryWorld(chain: ChainRef): RegistryWorld {
     landReverted: (draft) => landIn(state, draft, "reverts"),
     setVersion: (version) => {
       state.version = version;
+    },
+    upgrade: (implementation) => {
+      state.implementation = implementation;
     },
     move: (id, to) => state.owners.set(id, getAddress(to)),
     breakRegistry: () => {

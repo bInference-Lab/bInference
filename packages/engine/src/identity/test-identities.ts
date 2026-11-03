@@ -1,5 +1,7 @@
 import {
+  type AccountRef,
   accountRefParts,
+  accountRefSchema,
   chainRefSchema,
   createChainRegistry,
   type TxSimulator,
@@ -29,11 +31,18 @@ const testRegistryAddress = "0x000000e5";
 /** The binference version a test registration file names. */
 export const testVersion = "2026.11.3";
 
-/** A fake identity registry on the fake chain, reporting the version it was tested with. */
+// The contract the fake registry's proxy runs, as the chain registry would pin it.
+const testImplementation: AccountRef = accountRefSchema.parse("fake:1:0x000000e6");
+
+/**
+ * A fake identity registry on the fake chain behind a proxy, reporting the version and running the
+ * implementation it was tested with.
+ */
 export function testRegistry(): FakeIdentityRegistry {
   return createFakeIdentityRegistry({
     chain: chainRefSchema.parse("fake:1"),
     address: testRegistryAddress,
+    implementation: testImplementation,
   });
 }
 

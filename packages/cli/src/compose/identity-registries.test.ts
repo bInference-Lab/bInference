@@ -28,7 +28,7 @@ describe("the self-hosted identity registries", () => {
       clock: createManualClock(0),
     });
     const registries = chainIdentityRegistries(reads);
-    const listed = bsc.contracts.filter(({ venue }) => venue === "erc8004");
+    const listed = bsc.contracts.filter(({ name }) => name === "identity-registry");
 
     expect(registries.map(({ id, chain, registry }) => ({ id, chain, registry }))).toStrictEqual(
       listed.map(({ address }) => ({

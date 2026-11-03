@@ -31,13 +31,20 @@ export interface IdentityRegistry extends VenueDeclaration {
    */
   readonly testedVersion: string;
   /**
+   * The contract an upgradeable registry's proxy ran when the plugin was tested, as the chain
+   * registry pins it: the engine registers only while the proxy runs it, since an upgrade could
+   * change what a registration does and still report the same version. Absent for a registry
+   * that cannot be upgraded.
+   */
+  readonly testedImplementation?: AccountRef;
+  /**
    * The registration file of the card, as the registry stores it: the same card gives the same
    * file, and every field of the card is in it. A wallet of another chain is a fault.
    */
   fileOf(card: RegistrationCard): string;
   /**
-   * The registry's version and how many of its identity tokens the wallet holds, at the latest
-   * block. A registry that cannot be read throws. Rejects with the signal's reason once the
+   * The registry's version, how many of its identity tokens the wallet holds, and the contract its
+   * proxy runs, at one latest block. A registry that cannot be read throws. Rejects with the signal's reason once the
    * signal aborts.
    */
   standing(

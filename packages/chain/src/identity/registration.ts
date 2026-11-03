@@ -19,6 +19,11 @@ export interface IdentityStanding {
   readonly version: string;
   /** How many identity tokens of the registry the wallet holds. */
   readonly held: bigint;
+  /**
+   * The contract an upgradeable registry's proxy runs now, from its own storage; absent for a
+   * registry that cannot be upgraded.
+   */
+  readonly implementation?: AccountRef;
 }
 
 /** A registration call read back from its bytes: the registration file it registers. */
@@ -60,12 +65,13 @@ const versionSchema = z
   .regex(/^[\x21-\x7e]+$/);
 
 /**
- * Decodes what a registry answered about a wallet: a version of 1 to 32 printable characters and
- * a count of identity tokens never negative.
+ * Decodes what a registry answered about a wallet: a version of 1 to 32 printable characters, a
+ * count of identity tokens never negative, and the contract its proxy runs, when it has one.
  */
 export const identityStandingSchema: z.ZodType<IdentityStanding> = z.strictObject({
   version: versionSchema,
   held: z.bigint().nonnegative(),
+  implementation: accountRefSchema.exactOptional(),
 });
 
 /**

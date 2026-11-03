@@ -34,14 +34,22 @@ export function defineIdentity(definition: IdentityRegistry): IdentityRegistry {
   if (calls.some((call) => call.bridge !== undefined) || spenders.length > 0) {
     throw refused("it declares a bridge deposit or a spender, which a registry never needs.");
   }
-  if (accountRefParts(definition.registry).chain !== definition.chain) {
-    throw refused("its registry is on another chain than it declares.");
+  const { testedImplementation } = definition;
+  const pins = [
+    definition.registry,
+    ...(testedImplementation === undefined ? [] : [testedImplementation]),
+  ];
+  if (pins.some((account) => accountRefParts(account).chain !== definition.chain)) {
+    throw refused(
+      "its registry or the implementation it pins is on another chain than it declares.",
+    );
   }
   return Object.freeze({
     id: declaration.data.id,
     chain: definition.chain,
     registry: definition.registry,
     testedVersion: definition.testedVersion,
+    ...(testedImplementation === undefined ? {} : { testedImplementation }),
     contracts: frozenContracts(contracts),
     fileOf: (card) => definition.fileOf(card),
     standing: async (wallet, options) => definition.standing(wallet, options),

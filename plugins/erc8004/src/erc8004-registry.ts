@@ -14,7 +14,11 @@ import {
   mintedTo,
   type RegistryAt,
 } from "./calls/register-call.js";
-import { erc8004ContractsOn, identityRegistryName } from "./erc8004-contracts.js";
+import {
+  erc8004ContractsOn,
+  identityImplementationName,
+  identityRegistryName,
+} from "./erc8004-contracts.js";
 import { registrationFileOf } from "./file/registration-file.js";
 import { readLanded, readStanding } from "./registry/read-registry.js";
 
@@ -32,7 +36,10 @@ export interface Erc8004Options {
   readonly chain: ChainRef;
   /** The chain's RPC failover, which gives every read its timeout per endpoint. */
   readonly rpc: RpcFailover;
-  /** The `erc8004` contracts of the chain registry on that chain, by their registry names. */
+  /**
+   * The `erc8004` contracts of the chain registry on that chain, by their registry names: the
+   * registry, and the implementation its proxy ran when the plugin was tested, when pinned.
+   */
   readonly contracts: Readonly<Record<string, AccountRef>>;
 }
 
@@ -57,6 +64,20 @@ function registryOf(options: Erc8004Options): {
   return { at: { chain: options.chain, address: address.value }, ref };
 }
 
+// The contract the chain registry pins as the one the registry's proxy ran when it was tested.
+function testedImplementationOf(
+  options: Erc8004Options,
+): Pick<IdentityRegistry, "testedImplementation"> {
+  const pinned = options.contracts[identityImplementationName];
+  if (pinned !== undefined && accountRefParts(pinned).chain !== options.chain) {
+    throw new BinferenceError({
+      code: "erc8004.bad_options",
+      message: "The chain registry pins the registry's implementation on another chain.",
+    });
+  }
+  return pinned === undefined ? {} : { testedImplementation: pinned };
+}
+
 /**
  * Creates the ERC-8004 identity registry on one chain, over the registry the chain registry lists:
  * it writes a registration file as decision 0334 sets it, reads a wallet's standing at the latest
@@ -75,6 +96,7 @@ export function createErc8004Registry(options: Erc8004Options): IdentityRegistry
     chain,
     registry: ref,
     testedVersion: erc8004TestedVersion,
+    ...testedImplementationOf(options),
     fileOf: (card) => {
       if (accountRefParts(card.wallet).chain !== chain) {
         throw new BinferenceError({
