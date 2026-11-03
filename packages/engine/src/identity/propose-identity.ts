@@ -123,6 +123,7 @@ async function quoteAndSimulate(
     registry: registry.registry,
     venue: registry.id,
     ...card,
+    link: registry.releaseLink,
     file: planned.value.file,
     quotedAtMs,
   };

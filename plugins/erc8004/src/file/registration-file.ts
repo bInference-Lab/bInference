@@ -3,8 +3,8 @@ import type { RegistrationCard } from "@binference/plugin-sdk";
 // ERC-8004's type of a registration file, from the ERC's text.
 const registrationType = "https://eips.ethereum.org/EIPS/eip-8004#registration-v1";
 
-// Where binference is published, which its service entry names.
-const binferenceEndpoint = "https://www.npmjs.com/package/binference";
+/** Where binference is published, which its service entry names and the card shows. */
+export const binferenceEndpoint = "https://www.npmjs.com/package/binference";
 
 const dataUriPrefix = "data:application/json;base64,";
 

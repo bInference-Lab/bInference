@@ -41,6 +41,7 @@ export const cardKeys = [
   "card.cex.action",
   "card.identity.action",
   "card.identity.file",
+  "card.identity.fixed",
   "card.identity.noDescription",
   "card.identity.public",
   "card.launch.action",

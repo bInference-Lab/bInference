@@ -14,7 +14,7 @@ export function identityCardFacts(
   warnings: CardWarnings,
 ): CardFacts {
   const { record, card, settings } = source;
-  const { name, description, wallet, version } = quote;
+  const { name, description, wallet, version, link } = quote;
   return {
     agentName: settings.agent.name,
     isPaper: record.isPaper,
@@ -23,7 +23,7 @@ export function identityCardFacts(
     action: {
       kind: "registerIdentity",
       agent: name,
-      details: { name, description, wallet, version },
+      details: { name, description, wallet, version, link },
     },
     warnings,
   };

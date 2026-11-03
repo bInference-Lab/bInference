@@ -193,6 +193,7 @@ function registryOf(book: FakeBook): IdentityRegistry {
     chain: book.chain,
     registry: book.registry,
     testedVersion,
+    releaseLink: "https://example.org/binference",
     ...testedImplementationOf(book),
     fileOf: (card) => fileOf(book, card),
     standing: async (wallet, { signal }) => {

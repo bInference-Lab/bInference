@@ -14,7 +14,10 @@ describe("an identity registration's card in Chinese", () => {
     );
     const lines = await testCardText(test, view, "zh");
     expect(lines).toContain(
-      "永久公开在链上：名称 main，简介 无，账户 0x0000000c，binference 2026.11.3",
+      "永久公开在链上：名称 main，简介 无，账户 fake:1:0x0000000c，binference 2026.11.3",
+    );
+    expect(lines).toContain(
+      "同样公开：binference 页面 https://example.org/binference，Agent 标记为活跃，且没有其他登记或信任模型",
     );
     expect(lines).toContain(`${warning} 任何人都可以把此账户与此 Agent 关联，且该记录无法删除`);
   });

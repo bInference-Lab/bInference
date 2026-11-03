@@ -58,8 +58,10 @@ What the specs leave open:
 - **Version.** The running binference's release version, whole, as `binference --version` prints
   it.
 - **Card.** `card.identity.file` shows every value the file holds: the name, the description
-  (an empty one shows as the word "none" in the owner's language), the account whole, and the
-  version. The card's terms hash binds the file's bytes, so the file the owner tapped is the file
+  (an empty one shows as the word "none" in the owner's language), the account whole as the file
+  writes it, with its chain, and the version; `card.identity.fixed` shows the parts every file
+  holds whatever the card: binference's npm page, `active: true`, and the empty lists of other
+  registrations and trust models. The card's terms hash binds the file's bytes, so the file the owner tapped is the file
   that goes on chain.
 
 ## Consequences

@@ -32,6 +32,7 @@
   "cex.action": "Binance {side, select, buy {buy} other {sell}} {size} {market} at {price}",
   "identity.action": "Register {agent} on chain (ERC-8004)",
   "identity.file": "Public on chain for good: name {agentName}, description {description}, account {account}, binference {version}",
+  "identity.fixed": "Also public: binference's page {link}, the agent marked active, and no other registrations or trust models",
   "identity.noDescription": "none",
   "identity.public": "⚠️ Anyone can link this account to this agent, and the record cannot be deleted",
   "launch.action": "Launch {symbol} ({tokenName}) on {venue}, paired with {pair} · first buy {firstBuy}",

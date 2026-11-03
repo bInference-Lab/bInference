@@ -1,24 +1,26 @@
-import { type AccountRef, accountRefParts } from "@binference/chain";
+import type { AccountRef } from "@binference/chain";
 import type { CardLine, CardValue } from "./card-line.js";
 
 /**
- * Every field an identity registration's file publishes, as its card shows them (decision 0334):
- * the agent's name, the owner's description, empty for none, the registering wallet and
- * binference's version.
+ * Every value an identity registration's file publishes, as its card shows them (decision 0334):
+ * the agent's name, the owner's description, empty for none, the registering wallet as the file
+ * writes it, binference's version, and the page the file names for binference.
  */
 export interface IdentityDetails {
   readonly name: string;
   readonly description: string;
   readonly wallet: AccountRef;
   readonly version: string;
+  readonly link: string;
 }
 
 const text = (value: string): CardValue => ({ type: "text", text: value });
 
 /**
  * The lines under an identity registration's action (spec 4, section 3.9): `card.identity.file`
- * with every field of its registration file, the account whole and an empty description as
- * "none".
+ * with every field of its registration file, the account whole as the file writes it and an empty
+ * description as "none", then `card.identity.fixed` with the parts every file holds: binference's
+ * page, the agent marked active, and no other registrations or trust models.
  */
 export function identityDetailLines(action: {
   readonly details?: IdentityDetails;
@@ -34,8 +36,11 @@ export function identityDetailLines(action: {
   const values = {
     agentName: text(details.name),
     description: details.description === "" ? none : text(details.description),
-    account: text(accountRefParts(details.wallet).address),
+    account: text(details.wallet),
     version: text(details.version),
   };
-  return [{ key: "card.identity.file", values }];
+  return [
+    { key: "card.identity.file", values },
+    { key: "card.identity.fixed", values: { link: text(details.link) } },
+  ];
 }

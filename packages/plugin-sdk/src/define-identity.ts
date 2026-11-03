@@ -49,6 +49,7 @@ export function defineIdentity(definition: IdentityRegistry): IdentityRegistry {
     chain: definition.chain,
     registry: definition.registry,
     testedVersion: definition.testedVersion,
+    releaseLink: definition.releaseLink,
     ...(testedImplementation === undefined ? {} : { testedImplementation }),
     contracts: frozenContracts(contracts),
     fileOf: (card) => definition.fileOf(card),

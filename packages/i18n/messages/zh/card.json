@@ -32,6 +32,7 @@
   "cex.action": "Binance {side, select, buy {买入} other {卖出}} {size} {market}，价格 {price}",
   "identity.action": "在链上登记 {agent}（ERC-8004）",
   "identity.file": "永久公开在链上：名称 {agentName}，简介 {description}，账户 {account}，binference {version}",
+  "identity.fixed": "同样公开：binference 页面 {link}，Agent 标记为活跃，且没有其他登记或信任模型",
   "identity.noDescription": "无",
   "identity.public": "⚠️ 任何人都可以把此账户与此 Agent 关联，且该记录无法删除",
   "launch.action": "在 {venue} 发射 {symbol}（{tokenName}），与 {pair} 配对交易 · 首笔买入 {firstBuy}",

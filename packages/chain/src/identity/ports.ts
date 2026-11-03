@@ -38,6 +38,11 @@ export interface IdentityRegistry extends VenueDeclaration {
    */
   readonly testedImplementation?: AccountRef;
   /**
+   * The page the registration file names for the software that registered the agent, one of the
+   * parts every file holds whatever the card, which the card shows beside the fields it fills.
+   */
+  readonly releaseLink: string;
+  /**
    * The registration file of the card, as the registry stores it: the same card gives the same
    * file, and every field of the card is in it. A wallet of another chain is a fault.
    */

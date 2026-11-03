@@ -19,6 +19,8 @@ export interface IdentityQuote {
   readonly description: string;
   readonly wallet: AccountRef;
   readonly version: string;
+  /** The page the file names for binference, one of the parts it holds whatever the card. */
+  readonly link: string;
   readonly file: string;
   readonly quotedAtMs: number;
 }
@@ -31,6 +33,7 @@ interface IdentityQuoteWire {
   readonly description: string;
   readonly wallet: string;
   readonly version: string;
+  readonly link: string;
   readonly file: string;
   readonly quotedAtMs: number;
 }
@@ -42,6 +45,7 @@ const identityQuoteSchema: z.ZodType<IdentityQuote, IdentityQuoteWire> = z.stric
   description: z.string().max(280),
   wallet: accountRefSchema,
   version: z.string().min(1).max(64),
+  link: z.url({ protocol: /^https$/ }).max(200),
   file: registrationFileSchema,
   quotedAtMs: epochMsSchema,
 });

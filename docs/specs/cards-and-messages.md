@@ -532,6 +532,7 @@ such as Base or Robinhood Chain, in both languages.
 | Solana address         | `card.bridge.solana`          | A Solana address has no checksum: check every character                                                        | Solana 地址没有校验码：请逐字核对                                                          |
 | Delivery read          | `card.bridge.read`            | binference reads {chain} to see it arrive, and tells you if it is late                                         | binference 会读取 {chain} 确认到账，延迟时会通知你                                         |
 | Identity, public       | `card.identity.file`          | Public on chain for good: name {agentName}, description {description}, account {account}, binference {version} | 永久公开在链上：名称 {agentName}，简介 {description}，账户 {account}，binference {version} |
+| Identity, fixed parts  | `card.identity.fixed`         | Also public: binference's page {link}, the agent marked active, and no other registrations or trust models     | 同样公开：binference 页面 {link}，Agent 标记为活跃，且没有其他登记或信任模型               |
 | Identity, warning      | `card.identity.public`        | ⚠️ Anyone can link this account to this agent, and the record cannot be deleted                                | ⚠️ 任何人都可以把此账户与此 Agent 关联，且该记录无法删除                                   |
 | No description         | `card.identity.noDescription` | none                                                                                                           | 无                                                                                         |
 | Alert rule URL         | `card.webhookRule.url`        | Its URL works once you confirm; anyone who has it can fire this rule inside its bounds                         | 确认后其地址才会生效；任何持有该地址的人都可以在规则范围内触发此规则                       |
@@ -571,7 +572,8 @@ such as Base or Robinhood Chain, in both languages.
   after `card.bridge.fees`: `{rate}` is the share of the input less the fees the least output
   misses at one to one, rounded up, which the engine works out from the quote and which the
   route's cap in the registry bounds ([decision 0323](../DECISIONS.md#d0323)).
-- An identity registration shows `card.identity.file`, every field of the registration file, then
+- An identity registration shows `card.identity.file`, every field of the registration file, the
+  account as the file writes it, `card.identity.fixed`, the parts every file holds, then
   `card.identity.public` among the warnings ([decision 0334](../DECISIONS.md#d0334)). `{account}`
   is the registering wallet's address whole, `{agentName}` the agent's name whole, and
   `{description}` the owner's words, or `card.identity.noDescription` for none.

@@ -56,7 +56,10 @@ describe("an identity registration", () => {
     });
     const lines = await testCardText(test, view, "en");
     expect(lines).toContain(
-      "Public on chain for good: name main, description Buys dips, account 0x0000000c, binference 2026.11.3",
+      "Public on chain for good: name main, description Buys dips, account fake:1:0x0000000c, binference 2026.11.3",
+    );
+    expect(lines).toContain(
+      "Also public: binference's page https://example.org/binference, the agent marked active, and no other registrations or trust models",
     );
     expect(lines).toContain(
       `${warning} Anyone can link this account to this agent, and the record cannot be deleted`,
@@ -68,7 +71,7 @@ describe("an identity registration", () => {
     const test = await startIdentityEngine(testRegistry());
     const lines = await testCardText(test, await registered(test), "en");
     expect(lines).toContain(
-      "Public on chain for good: name main, description none, account 0x0000000c, binference 2026.11.3",
+      "Public on chain for good: name main, description none, account fake:1:0x0000000c, binference 2026.11.3",
     );
   });
 

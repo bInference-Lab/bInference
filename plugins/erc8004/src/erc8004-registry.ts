@@ -19,7 +19,7 @@ import {
   identityImplementationName,
   identityRegistryName,
 } from "./erc8004-contracts.js";
-import { registrationFileOf } from "./file/registration-file.js";
+import { binferenceEndpoint, registrationFileOf } from "./file/registration-file.js";
 import { readLanded, readStanding } from "./registry/read-registry.js";
 
 /** The plugin's id, which the chain registry names the identity registry after. */
@@ -96,6 +96,7 @@ export function createErc8004Registry(options: Erc8004Options): IdentityRegistry
     chain,
     registry: ref,
     testedVersion: erc8004TestedVersion,
+    releaseLink: binferenceEndpoint,
     ...testedImplementationOf(options),
     fileOf: (card) => {
       if (accountRefParts(card.wallet).chain !== chain) {
