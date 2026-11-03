@@ -24,6 +24,8 @@ export type { LiveReceipt } from "./surfaces/live-receipt.js";
 export type { WrittenReceipt } from "./surfaces/written-receipt.js";
 export type { LiveOutcome, ReceiptAfter, WrittenOutcome } from "./confirmations/card-closing.js";
 export type { PaperReceipt } from "./surfaces/paper-receipt.js";
+export { settledAfterOf } from "./surfaces/settling-receipt.js";
+export type { SettledAfter } from "./surfaces/settling-receipt.js";
 export type {
   CardSettling,
   CardShowing,

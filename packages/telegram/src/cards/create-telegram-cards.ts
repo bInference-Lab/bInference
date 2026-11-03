@@ -1,12 +1,12 @@
 import { BinferenceError, type Clock, err, type Logger, ok, type Result } from "@binference/core";
-import type {
-  CardCopy,
-  CardCopyStore,
-  CardSettling,
-  CardShowing as DrawnCard,
-  CardStanding,
-  OwnerStore,
-  ReceiptAfter,
+import {
+  type CardCopy,
+  type CardCopyStore,
+  type CardSettling,
+  type CardShowing as DrawnCard,
+  type CardStanding,
+  type OwnerStore,
+  settledAfterOf,
 } from "@binference/engine/surfaces";
 import { cardLineText, type MessageLocale } from "@binference/i18n";
 import type { AssetInfos } from "@binference/protocol";
@@ -195,11 +195,8 @@ async function settle(context: CardsContext, settling: Settling, call: Call): Pr
   const kept: readonly MessageAt[] = await context.options.copies.find(settling.ref, call);
   const isKept = pressed === undefined || kept.some((copy) => sameMessage(copy, pressed));
   const extra = isKept ? [] : [pressed];
-  const { closing, paper, written, live } = settling;
-  const after: ReceiptAfter | undefined =
-    paper === undefined ? (written ?? live)?.outcome : { kind: "paper", fill: paper.fill };
-  const assets = { ...live?.assets, ...written?.assets, ...paper?.assets };
-  const html = receiptHtml(closing, context.displayOf(assets), after);
+  const { after, assets } = settledAfterOf(settling);
+  const html = receiptHtml(settling.closing, context.displayOf(assets), after);
   await Promise.all(
     [...kept, ...extra].map(async (copy) => context.calls.receipt(copy, html, call)),
   );
