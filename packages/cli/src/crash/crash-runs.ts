@@ -10,7 +10,7 @@ import type { FakePrivy } from "@binference/custody-privy/testing";
 import { disclaimerVersion } from "@binference/i18n";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
-import type { ProtocolId } from "@binference/protocol";
+import type { IntentRequest, ProtocolId } from "@binference/protocol";
 import { type Address, getAddress, toHex } from "viem";
 import { z } from "zod";
 import {
@@ -149,25 +149,33 @@ export async function goneLive(
   return agent;
 }
 
+/** A run's request, built for the install's agent once it went live. */
+export type CrashRequestOf = (agent: ProtocolId<"agent">) => IntentRequest;
+
+/** A swap of 0.01 BNB for USDT on the crash chain, as the CLI would propose it. */
+export const buyCrashUsdt: CrashRequestOf = (agent) => ({
+  kind: "swap",
+  agent,
+  reason: "Buy USDT on the crash chain",
+  from: assetRefSchema.parse(`${bscRef}/slip44:714`),
+  to: assetRefSchema.parse(`${bscRef}/erc20:${crashUsdt}`),
+  amount: { base: spend },
+});
+
 /**
- * Goes live as `binference live` does and proposes a swap of 0.01 BNB for USDT as the CLI would,
- * then taps Confirm on its card; answers the intent. The engine signs and sends it from there, so
- * a kill may cut the confirmation's answer off.
+ * Goes live as `binference live` does and proposes the run's request as the CLI would, then taps
+ * Confirm on its card; answers the intent. The engine signs and sends it from there, so a kill
+ * may cut the confirmation's answer off.
  */
-export async function goLiveAndBuy(install: CrashInstall): Promise<Id<"int">> {
+export async function goLiveAndPropose(
+  install: CrashInstall,
+  requestOf: CrashRequestOf,
+): Promise<Id<"int">> {
   const client = await connectClient(install.machine);
   const call = { signal: AbortSignal.timeout(60_000) };
   try {
     const agent = await goneLive(client, call);
-    const request = {
-      kind: "swap",
-      agent: agent.id,
-      reason: "Buy USDT on the crash chain",
-      from: assetRefSchema.parse(`${bscRef}/slip44:714`),
-      to: assetRefSchema.parse(`${bscRef}/erc20:${crashUsdt}`),
-      amount: { base: spend },
-    } as const;
-    const proposed = await client.call("intent/propose", request, call);
+    const proposed = await client.call("intent/propose", requestOf(agent.id), call);
     const { card } = proposed;
     if (card === undefined) {
       const reason = proposed.outcome?.reason ?? proposed.state;
