@@ -75,6 +75,12 @@ const expected: Readonly<Record<string, string>> = {
   "notice.webhookPortTaken": `${warning} binference cannot take alerts for your alert rules: port 7457 is in use. Set \`engine.webhookPort\` in config.json5 to a free port, then restart binference.`,
   "notice.webhookRotated":
     'The URL of alert rule "BNB breakout" changed from the CLI; the old one no longer works. Not you? Delete the rule now.',
+  "notice.pluginHostRefused": `${warning} Plugin fear-index tried to reach \`other.example.net\`, which it does not declare. binference refused it.`,
+  "notice.pluginStopped": `${red} Plugin fear-index crashed 5 times in 10 minutes, so binference stopped it. Enable it again with \`binference plugin enable fear-index\`.`,
+  "notice.pluginHostsHeld":
+    "Plugin fear-index asked for 3 more hosts it does not declare in the last hour. binference refused them all.",
+  "notice.pluginStalled": `${warning} Plugin fear-index stopped reading what binference sent it, so binference ended it. It starts again on its own.`,
+  "notice.pluginSandboxOff": `${red} Community plugins cannot run on this machine: a plugin could start a program. Run \`binference check\` to see the fix.`,
   "notice.configInvalid": `${warning} binference kept the settings it runs on: config.json5 has a value telegram.mode does not take. Run \`binference check\` to see the fix.`,
   "notice.configChanged": "Settings changed in config.json5: owner.locale. They apply now.",
   "notice.unknownTx": `${warning} Main's nonce 42 was used by a transaction binference did not sign`,

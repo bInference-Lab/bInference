@@ -200,6 +200,17 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     key: "notice.webhookRotated",
     values: { name: "BNB breakout", surface: "cli" },
   },
+  "notice.pluginHostRefused": {
+    key: "notice.pluginHostRefused",
+    values: { plugin: "fear-index", host: "other.example.net" },
+  },
+  "notice.pluginStopped": { key: "notice.pluginStopped", values: { plugin: "fear-index" } },
+  "notice.pluginHostsHeld": {
+    key: "notice.pluginHostsHeld",
+    values: { plugin: "fear-index", count: "3" },
+  },
+  "notice.pluginStalled": { key: "notice.pluginStalled", values: { plugin: "fear-index" } },
+  "notice.pluginSandboxOff": { key: "notice.pluginSandboxOff", values: { reason: "childProcess" } },
   "notice.configInvalid": {
     key: "notice.configInvalid",
     values: { problem: "bad_value", key: "telegram.mode" },

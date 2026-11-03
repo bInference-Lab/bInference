@@ -74,6 +74,12 @@ const expected: Readonly<Record<string, string>> = {
   "notice.webhookPortTaken": `${warning} binference 无法为提醒规则接收提醒：端口 7457 已被占用。请在 config.json5 中把 \`engine.webhookPort\` 设为空闲端口，然后重启 binference。`,
   "notice.webhookRotated":
     "命令行 更改了提醒规则“BNB breakout”的地址，旧地址已失效。不是你操作？请立即删除该规则。",
+  "notice.pluginHostRefused": `${warning} 插件 fear-index 试图访问它没有声明的 \`other.example.net\`，binference 已拒绝。`,
+  "notice.pluginStopped": `${red} 插件 fear-index 在 10 分钟内崩溃了 5 次，binference 已将其停止。运行 \`binference plugin enable fear-index\` 可重新启用。`,
+  "notice.pluginHostsHeld":
+    "插件 fear-index 在过去一小时内又请求了 3 个它没有声明的主机，binference 已全部拒绝。",
+  "notice.pluginStalled": `${warning} 插件 fear-index 不再读取 binference 发给它的内容，binference 已将其结束。它会自行重新启动。`,
+  "notice.pluginSandboxOff": `${red} 社区插件无法在这台电脑上运行：插件可以启动程序。运行 \`binference check\` 查看修复方法。`,
   "notice.configInvalid": `${warning} binference 保留了当前运行的设置：config.json5 中 telegram.mode 的值不可用。请运行 \`binference check\` 查看修复方法。`,
   "notice.configChanged": "config.json5 中的设置已更改：owner.locale。它们已立即生效。",
   "notice.unknownTx": `${warning} Main 的随机数 42 被一笔非 binference 签名的交易占用`,
