@@ -21,6 +21,7 @@ const fills: fc.Arbitrary<FillAuthorization> = fc.oneof(
   fc.constant({ order: "ord_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"ord"> }),
   fc.constant({
     webhookRule: "whr_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"whr">,
+    event: 1,
     alertId: "a",
   }),
 );

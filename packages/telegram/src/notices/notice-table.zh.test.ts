@@ -121,6 +121,8 @@ const expected: Readonly<Record<string, string>> = {
     "有新发射的代币通过了你的筛选条件：PEPE 0x6982…1933 · Pad · 3 分钟前 · 曲线进度 42% · 交易税 1% · 2 个内部钱包 · 创建者 30 天内其他发射：0",
   "notice.alertHeld": "main · 本小时另有 12 次匹配，请在控制台查看",
   "notice.copyHeld": "main · 本小时另有 12 笔跟单交易被跳过，请在控制台查看",
+  "notice.webhookHeld": "main · 提醒规则“BNB breakout”：本小时另有 12 次成交或跳过，请在控制台查看",
+  "notice.webhookSkipped": `${warning} 提醒规则“BNB breakout”已跳过一次提醒：它未能在应执行时间后一分钟内开始，之后不会补做。规则仍然有效。`,
   "notice.ordersEnded": "止盈已卖出你持有的全部 PEPE，该持仓的其他 2 个平仓订单已结束",
   "notice.exitEnded": "PEPE 的追踪止损已结束：钱包中已没有这种代币",
 };

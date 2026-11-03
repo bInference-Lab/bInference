@@ -70,7 +70,7 @@ const manual: AuthorizationCheck = {
 describe("authorizing an intent at simulated", () => {
   it("confirms a fill whose order or webhook rule still holds", () => {
     expect(authorizeIntent(input(fill, valid))).toStrictEqual({ ok: true, value: {} });
-    const ruleFill = { ...fill, authorizedBy: { webhookRule: rule, alertId: "a-1" } };
+    const ruleFill = { ...fill, authorizedBy: { webhookRule: rule, event: 1, alertId: "a-1" } };
     expect(authorizeIntent(input(ruleFill, valid))).toStrictEqual({ ok: true, value: {} });
   });
 

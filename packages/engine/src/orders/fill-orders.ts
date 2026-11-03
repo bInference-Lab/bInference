@@ -78,6 +78,11 @@ export interface OrderFills {
     request: { readonly order: Id<"ord">; readonly reason: OrderFillReason },
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
+  /**
+   * Runs `work` in its agent's one line of fills, after every fill of the agent before it: a
+   * webhook rule's fill shares the line with the agent's order fills (decision 0338).
+   */
+  inLine<T>(agent: Id<"agt">, work: () => Promise<T>): Promise<T>;
 }
 
 /** What the fills read, run and write through, and where their notices go. */
@@ -343,6 +348,7 @@ async function emptyExit(
 export function createOrderFills(parts: OrderFillsParts): OrderFills {
   const state: FillState = { running: new Set(), lines: new Map(), told: new Map() };
   return {
+    inLine: async (agent, work) => runInLine(state.lines, agent, work),
     async skip({ order: id, reason }, { signal }) {
       const order = await parts.orders.get(id, { signal });
       if (order !== undefined) {

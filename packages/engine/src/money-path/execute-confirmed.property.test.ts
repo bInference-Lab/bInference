@@ -97,6 +97,7 @@ async function routesOf(item: Case): Promise<readonly Route[]> {
     autoOrder,
     webhookRule,
     orderFill,
+    ruleFill: orderFill,
     paperStake,
     publish,
   };

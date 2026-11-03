@@ -621,7 +621,8 @@ Webhook rules follow [decision 0299](../DECISIONS.md#d0299):
   [0338](../DECISIONS.md#d0338)), `protocol.bad_args` for a rate outside 1 to 60 or a `name` that is empty or too
   long, and `webhook.too_many` for an agent's 21st rule active or awaiting its card.
 - Each accepted alert becomes a fill intent authorized by the rule
-  (`authorizedBy: { webhookRule, alertId }`), through the fill path of an auto order (spec 6,
+  (`authorizedBy: { webhookRule, event, alertId? }`, keyed on the alert's `webhook_events` row,
+  [decision 0338](../DECISIONS.md#d0338)), through the fill path of an auto order (spec 6,
   section 5). `webhookRule/delete` and `webhookRule/rotateUrl` of a rule that is not active or
   awaiting its card fail `webhook.not_found`; a rotation answers the new URL once, and the old
   one gets `404` at once. `WebhookRuleView` gains `ratePerMinute` and `lastAlertAt?`.
@@ -631,6 +632,12 @@ Webhook rules follow [decision 0299](../DECISIONS.md#d0299):
   surface; alerts the old URL took that still wait fill nothing (`url_rotated`). Only the owner's
   own surfaces create a rule: a caller without `confirm` is `auth.scope`. `webhookRule/list`
   answers every rule active or awaiting its card, oldest first, in one page.
+- Per [decision 0336](../DECISIONS.md#d0336), an alert fills only if its fill starts within a
+  minute of its arrival, a buy and a sale alike; a later one, as one taken while the engine was
+  stopped, or one stamped later than now after the clock was set back, is skipped as `late`, and
+  one taken while the engine was locked as `engine_locked`. Each alert is judged once and never
+  tried again. A rule ends `deleted` with its last fill and at its expiry, and its URL then gets
+  `404` ([decision 0337](../DECISIONS.md#d0337)).
 
 Schedules follow decisions [0231](../DECISIONS.md#d0231) to [0233](../DECISIONS.md#d0233):
 

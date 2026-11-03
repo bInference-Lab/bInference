@@ -227,6 +227,21 @@ Rules for this package:
   a JSON object's `id` is read from it. The `WebhookAlertStore` judges a repeat and the rate on the
   rule's accepted alerts and writes the alert's row, and an accepted alert's inbox entry with its
   body, in one write; nothing there reaches the money path.
+- Webhook rules (`src/webhooks/`, decisions 0336 to 0338) are made by the owner's surfaces only,
+  in paper mode, each with one card that a `webhookRule` intent carries; the `WebhookRuleStore`
+  moves a rule into `active` only on that card's confirmation, for an agent that is not frozen. A
+  rule's secret comes from `secretRandom`, the OS generator the composition root passes, never
+  `random`; only its SHA-256 is kept. `createWebhookFills` fills each accepted alert in its agent's
+  line of fills, which the order fills share (`OrderFills.inLine`), sized and held to the rule's
+  bounds by the same `fill-request.ts` and `fill-check.ts` as an order's, with
+  `authorizedBy: { webhookRule, event }`; the paper fill marks the alert filled and counts the fill
+  on the rule in its own move (`rule-fill-on-paper.ts`), so an alert fills once. One that cannot
+  start within a minute of its arrival, or stamped later than now, is `late`; one the engine was
+  locked for as it arrived is `engine_locked`; one its rule's old URL took, by its row, is
+  `url_rotated`. A run fills each agent's alerts in arrival order, four agents at once; an entry
+  that fails three runs ends `fill_failed`, a fill past its deadline cancels its intent, and the
+  start cancels what a stop left (`repair-rule-fills.ts`). The fill that uses a rule's last fill
+  ends the rule. A change to a bound or the window changes `webhook-fills.property.test.ts`.
 - Launches (`src/launches/`, decisions 0254 to 0256) are what the launch feed stored behind the
   `LaunchStore` port: `launch/list` and `market/scan` with `source: launches` read them, their
   filters naming only launchpads the venue host runs, and `tellLaunches` pushes each launch stored

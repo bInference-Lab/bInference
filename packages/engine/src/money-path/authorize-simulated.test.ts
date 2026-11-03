@@ -1,8 +1,9 @@
-import { ok } from "@binference/core";
+import { type Id, ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { testSnapshot } from "../approval/test-snapshot.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { flush, startExecutorBench } from "../executor/test-executor.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import type { Authorization } from "../intents/authorization.js";
@@ -47,10 +48,13 @@ async function simulatedLiveFill(): Promise<IntentSnapshot> {
   return { ...confirmed, stored: { ...confirmed.stored, status } };
 }
 
-// Authorizes the fill with live fills on or off, and answers the moves it stored, and whether its
-// check in the agent's line ran.
-async function authorized(simulated: IntentSnapshot, switches: { readonly liveFills: boolean }) {
-  const { liveFills } = switches;
+// Authorizes the fill with live fills on or off, as an order's or, when `rule` names one, a webhook
+// rule's, and answers the moves it stored, and whether its check in the agent's line ran.
+async function authorized(
+  simulated: IntentSnapshot,
+  switches: { readonly liveFills: boolean; readonly rule?: Id<"whr"> },
+) {
+  const { liveFills, rule } = switches;
   const moves: IntentMove[] = [];
   const checks: true[] = [];
   const parts = {
@@ -67,7 +71,10 @@ async function authorized(simulated: IntentSnapshot, switches: { readonly liveFi
     wallet: {} as never,
     liveFills,
     fill: {
-      authorization: { order: simulated.stored.status.authorizedBy as never },
+      authorization:
+        rule === undefined
+          ? { order: simulated.stored.status.authorizedBy as never }
+          : { webhookRule: rule, event: 1 },
       isPaper: simulated.record.isPaper,
       decimals: 6,
       check: async () =>
@@ -112,6 +119,14 @@ describe("the authorization of an auto order's fill", () => {
       checks: [true],
       bound: [fillTerms],
     });
+  });
+
+  it("ends a live webhook rule fill live_fills_off with live fills on, before any check or signature", async () => {
+    const simulated = await simulatedLiveFill();
+
+    const ruled = await authorized(simulated, { liveFills: true, rule: fixtureId("whr", 1) });
+
+    expect(ruled).toMatchObject({ states: [["failed_check", "live_fills_off"]], checks: [] });
   });
 
   it("confirms a paper fill whether live fills are on or off", async () => {

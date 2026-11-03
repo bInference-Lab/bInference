@@ -11,6 +11,7 @@ import { pruneWorkOf } from "../records/prune-records.js";
 import type { ScheduleQueue } from "../schedules/run-schedules.js";
 import { endExpiredRules } from "../webhooks/end-expired-rules.js";
 import { followWaitingRules } from "../webhooks/follow-rule-card.js";
+import type { WebhookFills } from "../webhooks/webhook-fills.js";
 import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { Engine } from "./create-engine.js";
 
@@ -63,6 +64,7 @@ interface TimedParts {
     readonly cardTimer: CardTimerParts;
     readonly dca: DcaOrders;
     readonly copies: CopyOrders;
+    readonly ruleFills: WebhookFills;
   };
   readonly chat: { readonly alerts: AlertFiring; readonly schedules: ScheduleQueue };
   readonly drafts: Pick<LaunchDraftDesk, "expire">;
@@ -81,7 +83,10 @@ const sooner = (one: number | undefined, two: number | undefined): number | unde
  */
 export function timedWorkOf(
   parts: TimedParts,
-): Pick<Engine, "tickOrders" | "expireCards" | "runSchedules" | "runCopies" | "pruneRecords"> {
+): Pick<
+  Engine,
+  "tickOrders" | "expireCards" | "runSchedules" | "runCopies" | "fillWebhookAlerts" | "pruneRecords"
+> {
   const { intents, chat, drafts, clock } = parts;
   return {
     ...pruneWorkOf(parts),
@@ -95,5 +100,6 @@ export function timedWorkOf(
     runSchedules: async ({ signal }) =>
       runQueue({ schedules: chat.schedules, dca: intents.dca, clock }, signal),
     runCopies: async (call) => intents.copies.run(call),
+    fillWebhookAlerts: async (call) => intents.ruleFills.run(call),
   };
 }

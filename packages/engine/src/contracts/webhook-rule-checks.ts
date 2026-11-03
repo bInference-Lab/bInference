@@ -88,9 +88,13 @@ export async function activatesOnTheConfirmedCard(subject: WebhookRuleStoreSubje
   });
 }
 
-/** Checks that a frozen agent's rule never moves into `active` and takes no new rule. */
+/**
+ * Checks that a frozen agent's rule never moves into `active` and takes no new rule, while one
+ * already active keeps counting its fills.
+ */
 export async function refusesAFrozenAgentsRule(subject: WebhookRuleStoreSubject): Promise<void> {
   const { store, intents } = subject;
+  const active = await activeRule(subject, 3);
   const cardId = await confirmedCard(subject, 1);
   await store.create(ruleDraft(subject, 1), live());
   const expectedVersion = await agentVersion(subject, subject.agentId);
@@ -110,6 +114,8 @@ export async function refusesAFrozenAgentsRule(subject: WebhookRuleStoreSubject)
     ok: false,
     error: "frozen",
   });
+  const counted = { ...ruleMove(3, active.version, "active"), fills: 1 };
+  assert.equal((await store.move(counted, live())).ok, true);
 }
 
 /** Checks that a rotation changes the hash the listener reads, and when the URL changed. */

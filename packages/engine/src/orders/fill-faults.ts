@@ -23,6 +23,14 @@ export interface UnfinishedQuery {
   readonly isPaper: boolean;
   readonly agentId?: Id<"agt">;
   readonly order?: Id<"ord">;
+  /** Which fills to keep in place of the auto orders', such as a webhook rule's (decision 0338). */
+  readonly isFill?: (snapshot: IntentSnapshot) => boolean;
+}
+
+// Whether an intent is an auto order's fill, of the order the query names when it names one.
+function isOrderFill(query: UnfinishedQuery, snapshot: IntentSnapshot): boolean {
+  const owner = fillOrderOf(snapshot);
+  return owner !== undefined && (query.order === undefined || owner === query.order);
 }
 
 /**
@@ -38,7 +46,8 @@ export async function unfinishedFills(
     readonly after?: { readonly changedAtMs: number; readonly id: Id<"int"> };
   },
 ): Promise<readonly IntentSnapshot[]> {
-  const { isPaper, agentId, order } = query;
+  const { isPaper, agentId } = query;
+  const isFill = query.isFill ?? ((snapshot: IntentSnapshot) => isOrderFill(query, snapshot));
   const { signal, after } = call;
   const states = isPaper ? [...beforeConfirmed, "confirmed" as const] : beforeConfirmed;
   const listed = await stored.list(
@@ -53,10 +62,9 @@ export async function unfinishedFills(
   );
   const engines = listed.filter(({ proposer }) => proposer === "engine");
   const read = await Promise.all(engines.map(async ({ id }) => stored.snapshot(id, { signal })));
-  const fills = read.filter((snapshot): snapshot is IntentSnapshot => {
-    const owner = snapshot === undefined ? undefined : fillOrderOf(snapshot);
-    return owner !== undefined && (order === undefined || owner === order);
-  });
+  const fills = read.filter(
+    (snapshot): snapshot is IntentSnapshot => snapshot !== undefined && isFill(snapshot),
+  );
   const last = listed.at(-1);
   if (listed.length < pageSize || last === undefined) {
     return fills;

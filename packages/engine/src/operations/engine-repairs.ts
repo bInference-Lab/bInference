@@ -7,6 +7,7 @@ import { repairOrderFills } from "../orders/repair-order-fills.js";
 import type { ResumeFence } from "../orders/resume-fence.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
+import { repairRuleFills } from "../webhooks/repair-rule-fills.js";
 import type { Engine, EngineOptions } from "./create-engine.js";
 import { downtimeOf } from "./engine-downtime.js";
 
@@ -27,9 +28,10 @@ function paperRepairOf(
 }
 
 /**
- * The startup's repair of the order fills a stop left (decision 0197), then of the DCA periods a
- * stop cut off between keeping them and their buy (decision 0246). A copy order's take a stop cut
- * off is ended by the copy runner, by its rows (decision 0260).
+ * The startup's repair of the order fills a stop left (decision 0197), of the webhook rule fills
+ * (decision 0338), then of the DCA periods a stop cut off between keeping them and their buy
+ * (decision 0246). A copy order's take a stop cut off is ended by the copy runner, by its rows
+ * (decision 0260).
  */
 function orderRepairOf(
   options: EngineOptions,
@@ -48,7 +50,9 @@ function orderRepairOf(
       call,
     );
     const dca = { orders: stores.orders, fills, intents: stores.intents, chains, clock };
-    return repaired + (await repairDcaPeriods(dca, call));
+    const rules = { stored, rules: stores.webhookRules, clock, publish };
+    const ruleFills = await repairRuleFills(rules, call);
+    return repaired + ruleFills + (await repairDcaPeriods(dca, call));
   };
 }
 

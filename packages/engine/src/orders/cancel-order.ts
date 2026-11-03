@@ -30,12 +30,26 @@ export async function cancelCard(
   intent: Id<"int">,
   signal: AbortSignal,
 ): Promise<void> {
+  await cancelUnsigned(parts, { intent, cause: "request" }, signal);
+}
+
+/**
+ * Cancels an intent that signed nothing, as the engine: on a request, or as a stop left it
+ * (`engine_stopping`). An intent another write moved first, or that no cancel can move, is left as
+ * it is.
+ */
+export async function cancelUnsigned(
+  parts: Pick<OrderParts, "stored" | "clock">,
+  cancel: { readonly intent: Id<"int">; readonly cause: "request" | "engine_stopping" },
+  signal: AbortSignal,
+): Promise<void> {
+  const { intent, cause } = cancel;
   const snapshot = await parts.stored.snapshot(intent, { signal });
   if (snapshot === undefined) {
     return;
   }
   const machine = createIntentStateMachine({ clock: parts.clock });
-  const trigger = { type: "cancel_requested", cause: "request", hasSignedStep: false } as const;
+  const trigger = { type: "cancel_requested", cause, hasSignedStep: false } as const;
   const step = machine.apply(snapshot.stored.status, trigger);
   if (step.ok) {
     const move = { intent, version: snapshot.stored.version, step: step.value, by: "engine" };

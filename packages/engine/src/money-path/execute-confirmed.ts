@@ -41,6 +41,8 @@ export interface ExecuteConfirmedOptions {
   readonly webhookRule: ExecuteConfirmed;
   /** Fills an auto order's confirmed paper fill, with its write on its order. */
   readonly orderFill: ExecuteConfirmed;
+  /** Fills a webhook rule's confirmed paper fill, with its write on its alert and rule. */
+  readonly ruleFill: ExecuteConfirmed;
   /** Fills a confirmed paper staking move at its paper plan (decision 0327). */
   readonly paperStake: ExecuteConfirmed;
   readonly publish: PublishPush;
@@ -51,6 +53,21 @@ function paperFillOf(options: ExecuteConfirmedOptions, kind: IntentKind): Execut
   return kind === "stake"
     ? options.paperStake
     : async (snapshot, call) => options.paper.fillAtQuote(snapshot, call);
+}
+
+// A confirmed paper intent fills on paper: a webhook rule's or an auto order's fill with its write,
+// a staking move at its plan, any other at its quote.
+function paperRouteOf(
+  options: ExecuteConfirmedOptions,
+  snapshot: IntentSnapshot,
+): ExecuteConfirmed {
+  const { authorizedBy } = snapshot.stored.status;
+  if (authorizedBy !== undefined && "webhookRule" in authorizedBy) {
+    return options.ruleFill;
+  }
+  return authorizedBy !== undefined && isFillAuthorization(authorizedBy)
+    ? options.orderFill
+    : paperFillOf(options, snapshot.record.kind);
 }
 
 /** Creates the {@link ExecuteConfirmed} step over paper fills and the executor. */
@@ -67,10 +84,7 @@ export function createExecuteConfirmed(options: ExecuteConfirmedOptions): Execut
       return snapshot;
     }
     if (record.isPaper) {
-      const { authorizedBy } = snapshot.stored.status;
-      return authorizedBy !== undefined && isFillAuthorization(authorizedBy)
-        ? options.orderFill(snapshot, call)
-        : paperFillOf(options, record.kind)(snapshot, call);
+      return paperRouteOf(options, snapshot)(snapshot, call);
     }
     if (record.kind === "unfreeze") {
       return options.unfreeze(snapshot, call);

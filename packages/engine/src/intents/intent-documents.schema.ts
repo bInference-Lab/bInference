@@ -64,7 +64,11 @@ const authorizationSchema: z.ZodType<Authorization> = z.union([
       .regex(/^[0-9a-f]{64}$/)
       .exactOptional(),
   }),
-  z.strictObject({ webhookRule: idSchema("whr"), alertId: z.string().min(1) }),
+  z.strictObject({
+    webhookRule: idSchema("whr"),
+    event: z.int().positive(),
+    alertId: z.string().min(1).max(128).exactOptional(),
+  }),
   z.strictObject({ approvalMode: z.literal("auto"), modeVersion: z.int().nonnegative() }),
 ]);
 

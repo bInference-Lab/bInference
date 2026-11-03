@@ -541,8 +541,16 @@ and `step_unsent` (a step never signed after an earlier one landed,
   is the rule's bounds, it passes policy, quote, risk and simulation with nothing to check, never
   passes the auto test (`kind`), and opens one card. On the Confirm the rule becomes `active` in one
   write that checks the confirmation; a card that ends otherwise ends the rule. Each accepted alert
-  of an active rule is a fill with `authorizedBy: { webhookRule, alertId }`, run as an auto order's
-  fill, and a live one follows the live fills switch.
+  of an active rule is a fill with `authorizedBy: { webhookRule, event, alertId? }`, keyed on the
+  alert's `webhook_events` row, which one fill at most counts ([decision 0338](../DECISIONS.md#d0338)),
+  run as an auto order's fill, sized from the rule's bounds alone, in its agent's one line of fills,
+  and counted on its rule in the paper fill's own write. A fill that cannot start within a minute
+  of its alert's arrival, or stamped later than now, is skipped as `late`, one the engine was
+  locked for as it arrived as `engine_locked`, an alert its rule's old URL took, by its row, as
+  `url_rotated`
+  ([decisions 0336](../DECISIONS.md#d0336) and [0337](../DECISIONS.md#d0337)). Live webhook fills
+  are not built: a live rule's fill ends `failed_check` with `live_fills_off`, whatever the live
+  fills switch says.
 - **Identity registration** ([decisions 0071](../DECISIONS.md#d0071) and
   [0335](../DECISIONS.md#d0335)) is a single step to the ERC-8004 registry, from the agent's main
   wallet, which only the owner proposes: the agent runtime's and an MCP client's are

@@ -160,13 +160,14 @@ function movedOf(state: State, rule: Rule, move: WebhookRuleMove): Rule {
   return { record, secretHash: secretHash ?? rule.secretHash };
 }
 
-// A move into `active` needs the confirmation of the rule's card and an agent that is not frozen.
+// A move into `active` needs the confirmation of the rule's card and an agent that is not frozen;
+// a rule already active keeps its state while its agent is frozen (decision 0337).
 function activeRefusal(
   state: State,
   rule: Rule,
   move: WebhookRuleMove,
 ): WebhookRuleMoveRefusal | undefined {
-  if (move.state !== "active") {
+  if (move.state !== "active" || rule.record.state === "active") {
     return undefined;
   }
   const card = move.cardId ?? rule.record.cardId;

@@ -7,6 +7,7 @@ import type { OrderParts } from "../orders/create-order.js";
 import type { DcaOrders } from "../orders/dca-orders.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { ScheduleQueue } from "../schedules/run-schedules.js";
+import type { WebhookFills } from "../webhooks/webhook-fills.js";
 import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import { timedWorkOf } from "./engine-timers.js";
 
@@ -29,6 +30,7 @@ describe("the engine's timed work", () => {
         cardTimer: failingCards,
         dca: {} as DcaOrders,
         copies: {} as CopyOrders,
+        ruleFills: {} as WebhookFills,
       },
       chat: { alerts: {} as AlertFiring, schedules: {} as ScheduleQueue },
       drafts: { expire: () => (expired.push(1), undefined) },

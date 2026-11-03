@@ -1,5 +1,12 @@
 import { BinferenceError, type Random } from "@binference/core";
+import type { CapGate } from "../confirmations/cap-gate.js";
+import type { StoredIntents } from "../intents/create-stored-intents.js";
+import type { MoneyPath } from "../money-path/create-money-path.js";
+import type { Holdings } from "../money-path/wallet-facts.js";
 import type { OrderParts } from "../orders/create-order.js";
+import type { OrderFills } from "../orders/fill-orders.js";
+import type { ResumeFence } from "../orders/resume-fence.js";
+import { createWebhookFills, type WebhookFills } from "../webhooks/webhook-fills.js";
 import {
   createWebhookRuleHandlers,
   type WebhookRuleHandlers,
@@ -58,4 +65,37 @@ export function webhookRulesOf(
 ): { readonly parts: WebhookRuleParts; readonly handlers: WebhookRuleHandlers } {
   const parts = webhookRulePartsOf(options, orders);
   return { parts, handlers: createWebhookRuleHandlers(parts) };
+}
+
+/**
+ * The webhook rules' fills (decision 0338), on the engine's money path, its rolling cap gate and
+ * its auto orders' line of fills, which a timer of the composition root runs.
+ */
+export function webhookFillsOf(
+  options: EngineOptions,
+  parts: {
+    readonly moneyPath: MoneyPath;
+    readonly gate: CapGate;
+    readonly holdings: Holdings;
+    readonly fills: OrderFills;
+    readonly stored: StoredIntents;
+    /** The downtime re-check, which a fill's check reads as an order's does. */
+    readonly fence: Pick<ResumeFence, "resumes">;
+  },
+): WebhookFills {
+  const { stores, custody, prices, chains, clock, publish, isLocked } = options;
+  const { fills, ...rest } = parts;
+  return createWebhookFills({
+    ...rest,
+    rules: stores.webhookRules,
+    inbox: stores.inbox,
+    agents: stores.agents,
+    custody,
+    prices,
+    chains,
+    clock,
+    publish,
+    isLocked,
+    inLine: async (agent, work) => fills.inLine(agent, work),
+  });
 }

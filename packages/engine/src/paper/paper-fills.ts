@@ -9,6 +9,7 @@ import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { OrderFillWrite } from "../orders/order-fill.js";
 import type { Positions } from "../positions/create-positions.js";
 import { type ExecutedTrade, isUsablePrice } from "../positions/value-execution.js";
+import type { AlertFillWrite } from "../webhooks/alert-fill-record.js";
 import type { PaperPortfolio } from "./paper-portfolio.js";
 
 /**
@@ -28,14 +29,16 @@ export interface PaperFills {
    * fill is never valued at a guessed price. A sale or a swap whose paper portfolio now holds less
    * of its input than the confirmed quote spends, as when another fill sold it first, ends
    * `failed_check` with `nothing_to_sell`, and moves nothing. An auto order's fill passes `order`,
-   * which answers the fill's write on its order; it lands with the move, or neither does, and an
-   * answer of none leaves the intent `confirmed`.
+   * which answers the fill's write on its order, and a webhook rule's fill `alert`, its write on its
+   * alert and rule (decision 0338); it lands with the move, or neither does, and an answer of none
+   * leaves the intent `confirmed`.
    */
   fillAtQuote(
     snapshot: IntentSnapshot,
     options: {
       readonly signal: AbortSignal;
       readonly order?: (fill: PaperFill) => Promise<OrderFillWrite | undefined>;
+      readonly alert?: (fill: PaperFill) => Promise<AlertFillWrite | undefined>;
     },
   ): Promise<IntentSnapshot>;
 }
@@ -151,12 +154,18 @@ async function endShort(
   return moved.ok ? moved.value : ((await options.stored.snapshot(intent, { signal })) ?? snapshot);
 }
 
-// The move's write on its order: none for a fill of no order, and `undefined` for an order fill
-// whose order can no longer record it, which fills nothing (decision 0197).
-async function orderPartOf(
-  order: ((fill: PaperFill) => Promise<OrderFillWrite | undefined>) | undefined,
+// The move's write on its order or its rule's alert: none for a fill of neither, and `undefined`
+// for one whose order or rule can no longer record it, which fills nothing (decisions 0197 and
+// 0338).
+async function fillPartOf(
+  writers: Pick<Parameters<PaperFills["fillAtQuote"]>[1], "order" | "alert">,
   fill: PaperFill,
-): Promise<{ readonly order?: OrderFillWrite } | undefined> {
+): Promise<{ readonly order?: OrderFillWrite; readonly alert?: AlertFillWrite } | undefined> {
+  const { order, alert } = writers;
+  if (alert !== undefined) {
+    const write = await alert(fill);
+    return write === undefined ? undefined : { alert: write };
+  }
   if (order === undefined) {
     return {};
   }
@@ -169,7 +178,7 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
   const machine = createIntentStateMachine({ clock: options.clock });
   const { stored } = options;
   return {
-    async fillAtQuote(snapshot, { signal, order }) {
+    async fillAtQuote(snapshot, { signal, ...writers }) {
       const step = machine.apply(snapshot.stored.status, { type: "paper_fill_recorded" });
       if (!step.ok) {
         return snapshot;
@@ -191,7 +200,7 @@ export function createPaperFills(options: PaperFillsOptions): PaperFills {
         soldPrice: price.value,
       };
       const intent = snapshot.record.id;
-      const written = await orderPartOf(order, fill);
+      const written = await fillPartOf(writers, fill);
       if (written === undefined) {
         return snapshot;
       }

@@ -15,10 +15,14 @@ export interface OrderAuthorization {
   readonly termsHash?: string;
 }
 
-/** A webhook rule that authorized a fill, with the alert id the webhook sent. */
+/**
+ * A webhook rule that authorized a fill, keyed on the alert's `webhook_events` row, which one fill
+ * at most counts (decision 0338), with the `id` the alert's body carried, when it had one.
+ */
 export interface WebhookRuleAuthorization {
   readonly webhookRule: Id<"whr">;
-  readonly alertId: string;
+  readonly event: number;
+  readonly alertId?: string;
 }
 
 /** The order or webhook rule a fill runs under; the owner confirmed it once, in advance. */

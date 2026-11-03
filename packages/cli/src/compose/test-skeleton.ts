@@ -54,6 +54,7 @@ import {
 } from "@binference/engine/testing";
 import type { OwnerInfo } from "@binference/protocol";
 import { sealTo } from "../export/key-recipient.js";
+import { createSystemRandom } from "../runtime/system-random.js";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
 import {
   type ComposedEngine,
@@ -351,6 +352,7 @@ export async function composeSkeleton(
     ...surfacesOf(options),
     clock,
     random: createSeededRandom(7),
+    webhooks: { secretRandom: createSystemRandom() },
     logger,
   });
   return { parts, composed, clock, positions, executor, logger };

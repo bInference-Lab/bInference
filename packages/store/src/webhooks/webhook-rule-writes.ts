@@ -59,13 +59,14 @@ export function createRule(
 }
 
 // A move into `active` needs the confirmation of the rule's card on its `webhookRule` intent, and
-// an agent that is not frozen.
+// an agent that is not frozen; a rule already active keeps its state while its agent is frozen
+// (decision 0337).
 function activeRefusal(
   database: DatabaseSync,
   row: Selectable<WebhookRulesTable>,
   move: WebhookRuleMove,
 ): WebhookRuleMoveRefusal | undefined {
-  if (move.state !== "active") {
+  if (move.state !== "active" || row.state === "active") {
     return undefined;
   }
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);

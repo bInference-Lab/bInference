@@ -144,8 +144,8 @@ function copyResultOf(
     : { key: "fill.copySell", values, amounts };
 }
 
-// A fill's result: what it bought or sold, for how many dollars, at its price per whole token.
-function plainResultOf(fill: {
+/** A fill's result: what it bought or sold, for how many dollars, at its price per whole token. */
+export function plainResultOf(fill: {
   readonly isBuy: boolean;
   readonly token: PaperFill["amountIn"];
   readonly value: string;
@@ -226,19 +226,27 @@ export function skippedNotice(
     readonly risk?: JsonValue;
   },
 ): Notice {
+  return {
+    key: "notice.skipped",
+    agent: order.agentId,
+    values: {},
+    parts: { orderKind: skipOrderPart(order, skip.book ?? []), reason: skipReasonPart(skip) },
+    ...afterOf(riskWarningOf(order, skip.risk)),
+  };
+}
+
+/**
+ * A skip's reason as `notice.skipped` names it; a reason that names a cap carries what was used of
+ * it and the cap, in dollars.
+ */
+export function skipReasonPart(skip: {
+  readonly reason: OrderFillReason;
+  readonly cap?: { readonly usedUsdMicros: bigint; readonly capUsdMicros: bigint };
+}): NoticePart {
   const { reason, cap } = skip;
   const values =
     cap === undefined
       ? {}
       : { used: dollars.usd(cap.usedUsdMicros), cap: dollars.usd(cap.capUsdMicros) };
-  return {
-    key: "notice.skipped",
-    agent: order.agentId,
-    values: {},
-    parts: {
-      orderKind: skipOrderPart(order, skip.book ?? []),
-      reason: { key: `reason.${reason}`, values },
-    },
-    ...afterOf(riskWarningOf(order, skip.risk)),
-  };
+  return { key: `reason.${reason}`, values };
 }

@@ -65,6 +65,7 @@ import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { ImageOptions } from "../uploads/image-options.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import type { WebhookFills } from "../webhooks/webhook-fills.js";
 import type { WebhookRuleHandlers } from "../webhooks/webhook-rule-handlers.js";
 import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
@@ -82,7 +83,7 @@ import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { startupWorkOf } from "./engine-repairs.js";
 import { dailySummariesOf } from "./engine-summaries.js";
 import { timedWorkOf } from "./engine-timers.js";
-import { webhookRulesOf } from "./engine-webhook-rules.js";
+import { webhookFillsOf, webhookRulesOf } from "./engine-webhook-rules.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers } from "./ledger-handlers.js";
 import { settingsHandlers } from "./settings-handlers.js";
@@ -162,6 +163,11 @@ export interface Engine extends BridgeWork, StakeWork, PruneWork {
    * composition root calls it every second, locked or not: a locked engine's fills skip.
    */
   readonly runCopies: CopyOrders["run"];
+  /**
+   * Fills or skips each alert the webhook listener accepted (decision 0338), which a timer of the
+   * composition root runs every second: an alert fills only within a minute of its arrival.
+   */
+  readonly fillWebhookAlerts: WebhookFills["run"];
   /**
    * Judges the active limit, take-profit, stop-loss and trailing orders on a confirmed price of
    * their token, and fills those it triggers in the same block's processing (decision 0196). The
@@ -320,6 +326,8 @@ interface IntentParts {
   readonly dca: DcaOrders;
   /** The copy orders' leader trades, which the copy timer runs (decision 0260). */
   readonly copies: CopyOrders;
+  /** The webhook rules' fills, which their timer runs (decision 0338). */
+  readonly ruleFills: WebhookFills;
   /** One alert for the money path and the gas check, so each drop is announced once. */
   readonly lowGas: LowGasAlerts;
   readonly cardTimer: CardTimerParts;
@@ -367,7 +375,8 @@ function intentParts(
     publish: options.publish,
   });
   const copies = copyOrdersOf(options, fills);
-  const timed = { triggers, dca, copies };
+  const ruleFills = webhookFillsOf(options, { ...fillParts, fills });
+  const timed = { triggers, dca, copies, ruleFills };
   return { answer, stored, orders, rules, fills, ...timed, handlers, lowGas, cardTimer, moneyPath };
 }
 

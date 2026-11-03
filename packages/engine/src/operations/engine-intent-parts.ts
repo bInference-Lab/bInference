@@ -9,6 +9,7 @@ import { createPaperFills } from "../paper/paper-fills.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { writeUnfreeze } from "../safety/write-unfreeze.js";
 import { fillStakeOnPaper } from "../staking/fill-stake-on-paper.js";
+import { createRuleFillOnPaper } from "../webhooks/rule-fill-on-paper.js";
 import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { EngineOptions } from "./create-engine.js";
 import { fillEndOf, fillOnPaperOf, followCardOf, followRuleCardOf } from "./engine-orders.js";
@@ -56,6 +57,13 @@ export function executeOf(
     autoOrder: followCardOf(parts.orders),
     webhookRule: followRuleCardOf(parts.rules),
     orderFill: fillOnPaperOf(options, { paper: fills, stored, portfolio }),
+    ruleFill: createRuleFillOnPaper({
+      paper: fills,
+      stored,
+      rules: stores.webhookRules,
+      clock,
+      publish,
+    }),
     paperStake: async (snapshot, call) =>
       fillStakeOnPaper(
         {

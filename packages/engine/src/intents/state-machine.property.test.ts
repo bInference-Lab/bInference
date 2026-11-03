@@ -247,7 +247,7 @@ const proposals: fc.Arbitrary<IntentProposal> = fc.oneof(
     kind: fc.constantFrom<IntentKind>("swap", "buy", "sell"),
     proposer: fc.constant("engine" as const),
     agentStatus: fc.constant("active" as const),
-    fill: fc.constantFrom({ order }, { webhookRule: rule, alertId: "alert-1" }),
+    fill: fc.constantFrom({ order }, { webhookRule: rule, event: 1 }),
   }),
   fc.record({
     ...common,
@@ -612,7 +612,7 @@ describe("intent histories", () => {
 
 const authorizations: fc.Arbitrary<Authorization> = fc.constantFrom(
   { order },
-  { webhookRule: rule, alertId: "alert-1" },
+  { webhookRule: rule, event: 1, alertId: "alert-1" },
   { approvalMode: "auto" as const, modeVersion: 1 },
 );
 

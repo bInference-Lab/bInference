@@ -23,6 +23,7 @@ import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
 import { startSummaryTimer } from "./summary-timer.js";
 import { startUnlockRetry } from "./unlock-retry.js";
+import { startWebhookFillTimer } from "./webhook-fill-timer.js";
 import { listenForWebhooks } from "./webhook-listening.js";
 
 // Hands every part's closer to the one shutdown sequence, which stop signals and `engine/stop`
@@ -93,6 +94,8 @@ function startTimers(
   startCardTimer({ expireCards: composed.expireCards, clock: host.clock, closers, logger });
   startScheduleTimer({ runSchedules: composed.runSchedules, ...timers });
   startCopyTimer({ runCopies: composed.runCopies, clock: host.clock, closers, logger });
+  const { fillWebhookAlerts } = composed;
+  startWebhookFillTimer({ fillWebhookAlerts, clock: host.clock, closers, logger });
   startReadTimers(composed, { clock: host.clock, closers, logger });
   composed.priceWatchers.start(closers, logger.child("watcher"));
   composed.leaderWatchers.start(closers, logger.child("watcher"));

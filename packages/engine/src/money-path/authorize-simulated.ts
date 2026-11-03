@@ -62,7 +62,8 @@ export interface ChosenPlan {
 }
 
 // A fill is held to its order, then to the rolling cap. A live fill while live fills are off
-// breaks the first bound: the money path refuses it whatever proposed it (decision 0210).
+// breaks the first bound: the money path refuses it whatever proposed it (decision 0210). A live
+// webhook rule fill always does: live webhook fills are not built yet (decision 0338).
 async function fillTrigger(
   parts: AuthorizeParts,
   simulated: IntentSnapshot,
@@ -70,7 +71,8 @@ async function fillTrigger(
 ): Promise<IntentTrigger<"authorization_checked">> {
   const { signal } = parts;
   const { inLine, termsHash } = checks;
-  const isOff = !simulated.record.isPaper && !parts.liveFills;
+  const isRuleFill = parts.fill !== undefined && "webhookRule" in parts.fill.authorization;
+  const isOff = !simulated.record.isPaper && (!parts.liveFills || isRuleFill);
   const bound = isOff ? "live_fills_off" : await inLine({ signal });
   const fits = bound !== undefined || (await parts.gate.fits(simulated, { signal }));
   const breach = bound ?? (fits ? undefined : "daily_cap");
