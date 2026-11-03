@@ -30,6 +30,10 @@ import {
   type ScheduleWhen,
   scheduleWhenSchema,
 } from "../views/schedule-view.schema.js";
+import {
+  type WebhookEventView,
+  webhookEventViewSchema,
+} from "../views/webhook-event-view.schema.js";
 import { type WebhookRuleView, webhookRuleViewSchema } from "../views/webhook-rule-view.schema.js";
 import { readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
@@ -75,6 +79,17 @@ interface RuleArgs {
   readonly rule: ProtocolId<"webhookRule">;
 }
 
+/** The args of `webhookRule/events`: one rule's alerts, a page at a time, the newest first. */
+interface RuleEventsArgs extends RuleArgs, PageArgs {}
+
+/**
+ * Every webhook rule active or awaiting its card, with the info of each token they trade or spend,
+ * once. Optional only so the field stays an addition within version 1.
+ */
+interface RulePage extends Page<WebhookRuleView> {
+  readonly assets?: AssetInfos;
+}
+
 /** The args of `schedule/create`. */
 interface CreateScheduleArgs {
   readonly agent: ProtocolId<"agent">;
@@ -99,7 +114,11 @@ export interface OrderOperationShapes {
     /** `url` holds the rule's secret and is shown this once. */
     readonly result: { readonly rule: ProtocolId<"webhookRule">; readonly url: string };
   };
-  readonly "webhookRule/list": { readonly args: Empty; readonly result: Page<WebhookRuleView> };
+  readonly "webhookRule/list": { readonly args: Empty; readonly result: RulePage };
+  readonly "webhookRule/events": {
+    readonly args: RuleEventsArgs;
+    readonly result: Page<WebhookEventView>;
+  };
   readonly "webhookRule/delete": { readonly args: RuleArgs; readonly result: Empty };
   readonly "webhookRule/rotateUrl": {
     readonly args: RuleArgs;
@@ -201,7 +220,18 @@ export const orderOperations: OperationTable<OrderOperationShapes> = {
     name: "webhookRule/list",
     scope: "read",
     args: emptyArgsSchema,
-    result: pageSchema(webhookRuleViewSchema),
+    result: z.object({
+      items: z.array(webhookRuleViewSchema),
+      next: z.string().min(1).exactOptional(),
+      assets: assetInfosSchema.exactOptional(),
+    }),
+  },
+  "webhookRule/events": {
+    ...readFlags,
+    name: "webhookRule/events",
+    scope: "read",
+    args: z.strictObject({ ...pageArgsShape, rule: protocolIdSchema("webhookRule") }),
+    result: pageSchema(webhookEventViewSchema),
   },
   "webhookRule/delete": {
     ...writeFlags,

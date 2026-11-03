@@ -121,6 +121,50 @@ async function listsAlertsAndAnnounces(subject: WebhookRuleStoreSubject): Promis
   assert.equal((await store.alert(first, live()))?.announcedAtMs, 9_000);
 }
 
+// Rule 1 takes 5 alerts a minute: the sixth new one in a minute is over its rate.
+async function pagesEveryAlert(subject: WebhookRuleStoreSubject): Promise<void> {
+  const { store } = subject;
+  await activeRule(subject, 1);
+  await activeRule(subject, 2);
+  const first = await acceptedEvent(subject, { n: 1, atMs: 5_000 });
+  const repeat = await takenAlert(subject, { n: 1, atMs: 5_100, text: "alert at 5000" });
+  await acceptedEvent(subject, { n: 2, atMs: 5_200 });
+  const accepted = [first];
+  for (const atMs of [5_300, 5_400, 5_500, 5_600]) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the rows take their numbers in order
+    accepted.push(await acceptedEvent(subject, { n: 1, atMs }));
+  }
+  const rate = await takenAlert(subject, { n: 1, atMs: 5_700, text: "one more" });
+  assert.deepEqual([repeat.kind, rate.kind], ["repeat", "rate"]);
+  assert.ok((await store.endAlert(skipOf(first), live())).ok);
+  const page = await store.events({ ruleId: ruleId(1), limit: 2 }, live());
+  assert.deepEqual(
+    page.map(({ event, taken }) => [event, taken]),
+    [
+      [rate.event, "rate"],
+      [accepted.at(-1), "accepted"],
+    ],
+  );
+  const rest = await store.events(
+    { ruleId: ruleId(1), before: repeat.event ?? 0, limit: 10 },
+    live(),
+  );
+  assert.deepEqual(rest, [
+    {
+      event: first,
+      ruleId: ruleId(1),
+      alertId: "alert at 5000",
+      receivedAtMs: 5_000,
+      taken: "accepted",
+      outcome: "skipped",
+      reason: "late",
+    },
+  ]);
+  const all = await store.events({ ruleId: ruleId(1), limit: 100 }, live());
+  assert.equal(all.length, 7);
+  assert.deepEqual(await store.events({ ruleId: ruleId(3), limit: 10 }, live()), []);
+}
+
 async function refusesAborted(subject: WebhookRuleStoreSubject): Promise<void> {
   const { store } = subject;
   const draft = ruleDraft(subject, 1);
@@ -131,6 +175,7 @@ async function refusesAborted(subject: WebhookRuleStoreSubject): Promise<void> {
   await assertRefusesAborted(async (call) => store.move(ruleMove(1, 0, "deleted"), call));
   await assertRefusesAborted(async (call) => store.alert(1, call));
   await assertRefusesAborted(async (call) => store.alerts({ ruleId: draft.id, limit: 1 }, call));
+  await assertRefusesAborted(async (call) => store.events({ ruleId: draft.id, limit: 1 }, call));
   await assertRefusesAborted(async (call) => store.endAlert(skipOf(1), call));
   await assertRefusesAborted(async (call) => store.unannounced(1, call));
   await assertRefusesAborted(async (call) => store.markAnnounced({ events: [1], atMs: 1 }, call));
@@ -164,6 +209,7 @@ export function webhookRuleStoreContract(
       fresh,
       listsAlertsAndAnnounces,
     ),
+    checkOn("pages a rule's alerts in every outcome, the newest first", fresh, pagesEveryAlert),
     checkOn("refuses every call on an aborted signal and stores nothing", fresh, refusesAborted),
   ];
 }

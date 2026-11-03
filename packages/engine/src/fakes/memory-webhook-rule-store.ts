@@ -20,6 +20,7 @@ import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import type { MemoryEventRow, MemoryWebhookAlertStore } from "./memory-webhook-alert-store.js";
+import { memoryEventsOf } from "./memory-webhook-events.js";
 
 /** What the in-memory rule store reads beside it: agents, wallets, confirmations and alerts. */
 export interface MemoryWebhookRuleStoreOptions {
@@ -309,6 +310,8 @@ export function createMemoryWebhookRuleStore(
     alert: async (event, call) => memoryCall(call, () => alertNow(state, event)),
     alerts: async ({ ruleId, limit }, call) =>
       memoryCall(call, () => alertsOf(state, ruleId, limit)),
+    events: async (query, call) =>
+      memoryCall(call, () => memoryEventsOf(state.options.alerts.eventsNow(), state.ended, query)),
     endAlert: async (write, call) => memoryCall(call, () => endAlert(state, write)),
     unannounced: async (limit, call) => memoryCall(call, () => unannounced(state, limit)),
     markAnnounced: async (announcement, call) =>

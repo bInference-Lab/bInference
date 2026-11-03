@@ -294,5 +294,5 @@ export {
   scheduleWhenSchema,
 } from "./views/schedule-view.schema.js";
 export { type WalletView, walletViewSchema } from "./views/wallet-view.schema.js";
-export { webhookRuleViewSchema } from "./views/webhook-rule-view.schema.js";
-export type { WebhookRuleView } from "./views/webhook-rule-view.schema.js";
+export { type WebhookEventView } from "./views/webhook-event-view.schema.js";
+export { type WebhookRuleView, webhookRuleViewSchema } from "./views/webhook-rule-view.schema.js";

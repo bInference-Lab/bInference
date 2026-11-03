@@ -8,6 +8,10 @@ import {
   alertFillRecordSchema,
   type AlertFillWrite,
   alertFillWriteSchema,
+  type WebhookEventQuery,
+  webhookEventQuerySchema,
+  type WebhookEventRecord,
+  webhookEventRecordSchema,
   type WebhookRuleCreateRefusal,
   type WebhookRuleDraft,
   webhookRuleDraftSchema,
@@ -24,7 +28,14 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
-import { acceptedRow, refused, ruleRow, toAlertRecord, toRuleRecord } from "./webhook-rule-rows.js";
+import {
+  acceptedRow,
+  refused,
+  ruleRow,
+  toAlertRecord,
+  toEventRecord,
+  toRuleRecord,
+} from "./webhook-rule-rows.js";
 import {
   checkAlertEnd,
   checkRuleMove,
@@ -144,6 +155,24 @@ export const alertsTask: StoreTask<AlertFillQuery, readonly AlertFillRecord[]> =
   },
 });
 
+/** Reads one rule's alerts in any outcome but `rejected`, the newest first, below a row. */
+export const eventsTask: StoreTask<WebhookEventQuery, readonly WebhookEventRecord[]> = defineTask({
+  name: "webhookRules.events",
+  access: "read",
+  input: webhookEventQuerySchema,
+  output: z.array(webhookEventRecordSchema),
+  run(database, query) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const ofRule = kysely
+      .selectFrom("webhook_events")
+      .selectAll()
+      .where("rule_id", "=", query.ruleId)
+      .where("outcome", "in", ["accepted", "repeat", "rate"]);
+    const below = query.before === undefined ? ofRule : ofRule.where("id", "<", query.before);
+    return execute(below.orderBy("id", "desc").limit(query.limit)).rows.map(toEventRecord);
+  },
+});
+
 /** Ends an accepted alert as a skip, with its rule's move, in one transaction. */
 export const endAlertTask: StoreTask<
   AlertFillWrite,
@@ -220,6 +249,7 @@ export const webhookRuleTasks: readonly TaskRunner[] = [
   moveRuleTask,
   alertTask,
   alertsTask,
+  eventsTask,
   endAlertTask,
   unannouncedAlertsTask,
   markAlertsAnnouncedTask,

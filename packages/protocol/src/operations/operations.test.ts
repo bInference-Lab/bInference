@@ -77,6 +77,7 @@ const specTable = [
   ["alert/delete", "propose", "write"],
   ["webhookRule/create", "admin", "write"],
   ["webhookRule/list", "read", ""],
+  ["webhookRule/events", "read", ""],
   ["webhookRule/delete", "confirm", "write"],
   ["webhookRule/rotateUrl", "admin", "write"],
   ["schedule/create", "propose", "write"],
@@ -198,7 +199,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(159);
+    expect(table).toHaveLength(160);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 

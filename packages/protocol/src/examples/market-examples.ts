@@ -254,15 +254,37 @@ export const orderExamples: { readonly [N in keyof OrderOperationShapes]: WireEx
   },
   "webhookRule/list": {
     args: empty,
-    result: pageOf({
-      rule: ids.rule,
-      agent: ids.agent,
-      state: "active",
-      request: ruleRequest,
-      fills: 0,
-      createdAt: at,
-      changedAt: at,
-    }),
+    result: {
+      items: [
+        {
+          rule: ids.rule,
+          agent: ids.agent,
+          state: "active",
+          request: ruleRequest,
+          fills: 0,
+          createdAt: at,
+          changedAt: at,
+          intent: ids.intent,
+          summary: {
+            key: "card.webhookRule.buy",
+            values: { token: { type: "asset", asset: refs.token } },
+          },
+        },
+      ],
+      next: "cursor-2",
+      assets,
+    },
+  },
+  "webhookRule/events": {
+    args: { rule: ids.rule, cursor: "41", limit: 20 },
+    result: {
+      items: [
+        { event: 40, receivedAt: at, taken: "accepted", fill: "filled", intent: ids.intent },
+        { event: 39, receivedAt: at, taken: "rate", alertId: "breakout-7" },
+        { event: 38, receivedAt: at, taken: "accepted", fill: "skipped", reason: "late" },
+      ],
+      next: "38",
+    },
   },
   "webhookRule/delete": { args: { rule: ids.rule }, result: empty },
   "webhookRule/rotateUrl": {

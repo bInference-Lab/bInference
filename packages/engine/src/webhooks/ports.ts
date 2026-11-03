@@ -6,6 +6,7 @@ import type {
   AlertFillWrite,
 } from "./alert-fill-record.js";
 import type { WebhookAlertDraft, WebhookRuleKey, WebhookTake } from "./webhook-alert.js";
+import type { WebhookEventQuery, WebhookEventRecord } from "./webhook-event-record.js";
 import type {
   WebhookRuleCreateRefusal,
   WebhookRuleDraft,
@@ -80,6 +81,8 @@ export interface WebhookRuleStore {
   alert(event: number, options: StoreCall): Promise<AlertFillRecord | undefined>;
   /** One rule's accepted alerts, the newest first. */
   alerts(query: AlertFillQuery, options: StoreCall): Promise<readonly AlertFillRecord[]>;
+  /** One rule's alerts in any outcome, the newest first, below row `before` when it is set. */
+  events(query: WebhookEventQuery, options: StoreCall): Promise<readonly WebhookEventRecord[]>;
   /**
    * Ends an accepted alert's fill as skipped, with its rule's move if it names one, in one write.
    * An alert that already ended is `ended`, one with no accepted row `not_found`, and a rule at

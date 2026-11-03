@@ -157,6 +157,11 @@ export type {
   AlertFillRecord,
   AlertFillWrite,
 } from "./webhooks/alert-fill-record.js";
+export {
+  webhookEventQuerySchema,
+  webhookEventRecordSchema,
+} from "./webhooks/webhook-event-record.js";
+export type { WebhookEventQuery, WebhookEventRecord } from "./webhooks/webhook-event-record.js";
 export { createWebhookIntake } from "./webhooks/webhook-intake.js";
 export { webhookPortTakenNotice } from "./webhooks/webhook-port-notice.js";
 export type { WebhookAnswer, WebhookIntake } from "./webhooks/webhook-intake.js";

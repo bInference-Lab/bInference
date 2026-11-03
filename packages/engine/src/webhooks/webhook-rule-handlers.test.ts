@@ -1,6 +1,8 @@
 import { err } from "@binference/core";
+import { cardLineText, createFormatter } from "@binference/i18n";
+import type { AssetInfos, CardLineView, WebhookRuleView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { expectOk, testAgent, testCoin } from "../intents/test-intents.js";
+import { expectOk, testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
 import { freeze, startOrderEngine, tapCard } from "../orders/test-orders.js";
 import { sha256Hex } from "../records/sha256-hex.js";
@@ -52,6 +54,44 @@ describe("webhook rule operations", () => {
       ratePerMinute: 5,
       request: { name: "BNB breakout", ratePerMinute: 5 },
     });
+  });
+
+  it("lists each rule with its card's intent, what each alert trades and its token's info", async () => {
+    const test = await startOrderEngine();
+    const created = await createdRule(test);
+    const listed = expectOk(await test.engine.handlers["webhookRule/list"](testCall({})));
+    const formatter = createFormatter({ locale: "en", timeZone: "UTC" });
+    const [item] = listed.items as [WebhookRuleView];
+    const assets = listed.assets as AssetInfos;
+
+    expect(item.intent).toBe(created.intent);
+    expect(Object.keys(assets)).toStrictEqual([testToken]);
+    expect(cardLineText(item.summary as CardLineView, { formatter, assets })).toBe(
+      "sell 50.00% of your TKN on each alert",
+    );
+  });
+
+  it("pages what each alert became, the newest first, and refuses a cursor it did not write", async () => {
+    const test = await startOrderEngine();
+    const created = await createdRule(test);
+    await tapCard(test, created.intent, "confirm");
+    const events = test.engine.handlers["webhookRule/events"];
+    expect(await alertTo(test, created.url, "first")).toBe("accepted");
+    expect(await alertTo(test, created.url, "first")).toBe("repeat");
+    expect(await alertTo(test, created.url, "second")).toBe("accepted");
+
+    const page = expectOk(await events(testCall({ rule: created.rule, limit: 2 })));
+    expect(page.items.map(({ taken }) => taken)).toStrictEqual(["accepted", "repeat"]);
+    expect(page.next).toBe(String(page.items[1]?.event));
+    const cursor = page.next as string;
+    const rest = expectOk(await events(testCall({ rule: created.rule, limit: 2, cursor })));
+    expect(rest).toStrictEqual({
+      items: [{ event: 1, receivedAt: test.clock.now(), taken: "accepted" }],
+    });
+    expect(JSON.stringify([page, rest])).not.toContain("first");
+    expect(await events(testCall({ rule: created.rule, cursor: "0" }))).toStrictEqual(
+      err("protocol.bad_args"),
+    );
   });
 
   it("deletes a rule at once, after which its URL gets the same 404", async () => {

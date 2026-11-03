@@ -582,6 +582,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `alert/delete`          | `propose` | ✓     |       | `{ alert }` → `{}`                                                                                                           |
 | `webhookRule/create`    | `admin`   | ✓     |       | `WebhookRuleRequest` → `{ rule, url }` awaiting its one card ([decision 0053](../DECISIONS.md#d0053)); the URL is shown once |
 | `webhookRule/list`      | `read`    |       |       | → rules without secrets                                                                                                      |
+| `webhookRule/events`    | `read`    |       |       | paging, `{ rule }` → what each alert to the rule's URL became, newest first (below)                                          |
 | `webhookRule/delete`    | `confirm` | ✓     |       | `{ rule }` → `{}`                                                                                                            |
 | `webhookRule/rotateUrl` | `admin`   | ✓     |       | `{ rule }` → `{ url }`                                                                                                       |
 | `schedule/create`       | `propose` | ✓     |       | `{ agent, when: { cron, timezone? } \| { at }, prompt }` → `ScheduleView` ([decision 0049](../DECISIONS.md#d0049))           |
@@ -625,13 +626,25 @@ Webhook rules follow [decision 0299](../DECISIONS.md#d0299):
   [decision 0338](../DECISIONS.md#d0338)), through the fill path of an auto order (spec 6,
   section 5). `webhookRule/delete` and `webhookRule/rotateUrl` of a rule that is not active or
   awaiting its card fail `webhook.not_found`; a rotation answers the new URL once, and the old
-  one gets `404` at once. `WebhookRuleView` gains `ratePerMinute` and `lastAlertAt?`.
+  one gets `404` at once. `WebhookRuleView` gains `ratePerMinute`, `lastAlertAt?`, `intent?`
+  (the `webhookRule` intent that carries its card) and `summary?` (what each alert trades, the
+  card line `card.webhookRule.buy` or `card.webhookRule.sell` as the engine draws it), and
+  `webhookRule/list` answers `assets?`, the info of each token its rules trade or spend, as
+  `order/list` does.
 - Per [decision 0337](../DECISIONS.md#d0337), a delete and a rotation open no card and apply at
   once. A delete of a rule awaiting its card cancels the card. A rotation makes a new 32-byte
   secret, of which only the SHA-256 is stored, and sends `notice.webhookRotated` naming the
   surface; alerts the old URL took that still wait fill nothing (`url_rotated`). Only the owner's
   own surfaces create a rule: a caller without `confirm` is `auth.scope`. `webhookRule/list`
   answers every rule active or awaiting its card, oldest first, in one page.
+- `webhookRule/events` pages through the `webhook_events` rows of one rule in any state, the
+  newest first, 50 a page by default: each `WebhookEventView` is
+  `{ event, receivedAt, taken, alertId?, fill?, reason?, intent? }`, where `event` is the row,
+  `taken` is `accepted`, `repeat` or `rate`, and an accepted alert's `fill` is `filled` or
+  `skipped` once its fill ended, with a skip's `reason` and the intent that filled or ended. It
+  never carries the alert's body, which is outside content and stays in the inbox. The cursor is
+  the last row of the page before, in decimal; one this engine did not write is
+  `protocol.bad_args`. A rule with no row, or rows pruned after 90 days, answers an empty page.
 - Per [decision 0336](../DECISIONS.md#d0336), an alert fills only if its fill starts within a
   minute of its arrival, a buy and a sale alike; a later one, as one taken while the engine was
   stopped, or one stamped later than now after the clock was set back, is skipped as `late`, and
@@ -1348,8 +1361,8 @@ every field given must hold, and an empty filter passes every launch. `launch/li
   - An intent's `kind` has a new value, `webhookRule`, the card of a webhook rule. A client that
     meets a kind it does not know shows the card's lines from `intent/card`.
   - `IntentView.resolvedName`, `IntentView.delivery` and `IntentView.bridgeReceipt`, `PortfolioView.staking` and
-    `PortfolioView.inTransit`, `WebhookRuleView.ratePerMinute` and `lastAlertAt`, `address/list`'s
-    `room`, and `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet` are new optional
+    `PortfolioView.inTransit`, `WebhookRuleView.ratePerMinute`, `lastAlertAt`, `intent` and
+    `summary`, `webhookRule/list`'s `assets`, `address/list`'s `room`, and `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet` are new optional
     fields.
   - `AlertView.state` has a new value, `ended`, beside `active`, `fired` and `deleted`: an alert
     whose `expiresAt` passed (section 8.4). It is a new value of an existing field, which this

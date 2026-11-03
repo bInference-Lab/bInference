@@ -3,6 +3,8 @@ import { BinferenceError } from "@binference/core";
 import {
   type AlertFillRecord,
   alertFillRecordSchema,
+  type WebhookEventRecord,
+  webhookEventRecordSchema,
   type WebhookRuleDraft,
   type WebhookRuleRecord,
   webhookRuleRecordSchema,
@@ -106,6 +108,20 @@ export function toAlertRecord(row: Selectable<WebhookEventsTable>): AlertFillRec
     ...field("intentId", row.intent_id),
     ...(row.notices === null ? {} : { notices: readJson(row.notices) }),
     ...field("announcedAtMs", row.announced_at),
+  });
+}
+
+/** Reads one alert's row as the owner's list of a rule's alerts shows it. */
+export function toEventRecord(row: Selectable<WebhookEventsTable>): WebhookEventRecord {
+  return webhookEventRecordSchema.parse({
+    event: row.id,
+    ruleId: row.rule_id,
+    ...field("alertId", row.alert_id),
+    receivedAtMs: row.received_at,
+    taken: row.outcome,
+    ...field("outcome", row.fill_outcome),
+    ...field("reason", row.fill_reason),
+    ...field("intentId", row.intent_id),
   });
 }
 

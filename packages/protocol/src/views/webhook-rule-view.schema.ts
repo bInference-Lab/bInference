@@ -5,6 +5,7 @@ import {
   type WebhookRuleRequest,
 } from "../requests/fill-rule-request.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
+import { type CardLineView, cardLineViewSchema } from "./card-lines.schema.js";
 
 /** A webhook rule without its secret URL, which only its creation and rotation show. */
 export interface WebhookRuleView {
@@ -20,6 +21,13 @@ export interface WebhookRuleView {
   readonly ratePerMinute?: number;
   /** When it last accepted an alert. */
   readonly lastAlertAt?: number;
+  /** The `webhookRule` intent that carries its card. */
+  readonly intent?: ProtocolId<"intent">;
+  /**
+   * What each alert trades, as its card words it (`card.webhookRule.buy` or `.sell`); a surface
+   * shows it with `cardLineText` and the list's `assets`.
+   */
+  readonly summary?: CardLineView;
 }
 
 /** Parses a webhook rule view. */
@@ -33,4 +41,6 @@ export const webhookRuleViewSchema: z.ZodType<WebhookRuleView> = z.object({
   changedAt: epochMsSchema,
   ratePerMinute: z.int().min(1).max(60).exactOptional(),
   lastAlertAt: epochMsSchema.exactOptional(),
+  intent: protocolIdSchema("intent").exactOptional(),
+  summary: cardLineViewSchema.exactOptional(),
 });
