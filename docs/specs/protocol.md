@@ -140,14 +140,17 @@ by default, which Tailscale `funnel` publishes. It serves one route and nothing 
 - The secret is 32 random bytes in base64url; only its SHA-256 is stored.
 - A rule's URL answers only while the rule is `active`: before its card's Confirm, and after it is
   deleted or rotated, the old URL gets the same `404`.
-- Per [decision 0333](../DECISIONS.md#d0333): every other method, path and WebSocket upgrade
-  gets that same empty `404`, so none of the engine's routes is served there. The secret's SHA-256
-  is compared in constant time with the rule's, or with a decoy's for an unknown rule, after the
-  same read. The body is read whole first: over 16 KiB is `413`. Only accepted alerts count as
-  repeats and toward the rate. An accepted alert is in the inbox, with its body, before the
-  `202`; one that cannot be stored is `503`. No answer has a body. When `engine.webhookPort` is
-  taken, the engine runs without the listener, logs `webhook.listen_failed` and sends the owner
-  `notice.webhookPortTaken`.
+- Per [decision 0333](../DECISIONS.md#d0333): every other method, path and WebSocket upgrade,
+  and a rule id or secret of the wrong form, gets that same empty `404` from its request line,
+  before any body, so none of the engine's routes is served there. The secret's SHA-256 is
+  compared in constant time with the rule's, or with a decoy's for an unknown rule, after the same
+  read. The body is read whole first: over 16 KiB is `413`. Only accepted alerts count as repeats
+  and toward the rate. Past ten times its rate of refused alerts in a minute, a rule's alerts get
+  `429` with no row, and past 50 rule reads a second a request gets the `404` with no read. An
+  accepted alert is in the inbox, with its body, before the `202`; one not confirmed stored within
+  10 seconds is `503` and may still be stored. No answer has a body, and every answer closes its
+  connection. When another listener holds `engine.webhookPort`, the engine runs without the
+  listener, logs `webhook.listen_failed` and sends the owner `notice.webhookPortTaken`.
 
 <a id="section-3"></a>
 

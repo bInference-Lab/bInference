@@ -200,13 +200,16 @@ async function shutdown(server: Server, clock: Clock, graceMs: number): Promise<
 }
 
 /**
- * Creates the webhook listener of spec 1, section 2.2 (decisions 0053, 0299 and 0333): a server of its
- * own on `127.0.0.1`, which a tunnel may publish, apart from the engine's port. It serves one
+ * Creates the webhook listener of spec 1, section 2.2 (decisions 0053, 0299 and 0333): a server of
+ * its own on `127.0.0.1`, which a tunnel may publish, apart from the engine's port. It serves one
  * route, `POST /hook/:ruleId/:secret` with a body of at most 16 KiB, and nothing else: every other
- * method, path and WebSocket upgrade gets the same empty 404 an unknown rule gets. An alert is
- * answered only once the intake recorded it: 202 accepted, 404, 409 repeat, 429 over the rule's
- * rate, 413 over 16 KiB, 503 when it could not be recorded. Any body is an alert, JSON or not. No
- * answer carries a body, and no log line holds a path or a body. Nothing binds until `start`.
+ * method, path, malformed rule id or secret and WebSocket upgrade gets the same empty 404 an
+ * unknown rule gets, from its request line alone. An alert is answered only once the intake
+ * recorded it: 202 accepted, 404, 409 repeat, 429 over the rule's rate, 413 over 16 KiB, 503 when
+ * it was not confirmed stored in time (it may still be). Any body is an alert, JSON or not. No
+ * answer carries a body, every answer closes its connection, and no log line holds a path or a
+ * body. A body that never arrives whole ends its connection, never the process. Nothing binds
+ * until `start`.
  */
 export function createWebhookListener(options: WebhookListenerOptions): WebhookListener {
   const limits = { ...defaultWebhookListenerLimits, ...options.limits };
