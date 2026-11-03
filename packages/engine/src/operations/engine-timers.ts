@@ -6,6 +6,8 @@ import type { CopyOrders } from "../orders/copy-orders.js";
 import type { OrderParts } from "../orders/create-order.js";
 import type { DcaOrders } from "../orders/dca-orders.js";
 import { tickOrders } from "../orders/tick-orders.js";
+import type { EngineStores } from "../records/engine-stores.js";
+import { pruneWorkOf } from "../records/prune-records.js";
 import type { ScheduleQueue } from "../schedules/run-schedules.js";
 import type { Engine } from "./create-engine.js";
 
@@ -55,6 +57,7 @@ interface TimedParts {
   readonly chat: { readonly alerts: AlertFiring; readonly schedules: ScheduleQueue };
   readonly drafts: Pick<LaunchDraftDesk, "expire">;
   readonly clock: Clock;
+  readonly stores: Pick<EngineStores, "webhookAlerts" | "inbox">;
 }
 
 /** The next time of two, either of which may be none. */
@@ -63,14 +66,15 @@ const sooner = (one: number | undefined, two: number | undefined): number | unde
 
 /**
  * The engine's work a timer of the composition root runs: the orders and alerts that wait for no
- * price, the cards and launch drafts whose time is up, the schedule queue and the copy orders'
- * leader trades.
+ * price, the cards and launch drafts whose time is up, the schedule queue, the copy orders'
+ * leader trades, and the daily prune of old webhook alerts and handled inbox entries.
  */
 export function timedWorkOf(
   parts: TimedParts,
-): Pick<Engine, "tickOrders" | "expireCards" | "runSchedules" | "runCopies"> {
+): Pick<Engine, "tickOrders" | "expireCards" | "runSchedules" | "runCopies" | "pruneRecords"> {
   const { intents, chat, drafts, clock } = parts;
   return {
+    ...pruneWorkOf(parts),
     tickOrders: async ({ signal }) =>
       tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
     // Drafts expire first, so a card timer that throws never keeps an ended draft's message open.

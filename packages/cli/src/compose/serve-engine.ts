@@ -17,6 +17,7 @@ import { listenForProtocol, type Opened, type Opening } from "./open-engine-part
 import { startTestOrders } from "./order-pricing.js";
 import { startOrderTimer } from "./order-timer.js";
 import { startPinTimer } from "./pin-timer.js";
+import { startPruneTimer } from "./prune-timer.js";
 import { startScheduleTimer } from "./schedule-timer.js";
 import { startSettleTimer } from "./settle-timer.js";
 import type { RunningEngine, StartOutcome } from "./start-outcome.js";
@@ -49,7 +50,7 @@ function startShutdown(
 }
 
 // The timers that read and tell, locked or not: the launches' pins, the daily summaries, the
-// bridges in transit and the unstaked coin ready to claim.
+// bridges in transit and the unstaked coin ready to claim; and the daily prune.
 function startReadTimers(
   composed: ComposedSelfHosted,
   timers: Pick<Parameters<typeof startPinTimer>[0], "clock" | "closers" | "logger">,
@@ -58,6 +59,7 @@ function startReadTimers(
   startSummaryTimer({ sendDailySummaries: composed.sendDailySummaries, ...timers });
   startBridgeTimer({ followBridges: composed.followBridges, ...timers });
   startClaimReadyTimer({ tellClaimsReady: composed.tellClaimsReady, ...timers });
+  startPruneTimer({ pruneRecords: composed.pruneRecords, ...timers });
 }
 
 // What a stop left: the positions of paper fills, the rows of order fills and the launches' pins.

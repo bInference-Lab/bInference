@@ -8,6 +8,8 @@ export interface RepeatingTimerOptions {
   /** The work of each run; a locked engine skips it. */
   readonly run: (call: { readonly signal: AbortSignal }) => Promise<void>;
   readonly everyMs: number;
+  /** The wait before the first run, when it is not `everyMs`. */
+  readonly firstAfterMs?: number;
   /** The log event of a run that failed, with its code, such as `engine.settle_failed`. */
   readonly failedEvent: string;
   readonly isLocked: () => boolean;
@@ -21,10 +23,10 @@ export interface RepeatingTimerOptions {
 // runs never chain up however long the engine serves.
 async function runOnce(
   options: RepeatingTimerOptions,
-  run: { readonly stop: AbortSignal; readonly next: () => void },
+  run: { readonly stop: AbortSignal; readonly next: () => void; readonly waitMs: number },
 ): Promise<void> {
   const { stop } = run;
-  await options.clock.sleep(options.everyMs, stop).catch(() => undefined);
+  await options.clock.sleep(run.waitMs, stop).catch(() => undefined);
   if (stop.aborted) {
     return;
   }
@@ -53,9 +55,10 @@ export function startRepeatingTimer(options: RepeatingTimerOptions): void {
   const stop = new AbortController();
   const timer = { running: Promise.resolve() };
   const next = (): void => {
-    timer.running = runOnce(options, { stop: stop.signal, next });
+    timer.running = runOnce(options, { stop: stop.signal, next, waitMs: options.everyMs });
   };
-  next();
+  const waitMs = options.firstAfterMs ?? options.everyMs;
+  timer.running = runOnce(options, { stop: stop.signal, next, waitMs });
   options.closers.add(options.name, async () => {
     stop.abort();
     await timer.running;

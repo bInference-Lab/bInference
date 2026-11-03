@@ -5,6 +5,7 @@ import type { CardTimerParts } from "../confirmations/card-timer.js";
 import type { CopyOrders } from "../orders/copy-orders.js";
 import type { OrderParts } from "../orders/create-order.js";
 import type { DcaOrders } from "../orders/dca-orders.js";
+import type { EngineStores } from "../records/engine-stores.js";
 import type { ScheduleQueue } from "../schedules/run-schedules.js";
 import { timedWorkOf } from "./engine-timers.js";
 
@@ -30,6 +31,7 @@ describe("the engine's timed work", () => {
       chat: { alerts: {} as AlertFiring, schedules: {} as ScheduleQueue },
       drafts: { expire: () => (expired.push(1), undefined) },
       clock: {} as Clock,
+      stores: {} as Pick<EngineStores, "webhookAlerts" | "inbox">,
     });
     const signal = new AbortController().signal;
     await expect(work.expireCards({ signal })).rejects.toThrow("The intent store is down.");

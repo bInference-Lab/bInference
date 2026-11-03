@@ -58,6 +58,7 @@ import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
 import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
+import type { PruneWork } from "../records/prune-records.js";
 import {
   createRescueAddressHandlers,
   type RescueAddressHandlers,
@@ -120,7 +121,7 @@ export interface EngineHandlers
  * change, the freeze, the wallet list and the ledger, built from ports. A looser limit, send level
  * or rescue address waits 24 hours. It holds no I/O of its own; pushes leave through `publish`.
  */
-export interface Engine extends BridgeWork, StakeWork {
+export interface Engine extends BridgeWork, StakeWork, PruneWork {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
   readonly handlers: EngineHandlers;
   /** Applies a card answer from a surface the engine serves itself, such as a Telegram tap. */
@@ -462,7 +463,7 @@ export function createEngineWithFills(given: EngineOptions): {
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
     ...startupWorkOf(options, { ...intents, relay: chat.relay, check, paper }),
-    ...timedWorkOf({ intents, chat, drafts: drafts.desk, clock: options.clock }),
+    ...timedWorkOf({ ...options, intents, chat, drafts: drafts.desk }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
     alerts: chat.alerts,
