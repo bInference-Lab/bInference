@@ -146,6 +146,7 @@
     "coverage/**",
     "reports/**",
     ".stryker-tmp/**",
+    ".claude/worktrees/**",
     "packages/console/src/components/ui/**"
   ],
   "overrides": [
