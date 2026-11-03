@@ -2,7 +2,7 @@ import type { BridgeOperationShapes } from "../operations/bridge-operations.sche
 import type { LaunchDraftOperationShapes } from "../operations/launch-draft-operations.schema.js";
 import type { LaunchpadOperationShapes } from "../operations/launchpad-operations.schema.js";
 import type { StakingOperationShapes } from "../operations/staking-operations.schema.js";
-import { at, ids, nativeAmount, refs, type WireExample } from "./wire-values.js";
+import { assets, at, ids, nativeAmount, refs, type WireExample } from "./wire-values.js";
 
 /** An example call of the launchpad read: one launchpad that uploads, one that takes a link. */
 export const launchpadExamples: { readonly [N in keyof LaunchpadOperationShapes]: WireExample } = {
@@ -45,6 +45,27 @@ export const launchDraftExamples: {
       photo: { message: ids.message, image: "tg:AgACAgIAAxkBAAIB" },
     },
     result: { draft: "c2hvd24tb25jZS1h", expiresAt: at + 600_000 },
+  },
+  "launch/openDraft": {
+    args: { agent: ids.agent },
+    result: {
+      draft: {
+        draft: "c2hvd24tb25jZS1h",
+        expiresAt: at + 600_000,
+        lines: [
+          {
+            key: "card.launch.description",
+            values: { description: { type: "text", text: "A cat that forks" } },
+          },
+        ],
+        assets,
+        picture: { bytes: 3 },
+      },
+    },
+  },
+  "launch/draftPicture": {
+    args: { agent: ids.agent, draft: "c2hvd24tb25jZS1h", offset: 0 },
+    result: { contentType: "image/png", bytes: 3, offset: 0, data: "iVBO" },
   },
 };
 

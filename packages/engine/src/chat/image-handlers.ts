@@ -1,8 +1,9 @@
 import { err, ok } from "@binference/core";
-import { imagePartBytes, type ImagePart, type ProtocolErrorCode } from "@binference/protocol";
+import type { ProtocolErrorCode } from "@binference/protocol";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
-import type { HeldImage, HoldRefusal, ImageHold } from "./image-hold.js";
+import type { HoldRefusal, ImageHold } from "./image-hold.js";
+import { imagePartOf } from "./image-part.js";
 import { ownerMessagePayloadSchema } from "./inbox-payload.schema.js";
 import type { AgentInboxStore } from "./ports.js";
 import type { RunningTurns } from "./running-turns.js";
@@ -40,15 +41,6 @@ function names(
   return payload.success && payload.data.images?.includes(image) === true;
 }
 
-// The part of the image from `offset`: at most 512 KiB, in base64, with where the next one starts.
-function partOf(image: HeldImage, offset: number): ImagePart {
-  const end = Math.min(image.bytes.byteLength, offset + imagePartBytes);
-  const data = Buffer.from(image.bytes.subarray(offset, end)).toString("base64");
-  const { contentType } = image;
-  const bytes = image.bytes.byteLength;
-  return { contentType, bytes, offset, data, ...(end < bytes ? { next: end } : {}) };
-}
-
 /**
  * Creates the handler of `inbox/readImage` (decision 0227): only the runtime the engine runs now
  * reads, only an image its agent's own stored message names (else `image.not_found`), part by
@@ -78,7 +70,7 @@ export function createImageHandlers(options: ImageHandlerOptions): ImageHandlers
       if (offset >= read.value.bytes.byteLength) {
         return err("protocol.bad_args");
       }
-      const part = partOf(read.value, offset);
+      const part = imagePartOf(read.value, offset);
       if (part.next === undefined) {
         hold.drop(key);
       }

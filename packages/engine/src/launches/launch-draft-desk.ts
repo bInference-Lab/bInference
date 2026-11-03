@@ -1,6 +1,7 @@
 import type { ChainRegistry } from "@binference/chain";
 import type { Clock, Id } from "@binference/core";
 import type { AssetInfos } from "@binference/protocol";
+import type { HeldImage } from "../chat/image-hold.js";
 import type { CardLine } from "../confirmations/card-line.js";
 import type { IntentReason } from "../intents/intent-reason.js";
 import { isTerminalState } from "../intents/intent-state.js";
@@ -31,6 +32,14 @@ export interface LaunchDraftShowing {
   readonly photo?: string;
 }
 
+// The agent's open draft as a surface without Start shows it (decision 0345): its id, its showing
+// and the owner's photo it holds, absent for a picture link.
+interface OpenLaunchDraft {
+  readonly id: string;
+  readonly showing: LaunchDraftShowing;
+  readonly picture?: HeldImage;
+}
+
 /**
  * How a press of a launch draft's button stands. `starting`: the owner's Start took the draft, and
  * its launch is being proposed; `chat/launchDraftClosed` says how that went. `dropped`: the owner
@@ -56,6 +65,8 @@ export type LaunchDraftStanding =
 export interface LaunchDraftDesk {
   /** The open draft with this id, as its message shows it; `undefined` once it ended. */
   showing(id: string): LaunchDraftShowing | undefined;
+  /** The agent's open draft whose time is not up, with its photo; `undefined` without one. */
+  open(agent: Id<"agt">): OpenLaunchDraft | undefined;
   /**
    * Starts the draft whose Start the owner pressed (decision 0285), for the owner's numeric
    * Telegram id alone: it ends at once, so no other press starts it, and answers `starting` while
@@ -152,21 +163,37 @@ async function pressedByOwner(
     : taken;
 }
 
+// A draft as its message shows it: its lines drawn for its launchpad's picture place.
+function showingOf(options: LaunchDraftDeskOptions, draft: LaunchDraft): LaunchDraftShowing {
+  const place = options.host.picturePlace(draft.request.venue);
+  const { lines, assets } = drawLaunchDraft(draft, { chains: options.chains, place });
+  const { agentId: agent, agentName, ref, expiresAtMs } = draft;
+  const photo = draft.picture === undefined ? {} : { photo: draft.request.image };
+  return { agent, agentName, ref, lines, assets, expiresAtMs, ...photo };
+}
+
+const heldImageOf = (picture: NonNullable<LaunchDraft["picture"]>): HeldImage => ({
+  contentType: picture.image.contentType,
+  bytes: picture.bytes,
+});
+
 /** Creates the {@link LaunchDraftDesk} over the engine's open drafts. */
 export function createLaunchDraftDesk(options: LaunchDraftDeskOptions): LaunchDraftDesk {
-  const { shelf, host, chains, clock, publish } = options;
+  const { shelf, clock, publish } = options;
   const starts = createDraftStarts(options);
   return {
     showing(id) {
       const draft = shelf.byId(id);
-      if (draft === undefined) {
+      return draft === undefined ? undefined : showingOf(options, draft);
+    },
+    open(agent) {
+      const draft = shelf.ofAgent(agent);
+      if (draft === undefined || draft.expiresAtMs <= clock.now()) {
         return undefined;
       }
-      const place = host.picturePlace(draft.request.venue);
-      const { lines, assets } = drawLaunchDraft(draft, { chains, place });
-      const { agentId: agent, agentName, ref, expiresAtMs } = draft;
-      const photo = draft.picture === undefined ? {} : { photo: draft.request.image };
-      return { agent, agentName, ref, lines, assets, expiresAtMs, ...photo };
+      const { picture } = draft;
+      const held = picture === undefined ? {} : { picture: heldImageOf(picture) };
+      return { id: draft.id, showing: showingOf(options, draft), ...held };
     },
     async start(ref, presserId, call) {
       const taken = await pressedByOwner(options, { ref, presserId }, call);

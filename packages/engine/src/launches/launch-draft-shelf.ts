@@ -31,6 +31,8 @@ export interface LaunchDraftShelf {
   put(draft: LaunchDraft): LaunchDraft | undefined;
   /** The open draft with this id, expired or not. */
   byId(id: string): LaunchDraft | undefined;
+  /** The agent's open draft, expired or not. */
+  ofAgent(agentId: Id<"agt">): LaunchDraft | undefined;
   /** Takes the open draft whose buttons carry this reference: no later press finds it. */
   take(ref: string): LaunchDraft | undefined;
   /** Takes every open draft whose time is up at `nowMs`. */
@@ -50,6 +52,7 @@ export function createLaunchDraftShelf(): LaunchDraftShelf {
       return replaced;
     },
     byId: (id) => open().find((draft) => draft.id === id),
+    ofAgent: (agentId) => byAgent.get(agentId),
     take(ref) {
       const draft = open().find((held) => held.ref === ref);
       if (draft !== undefined) {

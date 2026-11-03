@@ -2,14 +2,18 @@ import { createRunningTurns } from "../chat/running-turns.js";
 import { draftLaunch } from "../launches/draft-launch.js";
 import { createLaunchDraftDesk, type LaunchDraftDesk } from "../launches/launch-draft-desk.js";
 import { createLaunchDraftShelf } from "../launches/launch-draft-shelf.js";
+import {
+  createOpenDraftHandlers,
+  type OpenDraftHandlers,
+} from "../launches/open-draft-handlers.js";
 import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import { ownerImagesOf } from "../uploads/owner-images.js";
 import { createUploadShelf, type UploadShelf } from "../uploads/upload-shelf.js";
 import type { EngineOptions } from "./create-engine.js";
 import type { EngineHandler } from "./engine-call.js";
 
-/** The handler of `launch/draft` (decision 0285). */
-export interface LaunchDraftHandlers {
+/** The handler of `launch/draft` (decision 0285), and the reads of an open draft (decision 0345). */
+export interface LaunchDraftHandlers extends OpenDraftHandlers {
   readonly "launch/draft": EngineHandler<"launch/draft">;
 }
 
@@ -73,5 +77,9 @@ export function launchDraftsOf(
     clock,
     publish,
   });
-  return { handlers: { "launch/draft": async (call) => draftLaunch(drafting, call) }, desk };
+  const handlers: LaunchDraftHandlers = {
+    "launch/draft": async (call) => draftLaunch(drafting, call),
+    ...createOpenDraftHandlers(desk),
+  };
+  return { handlers, desk };
 }

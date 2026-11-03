@@ -52,6 +52,18 @@ const byteCount = z.int().nonnegative().max(maxImageBytes);
 // A part's base64 text: 4 characters for each 3 bytes, padded.
 const maxPartText = Math.ceil(imagePartBytes / 3) * 4;
 
+/** Parses an image's offset or size in bytes, at most 5 MiB. */
+export const imageByteCountSchema: z.ZodType<number> = byteCount;
+
+/** Parses one part of an image. */
+export const imagePartSchema: z.ZodType<ImagePart> = z.object({
+  contentType: imageContentTypeSchema,
+  bytes: byteCount,
+  offset: byteCount,
+  data: z.base64().max(maxPartText),
+  next: byteCount.exactOptional(),
+});
+
 /** The image operation, by name. */
 export const imageOperations: OperationTable<ImageOperationShapes> = {
   "inbox/readImage": {
@@ -64,12 +76,6 @@ export const imageOperations: OperationTable<ImageOperationShapes> = {
       image: plainIdSchema,
       offset: byteCount.exactOptional(),
     }),
-    result: z.object({
-      contentType: imageContentTypeSchema,
-      bytes: byteCount,
-      offset: byteCount,
-      data: z.base64().max(maxPartText),
-      next: byteCount.exactOptional(),
-    }),
+    result: imagePartSchema,
   },
 };

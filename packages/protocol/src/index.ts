@@ -196,6 +196,7 @@ export type { AssetInfo, AssetInfos, AssetView } from "./views/asset-info.schema
 export { launchFilterSchema, launchpadIdSchema } from "./views/launch-filter.schema.js";
 export { launchpadViewSchema } from "./views/launchpad-view.schema.js";
 export { launchDraftPushOf } from "./views/launch-draft-push.schema.js";
+export type { LaunchDraftView } from "./operations/launch-draft-operations.schema.js";
 export type { LaunchDraftPush } from "./views/launch-draft-push.schema.js";
 export type { LaunchpadView, LaunchSettingView } from "./views/launchpad-view.schema.js";
 export type { LaunchFilter, LaunchpadId, ScanFilter } from "./views/launch-filter.schema.js";
