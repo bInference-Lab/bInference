@@ -170,6 +170,10 @@ export const agentExamples: { readonly [N in keyof AgentOperationShapes]: WireEx
       },
     },
   },
+  "identity/allow": {
+    args: { agent: ids.agent, ownerKey },
+    result: { wallet: ids.wallet, changed: true },
+  },
   "identity/register": {
     args: { agent: ids.agent, description: "Buys dips on BSC" },
     result: intentView,

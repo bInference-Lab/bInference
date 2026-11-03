@@ -187,7 +187,7 @@ staking move;
 `spender_unlisted` (an approval revoke whose spender the chain registry does not list,
 [decision 0309](../DECISIONS.md#d0309)) at its quote, before any card; for an identity
 registration, `registry_changed` (its registry reports another version than binference was
-tested with) and `ceiling_lacks_call` (its wallet's ceiling does not allow the registry's call)
+tested with) and `identity_ceiling` (its main wallet's ceiling does not allow the registry's call)
 at its quote, before any card, and `identity_exists` and `registry_changed` again when the
 wallet queue takes it ([decision 0335](../DECISIONS.md#d0335)); `no_route`, `venue_down`, `decode_mismatch`,
 `simulation_reverted`, `effects_differ`, `price_impact`, `nothing_to_sell` (a sale by share of a

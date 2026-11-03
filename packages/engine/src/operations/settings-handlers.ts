@@ -1,3 +1,4 @@
+import { identityVenuesDone } from "../identity/identity-venues-done.js";
 import {
   createNoticeSettingsHandlers,
   type NoticeSettingsHandlers,
@@ -55,6 +56,10 @@ function ceilingsOf(options: EngineOptions): CeilingHandlers {
     clock: options.clock,
     publish: options.publish,
     rescueReads: rescueReadsOf(options),
+    venuesDone: identityVenuesDone({
+      identities: stores.identities,
+      registries: options.identity?.registries ?? [],
+    }),
   });
 }
 

@@ -1,10 +1,11 @@
 import { type AccountRef, accountRefSchema, isTxHash, type TxHash } from "@binference/chain";
 import { z } from "zod";
-import { protocolIdSchema } from "../ids/id-prefixes.js";
+import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type Locale, localeSchema } from "../locale.js";
 import { type AgentArgs, agentArgsSchema } from "../values/agent-args.schema.js";
 import { type Empty, emptyResultSchema } from "../values/empty.schema.js";
 import { epochMsSchema } from "../values/epoch-ms.schema.js";
+import { ownerKeyCodeSchema } from "../values/owner-key-code.schema.js";
 import { type Page, type PageArgs, pageArgsSchema, pageSchema } from "../values/page.schema.js";
 import { type AgentView, agentViewSchema } from "../views/agent-view.schema.js";
 import { type IntentView, intentViewSchema } from "../views/intent-view.schema.js";
@@ -88,6 +89,11 @@ interface IdentityRegistration {
   readonly file?: string;
 }
 
+/** The args of `identity/allow`: the agent, and the owner key that writes its main wallet's ceiling. */
+interface AllowIdentityArgs extends AgentArgs {
+  readonly ownerKey: string;
+}
+
 /** The args of `identity/register`: the owner's words about the agent, which the file publishes. */
 interface RegisterIdentityArgs extends AgentArgs {
   readonly description?: string;
@@ -119,6 +125,11 @@ export interface AgentOperationShapes {
   readonly "identity/get": {
     readonly args: AgentArgs;
     readonly result: { readonly registration?: IdentityRegistration };
+  };
+  /** The main wallet whose ceiling takes the registry's call, and whether this call wrote it. */
+  readonly "identity/allow": {
+    readonly args: AllowIdentityArgs;
+    readonly result: { readonly wallet: ProtocolId<"wallet">; readonly changed: boolean };
   };
   /** The registration is an intent awaiting a tap. */
   readonly "identity/register": {
@@ -239,6 +250,13 @@ export const agentOperations: OperationTable<AgentOperationShapes> = {
         })
         .exactOptional(),
     }),
+  },
+  "identity/allow": {
+    ...localWriteFlags,
+    name: "identity/allow",
+    scope: "admin",
+    args: z.strictObject({ agent: protocolIdSchema("agent"), ownerKey: ownerKeyCodeSchema }),
+    result: z.object({ wallet: protocolIdSchema("wallet"), changed: z.boolean() }),
   },
   "identity/register": {
     ...writeFlags,

@@ -929,6 +929,7 @@ old version running meanwhile.
 | `remote/enable`      | `admin`                    | ✓     | ✓     | `{ mini?, webhooks? }` → `{ job }`; the job ends with the `RemoteView` after the change (below)                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `remote/disable`     | `confirm`                  | ✓     |       | `{}` → `{}` (braking): removes what binference published, the engine's port stays on loopback                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `identity/get`       | `read`                     |       |       | `{ agent }` → `{ registration? }`: the agent's ERC-8004 registration as binference stored it, `{ registry: AccountRef, onchainId, txHash, registeredAt, file }`, absent when it has none                                                                                                                                                                                                                                                                                                                                |
+| `identity/allow`     | `admin`                    | ✓     | ✓     | `{ agent, ownerKey }` → `{ wallet, changed }`: the owner's opt-in, the registry's call written into the main wallet's ceiling; below                                                                                                                                                                                                                                                                                                                                                                                    |
 | `identity/register`  | `propose`                  | ✓     |       | `{ agent, description? }` → `IntentView` awaiting a tap ([decisions 0071](../DECISIONS.md#d0071) and [0335](../DECISIONS.md#d0335)); below                                                                                                                                                                                                                                                                                                                                                                              |
 | `cex/status`         | `read`                     |       |       | → the Binance connection state                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | `cex/connect`        | `admin`                    | ✓     | ✓     | `{}` → `{ authorizeUrl }`; the OAuth flow returns to `127.0.0.1`                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -959,7 +960,12 @@ sets `serve` for `mini` and `funnel` for `webhooks`, writes `remote.publicUrl` a
 `remote.webhooks` through the config journal, and its job fails `remote.tailscale_missing`,
 `remote.logged_out`, `remote.https_off` or `remote.funnel_denied`, changing nothing.
 
-**Identity** ([decision 0071](../DECISIONS.md#d0071)). `identity/register` stores a
+**Identity** ([decision 0071](../DECISIONS.md#d0071)). An agent registers only once its owner
+opted in: `identity/allow`, with the owner key over IPC, writes the identity registry's one call
+into the ceiling of the agent's main wallet, and no other wallet's, read back, journaled and
+announced as `ceiling/set` is; a ceiling that holds it already is left as it is (`changed: false`).
+Once binference holds the agent's identity, a ceiling planned again for it leaves the call out
+([decision 0335](../DECISIONS.md#d0335)). `identity/register` stores a
 `registerIdentity` intent whose one step registers the agent in the ERC-8004 identity registry
 the chain registry lists. Its registration file, stored on chain as a data URI, holds the agent's
 name, `description` (at most 280 characters, the owner's words, none when absent), the
@@ -968,8 +974,9 @@ binference's release version ([decision 0334](../DECISIONS.md#d0334)); its card 
 field. Only the owner registers an identity: one the agent runtime or an MCP client proposes,
 here or through `intent/propose`, fails `intent.owner_only`, storing nothing
 ([decision 0335](../DECISIONS.md#d0335)). A paper agent's ends `rejected_policy` with `paper_only`,
-and an agent that has a registration, or whose wallet the registry reads holding one, fails
-`intent.identity_exists`, storing nothing.
+an agent that has a registration, or whose wallet the registry reads holding one, fails
+`intent.identity_exists`, storing nothing, and one whose main wallet's ceiling lacks the call ends
+`failed_check` with `identity_ceiling` before its card.
 
 The owner's Telegram chat may run `config/change` past its `admin` scope for one patch alone,
 `{ owner: { locale } }`, which a `/lang` button sends ([decision 0134](../DECISIONS.md#d0134)).

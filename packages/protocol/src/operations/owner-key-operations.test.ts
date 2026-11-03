@@ -7,6 +7,7 @@ import { ownerKeyOperations, takesOwnerKey } from "./owner-key-operations.js";
 describe("owner-key operations", () => {
   it("are the operations whose args carry the owner key code", () => {
     expect(ownerKeyOperations).toStrictEqual([
+      "identity/allow",
       "wallet/create",
       "wallet/exportKey",
       "wallet/exportSealed",

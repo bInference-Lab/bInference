@@ -1,16 +1,21 @@
 import type { ChainRegistry } from "@binference/chain";
+import type { IdentityRegistry } from "@binference/chain/identity";
 import { err, ok } from "@binference/core";
 import type { RegisterIdentityRequest } from "@binference/protocol";
 import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import { type EngineHandler, proposerOf } from "../operations/engine-call.js";
 import { intentViewOf } from "../operations/intent-view-of.js";
-import type { AgentStore } from "../ports.js";
+import type { AgentStore, ConfigJournal } from "../ports.js";
+import type { RescueCeilingsOptions } from "../safety/rescue-ceilings.js";
+import { allowIdentity } from "./allow-identity.js";
+import { createIdentityHost } from "./identity-host.js";
 import type { IdentityStore } from "./ports.js";
 
 /** The handlers of the identity operations the engine serves (protocol spec, section 7.9). */
 export interface IdentityHandlers {
   readonly "identity/get": EngineHandler<"identity/get">;
+  readonly "identity/allow": EngineHandler<"identity/allow">;
   readonly "identity/register": EngineHandler<"identity/register">;
 }
 
@@ -21,16 +26,28 @@ export interface IdentityHandlersOptions {
   readonly agents: Pick<AgentStore, "get">;
   readonly chains: ChainRegistry;
   readonly destinations?: readonly DestinationChain[];
+  /** The identity registries the engine runs; none when absent. */
+  readonly registries: readonly IdentityRegistry[];
+  /** What an opt-in writes the main wallet's ceiling, journals and announces through. */
+  readonly ceilingParts: RescueCeilingsOptions & { readonly journal: ConfigJournal };
 }
 
 /**
  * Creates the identity handlers (decision 0335): `identity/get` answers the agent's identity as
- * binference stored it, with its registration file, or none; `identity/register` proposes the
- * owner's registration with the description given and answers with its intent once it waits for
- * the tap or ends. A proposal of the agent runtime or an MCP client is `intent.owner_only`.
+ * binference stored it, with its registration file, or none; `identity/allow` writes the
+ * registry's call into the agent's main wallet's ceiling with the owner key, the owner's opt-in;
+ * `identity/register` proposes the owner's registration with the description given and answers
+ * with its intent once it waits for the tap or ends. A proposal of the agent runtime or an MCP
+ * client is `intent.owner_only`.
  */
 export function createIdentityHandlers(options: IdentityHandlersOptions): IdentityHandlers {
+  const allowing = {
+    ...options.ceilingParts,
+    identity: createIdentityHost(options.registries),
+    identities: options.identities,
+  };
   return {
+    "identity/allow": async (call) => allowIdentity(allowing, call),
     "identity/get": async ({ args, signal }) => {
       if ((await options.agents.get(args.agent, { signal })) === undefined) {
         return err("agent.not_found");

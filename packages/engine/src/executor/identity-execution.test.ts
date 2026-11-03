@@ -9,7 +9,6 @@ import {
   identityChains,
   registerRequest,
   registrySimulator,
-  testIdentityVenue,
   testRegistry,
   testVersion,
 } from "../identity/test-identities.js";
@@ -27,7 +26,8 @@ import {
 
 const live = { signal: new AbortController().signal };
 const done = ["reconciled", "failed_check", "failed_onchain", "expired", "cancelled"] as const;
-const limits = { ...testLimits, venues: [...testLimits.venues, testIdentityVenue] };
+// The agent's limits name no identity venue: the owner's opt-in is the ceiling's call.
+const limits = testLimits;
 
 // The fake registry as the engine and the executor run it: a registration lands in it under the
 // hash the network gave its transaction once the executor reads it back, and `after` runs then.

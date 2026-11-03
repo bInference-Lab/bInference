@@ -5691,6 +5691,96 @@
         "result"
       ]
     },
+    "call/identity/allow": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "identity/allow"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "ownerKey": {
+              "type": "string",
+              "pattern": "^bnok1[A-Za-z2-7][A-Za-z2-7 -]{20,200}$"
+            }
+          },
+          "required": [
+            "agent",
+            "ownerKey"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "admin",
+      "kind": "write",
+      "transport": "ipc",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/identity/allow": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "wallet": {
+              "type": "string",
+              "pattern": "^wal_"
+            },
+            "changed": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "wallet",
+            "changed"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
     "call/identity/register": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",

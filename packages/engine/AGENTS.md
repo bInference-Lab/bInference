@@ -252,14 +252,18 @@ Rules for this package:
   is `name.resolver_down`. `recheckName` (exported from `@binference/engine/sends`) is the second
   read of a send by name before it signs: only the card's address, still a plain account or a
   smart-account wallet as the card showed it, passes.
-- Identity (`src/identity/`, decisions 0334 and 0335): `identity/register` runs the owner's
+- Identity (`src/identity/`, decisions 0334 and 0335): an agent registers only once its owner
+  opted in through `identity/allow` (`allow-identity.ts`), which writes the registry's one call
+  into the main wallet's ceiling with the owner key, as `ceiling/set` writes one, read back,
+  journaled and announced; once its identity is stored, `ceiling/set` and a destination save leave
+  the registry out (`identityVenuesDone`). No venue rule judges a registration. `identity/register` runs the owner's
   registration alone (`intent.owner_only` for the agent runtime and MCP clients) through the
   `IdentityHost`, the only caller of the identity plugins, which copies every answer through its
   schema and holds each built call to its file and wallet. A registration resolves the agent's main
   wallet, refuses before anything is stored an agent whose identity binference holds or whose
   wallet the registry reads holding one (`intent.identity_exists`), quotes its registration file,
   holds the registry to its tested version (`registry_changed`) and the wallet's stored ceiling to
-  its call (`ceiling_lacks_call`), and opens a card that never passes the auto test. The queue
+  its call (`identity_ceiling`), and opens a card that never passes the auto test. The queue
   reads the registry again (`identity_refused`), and the reconciliation reads the landed
   registration back and stores its identity in the move to `reconciled`; one read back otherwise
   stores none and tells the owner with `notice.identityMismatch`.

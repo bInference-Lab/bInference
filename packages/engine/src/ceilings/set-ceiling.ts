@@ -1,5 +1,5 @@
-import type { AccountRef, ChainRef, ChainRegistry } from "@binference/chain";
-import { type Clock, createSecret, err, ok, type Result } from "@binference/core";
+import type { AccountRef, ChainRef } from "@binference/chain";
+import { createSecret, err, ok, type Result } from "@binference/core";
 import {
   type CeilingChanges,
   type CeilingView,
@@ -9,15 +9,13 @@ import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf } from "../audit/journal-config-change.js";
 import type { CallsRefusal, CeilingCalls } from "../install/ceiling-change.js";
 import type { WalletRecord } from "../install/install-record.js";
-import type { CeilingEditor } from "../install/ports.js";
 import { unknownVenues } from "../limits/limit-ceiling.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall } from "../operations/engine-call.js";
 import { rescueAt } from "../policy/rescue-change.js";
-import type { AgentStore, ConfigJournal, InstallStore } from "../ports.js";
-import type { PublishPush } from "../pushes/engine-push.js";
-import { ownerKeyRewrite } from "../safety/rescue-ceilings.js";
-import { checkRescueReach, type RescueReads, withCheckedReach } from "../safety/rescue-check.js";
+import type { ConfigJournal } from "../ports.js";
+import { ownerKeyRewrite, type RescueCeilingsOptions } from "../safety/rescue-ceilings.js";
+import { checkRescueReach, withCheckedReach } from "../safety/rescue-check.js";
 import { keepCheckedReach } from "../safety/rescue-keep.js";
 import { ceilingRecipients } from "../safety/wallet-recipients.js";
 import {
@@ -29,17 +27,12 @@ import {
 } from "./ceiling-rewrite.js";
 import { ceilingViewOf, venuesIn } from "./ceiling-view-of.js";
 
-/** What a ceiling change reads, asks custody, writes, journals and announces through. */
-export interface SetCeilingOptions {
-  readonly agents: AgentStore;
-  readonly install: InstallStore;
-  readonly ceilings: CeilingEditor;
+/**
+ * What a ceiling change reads, asks custody, writes, journals and announces through: what an owner
+ * key's rewrite of ceilings goes through, and the journal.
+ */
+export interface SetCeilingOptions extends RescueCeilingsOptions {
   readonly journal: ConfigJournal;
-  readonly chains: ChainRegistry;
-  readonly clock: Clock;
-  readonly publish: PublishPush;
-  /** The reads of the rescue address's plain-wallet check (decision 0321); none checks nothing. */
-  readonly rescueReads?: RescueReads;
 }
 
 type Call = EngineCall<"ceiling/set">;
@@ -111,9 +104,10 @@ function callsOf(
     readonly changes: CeilingChanges;
     readonly held: readonly HeldCeiling[];
     readonly recipients: ReadonlyMap<string, readonly AccountRef[]>;
+    readonly done: readonly string[];
   },
 ): readonly CeilingCalls[] {
-  const { changes, held, recipients } = change;
+  const { changes, held, recipients, done } = change;
   const { dayCapUsdMicros } = changes;
   // A ceiling that allows no call names no cap, so a change of the caps leaves it as it is.
   const changed =
@@ -123,7 +117,9 @@ function callsOf(
     Object.assign(
       {
         ceiling: wallet.policyId,
-        venues: [...new Set(changes.venues ?? venuesIn(options.chains, read))],
+        venues: [...new Set(changes.venues ?? venuesIn(options.chains, read))].filter(
+          (venue) => !done.includes(venue),
+        ),
         perTxNativeBase: changes.perTxNative ?? read.perTxNativeBase,
       },
       resize,
@@ -220,7 +216,8 @@ async function rewrite(
   const records = withCheckedReach(facts, checked).rescueReach ?? [];
   const most = options.ceilings.mostPerChain;
   const recipients = await ceilingRecipients({ ...options, most, records }, signal);
-  const ceilings = callsOf(options, { changes: args.changes, held: before, recipients });
+  const done = (await options.venuesDone?.(settings.agent.id, { signal })) ?? [];
+  const ceilings = callsOf(options, { changes: args.changes, held: before, recipients, done });
   const ownerKey = createSecret(args.ownerKey);
   const set = await options.ceilings.setCalls({ ownerKey, ceilings }, { signal });
   if (!set.ok && set.error === "bad_owner_key") {

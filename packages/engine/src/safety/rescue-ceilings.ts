@@ -34,6 +34,14 @@ export interface RescueCeilingsOptions {
    * without them it joins no destination's bridge rules anew.
    */
   readonly rescueReads?: RescueReads;
+  /**
+   * The venues an agent's ceilings need no more, such as the identity registry once binference
+   * holds its identity (decision 0335), which a rewrite leaves out; none when absent.
+   */
+  readonly venuesDone?: (
+    agent: Id<"agt">,
+    options: { readonly signal: AbortSignal },
+  ) => Promise<readonly string[]>;
 }
 
 /**

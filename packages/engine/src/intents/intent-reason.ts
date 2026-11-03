@@ -93,8 +93,9 @@ export type RiskReason = (typeof riskReasons)[number];
  * every stake to the cap per call, ends `stake_over_ceiling` before its card (decision 0327). An
  * identity registration whose wallet the registry finds holding an identity already, as the wallet
  * queue takes it, ends `identity_exists`, and one whose registry reports another version than the
- * one binference was tested with ends `registry_changed`, before its card or before its signature
- * (decision 0335).
+ * one binference was tested with ends `registry_changed`, before its card or before its signature,
+ * and one whose main wallet's ceiling does not allow the registry's call, which the owner's opt-in
+ * writes, ends `identity_ceiling` before its card (decision 0335).
  */
 export const checkReasons = [
   "no_route",
@@ -145,6 +146,7 @@ export const checkReasons = [
   "stake_over_ceiling",
   "identity_exists",
   "registry_changed",
+  "identity_ceiling",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */

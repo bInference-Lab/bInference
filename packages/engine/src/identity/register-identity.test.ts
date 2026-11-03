@@ -135,12 +135,12 @@ describe("an identity registration", () => {
     });
   });
 
-  it("ends one whose wallet's ceiling lacks the registry's call with ceiling_lacks_call", async () => {
+  it("ends one whose main wallet's ceiling lacks the registry's call with identity_ceiling", async () => {
     const registry = testRegistry();
     const test = await startIdentityEngine(registry, {}, "none");
     await expect(registered(test)).resolves.toMatchObject({
       state: "failed_check",
-      outcome: { reason: "ceiling_lacks_call" },
+      outcome: { reason: "identity_ceiling" },
     });
   });
 

@@ -36,11 +36,12 @@ async function callsOf(
     reach: rescueReachOf(move.facts, parts.ceilings.mostPerChain),
   };
   const wallets = await walletCeilings(parts, move.facts, move.signal);
+  const done = (await parts.venuesDone?.(move.agent, { signal: move.signal })) ?? [];
   return before.map(({ wallet, read }) => {
     const saved = wallets.find((item) => item.ceiling === wallet.policyId)?.saved ?? [];
     const calls = {
       ceiling: wallet.policyId,
-      venues: venuesIn(parts.chains, read),
+      venues: venuesIn(parts.chains, read).filter((venue) => !done.includes(venue)),
       perTxNativeBase: read.perTxNativeBase,
       recipients: walletRecipients({ agent: wallet.agentId, saved }, payees),
     };

@@ -28,6 +28,7 @@ import { createGasCheck } from "../gas/check-gas.js";
 import { createLowGasAlerts, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import { createIdentityHandlers } from "../identity/identity-handlers.js";
 import type { IdentityOptions } from "../identity/identity-options.js";
+import { identityVenuesDone } from "../identity/identity-venues-done.js";
 import type {
   CeilingEditor,
   SignerRevoker,
@@ -365,6 +366,10 @@ function sharedParts(options: EngineOptions) {
       clock,
       publish,
       rescueReads: rescueReadsOf(options),
+      venuesDone: identityVenuesDone({
+        identities: stores.identities,
+        registries: options.identity?.registries ?? [],
+      }),
     },
     settingsParts: { agents: stores.agents, journal: stores.configJournal, clock, publish },
   };
@@ -436,6 +441,8 @@ export function createEngineWithFills(given: EngineOptions): {
         agents: options.stores.agents,
         chains: options.chains,
         ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
+        registries: options.identity?.registries ?? [],
+        ceilingParts: { ...rescueParts, journal: options.stores.configJournal },
       }),
     },
     answer: intents.answer,

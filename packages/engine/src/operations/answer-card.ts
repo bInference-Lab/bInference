@@ -181,6 +181,7 @@ const requoteErrors: Readonly<Record<QuoteFailure | SimulationFailure, ProtocolE
   stake_over_ceiling: "limit.over_ceiling",
   identity_exists: "intent.identity_exists",
   registry_changed: "quote.no_route",
+  identity_ceiling: "limit.over_ceiling",
   simulation_reverted: "chain.simulation_failed",
   effects_differ: "chain.simulation_failed",
 };

@@ -62,8 +62,9 @@ export interface IdentityRecheckParts extends TransferRecheckParts {
 
 /**
  * The policy run again on a confirmed registration as the wallet queue takes it (spec 6,
- * `queue_took`): the agent live and not frozen, the registry's venue one the agent's limits allow
- * now, with the wallet's facts now. A registry the engine no longer runs is not passed.
+ * `queue_took`): the agent live and not frozen, with the wallet's facts now. No venue rule judges
+ * it, as at its proposal: the owner's opt-in is the ceiling's call (decision 0335). A registry the
+ * engine no longer runs is not passed.
  */
 export async function recheckIdentity(
   snapshot: IntentSnapshot,
@@ -88,7 +89,6 @@ export async function recheckIdentity(
     facts,
     chain: chain.value,
     nativeAsset: nativeAssetOf(chain.value),
-    venue: quote.venue,
   };
   const verdict = await checkTransferPolicy(parts, judged, signal);
   return { hasPassed: verdict.ok, networkFeeCapNativeBase: facts.networkFeeCapNativeBase };

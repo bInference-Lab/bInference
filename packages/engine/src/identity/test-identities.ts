@@ -22,8 +22,8 @@ import {
   type TestEngineOptions,
 } from "../operations/test-engine.js";
 
-/** The fake identity registry's id, which the test agent may use. */
-export const testIdentityVenue = "fake-identity";
+// The fake identity registry's id.
+const testIdentityVenue = "fake-identity";
 // The fake registry's address on the fake chain.
 const testRegistryAddress = "0x000000e5";
 /** The binference version a test registration file names. */
@@ -94,20 +94,20 @@ export function holdIdentityWallet(
 
 /**
  * A live engine whose agent may register through the fake registry, its wallet listed with a
- * ceiling that holds the registry's call unless `held` is `none`.
+ * ceiling that holds the registry's call unless `held` is `none`. The agent's limits name no
+ * identity venue: the owner's opt-in is the ceiling's call, not a venue (decision 0335).
  */
 export async function startIdentityEngine(
   registry: FakeIdentityRegistry,
   options: TestEngineOptions = {},
   held: "call" | "none" = "call",
 ): Promise<TestEngine> {
-  const limits = { ...testLimits, venues: [...testLimits.venues, testIdentityVenue] };
   const test = await startTestEngine({
     chains: identityChains(),
     identity: { registries: [registry], version: testVersion },
     chainSimulator: registrySimulator(registry),
     ...options,
-    agent: { mode: "live", limits, ...options.agent },
+    agent: { mode: "live", limits: testLimits, ...options.agent },
   });
   holdIdentityWallet(test, registry, held);
   return test;

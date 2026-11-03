@@ -47,8 +47,9 @@ interface PlannedIdentity {
   readonly draft: TxDraft;
 }
 
-// The policy judges a registration as a move of nothing through the registry's venue: `paper_only`
-// in paper mode, `frozen` for a frozen agent, and the venue the agent's limits allow.
+// The policy judges a registration as a move of nothing: `paper_only` in paper mode and `frozen` for
+// a frozen agent. No venue rule judges it: the owner's opt-in, which writes the registry's call
+// into the main wallet's ceiling with the owner key, is what lets the agent register.
 async function judge(run: IdentityRun, proposed: IntentSnapshot) {
   const { options, resolved, advance } = run;
   const judged = {
@@ -57,7 +58,6 @@ async function judge(run: IdentityRun, proposed: IntentSnapshot) {
     facts: resolved.facts,
     chain: resolved.chain,
     nativeAsset: nativeAssetOf(resolved.chain),
-    venue: resolved.registry.id,
   };
   const verdict = await checkTransferPolicy(options, judged, advance.signal);
   return advanceByVerdict(advance, proposed, verdict);
@@ -76,7 +76,7 @@ function planOf(run: IdentityRun): Result<PlannedIdentity, QuoteFailure> {
   }
   const calls = options.identity.callsOf(registry);
   if (walletRecord === undefined || callsOutsideCeiling(walletRecord, calls).length > 0) {
-    return err("ceiling_lacks_call");
+    return err("identity_ceiling");
   }
   const file = registry.fileOf(card);
   const built = options.identity.build(registry, { wallet: account, file });
@@ -156,7 +156,7 @@ interface IdentityProposing {
  * wallet and the card's fields, refusing an agent that has an identity before anything is stored,
  * stores the intent, judges it by the policy (`paper_only` in paper mode), holds the registry to
  * the version binference was tested with (`registry_changed`) and the wallet's ceiling to its call
- * (`ceiling_lacks_call`), builds and checks the call, simulates it and opens its card, which lasts
+ * (`identity_ceiling`), builds and checks the call, simulates it and opens its card, which lasts
  * 10 minutes and never passes the auto test. A request that cannot become an intent is a protocol
  * error code and stores nothing.
  */
