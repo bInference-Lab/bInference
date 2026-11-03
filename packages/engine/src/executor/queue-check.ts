@@ -27,18 +27,14 @@ import type { OrderStore } from "../orders/ports.js";
 import type { PolicyCheck, PolicyVerdict } from "../policy/check-policy.js";
 import type { IntentStore } from "../ports.js";
 import type { StakingHost } from "../venues/staking-host.js";
-import {
-  bridgeQuoteOf,
-  bridgeTargetsOf,
-  type ExecutorBridging,
-  recheckBridge,
-} from "./bridge-queue-check.js";
+import { bridgeQuoteOf, bridgeTargetsOf, type ExecutorBridging } from "./bridge-queue-check.js";
 import { declaredTargetsOf } from "./declared-calls.js";
 import { checkFillForQueue, type FillQueueCheck, fillGrantOf } from "./fill-terms.js";
-import { launchQuoteOf, recheckLaunch } from "./launch-queue-check.js";
+import { launchQuoteOf } from "./launch-queue-check.js";
 import { type LaunchTargetParts, launchTargetsOf } from "./launch-targets.js";
-import { recheckStake, stakeQuoteOf, stakeTargetsOf } from "./stake-queue-check.js";
-import { recheckTransfer, transferQuoteOf, transferTargetsOf } from "./transfer-queue-check.js";
+import { recheckOwnKind } from "./own-rechecks.js";
+import { stakeQuoteOf, stakeTargetsOf } from "./stake-queue-check.js";
+import { transferQuoteOf, transferTargetsOf } from "./transfer-queue-check.js";
 
 /** What a signature of the intent's steps carries besides the step itself. */
 export interface SigningTerms {
@@ -97,19 +93,11 @@ async function recheckPolicy(
   parts: QueueCheckParts,
   signal: AbortSignal,
 ): Promise<Rechecked> {
+  const own = await recheckOwnKind(snapshot, parts, signal);
+  if (own !== undefined) {
+    return own;
+  }
   const { record, settings, stored } = snapshot;
-  if (record.kind === "launchToken") {
-    return recheckLaunch(snapshot, parts, signal);
-  }
-  if (record.kind === "send" || record.kind === "revokeApproval") {
-    return recheckTransfer(snapshot, parts, signal);
-  }
-  if (record.kind === "bridge") {
-    return recheckBridge(snapshot, parts, signal);
-  }
-  if (record.kind === "stake") {
-    return recheckStake(snapshot, parts, signal);
-  }
   const request = { ...requestDocument.decode(record.request), wallet: record.walletId };
   const resolving = { request, settings, signal, intent: record.id };
   const resolved = await resolveProposal(parts, resolving);
