@@ -1,6 +1,5 @@
-import { cardLineText } from "@binference/i18n";
+import { assetValue, cardLineText } from "@binference/i18n";
 import type { AssetInfos, CardLineView, CardValueView, OrderView } from "@binference/protocol";
-import { assetValue } from "./asset-values.js";
 import { callOrSay, type CommandContext } from "./command-context.js";
 
 type Request = OrderView["request"];

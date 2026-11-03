@@ -1,6 +1,5 @@
-import { type CardDisplay, cardLineText } from "@binference/i18n";
+import { amountValue, type CardDisplay, cardLineText } from "@binference/i18n";
 import type { BalanceView, CardValueView, PortfolioView, ProtocolId } from "@binference/protocol";
-import { amountValue } from "./asset-values.js";
 import { callOrSay, type CommandContext } from "./command-context.js";
 
 type Values = Readonly<Record<string, CardValueView>>;

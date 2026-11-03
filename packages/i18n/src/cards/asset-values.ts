@@ -7,7 +7,7 @@ function tokenOf(asset: AssetRef): CardValueView {
 }
 
 /**
- * An asset as a reply names it: its symbol when the reply carries its info, else its short
+ * An asset as a list names it: its symbol when the list carries its info, else its short
  * address, as the card does for an unverified token.
  */
 export function assetValue(asset: AssetRef, assets: AssetInfos): CardValueView {
@@ -15,7 +15,7 @@ export function assetValue(asset: AssetRef, assets: AssetInfos): CardValueView {
 }
 
 /**
- * An amount as a reply names it: in the token's units when the reply carries its info, else in
+ * An amount as a list names it: in the token's units when the list carries its info, else in
  * base units of the token's short address, since its decimals are not known.
  */
 export function amountValue(amount: Amount, assets: AssetInfos): CardValueView {

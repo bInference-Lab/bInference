@@ -1,7 +1,6 @@
 import type { Amount, ChainRef, ChainRegistry } from "@binference/chain";
-import { type CardDisplay, cardLineText } from "@binference/i18n";
+import { amountValue, type CardDisplay, cardLineText } from "@binference/i18n";
 import type { CardValueView, PortfolioView } from "@binference/protocol";
-import { amountValue } from "./asset-values.js";
 import type { CommandContext } from "./command-context.js";
 
 type Values = Readonly<Record<string, CardValueView>>;
