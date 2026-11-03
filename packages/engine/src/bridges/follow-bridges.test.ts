@@ -11,7 +11,7 @@ import type { DestinationChain } from "../address-book/destination-chain.js";
 import { type BridgeBench, bridgeBench } from "../executor/test-bridge-bench.js";
 import { driveUntil, tapped } from "../executor/test-executor.js";
 import { restartBench } from "../executor/test-restart.js";
-import { testToken, testWallet } from "../intents/test-intents.js";
+import { expectOk, testToken, testWallet } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
@@ -451,6 +451,9 @@ describe("a bridge's receipt", () => {
         assets: { [testArrives]: { symbol: "TKN" } },
       },
     });
+    // Every intent's receipt line says the same as a bridge's own (decision 0346).
+    expect(expectOk(got).receipt).toStrictEqual(expectOk(got).bridgeReceipt);
+    expect(expectOk(viewed).receipt).toStrictEqual(expectOk(viewed).bridgeReceipt);
   });
 
   it("says it was delivered once when recovery reconciles a delivery a stop cut short", async () => {

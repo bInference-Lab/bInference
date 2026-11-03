@@ -1220,11 +1220,16 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   the balances of the agent's mode, its active and paused orders (at most 50), and its outflows of
   the last 24 hours against the caps in effect.
 - `IntentView`:
-  `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets, resolvedName?, delivery?, bridgeReceipt? }`.
+  `{ intent, agent, wallet, kind, state, request, quote?, risk?, simulation?, card?, outcome?, paper, outsideContent, createdAt, changedAt, assets, resolvedName?, delivery?, bridgeReceipt?, receipt? }`.
   `resolvedName` is `{ name, address, resolvedAt }` for a send by name. `delivery` is a bridge's
   `DeliveryView`; a change of it pushes `intent/changed`. `bridgeReceipt` is the `CardLineView`
   a live bridge's card ends with from its final deposit on (spec 4, section 3.9), which
-  `intent/get` and `intent/list` give, its assets in `assets`. `outcome` is
+  `intent/get` and `intent/list` give, its assets in `assets`. `receipt` is the `CardLineView` every
+  copy of the intent's closed card ends with (spec 4, section 3.5;
+  [decision 0346](../DECISIONS.md#d0346)): how it closed and what followed, as Telegram's copies
+  show it, which `intent/get`, `intent/list`, `intent/confirm` and `intent/deny` give, its assets in
+  `assets`; absent while the card is open. For a bridge it says what `bridgeReceipt` says, which
+  the next version drops. `outcome` is
   `{ reason?, chain?, validator?, minStake?, readyAt?, txHashes?, executions? }`: `chain` names
   the chain a bridge's reason means, the chain it bridges to, as that reason's words show it; a
   staking move's reason names its `validator` (`{ account, name? }`, the name the venue's own),
@@ -1371,6 +1376,8 @@ every field given must hold, and an empty filter passes every launch. `launch/li
     ([decision 0296](../DECISIONS.md#d0296)): the engine always answers `15000`, and a
     `limit/set` whose changes name it is `protocol.bad_args` and changes nothing. The next version
     drops the field.
+  - `IntentView.receipt` is a new optional field, the line every copy of a closed card ends with;
+    `IntentView.bridgeReceipt` stays beside it for older clients, and the next version drops it.
   - An intent's `kind` has a new value, `webhookRule`, the card of a webhook rule. A client that
     meets a kind it does not know shows the card's lines from `intent/card`.
   - `IntentView.resolvedName`, `IntentView.delivery` and `IntentView.bridgeReceipt`, `PortfolioView.staking` and

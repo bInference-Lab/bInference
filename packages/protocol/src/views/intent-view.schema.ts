@@ -152,6 +152,12 @@ export interface IntentView {
    * any other intent.
    */
   readonly bridgeReceipt?: CardLineView;
+  /**
+   * The line every copy of the intent's closed card ends with (spec 4, section 3.5; decision
+   * 0346): how it closed and what followed, as Telegram's copies show it. Its assets are in
+   * `assets`; absent while the card is open and for an intent with no closed card.
+   */
+  readonly receipt?: CardLineView;
 }
 
 const usdMicros = decimalStringSchema.exactOptional();
@@ -230,4 +236,5 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
     })
     .exactOptional(),
   bridgeReceipt: cardLineViewSchema.exactOptional(),
+  receipt: cardLineViewSchema.exactOptional(),
 });

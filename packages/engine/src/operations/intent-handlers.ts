@@ -8,6 +8,7 @@ import { bridgeViewReads } from "./bridge-view-reads.js";
 import { answererOf, type EngineCall, type EngineHandler, proposerOf } from "./engine-call.js";
 import { type IntentListOptions, listIntents } from "./intent-list.js";
 import { intentViewOf, type ViewReads } from "./intent-view-of.js";
+import { receiptViewReads } from "./receipt-view-reads.js";
 
 /** The handlers of the intent operations the engine serves (protocol spec, section 7.4). */
 export interface IntentHandlers {
@@ -24,8 +25,11 @@ export interface IntentHandlersOptions extends IntentListOptions {
   readonly stored: StoredIntents;
   readonly moneyPath: MoneyPath;
   readonly answer: AnswerCard;
-  /** Draws an intent's open card version, as a surface without buttons shows it. */
-  readonly showings: Pick<CardShowings, "newest">;
+  /**
+   * Draws an intent's open card version, as a surface without buttons shows it, and the receipt
+   * its closed card ends with.
+   */
+  readonly showings: Pick<CardShowings, "newest" | "settled">;
 }
 
 interface Answering {
@@ -66,9 +70,17 @@ async function answered(
     return err("intent.not_found");
   }
   const refusal = answerError(result.value.outcome);
-  return refusal === undefined
-    ? ok(intentViewOf(result.value.intent, options.chains, { destinations: options.destinations }))
-    : err(refusal);
+  if (refusal !== undefined) {
+    return err(refusal);
+  }
+  const answeredIntent = result.value.intent;
+  const receipt = await receiptViewReads(options, answeredIntent, signal);
+  return ok(
+    intentViewOf(answeredIntent, options.chains, {
+      ...receipt,
+      destinations: options.destinations,
+    }),
+  );
 }
 
 function viewOf(
@@ -120,9 +132,14 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
     },
     "intent/get": async ({ args, signal }) => {
       const snapshot = await options.stored.snapshot(args.intent, { signal });
-      const bridged =
-        snapshot === undefined ? {} : await bridgeViewReads(options, snapshot.record, signal);
-      return viewOf(options, snapshot, bridged);
+      if (snapshot === undefined) {
+        return err("intent.not_found");
+      }
+      const [bridged, receipt] = await Promise.all([
+        bridgeViewReads(options, snapshot.record, signal),
+        receiptViewReads(options, snapshot, signal),
+      ]);
+      return viewOf(options, snapshot, { ...bridged, ...receipt });
     },
     "intent/card": async (call) => drawnCard(options, call),
     "intent/list": async (call) => listIntents(options, call),

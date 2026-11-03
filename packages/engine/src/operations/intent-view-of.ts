@@ -1,6 +1,7 @@
 import type { AssetRef, ChainRegistry } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import type {
+  AssetInfos,
   AutoOrderRequest,
   CardView,
   IntentOutcome,
@@ -216,6 +217,8 @@ export interface ViewReads {
   readonly destinations?: readonly DestinationChain[] | undefined;
   /** The line a live bridge's card ends with, once its deposit is final. */
   readonly bridgeReceipt?: CardLine | undefined;
+  /** The line the intent's closed card ends with, and the assets it names (decision 0346). */
+  readonly receipt?: { readonly line: CardLine; readonly assets: AssetInfos } | undefined;
 }
 
 // The name of the chain a bridge's reason names: the chain it bridges to.
@@ -282,12 +285,16 @@ function resolvedNameOf(record: IntentRecord): IntentView["resolvedName"] {
     : { name: name.name, address: recipient, resolvedAt: name.resolvedAtMs };
 }
 
-// What the caller read of a bridge beyond its stored intent: its delivery and its card's last line.
-function bridgeFieldsOf(reads: ViewReads): Pick<IntentView, "delivery" | "bridgeReceipt"> {
-  const { delivery, bridgeReceipt } = reads;
+// What the caller read beyond the stored intent: a bridge's delivery and its card's last line, and
+// the line any closed card ends with.
+function readFieldsOf(
+  reads: ViewReads,
+): Pick<IntentView, "delivery" | "bridgeReceipt" | "receipt"> {
+  const { delivery, bridgeReceipt, receipt } = reads;
   return {
     ...(delivery === undefined ? {} : { delivery }),
     ...(bridgeReceipt === undefined ? {} : { bridgeReceipt }),
+    ...(receipt === undefined ? {} : { receipt: receipt.line }),
   };
 }
 
@@ -297,7 +304,8 @@ function bridgeFieldsOf(reads: ViewReads): Pick<IntentView, "delivery" | "bridge
  * settled trade as its execution, the info of the assets it names: the registry's, or what the
  * intent stored of an unlisted token at its proposal, a send by name's resolved name, and a
  * bridge's delivery and the line its card ends with when the caller read them, with the name of
- * the chain a bridge's reason names.
+ * the chain a bridge's reason names, and the line any closed card of it ends with, with the assets
+ * that line names, when the caller read it.
  */
 export function intentViewOf(
   snapshot: IntentSnapshot,
@@ -309,6 +317,7 @@ export function intentViewOf(
   const card = cardViewOf(snapshot);
   const outcome = outcomeOf(snapshot, { request, reads });
   const resolvedName = resolvedNameOf(record);
+  const receiptAssets = reads.receipt?.assets;
   return {
     intent: record.id,
     agent: record.agentId,
@@ -329,8 +338,8 @@ export function intentViewOf(
     outsideContent: record.hasOutsideContent,
     createdAt: record.createdAtMs,
     changedAt: record.changedAtMs,
-    assets: intentAssetInfos(chains, record, assetsOf(record, request)),
+    assets: { ...intentAssetInfos(chains, record, assetsOf(record, request)), ...receiptAssets },
     ...(resolvedName === undefined ? {} : { resolvedName }),
-    ...bridgeFieldsOf(reads),
+    ...readFieldsOf(reads),
   };
 }

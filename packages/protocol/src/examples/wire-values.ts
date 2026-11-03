@@ -167,6 +167,22 @@ export const intentView: WireObject = {
   createdAt: at,
   changedAt: at + 1_000,
   assets,
+  receipt: {
+    key: "receipt.filled",
+    values: {
+      result: {
+        type: "line",
+        line: {
+          key: "receipt.result",
+          values: {
+            sold: { type: "amount", amount: nativeAmount },
+            bought: { type: "amount", amount: tokenAmount },
+          },
+        },
+      },
+      explorerLink: { type: "text", text: "https://explorer.example/tx/0xabc123" },
+    },
+  },
 };
 
 /** An example agent. */

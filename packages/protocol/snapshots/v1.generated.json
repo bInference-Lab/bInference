@@ -7299,6 +7299,9 @@
             },
             "bridgeReceipt": {
               "$ref": "#/$defs/__schema0"
+            },
+            "receipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -16015,6 +16018,9 @@
             },
             "bridgeReceipt": {
               "$ref": "#/$defs/__schema0"
+            },
+            "receipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -17874,6 +17880,9 @@
               ]
             },
             "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "receipt": {
               "$ref": "#/$defs/__schema0"
             }
           },
@@ -20271,6 +20280,9 @@
                   },
                   "bridgeReceipt": {
                     "$ref": "#/$defs/__schema0"
+                  },
+                  "receipt": {
+                    "$ref": "#/$defs/__schema0"
                   }
                 },
                 "required": [
@@ -22153,6 +22165,9 @@
             },
             "bridgeReceipt": {
               "$ref": "#/$defs/__schema0"
+            },
+            "receipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -24019,6 +24034,9 @@
             },
             "bridgeReceipt": {
               "$ref": "#/$defs/__schema0"
+            },
+            "receipt": {
+              "$ref": "#/$defs/__schema0"
             }
           },
           "required": [
@@ -25883,6 +25901,9 @@
               ]
             },
             "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "receipt": {
               "$ref": "#/$defs/__schema0"
             }
           },
@@ -37392,6 +37413,9 @@
                             ]
                           },
                           "bridgeReceipt": {
+                            "$ref": "#/$defs/__schema0"
+                          },
+                          "receipt": {
                             "$ref": "#/$defs/__schema0"
                           }
                         },

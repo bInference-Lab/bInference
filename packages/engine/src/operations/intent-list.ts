@@ -9,12 +9,13 @@ import { epochMsSchema } from "../records/record-fields.js";
 import { type BridgeViewOptions, bridgeViewReads } from "./bridge-view-reads.js";
 import type { EngineCall } from "./engine-call.js";
 import { intentViewOf } from "./intent-view-of.js";
+import { type ReceiptViewOptions, receiptViewReads } from "./receipt-view-reads.js";
 
 /**
- * What `intent/list` reads: the intents by state, each one's snapshot, the chains, and what a
- * bridge's view reads beyond its intent.
+ * What `intent/list` reads: the intents by state, each one's snapshot, the chains, what a bridge's
+ * view reads beyond its intent, and each closed card's receipt.
  */
-export interface IntentListOptions extends BridgeViewOptions {
+export interface IntentListOptions extends BridgeViewOptions, ReceiptViewOptions {
   readonly stored: Pick<StoredIntents, "list" | "snapshot">;
   /** The chains bridges deliver to, whose names a bridge's outcome gives; none without. */
   readonly destinations?: readonly DestinationChain[];
@@ -75,9 +76,15 @@ export async function listIntents(
   const viewed = await Promise.all(
     wanted.map(async (record) => {
       const snapshot = await options.stored.snapshot(record.id, { signal });
-      const bridged = await bridgeViewReads(options, record, signal);
-      const reads = { ...bridged, destinations: options.destinations };
-      return snapshot === undefined ? [] : [intentViewOf(snapshot, options.chains, reads)];
+      if (snapshot === undefined) {
+        return [];
+      }
+      const [bridged, receipt] = await Promise.all([
+        bridgeViewReads(options, record, signal),
+        receiptViewReads(options, snapshot, signal),
+      ]);
+      const reads = { ...bridged, ...receipt, destinations: options.destinations };
+      return [intentViewOf(snapshot, options.chains, reads)];
     }),
   );
   const items = viewed.flat();
