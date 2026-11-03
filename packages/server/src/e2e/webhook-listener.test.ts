@@ -85,7 +85,12 @@ describe("the webhook listener", () => {
     const { post, alerts } = await start();
     const answer = await post(hook(ruleId, secret));
     expect(shown(answer)).toMatchObject({ status: 202, body: "" });
-    expect(answer.headers["cache-control"]).toBe("no-store");
+    expect(shown(answer).headers).toStrictEqual({
+      "cache-control": "no-store",
+      "content-length": "0",
+      "x-content-type-options": "nosniff",
+      connection: "close",
+    });
     expect((await alerts()).map((entry) => entry.payload)).toStrictEqual([
       { rule: ruleId, event: 1, alertId: "tv-1", body: { text: '{"id":"tv-1"}' } },
     ]);

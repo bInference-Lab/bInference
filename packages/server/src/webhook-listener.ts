@@ -5,7 +5,6 @@ import type { WebhookAnswer, WebhookIntake } from "@binference/engine/orders";
 import { bindListener, type ServerAddress } from "./bind-listener.js";
 import { refuseUpgrade } from "./http-routes.js";
 import { readLimitedBody } from "./limited-body.js";
-import { resourceHeaders } from "./security-headers.js";
 
 /** The largest alert body the listener reads (spec 1, section 2.2). */
 export const maxWebhookBodyBytes = 16_384;
@@ -72,12 +71,13 @@ const statuses: Readonly<Record<WebhookAnswer | "too_large" | "unavailable", num
   unavailable: 503,
 };
 
-// Every answer closes its connection: a sender sends one alert per connection, and no idle
-// connection holds a place.
+// Only what an empty answer needs, so the answers name no product: the console's headers would
+// tell a scan of published hosts which of them run binference. Every answer closes its
+// connection: a sender sends one alert per connection, and no idle connection holds a place.
 const answerHeaders = {
-  ...resourceHeaders,
   "cache-control": "no-store",
   "content-length": "0",
+  "x-content-type-options": "nosniff",
   connection: "close",
 };
 
