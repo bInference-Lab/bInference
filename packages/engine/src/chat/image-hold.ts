@@ -1,6 +1,5 @@
 import { err, ok, type Clock, type Result } from "@binference/core";
-import type { ImageContentType } from "@binference/protocol";
-import { imageTypeOf } from "./image-type.js";
+import { type ImageContentType, imageTypeOf } from "@binference/protocol";
 import type { ImageRefusal, OwnerImageSource } from "./ports.js";
 
 /** An image the hold read from its source, with its format by its first bytes. */

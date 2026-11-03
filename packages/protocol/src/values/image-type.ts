@@ -1,4 +1,4 @@
-import type { ImageContentType } from "@binference/protocol";
+import type { ImageContentType } from "../operations/image-operations.schema.js";
 
 // The signatures the three formats open with (protocol spec, section 7.7): PNG's eight bytes,
 // JPEG's start-of-image marker, and WebP's RIFF header with `WEBP` at byte 8.

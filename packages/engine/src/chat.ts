@@ -21,7 +21,6 @@ export type {
   OwnerImageSource,
   QuestionStore,
 } from "./chat/ports.js";
-export { imageTypeOf } from "./chat/image-type.js";
 export { createUploadShelf } from "./uploads/upload-shelf.js";
 export type {
   UploadHolder,

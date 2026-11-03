@@ -1,6 +1,5 @@
 import { type Clock, err, ok, type Random, type Result } from "@binference/core";
-import { type ImageContentType, maxImageBytes } from "@binference/protocol";
-import { imageTypeOf } from "../chat/image-type.js";
+import { type ImageContentType, imageTypeOf, maxImageBytes } from "@binference/protocol";
 import type { OwnerImageSource } from "../chat/ports.js";
 
 /** What `upload/start` names: the image's format and its size. */

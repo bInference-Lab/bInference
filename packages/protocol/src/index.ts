@@ -73,6 +73,7 @@ export {
   maxImagesPerMessage,
 } from "./operations/image-operations.schema.js";
 export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";
+export { imageTypeOf } from "./values/image-type.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";
 export type { WebPushSubscription } from "./operations/web-push-operations.schema.js";
 export { repeatedResult, storableArgs, storableResult } from "./operations/storable-args.js";
