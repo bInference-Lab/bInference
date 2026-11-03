@@ -19,3 +19,7 @@ Rules for this package:
   numbers and paced, keyless reads of a documented API. It names no service; each plugin declares
   its own origin, limits and schemas.
 - `@binference/plugin-sdk/testing` gives plugins the contract suites their venues pass.
+- `@binference/plugin-sdk/community` holds what a community plugin declares and exports: the
+  strict schema of its manifest and `defineTools` (decision 0343). A community plugin declares
+  no contract, call or transaction cap, `maxValueBase` among them; a new manifest field changes
+  the API version and comes with the permission review's line for it.

@@ -1367,6 +1367,14 @@
     "0342": {
       "status": "Accepted",
       "sha256": "2f737a8d0bc46c26d9bd0c3e6b346b88110a65261f9bac29152580cc067a9936"
+    },
+    "0343": {
+      "status": "Accepted",
+      "sha256": "ab6109e9862337b82623eb3873b471f97bc217e1c5392584a743ddfa7fbfdf61"
+    },
+    "0344": {
+      "status": "Accepted",
+      "sha256": "51568f31d7398d4981a249dab21812a02d06803658ed06fb40564489ae7e8060"
     }
   }
 }

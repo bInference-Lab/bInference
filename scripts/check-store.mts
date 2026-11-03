@@ -26,7 +26,11 @@ const rawSqlAllowed = [
   "packages/store/src/dialect/",
   "packages/platform/src/file-lock.ts",
 ];
-const sqliteAllowed = ["packages/platform/src/file-lock.ts"];
+// The plugin host's probe tries to open node:sqlite, which a community plugin's sandbox refuses.
+const sqliteAllowed = [
+  "packages/platform/src/file-lock.ts",
+  "packages/plugin-host/src/probe/sandbox-probe.ts",
+];
 
 function sourceFolders(files: readonly string[]): readonly string[] {
   const folders = new Set(

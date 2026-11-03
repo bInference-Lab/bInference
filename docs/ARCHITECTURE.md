@@ -174,7 +174,9 @@ binference/                         MIT, pnpm + Turborepo, Node 26.1+, TypeScrip
                                          also the Telegram Mini App (section 25)
     tui/          @binference/tui        terminal chat (section 25)
     mcp/          @binference/mcp        MCP server (read and propose tools) and MCP client host
-    plugin-sdk/   @binference/plugin-sdk manifest types, defineVenue / defineData / defineTool
+    plugin-sdk/   @binference/plugin-sdk manifest types, defineVenue / defineData / defineTools
+    plugin-host/  @binference/plugin-host the community plugins' host: their sandboxed process, the
+                                         sandbox check, the image's plugin launcher (decision 0343)
     i18n/         @binference/i18n       en + zh messages, glossary, formatters, checks
     cli/          binference             the `binference` command and the composition root
   plugins/        first-party venues and data: pancakeswap, kyberswap, okx, flap, fourmeme, lista,
@@ -831,7 +833,8 @@ plugins starts each in a Node process of its own, with the grants above, a heap 
 - **Crashes.** A plugin that exits starts again after 1 second, the wait doubling up to 5 minutes;
   after 5 crashes in 10 minutes it is turned off and the owner is told.
 - **A check first.** Before any community plugin starts, the host runs a probe that tries every act
-  the sandbox refuses. If one succeeds, no community plugin runs on that machine, and
+  the sandbox refuses ([decision 0343](DECISIONS.md#d0343) lists them, with the gaps of Node's
+  permission model the probe cannot see). If one succeeds, no community plugin runs on that machine, and
   `binference check` says why. While plugins run as the owner's OS user, `check` warns that a
   plugin could signal the engine.
 

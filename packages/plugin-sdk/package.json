@@ -14,6 +14,11 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./community": {
+      "@binference/source": "./src/community.ts",
+      "types": "./dist/community.d.mts",
+      "default": "./dist/community.mjs"
+    },
     "./data": {
       "@binference/source": "./src/data.ts",
       "types": "./dist/data.d.mts",
@@ -31,7 +36,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/data.ts src/evm.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/community.ts src/data.ts src/evm.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

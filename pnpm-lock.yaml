@@ -862,6 +862,21 @@ importers:
         specifier: 'catalog:'
         version: 4.6.5
 
+  packages/plugin-host:
+    dependencies:
+      '@binference/core':
+        specifier: workspace:*
+        version: link:../core
+      '@binference/platform':
+        specifier: workspace:*
+        version: link:../platform
+      '@binference/plugin-sdk':
+        specifier: workspace:*
+        version: link:../plugin-sdk
+      zod:
+        specifier: 'catalog:'
+        version: 4.6.5
+
   packages/plugin-sdk:
     dependencies:
       '@binference/chain':

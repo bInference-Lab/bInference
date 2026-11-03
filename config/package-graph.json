@@ -173,6 +173,9 @@
       "imports": ["core", "chain", "@solana/kit"],
       "money": true,
       "coverage": 95
+    },
+    "plugin-host": {
+      "imports": ["core", "platform", "plugin-sdk"]
     }
   },
   "plugins": {

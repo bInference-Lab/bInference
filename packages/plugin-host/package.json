@@ -1,0 +1,47 @@
+{
+  "name": "@binference/plugin-host",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The plugin host: runs each community plugin in a sandboxed Node process of its own, checks its channel and fetches for it only from its declared hosts.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./testing": {
+      "@binference/source": "./src/testing.ts"
+    },
+    "./process": {
+      "@binference/source": "./src/process/plugin-process.ts",
+      "default": "./dist/plugin-process.mjs"
+    },
+    "./probe": {
+      "@binference/source": "./src/probe/sandbox-probe.ts",
+      "default": "./dist/probe/sandbox-probe.mjs"
+    },
+    "./launcher": {
+      "@binference/source": "./src/launcher/plugin-launcher.ts",
+      "default": "./dist/plugin-launcher.mjs"
+    },
+    "./image-entry": {
+      "@binference/source": "./src/launcher/image-entry.ts",
+      "default": "./dist/image-entry.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "@binference/core": "workspace:*",
+    "@binference/platform": "workspace:*",
+    "@binference/plugin-sdk": "workspace:*",
+    "zod": "catalog:"
+  }
+}
