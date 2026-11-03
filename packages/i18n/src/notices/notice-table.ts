@@ -1,6 +1,7 @@
 import type { ProtocolId } from "@binference/protocol";
 import { bridgeNoticeTable } from "./bridge-notice-table.js";
 import { dailyNothingElse, noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
+import { orderNoticeTable } from "./order-notice-table.js";
 import { stakeNoticeTable } from "./stake-notice-table.js";
 import type { WrittenNotice } from "./write-notice.js";
 
@@ -9,8 +10,7 @@ export interface TableNotice extends WrittenNotice {
   readonly agent?: ProtocolId<"agent">;
 }
 
-const { tableAgent, at, agent, coinAmount, orderKind, sale, launch, movedName, padLaunch } =
-  noticeTableParts;
+const { tableAgent, at, agent, coinAmount, launch, movedName, padLaunch } = noticeTableParts;
 
 /**
  * One notice of each key of spec 4, section 4, with its sections 4.2 and 4.3, as the engine
@@ -18,29 +18,11 @@ const { tableAgent, at, agent, coinAmount, orderKind, sale, launch, movedName, p
  * parts. A surface proves it writes every notice by sending each one (Y12).
  */
 export const noticeTable: Readonly<Record<string, TableNotice>> = {
-  "notice.fill": {
-    key: "notice.fill",
-    values: { mode: "paper" },
-    parts: { orderKind: orderKind("takeProfit"), result: sale },
-  },
-  "notice.skipped": {
-    key: "notice.skipped",
-    values: {},
-    parts: {
-      orderKind: orderKind("stopLoss"),
-      reason: { key: "reason.nothing_to_sell", values: {} },
-    },
-  },
+  ...orderNoticeTable,
   "notice.lowGas": {
     key: "notice.lowGas",
     values: { wallet: "Main" },
     amounts: { balance: coinAmount(1n) },
-  },
-  "notice.orderExpiring": {
-    key: "notice.orderExpiring",
-    values: {},
-    times: at,
-    parts: { orderKind: orderKind("limit") },
   },
   "notice.daily": {
     key: "notice.daily",
@@ -250,22 +232,6 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.stepDroppedPartWay": { key: "notice.stepDroppedPartWay", values: {} },
   "notice.droppedLanded": { key: "notice.droppedLanded", values: {} },
   "notice.walletHeld": { key: "notice.walletHeld", values: { wallet: "Main" } },
-  "notice.orderOverfilled": {
-    key: "notice.orderOverfilled",
-    values: { fills: "2", maxFills: "1" },
-    parts: { orderKind: orderKind("stopLoss") },
-  },
-  "notice.fillUnvalued": {
-    key: "notice.fillUnvalued",
-    values: {},
-    parts: { orderKind: orderKind("limit") },
-  },
-  "notice.fillsFailing": {
-    key: "notice.fillsFailing",
-    values: { count: "5" },
-    parts: { orderKind: orderKind("takeProfit") },
-  },
-  "notice.approvalReset": { key: "notice.approvalReset", values: { token: "PEPE" } },
   "notice.binanceRefused": {
     key: "notice.binanceRefused",
     agent: tableAgent,
@@ -295,15 +261,4 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   },
   "notice.alertLaunch": { key: "notice.alertLaunch", values: {}, parts: { launch } },
   "notice.alertHeld": { key: "notice.alertHeld", agent: tableAgent, values: { count: "12" } },
-  "notice.copyHeld": { key: "notice.copyHeld", agent: tableAgent, values: { count: "12" } },
-  "notice.ordersEnded": {
-    key: "notice.ordersEnded",
-    values: { token: "PEPE", count: "2" },
-    parts: { orderKind: orderKind("takeProfit") },
-  },
-  "notice.exitEnded": {
-    key: "notice.exitEnded",
-    values: { token: "PEPE" },
-    parts: { orderKind: orderKind("trailing") },
-  },
 };
