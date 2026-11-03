@@ -256,7 +256,9 @@ export const intentReasons: readonly IntentReason[] = [
  * could not read, `token_unreadable`, a copied trade of a token that answers no symbol or
  * decimals, `leader_unpriced`, a copied buy whose leader's spend nothing values in dollars, and
  * `copy_sale_lapsed`, a mirrored sale not sold within an hour of the leader's, `copy_too_small`, a
- * copied buy under $5, and `copy_hourly`, a copy order's eleventh buy in an hour (decision 0260). A copy order's trade past its minute is `late` too. A live order while
+ * copied buy under $5, and `copy_hourly`, a copy order's eleventh buy in an hour (decision 0260). A copy order's trade past its minute is `late` too, and so is a webhook alert whose fill
+ * did not start within a minute of its arrival (decision 0336); `url_rotated`, an alert its rule's
+ * old URL took before the owner changed it (decision 0337). A live order while
  * live fills are off skips with the fill reason `live_fills_off`, and a size in dollars with no USD
  * price with the policy's `no_price`. The skip is an `order_fills` row with its reason,
  * and its message is `reason.<code>` like an intent's.
@@ -278,6 +280,7 @@ export const orderSkipReasons = [
   "copy_sale_lapsed",
   "copy_too_small",
   "copy_hourly",
+  "url_rotated",
 ] as const;
 
 /** A reason an auto order skipped a fill before any intent was stored. */

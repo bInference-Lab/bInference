@@ -38,9 +38,12 @@ const sellingKinds: ReadonlySet<OrderRequest["kind"]> = new Set([
   "trailing",
 ]);
 
+/** The bounds every fill of an order or a webhook rule shares, which the rules below check. */
+type Bounds = Pick<OrderRequest, "token" | "side" | "size" | "spend" | "worstPrice" | "expiresAt">;
+
 // The token on a chain of the registry, in its canonical form, and never the chain's own coin.
 function tokenOf(
-  request: OrderRequest,
+  request: Bounds,
   chains: ChainRegistry,
 ): Checked<{ readonly token: AssetRef; readonly chain: RegisteredChain }> {
   const chain = chains.get(assetRefParts(request.token).chain);
@@ -53,7 +56,7 @@ function tokenOf(
 
 // A size in dollars, in base units or as a share above 0 and at most 100% (decision 0190): a buy's
 // counts what it spends, a sale's what it sells.
-function isSizeValid(request: OrderRequest): boolean {
+function isSizeValid(request: Bounds): boolean {
   const { size } = request;
   if ("usdMicros" in size) {
     return size.usdMicros > 0n;
@@ -64,7 +67,7 @@ function isSizeValid(request: OrderRequest): boolean {
 // What a buy spends, in its canonical form: the chain's coin when the request names none, else a
 // token the registry lists on the token's own chain, never the token it buys. A sale spends none.
 function spendOf(
-  request: OrderRequest,
+  request: Bounds,
   found: { readonly token: AssetRef; readonly chain: RegisteredChain },
   chains: ChainRegistry,
 ): Checked<AssetRef | undefined> {
@@ -224,4 +227,39 @@ export function checkOrderRequest(
   return spend.ok
     ? ok(filledOrder(request, { ...found.value, spend: spend.value }, context.nowMs))
     : spend;
+}
+
+/** A fill's bounds checked: its token and what a buy spends in their canonical forms, its chain. */
+export interface CheckedBounds {
+  readonly token: AssetRef;
+  /** What a buy spends, the chain's coin when the bounds name none; a sale spends none. */
+  readonly spend?: AssetRef;
+  readonly chain: RegisteredChain;
+}
+
+/**
+ * Checks the bounds a webhook rule shares with a buy or sell order of the same token, as
+ * `checkOrderRequest` checks them (decision 0299): a token on a chain of the registry, never its
+ * coin; a size above zero; what a buy spends listed on that chain, and none for a sale; a worst
+ * price above zero and an expiry ahead of `nowMs` when named. A broken rule is
+ * `protocol.bad_args`.
+ */
+export function checkFillBounds(
+  bounds: Bounds,
+  context: { readonly nowMs: number; readonly chains: ChainRegistry },
+): Result<CheckedBounds, "protocol.bad_args"> {
+  const found = tokenOf(bounds, context.chains);
+  const { worstPrice, expiresAt } = bounds;
+  const isValid =
+    isSizeValid(bounds) &&
+    (worstPrice === undefined || worstPrice > 0n) &&
+    (expiresAt === undefined || expiresAt > context.nowMs);
+  if (!found.ok || !isValid) {
+    return err("protocol.bad_args");
+  }
+  const spend = spendOf(bounds, found.value, context.chains);
+  if (!spend.ok) {
+    return err("protocol.bad_args");
+  }
+  return ok({ ...found.value, ...(spend.value === undefined ? {} : { spend: spend.value }) });
 }

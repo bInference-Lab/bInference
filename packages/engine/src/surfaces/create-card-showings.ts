@@ -22,6 +22,7 @@ import type {
   TransactionStore,
 } from "../ports.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import type { WebhookRuleStore } from "../webhooks/ports.js";
 import { cardFactsOf } from "./card-facts-of.js";
 import { type LiveReceipt, liveReceiptOf } from "./live-receipt.js";
 import { type PaperReceipt, paperReceiptOf } from "./paper-receipt.js";
@@ -119,6 +120,8 @@ export interface CardShowingsOptions {
   readonly agents: AgentStore;
   /** The auto orders, whose receipt says whether the order a card confirmed became active. */
   readonly orders: Pick<OrderStore, "byIntent">;
+  /** The webhook rules, whose receipt says whether the rule a card confirmed became active. */
+  readonly webhookRules: Pick<WebhookRuleStore, "byIntent">;
   /** Each intent's transactions, whose last one a live receipt links to. */
   readonly transactions: Pick<TransactionStore, "ofIntent">;
   /** The client tokens and console devices, whose labels name who proposed an intent. */
@@ -295,8 +298,9 @@ async function settled(
   if (paper !== undefined) {
     return { ref: card.callbackRef, closing, paper };
   }
-  const { orders, agents, transactions } = options;
-  const written = await writtenReceiptOf({ record, orders, agents, chains }, call);
+  const { orders, webhookRules, agents, transactions } = options;
+  const source = { record, orders, webhookRules, agents, chains };
+  const written = await writtenReceiptOf(source, call);
   if (written !== undefined) {
     return { ref: card.callbackRef, closing, written };
   }

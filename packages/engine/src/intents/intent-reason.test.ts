@@ -144,6 +144,7 @@ describe("intent reasons", () => {
       "copy_sale_lapsed",
       "copy_too_small",
       "copy_hourly",
+      "url_rotated",
     ]);
     expect(intentReasons.filter((code) => new Set<string>(orderSkipReasons).has(code))).toEqual([]);
   });

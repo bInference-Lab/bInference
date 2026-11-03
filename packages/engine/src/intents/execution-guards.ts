@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "@binference/core";
+import { isCardOnlyKind } from "./intent-kind.js";
 import type { IntentStatus } from "./intent-status.js";
 import type { QueueFacts } from "./intent-trigger.js";
 import type {
@@ -29,7 +30,7 @@ export function cancelIntent({
 export function fillOnPaper({
   status,
 }: GuardInput<"paper_fill_recorded">): Result<IntentChange, TransitionProblem> {
-  if (status.kind === "autoOrder") {
+  if (isCardOnlyKind(status.kind)) {
     return err("no_steps");
   }
   return status.isPaper ? ok({}) : err("live_intent");
@@ -42,7 +43,7 @@ export function fillOnPaper({
 export function shortOnPaper({
   status,
 }: GuardInput<"paper_holding_short">): Result<IntentChange, TransitionProblem> {
-  if (status.kind === "autoOrder") {
+  if (isCardOnlyKind(status.kind)) {
     return err("no_steps");
   }
   return status.isPaper ? ok({ reason: "nothing_to_sell" }) : err("live_intent");
@@ -132,7 +133,7 @@ export function takeIntoQueue({
   if (status.isPaper) {
     return err("paper_intent");
   }
-  if (status.kind === "unfreeze" || status.kind === "autoOrder") {
+  if (status.kind === "unfreeze" || isCardOnlyKind(status.kind)) {
     return err("no_steps");
   }
   if (!trigger.isAgentLive && status.kind !== "rescue") {
@@ -203,11 +204,12 @@ export function writeUnfreeze({
 }
 
 /**
- * `confirmed` to `reconciled` once an auto order's card is written (decision 0189): its order
- * became active on the tap, or had ended before it. It has no step, in paper mode or live.
+ * `confirmed` to `reconciled` once an auto order's or a webhook rule's card is written (decisions
+ * 0189 and 0299): its order or rule became active on the tap, or had ended before it. It has no
+ * step, in paper mode or live.
  */
 export function writeOrder({
   status,
 }: GuardInput<"order_written">): Result<IntentChange, TransitionProblem> {
-  return status.kind === "autoOrder" ? ok({}) : err("not_auto_order");
+  return isCardOnlyKind(status.kind) ? ok({}) : err("not_auto_order");
 }

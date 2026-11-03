@@ -11,10 +11,15 @@ export interface WebhookRuleView {
   readonly rule: ProtocolId<"webhookRule">;
   readonly agent: ProtocolId<"agent">;
   readonly state: "awaiting_confirmation" | "active" | "deleted";
+  /** Its bounds with every default filled: its wallet, its expiry and its rate. */
   readonly request: WebhookRuleRequest;
   readonly fills: number;
   readonly createdAt: number;
   readonly changedAt: number;
+  /** The alerts it accepts in any 60 seconds (decision 0299). */
+  readonly ratePerMinute?: number;
+  /** When it last accepted an alert. */
+  readonly lastAlertAt?: number;
 }
 
 /** Parses a webhook rule view. */
@@ -26,4 +31,6 @@ export const webhookRuleViewSchema: z.ZodType<WebhookRuleView> = z.object({
   fills: z.int().nonnegative(),
   createdAt: epochMsSchema,
   changedAt: epochMsSchema,
+  ratePerMinute: z.int().min(1).max(60).exactOptional(),
+  lastAlertAt: epochMsSchema.exactOptional(),
 });

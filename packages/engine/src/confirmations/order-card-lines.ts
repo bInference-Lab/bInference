@@ -36,8 +36,8 @@ const asset = (token: AssetRef): CardValue => ({ type: "asset", asset: token });
 const usd = (usdMicros: bigint): CardValue => ({ type: "usd", usdMicros });
 const choice = (value: string): CardValue => ({ type: "choice", choice: value });
 
-// Spec 4, section 3.8: a sale of a share, of a dollar value, of everything, or of an amount.
-function sellLine(token: AssetRef, size: FillSize): CardLine {
+/** What a sale sells (spec 4, section 3.8): a share, a dollar value, everything, or an amount. */
+export function sellLine(token: AssetRef, size: FillSize): CardLine {
   if ("usdMicros" in size) {
     return {
       key: "card.order.sell",
@@ -60,9 +60,11 @@ function sellLine(token: AssetRef, size: FillSize): CardLine {
   return { key: "card.order.sell", values: { size: choice("other"), amount } };
 }
 
-// Spec 4, section 3.8: what a buy spends, a dollar value, an amount, or a share of what the wallet
-// may spend of it (decision 0190).
-function spendLine(spent: AssetRef, size: FillSize): CardLine {
+/**
+ * What a buy spends (spec 4, section 3.8): a dollar value, an amount, or a share of what the
+ * wallet may spend of it (decision 0190).
+ */
+export function spendLine(spent: AssetRef, size: FillSize): CardLine {
   if ("usdMicros" in size) {
     return {
       key: "card.order.spend",

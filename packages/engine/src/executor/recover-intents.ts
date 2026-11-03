@@ -1,5 +1,6 @@
 import type { AccountRef } from "@binference/chain";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
+import { isCardOnlyKind } from "../intents/intent-kind.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { IntentState } from "../intents/intent-state.js";
 import type { ExecutionRun, ExecutorParts } from "./executor-run.js";
@@ -46,7 +47,7 @@ export async function liveIntentsIn(
   };
   const page = await parts.intents.list(query, { signal });
   const last = page.at(-1);
-  const onChain = page.filter(({ kind }) => kind !== "unfreeze" && kind !== "autoOrder");
+  const onChain = page.filter(({ kind }) => kind !== "unfreeze" && !isCardOnlyKind(kind));
   return page.length < pageSize || last === undefined
     ? onChain
     : [...onChain, ...(await liveIntentsIn(parts, states, { signal, after: last }))];

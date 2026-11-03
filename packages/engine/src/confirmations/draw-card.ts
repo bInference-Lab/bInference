@@ -11,6 +11,7 @@ import { identityDetailLines } from "./identity-card-lines.js";
 import { launchDetailLines } from "./launch-card-lines.js";
 import { reverseDiffersLine, sendNameLines } from "./send-card-lines.js";
 import { stakeDetailLines } from "./stake-card-lines.js";
+import { webhookRuleDetailLines } from "./webhook-rule-card-lines.js";
 
 /** The route line: the venue that quoted, its legs with their shares, the impact and the limit. */
 export interface CardRoute {
@@ -283,6 +284,7 @@ export function drawCard(facts: CardFacts): Card {
     ...(facts.action.kind === "bridge" ? bridgeDetailLines(facts.action) : []),
     ...(facts.action.kind === "stake" ? stakeDetailLines(facts.action) : []),
     ...(facts.action.kind === "registerIdentity" ? identityDetailLines(facts.action) : []),
+    ...(facts.action.kind === "webhookRule" ? webhookRuleDetailLines(facts.action) : []),
     ...optional(facts.roleWallet, ({ role, label }) => ({
       key: roleWalletKeys[role],
       values: { wallet: { type: "text", text: label } },

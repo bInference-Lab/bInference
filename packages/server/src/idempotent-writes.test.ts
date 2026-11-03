@@ -86,4 +86,31 @@ describe("createIdempotentWrites", () => {
       err("protocol.busy"),
     );
   });
+
+  it.each([
+    ["webhookRule/create", { rule: "whr_1", url: "http://127.0.0.1:7457/hook/whr_1/s3cr3t" }],
+    ["webhookRule/rotateUrl", { url: "http://127.0.0.1:7457/hook/whr_1/s3cr3t" }],
+  ])(
+    "keeps %s's answer without its URL, and answers its repeat with no URL",
+    async (op, answer) => {
+      const store = createMemoryIdempotencyStore();
+      const live = { signal: new AbortController().signal };
+      const runner = createIdempotentWrites({
+        store,
+        clock: createManualClock(0),
+        maxInFlight: 8,
+        signal: live.signal,
+      });
+      const shown = { ...lookup, op };
+      const work = vi.fn<Work>(async () => ok(answer));
+      await expect(runner.run({ lookup: shown, work })).resolves.toStrictEqual(ok(answer));
+      const kept = await store.recall(shown, live);
+      expect(kept.kind).toBe("repeat");
+      expect(JSON.stringify(kept)).not.toContain("s3cr3t");
+      await expect(runner.run({ lookup: shown, work })).resolves.toStrictEqual(
+        err("webhook.url_shown"),
+      );
+      expect(work).toHaveBeenCalledOnce();
+    },
+  );
 });

@@ -9,6 +9,9 @@ import { tickOrders } from "../orders/tick-orders.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import { pruneWorkOf } from "../records/prune-records.js";
 import type { ScheduleQueue } from "../schedules/run-schedules.js";
+import { endExpiredRules } from "../webhooks/end-expired-rules.js";
+import { followWaitingRules } from "../webhooks/follow-rule-card.js";
+import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { Engine } from "./create-engine.js";
 
 /**
@@ -34,14 +37,20 @@ async function runQueue(
 }
 
 /**
- * The work that waits for no price: the orders' tick, then the alerts whose expiry came, then the
- * matches the alerts' ended notice hours held back.
+ * The work that waits for no price: the orders' tick, the webhook rules' cards and expiries, then
+ * the alerts whose expiry came, then the matches the alerts' ended notice hours held back.
  */
 async function tickAll(
-  parts: { readonly orders: OrderParts; readonly alerts: AlertFiring },
+  parts: {
+    readonly orders: OrderParts;
+    readonly rules: WebhookRuleParts;
+    readonly alerts: AlertFiring;
+  },
   signal: AbortSignal,
 ): Promise<void> {
   await tickOrders(parts.orders, signal);
+  await followWaitingRules(parts.rules, signal);
+  await endExpiredRules(parts.rules, signal);
   await parts.alerts.expire({ signal });
   await parts.alerts.tellHeld({ signal });
 }
@@ -50,6 +59,7 @@ async function tickAll(
 interface TimedParts {
   readonly intents: {
     readonly orders: OrderParts;
+    readonly rules: WebhookRuleParts;
     readonly cardTimer: CardTimerParts;
     readonly dca: DcaOrders;
     readonly copies: CopyOrders;
@@ -76,7 +86,7 @@ export function timedWorkOf(
   return {
     ...pruneWorkOf(parts),
     tickOrders: async ({ signal }) =>
-      tickAll({ orders: intents.orders, alerts: chat.alerts }, signal),
+      tickAll({ orders: intents.orders, rules: intents.rules, alerts: chat.alerts }, signal),
     // Drafts expire first, so a card timer that throws never keeps an ended draft's message open.
     expireCards: async ({ signal }) => {
       const nextDraft = drafts.expire();

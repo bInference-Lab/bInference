@@ -93,6 +93,16 @@ describe("webhookRuleRequestSchema", () => {
     const rule = { ...bounds, name: "breakout", reason: "x" };
     expect(webhookRuleRequestSchema.safeParse(rule).success).toBe(false);
   });
+
+  it("takes what a buy spends and a rate of 1 to 60 alerts a minute, and no other rate", () => {
+    const rule = { ...bounds, name: "breakout", spend: refs.token, ratePerMinute: 60 };
+    expect(webhookRuleRequestSchema.safeParse(rule).success).toBe(true);
+    expect(webhookRuleRequestSchema.safeParse({ ...rule, ratePerMinute: 0 }).success).toBe(false);
+    expect(webhookRuleRequestSchema.safeParse({ ...rule, ratePerMinute: 61 }).success).toBe(false);
+    expect(webhookRuleRequestSchema.safeParse({ ...rule, name: "x".repeat(65) }).success).toBe(
+      false,
+    );
+  });
 });
 
 describe("orderTermsSchema", () => {

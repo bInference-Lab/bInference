@@ -4,6 +4,7 @@ import { type CardAction, type CardActionFacts, orderTermsOf } from "./card-acti
 import type { Answerer } from "./card-answer.js";
 import type { CardLine, CardValue } from "./card-line.js";
 import { type CardPayee, payeeValue } from "./send-card-lines.js";
+import { type WebhookRuleAction, webhookRuleSummary } from "./webhook-rule-card-lines.js";
 
 /**
  * How a card closed: the first answer, Confirm or Cancel, or its timer. Every copy of the card on
@@ -118,8 +119,9 @@ export type BridgeOutcome =
 
 /**
  * What a confirmed intent with nothing to send took effect as (spec 4, section 3.5): an unfreeze,
- * with the agents its card named; an auto order's card, with the order it made active, or why the
- * order did not start, as when it expired before the tap.
+ * with the agents its card named; an auto order's card, with the order it made active; a webhook
+ * rule's card, with the rule it made active; or why the order or rule did not start, as when it
+ * expired before the tap.
  */
 export type WrittenOutcome =
   | ({ readonly kind: "unfrozen" } & CardActionFacts["unfreeze"])
@@ -128,6 +130,7 @@ export type WrittenOutcome =
       readonly order: CardAction<"autoOrder">;
       readonly isPaper: boolean;
     }
+  | { readonly kind: "ruleActive"; readonly rule: WebhookRuleAction }
   | { readonly kind: "orderUnstarted"; readonly why: "expired" | "cancelled" };
 
 /**
@@ -244,6 +247,14 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
       mode: choice(isPaper ? "paper" : "live"),
       ...orderTermsOf(order),
       expiry: { type: "dateTime", atMs: order.expiresAtMs },
+    },
+  }),
+  ruleActive: ({ rule }) => ({
+    key: "receipt.webhookRuleActive",
+    values: {
+      name: text(rule.name),
+      summary: { type: "line", line: webhookRuleSummary(rule) },
+      expiry: { type: "dateTime", atMs: rule.expiresAtMs },
     },
   }),
   orderUnstarted: ({ why }) => ({ key: "receipt.orderUnstarted", values: { why: choice(why) } }),

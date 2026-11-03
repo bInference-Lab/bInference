@@ -52,8 +52,11 @@ export interface CreatedOrder {
   readonly intent: IntentSnapshot;
 }
 
-// The agent must exist, be in use and not be frozen: a frozen agent takes no order.
-function agentRefusal(settings: AgentSettings | undefined): ProtocolErrorCode | undefined {
+/**
+ * Why an agent takes no order or webhook rule: none is stored, it is archived, or it is frozen.
+ * `undefined` for an agent in use.
+ */
+export function agentRefusal(settings: AgentSettings | undefined): ProtocolErrorCode | undefined {
   if (settings === undefined) {
     return "agent.not_found";
   }

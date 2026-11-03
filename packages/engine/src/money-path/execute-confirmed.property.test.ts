@@ -14,7 +14,7 @@ const machine = createIntentStateMachine({ clock: createManualClock(1_000) });
 const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
 const live = { signal: new AbortController().signal };
 
-type Route = "paper" | "executor" | "unfreeze" | "autoOrder" | "orderFill";
+type Route = "paper" | "executor" | "unfreeze" | "autoOrder" | "webhookRule" | "orderFill";
 
 interface Case {
   readonly kind: IntentKind;
@@ -75,6 +75,10 @@ async function routesOf(item: Case): Promise<readonly Route[]> {
     routes.push("autoOrder");
     return await Promise.resolve(snapshot);
   };
+  const webhookRule = async (snapshot: IntentSnapshot): Promise<IntentSnapshot> => {
+    routes.push("webhookRule");
+    return await Promise.resolve(snapshot);
+  };
   const orderFill = async (snapshot: IntentSnapshot): Promise<IntentSnapshot> => {
     routes.push("orderFill");
     return await Promise.resolve(snapshot);
@@ -86,18 +90,27 @@ async function routesOf(item: Case): Promise<readonly Route[]> {
     routes.push("paper");
     return await Promise.resolve(snapshot);
   };
-  const routing = { paper, executor, unfreeze, autoOrder, orderFill, paperStake, publish };
+  const routing = {
+    paper,
+    executor,
+    unfreeze,
+    autoOrder,
+    webhookRule,
+    orderFill,
+    paperStake,
+    publish,
+  };
   await createExecuteConfirmed(routing)({ record, stored } as IntentSnapshot, live);
   return routes;
 }
 
-// Spec 6, invariant 3 and decisions 0100, 0128, 0189 and 0195: an auto order's card, answered in
-// any way, goes to its order; otherwise only a confirmed intent moves on, a paper one to the paper
+// Spec 6, invariant 3 and decisions 0100, 0128, 0189, 0195 and 0299: an auto order's card,
+// answered in any way, goes to its order, and a webhook rule's card to its rule; otherwise only a confirmed intent moves on, a paper one to the paper
 // fill, an order's paper fill with its order's write, an unfreeze to its write, and any other live
 // one, a rescue in paper mode too, to the executor.
 function expectedRoutes(item: Case): readonly Route[] {
-  if (item.kind === "autoOrder") {
-    return ["autoOrder"];
+  if (item.kind === "autoOrder" || item.kind === "webhookRule") {
+    return [item.kind];
   }
   if (item.state !== "confirmed") {
     return [];

@@ -20,6 +20,7 @@ describe("protocolErrorCodes", () => {
       "question",
       "image",
       "alert",
+      "webhook",
       "market",
       "wallet",
       "address",

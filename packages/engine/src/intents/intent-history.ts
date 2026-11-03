@@ -1,6 +1,7 @@
 import { BinferenceError, type JsonValue } from "@binference/core";
 import type { CardClosing } from "../confirmations/card-closing.js";
 import { autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
+import { webhookRuleQuoteDocument } from "../webhooks/webhook-rule-quote.js";
 import { bridgeQuoteDocument } from "./bridge-quote.js";
 import type { CardRecord } from "./card-record.js";
 import {
@@ -43,6 +44,7 @@ const ownQuoteTimes: ReadonlyMap<IntentKind, (quote: JsonValue) => number> = new
   ["rescue", (quote) => rescueQuoteDocument.decode(quote).quotedAtMs],
   ["unfreeze", (quote) => unfreezeQuoteDocument.decode(quote).quotedAtMs],
   ["autoOrder", (quote) => autoOrderQuoteDocument.decode(quote).quotedAtMs],
+  ["webhookRule", (quote) => webhookRuleQuoteDocument.decode(quote).quotedAtMs],
   ["launchToken", (quote) => tokenLaunchQuoteDocument.decode(quote).quotedAtMs],
   ["send", (quote) => sendQuoteDocument.decode(quote).quotedAtMs],
   ["revokeApproval", (quote) => revokeQuoteDocument.decode(quote).quotedAtMs],

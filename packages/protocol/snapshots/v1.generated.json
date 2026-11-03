@@ -456,6 +456,9 @@
         "image.unreadable",
         "alert.not_found",
         "alert.too_many",
+        "webhook.not_found",
+        "webhook.too_many",
+        "webhook.url_shown",
         "market.no_data",
         "market.source_down",
         "market.no_launch_feed",
@@ -5881,7 +5884,8 @@
                 "launchToken",
                 "rescue",
                 "unfreeze",
-                "autoOrder"
+                "autoOrder",
+                "webhookRule"
               ]
             },
             "state": {
@@ -6649,6 +6653,23 @@
                   "required": [
                     "kind",
                     "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "webhookRule"
+                    },
+                    "rule": {
+                      "type": "string",
+                      "pattern": "^whr_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "rule"
                   ]
                 }
               ]
@@ -13958,7 +13979,8 @@
                 "launchToken",
                 "rescue",
                 "unfreeze",
-                "autoOrder"
+                "autoOrder",
+                "webhookRule"
               ]
             },
             "state": {
@@ -14726,6 +14748,23 @@
                   "required": [
                     "kind",
                     "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "webhookRule"
+                    },
+                    "rule": {
+                      "type": "string",
+                      "pattern": "^whr_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "rule"
                   ]
                 }
               ]
@@ -15800,7 +15839,8 @@
                 "launchToken",
                 "rescue",
                 "unfreeze",
-                "autoOrder"
+                "autoOrder",
+                "webhookRule"
               ]
             },
             "state": {
@@ -16568,6 +16608,23 @@
                   "required": [
                     "kind",
                     "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "webhookRule"
+                    },
+                    "rule": {
+                      "type": "string",
+                      "pattern": "^whr_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "rule"
                   ]
                 }
               ]
@@ -18104,7 +18161,8 @@
                 "launchToken",
                 "rescue",
                 "unfreeze",
-                "autoOrder"
+                "autoOrder",
+                "webhookRule"
               ]
             }
           },
@@ -18177,7 +18235,8 @@
                       "launchToken",
                       "rescue",
                       "unfreeze",
-                      "autoOrder"
+                      "autoOrder",
+                      "webhookRule"
                     ]
                   },
                   "state": {
@@ -18945,6 +19004,23 @@
                         "required": [
                           "kind",
                           "order"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "webhookRule"
+                          },
+                          "rule": {
+                            "type": "string",
+                            "pattern": "^whr_"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "rule"
                         ]
                       }
                     ]
@@ -20041,7 +20117,8 @@
                 "launchToken",
                 "rescue",
                 "unfreeze",
-                "autoOrder"
+                "autoOrder",
+                "webhookRule"
               ]
             },
             "state": {
@@ -20809,6 +20886,23 @@
                   "required": [
                     "kind",
                     "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "webhookRule"
+                    },
+                    "rule": {
+                      "type": "string",
+                      "pattern": "^whr_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "rule"
                   ]
                 }
               ]
@@ -21889,7 +21983,8 @@
                 "launchToken",
                 "rescue",
                 "unfreeze",
-                "autoOrder"
+                "autoOrder",
+                "webhookRule"
               ]
             },
             "state": {
@@ -22657,6 +22752,23 @@
                   "required": [
                     "kind",
                     "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "webhookRule"
+                    },
+                    "rule": {
+                      "type": "string",
+                      "pattern": "^whr_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "rule"
                   ]
                 }
               ]
@@ -23736,7 +23848,8 @@
                 "launchToken",
                 "rescue",
                 "unfreeze",
-                "autoOrder"
+                "autoOrder",
+                "webhookRule"
               ]
             },
             "state": {
@@ -24504,6 +24617,23 @@
                   "required": [
                     "kind",
                     "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "webhookRule"
+                    },
+                    "rule": {
+                      "type": "string",
+                      "pattern": "^whr_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "rule"
                   ]
                 }
               ]
@@ -31027,6 +31157,16 @@
                     "type": "integer",
                     "minimum": 0,
                     "maximum": 9007199254740991
+                  },
+                  "ratePerMinute": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
+                  },
+                  "lastAlertAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
                   }
                 },
                 "required": [
@@ -34690,7 +34830,8 @@
                               "launchToken",
                               "rescue",
                               "unfreeze",
-                              "autoOrder"
+                              "autoOrder",
+                              "webhookRule"
                             ]
                           },
                           "state": {
@@ -35458,6 +35599,23 @@
                                 "required": [
                                   "kind",
                                   "order"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "webhookRule"
+                                  },
+                                  "rule": {
+                                    "type": "string",
+                                    "pattern": "^whr_"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "rule"
                                 ]
                               }
                             ]

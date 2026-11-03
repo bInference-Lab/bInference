@@ -14,7 +14,8 @@ import type { FillProposal } from "./authorize-simulated.js";
  * which a rescue always is (decision 0100), goes to the executor, which takes it onto its wallet's
  * queue; a confirmed rescue is first announced on every surface with `notice.rescue`. A confirmed
  * unfreeze has no step: it is written at once (decision 0128). An auto order's card, answered in
- * any way, goes to its order, which follows it (decision 0189). An auto order's paper fill fills
+ * any way, goes to its order, which follows it (decision 0189), and a webhook rule's card to its rule
+ * (decision 0299). An auto order's paper fill fills
  * with its order's write (decision 0195). Any other intent comes back as it was.
  */
 export type ExecuteConfirmed = (
@@ -36,6 +37,8 @@ export interface ExecuteConfirmedOptions {
   readonly unfreeze: ExecuteConfirmed;
   /** Follows an auto order's card, whatever its answer: its order becomes active or ends. */
   readonly autoOrder: ExecuteConfirmed;
+  /** Follows a webhook rule's card, whatever its answer: its rule becomes active or ends. */
+  readonly webhookRule: ExecuteConfirmed;
   /** Fills an auto order's confirmed paper fill, with its write on its order. */
   readonly orderFill: ExecuteConfirmed;
   /** Fills a confirmed paper staking move at its paper plan (decision 0327). */
@@ -56,6 +59,9 @@ export function createExecuteConfirmed(options: ExecuteConfirmedOptions): Execut
     const { record } = snapshot;
     if (record.kind === "autoOrder") {
       return options.autoOrder(snapshot, call);
+    }
+    if (record.kind === "webhookRule") {
+      return options.webhookRule(snapshot, call);
     }
     if (record.state !== "confirmed") {
       return snapshot;

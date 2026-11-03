@@ -54,6 +54,7 @@ describe("the auto test", () => {
       launchToken: "kind",
       rescue: "send",
       unfreeze: "kind",
+      webhookRule: "kind",
       autoOrder: "kind",
     });
   });

@@ -76,6 +76,7 @@ async function drawnCard(test: TestEngine, intent: Id<"int">) {
     intents: test.stores.intents,
     agents: test.stores.agents,
     orders: test.stores.orders,
+    webhookRules: test.stores.webhookRules,
     transactions: test.stores.transactions,
     access: test.stores.access,
     install: test.stores.install,

@@ -9,6 +9,7 @@ import type {
   LaunchTokenRequest,
   RescueRequest,
   UnfreezeRequest,
+  WebhookRuleCardRequest,
 } from "@binference/protocol";
 import type { DestinationChain } from "../address-book/destination-chain.js";
 import type { CardLine } from "../confirmations/card-line.js";
@@ -31,10 +32,25 @@ import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { unfreezeRequestDocument } from "../intents/unfreeze-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import { autoOrderQuoteDocument, autoOrderRequestDocument } from "../orders/auto-order-quote.js";
+import {
+  webhookRuleCardRequestDocument,
+  type WebhookRuleQuote,
+  webhookRuleQuoteDocument,
+} from "../webhooks/webhook-rule-quote.js";
 import type { DeliveryView } from "./delivery-view-of.js";
 
 /** What an intent was asked: a proposal's request, a rescue's, an unfreeze's or an auto order's. */
-type AnyRequest = IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest;
+type AnyRequest =
+  | IntentRequest
+  | RescueRequest
+  | UnfreezeRequest
+  | AutoOrderRequest
+  | WebhookRuleCardRequest;
+
+// A webhook rule's token, and what a buy spends when it names it.
+function webhookRuleAssetsOf({ request }: WebhookRuleQuote): readonly AssetRef[] {
+  return request.spend === undefined ? [request.token] : [request.token, request.spend];
+}
 
 // The assets a trade asks for: a sale's receive, when it leaves it to its place, is its quote's.
 function tradeAssetsOf(request: AnyRequest): readonly AssetRef[] {
@@ -93,6 +109,7 @@ const quotedAssets: Readonly<Partial<Record<string, (quote: JsonValue) => readon
     ...new Set(rescueQuoteDocument.decode(quote).moves.map(({ amount }) => amount.asset)),
   ],
   autoOrder: (quote) => [autoOrderQuoteDocument.decode(quote).request.token],
+  webhookRule: (quote) => webhookRuleAssetsOf(webhookRuleQuoteDocument.decode(quote)),
   stake: (quote) => [stakeQuoteDocument.decode(quote).plan.value.asset],
 };
 
@@ -143,6 +160,9 @@ function requestOf(record: IntentRecord): AnyRequest {
   if (record.kind === "autoOrder") {
     return autoOrderRequestDocument.decode(record.request);
   }
+  if (record.kind === "webhookRule") {
+    return webhookRuleCardRequestDocument.decode(record.request);
+  }
   return record.kind === "rescue" ? rescueRequest : requestDocument.decode(record.request);
 }
 
@@ -154,6 +174,7 @@ const ownQuoteKinds: ReadonlySet<string> = new Set([
   "rescue",
   "unfreeze",
   "autoOrder",
+  "webhookRule",
   "launchToken",
   "stake",
   "registerIdentity",

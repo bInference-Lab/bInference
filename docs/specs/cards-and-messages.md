@@ -536,6 +536,11 @@ such as Base or Robinhood Chain, in both languages.
 | Identity, warning      | `card.identity.public`        | ⚠️ Anyone can link this account to this agent, and the record cannot be deleted                                | ⚠️ 任何人都可以把此账户与此 Agent 关联，且该记录无法删除                                   |
 | No description         | `card.identity.noDescription` | none                                                                                                           | 无                                                                                         |
 | Alert rule URL         | `card.webhookRule.url`        | Its URL works once you confirm; anyone who has it can fire this rule inside its bounds                         | 确认后其地址才会生效；任何持有该地址的人都可以在规则范围内触发此规则                       |
+| Alert rule buys        | `card.webhookRule.buy`        | buy {token} with {spend} on each alert                                                                         | 每次提醒时{spend} 买入 {token}                                                             |
+| Alert rule sells       | `card.webhookRule.sell`       | {sell} on each alert                                                                                           | 每次提醒时{sell}                                                                           |
+| Alert rule fills       | `card.webhookRule.limits`     | {maxFills, plural, =0 {No fill limit} one {Up to # fill} other {Up to # fills}} until {expiry}                 | {maxFills, plural, =0 {不限成交次数} other {最多成交 # 次}}，截至 {expiry}                 |
+| Alert rule on paper    | `card.webhookRule.paper`      | It fills on paper only, even after this agent goes live: alert rules trade no live funds yet                   | 它只在模拟模式下成交，即使此 Agent 转为实盘也是如此：提醒规则暂不交易实盘资金              |
+| Alert rule slippage    | `card.webhookRule.slippage`   | Each fill takes at most {slippage} slippage                                                                    | 每次成交的滑点最多 {slippage}                                                              |
 | Address book room      | `address.room`                | {used} of {most} addresses saved for {chain}, the most the ceiling holds there                                 | 已为 {chain} 保存 {used} 个地址，上限在该链最多可容纳 {most} 个                            |
 
 - A send by name ([spec 1, section 8.1](protocol.md#section-8-1)) shows `card.send.name` in place
@@ -578,7 +583,14 @@ such as Base or Robinhood Chain, in both languages.
   is the registering wallet's address whole, `{agentName}` the agent's name whole, and
   `{description}` the owner's words, or `card.identity.noDescription` for none.
 - A webhook rule's card (`card.webhookRule.action`) shows its summary as an auto order's does
-  (section 3.8), then `card.webhookRule.url`.
+  (section 3.8): `card.webhookRule.buy` or `card.webhookRule.sell`, `{spend}` and `{sell}` as
+  `card.order.spend` and `card.order.sell` word them. Then `card.webhookRule.limits`,
+  `card.webhookRule.slippage` when the rule names its most slippage, `card.webhookRule.url` and
+  `card.webhookRule.paper`: a rule fills on paper only, in the mode
+  its agent had when it was made, until live webhook fills are built
+  ([decisions 0337](../DECISIONS.md#d0337) and [0338](../DECISIONS.md#d0338)). Its worst price
+  shows as `card.order.worstPrice`, and a rule held in the launch or bridge wallet names it as an
+  auto order's card does. The header confirms an "alert rule" / 「提醒规则」.
 - `address list` in the CLI and the console's address book show `address.room` once for each
   other chain the agent saved an address for, from `address/list`'s `room`
   ([decisions 0297](../DECISIONS.md#d0297) and [0314](../DECISIONS.md#d0314)).
@@ -1075,6 +1087,7 @@ section 4; spec 1, section 10):
 | `error.address.own_wallet`       | This address is one of binference's own wallets, which no bridge may pay on another chain. Save a wallet you hold outside binference.                                                                   | 此地址是 binference 自己的钱包之一，任何跨链都不得在其他链上向其付款。请保存你在 binference 之外持有的钱包。                                                        |
 | `error.webhook.not_found`        | No active alert rule has that id. List the rules in the console.                                                                                                                                        | 没有该 ID 的生效提醒规则。请在控制台中查看规则列表。                                                                                                                |
 | `error.webhook.too_many`         | This agent has 20 alert rules. Delete one before you add another.                                                                                                                                       | 此 Agent 已有 20 条提醒规则。请先删除一条再添加。                                                                                                                   |
+| `error.webhook.url_shown`        | This alert rule's URL was shown once and is not kept. Rotate the rule's URL to get a new one.                                                                                                           | 此提醒规则的地址只显示一次，不会保存。请更换该规则的地址以获取新地址。                                                                                              |
 | `error.remote.tailscale_missing` | Tailscale is not installed. Install it from tailscale.com, then run `binference expose` again.                                                                                                          | 未安装 Tailscale。请从 tailscale.com 安装后再次运行 `binference expose`。                                                                                           |
 | `error.remote.logged_out`        | Tailscale is not signed in. Run `tailscale up`, then `binference expose` again.                                                                                                                         | Tailscale 未登录。请运行 `tailscale up`，然后再次运行 `binference expose`。                                                                                         |
 | `error.remote.https_off`         | Your tailnet has no HTTPS certificates. Turn HTTPS on in Tailscale's admin console, then run `binference expose` again.                                                                                 | 你的 tailnet 没有 HTTPS 证书。请在 Tailscale 管理后台开启 HTTPS，然后再次运行 `binference expose`。                                                                 |

@@ -41,6 +41,15 @@ export interface AutoOrderRequest {
   readonly order: ProtocolId<"autoOrder">;
 }
 
+/**
+ * The request of a `webhookRule` intent, which only `webhookRule/create` creates: the rule its
+ * card confirms (decision 0299).
+ */
+export interface WebhookRuleCardRequest {
+  readonly kind: "webhookRule";
+  readonly rule: ProtocolId<"webhookRule">;
+}
+
 /** The balance changes a simulation saw for the wallet. */
 export interface SimulationView {
   readonly spent: readonly Amount[];
@@ -109,7 +118,12 @@ export interface IntentView {
   readonly wallet: ProtocolId<"wallet">;
   readonly kind: IntentKind;
   readonly state: IntentState;
-  readonly request: IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest;
+  readonly request:
+    | IntentRequest
+    | RescueRequest
+    | UnfreezeRequest
+    | AutoOrderRequest
+    | WebhookRuleCardRequest;
   readonly quote?: QuoteView;
   readonly risk?: RiskView;
   readonly simulation?: SimulationView;
@@ -163,6 +177,7 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
     z.object({ kind: z.literal("rescue") }),
     z.object({ kind: z.literal("unfreeze"), agent: protocolIdSchema("agent").exactOptional() }),
     z.object({ kind: z.literal("autoOrder"), order: protocolIdSchema("autoOrder") }),
+    z.object({ kind: z.literal("webhookRule"), rule: protocolIdSchema("webhookRule") }),
   ]),
   quote: quoteViewSchema.exactOptional(),
   risk: riskViewSchema.exactOptional(),

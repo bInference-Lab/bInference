@@ -40,6 +40,7 @@ import { tradeSlippageBps } from "../money-path/swap-trade.js";
 import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
 import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import { webhookRuleQuoteDocument } from "../webhooks/webhook-rule-quote.js";
 import { bridgeCardFacts } from "./bridge-card-facts.js";
 import { identityCardFacts } from "./identity-card-facts.js";
 import { launchCardFacts } from "./launch-card-facts.js";
@@ -47,6 +48,7 @@ import { orderActionOf } from "./order-action-of.js";
 import { stakeCardFacts } from "./stake-card-facts.js";
 import { transferCardFacts } from "./transfer-card-facts.js";
 import { unfreezeActionOf } from "./unfreeze-action-of.js";
+import { webhookRuleCardFacts } from "./webhook-rule-card-facts.js";
 
 function isNativeAsset(chains: ChainRegistry, asset: AssetRef): boolean {
   const chain = chains.get(assetRefParts(asset).chain);
@@ -300,6 +302,11 @@ const ownQuoteFacts: ReadonlyMap<
   ["rescue", (quote, source) => rescueFacts(rescueQuoteDocument.decode(quote), source)],
   ["unfreeze", (quote, source) => unfreezeFacts(unfreezeQuoteDocument.decode(quote), source)],
   ["autoOrder", (quote, source) => autoOrderFacts(autoOrderQuoteDocument.decode(quote), source)],
+  [
+    "webhookRule",
+    (quote, source) =>
+      webhookRuleCardFacts(webhookRuleQuoteDocument.decode(quote), source, baseWarnings(source)),
+  ],
   [
     "launchToken",
     (quote, source) =>

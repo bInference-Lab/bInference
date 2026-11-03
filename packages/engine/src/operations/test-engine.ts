@@ -339,6 +339,7 @@ export async function startTestEngine(options: TestEngineOptions = {}): Promise<
     clock,
     ids: createIdSource({ clock, random: createSeededRandom(3) }),
     random: createSeededRandom(4),
+    secretRandom: createSeededRandom(6),
     publish: (push) => pushes.push(push),
   };
   const engine = runningEngineOf(engineOptions);

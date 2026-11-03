@@ -117,7 +117,12 @@ describe("the receipt of a confirmed card that sends nothing on chain", () => {
     await tapCard(test, view.intent, "confirm");
     const record = present(await test.stores.intents.get(view.intent, live));
     const { cardId: _card, ...stored } = await storedOrder(test, view.order);
-    const source = { record, agents: test.stores.agents, chains: testChains() };
+    const source = {
+      record,
+      agents: test.stores.agents,
+      webhookRules: test.stores.webhookRules,
+      chains: testChains(),
+    };
     const endedAs = async (order: Readonly<typeof stored> | undefined) => {
       const orders = { byIntent: async () => Promise.resolve(order) };
       return (await writtenReceiptOf({ ...source, orders }, live))?.outcome;
@@ -138,7 +143,8 @@ describe("the receipt of a confirmed card that sends nothing on chain", () => {
     const test = await startOrderEngine();
     const view = await createdOrder(test);
     const record = present(await test.stores.intents.get(view.intent, live));
-    const source = { orders: test.stores.orders, agents: test.stores.agents, chains: testChains() };
+    const { orders, webhookRules, agents } = test.stores;
+    const source = { orders, webhookRules, agents, chains: testChains() };
 
     expect(await writtenReceiptOf({ ...source, record }, live)).toBeUndefined();
   });

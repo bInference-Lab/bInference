@@ -6,7 +6,7 @@ import type { OrderParts } from "./create-order.js";
 import type { CheckedOrder } from "./order-rules.js";
 
 /**
- * The wallet a new order runs from: the one its request names, or the one its trades route to,
+ * The wallet a new order or webhook rule runs from: the one its request names, or the one its trades route to,
  * the agent's launch wallet for a token on a launch's curve or one it holds, else its default
  * wallet (decision 0217); with an account in custody on the token's chain (else
  * `wallet.not_found`). A curve read that failed picks none (`quote.venue_down`, decision 0218). A
@@ -15,7 +15,11 @@ import type { CheckedOrder } from "./order-rules.js";
  */
 export async function orderWalletOf(
   parts: Pick<OrderParts, "wallets" | "custody" | "launches" | "install">,
-  asked: CheckedOrder & { readonly isPaper: boolean },
+  asked: {
+    readonly request: Pick<CheckedOrder["request"], "agent" | "wallet" | "side" | "token">;
+    readonly chain: CheckedOrder["chain"];
+    readonly isPaper: boolean;
+  },
   signal: AbortSignal,
 ): Promise<Result<Id<"wal">, ProtocolErrorCode>> {
   const { request, chain } = asked;

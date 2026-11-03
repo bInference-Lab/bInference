@@ -7,6 +7,7 @@ import type { LaunchDetails } from "./launch-card-lines.js";
 import { type CardOrderRequest, orderSummaryLine } from "./order-card-lines.js";
 import { type CardPayee, type CardSentName, sendActionLine } from "./send-card-lines.js";
 import { type StakeDetails, validatorValue } from "./stake-card-lines.js";
+import { type WebhookRuleAction, webhookRuleActionLine } from "./webhook-rule-card-lines.js";
 
 /** Where a buy or a sell trades: a launchpad's bonding curve, or a venue's pool. */
 export type TradePlace = { readonly curve: string } | { readonly pool: string };
@@ -110,6 +111,8 @@ export interface CardActionFacts {
     /** A copy order's leader's label in the agent's address book (decision 0261). */
     readonly leaderLabel?: string;
   };
+  /** A webhook rule's terms with every default filled, which its alerts fill inside (0299). */
+  readonly webhookRule: WebhookRuleAction;
 }
 
 /** The kind of a card's action. */
@@ -256,6 +259,7 @@ const actionLines: ActionLines = {
       expiry: { type: "dateTime", atMs: action.expiresAtMs },
     },
   }),
+  webhookRule: webhookRuleActionLine,
 };
 
 /**
@@ -296,6 +300,7 @@ const verbs: { readonly [K in Exclude<CardActionKind, "stake">]: string } = {
   rescue: "rescue",
   unfreeze: "unfreeze",
   autoOrder: "autoOrder",
+  webhookRule: "webhookRule",
 };
 
 /** The verb the card's header confirms: the kind, or a stake move such as `unstake`. */

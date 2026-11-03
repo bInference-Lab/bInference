@@ -73,6 +73,8 @@ const expected: Readonly<Record<string, string>> = {
   "notice.signerRefused": `${warning} The signer refused to sign a step of a trade: its amounts are not the trade's. Nothing was sent for it.`,
   "notice.privyUnreachable": `${red} binference could not reach Privy for five minutes after it started, so it stays locked. Check this machine's network, then run \`binference unlock\`.`,
   "notice.webhookPortTaken": `${warning} binference cannot take alerts for your alert rules: port 7457 is in use. Set \`engine.webhookPort\` in config.json5 to a free port, then restart binference.`,
+  "notice.webhookRotated":
+    'The URL of alert rule "BNB breakout" changed from the CLI; the old one no longer works. Not you? Delete the rule now.',
   "notice.configInvalid": `${warning} binference kept the settings it runs on: config.json5 has a value telegram.mode does not take. Run \`binference check\` to see the fix.`,
   "notice.configChanged": "Settings changed in config.json5: owner.locale. They apply now.",
   "notice.unknownTx": `${warning} Main's nonce 42 was used by a transaction binference did not sign`,

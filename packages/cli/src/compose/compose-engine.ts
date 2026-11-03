@@ -148,6 +148,11 @@ export interface ComposeEngineOptions extends EngineChainParts {
   readonly ownerChat?: Pick<EngineHandlerTable, "config/change">;
   readonly clock: Clock;
   readonly random: Random;
+  /**
+   * The secure generator of webhook rule secrets and the base of their URLs (decision 0338);
+   * without them no rule is made.
+   */
+  readonly webhooks?: Pick<EngineOptions, "secretRandom" | "webhookBase">;
   readonly logger: Logger;
 }
 
@@ -295,6 +300,7 @@ function engineOf(
     clock: options.clock,
     ids: given.ids,
     random: options.random,
+    ...options.webhooks,
     publish: given.publish,
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,

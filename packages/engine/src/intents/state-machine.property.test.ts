@@ -5,7 +5,7 @@ import type { Authorization } from "./authorization.js";
 import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import { type IntentEvent, needsLedgerEntry } from "./intent-event.js";
-import { type IntentKind, intentKinds } from "./intent-kind.js";
+import { type IntentKind, intentKinds, isCardOnlyKind } from "./intent-kind.js";
 import type { IntentReason } from "./intent-reason.js";
 import {
   checkReasons,
@@ -237,7 +237,7 @@ const proposals: fc.Arbitrary<IntentProposal> = fc.oneof(
   fc.record({
     ...common,
     kind: fc.constantFrom(
-      ...intentKinds.filter((kind) => kind !== "rescue" && kind !== "unfreeze"),
+      ...intentKinds.filter((kind) => !["rescue", "unfreeze", "webhookRule"].includes(kind)),
     ),
     proposer: fc.constantFrom<IntentProposer>("agent_runtime", "mcp_client", "owner"),
     agentStatus: fc.constant("active" as const),
@@ -251,7 +251,7 @@ const proposals: fc.Arbitrary<IntentProposal> = fc.oneof(
   }),
   fc.record({
     ...common,
-    kind: fc.constantFrom("rescue" as const, "unfreeze" as const),
+    kind: fc.constantFrom("rescue" as const, "unfreeze" as const, "webhookRule" as const),
     proposer: fc.constant("owner" as const),
     agentStatus: fc.constant("active" as const),
   }),
@@ -523,11 +523,12 @@ function ledgerViolations({ events, final }: History): readonly string[] {
   return terminalEntries === wanted ? [] : [`${String(terminalEntries)} terminal ledger entries`];
 }
 
-// Decisions 0128 and 0189: an unfreeze is live, and neither it nor an auto order's card has a step.
+// Decisions 0128, 0189 and 0299: an unfreeze is live, and neither it nor an auto order's or a
+// webhook rule's card has a step.
 function unsteppedViolations(final: IntentStatus, states: readonly IntentState[]) {
   const ran = states.includes("executing") || states.includes("paper_filled");
   const isUnsteppedRun =
-    final.kind === "unfreeze" ? final.isPaper || ran : final.kind === "autoOrder" && ran;
+    final.kind === "unfreeze" ? final.isPaper || ran : isCardOnlyKind(final.kind) && ran;
   return isUnsteppedRun ? [`an ${final.kind} ran on paper or on a chain`] : [];
 }
 

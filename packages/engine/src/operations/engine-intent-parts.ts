@@ -9,8 +9,9 @@ import { createPaperFills } from "../paper/paper-fills.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { writeUnfreeze } from "../safety/write-unfreeze.js";
 import { fillStakeOnPaper } from "../staking/fill-stake-on-paper.js";
+import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { EngineOptions } from "./create-engine.js";
-import { fillEndOf, fillOnPaperOf, followCardOf } from "./engine-orders.js";
+import { fillEndOf, fillOnPaperOf, followCardOf, followRuleCardOf } from "./engine-orders.js";
 
 /**
  * A re-quote at a tap weighs every venue as the money path does, on the paper balances.
@@ -36,6 +37,7 @@ export function executeOf(
     readonly stored: StoredIntents;
     readonly paper: PaperParts;
     readonly orders: OrderParts;
+    readonly rules: WebhookRuleParts;
   },
 ): ExecuteConfirmed {
   const {
@@ -52,6 +54,7 @@ export function executeOf(
     publish,
     unfreeze: async (snapshot, call) => writeUnfreeze(written, snapshot, call.signal),
     autoOrder: followCardOf(parts.orders),
+    webhookRule: followRuleCardOf(parts.rules),
     orderFill: fillOnPaperOf(options, { paper: fills, stored, portfolio }),
     paperStake: async (snapshot, call) =>
       fillStakeOnPaper(

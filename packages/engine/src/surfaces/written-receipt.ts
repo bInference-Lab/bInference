@@ -1,7 +1,7 @@
 import type { ChainRegistry } from "@binference/chain";
 import type { AssetInfos } from "@binference/protocol";
 import { orderTermsOf } from "../confirmations/card-action.js";
-import type { WrittenOutcome } from "../confirmations/card-closing.js";
+import { receiptAfterLine, type WrittenOutcome } from "../confirmations/card-closing.js";
 import { assetsOfLine } from "../confirmations/card-line.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { unfreezeQuoteDocument } from "../intents/unfreeze-quote.js";
@@ -9,8 +9,11 @@ import { intentAssetInfos } from "../money-path/asset-infos.js";
 import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
 import type { OrderStore } from "../orders/ports.js";
 import type { AgentStore } from "../ports.js";
+import type { WebhookRuleStore } from "../webhooks/ports.js";
+import { type WebhookRuleQuote, webhookRuleQuoteDocument } from "../webhooks/webhook-rule-quote.js";
 import { orderActionOf } from "./order-action-of.js";
 import { unfreezeActionOf } from "./unfreeze-action-of.js";
+import { webhookRuleActionOf } from "./webhook-rule-card-facts.js";
 
 /** What a confirmed intent with nothing to send took effect as, with the assets its receipt names. */
 export interface WrittenReceipt {
@@ -22,6 +25,7 @@ export interface WrittenReceipt {
 export interface WrittenReceiptSource {
   readonly record: IntentRecord;
   readonly orders: Pick<OrderStore, "byIntent">;
+  readonly webhookRules: Pick<WebhookRuleStore, "byIntent">;
   readonly agents: Pick<AgentStore, "get">;
   readonly chains: ChainRegistry;
 }
@@ -57,6 +61,31 @@ async function orderOutcomeOf(
   };
 }
 
+// A webhook rule's card took effect as the rule it made active, which then kept the card's id, or
+// as the rule's end when the tap came after it: its expiry, or a cancel or freeze that won.
+async function ruleOutcomeOf(
+  source: WrittenReceiptSource,
+  quote: WebhookRuleQuote,
+  call: Call,
+): Promise<WrittenReceipt | undefined> {
+  const { record, webhookRules, chains } = source;
+  const rule = await webhookRules.byIntent(record.id, call);
+  if (rule?.cardId === undefined) {
+    const why =
+      rule !== undefined && rule.expiresAtMs <= rule.changedAtMs ? "expired" : "cancelled";
+    return { outcome: { kind: "orderUnstarted", why }, assets: noAssets };
+  }
+  const action = webhookRuleActionOf(quote, chains);
+  if (action === undefined) {
+    return undefined;
+  }
+  const named = assetsOfLine(receiptAfterLine({ kind: "ruleActive", rule: action }));
+  return {
+    outcome: { kind: "ruleActive", rule: action },
+    assets: intentAssetInfos(chains, record, named),
+  };
+}
+
 /**
  * What a confirmed intent with nothing to send took effect as, once it reconciled (spec 4, section
  * 3.5): an unfreeze, with the agents its card named (decision 0128), and an auto order's card,
@@ -75,6 +104,9 @@ export async function writtenReceiptOf(
   if (record.kind === "unfreeze") {
     const action = unfreezeActionOf(unfreezeQuoteDocument.decode(record.quote));
     return { outcome: { ...action, kind: "unfrozen" }, assets: noAssets };
+  }
+  if (record.kind === "webhookRule") {
+    return ruleOutcomeOf(source, webhookRuleQuoteDocument.decode(record.quote), call);
   }
   return record.kind === "autoOrder"
     ? orderOutcomeOf(source, autoOrderQuoteDocument.decode(record.quote), call)

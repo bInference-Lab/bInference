@@ -7,6 +7,7 @@ import type { OrderParts } from "../orders/create-order.js";
 import type { DcaOrders } from "../orders/dca-orders.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { ScheduleQueue } from "../schedules/run-schedules.js";
+import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import { timedWorkOf } from "./engine-timers.js";
 
 const failingCards: CardTimerParts = {
@@ -24,6 +25,7 @@ describe("the engine's timed work", () => {
     const work = timedWorkOf({
       intents: {
         orders: {} as OrderParts,
+        rules: {} as WebhookRuleParts,
         cardTimer: failingCards,
         dca: {} as DcaOrders,
         copies: {} as CopyOrders,

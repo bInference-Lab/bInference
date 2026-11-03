@@ -1,6 +1,6 @@
-import { type Clock, err, type JsonValue, ok, type Result } from "@binference/core";
+import { type Clock, err, type JsonValue, type Result } from "@binference/core";
 import type { IdempotencyLookup, IdempotencyStore } from "@binference/engine";
-import type { ProtocolErrorCode } from "@binference/protocol";
+import { type ProtocolErrorCode, repeatedResult, storableResult } from "@binference/protocol";
 
 /** One write to run once per idempotency key. */
 interface WriteRequest {
@@ -20,7 +20,8 @@ export type WriteOutcome = Result<JsonValue, ProtocolErrorCode>;
 export interface IdempotentWrites {
   /**
    * Answers a key that holds a result with that result, and a key that holds other args with
-   * `protocol.key_reused`. Otherwise runs the write and stores its result before answering; a
+   * `protocol.key_reused`. A result that holds a webhook rule's URL is kept without it, and its
+   * key answers `webhook.url_shown` from then on. Otherwise runs the write and stores its result before answering; a
    * refused write stores nothing. A call with a key whose write is still running waits for it, so
    * a write sent again after a reconnect runs once. A store fault rejects.
    */
@@ -47,20 +48,27 @@ export function createIdempotentWrites(options: IdempotentWritesOptions): Idempo
   const store = { signal: options.signal };
 
   const settle = async (request: WriteRequest): Promise<WriteOutcome> => {
+    const { op } = request.lookup;
     const recalled = await options.store.recall(request.lookup, store);
     if (recalled.kind !== "new") {
-      return recalled.kind === "repeat" ? ok(recalled.result) : err("protocol.key_reused");
+      return recalled.kind === "repeat"
+        ? repeatedResult(op, recalled.result)
+        : err("protocol.key_reused");
     }
     const done = await request.work();
     if (!done.ok) {
       return done;
     }
-    const entry = { ...request.lookup, result: done.value, atMs: options.clock.now() };
+    // A result that holds a secret shown once is kept without it (decision 0337).
+    const result = storableResult(op, done.value);
+    const entry = { ...request.lookup, result, atMs: options.clock.now() };
     const remembered = await options.store.remember(entry, store);
     if (remembered.kind === "new") {
       return done;
     }
-    return remembered.kind === "repeat" ? ok(remembered.result) : err("protocol.key_reused");
+    return remembered.kind === "repeat"
+      ? repeatedResult(op, remembered.result)
+      : err("protocol.key_reused");
   };
 
   return {

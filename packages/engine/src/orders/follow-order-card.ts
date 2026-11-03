@@ -94,9 +94,12 @@ async function moveWaiting(
   }
 }
 
-// The card as it stands, after its timer closed it once its time was up.
-async function readCard(
-  parts: OrderParts,
+/**
+ * An order's or a webhook rule's card as it stands, after its timer closed it once its time was
+ * up.
+ */
+export async function readCard(
+  parts: Pick<OrderParts, "stored" | "expireCard">,
   intent: Id<"int">,
   read: { readonly nowMs: number; readonly signal: AbortSignal },
 ): Promise<IntentSnapshot | undefined> {
@@ -114,9 +117,12 @@ async function readCard(
   return parts.stored.snapshot(intent, { signal });
 }
 
-// A confirmed card whose order is written, active or ended, has nothing more to run.
-async function closeIntent(
-  parts: OrderParts,
+/**
+ * Moves a confirmed card whose order or rule is written, active or ended, to `reconciled`: it has
+ * nothing more to run. Answers the intent as it stands after.
+ */
+export async function closeIntent(
+  parts: Pick<OrderParts, "stored" | "clock">,
   snapshot: IntentSnapshot | undefined,
   signal: AbortSignal,
 ): Promise<IntentSnapshot | undefined> {

@@ -65,6 +65,8 @@ import { createCardShowings } from "../surfaces/create-card-showings.js";
 import type { ImageOptions } from "../uploads/image-options.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import type { VenueHost } from "../venues/venue-host.js";
+import type { WebhookRuleHandlers } from "../webhooks/webhook-rule-handlers.js";
+import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import type { EngineHandlers } from "./engine-handlers.js";
 import {
@@ -80,6 +82,7 @@ import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
 import { startupWorkOf } from "./engine-repairs.js";
 import { dailySummariesOf } from "./engine-summaries.js";
 import { timedWorkOf } from "./engine-timers.js";
+import { webhookRulesOf } from "./engine-webhook-rules.js";
 import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js";
 import { createLedgerHandlers } from "./ledger-handlers.js";
 import { settingsHandlers } from "./settings-handlers.js";
@@ -263,6 +266,17 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
   readonly ids: IdSource;
   /** Where each card version's callback reference comes from (spec 4, section 2). */
   readonly random: Random;
+  /**
+   * The operating system's secure generator, which makes each webhook rule's secret (decision
+   * 0338): never a seeded source, so the composition root passes it apart from `random`. Absent,
+   * `webhookRule/create` and `webhookRule/rotateUrl` fail before anything is stored.
+   */
+  readonly secretRandom?: Random;
+  /**
+   * The base of every webhook rule's URL, read on each use: the published webhook address when
+   * there is one, else the loopback listener's. Absent: the listener's default loopback address.
+   */
+  readonly webhookBase?: () => string;
   /** Where pushes go: the protocol server, which numbers them with a `seq` per topic. */
   readonly publish: PublishPush;
   /**
@@ -295,10 +309,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
 
 /** The intent and order parts of the engine. */
 interface IntentParts {
-  readonly handlers: IntentHandlers & OrderHandlers;
+  readonly handlers: IntentHandlers & OrderHandlers & WebhookRuleHandlers;
   readonly answer: AnswerCard;
   readonly stored: StoredIntents;
   readonly orders: OrderParts;
+  readonly rules: WebhookRuleParts;
   readonly fills: OrderFills;
   readonly triggers: OrderTriggers;
   /** The DCA orders' periods, which the schedule queue's timer runs (decision 0246). */
@@ -328,7 +343,8 @@ function intentParts(
   });
   const launches = launchRoutingOf(options, paper);
   const orders = orderPartsOf(options, { stored, confirmations, wallets: paper.wallets, launches });
-  const execute = executeOf(options, { stored, paper, orders });
+  const { parts: rules, handlers: ruleHandlers } = webhookRulesOf(options, orders);
+  const execute = executeOf(options, { stored, paper, orders, rules });
   const lowGas = createLowGasAlerts({ publish: options.publish });
   const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
   const showings = createCardShowings({ ...stores, chains, destinations, venues: host, isLocked });
@@ -336,8 +352,9 @@ function intentParts(
   const handlers = {
     ...createIntentHandlers({ ...options, ...stores, stored, moneyPath, answer, showings }),
     ...createOrderHandlers(orders),
+    ...ruleHandlers,
   };
-  const cardTimer = cardTimerOf(options, { confirmations, orders });
+  const cardTimer = cardTimerOf(options, { confirmations, orders, rules });
   const fillParts = { stored, moneyPath, gate, holdings: paper.holdings, fence: check };
   const fills = orderFillsOf(options, fillParts);
   const triggers = createOrderTriggers({ orders: stores.orders, fills, clock, fence: check });
@@ -351,7 +368,7 @@ function intentParts(
   });
   const copies = copyOrdersOf(options, fills);
   const timed = { triggers, dca, copies };
-  return { answer, stored, orders, fills, ...timed, handlers, lowGas, cardTimer, moneyPath };
+  return { answer, stored, orders, rules, fills, ...timed, handlers, lowGas, cardTimer, moneyPath };
 }
 
 // What the rescue address, the address book and the settings operations each read and push.

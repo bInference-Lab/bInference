@@ -1,3 +1,4 @@
+import type { Id } from "@binference/core";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { CardTimerParts } from "../confirmations/card-timer.js";
 import type { Confirmations } from "../confirmations/create-confirmations.js";
@@ -13,6 +14,8 @@ import { createFillOnPaper, type FillOnPaperParts } from "../orders/fill-on-pape
 import { createOrderFills, type OrderFills } from "../orders/fill-orders.js";
 import { followOrderCard } from "../orders/follow-order-card.js";
 import type { ResumeFence } from "../orders/resume-fence.js";
+import { followRuleCard } from "../webhooks/follow-rule-card.js";
+import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { EngineOptions } from "./create-engine.js";
 
 /** What the auto order use cases read and write through, from the engine's options. */
@@ -52,6 +55,14 @@ export function orderPartsOf(
     liveFills: options.liveOrderFills === true,
     launches: parts.launches,
   };
+}
+
+/** The execute step of a webhook rule's card: its rule follows the answer (decision 0299). */
+export function followRuleCardOf(
+  parts: WebhookRuleParts,
+): (snapshot: IntentSnapshot, call: { readonly signal: AbortSignal }) => Promise<IntentSnapshot> {
+  return async (snapshot, call) =>
+    (await followRuleCard(parts, snapshot.record.id, call.signal)) ?? snapshot;
 }
 
 /** The execute step of an auto order's card: its order follows the answer (decision 0189). */
@@ -136,21 +147,33 @@ export function fillEndOf(options: EngineOptions, gate: CapGate): FillEnd {
 }
 
 /**
- * What the card timer closes cards through: an intent's card through the confirmations, and an
- * auto order's card through its order, which moves with it.
+ * What the card timer closes cards through: an intent's card through the confirmations, an auto
+ * order's card through its order and a webhook rule's through its rule, which move with it.
  */
 export function cardTimerOf(
   options: EngineOptions,
-  parts: { readonly confirmations: Confirmations; readonly orders: OrderParts },
+  parts: {
+    readonly confirmations: Confirmations;
+    readonly orders: OrderParts;
+    readonly rules: WebhookRuleParts;
+  },
 ): CardTimerParts {
-  const { confirmations, orders } = parts;
+  const { confirmations, orders, rules } = parts;
+  const expire = async (
+    intent: { readonly kind: string; readonly id: Id<"int"> },
+    signal: AbortSignal,
+  ) => {
+    if (intent.kind === "autoOrder") {
+      await followOrderCard(orders, intent.id, signal);
+      return;
+    }
+    await (intent.kind === "webhookRule"
+      ? followRuleCard(rules, intent.id, signal)
+      : confirmations.expire(intent.id, { signal }));
+  };
   return {
     intents: options.stores.intents,
     now: () => options.clock.now(),
-    expire: async (intent, { signal }) => {
-      await (intent.kind === "autoOrder"
-        ? followOrderCard(orders, intent.id, signal)
-        : confirmations.expire(intent.id, { signal }));
-    },
+    expire: async (intent, { signal }) => expire(intent, signal),
   };
 }

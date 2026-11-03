@@ -265,7 +265,9 @@ A Telegram tap is handled inside the engine and never travels over this protocol
 - The engine stores `(credential, op, key)` with a hash of `args` and the result for 24 hours. The
   same key with the same args returns the stored result; the same key with different args fails with
   `protocol.key_reused`. The hash leaves out a passphrase (`engine/unlock`), so the store holds no
-  trace of it.
+  trace of it. The result of `webhookRule/create` and `webhookRule/rotateUrl` is stored without its
+  URL, which ends in the rule's secret, and the same key fails `webhook.url_shown` from then on:
+  the URL is shown once ([decision 0337](../DECISIONS.md#d0337)).
 - A write is stored durably before its `reply` is sent.
 
 <a id="section-6"></a>
@@ -614,13 +616,21 @@ Webhook rules follow [decision 0299](../DECISIONS.md#d0299):
   the base `remote/status`'s `webhookUrl`, else the loopback listener's.
 - It refuses, storing nothing, what `order/create` refuses for a buy or sell order of the same
   token (section 7.5, auto orders), `order.live_fills_off` for a live agent while live webhook
-  fills are off, `protocol.bad_args` for a rate outside 1 to 60 or a `name` that is empty or too
+  fills are off, which they are until a later release builds them: a rule fills on paper only,
+  in the mode its agent had when it was made ([decisions 0337](../DECISIONS.md#d0337) and
+  [0338](../DECISIONS.md#d0338)), `protocol.bad_args` for a rate outside 1 to 60 or a `name` that is empty or too
   long, and `webhook.too_many` for an agent's 21st rule active or awaiting its card.
 - Each accepted alert becomes a fill intent authorized by the rule
   (`authorizedBy: { webhookRule, alertId }`), through the fill path of an auto order (spec 6,
   section 5). `webhookRule/delete` and `webhookRule/rotateUrl` of a rule that is not active or
   awaiting its card fail `webhook.not_found`; a rotation answers the new URL once, and the old
   one gets `404` at once. `WebhookRuleView` gains `ratePerMinute` and `lastAlertAt?`.
+- Per [decision 0337](../DECISIONS.md#d0337), a delete and a rotation open no card and apply at
+  once. A delete of a rule awaiting its card cancels the card. A rotation makes a new 32-byte
+  secret, of which only the SHA-256 is stored, and sends `notice.webhookRotated` naming the
+  surface; alerts the old URL took that still wait fill nothing (`url_rotated`). Only the owner's
+  own surfaces create a rule: a caller without `confirm` is `auth.scope`. `webhookRule/list`
+  answers every rule active or awaiting its card, oldest first, in one page.
 
 Schedules follow decisions [0231](../DECISIONS.md#d0231) to [0233](../DECISIONS.md#d0233):
 
@@ -1339,7 +1349,7 @@ later unchanged.
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`, `own_wallet_recipient`, `launch_recipient_needed`, `launch_recipient_unused`, `launch_wallet_missing`, `bridge_wallet_missing`, `bridge_wallet_only`, `extra_wallet`, `launch_picture_too_large`, `kind_unavailable`, `pool_venue`, `identity_exists`, `identity_pending`, `identity_text` |
 | `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`                                                                                                                                                                                                                                                                                                             |
 | `schedule` | `not_found`, `bad_when`, `too_many`                                                                                                                                                                                                                                                                                                                                                            |
-| `webhook`  | `not_found`, `too_many`                                                                                                                                                                                                                                                                                                                                                                        |
+| `webhook`  | `not_found`, `too_many`, `url_shown`                                                                                                                                                                                                                                                                                                                                                           |
 | `note`     | `not_found`                                                                                                                                                                                                                                                                                                                                                                                    |
 | `asset`    | `not_found`, `bad_address`, `unreadable`                                                                                                                                                                                                                                                                                                                                                       |
 | `name`     | `not_found`, `resolver_down`, `contract`                                                                                                                                                                                                                                                                                                                                                       |

@@ -55,9 +55,13 @@ export interface AnswerCardOptions {
 }
 
 // The lock is read before the answer is stored: a Confirm that could not be signed never lands. An
-// unfreeze and an auto order's card sign nothing, so a locked engine takes their tap (decisions
-// 0128 and 0189).
-const unsignedKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(["unfreeze", "autoOrder"]);
+// unfreeze, an auto order's card and a webhook rule's card sign nothing, so a locked engine takes
+// their tap (decisions 0128, 0189 and 0299).
+const unsignedKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
+  "unfreeze",
+  "autoOrder",
+  "webhookRule",
+]);
 
 async function lockedAnswer(
   options: AnswerCardOptions,

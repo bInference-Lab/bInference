@@ -75,7 +75,7 @@ export {
 export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";
 export type { WebPushSubscription } from "./operations/web-push-operations.schema.js";
-export { storableArgs } from "./operations/storable-args.js";
+export { repeatedResult, storableArgs, storableResult } from "./operations/storable-args.js";
 export { parseCall } from "./operations/parse-call.js";
 export type { CallOf, CallProblem, OperationCall } from "./operations/parse-call.js";
 export {
@@ -240,6 +240,7 @@ export type { IntentState } from "./views/intent-state.schema.js";
 export { intentViewSchema } from "./views/intent-view.schema.js";
 export type {
   AutoOrderRequest,
+  WebhookRuleCardRequest,
   ExecutionView,
   IntentOutcome,
   IntentView,

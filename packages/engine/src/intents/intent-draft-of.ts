@@ -5,8 +5,10 @@ import type {
   IntentRequest,
   RescueRequest,
   UnfreezeRequest,
+  WebhookRuleCardRequest,
 } from "@binference/protocol";
 import { autoOrderRequestDocument } from "../orders/auto-order-quote.js";
+import { webhookRuleCardRequestDocument } from "../webhooks/webhook-rule-quote.js";
 import {
   assetsDocument,
   authorizationDocument,
@@ -16,13 +18,24 @@ import type { IntentDraft, IntentProposerRef } from "./intent-record.js";
 import type { IntentStep } from "./state-machine.js";
 import { unfreezeRequestDocument } from "./unfreeze-quote.js";
 
+/** Every request an intent is created with. */
+type CreatedRequest =
+  | IntentRequest
+  | RescueRequest
+  | UnfreezeRequest
+  | AutoOrderRequest
+  | WebhookRuleCardRequest;
+
 /** A new intent to store: the state machine's step into `proposed`, and what it was asked. */
 export interface NewIntent {
   readonly id: Id<"int">;
   readonly agentId: Id<"agt">;
   readonly walletId: Id<"wal">;
-  /** What was asked: a proposal's request, the rescue's, the unfreeze's or an auto order's. */
-  readonly request: IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest;
+  /**
+   * What was asked: a proposal's request, the rescue's, the unfreeze's, an auto order's or a
+   * webhook rule's.
+   */
+  readonly request: CreatedRequest;
   /** Who called, as the intents table keeps it: the token or device, `telegram` or `engine`. */
   readonly proposerRef: IntentProposerRef;
   readonly step: IntentStep;
@@ -35,11 +48,12 @@ export interface NewIntent {
   readonly draftRef?: string;
 }
 
-function requestOf(
-  request: IntentRequest | RescueRequest | UnfreezeRequest | AutoOrderRequest,
-): JsonValue {
+function requestOf(request: CreatedRequest): JsonValue {
   if (request.kind === "unfreeze") {
     return unfreezeRequestDocument.encode(request);
+  }
+  if (request.kind === "webhookRule") {
+    return webhookRuleCardRequestDocument.encode(request);
   }
   if (request.kind === "autoOrder") {
     return autoOrderRequestDocument.encode(request);
