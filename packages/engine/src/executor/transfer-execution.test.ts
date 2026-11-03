@@ -17,6 +17,7 @@ import {
   transferSimulator,
 } from "../sends/test-transfers.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
+import { coinAfter, holdCoin } from "./test-coin.js";
 import {
   benchChain,
   driveUntil,
@@ -51,44 +52,6 @@ async function benchWith(names: FakeNameResolver = testNames()): Promise<Executo
 
 function notices(bench: ExecutorBench) {
   return bench.pushes.flatMap((push) => (push.kind === "notice/new" ? [push.data] : []));
-}
-
-// The test wallet holds one coin as a live position, each unit at one micro-dollar.
-async function holdCoin(bench: ExecutorBench): Promise<void> {
-  const base = 10n ** 18n;
-  const position = {
-    walletId: testWallet,
-    asset: testCoin,
-    isPaper: false,
-    quantityBase: base,
-    costUsdMicros: base,
-    realizedUsdMicros: 0n,
-    changedAtMs: 1,
-  };
-  const arrival = {
-    walletId: testWallet,
-    isPaper: false,
-    atMs: 1,
-    received: { asset: testCoin, base },
-  };
-  await bench.test.positions.recordArrival(
-    { arrival: { ...arrival, valueUsdMicros: base }, positions: [{ position }] },
-    live,
-  );
-}
-
-// What the coin's position holds after the intent, and what its transactions paid for gas.
-async function coinAfter(bench: ExecutorBench, intent: Id<"int">) {
-  const [held] = await bench.test.positions.positions(
-    { walletId: testWallet, isPaper: false },
-    live,
-  );
-  const stored = await bench.test.stores.transactions.ofIntent(intent, live);
-  const gas = stored.reduce(
-    (sum, { receipt }) => sum + (receipt?.gasUsed ?? 0n) * (receipt?.feePerGasBase ?? 0n),
-    0n,
-  );
-  return { held: held?.quantityBase, gas };
 }
 
 // The signed bytes of an intent's speed-up, its second stored transaction.

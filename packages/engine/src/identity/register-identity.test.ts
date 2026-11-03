@@ -1,9 +1,10 @@
-import { accountRefSchema } from "@binference/chain";
+import { accountRefSchema, type SimulatedStep, type TxSimulator } from "@binference/chain";
+import type { FakeIdentityRegistry } from "@binference/chain/testing";
 import { type IntentView, intentStates } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { type IdentityQuote, identityQuoteDocument } from "../intents/identity-quote.js";
-import { expectOk, testAgent } from "../intents/test-intents.js";
+import { expectOk, testAgent, testCoin } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testAccount, testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
 import {
@@ -14,6 +15,37 @@ import {
 } from "./test-identities.js";
 
 const live = { signal: new AbortController().signal };
+const elsewhere = accountRefSchema.parse("fake:1:0x000000ff");
+const coin = { asset: testCoin, base: 1n };
+
+// One effect more than a registration has: a transfer, an allowance, or its mint twice.
+interface ExtraEffect {
+  readonly transfers?: SimulatedStep["transfers"];
+  readonly approvals?: SimulatedStep["approvals"];
+  readonly twice?: boolean;
+}
+
+// The registry's simulation with one more effect than a registration has.
+function withEffect(
+  registry: FakeIdentityRegistry,
+  effect: ExtraEffect,
+): Pick<TxSimulator, "simulate"> {
+  return {
+    simulate: async (drafts) =>
+      Promise.resolve(
+        drafts.map((draft) => {
+          const step = registry.simulate(draft);
+          const logs = step.logs ?? [];
+          return {
+            ...step,
+            transfers: [...step.transfers, ...(effect.transfers ?? [])],
+            approvals: [...step.approvals, ...(effect.approvals ?? [])],
+            logs: effect.twice === true ? [...logs, ...logs] : logs,
+          };
+        }),
+      ),
+  };
+}
 const allStates = { states: [...intentStates], limit: 10 };
 const warning = `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}`;
 
@@ -210,6 +242,36 @@ describe("an identity registration", () => {
     await expect(registered(test)).resolves.toMatchObject({
       state: "failed_check",
       outcome: { reason: "identity_ceiling" },
+    });
+  });
+
+  it.each([
+    [
+      "sends coin out of the wallet",
+      { transfers: [{ from: testAccount, to: elsewhere, amount: coin }] },
+    ],
+    [
+      "sets an allowance",
+      { approvals: [{ owner: testAccount, spender: elsewhere, amount: coin }] },
+    ],
+    ["mints two identities", { twice: true }],
+  ])("ends one whose simulation %s with effects_differ", async (_what, effect: ExtraEffect) => {
+    const registry = testRegistry();
+    const test = await startIdentityEngine(registry, {
+      chainSimulator: withEffect(registry, effect),
+    });
+    await expect(registered(test)).resolves.toMatchObject({
+      state: "failed_check",
+      outcome: { reason: "effects_differ" },
+    });
+  });
+
+  it("ends a frozen agent's registration with frozen", async () => {
+    const test = await startIdentityEngine(testRegistry());
+    expectOk(await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));
+    await expect(registered(test)).resolves.toMatchObject({
+      state: "rejected_policy",
+      outcome: { reason: "frozen" },
     });
   });
 

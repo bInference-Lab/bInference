@@ -13,11 +13,15 @@ import {
   testRegistry,
   testVersion,
 } from "../identity/test-identities.js";
+import { planDocument } from "../intents/intent-documents.schema.js";
+import type { IntentRecord } from "../intents/intent-record.js";
 import { expectOk, testAgent, testLimits } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
+import { coinAfter, holdCoin } from "./test-coin.js";
 import {
+  type BenchOptions,
   driveUntil,
   type ExecutorBench,
   eventsOf,
@@ -96,24 +100,40 @@ function withIdentityHeld(store: IntentStore): IntentStore {
   };
 }
 
-// How a bench differs: what runs once a registration lands, how many reads back lag, and the
-// executor's intent store.
+// How a bench differs: what runs once a registration lands, how many reads back lag, the
+// executor's intent store and its limits.
 interface BenchWith {
   readonly after?: () => void;
   readonly lagging?: number;
   readonly intents?: (store: IntentStore) => IntentStore;
+  readonly limits?: BenchOptions["limits"];
+}
+
+// The executor's intent store, a registration's stored plan read back as another call.
+function withPlan(draft: TxDraft): (store: IntentStore) => IntentStore {
+  const plan = planDocument.encode([draft]);
+  const swapped = (record: IntentRecord): IntentRecord =>
+    record.kind === "registerIdentity" ? { ...record, plan } : record;
+  return (store) => ({
+    ...store,
+    get: async (id, options) => {
+      const record = await store.get(id, options);
+      return record === undefined ? undefined : swapped(record);
+    },
+  });
 }
 
 async function benchWith(
   registry: FakeIdentityRegistry,
   given: BenchWith = {},
 ): Promise<ExecutorBench> {
-  const { after = () => undefined, lagging = 0, intents } = given;
+  const { after = () => undefined, lagging = 0, intents, limits: limited } = given;
   const chains = identityChains();
   const landing = landingOnRead(registry, after, lagging);
   const bench = await startExecutorBench({
     hold: true,
     ...(intents === undefined ? {} : { intents }),
+    ...(limited === undefined ? {} : { limits: limited }),
     agent: { limits },
     engine: {
       chains,
@@ -144,6 +164,13 @@ describe("an identity registration on its wallet's queue", () => {
     expect(
       bench.signed.map(({ step, allowed }) => [step.action.kind, allowed.contracts]),
     ).toStrictEqual([["call", ["fake:1:0x000000e5"]]]);
+    const [signed] = bench.signed;
+    expect(signed?.allowed).toMatchObject({
+      spenders: [],
+      recipients: [],
+      unapproved: ["fake:1:0x000000e5"],
+      calls: [{ contract: "fake:1:0x000000e5", abi: { name: "register" } }],
+    });
     const card = {
       name: "main",
       description: "Buys dips",
@@ -168,6 +195,56 @@ describe("an identity registration on its wallet's queue", () => {
     await expect(
       bench.test.engine.handlers["identity/register"](testCall({ agent: testAgent })),
     ).resolves.toStrictEqual({ ok: false, error: "intent.identity_exists" });
+  });
+
+  it("takes the registration's gas, and nothing else, out of the coin's position", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry);
+    await holdCoin(bench);
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    const { held, gas } = await coinAfter(bench, intent);
+    expect(gas).toBeGreaterThan(0n);
+    expect(held).toBe(10n ** 18n - gas);
+  });
+
+  it("refuses a second registration from the identity it stored, though the token moved away", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry);
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    registry.tamper("0", { owner: accountRefSchema.parse("fake:1:0x000000ff") });
+    await expect(
+      bench.test.engine.handlers["identity/register"](testCall({ agent: testAgent })),
+    ).resolves.toStrictEqual({ ok: false, error: "intent.identity_exists" });
+  });
+
+  it("stays finalized past the read-back's blocks, and recovery stores the identity later", async () => {
+    const registry = testRegistry();
+    const bench = await benchWith(registry, { lagging: 3, limits: { settleAfterBlocks: 1 } });
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done, blocks: 8 })).resolves.toBe("finalized");
+    expect(eventsOf(bench)).toContain("executor.settle_late:");
+    await bench.executor.recover(live);
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    const got = expectOk(
+      await bench.test.engine.handlers["identity/get"](testCall({ agent: testAgent })),
+    );
+    expect(got.registration?.onchainId).toBe("0");
+  });
+
+  it("ends with decode_mismatch when the stored call no longer registers the card's file", async () => {
+    const registry = testRegistry();
+    const other = registry.build({ wallet: testAccount, file: "data:,another" });
+    const bench = await benchWith(registry, { intents: withPlan(other) });
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("failed_check");
+    await expect(reasonOf(bench, intent)).resolves.toBe("decode_mismatch");
+    expect(bench.signed).toHaveLength(0);
   });
 
   it("ends with identity_exists when the wallet registered elsewhere before the queue took it", async () => {
