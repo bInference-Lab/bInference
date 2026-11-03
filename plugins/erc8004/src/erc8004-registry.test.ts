@@ -3,6 +3,7 @@ import {
   BinferenceError,
   chainRefSchema,
   type IdentityRegistry,
+  registrationFileMaxLength,
   type TxHash,
 } from "@binference/plugin-sdk";
 import { encodeEvmDraft } from "@binference/plugin-sdk/evm";
@@ -49,9 +50,11 @@ function draftTo(to: string, data: `0x${string}`, value = 0n) {
   });
 }
 
+const filePrefix = "data:application/json;base64,";
+
 function decodedFile(registry: IdentityRegistry): string {
   const file = registry.fileOf(card);
-  return Buffer.from(file.slice("data:application/json;base64,".length), "base64").toString("utf8");
+  return Buffer.from(file.slice(filePrefix.length), "base64").toString("utf8");
 }
 
 describe("createErc8004Registry", () => {
@@ -136,6 +139,19 @@ describe("createErc8004Registry", () => {
       ok: true,
       value: { onchainId: "0", owner: other },
     });
+  });
+
+  it("writes a name and description of every hard character at their longest, decoding back whole", () => {
+    const { registry } = setup();
+    const hard = '"\\\n‮​\u{1F98A}\ud800';
+    const name = hard.repeat(8).padEnd(64, "n").slice(0, 64);
+    const description = hard.repeat(35).padEnd(280, "d").slice(0, 280);
+    const file = registry.fileOf({ ...card, name, description });
+    const json = Buffer.from(file.slice(filePrefix.length), "base64").toString("utf8");
+
+    expect([name.length, description.length]).toStrictEqual([64, 280]);
+    expect(file.length).toBeLessThanOrEqual(registrationFileMaxLength);
+    expect(JSON.parse(json)).toMatchObject({ name, description });
   });
 
   it("reads the contract the registry's proxy runs now, which an upgrade changes", async () => {

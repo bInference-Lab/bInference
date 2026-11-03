@@ -15,6 +15,7 @@ import type { InstallStore, WalletFactsSource } from "../ports.js";
 import type { IdentityHost } from "./identity-host.js";
 import { hasRegistrationIn, openRegistrationStates } from "./open-registrations.js";
 import type { IdentityStore } from "./ports.js";
+import { hasHiddenText } from "./published-text.js";
 
 /** What an identity registration is resolved with. */
 export interface IdentityResolveOptions {
@@ -101,13 +102,33 @@ async function standingOf(
   return read.value.held > 0n ? err("intent.identity_exists") : ok(read.value);
 }
 
+// Why the registration cannot be made, from the engine's own records alone: text a reader would not
+// see as written, an identity binference holds, or another registration that has not ended.
+async function refusalBeforeReads(
+  options: IdentityResolveOptions,
+  resolving: Resolving,
+): Promise<ProtocolErrorCode | undefined> {
+  const { request, settings, signal } = resolving;
+  if (hasHiddenText(settings.agent.name) || hasHiddenText(request.description ?? "")) {
+    return "intent.identity_text";
+  }
+  if ((await options.identities.get(request.agent, { signal })) !== undefined) {
+    return "intent.identity_exists";
+  }
+  const open = { agent: request.agent, states: openRegistrationStates };
+  return (await hasRegistrationIn(options.stored, open, signal))
+    ? "intent.identity_pending"
+    : undefined;
+}
+
 /**
  * Resolves an identity registration (decision 0335): the registry the engine runs, the agent's
  * main wallet and its account on the registry's chain, the card's fields (the agent's name, the
  * owner's description, that wallet and binference's version) and the wallet's facts in the
  * intent's mode. No registry is `intent.kind_unavailable`; an agent whose identity binference
  * holds, or a live one whose wallet the registry finds holding one, is `intent.identity_exists`;
- * one with a registration that has not ended, `intent.identity_pending`;
+ * one with a registration that has not ended, `intent.identity_pending`; a name or description
+ * holding a character a reader would not see as written, `intent.identity_text`;
  * a registry that cannot be read `quote.venue_down`; an agent with no main wallet there
  * `wallet.not_found`. None stores anything.
  */
@@ -120,12 +141,9 @@ export async function resolveIdentity(
   if (served === undefined) {
     return err("intent.kind_unavailable");
   }
-  if ((await options.identities.get(request.agent, { signal })) !== undefined) {
-    return err("intent.identity_exists");
-  }
-  const open = { agent: request.agent, states: openRegistrationStates };
-  if (await hasRegistrationIn(options.stored, open, signal)) {
-    return err("intent.identity_pending");
+  const refusal = await refusalBeforeReads(options, resolving);
+  if (refusal !== undefined) {
+    return err(refusal);
   }
   const { registry, chain } = served;
   const main = await mainWallet(options, { ...resolving, chain });

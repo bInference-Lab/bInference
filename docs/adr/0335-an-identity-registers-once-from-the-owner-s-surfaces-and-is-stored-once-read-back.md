@@ -31,6 +31,9 @@ when the registration counts as made.
   registration publishes words for good, so `identity/register` from the agent runtime or an MCP
   client fails `intent.owner_only`, storing nothing. The CLI, the console and the Mini App may
   start one; every one opens a card that auto mode never skips.
+- **Text published as written.** The file can never change and a registry's readers render what
+  it holds, so a name or description holding a control or format character, a lone surrogate, or
+  a line or paragraph separator fails `intent.identity_text`, storing nothing.
 - **The wallet.** The agent's live main wallet on the chain whose registry the chain registry
   lists signs the one step, value 0. The identity token is minted to it.
 - **Once per agent.** The engine refuses with `intent.identity_exists`, storing nothing, when the

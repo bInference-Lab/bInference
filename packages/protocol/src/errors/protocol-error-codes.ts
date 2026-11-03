@@ -89,6 +89,7 @@ export const protocolErrorCodes = [
   "intent.pool_venue",
   "intent.identity_exists",
   "intent.identity_pending",
+  "intent.identity_text",
   "order.not_found",
   "order.wrong_state",
   "order.kind_unavailable",

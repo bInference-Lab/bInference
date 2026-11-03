@@ -1,5 +1,5 @@
 import { accountRefSchema } from "@binference/chain";
-import type { IntentView } from "@binference/protocol";
+import { type IntentView, intentStates } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { type IdentityQuote, identityQuoteDocument } from "../intents/identity-quote.js";
@@ -14,6 +14,7 @@ import {
 } from "./test-identities.js";
 
 const live = { signal: new AbortController().signal };
+const allStates = { states: [...intentStates], limit: 10 };
 const warning = `${String.fromCodePoint(0x26a0)}${String.fromCodePoint(0xfe0f)}`;
 
 async function registered(test: TestEngine, description?: string): Promise<IntentView> {
@@ -112,6 +113,37 @@ describe("an identity registration", () => {
     await expect(
       test.engine.handlers["identity/register"](testCall({ agent: testAgent })),
     ).resolves.toStrictEqual({ ok: false, error: "intent.identity_pending" });
+  });
+
+  it.each([
+    ["a line break", "Buys\ndips"],
+    ["a right-to-left override", "Buys ‮dips"],
+    ["a zero-width space", "Buys​dips"],
+    ["a lone surrogate", "Buys \ud800dips"],
+    ["a line separator", "Buys dips"],
+    ["a bell", "Buys\u0007dips"],
+  ])("refuses a description with %s before anything is stored", async (_kind, description) => {
+    const test = await startIdentityEngine(testRegistry());
+    await expect(
+      test.engine.handlers["identity/register"](testCall({ agent: testAgent, description })),
+    ).resolves.toStrictEqual({ ok: false, error: "intent.identity_text" });
+    await expect(test.stores.intents.list(allStates, live)).resolves.toHaveLength(0);
+  });
+
+  it("refuses an agent whose name holds a hidden character, before anything is stored", async () => {
+    const test = await startIdentityEngine(testRegistry(), { agent: { name: "ma​in" } });
+    await expect(
+      test.engine.handlers["identity/register"](testCall({ agent: testAgent })),
+    ).resolves.toStrictEqual({ ok: false, error: "intent.identity_text" });
+  });
+
+  it("publishes quotes, backslashes and emoji as written", async () => {
+    const registry = testRegistry();
+    const test = await startIdentityEngine(registry);
+    const description = 'Says "hi" \\ buys \u{1F98A} dips';
+    const view = await registered(test, description);
+    expect(view.state).toBe("awaiting_confirmation");
+    await expect(quoteOf(test, view)).resolves.toMatchObject({ description });
   });
 
   it("refuses a wallet that holds an identity already, before anything is stored", async () => {

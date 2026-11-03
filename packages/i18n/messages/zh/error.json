@@ -85,6 +85,7 @@
   "intent.pool_venue": "该平台只向一个质押池质押，质押选项中标为 pool: true。请重新发起，不要指定验证者；解除质押的数量请用质押时铸造的凭证代币计，而不是原生币。",
   "intent.identity_exists": "此 Agent 的钱包已持有链上身份。若 binference 记录了它，`binference agent identity` 会显示；否则请在身份注册表中查看该钱包。",
   "intent.identity_pending": "此 Agent 的一次登记尚未结束。请确认或拒绝其卡片，或等待它上链，然后再次运行 `binference agent identity`。",
+  "intent.identity_text": "Agent 的名称或你的说明含有换行符或隐藏字符，注册表会将其永久公开。请重命名 Agent 或改写说明，然后再试。",
   "order.not_found": "此自动订单不存在。请在控制台查看你的自动订单。",
   "order.wrong_state": "此自动订单已结束或已变化。请刷新查看当前状态。",
   "order.kind_unavailable": "暂不支持这类自动订单。请使用限价单、止盈、止损或追踪止损。",
