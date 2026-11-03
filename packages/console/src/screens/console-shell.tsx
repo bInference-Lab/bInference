@@ -17,6 +17,7 @@ const sections = [
   { to: "/portfolio", key: "console.nav.portfolio" },
   { to: "/ledger", key: "console.nav.ledger" },
   { to: "/limits", key: "console.nav.limits" },
+  { to: "/rules", key: "console.nav.rules" },
 ] as const;
 
 const statusKeys = {
@@ -53,7 +54,7 @@ export function ConsoleShell(): React.JSX.Element {
         <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <BrandLockup className="h-6 w-auto text-foreground" />
           <span className="sr-only">{text("console.brand")}</span>
-          <nav aria-label={text("console.nav.label")} className="flex gap-1">
+          <nav aria-label={text("console.nav.label")} className="flex flex-wrap gap-1">
             {sections.map((section) => (
               <Link
                 key={section.to}

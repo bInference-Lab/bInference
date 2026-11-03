@@ -6,6 +6,7 @@ import { ConsoleShell } from "../screens/console-shell";
 import { LedgerScreen } from "../screens/ledger-screen";
 import { LimitsScreen } from "../screens/limits-screen";
 import { PortfolioScreen } from "../screens/portfolio-screen";
+import { RulesScreen } from "../screens/rules-screen";
 
 function buildRouter(basepath: string) {
   const root = createRootRoute({ component: ConsoleShell });
@@ -16,6 +17,7 @@ function buildRouter(basepath: string) {
     createRoute({ ...parent, path: "/portfolio", component: PortfolioScreen }),
     createRoute({ ...parent, path: "/ledger", component: LedgerScreen }),
     createRoute({ ...parent, path: "/limits", component: LimitsScreen }),
+    createRoute({ ...parent, path: "/rules", component: RulesScreen }),
   ]);
   return createRouter({ routeTree, basepath });
 }
