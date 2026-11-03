@@ -9,7 +9,8 @@ export interface TableNotice extends WrittenNotice {
   readonly agent?: ProtocolId<"agent">;
 }
 
-const { tableAgent, at, agent, coinAmount, orderKind, sale, launch, movedName } = noticeTableParts;
+const { tableAgent, at, agent, coinAmount, orderKind, sale, launch, movedName, padLaunch } =
+  noticeTableParts;
 
 /**
  * One notice of each key of spec 4, section 4, with its sections 4.2 and 4.3, as the engine
@@ -234,15 +235,12 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   ...bridgeNoticeTable,
   "notice.launchStopped": {
     key: "notice.launchStopped",
-    values: { symbol: "MCAT", venue: "pad", reason: "pin_timeout", private: "no" },
+    values: { ...padLaunch, reason: "pin_timeout" },
   },
-  "notice.launchNotSigned": {
-    key: "notice.launchNotSigned",
-    values: { symbol: "MCAT", venue: "pad", private: "no" },
-  },
+  "notice.launchNotSigned": { key: "notice.launchNotSigned", values: padLaunch },
   "notice.launchStepUnsent": {
     key: "notice.launchStepUnsent",
-    values: { symbol: "MCAT", venue: "pad", private: "no" },
+    values: padLaunch,
     amounts: { approved: coinAmount(6_000n) },
   },
   "notice.stepUnsent": { key: "notice.stepUnsent", values: {} },
