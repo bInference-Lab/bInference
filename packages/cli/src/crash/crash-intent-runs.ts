@@ -63,6 +63,8 @@ export interface IntentOutcome {
   readonly settled: { readonly state: string; readonly hashes: readonly string[] };
   /** How far the run moved its effect's number on the chain. */
   readonly moved: bigint;
+  /** The rows of the run's kind the store keeps for the intent. */
+  readonly rows: number;
   /** The states the intent moved through, the first first, and the executions it recorded. */
   readonly booked: { readonly path: readonly string[]; readonly executions: number };
   readonly story: string;
@@ -89,6 +91,11 @@ export interface IntentRun {
   readonly executions: 0 | 1;
   /** Sets up what the request needs, once the engine runs; answers the wallet that sends. */
   readonly prepare?: (world: CrashWorld, install: CrashInstall) => Promise<Address>;
+  /** Rows of the run's kind the store keeps for the intent, and how many a landed one keeps. */
+  readonly rows?: {
+    readonly read: (folder: string, intent: Id<"int">) => Promise<number>;
+    readonly landed: number;
+  };
   /** A number on the chain the intent moves once it lands, by `moves`: none when absent. */
   readonly effect?: {
     readonly read: (world: CrashWorld, install: CrashInstall) => Promise<bigint>;
@@ -200,6 +207,7 @@ export async function crashIntentOnce(
     restartExit: await second.engine.program.exited,
     settled: { state: second.settled, hashes: await hashesOf(folder, intent) },
     moved: (effectAfter ?? 0n) - (killed.effectBefore ?? 0n),
+    rows: (await run.rows?.read(folder, intent)) ?? 0,
     booked: await bookedOf(folder, intent),
     story: await storyOf(folder, [killed.first, second.engine]),
   };
@@ -225,6 +233,8 @@ export interface SentSummary {
   readonly executions: number;
   /** How far the intent moved its run's number on the chain. */
   readonly moved: bigint;
+  /** The rows of the run's kind the store keeps for the intent. */
+  readonly rows: number;
 }
 
 const sameHashes = (left: readonly string[], right: readonly string[]): boolean =>
@@ -250,6 +260,7 @@ export function sentSummaryOf(outcome: IntentOutcome): SentSummary {
     isEachStateOnce: new Set(outcome.booked.path).size === outcome.booked.path.length,
     executions: outcome.booked.executions,
     moved: outcome.moved,
+    rows: outcome.rows,
   };
 }
 
@@ -275,6 +286,7 @@ export function sentOnceOf(killCase: IntentKillCase, run: IntentRun): SentSummar
     isEachStateOnce: true,
     executions: killCase.state === "reconciled" ? run.executions : 0,
     moved: killCase.state === "reconciled" ? (run.effect?.moves ?? 0n) : 0n,
+    rows: killCase.state === "reconciled" ? (run.rows?.landed ?? 0) : 0,
   };
 }
 

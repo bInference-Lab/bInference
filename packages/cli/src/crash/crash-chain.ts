@@ -4,7 +4,13 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { text as readBody } from "node:stream/consumers";
 import { setTimeout as wait } from "node:timers/promises";
 import { BinferenceError, type JsonValue } from "@binference/core";
-import { type Address, type Hex, parseTransaction, type TransactionSerialized } from "viem";
+import {
+  type Address,
+  type Hex,
+  keccak256,
+  parseTransaction,
+  type TransactionSerialized,
+} from "viem";
 import { z } from "zod";
 import { createSystemHttp } from "../runtime/system-http.js";
 import {
@@ -22,6 +28,7 @@ import {
 } from "./crash-chain.schema.js";
 import { multicallAnswer } from "./crash-multicall.js";
 import { asBscAnswer, refusalOf } from "./crash-relay-answers.js";
+import { type CrashStandIn, createStandIns, type StandIns } from "./crash-stand-ins.js";
 
 /**
  * Where a run kills the engine: after custody signed, before the bytes are stored (`signed`);
@@ -78,6 +85,8 @@ export interface CrashChain {
   holdNextRead(match: (request: ChainRequest) => boolean): Promise<void>;
   /** Calls anvil itself, past the counting and the kills. */
   call(method: string, params: readonly JsonValue[]): Promise<JsonValue>;
+  /** Serves a stand-in beside anvil from now on, until the chain closes. */
+  serve(standIn: CrashStandIn): void;
   /** Mines 16 blocks every 150 ms, as BSC moves on, until the signal aborts. */
   mine(signal: AbortSignal): Promise<void>;
   close(): Promise<void>;
@@ -103,6 +112,7 @@ interface Handlers {
 interface Upstream {
   readonly forward: (text: string) => Promise<string>;
   readonly call: CrashChain["call"];
+  readonly standIns: StandIns;
 }
 
 // The engine reached `stored`, or a kill runs: the bytes are noted and never passed on.
@@ -149,6 +159,7 @@ async function sendOf(book: ChainBook, upstream: Upstream, at: { relay: string; 
   if (isRelayedPoint) {
     armed.take();
   }
+  await upstream.standIns.beforeSend(raw, keccak256(raw));
   const answer = asBscAnswer(at.text, await upstream.forward(at.text));
   await book.note({ relay: at.relay, raw, isOnChain: true });
   if (isRelayedPoint) {
@@ -185,7 +196,8 @@ async function readOf(book: ChainBook, upstream: Upstream, text: string) {
   }
   const armed = killReachedBy(book, request);
   if (armed === undefined) {
-    return (await multicallAnswer(text, upstream.call)) ?? upstream.forward(text);
+    const calls = { anvil: upstream.call, standIns: upstream.standIns };
+    return (await multicallAnswer(text, calls)) ?? upstream.forward(text);
   }
   armed.take();
   const mine = async () => upstream.call("evm_mine", []);
@@ -240,7 +252,7 @@ function upstreamOf(anvilUrl: string, http: ReturnType<typeof createSystemHttp>)
     }
     return reply.result;
   };
-  return { forward, call };
+  return { forward, call, standIns: createStandIns() };
 }
 
 async function mineUntil(book: ChainBook, upstream: Upstream, signal: AbortSignal): Promise<void> {
@@ -285,6 +297,7 @@ export async function serveCrashChain(anvilUrl: string): Promise<CrashChain> {
     refuseSends: book.refuse,
     acceptSends: book.accept,
     call: upstream.call,
+    serve: upstream.standIns.add,
     mine: async (signal) => mineUntil(book, upstream, signal),
     close: async () => {
       server.closeAllConnections();

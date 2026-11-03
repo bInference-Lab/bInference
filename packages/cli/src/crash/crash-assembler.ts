@@ -74,6 +74,7 @@ export type OpName =
   | "dup1"
   | "dup2"
   | "dup3"
+  | "dup4"
   | "dup5"
   | "swap1"
   | "log1"
@@ -112,6 +113,7 @@ export const op: Readonly<Record<OpName, Hex>> = {
   dup1: "0x80",
   dup2: "0x81",
   dup3: "0x82",
+  dup4: "0x83",
   dup5: "0x84",
   swap1: "0x90",
   log1: "0xa1",
