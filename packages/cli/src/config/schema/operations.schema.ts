@@ -5,7 +5,9 @@ import { formatted, pathSchema } from "./value-formats.schema.js";
 
 /** What Tailscale publishes, and where the owner's own HTTPS publishes the engine's port. */
 export interface RemoteConfig {
+  /** Whether `binference expose` published the Mini App; it records, never publishes (decision 0341). */
   readonly mini: boolean;
+  /** Whether `binference expose --webhooks` published the webhook path; a record too. */
   readonly webhooks: boolean;
   /** The HTTPS origin of the engine's port, such as a Tailscale `serve` address. */
   readonly publicUrl?: string;
@@ -68,8 +70,12 @@ const off = (description: string) => z.boolean().prefault(false).describe(descri
 /** Parses `remote`. */
 export const remoteSchema: z.ZodType<RemoteConfig> = z
   .strictObject({
-    mini: off("Publishes the Mini App over Tailscale serve."),
-    webhooks: off("Publishes the webhook path over Tailscale funnel."),
+    mini: off(
+      "Whether binference expose published the Mini App over Tailscale serve; a record, so changing it publishes nothing.",
+    ),
+    webhooks: off(
+      "Whether binference expose --webhooks published the webhook path over Tailscale funnel; a record, so changing it publishes nothing.",
+    ),
     publicUrl: formatted("https_origin")
       .exactOptional()
       .describe(

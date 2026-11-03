@@ -557,6 +557,15 @@
         "backup.copy_failed",
         "telegram.not_running",
         "telegram.unreachable",
+        "remote.tailscale_missing",
+        "remote.logged_out",
+        "remote.https_off",
+        "remote.funnel_denied",
+        "remote.funnel_port",
+        "remote.port_taken",
+        "remote.same_port",
+        "remote.not_operator",
+        "remote.not_applied",
         "token.not_found",
         "internal.error"
       ]
@@ -41613,6 +41622,40 @@
             "webhookUrl": {
               "type": "string",
               "minLength": 1
+            },
+            "published": {
+              "type": "object",
+              "properties": {
+                "mini": {
+                  "type": "boolean"
+                },
+                "webhooks": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "mini",
+                "webhooks"
+              ]
+            },
+            "problems": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "logged_out",
+                  "https_off",
+                  "funnel_denied",
+                  "funnel_extra",
+                  "engine_exposed",
+                  "serve_changed"
+                ]
+              }
+            },
+            "checkedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
             }
           },
           "required": [
@@ -41762,7 +41805,35 @@
         },
         "result": {
           "type": "object",
-          "properties": {}
+          "properties": {
+            "stillPublished": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "port": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                  },
+                  "mount": {
+                    "type": "string"
+                  },
+                  "target": {
+                    "type": "string"
+                  },
+                  "isPublic": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "port",
+                  "target",
+                  "isPublic"
+                ]
+              }
+            }
+          }
         }
       },
       "required": [

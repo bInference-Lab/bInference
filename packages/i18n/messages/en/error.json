@@ -138,6 +138,15 @@
   "backup.copy_failed": "The backup was made and checked, but its second copy could not be written. Check the copy folder, then try again.",
   "telegram.not_running": "binference is running without its Telegram bot, so no link was made. `binference logs` shows why; fix the bot token, then run `binference restart`.",
   "telegram.unreachable": "Telegram could not be reached, so no link was made. Try again in a minute.",
+  "remote.tailscale_missing": "Tailscale is not installed. Install it from tailscale.com, then run `binference expose` again.",
+  "remote.logged_out": "Tailscale is not signed in. Run `tailscale up`, then `binference expose` again.",
+  "remote.https_off": "Your tailnet has no HTTPS certificates. Enable HTTPS on the DNS page of Tailscale's admin site, login.tailscale.com/admin/dns, then run `binference expose` again.",
+  "remote.funnel_denied": "Your tailnet's policy does not allow Funnel on this machine. Add the `funnel` node attribute to the policy file on Tailscale's admin site, login.tailscale.com/admin/acls, then run `binference expose --webhooks` again.",
+  "remote.funnel_port": "Your tailnet's policy does not let this machine use Funnel on port 8443, where binference publishes the path alert rules receive alerts on. Check the `funnel` node attribute in the policy file on Tailscale's admin site, login.tailscale.com/admin/acls, then run `binference expose --webhooks` again.",
+  "remote.port_taken": "Tailscale already serves something binference did not set on port 443 or 8443 of this machine, so nothing changed: binference takes those ports whole. Move that service to another port, then run `binference expose` again.",
+  "remote.same_port": "`engine.webhookPort` is the engine's own port, so publishing the webhook path would publish the engine, and nothing changed. Set `engine.webhookPort` to a free port, run `binference restart`, then `binference expose --webhooks` again.",
+  "remote.not_operator": "Tailscale refused binference's change because this account may not change its settings, so nothing changed. On Linux, run `sudo tailscale set --operator=$USER` once; on Windows, run binference as the account signed in to Tailscale. Then run `binference expose` again.",
+  "remote.not_applied": "Tailscale did not take binference's change, so binference took back what it set. Run `tailscale serve status` to see what Tailscale holds, then `binference expose` again.",
   "token.not_found": "No client token has this ID, so nothing was revoked. To remove a client, run `binference mcp setup --remove`.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

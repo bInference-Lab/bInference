@@ -138,6 +138,15 @@
   "backup.copy_failed": "备份已生成并通过检查，但无法写入第二份副本。请检查副本文件夹，然后再试一次。",
   "telegram.not_running": "binference 正在运行，但没有启动 Telegram 机器人，因此没有生成链接。运行 `binference logs` 查看原因；修正机器人 Token 后，再运行 `binference restart`。",
   "telegram.unreachable": "无法连接 Telegram，因此没有生成链接。请一分钟后再试。",
+  "remote.tailscale_missing": "未安装 Tailscale。请从 tailscale.com 安装后再次运行 `binference expose`。",
+  "remote.logged_out": "Tailscale 未登录。请运行 `tailscale up`，然后再次运行 `binference expose`。",
+  "remote.https_off": "你的 tailnet 没有 HTTPS 证书。请在 Tailscale 管理网站的 DNS 页面（login.tailscale.com/admin/dns）启用 HTTPS，然后再次运行 `binference expose`。",
+  "remote.funnel_denied": "你的 tailnet 策略不允许本机使用 Funnel。请在 Tailscale 管理网站的策略文件（login.tailscale.com/admin/acls）中加入 `funnel` 节点属性，然后再次运行 `binference expose --webhooks`。",
+  "remote.funnel_port": "你的 tailnet 策略不允许本机在 8443 端口使用 Funnel，而 binference 在该端口发布提醒规则接收提醒的路径。请检查 Tailscale 管理网站策略文件（login.tailscale.com/admin/acls）中的 `funnel` 节点属性，然后再次运行 `binference expose --webhooks`。",
+  "remote.port_taken": "本机 Tailscale 的 443 或 8443 端口上已有不是 binference 设置的服务，因此未做任何更改：binference 需要完整占用这些端口。请将该服务移到其他端口，然后再次运行 `binference expose`。",
+  "remote.same_port": "`engine.webhookPort` 就是引擎自身的端口，发布 webhook 路径会把引擎一并发布，因此未做任何更改。请将 `engine.webhookPort` 设为空闲端口，运行 `binference restart`，然后再次运行 `binference expose --webhooks`。",
+  "remote.not_operator": "Tailscale 拒绝了 binference 的更改，因为此账户无权更改其设置，因此未做任何更改。在 Linux 上，请运行一次 `sudo tailscale set --operator=$USER`；在 Windows 上，请用已登录 Tailscale 的账户运行 binference。然后再次运行 `binference expose`。",
+  "remote.not_applied": "Tailscale 没有接受 binference 的更改，因此 binference 已撤回它设置的内容。请运行 `tailscale serve status` 查看 Tailscale 当前的设置，然后再次运行 `binference expose`。",
   "token.not_found": "没有此 ID 的访问令牌，因此未撤销任何内容。如需移除某个客户端，请运行 `binference mcp setup --remove`。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

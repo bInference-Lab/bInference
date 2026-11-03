@@ -208,6 +208,8 @@ export {
 } from "./views/market-view.schema.js";
 export type { CandleView, ChartView, ScanItem } from "./views/market-view.schema.js";
 export { type BackupView, backupViewSchema } from "./views/backup-view.schema.js";
+export { remoteDisabledSchema, remoteViewSchema } from "./views/remote-view.schema.js";
+export type { RemoteDisabled, RemoteProblem, RemoteView } from "./views/remote-view.schema.js";
 export {
   cardLinesViewSchema,
   cardLineViewSchema,

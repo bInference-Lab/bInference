@@ -844,12 +844,12 @@
         "type": "object",
         "properties": {
           "mini": {
-            "description": "Publishes the Mini App over Tailscale serve.",
+            "description": "Whether binference expose published the Mini App over Tailscale serve; a record, so changing it publishes nothing.",
             "default": false,
             "type": "boolean"
           },
           "webhooks": {
-            "description": "Publishes the webhook path over Tailscale funnel.",
+            "description": "Whether binference expose --webhooks published the webhook path over Tailscale funnel; a record, so changing it publishes nothing.",
             "default": false,
             "type": "boolean"
           },

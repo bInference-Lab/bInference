@@ -41,6 +41,7 @@ describe("protocolErrorCodes", () => {
       "job",
       "backup",
       "telegram",
+      "remote",
       "token",
       "internal",
     ]);

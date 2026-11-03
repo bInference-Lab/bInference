@@ -171,10 +171,24 @@ export const accessExamples: { readonly [N in keyof AccessOperationShapes]: Wire
   },
   "remote/status": {
     args: empty,
-    result: { tailscale: "running", miniUrl: "https://owner.example.invalid/mini" },
+    result: {
+      tailscale: "running",
+      miniUrl: "https://owner.example.invalid",
+      webhookUrl: "https://owner.example.invalid:8443",
+      published: { mini: true, webhooks: true },
+      problems: [],
+      checkedAt: at,
+    },
   },
   "remote/enable": { args: { mini: true }, result: job },
-  "remote/disable": { args: empty, result: empty },
+  "remote/disable": {
+    args: empty,
+    result: {
+      stillPublished: [
+        { port: 443, mount: "/blog/", target: "http://127.0.0.1:7456/", isPublic: true },
+      ],
+    },
+  },
   "cex/status": {
     args: empty,
     result: { state: "connected", scopes: ["read", "trade"], connectedAt: at },

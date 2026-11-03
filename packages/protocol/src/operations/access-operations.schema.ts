@@ -7,6 +7,12 @@ import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { labelSchema } from "../values/label.schema.js";
 import { type Page, pageSchema } from "../values/page.schema.js";
 import { type JobRef, jobRefSchema } from "../views/job-ref.schema.js";
+import {
+  type RemoteDisabled,
+  remoteDisabledSchema,
+  type RemoteView,
+  remoteViewSchema,
+} from "../views/remote-view.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /** A paired console device. */
@@ -55,13 +61,6 @@ interface RegisterTokenArgs {
   readonly expiresAt?: number;
 }
 
-/** The answer of `remote/status`: Tailscale's state and the published URLs. */
-interface RemoteView {
-  readonly tailscale: "absent" | "stopped" | "running";
-  readonly miniUrl?: string;
-  readonly webhookUrl?: string;
-}
-
 /** The answer of `cex/status`: the connection to the exchange account. */
 interface CexView {
   readonly state: "disconnected" | "connected";
@@ -100,7 +99,7 @@ export interface AccessOperationShapes {
     readonly args: { readonly mini?: boolean; readonly webhooks?: boolean };
     readonly result: JobRef;
   };
-  readonly "remote/disable": { readonly args: Empty; readonly result: Empty };
+  readonly "remote/disable": { readonly args: Empty; readonly result: RemoteDisabled };
   readonly "cex/status": { readonly args: Empty; readonly result: CexView };
   readonly "cex/connect": {
     readonly args: Empty;
@@ -197,11 +196,7 @@ export const accessOperations: OperationTable<AccessOperationShapes> = {
     name: "remote/status",
     scope: "read",
     args: emptyArgsSchema,
-    result: z.object({
-      tailscale: z.enum(["absent", "stopped", "running"]),
-      miniUrl: url.exactOptional(),
-      webhookUrl: url.exactOptional(),
-    }),
+    result: remoteViewSchema,
   },
   "remote/enable": {
     ...localWriteFlags,
@@ -218,7 +213,7 @@ export const accessOperations: OperationTable<AccessOperationShapes> = {
     name: "remote/disable",
     scope: "confirm",
     args: emptyArgsSchema,
-    result: emptyResultSchema,
+    result: remoteDisabledSchema,
   },
   "cex/status": {
     ...readFlags,
