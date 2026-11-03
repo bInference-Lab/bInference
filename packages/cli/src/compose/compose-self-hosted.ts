@@ -35,10 +35,10 @@ import { ownerChatHandlers } from "./owner-locale-change.js";
 import { publishedParts } from "./published-parts.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { type SealKeyKeeper, sealKeyOf } from "./seal-key-keeper.js";
+import { chainReadParts } from "./self-hosted-chain-reads.js";
 import { chainStakingVenues } from "./staking-venues.js";
 import { stateWorkspace } from "./state-workspace.js";
 import { type TimedWork, timedWorkOf } from "./timed-work.js";
-import { chainTokenReads } from "./token-facts.js";
 
 /**
  * The self-hosted engine, built and not yet listening, with the engine's timed work: the work that
@@ -236,17 +236,6 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
 function webPushOf(opening: Opening, opened: Opened) {
   const key = opened.webPushKey;
   return key === undefined ? {} : { webPush: { key, http: opening.host.http, isPublicEndpoint } };
-}
-
-// What the engine reads on the chains besides prices: tokens' facts, names, staking venues and
-// identity registries, whose registration files carry the release version.
-function chainReadParts(reads: TradingParts["reads"], version: string) {
-  return {
-    ...chainTokenReads(reads),
-    nameResolvers: chainNameResolvers(reads),
-    stakingVenues: chainStakingVenues(reads, selfHostedRatePrices()),
-    identity: { registries: chainIdentityRegistries(reads), version },
-  };
 }
 
 // The engine and its protocol server over the wired parts.
