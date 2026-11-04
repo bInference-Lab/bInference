@@ -108,6 +108,8 @@ interface BenchWith {
   readonly lagging?: number;
   readonly intents?: (store: IntentStore) => IntentStore;
   readonly limits?: BenchOptions["limits"];
+  /** Whether the executor runs the registry the engine proposes through; it does when absent. */
+  readonly isRegistryRun?: boolean;
 }
 
 // The executor's intent store, a registration's stored plan read back as another call.
@@ -141,7 +143,10 @@ async function benchWith(
       identity: { registries: [landing], version: testVersion },
       chainSimulator: registrySimulator(registry),
     },
-    routing: { chains, identity: createIdentityHost([landing], chains) },
+    routing: {
+      chains,
+      ...(given.isRegistryRun === false ? {} : { identity: createIdentityHost([landing], chains) }),
+    },
   });
   holdIdentityWallet(bench.test, registry);
   return bench;
@@ -345,6 +350,15 @@ describe("an identity registration on its wallet's queue", () => {
     expect(eventsOf(bench)).toContain("executor.identity_unread:");
     registry.up();
     await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+  });
+
+  it("signs nothing and waits while the executor runs no registry the card named", async () => {
+    const bench = await benchWith(testRegistry(), { isRegistryRun: false });
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done, blocks: 3 })).resolves.toBe("confirmed");
+    expect(eventsOf(bench)).toContain("executor.identity_unread:");
+    expect(bench.signed).toStrictEqual([]);
   });
 
   it("reads back again while a lagging node holds no receipt, then stores the identity", async () => {

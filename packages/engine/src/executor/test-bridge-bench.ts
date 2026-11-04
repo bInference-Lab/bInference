@@ -25,8 +25,8 @@ export async function bridgeBench(
     readonly limits?: Partial<ExecutorLimits>;
     /** Draft payloads whose transactions revert once a block holds them. */
     readonly reverting?: readonly string[];
-    /** Leaves the executor no reader of code on the wallet's own chain. */
-    readonly withoutHomeCodes?: boolean;
+    /** Leaves the executor no reader of code on the wallet's own chain, or on the destination. */
+    readonly withoutCodes?: "home" | "there";
   } = {},
 ): Promise<BridgeBench> {
   const fakes = bridgeFakes(options.routes === undefined ? {} : { routes: options.routes });
@@ -43,8 +43,11 @@ export async function bridgeBench(
       chains: fakes.chains,
       bridging: {
         bridges: [fakes.bridge],
-        destinations: engine.destinations ?? [],
-        codeReaders: options.withoutHomeCodes === true ? [] : [fakes.codesHere],
+        destinations:
+          options.withoutCodes === "there"
+            ? (engine.destinations ?? []).map(({ codes: _codes, ...destination }) => destination)
+            : (engine.destinations ?? []),
+        codeReaders: options.withoutCodes === "home" ? [] : [fakes.codesHere],
       },
     },
   });

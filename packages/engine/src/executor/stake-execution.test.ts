@@ -102,6 +102,17 @@ describe("a staking move on its wallet's queue (decision 0327)", () => {
     expect(bench.signed).toHaveLength(1);
   });
 
+  it("ends a stake that reverts failed_onchain and tells of no approval left standing", async () => {
+    const delegate = "0x000000d1|500000000000000000|delegate,0x000000c1";
+    const bench = await stakeBench(await stakedFake(), { network: { reverting: [delegate] } });
+    const intent = await tapped(bench, stakeRequest("stake"));
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: stakeEnds })).resolves.toBe("failed_onchain");
+    await expect(stakeReasonOf(bench, intent)).resolves.toBe("reverted");
+    const keys = bench.pushes.map(({ data }) => JSON.stringify(data));
+    expect(keys.filter((data) => data.includes("notice.stakeApprovalLeft"))).toStrictEqual([]);
+  });
+
   it("signs nothing and waits while the venue does not answer", async () => {
     const { answer, venue } = refusable(await stakedFake());
     const bench = await stakeBench(venue);

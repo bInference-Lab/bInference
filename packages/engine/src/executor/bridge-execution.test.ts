@@ -234,12 +234,15 @@ describe("a confirmed bridge the queue checks again", () => {
     expect(held).toStrictEqual({ state: "confirmed", signed: [] });
   });
 
-  it("stays unsigned while nothing can read code on the rescue address's own chain", async () => {
-    const held = await heldAfter(async () => Promise.resolve(), testBridge({ rescue: true }), {
-      withoutHomeCodes: true,
-    });
-    expect(held).toStrictEqual({ state: "confirmed", signed: [] });
-  });
+  it.each(["home", "there"] as const)(
+    "stays unsigned while nothing can read code at the rescue address on the %s chain",
+    async (side) => {
+      const held = await heldAfter(async () => Promise.resolve(), testBridge({ rescue: true }), {
+        withoutCodes: side,
+      });
+      expect(held).toStrictEqual({ state: "confirmed", signed: [] });
+    },
+  );
 
   it("stays unsigned once its venue left the agent's limits", async () => {
     const held = await heldAfter(withoutBridgeVenue);

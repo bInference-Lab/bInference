@@ -19,6 +19,7 @@ import {
   type ExecutorBench,
   tapped,
 } from "./test-executor.js";
+import { restartBench, restartEvents } from "./test-restart.js";
 import { landing, refusable, stakeBench, stakeEnds, stakeReceiptOf } from "./test-stake-bench.js";
 
 const live = { signal: new AbortController().signal };
@@ -120,6 +121,23 @@ describe("a landed staking move, booked from its venue's read-back (decision 032
     );
     expect(await executionsOf(bench)).toStrictEqual([]);
     expect(eventsOf(bench)).toContain("executor.settle_late:");
+  });
+
+  it("leaves a finalized stake unbooked after a restart that no longer runs its venue", async () => {
+    const { answer, venue } = refusable(landing(testStakingFake()));
+    const limits = { settleAfterBlocks: 3 };
+    const bench = await stakeBench(venue, { limits });
+    const intent = await tapped(bench, stakeRequest("stake"));
+    answer.isLandedDown = true;
+    await bench.release();
+    await driveUntil(bench, intent, { states: stakeEnds, blocks: 12 });
+    answer.isLandedDown = false;
+    const restarted = await restartBench(bench, { limits });
+    await driveUntil(bench, intent, { states: ["reconciled"], blocks: 6 });
+    expect(await stateOf(bench, intent)).toBe("finalized");
+    expect(await executionsOf(bench)).toStrictEqual([]);
+    expect(restartEvents(restarted)).toContain("executor.settle_late:");
+    expect(restarted.signed).toStrictEqual([]);
   });
 
   it("never books a read-back of another coin than the plan and logs the check it failed", async () => {
