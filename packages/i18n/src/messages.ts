@@ -3,6 +3,7 @@ import enAutoAsks from "../messages/en/autoAsks.json" with { type: "json" };
 import enCard from "../messages/en/card.json" with { type: "json" };
 import enCli from "../messages/en/cli.json" with { type: "json" };
 import enCmd from "../messages/en/cmd.json" with { type: "json" };
+import enConfig from "../messages/en/config.json" with { type: "json" };
 import enConsole from "../messages/en/console.json" with { type: "json" };
 import enDaily from "../messages/en/daily.json" with { type: "json" };
 import enDisclaimer from "../messages/en/disclaimer.json" with { type: "json" };
@@ -32,6 +33,7 @@ import zhAutoAsks from "../messages/zh/autoAsks.json" with { type: "json" };
 import zhCard from "../messages/zh/card.json" with { type: "json" };
 import zhCli from "../messages/zh/cli.json" with { type: "json" };
 import zhCmd from "../messages/zh/cmd.json" with { type: "json" };
+import zhConfig from "../messages/zh/config.json" with { type: "json" };
 import zhConsole from "../messages/zh/console.json" with { type: "json" };
 import zhDaily from "../messages/zh/daily.json" with { type: "json" };
 import zhDisclaimer from "../messages/zh/disclaimer.json" with { type: "json" };
@@ -106,6 +108,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("plugin", enPlugin),
     ...inArea("workspace", enWorkspace),
     ...inArea("docs", enDocs),
+    ...inArea("config", enConfig),
   },
   zh: {
     ...inArea("error", zhError),
@@ -137,5 +140,6 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("plugin", zhPlugin),
     ...inArea("workspace", zhWorkspace),
     ...inArea("docs", zhDocs),
+    ...inArea("config", zhConfig),
   },
 };

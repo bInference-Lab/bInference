@@ -1,6 +1,6 @@
 import { configJsonSchema, configTree } from "../config-json-schema.js";
 import type { ConfigNode, KeyInfo } from "../config-tree.js";
-import { describeRule } from "../describe-rule.js";
+import { describeRule, englishConfigWords } from "../describe-rule.js";
 import type { JsonObject } from "../json-value.schema.js";
 import { envSegment } from "../layers/env-layer.js";
 import { currentConfigVersion } from "../migrations/config-migrations.js";
@@ -56,10 +56,10 @@ function mapLines(node: MapNode, place: Place): readonly string[] {
     env: [...place.env, `<${node.keyName.toUpperCase()}>`],
     isRequired: false,
   };
-  const keys = `Keys: ${describeRule(node.keyRule)}.`;
+  const keys = `Keys: ${describeRule(node.keyRule, englishConfigWords)}.`;
   if (node.value.kind === "value") {
     const info = { ...node.value.info, ...node.info };
-    return [`${line(inner, info, describeRule(node.value.rule))} ${keys}`];
+    return [`${line(inner, info, describeRule(node.value.rule, englishConfigWords))} ${keys}`];
   }
   return [`${line(place, node.info, "an object")} ${keys}`, ...lines(node.value, inner)];
 }
@@ -76,7 +76,7 @@ function lines(node: ConfigNode, place: Place): readonly string[] {
   }
   return node.kind === "map"
     ? mapLines(node, place)
-    : [line(place, node.info, describeRule(node.rule))];
+    : [line(place, node.info, describeRule(node.rule, englishConfigWords))];
 }
 
 function section(key: string, node: ConfigNode, required: ReadonlySet<string>): string {

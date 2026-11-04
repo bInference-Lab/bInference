@@ -6,7 +6,7 @@ import type {
   ConfigOrigin,
   ConfigProblem,
 } from "./config-issue.js";
-import { describeRule } from "./describe-rule.js";
+import { describeRule, englishConfigWords } from "./describe-rule.js";
 
 const fileName = "config.json5";
 
@@ -41,11 +41,11 @@ function problemText(problem: ConfigProblem): string {
     return `is version ${String(problem.version)}; this binference reads version ${String(problem.current)}`;
   }
   if (problem.kind === "bad_value") {
-    const takes = `must be ${describeRule(problem.rule)}`;
+    const takes = `must be ${describeRule(problem.rule, englishConfigWords)}`;
     return problem.got === "" ? takes : `${takes} (got ${problem.got})`;
   }
   if (problem.kind === "bad_key") {
-    return `is not a valid key here; a key must be ${describeRule(problem.rule)}`;
+    return `is not a valid key here; a key must be ${describeRule(problem.rule, englishConfigWords)}`;
   }
   return plainProblems[problem.kind];
 }
