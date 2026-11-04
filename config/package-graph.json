@@ -25,7 +25,8 @@
       "money": true
     },
     "platform": {
-      "imports": ["core", "execa", "which-command", "@napi-rs/keyring"],
+      "imports": ["core", "execa", "which-command", "@napi-rs/keyring", "undici"],
+      "only": { "undici": "src/outbound" },
       "osLayer": true,
       "fileSystem": true
     },
@@ -101,17 +102,17 @@
         "client",
         "i18n",
         "store",
+        "platform",
         "ws",
         "openai",
         "@anthropic-ai/sdk",
         "partial-json",
-        "yaml",
-        "undici"
+        "yaml"
       ],
       "only": {
+        "@binference/platform": "src/process",
         "openai": "src/providers",
-        "@anthropic-ai/sdk": "src/providers",
-        "undici": "src/process"
+        "@anthropic-ai/sdk": "src/providers"
       }
     },
     "tui": {

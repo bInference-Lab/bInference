@@ -18,15 +18,21 @@
       "@binference/source": "./src/testing.ts",
       "types": "./dist/testing.d.mts",
       "default": "./dist/testing.mjs"
+    },
+    "./outbound": {
+      "@binference/source": "./src/outbound/outbound-pools.ts",
+      "types": "./dist/outbound/outbound-pools.d.mts",
+      "default": "./dist/outbound/outbound-pools.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/outbound/outbound-pools.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/core": "workspace:*",
     "@napi-rs/keyring": "catalog:",
     "execa": "catalog:",
+    "undici": "catalog:",
     "which-command": "catalog:",
     "zod": "catalog:"
   }

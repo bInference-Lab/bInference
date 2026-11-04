@@ -16,5 +16,7 @@ export { createMemoryServiceManager } from "./fakes/memory-service-manager.js";
 export { createSecretVault } from "./fakes/secret-vault.js";
 export type { SecretVault } from "./fakes/secret-vault.js";
 export { standInProgramsRun, writeStandInProgram } from "./fakes/stand-in-program.js";
+export { startStandInProxy } from "./fakes/stand-in-proxy.js";
+export type { StandInProxy, StandInProxyOptions } from "./fakes/stand-in-proxy.js";
 export { createTempFolder } from "./fakes/temp-folder.js";
 export type { TempFolder } from "./fakes/temp-folder.js";

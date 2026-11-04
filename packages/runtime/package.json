@@ -32,10 +32,10 @@
     "@anthropic-ai/sdk": "catalog:",
     "@binference/client": "workspace:*",
     "@binference/core": "workspace:*",
+    "@binference/platform": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/store": "workspace:*",
     "openai": "catalog:",
-    "undici": "catalog:",
     "ws": "catalog:",
     "zod": "catalog:"
   },

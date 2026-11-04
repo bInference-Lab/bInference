@@ -858,6 +858,9 @@ importers:
       execa:
         specifier: 'catalog:'
         version: 10.0.1
+      undici:
+        specifier: 'catalog:'
+        version: 8.11.2
       which-command:
         specifier: 'catalog:'
         version: 0.1.0
@@ -918,6 +921,9 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/platform':
+        specifier: workspace:*
+        version: link:../platform
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -927,9 +933,6 @@ importers:
       openai:
         specifier: 'catalog:'
         version: 7.28.0(undici@8.11.2)(ws@8.22.0)(zod@4.6.5)
-      undici:
-        specifier: 'catalog:'
-        version: 8.11.2
       ws:
         specifier: 'catalog:'
         version: 8.22.0

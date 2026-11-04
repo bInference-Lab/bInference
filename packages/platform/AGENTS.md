@@ -16,6 +16,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   Windows (`describe.skipIf`). CI runs all three OSes on each push to `master`, after the merge, so
   a change to one OS's path runs its tests on that OS before the merge.
 - Child processes go through `runCommand` (execa, an argument array, no shell, a time limit).
+- `src/outbound/` holds the connection pools of the engine's and the agent runtime's outbound
+  HTTP adapters (decision 0347), the one place here that imports undici, exported alone as
+  `@binference/platform/outbound` so the runtime's bundle takes nothing else of this package. They
+  refuse every request until a route is put in force.
 - The IPC address is not a security boundary: every connection authenticates through
   `openIpcChannel`. Node cannot set a named pipe's access list.
 - Tests use real files, sockets, pipes and signals in a fresh temporary folder, with no sleeps
