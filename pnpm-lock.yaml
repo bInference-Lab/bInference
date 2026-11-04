@@ -371,6 +371,7 @@ overrides:
   markdown-it: 15.0.3
   markdownlint-cli2>smol-toml: 1.9.0
   qs: 6.16.1
+  seroval: 1.6.11
   source-map-js: 1.2.2
   undici: 8.12.2
   zod: 4.6.6
@@ -6088,8 +6089,8 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
-  seroval@1.6.8:
-    resolution: {integrity: sha512-HlSgSAkTk4EqHcje1ptJjfZi1YDv5KbhVJ/d3P7T/nAXua2VmDu+AKDX5VTdFfZf48nDkWB2TKYt0DrCSa+3wg==}
+  seroval@1.6.11:
+    resolution: {integrity: sha512-hpb6XnMCGN/A+79Uf8V7/iTGkyyyazNn5X0CoCAp7Uy9vT3RT8jZ9GLcnxGoVjg3P8AArbe4ZVHq6C8oT2a0kA==}
     engines: {node: '>=10'}
 
   sharp@0.35.5:
@@ -9079,8 +9080,8 @@ snapshots:
     dependencies:
       '@tanstack/history': 1.162.4
       cookie-es: 3.1.1
-      seroval: 1.6.8
-      seroval-plugins: 1.6.8(seroval@1.6.8)
+      seroval: 1.6.11
+      seroval-plugins: 1.6.8(seroval@1.6.11)
 
   '@tanstack/store@0.11.2': {}
 
@@ -11289,11 +11290,11 @@ snapshots:
 
   semver@7.8.5: {}
 
-  seroval-plugins@1.6.8(seroval@1.6.8):
+  seroval-plugins@1.6.8(seroval@1.6.11):
     dependencies:
-      seroval: 1.6.8
+      seroval: 1.6.11
 
-  seroval@1.6.8: {}
+  seroval@1.6.11: {}
 
   sharp@0.35.5(@types/node@26.6.3):
     dependencies:

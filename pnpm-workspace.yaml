@@ -96,6 +96,9 @@ overrides:
   # GHSA-6pq8-jhm2-2vcw and three more: qs below 6.16.1 can be crashed or slowed by its input
   # (through Stryker's typed-rest-client, which pins 6.15.1).
   qs: 6.16.1
+  # GHSA-f86p-h4j2-7qgj and GHSA-9wx9-5pv9-3349: seroval below 1.6.11 can write script into its
+  # serialized output (through TanStack Router in the console).
+  seroval: 1.6.11
   # GHSA-68fv-2mgg-jv7q: source-map-js below 1.2.2 can block the event loop (through postcss).
   source-map-js: 1.2.2
   # GHSA-2m5v-pch6-74hx and seven more: undici below 8.12.2 drops TLS options and can crash on a
