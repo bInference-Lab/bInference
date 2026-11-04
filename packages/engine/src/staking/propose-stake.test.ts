@@ -1,5 +1,6 @@
-import { assetRefSchema } from "@binference/chain";
-import type { IntentView, StakeRequest } from "@binference/protocol";
+import { accountRefSchema, assetRefSchema, type PriceSource } from "@binference/chain";
+import { err, idSchema } from "@binference/core";
+import { intentStates, type IntentView, type StakeRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { createFakeTokenFacts, fakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { expectOk, testCoin } from "../intents/test-intents.js";
@@ -195,6 +196,23 @@ describe("proposing a stake", () => {
   });
 });
 
+describe("resolving a staking request", () => {
+  it("refuses a validator of a chain the registry does not hold and a wallet the agent lacks", async () => {
+    const test = await startStakeEngine(testStakingFake());
+    const stranger = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
+    const away = accountRefSchema.parse("fake:9:0x000000c1");
+
+    const answers = [
+      await answerOf(test, stakeRequest("stake", { validator: away })),
+      await answerOf(test, stakeRequest("stake", { wallet: stranger })),
+    ];
+
+    expect(answers).toStrictEqual(["protocol.bad_args", "wallet.not_found"]);
+    const stored = await test.stores.intents.list({ states: [...intentStates], limit: 10 }, live);
+    expect(stored).toStrictEqual([]);
+  });
+});
+
 describe("staking in auto mode", () => {
   it("opens a card for a stake while a community plugin is on, and says why (decision 0350)", async () => {
     const test = await startStakeEngine(withOwnCap(testStakingFake()), {
@@ -239,5 +257,89 @@ describe("staking on paper", () => {
     expect(positions.find((position) => position.asset === testCoin)?.quantityBase).toBe(
       5n * oneCoin,
     );
+  });
+});
+
+// A price source that answers no price once `off` is called, as a feed that went quiet.
+function quietingPrices() {
+  let isQuiet = false;
+  return {
+    off: () => {
+      isQuiet = true;
+    },
+    wrap: (source: PriceSource): PriceSource => ({
+      ...source,
+      usdPrice: async (asset, options) =>
+        isQuiet ? err("no_price" as const) : source.usdPrice(asset, options),
+    }),
+  };
+}
+
+// Two cards of the same staking request, both waiting for the owner's tap.
+async function twoCards(
+  test: StakeTest,
+  request: StakeRequest,
+): Promise<readonly [IntentView, IntentView]> {
+  return [await propose(test, request), await propose(test, request)];
+}
+
+async function stateOf(test: StakeTest, view: IntentView) {
+  const read = expectOk(
+    await test.engine.handlers["intent/get"](testCall({ intent: view.intent })),
+  );
+  return [read.state, read.outcome?.reason];
+}
+
+describe("filling a staking move on paper", () => {
+  it("ends a stake the paper coin no longer covers with nothing_to_sell", async () => {
+    const test = await startStakeEngine(testStakingFake(), {
+      paper: [{ asset: testCoin, base: 9n * 10n ** 17n }],
+    });
+    const [first, second] = await twoCards(test, stakeRequest("stake"));
+    await confirm(test, first);
+    await confirm(test, second);
+
+    expect(await stateOf(test, first)).toStrictEqual(["paper_filled", undefined]);
+    expect(await stateOf(test, second)).toStrictEqual(["failed_check", "nothing_to_sell"]);
+  });
+
+  it("ends an unstake of receipt units the paper stake no longer holds with nothing_to_sell", async () => {
+    const test = await startStakeEngine(testStakingFake());
+    await confirm(test, await propose(test));
+    const [first, second] = await twoCards(test, wholeUnstake());
+    await confirm(test, first);
+    await confirm(test, second);
+
+    expect(await stateOf(test, first)).toStrictEqual(["paper_filled", undefined]);
+    expect(await stateOf(test, second)).toStrictEqual(["failed_check", "nothing_to_sell"]);
+  });
+
+  it("ends a claim of parts another claim took with nothing_to_sell", async () => {
+    const fake = testStakingFake();
+    const test = await startStakeEngine(fake);
+    await confirm(test, await propose(test));
+    await confirm(test, await propose(test, wholeUnstake()));
+    fake.wait(testUnbondingSeconds + 1);
+    const [first, second] = await twoCards(test, stakeRequest("claim"));
+    await confirm(test, first);
+    await confirm(test, second);
+
+    expect(await stateOf(test, first)).toStrictEqual(["paper_filled", undefined]);
+    expect(await stateOf(test, second)).toStrictEqual(["failed_check", "nothing_to_sell"]);
+  });
+
+  it("stays confirmed, with nothing booked, while the coin has no usable price", async () => {
+    const prices = quietingPrices();
+    const test = await startStakeEngine(testStakingFake(), { priceSource: prices.wrap });
+    const view = await propose(test);
+    prices.off();
+    await confirm(test, view);
+
+    expect(await stateOf(test, view)).toStrictEqual(["confirmed", undefined]);
+    const positions = await test.positions.positions(
+      { walletId: view.wallet, isPaper: true },
+      live,
+    );
+    expect(positions.map((position) => position.asset)).toStrictEqual([testCoin]);
   });
 });
