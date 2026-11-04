@@ -1,5 +1,5 @@
-import { BinferenceError, type Logger } from "@binference/core";
-import type { RuntimeProvider, RuntimeSettings } from "@binference/runtime";
+import { BinferenceError, type Logger, type ProxySetting } from "@binference/core";
+import type { RuntimeNetwork, RuntimeProvider, RuntimeSettings } from "@binference/runtime";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { SecretSource } from "../config/schema/secret-source.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
@@ -7,9 +7,17 @@ import type { SecretReader } from "../config/secrets/secret-reader.js";
 type RuntimeConfig = Pick<BinferenceConfig, "models" | "chats" | "search" | "owner">;
 
 /** The config keys the runtime's settings hold: a change to one sends the runtime new settings. */
-export const runtimeKeys: readonly string[] = ["models", "chats.newMessageMode", "search", "owner"];
+export const runtimeKeys: readonly string[] = [
+  "models",
+  "chats.newMessageMode",
+  "search",
+  "owner",
+  "network",
+];
 
 interface ReadCall {
+  /** The proxy setting the engine read and put in force, which the runtime reaches out by too. */
+  readonly proxy: ProxySetting;
   readonly secrets: SecretReader;
   readonly logger: Logger;
   readonly signal: AbortSignal;
@@ -70,11 +78,19 @@ async function searchOf(config: RuntimeConfig, call: ReadCall): Promise<RuntimeS
   };
 }
 
+function networkOf(setting: ProxySetting): RuntimeNetwork {
+  const { proxy, noProxy } = setting;
+  if (proxy === undefined) {
+    return { noProxy };
+  }
+  return { proxy: proxy === "unread" ? "unread" : { url: proxy.reveal() }, noProxy };
+}
+
 /**
  * The settings the runtime starts with (runtime spec, section 2.2): the models with each
  * provider's key read from its secret source, the chat mode, the search provider with its keys,
- * and the owner's language and time zone. A key that cannot be read is logged with its code and
- * left out; the runtime starts without it.
+ * the owner's language and time zone, and the proxy the engine read. A key that cannot be read is
+ * logged with its code and left out; the runtime starts without it.
  */
 export async function runtimeSettingsOf(
   config: RuntimeConfig,
@@ -89,5 +105,6 @@ export async function runtimeSettingsOf(
     chats: { newMessageMode: config.chats.newMessageMode },
     search,
     owner: { locale: config.owner.locale, timezone: config.owner.timezone },
+    network: networkOf(call.proxy),
   };
 }

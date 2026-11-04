@@ -16,7 +16,7 @@ import { createOutboundPools, type OutboundPools } from "@binference/platform/ou
  * Where the engine puts the route of its outbound requests in force, from `network.proxy` and
  * `network.noProxy`, and opens its WebSockets by it.
  */
-interface OutboundSwitch {
+export interface OutboundSwitch {
   /**
    * Puts the route in force for every request and socket that starts from now on; one under way
    * finishes as it started, but a different route closes the sockets the old one opened, so their

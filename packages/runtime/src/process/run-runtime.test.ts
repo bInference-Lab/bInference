@@ -87,6 +87,23 @@ describe("runRuntime", () => {
     await expect(runtime.next()).resolves.toBe("ended");
   });
 
+  it("puts the start line's settings in force, then each settings line's", async () => {
+    const runtime = started();
+    await send(runtime, fixtureStartLine());
+    await runtime.next();
+    const proxied = {
+      ...fixtureStartLine().settings,
+      network: { proxy: { url: "http://proxy.owner.test:3128" }, noProxy: [] },
+    };
+    await send(runtime, { t: "settings", settings: proxied });
+    await send(runtime, { t: "stop" });
+    await runtime.exited;
+    expect(runtime.applied.map((settings) => settings.network)).toStrictEqual([
+      fixtureStartLine().settings.network,
+      proxied.network,
+    ]);
+  });
+
   it("ends without a fault when its input ends", async () => {
     const runtime = started();
     await send(runtime, fixtureStartLine());

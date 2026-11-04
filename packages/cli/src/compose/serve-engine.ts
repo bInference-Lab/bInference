@@ -74,6 +74,28 @@ function isUnreachable(unlocked: Result<void, LockReason>): boolean {
   return !unlocked.ok && unlocked.error === "custody_unreachable";
 }
 
+// The reload of `config.json5` (decision 0118), whose changed keys reach the venues' keys, the
+// owner's proxy, then the agent runtime, which carries the proxy in its settings.
+function startReload(opening: Opening, opened: Opened, composed: ComposedSelfHosted): void {
+  const { configReload } = opened;
+  configReload.applyNow = startConfigReload({
+    file: opening.platform.stateFolder.configFile,
+    readConfig: opened.readConfig,
+    settings: opened.settings,
+    journal: { journal: opened.stores.configJournal, publish: composed.publish },
+    follow: async (keys, reading) => {
+      await opened.followVenues(keys, reading);
+      const proxy = await opened.proxy.follow(keys, reading);
+      await composed.runtime.followReload(keys, reading);
+      return proxy === undefined ? {} : { proxy };
+    },
+    watch: watchFile,
+    clock: opening.host.clock,
+    closers: opening.closers,
+    logger: opened.log.logger,
+  }).applyNow;
+}
+
 // What runs while the engine serves: the settle timer, the gas check, the order and card timers,
 // the schedule queue, the copy orders, the daily summaries, the bridges in transit, the price
 // watchers, the nightly backup, the reload of `config.json5` when it changes (decision 0118), and
@@ -107,21 +129,7 @@ function startTimers(
     settings: opened.settings,
     publish: composed.publish,
   });
-  const { configReload } = opened;
-  configReload.applyNow = startConfigReload({
-    file: opening.platform.stateFolder.configFile,
-    readConfig: opened.readConfig,
-    settings: opened.settings,
-    journal: { journal: opened.stores.configJournal, publish: composed.publish },
-    follow: async (keys, reading) => {
-      await opened.followVenues(keys, reading);
-      await composed.runtime.followReload(keys, reading);
-    },
-    watch: watchFile,
-    clock: host.clock,
-    closers,
-    logger,
-  }).applyNow;
+  startReload(opening, opened, composed);
   if (started.isPrivyUnreachable) {
     const { clock, random } = host;
     const onGiveUp = (): void => composed.publish(privyUnreachableNotice());

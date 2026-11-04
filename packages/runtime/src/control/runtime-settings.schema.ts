@@ -51,17 +51,31 @@ export interface RuntimeSearch {
   readonly xApiKey?: string;
 }
 
+/** The owner's proxy as the runtime reaches the network through it, read from its secret source. */
+export type RuntimeProxy = { readonly url: string } | "unread";
+
+/** The outbound network: `network.proxy` and `network.noProxy` (config spec, section 6). */
+export interface RuntimeNetwork {
+  /**
+   * The proxy URL, credentials included; `unread` when config names one the engine could not
+   * read, which holds every request it would carry; absent without a proxy.
+   */
+  readonly proxy?: RuntimeProxy;
+  readonly noProxy: readonly string[];
+}
+
 /**
  * What the runtime needs of the config and nothing more (runtime spec, section 2.2): the models
  * with each provider's key, how a message during a turn is handled, the search providers and
- * their keys, and the owner's language and time zone. It holds secrets: it crosses only the
- * runtime's standard input and is never logged.
+ * their keys, the owner's language and time zone, and the owner's proxy. It holds secrets: it
+ * crosses only the runtime's standard input and is never logged.
  */
 export interface RuntimeSettings {
   readonly models: RuntimeModels;
   readonly chats: { readonly newMessageMode: "merge" | "after" };
   readonly search: RuntimeSearch;
   readonly owner: { readonly locale: Locale; readonly timezone: string };
+  readonly network: RuntimeNetwork;
 }
 
 /** A {@link RuntimeModelPrice} as JSON carries it, prices as decimal strings. */
@@ -135,4 +149,10 @@ export const runtimeSettingsSchema: z.ZodType<RuntimeSettings, RuntimeSettingsWi
       xApiKey: secretTextSchema.exactOptional(),
     }),
     owner: z.strictObject({ locale: localeSchema, timezone: z.string().min(1).max(64) }),
+    network: z.strictObject({
+      proxy: z
+        .union([z.strictObject({ url: secretTextSchema }), z.literal("unread")])
+        .exactOptional(),
+      noProxy: z.array(z.string().min(1).max(300)).max(256),
+    }),
   });

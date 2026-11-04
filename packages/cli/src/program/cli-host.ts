@@ -14,6 +14,7 @@ import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
 import type { PluginPrograms } from "../compose/plugin-sandbox.js";
 import type { StartSigner } from "../compose/start-signer.js";
+import type { OutboundSwitch } from "../runtime/system-http.js";
 import type { Prompter } from "../term/prompter.js";
 
 /** How this binference was started, so the background service starts it the same way. */
@@ -59,6 +60,13 @@ export interface CliHost {
   readonly http: Http;
   /** Downloads files as bytes, such as the photos the owner sends the bot; absent, none is read. */
   readonly download?: HttpDownload;
+  /**
+   * Where a command puts the route of `network.proxy` and `network.noProxy` in force for `http`
+   * and `download`, and opens its WebSockets by it: the entry file's own adapter, which refuses
+   * every request until a route is put in force (decision 0347). Tests that answer `http`
+   * themselves pass one that records the route.
+   */
+  readonly outbound: OutboundSwitch;
   /** Asks the person at the terminal; absent when no person is there to answer. */
   readonly prompter?: Prompter;
   /** Where stop signals arrive: `process` in the entry file. */

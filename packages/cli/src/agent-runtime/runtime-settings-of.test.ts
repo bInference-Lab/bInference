@@ -50,6 +50,7 @@ describe("runtimeSettingsOf", () => {
   it("reads each key from its source and leaves out, logged, one it cannot read", async () => {
     const logger = createMemoryLogger({ subsystem: "runtime" });
     const settings = await runtimeSettingsOf(config, {
+      proxy: { noProxy: ["localhost"] },
       secrets,
       logger,
       signal: new AbortController().signal,
@@ -64,6 +65,7 @@ describe("runtimeSettingsOf", () => {
       "after",
     ]);
     expect(settings.owner).toStrictEqual({ locale: "zh", timezone: "Asia/Shanghai" });
+    expect(settings.network).toStrictEqual({ noProxy: ["localhost"] });
     expect(logger.records().map((record) => record.fields)).toStrictEqual([
       { errorCode: "config.secret_unavailable" },
       { errorCode: "config.secret_unavailable" },
@@ -71,5 +73,24 @@ describe("runtimeSettingsOf", () => {
     expect(runtimeSettingsSchema.safeParse(runtimeSettingsSchema.encode(settings)).success).toBe(
       true,
     );
+  });
+
+  it.each([
+    [
+      "read",
+      createSecret("http://owner:pass@proxy.owner.test:3128"),
+      { url: "http://owner:pass@proxy.owner.test:3128" },
+    ],
+    ["unread", "unread" as const, "unread"],
+  ])("hands the runtime the proxy the engine %s", async (_case, proxy, sent) => {
+    const settings = await runtimeSettingsOf(config, {
+      proxy: { proxy, noProxy: ["10.0.0.0/8"] },
+      secrets,
+      logger: createMemoryLogger({ subsystem: "runtime" }),
+      signal: new AbortController().signal,
+    });
+    expect(settings.network).toStrictEqual({ proxy: sent, noProxy: ["10.0.0.0/8"] });
+    const wire = runtimeSettingsSchema.encode(settings);
+    expect(runtimeSettingsSchema.parse(wire).network).toStrictEqual(settings.network);
   });
 });

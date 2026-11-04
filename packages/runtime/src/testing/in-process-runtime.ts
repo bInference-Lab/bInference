@@ -51,6 +51,8 @@ export interface InProcessRuntime {
   readonly starts: readonly StartLine[];
   /** The settings each turn was set up with, by its agent, in order. */
   readonly setups: readonly { readonly agent: string; readonly settings: RuntimeSettings }[];
+  /** The settings it put in force for the process, such as its outbound route, in order. */
+  readonly applied: readonly RuntimeSettings[];
   /** The engine's side of chat it signed in to, and the agent database it keeps. */
   readonly engine: MemoryEngineChat;
   readonly database: MemoryAgentDatabase;
@@ -175,12 +177,19 @@ function testModels(options: InProcessRuntimeOptions, clock: Clock) {
   return { models, vision, transports: { main: transport, vision: eyes } };
 }
 
-// The agent database, the model and the tools of the runtime's chat, and its clock.
+// What the runtime set up its turns with and put in force for itself, in order.
+interface Recorded {
+  readonly setups: { readonly agent: string; readonly settings: RuntimeSettings }[];
+  readonly applied: RuntimeSettings[];
+}
+
+// The agent database, the model and the tools of the runtime's chat, its clock, and the record
+// of the settings it applied.
 function chatHost(
   options: InProcessRuntimeOptions,
   database: MemoryAgentDatabase,
-  setups: { readonly agent: string; readonly settings: RuntimeSettings }[],
-): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "clock"> & {
+  recorded: Recorded,
+): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "applySettings" | "clock"> & {
   readonly transports: InProcessRuntime["transports"];
 } {
   const tools = testToolBox(options.tools ?? []);
@@ -192,7 +201,7 @@ function chatHost(
     openAgentDatabase: async () => memoryDatabase(database),
     turnSetup: (place, settings, client) => {
       const { agent } = place;
-      setups.push({ agent, settings });
+      recorded.setups.push({ agent, settings });
       return {
         models,
         ...(vision === undefined ? {} : { vision }),
@@ -200,6 +209,9 @@ function chatHost(
         instructions: "You are a test agent.",
         limits: turnLimits,
       };
+    },
+    applySettings: (settings) => {
+      recorded.applied.push(settings);
     },
     clock,
   };
@@ -226,8 +238,9 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
   const timer = { onTick: async (): Promise<void> => Promise.resolve() };
   const [starts, setups]: [StartLine[], { agent: string; settings: RuntimeSettings }[]] = [[], []];
   const state = { hasStarted: false };
+  const applied: RuntimeSettings[] = [];
   const killed = exitOf();
-  const { transports, ...host } = chatHost(options, database, setups);
+  const { transports, ...host } = chatHost(options, database, { setups, applied });
   const running = runRuntime({
     input,
     write: async (line) => output.push(`${line}\n`),
@@ -264,6 +277,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
     database,
     starts,
     setups,
+    applied,
     transports,
   };
 }

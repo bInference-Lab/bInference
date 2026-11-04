@@ -35,6 +35,7 @@ const host: CliHost = {
   random: createSystemRandom(),
   http: crashHttp(http, endpoints),
   download: crashDownload(http, endpoints),
+  outbound: http,
   signals: process,
   version,
   system: readSystemFacts(),

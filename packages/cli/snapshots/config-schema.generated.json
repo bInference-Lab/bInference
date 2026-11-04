@@ -936,11 +936,11 @@
         "type": "object",
         "properties": {
           "proxy": {
-            "description": "An HTTP or HTTPS proxy URL, credentials included.",
+            "description": "The owner's proxy as an http:// or https:// URL, its user name and password included: every outbound request but those to this machine, addresses off the internet and noProxy goes through it as a tunnel.",
             "$ref": "#/$defs/Secret"
           },
           "noProxy": {
-            "description": "Hosts reached without the proxy.",
+            "description": "Hosts reached without the proxy, at most 256: * for every host, a name in punycode that also covers the names under it, an IP address or [IPv6], each with an optional :port, or an address block such as 10.0.0.0/8.",
             "default": [
               "127.0.0.1",
               "localhost"

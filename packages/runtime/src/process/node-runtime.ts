@@ -7,6 +7,7 @@ import { turnLimits } from "../loop/turn-run.js";
 import type { ChainParts } from "../providers/model-transport-for.js";
 import { agentToolBox } from "../tools/agent-tools.js";
 import { connectEngine } from "./engine-link.js";
+import { networkRouteOf } from "./network-route.js";
 import { createNodeStreamingHttp } from "./node-streaming-http.js";
 import { processPorts } from "./process-ports.js";
 import { type RuntimeHost, runRuntime } from "./run-runtime.js";
@@ -82,6 +83,7 @@ export async function runNodeRuntime(
       openSqliteAgentDatabase(file, { signal, execArgv: workerExecArgv }),
     turnSetup:
       parts.turnSetup ?? builtTurnSetup({ http, clock: processPorts.clock, rests: new Map() }),
+    applySettings: (settings) => http.use(networkRouteOf(settings.network)),
     clock: processPorts.clock,
     everyTenSeconds: (onTick, signal) => {
       // A write that fails means the engine has gone; the end of the input stops the runtime.

@@ -4,6 +4,7 @@ import {
   configChangedNotice,
   configInvalidNotice,
   journalConfigChange,
+  type ProxyUse,
 } from "@binference/engine/audit";
 import type { FileWatch, WatchFileOptions } from "@binference/platform";
 import type { ConfigChangeFound } from "../config/config-changes.js";
@@ -14,6 +15,12 @@ import type { Closers } from "./closers.js";
 import type { ConfigCell } from "./config-cell.js";
 import type { ConfigReloadLink, ReloadAuthor } from "./config-reload-link.js";
 import type { Opened } from "./open-engine-parts.js";
+
+/** What the parts that follow a reload found, for its notice. */
+export interface ReloadFollowed {
+  /** How a changed proxy failed its first use; absent when it did not. */
+  readonly proxy?: ProxyUse;
+}
 
 /** What reloads the settings when `config.json5` changes. */
 export interface ConfigReloadOptions {
@@ -27,9 +34,10 @@ export interface ConfigReloadOptions {
   readonly journal: ConfigChangeParts;
   /**
    * Hands the changed keys to the parts that read secrets again or send settings on, once the cell
-   * holds the new config and before the notice names the changes as applied.
+   * holds the new config and before the notice names the changes as applied; answers how a changed
+   * proxy failed its first use, which the notice says (decision 0347).
    */
-  readonly follow: (changed: readonly string[], signal: AbortSignal) => Promise<void>;
+  readonly follow: (changed: readonly string[], signal: AbortSignal) => Promise<ReloadFollowed>;
   /** Watches the file: the platform's watcher, or a test's. */
   readonly watch: (path: string, options: WatchFileOptions) => FileWatch;
   readonly clock: Clock;
@@ -57,13 +65,14 @@ async function follow(
   options: ConfigReloadOptions,
   keys: readonly string[],
   signal: AbortSignal,
-): Promise<void> {
+): Promise<ReloadFollowed> {
   try {
-    await options.follow(keys, signal);
+    return await options.follow(keys, signal);
   } catch (error) {
     signal.throwIfAborted();
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
     options.logger.warn("config.follow_failed", { errorCode });
+    return {};
   }
 }
 
@@ -92,9 +101,9 @@ async function apply(
   }, Promise.resolve());
   options.settings.replace(read.config);
   const keys = changes.map((change) => change.path);
-  await follow(options, keys, signal);
+  const followed = await follow(options, keys, signal);
   const afterRestart = changes.filter((change) => !change.appliesNow).map((change) => change.path);
-  options.journal.publish(configChangedNotice({ keys, afterRestart }));
+  options.journal.publish(configChangedNotice({ keys, afterRestart, ...followed }));
   options.logger.info("config.reloaded");
 }
 

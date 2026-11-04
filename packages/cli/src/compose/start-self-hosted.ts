@@ -27,6 +27,7 @@ import {
   selfHostedFeeds,
   selfHostedPoolHooks,
 } from "./open-engine-parts.js";
+import { openProxyCell } from "./proxy-cell.js";
 import { readRpcUrls } from "./read-rpc-urls.js";
 import { type ReadVenuesOptions, readVenues } from "./read-venues.js";
 import { readRelayKey } from "./relay-key.js";
@@ -90,6 +91,7 @@ type SecretParts = Pick<
   | "bot"
   | "runtime"
   | "secrets"
+  | "proxy"
 >;
 
 // The venues over the chains' reads, each call reading config as reloaded, and Relay's key, read
@@ -129,6 +131,11 @@ async function readSecretParts(
     clock: host.clock,
   });
   const call = { logger: log.logger, signal };
+  // Before any part reaches the network, so every request goes by the owner's proxy.
+  const { outbound, http: probe } = host;
+  const network = () => settings.current().network;
+  const cell = { network, secrets, outbound, http: probe, logger: log.logger };
+  const proxy = await openProxyCell(cell, signal);
   const tracers = await readRpcUrls({ chains: config.chains, secrets, kind: "tracer" }, call);
   const headSockets = await readRpcUrls({ chains: config.chains, secrets, kind: "ws" }, call);
   const chains = selfHostedChains();
@@ -149,11 +156,12 @@ async function readSecretParts(
     signal,
   });
   const runtime = await runtimeSettingsOf(config, {
+    proxy: proxy.current(),
     secrets,
     logger: log.logger.child("runtime"),
     signal,
   });
-  return { tracers, headSockets, chains, reads, ...venued, bot, runtime, secrets };
+  return { tracers, headSockets, chains, reads, ...venued, bot, runtime, secrets, proxy };
 }
 
 async function openStoresAndServe(

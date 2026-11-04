@@ -10,7 +10,7 @@ import { type BinferenceConfig, configSchema } from "../config/schema/config.sch
 import type { ConfigOutcome } from "../config/validate-config.js";
 import { createClosers } from "./closers.js";
 import { createConfigCell } from "./config-cell.js";
-import { startConfigReload } from "./config-reload.js";
+import { type ReloadFollowed, startConfigReload } from "./config-reload.js";
 
 const live = () => ({ signal: new AbortController().signal });
 
@@ -29,7 +29,7 @@ function valid(config: BinferenceConfig): ConfigOutcome {
 // A reload over a watch the test fires, reading whatever the test puts on disk.
 function reloadOver(
   start: BinferenceConfig,
-  follow: (keys: readonly string[]) => void = () => undefined,
+  follow: (keys: readonly string[]) => ReloadFollowed | undefined = () => undefined,
 ) {
   const clock = createManualClock(0);
   const closers = createClosers();
@@ -47,10 +47,7 @@ function reloadOver(
     },
     settings,
     journal: { journal, publish: (push) => pushes.push(push) },
-    follow: async (keys) => {
-      follow(keys);
-      return Promise.resolve();
-    },
+    follow: async (keys) => Promise.resolve(follow(keys) ?? {}),
     watch: (_path, options: WatchFileOptions) => {
       watched.onChange = options.onChange;
       return { close: () => undefined };
@@ -94,7 +91,11 @@ describe("the settings reload", () => {
     expect(notices(reload.pushes)).toStrictEqual([
       {
         key: "notice.configChanged",
-        values: { changed: "engine.port, logging.level", afterRestart: "engine.port" },
+        values: {
+          changed: "engine.port, logging.level",
+          afterRestart: "engine.port",
+          proxy: "none",
+        },
       },
     ]);
     await reload.closers.closeAll(live().signal);
@@ -109,6 +110,19 @@ describe("the settings reload", () => {
     await reload.clock.advance(500);
     expect(seen).toStrictEqual([[["logging.level"], "debug", 1]]);
     expect(notices(reload.pushes)).toHaveLength(1);
+    await reload.closers.closeAll(live().signal);
+  });
+
+  it("says in its notice how a changed proxy failed its first use", async () => {
+    const reload = reloadOver(configWith({}), () => ({ proxy: "held" }));
+    reload.save(valid(configWith({ network: { noProxy: ["corp.test"] } })));
+    await reload.clock.advance(500);
+    expect(notices(reload.pushes)).toStrictEqual([
+      {
+        key: "notice.configChanged",
+        values: { changed: "network.noProxy", afterRestart: "none", proxy: "held" },
+      },
+    ]);
     await reload.closers.closeAll(live().signal);
   });
 

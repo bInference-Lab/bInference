@@ -74,8 +74,10 @@ message, zod-checked on both sides. Everything else goes over the protocol.
 
 `settings` holds what the runtime needs and nothing more: `models` (spec 2, section 6.3) with each
 provider's key already resolved from its secret source, `chats.newMessageMode`, the search
-providers and their keys, and the owner's locale and timezone. A reload applies to the next model
-call; a running call keeps its settings.
+providers and their keys, the owner's locale and timezone, and `network`: the owner's proxy as the
+engine read it from its secret source (its URL, or `unread`, which holds every request it would
+carry) and `network.noProxy`, by which the runtime sends its outbound requests as the engine does.
+A reload applies to the next model call; a running call keeps its settings.
 
 <a id="section-2-3"></a>
 

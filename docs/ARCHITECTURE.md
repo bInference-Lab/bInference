@@ -1141,8 +1141,14 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
   on, it adds counts to the daily check: version, OS, enabled venues and plugins, paper or live,
   number of agents. Never addresses, balances, amounts, tokens, chats or keys. The totals are
   published.
-- **Proxy.** An outbound HTTP proxy setting (`core/src/proxy/`), for owners who need one to reach
-  Telegram or model providers.
+- **Proxy ([decision 0347](DECISIONS.md#d0347)).** `network.proxy`, a secret source, for owners
+  who need a proxy to reach Telegram, the model providers or Privy. `core/src/proxy/` gives each
+  request its route: every request and WebSocket of the engine and the agent runtime goes
+  through the proxy as a tunnel, except this machine, IP addresses off the internet and
+  `network.noProxy`, and the `git` and `npm` of a skill install get it in their environment. The
+  adapters (`platform/src/outbound/`) refuse every request until a route is in force; a proxy
+  that cannot be read holds those requests, and none goes around it. The proxy is never logged; a
+  change applies to the next request and reopens each WebSocket by the new route.
 - **Health signals** in `status`: event-loop lag, memory, RPC and relay health, model reachability,
   and the price watchers' lag in blocks.
 - **Targets.** Runs on 1 vCPU and 1 GB RAM; idle memory under 300 MB; a card within 2 seconds of a

@@ -79,7 +79,7 @@ async function machine() {
     readConfig,
     settings,
     journal: { journal, publish: (push) => pushes.push(push) },
-    follow: async () => Promise.resolve(),
+    follow: async () => Promise.resolve({}),
     watch: (_path, options: WatchFileOptions) => {
       watched.onChange = options.onChange;
       return { close: () => undefined };
@@ -147,7 +147,10 @@ describe("config/change", () => {
       .filter((push) => push.kind === "notice/new")
       .map((push) => push.data);
     expect(notices).toStrictEqual([
-      { key: "notice.configChanged", values: { changed: "logging.level", afterRestart: "none" } },
+      {
+        key: "notice.configChanged",
+        values: { changed: "logging.level", afterRestart: "none", proxy: "none" },
+      },
     ]);
     await test.closers.closeAll(live().signal);
   });

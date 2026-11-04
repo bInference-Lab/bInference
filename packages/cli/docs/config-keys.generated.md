@@ -175,8 +175,8 @@ Telemetry.
 
 The outbound network.
 
-- `network.proxy`: An HTTP or HTTPS proxy URL, credentials included. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_NETWORK__PROXY`.
-- `network.noProxy`: Hosts reached without the proxy. Takes a list in which each item is text. Default: `["127.0.0.1","localhost"]`. Variable: `BINFERENCE_NETWORK__NO_PROXY`.
+- `network.proxy`: The owner's proxy as an http:// or https:// URL, its user name and password included: every outbound request but those to this machine, addresses off the internet and noProxy goes through it as a tunnel. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_NETWORK__PROXY`.
+- `network.noProxy`: Hosts reached without the proxy, at most 256: * for every host, a name in punycode that also covers the names under it, an IP address or [IPv6], each with an optional :port, or an address block such as 10.0.0.0/8. Takes a list in which each item is text. Default: `["127.0.0.1","localhost"]`. Variable: `BINFERENCE_NETWORK__NO_PROXY`.
 
 ## `chats`
 

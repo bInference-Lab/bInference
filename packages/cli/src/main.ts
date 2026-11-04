@@ -63,6 +63,7 @@ process.exitCode = await runCli({
   random: createSystemRandom(),
   http,
   download: http,
+  outbound: http,
   ...(hasTerminal
     ? {
         prompter: createTerminalPrompter({ input: process.stdin, output: process.stdout }),

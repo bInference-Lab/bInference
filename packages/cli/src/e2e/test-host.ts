@@ -18,6 +18,7 @@ import { connectEngine } from "../commands/connect-engine.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import type { CliHost } from "../program/cli-host.js";
 import { runCli } from "../program/run-cli.js";
+import type { OutboundSwitch } from "../runtime/system-http.js";
 
 /** A host whose output a test reads, with lines it can wait for. */
 export interface TestHost extends CliHost {
@@ -89,6 +90,19 @@ const offline: Http = {
     ),
 };
 
+// A test's `http` answers itself, so the route a command puts in force goes nowhere; no test opens
+// a socket to an outside service.
+const offlineOutbound: OutboundSwitch = {
+  use: () => undefined,
+  openSocket: () => {
+    throw new BinferenceError({
+      code: "http.unreachable",
+      message: "Tests reach no outside service.",
+      retryable: true,
+    });
+  },
+};
+
 // No test reaches the machine's login items: a test that runs the background service passes a
 // service manager of its own, and every other one meets a manager that refuses.
 async function refusedService(): Promise<never> {
@@ -114,6 +128,7 @@ export type HostParts = Partial<
   Pick<
     CliHost,
     | "http"
+    | "outbound"
     | "prompter"
     | "startSigner"
     | "startRuntime"
@@ -171,6 +186,7 @@ export function hostWith(
     clock: machine.clock,
     random: createSeededRandom((seeds.next += 1)),
     http: offline,
+    outbound: offlineOutbound,
     // An engine a test starts takes a free webhook port, never the owner's 7457.
     webhookPort: 0,
     ...parts,

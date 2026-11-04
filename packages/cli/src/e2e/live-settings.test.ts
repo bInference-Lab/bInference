@@ -1,11 +1,14 @@
 import { assetRefSchema } from "@binference/chain";
 import type { ProtocolClient } from "@binference/client";
 import {
+  directRoute,
   type Http,
   type HttpRequest,
   type HttpResponse,
   type JsonValue,
   jsonValueSchema,
+  type OutboundRoute,
+  routeChoiceOf,
 } from "@binference/core";
 import type { TempFolder } from "@binference/platform/testing";
 import { startInProcessRuntime } from "@binference/runtime/testing";
@@ -14,6 +17,7 @@ import { WebSocket } from "ws";
 import { z } from "zod";
 import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import { isObject } from "../config/shown-config.js";
+import type { OutboundSwitch } from "../runtime/system-http.js";
 import { initFlags, type InitMachine, newInitMachine, runOn, secretEnv } from "./init-fixtures.js";
 import { connectClient } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
@@ -23,6 +27,8 @@ import { createRunningEngines } from "./unlock-fixtures.js";
 // order, as an owner would change one setting after another.
 const engines = createRunningEngines();
 const folders: TempFolder[] = [];
+// The owner's proxy as the variable network.proxy names holds it, credentials included.
+const proxyUrl = "http://owner:proxy-pass@proxy.example.org:3128";
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(20_000) });
 const env = {
   OKX_KEY: "okx-key-one",
@@ -32,6 +38,7 @@ const env = {
   TEST_MODEL_KEY: "sk-test-model",
   TEST_BRAVE_KEY: "brave-test-key",
   TEST_X_KEY: "x-test-key",
+  TEST_PROXY: proxyUrl,
 };
 
 const controlLine = z.looseObject({ t: z.string(), settings: jsonValueSchema.optional() });
@@ -231,6 +238,16 @@ const runtimeRows: readonly Row[] = [
     patch: { owner: { timezone: "Asia/Shanghai" } },
     shows: ["owner.timezone", "Asia/Shanghai"],
   },
+  {
+    key: "network.proxy",
+    patch: { network: { proxy: { fromEnv: "TEST_PROXY" } } },
+    shows: ["network.proxy", { url: proxyUrl }],
+  },
+  {
+    key: "network.noProxy",
+    patch: { network: { noProxy: ["10.0.0.0/8", "localhost"] } },
+    shows: ["network.noProxy", ["10.0.0.0/8", "localhost"]],
+  },
 ];
 
 // The node `nodeUrl` names: the fees of the next block, and an error for every other method.
@@ -274,6 +291,20 @@ function recordedWorld() {
   return { http, held, sent, hostsSince };
 }
 
+/** Every route the engine put in force on its outbound adapter, oldest first. */
+function recordedOutbound() {
+  const routes: OutboundRoute[] = [];
+  const outbound: OutboundSwitch = {
+    use: (route) => {
+      routes.push(route);
+    },
+    openSocket: () => {
+      throw new Error("No test opens a socket here.");
+    },
+  };
+  return { outbound, current: (): OutboundRoute => routes.at(-1) ?? directRoute };
+}
+
 const bsc = "eip155:56";
 const rpcUrls = (url: string) => ({ chains: { rpc: { [bsc]: { urls: [url] } } } });
 
@@ -305,7 +336,6 @@ const restartRows: readonly (readonly [string, Patch])[] = [
     "chains.rpc.eip155:56.tracer",
     { chains: { rpc: { "eip155:56": { tracer: { fromEnv: "TEST_TRACER" } } } } },
   ],
-  ["network.noProxy", { network: { noProxy: ["localhost"] } }],
   ["remote.publicUrl", { remote: { publicUrl: "https://box.example.ts.net" } }],
   ["cex.binance.enabled", { cex: { binance: { enabled: true } } }],
 ];
@@ -314,6 +344,7 @@ describe("live settings in a running engine", () => {
   const running = {} as { machine: InitMachine; client: ProtocolClient; port: number };
   const runtime = recordedRuntime();
   const world = recordedWorld();
+  const outbound = recordedOutbound();
   // Calls an operation, then answers the hosts the engine asked while it ran.
   const hostsAskedBy = async (op: "portfolio/get"): Promise<readonly string[]> => {
     const from = world.sent.length;
@@ -360,7 +391,7 @@ describe("live settings in a running engine", () => {
     world.held.world = machine.world;
     const started = await engines.start(machine, {
       env: { ...secretEnv(machine), ...env },
-      parts: { startRuntime: runtime.startRuntime, http: world.http },
+      parts: { startRuntime: runtime.startRuntime, http: world.http, outbound: outbound.outbound },
     });
     running.machine = machine;
     running.port = z.object({ http: z.object({ port: z.number() }) }).parse(started).http.port;
@@ -384,6 +415,23 @@ describe("live settings in a running engine", () => {
     await expect(change(row.patch)).resolves.toBe(false);
     const [path, value] = row.shows;
     expect(at(runtime.settings(), path)).toStrictEqual(value);
+  });
+
+  it("sends the engine's next request by a changed proxy and no-proxy list", async () => {
+    const telegram = "https://api.telegram.org/";
+    const choice = (url: string) => routeChoiceOf(outbound.current(), url);
+    await expect(change({ network: { proxy: null, noProxy: [] } })).resolves.toBe(false);
+    expect(outbound.current()).toStrictEqual(directRoute);
+    const proxied = { network: { proxy: { fromEnv: "TEST_PROXY" }, noProxy: [] } };
+    await expect(change(proxied)).resolves.toBe(false);
+    expect(choice(telegram)).toBe("proxy");
+    expect(choice("http://127.0.0.1:8545/")).toBe("direct");
+    await expect(change({ network: { noProxy: ["api.telegram.org"] } })).resolves.toBe(false);
+    expect(choice(telegram)).toBe("direct");
+    await expect(change({ network: { proxy: { fromEnv: "NO_SUCH_PROXY" } } })).resolves.toBe(false);
+    expect(choice("https://rpc-node.example.org/")).toBe("held");
+    await expect(change({ network: { proxy: null } })).resolves.toBe(false);
+    expect(outbound.current()).toStrictEqual(directRoute);
   });
 
   it("applies a lower fee cap and names a higher one as waiting for a restart", async () => {

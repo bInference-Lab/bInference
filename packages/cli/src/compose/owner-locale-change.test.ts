@@ -91,7 +91,7 @@ describe("the owner's language changed from Telegram", () => {
       readConfig: test.readConfig,
       settings: test.settings,
       journal: { journal, publish: (push) => pushes.push(push) },
-      follow: async () => Promise.resolve(),
+      follow: async () => Promise.resolve({}),
       watch: (_path, options: WatchFileOptions) => {
         watched.onChange = options.onChange;
         return { close: () => undefined };
@@ -111,7 +111,10 @@ describe("the owner's language changed from Telegram", () => {
     expect(
       pushes.filter((push) => push.kind === "notice/new").map((push) => push.data),
     ).toStrictEqual([
-      { key: "notice.configChanged", values: { changed: "owner.locale", afterRestart: "none" } },
+      {
+        key: "notice.configChanged",
+        values: { changed: "owner.locale", afterRestart: "none", proxy: "none" },
+      },
     ]);
     await closers.closeAll(live().signal);
   });

@@ -20,16 +20,25 @@ export function configInvalidNotice(named: ConfigProblemNamed): EnginePush {
 }
 
 /**
+ * How the owner's proxy met its first use after a reload changed it (decision 0347): held while it
+ * cannot be read, or the problem a request through it met; none when it carried the request or
+ * the reload left it alone.
+ */
+export type ProxyUse = "held" | "auth" | "refused" | "unreachable" | "noAnswer";
+
+/**
  * The notice that a reload of `config.json5` changed settings (decision 0118): every changed key,
- * and those that apply only after a restart, `none` when every change applies now.
+ * those that apply only after a restart, `none` when every change applies now, and how a changed
+ * proxy failed its first use, `none` when it did not (decision 0347).
  */
 export function configChangedNotice(changed: {
   readonly keys: readonly string[];
   readonly afterRestart: readonly string[];
+  readonly proxy?: ProxyUse;
 }): EnginePush {
   const afterRestart = changed.afterRestart.length === 0 ? "none" : changed.afterRestart.join(", ");
   return noticePush({
     key: "notice.configChanged",
-    values: { changed: changed.keys.join(", "), afterRestart },
+    values: { changed: changed.keys.join(", "), afterRestart, proxy: changed.proxy ?? "none" },
   });
 }

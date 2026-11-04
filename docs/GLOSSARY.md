@@ -410,6 +410,12 @@ new name here first, in the change that uses it.
   `funnel`, which `binference expose` sets up and `remote/status` reports.
 - **secret sources**: how config names a secret without its value: `{ fromKeychain }`,
   `{ fromEnv }`, `{ fromFile }` and `{ fromCommand }`.
+- **outbound proxy**: the owner's HTTP or HTTPS proxy, `network.proxy`, a secret source: every
+  outbound request and WebSocket of the engine and the agent runtime goes through it as a tunnel,
+  except those to this machine, to an IP address off the internet, and to the **no-proxy list**,
+  `network.noProxy`; a skill install's `git` and `npm` get it in their environment. While config
+  names a proxy that cannot be read, those requests are held, never sent directly. `binference
+check` tries it as `network.proxy`.
 - **config migration**: what `binference check --fix` runs to move older config or data to the
   current shape.
 - **engine lock**: the file lock that allows one engine per state folder.

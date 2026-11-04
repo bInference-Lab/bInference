@@ -1,4 +1,5 @@
 import { inspect } from "node:util";
+import { outboundRouteOf } from "@binference/core";
 import { createManualClock, createMemorySecretStore } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { ConfigIssue } from "../config-issue.js";
@@ -90,5 +91,19 @@ describe("secrets in logs and errors", () => {
     ]);
     expect(printed(outcome)).not.toContain(secret);
     expect(issues.map(formatConfigIssue).join("\n")).not.toContain(secret);
+  });
+
+  it("keeps a proxy read from its source, password included, out of its route", async () => {
+    const proxyReader = createSecretReader({
+      env: { TEST_PROXY: `http://owner:${secret}@proxy.owner.test:3128` },
+      keychain: createMemorySecretStore({}),
+      homeDir: "/srv/owner",
+      clock: createManualClock(0),
+    });
+    const proxy = await proxyReader.read("network.proxy", { fromEnv: "TEST_PROXY" }, signal());
+    const route = outboundRouteOf({ proxy, noProxy: [] });
+    expect(route.kind).toBe("proxy");
+    expect(printed(route)).not.toContain(secret);
+    expect(printed(route)).not.toContain("proxy.owner.test");
   });
 });

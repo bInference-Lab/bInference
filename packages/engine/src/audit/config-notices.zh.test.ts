@@ -21,6 +21,13 @@ describe("the config reload notices in Chinese", () => {
     );
   });
 
+  it("say that a changed proxy cannot be read", () => {
+    const held = configChangedNotice({ keys: ["network.proxy"], afterRestart: [], proxy: "held" });
+    expect(wordsOf(held)).toBe(
+      "config.json5 中的设置已更改：network.proxy。它们已立即生效。无法读取 config.json5 中的代理，本应经它发送的请求都已暂停。请运行 binference check。",
+    );
+  });
+
   it("name the problem of a file the engine refused", () => {
     const badValue = configInvalidNotice({ problem: "bad_value", key: "engine.port", line: "" });
     expect(wordsOf(badValue)).toBe(

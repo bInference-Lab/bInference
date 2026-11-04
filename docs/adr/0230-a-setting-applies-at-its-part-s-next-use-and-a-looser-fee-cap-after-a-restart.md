@@ -1,6 +1,6 @@
 # 0230. A setting applies at its part's next use and a looser fee cap after a restart
 
-Status: Accepted
+Status: Amended by 0347
 
 Accepted by the owner on 2026-10-16.
 

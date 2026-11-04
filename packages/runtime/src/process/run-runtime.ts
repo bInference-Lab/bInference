@@ -54,6 +54,11 @@ export interface RuntimeHost {
     settings: RuntimeSettings,
     client: ToolClient,
   ) => TurnSetup;
+  /**
+   * Puts what the process itself holds of the settings in force, such as the route of its
+   * outbound requests: with the start line's settings, then with each settings line.
+   */
+  readonly applySettings?: (settings: RuntimeSettings) => void;
   readonly clock: Clock;
   /** Calls `onTick` every 10 seconds until the signal aborts: when the runtime writes its health. */
   readonly everyTenSeconds: (onTick: () => Promise<void>, signal: AbortSignal) => void;
@@ -226,6 +231,7 @@ interface Connected {
 async function serveConnected(host: RuntimeHost, connected: Connected): Promise<RuntimeExit> {
   const { lifetime } = connected;
   const settings = { current: connected.start.settings };
+  host.applySettings?.(settings.current);
   const chat = await startChat({
     prepared: connected.prepared,
     engine: connected.link.chat,
@@ -242,6 +248,7 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     host.everyTenSeconds(async () => writeHealth(host, chat, lifetime), lifetime);
     const apply = (next: RuntimeSettings): void => {
       settings.current = next;
+      host.applySettings?.(next);
     };
     const { database, prepared } = connected;
     const notes = { notes: database.notes, fence: prepared.stores.fence, clock: host.clock };

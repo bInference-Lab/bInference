@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ProtocolClient } from "@binference/client";
 import { realFilePath, startNodeProgram, writePrivateFile } from "@binference/platform";
+import { type StandInProxy, startStandInProxy } from "@binference/platform/testing";
 import type { AgentView, PushFrame } from "@binference/protocol";
 import { type StandInModelServer, startStandInModelServer } from "@binference/runtime/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -20,6 +21,7 @@ import { createRunningEngines } from "./unlock-fixtures.js";
 const slow = { timeout: 60_000 };
 const engines = createRunningEngines();
 const servers: StandInModelServer[] = [];
+const proxies: StandInProxy[] = [];
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(20_000) });
 const entry = fileURLToPath(new URL("scripted-runtime.entry.ts", import.meta.url));
 const loader = ["--conditions=@binference/source", "--import", "tsx"];
@@ -27,6 +29,7 @@ const loader = ["--conditions=@binference/source", "--import", "tsx"];
 afterEach(async () => {
   await engines.stopAll();
   await Promise.all(servers.splice(0).map(async (server) => server.close()));
+  await Promise.all(proxies.splice(0).map(async (proxy) => proxy.close()));
 });
 
 // The agent `binference init` made.
@@ -76,6 +79,9 @@ const realRuntime: StartRuntime = async (signal) => {
   const program = await realFilePath(linked, signal);
   return startNodeProgram({ args: [...loader, program], parentEnv: {}, env: strayEnv, signal });
 };
+
+// The host the provider has behind the proxy: nothing resolves it, only the proxy reaches it.
+const proxiedModels = "http://models.example.test";
 
 const sse = (chunk: object): string => `data: ${JSON.stringify(chunk)}\n\n`;
 const chunk = (delta: object, finish: string | null = null) => ({
@@ -137,10 +143,17 @@ function firstCall(server: StandInModelServer) {
 
 // Points the machine's main model at the stand-in in place of the one init linked, its key read
 // from the engine's environment, with a second configured model as its fallback.
-async function useProvider(machine: InitMachine, server: StandInModelServer): Promise<void> {
+// With a proxy, the provider is named by a host only the proxy reaches, and network.proxy reads
+// the proxy from the engine's TEST_PROXY.
+async function useProvider(
+  machine: InitMachine,
+  server: StandInModelServer,
+  through: "direct" | "proxy" = "direct",
+): Promise<void> {
+  const origin = through === "proxy" ? proxiedModels : server.origin;
   const local = {
     kind: "openai",
-    baseUrl: `${server.origin}/v1`,
+    baseUrl: `${origin}/v1`,
     apiKey: { fromEnv: "LOCAL_MODEL_KEY" },
   };
   const models = {
@@ -148,8 +161,10 @@ async function useProvider(machine: InitMachine, server: StandInModelServer): Pr
     main: "local/stand-in-model",
     fallbacks: { main: ["local/picked-model"] },
   };
+  const network = { proxy: { fromEnv: "TEST_PROXY" } };
   const text = editJson5Text((await configText(machine)) ?? "", [
     { kind: "set", path: ["models"], value: models },
+    ...(through === "proxy" ? [{ kind: "set", path: ["network"], value: network } as const] : []),
   ]);
   await writePrivateFile(join(machine.folder, "config.json5"), text ?? "", {
     permissions: noPermissions,
@@ -326,6 +341,31 @@ describe("the chat relay to the agent runtime process", () => {
     await client.call("chat/post", { agent: id, text: "hi" }, live());
     await ended;
     expect(firstCall(server).head).toStrictEqual(["picked-model", 4096, true]);
+    expect(server.requests).toHaveLength(1);
+  });
+
+  it("sends the runtime's model call through the owner's proxy", slow, async () => {
+    const machine = await engines.setUp();
+    const server = await standInProvider();
+    const proxy = await startStandInProxy({
+      toPort: Number(new URL(server.origin).port),
+      credentials: "owner:proxy-pass",
+    });
+    proxies.push(proxy);
+    await useProvider(machine, server, "proxy");
+    const env = {
+      ...secretEnv(machine),
+      LOCAL_MODEL_KEY: "sk-stand-in",
+      TEST_PROXY: proxy.url.replace("//", "//owner:proxy-pass@"),
+    };
+    await engines.start(machine, { env, parts: { startRuntime: realRuntime } });
+    const client = await connectClient(machine);
+    const id = firstAgent((await client.call("agent/list", {}, live())).items);
+    const { pushes, ended } = watchChat(client, id);
+    await client.call("chat/post", { agent: id, text: "hi" }, live());
+    await ended;
+    expect(pushes.map(({ data }) => data).at(-2)).toMatchObject({ text: "Hello from the model." });
+    expect(proxy.tunnels).toStrictEqual(["models.example.test:80"]);
     expect(server.requests).toHaveLength(1);
   });
 });

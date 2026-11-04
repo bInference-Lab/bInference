@@ -23,6 +23,7 @@ export const fixtureSettings: RuntimeSettings = {
   chats: { newMessageMode: "merge" },
   search: { keys: {} },
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
+  network: { noProxy: ["127.0.0.1", "localhost"] },
 };
 
 /** A start line for a token made of one repeated character, so each start can differ. */

@@ -38,7 +38,6 @@ const restartOnlyKeys: readonly string[] = [
   // Relay's bridge is made with the key read at start (decision 0322).
   "venues.keys.relay",
   "remote.publicUrl",
-  "network",
   "cex",
 ];
 
@@ -63,6 +62,9 @@ const keysReadOnUse: readonly string[] = [
   "risk",
   // Each new WebSocket and pairing meets the origins as they stand; an open socket stays.
   "engine.extraOrigins",
+  // The proxy is read again at the reload: each request and socket that starts after it goes by
+  // the new route, the runtime's from its next settings line; one under way finishes as it began.
+  "network",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the

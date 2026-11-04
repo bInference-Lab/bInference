@@ -1,3 +1,4 @@
+import { isBypassEntry } from "@binference/core";
 import { z } from "zod";
 import { type JsonObject, jsonValueSchema } from "../json-value.schema.js";
 import { type SecretSource, secretSourceSchema } from "./secret-source.schema.js";
@@ -111,16 +112,34 @@ export const telemetrySchema: z.ZodType<TelemetryConfig> = z
   .prefault({})
   .describe("Telemetry.");
 
+// As many entries as the agent runtime's settings line carries, each as long.
+const maxNoProxyEntries = 256;
+const maxNoProxyEntryChars = 300;
+
+const isNoProxyEntry = (entry: string): boolean =>
+  entry.length <= maxNoProxyEntryChars && isBypassEntry(entry);
+
+const noProxyEntryMessage =
+  "A no-proxy entry is *, a name in punycode, an IP address or [IPv6], each with an optional :port, or an address block such as 10.0.0.0/8.";
+
 /** Parses `network`. */
 export const networkSchema: z.ZodType<NetworkConfig> = z
   .strictObject({
     proxy: secretSourceSchema
       .exactOptional()
-      .describe("An HTTP or HTTPS proxy URL, credentials included."),
+      .describe(
+        "The owner's proxy as an http:// or https:// URL, its user name and password included: every outbound request but those to this machine, addresses off the internet and noProxy goes through it as a tunnel.",
+      ),
     noProxy: z
-      .array(z.string().min(1))
+      .array(z.string().min(1).refine(isNoProxyEntry, noProxyEntryMessage))
+      .refine(
+        (list) => list.length <= maxNoProxyEntries,
+        "network.noProxy takes at most 256 entries.",
+      )
       .prefault(["127.0.0.1", "localhost"])
-      .describe("Hosts reached without the proxy."),
+      .describe(
+        "Hosts reached without the proxy, at most 256: * for every host, a name in punycode that also covers the names under it, an IP address or [IPv6], each with an optional :port, or an address block such as 10.0.0.0/8.",
+      ),
   })
   .prefault({})
   .describe("The outbound network.");

@@ -45,6 +45,7 @@ import type { ConfigCell } from "./config-cell.js";
 import type { ConfigReloadLink } from "./config-reload-link.js";
 import { engineEndpoint, engineLogFile } from "./engine-locations.js";
 import type { OpenedBot } from "./open-bot.js";
+import type { ProxyCell } from "./proxy-cell.js";
 import type { ReadVenues } from "./read-venues.js";
 
 /** One start while its parts open: each part adds what closes it. */
@@ -95,6 +96,8 @@ export interface Opened {
   readonly runtime: RuntimeSettings;
   /** Reads config's secret sources, again at a reload for the parts that follow it. */
   readonly secrets: SecretReader;
+  /** The owner's proxy setting in force, which a reload of `network` reads again. */
+  readonly proxy: ProxyCell;
   /** The console's built files, or `undefined` when the engine serves no console. */
   readonly consoleFiles: ConsoleFiles | undefined;
   /** The VAPID key of browser push, or `undefined` when `keys/` holds one it cannot read. */

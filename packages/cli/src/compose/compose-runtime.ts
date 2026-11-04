@@ -119,7 +119,7 @@ function followReloadOf(opened: Opened, held: HeldSettings): ComposedRuntime["fo
       return;
     }
     const logger = opened.log.logger.child("runtime");
-    const call = { secrets: opened.secrets, logger, signal };
+    const call = { proxy: opened.proxy.current(), secrets: opened.secrets, logger, signal };
     await held.follow(await runtimeSettingsOf(opened.settings.current(), call));
   };
 }

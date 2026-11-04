@@ -217,7 +217,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   },
   "notice.configChanged": {
     key: "notice.configChanged",
-    values: { changed: "owner.locale", afterRestart: "none" },
+    values: { changed: "owner.locale", afterRestart: "none", proxy: "none" },
   },
   "notice.unknownTx": { key: "notice.unknownTx", values: { wallet: "Main", nonce: "42" } },
   "notice.fillDiffers": { key: "notice.fillDiffers", values: {} },

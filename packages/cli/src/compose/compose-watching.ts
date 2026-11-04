@@ -72,7 +72,8 @@ function composeLogWatchers(
  * One price watcher per chain over the chain's reads, the venues' price reads and the shared
  * market sources (decisions 0192 and 0193), one leader watcher per chain over its reads, and one
  * launch feed per chain whose launchpads read launches (decision 0256). A watcher's `wss:` RPC
- * opens through Node's own WebSocket; its URL is the owner's secret, so nothing logs it.
+ * opens by the route of the owner's proxy through the host's outbound adapter, and opens again by
+ * a new route once a reload changes it; its URL is the owner's secret, so nothing logs it.
  */
 export function composeWatching(
   opening: Opening,
@@ -92,7 +93,7 @@ export function composeWatching(
     venues,
     feeds: selfHostedFeeds(),
     headSockets: opened.headSockets,
-    openSocket: (url) => new WebSocket(url),
+    openSocket: (url) => opening.host.outbound.openSocket(url),
     clock,
     logger: opened.log.logger.child("watcher"),
   });
