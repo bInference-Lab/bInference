@@ -14,6 +14,7 @@ import {
   type TestEngine,
   type TestEngineOptions,
 } from "../operations/test-engine.js";
+import type { IntentStore } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import {
   payloadOf,
@@ -228,5 +229,39 @@ describe("safety/rescue", () => {
       },
     ]);
     expect(card?.lines.map(({ key }) => key)).not.toContain("card.reason");
+  });
+});
+
+// An intent store that loses every move into `state` to another writer, such as a cancel.
+function racedTo(state: string): (store: IntentStore) => IntentStore {
+  return (store) => ({
+    ...store,
+    transition: async (change, options) =>
+      change.state === state ? err("stale") : store.transition(change, options),
+  });
+}
+
+describe("a rescue another write moved first", () => {
+  it.each([
+    ["checked", "proposed"],
+    ["quoted", "checked"],
+    ["assessed", "quoted"],
+    ["simulated", "assessed"],
+  ] as const)(
+    "ends its run where that write left it when the move to %s loses",
+    async (lost, left) => {
+      const test = await startRescuing({ intents: racedTo(lost) });
+      const { intent } = expectOk(await rescue(test));
+      expect((await recordOf(test, intent)).state).toBe(left);
+      expect(test.pushes.some(({ kind }) => kind === "card/opened")).toBe(false);
+    },
+  );
+
+  it("stores nothing and fails when the store will not take the new rescue", async () => {
+    const test = await startRescuing({
+      intents: (store) => ({ ...store, create: async () => Promise.resolve(err("exists")) }),
+    });
+    await expect(rescue(test)).rejects.toThrow("could not be stored");
+    expect(notices(test)).toStrictEqual([]);
   });
 });

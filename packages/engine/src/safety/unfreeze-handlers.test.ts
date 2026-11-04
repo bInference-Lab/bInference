@@ -302,4 +302,13 @@ describe("safety/unfreeze", () => {
     await expect(frozenTimes(test)).resolves.toStrictEqual([testNowMs, testNowMs]);
     expect(unfrozenNotices(test)).toStrictEqual([]);
   });
+
+  it("leaves every agent frozen and fails when the store will not take the new unfreeze", async () => {
+    const test = await startWithTwoAgents({
+      intents: (store) => ({ ...store, create: async () => Promise.resolve(err("exists")) }),
+    });
+    await freeze(test);
+    await expect(unfreeze(test)).rejects.toMatchObject({ code: "engine.unfreeze_not_stored" });
+    await expect(frozenTimes(test)).resolves.toStrictEqual([testNowMs, testNowMs]);
+  });
 });
