@@ -143,6 +143,15 @@ async function endsAtExpiry(subject: AlertSubject): Promise<void> {
   );
 }
 
+async function refusesIdsInUse(subject: AlertSubject): Promise<void> {
+  const { alerts } = subject;
+  const first = alertOf(subject, 1);
+  await alerts.create(first, live());
+  const again = alertOf(subject, 1, { condition: priceCondition });
+  await assert.rejects(alerts.create(again, live()), { code: "store.constraint" });
+  assert.deepEqual(await alerts.get(first.id, live()), first);
+}
+
 async function refusesAborted(subject: AlertSubject): Promise<void> {
   const { alerts } = subject;
   await assertRefusesAborted(async (options) => alerts.create(alertOf(subject, 1), options));
@@ -162,6 +171,7 @@ export function alertStoreContract(harness: AlertStoreHarness): readonly Contrac
     checkOn("deletes an active alert once", create, deletesOnce),
     checkOn("ends an active alert once", create, endsOnce),
     checkOn("ends the alerts whose expiry came", create, endsAtExpiry),
+    checkOn("refuses an alert id in use, keeping the first", create, refusesIdsInUse),
     ...alertFireChecks.map(([name, check]) => checkOn(name, create, check)),
     checkOn("refuses a call on an aborted signal and stores nothing", create, refusesAborted),
   ];

@@ -126,6 +126,9 @@ async function claimsOnce(subject: UnbondingStoreSubject): Promise<void> {
   assert.deepEqual(await store.claimedBy(intentIds[2], live()), [claimed]);
   const query = { walletId: subject.walletId, isPaper: false, venue: "fake-staking", validator };
   assert.deepEqual(await store.listOpen(query, live()), [second]);
+  const stranger = claimOf(subject, fixtureId("int", 99), [second.requestRef]);
+  await assert.rejects(store.claim(stranger, live()), { code: "store.constraint" });
+  assert.deepEqual(await store.listOpen(query, live()), [second]);
 }
 
 async function tellsReadyOnce(subject: UnbondingStoreSubject): Promise<void> {
@@ -205,7 +208,7 @@ export function unbondingStoreContract(harness: UnbondingStoreHarness): readonly
       listsWalletOpen,
     ),
     checkOn(
-      "marks the requests a claim took once, and refuses one another claim took",
+      "marks the requests a claim took once, and refuses one another or an unknown intent took",
       create,
       claimsOnce,
     ),

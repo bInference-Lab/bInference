@@ -184,6 +184,15 @@ async function refusesAborted(subject: ScheduleSubject): Promise<void> {
   assert.deepEqual(await schedules.active({}, live()), []);
 }
 
+async function refusesIdsInUse(subject: ScheduleSubject): Promise<void> {
+  const { schedules } = subject;
+  const first = schedule(subject, 1);
+  await schedules.create(first, live());
+  const again = { ...schedule(subject, 1), prompt: "another" };
+  await assert.rejects(schedules.create(again, live()), { code: "store.constraint" });
+  assert.deepEqual(await schedules.get(first.id, live()), first);
+}
+
 /** The checks every {@link ScheduleStore} passes. */
 export function scheduleStoreContract(harness: ScheduleStoreHarness): readonly ContractCheck[] {
   const create = async () => harness.create();
@@ -191,6 +200,7 @@ export function scheduleStoreContract(harness: ScheduleStoreHarness): readonly C
     checkOn("stores schedules and lists the active and the due ones", create, storesAndLists),
     checkOn("holds at most 50 active schedules per agent", create, holdsFiftyActive),
     checkOn("cancels an active schedule once", create, cancelsOnce),
+    checkOn("refuses a schedule id in use, keeping the first", create, refusesIdsInUse),
     checkOn("stores one wake-up at a time and moves the schedule on", create, runsAndWakesOnce),
     checkOn("records a skipped run and ends a schedule with no next run", create, skipsAndEnds),
     checkOn("refuses a run no longer due", create, refusesStaleRuns),

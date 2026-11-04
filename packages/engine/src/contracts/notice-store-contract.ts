@@ -172,6 +172,19 @@ async function refusesUnknownAgent(subject: NoticeStoreSubject): Promise<void> {
   assert.deepEqual(await subject.notices.queued({ surface: "telegram", limit: 10 }, live()), []);
 }
 
+async function refusesIdsInUse(subject: NoticeStoreSubject): Promise<void> {
+  const { notices, agent } = subject;
+  await notices.record(lowGas(1, agent), live());
+  await assert.rejects(notices.record(locked(1), live()), { code: "store.constraint" });
+  const kept = await notices.list({ limit: 10 }, live());
+  assert.deepEqual(
+    kept.map((record) => record.kind),
+    ["lowGas"],
+  );
+  const queued = await notices.queued({ surface: "telegram", limit: 10 }, live());
+  assert.equal(queued.length, 1);
+}
+
 async function prunesOld(subject: NoticeStoreSubject): Promise<void> {
   const { notices } = subject;
   await recordAll(subject, [1, 2, 3]);
@@ -225,6 +238,7 @@ export function noticeStoreContract(harness: NoticeStoreHarness): readonly Contr
     checkOn("queues a refused delivery again at its next time", create, queuesRefusedAgain),
     checkOn("fails a delivery the surface refuses for good", create, failsForGood),
     checkOn("refuses a notice of an agent the store does not hold", create, refusesUnknownAgent),
+    checkOn("refuses a notice id in use, keeping the first", create, refusesIdsInUse),
     checkOn("prunes the notices recorded before a time with their deliveries", create, prunesOld),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];

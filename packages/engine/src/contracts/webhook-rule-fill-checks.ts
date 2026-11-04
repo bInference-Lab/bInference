@@ -112,8 +112,8 @@ export async function holdsTheLineForARuleFill(subject: WebhookRuleStoreSubject)
 
 /**
  * Checks that a live rule fill its reconciliation could not value counts on its alert and rule
- * alone, once it is `finalized` (decision 0342); a fill of an intent still under way, or one
- * that skips its rule's count, ends nothing alone.
+ * alone, once it is `finalized` (decision 0342); a fill of an intent still under way, one
+ * that skips its rule's count, or one counted on another rule, ends nothing alone.
  */
 export async function countsAnUnvaluedRuleFill(subject: WebhookRuleStoreSubject): Promise<void> {
   const { store, intents } = subject;
@@ -126,6 +126,12 @@ export async function countsAnUnvaluedRuleFill(subject: WebhookRuleStoreSubject)
   const early = { ...endOf(8, event), move: counted };
   await assert.rejects(store.endAlert(early, live()), { code: "store.constraint" });
   await assert.rejects(store.endAlert(endOf(7, event), live()), { code: "store.constraint" });
+  const other = await activeRule(subject, 2);
+  const elsewhere = {
+    ...endOf(7, event),
+    move: { ...ruleMove(2, other.version, "active"), fills: 1 },
+  };
+  await assert.rejects(store.endAlert(elsewhere, live()), { code: "store.constraint" });
   const ended = await store.endAlert({ ...endOf(7, event), move: counted }, live());
   assert.deepEqual(ended.ok ? [ended.value.outcome, ended.value.intentId] : [], [
     "filled",
