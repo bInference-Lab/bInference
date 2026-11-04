@@ -47,6 +47,8 @@ describe("fake staking venue", () => {
             fakeDraft(wallet, { to: "0x000000d2", value: 5n, data: "delegate,0x000000c1" }),
             fakeDraft(wallet, { to: "0x000000d1", value: 0n, data: "redelegate,0x000000c1,1" }),
             fakeDraft(wallet, { to: "0x000000d1", value: 0n, data: "claim,0x000000c1,0" }),
+            fakeDraft(wallet, { to: "0x000000d1", value: 5n, data: "delegate" }),
+            fakeDraft(wallet, { to: "0x000000d1", value: 5n, data: "delegate,validator" }),
           ],
           run: async (drafts) => await Promise.resolve(fake.run(drafts)),
           wait: async (seconds) => {
@@ -83,5 +85,37 @@ describe("fake staking venue", () => {
       amount: { asset: other, base: 50n },
     };
     await expect(venue().plan(ask, live)).rejects.toThrow(/fake chain's coin/);
+  });
+
+  it("runs only the calls it builds", () => {
+    const fake = venue();
+    const other = fakeDraft(wallet, {
+      to: "0x000000d1",
+      value: 0n,
+      data: "redelegate,0x000000c1,1",
+    });
+    expect(() => fake.run([other])).toThrow("only the calls it builds");
+  });
+
+  it("counts in a validator's pool only the stakes made with it", async () => {
+    const fake = venue();
+    const active = accountRefSchema.parse("fake:1:0x000000c1");
+    const jailedOne = accountRefSchema.parse("fake:1:0x000000c2");
+    const stake = {
+      action: "stake" as const,
+      wallet,
+      validator: active,
+      amount: { asset: coin, base: 50n },
+    };
+    fake.run(await fake.build(successOf(await fake.plan(stake, live)), live));
+    const receiptOf = async (validator: typeof active) =>
+      successOf(await fake.receipt(validator, live));
+    const receipts = [await receiptOf(active), await receiptOf(jailedOne)];
+    await expect(fake.pools(receipts, live)).resolves.toEqual([
+      {
+        validator: active,
+        pool: { shares: { asset: receipts[0], base: 50n }, coin: { asset: coin, base: 50n } },
+      },
+    ]);
   });
 });
