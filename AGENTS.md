@@ -143,6 +143,7 @@ Node 26.1 or later. pnpm switches itself to the version in `package.json`.
 | `pnpm release:smoke <folder>`      | Installs a dry run's packed files and trades on paper by chat there  |
 | `pnpm update:smoke`                | Packs three releases, updates to a failing one and a good one        |
 | `pnpm node:pins [--version <v>]`   | Checks or sets the install scripts' Node pins from its signed sums   |
+| `pnpm install:smoke <folder>`      | Runs the install one-liner on a dry run's files from 127.0.0.1       |
 | `pnpm gen:package <name>`          | A new package with its files and its row in the package graph        |
 | `pnpm check:package-graph --write` | Regenerates the import rules after a change to the package graph     |
 | `pnpm check:style --files <file>`  | The style guard on one file                                          |

@@ -35,6 +35,7 @@
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "gen:package": "node --import tsx scripts/gen-package.mts",
+    "install:smoke": "node --conditions=@binference/source --import tsx scripts/install-smoke.mts",
     "lint": "oxlint --type-aware --tsconfig tsconfig.json --report-unused-disable-directives-severity error",
     "lint:docs": "markdownlint-cli2",
     "mutation": "stryker run",

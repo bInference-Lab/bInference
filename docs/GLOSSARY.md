@@ -504,17 +504,27 @@ check` tries it as `network.proxy`.
   The release workflow publishes only a tag signed by a **release key** that
   `.github/release-signers` lists; a **scratch** run publishes to npm's `scratch` dist-tag.
 - **install script**: `install/install.sh`, for macOS and Linux, which the owner runs as a
-  **one-liner** (`curl -fsSL https://binference.io/install.sh | sh`). It installs the **pinned
-  Node** release into `~/.local/share/binference` when the machine has no Node 26.1 or later,
-  after checking the archive's SHA-256 against the script's pin, then runs
-  `npm i -g binference` on the stable or `--beta` channel and `binference init`. It never asks for
-  root: when npm's global folder needs it, binference goes into `~/.local`. Its variables:
-  `BINFERENCE_INSTALL_CHANNEL`, `BINFERENCE_INSTALL_YES`, `BINFERENCE_INSTALL_SKIP_INIT`,
-  `BINFERENCE_NODE_MIRROR`, and `BINFERENCE_INSTALL_PACKAGE`, a local tarball for tests only.
-  `install/install.ps1` does the same on Windows (`irm https://binference.io/install.ps1 | iex`),
-  with Node in `%LOCALAPPDATA%\binference`; it never asks for administrator rights.
+  **one-liner** (`curl -fsSL https://binference.io/install.sh | sh`). Everything it installs goes
+  into its **data folder**, `~/.local/share/binference`: the **pinned Node** release in `node/`
+  with a `current` link, when the machine has no Node 26.1 or later and the archive's SHA-256
+  matches the script's pin; `npm i -g binference` on the stable or `--beta` channel in `npm/`; and
+  the **launcher**, `bin/binference`, which runs binference with that Node by its full path. Then
+  it runs `binference init`. It never asks for root, and it prints the PATH line for `bin/`
+  without writing it. Its variables: `BINFERENCE_INSTALL_CHANNEL`, `BINFERENCE_INSTALL_YES`,
+  `BINFERENCE_INSTALL_SKIP_INIT`, `BINFERENCE_NODE_MIRROR`, and `BINFERENCE_INSTALL_PACKAGE`, a
+  local tarball for tests only; init's answers go in `BINFERENCE_INIT_*`, never on its command
+  line. `install/install.ps1` does the same on Windows
+  (`irm https://binference.io/install.ps1 | iex`) in `%LOCALAPPDATA%\binference`, with
+  `bin\binference.cmd`; it never asks for administrator rights.
   `pnpm node:pins --version <26.x.y>` writes the pins into both scripts from Node's
-  `SHASUMS256.txt` once `gpgv` accepts its signature; `pnpm node:pins` checks them.
+  `SHASUMS256.txt` once `gpgv` accepts its signature with the keyring
+  `config/node-release-keys.json` pins; `pnpm node:pins` checks them.
+- **install smoke**: `pnpm install:smoke <folder> [--fresh-node]`: it serves a dry run's files on
+  127.0.0.1 in place of binference.io and runs the one-liner in a home of its own: a Node archive
+  with the wrong hash must stop it, a Node 26 on PATH must be kept, and the packed `binference`
+  must install, print its version through the launcher and run `init --yes`, whose refusal and
+  exit code the script passes on; with `--fresh-node` it also installs the pinned Node from
+  nodejs.org.
 - **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed
   files** into an empty project outside the repository, checks that every file their manifests
   name is there, then sets the installed `binference` up with `init --yes`, starts it, makes a
@@ -673,6 +683,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | client token                                | 访问令牌               | A `bnt_` sign-in token       |
 | release notes                               | 更新说明               |                              |
 | install script                              | 安装脚本               | `install.sh`, `install.ps1`  |
+| launcher (of binference)                    | 启动器                 | `bin/binference`             |
 | plugin host                                 | 插件进程               | One process per plugin       |
 | sandbox check                               | 沙箱检查               | `plugins.sandbox`            |
 | plugin launcher                             | 插件启动器             | In the Docker image          |
