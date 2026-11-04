@@ -22,8 +22,7 @@ export type { ProtocolError } from "./errors/protocol-error.js";
 export { type ByeFrame, byeFrameSchema } from "./frames/bye-frame.schema.js";
 export { callFrameSchema, callIdSchema, idempotencyKeySchema } from "./frames/call-frame.schema.js";
 export type { CallFrame } from "./frames/call-frame.schema.js";
-export { challengeFrameSchema } from "./frames/challenge-frame.schema.js";
-export type { ChallengeFrame } from "./frames/challenge-frame.schema.js";
+export { type ChallengeFrame, challengeFrameSchema } from "./frames/challenge-frame.schema.js";
 export { type FailFrame, failFrameSchema } from "./frames/fail-frame.schema.js";
 export {
   clientFrameSchema,
@@ -156,6 +155,7 @@ export type {
 export type { AgentArgs } from "./values/agent-args.schema.js";
 export type { Empty } from "./values/empty.schema.js";
 export type { Page, PageArgs } from "./values/page.schema.js";
+export { type ReleaseNotes, releaseNotesSchema } from "./values/release-notes.schema.js";
 export { signedUsdMicrosSchema } from "./values/signed-usd-micros.schema.js";
 export { fillSizeSchema, tokenAmountSchema } from "./values/token-amount.schema.js";
 export type {

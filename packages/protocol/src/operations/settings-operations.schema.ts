@@ -10,6 +10,7 @@ import {
   pageSchema,
 } from "../values/page.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
+import { type ReleaseNotes, releaseNotesSchema } from "../values/release-notes.schema.js";
 import { releaseVersionSchema } from "../values/release-version.schema.js";
 import { type AgentMode, agentModeSchema } from "../views/agent-view.schema.js";
 import { type BackupView, backupViewSchema } from "../views/backup-view.schema.js";
@@ -72,7 +73,10 @@ interface UpdateView {
   readonly current: string;
   readonly latest?: string;
   readonly channel: "stable" | "beta";
+  /** The latest release's notes in the owner's language, one line each. */
   readonly notes?: string;
+  /** The latest release's notes in both languages, when it has any. */
+  readonly releaseNotes?: ReleaseNotes;
 }
 
 /** The args of `check/run`: `fix` repairs what it can; `only` names stable check ids. */
@@ -215,6 +219,7 @@ export const settingsOperations: OperationTable<SettingsOperationShapes> = {
       latest: z.string().exactOptional(),
       channel: z.enum(["stable", "beta"]),
       notes: z.string().exactOptional(),
+      releaseNotes: releaseNotesSchema.exactOptional(),
     }),
   },
   "update/apply": {

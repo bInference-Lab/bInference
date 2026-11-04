@@ -149,6 +149,7 @@
   "backup.write_failed": "The backup file could not be written. Check the disk's free space, then try again.",
   "backup.check_failed": "Reading the new backup back found a part that does not match, so it was removed. Check the disk, then try again.",
   "backup.copy_failed": "The backup was made and checked, but its second copy could not be written. Check the copy folder, then try again.",
+  "update.registry_unreachable": "npm's registry could not be read, so binference cannot tell whether a newer version is out. Check this machine's network or proxy, then try again.",
   "telegram.not_running": "binference is running without its Telegram bot, so no link was made. `binference logs` shows why; fix the bot token, then run `binference restart`.",
   "telegram.unreachable": "Telegram could not be reached, so no link was made. Try again in a minute.",
   "remote.tailscale_missing": "Tailscale is not installed. Install it from tailscale.com, then run `binference expose` again.",

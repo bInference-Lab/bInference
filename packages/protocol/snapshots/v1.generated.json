@@ -568,6 +568,7 @@
         "backup.write_failed",
         "backup.check_failed",
         "backup.copy_failed",
+        "update.registry_unreachable",
         "telegram.not_running",
         "telegram.unreachable",
         "remote.tailscale_missing",
@@ -41994,6 +41995,33 @@
             },
             "notes": {
               "type": "string"
+            },
+            "releaseNotes": {
+              "type": "object",
+              "properties": {
+                "en": {
+                  "maxItems": 5,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "zh": {
+                  "maxItems": 5,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              },
+              "required": [
+                "en",
+                "zh"
+              ]
             }
           },
           "required": [

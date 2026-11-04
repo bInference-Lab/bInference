@@ -134,7 +134,13 @@ export const settingsExamples: { readonly [N in keyof SettingsOperationShapes]: 
   "backup/restore": { args: { backup: ids.backup }, result: job },
   "update/check": {
     args: empty,
-    result: { current: "2026.10.0", latest: "2026.11.0", channel: "stable", notes: "Fixes." },
+    result: {
+      current: "2026.10.0",
+      latest: "2026.11.0",
+      channel: "stable",
+      notes: "Stop-loss orders fill faster.",
+      releaseNotes: { en: ["Stop-loss orders fill faster."], zh: [] },
+    },
   },
   "update/apply": { args: { version: "2026.11.0" }, result: job },
   "check/run": { args: { fix: true, only: ["ledger.chain"] }, result: job },
