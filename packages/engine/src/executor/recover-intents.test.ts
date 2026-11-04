@@ -12,6 +12,7 @@ import {
   driveUntil,
   type ExecutorBench,
   flush,
+  hashOf,
   startExecutorBench,
   stateOf,
   tapped,
@@ -213,6 +214,49 @@ describe("recovery after a restart", () => {
     expect(restartEvents(first)).toContain("executor.unknown_late:");
     const second = await restartBench({ ...bench, executor: first.executor }, { idSeed: 101 });
     await expect(driveUntil(bench, intent, settled)).resolves.toBe("reconciled");
+    expect([...first.signed, ...second.signed]).toHaveLength(0);
+  });
+
+  it("tells no unknown transaction when another writer ended the intent first", async () => {
+    const { bench, intent } = await signedOnly();
+    await sendForeign(bench, 0);
+    bench.network.mine();
+    const restarted = await restartBench(bench, { intents: racedTo("failed_onchain") });
+    await driveUntil(bench, intent, { states: [], blocks: 4 });
+    expect(await stateOf(bench, intent)).toBe("unknown_after_send");
+    expect(restartEvents(restarted)).toContain("executor.move_stale:nonce_taken");
+    expect(noticeKeys(restarted.pushes)).toStrictEqual([]);
+    expect((await transactionsOf(bench)).map(({ state }) => state)).not.toContain("superseded");
+  });
+
+  it("stops when another writer moved a step of unknown fate that turned out its own", async () => {
+    const { bench, intent } = await signedOnly();
+    await minedBeforeRestart(bench);
+    const restarted = await restartBench(bench, {
+      receipts: lagging(1),
+      intents: racedTo("executing"),
+    });
+    await driveUntil(bench, intent, { states: [], blocks: 3 });
+    expect(await stateOf(bench, intent)).toBe("unknown_after_send");
+    expect(restartEvents(restarted)).toContain("executor.move_stale:sent_step_found");
+    expect(restarted.signed).toHaveLength(0);
+  });
+
+  it("sends the same bytes again for a step of unknown fate whose nonce turns out free", async () => {
+    const { bench, intent } = await signedOnly();
+    await minedBeforeRestart(bench);
+    const first = await restartBench(bench, {
+      receipts: lagging(2),
+      limits: { finalAfterBlocks: 0 },
+    });
+    expect(await stateOf(bench, intent)).toBe("unknown_after_send");
+    const [stored] = await transactionsOf(bench);
+    bench.network.holdBelow(10n ** 18n);
+    bench.network.reorg(hashOf(stored));
+    const second = await restartBench({ ...bench, executor: first.executor }, { idSeed: 101 });
+    bench.network.holdBelow(0n);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("reconciled");
+    expect(second.sends.map(({ raw }) => raw)).toContain(stored?.raw);
     expect([...first.signed, ...second.signed]).toHaveLength(0);
   });
 
