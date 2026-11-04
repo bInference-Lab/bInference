@@ -244,10 +244,10 @@ describe("the frozen notice", () => {
 
   it("names the agent and the surface it was frozen from, and where to unfreeze", () => {
     expect(english.message(frozenNoticeKey, { agent: "main", surface: "telegram" })).toBe(
-      `${alarm} main is frozen from Telegram. Unfreeze in the CLI, the console or the Mini App.`,
+      `${alarm} main is frozen from Telegram. Unfreeze with \`binference unfreeze\` in the terminal.`,
     );
     expect(english.message(frozenNoticeKey, { agent: "main", surface: "cli" })).toBe(
-      `${alarm} main is frozen from the CLI. Unfreeze in the CLI, the console or the Mini App.`,
+      `${alarm} main is frozen from the CLI. Unfreeze with \`binference unfreeze\` in the terminal.`,
     );
   });
 });

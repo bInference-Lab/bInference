@@ -71,7 +71,7 @@
   "bot.rejected": "Telegram did not accept this bot token. Copy it again from @BotFather.",
   "bot.malformed": "This is no bot token. @BotFather writes one as digits, a colon, then letters and digits.",
   "limits.title": "Your agent's limits",
-  "limits.explain": "Every trade stays inside these caps. You can lower them at any time, and raise them from the CLI or the console.",
+  "limits.explain": "Every trade stays inside these caps. You can lower them at any time with `binference limit set` or /limits in Telegram, and raise them with `binference limit set`.",
   "limits.perTradeUsd": "Per-trade cap, in US dollars",
   "limits.rollingDayUsd": "24-hour cap, in US dollars",
   "limits.invalid": "Type an amount in US dollars, such as 100 or 0.5.",

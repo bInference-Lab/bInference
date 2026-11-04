@@ -78,7 +78,7 @@ describe("the first chat", () => {
 
   it("changes no limit when the owner asks to raise one in chat", slow, async () => {
     const pointer =
-      "Your limits stay as they are. Change them with `binference limit set` in the terminal, or in the console.";
+      "Your limits stay as they are. Change them with `binference limit set` in the terminal, or lower one with /limits in Telegram.";
     const script = createSharedScript([
       callsReply([{ name: "limit_set", args: { dailyUsd: "1000" } }]),
       textReply(pointer),

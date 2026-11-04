@@ -28,7 +28,7 @@ const frozen: Notice = {
   values: { agent: "main", surface: "cli" },
 };
 const lockedText = `${String.fromCodePoint(0x1f534)} binference restarted and is locked. Run \`binference unlock\`.`;
-const frozenText = `${String.fromCodePoint(0x1f534)} main is frozen from the CLI. Unfreeze in the CLI, the console or the Mini App.`;
+const frozenText = `${String.fromCodePoint(0x1f534)} main is frozen from the CLI. Unfreeze with \`binference unfreeze\` in the terminal.`;
 
 const engineStopped = new BinferenceError({ code: "test.stopped", message: "The engine stopped." });
 

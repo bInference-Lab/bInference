@@ -18,7 +18,7 @@ describe("the fast commands in Chinese", () => {
     await bot.send("/balance");
     await bot.send("/lang");
     expect(bot.texts()).toStrictEqual([
-      `${alarm} 所有 Agent 都已冻结，自 2026年10月10日 09:30:00 起；在解除冻结之前新建的 Agent 也会处于冻结状态。它们已打开的卡片和未签名的操作都已取消；已发送的交易会继续完成。请在命令行、控制台或 Mini App 中解除冻结。`,
+      `${alarm} 所有 Agent 都已冻结，自 2026年10月10日 09:30:00 起；在解除冻结之前新建的 Agent 也会处于冻结状态。它们已打开的卡片和未签名的操作都已取消；已发送的交易会继续完成。请在终端运行 \`binference unfreeze\` 解除冻结。`,
       "此版本的 binference 不支持该请求。请更新 binference 或客户端。",
       "binference 与你沟通使用中文。点按一种语言即可切换，binference 会立即生效。",
     ]);

@@ -25,7 +25,7 @@ const expected: Readonly<Record<string, string>> = {
     "1 card waits for your answer",
     "1 skip: the wallet holds too little of this token",
   ].join("\n"),
-  "notice.frozen": `${red} main is frozen from Telegram. Unfreeze in the CLI, the console or the Mini App.`,
+  "notice.frozen": `${red} main is frozen from Telegram. Unfreeze with \`binference unfreeze\` in the terminal.`,
   "notice.unfrozen": `${green} main is unfrozen from the console.`,
   "notice.rescue": `${red} Rescue confirmed: moving everything to 0x9F3c…41aB`,
   "notice.newDevice": "A new console device was paired: Laptop",

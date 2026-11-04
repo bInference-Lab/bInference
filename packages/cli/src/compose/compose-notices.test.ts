@@ -26,7 +26,7 @@ const ownerId = 7_012_345_678;
 const [selfHosted] = skeletonCompositions;
 const alarm = String.fromCodePoint(0x1f534);
 const dayMs = 86_400_000;
-const frozenText = `${alarm} main is frozen from the CLI. Unfreeze in the CLI, the console or the Mini App.`;
+const frozenText = `${alarm} main is frozen from the CLI. Unfreeze with \`binference unfreeze\` in the terminal.`;
 const cli: EngineCaller = {
   credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000001",
   client: { kind: "cli", version: "test" },

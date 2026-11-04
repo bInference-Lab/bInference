@@ -146,7 +146,7 @@ main 的每日摘要（过去 24 小时）
 级别：严重。可静音：否。
 
 ```text
-🔴 已从 Telegram 冻结 main。请在命令行、控制台或 Mini App 中解除冻结。
+🔴 已从 Telegram 冻结 main。请在终端运行 `binference unfreeze` 解除冻结。
 ```
 
 ## `unfrozen`

@@ -42,7 +42,7 @@
   "orders.none": "No active auto orders.",
   "cancel.heading": "{count, plural, one {# action waits for your confirmation. Tap Cancel on it to stop it.} other {# actions wait for your confirmation. Tap Cancel on the ones to stop.}}",
   "cancel.none": "Nothing waits for your confirmation, so there is nothing to cancel.",
-  "freeze.done": "🔴 Every agent is frozen since {when}, and every agent made until an unfreeze starts frozen. Their open cards and unsigned actions are cancelled; a transaction already sent finishes. Unfreeze in the CLI, the console or the Mini App.",
+  "freeze.done": "🔴 Every agent is frozen since {when}, and every agent made until an unfreeze starts frozen. Their open cards and unsigned actions are cancelled; a transaction already sent finishes. Unfreeze with `binference unfreeze` in the terminal.",
   "rescue.waiting": "The rescue card waits for your tap. Check the rescue address on it, then tap Confirm.",
   "rescue.underWay": "A rescue is under way: {state, select, awaiting_confirmation {waiting for your confirmation} confirmed {confirmed} executing {sending} included {sent, waiting to be final} finalized {final, being recorded} other {{state}}}.",
   "rescue.ended": "The rescue ended. Use /rescue again to move what is left.",

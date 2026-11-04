@@ -200,7 +200,7 @@ describe("the fast commands", () => {
     const bot = await startCommandBot(served);
     await bot.send("/freeze");
     await bot.send("/freeze");
-    const done = `${icons.live} Every agent is frozen since Oct 10, 2026, 09:30:00, and every agent made until an unfreeze starts frozen. Their open cards and unsigned actions are cancelled; a transaction already sent finishes. Unfreeze in the CLI, the console or the Mini App.`;
+    const done = `${icons.live} Every agent is frozen since Oct 10, 2026, 09:30:00, and every agent made until an unfreeze starts frozen. Their open cards and unsigned actions are cancelled; a transaction already sent finishes. Unfreeze with \`binference unfreeze\` in the terminal.`;
     expect(bot.texts()).toStrictEqual([done, done]);
   });
 

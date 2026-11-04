@@ -58,7 +58,7 @@ Every part of binference follows these rules. A rule changes only through a new 
 11. <a id="rule-11"></a>**Braking is instant; loosening is not.**
     - `/freeze`, cancel and tighter limits work at once from any surface.
     - Loosening a send level takes 24 hours and is announced on every surface.
-    - Unfreezing and other loosening need the CLI, the console or the Mini App, never a chat message
+    - Unfreezing and other loosening need the terminal commands, never a chat message
       ([decision 0089](DECISIONS.md#d0089)); an unfreeze then waits for the owner's tap on its card,
       from any surface ([decision 0128](DECISIONS.md#d0128)).
 12. <a id="rule-12"></a>**Third-party code never runs where keys are.**
@@ -357,8 +357,9 @@ Telegram, and whose card then shows every setting; [decisions 0082](DECISIONS.md
 says where each launchpad takes a launch's picture.
 
 **Never tools:** limits, send levels, paper or live mode, the address book, the rescue address, the
-model budget, webhook rules and plugins. Those are settings that only the owner changes, in the CLI
-or the console. `/rescue` is an owner command, never a tool.
+model budget, webhook rules and plugins. Those are settings that only the owner changes, with the
+terminal commands; `/limits` in Telegram lowers a limit. `/rescue` is an owner command, never a
+tool.
 
 The MCP server exposes the same read and propose tools, prefixed `binference_`.
 
@@ -648,7 +649,7 @@ Since [decision 0091](DECISIONS.md#d0091), every send goes to the rescue address
 - token allow and deny lists (a token on the deny list may still be sold, with a tap,
   [decision 0101](DECISIONS.md#d0101)).
 
-**Kill switch.** `/freeze` in Telegram (no LLM involved), a console button or `binference freeze`.
+**Kill switch.** `/freeze` in Telegram (no LLM involved) or `binference freeze`.
 In one transaction, it:
 
 - marks the agent as frozen, or the whole install: every agent in it, and every agent created until
@@ -661,12 +662,11 @@ In one transaction, it:
 While frozen, every new intent of the agent is refused but an approval revoke, which still waits
 for the owner's tap ([decision 0312](DECISIONS.md#d0312)).
 
-An unfreeze is asked for in the CLI, the console or the Mini App, and takes effect on the owner's
+An unfreeze is asked for with `binference unfreeze` in the terminal, and takes effect on the owner's
 tap on its card, from any surface ([rule 11](#rule-11), [decision 0128](DECISIONS.md#d0128)).
 
 **Rescue ([decision 0044](DECISIONS.md#d0044)).** Onboarding asks for a rescue address: the owner's
-own main wallet. `/rescue` in Telegram or the Mini App, a console button or `binference rescue`
-builds one intent that sends every token and the BNB (minus gas) of every agent wallet to that
+own main wallet. `/rescue` in Telegram or `binference rescue` builds one intent that sends every token and the BNB (minus gas) of every agent wallet to that
 address. One tap confirms it. It works at every send level, while frozen and in paper mode
 ([decision 0100](DECISIONS.md#d0100)), and it never sells.
 Changing the rescue address takes 24 hours, can be cancelled, and is announced on every surface, so
@@ -744,8 +744,7 @@ and gain and loss colors that stay readable for color-blind owners.
 - **More screens (decisions [0049](DECISIONS.md#d0049), [0053](DECISIONS.md#d0053),
   [0055](DECISIONS.md#d0055)):** model usage and budget, schedules, webhook rules, backups.
 - **Telegram Mini App (decisions [0050](DECISIONS.md#d0050), [0089](DECISIONS.md#d0089)).** The
-  same console opens inside Telegram through `/console`, with a Telegram tap's power and the right
-  to loosen ([section 25](#section-25)).
+  same console opens inside Telegram through `/console` ([section 25](#section-25)).
 - **Remote access** goes through Tailscale (`binference expose`, [section 25](#section-25)) or an
   SSH tunnel. The engine refuses to bind beyond loopback without auth.
 - **Same protocol as everyone else.** The console uses `@binference/client` like every other client,
@@ -963,22 +962,22 @@ Agent runtime tables: `agents`, `sessions`, `transcript_events`, `memory_items`,
 
 ### 18. Security model
 
-| Threat                                                         | Controls                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Prompt injection (token names, tweets, web pages, group chats) | Every transaction needs a tap collected by the engine; cards drawn from the intent; swaps pay the own wallet; outside-content warning on cards; order fills stay inside the confirmed bounds                                                                                                                                                                                                                                                                          |
-| Telegram account takeover                                      | Daily caps; opt-in send levels with 24-hour loosening; freeze from anywhere, unfreeze asked for only from the CLI, the console or the Mini App and confirmed with a tap; alerts on every surface; small dedicated wallets. **At the default level a hijacked Telegram can send the agent wallet's funds to the rescue address or any saved address, never elsewhere (decisions [0015](DECISIONS.md#d0015), [0016](DECISIONS.md#d0016), [0091](DECISIONS.md#d0091)).** |
-| Malicious plugin or skill                                      | No third-party code in the engine; the community tier is sandboxed and read-only; pinned hashes, consent on widening, signature checks; skills cannot add tools                                                                                                                                                                                                                                                                                                       |
-| A compromised agent runtime (exec tools on, a bad skill)       | It holds only `read`, `propose` and `chat`; it cannot approve, sign or change settings                                                                                                                                                                                                                                                                                                                                                                                |
-| Key theft                                                      | Wallet keys only in Privy; the agent key only in the signer process (and optionally its own OS user), unlocked from the OS keychain or an owner-only file; the Privy policy as the ceiling; curve trades only from a launch wallet and Relay bridges only from a bridge wallet, each funded by the owner with a small amount ([0217](DECISIONS.md#d0217), [0307](DECISIONS.md#d0307))                                                                                 |
-| Honeypots, hidden taxes, rugs                                  | Round-trip simulation from fresh addresses, GoPlus, honeypot.is, launchpad mode decode, maximum tax, fail closed                                                                                                                                                                                                                                                                                                                                                      |
-| MEV                                                            | Private relays only, a tight minimum out from simulation, 60-second deadlines                                                                                                                                                                                                                                                                                                                                                                                         |
-| Double spends, stuck nonces                                    | One writer per wallet, raw transaction stored before broadcast, recovery by hash and nonce                                                                                                                                                                                                                                                                                                                                                                            |
-| Fake addresses from the model or memory                        | Registry only for contracts; pasted tokens go through the risk check; checksummed display                                                                                                                                                                                                                                                                                                                                                                             |
-| Permit and 7702 phishing                                       | No blind signatures, no 7702 authorizations                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Forged callbacks and webhooks                                  | Opaque callback refs, presser authorized in the engine, constant-time webhook secret                                                                                                                                                                                                                                                                                                                                                                                  |
-| A seed or key pasted into chat                                 | Deleted at once, never stored; redaction patterns for `0x` + 64 hex and BIP-39 phrases in every log                                                                                                                                                                                                                                                                                                                                                                   |
-| An exposed engine                                              | Loopback by default; refuses to start beyond loopback without auth; scoped tokens; device pairing                                                                                                                                                                                                                                                                                                                                                                     |
-| A bad venue (exploits, malicious hooks)                        | Venue allowlist, PancakeSwap Infinity hooks allowlisted, per-venue switches                                                                                                                                                                                                                                                                                                                                                                                           |
+| Threat                                                         | Controls                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Prompt injection (token names, tweets, web pages, group chats) | Every transaction needs a tap collected by the engine; cards drawn from the intent; swaps pay the own wallet; outside-content warning on cards; order fills stay inside the confirmed bounds                                                                                                                                                                                                                                                                  |
+| Telegram account takeover                                      | Daily caps; opt-in send levels with 24-hour loosening; freeze from Telegram or the terminal, unfreeze asked for only from the terminal and confirmed with a tap; alerts on every surface; small dedicated wallets. **At the default level a hijacked Telegram can send the agent wallet's funds to the rescue address or any saved address, never elsewhere (decisions [0015](DECISIONS.md#d0015), [0016](DECISIONS.md#d0016), [0091](DECISIONS.md#d0091)).** |
+| Malicious plugin or skill                                      | No third-party code in the engine; the community tier is sandboxed and read-only; pinned hashes, consent on widening, signature checks; skills cannot add tools                                                                                                                                                                                                                                                                                               |
+| A compromised agent runtime (exec tools on, a bad skill)       | It holds only `read`, `propose` and `chat`; it cannot approve, sign or change settings                                                                                                                                                                                                                                                                                                                                                                        |
+| Key theft                                                      | Wallet keys only in Privy; the agent key only in the signer process (and optionally its own OS user), unlocked from the OS keychain or an owner-only file; the Privy policy as the ceiling; curve trades only from a launch wallet and Relay bridges only from a bridge wallet, each funded by the owner with a small amount ([0217](DECISIONS.md#d0217), [0307](DECISIONS.md#d0307))                                                                         |
+| Honeypots, hidden taxes, rugs                                  | Round-trip simulation from fresh addresses, GoPlus, honeypot.is, launchpad mode decode, maximum tax, fail closed                                                                                                                                                                                                                                                                                                                                              |
+| MEV                                                            | Private relays only, a tight minimum out from simulation, 60-second deadlines                                                                                                                                                                                                                                                                                                                                                                                 |
+| Double spends, stuck nonces                                    | One writer per wallet, raw transaction stored before broadcast, recovery by hash and nonce                                                                                                                                                                                                                                                                                                                                                                    |
+| Fake addresses from the model or memory                        | Registry only for contracts; pasted tokens go through the risk check; checksummed display                                                                                                                                                                                                                                                                                                                                                                     |
+| Permit and 7702 phishing                                       | No blind signatures, no 7702 authorizations                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Forged callbacks and webhooks                                  | Opaque callback refs, presser authorized in the engine, constant-time webhook secret                                                                                                                                                                                                                                                                                                                                                                          |
+| A seed or key pasted into chat                                 | Deleted at once, never stored; redaction patterns for `0x` + 64 hex and BIP-39 phrases in every log                                                                                                                                                                                                                                                                                                                                                           |
+| An exposed engine                                              | Loopback by default; refuses to start beyond loopback without auth; scoped tokens; device pairing                                                                                                                                                                                                                                                                                                                                                             |
+| A bad venue (exploits, malicious hooks)                        | Venue allowlist, PancakeSwap Infinity hooks allowlisted, per-venue switches                                                                                                                                                                                                                                                                                                                                                                                   |
 
 `binference check security` lists its findings with stable check ids. It checks, among other things:
 
@@ -1191,10 +1190,10 @@ Decided in decisions [0050](DECISIONS.md#d0050) to [0053](DECISIONS.md#d0053).
   Telegram's signed `initData` against the bot token, rejects missing, expired or replayed data,
   accepts only the owner's numeric id, and spends the ticket, so a launch from any other Mini App
   of the bot cannot sign in; the launches that signed in stay in `engine.sqlite` for 24 hours, so a
-  replay fails after a restart too. Besides what a Telegram tap
-  does (view, confirm, cancel, freeze, rescue), the Mini App may loosen: raise limits and send
-  levels (the 24-hour wait stays), ask for an unfreeze that waits for the owner's tap on its card
-  ([decision 0128](DECISIONS.md#d0128)), and switch to auto mode. Exports, installs and the
+  replay fails after a restart too. It views, confirms and cancels as a Telegram tap does. Its
+  sign-in holds the `loosen` scope ([decision 0089](DECISIONS.md#d0089)), but the console has no
+  freeze, unfreeze, rescue, limit or approval mode controls yet: those run from the terminal
+  commands and from Telegram's `/freeze`, `/rescue` and `/limits`. Exports, installs and the
   settings that need the `admin` scope stay local.
 - **Webhook rules ([decision 0053](DECISIONS.md#d0053)).** The owner creates a rule in the console
   or the CLI: the alert's name, the action and its bounds (token, side, size, worst price, maximum
@@ -1256,8 +1255,8 @@ Decided in decisions [0054](DECISIONS.md#d0054), [0057](DECISIONS.md#d0057),
   APIs see token addresses, the update check sends the version and OS.
 - **First chat ([decision 0061](DECISIONS.md#d0061)).** In paper mode the agent asks about 8 short
   questions in the owner's language (budget, holding time, sectors, exits, when to ask) and writes
-  `STRATEGY.md` and `PERSONA.md`, editable later. Limits come only from onboarding, the CLI and the
-  console.
+  `STRATEGY.md` and `PERSONA.md`, editable later. Limits come only from onboarding and the terminal
+  commands; `/limits` in Telegram lowers them.
 - **Notifications ([decision 0057](DECISIONS.md#d0057)).** By default: every fill; every failed or
   skipped fill; low gas; orders about to expire; security events (freeze, rescue, a new device, a
   send-level, limit or rescue address change, a plaintext secret found); a daily summary at 09:00

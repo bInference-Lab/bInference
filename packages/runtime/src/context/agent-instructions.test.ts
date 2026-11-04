@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 import { agentInstructions } from "./agent-instructions.js";
 
 describe("the agent's instructions", () => {
-  it("say no tool changes a limit, and point the owner to the CLI and the console", () => {
+  it("say no tool changes a limit, and point the owner to the terminal and Telegram", () => {
     expect(agentInstructions("en")).toContain(
-      "When the owner asks in chat to raise or lower a limit, it stays as it is: say so, and point them to `binference limit set` in the terminal or to the limits in the console.",
+      "When the owner asks in chat to raise or lower a limit, it stays as it is: say so, and point them to `binference limit set` in the terminal, or to /limits in Telegram to lower one.",
     );
   });
 

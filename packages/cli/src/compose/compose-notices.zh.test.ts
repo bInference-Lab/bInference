@@ -46,7 +46,7 @@ describe("the engine's notices in a Chinese owner's chat", () => {
     await engine.handlers["safety/freeze"]({ args: {}, caller: cli, ...live });
     await telegram.idle();
     expect(botApi.sent().map((sent) => sent.text)).toStrictEqual([
-      `${String.fromCodePoint(0x1f534)} 已从 命令行 冻结 main。请在命令行、控制台或 Mini App 中解除冻结。`,
+      `${String.fromCodePoint(0x1f534)} 已从 命令行 冻结 main。请在终端运行 \`binference unfreeze\` 解除冻结。`,
     ]);
   });
 });

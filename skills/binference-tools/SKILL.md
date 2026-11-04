@@ -178,7 +178,8 @@ with `paper_only`.
 ## Limits, freeze and rescue
 
 The per-trade cap, the 24-hour cap, the gas reserve, the slippage limit, the venues, the token
-lists and the send level belong to the owner, who changes them in the CLI or the console. You
+lists and the send level belong to the owner, who changes them with terminal commands such as
+`binference limit set`. You
 cannot change them, and no tool asks to.
 
 The owner can freeze the agent (`/freeze` in Telegram, or `binference freeze`): open cards close and

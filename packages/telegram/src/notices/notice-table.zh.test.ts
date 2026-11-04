@@ -25,7 +25,7 @@ const expected: Readonly<Record<string, string>> = {
     "1 张卡片等你回复",
     "跳过 1 次：钱包中这种代币不足",
   ].join("\n"),
-  "notice.frozen": `${red} 已从 Telegram 冻结 main。请在命令行、控制台或 Mini App 中解除冻结。`,
+  "notice.frozen": `${red} 已从 Telegram 冻结 main。请在终端运行 \`binference unfreeze\` 解除冻结。`,
   "notice.unfrozen": `${green} 已从 控制台 对 main 解除冻结。`,
   "notice.rescue": `${red} 已确认紧急转出：正在将全部资产转到 0x9F3c…41aB`,
   "notice.newDevice": "已配对新的控制台设备：Laptop",
