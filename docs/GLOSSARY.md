@@ -502,6 +502,14 @@ check` tries it as `network.proxy`.
   notice shows; the dry run packs them into the `binference` package.
   The release workflow publishes only a tag signed by a **release key** that
   `.github/release-signers` lists; a **scratch** run publishes to npm's `scratch` dist-tag.
+- **install script**: `install/install.sh`, for macOS and Linux, which the owner runs as a
+  **one-liner** (`curl -fsSL https://binference.io/install.sh | sh`). It installs the **pinned
+  Node** release into `~/.local/share/binference` when the machine has no Node 26.1 or later,
+  after checking the archive's SHA-256 against the script's pin, then runs
+  `npm i -g binference` on the stable or `--beta` channel and `binference init`. It never asks for
+  root: when npm's global folder needs it, binference goes into `~/.local`. Its variables:
+  `BINFERENCE_INSTALL_CHANNEL`, `BINFERENCE_INSTALL_YES`, `BINFERENCE_INSTALL_SKIP_INIT`,
+  `BINFERENCE_NODE_MIRROR`, and `BINFERENCE_INSTALL_PACKAGE`, a local tarball for tests only.
 - **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed
   files** into an empty project outside the repository, checks that every file their manifests
   name is there, then sets the installed `binference` up with `init --yes`, starts it, makes a
@@ -659,6 +667,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | log in (to the computer)                    | 登录                   |                              |
 | client token                                | 访问令牌               | A `bnt_` sign-in token       |
 | release notes                               | 更新说明               |                              |
+| install script                              | 安装脚本               | `install.sh`                 |
 | plugin host                                 | 插件进程               | One process per plugin       |
 | sandbox check                               | 沙箱检查               | `plugins.sandbox`            |
 | plugin launcher                             | 插件启动器             | In the Docker image          |

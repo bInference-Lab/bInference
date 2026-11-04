@@ -12,6 +12,8 @@ export type {
   ServiceManagerHarness,
   ServiceManagerSubject,
 } from "./contracts/service-manager-contract.js";
+export { startLoopbackFiles } from "./fakes/loopback-files.js";
+export type { LoopbackAnswer, LoopbackFiles } from "./fakes/loopback-files.js";
 export { createMemoryServiceManager } from "./fakes/memory-service-manager.js";
 export { createSecretVault } from "./fakes/secret-vault.js";
 export type { SecretVault } from "./fakes/secret-vault.js";
