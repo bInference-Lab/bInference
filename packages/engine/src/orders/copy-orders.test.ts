@@ -46,6 +46,21 @@ function takingOf(stored: StoredActivity | undefined): Omit<CopyTaking, "take"> 
   return { id, txHash, side: "buy", asset: testToken, atMs };
 }
 
+// A risk check that answers every token with this verdict and these flags.
+function riskAnswering(
+  verdict: "pass" | "warn",
+  flags: readonly { readonly code: string; readonly source: string }[],
+): RiskCheck {
+  return {
+    assess: async (_input, { signal }) => {
+      signal.throwIfAborted();
+      return await Promise.resolve({
+        view: { verdict, flags, onCurve: false, checkedAt: testNowMs },
+      });
+    },
+  };
+}
+
 // Token facts that answer as the fake does, and nothing once `facts.isRead` turns false.
 function silencedFacts(facts: { readonly isRead: boolean }): ReadTokenFacts {
   const { read } = createFakeTokenFacts();
@@ -230,15 +245,7 @@ describe("the copy orders' runner", () => {
   });
 
   it("still copies a buy the risk check warns about, and says so in the fill notice", async () => {
-    const risk: RiskCheck = {
-      assess: async (_input, { signal }) => {
-        signal.throwIfAborted();
-        const flags = [{ code: "high_tax", source: "measured" }];
-        return await Promise.resolve({
-          view: { verdict: "warn", flags, onCurve: false, checkedAt: testNowMs },
-        });
-      },
-    };
+    const risk = riskAnswering("warn", [{ code: "high_tax", source: "measured" }]);
     const test = await startFillEngine({ prices, risk });
     const order = await activeOrder(test, testCopy());
     await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
@@ -249,6 +256,19 @@ describe("the copy orders' runner", () => {
     const told = noticesOf(test).map((data) => JSON.stringify(data));
     expect(told.find((text) => text.includes('"fill.copyBuy"'))).toContain(
       '"key":"fill.copyRiskWarn","values":{"flags":"high_tax"}',
+    );
+  });
+
+  it("says the risk check named no flag when it warns without naming one", async () => {
+    const test = await startFillEngine({ prices, risk: riskAnswering("warn", []) });
+    await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+
+    await test.engine.runCopies(live);
+
+    const told = noticesOf(test).map((data) => JSON.stringify(data));
+    expect(told.find((text) => text.includes('"fill.copyBuy"'))).toContain(
+      '"key":"fill.copyRiskWarn","values":{"flags":"none"}',
     );
   });
 
@@ -266,14 +286,7 @@ describe("the copy orders' runner", () => {
   });
 
   it("skips a leader's sale of a copied token that answers no decimals any more, unread", async () => {
-    const risk: RiskCheck = {
-      assess: async (_input, { signal }) => {
-        signal.throwIfAborted();
-        return await Promise.resolve({
-          view: { verdict: "pass", flags: [], onCurve: false, checkedAt: testNowMs },
-        });
-      },
-    };
+    const risk = riskAnswering("pass", []);
     const facts = { isRead: true };
     const tokenFacts = silencedFacts(facts);
     const unlistedPrices = new Map(prices).set(unlisted, { numerator: 1n, denominator: 10n ** 9n });

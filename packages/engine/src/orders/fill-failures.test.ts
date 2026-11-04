@@ -4,7 +4,7 @@ import type { TestEngine } from "../operations/test-engine.js";
 import { isWaiting } from "./fill-pacing.js";
 import type { OrderFillRecord } from "./order-fill.js";
 import { activeOrder, eightyCents, fillRowsOf, noticesOf, startFillEngine } from "./test-fills.js";
-import { storedOrder, testStopLoss } from "./test-orders.js";
+import { contendedOrders, storedOrder, testStopLoss } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -55,5 +55,18 @@ describe("an exit order whose fills fail on chain", () => {
     expect((await storedOrder(test, order.id)).state).toBe("cancelled");
     expect(noticesOf(test)).toMatchObject([{ key: "notice.fillsFailing", values: { count: "5" } }]);
     expect(await fillRowsOf(test, order.id)).toHaveLength(5);
+  });
+
+  it("leaves an order another write moved first to its next trigger, telling nothing", async () => {
+    const race = contendedOrders(1, (moves) => moves[0]?.state === "cancelled");
+    const test = await startFillEngine({ orders: race.orders });
+    const order = await activeOrder(test, testStopLoss());
+    await revertsOf(test, order.id, 5);
+
+    const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    expect([outcome, race.raced()]).toStrictEqual(["inactive", 1]);
+    expect((await storedOrder(test, order.id)).state).toBe("active");
+    expect(noticesOf(test)).toStrictEqual([]);
   });
 });

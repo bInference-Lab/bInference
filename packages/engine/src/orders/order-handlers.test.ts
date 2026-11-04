@@ -11,7 +11,8 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
-import { testCall, testCallers } from "../operations/test-engine.js";
+import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
+import type { OrderStore } from "./ports.js";
 import {
   createdOrder,
   startOrderEngine,
@@ -31,6 +32,18 @@ const testDca: OrderRequest = {
   size: { usdMicros: 1_000_000n },
   trigger: { cron: "0 9 * * *" },
 };
+
+// The order store, freezing the test agent from the CLI right before it stores a new order, as
+// a freeze that lands between the order's checks and its write.
+function freezingAtCreate(store: OrderStore, holder: { readonly test?: TestEngine }): OrderStore {
+  return {
+    ...store,
+    create: async (draft, call) => {
+      await holder.test?.engine.handlers["safety/freeze"](testCall({ agent: testAgent }));
+      return store.create(draft, call);
+    },
+  };
+}
 
 describe("an auto order's card", () => {
   it("opens one card, and the order is active only once that card is confirmed", async () => {
@@ -269,6 +282,19 @@ describe("the rules of a new auto order", () => {
     expect(await test.engine.handlers["order/create"](testCall(testStopLoss()))).toStrictEqual(
       err("agent.frozen"),
     );
+  });
+
+  it("refuses an order whose agent was frozen as its write landed, storing nothing", async () => {
+    const holder: { test?: TestEngine } = {};
+    const test = await startOrderEngine({ orders: (store) => freezingAtCreate(store, holder) });
+    holder.test = test;
+
+    expect(await test.engine.handlers["order/create"](testCall(testStopLoss()))).toStrictEqual(
+      err("agent.frozen"),
+    );
+    expect(
+      await test.stores.orders.list({ states: ["awaiting_confirmation"], limit: 10 }, live),
+    ).toStrictEqual([]);
   });
 
   it("refuses an order of an archived agent", async () => {

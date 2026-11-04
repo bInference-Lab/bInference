@@ -24,6 +24,7 @@ import {
   type CopyTaking,
   takenState,
 } from "./copy-state.js";
+import type { CopyBuyQuery, CopyBuyRecord } from "./order-fill.js";
 import { testLeaderTx } from "./test-copies.js";
 import { testCopy } from "./test-orders.js";
 
@@ -73,20 +74,39 @@ function boughtFor(state: CopyState, usdMicros: bigint): CopyState {
   return copyStateAfterFill(state, traded);
 }
 
+// The stored buys a page at a time, by id after the last of the page before, as the store pages.
+function pagedBuys(
+  buys: readonly CopyBuyRecord[],
+): (query: CopyBuyQuery) => Promise<readonly CopyBuyRecord[]> {
+  return async (query) =>
+    Promise.resolve(
+      buys
+        .filter(({ id }) => query.after === undefined || id > query.after.id)
+        .slice(0, query.limit),
+    );
+}
+
 async function plan(
   order: CopyOrder,
-  call: { readonly stored?: readonly bigint[]; readonly copyPerBuy?: bigint } = {},
+  call: {
+    readonly stored?: readonly bigint[];
+    readonly copyPerBuy?: bigint;
+    /** Whether the stored buys come a page at a time, as the store answers them. */
+    readonly paged?: boolean;
+  } = {},
 ) {
   const clock = createManualClock(testNowMs);
   const limits = { ...testLimits, copyPerBuyUsdMicros: call.copyPerBuy ?? 20_000_000n };
   const settings = agentSettingsOf(testAgentDraft({ limits }));
   // The agent's stored copy buys of the leader, by any of its copy orders.
   const buys = (call.stored ?? []).map((usdMicros, n) => ({
-    id: idSchema("fil").parse(`fil_0190f1c2-3a4b-7c5d-8e6f-00000000000${String(n)}`),
+    id: idSchema("fil").parse(`fil_0190f1c2-3a4b-7c5d-8e6f-${String(n).padStart(12, "0")}`),
     atMs: testNowMs,
     usdMicros,
   }));
-  const orders = { copyBuys: async () => Promise.resolve(buys) };
+  const orders = {
+    copyBuys: call.paged === true ? pagedBuys(buys) : async () => Promise.resolve(buys),
+  };
   const prices = createFakePriceSource(
     new Map([[testCoin, { numerator: 600n, denominator: 10n ** 12n }]]),
   );
@@ -196,6 +216,18 @@ describe("a copy order's fill plan", () => {
     });
     expect(await plan(copyOrder(takenState(some, buy)), { stored: [60_000_000n] })).toMatchObject({
       kind: "fill",
+    });
+  });
+
+  it("counts the agent's stored buys of the leader page after page", async () => {
+    const some = boughtFor(copyStartOf(0), 0n);
+    // 600 buys of $0.15: $75 on the first page of 500, $90 in all, against the agent's $100.
+    const stored = Array.from({ length: 600 }, () => 150_000n);
+
+    expect(await plan(copyOrder(takenState(some, buy)), { stored, paged: true })).toStrictEqual({
+      kind: "skip",
+      reason: "copy_daily_cap",
+      cap: { usedUsdMicros: 90_000_000n, capUsdMicros: 100_000_000n },
     });
   });
 });
