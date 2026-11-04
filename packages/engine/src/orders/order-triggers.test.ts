@@ -6,7 +6,7 @@ import { testToken } from "../intents/test-intents.js";
 import type { WatchedOrderPrice } from "./order-triggers.js";
 import { triggerStateDocument } from "./price-triggers.js";
 import { activeOrder, fillIntentsOf, startFillEngine, wholeToken } from "./test-fills.js";
-import { storedOrder, testStopLoss } from "./test-orders.js";
+import { contendedOrders, storedOrder, testStopLoss } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 const otherToken = assetRefSchema.parse("fake:1/token:0x0000000b");
@@ -102,6 +102,20 @@ describe("price triggers", () => {
       ["filled"],
     ]);
     expect(await storedOrder(test, order.id)).toMatchObject({ state: "filled", fills: 1 });
+  });
+
+  it("keep a trailing stop's higher peak when another write moved its order first", async () => {
+    const armed = { isOn: false };
+    const race = contendedOrders(1, () => armed.isOn);
+    const test = await startFillEngine({ orders: race.orders });
+    const order = await activeOrder(test, trailingStop);
+    await test.engine.seePrice(at(1_000_000n), live);
+    armed.isOn = true;
+
+    await test.engine.seePrice(at(1_200_000n), live);
+
+    expect(race.raced()).toBe(1);
+    expect(peakMicros((await storedOrder(test, order.id)).triggerState)).toBe(1_200_000n);
   });
 
   it("keep a trailing stop's highest price across a restart", async () => {

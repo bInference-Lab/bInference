@@ -1,3 +1,6 @@
+import type { Venue } from "@binference/chain";
+import { createFakeVenue } from "@binference/chain/testing";
+import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testCall, type TestEngine } from "../operations/test-engine.js";
 import type { AgentStore, IntentStore } from "../ports.js";
@@ -54,7 +57,26 @@ function freezingAtQuote(
   };
 }
 
+// The skip rows of a stop-loss's fill on an engine whose one venue quotes as `quote` does.
+async function skipsOn(quote: Venue["quote"]) {
+  const test = await startFillEngine({ venues: [{ ...createFakeVenue(), quote }] });
+  const order = await activeOrder(test, testStopLoss());
+  const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+  const rows = await fillRowsOf(test, order.id);
+  return { outcome, reasons: rows.map(({ reason }) => reason) };
+}
+
 describe("the reason a skipped fill records", () => {
+  it("is no_route for a pair no venue routes, and venue_down for a venue that cannot answer", async () => {
+    const unrouted = await skipsOn(async () => err("no_route"));
+    const down = await skipsOn(async () => {
+      throw new Error("The venue is down.");
+    });
+
+    expect(unrouted).toStrictEqual({ outcome: "skipped", reasons: ["no_route"] });
+    expect(down).toStrictEqual({ outcome: "skipped", reasons: ["venue_down"] });
+  });
+
   it("is fill_failed, not no_route, for a proposal the money path refuses for its agent", async () => {
     const on = switchOf();
     const test = await startFillEngine({ agents: (store) => archivedWhenOn(store, on) });

@@ -11,7 +11,7 @@ import { moveOrder } from "./order-machine.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
 import { activeOrder, fillIntentsOf, fillRowsOf, startFillEngine } from "./test-fills.js";
-import { storedOrder } from "./test-orders.js";
+import { contendedOrders, storedOrder, testStopLoss } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 const minuteMs = 60_000;
@@ -164,6 +164,39 @@ describe("a DCA order", () => {
     await expect(test.engine.runSchedules(live)).rejects.toMatchObject({ code: "store.down" });
 
     expect(outcomes(await fillRowsOf(test, working.id))).toStrictEqual(["filled", "filled"]);
+  });
+
+  it("buys a period once when another write beat the write that kept it", async () => {
+    const armed = { isOn: false };
+    const race = contendedOrders(1, () => armed.isOn);
+    const test = await startFillEngine({ orders: race.orders });
+    const order = await activeOrder(test, dca);
+    await test.engine.runSchedules(live);
+    await test.clock.advance(5 * minuteMs);
+    armed.isOn = true;
+
+    await test.engine.runSchedules(live);
+    const first = await fillRowsOf(test, order.id);
+    await test.engine.runSchedules(live);
+
+    expect(race.raced()).toBe(1);
+    expect(first).toStrictEqual([]);
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
+    expect(await fillIntentsOf(test)).toHaveLength(1);
+  });
+
+  it("leaves the active price orders alone and buys only the DCA order's period", async () => {
+    const test = await startFillEngine();
+    const stop = await activeOrder(test, testStopLoss());
+    const order = await activeOrder(test, dca);
+    await test.engine.runSchedules(live);
+    await test.clock.advance(5 * minuteMs);
+
+    await test.engine.runSchedules(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
+    expect(await storedOrder(test, stop.id)).toMatchObject({ state: "active", fills: 0 });
+    expect((await storedOrder(test, stop.id)).triggerState).toStrictEqual(stop.triggerState);
   });
 
   it("ends an order whose zone no longer reads, and tells the owner why", async () => {

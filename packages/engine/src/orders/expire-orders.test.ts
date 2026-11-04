@@ -3,6 +3,7 @@ import { testAgent, testNowMs } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import { moveOrder } from "./order-machine.js";
 import {
+  contendedOrders,
   createdOrder,
   startOrderEngine,
   storedOrder,
@@ -75,5 +76,37 @@ describe("an auto order's expiry", () => {
       },
     ]);
     expect((await storedOrder(test, view.order)).expiryNoticedAtMs).toBe(testNowMs + hourMs);
+  });
+
+  it("expires an order at the next tick when another write moved it first", async () => {
+    const armed = { isOn: false };
+    const test = await startOrderEngine({ orders: contendedOrders(1, () => armed.isOn).orders });
+    const view = await createdOrder(test, testStopLoss({ expiresAt: testNowMs + 60_000 }));
+    await tapCard(test, view.intent, "confirm");
+    await test.clock.advance(60_000);
+    armed.isOn = true;
+
+    await test.engine.tickOrders(live);
+    const first = await storedOrder(test, view.order);
+    await test.engine.tickOrders(live);
+
+    expect(first.state).toBe("active");
+    expect((await storedOrder(test, view.order)).state).toBe("expired");
+  });
+
+  it("warns once, at the next tick, when another write beat the write that kept the warning", async () => {
+    const armed = { isOn: false };
+    const test = await startOrderEngine({ orders: contendedOrders(1, () => armed.isOn).orders });
+    const view = await createdOrder(test, testStopLoss({ expiresAt: testNowMs + 23 * hourMs }));
+    await tapCard(test, view.intent, "confirm");
+    armed.isOn = true;
+
+    await test.engine.tickOrders(live);
+    const first = expiringNotices(test);
+    await test.engine.tickOrders(live);
+    await test.engine.tickOrders(live);
+
+    expect(first).toStrictEqual([]);
+    expect(expiringNotices(test)).toHaveLength(1);
   });
 });
