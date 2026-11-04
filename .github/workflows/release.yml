@@ -1,0 +1,292 @@
+name: Release
+
+# A release from its tag (decision 0353). A pushed tag runs it dry: the build, the packed npm
+# tarballs with their checksums, SBOM and notes, the smoke job and the two-platform image, with
+# nothing published and every artifact kept on the run. Publishing runs only by hand, with
+# `publish` on, from a tag signed by a key in .github/release-signers that master holds.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release tag, such as v2026.11.0-beta.1.
+        required: true
+        type: string
+      publish:
+        description: Publish to npm, the image registry and the GitHub release. Off is a dry run.
+        type: boolean
+        default: false
+      scratch:
+        description: A test run. npm gets the dist-tag scratch, the image only its version tag, and the GitHub release stays a draft.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# One run per tag at a time; a release run is never cancelled halfway.
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
+  PUBLISH: ${{ inputs.publish == true }}
+  SCRATCH: ${{ inputs.scratch == true }}
+  TURBO_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
+jobs:
+  # The same command a maintainer runs before tagging: pnpm release:dry <tag>. No cache: a
+  # release builds from the lockfile alone.
+  prepare:
+    name: Build, pack and check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Only a tag a release key signed, on master's history, publishes.
+      - name: Check the tag's signature and branch
+        if: env.PUBLISH == 'true'
+        run: |
+          set -euo pipefail
+          if ! grep -qv '^\s*\(#\|$\)' .github/release-signers; then
+            echo "::error::.github/release-signers holds no key; add the release key before publishing."
+            exit 1
+          fi
+          git -c gpg.format=ssh -c gpg.ssh.allowedSignersFile=.github/release-signers \
+            tag --verify "$TAG"
+          git merge-base --is-ancestor "refs/tags/$TAG" refs/remotes/origin/master
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.10.0"
+          package-manager-cache: false
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Dry run
+        run: pnpm release:dry "$TAG"
+
+      - name: Version
+        id: version
+        run: echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Summary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          {
+            cat "reports/release/$VERSION/notes.md"
+            echo
+            echo '```text'
+            cat "reports/release/$VERSION/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the artifacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ steps.version.outputs.version }}
+          path: |
+            reports/release/${{ steps.version.outputs.version }}
+            !reports/release/${{ steps.version.outputs.version }}/stage
+            !reports/release/${{ steps.version.outputs.version }}/smoke
+          if-no-files-found: error
+          retention-days: 30
+
+  # The packed tarballs, downloaded as the publish job gets them, installed on a runner of their
+  # own. The built-package smoke test grows inside pnpm release:smoke.
+  smoke:
+    name: Packed install
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.10.0"
+          package-manager-cache: false
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Get the artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.prepare.outputs.version }}
+          path: release-files
+
+      - name: Smoke
+        run: |
+          set -euo pipefail
+          (cd release-files && sha256sum --check SHA256SUMS)
+          pnpm release:smoke release-files
+
+  npm:
+    name: Publish to npm
+    needs: [prepare, smoke]
+    if: inputs.publish == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The owner approves each publish here; npm's trusted publisher names this workflow and
+    # environment.
+    environment: release
+    # The OIDC token npm's trusted publishing exchanges for a one-time publish; no npm token is
+    # stored anywhere.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.10.0"
+          package-manager-cache: false
+
+      - name: Get the artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.prepare.outputs.version }}
+          path: release-files
+
+      # The same bytes the dry run packed and summed. A version npm already holds is left as it
+      # is, so a run that stopped halfway can run again.
+      - name: Publish
+        working-directory: release-files
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          sha256sum --check SHA256SUMS
+          dist_tag="$(jq -r .npmTag release.json)"
+          if [ "$SCRATCH" = "true" ]; then dist_tag=scratch; fi
+          jq -r '.packages[] | "\(.name) \(.file)"' release.json | while read -r name file; do
+            if npm view "$name@$VERSION" version > /dev/null 2>&1; then
+              echo "$name@$VERSION is on npm already."
+              continue
+            fi
+            npm publish "./$file" --access public --provenance --tag "$dist_tag"
+          done
+
+  # Built from the tagged source for both platforms, with BuildKit's SBOM and provenance
+  # attestations; pushed only when publishing, after npm.
+  image:
+    name: Image (linux/amd64, linux/arm64)
+    needs: [prepare, npm]
+    if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.npm.result == 'success' || needs.npm.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Pushing to GitHub's registry; a dry run never logs in.
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
+
+      - name: Get the artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.prepare.outputs.version }}
+          path: release-files
+
+      - name: Image tags
+        id: tags
+        run: |
+          set -euo pipefail
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/binference"
+          if [ "$SCRATCH" = "true" ]; then
+            names="$(jq -r '.imageTags[0]' release-files/release.json)"
+          else
+            names="$(jq -r '.imageTags[]' release-files/release.json)"
+          fi
+          {
+            echo "tags<<EOF"
+            for name in $names; do echo "$image:$name"; done
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GitHub's registry
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ env.PUBLISH == 'true' }}
+          sbom: true
+          provenance: mode=max
+          tags: ${{ steps.tags.outputs.tags }}
+          labels: |
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+  github-release:
+    name: GitHub release
+    needs: [prepare, npm, image]
+    if: inputs.publish == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Creating the release and attaching its files.
+    permissions:
+      contents: write
+    steps:
+      - name: Get the artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ needs.prepare.outputs.version }}
+          path: release-files
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          flags=()
+          if [ "$(jq -r .channel release-files/release.json)" = "beta" ]; then flags+=(--prerelease); fi
+          if [ "$SCRATCH" = "true" ]; then flags+=(--draft); fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "binference $VERSION" --notes-file release-files/notes.md "${flags[@]}" \
+            release-files/*.tgz release-files/SHA256SUMS release-files/*.cdx.json

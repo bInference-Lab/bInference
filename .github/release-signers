@@ -1,0 +1,7 @@
+# The SSH keys whose signature on a release tag lets the release workflow publish it
+# (decision 0353), in git's allowed signers form, one key a line:
+#
+#   <email> namespaces="git" ssh-ed25519 AAAA...
+#
+# A tag signed by any other key, or an unsigned tag, still runs dry. Until a key is listed here,
+# nothing publishes.

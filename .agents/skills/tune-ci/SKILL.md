@@ -20,12 +20,14 @@ three operating systems. Count before you add.
 | `crash.yml`    | nightly 04:23 UTC, by hand                       | the crash suite on 3 OSes, `BINFERENCE_CRASH_RUNS` runs per kill point                      |
 | `image.yml`    | nightly 01:13 UTC, by hand                       | the Docker image suite on Linux amd64                                                       |
 | `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday          | Stryker in 20 shards with saved results                                                     |
+| `release.yml`  | a pushed `v*` tag (dry), by hand to publish      | `pnpm release:dry`, the packed install, the two-platform image; npm and GitHub's release    |
 
 A push to `master` starts 12 jobs, 13 with the mutation job; a night starts 34, and Monday adds
 the weekly CodeQL run. Each pushed commit
 has its own concurrency group, so runs on `master` never cancel or replace each other, and the
 nightly suites never cancel either. The nightly workflows start at different times so their jobs
-do not queue behind each other.
+do not queue behind each other. A release tag starts 3 jobs in `release.yml`, and a publish run 5
+(decision 0353); none restores a cache.
 
 `check:pr` is no CI job: the merger runs it on the branch's range before the merge, as
 `pnpm check:pr master..<branch>`, with `--title` and `--body <file>` for a squash merge.
