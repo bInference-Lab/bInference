@@ -1,7 +1,8 @@
 import { join } from "node:path";
+import { createSecret, type ProxySetting } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import { listFolderFiles, readFilePieces } from "@binference/platform";
-import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import { createTempFolder, startStandInProxy, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
 import { sha512Integrity } from "./fetch-skill.js";
@@ -13,6 +14,8 @@ import { readSkillSource } from "./skill-source.js";
 
 const signal = (): AbortSignal => AbortSignal.timeout(20_000);
 const state: { folder?: TempFolder } = {};
+// No proxy is set: a fetch runs git and npm with none.
+const noProxySet = (): ProxySetting => ({ noProxy: [] });
 
 afterEach(async () => {
   await state.folder?.remove();
@@ -45,7 +48,10 @@ async function rig(): Promise<Rig> {
   });
   const clock = createManualClock(1_767_261_610_000);
   const random = { bytes: (length: number) => new Uint8Array(length).fill(7) };
-  return { root, parts: { folders, shelf, permissions: noPermissions, clock, random } };
+  return {
+    root,
+    parts: { folders, shelf, permissions: noPermissions, clock, random, proxy: noProxySet },
+  };
 }
 
 function request(source: string, hash: string) {
@@ -189,6 +195,46 @@ describe("installSkill from git", () => {
     expect(
       await listFolderFiles(join(at.parts.folders.installed, "dip-buyer"), signal()),
     ).toStrictEqual(["SKILL.md"]);
+  });
+});
+
+describe("installSkill by the owner's proxy", () => {
+  it("clones a git source through the proxy, which it names only in git's environment", async () => {
+    const at = await rig();
+    const proxy = await startStandInProxy({ toPort: 9, refuseWith: 502 });
+    try {
+      const parts = {
+        ...at.parts,
+        proxy: (): ProxySetting => ({ proxy: createSecret(proxy.url), noProxy: [] }),
+      };
+      const source = "git:https://skills.example.test/owner/skills.git";
+      const outcome = await installSkill(parts, request(source, "a".repeat(40)), signal());
+      expect(outcome).toStrictEqual({ ok: false, failure: { code: "skill.fetch_failed" } });
+      expect(proxy.tunnels).toContain("skills.example.test:443");
+    } finally {
+      await proxy.close();
+    }
+  });
+
+  it.each([
+    {
+      name: "the proxy cannot be read",
+      source: "git:https://skills.example.test/s.git",
+      setting: { proxy: "unread", noProxy: [] } satisfies ProxySetting,
+      code: "skill.proxy_held",
+    },
+    {
+      name: "an ssh source with a proxy set",
+      source: "git:ssh://git@skills.example.test/s.git",
+      setting: { proxy: createSecret("http://127.0.0.1:9"), noProxy: [] } satisfies ProxySetting,
+      code: "skill.ssh_through_proxy",
+    },
+  ])("refuses a fetch when $name, and runs nothing", async ({ source, setting, code }) => {
+    const at = await rig();
+    const parts = { ...at.parts, proxy: () => setting };
+    const outcome = await installSkill(parts, request(source, "a".repeat(40)), signal());
+    expect(outcome).toStrictEqual({ ok: false, failure: { code } });
+    expect(await listFolderFiles(join(at.root, "state"), signal())).toStrictEqual([]);
   });
 });
 

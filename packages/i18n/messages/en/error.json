@@ -130,6 +130,8 @@
   "skill.invalid": "This is not a skill binference can install: its SKILL.md, its name or its size is wrong. Nothing was installed.",
   "skill.name_taken": "binference ships a skill of this name, so this one was not installed.",
   "skill.fetch_failed": "The skill's source could not be fetched. Check its address and that git or npm can reach it, then try again.",
+  "skill.proxy_held": "The proxy in config.json5 cannot be read, so no skill is fetched. Run `binference check` to see why, then try again.",
+  "skill.ssh_through_proxy": "An ssh source cannot go through your proxy. Give the repository's https address instead.",
   "job.not_found": "This task does not exist or ended long ago. Start it again if you still need it.",
   "backup.no_owner_key": "binference holds no owner key to seal a backup to, so none was made. Finish `binference init`, then try again.",
   "backup.snapshot_failed": "A database could not be copied, so no backup was made. `binference logs` shows why; fix that, then try again.",

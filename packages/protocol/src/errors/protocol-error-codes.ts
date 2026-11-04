@@ -134,6 +134,8 @@ export const protocolErrorCodes = [
   "skill.invalid",
   "skill.name_taken",
   "skill.fetch_failed",
+  "skill.proxy_held",
+  "skill.ssh_through_proxy",
   "job.not_found",
   "backup.no_owner_key",
   "backup.snapshot_failed",

@@ -8,16 +8,21 @@ import {
   readFilePieces,
   runCommandWithin,
 } from "@binference/platform";
+import type { FetchEnv } from "./fetch-proxy.js";
 import type { SkillSource } from "./skill-source.js";
 import { type PackedFile, readTarGz } from "./tar-files.js";
 
 /** Why a source gave no skill: unreachable, not the pinned text, or larger than a skill may be. */
 export type FetchRefusal = "fetch_failed" | "hash_mismatch" | "too_large";
 
-/** Where a fetch works: an empty folder of its own, which the caller removes afterwards. */
+/**
+ * Where a fetch works, an empty folder of its own, which the caller removes afterwards, and the
+ * variables `git` and `npm` run with, the owner's proxy among them (decision 0347).
+ */
 export interface FetchPlace {
   readonly work: string;
   readonly permissions: FilePermissions;
+  readonly env: FetchEnv;
   readonly signal: AbortSignal;
 }
 
@@ -34,8 +39,13 @@ export const skillLimits: { readonly files: number; readonly bytes: number } = {
 const fetchTimeoutMs = 120_000;
 const quiet = { GIT_TERMINAL_PROMPT: "0" };
 
-async function git(args: readonly string[], signal: AbortSignal) {
-  return runCommandWithin("git", args, { signal, timeoutMs: fetchTimeoutMs, env: quiet });
+async function git(args: readonly string[], place: Pick<FetchPlace, "env" | "signal">) {
+  const { signal } = place;
+  return runCommandWithin("git", args, {
+    signal,
+    timeoutMs: fetchTimeoutMs,
+    env: { ...place.env, ...quiet },
+  });
 }
 
 // Reads a file's bytes, giving up once the skill's total would pass its limit.
@@ -91,28 +101,30 @@ export async function fetchGitSkill(
   const noHooks = ["-c", `core.hooksPath=${join(place.work, "no-hooks")}`];
   const safety = ["-c", "protocol.ext.allow=never", ...noHooks];
   const clone = ["clone", "--no-checkout", "--template=", "--quiet", "--", source.url, repo];
-  if ((await git([...safety, ...clone], signal)).exitCode !== 0) {
+  if ((await git([...safety, ...clone], place)).exitCode !== 0) {
     return err("fetch_failed");
   }
   const checkout = ["checkout", "--quiet", "--detach", source.commit];
-  const checkedOut = await git(["-C", repo, ...safety, ...checkout], signal);
-  const head = await git(["-C", repo, "rev-parse", "HEAD"], signal);
+  const checkedOut = await git(["-C", repo, ...safety, ...checkout], place);
+  const head = await git(["-C", repo, "rev-parse", "HEAD"], place);
   if (checkedOut.exitCode !== 0 || head.stdout.trim() !== source.commit) {
     return err("hash_mismatch");
   }
   return readFolder(join(repo, source.folder ?? ""), signal);
 }
 
-/** Packs an npm spec with the npm client, running no package script. */
-const npmPack: NpmPack = async (spec, destination, signal) => {
-  const args = ["pack", spec, "--pack-destination", destination, "--ignore-scripts", "--silent"];
-  const exit = await runCommandWithin("npm", args, {
-    signal,
-    timeoutMs: fetchTimeoutMs,
-    env: quiet,
-  });
-  return exit.exitCode === 0;
-};
+/** Packs an npm spec with the npm client, running no package script, with the fetch's variables. */
+function npmPackWith(env: FetchEnv): NpmPack {
+  return async (spec, destination, signal) => {
+    const args = ["pack", spec, "--pack-destination", destination, "--ignore-scripts", "--silent"];
+    const exit = await runCommandWithin("npm", args, {
+      signal,
+      timeoutMs: fetchTimeoutMs,
+      env: { ...env, ...quiet },
+    });
+    return exit.exitCode === 0;
+  };
+}
 
 /** The Subresource Integrity of bytes, as npm publishes it: `sha512-` and the base64 digest. */
 export function sha512Integrity(bytes: Uint8Array): string {
@@ -146,7 +158,7 @@ export async function fetchNpmSkill(
   const { signal } = place;
   const packed = join(place.work, "pack");
   await ensurePrivateFolder(packed, place);
-  const isPacked = await (place.pack ?? npmPack)(source.spec, packed, signal);
+  const isPacked = await (place.pack ?? npmPackWith(place.env))(source.spec, packed, signal);
   const tarball = (await listFolderFiles(packed, signal)).find((name) => name.endsWith(".tgz"));
   if (!isPacked || tarball === undefined) {
     return err("fetch_failed");

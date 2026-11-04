@@ -45,6 +45,8 @@ export interface SkillOperationsOptions {
   /** Where the operations add what stops an install under way. */
   readonly closers: Closers;
   readonly logger: Logger;
+  /** The owner's proxy setting in force, which an install's fetch goes through. */
+  readonly proxy: InstallParts["proxy"];
   /** `npm pack` unless a test passes another packer. */
   readonly pack?: InstallParts["pack"];
 }
@@ -111,8 +113,8 @@ function installedView(installed: InstalledView): SkillView {
 }
 
 function installParts(options: SkillOperationsOptions): InstallParts {
-  const { shelf, folders, permissions, clock, random } = options;
-  const parts = { folders, shelf, permissions, clock, random };
+  const { shelf, folders, permissions, clock, random, proxy } = options;
+  const parts = { folders, shelf, permissions, clock, random, proxy };
   return options.pack === undefined ? parts : { ...parts, pack: options.pack };
 }
 
@@ -256,5 +258,6 @@ export function composeSkillOperations(
     publish,
     closers,
     logger,
+    proxy: () => opened.proxy.current(),
   });
 }

@@ -85,8 +85,11 @@ export interface RunWithinOptions {
   readonly signal: AbortSignal;
   /** The most the program may run, in milliseconds. */
   readonly timeoutMs: number;
-  /** Variables set for the program on top of this process's environment. */
-  readonly env?: Readonly<Record<string, string>>;
+  /**
+   * Variables set for the program on top of this process's environment; one set to `undefined`
+   * is removed from it.
+   */
+  readonly env?: Readonly<Record<string, string | undefined>>;
 }
 
 /**

@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import type { Clock, Random } from "@binference/core";
+import type { Clock, ProxySetting, Random } from "@binference/core";
 import {
   ensurePrivateFolder,
   type FilePermissions,
@@ -8,6 +8,7 @@ import {
   writePrivateFile,
 } from "@binference/platform";
 import { lintSkill } from "@binference/plugin-sdk";
+import { fetchEnvOf } from "./fetch-proxy.js";
 import {
   type FetchRefusal,
   fetchGitSkill,
@@ -30,6 +31,8 @@ export interface InstallParts {
   readonly permissions: FilePermissions;
   readonly clock: Clock;
   readonly random: Random;
+  /** The owner's proxy setting in force, which the fetch's `git` and `npm` go through. */
+  readonly proxy: () => ProxySetting;
   /** `npm pack` unless a test passes another packer. */
   readonly pack?: NpmPack;
 }
@@ -46,7 +49,9 @@ type PlainFailureCode =
   | "skill.hash_mismatch"
   | "skill.invalid"
   | "skill.name_taken"
-  | "skill.fetch_failed";
+  | "skill.fetch_failed"
+  | "skill.proxy_held"
+  | "skill.ssh_through_proxy";
 
 /** Why an install changed nothing. */
 export type InstallFailure =
@@ -138,7 +143,13 @@ async function fetched(
   from: SkillSource,
   place: { readonly work: string; readonly signal: AbortSignal },
 ): Promise<Step<readonly PackedFile[]>> {
-  const at = { ...place, permissions: parts.permissions };
+  const env = fetchEnvOf(parts.proxy(), from);
+  if (!env.ok) {
+    return failed({
+      code: env.error === "proxy_held" ? "skill.proxy_held" : "skill.ssh_through_proxy",
+    });
+  }
+  const at = { ...place, permissions: parts.permissions, env: env.value };
   const files =
     from.kind === "git"
       ? await fetchGitSkill(from, at)

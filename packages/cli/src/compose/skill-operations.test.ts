@@ -48,6 +48,7 @@ async function operations() {
     permissions: noPermissions,
     clock: createManualClock(1_767_261_610_000),
     random: { bytes: (length) => new Uint8Array(length).fill(3) },
+    proxy: () => ({ noProxy: [] }),
     publish: (push) => {
       pushes.push(push);
       waiting.next?.(push);
