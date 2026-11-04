@@ -1,5 +1,6 @@
 import type { ProtocolClient } from "@binference/client";
 import type { Id } from "@binference/core";
+import type { RuntimePlugin } from "../control/runtime-settings.schema.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { WebToolParts } from "./web-tools.js";
 
@@ -22,4 +23,6 @@ export interface AgentToolParts {
   readonly turn: Pick<TurnPlace, "session" | "turn" | "photos">;
   /** How the web tools reach the internet; without it, the agent has no web tools. */
   readonly web?: WebToolParts;
+  /** The enabled community plugins whose tools the agent may call; none when absent. */
+  readonly plugins?: readonly RuntimePlugin[];
 }

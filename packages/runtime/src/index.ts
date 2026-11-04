@@ -24,6 +24,7 @@ export type {
   RuntimeModelPrice,
   RuntimeModels,
   RuntimeNetwork,
+  RuntimePlugin,
   RuntimeProvider,
   RuntimeProxy,
   RuntimeSearch,
@@ -31,6 +32,7 @@ export type {
   RuntimeSettingsWire,
 } from "./control/runtime-settings.schema.js";
 export { checkModel, checkModelImages } from "./providers/model-check.js";
+export { pluginToolName } from "./tools/plugin-tools.js";
 export { endpointModelChain } from "./providers/endpoint-model-chain.js";
 export type { EndpointChainParts, ModelEndpoint } from "./providers/endpoint-model-chain.js";
 export type { ModelChain } from "./loop/ports.js";

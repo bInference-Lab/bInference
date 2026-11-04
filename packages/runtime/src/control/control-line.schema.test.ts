@@ -15,6 +15,16 @@ describe("the control pipe's lines", () => {
     expect(engineLineSchema.parse(JSON.parse(wire))).toEqual(start);
   });
 
+  it("carries the enabled community plugins' tools in a settings line", () => {
+    const input = { type: "object", properties: {}, additionalProperties: false };
+    const tool = { name: "index", description: "Reads the index.", input };
+    const plugins = [{ plugin: "plg_1", id: "fear-index", tools: [tool] }];
+    const line = { t: "settings", settings: { ...fixtureStartLine().settings, plugins } } as const;
+    const wire = JSON.stringify(engineLineSchema.encode(line));
+
+    expect(engineLineSchema.parse(JSON.parse(wire))).toEqual(line);
+  });
+
   it("refuses a start line whose token is not a client token", () => {
     const wire = engineLineSchema.encode(fixtureStartLine());
     expect(engineLineSchema.safeParse({ ...wire, token: "not-a-token" }).success).toBe(false);

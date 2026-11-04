@@ -8,6 +8,7 @@ import { launchpadsTool } from "./launchpads-tool.js";
 import { marketTools } from "./market-tools.js";
 import { noteTools } from "./note-tools.js";
 import { orderCancelTool } from "./order-cancel-tool.js";
+import { pluginTools } from "./plugin-tools.js";
 import { readTools } from "./read-tools.js";
 import { scheduleTools } from "./schedule-tools.js";
 import { openSkillTool } from "./skill-tools.js";
@@ -25,7 +26,8 @@ import { workspaceTools } from "./workspace-tools.js";
  * and `bridge`;
  * `order_cancel`, which brakes; and the control tools `alert_create`, `schedule_create` and `schedule_cancel` (decision 0247). Each
  * maps onto the engine's operations and names the given agent; no tool takes an agent or a wallet
- * from the model. With web parts, the web tools come after the reads; `notes_search` and `open_skill`
+ * from the model. With web parts, the web tools come after the reads, then the tools of the
+ * enabled community plugins (decision 0349); `notes_search` and `open_skill`
  * follow them, then `notes_write`, and last `workspace_write` and `first_chat_end`, which write
  * the owner's strategy and persona and end the first chat (decision 0242), then `launchpads` and
  * `launch_draft`, which drafts a token launch the owner starts (decision 0285), then `ask_owner`,
@@ -40,6 +42,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...marketTools(parts),
     schedules.list,
     ...web,
+    ...pluginTools(parts, parts.plugins ?? []),
     notes.search,
     openSkillTool(parts),
     ...tradeTools(parts),

@@ -1,4 +1,4 @@
-import { decimalStringSchema } from "@binference/core";
+import { decimalStringSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { type Locale, localeSchema } from "@binference/protocol";
 import { z } from "zod";
 
@@ -64,6 +64,24 @@ export interface RuntimeNetwork {
   readonly noProxy: readonly string[];
 }
 
+/** One tool of a community plugin, as its manifest declares it. */
+export interface RuntimePluginTool {
+  /** Its name in the manifest; the agent sees it as `<id>__<name>`. */
+  readonly name: string;
+  readonly description: string;
+  /** The JSON Schema of its input, an object that names every field. */
+  readonly input: Readonly<Record<string, JsonValue>>;
+}
+
+/** An enabled community plugin whose tools the agent may call (decision 0349). */
+export interface RuntimePlugin {
+  /** Its `plg_` id, which `plugin/call` names. */
+  readonly plugin: string;
+  /** Its id in its manifest, such as `fear-index`. */
+  readonly id: string;
+  readonly tools: readonly RuntimePluginTool[];
+}
+
 /**
  * What the runtime needs of the config and nothing more (runtime spec, section 2.2): the models
  * with each provider's key, how a message during a turn is handled, the search providers and
@@ -76,6 +94,8 @@ export interface RuntimeSettings {
   readonly search: RuntimeSearch;
   readonly owner: { readonly locale: Locale; readonly timezone: string };
   readonly network: RuntimeNetwork;
+  /** The enabled community plugins and their tools; none when absent (decision 0349). */
+  readonly plugins?: readonly RuntimePlugin[];
 }
 
 /** A {@link RuntimeModelPrice} as JSON carries it, prices as decimal strings. */
@@ -85,12 +105,20 @@ interface RuntimeModelPriceWire {
   readonly cachedPerMTokUsd: string;
 }
 
+/** A {@link RuntimePlugin} as JSON carries it, each tool's input schema not yet read. */
+interface RuntimePluginWire extends Omit<RuntimePlugin, "tools"> {
+  readonly tools: readonly (Omit<RuntimePluginTool, "input"> & {
+    readonly input: Readonly<Record<string, unknown>>;
+  })[];
+}
+
 /** {@link RuntimeSettings} as JSON carries them. */
-export interface RuntimeSettingsWire extends Omit<RuntimeSettings, "models" | "owner"> {
+export interface RuntimeSettingsWire extends Omit<RuntimeSettings, "models" | "owner" | "plugins"> {
   readonly models: Omit<RuntimeModels, "prices"> & {
     readonly prices: Readonly<Record<string, RuntimeModelPriceWire>>;
   };
   readonly owner: { readonly locale: string; readonly timezone: string };
+  readonly plugins?: readonly RuntimePluginWire[];
 }
 
 const nameSchema = z.string().min(1).max(200);
@@ -135,6 +163,20 @@ const modelsSchema = z.strictObject({
     .exactOptional(),
 });
 
+const pluginSchema: z.ZodType<RuntimePlugin, RuntimePluginWire> = z.strictObject({
+  plugin: z.string().min(1).max(64),
+  id: z.string().min(1).max(64),
+  tools: z
+    .array(
+      z.strictObject({
+        name: z.string().min(1).max(64),
+        description: z.string().min(1).max(1_000),
+        input: z.record(z.string(), jsonValueSchema),
+      }),
+    )
+    .max(32),
+});
+
 /** Decodes {@link RuntimeSettings} from JSON, and encodes them back. */
 export const runtimeSettingsSchema: z.ZodType<RuntimeSettings, RuntimeSettingsWire> =
   z.strictObject({
@@ -155,4 +197,5 @@ export const runtimeSettingsSchema: z.ZodType<RuntimeSettings, RuntimeSettingsWi
         .exactOptional(),
       noProxy: z.array(z.string().min(1).max(300)).max(256),
     }),
+    plugins: z.array(pluginSchema).max(64).exactOptional(),
   });

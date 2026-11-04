@@ -325,6 +325,12 @@ account of one of its wallet alerts. For the agent's own wallets the engine answ
 `wallet.not_found`, and the tool tells the model to read them with `portfolio` and `tx_status`
 ([decision 0259](../DECISIONS.md#d0259)).
 
+The tools of the enabled community plugins are reads too, named `<id>__<tool>`, the plugin's id
+with its hyphens as underscores. The settings name them (`plugins`), and the engine sends new
+settings whenever a plugin is added, updated, turned on or off, or removed, so a turn takes the
+tools of the plugins on as it starts. Each calls `plugin/call`, and the engine refuses a call to a
+plugin turned off since ([decision 0349](../DECISIONS.md#d0349)).
+
 `addresses` reads the agent's address book (`address/list`), so a `send` or a `bridge` names a
 saved address by its entry id. The owner saved each address and wrote each label with the owner
 key, so its answer is never outside content. `.bnb` names go to `send` as the owner wrote them,
@@ -377,7 +383,7 @@ and the engine reads them; no tool resolves a name for the model.
   and other wallets did ([decision 0257](../DECISIONS.md#d0257)); `token_info` does for an unlisted
   token; `notes_search` does when it returns an `untrusted` note,
   `schedule_list` when it lists a marked schedule ([decision 0247](../DECISIONS.md#d0247)),
-  `open_skill` when it reads an installed skill, `staking_options` when it lists a validator, and
+  `open_skill` when it reads an installed skill, a community plugin's tool always, `staking_options` when it lists a validator, and
   `tx_status` when it reads a staking move, which names its validator
   ([decision 0327](../DECISIONS.md#d0327)). Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
