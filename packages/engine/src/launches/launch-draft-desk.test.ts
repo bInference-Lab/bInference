@@ -1,6 +1,7 @@
-import { err, idSchema, type Result } from "@binference/core";
+import { err, idSchema, ok, type Result } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
+  type IntentView,
   type LaunchTokenRequest,
   noUploadImage,
   type ProtocolErrorCode,
@@ -15,6 +16,7 @@ import { testAgent, testNowMs, testWallet } from "../intents/test-intents.js";
 import { testLaunch } from "../money-path/test-launches.js";
 import { testChains } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
+import { sha256HexSchema } from "../records/sha256-hex.js";
 import { createUploadShelf, type UploadShelf } from "../uploads/upload-shelf.js";
 import { createLaunchDraftDesk, type LaunchDraftDeskOptions } from "./launch-draft-desk.js";
 import { createLaunchDraftShelf, type LaunchDraft } from "./launch-draft-shelf.js";
@@ -37,6 +39,31 @@ const testDraft: LaunchDraft = {
 // A proposal the engine refuses, as one while another launch is under way.
 const refuseAll: LaunchDraftDeskOptions["propose"] = async () =>
   Promise.resolve<Result<never, ProtocolErrorCode>>(err("intent.launch_waiting"));
+
+// A photo the owner sent, as a draft holds it.
+const testPicture = {
+  bytes: testPng,
+  image: {
+    contentType: "image/png" as const,
+    bytes: testPng.byteLength,
+    sha256: sha256HexSchema.parse("a".repeat(64)),
+  },
+};
+
+// A proposal that answers the launch in `state`, ended with `reason` when one is given.
+function proposedIn(state: IntentState, reason?: IntentReason): LaunchDraftDeskOptions["propose"] {
+  const view = {
+    intent: launchId,
+    state,
+    ...(reason === undefined ? {} : { outcome: { reason } }),
+  };
+  return async () => Promise.resolve(ok(view as unknown as IntentView));
+}
+
+// The data of each draft the desk closed.
+function closedOf(pushes: readonly EnginePush[]): readonly unknown[] {
+  return pushes.filter(({ kind }) => kind === "chat/launchDraftClosed").map(({ data }) => data);
+}
 
 // The launch a draft's Start proposed, as the store keeps it, in `state`.
 function launchIn(state: IntentState, reason?: IntentReason): IntentRecord {
@@ -156,6 +183,58 @@ describe("the launch draft desk", () => {
       intent: launchId,
       endedBeforeCard: "upload_lost",
     });
+    expect(proposals).toStrictEqual([]);
+  });
+
+  it("tells a draft's launch started while it is on its way to its card", async () => {
+    const { desk, pushes } = deskOf(testDraft, proposedIn("quoted"));
+    await desk.start(ref, ownerId, { signal: AbortSignal.timeout(5_000) });
+    await desk.idle();
+    expect(closedOf(pushes)).toStrictEqual([
+      { agent: testAgent, draft: testDraft.id, outcome: "started", intent: launchId },
+    ]);
+  });
+
+  it("says why a launch ended before its card, and drops the draft's photo from the shelf", async () => {
+    const images: string[] = [];
+    const ended = proposedIn("failed_check", "upload_lost");
+    const propose: LaunchDraftDeskOptions["propose"] = async (call) => {
+      images.push((call.args as LaunchTokenRequest).image);
+      return ended(call);
+    };
+    const { desk, pushes, uploads } = deskOf({ ...testDraft, picture: testPicture }, propose);
+    await desk.start(ref, ownerId, { signal: AbortSignal.timeout(5_000) });
+    await desk.idle();
+    expect(closedOf(pushes)).toStrictEqual([
+      {
+        agent: testAgent,
+        draft: testDraft.id,
+        outcome: "failed",
+        intent: launchId,
+        reason: "upload_lost",
+      },
+    ]);
+    expect(images.map((image) => uploads.holderOf(image))).toStrictEqual([undefined]);
+  });
+
+  it("names a launch that ended with no reason it stored as one it could not read", async () => {
+    const { desk, pushes } = deskOf(testDraft, proposedIn("failed_check"));
+    await desk.start(ref, ownerId, { signal: AbortSignal.timeout(5_000) });
+    await desk.idle();
+    expect(closedOf(pushes)).toMatchObject([{ outcome: "failed", reason: "launch_unread" }]);
+  });
+
+  it("fails a draft whose photo the shelf will not take, proposing nothing", async () => {
+    const proposals: unknown[] = [];
+    const propose: LaunchDraftDeskOptions["propose"] = async (call) => {
+      proposals.push(call.args);
+      return refuseAll(call);
+    };
+    const lying = { ...testPicture, image: { ...testPicture.image, bytes: 1 } };
+    const { desk, pushes } = deskOf({ ...testDraft, picture: lying }, propose);
+    await desk.start(ref, ownerId, { signal: AbortSignal.timeout(5_000) });
+    await desk.idle();
+    expect(closedOf(pushes)).toMatchObject([{ outcome: "failed", error: "image.unreadable" }]);
     expect(proposals).toStrictEqual([]);
   });
 

@@ -44,6 +44,16 @@ describe("launch/draft", () => {
     expect([listed.items, launcher.uploads()]).toStrictEqual([[], []]);
   });
 
+  it("draws a draft with no first buy as its card will, and no description line", async () => {
+    const { test } = await testDraftEngine();
+    const { firstBuy: _firstBuy, description: _description, ...launch } = draftTerms;
+    const drafted = expectOk(await draftOf(test, draftArgs({ launch })));
+    expect(draftText(test, drafted.draft, "en").slice(0, 2)).toStrictEqual([
+      "Launch MCAT (Moon Cat) on fake-curve, paired with FAKE · first buy 0 FAKE",
+      "Website: https://moon.example",
+    ]);
+  });
+
   it("shows the draft's words as outside text, in Chinese too", async () => {
     const { test } = await testDraftEngine();
     const launch = { ...draftTerms, name: "Moon‮Cat" };

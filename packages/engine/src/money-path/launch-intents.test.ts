@@ -1,4 +1,5 @@
 import { type AssetTransfer, assetRefSchema, type TxSimulator } from "@binference/chain";
+import { err, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -6,6 +7,7 @@ import { expectOk, testCoin, testNowMs, testWallet } from "../intents/test-inten
 import { racedTo } from "../intents/test-raced-store.js";
 import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
+import type { IntentStore } from "../ports.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import {
   proposeIntent as propose,
@@ -321,7 +323,31 @@ describe("a token launch refused before any upload", () => {
   });
 });
 
+// An intent store that already holds every new intent's id.
+function refusingCreate(store: IntentStore): IntentStore {
+  return { ...store, create: async () => Promise.resolve(err("exists")) };
+}
+
 describe("a token launch another write moved first", () => {
+  it("refuses an agent the install does not hold, uploading nothing", async () => {
+    const { test, launcher } = await engineOver();
+    const unknown = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000f9");
+    await expect(
+      test.engine.handlers["intent/propose"](
+        testCall({ ...launch, agent: unknown }, testCallers.cli),
+      ),
+    ).resolves.toStrictEqual({ ok: false, error: "agent.not_found" });
+    expect(launcher.uploads()).toStrictEqual([]);
+  });
+
+  it("fails and uploads nothing when the store takes no new intent under its id", async () => {
+    const { test, launcher } = await engineOver({ options: { intents: refusingCreate } });
+    await expect(
+      test.engine.handlers["intent/propose"](testCall(launch, testCallers.cli)),
+    ).rejects.toMatchObject({ code: "engine.id_taken" });
+    expect(launcher.uploads()).toStrictEqual([]);
+  });
+
   it("uploads nothing when its policy pass loses, and stays where that write left it", async () => {
     const { test, launcher } = await engineOver({ options: { intents: racedTo("checked") } });
     await expect(propose(test)).resolves.toMatchObject({ state: "proposed" });

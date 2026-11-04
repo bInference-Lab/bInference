@@ -1,8 +1,10 @@
-import { chainRefSchema } from "@binference/chain";
+import { chainRefSchema, type LaunchOption } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { expectOk } from "../intents/test-intents.js";
 import { testLaunchEngine } from "../money-path/test-launches.js";
 import { startTestEngine, testCall, testChains } from "../operations/test-engine.js";
+import type { PicturePlace } from "../venues/launch-declarations.js";
+import type { LaunchHost } from "../venues/launch-host.js";
 import { createLaunchpadHandlers } from "./launchpad-handlers.js";
 
 const chain = chainRefSchema.parse("fake:1");
@@ -61,6 +63,34 @@ describe("launchpad/list", () => {
   it("answers no launchpad for an engine with no launch host", async () => {
     const handlers = createLaunchpadHandlers({ chains: testChains() });
     expect(expectOk(await handlers["launchpad/list"](testCall({ chain }))).items).toStrictEqual([]);
+  });
+
+  it("answers each setting's choices and least, and leaves out a launchpad with no picture place", async () => {
+    const options: readonly LaunchOption[] = [
+      { name: "curve", type: "choice", choices: ["flat", "steep"], default: "flat" },
+      { name: "taxBps", type: "bps", min: 10, max: 1_000 },
+    ];
+    const places: Readonly<Record<string, PicturePlace | undefined>> = {
+      pictured: "create_call",
+      unplaced: undefined,
+    };
+    const host = {
+      launchpadsOn: () => ["pictured", "unplaced"],
+      picturePlace: (venue: string) => places[venue],
+      pictureBytesFor: () => undefined,
+      launchOptions: () => options,
+    } as unknown as LaunchHost;
+    const handlers = createLaunchpadHandlers({ chains: testChains(), launchHost: host });
+    expect(expectOk(await handlers["launchpad/list"](testCall({ chain }))).items).toStrictEqual([
+      {
+        venue: "pictured",
+        picture: { place: "create_call", mostBytes: 0, mostSide: 1_024 },
+        settings: [
+          { name: "curve", type: "choice", choices: ["flat", "steep"], default: "flat" },
+          { name: "taxBps", type: "bps", min: 10, max: 1_000 },
+        ],
+      },
+    ]);
   });
 
   it("refuses a chain the registry does not hold", async () => {
