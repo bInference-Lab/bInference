@@ -1,4 +1,4 @@
-import { accountRefSchema, type Bridge, type NoBridgeRoute } from "@binference/chain";
+import { accountRefSchema, type Bridge, type NoBridgeRoute, type TxDraft } from "@binference/chain";
 import { err, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk } from "../intents/test-intents.js";
@@ -68,6 +68,15 @@ const answering = (answer: NoBridgeRoute) => (): Partial<Bridge> => ({
 const throwing = (): Partial<Bridge> => ({
   quote: async () => Promise.reject(new Error("Across is down")),
 });
+
+const stranger = accountRefSchema.parse("fake:1:0x000000e9");
+
+// The fake's build with its steps changed by `change`.
+const builds =
+  (change: (steps: readonly TxDraft[]) => readonly TxDraft[]) =>
+  (fake: Bridge): Partial<Bridge> => ({
+    build: async (request, options) => change(await fake.build(request, options)),
+  });
 
 // A second route to the destination, delivering another token.
 const otherRoute = { ...testRoute, arrives: testOtherArrives };
@@ -150,5 +159,36 @@ describe("quoting and building a bridge", () => {
   it("refuses an order deposit from a main wallet as a mismatch", async () => {
     const view = expectOk(await proposeWith(readsAsOrder));
     expect(view.outcome?.reason).toBe("decode_mismatch");
+  });
+
+  it.each<readonly [string, (fake: Bridge) => Partial<Bridge>]>([
+    ["no step", builds(() => [])],
+    [
+      "a deposit in place of its approval",
+      builds((steps) => [...steps.slice(-1), ...steps.slice(-1)]),
+    ],
+    [
+      "steps another account signs",
+      builds((steps) => steps.map((step) => ({ ...step, from: stranger }))),
+    ],
+    [
+      "a deposit its venue cannot decode",
+      (fake) => ({ ...builds((steps) => steps)(fake), decode: () => err("unknown_call") }),
+    ],
+  ])("ends a bridge whose build makes %s as a mismatch", async (_, change) => {
+    const view = expectOk(await proposeWith(change));
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "decode_mismatch"]);
+  });
+
+  it("ends a bridge whose build throws as the venue down", async () => {
+    const view = expectOk(
+      await proposeWith(() => ({ build: async () => Promise.reject(new Error("down")) })),
+    );
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "venue_down"]);
+  });
+
+  it("ends a bridge to a destination its venue no longer declares as a mismatch", async () => {
+    const view = expectOk(await proposeWith(() => ({ destinations: [] })));
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "decode_mismatch"]);
   });
 });

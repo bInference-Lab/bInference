@@ -1,5 +1,5 @@
-import type { Bridge } from "@binference/chain";
-import { idSchema } from "@binference/core";
+import { type Bridge, chainRefSchema } from "@binference/chain";
+import { err, idSchema, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
@@ -10,7 +10,9 @@ import {
   testArrives,
   testDestination,
   testFarEntry,
+  testOtherArrives,
   testRescueThere,
+  testRoute,
 } from "./test-bridges.js";
 
 const live = { signal: new AbortController().signal };
@@ -34,6 +36,19 @@ async function joinRescue(bench: BridgeTest): Promise<void> {
     { agents: [testAgent], records, atMs: testNowMs },
     live,
   );
+}
+
+// The fake's quote with the first route's least output lowered to `keep`, still above the floor.
+function lowersFirstRoute(fake: Bridge, keep: bigint): Bridge {
+  return {
+    ...fake,
+    quote: async (request, options) => {
+      const quoted = await fake.quote(request, options);
+      return quoted.ok && request.deliveredAsset === testArrives
+        ? ok({ ...quoted.value, minOut: { ...quoted.value.minOut, base: keep } })
+        : quoted;
+    },
+  };
 }
 
 const route = {
@@ -98,5 +113,38 @@ describe("a bridge quote", () => {
       ok: false,
       error: "quote.venue_down",
     });
+  });
+
+  it("answers no route when no route quotes, and refuses a destination no bridge serves", async () => {
+    const base = await bridgeEngine();
+    const none: Bridge = { ...base.bridge, quote: async () => Promise.resolve(err("no_route")) };
+    const bench = await bridgeEngine({ bridge: none });
+    expect(await quoteOf(bench, { to: { entry: testFarEntry.id } })).toStrictEqual({
+      ok: false,
+      error: "quote.no_route",
+    });
+    const nowhere = chainRefSchema.parse("fake:9");
+    expect(await quoteOf(bench, { toChain: nowhere })).toStrictEqual({
+      ok: false,
+      error: "protocol.bad_args",
+    });
+    expect(
+      await quoteOf(bench, { toChain: nowhere, to: { entry: testFarEntry.id } }),
+    ).toStrictEqual({ ok: false, error: "protocol.bad_args" });
+  });
+
+  it("answers the route with the best least output first, equal ones in their routes' order", async () => {
+    const routes = [testRoute, { ...testRoute, arrives: testOtherArrives }];
+    const base = await bridgeEngine({ routes });
+    const delivered = async (bridge: Bridge) => {
+      const bench = await bridgeEngine({ bridge, routes });
+      const { items } = expectOk(await quoteOf(bench, { to: { entry: testFarEntry.id } }));
+      return items.map((item) => item.deliveredAsset);
+    };
+    await expect(delivered(lowersFirstRoute(base.bridge, 98_500_000n))).resolves.toStrictEqual([
+      testOtherArrives,
+      testArrives,
+    ]);
+    await expect(delivered(base.bridge)).resolves.toStrictEqual([testArrives, testOtherArrives]);
   });
 });

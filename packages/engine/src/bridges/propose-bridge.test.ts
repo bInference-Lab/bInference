@@ -1,4 +1,10 @@
-import { type Bridge, chainRefSchema } from "@binference/chain";
+import {
+  accountRefParts,
+  accountRefSchema,
+  assetRefSchema,
+  type Bridge,
+  chainRefSchema,
+} from "@binference/chain";
 import { fakeDepositAbi } from "@binference/chain/testing";
 import { err, type Id, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
@@ -6,10 +12,13 @@ import { testSnapshot } from "../approval/test-snapshot.js";
 import { type BridgeIntentQuote, bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import { expectOk, testToken } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
-import { testAccount, testCall, testCallers } from "../operations/test-engine.js";
+import { startTestEngine, testAccount, testCall, testCallers } from "../operations/test-engine.js";
+import { saveTestAddress } from "../send-levels/test-sends.js";
 import {
   type BridgeTest,
   bridgeEngine,
+  bridgeEngineOptions,
+  bridgeFakes,
   bridgeLimits,
   testArrives,
   testBridge,
@@ -196,6 +205,44 @@ describe("proposing a bridge", () => {
     expect(await propose(test, elsewhere)).toStrictEqual(err("protocol.bad_args"));
     const listed = await test.stores.intents.list({ states: ["proposed"], limit: 10 }, live);
     expect(listed).toStrictEqual([]);
+  });
+
+  it("stores nothing for an asset on a chain the registry does not hold", async () => {
+    const { test } = await bridgeEngine();
+    const far = testBridge(undefined, { asset: assetRefSchema.parse("fake:9/slip44:1"), base: 1n });
+    expect(await propose(test, far)).toStrictEqual(err("protocol.bad_args"));
+  });
+
+  it("refuses the rescue address as the payee while none is set", async () => {
+    const fakes = bridgeFakes();
+    const test = await startTestEngine(bridgeEngineOptions(fakes));
+    expect(await propose(test, testBridge({ rescue: true }))).toStrictEqual(
+      err("rescue.no_address"),
+    );
+  });
+
+  it("refuses a rescue address the destination's codec cannot read", async () => {
+    const { test } = await bridgeEngine();
+    const short = accountRefSchema.parse("fake:1:0xd9");
+    await test.stores.install.changeRescue({ address: short, atMs: 0 }, live);
+    expect(await propose(test, testBridge({ rescue: true }))).toStrictEqual(
+      err("protocol.bad_args"),
+    );
+  });
+
+  it("refuses an entry that is one of the install's own wallets on the destination", async () => {
+    const { test } = await bridgeEngine();
+    const own = {
+      ...testFarEntry,
+      id: idSchema("adr").parse("adr_0190f1c2-3a4b-7c5d-8e6f-0000000000b5"),
+      account: accountRefSchema.parse(`fake:2:${accountRefParts(testAccount).address}`),
+      recipientBytes: accountRefParts(testAccount).address,
+      label: "own",
+    };
+    await saveTestAddress(test, own);
+    expect(await propose(test, testBridge({ entry: own.id }))).toStrictEqual(
+      err("address.own_wallet"),
+    );
   });
 });
 
