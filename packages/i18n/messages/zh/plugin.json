@@ -1,0 +1,22 @@
+{
+  "review.title": "添加来自 {source} 的 {plugin} {version}？",
+  "review.hash": "按 SHA-256 {hash} 锁定版本",
+  "review.publisher": "发布者 {publisher} · npm 来源证明 {provenance, select, verified {已核验} other {无}}",
+  "review.workflow": "构建所用的工作流：{workflow}",
+  "review.hosts": "它可以访问 {count, plural, other {# 个主机}}：",
+  "review.tools": "它会添加 {count, plural, other {# 个工具}}：",
+  "review.kinds": "类型：",
+  "review.config": "它会读取 {count, plural, other {# 项设置}}：",
+  "review.entry": "  {name}",
+  "review.never": "社区插件只能读取：它不会签名、持有密钥、发起交易提议，也不会访问未声明的主机",
+  "review.typeName": "⚠️ 没有 npm 来源证明：请输入插件名称以添加",
+  "widen.title": "将 {plugin} 从 {previous} 更新到 {version}？此更新需要你重新审核：",
+  "widen.publisher": "发布者已从 {from} 变为 {to}",
+  "widen.lostProvenance": "它没有 npm 来源证明，而 {previous} 有",
+  "widen.older": "它比已安装的 {previous} 更旧",
+  "widen.added": "新增 {count, plural, other {# 项权限}}：",
+  "review.accept": "添加",
+  "review.decline": "不添加",
+  "widen.accept": "允许更新",
+  "widen.decline": "保留 {previous}"
+}

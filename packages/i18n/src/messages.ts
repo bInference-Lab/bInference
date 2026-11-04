@@ -14,6 +14,7 @@ import enLaunch from "../messages/en/launch.json" with { type: "json" };
 import enLimit from "../messages/en/limit.json" with { type: "json" };
 import enNotice from "../messages/en/notice.json" with { type: "json" };
 import enOrder from "../messages/en/order.json" with { type: "json" };
+import enPlugin from "../messages/en/plugin.json" with { type: "json" };
 import enPnl from "../messages/en/pnl.json" with { type: "json" };
 import enPositions from "../messages/en/positions.json" with { type: "json" };
 import enQuestion from "../messages/en/question.json" with { type: "json" };
@@ -41,6 +42,7 @@ import zhLaunch from "../messages/zh/launch.json" with { type: "json" };
 import zhLimit from "../messages/zh/limit.json" with { type: "json" };
 import zhNotice from "../messages/zh/notice.json" with { type: "json" };
 import zhOrder from "../messages/zh/order.json" with { type: "json" };
+import zhPlugin from "../messages/zh/plugin.json" with { type: "json" };
 import zhPnl from "../messages/zh/pnl.json" with { type: "json" };
 import zhPositions from "../messages/zh/positions.json" with { type: "json" };
 import zhQuestion from "../messages/zh/question.json" with { type: "json" };
@@ -99,6 +101,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("limit", enLimit),
     ...inArea("console", enConsole),
     ...inArea("webPush", enWebPush),
+    ...inArea("plugin", enPlugin),
     ...inArea("workspace", enWorkspace),
   },
   zh: {
@@ -128,6 +131,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("limit", zhLimit),
     ...inArea("console", zhConsole),
     ...inArea("webPush", zhWebPush),
+    ...inArea("plugin", zhPlugin),
     ...inArea("workspace", zhWorkspace),
   },
 };

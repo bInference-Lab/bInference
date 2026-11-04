@@ -133,6 +133,8 @@ export type HostParts = Partial<
     | "startSigner"
     | "startRuntime"
     | "pluginPrograms"
+    | "download"
+    | "npmRegistry"
     | "serviceManager"
     | "keychain"
     | "runProgram"

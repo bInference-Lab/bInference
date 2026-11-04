@@ -4,11 +4,10 @@ import type { JsonValue } from "@binference/core";
 import { fileSize, removePath } from "@binference/platform";
 import { agentKeyEntry } from "@binference/signer";
 import { platformOf } from "../compose/engine-locations.js";
-import { loadConfig } from "../config/load-config.js";
 import { asJson, isObject } from "../config/shown-config.js";
 import { appSecretEntry, botTokenEntry } from "../init/secret-places.js";
 import type { CliHost } from "../program/cli-host.js";
-import { systemDefaults } from "../program/system-defaults.js";
+import { loadHostConfig } from "../program/load-host-config.js";
 
 /**
  * Where the agent key is once the state folder is gone: it went with the folder (`file` and
@@ -52,14 +51,7 @@ interface InstallKeys {
 // The keychain entries of this install: those its config names, and the agent key in the
 // `keychain` unlock mode. A config that does not load names the entries init makes.
 async function keysOf(host: CliHost, signal: AbortSignal): Promise<InstallKeys> {
-  const platform = platformOf(host);
-  const loaded = await loadConfig({
-    file: platform.stateFolder.configFile,
-    env: host.env,
-    sets: [],
-    system: systemDefaults(host.env, platform),
-    signal,
-  });
+  const loaded = await loadHostConfig(host, signal);
   if (!loaded.ok) {
     return { entries: [agentKeyEntry, appSecretEntry, botTokenEntry], agentKey: "unknown" };
   }

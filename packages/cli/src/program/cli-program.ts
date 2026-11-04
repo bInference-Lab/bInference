@@ -23,6 +23,7 @@ import { addConfigCommands } from "./config-commands.js";
 import { addLimitCommands } from "./limit-commands.js";
 import { addMcpCommands } from "./mcp-commands.js";
 import { addOwnerKeyCommands } from "./owner-key-commands.js";
+import { addPluginCommands } from "./plugin-commands.js";
 import { addSafetyCommands } from "./safety-commands.js";
 import { addServiceCommands } from "./service-commands.js";
 import { addSignerCommands } from "./signer-commands.js";
@@ -214,6 +215,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addServiceCommands(program, options);
   addAddressCommands(program, options);
   addWebhookCommands(program, options);
+  addPluginCommands(program, options);
   addLimitCommands(program, options);
   addConfigCommands(program, options);
   addMcpCommands(program, options);

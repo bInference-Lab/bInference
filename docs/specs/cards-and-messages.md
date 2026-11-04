@@ -622,33 +622,47 @@ both languages.
 
 ### 3.10 The plugin permission review
 
-The CLI (`binference plugin add`) and the console show it before a community plugin installs,
+The CLI (`binference plugin add`) shows it before a community plugin installs,
 and again when an update widens what it declares (spec 1, section 7.8). It is drawn from the
 plugin's manifest, never from its own words; the plugin's name and descriptions are escaped as
 token names are.
 
-| Line               | Key                       | English                                                                                                            | 中文                                                                                 |
-| ------------------ | ------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| Title              | `plugin.review.title`     | Add {plugin} {version} from {source}?                                                                              | 添加来自 {source} 的 {plugin} {version}？                                            |
-| Pinned             | `plugin.review.hash`      | Pinned to SHA-256 {hash}                                                                                           | 按 SHA-256 {hash} 锁定版本                                                           |
-| Publisher          | `plugin.review.publisher` | Publisher {publisher} · npm provenance {provenance, select, verified {checked} other {none}}                       | 发布者 {publisher} · npm 来源证明 {provenance, select, verified {已核验} other {无}} |
-| Hosts              | `plugin.review.hosts`     | It may reach: {hosts}                                                                                              | 它可以访问：{hosts}                                                                  |
-| Tools              | `plugin.review.tools`     | It adds tools: {tools}                                                                                             | 它会添加工具：{tools}                                                                |
-| Kinds              | `plugin.review.kinds`     | Kinds: {kinds}                                                                                                     | 类型：{kinds}                                                                        |
-| Settings           | `plugin.review.config`    | It reads these settings: {keys}                                                                                    | 它会读取这些设置：{keys}                                                             |
-| What it never does | `plugin.review.never`     | A community plugin only reads: it never signs, holds a key, proposes a trade or reaches a host it does not declare | 社区插件只能读取：它不会签名、持有密钥、发起交易提议，也不会访问未声明的主机         |
-| No provenance      | `plugin.review.typeName`  | ⚠️ No npm provenance: type the plugin's name to add it                                                             | ⚠️ 没有 npm 来源证明：请输入插件名称以添加                                           |
-| Widening           | `plugin.widen.title`      | {plugin} {version} asks for more than {previous}                                                                   | {plugin} {version} 申请的权限超出 {previous}                                         |
-| What it adds       | `plugin.widen.added`      | New: {added}                                                                                                       | 新增：{added}                                                                        |
-| Add                | `plugin.review.accept`    | Add it                                                                                                             | 添加                                                                                 |
-| Do not add         | `plugin.review.decline`   | Do not add it                                                                                                      | 不添加                                                                               |
-| Allow the update   | `plugin.widen.accept`     | Allow the update                                                                                                   | 允许更新                                                                             |
-| Keep the old one   | `plugin.widen.decline`    | Keep {previous}                                                                                                    | 保留 {previous}                                                                      |
+| Line               | Key                           | English                                                                                                            | 中文                                                                                 |
+| ------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Title              | `plugin.review.title`         | Add {plugin} {version} from {source}?                                                                              | 添加来自 {source} 的 {plugin} {version}？                                            |
+| Pinned             | `plugin.review.hash`          | Pinned to SHA-256 {hash}                                                                                           | 按 SHA-256 {hash} 锁定版本                                                           |
+| Publisher          | `plugin.review.publisher`     | Publisher {publisher} · npm provenance {provenance, select, verified {checked} other {none}}                       | 发布者 {publisher} · npm 来源证明 {provenance, select, verified {已核验} other {无}} |
+| Workflow           | `plugin.review.workflow`      | Built by the workflow {workflow}                                                                                   | 构建所用的工作流：{workflow}                                                         |
+| Hosts              | `plugin.review.hosts`         | It may reach {count, plural, one {# host} other {# hosts}}:                                                        | 它可以访问 {count, plural, other {# 个主机}}：                                       |
+| Tools              | `plugin.review.tools`         | It adds {count, plural, one {# tool} other {# tools}}:                                                             | 它会添加 {count, plural, other {# 个工具}}：                                         |
+| Kinds              | `plugin.review.kinds`         | Kinds:                                                                                                             | 类型：                                                                               |
+| Settings           | `plugin.review.config`        | It reads {count, plural, one {# setting} other {# settings}}:                                                      | 它会读取 {count, plural, other {# 项设置}}：                                         |
+| One entry          | `plugin.review.entry`         | {name}                                                                                                             | {name}                                                                               |
+| What it never does | `plugin.review.never`         | A community plugin only reads: it never signs, holds a key, proposes a trade or reaches a host it does not declare | 社区插件只能读取：它不会签名、持有密钥、发起交易提议，也不会访问未声明的主机         |
+| No provenance      | `plugin.review.typeName`      | ⚠️ No npm provenance: type the plugin's name to add it                                                             | ⚠️ 没有 npm 来源证明：请输入插件名称以添加                                           |
+| Widening           | `plugin.widen.title`          | Update {plugin} from {previous} to {version}? It needs your review again:                                          | 将 {plugin} 从 {previous} 更新到 {version}？此更新需要你重新审核：                   |
+| Another publisher  | `plugin.widen.publisher`      | The publisher changed from {from} to {to}                                                                          | 发布者已从 {from} 变为 {to}                                                          |
+| Lost provenance    | `plugin.widen.lostProvenance` | It has no npm provenance, which {previous} had                                                                     | 它没有 npm 来源证明，而 {previous} 有                                                |
+| Older              | `plugin.widen.older`          | It is older than {previous}, the version installed                                                                 | 它比已安装的 {previous} 更旧                                                         |
+| What it adds       | `plugin.widen.added`          | {count, plural, one {# new permission} other {# new permissions}}:                                                 | 新增 {count, plural, other {# 项权限}}：                                             |
+| Add                | `plugin.review.accept`        | Add it                                                                                                             | 添加                                                                                 |
+| Do not add         | `plugin.review.decline`       | Do not add it                                                                                                      | 不添加                                                                               |
+| Allow the update   | `plugin.widen.accept`         | Allow the update                                                                                                   | 允许更新                                                                             |
+| Keep the old one   | `plugin.widen.decline`        | Keep {previous}                                                                                                    | 保留 {previous}                                                                      |
 
-- A line with nothing to list is left out. A widening shows `plugin.widen.title` and
-  `plugin.widen.added`, then the lines of everything it declares.
-- `plugin.review.typeName` shows for a plugin without npm provenance, and the CLI and the console
-  then add it only after the owner types its name.
+- A list's heading (`plugin.review.hosts`, `tools`, `kinds`, `config`, `plugin.widen.added`) is
+  followed by one `plugin.review.entry` line per entry, every entry and never cut: a manifest may
+  declare only what such a review shows whole (16 hosts of up to 100 characters, 32 tools, 64
+  config keys of up to 64 characters). A list with nothing in it is left out.
+- `plugin.review.workflow` shows when the build workflow its provenance names lives in another
+  repository than the source repository the publisher line names.
+- A widening shows `plugin.widen.title`, then each way it differs from the installed version:
+  another publisher (`from` or `to` is `?` when npm names none), lost provenance, an older
+  version, and the entries it adds; then the lines of everything it declares.
+- `plugin.review.typeName` shows for a plugin without npm provenance, and the CLI then adds it only
+  after the owner types its name.
+- Only the terminal shows the review: on any other surface `plugin/add` ends with
+  `plugin.review_needed`, whose words send the owner to `binference plugin add` in a terminal.
 
 <a id="section-4"></a>
 

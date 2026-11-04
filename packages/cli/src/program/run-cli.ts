@@ -23,6 +23,8 @@ import { runMcpSession } from "../commands/mcp-session-command.js";
 import { runMcpSetup } from "../commands/mcp-setup-command.js";
 import { runModeSwitch } from "../commands/mode-command.js";
 import { runOwnerKeyCreate } from "../commands/owner-key-create-command.js";
+import { runPluginAdd } from "../commands/plugin-add-command.js";
+import { runPluginChange, runPluginList } from "../commands/plugin-command.js";
 import { runReport } from "../commands/report-command.js";
 import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runReset } from "../commands/reset-command.js";
@@ -149,6 +151,11 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   addressList: runAddressList,
   addressAdd: runAddressAdd,
   addressRemove: runAddressRemove,
+  pluginList: async (context) => runPluginList(context),
+  pluginAdd: async (context, chosen) => runPluginAdd(context, chosen),
+  pluginEnable: runPluginChange,
+  pluginDisable: runPluginChange,
+  pluginRemove: runPluginChange,
   webhookList: async (context) => runWebhookList(context),
   webhookCreate: async (context, chosen) => runWebhookCreate(context, chosen.options),
   webhookEvents: runWebhookEvents,

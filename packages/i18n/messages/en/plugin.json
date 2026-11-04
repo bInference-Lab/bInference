@@ -1,0 +1,22 @@
+{
+  "review.title": "Add {plugin} {version} from {source}?",
+  "review.hash": "Pinned to SHA-256 {hash}",
+  "review.publisher": "Publisher {publisher} · npm provenance {provenance, select, verified {checked} other {none}}",
+  "review.workflow": "Built by the workflow {workflow}",
+  "review.hosts": "It may reach {count, plural, one {# host} other {# hosts}}:",
+  "review.tools": "It adds {count, plural, one {# tool} other {# tools}}:",
+  "review.kinds": "Kinds:",
+  "review.config": "It reads {count, plural, one {# setting} other {# settings}}:",
+  "review.entry": "  {name}",
+  "review.never": "A community plugin only reads: it never signs, holds a key, proposes a trade or reaches a host it does not declare",
+  "review.typeName": "⚠️ No npm provenance: type the plugin's name to add it",
+  "widen.title": "Update {plugin} from {previous} to {version}? It needs your review again:",
+  "widen.publisher": "The publisher changed from {from} to {to}",
+  "widen.lostProvenance": "It has no npm provenance, which {previous} had",
+  "widen.older": "It is older than {previous}, the version installed",
+  "widen.added": "{count, plural, one {# new permission} other {# new permissions}}:",
+  "review.accept": "Add it",
+  "review.decline": "Do not add it",
+  "widen.accept": "Allow the update",
+  "widen.decline": "Keep {previous}"
+}
