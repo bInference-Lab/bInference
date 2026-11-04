@@ -14,11 +14,11 @@ import type { OrderStore } from "./ports.js";
 /** The DCA orders' runner, which the schedule queue's timer runs: each call runs the due periods. */
 export interface DcaOrders {
   /**
-   * Runs every active DCA order's period that came by `atMs`, the instant the queue's run saw
-   * (now when absent), so orders due together are judged alike. A fault of one order is thrown
-   * once every other order ran.
+   * Runs every active DCA order's period that came by `atMs`, the instant the queue's run saw, so
+   * orders due together are judged alike. A fault of one order is thrown once every other order
+   * ran.
    */
-  run(options: { readonly signal: AbortSignal; readonly atMs?: number }): Promise<void>;
+  run(options: { readonly signal: AbortSignal; readonly atMs: number }): Promise<void>;
 }
 
 /** What the runner reads, moves, fills through and pushes to. */
@@ -210,8 +210,7 @@ function runFaults(): RunFaults {
  */
 export function createDcaOrders(parts: DcaOrdersParts): DcaOrders {
   return {
-    async run({ signal, atMs }) {
-      const nowMs = atMs ?? parts.clock.now();
+    async run({ signal, atMs: nowMs }) {
       const faults = runFaults();
       const orders = await activeDca(parts, signal);
       const due: DuePeriod[] = [];
