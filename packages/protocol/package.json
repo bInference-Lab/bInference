@@ -1,11 +1,17 @@
 {
   "name": "@binference/protocol",
   "version": "0.0.0",
-  "private": true,
   "description": "The engine protocol as zod schemas: frames, credentials, ids, error codes and versions.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bInference-Lab/bInference.git",
+    "directory": "packages/protocol"
+  },
   "files": [
-    "dist"
+    "dist",
+    "NOTICES.md",
+    "README.zh.md"
   ],
   "type": "module",
   "exports": {
@@ -15,6 +21,10 @@
       "default": "./dist/index.mjs"
     }
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
   },
@@ -22,5 +32,8 @@
     "@binference/chain": "workspace:*",
     "@binference/core": "workspace:*",
     "zod": "catalog:"
+  },
+  "engines": {
+    "node": ">=26.1"
   }
 }

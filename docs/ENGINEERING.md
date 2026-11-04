@@ -867,8 +867,11 @@ Decided in decisions [0035](DECISIONS.md#d0035) and [0036](DECISIONS.md#d0036).
 - The `review-diff` skill runs before a PR is opened.
 - No contributor agreement: MIT only. Enforcer: `LICENSE` and `review-diff`.
 - Releases are calver `YYYY.M.PATCH` on `stable` and `beta`. The release notes are written from the
-  commit subjects on `master`, so every subject must read as a line of release notes. Enforcer: a
-  version format check in the release workflow; commitlint keeps the subjects usable.
+  commit subjects on `master`, so every subject must read as a line of release notes. A release
+  tag is `vYYYY.M.PATCH` or `vYYYY.M.PATCH-beta.N`, and only a run by hand of `release.yml`
+  publishes it ([decision 0353](DECISIONS.md#d0353)). Enforcer: `pnpm release:dry`, which the
+  release workflow runs (the tag's form, a clean tree, a version newer than every release tag);
+  commitlint keeps the subjects usable.
 
 <a id="section-19-1"></a>
 
@@ -1216,6 +1219,10 @@ commander tree for `--json` and `--yes`, and exit code tests; an image smoke tes
   chat), `@binference/protocol`, `@binference/client` and `@binference/plugin-sdk`. Every other
   package is private. Enforcer: `check:package-graph` (`private: true` on every package but the
   four).
+- Each published tarball carries the private workspace packages it needs, and npm fetches only
+  outside packages ([decision 0352](DECISIONS.md#d0352)). Enforcer: `pnpm release:dry` (a
+  published manifest without `repository`, public access with provenance, `engines` or the
+  notices is refused; the packed files install into an empty project and load).
 - All published packages share one calver version. `plugin-sdk` also declares a semver API version
   that plugins state in their manifest. Enforcer: `check:package-graph` (versions equal); a manifest
   test.

@@ -494,6 +494,12 @@ check` tries it as `network.proxy`.
   every package the merge changed and of the packages that depend on them, the **table tests**
   (tests that read every key of a catalog another package owns, such as the notice tables of each
   surface) and the repo checks two merged branches can break together.
+- **release**: one calver version of the four public npm packages and the Docker image, cut from a
+  **release tag**, `vYYYY.M.PATCH` on the **stable** channel or `vYYYY.M.PATCH-beta.N` on the
+  **beta** channel. `pnpm release:dry <tag>` is its **dry run**: it builds, packs, sums, writes the
+  notes and the SBOM, installs the **packed files** into an empty project, and publishes nothing.
+  The release workflow publishes only a tag signed by a **release key** that
+  `.github/release-signers` lists; a **scratch** run publishes to npm's `scratch` dist-tag.
 - **crash suite**: the tests in each package's `src/crash/`, run by `pnpm test:crash` and nightly
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was

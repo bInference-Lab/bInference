@@ -1,4 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import process from "node:process";
 
 /** How a command ended and everything it printed. */
@@ -26,8 +28,23 @@ function pnpmCommand(): readonly string[] {
   return scriptFile.test(entry) ? [process.execPath, entry] : [entry];
 }
 
+// npm ships beside Node: in lib/node_modules on Linux and macOS, in node_modules on Windows.
+// Running its entry with this Node avoids a shell, which Windows would need for npm.cmd.
+function npmCommand(): readonly string[] {
+  const home = dirname(process.execPath);
+  const entry = [
+    join(home, "..", "lib", "node_modules", "npm", "bin", "npm-cli.js"),
+    join(home, "node_modules", "npm", "bin", "npm-cli.js"),
+  ].find((file) => existsSync(file));
+  if (entry === undefined) {
+    throw new Error(`No npm beside ${process.execPath}; install Node with its npm.`);
+  }
+  return [process.execPath, entry];
+}
+
 const tools: Readonly<Record<string, () => readonly string[]>> = {
   node: () => [process.execPath],
+  npm: npmCommand,
   pnpm: pnpmCommand,
   git: () => ["git"],
   opengrep: () => ["opengrep"],
@@ -42,7 +59,7 @@ function resolveCommand(command: readonly string[]): readonly string[] {
   return [...resolve(), ...args];
 }
 
-/** Runs node, pnpm, git or opengrep without a shell and captures stdout and stderr together. */
+/** Runs node, npm, pnpm, git or opengrep without a shell; captures stdout and stderr together. */
 export function runCommand(command: readonly string[], options: CommandOptions): CommandResult {
   const [file, ...args] = resolveCommand(command);
   if (file === undefined) {
@@ -62,7 +79,7 @@ export function runCommand(command: readonly string[], options: CommandOptions):
 }
 
 /**
- * Runs node, pnpm, git or opengrep without a shell, its output shown in the terminal as it
+ * Runs node, npm, pnpm, git or opengrep without a shell, its output shown in the terminal as it
  * comes, and returns its exit status.
  */
 export function runCommandShown(command: readonly string[], options: CommandOptions): number {
@@ -78,7 +95,7 @@ export function runCommandShown(command: readonly string[], options: CommandOpti
   return result.status ?? -1;
 }
 
-/** Runs node, pnpm, git or opengrep without a shell, without blocking, and captures its output. */
+/** Runs node, npm, pnpm, git or opengrep without a shell or blocking; captures its output. */
 export function runCommandAsync(
   command: readonly string[],
   options: CommandOptions,
