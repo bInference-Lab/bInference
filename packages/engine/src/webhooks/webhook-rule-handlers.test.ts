@@ -1,11 +1,15 @@
-import { err } from "@binference/core";
+import { assetRefSchema } from "@binference/chain";
+import { bpsSchema, err, idSchema } from "@binference/core";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import type { AssetInfos, CardLineView, WebhookRuleView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { expectOk, testAgent, testCoin, testToken } from "../intents/test-intents.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
+import { fillIntentsOf, startFillEngine } from "../orders/test-fills.js";
 import { freeze, startOrderEngine, tapCard } from "../orders/test-orders.js";
 import { sha256Hex } from "../records/sha256-hex.js";
+import type { WebhookRuleStore } from "./ports.js";
 import { alertTo, createdRule, routeOf, testRuleRequest } from "./test-webhook-rules.js";
 
 const live = { signal: new AbortController().signal };
@@ -194,5 +198,111 @@ describe("webhook rule operations", () => {
     const rotate = test.engine.handlers["webhookRule/rotateUrl"];
 
     expect(await rotate(testCall({ rule: created.rule }))).toStrictEqual(err("webhook.not_found"));
+  });
+});
+
+// A rule store whose next move loses its race once, as another write of the rule beat it.
+function staleOnce(store: WebhookRuleStore): WebhookRuleStore {
+  let isFirst = true;
+  return {
+    ...store,
+    move: async (move, call) => {
+      if (isFirst) {
+        isFirst = false;
+        return err("stale" as const);
+      }
+      return store.move(move, call);
+    },
+  };
+}
+
+describe("webhook rule operations, further", () => {
+  it("lists a buy rule with the tokens it spends and buys and its most fills", async () => {
+    const test = await startOrderEngine();
+    const request = testRuleRequest({
+      side: "buy",
+      size: { usdMicros: 25_000_000n },
+      maxFills: 3,
+      maxSlippageBps: bpsSchema.parse(40),
+    });
+    const created = await createdRule(test, request);
+
+    const listed = expectOk(await test.engine.handlers["webhookRule/list"](testCall({})));
+
+    expect(listed.items).toMatchObject([
+      { rule: created.rule, request: { side: "buy", maxFills: 3 } },
+    ]);
+    expect(Object.keys(listed.assets as AssetInfos).toSorted()).toStrictEqual(
+      [testCoin, testToken].toSorted(),
+    );
+    expect((await ruleOf(test, created.rule))?.maxFills).toBe(3);
+  });
+
+  it("shows of each alert its id, what it became, why it was skipped and the intent that filled it", async () => {
+    const test = await startFillEngine();
+    const created = await createdRule(test);
+    await tapCard(test, created.intent, "confirm");
+    await alertTo(test, created.url, '{"id":"a-1"}');
+    await test.engine.fillWebhookAlerts(live);
+    await alertTo(test, created.url, '{"id":"a-2"}');
+    await test.clock.advance(60_000);
+    await test.engine.fillWebhookAlerts(live);
+
+    const page = expectOk(
+      await test.engine.handlers["webhookRule/events"](testCall({ rule: created.rule })),
+    );
+
+    expect(page.items).toMatchObject([
+      { taken: "accepted", alertId: "a-2", fill: "skipped", reason: "late" },
+      { taken: "accepted", alertId: "a-1", fill: "filled" },
+    ]);
+    const [filled] = await fillIntentsOf(test);
+    expect(page.items[1]?.intent).toBe(filled?.id);
+    expect(page.items[0]?.intent).toBeUndefined();
+  });
+
+  it("refuses, storing nothing, an unknown or frozen agent, another wallet and a token that names nothing", async () => {
+    const silent = assetRefSchema.parse("fake:1/token:0x000000ab");
+    const test = await startOrderEngine({
+      tokenFacts: createFakeTokenFacts({ unreadable: [silent] }).read,
+    });
+    const create = test.engine.handlers["webhookRule/create"];
+    const stranger = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
+    const other = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
+
+    expect(await create(testCall(testRuleRequest({ agent: stranger })))).toStrictEqual(
+      err("agent.not_found"),
+    );
+    expect(await create(testCall(testRuleRequest({ wallet: other })))).toStrictEqual(
+      err("wallet.not_found"),
+    );
+    expect(await create(testCall(testRuleRequest({ token: silent })))).toStrictEqual(
+      err("asset.unreadable"),
+    );
+    await freeze(test);
+    expect(await create(testCall(testRuleRequest()))).toStrictEqual(err("agent.frozen"));
+    const listed = expectOk(await test.engine.handlers["webhookRule/list"](testCall({})));
+    expect(listed.items).toStrictEqual([]);
+  });
+
+  it("deletes a rule another write moved first, under the version it moved to", async () => {
+    const test = await startOrderEngine({ webhookRules: staleOnce });
+    const created = await createdRule(test);
+
+    expectOk(await test.engine.handlers["webhookRule/delete"](testCall({ rule: created.rule })));
+
+    expect((await ruleOf(test, created.rule))?.state).toBe("deleted");
+  });
+
+  it("refuses a change of a rule it never stored", async () => {
+    const test = await startOrderEngine();
+    const unknown = { rule: idSchema("whr").parse("whr_0190f1c2-3a4b-7c5d-8e6f-0000000000ff") };
+
+    expect(await test.engine.handlers["webhookRule/rotateUrl"](testCall(unknown))).toStrictEqual(
+      err("webhook.not_found"),
+    );
+    expect(await test.engine.handlers["webhookRule/delete"](testCall(unknown))).toStrictEqual(
+      err("webhook.not_found"),
+    );
   });
 });
