@@ -130,6 +130,32 @@ describe("the chat relay", () => {
     expect(kinds(test, "inbox")).toStrictEqual([]);
   });
 
+  it("refuses the owner's stop, clear and answer for an unknown agent, storing nothing", async () => {
+    const test = await startTestEngine();
+    const { handlers } = test.engine;
+    const stranger = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000099");
+    const question = idSchema("qst").parse("qst_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+    const refused = { ok: false, error: "agent.not_found" };
+    expect(await handlers["chat/stop"](testCall({ agent: stranger }))).toStrictEqual(refused);
+    expect(await handlers["chat/clear"](testCall({ agent: stranger }))).toStrictEqual(refused);
+    const answer = { agent: stranger, question, choice: 0 };
+    expect(await handlers["chat/answer"](testCall(answer))).toStrictEqual(refused);
+    expect(kinds(test, "inbox")).toStrictEqual([]);
+  });
+
+  it("answers busy to a message once the agent holds 200 untaken ones, yet stores a stop", async () => {
+    const test = await startTestEngine();
+    const { handlers } = test.engine;
+    const posts = Array.from({ length: 200 }, async (_, n) =>
+      handlers["chat/post"](testCall({ agent: testAgent, text: `m${String(n)}` })),
+    );
+    expect((await Promise.all(posts)).every((posted) => posted.ok)).toBe(true);
+    const more = await handlers["chat/post"](testCall({ agent: testAgent, text: "one more" }));
+    expect(more).toStrictEqual({ ok: false, error: "protocol.busy" });
+    expectOk(await handlers["chat/stop"](testCall({ agent: testAgent })));
+    expect(kinds(test, "inbox")).toHaveLength(201);
+  });
+
   it("sends exactly one inbox/intentSettled for an intent the runtime proposed", async () => {
     const test = await startTestEngine({ agent: { approvalMode: "auto" } });
     const { handlers } = test.engine;

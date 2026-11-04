@@ -1,7 +1,7 @@
-import { idSchema } from "@binference/core";
+import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testSwap } from "../intents/test-intents.js";
-import type { EngineCaller } from "../operations/engine-call.js";
+import type { EngineCaller, EngineHandler } from "../operations/engine-call.js";
 import { startTestEngine, testCall, testCallers } from "../operations/test-engine.js";
 import { markRuntimeTurns } from "./mark-runtime-turns.js";
 import { createRunningTurns } from "./running-turns.js";
@@ -88,5 +88,23 @@ describe("markRuntimeTurns", () => {
     const test = await startTestEngine();
     const handlers = markRuntimeTurns(test.engine.handlers, createRunningTurns());
     expect(handlers["intent/get"]).toBe(test.engine.handlers["intent/get"]);
+  });
+
+  it("adds no handler the table does not serve", () => {
+    const getOnly = { "intent/list": async () => Promise.resolve(err("protocol.busy" as const)) };
+    expect(Object.keys(markRuntimeTurns(getOnly, createRunningTurns()))).toStrictEqual([
+      "intent/list",
+    ]);
+  });
+
+  it("keeps where the call came in, so a local caller stays local", async () => {
+    const seen: EngineCaller[] = [];
+    const propose: EngineHandler<"intent/propose"> = async (call) => {
+      seen.push(call.caller);
+      return Promise.resolve(err("protocol.busy"));
+    };
+    const wrapped = markRuntimeTurns({ "intent/propose": propose }, createRunningTurns());
+    await wrapped["intent/propose"]?.(testCall(testSwap(), testCallers.cli));
+    expect(seen).toStrictEqual([testCallers.cli]);
   });
 });

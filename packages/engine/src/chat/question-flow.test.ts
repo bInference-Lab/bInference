@@ -132,6 +132,43 @@ describe("the agent's questions", () => {
     expect(inboxPushes(test)).toHaveLength(2);
   });
 
+  it("hands a written answer's images to the runtime and marks the running turn", async () => {
+    const test = await startTestEngine();
+    await asked(test);
+    const images = ["upload-1"];
+    const text = "This chart";
+    expectOk(await test.engine.handlers["chat/post"](testCall({ agent: testAgent, text, images })));
+    expect(inboxPushes(test)).toStrictEqual([
+      expect.objectContaining({ kind: "inbox/message", text, images }),
+    ]);
+    expect(test.turns.markOf(runtime.credential, testAgent)).toStrictEqual({
+      hasOutsideContent: true,
+    });
+  });
+
+  it("refuses a written answer with busy once the inbox is full, leaving the question open", async () => {
+    const test = await startTestEngine();
+    const view = await asked(test);
+    const { handlers } = test.engine;
+    const posts = Array.from({ length: 200 }, async (_, n) =>
+      test.stores.agentInbox.add(
+        {
+          id: idSchema("msg").parse(`msg_0190f1c2-3a4b-7c5d-8e6f-${String(n).padStart(12, "0")}`),
+          agentId: testAgent,
+          kind: "inbox/message",
+          payload: { text: `m${String(n)}`, surface: "cli" },
+          atMs: test.clock.now(),
+          opens: session,
+        },
+        { signal: new AbortController().signal },
+      ),
+    );
+    expect((await Promise.all(posts)).every((added) => added.ok)).toBe(true);
+    const typed = await handlers["chat/post"](testCall({ agent: testAgent, text: "Both" }));
+    expect(typed).toStrictEqual({ ok: false, error: "protocol.busy" });
+    expect(expectOk(await read(test))).toStrictEqual({ question: view });
+  });
+
   it("closes the open question when a newer one comes, or the chat is cleared", async () => {
     const test = await startTestEngine();
     const first = await asked(test);
