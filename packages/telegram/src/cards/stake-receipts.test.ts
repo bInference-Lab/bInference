@@ -39,7 +39,7 @@ describe("the receipt of a staking move a venue refused, in the owner's chat (de
     ],
     [
       "stake_over_ceiling",
-      `this wallet's ceiling still holds one stake to less than this, so nothing was staked; write it again with your owner key, \`binference ceiling set --wallet ${stakeWalletId}\`, then stake again, or stake less`,
+      `this wallet's ceiling caps a stake below this, so nothing was staked; with your owner key, run \`binference ceiling set --wallet ${stakeWalletId} --venues VENUES\` with every venue \`binference ceiling --wallet ${stakeWalletId}\` lists, then stake again, or stake less`,
     ],
     [
       "decode_mismatch",

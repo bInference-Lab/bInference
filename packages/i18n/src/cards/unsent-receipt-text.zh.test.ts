@@ -54,7 +54,7 @@ describe("the receipt of a staking move a venue refused, in Chinese (decision 03
     ],
     [
       "stake_over_ceiling",
-      `该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 \`binference ceiling set --wallet ${stakeWallet}\`，然后再质押，或减少金额`,
+      `该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 \`binference ceiling set --wallet ${stakeWallet} --venues VENUES\`，列出 \`binference ceiling --wallet ${stakeWallet}\` 显示的每个平台，然后再质押，或减少金额`,
     ],
   ])("names what %s names", (reason, words) => {
     expect(unsentReceiptText(chinese, reason, stakeNames)).toBe(`${refused} 未发送：${words}`);

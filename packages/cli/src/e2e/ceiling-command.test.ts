@@ -9,6 +9,7 @@ import {
 import { createFormatter, messages } from "@binference/i18n";
 import type { DayCapView } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
+import { z } from "zod";
 import { skeletonCompositions } from "../compose/test-skeleton.js";
 import { runCli } from "../program/run-cli.js";
 import { createScriptedPrompter, type ScriptedAnswer } from "../term/scripted-prompter.js";
@@ -215,6 +216,30 @@ describe("binference ceiling set", () => {
       );
       expect(set.stdout).toContain(`${en("ceiling.cap", { amount: "0.5", symbol: "BNB" })}\n`);
       expect(await capOf(ceilings, ceiling)).toBe(5n * 10n ** 17n);
+    },
+  );
+
+  it(
+    "runs the commands a stake above the ceiling names, and writes its venues again",
+    slow,
+    async () => {
+      const { machine } = await servedOnBsc();
+      const words = english.message("reason.stake_over_ceiling", { wallet: testWallet });
+      const [set = [], show = []] = [...words.matchAll(/`binference ([^`]+)`/g)].map(
+        ([, line = ""]) => line.split(" "),
+      );
+
+      const shown = await runOn(machine, [...show, "--json"]);
+      const { venues } = z.object({ venues: z.array(z.string()) }).parse(JSON.parse(shown.stdout));
+      const filled = set.slice(2).map((word) => word.replace("VENUES", venues.join(",")));
+      const written = await ceilingSet(machine, filled);
+
+      expect(set.slice(0, 2)).toStrictEqual(["ceiling", "set"]);
+      expect([shown.code, written.code, written.stderr]).toStrictEqual([0, 0, ""]);
+      expect(written.prompter.transcript.asked).toStrictEqual(["ownerKey"]);
+      expect(written.stdout).toContain(
+        `  ${en("ceiling.venues", { count: 1, venues: "pancakeswap" })}\n`,
+      );
     },
   );
 

@@ -107,15 +107,19 @@ describe("the answer to a press of a staking card, in Chinese", () => {
       "claim_unpayable",
       "该平台支付领取款项的方式无法被此钱包的代码接收，领取会失败；请从没有代码的钱包领取",
     ],
-    [
-      "stake_over_ceiling",
-      `该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 \`binference ceiling set --wallet ${stakeWalletId}\`，然后再质押，或减少金额`,
-    ],
   ])("answers a press a venue refused with %s whole", async (refusal, words) => {
     const press = { reason: refusal, values: longStakeRefusalValues } as const;
     const { answer } = await showTransferCard("zh", unstakeFacts, press);
     expect(answer).toBe(words);
     expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
+  });
+  it("cuts the ceiling refusal to 200 characters after its whole command", async () => {
+    const press = { reason: "stake_over_ceiling", values: longStakeRefusalValues } as const;
+    const { answer } = await showTransferCard("zh", stakeFacts, press);
+    expect(answer).toBe(
+      `该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 \`binference ceiling set --wallet ${stakeWalletId} --venues VENUES\`，列出 \`binference ceiling --wallet wal_0190f1c2-3a4b-7c5d-8e6f-0000…`,
+    );
+    expect(answer).toHaveLength(maxAnswerLength);
   });
 });
 
@@ -158,7 +162,9 @@ describe("a liquid venue's staking cards in the owner's chat, in Chinese (decisi
   it("keeps Lista's ceiling refusal within 200 characters with its whole command", async () => {
     const press = { reason: "stake_over_ceiling", values: liquidStakeRefusalValues } as const;
     const { answer } = await showTransferCard("zh", liquidStakeFacts, press);
-    expect(answer).toContain(`\`binference ceiling set --wallet ${stakeWalletId}\``);
+    expect(answer).toContain(
+      `\`binference ceiling set --wallet ${stakeWalletId} --venues VENUES\``,
+    );
     expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
   });
 });

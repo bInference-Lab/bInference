@@ -29,7 +29,7 @@ describe("the receipt of a staking move a venue refused, in Chinese (decision 03
     ],
     [
       "stake_over_ceiling",
-      `该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 \`binference ceiling set --wallet ${stakeWalletId}\`，然后再质押，或减少金额`,
+      `该钱包的上限仍将单次质押限制在此数以下，因此未质押；请用你的所有者密钥重新写入上限，即 \`binference ceiling set --wallet ${stakeWalletId} --venues VENUES\`，列出 \`binference ceiling --wallet ${stakeWalletId}\` 显示的每个平台，然后再质押，或减少金额`,
     ],
     ["decode_mismatch", "构建的交易与你确认的内容不符，因此未签名"],
   ] as const)("names what %s names", (reason, words) => {

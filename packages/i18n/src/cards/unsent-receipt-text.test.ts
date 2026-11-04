@@ -87,7 +87,7 @@ describe("the receipt of a staking move a venue refused (decision 0327)", () => 
     ],
     [
       "stake_over_ceiling",
-      `this wallet's ceiling still holds one stake to less than this, so nothing was staked; write it again with your owner key, \`binference ceiling set --wallet ${stakeWallet}\`, then stake again, or stake less`,
+      `this wallet's ceiling caps a stake below this, so nothing was staked; with your owner key, run \`binference ceiling set --wallet ${stakeWallet} --venues VENUES\` with every venue \`binference ceiling --wallet ${stakeWallet}\` lists, then stake again, or stake less`,
     ],
   ])("names what %s names", (reason, words) => {
     expect(unsentReceiptText(english, reason, reasonNamesOf(stakeView))).toBe(

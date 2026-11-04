@@ -94,7 +94,9 @@ describe("staking on a liquid pool (decision 0331)", () => {
     const rewritten = await propose(later, request);
 
     expect([old.state, old.outcome?.reason]).toStrictEqual(["failed_check", "stake_over_ceiling"]);
-    expect(liquidWordsOf(old, "en")).toContain(`\`binference ceiling set --wallet ${testWallet}\``);
+    expect(liquidWordsOf(old, "en")).toContain(
+      `\`binference ceiling set --wallet ${testWallet} --venues VENUES\``,
+    );
     expect(rewritten.state).toBe("awaiting_confirmation");
   });
 

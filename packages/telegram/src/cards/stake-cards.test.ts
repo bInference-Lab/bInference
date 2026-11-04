@@ -127,7 +127,7 @@ describe("the answer to a press of a staking card, in English", () => {
     const press = { reason: "stake_over_ceiling", values: longStakeRefusalValues } as const;
     const { answer } = await showTransferCard("en", stakeFacts, press);
     expect(answer).toBe(
-      `this wallet's ceiling still holds one stake to less than this, so nothing was staked; write it again with your owner key, \`binference ceiling set --wallet ${stakeWalletId}\`, t…`,
+      `this wallet's ceiling caps a stake below this, so nothing was staked; with your owner key, run \`binference ceiling set --wallet ${stakeWalletId} --venues VENUES\` with every ve…`,
     );
     expect(answer).toHaveLength(maxAnswerLength);
   });
@@ -180,7 +180,9 @@ describe("a liquid venue's staking cards in the owner's chat, in English (decisi
   it("cuts Lista's ceiling refusal to 200 characters after its whole command", async () => {
     const press = { reason: "stake_over_ceiling", values: liquidStakeRefusalValues } as const;
     const { answer } = await showTransferCard("en", liquidStakeFacts, press);
-    expect(answer).toContain(`\`binference ceiling set --wallet ${stakeWalletId}\``);
+    expect(answer).toContain(
+      `\`binference ceiling set --wallet ${stakeWalletId} --venues VENUES\``,
+    );
     expect(String(answer).length).toBeLessThanOrEqual(maxAnswerLength);
   });
 });
