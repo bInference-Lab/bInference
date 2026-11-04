@@ -1335,9 +1335,10 @@ With `wake: true`, it also starts a turn of the agent (below).
 | `launch`         | `filters: LaunchFilter`                                                          | On each new launch that passes the filters, until the alert is deleted or ends                         |
 
 `LaunchFilter` is
-`{ launchpads?: [flap | fourmeme | geniusfun | brew], quoteTokens?: [AssetRef], maxTaxBps?, maxSnipeTaxBps?, minCurveProgressBps?, minLiquidityUsdMicros?, maxInsiders?, maxCreatorLaunches30d? }`;
+`{ launchpads?: [flap | geniusfun | brew], quoteTokens?: [AssetRef], maxTaxBps?, maxSnipeTaxBps?, minCurveProgressBps?, minLiquidityUsdMicros?, maxInsiders?, maxCreatorLaunches30d? }`;
 every field given must hold, and an empty filter passes every launch. `launch/list` and
-`market/scan` take the same filter.
+`market/scan` take the same filter. `fourmeme` joins the list with the plugin that reads its
+launches.
 
 - **Tracked wallets.** An install tracks at most 50 wallets: the leaders of its active copy orders
   and the accounts of its active wallet alerts, across every agent

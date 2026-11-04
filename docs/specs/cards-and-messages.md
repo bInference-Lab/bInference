@@ -1322,16 +1322,16 @@ New agents start in paper mode, and the first chat learns how the owner trades
 
 The questions of `FIRST-CHAT.md`, in this order:
 
-| #   | Topic        | English                                                                                                                          | 中文                                                                                                             |
-| --- | ------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| 1   | Budget       | How much of your money is for me to trade, and how much at most in one trade?                                                    | 你打算交给我交易多少资金？单笔交易最多用多少？                                                                   |
-| 2   | Holding time | How long do you like to hold a token: minutes, hours, days or weeks?                                                             | 你通常持有一个代币多久：几分钟、几小时、几天还是几周？                                                           |
-| 3   | Sectors      | Which tokens interest you: new launches on Flap, four.meme, Genius.fun or Brew, memes, AI tokens, large caps, or something else? | 你对哪些代币感兴趣：Flap、four.meme、Genius.fun 或 Brew 上的新发射代币、Meme 币、AI 代币、大市值代币，还是其他？ |
-| 4   | Entries      | What makes a token worth buying for you?                                                                                         | 什么样的代币值得你买入？                                                                                         |
-| 5   | Exits        | When should I sell: at what gain should I take profit, and at what loss should I cut it?                                         | 什么时候卖出：涨多少止盈，跌多少止损？                                                                           |
-| 6   | Never        | Which tokens or kinds of tokens should I never touch?                                                                            | 哪些代币或哪类代币我绝对不要碰？                                                                                 |
-| 7   | When to ask  | When should I ask you first, and when may I act within your limits without asking?                                               | 什么情况下我要先问你，什么情况下可以在你的限额内直接操作？                                                       |
-| 8   | Reports      | How often should I report to you, and how short should my messages be?                                                           | 我应该多久向你汇报一次？消息要多简短？                                                                           |
+| #   | Topic        | English                                                                                                               | 中文                                                                                                  |
+| --- | ------------ | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 1   | Budget       | How much of your money is for me to trade, and how much at most in one trade?                                         | 你打算交给我交易多少资金？单笔交易最多用多少？                                                        |
+| 2   | Holding time | How long do you like to hold a token: minutes, hours, days or weeks?                                                  | 你通常持有一个代币多久：几分钟、几小时、几天还是几周？                                                |
+| 3   | Sectors      | Which tokens interest you: new launches on Flap, Genius.fun or Brew, memes, AI tokens, large caps, or something else? | 你对哪些代币感兴趣：Flap、Genius.fun 或 Brew 上的新发射代币、Meme 币、AI 代币、大市值代币，还是其他？ |
+| 4   | Entries      | What makes a token worth buying for you?                                                                              | 什么样的代币值得你买入？                                                                              |
+| 5   | Exits        | When should I sell: at what gain should I take profit, and at what loss should I cut it?                              | 什么时候卖出：涨多少止盈，跌多少止损？                                                                |
+| 6   | Never        | Which tokens or kinds of tokens should I never touch?                                                                 | 哪些代币或哪类代币我绝对不要碰？                                                                      |
+| 7   | When to ask  | When should I ask you first, and when may I act within your limits without asking?                                    | 什么情况下我要先问你，什么情况下可以在你的限额内直接操作？                                            |
+| 8   | Reports      | How often should I report to you, and how short should my messages be?                                                | 我应该多久向你汇报一次？消息要多简短？                                                                |
 
 <a id="section-8-4"></a>
 

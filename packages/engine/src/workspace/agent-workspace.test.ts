@@ -37,6 +37,16 @@ describe("a new agent's workspace", () => {
     );
   });
 
+  it("asks about launches only on the launchpads binference reads", async () => {
+    const files = createMemoryWorkspaceFiles(createManualClock(1));
+    await makeAgentWorkspace(files, made, signal);
+    const script = await textOf(files, "FIRST-CHAT.md");
+    expect(script).toContain(
+      "3. Which tokens interest you: new launches on Flap, Genius.fun or Brew, memes, AI tokens, large caps, or something else?",
+    );
+    expect(script).not.toContain("four.meme");
+  });
+
   it("keeps a file the agent already has", async () => {
     const files = createMemoryWorkspaceFiles(createManualClock(1));
     await files.write({ agent: testAgent, file: "STRATEGY.md" }, "Mine", signal);

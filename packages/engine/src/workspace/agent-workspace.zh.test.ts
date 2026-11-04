@@ -25,5 +25,6 @@ describe("a new agent's workspace in Chinese", () => {
     );
     expect(await textOf("RULES.md")).toContain("小助手 每一轮都遵守的规则。");
     expect(await textOf("FIRST-CHAT.md")).toContain("「跳过」会结束提问");
+    expect(await textOf("FIRST-CHAT.md")).not.toContain("four.meme");
   });
 });
