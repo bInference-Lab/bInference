@@ -112,12 +112,19 @@ export function agentRuleProblems(repo: RepoView): LayoutProblem[] {
 
 const shellFile = /\.(?:sh|bash|ps1|bat|cmd)$/i;
 
-/** Repo scripts are TypeScript run by Node; no shell files and no shell in package scripts. */
+// The install scripts run on a machine that has no Node yet, so they alone are shell files
+// (ENGINEERING.md section 18).
+const installScripts = new Set(["install/install.sh", "install/install.ps1"]);
+
+/**
+ * Repo scripts are TypeScript run by Node; no shell files but the two install scripts, and no
+ * shell in package scripts.
+ */
 export function shellProblems(repo: RepoView): LayoutProblem[] {
   const manifests = repo.files.filter((file) => basename(file) === "package.json");
   return [
     ...repo.files
-      .filter((file) => shellFile.test(file))
+      .filter((file) => shellFile.test(file) && !installScripts.has(file))
       .map((file) => problem("shell-script", `${file}: write repo scripts as .mts files.`)),
     ...manifests.flatMap((file) =>
       Object.entries(scriptsOf(read(repo, file)))

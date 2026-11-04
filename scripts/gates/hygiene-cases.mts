@@ -41,6 +41,11 @@ const layoutCases: readonly GateCase[] = [
     "check:layout",
     /check:layout\(shell-script\): scripts\/setup\.sh/,
   ]),
+  failingCase(
+    "a third shell script beside the install scripts fails check:layout",
+    { "install/uninstall.sh": "echo uninstall\n", "install/install.cmd": "echo install\r\n" },
+    ["check:layout", /install\/install\.cmd: write repo scripts[\s\S]*install\/uninstall\.sh/],
+  ),
 ];
 
 const blanket = fixturePackage("core", {

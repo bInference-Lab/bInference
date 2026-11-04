@@ -218,8 +218,9 @@ Rules:
 - **OS-2** Paths are built with `node:path`, never by joining strings with `/`. Enforcer: Oxlint
   `node/no-path-concat`, the Windows CI job and `review-diff`.
 - **OS-3** Repo scripts are TypeScript (`.mts`) run by Node through tsx; no bash, PowerShell or
-  batch files. Enforcer: `check:layout` (no tracked `.sh`, `.ps1`, `.bat` or `.cmd` file; no `bash`
-  or `sh -c` in a script).
+  batch files. The two install scripts are the one exception (section 18). Enforcer:
+  `check:layout` (no tracked `.sh`, `.ps1`, `.bat` or `.cmd` file but those two; no `bash` or
+  `sh -c` in a script).
 - **OS-4** `.gitattributes` sets `* text=auto eol=lf`. Enforcer: `check:layout`; oxfmt
   `endOfLine: "lf"`.
 - **OS-5** No dependency that compiles native code at install. Prebuilt binaries only. Enforcer:
@@ -844,6 +845,13 @@ stops the line, and nothing else is pushed until it is green.
   `--report-unused-disable-directives-severity=error` (unused); `check:suppressions` (a rule and a
   reason on every `oxlint-disable` and `@ts-expect-error`, size suppressions only for baseline
   files, the baseline only shrinks against the merge base).
+- **Rule:** the install scripts are the one named exception to OS-3: `install/install.sh` (POSIX
+  `sh`, for macOS and Linux) and `install/install.ps1` (Windows PowerShell). They run on a machine
+  that may have no Node yet, so they cannot be `.mts` files. They do only what Node cannot do
+  there: install Node, run `npm i -g binference`, then hand over to `binference init`. Every other
+  step belongs in `binference` itself. Each line they print is in English and Chinese, chosen by
+  the locale. `install.sh` passes `shellcheck`. Enforcer: `check:layout` allows those two paths
+  and no other shell file, and `check:gates` plants a third one that must fail; `review-diff`.
 
 <a id="section-19"></a>
 
