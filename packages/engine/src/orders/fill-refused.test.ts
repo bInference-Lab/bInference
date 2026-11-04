@@ -13,6 +13,7 @@ import { expectOk, testLimits, testNowMs } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { createFillEnd } from "./fill-ends.js";
+import type { OrderStore } from "./ports.js";
 import { fillRowsOf } from "./test-fills.js";
 import {
   activeOrderOf,
@@ -74,6 +75,11 @@ async function ownerCancels(bench: ExecutorBench, intent: Id<"int">): Promise<vo
   expectOk(await stored.move(move, live));
 }
 
+// An order store that holds no order, as one that lost every order.
+function withoutOrders(store: OrderStore): OrderStore {
+  return { ...store, get: async () => undefined };
+}
+
 describe("a confirmed live fill the queue refuses", () => {
   it("ends at once when its order was cancelled, says so, and frees the agent's line", async () => {
     const bench = await startLiveFills({ hold: true });
@@ -110,6 +116,21 @@ describe("a confirmed live fill the queue refuses", () => {
     expect(await fillRowsOf(bench.test, order.id)).toMatchObject([
       { outcome: "skipped", reason: "live_fills_off" },
     ]);
+  });
+
+  it("signs nothing and writes no skip when its order is gone from the store", async () => {
+    const bench = await startLiveFills({ hold: true, executorOrders: withoutOrders });
+    const order = await activeOrderOf(bench);
+    await fillOnce(bench, order.id);
+
+    await bench.release();
+    await flush();
+    const [fill] = await liveFillsOf(bench);
+
+    expect(fill?.state).toBe("confirmed");
+    expect(bench.signed).toStrictEqual([]);
+    expect(await fillRowsOf(bench.test, order.id)).toStrictEqual([]);
+    expect(executorNotices(bench)).toStrictEqual([]);
   });
 
   it("ends at once when the rolling cap was used up meanwhile, telling what it used", async () => {

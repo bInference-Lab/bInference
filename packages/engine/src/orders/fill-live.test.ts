@@ -3,11 +3,12 @@ import {
   type Amount,
   checkFillGrant,
   type RelaySender,
+  type Signer,
   type SignRequest,
 } from "@binference/chain";
-import { type Id, idSchema } from "@binference/core";
+import { err, type Id, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { driveUntil, type ExecutorBench, flush } from "../executor/test-executor.js";
+import { driveUntil, eventsOf, type ExecutorBench, flush } from "../executor/test-executor.js";
 import type { IntentChange } from "../intents/intent-change.js";
 import { expectOk, testAgent, testToken, testWallet } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
@@ -189,6 +190,31 @@ describe("an auto order's live fill", () => {
     expect(await storedOrder(bench.test, order.id)).toMatchObject({ state: "cancelled", fills: 0 });
   });
 
+  it("logs a reset custody will not sign, tells no reset, and ends the sale unsent", async () => {
+    const canceller = atFirstSend(cancelOrder);
+    const bench = await startLiveFills({
+      held: heldTokens(),
+      sender: canceller.sender,
+      custody: refusingResets,
+    });
+    const order = await activeOrderOf(bench, testStopLoss());
+    canceller.arm(bench, order.id);
+
+    await fillOnce(bench, order.id);
+    const [sale] = await liveFillsOf(bench, "sell");
+    const saleId = sale?.id as Id<"int">;
+
+    await expect(driveUntil(bench, saleId, { states: ["failed_onchain"] })).resolves.toBe(
+      "failed_onchain",
+    );
+    const asked = bench.signed.map(({ step }) => step.action);
+    expect(asked).toMatchObject([{ kind: "approve" }, { kind: "approve", amount: 0n }]);
+    expect(eventsOf(bench)).toContain("executor.approval_unreset:");
+    expect(executorNotices(bench)).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "notice.approvalReset" })]),
+    );
+  });
+
   it("is cancelled unsigned at the start when a stop left it before its confirmation", async () => {
     // The engine stops as the fill's quote is written: its intent stays `checked`.
     const stopper = stopperAtQuote();
@@ -277,6 +303,17 @@ async function pauseOrder(bench: ExecutorBench, order: Id<"ord">): Promise<void>
 // One whole test token held by the test wallet, which a stop-loss sells.
 function heldTokens(): ReadonlyMap<AccountRef, readonly Amount[]> {
   return new Map([[testAccount, [{ asset: testToken, base: wholeToken }]]]);
+}
+
+// Custody that refuses to sign an approval set back to 0, as one whose ceiling left it out.
+function refusingResets(custody: Signer): Signer {
+  return {
+    account: async (wallet, chain, call) => custody.account(wallet, chain, call),
+    signTransaction: async (request, call) =>
+      request.step.action.kind === "approve" && request.step.action.amount === 0n
+        ? err("refused")
+        : custody.signTransaction(request, call),
+  };
 }
 
 // Cancels the order, as the owner's `order/cancel` does.

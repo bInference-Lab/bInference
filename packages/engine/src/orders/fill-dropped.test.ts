@@ -1,12 +1,19 @@
-import { createIdSource, type Id } from "@binference/core";
+import { createIdSource, err, type Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { testSnapshot } from "../approval/test-snapshot.js";
-import { benchChain, driveUntil, type ExecutorBench, flush } from "../executor/test-executor.js";
+import {
+  benchChain,
+  driveUntil,
+  eventsOf,
+  type ExecutorBench,
+  flush,
+} from "../executor/test-executor.js";
 import { restartBench } from "../executor/test-restart.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { testCoin, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
+import type { IntentStore } from "../ports.js";
 import { isOverCount, landedFillWrite } from "./fill-landed.js";
 import { fillPrices, fillRowsOf } from "./test-fills.js";
 import { activeOrderOf, fillOnce, liveFillsOf, startLiveFills } from "./test-live-fills.js";
@@ -24,12 +31,15 @@ function relaysAnswer(bench: ExecutorBench, kind: "refuse" | "accept"): void {
 }
 
 // A live fill of a one-fill limit buy that every relay refused until the drop rule dropped it.
-async function droppedFill(): Promise<{
+async function droppedFill(executorIntents?: (store: IntentStore) => IntentStore): Promise<{
   readonly bench: ExecutorBench;
   readonly order: Id<"ord">;
   readonly fill: Id<"int">;
 }> {
-  const bench = await startLiveFills({ limits });
+  const bench = await startLiveFills({
+    limits,
+    ...(executorIntents === undefined ? {} : { executorIntents }),
+  });
   relaysAnswer(bench, "refuse");
   const order = await activeOrderOf(bench);
   await fillOnce(bench, order.id);
@@ -79,6 +89,26 @@ describe("a live fill whose step was dropped", () => {
     expect(await storedOrder(bench.test, order)).toMatchObject({ state: "filled", fills: 1 });
     expect(restarted.signed).toStrictEqual([]);
     await restarted.executor.close({ signal: AbortSignal.abort() });
+  });
+
+  it("tries the link again on a fresh read, then logs it and counts nothing", async () => {
+    const tries: Id<"int">[] = [];
+    const losing = (store: IntentStore): IntentStore => ({
+      ...store,
+      recordLandedLate: async (write) => {
+        tries.push(write.intentId);
+        return err("stale");
+      },
+    });
+    const { bench, order, fill } = await droppedFill(losing);
+
+    await landsLate(bench, fill);
+    await driveUntil(bench, fill, { states: [], blocks: 6 });
+    await flush();
+
+    expect(tries.length).toBeGreaterThan(1);
+    expect(eventsOf(bench)).toContain("executor.landed_late_linked:stale");
+    expect(await storedOrder(bench.test, order)).toMatchObject({ state: "active", fills: 0 });
   });
 
   it("alarms the owner when a landed fill would pass its order's most fills, and still counts it", async () => {

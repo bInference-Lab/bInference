@@ -38,11 +38,15 @@ export async function startLiveFills(
     readonly hold?: boolean;
     readonly held?: ReadonlyMap<AccountRef, readonly Amount[]>;
     readonly sender?: (sender: RelaySender) => RelaySender;
+    /** Wraps the custody the executor signs through. */
+    readonly custody?: NonNullable<BenchOptions["custody"]>;
     readonly limits?: NonNullable<BenchOptions["limits"]>;
     /** Wraps the intent store the executor reads and writes through, not the engine's. */
     readonly executorIntents?: (store: IntentStore) => IntentStore;
     /** Wraps the webhook rule store the executor reads and writes through, not the engine's. */
     readonly webhookRules?: NonNullable<BenchOptions["webhookRules"]>;
+    /** Wraps the order store the executor reads and writes through, not the engine's. */
+    readonly executorOrders?: NonNullable<BenchOptions["orders"]>;
     /** Whether the executor signs live fills; on unless told off. */
     readonly executorFills?: boolean;
     /** Wraps what the executor reads receipts, transfers and nonces through. */
@@ -60,6 +64,7 @@ export async function startLiveFills(
     intents,
     executorFills = true,
     executorIntents,
+    executorOrders,
     prices,
     engineStores,
     ...rest
@@ -71,7 +76,10 @@ export async function startLiveFills(
     ...(held === undefined ? {} : { held }),
     ...(intents === undefined ? {} : { intents }),
   };
-  const wrapped = executorIntents === undefined ? {} : { intents: executorIntents };
+  const wrapped = {
+    ...(executorIntents === undefined ? {} : { intents: executorIntents }),
+    ...(executorOrders === undefined ? {} : { orders: executorOrders }),
+  };
   const bench = await startExecutorBench({
     ...rest,
     ...wrapped,

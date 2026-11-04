@@ -37,6 +37,7 @@ import {
   testAccount,
   testCall,
 } from "../operations/test-engine.js";
+import type { OrderStore } from "../orders/ports.js";
 import type { Executor, IntentStore, TransactionStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
@@ -91,6 +92,8 @@ export interface BenchOptions {
   readonly intents?: (store: IntentStore) => IntentStore;
   /** Wraps the webhook rule store the executor reads and writes through, not the engine's. */
   readonly webhookRules?: (store: WebhookRuleStore) => WebhookRuleStore;
+  /** Wraps the order store the executor reads and writes through, not the engine's. */
+  readonly orders?: (store: OrderStore) => OrderStore;
   /** What a swap's output comes to on chain; the fake venue's quote, twice the input, if absent. */
   readonly fillOut?: (amountInBase: bigint) => bigint;
   /** Wraps what the executor reads receipts, transfers and nonces through. */
@@ -173,7 +176,8 @@ function storesOf(test: TestEngine, options: BenchOptions) {
   const transactions = options.transactions?.(stored) ?? stored;
   const intents = options.intents?.(test.stores.intents) ?? test.stores.intents;
   const webhookRules = options.webhookRules?.(test.stores.webhookRules) ?? test.stores.webhookRules;
-  return { ...test.stores, transactions, intents, webhookRules };
+  const orders = options.orders?.(test.stores.orders) ?? test.stores.orders;
+  return { ...test.stores, transactions, intents, webhookRules, orders };
 }
 
 const coinPrice = { numerator: 600n, denominator: 10n ** 12n };
