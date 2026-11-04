@@ -85,14 +85,10 @@ async function answered(
 
 function viewOf(
   options: IntentHandlersOptions,
-  snapshot: IntentSnapshot | undefined,
+  snapshot: IntentSnapshot,
   bridged: ViewReads = {},
-): Result<IntentView, ProtocolErrorCode> {
-  return snapshot === undefined
-    ? err("intent.not_found")
-    : ok(
-        intentViewOf(snapshot, options.chains, { ...bridged, destinations: options.destinations }),
-      );
+): IntentView {
+  return intentViewOf(snapshot, options.chains, { ...bridged, destinations: options.destinations });
 }
 
 // The intent's open card version as the engine draws it; an intent with none is in the wrong
@@ -128,7 +124,7 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
       const draft = caller.draftRef === undefined ? {} : { draftRef: caller.draftRef };
       const proposing = { signal, credential: caller.credential, ...draft };
       const proposed = await options.moneyPath.propose(args, proposer, proposing);
-      return proposed.ok ? viewOf(options, proposed.value) : proposed;
+      return proposed.ok ? ok(viewOf(options, proposed.value)) : proposed;
     },
     "intent/get": async ({ args, signal }) => {
       const snapshot = await options.stored.snapshot(args.intent, { signal });
@@ -139,7 +135,7 @@ export function createIntentHandlers(options: IntentHandlersOptions): IntentHand
         bridgeViewReads(options, snapshot.record, signal),
         receiptViewReads(options, snapshot, signal),
       ]);
-      return viewOf(options, snapshot, { ...bridged, ...receipt });
+      return ok(viewOf(options, snapshot, { ...bridged, ...receipt }));
     },
     "intent/card": async (call) => drawnCard(options, call),
     "intent/list": async (call) => listIntents(options, call),
