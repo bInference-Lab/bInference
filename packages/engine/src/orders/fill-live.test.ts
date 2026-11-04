@@ -14,6 +14,7 @@ import { expectOk, testAgent, testToken, testWallet } from "../intents/test-inte
 import { testAccount, testCall } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { moveOrder } from "./order-machine.js";
+import type { OrderStore } from "./ports.js";
 import { eightyCents, fillRowsOf, wholeToken } from "./test-fills.js";
 import {
   activeOrderOf,
@@ -215,6 +216,34 @@ describe("an auto order's live fill", () => {
     );
   });
 
+  it("signs no later step once its order is gone, and resets its approval under its grant", async () => {
+    const vanishing = vanishingOrders();
+    const hider = atFirstSend(async () => {
+      vanishing.hide();
+      await Promise.resolve();
+    });
+    const bench = await startLiveFills({
+      held: heldTokens(),
+      sender: hider.sender,
+      executorOrders: vanishing.orders,
+    });
+    const order = await activeOrderOf(bench, testStopLoss());
+    hider.arm(bench, order.id);
+
+    await fillOnce(bench, order.id);
+    const [sale] = await liveFillsOf(bench, "sell");
+    const saleId = sale?.id as Id<"int">;
+
+    await expect(driveUntil(bench, saleId, { states: ["failed_onchain"] })).resolves.toBe(
+      "failed_onchain",
+    );
+    const actions = bench.signed.map(({ step }) => step.action);
+    expect(actions).toMatchObject([{ kind: "approve" }, { kind: "approve", amount: 0n }]);
+    expect(executorNotices(bench)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "notice.approvalReset" })]),
+    );
+  });
+
   it("is cancelled unsigned at the start when a stop left it before its confirmation", async () => {
     // The engine stops as the fill's quote is written: its intent stays `checked`.
     const stopper = stopperAtQuote();
@@ -314,6 +343,19 @@ function refusingResets(custody: Signer): Signer {
         ? err("refused")
         : custody.signTransaction(request, call),
   };
+}
+
+// An order store the executor reads, whose orders are gone once `hide` is called.
+function vanishingOrders() {
+  const state = { isHidden: false };
+  const orders = (store: OrderStore): OrderStore => ({
+    ...store,
+    get: async (id, call) => (state.isHidden ? undefined : store.get(id, call)),
+  });
+  const hide = (): void => {
+    state.isHidden = true;
+  };
+  return { orders, hide };
 }
 
 // Cancels the order, as the owner's `order/cancel` does.

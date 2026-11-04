@@ -5,6 +5,7 @@ import { driveUntil, type ExecutorBench, flush } from "../executor/test-executor
 import { restartBench } from "../executor/test-restart.js";
 import { testToken } from "../intents/test-intents.js";
 import { testAccount } from "../operations/test-engine.js";
+import type { OrderStore } from "./ports.js";
 import { fillRowsOf, wholeToken } from "./test-fills.js";
 import { activeOrderOf, fillOnce, liveFillsOf, startLiveFills } from "./test-live-fills.js";
 import { storedOrder, testStopLoss } from "./test-orders.js";
@@ -85,4 +86,20 @@ describe("a live sale a stop left after its approval", () => {
     expect(await storedOrder(bench.test, order)).toMatchObject({ state: "active", fills: 0 });
     await restarted.executor.close({ signal: AbortSignal.abort() });
   });
+
+  it("ends unsent after the restart, signing nothing, once its order is gone", async () => {
+    const { bench, sale } = await saleStoppedAfterApproval();
+
+    const restarted = await restartBench(bench, { liveOrderFills: true, orders: withoutOrders });
+    const state = await driveUntil(bench, sale, { states: ["reconciled", "failed_onchain"] });
+
+    expect(state).toBe("failed_onchain");
+    expect(restarted.signed).toStrictEqual([]);
+    await restarted.executor.close({ signal: AbortSignal.abort() });
+  });
 });
+
+// An order store the restarted executor reads, which holds no order any more.
+function withoutOrders(store: OrderStore): OrderStore {
+  return { ...store, get: async () => undefined };
+}
