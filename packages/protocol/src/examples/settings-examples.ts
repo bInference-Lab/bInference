@@ -27,9 +27,13 @@ const plugin = {
   tier: "community",
   source: install.source,
   hash: install.hash,
-  permissions: ["network:api.example.invalid"],
+  permissions: ["kind:data", "host:api.example.invalid", "tool:index"],
   state: "disabled",
   installedAt: at,
+  provenance: "verified",
+  publisher: "github.com/example/fake-swap",
+  disabledReason: "owner",
+  tools: ["fake_swap__index"],
 } as const;
 const config = { locale: "zh", models: { apiKey: { fromKeychain: "secret" } } };
 const binanceAgent = { agent: ids.agent, label: "Futures bot", state: "paused" } as const;
@@ -46,10 +50,22 @@ export const pluginExamples: { readonly [N in keyof PluginOperationShapes]: Wire
     result: pageOf({ ...model, current: true }),
   },
   "plugin/list": { args: empty, result: pageOf(plugin) },
-  "plugin/add": { args: install, result: job },
+  "plugin/add": {
+    args: {
+      source: "npm:fear-index@1.2.0",
+      hash: `sha512-${"A".repeat(86)}==`,
+      accepted: "b".repeat(64),
+      typedName: "fear-index",
+    },
+    result: job,
+  },
   "plugin/enable": { args: { plugin: ids.plugin }, result: { ...plugin, state: "enabled" } },
   "plugin/disable": { args: { plugin: ids.plugin }, result: plugin },
   "plugin/remove": { args: { plugin: ids.plugin }, result: empty },
+  "plugin/call": {
+    args: { agent: ids.agent, plugin: ids.plugin, tool: "index", input: { days: 7 } },
+    result: { output: { value: 40 } },
+  },
   "skill/list": {
     args: { agent: ids.agent },
     result: pageOf({

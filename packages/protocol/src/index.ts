@@ -10,8 +10,7 @@ export { mcpTokenScopes, scopes, scopeSchema } from "./auth/scopes.js";
 export { tokenLifetimeMaxMs } from "./auth/token-lifetime.js";
 export type { Scope } from "./auth/scopes.js";
 export { describeOperations } from "./describe/describe-operations.js";
-export { describeProtocol } from "./describe/describe-protocol.js";
-export type { ProtocolDescription } from "./describe/describe-protocol.js";
+export { describeProtocol, type ProtocolDescription } from "./describe/describe-protocol.js";
 export type {
   EngineDescription,
   JsonSchema,
@@ -251,10 +250,11 @@ export type {
   UnfreezeRequest,
 } from "./views/intent-view.schema.js";
 export type { JobRef } from "./views/job-ref.schema.js";
+export { communityPluginLimits } from "./views/community-plugin-limits.js";
+export { pluginReviewSchema, type PluginReview } from "./views/plugin-review.schema.js";
 export { jobDonePushSchema, jobFailedPushSchema } from "./views/job-push.schema.js";
 export type { JobDonePush, JobFailedPush } from "./views/job-push.schema.js";
-export { chatPushOf } from "./views/chat-push.schema.js";
-export type { ChatPush } from "./views/chat-push.schema.js";
+export { chatPushOf, type ChatPush } from "./views/chat-push.schema.js";
 export { noticePushViewSchema, noticeViewSchema } from "./views/notice-view.schema.js";
 export type {
   NoticeDeliveryState,

@@ -1,4 +1,4 @@
-import { decimalStringSchema } from "@binference/core";
+import { decimalStringSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.schema.js";
@@ -6,6 +6,7 @@ import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { type Page, pageSchema } from "../values/page.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
 import { type JobRef, jobRefSchema } from "../views/job-ref.schema.js";
+import type { PluginProvenance } from "../views/plugin-review.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
 /** A model role: `main` talks and proposes, `fast` summarizes, `vision` reads images. */
@@ -41,7 +42,14 @@ interface SetModelArgs {
   readonly model: string;
 }
 
-/** An installed plugin: its tier, the permissions it declares, and whether it runs. */
+/** Why an installed plugin is off: the owner turned it off, it crashed, or its files changed. */
+type PluginOffReason = "owner" | "crashes" | "changed";
+
+/**
+ * An installed plugin: its tier, the permissions it declares (`kind:`, `host:`, `tool:` and
+ * `config:` each followed by its name), and whether it runs. A community plugin also names its
+ * provenance and publisher (decision 0348), why it is off, and the tools the agent sees.
+ */
 interface PluginView {
   readonly plugin: ProtocolId<"installedPlugin">;
   readonly name: string;
@@ -52,12 +60,38 @@ interface PluginView {
   readonly permissions: readonly string[];
   readonly state: "enabled" | "disabled";
   readonly installedAt: number;
+  readonly provenance?: PluginProvenance;
+  readonly publisher?: string;
+  readonly disabledReason?: PluginOffReason;
+  /** Each tool by the name the agent calls it, `<id>__<tool>`. */
+  readonly tools?: readonly string[];
 }
 
-/** The args of `plugin/add` and `skill/add`: where to install from and the expected hash. */
+/** The args of `skill/add`: where to install from and the expected hash. */
 interface InstallArgs {
   readonly source: string;
   readonly hash: string;
+}
+
+/**
+ * The args of `plugin/add` (decision 0348): the source, `npm:<name>@<version>`; the version's
+ * npm integrity, `sha512-` and its base64 digest; the review's `digest` the owner accepts; and,
+ * for a plugin without npm provenance, its id as the owner typed it.
+ */
+interface PluginAddArgs {
+  readonly source: string;
+  readonly hash: string;
+  readonly accepted?: string;
+  readonly typedName?: string;
+}
+
+/** The args of `plugin/call`: one tool of an enabled community plugin, called for an agent. */
+interface PluginCallArgs {
+  readonly agent: ProtocolId<"agent">;
+  readonly plugin: ProtocolId<"installedPlugin">;
+  /** The tool's name in the plugin's manifest. */
+  readonly tool: string;
+  readonly input: JsonValue;
 }
 
 /** Where a skill lives: shipped with binference, installed for every agent, or one agent's own. */
@@ -108,10 +142,14 @@ export interface PluginOperationShapes {
   readonly "model/list": { readonly args: ModelListArgs; readonly result: Page<ModelView> };
   readonly "model/set": { readonly args: SetModelArgs; readonly result: Page<ModelView> };
   readonly "plugin/list": { readonly args: Empty; readonly result: Page<PluginView> };
-  readonly "plugin/add": { readonly args: InstallArgs; readonly result: JobRef };
+  readonly "plugin/add": { readonly args: PluginAddArgs; readonly result: JobRef };
   readonly "plugin/enable": { readonly args: PluginArgs; readonly result: PluginView };
   readonly "plugin/disable": { readonly args: PluginArgs; readonly result: PluginView };
   readonly "plugin/remove": { readonly args: PluginArgs; readonly result: Empty };
+  readonly "plugin/call": {
+    readonly args: PluginCallArgs;
+    readonly result: { readonly output: JsonValue };
+  };
   readonly "skill/list": {
     readonly args: { readonly agent?: ProtocolId<"agent"> };
     readonly result: Page<SkillView>;
@@ -147,6 +185,10 @@ const pluginView = z.object({
   permissions: z.array(z.string()),
   state: z.enum(["enabled", "disabled"]),
   installedAt: epochMsSchema,
+  provenance: z.enum(["verified", "none"]).exactOptional(),
+  publisher: z.string().exactOptional(),
+  disabledReason: z.enum(["owner", "crashes", "changed"]).exactOptional(),
+  tools: z.array(z.string()).exactOptional(),
 });
 const pluginArgs = z.strictObject({ plugin: protocolIdSchema("installedPlugin") });
 const skillPlace = z.enum(["bundled", "installed", "workspace"]);
@@ -160,6 +202,12 @@ const skillFile = z.string().min(1).max(256);
 const installArgs = z.strictObject({
   source: z.string().min(1).max(2048),
   hash: z.string().min(1).max(256),
+});
+const pluginAddArgs = z.strictObject({
+  source: z.string().min(1).max(2048),
+  hash: z.string().min(1).max(256),
+  accepted: z.string().min(1).max(256).exactOptional(),
+  typedName: z.string().min(1).max(64).exactOptional(),
 });
 
 /** The model, plugin and skill operations, by name. */
@@ -189,7 +237,7 @@ export const pluginOperations: OperationTable<PluginOperationShapes> = {
     ...localWriteFlags,
     name: "plugin/add",
     scope: "admin",
-    args: installArgs,
+    args: pluginAddArgs,
     result: jobRefSchema,
   },
   "plugin/enable": {
@@ -212,6 +260,18 @@ export const pluginOperations: OperationTable<PluginOperationShapes> = {
     scope: "admin",
     args: pluginArgs,
     result: emptyResultSchema,
+  },
+  "plugin/call": {
+    ...readFlags,
+    name: "plugin/call",
+    scope: "agent",
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      plugin: protocolIdSchema("installedPlugin"),
+      tool: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+      input: jsonValueSchema,
+    }),
+    result: z.object({ output: jsonValueSchema }),
   },
   "skill/list": {
     ...readFlags,

@@ -916,26 +916,41 @@ refuses) is `image.unreadable`; Telegram out of reach is `telegram.unreachable`
 | ---------------- | --------- | ----- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `model/list`     | `read`    |       |       | `{ agent? }` → configured models by role, with prices when known; with `agent`, `current: true` marks the model its next turn uses for each role ([decision 0204](../DECISIONS.md#d0204))                                                 |
 | `model/set`      | `confirm` | ✓     |       | `{ agent, role, model }` → the agent's models (`/ai`); a model not configured is `protocol.bad_args`, and the role's own configured model clears the pick                                                                                 |
-| `plugin/list`    | `read`    |       |       | → installed plugins, tiers, permissions, state                                                                                                                                                                                            |
-| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash, accepted? }` → `{ job }`; the permission review (below)                                                                                                                                                                  |
+| `plugin/list`    | `read`    |       |       | → installed plugins, tiers, permissions, state; a community plugin's provenance, publisher, why it is off and its tools as the agent names them                                                                                           |
+| `plugin/add`     | `admin`   | ✓     | ✓     | `{ source, hash, accepted?, typedName? }` → `{ job }`; the permission review (below)                                                                                                                                                      |
 | `plugin/enable`  | `admin`   | ✓     |       | `{ plugin }` → plugin                                                                                                                                                                                                                     |
 | `plugin/disable` | `confirm` | ✓     |       | `{ plugin }` → plugin (braking)                                                                                                                                                                                                           |
 | `plugin/remove`  | `admin`   | ✓     |       | `{ plugin }` → `{}`                                                                                                                                                                                                                       |
+| `plugin/call`    | `agent`   |       |       | `{ agent, plugin, tool, input }` → `{ output }`: one tool of an enabled community plugin, for the agent's runtime; every call marks the agent's running turn as outside content ([decision 0349](../DECISIONS.md#d0349))                  |
 | `skill/list`     | `read`    |       |       | `{ agent? }` → skills: with `agent`, each its index holds, with `description`, `location` and `place` ([decision 0207](../DECISIONS.md#d0207))                                                                                            |
 | `skill/read`     | `read`    |       |       | `{ agent, skill, file? }` → `{ skill, place, location, file, text }`: one file of a skill `skill/list` gives the agent, `SKILL.md` unless `file` names another; fails `skill.not_found`, and a path outside the skill `protocol.bad_args` |
 | `skill/add`      | `admin`   | ✓     | ✓     | `{ source, hash }` → `{ job }`; the install lint runs first                                                                                                                                                                               |
 | `skill/remove`   | `admin`   | ✓     |       | `{ skill }` → `{}`                                                                                                                                                                                                                        |
 
-**The permission review** ([ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14)). A
-`plugin/add` without `accepted` reads the plugin's manifest and ends its job with
-`plugin.review_needed`, whose `details.review` is
+**The permission review** ([ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14),
+[decision 0348](../DECISIONS.md#d0348)). `source` is `npm:<name>@<version>`, an exact version, and
+`hash` its npm integrity, `sha512-` and the base64 digest. A `plugin/add` without `accepted`
+fetches the version, checks its integrity and npm provenance, reads its manifest and ends its job
+with `plugin.review_needed`, whose `details.review` is
 `{ plugin, version, source, hash, publisher?, provenance: verified | none, kinds, hosts, tools, configKeys, digest, widens?: { from, added } }`:
-what the plugin declares, `digest` the SHA-256 of those declarations. The same call with
-`accepted` set to that `digest` installs it; a `digest` that no longer matches is
-`plugin.review_needed` again. An update of an installed plugin is a `plugin/add` of its newer
-version: one that declares nothing more installs with the old acceptance, and one that declares
-more (`widens`: the hosts, tools, kinds or config keys it adds) waits for its own `accepted`, the
-old version running meanwhile.
+the plugin's id, what it declares, `hash` the SHA-256 of its files that pins it, and `digest` the
+SHA-256 of its declarations. The same call with `accepted` set to that `digest` installs it, and
+for a plugin without provenance only with `typedName` set to its id; a `digest` or name that no
+longer matches is `plugin.review_needed` again. An update of an installed plugin is a `plugin/add`
+of a newer version of the same package: one that declares nothing more and keeps its provenance
+installs with the old acceptance, and one that declares more (`widens`: the kinds, hosts, tools
+and config keys it adds, each a list) or loses its provenance waits for its own `accepted`, the
+old version running meanwhile. A version the registry does not serve, or one it is too busy to
+serve, is `plugin.fetch_failed` with `details.reason` (`not_published`, `rate_limited`,
+`registry_unreachable`, `bad_answer`); another integrity is `plugin.hash_mismatch`; an
+attestation that does not verify is `plugin.provenance_failed`; a package, file or manifest it
+cannot install is `plugin.invalid`; an id another package holds is `plugin.id_taken`.
+
+`plugin/enable`, `plugin/disable` and `plugin/remove` name a plugin by its `plg_` id. A disable
+stops the plugin at once and takes its tools out of the agent's index (`disabledReason: owner`);
+the host turns a plugin off after 5 crashes in 10 minutes (`crashes`) or when its files no longer
+match its pin (`changed`). `plugin/call` answers `plugin.not_found`, `plugin.disabled`, or
+`plugin.call_failed` with the host's reason in `details.reason`.
 
 <a id="section-7-9"></a>
 
@@ -1424,7 +1439,7 @@ later unchanged.
 | `chain`    | `rpc_down`, `simulation_failed`                                                                                                                                                                                                                                                                                                                                                                |
 | `limit`    | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`, `needs_bridge_wallet`, `bridge_ceiling`                                                                                                                                                                                                                                                                                     |
 | `config`   | `invalid`, `secret_inline`                                                                                                                                                                                                                                                                                                                                                                     |
-| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`                                                                                                                                                                                                                                                                                                                                                  |
+| `plugin`   | `not_found`, `hash_mismatch`, `review_needed`, `fetch_failed`, `provenance_failed`, `invalid`, `id_taken`, `disabled`, `call_failed`                                                                                                                                                                                                                                                           |
 | `skill`    | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`                                                                                                                                                                                                                                                                                                               |
 | `job`      | `not_found`                                                                                                                                                                                                                                                                                                                                                                                    |
 | `backup`   | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                                                                                                                                                                                                                                                                                                               |
