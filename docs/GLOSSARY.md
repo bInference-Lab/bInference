@@ -512,6 +512,8 @@ check` tries it as `network.proxy`.
   `BINFERENCE_NODE_MIRROR`, and `BINFERENCE_INSTALL_PACKAGE`, a local tarball for tests only.
   `install/install.ps1` does the same on Windows (`irm https://binference.io/install.ps1 | iex`),
   with Node in `%LOCALAPPDATA%\binference`; it never asks for administrator rights.
+  `pnpm node:pins --version <26.x.y>` writes the pins into both scripts from Node's
+  `SHASUMS256.txt` once `gpgv` accepts its signature; `pnpm node:pins` checks them.
 - **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed
   files** into an empty project outside the repository, checks that every file their manifests
   name is there, then sets the installed `binference` up with `init --yes`, starts it, makes a

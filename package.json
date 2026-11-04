@@ -39,6 +39,7 @@
     "lint:docs": "markdownlint-cli2",
     "mutation": "stryker run",
     "mutation:summary": "node --import tsx scripts/mutation-summary.mts",
+    "node:pins": "node --import tsx scripts/node-pins.mts",
     "privy:sweep": "node --conditions=@binference/source --import tsx scripts/privy-sweep.mts",
     "release:dry": "node --conditions=@binference/source --import tsx scripts/release-dry.mts",
     "release:smoke": "node --import tsx scripts/release-smoke.mts",

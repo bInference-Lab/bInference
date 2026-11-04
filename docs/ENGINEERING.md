@@ -850,7 +850,8 @@ stops the line, and nothing else is pushed until it is green.
   that may have no Node yet, so they cannot be `.mts` files. They do only what Node cannot do
   there: install Node, run `npm i -g binference`, then hand over to `binference init`. Every other
   step belongs in `binference` itself. Each line they print is in English and Chinese, chosen by
-  the locale. `install.sh` passes `shellcheck`. Enforcer: `check:layout` allows those two paths
+  the locale. `install.sh` passes `shellcheck`. Their Node pins come only from `pnpm node:pins`,
+  which checks Node's signed sums ([decision 0357](DECISIONS.md#d0357)). Enforcer: `check:layout` allows those two paths
   and no other shell file, and `check:gates` plants a third one that must fail; `review-diff`.
 
 <a id="section-19"></a>
