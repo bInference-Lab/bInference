@@ -50,6 +50,15 @@ describe("watcher lag", () => {
     expect(subject.health()).toStrictEqual({ state: "ok", lagBlocks: 1n });
   });
 
+  it("names the chain furthest behind among chains in the same state, whichever read first", () => {
+    const { subject, read } = alerts();
+    read(5n, 0, other);
+    read(4n, 0);
+    expect(subject.health()).toMatchObject({ state: "warn", lagBlocks: 5n });
+    read(8n, 1_000);
+    expect(subject.health()).toMatchObject({ state: "warn", lagBlocks: 8n });
+  });
+
   it("tells the owner once a chain stays more than 10 blocks behind for 30 seconds", () => {
     const { pushes, read } = alerts();
     read(11n, 0);

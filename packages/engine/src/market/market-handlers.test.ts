@@ -167,6 +167,30 @@ describe("the market handlers", () => {
     );
   });
 
+  it("scans a pool that names only some figures with those alone", async () => {
+    const bare = { dex: "fake-swap", pool: "0x0000000d", base: listed, quote: coin };
+    const priced = { ...bare, priceUsd: usd(2n) };
+    const tokens = [
+      { asset: listed, pool: priced },
+      { asset: cheap, pool: { ...bare, base: cheap } },
+    ];
+    const { engine } = await engineOver({ ...known, trending: new Map([[chain, tokens]]) });
+    const scan = expectOk(await engine.handlers["market/scan"](testCall(trending)));
+    expect(scan.items).toStrictEqual([
+      { asset: listed, priceUsdMicros: 2_000_000n },
+      { asset: cheap },
+    ]);
+  });
+
+  it("charts a token priced in whole dollars with no price scale", async () => {
+    const dollar = { ...candleAt(1), open: usd(2n), high: usd(3n), low: usd(1n), close: usd(2n) };
+    const { engine } = await engineOver({ ...known, candles: new Map([[cheap, [dollar]]]) });
+    const args = { asset: cheap, interval: "1h", to: 2 * hourMs } as const;
+    const chart = expectOk(await engine.handlers["market/chart"](testCall(args)));
+    expect(chart).not.toHaveProperty("priceScale");
+    expect(chart.candles).toMatchObject([{ openUsdMicros: 2_000_000n, highUsdMicros: 3_000_000n }]);
+  });
+
   it("charts the newest 100 candles up to now unless the call says", async () => {
     const hours = Array.from({ length: 120 }, (_each, index) => index + 1);
     const { engine } = await engineOver({

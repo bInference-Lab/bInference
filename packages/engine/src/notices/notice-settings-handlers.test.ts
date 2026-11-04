@@ -2,6 +2,8 @@ import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import { startTestEngine, type TestEngine, testCall } from "../operations/test-engine.js";
+import type { AgentStore } from "../ports.js";
+import { createNoticeSettingsHandlers } from "./notice-settings-handlers.js";
 import { mutableNoticeKinds } from "./notice-settings.js";
 
 const live = { signal: new AbortController().signal };
@@ -13,6 +15,32 @@ async function setSettings(
   change: { readonly muted?: readonly string[]; readonly dailySummaryTime?: string },
 ) {
   return test.engine.handlers["notice/setSettings"](testCall({ agent: testAgent, ...change }));
+}
+
+// The agent store, its first `lost` writes of notice settings beaten by another write.
+function loseWrites(agents: AgentStore, lost: number): AgentStore {
+  const tries = { count: 0 };
+  return {
+    ...agents,
+    setNotifications: async (change, call) => {
+      tries.count += 1;
+      return tries.count <= lost
+        ? Promise.resolve(err("stale" as const))
+        : agents.setNotifications(change, call);
+    },
+  };
+}
+
+// Mutes `fill` for the test agent while its first `lost` writes lose to another write.
+async function setLosing(lost: number) {
+  const test = await startTestEngine();
+  const handlers = createNoticeSettingsHandlers({
+    agents: loseWrites(test.stores.agents, lost),
+    journal: test.stores.configJournal,
+    clock: test.clock,
+    publish: () => undefined,
+  });
+  return handlers["notice/setSettings"](testCall({ agent: testAgent, muted: ["fill"] }));
 }
 
 async function stored(test: TestEngine) {
@@ -60,6 +88,15 @@ describe("an agent's notice settings", () => {
     await expect(test.engine.handlers["notice/setSettings"](call)).resolves.toStrictEqual(
       err("agent.not_found"),
     );
+  });
+
+  it("reads the row again after another write moved it, and sets the muted kinds", async () => {
+    const set = await setLosing(2);
+    expect(set).toMatchObject({ ok: true, value: { muted: ["fill"] } });
+  });
+
+  it("faults as stale once every read lost to another write", async () => {
+    await expect(setLosing(3)).rejects.toMatchObject({ code: "engine.agent_stale" });
   });
 
   it("journals each change with who made it, and pushes it", async () => {

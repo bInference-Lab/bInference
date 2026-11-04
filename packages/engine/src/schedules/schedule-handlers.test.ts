@@ -9,6 +9,7 @@ import {
   testCall,
   testCallers,
 } from "../operations/test-engine.js";
+import { maxActiveSchedules } from "./schedule-record.js";
 
 const prompt = "Review my portfolio.";
 // The test clock reads 2027-01-15T08:00Z, 16:00 in Shanghai.
@@ -142,6 +143,33 @@ describe("schedule/list and schedule/cancel", () => {
       agent: testAgent,
       values: { agent: "main", by: "cli", prompt },
     });
+  });
+
+  it("holds 50 active schedules per agent, storing and announcing no more", async () => {
+    const test = await startTestEngine();
+    const fifty = Array.from({ length: maxActiveSchedules }, async () =>
+      setSchedule(test, { cron: "0 9 * * *" }),
+    );
+    expect((await Promise.all(fifty)).every((set) => set.ok)).toBe(true);
+    expect(await setSchedule(test, { cron: "0 9 * * *" })).toStrictEqual({
+      ok: false,
+      error: "schedule.too_many",
+    });
+    expect(pushed(test, "notice/new")).toHaveLength(maxActiveSchedules);
+  });
+
+  it("lets the owner's Telegram sign-in set or cancel no schedule without confirm", async () => {
+    const test = await startTestEngine();
+    const set = expectOk(await setSchedule(test, { cron: "0 9 * * *" }));
+    const signedIn: EngineCaller = {
+      credential: "tg:7012345678",
+      client: { kind: "mini", version: "test" },
+      scopes: ["read", "propose"],
+    };
+    const refused = { ok: false, error: "auth.scope" };
+    expect(await setSchedule(test, { cron: "0 9 * * *" }, signedIn)).toStrictEqual(refused);
+    const cancel = test.engine.handlers["schedule/cancel"];
+    expect(await cancel(testCall({ schedule: set.schedule }, signedIn))).toStrictEqual(refused);
   });
 
   it("lets an outside client cancel only the schedules it set", async () => {

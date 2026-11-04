@@ -137,6 +137,35 @@ describe("price cross-check", () => {
     expect(elsewhere.reads()).toBe(1);
   });
 
+  it("asks nothing of a source that reads no prices, and hears any other throw as unexpected", async () => {
+    const clock = createManualClock(0);
+    const { prices: _prices, ...pricesless } = createFakeMarketSource({
+      id: "pricesless",
+      chains: [chain as never],
+    });
+    const broken: MarketDataSource = {
+      ...pricesless,
+      id: "broken",
+      prices: async () => Promise.reject(new Error("socket hang up")),
+    };
+    const failed: string[] = [];
+    const check = createPriceCrossCheck({
+      sources: [
+        { source: pricesless, everyMs: 60_000, maxTokens: 30 },
+        { source: broken, everyMs: 60_000, maxTokens: 30 },
+      ],
+      samples: () => [sampleOf(1)],
+      watched: () => [tokenOf(1)],
+      gapLimitBps: 1_000,
+      clock,
+      onGap: () => undefined,
+      onSourceFailed: (source, code) => failed.push(`${source} ${code}`),
+    });
+    await check.tick({ signal });
+    expect(failed).toStrictEqual(["broken unexpected"]);
+    expect(check.checks()).toStrictEqual([]);
+  });
+
   it("checks urgent samples first, and carries each sample's plan to its check", async () => {
     const clock = createManualClock(0);
     const prices = new Map(
