@@ -36,7 +36,7 @@ describe("a webhook rule's card in Chinese", () => {
     const request = testRuleRequest({
       side: "buy",
       size: { usdMicros: 25_000_000n },
-      maxSlippageBps: bpsSchema.parse(150),
+      maxSlippageBps: bpsSchema.parse(40),
     });
     const { card } = await shownRule("zh", request);
 
@@ -44,6 +44,6 @@ describe("a webhook rule's card in Chinese", () => {
       "批准提醒规则“BNB breakout”：每次提醒时用价值 $25.00 的 FAKE 买入 TKN · 每分钟最多 5 次",
     );
     expect(card[2]).toMatch(/^不限成交次数，截至 /);
-    expect(card[3]).toBe("每次成交的滑点最多 1.50%");
+    expect(card[3]).toBe("每次成交的滑点最多 0.40%");
   });
 });

@@ -98,6 +98,7 @@ export const protocolErrorCodes = [
   "order.kind_unavailable",
   "order.unpriced_token",
   "order.live_fills_off",
+  "order.slippage_limit",
   "schedule.not_found",
   "schedule.bad_when",
   "schedule.too_many",

@@ -5,8 +5,13 @@ import type { Proposer } from "../money-path/create-money-path.js";
 import { unlistedAssetInfos } from "../money-path/token-facts.js";
 import { agentRefusal } from "../orders/create-order.js";
 import { openOneCard, storedUnlessTaken } from "../orders/open-one-card.js";
-import { checkFillBounds, defaultOrderLifetimeMs } from "../orders/order-rules.js";
+import {
+  type CheckedBounds,
+  checkFillBounds,
+  defaultOrderLifetimeMs,
+} from "../orders/order-rules.js";
 import { orderWalletOf } from "../orders/order-wallet-of.js";
+import { slippageRefusal } from "../orders/slippage-refusal.js";
 import type { WebhookRuleParts } from "./webhook-rule-parts.js";
 import { webhookRuleQuoteDocument } from "./webhook-rule-quote.js";
 import type { WebhookRuleDraft, WebhookRuleRecord } from "./webhook-rule-record.js";
@@ -24,19 +29,27 @@ const defaultRatePerMinute = 1;
 
 // The rule's agent, which takes rules: stored, in use and not frozen; and the mode the rule fills
 // in, the agent's now. A live agent's rule is taken only while live fills are on (decisions 0299
-// and 0342).
+// and 0342), and a rule only at most the agent's slippage limit (decision 0362).
 async function agentModeOf(
   parts: WebhookRuleParts,
-  agent: WebhookRuleRequest["agent"],
+  asked: { readonly request: WebhookRuleRequest; readonly bounds: CheckedBounds },
   signal: AbortSignal,
 ): Promise<Result<{ readonly isPaper: boolean }, ProtocolErrorCode>> {
-  const settings = await parts.agents.get(agent, { signal });
+  const settings = await parts.agents.get(asked.request.agent, { signal });
   const refusal = agentRefusal(settings);
-  if (refusal !== undefined) {
-    return err(refusal);
+  if (refusal !== undefined || settings === undefined) {
+    return err(refusal ?? "agent.not_found");
   }
-  const isPaper = settings?.agent.mode !== "live";
-  return isPaper || parts.liveFills ? ok({ isPaper }) : err("order.live_fills_off");
+  const isPaper = settings.agent.mode !== "live";
+  if (!isPaper && !parts.liveFills) {
+    return err("order.live_fills_off");
+  }
+  const { request, bounds } = asked;
+  const slippage = slippageRefusal(
+    { ...request, ...bounds, isCopy: false },
+    { limits: settings.limits, chain: bounds.chain, chains: parts.chains },
+  );
+  return slippage === undefined ? ok({ isPaper }) : err(slippage);
 }
 
 /** A checked request's wallet, canonical token and spend, and what its unlisted tokens answered. */
@@ -60,7 +73,7 @@ async function placedOf(
     return bounds;
   }
   const { token, spend, chain } = bounds.value;
-  const mode = await agentModeOf(parts, request.agent, signal);
+  const mode = await agentModeOf(parts, { request, bounds: bounds.value }, signal);
   if (!mode.ok) {
     return mode;
   }
@@ -164,7 +177,8 @@ function storedRule(
  * a new secret, then its `webhookRule` intent, which always opens one card. The rule is `active`
  * only on that card's Confirm. It answers the rule's URL, which holds the secret, this once. A
  * refusal stores nothing: an unknown, archived or frozen agent, a live agent while live fills are
- * off (`order.live_fills_off`, decision 0342), a wallet that is not the agent's, a broken bound, a
+ * off (`order.live_fills_off`, decision 0342), a slippage above the agent's limit
+ * (`order.slippage_limit`, decision 0362), a wallet that is not the agent's, a broken bound, a
  * token that answers no symbol or decimals, or an agent's 21st rule (`webhook.too_many`).
  */
 export async function createWebhookRule(

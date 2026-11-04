@@ -43,7 +43,7 @@ describe("a webhook rule's card", () => {
       size: { usdMicros: 25_000_000n },
       maxFills: 3,
       worstPrice: 1_200_000n,
-      maxSlippageBps: bpsSchema.parse(150),
+      maxSlippageBps: bpsSchema.parse(40),
     });
     const { card } = await shownRule("en", request);
 
@@ -52,7 +52,7 @@ describe("a webhook rule's card", () => {
     );
     expect(card[2]).toMatch(/^Up to 3 fills until /);
     expect(card).toContain("Every fill trades at $1.20 or better");
-    expect(card[3]).toBe("Each fill takes at most 1.50% slippage");
+    expect(card[3]).toBe("Each fill takes at most 0.40% slippage");
   });
 
   it("says nothing of slippage for a rule that leaves it to its agent", async () => {

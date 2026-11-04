@@ -19,6 +19,7 @@ import { checkOrderRequest, type CheckedOrder } from "./order-rules.js";
 import { orderPush } from "./order-view-of.js";
 import { orderWalletOf } from "./order-wallet-of.js";
 import type { OrderStore } from "./ports.js";
+import { slippageRefusal } from "./slippage-refusal.js";
 
 /**
  * What the orders use cases read and write through, and where their pushes go. No copy order may
@@ -66,14 +67,20 @@ export function agentRefusal(settings: AgentSettings | undefined): ProtocolError
   return settings.agent.frozenAtMs === undefined ? undefined : "agent.frozen";
 }
 
-// A live order would never fill while live fills are off, so none is taken: a price order
-// (decision 0197), a DCA order (decision 0246) or a copy order (decision 0261).
-function liveRefusal(
-  parts: Pick<OrderParts, "liveFills">,
-  call: { readonly settings: AgentSettings },
+// An order that would never fill is not taken: a live one while live fills are off, a price order
+// (decision 0197), a DCA order (decision 0246) or a copy order (decision 0261); then one that asks
+// more slippage than the agent's limit (decision 0362).
+function neverFillsRefusal(
+  parts: Pick<OrderParts, "liveFills" | "chains">,
+  call: { readonly settings: AgentSettings; readonly checked: CheckedOrder },
 ): ProtocolErrorCode | undefined {
-  const isLive = call.settings.agent.mode === "live";
-  return isLive && !parts.liveFills ? "order.live_fills_off" : undefined;
+  const { settings, checked } = call;
+  if (settings.agent.mode === "live" && !parts.liveFills) {
+    return "order.live_fills_off";
+  }
+  const { request, chain } = checked;
+  const asked = { ...request, isCopy: request.kind === "copy" };
+  return slippageRefusal(asked, { limits: settings.limits, chain, chains: parts.chains });
 }
 
 /** The wallet that holds a new order, and what its unlisted tokens answered on chain. */
@@ -227,9 +234,10 @@ function storedOrder(
  * its `autoOrder` intent, which always opens one card, whatever the mode or the mark. The order
  * becomes `active` only on that card's Confirm. A refusal stores nothing: an unknown, archived or
  * frozen agent, a wallet that is not the agent's, a launchpad whose curve read failed as it picks
- * the wallet (`quote.venue_down`), a broken rule, a copy order of a wallet of the install, or
- * a price order for a token the price watcher cannot price now (decision 0194), or a token the
- * registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
+ * the wallet (`quote.venue_down`), a broken rule, a copy order of a wallet of the install, an
+ * order that asks more slippage than the agent's limit (`order.slippage_limit`, decision
+ * 0362), a price order for a token the price watcher cannot price now (decision 0194), or a token
+ * the registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
  * decision 0199), or a copy order whose leader would be the 51st tracked wallet
  * (`wallet.track_limit`). The card shows such a token by what it answered, marked unverified.
  */
@@ -251,9 +259,9 @@ export async function createOrder(
   if (refusal !== undefined || settings === undefined) {
     return err(refusal ?? "agent.not_found");
   }
-  const offLive = liveRefusal(parts, { settings });
-  if (offLive !== undefined) {
-    return err(offLive);
+  const neverFills = neverFillsRefusal(parts, { settings, checked: checked.value });
+  if (neverFills !== undefined) {
+    return err(neverFills);
   }
   if (await followsTheInstall(parts, checked.value, signal)) {
     return err("protocol.bad_args");
