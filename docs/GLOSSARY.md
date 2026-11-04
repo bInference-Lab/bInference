@@ -560,7 +560,7 @@ check` tries it as `network.proxy`.
   `agent identity`, `plugin add`, `plugin list`, `plugin enable`, `plugin disable`,
   `plugin remove`.
 - **chat commands**: `/spend` (model spend), `/ai` (models), `/clear` (new session), `/freeze`,
-  `/rescue`, `/console`, and `/confirm` as the text fallback for a button.
+  `/rescue`, `/console`.
 - **agent tools**: `ask_owner`, `open_skill`, `search_web`, `read_page`, `search_x`, `notes_search`,
   `notes_write`, `workspace_write` (the owner's strategy and persona), `first_chat_end`,
   `alert_create`, `schedule_list`, `schedule_create`, `schedule_cancel`; for staking, bridges and
