@@ -32,7 +32,7 @@ describe("the receipt of an intent that ended before it sent or filled", () => {
   it("names the wallet whose ceiling a bridge needs written again", () => {
     const named = { chain: "Base", wallet: "wal_1" };
     expect(unsentReceiptText(english, "ceiling_lacks_payee", named)).toContain(
-      "`binference ceiling set --wallet wal_1`",
+      "`binference ceiling set --wallet wal_1 --venues VENUES`",
     );
   });
 

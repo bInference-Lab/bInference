@@ -219,12 +219,13 @@ describe("binference ceiling set", () => {
     },
   );
 
-  it(
-    "runs the commands a stake above the ceiling names, and writes its venues again",
+  it.each(["stake_over_ceiling", "ceiling_lacks_payee"])(
+    "runs the commands the %s refusal names, and writes the venues again",
     slow,
-    async () => {
+    async (reason) => {
       const { machine } = await servedOnBsc();
-      const words = english.message("reason.stake_over_ceiling", { wallet: testWallet });
+      const values = { wallet: testWallet, chain: "Base" };
+      const words = english.message(`reason.${reason}`, values);
       const [set = [], show = []] = [...words.matchAll(/`binference ([^`]+)`/g)].map(
         ([, line = ""]) => line.split(" "),
       );

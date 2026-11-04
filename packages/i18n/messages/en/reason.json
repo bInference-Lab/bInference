@@ -58,7 +58,7 @@
   "rescue_not_plain": "your rescue address holds code on {chain} or on this wallet's chain, so the same address on {chain} may not be yours and nothing was sent; save an address you control on {chain} in the address book with your owner key, then bridge to that entry",
   "recipient_not_wallet": "the address is a token's own contract or an account no wallet spends from, so nothing was sent; remove it from the address book and save a wallet's address",
   "recipient_unread": "binference could not read the address on chain, so nothing was sent; try again",
-  "ceiling_lacks_payee": "the wallet's ceiling does not let a bridge pay this address on {chain} yet, so nothing was sent; write it again with your owner key, `binference ceiling set --wallet {wallet}`, then bridge again",
+  "ceiling_lacks_payee": "the wallet's ceiling lets no bridge pay this address on {chain} yet, so nothing was sent; with your owner key, run `binference ceiling set --wallet {wallet} --venues VENUES` with every venue `binference ceiling --wallet {wallet}` lists, then bridge again",
   "bridge_chain_unpaid": "no bridge binference uses can pay an address on {chain} from this wallet yet, so nothing was sent; bridge to another chain",
   "rescue_unpaid": "the wallet's ceiling pays no bridge to your rescue address on {chain} yet, so nothing was sent; save an address you control on {chain} in the address book with your owner key, then bridge to that entry",
   "reverted": "the transaction reverted; only the network fee was spent",
