@@ -26,7 +26,7 @@ const endArgs: z.ZodType<Readonly<Record<string, never>>> = z.strictObject({});
 // failure, and anything else stays a fault of the call.
 const answers: Readonly<Record<string, ToolOutcome>> = {
   "agent.file_untrusted": {
-    text: "not saved: this conversation holds outside content, so the owner's files cannot take text from it. The file is unchanged. Tell the owner: their answers are saved once they send /clear and give them again, or they can edit the file in the console.",
+    text: "not saved: this conversation holds outside content, so the owner's files cannot take text from it. The file is unchanged. Tell the owner: their answers are saved once they send /clear and give them again, or they can edit the file themselves in the agent's folder under workspace in binference's state folder.",
     isError: true,
   },
   "agent.file_missing": { text: "The first chat had already ended.", isError: false },

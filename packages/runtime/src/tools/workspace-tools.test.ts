@@ -12,7 +12,7 @@ describe("the workspace tools", () => {
       { name: "workspace_write", args: { file: "PERSONA.md", text: "Short answers." } },
     );
     await expect(outcomeOf(run)).resolves.toStrictEqual({
-      text: "not saved: this conversation holds outside content, so the owner's files cannot take text from it. The file is unchanged. Tell the owner: their answers are saved once they send /clear and give them again, or they can edit the file in the console.",
+      text: "not saved: this conversation holds outside content, so the owner's files cannot take text from it. The file is unchanged. Tell the owner: their answers are saved once they send /clear and give them again, or they can edit the file themselves in the agent's folder under workspace in binference's state folder.",
       isError: true,
     });
   });
