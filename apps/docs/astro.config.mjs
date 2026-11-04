@@ -18,7 +18,12 @@ function group(key, items) {
 // The guides by group, each by its slug: Starlight shows each page's title in the reader's
 // language.
 const start = ["guides/install", "guides/docker-vps"];
-const features = ["guides/safety", "guides/sends-and-bridges", "guides/names-and-identity"];
+const features = [
+  "guides/safety",
+  "guides/staking",
+  "guides/sends-and-bridges",
+  "guides/names-and-identity",
+];
 
 // English sits at the content root and Chinese under zh-cn/, so every page has its twin at the
 // same path (check:docs).

@@ -13,6 +13,7 @@ binference 是替你在 BNB Smart Chain 上交易的 AI Agent。它运行在你�
 ## 功能指南
 
 - [安全](/zh-cn/guides/safety/)：哪些操作需要你点按、自动模式、限额、上限、冻结和紧急转出。
+- [质押 BNB](/zh-cn/guides/staking/)：StakeHub 验证者和 Lista 的 slisBNB。
 - [转账和跨链](/zh-cn/guides/sends-and-bridges/)：地址簿、转账、撤销授权、Across 和 Relay。
 - [.bnb 域名和 Agent 身份](/zh-cn/guides/names-and-identity/)：向域名转账，以及 ERC-8004 身份注册表。
 

@@ -16,6 +16,7 @@ every transaction.
 
 - [Safety](/guides/safety/): what needs your tap, auto mode, the limits, the ceiling, freeze and
   rescue.
+- [Stake BNB](/guides/staking/): StakeHub validators and Lista's slisBNB.
 - [Send and bridge](/guides/sends-and-bridges/): the address book, sends, revokes, Across and
   Relay.
 - [.bnb names and agent identity](/guides/names-and-identity/): sends to a name, and the ERC-8004
