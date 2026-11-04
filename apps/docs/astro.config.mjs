@@ -25,6 +25,7 @@ const features = [
   "guides/staking",
   "guides/sends-and-bridges",
   "guides/names-and-identity",
+  "guides/launches",
   "guides/remote-and-webhooks",
 ];
 

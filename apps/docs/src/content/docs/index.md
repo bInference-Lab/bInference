@@ -24,6 +24,7 @@ every transaction.
   Relay.
 - [.bnb names and agent identity](/guides/names-and-identity/): sends to a name, and the ERC-8004
   registry.
+- [Launch a token](/guides/launches/): Flap, Genius.fun and Brew from the launch wallet.
 - [Remote access and alert rules](/guides/remote-and-webhooks/): the Mini App over Tailscale, and
   TradingView alerts.
 
