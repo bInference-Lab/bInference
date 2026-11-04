@@ -370,6 +370,7 @@ overrides:
   fast-uri: 3.1.9
   markdown-it: 15.0.3
   markdownlint-cli2>smol-toml: 1.9.0
+  qs: 6.16.1
   source-map-js: 1.2.2
   undici: 8.12.2
   zod: 4.6.6
@@ -5952,8 +5953,8 @@ packages:
   pure-rand@8.4.2:
     resolution: {integrity: sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng==}
 
-  qs@6.15.1:
-    resolution: {integrity: sha512-6YHEFRL9mfgcAvql/XhwTvf5jKcOiiupt2FiJxHkiX1z4j7WL8J/jRHYLluORvc1XxB5rV20KoeK00gVJamspg==}
+  qs@6.16.1:
+    resolution: {integrity: sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==}
     engines: {node: '>=0.6'}
 
   quansync@1.0.0:
@@ -11132,8 +11133,9 @@ snapshots:
 
   pure-rand@8.4.2: {}
 
-  qs@6.15.1:
+  qs@6.16.1:
     dependencies:
+      es-define-property: 1.0.1
       side-channel: 1.1.1
 
   quansync@1.0.0: {}
@@ -11553,7 +11555,7 @@ snapshots:
     dependencies:
       des.js: 1.1.0
       js-md4: 0.3.2
-      qs: 6.15.1
+      qs: 6.16.1
       tunnel: 0.0.6
       underscore: 1.13.8
 
