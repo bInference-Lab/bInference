@@ -4,7 +4,8 @@ import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { testAgent, testNowMs } from "../intents/test-intents.js";
+import { testAgent, testCoin, testNowMs } from "../intents/test-intents.js";
+import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { testLaunch, testLaunchAccount, testLaunchWallet } from "../money-path/test-launches.js";
 import type { ExecutionRun } from "./executor-run.js";
 import { launchUnsentNotice } from "./launch-unsent-notice.js";
@@ -49,7 +50,26 @@ function ended(state: "cancelled" | "failed_onchain"): IntentRecord {
   };
 }
 
+// The launch's stored quote, with no upload's pin: its picture and words were never sent anywhere.
+const unpinned = tokenLaunchQuoteDocument.encode({
+  venue: testLaunch.venue,
+  settings: [],
+  token: testCoin,
+  tokenDecimals: 18,
+  fee: { asset: testCoin, base: 0n },
+  pinWaitUntilMs: testNowMs,
+  quotedAtMs: testNowMs,
+});
+
 describe("the owner's notice of a launch whose step was never signed", () => {
+  it("says the picture and words stayed private when the launch's quote holds no pin", () => {
+    const quoted = { ...ended("cancelled"), quote: unpinned };
+    expect(launchUnsentNotice(run, quoted, 0).data).toMatchObject({
+      key: "notice.launchNotSigned",
+      values: { private: "yes" },
+    });
+  });
+
   it("says no token was made and names the approval that still stands once it landed", () => {
     const values = { symbol: testLaunch.symbol, venue: testLaunch.venue, private: "no" };
     expect(launchUnsentNotice(run, ended("failed_onchain"), 1).data).toStrictEqual({

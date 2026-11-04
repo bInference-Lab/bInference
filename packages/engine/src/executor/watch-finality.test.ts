@@ -105,6 +105,24 @@ function racedBack(): Fault<IntentStore> {
   };
 }
 
+// An intent store that loses every move to `state` to another writer once armed.
+function racedTo(state: "included"): Fault<IntentStore> {
+  const armed = { isArmed: false };
+  return {
+    arm: () => {
+      armed.isArmed = true;
+    },
+    wrap: (store) => ({
+      ...store,
+      transition: async (change, options) =>
+        armed.isArmed && change.state === state ? err("stale") : store.transition(change, options),
+    }),
+  };
+}
+
+// The rules run at 3 and 6 blocks, and a step every relay refuses is dropped after 9.
+const rules = { stuckAfterBlocks: 3, replaceAfterBlocks: 6, droppedAfterBlocks: 9 };
+
 describe("the finality watch after a reorg", () => {
   it("moves the intent back to executing and sends the same bytes again until a block holds them", async () => {
     const bench = await startExecutorBench();
@@ -159,6 +177,29 @@ describe("the finality watch after a reorg", () => {
     await expect(stateOf(bench, intent)).resolves.toBe("included");
     expect(eventsOf(bench)).toContain("executor.move_stale:reorg_seen");
     expect(eventsOf(bench)).not.toContain("executor.reorg_seen:");
+  });
+
+  it("hands over a step a reorg took out that no rule can move, and signs nothing more", async () => {
+    const bench = await startExecutorBench({ limits: rules });
+    const intent = await tapped(bench);
+    await reorgedUnmined(bench, intent);
+    await driveUntil(bench, intent, { states: [], blocks: 40 });
+    await expect(stateOf(bench, intent)).resolves.toBe("executing");
+    expect(eventsOf(bench)).toContain("executor.step_stopped:stuck");
+    expect(bench.signed).toHaveLength(1);
+  });
+
+  it("stops when another writer moved the intent before a reorged step's move to included", async () => {
+    const raced = racedTo("included");
+    const bench = await startExecutorBench({ intents: raced.wrap });
+    const intent = await tapped(bench);
+    await reorgedUnmined(bench, intent);
+    await expect(driveUntil(bench, intent, { states: ["executing"] })).resolves.toBe("executing");
+    raced.arm();
+    bench.network.holdBelow(0n);
+    await driveUntil(bench, intent, { states: [], blocks: 6 });
+    await expect(stateOf(bench, intent)).resolves.toBe("executing");
+    expect(eventsOf(bench)).toContain("executor.move_stale:steps_included");
   });
 
   it("fails the run when the store refuses the receipt of a step a reorg moved to another block", async () => {

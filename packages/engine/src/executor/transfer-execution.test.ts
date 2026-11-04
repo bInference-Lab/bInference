@@ -26,7 +26,7 @@ import {
   stateOf,
   tapped,
 } from "./test-executor.js";
-import { restartBench } from "./test-restart.js";
+import { restartBench, restartEvents } from "./test-restart.js";
 
 const live = { signal: new AbortController().signal };
 const coin: Amount = { asset: testCoin, base: 10n ** 15n };
@@ -293,6 +293,19 @@ describe("a send by name on its wallet's queue", () => {
     await restarted.executor.takeConfirmed(live);
     await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
     expect([bench.signed.length, restarted.signed.length]).toStrictEqual([0, 1]);
+  });
+
+  it("signs nothing and waits while no resolver serves the name's suffix (decision 0308)", async () => {
+    const names = testNames();
+    names.set("alice.bnb", { address: testSaved.account });
+    const bench = await benchWith(names);
+    const intent = await tapped(bench, testSend({ name: "alice.bnb" }));
+    const restarted = await restartBench(bench);
+    await restarted.executor.takeConfirmed(live);
+    await driveUntil(bench, intent, { states: done, blocks: 3 });
+    await expect(stateOf(bench, intent)).resolves.toBe("confirmed");
+    expect(restarted.signed).toHaveLength(0);
+    expect(restartEvents(restarted)).toContain("executor.name_unread:");
   });
 
   it("signs nothing and waits while the name service does not answer, then goes on", async () => {

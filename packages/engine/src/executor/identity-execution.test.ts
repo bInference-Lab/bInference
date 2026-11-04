@@ -1,7 +1,7 @@
 import { accountRefSchema, type TxDraft } from "@binference/chain";
 import type { IdentityRegistry } from "@binference/chain/identity";
 import type { FakeIdentityRegistry } from "@binference/chain/testing";
-import { BinferenceError, type Id } from "@binference/core";
+import { BinferenceError, err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createIdentityHost } from "../identity/identity-host.js";
@@ -340,6 +340,23 @@ describe("an identity registration on its wallet's queue", () => {
       await bench.test.engine.handlers["identity/get"](testCall({ agent: testAgent })),
     );
     expect(got.registration?.onchainId).toBe("0");
+  });
+
+  it("stores no identity and tells the owner when the registry finds no registration in it", async () => {
+    const registry: FakeIdentityRegistry = {
+      ...testRegistry(),
+      landed: async () => Promise.resolve(err("not_found")),
+    };
+    const bench = await benchWith(registry);
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("reconciled");
+    await expect(
+      bench.test.engine.handlers["identity/get"](testCall({ agent: testAgent })),
+    ).resolves.toStrictEqual({ ok: true, value: {} });
+    expect(notices(bench)).toMatchObject([
+      { key: "notice.identityMismatch", values: { agent: "main" } },
+    ]);
   });
 
   it("stores no identity and tells the owner when the registry reads back another file", async () => {

@@ -34,32 +34,37 @@ const registry = createChainRegistry({
 });
 const spoke = accountRefSchema.parse("fake:1:0x000000e1");
 const depositAbi = { type: "function", name: "depositV3", inputs: [] };
-const bridge: VenueDeclaration = {
-  id: "fake-cross",
-  contracts: [
-    {
-      chain: chainRefSchema.parse(definition.id),
-      names: ["spoke"],
-      calls: [
-        {
-          contract: "spoke",
-          abi: depositAbi,
-          walletInputs: ["depositor"],
-          bridge: {
-            recipient: "recipient",
-            destinationChain: "destinationChainId",
-            tokenIn: "inputToken",
-            tokenOut: "outputToken",
-            minOut: "outputAmount",
-            amountIn: "inputAmount",
-            emptyInputs: ["message"],
-          },
-        },
-      ],
-      spenders: ["spoke"],
-    },
-  ],
-};
+const depositInputs = {
+  recipient: "recipient",
+  destinationChain: "destinationChainId",
+  tokenIn: "inputToken",
+  tokenOut: "outputToken",
+  minOut: "outputAmount",
+  emptyInputs: ["message"],
+} as const;
+
+// The fake bridge's declaration: its spoke by the name given, its deposit with the inputs given.
+function declared(
+  name = "spoke",
+  inputs: typeof depositInputs & { readonly amountIn?: string } = {
+    ...depositInputs,
+    amountIn: "inputAmount",
+  },
+): VenueDeclaration {
+  return {
+    id: "fake-cross",
+    contracts: [
+      {
+        chain: chainRefSchema.parse(definition.id),
+        names: [name],
+        calls: [{ contract: name, abi: depositAbi, walletInputs: ["depositor"], bridge: inputs }],
+        spenders: [name],
+      },
+    ],
+  };
+}
+
+const bridge = declared();
 const recipient20 = `0x${"ab".repeat(20)}`;
 const tokenIn = `0x${"0a".repeat(20)}`;
 const tokenOut = `0x${"0b".repeat(20)}`;
@@ -132,6 +137,24 @@ describe("what the signer lets a confirmed bridge reach", () => {
     };
     const targets = bridgeTargetsOf(coin, { chain: chainOf(), venues: [], bridges: [bridge] });
     expect(targets.callInputs?.[0]?.equal).toStrictEqual({});
+  });
+
+  it("pins no amount of a deposit whose venue declares no amount input", () => {
+    const noAmount = declared("spoke", depositInputs);
+    const targets = bridgeTargetsOf(quote, { chain: chainOf(), venues: [], bridges: [noAmount] });
+    expect(targets.callInputs?.[0]?.equal).toStrictEqual({
+      recipient: recipient20,
+      destinationChainId: "8453",
+      inputToken: tokenIn,
+      outputToken: tokenOut,
+    });
+  });
+
+  it("names no contract a bridge declares by a name the registry does not list", () => {
+    const unlisted = declared("gone");
+    expect(
+      bridgeTargetsOf(quote, { chain: chainOf(), venues: [], bridges: [unlisted] }).contracts,
+    ).toStrictEqual([]);
   });
 
   it("names no contract of a venue other than the bridge's", () => {
