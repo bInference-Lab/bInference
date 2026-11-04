@@ -1,6 +1,7 @@
 {
   "site.language": "简体中文",
-  "site.guides": "指南",
+  "site.start": "开始使用",
+  "site.features": "功能指南",
   "site.reference": "参考",
   "yes": "是",
   "no": "否",

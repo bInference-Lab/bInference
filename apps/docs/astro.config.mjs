@@ -11,13 +11,14 @@ function words(locale) {
 const en = words("en");
 const zh = words("zh");
 
-function group(key, directory) {
-  return {
-    label: en[key],
-    translations: { "zh-CN": zh[key] },
-    items: [{ autogenerate: { directory } }],
-  };
+function group(key, items) {
+  return { label: en[key], translations: { "zh-CN": zh[key] }, items };
 }
+
+// The guides by group, each by its slug: Starlight shows each page's title in the reader's
+// language.
+const start = ["guides/install", "guides/docker-vps"];
+const features = ["guides/safety", "guides/sends-and-bridges", "guides/names-and-identity"];
 
 // English sits at the content root and Chinese under zh-cn/, so every page has its twin at the
 // same path (check:docs).
@@ -31,7 +32,11 @@ export default defineConfig({
         root: { label: en["site.language"], lang: "en" },
         "zh-cn": { label: zh["site.language"], lang: "zh-CN" },
       },
-      sidebar: [group("site.guides", "guides"), group("site.reference", "reference")],
+      sidebar: [
+        group("site.start", start),
+        group("site.features", features),
+        group("site.reference", [{ autogenerate: { directory: "reference" } }]),
+      ],
     }),
   ],
 });

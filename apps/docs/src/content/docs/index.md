@@ -7,10 +7,19 @@ binference is an AI agent that trades on BNB Smart Chain for you. It runs on you
 or server, talks with you in Telegram, in a web console and in the terminal, and asks you before
 every transaction.
 
-## Guides
+## Get started
 
 - [Install binference with one command](/guides/install/)
 - [Run binference on a server with Docker](/guides/docker-vps/)
+
+## Features
+
+- [Safety](/guides/safety/): what needs your tap, auto mode, the limits, the ceiling, freeze and
+  rescue.
+- [Send and bridge](/guides/sends-and-bridges/): the address book, sends, revokes, Across and
+  Relay.
+- [.bnb names and agent identity](/guides/names-and-identity/): sends to a name, and the ERC-8004
+  registry.
 
 ## Reference
 

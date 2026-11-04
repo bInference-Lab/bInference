@@ -18,5 +18,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this folder:
   `pnpm check:references` fails one that is missing.
 - The site's own words (the language names and sidebar groups) live in
   `packages/i18n/messages/{en,zh}/docs.json`, which `astro.config.mjs` reads.
+- `astro.config.mjs` lists each guide by its slug in a sidebar group, and the home page links it in
+  both languages: a new guide joins both.
+- A guide says what the code does today, never what is planned, and links to the generated
+  references instead of copying them.
 - `pnpm build` builds the site into `dist/`, with Astro's telemetry off (`build.env`). It runs in
   `pnpm check` as the package's `build` task.

@@ -1,6 +1,7 @@
 {
   "site.language": "English",
-  "site.guides": "Guides",
+  "site.start": "Get started",
+  "site.features": "Features",
   "site.reference": "Reference",
   "yes": "yes",
   "no": "no",

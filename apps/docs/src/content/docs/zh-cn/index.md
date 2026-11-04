@@ -5,10 +5,16 @@ description: 一个开源 AI Agent，替所有者在 BNB Smart Chain 上交易�
 
 binference 是替你在 BNB Smart Chain 上交易的 AI Agent。它运行在你自己的电脑或服务器上，通过 Telegram、网页控制台和终端与你对话，每笔链上交易前都会先问你。
 
-## 指南
+## 开始使用
 
 - [用一条命令安装 binference](/zh-cn/guides/install/)
 - [用 Docker 在服务器上运行 binference](/zh-cn/guides/docker-vps/)
+
+## 功能指南
+
+- [安全](/zh-cn/guides/safety/)：哪些操作需要你点按、自动模式、限额、上限、冻结和紧急转出。
+- [转账和跨链](/zh-cn/guides/sends-and-bridges/)：地址簿、转账、撤销授权、Across 和 Relay。
+- [.bnb 域名和 Agent 身份](/zh-cn/guides/names-and-identity/)：向域名转账，以及 ERC-8004 身份注册表。
 
 ## 参考
 
