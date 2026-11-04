@@ -1,9 +1,18 @@
 import { accountRefSchema, assetRefParts, assetRefSchema } from "@binference/chain";
-import { err } from "@binference/core";
+import { err, type Id } from "@binference/core";
+import type { AlertCondition } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { fixtureId } from "../contracts/store-fixtures.js";
+import { fixtureId, inOrder } from "../contracts/store-fixtures.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { testAgent, testCoin, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testAgentDraft,
+  testCoin,
+  testLimits,
+  testNowMs,
+  testToken,
+} from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
 import {
   createdOrder,
@@ -17,6 +26,17 @@ import {
 const live = { signal: new AbortController().signal };
 const chain = assetRefParts(testToken).chain;
 const dayMs = 86_400_000;
+
+interface AlertCreate {
+  readonly agent: Id<"agt">;
+  readonly condition: AlertCondition;
+}
+
+// An alert of the agent on the `n`th wallet past the copy tests' own accounts.
+function watching(agent: Id<"agt">, n: number): AlertCreate {
+  const account = accountRefSchema.parse(`fake:1:0x${(n + 256).toString(16).padStart(8, "0")}`);
+  return { agent, condition: { kind: "wallet", account } };
+}
 
 describe("a copy order's creation", () => {
   it("stores the order with no fill limit, tracks its leader and starts its state on the tap", async () => {
@@ -100,6 +120,24 @@ describe("a copy order's creation", () => {
 
     expect(await test.engine.handlers["order/create"](testCall(testCopy()))).toStrictEqual(
       err("protocol.bad_args"),
+    );
+  });
+
+  it("refuses a copy order whose leader would be the install's 51st tracked wallet", async () => {
+    const test = await startOrderEngine();
+    const second = fixtureId("agt", 2);
+    await test.stores.agents.create(testAgentDraft({ id: second, name: "second" }), live);
+    // Each agent watches wallets on alerts up to its own limit of 30; together they track 50.
+    const watched = [
+      ...Array.from({ length: 30 }, (_, n) => watching(testAgent, n)),
+      ...Array.from({ length: 20 }, (_, n) => watching(second, n + 30)),
+    ];
+    await inOrder(watched, async (args: Readonly<AlertCreate>) =>
+      expectOk(await test.engine.handlers["alert/create"](testCall(args))),
+    );
+
+    expect(await test.engine.handlers["order/create"](testCall(testCopy()))).toStrictEqual(
+      err("wallet.track_limit"),
     );
   });
 

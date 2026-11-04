@@ -8,7 +8,7 @@ import { type Bps, bpsSchema, err } from "@binference/core";
 import type { OrderRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testNowMs, testToken } from "../intents/test-intents.js";
-import { checkOrderRequest } from "./order-rules.js";
+import { checkFillBounds, checkOrderRequest } from "./order-rules.js";
 
 const verification = {
   source: "https://example.invalid/fake-chain",
@@ -126,5 +126,39 @@ describe("a DCA order", () => {
     expect(
       inShanghai({ ...dca, trigger: { cron: "0 9 * * *", timezone: "Mars/Base" } }),
     ).toStrictEqual(err("schedule.bad_when"));
+  });
+});
+
+describe("the bounds a webhook rule shares with an order", () => {
+  const bounds = { token: testToken, side: "buy", size: { usdMicros: 25_000_000n } } as const;
+  const context = { nowMs: testNowMs, chains: chainsWithStable() };
+
+  it("takes a buy of a token with the chain's coin or a listed token, and a sale spending none", () => {
+    expect(checkFillBounds(bounds, context)).toMatchObject({
+      ok: true,
+      value: { token: testToken, spend: testCoin },
+    });
+    expect(checkFillBounds({ ...bounds, spend: stable }, context)).toMatchObject({
+      ok: true,
+      value: { spend: stable },
+    });
+    const sale = checkFillBounds({ ...bounds, side: "sell" }, context);
+    expect(sale).toMatchObject({ ok: true, value: { token: testToken } });
+    expect(sale).not.toHaveProperty("value.spend");
+  });
+
+  it("refuses the chain's coin, no size, a worst price of zero, a past end or an unlisted spend", () => {
+    const refused = [
+      { ...bounds, token: testCoin },
+      { ...bounds, size: { usdMicros: 0n } },
+      { ...bounds, worstPrice: 0n },
+      { ...bounds, expiresAt: testNowMs },
+      { ...bounds, spend: otherChainCoin },
+      { ...bounds, side: "sell", spend: testCoin },
+    ] as const;
+
+    expect(refused.map((each) => checkFillBounds(each, context))).toStrictEqual(
+      refused.map(() => err("protocol.bad_args")),
+    );
   });
 });
