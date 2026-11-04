@@ -30,6 +30,19 @@ describe("messages", () => {
     }
   });
 
+  it.each(messageLocales)(
+    "names every auto order kind in the %s refusal of live fills, which refuses each",
+    (locale) => {
+      const formatter = createFormatter({ locale, timeZone: "UTC" });
+      const kinds = ["limit", "takeProfit", "stopLoss", "trailing", "dca", "copy"];
+      const refusal = formatter.message("error.order.live_fills_off").toLowerCase();
+      const unnamed = kinds.filter(
+        (kind) => !refusal.includes(formatter.message("order.kind", { kind }).toLowerCase()),
+      );
+      expect(unnamed).toStrictEqual([]);
+    },
+  );
+
   it("prefixes each key with the area file it came from", () => {
     expect(messages.en["error.engine.locked"]).toBeDefined();
     expect(messages.en["reason.daily_cap"]).toBeDefined();
