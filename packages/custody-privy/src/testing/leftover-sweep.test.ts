@@ -130,6 +130,34 @@ describe("sweepLeftovers", () => {
     });
   });
 
+  it("removes the caps and key quorums its policies name when the record keeps only the key", async () => {
+    const run = await keptRun(14);
+    const made = await aggregationsOf(run);
+    const record = await run.book.read(run.name, live().signal);
+    const keyOnly = JSON.stringify({ ...record, quorums: [], policies: [], aggregations: [] });
+    await run.store.write(run.name, createSecret(keyOnly), live().signal);
+
+    await expect(sweepOf(run)).resolves.toStrictEqual({
+      records: 1,
+      walletsDetached: 1,
+      policiesDeleted: 1,
+      aggregationsDeleted: capCount,
+      quorumsDeleted: 0,
+      quorumsKept: 1,
+      othersKept: 0,
+      recordsCleared: 1,
+    });
+    const again = await Promise.all(
+      made.map(async (aggregation) =>
+        run.api.deleteAggregation(
+          { aggregation, authorize: run.subject.ownerAuthorize, expiresAtMs: 1_800_000_000_000 },
+          live(),
+        ),
+      ),
+    );
+    expect(again).toStrictEqual(made.map(() => err("not_found")));
+  });
+
   it("keeps the record and its key until Privy confirms every aggregation gone", async () => {
     const run = await keptRun(13);
     const deleteStrangersPolicy = await strangersPolicy(run);

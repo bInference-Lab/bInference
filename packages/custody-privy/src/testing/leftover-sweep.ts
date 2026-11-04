@@ -8,6 +8,7 @@ import type { LeftoverBook } from "./leftover-book.js";
 import type { LeftoverRecord } from "./leftover-record.schema.js";
 import { createLeftoverRemovals, type LeftoverRemovals } from "./leftover-removals.js";
 import { ownerSigner } from "./owner-signer.js";
+import { policyReferences } from "./policy-references.js";
 
 /** What a sweep removed, or would remove on a dry run, and what Privy kept. */
 export interface SweepCounts {
@@ -189,9 +190,13 @@ async function sweepRecord(sweeper: Sweeper, record: LeftoverRecord): Promise<Sw
     steps.detach,
   );
   const policies = [...new Set([...record.policies, ...holding.flatMap(policiesOf)])];
+  // Read before the policies go: a run whose program made its ceiling noted none of these.
+  const named = await policyReferences(sweeper.api, policies, sweeper.signal);
   const policyOutcomes = await oneByOne(policies, steps.policy);
-  const aggregationOutcomes = await oneByOne(record.aggregations, steps.aggregation);
-  const quorumOutcomes = await oneByOne(record.quorums, steps.quorum);
+  const aggregations = [...new Set([...record.aggregations, ...named.aggregations])];
+  const aggregationOutcomes = await oneByOne(aggregations, steps.aggregation);
+  const quorums = [...new Set([...record.quorums, ...named.quorums])];
+  const quorumOutcomes = await oneByOne(quorums, steps.quorum);
   return {
     ...zero,
     walletsDetached: countOf(detached, "removed"),

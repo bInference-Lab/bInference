@@ -58,7 +58,9 @@ Rules for this package:
   no aggregations and deletes an owned one only with its owner's signature. It sweeps what earlier
   runs left before it starts and its own leftovers at the end; `pnpm privy:sweep [--dry-run]` runs
   the same sweep by hand. A record and its key go only once every policy and aggregation it names
-  is gone. Two live runs never run at once: a sweep removes what any kept record names, a running
+  is gone. The sweep also reads each policy for the aggregations its rules compare and the key
+  quorum that owns it, so a run whose installed program makes the ceiling itself, as the first-day
+  smoke's does, keeps only its owner key before it starts. Two live runs never run at once: a sweep removes what any kept record names, a running
   suite's too. The removals the sweep sends (a wallet's policies, a policy, a key quorum) live in
   `src/testing/` and never in the runtime code; `platform` is imported in `src/contracts/` only,
   for the keychain.
