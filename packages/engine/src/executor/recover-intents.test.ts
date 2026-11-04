@@ -1,6 +1,6 @@
 import type { ReceiptReader, Signer } from "@binference/chain";
 import type { FakeNetwork } from "@binference/chain/testing";
-import type { Id } from "@binference/core";
+import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import { testCallers } from "../operations/test-engine.js";
@@ -91,6 +91,15 @@ function stoppingBeforeReconciled(store: IntentStore): IntentStore {
       return store.transition(change, options);
     },
   };
+}
+
+// An intent store that loses every move to `state` to another writer.
+function racedTo(state: string): (store: IntentStore) => IntentStore {
+  return (store) => ({
+    ...store,
+    transition: async (change, options) =>
+      change.state === state ? err("stale") : store.transition(change, options),
+  });
 }
 
 // Custody that never answers the step at `index`, until the run stops.
@@ -296,6 +305,26 @@ describe("recovery after a restart", () => {
     expect(await reasonOf(bench, intent)).toBe("step_unsent");
     expect(restarted.signed).toHaveLength(0);
     expect(noticeKeys(restarted.pushes)).toStrictEqual(["notice.stepUnsent"]);
+  });
+
+  it("stops at a recovered step's move to included another writer beat, signing nothing", async () => {
+    const { bench, intent } = await signedOnly();
+    await minedBeforeRestart(bench);
+    const restarted = await restartBench(bench, { intents: racedTo("included") });
+    await driveUntil(bench, intent, { states: [], blocks: 3 });
+    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(restartEvents(restarted)).toContain("executor.move_stale:steps_included");
+    expect(restarted.signed).toHaveLength(0);
+  });
+
+  it("stops when another writer moved an intent of unknown fate first, signing nothing", async () => {
+    const { bench, intent } = await signedOnly();
+    await sendForeign(bench, 0);
+    bench.network.mine();
+    const restarted = await restartBench(bench, { intents: racedTo("unknown_after_send") });
+    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(restartEvents(restarted)).toContain("executor.move_stale:fate_unknown");
+    expect([restarted.signed, restarted.sends]).toStrictEqual([[], []]);
   });
 
   it("stops without a signature when the chain cannot be read", async () => {

@@ -1,10 +1,10 @@
 import { accountRefSchema, type Signer } from "@binference/chain";
-import { signFake } from "@binference/chain/testing";
+import { fakeApprovalData, fakeDraft, signFake } from "@binference/chain/testing";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { planDocument } from "../intents/intent-documents.schema.js";
 import { expectOk, testCoin, testSwap, testToken } from "../intents/test-intents.js";
-import { testCall, testCallers } from "../operations/test-engine.js";
+import { testAccount, testCall, testCallers } from "../operations/test-engine.js";
 import type { IntentStore, TransactionStore } from "../ports.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
@@ -43,6 +43,12 @@ function noticeKeysOf(bench: ExecutorBench): readonly string[] {
     .map((data) => /"key":"([^"]+)"/.exec(data)?.[1] ?? "");
 }
 const tokenSale = testSwap({ from: testToken, to: testCoin, amount: { base: 1_000_000n } });
+// The sale's first step: its exact approval of the fake router.
+const saleApproval = fakeDraft(testAccount, {
+  to: "0x0000000a",
+  value: 0n,
+  data: fakeApprovalData("0x0000000b", 1_000_000n),
+});
 
 // The payload of a token sale's second step, the swap after its approval.
 async function swapPayload(bench: ExecutorBench, intent: Id<"int">): Promise<string> {
@@ -87,6 +93,60 @@ function racedToExecuting(store: IntentStore): IntentStore {
       change.state === "executing" ? err("stale") : store.transition(change, options),
   };
 }
+
+// An intent store that loses every move to `state` to another writer.
+function racedTo(state: string): (store: IntentStore) => IntentStore {
+  return (store) => ({
+    ...store,
+    transition: async (change, options) =>
+      change.state === state ? err("stale") : store.transition(change, options),
+  });
+}
+
+describe("the executor when another writer moved the intent first", () => {
+  it("tells the owner nothing of an unsigned end it did not write", async () => {
+    const bench = await startExecutorBench({ custody: wrongSigner, intents: racedTo("cancelled") });
+    const intent = await tapped(bench);
+    await flush();
+    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(eventsOf(bench)).toContain("executor.move_stale:step_unsent");
+    expect(noticeKeysOf(bench)).toStrictEqual([]);
+  });
+
+  it("tells the owner nothing of a drop it did not write, and watches no dropped step", async () => {
+    const limits = { stuckAfterBlocks: 3, replaceAfterBlocks: 6, droppedAfterBlocks: 9 };
+    const bench = await startExecutorBench({ limits, intents: racedTo("failed_onchain") });
+    bench.network.script("relay-a", { kind: "refuse", reason: "insufficient_funds" });
+    bench.network.script("relay-b", { kind: "refuse", reason: "insufficient_funds" });
+    const intent = await tapped(bench);
+    await driveUntil(bench, intent, { states: [], blocks: 14 });
+    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(eventsOf(bench)).toContain("executor.move_stale:step_dropped");
+    expect(noticeKeysOf(bench)).toStrictEqual([]);
+  });
+
+  it("stops at a revert's end another writer beat, with nothing more signed", async () => {
+    const approval = { reverting: [saleApproval.payload] };
+    const bench = await startExecutorBench({
+      network: approval,
+      intents: racedTo("failed_onchain"),
+    });
+    const intent = await tapped(bench, tokenSale);
+    await driveUntil(bench, intent, { states: [], blocks: 5 });
+    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(eventsOf(bench)).toContain("executor.move_stale:step_reverted");
+    expect(bench.signed).toHaveLength(1);
+  });
+
+  it("stops at the move to included another writer beat, and watches no finality", async () => {
+    const bench = await startExecutorBench({ intents: racedTo("included") });
+    const intent = await tapped(bench);
+    await driveUntil(bench, intent, { states: [], blocks: 5 });
+    expect(await stateOf(bench, intent)).toBe("executing");
+    expect(eventsOf(bench)).toContain("executor.move_stale:steps_included");
+    expect(eventsOf(bench)).not.toContain("executor.reconciled:");
+  });
+});
 
 describe("the executor on what it cannot run", () => {
   it.each<[string, BenchOptions, string]>([
