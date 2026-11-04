@@ -27,6 +27,8 @@ const features = [
   "guides/names-and-identity",
   "guides/launches",
   "guides/remote-and-webhooks",
+  "guides/plugins-and-skills",
+  "guides/proxy",
 ];
 
 // English sits at the content root and Chinese under zh-cn/, so every page has its twin at the

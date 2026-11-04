@@ -20,6 +20,8 @@ binference 是替你在 BNB Smart Chain 上交易的 AI Agent。它运行在你�
 - [.bnb 域名和 Agent 身份](/zh-cn/guides/names-and-identity/)：向域名转账，以及 ERC-8004 身份注册表。
 - [发射代币](/zh-cn/guides/launches/)：从发射钱包在 Flap、Genius.fun 和 Brew 上发射。
 - [远程访问和提醒规则](/zh-cn/guides/remote-and-webhooks/)：通过 Tailscale 使用 Mini App，以及 TradingView 提醒。
+- [插件、技能和 MCP](/zh-cn/guides/plugins-and-skills/)：沙箱中的社区插件、自带技能和 MCP 客户端。
+- [使用代理](/zh-cn/guides/proxy/)：每个外发请求都经过你的代理。
 
 ## 参考
 

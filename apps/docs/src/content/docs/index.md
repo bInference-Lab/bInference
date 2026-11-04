@@ -27,6 +27,9 @@ every transaction.
 - [Launch a token](/guides/launches/): Flap, Genius.fun and Brew from the launch wallet.
 - [Remote access and alert rules](/guides/remote-and-webhooks/): the Mini App over Tailscale, and
   TradingView alerts.
+- [Plugins, skills and MCP](/guides/plugins-and-skills/): community plugins in a sandbox, the
+  bundled skills and MCP clients.
+- [Use an outbound proxy](/guides/proxy/): every outbound request through your proxy.
 
 ## Reference
 
