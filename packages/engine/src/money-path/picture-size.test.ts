@@ -70,6 +70,12 @@ describe("a picture's size", () => {
       type: "image/jpeg",
       size: { width: 300, height: 200 },
     },
+    {
+      name: "a JPEG past a fill byte and a standalone marker",
+      bytes: new Uint8Array([0xff, 0xd8, 0xff, 0xff, 0xd0, 0xff, 0xc0, 0, 17, 8, 0, 200, 1, 44, 3]),
+      type: "image/jpeg",
+      size: { width: 300, height: 200 },
+    },
     { name: "a lossy WebP", bytes: lossy, type: "image/webp", size: small },
     { name: "a lossless WebP", bytes: lossless, type: "image/webp", size: small },
     { name: "an extended WebP", bytes: extended, type: "image/webp", size: small },
@@ -84,6 +90,21 @@ describe("a picture's size", () => {
     {
       name: "a WebP of no chunk it knows",
       bytes: new Uint8Array([...riff, ...ascii("ALPH"), 0, 0]),
+      type: "image/webp",
+    },
+    {
+      name: "an extended WebP cut before its size",
+      bytes: extended.slice(0, 28),
+      type: "image/webp",
+    },
+    {
+      name: "a lossless WebP cut before its size",
+      bytes: lossless.slice(0, 24),
+      type: "image/webp",
+    },
+    {
+      name: "a lossless WebP with no signature",
+      bytes: Uint8Array.from(lossless).fill(0, 20, 21),
       type: "image/webp",
     },
     {
