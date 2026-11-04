@@ -1,7 +1,10 @@
+import { accountRefSchema } from "@binference/chain";
+import { activityItemSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
-import { testAgent, testToken } from "../intents/test-intents.js";
-import { activeAlerts } from "./alert-events.js";
+import { testAgent, testCoin, testToken } from "../intents/test-intents.js";
+import { testChains } from "../operations/test-engine.js";
+import { activeAlerts, canonicalTrade } from "./alert-events.js";
 import type { AlertQuery, AlertRecord } from "./alert-record.js";
 
 const live = { signal: new AbortController().signal };
@@ -49,5 +52,37 @@ describe("activeAlerts", () => {
       kind: "price",
       asset: testToken,
     });
+  });
+});
+
+// A buy by `account` of `asset` for `counterAsset`, as a watcher hands it.
+function buyOf(account: string, asset: string, counterAsset: string) {
+  const activity = activityItemSchema.parse({
+    at: 1,
+    block: 7,
+    tx: `0x${"ab".repeat(32)}`,
+    side: "buy",
+    asset,
+    amount: "5",
+    counterAsset,
+    counterAmount: "1",
+  });
+  return { account: accountRefSchema.parse(account), activity, assets: {} };
+}
+
+describe("canonicalTrade", () => {
+  it("keeps a trade's account and assets as given on a chain no registry holds", () => {
+    const elsewhere = buyOf("fake:9:0x0000AAAA", "fake:9/token:0x0000BBBB", "fake:9/slip44:1");
+    expect(canonicalTrade(testChains(), elsewhere)).toStrictEqual(elsewhere);
+  });
+
+  it("puts an account and assets a watcher handed in another case in canonical form", () => {
+    const shouted = buyOf("fake:1:0x0000AAAA", "fake:1/token:0x0000000A", testCoin);
+    const canonical = canonicalTrade(testChains(), shouted);
+    expect([
+      canonical.account,
+      canonical.activity.asset,
+      canonical.activity.counterAsset,
+    ]).toStrictEqual(["fake:1:0x0000aaaa", testToken, testCoin]);
   });
 });

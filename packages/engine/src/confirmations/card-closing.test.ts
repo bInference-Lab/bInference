@@ -1,4 +1,4 @@
-import { assetRefSchema } from "@binference/chain";
+import { assetRefSchema, type TxHash } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { testStopLoss } from "../orders/test-orders.js";
 import { receiptLine } from "./card-closing.js";
@@ -78,6 +78,16 @@ describe("receipt line", () => {
       { type: "asset", asset: amountOut.asset },
       { type: "line", line: { key: "reason.reverted", values: {} } },
     ]);
+  });
+
+  it("names the transaction by its hash on a chain with no explorer", () => {
+    const confirmed = { outcome: "confirmed", answeredBy, atMs: 5_000 } as const;
+    const tx = { hash: "0xab" as TxHash };
+    const line = receiptLine(confirmed, { kind: "failed", reason: "reverted", tx });
+    expect(line.values["explorerLink"]).toStrictEqual({
+      type: "line",
+      line: { key: "receipt.tx", values: { txHash: { type: "text", text: "0xab" } } },
+    });
   });
 
   it("becomes what a confirmed unfreeze or auto order took effect as, its mode named", () => {

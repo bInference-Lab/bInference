@@ -255,6 +255,30 @@ describe("the P&L read", () => {
     ]);
   });
 
+  it("draws a position with no price after those with one", async () => {
+    const coinOnly = new Map<AssetRef, UsdPrice>([[testCoin, perCoin(600n)]]);
+    const view = expectOk(await cards(await traded(coinOnly), testNowMs, testNowMs));
+    expect(view.cards?.map(({ asset, paper }) => [asset, paper])).toStrictEqual([
+      [testCoin, false],
+      [testToken, false],
+      [testCoin, true],
+      [testToken, true],
+    ]);
+  });
+
+  it("draws positions of the same value in the order of their assets", async () => {
+    // 150 live tokens at $2.80 are worth $420, as the 0.7 live coin is.
+    const even = new Map<AssetRef, UsdPrice>([
+      [testCoin, perCoin(600n)],
+      [testToken, perToken(2_800_000n)],
+    ]);
+    const view = expectOk(await cards(await traded(even), testNowMs, testNowMs));
+    expect(view.cards?.filter(({ paper }) => !paper).map(({ asset }) => asset)).toStrictEqual([
+      testCoin,
+      testToken,
+    ]);
+  });
+
   it("draws a closed position's card only when it closed in the range", async () => {
     const subject = await traded(pricesNow);
     await closeToken(subject);
