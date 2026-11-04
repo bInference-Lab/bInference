@@ -202,14 +202,14 @@ describe("webhook rule operations", () => {
   });
 });
 
-// A rule store whose next move loses its race once, as another write of the rule beat it.
-function staleOnce(store: WebhookRuleStore): WebhookRuleStore {
-  let isFirst = true;
+// A rule store whose first `times` moves lose their race, as another write of the rule beat each.
+function staleMoves(store: WebhookRuleStore, times: number): WebhookRuleStore {
+  let left = times;
   return {
     ...store,
     move: async (move, call) => {
-      if (isFirst) {
-        isFirst = false;
+      if (left > 0) {
+        left -= 1;
         return err("stale" as const);
       }
       return store.move(move, call);
@@ -287,7 +287,7 @@ describe("webhook rule operations, further", () => {
   });
 
   it("deletes a rule another write moved first, under the version it moved to", async () => {
-    const test = await startOrderEngine({ webhookRules: staleOnce });
+    const test = await startOrderEngine({ webhookRules: (store) => staleMoves(store, 1) });
     const created = await createdRule(test);
 
     expectOk(await test.engine.handlers["webhookRule/delete"](testCall({ rule: created.rule })));
@@ -341,6 +341,29 @@ describe("webhook rule operations, further", () => {
     expect(view.lastAlertAt).toBe(5);
     expect(view.summary).toBeUndefined();
     expect(webhookRuleViewOf(rule, testChains()).summary).toBeDefined();
+  });
+
+  it("gives up a change whose every try another write beat, changing nothing", async () => {
+    const test = await startOrderEngine({ webhookRules: (store) => staleMoves(store, 99) });
+    const created = await createdRule(test);
+
+    expect(
+      await test.engine.handlers["webhookRule/delete"](testCall({ rule: created.rule })),
+    ).toStrictEqual(err("internal.error"));
+    expect((await ruleOf(test, created.rule))?.state).toBe("awaiting_confirmation");
+  });
+
+  it("fills a rule's defaults: one alert a minute, 30 days and no fill limit", async () => {
+    const test = await startOrderEngine();
+    const { ratePerMinute: _rate, ...request } = testRuleRequest();
+    const created = await createdRule(test, request);
+
+    expect(await ruleOf(test, created.rule)).toMatchObject({
+      ratePerMinute: 1,
+      expiresAtMs: test.clock.now() + 30 * 86_400_000,
+      request: { ratePerMinute: 1, expiresAt: test.clock.now() + 30 * 86_400_000 },
+    });
+    expect((await ruleOf(test, created.rule))?.maxFills).toBeUndefined();
   });
 
   it("refuses a change of a rule it never stored", async () => {
