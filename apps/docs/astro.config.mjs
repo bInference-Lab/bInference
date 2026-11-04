@@ -20,9 +20,11 @@ function group(key, items) {
 const start = ["guides/install", "guides/docker-vps"];
 const features = [
   "guides/safety",
+  "guides/auto-orders",
   "guides/staking",
   "guides/sends-and-bridges",
   "guides/names-and-identity",
+  "guides/remote-and-webhooks",
 ];
 
 // English sits at the content root and Chinese under zh-cn/, so every page has its twin at the
