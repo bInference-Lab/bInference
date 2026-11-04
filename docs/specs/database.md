@@ -330,9 +330,10 @@ restarts; a topic Telegram says is gone loses its row, and the next notice makes
 
 A token without `expires_at` works until it is revoked ([decision 0159](../DECISIONS.md#d0159)).
 
-`plugins` mirrors the plugin lock (`plugins/lock.json` in the state folder): the engine refuses to
-start a plugin whose files do not hash to `hash`, or whose declarations do not hash to
-`accepted_digest` ([ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14)).
+`plugins` stays empty: the plugin lock (`plugins/lock.json` in the state folder) is the one record
+of installed plugins, and the engine refuses to start a plugin whose files do not hash to its pin,
+or whose declarations do not hash to the digest the owner accepted
+([decision 0348](../DECISIONS.md#d0348), [ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14)).
 
 Secrets are never stored here: tokens, webhook secrets and pairing codes appear only as SHA-256
 hashes; provider tokens live in the keychain and are named by `secret_ref`.

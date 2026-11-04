@@ -1,5 +1,5 @@
 // oxlint-disable-next-line eslint/no-restricted-imports -- the test writes a file outside the probe's folders
-import { mkdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import process from "node:process";
 import {
@@ -16,6 +16,7 @@ import { createPluginHost } from "./create-plugin-host.js";
 import { createDirectStarter } from "./direct-starter.js";
 import type { HostNotice } from "./host-notice.js";
 import { openPlugin } from "./open-plugin.js";
+import type { TurnedOff } from "./supervise-plugin.js";
 
 let bundles: PluginBundles;
 const signal = AbortSignal.timeout(120_000);
@@ -46,6 +47,10 @@ function parts(clock = createManualClock(), memoryLimit?: number) {
     logger: createMemoryLogger({ subsystem: "plugins" }),
   };
 }
+
+const echo = (plugin: string) => ({ plugin, tool: "echo", input: { text: "hi" } });
+const byText = (a: unknown, b: unknown): number =>
+  JSON.stringify(a).localeCompare(JSON.stringify(b));
 
 const allTools = [
   "echo",
@@ -276,6 +281,71 @@ describe("createPluginHost", { timeout: 120_000 }, () => {
       ok: false,
       error: "unknown_plugin",
     });
+  });
+
+  it("turns a plugin off at once when its files or folder changed, and runs and stops others", async () => {
+    const changed = await writeFixturePlugin(bundles.folder, { id: "changed", tools: ["echo"] });
+    const linked = await writeFixturePlugin(bundles.folder, { id: "linked", tools: ["echo"] });
+    const later = await writeFixturePlugin(bundles.folder, { id: "later", tools: ["echo"] });
+    await appendFile(join(changed.folders.packageFolder, "index.mjs"), "// one more line\n");
+    await symlink(
+      join(bundles.folder, "outside", "secret.txt"),
+      join(linked.folders.packageFolder, "secret.txt"),
+    );
+    const told: HostNotice[] = [];
+    const off: [string, TurnedOff][] = [];
+    const stop = new AbortController();
+    const probeData = join(bundles.folder, "changed-probe");
+    await mkdir(probeData, { recursive: true });
+    const host = createPluginHost({
+      ...parts(),
+      engineArgs: ["--disable-sigusr1"],
+      folders: { packageFolder: bundles.probeFolder, dataFolder: probeData },
+      outside: {
+        file: join(bundles.folder, "outside", "secret.txt"),
+        folder: join(bundles.folder, "outside"),
+      },
+      startDecoy: async (decoySignal) =>
+        startDebugDecoy({ parentEnv: process.env, signal: decoySignal }),
+      tell: (notice) => told.push(notice),
+      onTurnedOff: (plugin, reason) => off.push([plugin, reason]),
+    });
+
+    await expect(host.run({ ...later, config: null })).resolves.toStrictEqual({
+      ok: false,
+      error: "sandbox_unchecked",
+    });
+    await host.start(
+      [
+        { ...changed, config: null },
+        { ...linked, config: null },
+      ],
+      stop.signal,
+    );
+    await expect(host.run({ ...later, config: null })).resolves.toStrictEqual({
+      ok: true,
+      value: undefined,
+    });
+    const answered = await host.call(echo("later"), signal);
+    await host.stop("later");
+    const afterStop = await host.call(echo("later"), signal);
+    const probe = { ...later, manifest: { ...later.manifest, id: "sandbox-probe" }, config: null };
+    const probeRun = await host.run(probe);
+    stop.abort();
+
+    expect(off.toSorted(byText)).toStrictEqual([
+      ["changed", "files_changed"],
+      ["linked", "links"],
+    ]);
+    expect(
+      told.toSorted((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+    ).toStrictEqual([
+      { kind: "refused", plugin: "changed", refusal: "files_changed" },
+      { kind: "refused", plugin: "linked", refusal: "links" },
+    ]);
+    expect(answered).toStrictEqual({ ok: true, value: { text: "hi" } });
+    expect(afterStop).toStrictEqual({ ok: false, error: "unknown_plugin" });
+    expect(probeRun).toStrictEqual({ ok: false, error: "probe_id" });
   });
 
   it("starts no plugin and tells the owner when the sandbox check fails", async () => {

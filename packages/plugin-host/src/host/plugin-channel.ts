@@ -13,7 +13,8 @@ import type { PluginFetches } from "./plugin-fetches.js";
  * Why a plugin's process ended: it exited, it broke the channel (a message it may not send, or
  * one that does not parse), it stopped reading what the host sent it (`stalled`), it was not
  * `ready` in time, its tools differ from its manifest's, its manifest is not one a community
- * plugin may declare, or the host stopped it.
+ * plugin may declare, its installed folder holds a link (`links`) or files other than the ones its
+ * pin names (`files_changed`), so it never started, or the host stopped it.
  */
 export type PluginEnd =
   | "exited"
@@ -22,6 +23,8 @@ export type PluginEnd =
   | "not_ready"
   | "tools_mismatch"
   | "bad_manifest"
+  | "links"
+  | "files_changed"
   | "stopped";
 
 /** A call's answer from the plugin, or `not_running` when its process ended first. */

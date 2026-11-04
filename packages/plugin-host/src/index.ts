@@ -1,6 +1,10 @@
 export { createDirectStarter } from "./host/direct-starter.js";
 export { createPluginHost } from "./host/create-plugin-host.js";
-export type { PluginHost, PluginHostParts } from "./host/create-plugin-host.js";
+export type { PluginHost, PluginHostParts, RunRefusal } from "./host/create-plugin-host.js";
+export type { InstalledPluginSpec } from "./host/running-plugins.js";
+export type { TurnedOff } from "./host/supervise-plugin.js";
+export { checkPluginFiles, digestOfFiles } from "./pins/plugin-files-digest.js";
+export type { PinRefusal, PluginFile } from "./pins/plugin-files-digest.js";
 export type { HostNotice, SandboxFailure, TellOwner } from "./host/host-notice.js";
 export type { CallFailure, PluginSpec } from "./host/open-plugin.js";
 export { pluginNodeArguments } from "./process/plugin-node-arguments.js";

@@ -6,12 +6,14 @@ import { noticePush } from "./notice-push.js";
 /**
  * What the plugin host tells the owner (decision 0300): a community plugin asked for a host it
  * does not declare, crashed 5 times in 10 minutes and is off, left what the host sent it unread
- * and was ended, or cannot run on this machine because the sandbox does not hold, with the first
- * act that went through as `reason`.
+ * and was ended, did not start because its installed files or manifest are not the ones the owner
+ * added (`refused`), or cannot run on this machine because the sandbox does not hold, with the
+ * first act that went through as `reason`.
  */
 export type PluginNotice =
   | { readonly kind: "hostRefused"; readonly plugin: string; readonly host: string }
   | { readonly kind: "stopped"; readonly plugin: string }
+  | { readonly kind: "refused"; readonly plugin: string; readonly refusal: string }
   | { readonly kind: "stalled"; readonly plugin: string }
   | { readonly kind: "sandboxOff"; readonly reason: string };
 
@@ -40,7 +42,7 @@ function counter(): (plugin: string, atMs: number) => ReturnType<typeof countNot
 
 /**
  * Tells the owner of the plugin host's events (spec 4, section 4.4): `notice.pluginStopped`,
- * `notice.pluginStalled` and `notice.pluginSandboxOff` as they come, and
+ * `notice.pluginStalled`, `notice.pluginChanged` and `notice.pluginSandboxOff` as they come, and
  * `notice.pluginHostRefused` at most five times an hour per plugin, with the host cut to 64
  * characters; the refusals an hour held back are told in one `notice.pluginHostsHeld` with the
  * next refusal after it. They name no agent: plugins serve the whole install.
@@ -71,6 +73,11 @@ export function createPluginNotices(parts: {
         parts.publish(noticePush({ key, values: { plugin: notice.plugin } }));
         return;
       }
+      case "refused":
+        parts.publish(
+          noticePush({ key: "notice.pluginChanged", values: { plugin: notice.plugin } }),
+        );
+        return;
       case "sandboxOff":
         parts.publish(
           noticePush({ key: "notice.pluginSandboxOff", values: { reason: notice.reason } }),

@@ -2,12 +2,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CommunityManifest, CommunityToolDeclaration } from "@binference/plugin-sdk/community";
+import { digestOfFiles } from "../pins/plugin-files-digest.js";
 import type { PluginFolders } from "../process/plugin-node-arguments.js";
 
-/** A test plugin written to disk: its manifest and folders. */
+/** A test plugin written to disk: its manifest, folders and the pin of its files. */
 export interface FixturePlugin {
   readonly manifest: CommunityManifest;
   readonly folders: PluginFolders;
+  readonly filesHash: string;
 }
 
 // Each tool's body, as the plugin's entry module writes it.
@@ -95,10 +97,9 @@ export async function writeFixturePlugin(
   await mkdir(packageFolder, { recursive: true });
   await mkdir(dataFolder, { recursive: true });
   const lines = plugin.tools.map((name) => `  ${name}: ${bodies[name] ?? "async () => null"},`);
-  await writeFile(
-    join(packageFolder, "index.mjs"),
-    `${plugin.neverReady === true ? "await new Promise(() => {});\n" : ""}export const tools = {\n${lines.join("\n")}\n};\n`,
-  );
+  const index = `${plugin.neverReady === true ? "await new Promise(() => {});\n" : ""}export const tools = {\n${lines.join("\n")}\n};\n`;
+  await writeFile(join(packageFolder, "index.mjs"), index);
+  const filesHash = digestOfFiles([{ path: "index.mjs", bytes: new TextEncoder().encode(index) }]);
   const manifest: CommunityManifest = {
     api: 1,
     id: plugin.id,
@@ -107,5 +108,5 @@ export async function writeFixturePlugin(
     hosts: ["api.example.com"],
     tools: (plugin.declares ?? plugin.tools).map(declared),
   };
-  return { manifest, folders: { packageFolder, dataFolder } };
+  return { manifest, folders: { packageFolder, dataFolder }, filesHash };
 }

@@ -1,67 +1,50 @@
-import { err, type JsonValue, ok, type Result } from "@binference/core";
+import { err, ok, type Result } from "@binference/core";
 import { checkSandbox, type SandboxCheckParts, type SandboxPass } from "../probe/check-sandbox.js";
-import { createHostRefusals, type SandboxFailure, type TellOwner } from "./host-notice.js";
-import { type CallFailure, openPlugin, type PluginSpec } from "./open-plugin.js";
-import { type SupervisedPlugin, supervisePlugin } from "./supervise-plugin.js";
+import { probeId } from "../probe/probe-id.js";
+import type { SandboxFailure } from "./host-notice.js";
+import {
+  createRunningPlugins,
+  type InstalledPluginSpec,
+  type RunningPlugins,
+  type RunningPluginsParts,
+} from "./running-plugins.js";
 
 /** What the plugin host runs with. */
-export interface PluginHostParts extends SandboxCheckParts {
-  readonly tell: TellOwner;
-  /** Hears a plugin turned off for its crashes, to record `disabled_reason: crashes`. */
-  onTurnedOff(plugin: string): void;
-}
+export interface PluginHostParts extends SandboxCheckParts, Omit<RunningPluginsParts, "starter"> {}
 
-/** The engine part that runs community plugins (ARCHITECTURE.md section 14). */
-export interface PluginHost {
+/** Why the host runs no plugin it was asked to: no sandbox check passed, or the probe's own id. */
+export type RunRefusal = "sandbox_unchecked" | "probe_id";
+
+/**
+ * The engine part that runs community plugins (ARCHITECTURE.md section 14): it stops and calls
+ * them as the running plugins do.
+ */
+export interface PluginHost extends Pick<RunningPlugins, "stop" | "call"> {
   /**
    * Runs the sandbox check, then starts each plugin under its supervisor, and settles once each
-   * first start is ready or failed. A check that fails
-   * starts none, tells the owner `notice.pluginSandboxOff` and answers why. The signal stops
-   * every plugin.
+   * first start is ready or failed. A check that fails starts none, tells the owner
+   * `notice.pluginSandboxOff` and answers why. The signal stops every plugin.
    */
   start(
-    specs: readonly PluginSpec[],
+    specs: readonly InstalledPluginSpec[],
     signal: AbortSignal,
   ): Promise<Result<SandboxPass, SandboxFailure>>;
-  /** Calls a running plugin's tool; `unknown_plugin` for a plugin the host does not run. */
-  call(
-    call: { readonly plugin: string; readonly tool: string; readonly input: JsonValue },
-    signal: AbortSignal,
-  ): Promise<Result<JsonValue, CallFailure | "unknown_plugin">>;
+  /**
+   * Starts one more plugin, as one the owner adds or turns on, once `start` passed its check, and
+   * settles once its first start is ready or failed; a plugin of that id that runs stops first.
+   */
+  run(spec: InstalledPluginSpec): Promise<Result<void, RunRefusal>>;
 }
 
 /**
- * Makes the plugin host (decision 0300): each plugin in a process of its own through the starter,
- * kept running by its supervisor, its fetches to undeclared hosts told to the owner once per
- * plugin and host a day (`notice.pluginHostRefused`), and a plugin turned off after 5 crashes in
- * 10 minutes told as `notice.pluginStopped`.
+ * Makes the plugin host (decision 0300): a sandbox check first, then each plugin in a process of
+ * its own through the starter, kept running by its supervisor, its installed files checked
+ * against their pin and walked for links before each start (decision 0348). It never runs a
+ * plugin with the probe plugin's id, and runs none before a check passed.
  */
 export function createPluginHost(parts: PluginHostParts): PluginHost {
-  const running = new Map<string, SupervisedPlugin>();
-  const refused = createHostRefusals(parts);
-  const superviseOne = (spec: PluginSpec, signal: AbortSignal): SupervisedPlugin => {
-    const plugin = spec.manifest.id;
-    const openParts = { ...parts, onRefused: (host: string) => refused(plugin, host) };
-    return supervisePlugin(
-      {
-        plugin,
-        open: async (runSignal) => openPlugin(spec, openParts, runSignal),
-        clock: parts.clock,
-        logger: parts.logger,
-        onEnded: (end) => {
-          if (end === "stalled") {
-            parts.tell({ kind: "stalled", plugin });
-          }
-        },
-        onTurnedOff: () => {
-          running.delete(plugin);
-          parts.tell({ kind: "stopped", plugin });
-          parts.onTurnedOff(plugin);
-        },
-      },
-      signal,
-    );
-  };
+  const plugins = createRunningPlugins(parts);
+  const held: { signal: AbortSignal | undefined } = { signal: undefined };
   return {
     start: async (specs, signal) => {
       const checked = await checkSandbox(parts, signal);
@@ -69,19 +52,22 @@ export function createPluginHost(parts: PluginHostParts): PluginHost {
         parts.tell({ kind: "sandboxOff", reason: checked.error });
         return checked;
       }
-      const firstStarts = specs.map((spec) => {
-        const plugin = superviseOne(spec, signal);
-        running.set(spec.manifest.id, plugin);
-        return plugin.firstStart;
-      });
-      await Promise.all(firstStarts);
+      held.signal = signal;
+      const runnable = specs.filter((spec) => spec.manifest.id !== probeId);
+      await Promise.all(runnable.map(async (spec) => plugins.run(spec, signal)));
       return ok(checked.value);
     },
-    call: async ({ plugin, tool, input }, signal) => {
-      const supervised = running.get(plugin);
-      return supervised === undefined
-        ? err("unknown_plugin")
-        : supervised.call(tool, input, signal);
+    run: async (spec) => {
+      if (held.signal === undefined) {
+        return err("sandbox_unchecked");
+      }
+      if (spec.manifest.id === probeId) {
+        return err("probe_id");
+      }
+      await plugins.run(spec, held.signal);
+      return ok(undefined);
     },
+    stop: async (plugin) => plugins.stop(plugin),
+    call: async (call, signal) => plugins.call(call, signal),
   };
 }

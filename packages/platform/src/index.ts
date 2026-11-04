@@ -27,6 +27,7 @@ export type { NodeProgram, NodeProgramOptions } from "./node-program.js";
 export { ensurePrivateFolder, writePrivateFile, writePrivateStream } from "./private-files.js";
 export type { PrivateFileOptions } from "./private-files.js";
 export { fileSize } from "./file-size.js";
+export { findFolderStrays } from "./folder-strays.js";
 export { listFolderFiles } from "./list-folder-files.js";
 export { movePath, removePath } from "./move-path.js";
 export { readFilePieces } from "./read-file-pieces.js";

@@ -210,6 +210,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     values: { plugin: "fear-index", count: "3" },
   },
   "notice.pluginStalled": { key: "notice.pluginStalled", values: { plugin: "fear-index" } },
+  "notice.pluginChanged": { key: "notice.pluginChanged", values: { plugin: "fear-index" } },
   "notice.pluginSandboxOff": { key: "notice.pluginSandboxOff", values: { reason: "childProcess" } },
   "notice.configInvalid": {
     key: "notice.configInvalid",

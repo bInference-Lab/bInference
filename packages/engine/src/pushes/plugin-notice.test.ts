@@ -25,6 +25,10 @@ describe("createPluginNotices", () => {
       { key: "notice.pluginStalled", values: { plugin: "fear-index" } },
     ],
     [
+      { kind: "refused", plugin: "fear-index", refusal: "files_changed" },
+      { key: "notice.pluginChanged", values: { plugin: "fear-index" } },
+    ],
+    [
       { kind: "sandboxOff", reason: "childProcess" },
       { key: "notice.pluginSandboxOff", values: { reason: "childProcess" } },
     ],
