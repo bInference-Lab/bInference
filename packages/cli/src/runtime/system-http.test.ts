@@ -178,6 +178,16 @@ describe("the system Http adapter", () => {
     expect([bare.body, named.body]).toStrictEqual(["binference/1.2.3", "binference/1.2.3"]);
   });
 
+  it("keeps what a caller adds to binference's user agent after a space", async () => {
+    const answer = await adapter().request({
+      method: "GET",
+      url: `${held.origin}/agent`,
+      headers: { "user-agent": "binference/1.2.3 node/v26.10.0 linux x64" },
+      signal: live(),
+    });
+    expect(answer.body).toBe("binference/1.2.3 node/v26.10.0 linux x64");
+  });
+
   it("names binference to the Bot API too, as grammY's fetch", async () => {
     const api = new Api(fakeBotToken, {
       apiRoot: held.origin,

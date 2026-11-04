@@ -29,7 +29,8 @@ export interface NodeStreamingHttpOptions {
  * `@binference/platform/outbound` (undici's own limits: 300 seconds for the headers and between two
  * pieces of a body). It answers as soon as the status and headers arrive, the body streaming,
  * follows no redirect, and answers every status as it came. Every request names binference as
- * `user-agent: binference/<version>`, in place of any user agent the caller set. The model
+ * `user-agent: binference/<version>`, in place of any user agent the caller set that does not add
+ * to it after a space. The model
  * providers a runtime calls include local ones on the owner's own machine, so only a request that
  * asks for it, such as a page the model names, is held to public addresses.
  *

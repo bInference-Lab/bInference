@@ -22,6 +22,21 @@ describe("outboundInit", () => {
     });
   });
 
+  it("keeps a caller's user agent that adds to the adapter's after a space", () => {
+    const agents = ["binference/1.2.3 node/v26.10.0 darwin arm64", "binference/1.2.3x", "x"];
+    expect(
+      agents.map(
+        (agent) =>
+          outboundInit({ ...request, headers: { "User-Agent": agent } }, "binference/1.2.3")
+            .headers["user-agent"],
+      ),
+    ).toStrictEqual([
+      "binference/1.2.3 node/v26.10.0 darwin arm64",
+      "binference/1.2.3",
+      "binference/1.2.3",
+    ]);
+  });
+
   it("sends bytes, or no body at all", () => {
     const bytes = new Uint8Array([1, 2]);
     const { body: _text, ...bare } = request;

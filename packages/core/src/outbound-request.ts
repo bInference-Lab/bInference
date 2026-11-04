@@ -16,15 +16,20 @@ function originOf(request: HttpRequest): string {
   return new URL(request.url).origin;
 }
 
-// Header names match whatever their case, so a caller's own user agent gives way to binference's.
+// Header names match whatever their case, so a caller's own user agent gives way to binference's,
+// but for one that adds to it after a space, such as the update check's Node, OS and CPU
+// (decision 0355): the adapter's own name always leads.
 function headersFor(request: HttpRequest, userAgent: string): Record<string, string> {
   const headers: Record<string, string> = {};
+  let agent = userAgent;
   for (const [name, value] of Object.entries(request.headers ?? {})) {
     if (name.toLowerCase() !== "user-agent") {
       headers[name] = value;
+    } else if (value.startsWith(`${userAgent} `)) {
+      agent = value;
     }
   }
-  return { ...headers, "user-agent": userAgent };
+  return { ...headers, "user-agent": agent };
 }
 
 // A request carries text or bytes, never both: two bodies are a fault of the caller.
@@ -41,7 +46,8 @@ function bodyOf(request: HttpRequest): string | Readonly<Uint8Array> | undefined
 
 /**
  * What an adapter sends for a request: its method, its headers with `user-agent` set to the
- * adapter's in place of any the caller set, its body, and its signal. A request that sets both
+ * adapter's in place of any the caller set, unless the caller's starts with the adapter's and a
+ * space, its body, and its signal. A request that sets both
  * `body` and `bodyBytes` throws `http.two_bodies`.
  */
 export function outboundInit(request: HttpRequest, userAgent: string): OutboundInit {

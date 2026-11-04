@@ -108,7 +108,9 @@ async function failing<T>(request: HttpRequest, run: () => Promise<T>): Promise<
  * or a body of bytes (`http.two_bodies` for both), follows no redirect, answers every status as
  * it came, and reads at most 8 MiB of an answer (`http.answer_too_large`). Every request names
  * binference as `user-agent: binference/<version>`, in place of any user agent the caller set, so
- * each service sees one name: some refuse a request with none, as KyberSwap's edge does. A
+ * each service sees one name: some refuse a request with none, as KyberSwap's edge does. A caller
+ * may add to it after a space, as the update check adds Node's version, the OS and the CPU type
+ * (decision 0355); the name always leads. A
  * download reads the answer as bytes, up to its own `maxBytes`, the same way.
  *
  * Requests and sockets go by the route in force, and none goes out before one is
