@@ -22,6 +22,7 @@ import { createCardShowings } from "../surfaces/create-card-showings.js";
 import { coinAfter, holdCoin } from "./test-coin.js";
 import {
   type BenchOptions,
+  benchChain,
   driveUntil,
   type ExecutorBench,
   eventsOf,
@@ -154,6 +155,15 @@ async function reasonOf(bench: ExecutorBench, intent: Id<"int">) {
   return (await bench.test.stores.intents.get(intent, live))?.reason;
 }
 
+// The signed bytes of an intent's speed-up, its second stored transaction.
+async function speedUpRaw(bench: ExecutorBench, intent: Id<"int">): Promise<string> {
+  const [, speedUp] = await bench.test.stores.transactions.ofIntent(intent, live);
+  if (speedUp === undefined) {
+    throw new Error("Expected a speed-up.");
+  }
+  return speedUp.raw;
+}
+
 describe("an identity registration on its wallet's queue", () => {
   it("signs its one call to the registry, reads it back and stores the identity once", async () => {
     const registry = testRegistry();
@@ -207,6 +217,30 @@ describe("an identity registration on its wallet's queue", () => {
     const { held, gas } = await coinAfter(bench, intent);
     expect(gas).toBeGreaterThan(0n);
     expect(held).toBe(10n ** 18n - gas);
+  });
+
+  it("takes a dropped registration's gas once when it landed after all, storing no identity", async () => {
+    const registry = testRegistry();
+    const rules = { stuckAfterBlocks: 3, replaceAfterBlocks: 6, droppedAfterBlocks: 9 };
+    const bench = await benchWith(registry, { limits: rules });
+    await holdCoin(bench);
+    bench.network.script("relay-a", { kind: "refuse", reason: "insufficient_funds" });
+    bench.network.script("relay-b", { kind: "refuse", reason: "insufficient_funds" });
+    const intent = await tapped(bench, registerRequest());
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: done })).resolves.toBe("failed_onchain");
+    bench.network.script("relay-a", { kind: "accept" });
+    bench.network.script("relay-b", { kind: "accept" });
+    const raw = await speedUpRaw(bench, intent);
+    await bench.network.send({ chain: benchChain, raw }, live);
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    const { held, gas } = await coinAfter(bench, intent);
+    expect(gas).toBeGreaterThan(0n);
+    expect(held).toBe(10n ** 18n - gas);
+    await expect(stateOf(bench, intent)).resolves.toBe("failed_onchain");
+    await expect(
+      bench.test.engine.handlers["identity/get"](testCall({ agent: testAgent })),
+    ).resolves.toStrictEqual({ ok: true, value: {} });
   });
 
   it("refuses a second registration from the identity it stored, though the token moved away", async () => {

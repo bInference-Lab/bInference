@@ -174,4 +174,30 @@ describe("a landed staking move, booked from its venue's read-back (decision 032
     expect(await soldOf(bench)).toStrictEqual([halfCoin]);
     await expect(stateOf(bench, intent)).resolves.toBe("failed_onchain");
   });
+
+  it("books nothing of a dropped stake that landed after all while its venue cannot read it back", async () => {
+    const limits = {
+      stuckAfterBlocks: 3,
+      replaceAfterBlocks: 6,
+      droppedAfterBlocks: 9,
+      settleAfterBlocks: 2,
+    };
+    const { answer, venue } = refusable(landing(testStakingFake()));
+    const bench = await stakeBench(venue, { limits });
+    for (const relay of ["relay-a", "relay-b"]) {
+      bench.network.script(relay, { kind: "refuse", reason: "insufficient_funds" });
+    }
+    const intent = await tapped(bench, stakeRequest("stake"));
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: stakeEnds })).resolves.toBe("failed_onchain");
+    for (const relay of ["relay-a", "relay-b"]) {
+      bench.network.script(relay, { kind: "accept" });
+    }
+    answer.isLandedDown = true;
+    await bench.network.send({ chain: benchChain, raw: await speedUpOf(bench, intent) }, live);
+    await driveUntil(bench, intent, { states: [], blocks: 12 });
+    expect(await soldOf(bench)).toStrictEqual([]);
+    expect(eventsOf(bench)).toContain("executor.settle_waits:");
+    await expect(stateOf(bench, intent)).resolves.toBe("failed_onchain");
+  });
 });

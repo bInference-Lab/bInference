@@ -48,20 +48,31 @@ function withoutQuote(store: IntentStore): IntentStore {
   };
 }
 
-// A node whose first `failures` reads of what a transaction moved fail.
-function failingTransfers(failures: number): (network: FakeNetwork) => ReceiptReader {
+// A node whose first `failures` reads of what a transaction moved, or of the coin an account
+// received in a block, fail.
+function failingReads(
+  read: "transfers" | "nativeReceived",
+  failures: number,
+): (network: FakeNetwork) => ReceiptReader {
   return (network) => {
-    let left = failures;
+    const state = { left: failures };
+    const fails = (): boolean => {
+      state.left -= 1;
+      return state.left >= 0;
+    };
     return {
       head: async (chain, options) => network.head(chain, options),
       receipt: async (chain, hash, options) => network.receipt(chain, hash, options),
       nonceAt: async (account, block, options) => network.nonceAt(account, block, options),
-      nativeReceived: async (account, block, options) =>
-        network.nativeReceived(account, block, options),
       isKnown: async (chain, hash, options) => network.isKnown(chain, hash, options),
+      async nativeReceived(account, block, options) {
+        if (read === "nativeReceived" && fails()) {
+          throw new Error("The node is down.");
+        }
+        return network.nativeReceived(account, block, options);
+      },
       async transfers(chain, hash, options) {
-        if (left > 0) {
-          left -= 1;
+        if (read === "transfers" && fails()) {
           throw new Error("The node is down.");
         }
         return network.transfers(chain, hash, options);
@@ -144,11 +155,21 @@ describe("reconciliation", () => {
   });
 
   it("reads again on the next block while what a step moved cannot be read", async () => {
-    const bench = await startExecutorBench({ receipts: failingTransfers(2) });
+    const bench = await startExecutorBench({ receipts: failingReads("transfers", 2) });
     const intent = await tapped(bench);
     await expect(driveUntil(bench, intent, done)).resolves.toBe("reconciled");
     expect(eventsOf(bench)).toContain("executor.read_failed:unexpected");
     expect(await executionsOf(bench)).toHaveLength(1);
+  });
+
+  it("reads again on the next block while the coin a sale received cannot be read", async () => {
+    const bench = await startExecutorBench({ receipts: failingReads("nativeReceived", 2) });
+    const intent = await tapped(bench, tokenSale);
+    await expect(driveUntil(bench, intent, done)).resolves.toBe("reconciled");
+    expect(eventsOf(bench)).toContain("executor.read_failed:unexpected");
+    const [execution, ...more] = await executionsOf(bench);
+    expect(more).toStrictEqual([]);
+    expect(execution?.bought).toStrictEqual({ asset: testCoin, base: 2_000_000n });
   });
 
   it("leaves the intent finalized while the sold asset has no price", async () => {
