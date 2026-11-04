@@ -1,6 +1,7 @@
 import { type Bps, bpsSchema, err, idSchema } from "@binference/core";
 import type { OrderRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { archivingAgents } from "../fakes/archiving-agents.js";
 import {
   expectOk,
   testAgent,
@@ -9,6 +10,7 @@ import {
   testToken,
   testWallet,
 } from "../intents/test-intents.js";
+import type { EngineCaller } from "../operations/engine-call.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import {
   createdOrder,
@@ -234,9 +236,48 @@ describe("the rules of a new auto order", () => {
       err("agent.frozen"),
     );
   });
+
+  it("refuses an order of an archived agent", async () => {
+    const test = await startOrderEngine({
+      agents: (store) => ({ ...store, ...archivingAgents(store, new Set([testAgent])) }),
+    });
+
+    expect(await test.engine.handlers["order/create"](testCall(testStopLoss()))).toStrictEqual(
+      err("agent.archived"),
+    );
+  });
+
+  it("refuses a caller that proposes nothing, to make or to cancel an order", async () => {
+    const test = await startOrderEngine();
+    const view = await createdOrder(test);
+    const nobody: EngineCaller = { ...testCallers.cli, credential: "anonymous" };
+
+    expect(
+      await test.engine.handlers["order/create"](testCall(testStopLoss(), nobody)),
+    ).toStrictEqual(err("auth.scope"));
+    expect(
+      await test.engine.handlers["order/cancel"](testCall({ order: view.order }, nobody)),
+    ).toStrictEqual(err("auth.scope"));
+    expect((await storedOrder(test, view.order)).state).toBe("awaiting_confirmation");
+  });
 });
 
 describe("reading auto orders", () => {
+  it("answers an active order with the card it was confirmed on, and lists one agent's", async () => {
+    const test = await startOrderEngine();
+    const view = await createdOrder(test);
+    await tapCard(test, view.intent, "confirm");
+    const stranger = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
+
+    const got = expectOk(await test.engine.handlers["order/get"](testCall({ order: view.order })));
+    const own = expectOk(await test.engine.handlers["order/list"](testCall({ agent: testAgent })));
+    const none = expectOk(await test.engine.handlers["order/list"](testCall({ agent: stranger })));
+
+    expect(got).toMatchObject({ order: view.order, state: "active", card: view.card });
+    expect(own.items.map(({ order }) => order)).toStrictEqual([view.order]);
+    expect(none.items).toStrictEqual([]);
+  });
+
   it("answers one order with its open card, and pages through them oldest first", async () => {
     const test = await startOrderEngine();
     const first = await createdOrder(test);

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { expectOk } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import {
+  contendedOrders,
   createdOrder,
   startOrderEngine,
   storedOrder,
@@ -73,5 +74,31 @@ describe("cancelling an auto order", () => {
     expect(await test.engine.handlers["order/cancel"](testCall({ order: unknown }))).toStrictEqual(
       err("order.not_found"),
     );
+  });
+
+  it("reads the order again and cancels it when another write moved it first", async () => {
+    const race = contendedOrders(2);
+    const test = await startOrderEngine({ orders: race.orders });
+    const view = await createdOrder(test);
+    await tapCard(test, view.intent, "confirm");
+
+    const cancelled = expectOk(
+      await test.engine.handlers["order/cancel"](testCall({ order: view.order })),
+    );
+
+    expect(race.raced()).toBe(2);
+    expect(cancelled.state).toBe("cancelled");
+    expect((await storedOrder(test, view.order)).state).toBe("cancelled");
+  });
+
+  it("fails loudly, never quietly, when other writes beat five cancels in a row", async () => {
+    const test = await startOrderEngine({ orders: contendedOrders(5).orders });
+    const view = await createdOrder(test);
+    await tapCard(test, view.intent, "confirm");
+
+    await expect(
+      test.engine.handlers["order/cancel"](testCall({ order: view.order })),
+    ).rejects.toMatchObject({ code: "engine.cancel_contended", retryable: true });
+    expect((await storedOrder(test, view.order)).state).toBe("active");
   });
 });
