@@ -1,4 +1,4 @@
-import { assetRefParts, assetRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefParts, assetRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import type { IntentRequest } from "@binference/protocol";
@@ -21,6 +21,7 @@ import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import { testCall, testChains } from "../operations/test-engine.js";
 import type { RiskCheck } from "../ports.js";
 import { copiedHeldOf, type CopyTaking } from "./copy-state.js";
+import type { OrderStore } from "./ports.js";
 import { copyStateNow, leaderTrade, storeTrades, takeTrade } from "./test-copies.js";
 import {
   activeOrder,
@@ -65,6 +66,21 @@ function riskAnswering(
 function silencedFacts(facts: { readonly isRead: boolean }): ReadTokenFacts {
   const { read } = createFakeTokenFacts();
   return async (tokens, call) => (facts.isRead ? read(tokens, call) : new Map());
+}
+
+// An order store whose reads of the order named in `broken` fail with no Error, as a store fault
+// from outside JavaScript's own errors.
+function readsFaulting(store: OrderStore, broken: { readonly id?: string }): OrderStore {
+  return {
+    ...store,
+    get: async (id, call) => {
+      if (id === broken.id) {
+        // oxlint-disable-next-line typescript/only-throw-error -- a store fault that is no Error
+        throw "the store went away";
+      }
+      return store.get(id, call);
+    },
+  };
 }
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
@@ -515,5 +531,34 @@ describe("the copy orders' runner", () => {
     expect(outcomes(await fillRowsOf(test, first.id))).toStrictEqual(["filled", "filled"]);
     const rows = await fillRowsOf(test, second.id);
     expect(outcomes(rows)).toStrictEqual(["skipped:copy_daily_cap"]);
+  });
+
+  it("passes over a leader trade of an asset on a chain the registry does not hold", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    const away = assetRefSchema.parse("fake:9/token:0x0000000e");
+    const stored = await storeTrades(test, [
+      leaderTrade(1, { side: "buy", atMs: test.clock.now(), asset: away }),
+    ]);
+
+    await test.engine.runCopies(live);
+
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+    expect((await copyStateNow(test, order.id)).through).toBe(stored.at(-1)?.id);
+  });
+
+  it("copies every other order, then fails the run for an order whose read threw no error", async () => {
+    const broken: { id?: string } = {};
+    const test = await startFillEngine({ prices, orders: (store) => readsFaulting(store, broken) });
+    const fine = await activeOrder(test, testCopy());
+    const other = accountRefSchema.parse("fake:1:0x0000000a");
+    const trigger = { ...testCopy().trigger, leader: other };
+    broken.id = (await activeOrder(test, testCopy({ trigger }))).id;
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+
+    await expect(test.engine.runCopies(live)).rejects.toMatchObject({ code: "engine.copy_run" });
+
+    expect(outcomes(await fillRowsOf(test, fine.id))).toStrictEqual(["filled"]);
   });
 });

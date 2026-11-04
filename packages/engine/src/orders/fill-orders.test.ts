@@ -2,7 +2,8 @@ import type { AssetRef, UsdPrice } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
 import { bpsSchema, type Id, idSchema, type JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { testAgent, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
+import { testAgent, testCoin, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import {
@@ -189,6 +190,21 @@ describe("an auto order's fill", () => {
     ]);
   });
 
+  it("ends a sale with a worst price as worst_price while nothing prices the coin it gets", async () => {
+    const prices = new Map(fillPrices);
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testStopLoss({ worstPrice: 1n }));
+    prices.delete(testCoin);
+
+    const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    expect(outcome).toBe("skipped");
+    expect(await fillIntentsOf(test)).toMatchObject([
+      { state: "failed_check", reason: "worst_price" },
+    ]);
+    expect(await storedOrder(test, order.id)).toMatchObject({ state: "active", fills: 0 });
+  });
+
   it("ends a fill whose rolling cap another confirmation took after its policy step", async () => {
     const cap = testLimits.rollingDayUsdMicros;
     const test = await startFillEngine({
@@ -266,6 +282,22 @@ describe("an auto order's fill", () => {
 
     expect(await fillIntentsOf(test)).toMatchObject([{ kind: "buy", state: "paper_filled" }]);
     expect(await fillRowsOf(unpriced, inDollars.id)).toMatchObject([{ reason: "no_price" }]);
+  });
+
+  it("leaves a fill as another write left it when that write beat the cancel of an expired order's fill", async () => {
+    const holder: { test?: TestEngine } = {};
+    const test = await startFillEngine({
+      intents: (store) => racedTo("cancelled")(passingExpiryAtFill(store, holder)),
+    });
+    holder.test = test;
+    const order = await activeOrder(test, testStopLoss({ expiresAt: testNowMs + 10_000 }));
+
+    await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    const [intent] = await test.stores.intents.list({ states: ["confirmed"], limit: 5 }, live);
+    expect(intent).toMatchObject({ kind: "sell", state: "confirmed" });
+    expect(await storedOrder(test, order.id)).toMatchObject({ fills: 0 });
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
   });
 
   it("cancels a confirmed fill unsigned when its order expired before the fill could record it", async () => {

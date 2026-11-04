@@ -46,6 +46,21 @@ function failingMoves(store: OrderStore, broken: { readonly id?: string }): Orde
   };
 }
 
+// The order store, failing every move of the order `broken` names with no Error, as a fault from
+// outside JavaScript's own errors.
+function faultingMoves(store: OrderStore, broken: { readonly id?: string }): OrderStore {
+  return {
+    ...store,
+    move: async (moves, call) => {
+      if (moves.some(({ id }) => id === broken.id)) {
+        // oxlint-disable-next-line typescript/only-throw-error -- a store fault that is no Error
+        throw "the store went away";
+      }
+      return store.move(moves, call);
+    },
+  };
+}
+
 // A DCA order as if its zone no longer read.
 function zoneGone(order: OrderRecord): OrderRecord {
   const trigger = { cron: "*/5 * * * *", timezone: "Mars/Base" };
@@ -180,6 +195,18 @@ describe("a DCA order", () => {
     await expect(test.engine.runSchedules(live)).rejects.toMatchObject({ code: "store.down" });
 
     expect(outcomes(await fillRowsOf(test, working.id))).toStrictEqual(["filled", "filled"]);
+  });
+
+  it("runs every other order, then reports a period that failed with no error as its own fault", async () => {
+    const broken: { id?: string } = {};
+    const test = await startFillEngine({ orders: (store) => faultingMoves(store, broken) });
+    broken.id = (await activeOrder(test, dca)).id;
+    const working = await activeOrder(test, dca);
+    await test.clock.advance(5 * minuteMs);
+
+    await expect(test.engine.runSchedules(live)).rejects.toMatchObject({ code: "engine.dca_run" });
+
+    expect(outcomes(await fillRowsOf(test, working.id))).toStrictEqual(["filled"]);
   });
 
   it("buys a period once when another write beat the write that kept it", async () => {
