@@ -298,6 +298,8 @@
   "check.fixed": "{path} 现在只归你所有。",
   "check.unchecked": "此系统无法让 binference 读取谁可以打开状态文件夹中的 {count, plural, other {# 个文件和文件夹}}。请运行 `binference check --fix`，让它们只归你所有。",
   "check.configInvalid": "{file} 有 {count, plural, other {# 个问题}}：",
+  "check.configMoved": "config.json5 已从版本 {from} 迁移到版本 {to}{backup, select, none {。} other {；备份 {backup} 保存了迁移前的文件。}}",
+  "check.configUnmoved": "config.json5 仍是版本 {from}：{reason, select, engine_running {binference 正在运行；请运行 binference stop 停止它，然后运行 binference check --fix} uneditable {binference 无法原地修改该文件；请按 binference check 列出的内容手动修改} invalid {迁移后的文件无法加载；请修正 binference check 列出的问题，然后运行 binference check --fix} unreadable {无法打开引擎数据库 engine.sqlite，因此无法先做备份；binference logs 中的日志会显示原因} backup_failed {先做的备份失败了；binference logs 中的日志会显示原因} other {{reason}}}。",
   "check.unlockFile": "Agent 密钥和 Privy 应用密钥保存在 {folder} 的文件中（解锁方式 `file`）：拿到这块磁盘副本的人可以在上限之内签名，直到你移除 Agent 密钥。条件允许时，请把 `engine.unlock.mode` 设为 `keychain` 或 `command`。",
   "check.modelsUnpriced": "配置中有 {count, plural, other {# 个模型}}没有价格，因此其调用按 $0 计入每日模型预算。请在 config.json5 的 `models.prices` 中为其添加价格：",
   "check.model.bad_key": "服务商 {provider} 不接受 {model} 的 API 密钥。请把可用的密钥放到 `models.providers.{provider}.apiKey` 指定的位置。",

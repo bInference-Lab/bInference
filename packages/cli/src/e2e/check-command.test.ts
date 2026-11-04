@@ -1,6 +1,9 @@
+import { join } from "node:path";
 import { messages } from "@binference/i18n";
+import { acquireFileLock, readTextFile, writePrivateFile } from "@binference/platform";
 import { afterEach, describe, expect, it } from "vitest";
 import { platformOf } from "../compose/engine-locations.js";
+import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { runCli } from "../program/run-cli.js";
 import { createFakeModelProvider, testModelId, testModelKey } from "./model-fixtures.js";
 import {
@@ -8,6 +11,7 @@ import {
   freePort,
   hostOn,
   hostWith,
+  noPermissions,
   runOn,
   type TestMachine,
   writeTestConfig,
@@ -53,6 +57,36 @@ async function start(machine: TestMachine): Promise<void> {
 function reachable(stdout: string): Finding | undefined {
   const parsed = JSON.parse(stdout) as { readonly findings: readonly Finding[] };
   return parsed.findings.find((finding) => finding.check === "models.reachable");
+}
+
+// A config.json5 of version 10, which still names the health factor version 11 removed.
+const olderConfig =
+  "{\n  // The owner's note stays.\n  version: 10,\n" +
+  '  telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },\n' +
+  "  defaults: { limits: { minHealthFactor: 1.5 } },\n}\n";
+
+async function writeOlderConfig(machine: TestMachine): Promise<string> {
+  const file = join(machine.folder, "config.json5");
+  const files = { permissions: noPermissions, signal: new AbortController().signal };
+  await writePrivateFile(file, olderConfig, files);
+  return file;
+}
+
+async function textOf(file: string): Promise<string> {
+  const read = await readTextFile(file, new AbortController().signal);
+  return read.ok ? read.value : "";
+}
+
+// Runs the command while this process holds the folder's engine lock, as a running engine does.
+async function whileLocked<T>(machine: TestMachine, command: () => Promise<T>): Promise<T> {
+  const lock = acquireFileLock(join(machine.folder, "engine.lock"));
+  try {
+    return await command();
+  } finally {
+    if (lock.ok) {
+      lock.value.release();
+    }
+  }
 }
 
 // The file unlock mode, whatever the machine running the test would choose.
@@ -255,5 +289,39 @@ describe("binference check", () => {
     );
     expect(host.stdout()).toContain(String(messages.en["cli.check.notes"]));
     expect(host.stdout()).toContain(note);
+  });
+
+  it(
+    "moves an older config file to this version with --fix, keeping its comments",
+    slow,
+    async () => {
+      const machine = await machines.create(nowMs);
+      const file = await writeOlderConfig(machine);
+      const plain = await findings(machine);
+      const fixed = await findings(machine, ["--fix"]);
+      const moved = await textOf(file);
+
+      expect(plain.byCheck.get("config.valid")?.level).toBe("fail");
+      expect([fixed.code, fixed.byCheck.get("config.valid")]).toStrictEqual([
+        0,
+        { check: "config.valid", level: "ok" },
+      ]);
+      expect(moved).toContain("// The owner's note stays.");
+      expect(moved).toContain(`version: ${String(currentConfigVersion)},`);
+      expect(moved).not.toContain("minHealthFactor");
+    },
+  );
+
+  it("leaves an older config file as it was while an engine holds the folder", slow, async () => {
+    const machine = await machines.create(nowMs);
+    const file = await writeOlderConfig(machine);
+    const fixed = await whileLocked(machine, async () => runOn(machine, ["check", "--fix"]));
+
+    expect(fixed.code).toBe(1);
+    expect(fixed.stdout).toContain(
+      "config.json5 stays at version 10: binference is running; run binference stop, then " +
+        "binference check --fix.",
+    );
+    await expect(textOf(file)).resolves.toBe(olderConfig);
   });
 });

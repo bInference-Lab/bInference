@@ -6,6 +6,7 @@ import type { CliOutput, ExitCode } from "../program/cli-output.js";
 import type { CommandRun } from "../program/command-run.js";
 import { accessFindings } from "./access-findings.js";
 import type { CheckFinding } from "./check-finding.js";
+import { fixedConfigFinding } from "./config-migration.js";
 import { configFinding, engineFinding, unlockFinding } from "./install-findings.js";
 import { modelImagesFinding } from "./model-images-finding.js";
 import { modelPriceFinding } from "./model-price-finding.js";
@@ -18,6 +19,8 @@ import { rpcFindings } from "./rpc-keyed-finding.js";
 
 // Reading files and one engine call take moments; past this the check gives up.
 const checkBudgetMs = 15_000;
+// With `--fix`, an older config.json5 moves after a sealed backup, which takes longer.
+const fixBudgetMs = 120_000;
 
 /** A finding as `--json` prints it: its check id, its level and what scripts read beside them. */
 export function findingJson(finding: CheckFinding): JsonValue {
@@ -72,12 +75,14 @@ export interface CheckRun {
 
 /**
  * Every finding of `binference check` on the host's install, in the order it prints them. With
- * `fix` it makes owner-only every path others can open, and the finding says so.
+ * `fix` it moves an older config.json5 to this version and makes owner-only every path others can
+ * open, and each finding says so.
  */
 export async function checkFindings(run: CheckRun): Promise<readonly CheckFinding[]> {
   const { host, fix, signal } = run;
   const platform = platformOf(host);
-  const config = await configFinding({ host, platform, signal });
+  const install = { host, platform, signal };
+  const config = await (fix ? fixedConfigFinding(install) : configFinding(install));
   const access = await accessFindings({ platform, fix, signal });
   const unlock = config.config === undefined ? [] : [unlockFinding(config.config, platform)];
   const prices = config.config === undefined ? [] : [modelPriceFinding(config.config)];
@@ -121,9 +126,9 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
  * (a warning naming each extra launch or bridge wallet a rebuild adopted, decisions 0218 and 0307)
  * and `wallets.launch_calls` and `wallets.bridge_calls` (a warning naming each launch or bridge
  * wallet whose ceiling lacks calls its venues need, with the owner key's fix, decisions 0271 and
- * 0307), and `remote.funnel`, `remote.loopback` and `remote.serve` (decision 0341). `--fix` makes
- * owner-only every path others can open, the one fix the config spec names
- * for it. It then says what the wallets' ceiling promises against a machine whose keys are stolen
+ * 0307), and `remote.funnel`, `remote.loopback` and `remote.serve` (decision 0341). `--fix` moves
+ * an older config.json5 to this version after a sealed backup, and makes owner-only every path
+ * others can open, the fixes the config spec names. It then says what the wallets' ceiling promises against a machine whose keys are stolen
  * (decision 0149), and that a launch wallet and a bridge wallet are the exceptions (decisions
  * 0217, 0218 and 0307). Exits 1 while a problem remains, else
  * 0; warnings do not fail it. With `--json` it prints every finding.
@@ -136,7 +141,7 @@ export async function runCheck(
   const deadline = createDeadline({
     clock: host.clock,
     signal: new AbortController().signal,
-    timeoutMs: checkBudgetMs,
+    timeoutMs: request.options.fix ? fixBudgetMs : checkBudgetMs,
   });
   try {
     const { signal } = deadline;

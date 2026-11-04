@@ -54,7 +54,7 @@ export async function openStateLog(run: StoppedStateRun): Promise<EngineLogger> 
  * A database of the stopped engine, whatever its schema, or `undefined` when the file is missing.
  * The caller closes it.
  */
-async function openStoppedDatabase(
+export async function openStoppedDatabase(
   run: StoppedStateRun,
   file: string,
   worker: URL,
