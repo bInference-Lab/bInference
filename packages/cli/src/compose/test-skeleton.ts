@@ -19,7 +19,7 @@ import {
   createFakeVenue,
 } from "@binference/chain/testing";
 import { bsc } from "@binference/chains";
-import { BinferenceError, idSchema, ok } from "@binference/core";
+import { BinferenceError, idSchema } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
@@ -30,7 +30,6 @@ import {
   type MemoryLogger,
 } from "@binference/core/testing";
 import { type PositionStore, sha256Hex } from "@binference/engine";
-import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import {
   createFakeExecutor,
   createFakePriceSource,
@@ -63,9 +62,9 @@ import {
   type EngineParts,
 } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
-import { createEngineOperations } from "./engine-operations.js";
 import { type LoopbackServing, serveOnLoopback } from "./loopback-serving.js";
 import { selfHostedMarketReads, selfHostedSources } from "./market-reads.js";
+import { readyEngineOperations } from "./ready-engine-operations.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 
 /** The secrets of the CLI token, with every scope, and of the MCP token, with read and propose. */
@@ -292,25 +291,6 @@ const facts = {
   networkFeeCapNativeBase: 1_000_000_000n,
   recentOutflows: [],
 };
-
-/**
- * `engine/status` and the operations beside it of an engine that is ready, unlocked and healthy,
- * release 2026.10.0, whose custody signs with no agent key of this machine.
- */
-export function readyEngineOperations(
-  stores: Pick<EngineParts["stores"], "agents" | "install">,
-): EngineHandlerTable {
-  return createEngineOperations({
-    agents: stores.agents,
-    install: stores.install,
-    version: "2026.10.0",
-    state: () => "ready",
-    lock: { unlock: async () => Promise.resolve(ok(undefined)) },
-    health: () => [],
-    nodeOptions: ["--disable-sigusr1"],
-    stop: () => undefined,
-  });
-}
 
 /**
  * Composes the engine on the profile parts with its agent and tokens stored: the fake chain and

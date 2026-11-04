@@ -28,11 +28,8 @@ import { type ComposedEngine, composeEngine, type EngineParts } from "../compose
 import type { ComposedTelegram, TelegramParts } from "../compose/compose-telegram.js";
 import { type LoopbackServing, serveOnLoopback } from "../compose/loopback-serving.js";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
-import {
-  addSkeletonTokens,
-  readyEngineOperations,
-  skeletonSecrets,
-} from "../compose/test-skeleton.js";
+import { readyEngineOperations } from "../compose/ready-engine-operations.js";
+import { addSkeletonTokens, skeletonSecrets } from "../compose/test-skeleton.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
 import { createFeeTokenVenue } from "./fee-token-venue.js";

@@ -31,13 +31,10 @@ import { type ComposedEngine, composeEngine } from "../compose/compose-engine.js
 import type { ComposedTelegram } from "../compose/compose-telegram.js";
 import { type LoopbackServing, serveOnLoopback } from "../compose/loopback-serving.js";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
+import { readyEngineOperations } from "../compose/ready-engine-operations.js";
 import { selfHostedBridging } from "../compose/self-hosted-bridging.js";
 import { chainStakingVenues } from "../compose/staking-venues.js";
-import {
-  addSkeletonTokens,
-  readyEngineOperations,
-  skeletonSecrets,
-} from "../compose/test-skeleton.js";
+import { addSkeletonTokens, skeletonSecrets } from "../compose/test-skeleton.js";
 import { ownerBot, ownerId } from "../e2e/runtime-machine.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { type BridgeArrivals, createBridgeArrivals } from "./bridge-arrivals.js";
