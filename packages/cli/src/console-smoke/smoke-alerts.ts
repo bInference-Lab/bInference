@@ -1,9 +1,5 @@
-import { directRoute } from "@binference/core";
-import { createMemoryLogger } from "@binference/core/testing";
-import { createWebhookIntake } from "@binference/engine/orders";
-import { createWebhookListener } from "@binference/server";
 import type { Skeleton } from "../compose/test-skeleton.js";
-import { createSystemHttp } from "../runtime/system-http.js";
+import { listenForAlerts } from "../e2e/alert-poster.js";
 
 /** What one alert to a rule's URL came to: the listener's answer, and the rule's fills after. */
 interface SmokeAlert {
@@ -28,29 +24,16 @@ const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.time
  * own stores, as the engine's start binds it at `engine.webhookPort`.
  */
 export async function startSmokeAlerts(skeleton: Skeleton): Promise<SmokeAlerts> {
-  const listener = createWebhookListener({
-    port: 0,
-    intake: createWebhookIntake({
-      store: skeleton.parts.stores.webhookAlerts,
-      clock: skeleton.clock,
-      isLocked: () => false,
-    }),
-    clock: skeleton.clock,
-    logger: createMemoryLogger({ subsystem: "webhook" }),
-  });
-  const address = await listener.start(new AbortController().signal);
-  const http = createSystemHttp({ version: "smoke", route: directRoute });
+  const alerts = await listenForAlerts(skeleton);
   return {
     async post(url, body) {
-      const { pathname } = new URL(url);
-      const target = `http://127.0.0.1:${String(address.port)}${pathname}`;
-      const answer = await http.request({ method: "POST", url: target, body, ...live() });
+      const status = await alerts.post(url, body);
       await skeleton.composed.engine.fillWebhookAlerts(live());
-      const [rule] = pathname.split("/").slice(2, 3);
+      const [rule] = new URL(url).pathname.split("/").slice(2, 3);
       const { items } = await skeleton.client.call("webhookRule/list", {}, live());
       const fills = items.find((each) => each.rule === rule)?.fills ?? 0;
-      return { status: answer.status, fills };
+      return { status, fills };
     },
-    close: async () => listener.close(),
+    close: async () => alerts.close(),
   };
 }

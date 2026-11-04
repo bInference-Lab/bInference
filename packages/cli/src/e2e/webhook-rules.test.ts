@@ -1,21 +1,16 @@
-import { directRoute } from "@binference/core";
-import { createMemoryLogger } from "@binference/core/testing";
-import { createWebhookIntake } from "@binference/engine/orders";
 import { testAgent as agent, testNowMs, testToken as token } from "@binference/engine/testing";
 import type { ProtocolId } from "@binference/protocol";
-import { createWebhookListener, type WebhookListener } from "@binference/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { skeletonCompositions } from "../compose/test-skeleton.js";
-import { createSystemHttp } from "../runtime/system-http.js";
+import { type AlertPoster, listenForAlerts } from "./alert-poster.js";
 import { type ServedSkeleton, serveSkeleton } from "./skeleton-machine.js";
 import { createTestMachines } from "./test-host.js";
 
 const slow = { timeout: 60_000 };
 const machines = createTestMachines();
 const served: ServedSkeleton[] = [];
-const listeners: WebhookListener[] = [];
+const listeners: AlertPoster[] = [];
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
-const http = createSystemHttp({ version: "test", route: directRoute });
 
 afterEach(async () => {
   await Promise.all(listeners.splice(0).map(async (listener) => listener.close()));
@@ -35,30 +30,9 @@ const rule = {
 
 // Starts the webhook listener on a free loopback port, over the skeleton's own stores.
 async function listenerOn(skeleton: ServedSkeleton) {
-  const listener = createWebhookListener({
-    port: 0,
-    intake: createWebhookIntake({
-      store: skeleton.parts.stores.webhookAlerts,
-      clock: skeleton.clock,
-      isLocked: () => false,
-    }),
-    clock: skeleton.clock,
-    logger: createMemoryLogger({ subsystem: "webhook" }),
-  });
+  const listener = await listenForAlerts(skeleton);
   listeners.push(listener);
-  const address = await listener.start(new AbortController().signal);
-  // Posts an alert to the rule's URL, with the loopback listener's port in place of its own.
-  return async (url: string, body: string): Promise<number> => {
-    const { pathname } = new URL(url);
-    const target = `http://127.0.0.1:${String(address.port)}${pathname}`;
-    const answer = await http.request({
-      method: "POST",
-      url: target,
-      body,
-      signal: AbortSignal.timeout(10_000),
-    });
-    return answer.status;
-  };
+  return async (url: string, body: string): Promise<number> => listener.post(url, body);
 }
 
 // Confirms the newest version of an intent's card from the owner's CLI.
