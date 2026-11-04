@@ -7,7 +7,7 @@ import { expectOk } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testCall } from "../operations/test-engine.js";
 import type { BridgeRoute } from "./hosted-bridge.js";
-import { swapRateOf } from "./swap-rate.js";
+import { type SwapRateInput, swapRateOf } from "./swap-rate.js";
 import {
   type BridgeTest,
   bridgeEngine,
@@ -91,6 +91,27 @@ describe("a bridge's swap rate", () => {
   it("is the share of the input less the fees the least output misses, rounded up", () => {
     const rates = [net, net + 5n, net - 1n, net - 495_000n, net - 495_001n, 0n].map(rateOf);
     expect(rates).toStrictEqual([0, 0, 1, 50, 51, 10_000]);
+  });
+
+  it("keeps the whole input when the fees take all of it, whatever the decimals", () => {
+    const decimalsSeen: readonly SwapRateInput["decimals"][] = [
+      { leaves: 6, arrives: 6 },
+      { leaves: 18, arrives: 6 },
+    ];
+    const rates = decimalsSeen.map((decimals) =>
+      swapRateOf({
+        amount: { asset: testRoute.leaves, base: 10n ** BigInt(decimals.leaves) },
+        fees: [
+          {
+            kind: "relayer",
+            amount: { asset: testRoute.leaves, base: 10n ** BigInt(decimals.leaves) },
+          },
+        ],
+        minOut: { asset: testOtherArrives, base: 0n },
+        decimals,
+      }),
+    );
+    expect(rates).toStrictEqual([10_000, 10_000]);
   });
 
   it("reads the swaps Relay quoted into USDG on 2026-11-01 within the 50 basis point cap", () => {

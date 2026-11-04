@@ -56,6 +56,16 @@ describe("the wallet a bridge runs from", () => {
     });
   });
 
+  it("refuses a main wallet's route for an agent with no wallet but its role wallets", () => {
+    const roleWallets = [bridgeWallet, launchWallet];
+    const roleOnly = {
+      ...ask([across]),
+      wallets: roleWallets,
+      owned: roleWallets.map((item) => item.id),
+    };
+    expect(bridgeWalletOf(roleOnly)).toStrictEqual({ ok: false, error: "wallet.not_found" });
+  });
+
   it("takes a bridge venue's route from the bridge wallet, which it needs", () => {
     expect(bridgeWalletOf(ask([relay]))).toStrictEqual({
       ok: true,

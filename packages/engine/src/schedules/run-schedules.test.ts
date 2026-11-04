@@ -86,6 +86,24 @@ describe("the schedule queue", () => {
     });
   });
 
+  it("lists a schedule with its last run once it ran", async () => {
+    const test = await startTestEngine({ timeZone: newYork });
+    const schedule = await setSchedule(test, "0 9 * * *");
+    await runAt(test, "2027-01-15T14:00:00Z");
+    const listed = expectOk(
+      await test.engine.handlers["schedule/list"](testCall({ agent: testAgent })),
+    );
+
+    const due = Date.parse("2027-01-15T14:00:00Z");
+    const [item] = listed.items;
+    expect([
+      item?.schedule,
+      item?.lastAt,
+      item?.lastRun?.due,
+      item?.lastRun?.outcome,
+    ]).toStrictEqual([schedule.schedule, due, due, "sent"]);
+  });
+
   it("adds no second wake-up while the last one waits for the runtime", async () => {
     const test = await startTestEngine({ timeZone: newYork });
     const schedule = await setSchedule(test, "0 * * * *");

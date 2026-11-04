@@ -7,6 +7,7 @@ import { fixtureId, inOrder, live } from "../contracts/store-fixtures.js";
 import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { testAgent, testAgentDraft, testWallet } from "../intents/test-intents.js";
+import { testCopy } from "../orders/test-orders.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { tellOverflows } from "./overflow-notices.js";
 
@@ -93,5 +94,46 @@ describe("the notices of cut blocks", () => {
       { key: "notice.walletOverflow", values: { wallet: "Whale", blocks: "2" } },
       { key: "notice.walletOverflow", values: { wallet: "0x0000…0002", blocks: "1" } },
     ]);
+  });
+
+  it("names a wallet a copy order follows by the label its agent saved", async () => {
+    const stores = await cutWallets();
+    const pair = { agentId: testAgent, walletId: testWallet };
+    stores.install.addWallet(
+      testWalletRecord({ id: testWallet, ...pair, label: "main", createdAtMs: 1 }),
+    );
+    const leader = accountOf(3);
+    const trigger = { ...testCopy().trigger, leader };
+    const copy = { ...orderDraft(pair, 1), request: testCopy({ trigger }) };
+    expect((await stores.orders.create(copy, live())).ok).toBe(true);
+    const saved = {
+      id: fixtureId("adr", 3),
+      agentId: testAgent,
+      account: leader,
+      recipientBytes: accountRefParts(leader).address.toLowerCase(),
+      label: "Leader",
+    };
+    await stores.agents.addAddress({ ...saved, usableAtMs: 0, createdAtMs: 0 }, live());
+    await stores.trackedWallets.record(
+      {
+        chain: accountRefParts(leader).chain,
+        from: 4n,
+        to: 4n,
+        toHash: "0x04",
+        atMs: 4_000,
+        wallets: [{ account: leader, sinceBlock: 4n, readFrom: 4n }],
+        trades: [],
+        overflows: [{ account: leader, block: 4n }],
+      },
+      live(),
+    );
+    const pushes: EnginePush[] = [];
+    const clock = createManualClock(10_000);
+    const parts = { ...stores, clock, publish: (push: EnginePush) => pushes.push(push) };
+    await tellOverflows(parts, live());
+    expect(pushes.map(({ data }) => data)).toContainEqual({
+      key: "notice.walletOverflow",
+      values: { wallet: "Leader", blocks: "1" },
+    });
   });
 });

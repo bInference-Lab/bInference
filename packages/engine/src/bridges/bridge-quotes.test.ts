@@ -1,4 +1,11 @@
-import { accountRefSchema, type Bridge, type NoBridgeRoute, type TxDraft } from "@binference/chain";
+import {
+  accountRefSchema,
+  type Bridge,
+  type NoBridgeRoute,
+  type SimulatedStep,
+  type TxDraft,
+  type TxSimulator,
+} from "@binference/chain";
 import { err, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk } from "../intents/test-intents.js";
@@ -70,6 +77,8 @@ const throwing = (): Partial<Bridge> => ({
 });
 
 const stranger = accountRefSchema.parse("fake:1:0x000000e9");
+
+const reverted: SimulatedStep = { status: "reverted", gasUsed: 1n, transfers: [], approvals: [] };
 
 // The fake's build with its steps changed by `change`.
 const builds =
@@ -203,4 +212,15 @@ describe("quoting and building a bridge", () => {
       expect([view.state, view.outcome?.reason]).toStrictEqual(ending);
     },
   );
+
+  it.each<readonly [string, readonly SimulatedStep[], string]>([
+    ["for fewer steps than it built", [], "effects_differ"],
+    ["every step reverted", [reverted, reverted], "simulation_reverted"],
+  ])("opens no card for a bridge whose simulation answers %s", async (_, answer, reason) => {
+    const chainSimulator: Pick<TxSimulator, "simulate"> = {
+      simulate: async () => Promise.resolve(answer),
+    };
+    const view = expectOk(await proposeWith(() => ({}), { chainSimulator }));
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", reason]);
+  });
 });

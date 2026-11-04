@@ -1,3 +1,4 @@
+import { bpsSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testCoin } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
@@ -49,6 +50,29 @@ describe("market/scan of launches", () => {
     expect(expectOk(await on.engine.handlers["market/scan"](testCall(deep)))).toStrictEqual({
       items: [],
       assets: {},
+    });
+  });
+
+  it("shows how far a launch's curve went once a later read tells it", async () => {
+    const test = await withLaunches({ launchFeed: true });
+    const read = {
+      chain,
+      from: 4n,
+      to: 4n,
+      toHash: "0x04",
+      atMs: test.clock.now(),
+      launches: [],
+      changes: [{ token: tokenOf(3), curveProgressBps: bpsSchema.parse(4_200) }],
+    };
+    await test.stores.launches.record(read, testCall({}));
+    const args = { chain, source: "launches", filters: { maxInsiders: 1 } } as const;
+    const scan = expectOk(await test.engine.handlers["market/scan"](testCall(args)));
+    expect(scan.items[0]).toStrictEqual({
+      asset: tokenOf(3),
+      launchpad: "fake-curve",
+      launchedAt: test.clock.now() - hourMs,
+      curveProgressBps: 4_200,
+      graduated: false,
     });
   });
 });

@@ -93,6 +93,11 @@ describe("the daily model budget", () => {
     await expect(budget.left(testAgent, live())).resolves.toBe(threeDollars);
   });
 
+  it("leaves nothing to spend for an agent the store does not hold", async () => {
+    const budget = await budgetOf(new Map([[testAgent, threeDollars]]));
+    await expect(budget.left(fixtureId("agt", 99), live())).resolves.toBe(0n);
+  });
+
   it("counts yesterday's calls against yesterday only", async () => {
     const { budget, clock, spend } = await newYorkBudget("2026-10-13T03:30:00Z");
     await spend(2_000_000n);
