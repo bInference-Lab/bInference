@@ -1,8 +1,8 @@
 import type { EventEmitter } from "node:events";
 import { BinferenceError } from "@binference/core";
 import type { ServiceDefinition, ServiceManager } from "@binference/platform";
-import { createMemoryServiceManager } from "@binference/platform/testing";
 import { runCli } from "../program/run-cli.js";
+import { createProgramServices } from "./program-services.js";
 import type { TestHost } from "./test-host.js";
 
 /**
@@ -82,35 +82,19 @@ function createRuns(options: TestServicesOptions) {
  * stop or an uninstall ends it with a stop signal and waits until it ends.
  */
 export function createTestServices(options: TestServicesOptions): TestServices {
-  const memory = createMemoryServiceManager();
   const { state, end, run } = createRuns(options);
-  const manager: ServiceManager = {
-    install: async (definition, signal) => {
-      await end();
-      await memory.install(definition, signal);
+  const manager = createProgramServices({
+    start: async (definition) => {
       state.definition = definition;
       state.installs += 1;
       await run();
     },
-    stop: async (name, signal) => {
-      const stopped = await memory.stop(name, signal);
-      await end();
-      return stopped;
-    },
-    uninstall: async (name, signal) => {
-      const removed = await memory.uninstall(name, signal);
-      await end();
+    end,
+    isRunning: () => state.exit !== undefined,
+    forget: () => {
       delete state.definition;
-      return removed;
     },
-    status: async (name, signal) => {
-      const status = await memory.status(name, signal);
-      if (status.state === "not_installed") {
-        return status;
-      }
-      return { ...status, state: state.exit === undefined ? "stopped" : "running" };
-    },
-  };
+  });
   return {
     manager,
     installed: () => state.definition,

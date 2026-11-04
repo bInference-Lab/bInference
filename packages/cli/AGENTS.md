@@ -203,6 +203,24 @@ Rules for this package:
   works while the engine is stopped. It never opens a key, a database or the keychain. An engine
   log line passes only by the field rules of `report-log-line.ts`; every other value passes
   `redactReportJson`. A new log field needs its rule there, or the bundle shows it as `[omitted]`.
+- Updates live in `src/updates/` (decisions 0355 and 0356). The engine's daily check reads npm's
+  dist-tags and a release's notes through `host.http`, tells the owner once per release in
+  `updates/announced.json`, and posts the opt-in counts while telemetry is on; tests point npm at
+  `fake-release-registry.ts` through the host's `npmRegistry` and the counts through `countsUrl`.
+  `binference update` runs only on an npm install, into the prefix the program runs from, and
+  refuses on Windows. It holds `updates/update.lock`, and first ends what an earlier run left. It
+  reads and verifies both releases with decision 0348's registry reader and verifier before
+  anything stops, pinning binference's own repository and the release workflow at the version's
+  tag; tests check test-signed bundles through the host's `bundleVerifier`, never a weaker
+  production check. After npm installs a tarball, the process that runs `update` loads none of the
+  new files: every start, the config move and the check are the installed program's own commands
+  (`installed-commands.ts`), and no engine ever starts in this process. `updates/state.json` holds
+  every engine locked with `update_checking` while it says `checking`, from the copy of the state
+  until the data on disk is one version's; a rollback puts the copies back as plain files under
+  the engine lock. `src/e2e/update-fixtures.ts` runs the installed program's commands in the
+  test's process, and `update-resume.test.ts` leaves the state of a run killed at each step. `pnpm update:smoke` proves it on three
+  packed releases with real npm in a scratch prefix and a scratch home folder, the service a
+  child process; never run `update` against your own `~/.binference`.
 - `binference uninstall` (`src/uninstall/`, decision 0264) stops the engine, removes the service,
   then with `--state` the state folder and the keychain entries its config names, then the npm
   package it runs from. It removes a folder only when it holds `config.json5` or `engine.sqlite`

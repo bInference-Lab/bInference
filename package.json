@@ -55,7 +55,8 @@
     "test:fork": "vitest run --config vitest.fork.config.ts",
     "test:image": "vitest run --config vitest.image.config.ts",
     "test:replay": "vitest run --config vitest.replay.config.ts",
-    "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p packages/console/tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json && tsc -p scripts/tsconfig.json && tsc -p packages/console/tsconfig.json",
+    "update:smoke": "node --import tsx scripts/update-smoke.mts"
   },
   "devDependencies": {
     "@binference/chain": "workspace:*",
