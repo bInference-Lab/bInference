@@ -5,6 +5,7 @@ import type { IntentRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakeRiskCheck } from "../fakes/fake-risk-check.js";
+import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import {
   expectOk,
@@ -16,6 +17,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import type { StoredActivity } from "../leaders/tracked-wallet-record.js";
+import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import { testCall, testChains } from "../operations/test-engine.js";
 import type { RiskCheck } from "../ports.js";
 import { copiedHeldOf, type CopyTaking } from "./copy-state.js";
@@ -42,6 +44,12 @@ function takingOf(stored: StoredActivity | undefined): Omit<CopyTaking, "take"> 
   }
   const { id, atMs, txHash } = stored;
   return { id, txHash, side: "buy", asset: testToken, atMs };
+}
+
+// Token facts that answer as the fake does, and nothing once `facts.isRead` turns false.
+function silencedFacts(facts: { readonly isRead: boolean }): ReadTokenFacts {
+  const { read } = createFakeTokenFacts();
+  return async (tokens, call) => (facts.isRead ? read(tokens, call) : new Map());
 }
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
@@ -176,6 +184,30 @@ describe("the copy orders' runner", () => {
     expect(copiedHeldOf(await copyStateNow(test, order.id), testToken)).toBe(0n);
   });
 
+  it("sells nothing once the wallet sold all it held of the token outside the order", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy());
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
+    await test.engine.runCopies(live);
+    const whole = { percentBps: bpsSchema.parse(10_000) };
+    const hand = { agent: testAgent, wallet: testWallet, token: testToken, reason: "By hand" };
+    const sale = { ...hand, kind: "sell", amount: whole } as const;
+    const proposed = expectOk(await test.engine.handlers["intent/propose"](testCall(sale)));
+    await tapCard(test, proposed.intent, "confirm");
+    const share = bpsSchema.parse(5_000);
+    await storeTrades(test, [
+      leaderTrade(2, { side: "sell", atMs: test.clock.now(), shareSoldBps: share }),
+    ]);
+
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual([
+      "skipped:nothing_to_sell",
+      "filled",
+    ]);
+    expect(copiedHeldOf(await copyStateNow(test, order.id), testToken)).toBe(0n);
+  });
+
   it("skips a leader's buy of a honeypot and tells the owner which token", async () => {
     const risk = createFakeRiskCheck({
       chains: testChains(),
@@ -231,6 +263,37 @@ describe("the copy orders' runner", () => {
 
     expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:token_unreadable"]);
     expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
+  it("skips a leader's sale of a copied token that answers no decimals any more, unread", async () => {
+    const risk: RiskCheck = {
+      assess: async (_input, { signal }) => {
+        signal.throwIfAborted();
+        return await Promise.resolve({
+          view: { verdict: "pass", flags: [], onCurve: false, checkedAt: testNowMs },
+        });
+      },
+    };
+    const facts = { isRead: true };
+    const tokenFacts = silencedFacts(facts);
+    const unlistedPrices = new Map(prices).set(unlisted, { numerator: 1n, denominator: 10n ** 9n });
+    const test = await startFillEngine({ prices: unlistedPrices, risk, tokenFacts, tokens: 0n });
+    const order = await activeOrder(test, testCopy());
+    const atMs = test.clock.now();
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs, asset: unlisted })]);
+    await test.engine.runCopies(live);
+    facts.isRead = false;
+    const share = bpsSchema.parse(5_000);
+    await storeTrades(test, [
+      leaderTrade(2, { side: "sell", atMs, asset: unlisted, shareSoldBps: share }),
+    ]);
+
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual([
+      "skipped:token_unreadable",
+      "filled",
+    ]);
   });
 
   it("reads the leader's trades fifty at a time, going on from the last until none is left", async () => {

@@ -76,6 +76,34 @@ describe("a copy order's mirrored sale that fails for a passing reason", () => {
     expect((await copyStateNow(test, order.id)).retries).toStrictEqual([]);
   });
 
+  it("is given up at once while fifty sales already wait to be sold again", async () => {
+    const { test, order, lock } = await bought();
+    lock.isLocked = true;
+    const trades = Array.from({ length: 51 }, (_, n) => n + 2);
+    for (const trade of trades) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one leader sale a run, in order
+      await storeTrades(test, [
+        leaderTrade(trade, { side: "sell", atMs: test.clock.now(), shareSoldBps: share }),
+      ]);
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one leader sale a run, in order
+      await test.engine.runCopies(live);
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one leader sale a run, in order
+      await test.clock.advance(1);
+    }
+
+    const rows = await test.stores.orders.fills({ orderId: order.id, limit: 100 }, live);
+    const reasons = outcomes(rows);
+    // The last sale's two rows share one instant, so their order is not kept.
+    expect(rows.slice(0, 2).map(({ copy }) => copy?.trade)).toStrictEqual([52, 52]);
+    expect(reasons.slice(0, 2).toSorted()).toStrictEqual([
+      "skipped:copy_sale_lapsed",
+      "skipped:engine_locked",
+    ]);
+    expect(reasons.filter((reason) => reason === "skipped:engine_locked")).toHaveLength(51);
+    const { retries } = await copyStateNow(test, order.id);
+    expect(retries.map(({ id }) => id)).toStrictEqual(trades.slice(0, 50));
+  });
+
   it("never comes back for a buy", async () => {
     const { test, order, lock } = await bought();
     lock.isLocked = true;

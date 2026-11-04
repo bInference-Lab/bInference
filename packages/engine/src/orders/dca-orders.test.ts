@@ -1,3 +1,4 @@
+import { assetRefSchema } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import type { ManualClock } from "@binference/core/testing";
 import type { DcaOrderRequest } from "@binference/protocol";
@@ -5,12 +6,18 @@ import { describe, expect, it } from "vitest";
 import { createQuoteSimulator } from "../fakes/quote-simulator.js";
 import { expectOk, testAgent, testNowMs, testToken } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
-import type { Simulator } from "../ports.js";
+import type { IntentStore, Simulator } from "../ports.js";
 import { dcaPeriodDocument } from "./dca-period.js";
 import { moveOrder } from "./order-machine.js";
 import type { OrderRecord } from "./order-record.js";
 import type { OrderStore } from "./ports.js";
-import { activeOrder, fillIntentsOf, fillRowsOf, startFillEngine } from "./test-fills.js";
+import {
+  activeOrder,
+  fillIntentsOf,
+  fillPrices,
+  fillRowsOf,
+  startFillEngine,
+} from "./test-fills.js";
 import { contendedOrders, storedOrder, testStopLoss } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
@@ -50,6 +57,15 @@ function zoneGone(order: OrderRecord): OrderRecord {
 // The order store, answering every DCA order as if its zone no longer read.
 function zonesGone(store: OrderStore): OrderStore {
   return { ...store, list: async (query, call) => (await store.list(query, call)).map(zoneGone) };
+}
+
+// The intent store, answering no stored asset infos once `assets.areKept` turns false, as if
+// nothing knew the token any more.
+function forgettingAssets(store: IntentStore, assets: { readonly areKept: boolean }): IntentStore {
+  return {
+    ...store,
+    storedAssets: async (tokens, call) => (assets.areKept ? store.storedAssets(tokens, call) : {}),
+  };
 }
 
 function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
@@ -225,6 +241,23 @@ describe("a DCA order", () => {
 
     expect([repaired, again]).toStrictEqual([1, 0]);
     expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:missed"]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
+  it("skips a period as failed when nothing knows its token's decimals any more", async () => {
+    const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
+    const assets = { areKept: true };
+    const intents = (store: IntentStore) => forgettingAssets(store, assets);
+    const prices = new Map(fillPrices).set(unlisted, { numerator: 1n, denominator: 10n ** 12n });
+    const test = await startFillEngine({ prices, intents });
+    const order = await activeOrder(test, { ...dca, token: unlisted });
+    await test.engine.runSchedules(live);
+    assets.areKept = false;
+
+    await test.clock.advance(5 * minuteMs);
+    await test.engine.runSchedules(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:fill_failed"]);
     expect(await fillIntentsOf(test)).toStrictEqual([]);
   });
 });
