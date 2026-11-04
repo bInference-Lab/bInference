@@ -14,6 +14,8 @@ import { testCall, testCallers } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import {
   halfCoin,
+  stakedFake,
+  stakingSimulator,
   holdStakeWallet,
   jailedValidator,
   stakeRequest,
@@ -297,6 +299,42 @@ describe("the engine's own checks of a paper staking plan", () => {
   });
 });
 
+describe("simulating a live staking move", () => {
+  it("ends a live stake whose call reverts unsent, before any card", async () => {
+    const reverted = { status: "reverted", gasUsed: 0n, transfers: [], approvals: [] } as const;
+    const test = await startStakeEngine(await stakedFake(), {
+      agent: { mode: "live" },
+      chainSimulator: { simulate: async () => Promise.resolve([reverted]) },
+    });
+
+    const view = await propose(test);
+
+    expect([view.state, view.outcome?.reason, view.card]).toStrictEqual([
+      "failed_check",
+      "simulation_reverted",
+      undefined,
+    ]);
+  });
+
+  it("simulates nothing for a stake another write moved as it passed its risk step", async () => {
+    const ran: string[] = [];
+    const test = await startStakeEngine(await stakedFake(), {
+      agent: { mode: "live" },
+      intents: racedTo("assessed"),
+      chainSimulator: {
+        simulate: async () => {
+          ran.push("simulated");
+          return Promise.resolve([]);
+        },
+      },
+    });
+
+    const view = await propose(test);
+
+    expect([view.state, view.card, ran]).toStrictEqual(["quoted", undefined, []]);
+  });
+});
+
 describe("staking in auto mode", () => {
   it("opens a card for a stake while a community plugin is on, and says why (decision 0350)", async () => {
     const test = await startStakeEngine(withOwnCap(testStakingFake()), {
@@ -309,6 +347,21 @@ describe("staking in auto mode", () => {
     expect(view.state).toBe("awaiting_confirmation");
     expect(await testCardText(test, view, "en")).toContain(
       "Auto mode asks you here: a community plugin is on, and its words reach every turn",
+    );
+  });
+
+  it("leaves a live stake to the owner's card while the engine is locked", async () => {
+    const test = await startStakeEngine(withOwnCap(await stakedFake()), {
+      agent: { mode: "live", approvalMode: "auto" },
+      isLocked: () => true,
+      chainSimulator: stakingSimulator({ simulate: async () => Promise.resolve([]) }),
+    });
+    const request = testCall(stakeRequest("stake"), testCallers.runtime);
+    const view = expectOk(await test.engine.handlers["intent/propose"](request));
+
+    expect(view.state).toBe("awaiting_confirmation");
+    expect(await testCardText(test, view, "en")).toContain(
+      "Auto mode asks you here: binference is locked; run `binference unlock` on the machine",
     );
   });
 });
