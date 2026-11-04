@@ -99,6 +99,7 @@ export const protocolErrorCodes = [
   "order.unpriced_token",
   "order.live_fills_off",
   "order.slippage_limit",
+  "order.expiry_limit",
   "schedule.not_found",
   "schedule.bad_when",
   "schedule.too_many",

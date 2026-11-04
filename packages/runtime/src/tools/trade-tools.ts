@@ -1,4 +1,5 @@
 import { BinferenceError } from "@binference/core";
+import { createFormatter } from "@binference/i18n";
 import {
   type BridgeTerms,
   bridgeTermsSchema,
@@ -162,6 +163,12 @@ interface OrderCreateArgs {
 
 const orderCreateArgs: z.ZodType<OrderCreateArgs> = z.strictObject({ order: orderTermsSchema });
 
+// A refusal whose next step the agent should pass on to the owner, in the owner's English words.
+const english = createFormatter({ locale: "en", timeZone: "UTC" });
+const orderRefusals: Readonly<Record<string, string>> = {
+  "order.expiry_limit": `order_create failed with order.expiry_limit: ${english.message("error.order.expiry_limit")}`,
+};
+
 function orderCreateTool({ agent, client }: AgentToolParts): AgentTool {
   return defineTool<OrderCreateArgs>({
     name: "order_create",
@@ -175,7 +182,10 @@ function orderCreateTool({ agent, client }: AgentToolParts): AgentTool {
         return { text: orderProposalAnswer(order), isError: false };
       } catch (error) {
         if (error instanceof BinferenceError) {
-          return refusedOrThrow("order_create", error);
+          const text = orderRefusals[error.code];
+          return text === undefined
+            ? refusedOrThrow("order_create", error)
+            : { text, isError: true };
         }
         throw error;
       }

@@ -1,11 +1,14 @@
 import type { DcaOrderRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { testAgent, testToken } from "../intents/test-intents.js";
+import { testAgent, testLimits, testToken } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import { activeOrder, fillRowsOf, startFillEngine } from "./test-fills.js";
 import { freeze, storedOrder, unfreeze } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
+// The orders end late in 2027, within a year of the test time, so the agent's orders may last a
+// year (decision 0364).
+const yearLong = { agent: { limits: { ...testLimits, orderExpiryDays: 365 } } };
 
 function dcaAt(cron: string, timezone: string): DcaOrderRequest {
   return {
@@ -41,7 +44,7 @@ async function rowsOf(
 
 describe("a DCA order on the wall clock of its zone", () => {
   it("buys a skipped wall time once, at the jump, the night the clocks go forward", async () => {
-    const test = await startFillEngine();
+    const test = await startFillEngine(yearLong);
     const order = await activeOrder(test, dcaAt("30 2 * * *", "America/New_York"));
     await runAt(test, "2027-03-13T08:00:00Z");
     // 02:30 does not exist on 14 March 2027 in New York: the period runs at 03:00 EDT, 07:00Z.
@@ -56,7 +59,7 @@ describe("a DCA order on the wall clock of its zone", () => {
   });
 
   it("buys a repeated wall time once, at its first showing, the night the clocks go back", async () => {
-    const test = await startFillEngine();
+    const test = await startFillEngine(yearLong);
     const order = await activeOrder(test, dcaAt("30 1 * * *", "America/New_York"));
     await runAt(test, "2027-11-07T05:00:00Z");
     // 01:30 shows twice on 7 November 2027: at 05:30Z in EDT, then at 06:30Z in EST.
@@ -72,7 +75,7 @@ describe("a DCA order on the wall clock of its zone", () => {
 
 describe("a DCA order of a frozen agent", () => {
   it("buys none of the periods while paused, and records them as missed once unfrozen", async () => {
-    const test = await startFillEngine();
+    const test = await startFillEngine(yearLong);
     const order = await activeOrder(test, dcaAt("*/5 * * * *", "UTC"));
     await test.engine.runSchedules(live);
     await freeze(test);

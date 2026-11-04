@@ -6,6 +6,7 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { unlistedAssetInfos } from "../money-path/token-facts.js";
 import { autoOrderQuoteDocument } from "./auto-order-quote.js";
+import { expiryLimitRefusal } from "./expiry-limit-refusal.js";
 import { isInstallAccount } from "./install-accounts.js";
 import { type OneCardParts, openOneCard, storedUnlessTaken } from "./open-one-card.js";
 import {
@@ -245,7 +246,8 @@ function storedOrder(
  * frozen agent, a wallet that is not the agent's, a launchpad whose curve read failed as it picks
  * the wallet (`quote.venue_down`), a broken rule, a copy order of a wallet of the install, an
  * order that asks more slippage than the agent's limit (`order.slippage_limit`, decision
- * 0362), a price order for a token the price watcher cannot price now (decision 0194), or a token
+ * 0362), an order that names an end past the agent's `orderExpiryDays` (`order.expiry_limit`,
+ * decision 0364), a price order for a token the price watcher cannot price now (decision 0194), or a token
  * the registry does not list that answers no symbol or decimals on chain (`asset.unreadable`,
  * decision 0199), or a copy order whose leader would be the 51st tracked wallet
  * (`wallet.track_limit`). The card shows such a token by what it answered, marked unverified.
@@ -264,9 +266,14 @@ export async function createOrder(
   if (refusal !== undefined || settings === undefined) {
     return err(refusal ?? "agent.not_found");
   }
-  const checked = checkOrderRequest(request, rulesContextOf(parts, settings));
+  const context = rulesContextOf(parts, settings);
+  const checked = checkOrderRequest(request, context);
   if (!checked.ok) {
     return checked;
+  }
+  const tooLate = expiryLimitRefusal(request, context);
+  if (tooLate !== undefined) {
+    return err(tooLate);
   }
   const neverFills = neverFillsRefusal(parts, { settings, checked: checked.value });
   if (neverFills !== undefined) {

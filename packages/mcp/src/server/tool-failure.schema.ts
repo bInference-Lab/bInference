@@ -46,6 +46,8 @@ const nextSteps: Readonly<Partial<Record<KnownCode, string>>> = {
   "engine.starting": "The engine is starting. Try again in a few seconds.",
   "engine.stopping": engineStep,
   "protocol.bad_args": "Check the input against the tool's input schema.",
+  "order.expiry_limit":
+    "The order ends later than the agent's order expiry limit, orderExpiryDays, allows. Name an earlier expiresAt, or leave it out to end the order at the limit; only the owner raises the limit, with `binference limit set orders.expiryDays=DAYS`.",
 };
 
 function isKnownCode(code: string): code is KnownCode {

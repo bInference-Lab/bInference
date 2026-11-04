@@ -103,7 +103,9 @@ Rules for this package:
   decision 0197), a live order made before skips, and the money path ends a live fill
   `failed_check` with `live_fills_off`; every order skips while the engine is locked, before any
   intent. `order/create` and `webhookRule/create` refuse a slippage above the agent's limit for the
-  pair the fills trade (`order.slippage_limit`, `slippage-refusal.ts`, decision 0362). A fill has 30 seconds; one that throws or runs
+  pair the fills trade (`order.slippage_limit`, `slippage-refusal.ts`, decision 0362), and
+  `order/create` an end past the agent's `orderExpiryDays` (`order.expiry_limit`,
+  `expiry-limit-refusal.ts`, decision 0364). A fill has 30 seconds; one that throws or runs
   past them is a skip, `fill_failed` (`fill-faults.ts`). A skip's row and its notices land with
   the move that ends its intent: the one writer of intents adds them (`fill-ends.ts`), and the
   start repairs what a stop left (`repair-order-fills.ts`). A change to a bound changes

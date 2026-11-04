@@ -160,6 +160,44 @@ describe("binference mcp", () => {
     },
   );
 
+  it(
+    "answers an auto order ending past the order expiry days with the next step",
+    slow,
+    async () => {
+      const machine = await machines.create(testNowMs);
+      const skeleton = await serveSkeleton(machine, selfHosted());
+      served.push(skeleton);
+      await writeToken(machine, "mcp-codex.token", skeletonSecrets.mcp);
+      const mcp = startMcp(machine, ["mcp", "--client", "codex"]);
+      const client = new Client({ name: "codex", version: "1.0.0" });
+      await client.connect(new StdioServerTransport(mcp.fromServer, mcp.toServer));
+      const stopLoss = {
+        agent: testAgent,
+        kind: "stopLoss",
+        token: testToken,
+        side: "sell",
+        size: { percentBps: 10_000 },
+        trigger: { price: "800000" },
+        expiresAt: testNowMs + 31 * 86_400_000,
+        reason: "Cut the loss below the last low.",
+      };
+      const answer = await client.callTool({
+        name: "binference_order_create",
+        arguments: stopLoss,
+      });
+      expect(answer.isError).toBe(true);
+      const text = JSON.stringify(answer.content);
+      expect(text).toContain("binference_order_create failed with order.expiry_limit");
+      expect(text).toContain("orderExpiryDays");
+      expect(text).toContain("binference limit set orders.expiryDays=DAYS");
+      const live = { signal: AbortSignal.timeout(5_000) };
+      expect((await skeleton.client.call("order/list", {}, live)).items).toStrictEqual([]);
+      mcp.toServer.end();
+      await expect(mcp.exit).resolves.toBe(0);
+      await client.close();
+    },
+  );
+
   it("exits 1 and names the token file when the client has none", async () => {
     const machine = await machines.create(testNowMs);
     const mcp = startMcp(machine, ["mcp", "--client", "claude-code"]);

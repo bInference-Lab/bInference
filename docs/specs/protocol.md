@@ -709,7 +709,8 @@ Auto orders follow [decision 0189](../DECISIONS.md#d0189):
   [0246](../DECISIONS.md#d0246) and [0261](../DECISIONS.md#d0261)); a `maxSlippageBps` above the
   agent's slippage limit for the pair its fills trade, or above the larger of its two limits for a
   `copy` order (`order.slippage_limit`, [decision 0362](../DECISIONS.md#d0362)), while a limit
-  tightened later still skips each fill with `slippage`; a `dca` period binference cannot read or with no run in eight
+  tightened later still skips each fill with `slippage`; an `expiresAt` further ahead than the
+  agent's `orderExpiryDays` (`order.expiry_limit`, [decision 0364](../DECISIONS.md#d0364)); a `dca` period binference cannot read or with no run in eight
   years (`schedule.bad_when`); a token the registry does not
   list that answers no symbol or no decimals on chain (`asset.unreadable`,
   [decision 0199](../DECISIONS.md#d0199)); and
@@ -1187,7 +1188,9 @@ webhook rule.
 as what the agent says, escaped ([decision 0177](../DECISIONS.md#d0177)). The agent runtime always
 sends one; another client may leave it out. An order that names no `expiresAt` ends its agent's
 `orderExpiryDays` after it is made: `defaults.orders.expiryDays` (spec 2), 30 days, until
-`limit/set` changes it.
+`limit/set` changes it. One that names an `expiresAt` further ahead than that is refused with
+`order.expiry_limit` ([decision 0364](../DECISIONS.md#d0364)); a webhook rule keeps its own 30
+days.
 
 | `kind`       | `trigger`                                                                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -1449,7 +1452,7 @@ later unchanged.
 | `rescue`   | `no_address`, `nothing_to_move`                                                                                                                                                                                                                                                                                                                                                                |
 | `signer`   | `not_found`, `last_signer`, `own_key`                                                                                                                                                                                                                                                                                                                                                          |
 | `intent`   | `not_found`, `wrong_state`, `expired`, `card_changed`, `not_yours`, `owner_only`, `launch_waiting`, `own_wallet_recipient`, `launch_recipient_needed`, `launch_recipient_unused`, `launch_wallet_missing`, `bridge_wallet_missing`, `bridge_wallet_only`, `extra_wallet`, `launch_picture_too_large`, `kind_unavailable`, `pool_venue`, `identity_exists`, `identity_pending`, `identity_text` |
-| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`, `slippage_limit`                                                                                                                                                                                                                                                                                           |
+| `order`    | `not_found`, `wrong_state`, `kind_unavailable`, `unpriced_token`, `live_fills_off`, `slippage_limit`, `expiry_limit`                                                                                                                                                                                                                                                                           |
 | `schedule` | `not_found`, `bad_when`, `too_many`                                                                                                                                                                                                                                                                                                                                                            |
 | `webhook`  | `not_found`, `too_many`, `url_shown`                                                                                                                                                                                                                                                                                                                                                           |
 | `note`     | `not_found`                                                                                                                                                                                                                                                                                                                                                                                    |

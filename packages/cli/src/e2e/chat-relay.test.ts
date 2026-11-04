@@ -5,6 +5,7 @@ import { createManualClock, createSeededRandom } from "@binference/core/testing"
 import { sha256Hex } from "@binference/engine";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testToken, testWallet } from "@binference/engine/testing";
+import { createFormatter } from "@binference/i18n";
 import type { IntentView } from "@binference/protocol";
 import type { RouteLine } from "@binference/runtime";
 import {
@@ -396,6 +397,34 @@ describe.each(skeletonCompositions)("the chat relay on the $name composition", (
       const { recorder } = await runChatTurn(relay, { replies });
       const [refusal] = resultsOf(recorder);
       expect(refusal?.text).toMatch(/^order_create failed with order\.slippage_limit: /);
+      const listed = await relay.skeleton.client.call("order/list", {}, live());
+      expect(listed.items).toStrictEqual([]);
+    },
+  );
+
+  it(
+    "answers an auto order ending past the order expiry days with the owner's words",
+    slow,
+    async () => {
+      const relay = await startRelay(composition);
+      const stopLoss = {
+        kind: "stopLoss",
+        token: testToken,
+        side: "sell",
+        size: { percentBps: 10_000 },
+        trigger: { price: "800000" },
+        expiresAt: relay.skeleton.clock.now() + 31 * 86_400_000,
+        reason: "Cut the loss below the last low.",
+      };
+      const replies = [callsReply([{ name: "order_create", args: { order: stopLoss } }])];
+      const { recorder } = await runChatTurn(relay, { replies });
+      const [refusal] = resultsOf(recorder);
+      const words = createFormatter({ locale: "en", timeZone: "UTC" }).message(
+        "error.order.expiry_limit",
+      );
+      expect(words).toContain("orderExpiryDays");
+      expect(words).toContain("`binference limit set orders.expiryDays=DAYS`");
+      expect(refusal?.text).toBe(`order_create failed with order.expiry_limit: ${words}`);
       const listed = await relay.skeleton.client.call("order/list", {}, live());
       expect(listed.items).toStrictEqual([]);
     },
