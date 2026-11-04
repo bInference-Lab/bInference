@@ -58,6 +58,9 @@ const keysReadOnUse: readonly string[] = [
   "chains.relays",
   // Each KyberSwap call names the id config holds when it starts.
   "venues.kyberClientId",
+  // Each daily update check reads its switch, its channel and the counts' switch when it runs.
+  "updates",
+  "telemetry",
   // Each risk check judges a cached report by the time to live as it stands then.
   "risk",
   // Each new WebSocket and pairing meets the origins as they stand; an open socket stays.
@@ -76,8 +79,6 @@ const keysNoPartReads: readonly string[] = [
   "venues.keys.zerox",
   "remote.mini",
   "remote.webhooks",
-  "updates",
-  "telemetry",
   "chats.keepDays",
   "plugins",
 ];

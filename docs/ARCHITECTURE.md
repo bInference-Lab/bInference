@@ -1138,8 +1138,10 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
   API every day (7 daily and 4 weekly kept), and one before every update and migration. Live
   database files are never copied. An optional second copy goes to a folder the owner picks.
 - **Updates ([decision 0047](DECISIONS.md#d0047)).** A daily check, on by default, asks whether a
-  newer version exists and sends the version, OS, Node version and CPU type. A new version arrives
-  as a Telegram note with its changes. `binference update` backs up, verifies the npm provenance,
+  newer version exists and sends the version, OS, Node version and CPU type. It reads npm's
+  dist-tags and the release's notes for owners from its package, with those four in the user agent
+  ([decision 0355](DECISIONS.md#d0355)); `updates/announced.json` in the state folder keeps the
+  release told last. A new version arrives as a Telegram note with its changes. `binference update` backs up, verifies the npm provenance,
   installs, runs `check`, and restores the previous version if `check` fails. Nothing installs by
   itself.
 - **Telemetry ([decision 0048](DECISIONS.md#d0048)).** Off by default; onboarding asks once. When

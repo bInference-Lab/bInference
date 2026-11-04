@@ -9,6 +9,7 @@ import { startCardTimer } from "./card-timer.js";
 import { startClaimReadyTimer } from "./claim-ready-timer.js";
 import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
+import { startUpdateChecks } from "./compose-updates.js";
 import { startConfigReload } from "./config-reload.js";
 import { startCopyTimer } from "./copy-timer.js";
 import { startDowntimeTimer } from "./downtime-timer.js";
@@ -98,7 +99,7 @@ function startReload(opening: Opening, opened: Opened, composed: ComposedSelfHos
 
 // What runs while the engine serves: the settle timer, the gas check, the order and card timers,
 // the schedule queue, the copy orders, the daily summaries, the bridges in transit, the price
-// watchers, the nightly backup, the reload of `config.json5` when it changes (decision 0118), and
+// watchers, the nightly backup, the daily update check, the reload of `config.json5` when it changes (decision 0118), and
 // the retries of the signer step after a start that found Privy out of reach (decision 0119).
 function startTimers(
   opening: Opening,
@@ -129,6 +130,7 @@ function startTimers(
     settings: opened.settings,
     publish: composed.publish,
   });
+  startUpdateChecks(opening, opened, composed.publish);
   startReload(opening, opened, composed);
   if (started.isPrivyUnreachable) {
     const { clock, random } = host;
