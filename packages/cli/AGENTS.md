@@ -219,8 +219,10 @@ Rules for this package:
   until the data on disk is one version's; a rollback puts the copies back as plain files under
   the engine lock. `src/e2e/update-fixtures.ts` runs the installed program's commands in the
   test's process, and `update-resume.test.ts` leaves the state of a run killed at each step. `pnpm update:smoke` proves it on three
-  packed releases with real npm in a scratch prefix and a scratch home folder, the service a
-  child process; never run `update` against your own `~/.binference`.
+  packed releases with real npm in a scratch home folder, the service a child process: the old
+  one installed by `install/install.sh` into its `npm/` prefix, whose launcher must print each
+  version the update leaves (`src/packed/script-install.ts`); never run `update` against your own
+  `~/.binference`.
 - `binference uninstall` (`src/uninstall/`, decision 0264) stops the engine, removes the service,
   then with `--state` the state folder and the keychain entries its config names, then the npm
   package it runs from. It removes a folder only when it holds `config.json5` or `engine.sqlite`

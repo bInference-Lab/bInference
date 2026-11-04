@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import process from "node:process";
 import type { Http, HttpDownload } from "@binference/core";
 import { createFakePrivy } from "@binference/custody-privy/testing";
@@ -26,18 +26,24 @@ import {
   createFakeReleaseRegistry,
   type FakeReleaseRegistry,
 } from "../updates/fake-release-registry.js";
-import { installArgs } from "../updates/install-tarball.js";
 import { createChildServices } from "./child-services.js";
 import { createPackedBinference, type PackedBinference } from "./packed-binference.js";
+import {
+  installByScript,
+  expectLauncher,
+  type ScriptInstall,
+  scriptInstallIn,
+} from "./script-install.js";
 import { createSmokeBot } from "./smoke-bot.js";
 import { startSmokeEdge } from "./smoke-edge.js";
 import { startSmokeModel } from "./smoke-model.js";
 
 // The update smoke, which `pnpm update:smoke` runs with the folder it packed three releases in:
 // the old one, one whose own `check` fails and whose engine migrates the records past the old
-// one's schema, and a good one. The old one installs with npm into a scratch npm prefix other
-// than npm's own global one, sets up with `init --yes` in a scratch home folder and runs as the
-// service, a program of this Node in place of the OS's login service. `binference update` from
+// one's schema, and a good one. The old one installs with the install script (decision 0357)
+// into its `npm/` prefix in a scratch home folder, other than npm's own global one, with its
+// launcher beside it, sets up with `init --yes` and runs as the service, a program of this Node
+// in place of the OS's login service. The launcher must print each version the update leaves. `binference update` from
 // the repository's sources then installs the failing release and must put the old one and its
 // records back, running, then installs the good one, which must run. npm installs the real packed tarballs;
 // the update reads them from a stand-in registry, whose bundles a test signs and the update's
@@ -56,8 +62,9 @@ const statusSchema = z.looseObject({ state: z.string(), version: z.string() });
 interface World {
   readonly scratch: TempFolder;
   readonly home: string;
-  readonly prefix: string;
   readonly script: string;
+  /** The install script's prefix and the launcher it wrote, which outlasts every update. */
+  readonly install: ScriptInstall;
   readonly env: Readonly<Record<string, string>>;
   readonly binference: PackedBinference;
   readonly registry: FakeReleaseRegistry;
@@ -257,18 +264,19 @@ async function openWorld(manifest: Manifest, folder: string): Promise<World> {
   const fakes = await startFakes();
   const globalPrefix = await npmSetting("prefix");
   const env = await envOf(scratch, fakes);
-  const prefix = join(scratch.path, "npm");
-  // As a one-line install into a prefix of the owner's own: the update must use the program's.
-  if (prefix === globalPrefix) {
+  // The install script's prefix in the scratch home: the update must use the program's own prefix
+  // there, and leave the launcher beside it working.
+  const install = scriptInstallIn(join(scratch.path, "h"));
+  if (install.prefix === globalPrefix) {
     fail("the scratch prefix is npm's own global one.");
   }
-  const script = scriptOf(prefix);
+  const script = scriptOf(install.prefix);
   const http = createSystemHttp({ version: manifest.versions.from });
   return {
     scratch,
     home: join(scratch.path, "h"),
-    prefix,
     script,
+    install,
     env,
     binference: createPackedBinference({ bin: script, parentEnv: process.env, env }),
     registry: await registryOf(manifest, folder),
@@ -282,17 +290,11 @@ async function openWorld(manifest: Manifest, folder: string): Promise<World> {
   };
 }
 
-// The old release, installed by npm into the scratch prefix, set up and run as the service.
+// The old release, installed by the install script with this Node into its prefix in the scratch
+// home, set up and run as the service.
 async function installOld(world: World, manifest: Manifest, folder: string): Promise<void> {
-  const tarball = join(folder, manifest.files.from);
-  const npm = await runCommandWithin("npm", installArgs(world.prefix, tarball), {
-    signal: AbortSignal.timeout(10 * minute),
-    timeoutMs: 10 * minute,
-    env: world.env,
-  });
-  if (npm.exitCode !== 0) {
-    fail(`npm could not install ${tarball}:\n${npm.stderr}`);
-  }
+  await installByScript(resolve(folder, manifest.files.from), world.env);
+  await expectLauncher(world.install, world.env, manifest.versions.from);
   const init = await world.binference.run(world.initArgs, 3 * minute);
   if (init.exitCode !== 0) {
     fail(`init ended with ${String(init.exitCode)}:\n${init.stdout}`);
@@ -313,10 +315,12 @@ async function smoke(world: World, manifest: Manifest, folder: string): Promise<
     fail(`the update to ${broken}, whose check fails, did not end in a rollback after it.`);
   }
   await expectRunning(world, from);
+  await expectLauncher(world.install, world.env, from);
   if ((await update(world, from, to)).code !== 0) {
     fail(`the update to ${to} did not pass.`);
   }
   await expectRunning(world, to);
+  await expectLauncher(world.install, world.env, to);
   await runCli(hostFor(world, ["stop", "--json"], to));
 }
 
