@@ -80,6 +80,11 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      # The install scripts the dry run stages for hosting pin Node by Node's signed sums
+      # (decision 0357); gpgv comes with the runner's GnuPG.
+      - name: Node pins
+        run: pnpm node:pins
+
       - name: Dry run
         run: pnpm release:dry "$TAG"
 

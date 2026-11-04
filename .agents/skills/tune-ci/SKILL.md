@@ -18,12 +18,12 @@ three operating systems. Count before you add.
 | `mutation.yml` | a `master` push touching engine, signer; by hand | Stryker on up to 12 changed files, 45 minutes at most                                       |
 | `fork.yml`     | nightly 03:41 UTC, by hand                       | the fork suite on Linux                                                                     |
 | `crash.yml`    | nightly 04:23 UTC, by hand                       | the crash suite on 3 OSes, `BINFERENCE_CRASH_RUNS` runs per kill point                      |
-| `packed.yml`   | nightly 00:37 UTC, by hand                       | `pnpm release:dry --pack-only` on Linux, then the built-package smoke on 3 OSes             |
+| `packed.yml`   | nightly 00:37 UTC, by hand                       | the Node pins and `release:dry --pack-only` on Linux; the smoke and one-liner on 3 OSes     |
 | `image.yml`    | nightly 01:13 UTC, by hand                       | the Docker image suite on Linux amd64                                                       |
 | `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday          | Stryker in 20 shards with saved results                                                     |
 | `release.yml`  | a pushed `v*` tag (dry), by hand to publish      | `pnpm release:dry`, the smoke on 3 OSes, the two-platform image; npm and GitHub's release   |
 
-A push to `master` starts 12 jobs, 13 with the mutation job; a night starts 38, and Monday adds
+A push to `master` starts 12 jobs, 13 with the mutation job; a night starts 42, and Monday adds
 the weekly CodeQL run. Each pushed commit
 has its own concurrency group, so runs on `master` never cancel or replace each other, and the
 nightly suites never cancel either. The nightly workflows start at different times so their jobs
