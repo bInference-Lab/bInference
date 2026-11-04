@@ -1,4 +1,4 @@
-import type { Id } from "@binference/core";
+import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testToken } from "../intents/test-intents.js";
 import { testCall, testChains, type TestEngine } from "../operations/test-engine.js";
@@ -162,6 +162,18 @@ describe("the receipt of a confirmed card that sends nothing on chain", () => {
     expect(await endedAs(atEnd)).toStrictEqual({ kind: "orderUnstarted", why: "expired" });
     expect(await endedAs(beforeEnd)).toStrictEqual({ kind: "orderUnstarted", why: "cancelled" });
     expect(await endedAs(undefined)).toStrictEqual({ kind: "orderUnstarted", why: "cancelled" });
+  });
+
+  it("gives no receipt for a webhook rule on a chain the registry no longer holds", async () => {
+    const test = await startOrderEngine();
+    const { intent } = await createdRule(test);
+    await tapCard(test, intent, "confirm");
+    const record = present(await test.stores.intents.get(intent, live));
+    const { orders, webhookRules, agents } = test.stores;
+    const chains = { get: () => err("unknown_chain" as const), list: () => [] };
+    const source = { record, orders, webhookRules, agents, chains };
+
+    expect(await writtenReceiptOf(source, live)).toBeUndefined();
   });
 
   it("gives no receipt for an auto order whose agent is no longer stored", async () => {

@@ -14,6 +14,7 @@ import {
   testToken,
   testWallet,
 } from "../intents/test-intents.js";
+import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
   type TestEngine,
@@ -31,6 +32,7 @@ import { createCardShowings, maxWaitingCards } from "./create-card-showings.js";
 import { present, worseAfterFirstQuote } from "./test-venues.js";
 
 const live = { signal: new AbortController().signal };
+const device = "dev_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 
 interface Shown {
   readonly test: TestEngine;
@@ -199,6 +201,19 @@ describe("the card showings", () => {
     expect(route?.values).toMatchObject({ slippage: { type: "percent", bps: 80 } });
   });
 
+  it("show the slippage a request asked for in place of the limit's", async () => {
+    const test = await startTestEngine();
+    const asked = { ...testSwap(), maxSlippageBps: bpsSchema.parse(20) };
+    const view = expectOk(
+      await test.engine.handlers["intent/propose"](testCall(asked, testCallers.mcp)),
+    );
+    const [card] = await test.stores.intents.cards(view.intent, live);
+    const ref = { intent: view.intent, card: present(card).id };
+    const showing = present(await showingsOf(test).opened(ref, live));
+    const route = showing.card.lines.find((line) => line.key === "card.route");
+    expect(route?.values).toMatchObject({ slippage: { type: "percent", bps: 20 } });
+  });
+
   it("say why auto mode asks, naming an MCP proposal's client by its token's label", async () => {
     const shown = await proposed({ agent: { approvalMode: "auto" } });
     await shown.test.stores.access.addToken(
@@ -230,6 +245,29 @@ describe("the card showings", () => {
       expect.objectContaining({ key: "card.reason" }),
       expect.objectContaining({ key: "card.expiry" }),
     ]);
+  });
+
+  it.each<[string, EngineCaller, string]>([
+    [
+      "a console device it has no label for",
+      { ...testCallers.cli, credential: device, client: { kind: "console", version: "test" } },
+      device,
+    ],
+    ["a client token it has no label for", testCallers.cli, testCallers.cli.credential],
+  ])("say auto mode asks a proposal from %s, naming who made it", async (_from, caller, client) => {
+    const test = await startTestEngine({ agent: { approvalMode: "auto" } });
+    const view = expectOk(
+      await test.engine.handlers["intent/propose"](testCall(testSwap(), caller)),
+    );
+    const [card] = await test.stores.intents.cards(view.intent, live);
+    const ref = { intent: view.intent, card: present(card).id };
+    const lines = present(await showingsOf(test).opened(ref, live)).card.lines;
+    expect(lines.find((line) => line.key === "card.warn.autoAsks")?.values).toStrictEqual({
+      why: {
+        type: "line",
+        line: { key: "autoAsks.mcp", values: { client: { type: "text", text: client } } },
+      },
+    });
   });
 
   it("show no auto mode line once the agent is in manual mode", async () => {
