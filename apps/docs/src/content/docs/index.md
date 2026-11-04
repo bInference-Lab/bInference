@@ -14,6 +14,7 @@ every transaction.
 
 ## Features
 
+- [Chat with your agent](/guides/chat/): Telegram, the console, the terminal and the first chat.
 - [Safety](/guides/safety/): what needs your tap, auto mode, the limits, the ceiling, freeze and
   rescue.
 - [Auto orders and alerts](/guides/auto-orders/): limit, take-profit, stop-loss, trailing, DCA and

@@ -19,6 +19,7 @@ function group(key, items) {
 // language.
 const start = ["guides/install", "guides/docker-vps"];
 const features = [
+  "guides/chat",
   "guides/safety",
   "guides/auto-orders",
   "guides/staking",

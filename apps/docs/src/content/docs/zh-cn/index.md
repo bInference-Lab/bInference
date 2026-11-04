@@ -12,6 +12,7 @@ binference 是替你在 BNB Smart Chain 上交易的 AI Agent。它运行在你�
 
 ## 功能指南
 
+- [与 Agent 对话](/zh-cn/guides/chat/)：Telegram、控制台、终端和初次对话。
 - [安全](/zh-cn/guides/safety/)：哪些操作需要你点按、自动模式、限额、上限、冻结和紧急转出。
 - [自动订单和提醒](/zh-cn/guides/auto-orders/)：限价单、止盈、止损、追踪止损、定投和跟单。
 - [质押 BNB](/zh-cn/guides/staking/)：StakeHub 验证者和 Lista 的 slisBNB。
