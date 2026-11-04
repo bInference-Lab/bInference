@@ -1,6 +1,6 @@
 # 0264. binference uninstall removes the state folder only on request
 
-Status: Accepted
+Status: Amended by 0358
 
 Accepted by the owner on 2026-10-20.
 

@@ -510,7 +510,7 @@ check` tries it as `network.proxy`.
   matches the script's pin; `npm i -g binference` on the stable or `--beta` channel in `npm/`; and
   the **launcher**, `bin/binference`, which runs binference with that Node by its full path. Then
   it runs `binference init`. It never asks for root, and it prints the PATH line for `bin/`
-  without writing it. Its variables: `BINFERENCE_INSTALL_CHANNEL`, `BINFERENCE_INSTALL_YES`,
+  without writing it. `binference uninstall` removes what it put there and names that line. Its variables: `BINFERENCE_INSTALL_CHANNEL`, `BINFERENCE_INSTALL_YES`,
   `BINFERENCE_INSTALL_SKIP_INIT`, `BINFERENCE_NODE_MIRROR`, and `BINFERENCE_INSTALL_PACKAGE`, a
   local tarball for tests only; init's answers go in `BINFERENCE_INIT_*`, never on its command
   line. `install/install.ps1` does the same on Windows

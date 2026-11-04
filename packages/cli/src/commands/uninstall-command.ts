@@ -96,6 +96,25 @@ function sayState(uninstall: Uninstall, folder: string, state: RemovedState | un
   sayAgentKey(uninstall, state.agentKey);
 }
 
+// What went with the install script's folder, and the PATH entry the owner may have added for it.
+function sayScript(uninstall: Uninstall, removal: Exclude<ProgramRemoval, { kind: "not_npm" }>) {
+  const { output, host } = uninstall.run;
+  const { script } = removal;
+  if (script === undefined) {
+    return;
+  }
+  if (removal.kind === "removed") {
+    const values = { folder: script.folder, node: script.hasNode ? "yes" : "no" };
+    output.say("uninstall.scriptRemoved", values);
+  }
+  if (host.system.os === "win32") {
+    output.say("uninstall.pathFolder", { folder: script.bin });
+    return;
+  }
+  output.say("uninstall.pathLine");
+  output.line(`  export PATH="${script.bin}:$PATH"`);
+}
+
 function sayProgram(uninstall: Uninstall, removal: ProgramRemoval): ExitCode {
   const { output } = uninstall.run;
   switch (removal.kind) {
@@ -106,12 +125,18 @@ function sayProgram(uninstall: Uninstall, removal: ProgramRemoval): ExitCode {
       output.say("uninstall.programByHand", { command: removal.command });
       break;
     case "failed":
-      output.say("uninstall.programFailed", { command: removal.command });
+      output.say(
+        removal.script === undefined ? "uninstall.programFailed" : "uninstall.scriptFailed",
+        {
+          command: removal.command,
+        },
+      );
       break;
     case "not_npm":
       output.say("uninstall.programNotNpm", { folder: removal.folder });
-      break;
+      return 0;
   }
+  sayScript(uninstall, removal);
   return removal.kind === "failed" ? 1 : 0;
 }
 

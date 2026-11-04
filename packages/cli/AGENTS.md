@@ -226,7 +226,9 @@ Rules for this package:
 - `binference uninstall` (`src/uninstall/`, decision 0264) stops the engine, removes the service,
   then with `--state` the state folder and the keychain entries its config names, then the npm
   package it runs from. It removes a folder only when it holds `config.json5` or `engine.sqlite`
-  and not the home folder. Its tests pass a keychain and a program runner of their own: the test
+  and not the home folder. After the install script, it removes the script's `npm/`, pinned Node
+  and launcher instead of running npm, and names the PATH line to remove (decision 0358); a Node
+  or file outside them stays. Its tests pass a keychain and a program runner of their own: the test
   host's runner refuses, so no test runs npm.
 - `binference reset` (`src/reset/`, decision 0265) stops the engine as `backup restore` does
   (`src/commands/engine-runs.ts`), and under the engine lock refuses while a live intent is
