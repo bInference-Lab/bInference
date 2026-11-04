@@ -33,6 +33,7 @@
     "deadcode": "knip --no-progress",
     "dup:check": "jscpd .",
     "eval:models": "node --conditions=@binference/source --import tsx packages/cli/src/evaluation/evaluate-models.ts",
+    "first-day:smoke": "node --conditions=@binference/source --import tsx scripts/first-day-smoke.mts",
     "format": "oxfmt --write",
     "format:check": "oxfmt --check",
     "gen:package": "node --import tsx scripts/gen-package.mts",

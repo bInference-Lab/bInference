@@ -525,6 +525,14 @@ check` tries it as `network.proxy`.
   must install, print its version through the launcher and run `init --yes`, whose refusal and
   exit code the script passes on; with `--fresh-node` it also installs the pinned Node from
   nodejs.org.
+- **first-day smoke**: `pnpm first-day:smoke [--pack-only] [--packed <folder>]
+[--privy fake|real]`: the owner's first day on two packed releases, A and B, in a home of its
+  own, each **step** timed into a report in `reports/first-day/`: the one-liner installs A,
+  `init --yes` reads its answers from `BINFERENCE_INIT_*` variables, `start`, a paper trade by
+  chat, `status` with every part in place, `update` to B with the chat still answering, and
+  `uninstall --state`, after which nothing of binference stays. Stand-ins for the OS's service
+  tools fail it when called. With `--privy real` it runs on Privy's dev app and its `cleanup` step
+  removes what it made there.
 - **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed
   files** into an empty project outside the repository, checks that every file their manifests
   name is there, then sets the installed `binference` up with `init --yes`, starts it, makes a

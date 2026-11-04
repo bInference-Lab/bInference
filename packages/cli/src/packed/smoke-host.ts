@@ -1,13 +1,22 @@
 import { EventEmitter } from "node:events";
+import { join } from "node:path";
 import process from "node:process";
 import type { Http, HttpDownload } from "@binference/core";
-import { readSystemFacts, runCommandWithin, type ServiceManager } from "@binference/platform";
+import {
+  readFilePieces,
+  readSystemFacts,
+  runCommandWithin,
+  type ServiceManager,
+} from "@binference/platform";
 import type { CliHost } from "../program/cli-host.js";
 import { runCli } from "../program/run-cli.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import type { SystemHttp } from "../runtime/system-http.js";
 import { createSystemRandom } from "../runtime/system-random.js";
-import type { FakeReleaseRegistry } from "../updates/fake-release-registry.js";
+import {
+  createFakeReleaseRegistry,
+  type FakeReleaseRegistry,
+} from "../updates/fake-release-registry.js";
 
 /**
  * What a packed smoke runs a command of the repository's sources on: an install's entry, the
@@ -24,6 +33,34 @@ export interface SmokeHostWorld {
   readonly registry: FakeReleaseRegistry;
   readonly http: SystemHttp;
   readonly services: ServiceManager;
+}
+
+const minute = 60_000;
+
+/** The entry script npm installs binference's package to under the global `prefix`. */
+export function installedScriptOf(prefix: string): string {
+  const modules = readSystemFacts().os === "win32" ? [prefix] : [prefix, "lib"];
+  return join(...modules, "node_modules", "binference", "dist", "main.mjs");
+}
+
+async function bytesOf(file: string): Promise<Uint8Array> {
+  const pieces: Uint8Array[] = [];
+  for await (const piece of readFilePieces(file, { signal: AbortSignal.timeout(minute) })) {
+    pieces.push(piece);
+  }
+  return new Uint8Array(Buffer.concat(pieces));
+}
+
+/** A stand-in npm registry that holds each packed tarball as the release of its version. */
+export async function packedRegistryOf(
+  releases: readonly { readonly version: string; readonly file: string }[],
+): Promise<FakeReleaseRegistry> {
+  const registry = createFakeReleaseRegistry();
+  const read = await Promise.all(releases.map(async (release) => bytesOf(release.file)));
+  releases.forEach((release, index) =>
+    registry.release(release.version, { bytes: read[index] ?? new Uint8Array() }),
+  );
+  return registry;
 }
 
 // Routes the stand-in registry's origin to it, and every other request out by the route in force.

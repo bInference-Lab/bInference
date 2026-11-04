@@ -79,3 +79,13 @@ export async function tradeByChat(bot: SmokeBot, report: string): Promise<void> 
   await bot.until("paper fill", isFilled, 2 * minute);
   await bot.until("agent's report", (api) => sentWith(api, report) > 0, 2 * minute);
 }
+
+/**
+ * The owner writes again, as update `updateId`, and waits for the agent's next answer, which the
+ * scripted model says as `report`: the chat still works.
+ */
+export async function chatAgain(bot: SmokeBot, report: string, updateId: number): Promise<void> {
+  const before = sentWith(bot.api, report);
+  bot.api.push(ownerText("How did the trade go?", updateId));
+  await bot.until("agent's answer", (api) => sentWith(api, report) > before, 2 * minute);
+}

@@ -223,6 +223,17 @@ Rules for this package:
   one installed by `install/install.sh` into its `npm/` prefix, whose launcher must print each
   version the update leaves (`src/packed/script-install.ts`); never run `update` against your own
   `~/.binference`.
+- `pnpm first-day:smoke` (decision 0359) runs `src/packed/first-day.ts` once the install one-liner
+  put release A in a scratch home folder: `init` and `status` through the launcher; `start`,
+  `update` to B and `uninstall` from the sources on child services (`smoke-host.ts`), as the update
+  smoke runs them. Each step's verdict is a function of `first-day-checks.ts`, tested on its own;
+  a step that breaks fails there. Stand-ins for `launchctl`, `systemctl` and `loginctl` sit first
+  on PATH, and the launcher runs no other command, so the smoke never reaches the OS's service
+  manager. Its install step fails unless the sources are the commit the releases were packed
+  from, with no tracked change; the bundled program's own `update` and `uninstall` stay unrun.
+  With `--privy real` (`first-day-privy.ts`) it keeps the owner key in the OS keychain before
+  init and ends with a `cleanup` step that sweeps that key's record; never run two live Privy
+  runs at once.
 - `binference uninstall` (`src/uninstall/`, decision 0264) stops the engine, removes the service,
   then with `--state` the state folder and the keychain entries its config names, then the npm
   package it runs from. It removes a folder only when it holds `config.json5` or `engine.sqlite`

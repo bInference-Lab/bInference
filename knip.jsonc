@@ -17,7 +17,8 @@
     // The recorded run's MCP server starts by its path, from scripts/skill-run.mts, the console's
     // smoke engine from the console's Playwright config, the image smoke test's edge and paper
     // trade inside its containers, the built-package smoke's paper trade from
-    // scripts/release-smoke.mts, and the update smoke from scripts/update-smoke.mts.
+    // scripts/release-smoke.mts, the update smoke from scripts/update-smoke.mts, and the first
+    // day from scripts/first-day-smoke.mts.
     "packages/cli": {
       "entry": [
         "src/skill-run/skill-run-server.ts",
@@ -26,6 +27,7 @@
         "src/image/image-paper-trade.ts",
         "src/packed/packed-paper-trade.ts",
         "src/packed/packed-update.ts",
+        "src/packed/first-day.ts",
       ],
       "project": ["src/**/*.ts"],
     },

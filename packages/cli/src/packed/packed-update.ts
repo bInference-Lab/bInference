@@ -3,8 +3,6 @@ import process from "node:process";
 import { createFakePrivy } from "@binference/custody-privy/testing";
 import {
   ensureReadableFolder,
-  readFilePieces,
-  readSystemFacts,
   readTextFile,
   runCommandWithin,
   writeReadableFile,
@@ -19,10 +17,7 @@ import { runCli } from "../program/run-cli.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { createSystemHttp } from "../runtime/system-http.js";
 import { createSystemRandom } from "../runtime/system-random.js";
-import {
-  createFakeReleaseRegistry,
-  type FakeReleaseRegistry,
-} from "../updates/fake-release-registry.js";
+import type { FakeReleaseRegistry } from "../updates/fake-release-registry.js";
 import { createChildServices } from "./child-services.js";
 import { createPackedBinference, type PackedBinference } from "./packed-binference.js";
 import {
@@ -33,7 +28,12 @@ import {
 } from "./script-install.js";
 import { createSmokeBot } from "./smoke-bot.js";
 import { startSmokeEdge } from "./smoke-edge.js";
-import { type SmokeHostWorld, smokeHostOf } from "./smoke-host.js";
+import {
+  installedScriptOf,
+  packedRegistryOf,
+  type SmokeHostWorld,
+  smokeHostOf,
+} from "./smoke-host.js";
 import { startSmokeModel } from "./smoke-model.js";
 
 // The update smoke, which `pnpm update:smoke` runs with the folder it packed three releases in:
@@ -70,14 +70,6 @@ function fail(message: string): never {
   throw new Error(`update:smoke: ${message}`);
 }
 
-async function bytesOf(file: string): Promise<Uint8Array> {
-  const pieces: Uint8Array[] = [];
-  for await (const piece of readFilePieces(file, { signal: AbortSignal.timeout(minute) })) {
-    pieces.push(piece);
-  }
-  return new Uint8Array(Buffer.concat(pieces));
-}
-
 // One of npm's settings, read before the smoke moves `HOME`.
 async function npmSetting(name: "cache" | "prefix"): Promise<string> {
   const read = await runCommandWithin("npm", ["config", "get", name], {
@@ -85,11 +77,6 @@ async function npmSetting(name: "cache" | "prefix"): Promise<string> {
     timeoutMs: minute,
   });
   return read.stdout.trim();
-}
-
-function scriptOf(prefix: string): string {
-  const modules = readSystemFacts().os === "win32" ? [prefix] : [prefix, "lib"];
-  return join(...modules, "node_modules", "binference", "dist", "main.mjs");
 }
 
 async function statusOf(world: World): Promise<z.infer<typeof statusSchema>> {
@@ -132,15 +119,13 @@ async function startFakes() {
 
 // The stand-in registry, holding the three packed tarballs as npm would.
 async function registryOf(manifest: Manifest, folder: string): Promise<FakeReleaseRegistry> {
-  const registry = createFakeReleaseRegistry();
   const names = ["from", "broken", "to"] as const;
-  const read = await Promise.all(
-    names.map(async (name) => bytesOf(join(folder, manifest.files[name]))),
+  return packedRegistryOf(
+    names.map((name) => ({
+      version: manifest.versions[name],
+      file: join(folder, manifest.files[name]),
+    })),
   );
-  names.forEach((name, index) =>
-    registry.release(manifest.versions[name], { bytes: read[index] ?? new Uint8Array() }),
-  );
-  return registry;
 }
 
 function initArgsOf(fakes: Awaited<ReturnType<typeof startFakes>>): readonly string[] {
@@ -204,7 +189,7 @@ async function openWorld(manifest: Manifest, folder: string): Promise<World> {
   if (install.prefix === globalPrefix) {
     fail("the scratch prefix is npm's own global one.");
   }
-  const script = scriptOf(install.prefix);
+  const script = installedScriptOf(install.prefix);
   const http = createSystemHttp({ version: manifest.versions.from });
   return {
     scratch,
