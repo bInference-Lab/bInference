@@ -6,6 +6,7 @@ import {
   bridgeLimits,
   testBridge,
   testFarEntry,
+  testRescue,
   testRescueThere,
   testSpoke,
 } from "../bridges/test-bridges.js";
@@ -202,6 +203,28 @@ describe("a confirmed bridge the queue checks again", () => {
     const change = { address: moved, atMs: testNowMs - 2 * looseningWaitMs };
     const held = await heldAfter(
       async (bench) => bench.test.stores.install.changeRescue(change, live),
+      testBridge({ rescue: true }),
+    );
+    expect(held).toStrictEqual({ state: "confirmed", signed: [] });
+  });
+
+  it("stays unsigned once code appears at the rescue address on its own chain", async () => {
+    const held = await heldAfter(
+      async (bench) => {
+        bench.fakes.codesHere.place(testRescue, "contract");
+        await Promise.resolve();
+      },
+      testBridge({ rescue: true }),
+    );
+    expect(held).toStrictEqual({ state: "confirmed", signed: [] });
+  });
+
+  it("stays unsigned while the destination cannot say whether the rescue address holds code", async () => {
+    const held = await heldAfter(
+      async (bench) => {
+        bench.fakes.codesThere.down();
+        await Promise.resolve();
+      },
       testBridge({ rescue: true }),
     );
     expect(held).toStrictEqual({ state: "confirmed", signed: [] });

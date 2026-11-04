@@ -91,6 +91,21 @@ describe("a live fill whose step was dropped", () => {
     await restarted.executor.close({ signal: AbortSignal.abort() });
   });
 
+  it("watches nothing after a restart once the watch's time ran out while stopped", async () => {
+    const { bench, order, fill } = await droppedFill();
+    // The watch lasts 600 blocks of the chain's block time, 1 second on the test chain.
+    await bench.test.clock.advance(600_001);
+    const restarted = await restartBench(bench, { limits });
+
+    await landsLate(bench, fill);
+    await driveUntil(bench, fill, { states: [], blocks: 6 });
+    await flush();
+
+    expect(await storedOrder(bench.test, order)).toMatchObject({ state: "active", fills: 0 });
+    expect(await fillRowsOf(bench.test, order)).toMatchObject([{ outcome: "skipped" }]);
+    await restarted.executor.close({ signal: AbortSignal.abort() });
+  });
+
   it("tries the link again on a fresh read, then logs it and counts nothing", async () => {
     const tries: Id<"int">[] = [];
     const losing = (store: IntentStore): IntentStore => ({
