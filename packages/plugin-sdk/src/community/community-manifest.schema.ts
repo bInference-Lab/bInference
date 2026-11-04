@@ -1,4 +1,5 @@
 import { type JsonValue, jsonValueSchema } from "@binference/core";
+import { communityPluginLimits as limits } from "@binference/protocol";
 import { z } from "zod";
 
 /** What a community plugin may be: it reads data or adds skills, never more (decision 0300). */
@@ -25,7 +26,9 @@ export interface CommunityToolDeclaration {
  * fetch, its tools and its config schema. A community plugin declares no contract, no call and no
  * transaction cap: the schema is strict, so such a field, `maxValueBase` among them, is refused.
  * Its tool and config schemas use a short list of JSON Schema keywords, with no regex of the
- * plugin's own, at most 8 levels deep and 16,384 characters long (decision 0343).
+ * plugin's own, at most 8 levels deep and 16,384 characters long (decision 0343). It declares
+ * no more than `communityPluginLimits` lets a permission review show whole: 16 hosts of up to
+ * 100 characters, 32 tools and 64 config keys of up to 64 characters (decision 0348).
  */
 export interface CommunityManifest {
   readonly api: 1;
@@ -47,9 +50,6 @@ const toolNamePattern = /^[a-z][a-z0-9_]{0,63}$/;
 const hostPattern = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 // A relative path inside the package: no leading slash, no backslash, no `.` or `..` part.
 const entryPattern = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))[\w@.-]+(?:\/[\w@.-]+)*\.m?js$/;
-
-const maxHosts = 16;
-const maxTools = 32;
 
 // An object whose fields a JSON Schema names must say `additionalProperties: false`, so a tool's
 // input is checked as written.
@@ -164,6 +164,18 @@ function distinct(names: readonly string[]): boolean {
   return new Set(names).size === names.length;
 }
 
+// The top-level keys of a config schema, as the review lists them, fit it whole.
+function configKeysFit(config: JsonSchemaObject): boolean {
+  const properties = config["properties"];
+  if (typeof properties !== "object" || properties === null || Array.isArray(properties)) {
+    return true;
+  }
+  const keys = Object.keys(properties);
+  return (
+    keys.length <= limits.configKeys && keys.every((key) => key.length <= limits.configKeyLength)
+  );
+}
+
 /** The schema of {@link CommunityManifest}: strict at every level. */
 export const communityManifestSchema: z.ZodType<CommunityManifest> = z.strictObject({
   api: z.literal(1),
@@ -173,10 +185,18 @@ export const communityManifestSchema: z.ZodType<CommunityManifest> = z.strictObj
     .min(1)
     .refine(distinct, "kinds repeat"),
   entry: z.string().max(200).regex(entryPattern),
-  hosts: z.array(z.string().regex(hostPattern)).max(maxHosts).refine(distinct, "hosts repeat"),
+  hosts: z
+    .array(z.string().max(limits.hostLength).regex(hostPattern))
+    .max(limits.hosts)
+    .refine(distinct, "hosts repeat"),
   tools: z
     .array(toolSchema)
-    .max(maxTools)
+    .max(limits.tools)
     .refine((tools) => distinct(tools.map(({ name }) => name)), "tool names repeat"),
-  config: jsonSchemaObjectSchema.exactOptional(),
+  config: jsonSchemaObjectSchema
+    .refine(
+      configKeysFit,
+      `holds at most ${String(limits.configKeys)} keys of ${String(limits.configKeyLength)} characters`,
+    )
+    .exactOptional(),
 });

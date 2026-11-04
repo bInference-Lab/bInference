@@ -1,3 +1,4 @@
+import type { JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { communityManifestSchema } from "./community-manifest.schema.js";
 import { defineTools } from "./define-tools.js";
@@ -104,7 +105,39 @@ describe("communityManifestSchema", () => {
     );
     expect(communityManifestSchema.safeParse({ ...manifest, hosts }).success).toBe(false);
   });
+
+  it("refuses what a permission review could not show whole", () => {
+    const longHost = `${"a".repeat(60)}.${"b".repeat(37)}.io`;
+
+    expect(longHost).toHaveLength(101);
+    expect(communityManifestSchema.safeParse({ ...manifest, hosts: [longHost] }).success).toBe(
+      false,
+    );
+    expect(
+      communityManifestSchema.safeParse({ ...manifest, config: config(keys(64, 64)) }).success,
+    ).toBe(true);
+    expect(
+      communityManifestSchema.safeParse({ ...manifest, config: config(keys(65)) }).success,
+    ).toBe(false);
+    expect(
+      communityManifestSchema.safeParse({ ...manifest, config: config(keys(1, 65)) }).success,
+    ).toBe(false);
+  });
 });
+
+// `count` config keys of `length` characters each.
+function keys(count: number, length = 8): Readonly<Record<string, JsonValue>> {
+  return Object.fromEntries(
+    Array.from({ length: count }, (_, n) => [
+      `${"k".repeat(length - 3)}${String(n).padStart(3, "0")}`,
+      { type: "string" },
+    ]),
+  );
+}
+
+function config(properties: Readonly<Record<string, JsonValue>>) {
+  return { type: "object", properties, additionalProperties: false };
+}
 
 describe("defineTools", () => {
   it("answers the tools frozen", () => {

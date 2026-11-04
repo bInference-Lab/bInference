@@ -42,6 +42,7 @@
     "@binference/chain": "workspace:*",
     "@binference/chain-evm": "workspace:*",
     "@binference/core": "workspace:*",
+    "@binference/protocol": "workspace:*",
     "zod": "catalog:"
   }
 }

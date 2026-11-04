@@ -206,6 +206,15 @@ catalogs:
     '@privy-io/node':
       specifier: 0.35.0
       version: 0.35.0
+    '@sigstore/bundle':
+      specifier: 5.0.0
+      version: 5.0.0
+    '@sigstore/protobuf-specs':
+      specifier: 0.5.2
+      version: 0.5.2
+    '@sigstore/verify':
+      specifier: 4.1.2
+      version: 4.1.2
     '@solana/kit':
       specifier: 8.5.0
       version: 8.5.0
@@ -629,6 +638,15 @@ importers:
       '@hpke/core':
         specifier: 'catalog:'
         version: 1.9.0
+      '@sigstore/bundle':
+        specifier: 'catalog:'
+        version: 5.0.0
+      '@sigstore/protobuf-specs':
+        specifier: 'catalog:'
+        version: 0.5.2
+      '@sigstore/verify':
+        specifier: 'catalog:'
+        version: 4.1.2
       commander:
         specifier: 'catalog:'
         version: 15.0.0
@@ -891,6 +909,9 @@ importers:
       '@binference/core':
         specifier: workspace:*
         version: link:../core
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       zod:
         specifier: 'catalog:'
         version: 4.6.5
@@ -2790,6 +2811,22 @@ packages:
 
   '@sec-ant/readable-stream@0.4.1':
     resolution: {integrity: sha512-831qok9r2t8AlxLko40y2ebgSDhenenCatLVeW/uBtnHPyhHOvG0C7TvfgecV+wHzIm5KUICgzmVpWS+IMEAeg==}
+
+  '@sigstore/bundle@5.0.0':
+    resolution: {integrity: sha512-wefjygudENbzbQMks1t5u34EP0fFoD0XvaEP7DOUP/sXKvogzEJYFw5E6pegGyp3onGWzVEYKVa3bNZWyTYX+A==}
+    engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
+
+  '@sigstore/core@4.0.1':
+    resolution: {integrity: sha512-9v5hRjujn5NXq8o7XFEUgLyAtdr5Iisb4pzM05u3K61IS5q3hP3luWAndk0RkPPLTUFoTbg7Vb84UQ1ZQeajWQ==}
+    engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
+
+  '@sigstore/protobuf-specs@0.5.2':
+    resolution: {integrity: sha512-SQqvFMt4V78fdjcDdYX6HbiVSOR4QK3ZgwCa2KOsopAgPIHy1rU5UDUmzLl02r5oyyaYcYHR1hpwDRk/yUe+Mw==}
+    engines: {node: ^18.17.0 || >=20.5.0}
+
+  '@sigstore/verify@4.1.2':
+    resolution: {integrity: sha512-BfD9eLrz3A/DG58aSgfgZYmIR6V9Yw96QVN/frtu2bEH7ctSTk2TDvHU12un3JsDPBTqTNkqkIkucjxljpOFqQ==}
+    engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
   '@simple-libs/child-process-utils@2.0.0':
     resolution: {integrity: sha512-dvNoRKLijXnD0XoJAz94pbNuB5GQgDr55UhpSPhffDkTT0Cmcqh9jSCOtwfT2d4H6MI9E7c4SgtMuJXZ6F3c6A==}
@@ -6724,6 +6761,20 @@ snapshots:
       '@scure/base': 1.2.6
 
   '@sec-ant/readable-stream@0.4.1': {}
+
+  '@sigstore/bundle@5.0.0':
+    dependencies:
+      '@sigstore/protobuf-specs': 0.5.2
+
+  '@sigstore/core@4.0.1': {}
+
+  '@sigstore/protobuf-specs@0.5.2': {}
+
+  '@sigstore/verify@4.1.2':
+    dependencies:
+      '@sigstore/bundle': 5.0.0
+      '@sigstore/core': 4.0.1
+      '@sigstore/protobuf-specs': 0.5.2
 
   '@simple-libs/child-process-utils@2.0.0':
     dependencies:

@@ -33,22 +33,65 @@ function octal(bytes: Uint8Array, start: number, length: number): number {
   return /^[0-7]+$/.test(text) ? Number.parseInt(text, 8) : Number.NaN;
 }
 
-// A ustar header: the name, joined to its prefix, its size in octal and its type flag.
-function headerAt(bytes: Uint8Array, at: number): Header | undefined {
-  const name = field(bytes, at, 100);
-  const prefix = field(bytes, at + 345, 155);
-  const size = octal(bytes, at + 124, 12);
-  if (name === "" || Number.isNaN(size)) {
-    return undefined;
-  }
-  const type = field(bytes, at + 156, 1);
-  return { name: prefix === "" ? name : `${prefix}/${name}`, size, type };
+const posixMagic = "ustar\u000000";
+const gnuMagic = "ustar  \u0000";
+const checksumAt = 148;
+const checksumLength = 8;
+const space = 0x20;
+
+const isZero = (bytes: Uint8Array): boolean => bytes.every((byte) => byte === 0);
+
+// The header's checksum: the sum of its bytes, its own field counted as spaces.
+function checksumHolds(header: Uint8Array): boolean {
+  const stored = octal(header, checksumAt, checksumLength);
+  const sum = header.reduce(
+    (total, byte, index) =>
+      total + (index >= checksumAt && index < checksumAt + checksumLength ? space : byte),
+    0,
+  );
+  return stored === sum;
 }
 
-// The `path` record of a pax extended header ("<length> path=<value>\n"), when it has one.
-function paxPath(body: Uint8Array): string | undefined {
+/** A header read: an entry, the end of the archive, or a header no tar writer makes. */
+type HeaderRead =
+  | { readonly kind: "entry"; readonly header: Header }
+  | { readonly kind: "end" }
+  | { readonly kind: "broken" };
+
+// A ustar header, POSIX or GNU, whose checksum holds: the name, joined to its prefix when the
+// header is POSIX's (a GNU header keeps other fields there), its size in octal and its type flag.
+// An empty block ends the archive.
+function headerAt(bytes: Uint8Array, at: number): HeaderRead {
+  const header = bytes.subarray(at, at + block);
+  if (isZero(header)) {
+    return { kind: "end" };
+  }
+  const magic = decoder.decode(header.subarray(257, 265));
+  const name = field(header, 0, 100);
+  const size = octal(header, 124, 12);
+  const known = magic === posixMagic || magic === gnuMagic;
+  if (!known || !checksumHolds(header) || name === "" || Number.isNaN(size)) {
+    return { kind: "broken" };
+  }
+  const prefix = magic === posixMagic ? field(header, 345, 155) : "";
+  const type = field(header, 156, 1);
+  return {
+    kind: "entry",
+    header: { name: prefix === "" ? name : `${prefix}/${name}`, size, type },
+  };
+}
+
+/** What a pax extended header says of the next entry: its path, or that it must be refused. */
+type PaxRead = { readonly path: string | undefined } | "refused";
+
+// The records of a pax extended header ("<length> <key>=<value>\n"): its `path`, when it has
+// one; a `size` or `linkpath` record, which another reader would honor, refuses the archive.
+function paxOf(body: Uint8Array): PaxRead {
   const text = decoder.decode(body);
-  return /(?:^|\n)\d+ path=([^\n]*)\n/.exec(text)?.[1];
+  if (/(?:^|\n)\d+ (?:size|linkpath)=/.test(text)) {
+    return "refused";
+  }
+  return { path: /(?:^|\n)\d+ path=([^\n]*)\n/.exec(text)?.[1] };
 }
 
 // A path inside the package and nothing above it: no absolute path, no `.` or `..` part.
@@ -70,10 +113,14 @@ type Taken =
 // One entry: a file, a folder (nothing to keep), or a pax header naming the next entry; any other
 // kind, such as a link or a device, refuses the archive.
 function take(header: Header, body: Uint8Array, named: string | undefined): Taken {
-  if (header.type === "x") {
-    return { kind: "next", name: paxPath(body) };
+  if (header.type === "x" || header.type === "g") {
+    const pax = paxOf(body);
+    if (pax === "refused") {
+      return { kind: "refused" };
+    }
+    return { kind: "next", name: header.type === "x" ? pax.path : undefined };
   }
-  if (header.type === "g" || header.type === "5") {
+  if (header.type === "5") {
     return { kind: "next", name: undefined };
   }
   const path = named ?? header.name;
@@ -92,10 +139,12 @@ function walkArchive(tar: Uint8Array): Result<readonly PackedFile[], TarRefusal>
   let named: string | undefined;
   let at = 0;
   while (at + block <= tar.length) {
-    const header = headerAt(tar, at);
-    if (header === undefined) {
-      return ok(files);
+    const read = headerAt(tar, at);
+    if (read.kind !== "entry") {
+      // Nothing but zeros may follow the end: another reader could read on past it.
+      return read.kind === "end" && isZero(tar.subarray(at)) ? ok(files) : err("broken");
     }
+    const { header } = read;
     const end = at + block + header.size;
     if (end > tar.length) {
       return err("broken");
@@ -116,7 +165,9 @@ function walkArchive(tar: Uint8Array): Result<readonly PackedFile[], TarRefusal>
 /**
  * Reads a gzipped tarball, such as an npm package, in memory: every plain file with its path and
  * bytes, the folders left implicit. A link, a device, a path that is absolute or climbs out with
- * `..`, or a header that runs past the end refuses the whole archive; nothing is written to disk.
+ * `..`, or a header that runs past the end refuses the whole archive, and so does anything another
+ * reader such as npm's could read otherwise: a header that is not ustar or whose checksum fails, a
+ * pax `size` or `linkpath`, or a byte other than zero after the end. Nothing is written to disk.
  * It unpacks at most 16 MiB.
  */
 export function readTarGz(gzipped: Uint8Array): Result<readonly PackedFile[], TarRefusal> {
