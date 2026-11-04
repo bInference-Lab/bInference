@@ -67,7 +67,7 @@ catalog:
   tsx: 4.23.15
   turbo: 2.11.5
   typescript: 7.0.2
-  undici: 8.11.2
+  undici: 8.12.2
   viem: 2.57.1
   vite: 8.3.2
   vitest: 5.0.2
@@ -86,6 +86,9 @@ minimumReleaseAgeStrict: true
 overrides:
   # GHSA-68fv-2mgg-jv7q: source-map-js below 1.2.2 can block the event loop (through postcss).
   source-map-js: 1.2.2
+  # GHSA-2m5v-pch6-74hx and seven more: undici below 8.12.2 drops TLS options and can crash on a
+  # hostile server. openai, jsdom and astro take the catalog's undici too.
+  undici: "catalog:"
 
 auditConfig:
   ignoreGhsas:
