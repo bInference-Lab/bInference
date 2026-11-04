@@ -7,6 +7,7 @@ import { platformOf } from "../compose/engine-locations.js";
 import { loadConfig } from "../config/load-config.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import { clearLocalState, type ResetRun } from "../reset/clear-local-state.js";
+import { writeUpdateState } from "../updates/update-state.js";
 import {
   type InitMachine,
   initFlags,
@@ -16,7 +17,7 @@ import {
   storedInstall,
 } from "./init-fixtures.js";
 import { noteTexts, seedNote, seedSendingTrade } from "./state-fixtures.js";
-import { hostOn } from "./test-host.js";
+import { hostOn, noPermissions } from "./test-host.js";
 
 const slow = { timeout: 60_000 };
 const folders: TempFolder[] = [];
@@ -119,6 +120,22 @@ describe("clearing the local state", () => {
     await expect(noteTexts(machine)).resolves.toStrictEqual([note]);
     await expect(backupFiles(machine)).resolves.toStrictEqual([]);
   });
+
+  it(
+    "clears nothing while an update has not ended, whose copies hold the chats",
+    slow,
+    async () => {
+      const machine = await installWithNote();
+      const files = { permissions: noPermissions, signal: signal() };
+      const checking = { state: "checking", from: "2026.10.0", to: "2026.11.0" } as const;
+      await writeUpdateState(machine.folder, checking, files);
+
+      await expect(clearLocalState(await resetRunOf(machine))).resolves.toStrictEqual({
+        kind: "updating",
+      });
+      await expect(noteTexts(machine)).resolves.toStrictEqual([note]);
+    },
+  );
 
   it("clears nothing while an engine holds the state folder", slow, async () => {
     const machine = await installWithNote();

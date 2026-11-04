@@ -1,8 +1,7 @@
-import { createHash } from "node:crypto";
 import type { BackupRecord } from "@binference/engine/backups";
-import { readFilePieces } from "@binference/platform";
 import type { BackupManifest } from "../backups/backup-manifest.schema.js";
 import { type InitContext, type InitStep, refused } from "../init/init-context.js";
+import { fileSha256 } from "../state/file-sha256.js";
 import { backupDay, type ReplacedState } from "./restore-guards-step.js";
 
 /** What a restore knows of the file it opened: its digests, and what its manifest says. */
@@ -11,14 +10,6 @@ export interface OpenedFile {
   /** The SHA-256 of the header line the data key was opened from, in hex. */
   readonly headerSha256: string;
   readonly manifest: BackupManifest;
-}
-
-async function fileSha256(file: string, signal: AbortSignal): Promise<string> {
-  const hash = createHash("sha256");
-  for await (const piece of readFilePieces(file, { signal })) {
-    hash.update(piece);
-  }
-  return hash.digest("hex");
 }
 
 // Whether the install recorded writing this file: the header it opened from and the whole file.

@@ -1,6 +1,6 @@
 import type { Logger } from "@binference/core";
 import type { PublishPush } from "@binference/engine";
-import { updateNotice } from "@binference/engine/notices";
+import { type UpdateSteps, updateNotice } from "@binference/engine/notices";
 import type { FilePermissions } from "@binference/platform";
 import type { Locale } from "@binference/protocol";
 import { readAnnouncedUpdate, writeAnnouncedUpdate } from "./announced-update.js";
@@ -32,6 +32,8 @@ export interface DailyUpdateCheckParts {
   readonly feed: ReleaseFeed;
   /** The running binference's version. */
   readonly version: string;
+  /** How the owner installs a newer release on this machine. */
+  readonly steps: UpdateSteps;
   readonly settings: () => UpdateCheckSettings;
   /** The state folder, whose `updates/announced.json` keeps the release told last. */
   readonly stateRoot: string;
@@ -68,7 +70,7 @@ async function tellNewRelease(
     { channel, version: latest },
     { permissions, signal },
   );
-  parts.publish(updateNotice(latest, releaseNotes?.[settings.locale] ?? []));
+  parts.publish(updateNotice(latest, releaseNotes?.[settings.locale] ?? [], parts.steps));
 }
 
 // The counts, which fail soft: a failure is a debug line and nothing more.

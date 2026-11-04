@@ -3,17 +3,20 @@ import { BinferenceError, err, ok } from "@binference/core";
 import type { PublishPush } from "@binference/engine";
 import { updatedNotice, updateRolledBackNotice } from "@binference/engine/notices";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
+import { holdsRunningFiles } from "@binference/platform";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { npmRegistry } from "../plugins/npm-registry.js";
 import { readPluginLock } from "../plugins/plugin-lock.js";
 import {
   type CountsLine,
+  type DailyUpdateCheckParts,
   runDailyUpdateCheck,
   type UpdateCheckSettings,
 } from "../updates/daily-update-check.js";
 import { findUpdate, updateUserAgent, updateViewOf } from "../updates/find-update.js";
 import { createReleaseFeed, type ReleaseFeed } from "../updates/release-feed.js";
 import { countsOf, countsUrl, sendCounts } from "../updates/update-counts.js";
+import { removeLeftovers } from "../updates/update-lock.js";
 import { clearUpdateState, readUpdateState } from "../updates/update-state.js";
 import type { ConfigCell } from "./config-cell.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
@@ -115,9 +118,11 @@ export function composeUpdateOperations(opening: Opening, opened: Opened): Engin
  */
 export function startUpdateChecks(opening: Opening, opened: Opened, publish: PublishPush): void {
   const { host, platform, closers } = opening;
-  const parts = {
+  const parts: DailyUpdateCheckParts = {
     feed: releaseFeedOf(opening),
     version: host.version,
+    // Where `binference update` refuses, the notice names the steps that install by hand.
+    steps: holdsRunningFiles(host.system) ? "manual" : "update",
     settings: () => checkSettingsOf(opened.settings.current()),
     stateRoot: platform.stateFolder.root,
     permissions: platform.permissions,
@@ -154,16 +159,20 @@ async function tellOutcome(opening: Opening, opened: Opened, publish: PublishPus
  * Tells the owner, once the engine serves, how the last `binference update` ended (decision
  * 0356): `notice.updated`, with the release's notes in the owner's language, when this version is
  * the one it installed, or `notice.updateRolledBack` when it put this version back. The record
- * goes before the notice, so a restart never tells it twice. A record that cannot be read or
- * removed is logged as `update.outcome_unread`, and nothing is told.
+ * goes before the notice, so a restart never tells it twice. Once the record is final, or there is
+ * none, and no update runs, it removes the copies and tarballs an interrupted update left. A record
+ * that cannot be read or removed is logged as `update.outcome_unread`, and nothing is told.
  */
 export async function tellUpdateOutcome(
   opening: Opening,
   opened: Opened,
   publish: PublishPush,
 ): Promise<void> {
+  const { platform, signal } = opening;
+  const kept = { stateFolder: platform.stateFolder, permissions: platform.permissions, signal };
   try {
     await tellOutcome(opening, opened, publish);
+    await removeLeftovers(kept);
   } catch (error) {
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
     opened.log.logger.warn("update.outcome_unread", { errorCode });

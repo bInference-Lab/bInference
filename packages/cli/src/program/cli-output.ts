@@ -39,7 +39,7 @@ export interface CliOutput {
 }
 
 /** One failure: its code for scripts, its message for people. */
-interface CliFailure {
+export interface CliFailure {
   /** A dotted code, such as `engine.not_running`. */
   readonly code: string;
   readonly key: string;

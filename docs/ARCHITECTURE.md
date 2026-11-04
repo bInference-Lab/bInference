@@ -1141,9 +1141,14 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
   newer version exists and sends the version, OS, Node version and CPU type. It reads npm's
   dist-tags and the release's notes for owners from its package, with those four in the user agent
   ([decision 0355](DECISIONS.md#d0355)); `updates/announced.json` in the state folder keeps the
-  release told last. A new version arrives as a Telegram note with its changes. `binference update` backs up, verifies the npm provenance,
-  installs, runs `check`, and restores the previous version if `check` fails. Nothing installs by
-  itself.
+  release told last. A new version arrives as a Telegram note with its changes. Only the terminal
+  updates: `binference update`, one at a time, verifies both releases' npm provenance, stops the
+  engine, backs up, copies the closed databases and config.json5, installs the new tarball into
+  the npm prefix the program runs from, and runs the new version's `check` while every engine
+  stays locked; a new failure, or an engine that does not answer as the new version, puts the
+  previous version and the copies back, as plain files whatever the new version migrated. A run
+  that stops part way is taken up by the next one. Windows updates by hand until a runner copy is
+  built ([decision 0356](DECISIONS.md#d0356)). Nothing installs by itself.
 - **Telemetry ([decision 0048](DECISIONS.md#d0048)).** Off by default; onboarding asks once. When
   on, it adds counts to the daily check: version, OS, enabled venues and plugins, paper or live,
   number of agents, posted to binference.io with community plugins counted, never named

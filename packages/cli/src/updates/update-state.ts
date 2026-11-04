@@ -12,12 +12,19 @@ import { updatesFolderOf } from "./announced-update.js";
 
 /**
  * Where an update of `from` to `to` stands (decision 0356), in `updates/state.json`: `checking`
- * while `binference update` judges the new version, whose engine then starts locked; `updated`
- * once it passed, with the release's notes for owners; `rolled_back` once the old version is
- * back. The engine that starts next tells the owner of the last two once and clears the record.
+ * from the copy of the stopped state until the data on disk is the new version's after a pass, or
+ * the old version's after a rollback, while every engine starts locked; it names the sealed backup
+ * taken first. `updated` once it passed, with the release's notes for owners; `rolled_back` once
+ * the old version and its data are back. The engine that starts next tells the owner of the last
+ * two once and clears the record.
  */
 export type UpdateState =
-  | { readonly state: "checking"; readonly from: string; readonly to: string }
+  | {
+      readonly state: "checking";
+      readonly from: string;
+      readonly to: string;
+      readonly backup?: string;
+    }
   | {
       readonly state: "updated";
       readonly from: string;
@@ -29,7 +36,12 @@ export type UpdateState =
 const version = z.string().min(1).max(64);
 
 const updateStateSchema: z.ZodType<UpdateState> = z.discriminatedUnion("state", [
-  z.object({ state: z.literal("checking"), from: version, to: version }),
+  z.object({
+    state: z.literal("checking"),
+    from: version,
+    to: version,
+    backup: z.string().min(1).max(128).exactOptional(),
+  }),
   z.object({
     state: z.literal("updated"),
     from: version,
@@ -48,7 +60,7 @@ function stateFileOf(stateRoot: string): string {
  * read as one, such as one an interrupted write or another owner left, which counts as an update
  * still being checked.
  */
-async function readUpdateRecord(
+export async function readUpdateRecord(
   stateRoot: string,
   signal: AbortSignal,
 ): Promise<UpdateState | "unread" | undefined> {

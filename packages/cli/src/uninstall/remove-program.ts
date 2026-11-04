@@ -17,9 +17,12 @@ export type ProgramRemoval =
   /** It runs from a folder npm did not install, such as a checkout; nothing was removed. */
   | { readonly kind: "not_npm"; readonly folder: string };
 
-// The npm prefix of a global install: `<prefix>/lib/node_modules/binference` on macOS and Linux,
-// `<prefix>\node_modules\binference` on Windows. The entry script sits in its `dist/`.
-function npmPrefixOf(script: string): string | undefined {
+/**
+ * The npm prefix of a global install the entry script runs from: `<prefix>/lib/node_modules/
+ * binference` on macOS and Linux, `<prefix>\node_modules\binference` on Windows, the script in its
+ * `dist/`; `undefined` for a script in any other folder, such as a checkout.
+ */
+export function npmPrefixOf(script: string): string | undefined {
   const packageFolder = dirname(dirname(script));
   const modules = dirname(packageFolder);
   if (basename(packageFolder) !== packageName || basename(modules) !== "node_modules") {

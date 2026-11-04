@@ -28,6 +28,7 @@ import { addSafetyCommands } from "./safety-commands.js";
 import { addServiceCommands } from "./service-commands.js";
 import { addSignerCommands } from "./signer-commands.js";
 import { addTelegramCommands } from "./telegram-commands.js";
+import { updateFlagsSchema } from "./update-flags.schema.js";
 import { addWebhookCommands } from "./webhook-commands.js";
 
 function linesOf(value: string): number {
@@ -148,7 +149,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     );
 }
 
-// Commands on the install as a whole: its check, and its removal from this machine.
+// Commands on the install as a whole: its check, its update, and its removal from this machine.
 function addInstallCommands(program: Command, options: ProgramOptions): void {
   const { message, choose } = options;
   withCommon(program.command("check").description(message("command.check")), message)
@@ -166,6 +167,12 @@ function addInstallCommands(program: Command, options: ProgramOptions): void {
     .option("--off", message("option.off"))
     .action((flags: OptionValues) =>
       choose({ name: "expose", options: exposeFlagsSchema.parse(flags) }),
+    );
+  withCommon(program.command("update").description(message("command.update")), message)
+    .option("--to <version>", message("option.updateTo"))
+    .option("--set <key=value>", message("option.set"), addSet, [])
+    .action((flags: OptionValues) =>
+      choose({ name: "update", options: updateFlagsSchema.parse(flags) }),
     );
   withCommon(program.command("uninstall").description(message("command.uninstall")), message)
     .option("--state", message("option.state"))

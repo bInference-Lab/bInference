@@ -19,6 +19,9 @@ import {
   openStateLog,
   type StoppedStateRun,
 } from "../state/stopped-state.js";
+import { keptRunOf } from "../updates/hold-for-update.js";
+import { removeLeftovers } from "../updates/update-lock.js";
+import { readUpdateRecord } from "../updates/update-state.js";
 
 /** How a reset of the local state ended. */
 export type ResetOutcome =
@@ -33,6 +36,8 @@ export type ResetOutcome =
   | { readonly kind: "sending" }
   /** `engine.sqlite` is missing, does not open, or has another schema than this binference. */
   | { readonly kind: "unreadable" }
+  /** An update has not ended, and its copies would put the chats back; nothing was cleared. */
+  | { readonly kind: "updating" }
   /** The backup that comes first failed; nothing was cleared. */
   | { readonly kind: "backup_failed"; readonly failure: BackupFailure };
 
@@ -82,9 +87,9 @@ async function clearOpened(run: ResetRun, logger: Logger): Promise<ResetOutcome>
 
 /**
  * Resets the local state with the engine stopped, under the engine lock (decision 0265): refuses
- * while a live trade is on its way, then takes a `manual` backup sealed to the owner key and, only
- * once it is checked, clears the chats, notes, agent inbox, questions and risk cache, and records
- * the reset in the config journal. Wallets, the custody link, keys, the config, limits, saved
+ * while a live trade is on its way or an update has not ended, then takes a `manual` backup sealed
+ * to the owner key and, only once it is checked, clears the chats, notes, agent inbox, questions and
+ * risk cache, records the reset in the config journal, and removes the copies an ended update left. Wallets, the custody link, keys, the config, limits, saved
  * addresses, orders, schedules and every money record stay.
  */
 export async function clearLocalState(run: ResetRun): Promise<ResetOutcome> {
@@ -93,13 +98,20 @@ export async function clearLocalState(run: ResetRun): Promise<ResetOutcome> {
     return { kind: "locked" };
   }
   try {
+    const record = await readUpdateRecord(platformOf(run.host).stateFolder.root, run.signal);
+    if (record === "unread" || record?.state === "checking") {
+      return { kind: "updating" };
+    }
     const trade = await liveTradeStored(run.host, run.signal);
     if (trade !== "none") {
       return { kind: trade };
     }
     const logger = await openStateLog(run);
     try {
-      return await clearOpened(run, logger);
+      const outcome = await clearOpened(run, logger);
+      // An update's copies of the databases hold the chats too; they go with the reset.
+      await removeLeftovers(keptRunOf(run));
+      return outcome;
     } finally {
       await logger.close();
     }

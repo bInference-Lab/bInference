@@ -19,6 +19,16 @@ async function howItRuns(run: ServiceRun): Promise<EngineRun> {
   return isEngineRunning(run.platform) ? "foreground" : "stopped";
 }
 
+/** How the engine runs now: as the background service, in a terminal, or not at all. */
+export async function engineRunOf(run: CommandRun): Promise<EngineRun> {
+  const how: { ran: EngineRun } = { ran: "stopped" };
+  await withStopRun(run.host, run.output, async (asking) => {
+    how.ran = await howItRuns(asking);
+    return 0;
+  });
+  return how.ran;
+}
+
 /**
  * Stops the engine as `binference stop` does and answers how it ran; `undefined` when it still
  * runs once the stop's time is up.

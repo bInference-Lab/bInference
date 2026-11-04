@@ -5,24 +5,26 @@ import { updatedNotice, updateNotice, updateRolledBackNotice } from "./update-no
 describe("the update notice", () => {
   it("names the version and puts each line of the notes on its own line", () => {
     const english = createFormatter({ locale: "en", timeZone: "UTC" });
-    const push = updateNotice("2026.12.0", ["Stop-loss orders fill faster.", "Fewer RPC calls."]);
+    const notes = ["Stop-loss orders fill faster.", "Fewer RPC calls."];
+    const push = updateNotice("2026.12.0", notes, "update");
     const summary = "Stop-loss orders fill faster.\nFewer RPC calls.";
+    const values = { version: "2026.12.0", steps: "update", summary };
 
     expect(push).toStrictEqual({
       topic: "notice",
       kind: "notice/new",
-      data: { key: "notice.update", values: { version: "2026.12.0", summary } },
+      data: { key: "notice.update", values },
     });
-    expect(english.message("notice.update", { version: "2026.12.0", summary })).toBe(
-      `binference 2026.12.0 is out: ${summary}. Run \`binference update\`.`,
+    expect(english.message("notice.update", values)).toBe(
+      `binference 2026.12.0 is out. Run \`binference update\`. What changed: ${summary}`,
     );
   });
 
   it("goes without notes when the release has none in the owner's language", () => {
-    expect(updateNotice("2026.12.0", [])).toStrictEqual({
+    expect(updateNotice("2026.12.0", [], "manual")).toStrictEqual({
       topic: "notice",
       kind: "notice/new",
-      data: { key: "notice.updateBare", values: { version: "2026.12.0" } },
+      data: { key: "notice.updateBare", values: { version: "2026.12.0", steps: "manual" } },
     });
   });
 });
@@ -43,7 +45,7 @@ describe("the notices of how an update ended", () => {
       { key: "notice.updateRolledBack", values },
     ]);
     expect(english.message("notice.updateRolledBack", values)).toBe(
-      `${warning} binference 2026.12.0 failed its check after the update, so binference went back to 2026.11.0. Your settings and records are as they were before.`,
+      `${warning} binference 2026.12.0 did not pass after the update, so binference went back to 2026.11.0. Your settings and records are as they were before the update; messages and alerts that came while it was checked are not kept.`,
     );
   });
 });

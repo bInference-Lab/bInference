@@ -98,7 +98,11 @@ describe("update/check and update/apply end to end", () => {
       expect(page.items.filter((item) => item.key.startsWith("notice.update"))).toMatchObject([
         {
           key: "notice.update",
-          values: { version: "2026.12.0", summary: "Stop-loss orders fill faster." },
+          values: {
+            version: "2026.12.0",
+            steps: "update",
+            summary: "Stop-loss orders fill faster.",
+          },
         },
       ]);
     },

@@ -22,6 +22,9 @@
     "./agent-worker": {
       "@binference/source": "./src/databases/agent.worker.ts",
       "default": "./dist/databases/agent.worker.mjs"
+    },
+    "./newer-schema": {
+      "@binference/source": "./src/sqlite/past-this-build.worker.ts"
     }
   },
   "scripts": {

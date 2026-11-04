@@ -50,6 +50,7 @@ const refusals: {
   sending: { code: "intent.executing", key: "reset.tradeSending" },
   locked: { code: "engine.already_running", key: "reset.locked" },
   unreadable: { code: "store.unreadable", key: "reset.unreadable" },
+  updating: { code: "update.unfinished", key: "reset.updating" },
 };
 
 // Says how the reset ended; answers its exit code before the engine starts again.

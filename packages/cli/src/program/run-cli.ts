@@ -48,6 +48,7 @@ import {
 import { runWebhookCreate } from "../commands/webhook-create-command.js";
 import { platformOf } from "../compose/engine-locations.js";
 import { loadConfig } from "../config/load-config.js";
+import { runUpdate } from "../updates/run-update.js";
 import type { ChosenCommand } from "./chosen-command.js";
 import type { CliHost } from "./cli-host.js";
 import { type CliOutput, createCliOutput, type ExitCode } from "./cli-output.js";
@@ -168,6 +169,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   reset: runReset,
   expose: runExpose,
   uninstall: runUninstall,
+  update: runUpdate,
   configGet: runConfigGet,
   configSet: runConfigSet,
   mcp: async (context, chosen) => runMcp(context, chosen.options),

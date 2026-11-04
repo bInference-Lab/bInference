@@ -10602,6 +10602,7 @@
         "packages/signer/src/index.ts",
         "packages/store/src/databases/agent.worker.ts",
         "packages/store/src/index.ts",
+        "packages/store/src/sqlite/past-this-build.worker.ts",
         "packages/store/src/testing.ts",
         "packages/telegram/src/index.ts",
         "packages/telegram/src/testing.ts",

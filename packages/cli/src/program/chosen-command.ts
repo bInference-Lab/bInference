@@ -19,6 +19,7 @@ import type {
 import type { CliHost } from "./cli-host.js";
 import type { McpFlags, McpSessionFlags, McpSetupFlags } from "./mcp-flags.schema.js";
 import type { PluginAddFlags } from "./plugin-flags.schema.js";
+import type { UpdateFlags } from "./update-flags.schema.js";
 import type { WebhookCreateFlags, WebhookEventsFlags } from "./webhook-flags.schema.js";
 
 /** The approval mode `binference approval` sets. */
@@ -92,6 +93,7 @@ export type ChosenCommand =
     }
   | { readonly name: "check"; readonly options: CheckFlags }
   | { readonly name: "uninstall"; readonly options: UninstallFlags }
+  | { readonly name: "update"; readonly options: UpdateFlags }
   | { readonly name: "configGet"; readonly options: CommonOptions; readonly key?: string }
   | {
       readonly name: "configSet";

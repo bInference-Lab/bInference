@@ -28,27 +28,20 @@ function each(names: readonly string[], value: string | undefined): FetchEnv {
 }
 
 /**
- * The variables a skill fetch runs `git` or `npm` with, by the proxy setting in force (decision
- * 0347): through the proxy, for the child alone and only in its environment, never its arguments,
- * with the no-proxy list and this machine as its exceptions; without a proxy, none of the
- * variables the engine was started with, so a child never takes a route config did not name.
- * Refuses every fetch while a proxy is set that cannot be read or is no proxy URL
- * (`proxy_held`), and an `ssh://` git source while a proxy is set, since ssh cannot go through
- * it (`ssh_through_proxy`).
+ * The variables a child program that reaches the network on its own, such as `git` or `npm`, runs
+ * with by the proxy setting in force (decision 0347): through the proxy, for the child alone and
+ * only in its environment, never its arguments, with the no-proxy list and this machine as its
+ * exceptions; without a proxy, none of the variables the engine was started with, so a child
+ * never takes a route config did not name. Refuses while a proxy is set that cannot be read or is
+ * no proxy URL (`proxy_held`).
  */
-export function fetchEnvOf(
-  setting: ProxySetting,
-  source: SkillSource,
-): Result<FetchEnv, FetchRouteRefusal> {
+export function proxyEnvOf(setting: ProxySetting): Result<FetchEnv, "proxy_held"> {
   const { proxy } = setting;
   if (proxy === undefined) {
     return ok(each([...proxyVariables, ...npmProxyVariables, ...noProxyVariables], undefined));
   }
   if (proxy === "unread" || !isProxyUrl(proxy.reveal())) {
     return err("proxy_held");
-  }
-  if (source.kind === "git" && !/^(?:https|file):\/\//i.test(source.url)) {
-    return err("ssh_through_proxy");
   }
   const url = proxy.reveal();
   const noProxy = [...thisMachine, ...setting.noProxy].join(",");
@@ -58,4 +51,19 @@ export function fetchEnvOf(
     ...each(npmProxyVariables, url),
     ...each(noProxyVariables, noProxy),
   });
+}
+
+/**
+ * The variables a skill fetch runs `git` or `npm` with, as {@link proxyEnvOf} gives them; also
+ * refuses an `ssh://` git source while a proxy is set, since ssh cannot go through it
+ * (`ssh_through_proxy`).
+ */
+export function fetchEnvOf(
+  setting: ProxySetting,
+  source: SkillSource,
+): Result<FetchEnv, FetchRouteRefusal> {
+  const isSsh = source.kind === "git" && !/^(?:https|file):\/\//i.test(source.url);
+  return setting.proxy !== undefined && setting.proxy !== "unread" && isSsh
+    ? err("ssh_through_proxy")
+    : proxyEnvOf(setting);
 }

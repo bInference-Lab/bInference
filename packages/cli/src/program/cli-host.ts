@@ -14,6 +14,7 @@ import type { StartRuntime } from "../agent-runtime/start-runtime.js";
 import type { McpStdio } from "../commands/mcp-command.js";
 import type { PluginPrograms } from "../compose/plugin-sandbox.js";
 import type { StartSigner } from "../compose/start-signer.js";
+import type { BundleVerifier } from "../plugins/npm-provenance.js";
 import type { OutboundSwitch } from "../runtime/system-http.js";
 import type { Prompter } from "../term/prompter.js";
 
@@ -96,6 +97,13 @@ export interface CliHost {
    * file leaves it. Only tests set it (decision 0355).
    */
   readonly countsUrl?: string;
+  /**
+   * Verifies the Sigstore bundle of a release `binference update` installs; Sigstore's own verifier
+   * over the trust root binference ships when left out, as the entry file leaves it. Only tests
+   * set it, to check test-signed bundles: the source repository, issuer and workflow pins stay
+   * (decision 0356).
+   */
+  readonly bundleVerifier?: BundleVerifier;
   /** Starts the agent runtime's process; the built runtime when left out. */
   readonly startRuntime?: StartRuntime;
   /** How this binference was started, which the background service runs again. */

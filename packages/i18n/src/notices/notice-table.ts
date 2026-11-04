@@ -178,9 +178,12 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   },
   "notice.update": {
     key: "notice.update",
-    values: { version: "2027.1.0", summary: "Stop-loss orders fill faster" },
+    values: { version: "2027.1.0", steps: "update", summary: "Stop-loss orders fill faster" },
   },
-  "notice.updateBare": { key: "notice.updateBare", values: { version: "2027.1.0" } },
+  "notice.updateBare": {
+    key: "notice.updateBare",
+    values: { version: "2027.1.0", steps: "manual" },
+  },
   "notice.updated": {
     key: "notice.updated",
     values: { version: "2027.1.0", summary: "Stop-loss orders fill faster" },

@@ -62,11 +62,13 @@ const expected: Readonly<Record<string, string>> = {
     "1 skipped: the price now does not reach its trigger price; the order waits on\n" +
     "1 skipped for other reasons",
   "notice.update":
-    "binference 2027.1.0 is out: Stop-loss orders fill faster. Run `binference update`.",
-  "notice.updateBare": "binference 2027.1.0 is out. Run `binference update`.",
+    "binference 2027.1.0 is out. Run `binference update`. What changed: Stop-loss orders fill faster",
+  "notice.updateBare":
+    "binference 2027.1.0 is out. To install it, run binference stop, then npm install --global " +
+    "binference@2027.1.0, then binference start.",
   "notice.updated": "binference is now 2027.1.0. What changed: Stop-loss orders fill faster",
   "notice.updatedBare": "binference is now 2027.1.0.",
-  "notice.updateRolledBack": `${warning} binference 2027.1.0 failed its check after the update, so binference went back to 2026.12.2. Your settings and records are as they were before.`,
+  "notice.updateRolledBack": `${warning} binference 2027.1.0 did not pass after the update, so binference went back to 2026.12.2. Your settings and records are as they were before the update; messages and alerts that came while it was checked are not kept.`,
   "notice.backupFailed": `${warning} Last night's backup failed: its second copy in backups.copyTo could not be written`,
   "notice.locked": `${red} binference restarted and is locked. Run \`binference unlock\`.`,
   "notice.signerStopped": `${red} The signer stopped, so binference signs nothing. Fix what \`binference logs\` shows, then run \`binference unlock\`.`,

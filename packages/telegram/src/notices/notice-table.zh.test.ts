@@ -61,11 +61,13 @@ const expected: Readonly<Record<string, string>> = {
     "跳过 1 个：当前价格未达到其触发价格；订单继续等待\n" +
     "因其他原因跳过 1 个",
   "notice.update":
-    "binference 2027.1.0 已发布：Stop-loss orders fill faster。请运行 `binference update`。",
-  "notice.updateBare": "binference 2027.1.0 已发布。请运行 `binference update`。",
+    "binference 2027.1.0 已发布。请运行 `binference update`。更新内容：Stop-loss orders fill faster",
+  "notice.updateBare":
+    "binference 2027.1.0 已发布。要安装它，请运行 binference stop 停止 binference，然后运行 " +
+    "npm install --global binference@2027.1.0，再运行 binference start。",
   "notice.updated": "binference 已更新到 2027.1.0。更新内容：Stop-loss orders fill faster",
   "notice.updatedBare": "binference 已更新到 2027.1.0。",
-  "notice.updateRolledBack": `${warning} binference 2027.1.0 更新后未通过检查，binference 已回退到 2026.12.2。你的设置和记录与更新前一致。`,
+  "notice.updateRolledBack": `${warning} binference 2027.1.0 更新后未通过，binference 已回退到 2026.12.2。你的设置和记录与更新前一致；检查期间收到的消息和提醒不会保留。`,
   "notice.backupFailed": `${warning} 昨晚的备份失败：无法在 backups.copyTo 中写入第二份副本`,
   "notice.locked": `${red} binference 已重启并处于锁定状态。请运行 \`binference unlock\`。`,
   "notice.signerStopped": `${red} 签名进程已停止，binference 不会签名。请先处理 \`binference logs\` 显示的问题，再运行 \`binference unlock\`。`,

@@ -45,6 +45,7 @@ async function checkOn(settings: Partial<UpdateCheckSettings> = {}) {
   const parts: DailyUpdateCheckParts = {
     feed: createReleaseFeed({ http: registry.http, registry: registry.registry, userAgent }),
     version: "2026.11.0",
+    steps: "update",
     settings: () => ask.current,
     stateRoot: folder.path,
     permissions: noPermissions,
@@ -81,6 +82,7 @@ describe("the daily update check", () => {
           key: "notice.update",
           values: {
             version: "2026.12.0",
+            steps: "update",
             summary: "Stop-loss orders fill faster.\nFewer RPC calls.",
           },
         },
@@ -99,7 +101,7 @@ describe("the daily update check", () => {
     await check.run();
 
     expect(check.pushes).toMatchObject([
-      { data: { key: "notice.updateBare", values: { version: "2026.12.0" } } },
+      { data: { key: "notice.updateBare", values: { version: "2026.12.0", steps: "update" } } },
     ]);
   });
 

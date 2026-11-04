@@ -15,7 +15,7 @@ import { isOlderVersion } from "../plugins/version-order.js";
 export type ReleaseChannel = "stable" | "beta";
 
 /** The npm package owners install, whose versions and notes the update check reads. */
-const releasePackage = "binference";
+export const releasePackage = "binference";
 
 /**
  * Reads binference's releases from npm's registry (decision 0355): the newest version on a channel
