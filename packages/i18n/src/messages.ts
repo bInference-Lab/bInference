@@ -6,6 +6,7 @@ import enCmd from "../messages/en/cmd.json" with { type: "json" };
 import enConsole from "../messages/en/console.json" with { type: "json" };
 import enDaily from "../messages/en/daily.json" with { type: "json" };
 import enDisclaimer from "../messages/en/disclaimer.json" with { type: "json" };
+import enDocs from "../messages/en/docs.json" with { type: "json" };
 import enError from "../messages/en/error.json" with { type: "json" };
 import enFill from "../messages/en/fill.json" with { type: "json" };
 import enInit from "../messages/en/init.json" with { type: "json" };
@@ -34,6 +35,7 @@ import zhCmd from "../messages/zh/cmd.json" with { type: "json" };
 import zhConsole from "../messages/zh/console.json" with { type: "json" };
 import zhDaily from "../messages/zh/daily.json" with { type: "json" };
 import zhDisclaimer from "../messages/zh/disclaimer.json" with { type: "json" };
+import zhDocs from "../messages/zh/docs.json" with { type: "json" };
 import zhError from "../messages/zh/error.json" with { type: "json" };
 import zhFill from "../messages/zh/fill.json" with { type: "json" };
 import zhInit from "../messages/zh/init.json" with { type: "json" };
@@ -103,6 +105,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("webPush", enWebPush),
     ...inArea("plugin", enPlugin),
     ...inArea("workspace", enWorkspace),
+    ...inArea("docs", enDocs),
   },
   zh: {
     ...inArea("error", zhError),
@@ -133,5 +136,6 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("webPush", zhWebPush),
     ...inArea("plugin", zhPlugin),
     ...inArea("workspace", zhWorkspace),
+    ...inArea("docs", zhDocs),
   },
 };

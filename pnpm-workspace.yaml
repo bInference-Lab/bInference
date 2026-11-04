@@ -1,4 +1,5 @@
 packages:
+  - apps/*
   - packages/*
   - plugins/*
 
@@ -6,6 +7,7 @@ packages:
 catalogMode: strict
 catalog:
   "@anthropic-ai/sdk": 0.131.0
+  "@astrojs/starlight": 0.42.7
   "@base-ui/react": 1.8.0
   "@clack/prompts": 1.8.1
   "@commitlint/cli": 21.2.3
@@ -35,6 +37,7 @@ catalog:
   "@types/ws": 8.18.2
   "@vitejs/plugin-react": 6.1.1
   "@vitest/coverage-v8": 5.0.2
+  astro: 7.4.4
   class-variance-authority: 0.7.1
   cn: 0.4.0
   commander: 15.0.0

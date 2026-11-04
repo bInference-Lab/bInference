@@ -1,13 +1,27 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { findPackages } from "../package-graph/graph.mjs";
 import { typecheckStep, type GateCase } from "./gate-case.mjs";
 
 const rootFiles = ["package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml", ".npmrc"];
 
+// The apps, such as the docs site, sit outside the package graph but in the workspace.
+function appManifests(repo: string): readonly string[] {
+  const apps = join(repo, "apps");
+  return existsSync(apps)
+    ? readdirSync(apps)
+        .map((name) => `apps/${name}/package.json`)
+        .filter((file) => existsSync(join(repo, file)))
+    : [];
+}
+
 // The lockfile names every workspace package, so a frozen install needs their manifests too.
 function engineFiles(repo: string): readonly string[] {
-  return [...rootFiles, ...findPackages(repo).map((item) => `${item.folder}/package.json`)];
+  return [
+    ...rootFiles,
+    ...appManifests(repo),
+    ...findPackages(repo).map((item) => `${item.folder}/package.json`),
+  ];
 }
 
 // The install runs in its own folder, so a gate that wrongly passes installs there and never

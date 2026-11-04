@@ -25,3 +25,6 @@ packages/console/smoke-results/
 .stryker-tmp/
 *.tsbuildinfo
 *.env.*
+
+# The docs site's generated content types.
+apps/docs/.astro/

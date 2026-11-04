@@ -6,6 +6,10 @@
       "entry": ["scripts/*.mts", "config/oxlint/store-guards.mjs"],
       "project": ["scripts/**/*.mts", "config/**/*.{ts,mjs}", "*.config.{ts,mts,mjs}"],
     },
+    // Astro loads the content config by its name.
+    "apps/docs": {
+      "entry": ["src/content.config.mjs"],
+    },
     "{packages,plugins}/*": {
       "project": ["src/**/*.ts"],
     },

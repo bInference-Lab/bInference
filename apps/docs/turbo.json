@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/turbo/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "src/**",
+        "astro.config.mjs",
+        "build.env",
+        "package.json",
+        "$TURBO_ROOT$/packages/i18n/messages/*/docs.json"
+      ],
+      "outputs": ["dist/**"]
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@binference/docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The binference docs site: the guides and generated references in English and Simplified Chinese, rendered by Starlight.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node --env-file=build.env node_modules/astro/bin/astro.mjs build"
+  },
+  "devDependencies": {
+    "@astrojs/starlight": "catalog:",
+    "astro": "catalog:"
+  }
+}
