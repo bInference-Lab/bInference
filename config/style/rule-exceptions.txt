@@ -45,3 +45,4 @@ packages/i18n/messages/zh/daily.json emoji
 # The install scripts run before binference and its messages exist on the machine, so each
 # carries every line it prints in English and Chinese.
 install/install.sh cjk
+install/install.ps1 cjk

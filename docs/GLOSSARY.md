@@ -510,6 +510,8 @@ check` tries it as `network.proxy`.
   root: when npm's global folder needs it, binference goes into `~/.local`. Its variables:
   `BINFERENCE_INSTALL_CHANNEL`, `BINFERENCE_INSTALL_YES`, `BINFERENCE_INSTALL_SKIP_INIT`,
   `BINFERENCE_NODE_MIRROR`, and `BINFERENCE_INSTALL_PACKAGE`, a local tarball for tests only.
+  `install/install.ps1` does the same on Windows (`irm https://binference.io/install.ps1 | iex`),
+  with Node in `%LOCALAPPDATA%\binference`; it never asks for administrator rights.
 - **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed
   files** into an empty project outside the repository, checks that every file their manifests
   name is there, then sets the installed `binference` up with `init --yes`, starts it, makes a
@@ -667,7 +669,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | log in (to the computer)                    | 登录                   |                              |
 | client token                                | 访问令牌               | A `bnt_` sign-in token       |
 | release notes                               | 更新说明               |                              |
-| install script                              | 安装脚本               | `install.sh`                 |
+| install script                              | 安装脚本               | `install.sh`, `install.ps1`  |
 | plugin host                                 | 插件进程               | One process per plugin       |
 | sandbox check                               | 沙箱检查               | `plugins.sandbox`            |
 | plugin launcher                             | 插件启动器             | In the Docker image          |
