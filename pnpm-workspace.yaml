@@ -74,7 +74,7 @@ catalog:
   which-command: 0.1.0
   ws: 8.22.0
   yaml: 2.9.1
-  zod: 4.6.5
+  zod: 4.6.6
 
 # Refuse a Node outside the range in package.json "engines".
 engineStrict: true
@@ -89,6 +89,9 @@ overrides:
   # GHSA-2m5v-pch6-74hx and seven more: undici below 8.12.2 drops TLS options and can crash on a
   # hostile server. openai, jsdom and astro take the catalog's undici too.
   undici: "catalog:"
+  # GHSA-mrhx-c7xc-m3w5: zod below 4.6.6 can run out of memory on an oversized array or record.
+  # The MCP SDK, astro and its sitemap take the catalog's zod too.
+  zod: "catalog:"
 
 auditConfig:
   ignoreGhsas:
