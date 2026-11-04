@@ -201,6 +201,10 @@ describe("the limits operation", () => {
     expect(await test.engine.handlers["limit/get"](testCall({ agent }))).toStrictEqual(
       err("agent.not_found"),
     );
+    const changes = { perTradeUsdMicros: lower };
+    expect(await test.engine.handlers["limit/set"](testCall({ agent, changes }))).toStrictEqual(
+      err("agent.not_found"),
+    );
   });
 });
 
@@ -234,6 +238,9 @@ describe("a stricter limit", () => {
     expect(await proposedState(test)).toBe("rejected_policy");
     const malformed = assetRefSchema.parse("fake:1/token:0x0a");
     expect(await setLimits(test, { denyTokens: [malformed] }, braking)).toStrictEqual(
+      err("protocol.bad_args"),
+    );
+    expect(await setLimits(test, { allowTokens: [malformed] }, braking)).toStrictEqual(
       err("protocol.bad_args"),
     );
   });

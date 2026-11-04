@@ -90,6 +90,40 @@ describe("an auto order's card", () => {
     expect((await test.stores.intents.get(view.intent, live))?.state).toBe("expired");
   });
 
+  it("expires an order whose card was confirmed after the order's own end", async () => {
+    const test = await startOrderEngine();
+    const view = await createdOrder(test, testStopLoss({ expiresAt: testNowMs + 60_000 }));
+    await test.clock.advance(60_000);
+
+    await tapCard(test, view.intent, "confirm");
+
+    expect((await storedOrder(test, view.order)).state).toBe("expired");
+  });
+
+  it("cancels at the next tick an order a stop left without its card's intent", async () => {
+    // The stop comes as the order's card intent is stored, so no intent is.
+    const test = await startOrderEngine({
+      intents: (store) => ({
+        ...store,
+        create: async () => Promise.reject(new Error("The engine stopped.")),
+      }),
+    });
+    await expect(test.engine.handlers["order/create"](testCall(testStopLoss()))).rejects.toThrow(
+      "The engine stopped.",
+    );
+    const [left] = await test.stores.orders.list(
+      { states: ["awaiting_confirmation"], limit: 5 },
+      live,
+    );
+
+    await test.engine.tickOrders(live);
+
+    expect(left).toBeDefined();
+    expect(await test.stores.orders.list({ states: ["cancelled"], limit: 5 }, live)).toMatchObject([
+      { id: left?.id },
+    ]);
+  });
+
   it("takes the tap on an order's card while the engine is locked: it signs nothing", async () => {
     const test = await startOrderEngine({
       agent: { mode: "live" },

@@ -15,7 +15,7 @@ import {
   testWallet,
 } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
-import type { RiskCheck } from "../ports.js";
+import type { IntentStore, RiskCheck } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import { createVenueHost, type VenueHost } from "../venues/venue-host.js";
 import {
@@ -66,7 +66,7 @@ const realOf: Curves = async (token, call) => host.curves(token, call);
 // A live agent with its launch wallet, whose executor reads the launch through `reads`.
 async function benchOf(
   reads: (real: Curves) => Curves,
-  options: Pick<BenchOptions, "limits"> = {},
+  options: Pick<BenchOptions, "limits" | "intents"> = {},
 ): Promise<ExecutorBench> {
   const wallets = [testWallet, launchWallet];
   const bench = await startExecutorBench({
@@ -106,6 +106,15 @@ const buy: IntentRequest = {
 async function reasonOf(bench: ExecutorBench, intent: ReturnType<typeof fixtureId<"int">>) {
   const record = await bench.test.stores.intents.get(intent, live);
   return [record?.state, record?.reason];
+}
+
+// An intent store that loses every move to `failed_check` to another writer.
+function racedToFailedCheck(store: IntentStore): IntentStore {
+  return {
+    ...store,
+    transition: async (change, call) =>
+      change.state === "failed_check" ? err("stale") : store.transition(change, call),
+  };
 }
 
 function noticesOf(bench: ExecutorBench): readonly unknown[] {
@@ -148,6 +157,18 @@ describe("a launch wallet's curve trade in the wallet queue", () => {
     expect(noticesOf(bench)).toMatchObject([
       { key: "notice.launchUnsent", intent, values: { reason: "launch_unread" } },
     ]);
+  });
+
+  it("tells the owner nothing of a launch read's end another writer beat, and signs nothing", async () => {
+    const reads = vi.fn<Curves>().mockResolvedValue(err("venue_down"));
+    const bench = await benchOf(() => reads, { intents: racedToFailedCheck });
+
+    const intent = await tapped(bench, buy);
+    await driveUntil(bench, intent, { states: [], blocks: 2 });
+
+    await expect(reasonOf(bench, intent)).resolves.toStrictEqual(["confirmed", undefined]);
+    expect(bench.signed).toStrictEqual([]);
+    expect(noticesOf(bench)).toStrictEqual([]);
   });
 
   it("ends a trade whose token left the curve before the queue took it", async () => {

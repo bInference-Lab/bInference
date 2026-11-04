@@ -1,6 +1,6 @@
 import type { ReceiptReader } from "@binference/chain";
 import type { FakeNetwork } from "@binference/chain/testing";
-import type { Id } from "@binference/core";
+import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testCoin, testSwap, testToken } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
@@ -79,6 +79,27 @@ function failingReads(
       },
     };
   };
+}
+
+// An intent store whose first `losses` moves to `reconciled` lose to another writer, which wrote
+// that same move first when `isWritten` says so.
+function racedReconciles(race: {
+  readonly losses: number;
+  readonly isWritten: boolean;
+}): (store: IntentStore) => IntentStore {
+  const { losses, isWritten } = race;
+  const state = { left: losses };
+  return (store) => ({
+    ...store,
+    async transition(change, options) {
+      if (change.state !== "reconciled" || state.left === 0) {
+        return store.transition(change, options);
+      }
+      state.left -= 1;
+      const written = isWritten ? await store.transition(change, options) : undefined;
+      return written === undefined || written.ok ? err("stale") : written;
+    },
+  });
 }
 
 describe("reconciliation", () => {
@@ -210,6 +231,25 @@ describe("reconciliation", () => {
     expect(one?.receipt?.block.number).toBe(two?.receipt?.block.number);
     expect(eventsOf(bench)).toContain("executor.block_shared:");
     expect(noticesOf(bench.pushes).join()).toContain("notice.blockShared");
+  });
+
+  it("books a trade once though its move to reconciled lost a race, and moves it next block", async () => {
+    const bench = await startExecutorBench({
+      intents: racedReconciles({ losses: 1, isWritten: false }),
+    });
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, done)).resolves.toBe("reconciled");
+    expect(await executionsOf(bench)).toHaveLength(1);
+  });
+
+  it("stops at once when another writer reconciled the trade first, booking it once", async () => {
+    const bench = await startExecutorBench({
+      intents: racedReconciles({ losses: 1, isWritten: true }),
+    });
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, done)).resolves.toBe("reconciled");
+    expect(await executionsOf(bench)).toHaveLength(1);
+    expect(eventsOf(bench)).not.toContain("executor.reconciled:");
   });
 
   it("fails a finalized intent with no quote as a fault, and records nothing", async () => {

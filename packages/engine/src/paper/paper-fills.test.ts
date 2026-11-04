@@ -139,6 +139,21 @@ describe("paper fills", () => {
     ).toHaveLength(0);
   });
 
+  it.each([
+    ["an order", { order: async () => Promise.resolve(undefined) }],
+    ["a rule's alert", { alert: async () => Promise.resolve(undefined) }],
+  ] as const)(
+    "fill nothing for %s that can no longer record the fill",
+    async (_writer, writers) => {
+      const held = await holding({ state: "confirmed" });
+      const filled = await fillsOn(held).fillAtQuote(held.snapshot, { ...live, ...writers });
+      expect(filled).toBe(held.snapshot);
+      expect(
+        await held.positions.executions({ after: 0, limit: 5, isPaper: true }, live),
+      ).toHaveLength(0);
+    },
+  );
+
   it("read the positions again when another fill moved them first", async () => {
     const held = await holding({ state: "confirmed" });
     const fills = fillsOn({ ...held, positions: losing(held.positions, 2) });
