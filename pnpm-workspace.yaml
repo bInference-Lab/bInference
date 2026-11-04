@@ -84,6 +84,9 @@ minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
 
 overrides:
+  # GHSA-gfr2-rv44-r23c and two more: markdown-it below 15.0.3 takes quadratic time on some
+  # input (through markdownlint-cli2, which pins 15.0.1).
+  markdown-it: 15.0.3
   # GHSA-68fv-2mgg-jv7q: source-map-js below 1.2.2 can block the event loop (through postcss).
   source-map-js: 1.2.2
   # GHSA-2m5v-pch6-74hx and seven more: undici below 8.12.2 drops TLS options and can crash on a
