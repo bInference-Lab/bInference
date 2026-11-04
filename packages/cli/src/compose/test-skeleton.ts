@@ -248,6 +248,8 @@ export interface SkeletonOptions {
   readonly workspace?: ComposeEngineOptions["workspace"];
   /** Whether a launch feed runs, whose stored launches `market/scan` reads; none when left out. */
   readonly launchFeed?: boolean;
+  /** Whether a community plugin is on (decision 0350); none when left out. */
+  readonly communityPluginsOn?: () => boolean;
 }
 
 // The owner's bot and the handlers it alone runs, the HTTP listener with the console's files,
@@ -279,8 +281,14 @@ function surfacesOf(
 }
 
 // A launch feed, when the options ask for one.
-function launchFeedOf(options: SkeletonOptions): Pick<ComposeEngineOptions, "launchFeed"> {
-  return options.launchFeed === true ? { launchFeed: true } : {};
+// The launch feed when the options ask for one, and whether a community plugin is on.
+function switchesOf(
+  options: SkeletonOptions,
+): Pick<ComposeEngineOptions, "launchFeed" | "communityPluginsOn"> {
+  const communityPluginsOn = options.communityPluginsOn ?? (() => false);
+  return options.launchFeed === true
+    ? { launchFeed: true, communityPluginsOn }
+    : { communityPluginsOn };
 }
 
 // The skeleton wallet's facts: 1 coin, a ceiling of 1 coin a transaction, a 1 gwei fee.
@@ -311,6 +319,7 @@ export async function composeSkeleton(
   const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
   const logger = createMemoryLogger({ subsystem: "engine" });
+  const ready = readyEngineOperations(parts.stores, options.communityPluginsOn);
   const composed = composeEngine(parts, {
     chains,
     venues: options.venues ?? [createFakeVenue()],
@@ -323,13 +332,13 @@ export async function composeSkeleton(
     executor,
     positions,
     canPrice: async () => await Promise.resolve(true),
-    ...launchFeedOf(options),
+    ...switchesOf(options),
     readTokenFacts: options.tokenFacts ?? createFakeTokenFacts().read,
     workspace: options.workspace ?? createMemoryWorkspaceFiles(clock),
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
     version: "2026.10.0",
     owner: options.owner ?? (() => ({ locale: "en", timezone: "UTC" })),
-    handlers: { ...readyEngineOperations(parts.stores), ...options.handlers },
+    handlers: { ...ready, ...options.handlers },
     ...surfacesOf(options),
     clock,
     random: createSeededRandom(7),

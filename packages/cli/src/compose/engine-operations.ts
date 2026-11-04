@@ -10,7 +10,7 @@ import type { HealthSignal } from "./health-signals.js";
 
 /** What the engine's own operations read and do. */
 export interface EngineOperationsOptions {
-  readonly agents: Pick<AgentStore, "list">;
+  readonly agents: Pick<AgentStore, "list" | "get">;
   /** The install's wallets, whose launch wallets the status names. */
   readonly install: Pick<InstallStore, "read">;
   /** The engine's release. */
@@ -21,6 +21,8 @@ export interface EngineOperationsOptions {
   readonly health: () => readonly HealthSignal[];
   /** The Node options the engine's process runs with, which `debugSignalOff` reads. */
   readonly nodeOptions: readonly string[];
+  /** Whether a community plugin is on, which keeps auto mode asking (decision 0350). */
+  readonly communityPluginsOn: () => boolean;
   /**
    * Starts the shutdown sequence. It must not wait for the sequence: the sequence closes the
    * server that answers the call.
@@ -74,9 +76,29 @@ function agentsOf(
     });
 }
 
+// While a community plugin is on, each agent in auto mode says that every proposal asks
+// (decision 0350).
+async function withAutoAsks(
+  options: EngineOperationsOptions,
+  agents: EngineStatus["agents"],
+  signal: AbortSignal,
+): Promise<EngineStatus["agents"]> {
+  if (!options.communityPluginsOn()) {
+    return agents;
+  }
+  return Promise.all(
+    agents.map(async (agent) => {
+      const settings = await options.agents.get(agent.id, { signal });
+      const auto = settings?.approvalMode.mode === "auto";
+      return auto ? { ...agent, autoAsks: "plugin" as const } : agent;
+    }),
+  );
+}
+
 /**
  * The handlers of `engine/status`, `engine/stop` and `engine/unlock`. Status answers the state, the
- * release, the protocol version, the agents that are not archived with their launch and bridge wallets,
+ * release, the protocol version, the agents that are not archived with their launch and bridge wallets
+ * and whether a community plugin keeps their auto mode asking,
  * the health signals and whether the engine runs with its debug signal off; the
  * engine counts as frozen when it has agents and every one of them is frozen. Stop starts the
  * shutdown sequence and answers at once. Unlock opens the agent key, with the passphrase in the
@@ -90,7 +112,7 @@ export function createEngineOperations(options: EngineOperationsOptions): Engine
         options.agents.list({ signal }),
         options.install.read({ signal }),
       ]);
-      const agents = agentsOf(records, install.wallets);
+      const agents = await withAutoAsks(options, agentsOf(records, install.wallets), signal);
       return ok({
         state: options.state(),
         version: options.version,

@@ -253,7 +253,9 @@ paper fill uses the quote. A live trade always needs its simulation.
 
 `{why}` ([decision 0088](../DECISIONS.md#d0088)) is one of `autoAsks.overCap` "over your auto caps"
 / 「超出自动交易限额」, `autoAsks.send` "sends always ask" / 「转账总是需要确认」,
-`autoAsks.outside` "the idea came from outside content" / 「该想法来自外部内容」, `autoAsks.mcp`
+`autoAsks.outside` "the idea came from outside content" / 「该想法来自外部内容」, `autoAsks.plugin`
+"a community plugin is on, and its words reach every turn" / 「社区插件已启用，其内容会进入每一轮」
+([decision 0350](../DECISIONS.md#d0350)), `autoAsks.mcp`
 "proposed from {client}" / 「由 {client} 提出」, `autoAsks.kind` "this kind always asks"
 / 「此类操作总是需要确认」, `autoAsks.spender` "it approves a contract that is not verified"
 / 「需要向未验证的合约授权」, `autoAsks.deniedToken` "it sells a token on your deny list"

@@ -58,6 +58,11 @@ interface EngineStatus {
     readonly launchWallet?: ProtocolId<"wallet">;
     /** The agent's live bridge wallet (decision 0307); absent when it has none. */
     readonly bridgeWallet?: ProtocolId<"wallet">;
+    /**
+     * `plugin` while the agent is in auto mode and a community plugin is on, so every proposal
+     * asks (decision 0350); absent otherwise.
+     */
+    readonly autoAsks?: "plugin";
   }[];
   readonly health: readonly HealthSignal[];
   /**
@@ -211,6 +216,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
           frozen: z.boolean(),
           launchWallet: protocolIdSchema("wallet").exactOptional(),
           bridgeWallet: protocolIdSchema("wallet").exactOptional(),
+          autoAsks: z.literal("plugin").exactOptional(),
         }),
       ),
       health: z.array(

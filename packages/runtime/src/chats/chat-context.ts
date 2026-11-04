@@ -19,6 +19,11 @@ export interface TurnSetup {
   readonly limits?: TurnLimits;
   /** What compacts the session's history when it grows too long; without it, nothing does. */
   readonly compaction?: TurnCompaction;
+  /**
+   * The tools hold a community plugin's, whose words are a third party's: the turn starts marked
+   * as outside content (decision 0350).
+   */
+  readonly hasOutsideTools?: boolean;
 }
 
 /** What the chat runner works with. */

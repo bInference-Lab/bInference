@@ -121,6 +121,7 @@ function composedOn(made: Made): ComposedEngine {
   const composed = composeEngine(partsOn(fork, custody, made), {
     chains,
     unboundFirstBuys: selfHostedUnboundFirstBuys(),
+    communityPluginsOn: () => false,
     venues,
     simulator: createSimulationCheck({ simulator, chains, clock }),
     risk: { cache: createMemoryRiskCacheStore(["goplus"]), cacheTtlMs: () => 600_000, simulator },

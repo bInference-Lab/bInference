@@ -256,6 +256,27 @@ describe("createChatRunner", () => {
     expect(turnsStarted(rig)).toStrictEqual([posted.turn]);
   });
 
+  it("starts every turn marked while its tools include an outside party's (decision 0350)", async () => {
+    const seen: (boolean | undefined)[] = [];
+    const rig = await startChatRig({
+      replies: [callsReply([{ id: "c1", name: "look" }]), textReply("Done.")],
+      tools: (rigNow) => [
+        {
+          name: "look",
+          kind: "read",
+          run: async () => {
+            seen.push(rigNow().engine.running(rigNow().agent)?.marked);
+            return Promise.resolve({ text: "looked", isError: false });
+          },
+        },
+      ],
+      hasOutsideTools: true,
+    });
+    await rig.post("hi");
+    await rig.runner.rested();
+    expect(seen).toStrictEqual([true]);
+  });
+
   it("starts a turn from a schedule's wake-up, marked when its schedule was", async () => {
     const rig = await startChatRig({ replies: [textReply("Reviewed.")] });
     const due = Date.parse("2027-01-15T14:00:00Z");

@@ -161,6 +161,36 @@ describe("the runtime's chat", () => {
     expect(sends).toStrictEqual([`${posted.turn}.2`]);
   });
 
+  it("starts every turn marked while the settings offer a community plugin's tools", async () => {
+    const engine = createMemoryEngineChat([agent]);
+    const seen: (boolean | undefined)[] = [];
+    const look: TestTool = {
+      name: "look",
+      kind: "read",
+      run: async () => {
+        seen.push(engine.running(agent)?.marked);
+        return Promise.resolve({ text: "looked", isError: false });
+      },
+    };
+    const replies = [callsReply([{ id: "c1", name: "look" }]), textReply("Done.")];
+    const runtime = await ready({ engine, replies, tools: [look] });
+    const { settings } = fixtureStartLine();
+    const plugins = [
+      {
+        plugin: "plg_0192b3c4-d5e6-7f80-9a1b-2c3d4e5f6a7b",
+        id: "fear-index",
+        tools: [{ name: "index", description: "The index.", input: { type: "object" } }],
+      },
+    ];
+    await runtime.write(
+      `${JSON.stringify(engineLineSchema.encode({ t: "settings", settings: { ...settings, plugins } }))}\n`,
+    );
+    const posted = engine.post(agent, "hi");
+    await expect(endedTurn(engine, posted.turn)).resolves.toBe("ok");
+
+    expect(seen).toStrictEqual([true]);
+  });
+
   it("sets up the turn after a settings line with the model the owner picked", async () => {
     const engine = createMemoryEngineChat([agent]);
     const runtime = await ready({ engine, replies: [textReply("One."), textReply("Two.")] });

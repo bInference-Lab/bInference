@@ -56,6 +56,7 @@
   "status.installFrozen": "🔴 Every agent is frozen since {when}, and every agent made until an unfreeze starts frozen.",
   "status.noAgents": "binference has no agent yet.",
   "status.agent": "{agent} · {mode}{frozen, select, yes { · frozen since {when}} other {}}",
+  "status.autoAsksPlugin": "Auto mode asks for every proposal while a community plugin is on.",
   "status.rescueAddress": "Rescue address: {address}",
   "status.noRescueAddress": "⚠️ No rescue address is set. Run `binference rescue set` on the machine with your own wallet's address.",
   "status.pendingRescueAddress": "⚠️ The rescue address changes to {address} at {when}. Not you? Run `binference rescue cancel` on the machine.",

@@ -195,6 +195,22 @@ describe("proposing a stake", () => {
   });
 });
 
+describe("staking in auto mode", () => {
+  it("opens a card for a stake while a community plugin is on, and says why (decision 0350)", async () => {
+    const test = await startStakeEngine(withOwnCap(testStakingFake()), {
+      agent: { approvalMode: "auto" },
+      communityPluginsOn: () => true,
+    });
+    const request = testCall(stakeRequest("stake"), testCallers.runtime);
+    const view = expectOk(await test.engine.handlers["intent/propose"](request));
+
+    expect(view.state).toBe("awaiting_confirmation");
+    expect(await testCardText(test, view, "en")).toContain(
+      "Auto mode asks you here: a community plugin is on, and its words reach every turn",
+    );
+  });
+});
+
 describe("staking on paper", () => {
   it("stakes, waits out the unbonding, then claims the coin back into the paper portfolio", async () => {
     const fake = testStakingFake();

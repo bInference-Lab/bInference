@@ -238,7 +238,11 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     turnContext: connected.link.context,
     images: connected.link.images,
     settings: () => settings.current,
-    setup: (place, current) => host.turnSetup(place, current, connected.link.client),
+    // Every host's turns start marked while a community plugin offers tools (decision 0350).
+    setup: (place, current) => ({
+      ...host.turnSetup(place, current, connected.link.client),
+      hasOutsideTools: (current.plugins ?? []).some(({ tools }) => tools.length > 0),
+    }),
     clock: host.clock,
     lifetime,
   });

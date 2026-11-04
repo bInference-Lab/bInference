@@ -9,6 +9,7 @@ import { createEngineOperations } from "./engine-operations.js";
  */
 export function readyEngineOperations(
   stores: Pick<EngineParts["stores"], "agents" | "install">,
+  communityPluginsOn: () => boolean = () => false,
 ): EngineHandlerTable {
   return createEngineOperations({
     agents: stores.agents,
@@ -18,6 +19,7 @@ export function readyEngineOperations(
     lock: { unlock: async () => Promise.resolve(ok(undefined)) },
     health: () => [],
     nodeOptions: ["--disable-sigusr1"],
+    communityPluginsOn,
     stop: () => undefined,
   });
 }

@@ -34,6 +34,8 @@ export interface StakePathOptions extends StakeResolveOptions, StakePlanParts, S
   readonly gate: CapGate;
   /** Whether the engine is locked: no live move is authorized by auto mode while it is. */
   readonly isLocked: () => boolean;
+  /** Whether a community plugin is on: auto mode then asks (decision 0350). */
+  readonly communityPluginsOn?: () => boolean;
   readonly execute: ExecuteConfirmed;
   readonly ids: IdSource;
   /** Reads a receipt token's own symbol, name and decimals when the registry lists none. */
@@ -105,6 +107,7 @@ async function authorize(
       isLocked: isLocked() && !simulated.record.isPaper,
       hasUnlistedSpender: false,
       stake: { isUnstake: resolved.ask.action === "unstake" },
+      communityPluginsOn: options.communityPluginsOn?.() === true,
     });
     return advanceIntent(advance, simulated, { trigger });
   });

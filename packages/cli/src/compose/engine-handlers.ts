@@ -37,6 +37,8 @@ interface EngineWiring {
   readonly models: ComposedRuntime["models"];
   /** The price watchers' signal, with their lag in blocks while one reads. */
   readonly watcher: () => HealthSignal;
+  /** Whether a community plugin offers an agent tools (decision 0350). */
+  readonly communityPluginsOn: () => boolean;
 }
 
 // The change of `config.json5`, and remote access, which records what it published through it.
@@ -90,6 +92,7 @@ export function engineHandlers(
       lock: wiring.locked.lock,
       health: () => probe.read(),
       nodeOptions: opening.host.entry.nodeOptions,
+      communityPluginsOn: wiring.communityPluginsOn,
       stop: () => wiring.stopper.stop(),
     }),
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),

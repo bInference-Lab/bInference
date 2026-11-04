@@ -23,6 +23,7 @@ import {
 } from "../operations/test-engine.js";
 import type { IntentStore, RiskCheck } from "../ports.js";
 import type { RiskAssessment, RiskSubject } from "../risk/risk-assessment.js";
+import { testCardText } from "./test-launches.js";
 import { otherVenue, otherVenueId } from "./test-routes.js";
 
 const noRefusal = (): undefined => undefined;
@@ -197,6 +198,19 @@ describe("the money path", () => {
       });
     },
   );
+
+  it("opens a card in auto mode while a community plugin is on, and says why (decision 0350)", async () => {
+    const test = await startTestEngine({
+      agent: { approvalMode: "auto" },
+      communityPluginsOn: () => true,
+    });
+    const view = await propose(test, testSwap(), testCallers.runtime);
+
+    expect(view.state).toBe("awaiting_confirmation");
+    expect(await testCardText(test, view, "en")).toContain(
+      "Auto mode asks you here: a community plugin is on, and its words reach every turn",
+    );
+  });
 
   it("opens a card for an MCP client's proposal even in auto mode", async () => {
     const test = await startTestEngine({ agent: { approvalMode: "auto" } });

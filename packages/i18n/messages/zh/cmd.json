@@ -56,6 +56,7 @@
   "status.installFrozen": "🔴 所有 Agent 都已冻结，自 {when} 起；在解除冻结之前新建的 Agent 也会处于冻结状态。",
   "status.noAgents": "binference 还没有 Agent。",
   "status.agent": "{agent} · {mode}{frozen, select, yes { · 自 {when} 起已冻结} other {}}",
+  "status.autoAsksPlugin": "社区插件启用期间，自动模式会对每个提议都询问你。",
   "status.rescueAddress": "紧急转出地址：{address}",
   "status.noRescueAddress": "⚠️ 尚未设置紧急转出地址。请在本机用你自己钱包的地址运行 `binference rescue set`。",
   "status.pendingRescueAddress": "⚠️ 紧急转出地址将于 {when} 改为 {address}。不是你操作？请在本机运行 `binference rescue cancel`。",

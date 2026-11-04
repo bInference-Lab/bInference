@@ -28,6 +28,8 @@ export interface AuthorizationInput {
    * its positions; an unstake still asks (decision 0296). Absent for any other kind.
    */
   readonly stake?: { readonly isUnstake: boolean };
+  /** A community plugin is on, so auto mode asks (decision 0350). */
+  readonly communityPluginsOn?: boolean;
 }
 
 /**
@@ -40,6 +42,7 @@ export function authorizationCheckOf(
   input: AuthorizationInput,
 ): IntentTrigger<"authorization_checked"> {
   const { settings, pass, wallet, isLocked, hasUnlistedSpender, stake } = input;
+  const plugins = input.communityPluginsOn === true ? { communityPluginsOn: true } : {};
   const { limits, approvalMode } = settings;
   const facts: AutoModeFacts = {
     approvalMode: approvalMode.mode,
@@ -55,6 +58,7 @@ export function authorizationCheckOf(
     feePerGasNativeBase: wallet.feePerGasNativeBase,
     networkFeeCapNativeBase: wallet.networkFeeCapNativeBase,
     hasUnlistedSpender,
+    ...plugins,
   };
   return {
     type: "authorization_checked",

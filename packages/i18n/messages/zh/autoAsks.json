@@ -5,6 +5,7 @@
   "overCap": "超出自动交易限额",
   "spender": "需要向未验证的合约授权",
   "outside": "该想法来自外部内容",
+  "plugin": "社区插件已启用，其内容会进入每一轮",
   "mcp": "由 {client} 提出",
   "deniedToken": "卖出的是你禁止列表中的代币",
   "overFeeCap": "网络费高于你设定的上限",

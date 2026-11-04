@@ -20,14 +20,17 @@ function agentLines(
   if (status.agents.length === 0) {
     return [words("cmd.status.noAgents")];
   }
-  return status.agents.map((agent) => {
+  return status.agents.flatMap((agent) => {
     const frozenAt = safety.agents?.find((frozen) => frozen.agent === agent.id)?.frozenAt;
-    return words("cmd.status.agent", {
+    const line = words("cmd.status.agent", {
       agent: agent.id,
       mode: words("cmd.mode", { mode: agent.mode }),
       frozen: frozenAt === undefined ? "no" : "yes",
       when: frozenAt === undefined ? "" : formatter.dateTime(frozenAt),
     });
+    // In auto mode, a community plugin keeps every proposal asking (decision 0350).
+    const asks = agent.autoAsks === "plugin" ? [words("cmd.status.autoAsksPlugin")] : [];
+    return [line, ...asks];
   });
 }
 
@@ -68,7 +71,8 @@ function healthLine(context: CommandContext, health: EngineStatus["health"]): st
 
 /**
  * `/status`: the engine's state and release, a locked engine said so (decision 0104), the
- * install's freeze, each agent with its mode and freeze, the rescue under way, the rescue address
+ * install's freeze, each agent with its mode and freeze and whether a community plugin keeps its
+ * auto mode asking (decision 0350), the rescue under way, the rescue address
  * with a change that waits, and how many health signals fail.
  */
 export async function runStatus(context: CommandContext): Promise<void> {

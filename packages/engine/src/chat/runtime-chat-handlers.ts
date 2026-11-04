@@ -91,7 +91,9 @@ function turnHandlers(
         return active;
       }
       const left = await options.budget.open(active.value, call);
-      turns.start({ agent, turn, hasOutsideContent: outsideContent, messages });
+      // A plugin's tools are in the turn's context from its start, whatever the runtime says.
+      const marked = outsideContent || options.communityPluginsOn?.() === true;
+      turns.start({ agent, turn, hasOutsideContent: marked, messages });
       publish({
         topic: chatTopic(agent),
         kind: "chat/turnStarted",

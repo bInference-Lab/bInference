@@ -33,9 +33,10 @@ import {
   type PluginPrograms,
   probeSettingOf,
 } from "./plugin-sandbox.js";
+import { createPluginSwitch } from "./plugin-switch.js";
 
 /** The community plugins as the engine holds them. */
-export interface ComposedPlugins {
+interface ComposedPlugins {
   /** The handlers of `plugin/list`, `add`, `enable`, `disable`, `remove` and `call`. */
   readonly handlers: EngineHandlerTable;
   /**
@@ -44,6 +45,21 @@ export interface ComposedPlugins {
    * run; a failure is logged. The shutdown stops them.
    */
   begin(): void;
+}
+
+/** The agent runtime, the community plugins beside it, and what the engine reads of them. */
+export interface RuntimeWithPlugins {
+  readonly runtime: ComposedRuntime;
+  readonly plugins: ComposedPlugins;
+  /**
+   * The runtime's running turns, and whether the agent is offered a community plugin's tools now:
+   * its turns then start marked as outside content, and auto mode asks for every proposal
+   * (decision 0350).
+   */
+  readonly agentSide: {
+    readonly turns: ComposedRuntime["turns"];
+    readonly communityPluginsOn: () => boolean;
+  };
 }
 
 /** Where plugins' files live on this machine, and who makes and removes their data folders. */
@@ -250,22 +266,25 @@ function composePlugins(opening: Opening, opened: Opened, wiring: PluginWiring):
 /**
  * The agent runtime and the community plugins beside it: the plugins' answers mark the runtime's
  * turns, their notices and jobs go through the engine's publish once it exists, their tools reach
- * the runtime's settings, and they start as the runtime begins.
+ * the runtime's settings, and they start as the runtime begins. While their tools are offered,
+ * `communityPluginsOn` says so (decision 0350).
  */
 export function composeRuntimeWithPlugins(
   opening: Opening,
   opened: Opened,
   jobs: { readonly publish: PublishPush },
-): { readonly runtime: ComposedRuntime; readonly plugins: ComposedPlugins } {
+): RuntimeWithPlugins {
   const runtime = composeRuntime(opening, opened);
-  const plugins = composePlugins(opening, opened, {
+  const offered = createPluginSwitch(async (plugins) => runtime.offerPlugins(plugins));
+  const composed = composePlugins(opening, opened, {
     turns: runtime.turns,
     publish: () => jobs.publish,
-    offer: async (offered) => runtime.offerPlugins(offered),
+    offer: async (plugins) => offered.offer(plugins),
   });
   const begin = (server: Parameters<ComposedRuntime["begin"]>[0]): void => {
     runtime.begin(server);
-    plugins.begin();
+    composed.begin();
   };
-  return { runtime: { ...runtime, begin }, plugins };
+  const agentSide = { turns: runtime.turns, communityPluginsOn: () => offered.isOn() };
+  return { runtime: { ...runtime, begin }, plugins: composed, agentSide };
 }

@@ -60,6 +60,8 @@ export interface ChatRigOptions {
   readonly models?: (clock: ManualClock) => ModelChain;
   /** What the turns compact their history with; they never compact when absent. */
   readonly compaction?: (clock: ManualClock) => TurnCompaction;
+  /** Whether the turns offer an outside party's tools, as a community plugin's; never when absent. */
+  readonly hasOutsideTools?: boolean;
 }
 
 function notStarted(): never {
@@ -101,6 +103,7 @@ export async function startChatRig(options: ChatRigOptions): Promise<ChatRig> {
         instructions: "You are a test agent.",
         limits: turnLimits,
         ...(options.compaction === undefined ? {} : { compaction: options.compaction(clock) }),
+        ...(options.hasOutsideTools === true ? { hasOutsideTools: true } : {}),
       };
     },
     mode: () => options.mode ?? "merge",

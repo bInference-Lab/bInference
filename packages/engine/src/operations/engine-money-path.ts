@@ -128,6 +128,9 @@ export function moneyPathOf(
     readTokenFacts: options.readTokenFacts,
     execute,
     isLocked,
+    ...(options.communityPluginsOn === undefined
+      ? {}
+      : { communityPluginsOn: options.communityPluginsOn }),
     lowGas,
     gate,
     liveFills: options.liveOrderFills === true,

@@ -124,6 +124,7 @@ function composedOn(fork: Fork, made: Made): ComposedEngine {
   const composed = composeEngine(partsOf(fork, rig), {
     chains,
     venues: [],
+    communityPluginsOn: () => false,
     simulator: createSimulationCheck({ simulator, chains, clock }),
     risk: { cache: createMemoryRiskCacheStore(["goplus"]), cacheTtlMs: () => 600_000, simulator },
     wallets: rig.wallets,

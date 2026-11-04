@@ -69,6 +69,34 @@ describe.each(skeletonCompositions)(
       },
     );
 
+    it(
+      "says while a community plugin is on that auto mode asks, in the approval and the status",
+      slow,
+      async () => {
+        const machine = await machines.create(testNowMs);
+        const skeleton = await serveSkeleton(machine, composition, {
+          communityPluginsOn: () => true,
+        });
+        served.push(skeleton);
+        const auto = await runOn(machine, ["approval", "auto", "--agent", testAgent]);
+        const json = await runOn(machine, ["approval", "--json"]);
+        const chinese = await runOn(machine, ["approval"], { LANG: "zh_CN.UTF-8" });
+        const status = await runOn(machine, ["status"]);
+        const zhStatus = await runOn(machine, ["status"], { LANG: "zh_CN.UTF-8" });
+        const zh = createFormatter({ locale: "zh", timeZone: "UTC" });
+
+        expect(auto.stdout).toContain(String(messages.en["cli.approval.pluginAsks"]));
+        expect(JSON.parse(json.stdout)).toMatchObject({ mode: "auto", autoAsks: "plugin" });
+        expect(chinese.stdout).toContain(zh.message("cli.approval.pluginAsks"));
+        expect(status.stdout).toContain(
+          `${testAgent}: auto mode asks for every proposal while a community plugin is on`,
+        );
+        expect(zhStatus.stdout).toContain(
+          zh.message("cli.status.autoAsksPlugin", { id: testAgent }),
+        );
+      },
+    );
+
     it("names the agents to choose from when there are several", slow, async () => {
       const { machine, skeleton } = await servedMachine();
       const second = "agt_0190f1c2-3a4b-7c5d-8e6f-0000000000aa";

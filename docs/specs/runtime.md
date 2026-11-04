@@ -389,8 +389,9 @@ and the engine reads them; no tool resolves a name for the model.
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
   stays clean.
 - **The turn's mark** is set when the model's context holds outside content: at `turn/start`, when
-  any event in the kept history or the summary is marked, or a message the turn takes has images or
-  carries `outsideContent`; during the turn, when a tool result or a joining message is outside
+  any event in the kept history or the summary is marked, a message the turn takes has images or
+  carries `outsideContent`, or the turn offers a community plugin's tools, whose words may reach it
+  at any call ([decision 0350](../DECISIONS.md#d0350)); during the turn, when a tool result or a joining message is outside
   content. Each such transcript event is stored with `outside` set, and a summary made from a
   marked event is marked.
 - So the mark lasts as long as the session holds the content: until the owner clears the session

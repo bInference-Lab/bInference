@@ -92,6 +92,8 @@ export interface MoneyPathOptions extends ResolveOptions {
   readonly execute: ExecuteConfirmed;
   /** Whether the engine is locked: no live intent is authorized by auto mode while it is. */
   readonly isLocked: () => boolean;
+  /** Whether a community plugin is on: auto mode then asks (decision 0350). */
+  readonly communityPluginsOn?: () => boolean;
   /** Told each live wallet's native balance as a proposal reads it. */
   readonly lowGas: LowGasAlerts;
   /** The rolling cap each confirmation is checked against, one agent's at a time. */
@@ -299,13 +301,14 @@ async function authorizeAndExecute(
   simulated: IntentSnapshot,
   chosen: { readonly pass: PolicyPass; readonly plan: TradePlan },
 ): Promise<IntentSnapshot> {
-  const { stored, gate, isLocked, execute, liveFills = false } = run.options;
+  const { stored, gate, isLocked, execute, liveFills = false, communityPluginsOn } = run.options;
   const { machine, signal, fill } = run;
   const { facts: wallet, chain } = run.resolved;
   const family = chain.family;
   const parts = { stored, machine, signal, gate, isLocked, liveFills, wallet, family };
+  const plugins = communityPluginsOn === undefined ? {} : { communityPluginsOn };
   const authorized = await authorizeSimulated(
-    fill === undefined ? parts : { ...parts, fill },
+    { ...parts, ...plugins, ...(fill === undefined ? {} : { fill }) },
     simulated,
     chosen,
   );

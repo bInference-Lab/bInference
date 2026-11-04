@@ -40,6 +40,11 @@ export interface AutoModeFacts {
   readonly networkFeeCapNativeBase: bigint;
   /** A step approves a spender outside the registry. */
   readonly hasUnlistedSpender: boolean;
+  /**
+   * A community plugin is on: its tools' words reach every turn of the agent, so auto mode
+   * proposes nothing on its own (decision 0350). Absent when none is.
+   */
+  readonly communityPluginsOn?: boolean;
 }
 
 /** The parts of an intent the auto test reads. */
@@ -68,6 +73,23 @@ function fitsCaps(facts: AutoModeFacts): boolean {
   );
 }
 
+// The last checks: what the intent approves, what reached the turn that proposed it, and who did.
+function whereFromRefusal(
+  intent: AutoModeSubject,
+  facts: AutoModeFacts,
+): AutoModeRefusal | undefined {
+  if (facts.hasUnlistedSpender) {
+    return "spender";
+  }
+  if (facts.communityPluginsOn === true) {
+    return "plugin";
+  }
+  if (intent.hasOutsideContent) {
+    return "outside";
+  }
+  return intent.proposer === "agent_runtime" ? undefined : "mcp";
+}
+
 // The checks run in the order spec 6, section 5 lists them; the first that fails names the refusal.
 function autoModeRefusal(
   intent: AutoModeSubject,
@@ -92,13 +114,7 @@ function autoModeRefusal(
   if (facts.feePerGasNativeBase > facts.networkFeeCapNativeBase) {
     return "overFeeCap";
   }
-  if (facts.hasUnlistedSpender) {
-    return "spender";
-  }
-  if (intent.hasOutsideContent) {
-    return "outside";
-  }
-  return intent.proposer === "agent_runtime" ? undefined : "mcp";
+  return whereFromRefusal(intent, facts);
 }
 
 /**
@@ -106,8 +122,8 @@ function autoModeRefusal(
  * not locked for the intent, the kind is a swap, buy or sell or a stake move inside the agent's
  * own positions other than an unstake, it sells no token on the deny list, the value fits the
  * per-trade and rolling-day caps, the fee per gas is at most the network fee cap, every approval
- * goes to a registry spender, the turn read no outside content, and the agent runtime proposed
- * it. Anything else opens a card.
+ * goes to a registry spender, no community plugin is on, the turn read no outside content, and
+ * the agent runtime proposed it. Anything else opens a card.
  */
 export function checkAutoMode(
   intent: AutoModeSubject,

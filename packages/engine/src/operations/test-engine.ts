@@ -140,6 +140,8 @@ export interface TestEngineOptions {
   readonly priceSource?: (source: PriceSource) => PriceSource;
   /** Whether the engine is locked; never when absent. */
   readonly isLocked?: () => boolean;
+  /** Whether a community plugin offers the agent tools; none when absent (decision 0350). */
+  readonly communityPluginsOn?: () => boolean;
   /** Whether a live order may fill and so be made; off when absent, as in the product now. */
   readonly liveOrderFills?: boolean;
   /** The quote assets, whose leader buys no copy order follows; none when absent. */

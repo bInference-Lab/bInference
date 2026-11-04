@@ -46,6 +46,8 @@ export interface AuthorizeParts extends AdvanceParts {
   readonly gate: CapGate;
   /** Whether the engine is locked: no live intent is authorized by auto mode while it is. */
   readonly isLocked: () => boolean;
+  /** Whether a community plugin is on: auto mode then asks (decision 0350). */
+  readonly communityPluginsOn?: () => boolean;
   /** The wallet's facts as the proposal read them. */
   readonly wallet: WalletFacts;
   /** The family of the wallet's chain, which reads the spenders of the plan's approvals. */
@@ -100,6 +102,7 @@ async function autoTrigger(
     wallet: parts.wallet,
     isLocked: parts.isLocked() && !simulated.record.isPaper,
     hasUnlistedSpender: approvesLaunchContract(chosen.plan, parts.family),
+    communityPluginsOn: parts.communityPluginsOn?.() === true,
   });
 }
 

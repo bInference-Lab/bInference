@@ -77,6 +77,9 @@ function printStatus(output: CliOutput, status: EngineStatus, words: StatusWords
     if (agent.bridgeWallet !== undefined) {
       output.item("status.bridgeWallet", { id: agent.id, wallet: agent.bridgeWallet });
     }
+    if (agent.autoAsks === "plugin") {
+      output.item("status.autoAsksPlugin", { id: agent.id });
+    }
   }
   output.say("status.signals");
   for (const signal of status.health) {

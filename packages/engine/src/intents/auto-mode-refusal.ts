@@ -4,7 +4,8 @@
  * nothing could sign the intent, `unstake` that it is an unstake, which locks its coin while it
  * unbonds (decision 0296), `deniedToken` that the intent sells a token on the deny list,
  * `overFeeCap` that its fee per gas is above the network fee cap, and `spender` that a step
- * approves a spender outside the registry. A card version auto mode opened keeps its code.
+ * approves a spender outside the registry, and `plugin` that a community plugin is on, whose words
+ * reach every turn of the agent (decision 0350). A card version auto mode opened keeps its code.
  */
 export const autoAskCodes = [
   "locked",
@@ -15,6 +16,7 @@ export const autoAskCodes = [
   "overCap",
   "overFeeCap",
   "spender",
+  "plugin",
   "outside",
   "mcp",
 ] as const;

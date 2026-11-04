@@ -84,6 +84,14 @@ describe("the auto test", () => {
     expect(refusalOf(swap, { feePerGasNativeBase: 1_000_000_000n })).toBe("passes");
   });
 
+  it("asks while a community plugin is on, before it names outside content (decision 0350)", () => {
+    expect(refusalOf(swap, { communityPluginsOn: true })).toBe("plugin");
+    expect(refusalOf({ ...swap, hasOutsideContent: true }, { communityPluginsOn: true })).toBe(
+      "plugin",
+    );
+    expect(refusalOf(swap, { communityPluginsOn: false })).toBe("passes");
+  });
+
   it("asks for an unlisted spender, outside content and every proposer but the runtime", () => {
     expect(refusalOf(swap, { hasUnlistedSpender: true })).toBe("spender");
     expect(refusalOf({ ...swap, hasOutsideContent: true })).toBe("outside");

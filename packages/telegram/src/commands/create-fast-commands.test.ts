@@ -357,7 +357,7 @@ describe("the fast commands' replies", () => {
     ]);
   });
 
-  it("shows the engine's state, a lock, the freezes, the rescue address and the health", async () => {
+  it("shows the engine's state, a lock, the freezes, a plugin holding auto mode, the rescue address and the health", async () => {
     const bot = await startCommandBot({
       ...served,
       "engine/status": async () =>
@@ -365,7 +365,7 @@ describe("the fast commands' replies", () => {
           ok({
             ...status,
             state: "locked",
-            agents: [{ id: agent, mode: "live", frozen: true }],
+            agents: [{ id: agent, mode: "live", frozen: true, autoAsks: "plugin" }],
             health: [
               { signal: "prices", state: "fail" },
               { signal: "wallets", state: "warn" },
@@ -392,6 +392,7 @@ describe("the fast commands' replies", () => {
         "A rescue is under way: sending.",
         "Rescue address: 0x00000000000000000000000000000000000000a1",
         `${agent} · ${icons.live} Live · frozen since Oct 10, 2026, 09:30:00`,
+        "Auto mode asks for every proposal while a community plugin is on.",
         `${warn} Health: 1 signal failing, 1 needs a look. Run \`binference health\` on the machine.`,
       ].join("\n"),
     ]);

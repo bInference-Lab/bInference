@@ -110,6 +110,9 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     clock: options.clock,
     publish: options.publish,
     images,
+    ...(options.communityPluginsOn === undefined
+      ? {}
+      : { communityPluginsOn: options.communityPluginsOn }),
   });
   const settled = (message: AgentInboxMessage): void => {
     relay.settled(message);

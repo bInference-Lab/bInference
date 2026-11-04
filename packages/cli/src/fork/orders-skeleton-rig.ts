@@ -141,6 +141,7 @@ export async function startOrdersMachine(
   const composed = composeEngine(parts, {
     chains,
     venues: [venue],
+    communityPluginsOn: () => false,
     simulator: createSimulationCheck({ simulator, chains, clock }),
     risk: { cache: createMemoryRiskCacheStore(["goplus"]), cacheTtlMs: () => 600_000, simulator },
     wallets: createFakeWalletFacts(new Map([[skeletonAgent, [skeletonWallet]]]), walletFacts),

@@ -1,7 +1,11 @@
 import { err, idSchema, type Id, ok } from "@binference/core";
 import type { AgentRecord } from "@binference/engine";
 import type { WalletRecord } from "@binference/engine/install";
-import { testWalletRecord } from "@binference/engine/testing";
+import {
+  createMemoryAgentStore,
+  testAgentDraft,
+  testWalletRecord,
+} from "@binference/engine/testing";
 import { describe, expect, it } from "vitest";
 import { createEngineOperations, type EngineOperationsOptions } from "./engine-operations.js";
 
@@ -51,12 +55,16 @@ function operationsWith(
   const stops = { count: 0 };
   const handlers = createEngineOperations({
     lock,
-    agents: { list: async () => Promise.resolve(records) },
+    agents: {
+      list: async () => Promise.resolve(records),
+      get: async () => Promise.resolve(undefined),
+    },
     install: { read: async () => Promise.resolve({ wallets }) },
     version: "2026.10.0",
     state: () => "ready",
     health: () => [{ signal: "memory", state: "ok" }],
     nodeOptions: ["--disable-sigusr1"],
+    communityPluginsOn: () => false,
     stop: () => {
       stops.count += 1;
     },
@@ -116,6 +124,33 @@ describe("the engine's own operations", () => {
       },
     });
     expect(status).not.toMatchObject({ value: { agents: [{}, { bridgeWallet: bridgeId }] } });
+  });
+
+  it("says in engine/status which auto mode agents ask while a community plugin is on", async () => {
+    const agents = createMemoryAgentStore();
+    await agents.create(testAgentDraft({ id: agentId(1), approvalMode: "auto" }), call);
+    await agents.create(testAgentDraft({ id: agentId(2), name: "second" }), call);
+    const plugins = { on: true };
+    const handlers = createEngineOperations({
+      lock: passphraseLock().lock,
+      agents,
+      install: { read: async () => Promise.resolve({ wallets: [] }) },
+      version: "2026.10.0",
+      state: () => "ready",
+      health: () => [],
+      nodeOptions: [],
+      communityPluginsOn: () => plugins.on,
+      stop: () => undefined,
+    });
+    const on = await handlers["engine/status"]?.({ ...call, args: {} });
+    plugins.on = false;
+    const off = await handlers["engine/status"]?.({ ...call, args: {} });
+
+    expect(on).toMatchObject({
+      value: { agents: [{ id: agentId(1), autoAsks: "plugin" }, { id: agentId(2) }] },
+    });
+    expect(on).not.toMatchObject({ value: { agents: [{}, { autoAsks: "plugin" }] } });
+    expect(off).not.toMatchObject({ value: { agents: [{ autoAsks: "plugin" }, {}] } });
   });
 
   it("answers engine/status with the agents that are not archived", async () => {

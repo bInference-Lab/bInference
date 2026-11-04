@@ -14,7 +14,7 @@ import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
-import { type ComposedPlugins, composeRuntimeWithPlugins } from "./compose-plugins.js";
+import { composeRuntimeWithPlugins, type RuntimeWithPlugins } from "./compose-plugins.js";
 import type { ComposedPriceWatchers } from "./compose-price-watchers.js";
 import type { ComposedRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
@@ -135,7 +135,7 @@ function resumeOf(opened: Opened, executor: RunningExecutor) {
 }
 
 /** The parts the server is built over, before it exists, the watchers among them. */
-interface Wiring extends ComposedWatching {
+interface Wiring extends ComposedWatching, RuntimeWithPlugins {
   readonly state: { current: EngineState };
   readonly parts: TradingParts;
   readonly chains: ChainRegistry;
@@ -152,10 +152,6 @@ interface Wiring extends ComposedWatching {
   readonly jobs: { publish: (push: EnginePush) => void };
   /** Whether backups are sealed to the sealing key yet, and the owner key hook that moves them. */
   readonly sealKey: SealKeyKeeper;
-  /** The agent runtime, its routed operations and its health signal. */
-  readonly runtime: ComposedRuntime;
-  /** The community plugins and their operations. */
-  readonly plugins: ComposedPlugins;
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -233,6 +229,7 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
       pick: async (agent, picks) => runtime.pick(agent, picks),
       models: () => runtime.models(),
       watcher: wiring.priceWatchers.health,
+      communityPluginsOn: wiring.agentSide.communityPluginsOn,
     }),
   };
 }
@@ -281,7 +278,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       workspace: stateWorkspace(opening.platform),
       ownerChat: ownerChatHandlers(opening.platform, opened.settings),
       ...webPushOf(opening, opened),
-      turns: wiring.runtime.turns,
+      ...wiring.agentSide,
       handlers: ownHandlersOf(opening, opened, wiring),
       clock: host.clock,
       random: host.random,

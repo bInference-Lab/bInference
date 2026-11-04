@@ -110,6 +110,7 @@ export const cardKeys = [
   "autoAsks.overCap",
   "autoAsks.spender",
   "autoAsks.outside",
+  "autoAsks.plugin",
   "autoAsks.mcp",
   "autoAsks.deniedToken",
   "autoAsks.overFeeCap",

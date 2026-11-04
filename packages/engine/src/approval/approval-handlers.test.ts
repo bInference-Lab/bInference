@@ -127,6 +127,14 @@ describe("the approval mode operations", () => {
     });
   });
 
+  it("says in auto mode that every proposal asks while a community plugin is on", async () => {
+    const test = await startTestEngine({ communityPluginsOn: () => true });
+    await setMode(test, "auto");
+    const read = await test.engine.handlers["approval/get"](testCall({ agent: testAgent }));
+
+    expect(read).toMatchObject({ ok: true, value: { mode: "auto", autoAsks: "plugin" } });
+  });
+
   it("switches to auto from a caller with loosen, and records the surface", async () => {
     const test = await startTestEngine();
     await test.clock.advance(5_000);

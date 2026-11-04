@@ -22,10 +22,14 @@ interface SendLevelView {
 /** Whether an agent's trades need a tap: `manual`, or `auto` within the caps. */
 type ApprovalMode = "manual" | "auto";
 
-/** An agent's approval mode and when it last changed. */
+/**
+ * An agent's approval mode and when it last changed; in auto mode, `autoAsks: plugin` while a
+ * community plugin is on, so every proposal asks (decision 0350).
+ */
 interface ApprovalModeView {
   readonly mode: ApprovalMode;
   readonly changedAt: number;
+  readonly autoAsks?: "plugin";
 }
 
 /**
@@ -64,7 +68,11 @@ const sendLevelView = z.object({
   pending: z.object({ level, effectiveAt: epochMsSchema }).exactOptional(),
 });
 const approvalMode = z.enum(["manual", "auto"]);
-const approvalModeView = z.object({ mode: approvalMode, changedAt: epochMsSchema });
+const approvalModeView = z.object({
+  mode: approvalMode,
+  changedAt: epochMsSchema,
+  autoAsks: z.literal("plugin").exactOptional(),
+});
 
 /** The limit, send level and approval mode operations, by name. */
 export const limitOperations: OperationTable<LimitOperationShapes> = {

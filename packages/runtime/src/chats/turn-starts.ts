@@ -300,7 +300,7 @@ async function runTurn(
     prefix,
     history: history.messages,
     taken: owners,
-    outsideContent: history.outside,
+    outsideContent: history.outside || setup.hasOutsideTools === true,
     lifetime,
     ...(setup.limits === undefined ? {} : { limits: setup.limits }),
     ...(setup.compaction === undefined

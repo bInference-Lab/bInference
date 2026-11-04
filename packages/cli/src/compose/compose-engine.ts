@@ -114,6 +114,11 @@ export interface ComposeEngineOptions extends EngineChainParts {
   readonly isLocked?: () => boolean;
   /** Whether the price watchers can price a token now, which a price order needs (decision 0194). */
   readonly canPrice: EngineOptions["canPrice"];
+  /**
+   * Whether the agent is offered a community plugin's tools now (decision 0350): every turn then
+   * starts marked and auto mode asks. Required, so no composition can leave the mark out.
+   */
+  readonly communityPluginsOn: () => boolean;
   /** Whether live auto orders fill; off when absent (decision 0195). */
   readonly liveOrderFills?: boolean;
   /** Whether a launch feed runs, whose records `market/scan` reads (decision 0256). */
@@ -259,6 +264,17 @@ function custodyPartsOf(parts: EngineParts) {
   };
 }
 
+// The engine's switches: whether it is locked, whether a community plugin is on (decision 0350),
+// whether live auto orders fill and whether a launch feed runs.
+function switchesOf(options: ComposeEngineOptions) {
+  return {
+    isLocked: options.isLocked ?? (() => false),
+    communityPluginsOn: options.communityPluginsOn,
+    ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
+    ...(options.launchFeed === true ? { launchFeed: true } : {}),
+  };
+}
+
 // The engine on the profile parts, its venue host and risk check, publishing through `publish`.
 function engineOf(
   parts: EngineParts,
@@ -287,10 +303,8 @@ function engineOf(
     executor: options.executor,
     ...(options.heldWallets === undefined ? {} : { heldWallets: options.heldWallets }),
     paperBalances: options.paperBalances,
-    isLocked: options.isLocked ?? (() => false),
+    ...switchesOf(options),
     canPrice: options.canPrice,
-    ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
-    ...(options.launchFeed === true ? { launchFeed: true } : {}),
     ...chainPartsOf(options),
     ...(options.quoteAssets === undefined ? {} : { quoteAssets: options.quoteAssets }),
     readTokenFacts: options.readTokenFacts,

@@ -243,6 +243,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
    */
   readonly isLocked: () => boolean;
   /**
+   * Whether a community plugin is on and offers the agent tools: every turn then starts marked as
+   * outside content and auto mode asks for every proposal (decision 0350). None when absent.
+   */
+  readonly communityPluginsOn?: () => boolean;
+  /**
    * Whether the price watcher can price a token now; `order/create` refuses a limit, take-profit,
    * stop-loss or trailing order for a token it cannot (`order.unpriced_token`, decision 0194).
    */
@@ -411,7 +416,7 @@ function ownerSettingsHandlers(options: EngineOptions, paper: PaperParts) {
   const { stores, host, chains } = options;
   return {
     ...settingsHandlers(options, paper),
-    ...createApprovalHandlers(settingsParts),
+    ...createApprovalHandlers({ ...settingsParts, communityPluginsOn: options.communityPluginsOn }),
     ...createLimitHandlers({ ...settingsParts, install: stores.install, host, chains }),
     ...createSendLevelHandlers(settingsParts),
     ...createAddressBookHandlers({

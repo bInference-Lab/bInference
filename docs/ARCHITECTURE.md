@@ -830,7 +830,9 @@ plugins starts each in a Node process of its own, with the grants above, a heap 
   engine's URL guard and outbound proxy: 8 at a time, 15 seconds and 1 MiB each. Another host is
   refused, and the owner hears of it once per plugin and host a day.
 - **Calls.** A call ends in 30 seconds; its output must parse with the tool's declared schema, and
-  it marks the agent's turn as outside content ([rule 13](#rule-13)). A community plugin's tools
+  it marks the agent's turn as outside content ([rule 13](#rule-13)). While a community plugin
+  offers tools, every turn starts marked, and auto mode asks for every proposal; the card and
+  `binference status` say why ([decision 0350](DECISIONS.md#d0350)). A community plugin's tools
   only read.
 - **Crashes.** A plugin that exits starts again after 1 second, the wait doubling up to 5 minutes;
   after 5 crashes in 10 minutes it is turned off and the owner is told.

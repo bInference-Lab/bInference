@@ -5,6 +5,7 @@
   "overCap": "over your auto caps",
   "spender": "it approves a contract that is not verified",
   "outside": "the idea came from outside content",
+  "plugin": "a community plugin is on, and its words reach every turn",
   "mcp": "proposed from {client}",
   "deniedToken": "it sells a token on your deny list",
   "overFeeCap": "the network fee is above your cap",

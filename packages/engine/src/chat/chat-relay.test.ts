@@ -68,6 +68,15 @@ async function startTurn(test: TestEngine, outsideContent = false) {
 }
 
 describe("the chat relay", () => {
+  it("starts every turn marked as outside content while a community plugin is on", async () => {
+    const plugins = { on: true };
+    const test = await startTestEngine({ communityPluginsOn: () => plugins.on });
+    expectOk(await startTurn(test));
+    const marked = test.turns.runningOf(testAgent)?.hasOutsideContent;
+
+    expect(marked).toBe(true);
+  });
+
   it("stores a chat/post before it replies, and the runtime takes it once", async () => {
     const test = await startTestEngine();
     const { handlers } = test.engine;
