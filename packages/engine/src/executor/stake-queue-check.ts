@@ -8,6 +8,7 @@ import {
   type VenueDeclaration,
 } from "@binference/chain";
 import type { StakePlan, StakeRefusal, StakeRequest } from "@binference/chain/staking";
+import type { Ok } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { ReasonNamed } from "../intents/event-cause.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -17,7 +18,7 @@ import { checkTransferPolicy } from "../sends/check-transfer-policy.js";
 import { ownCapCallOf } from "../staking/stake-ceiling.js";
 import { declaredSpenders } from "../venues/declared-spenders.js";
 import { claimMismatch } from "../venues/stake-plan-checks.js";
-import type { HostPlanned, StakingHost } from "../venues/staking-host.js";
+import type { StakingHost } from "../venues/staking-host.js";
 import { declaredTargetsOf } from "./declared-calls.js";
 import { type ExecutionRun, moveIntent } from "./executor-run.js";
 import type { TransferRecheckParts } from "./transfer-queue-check.js";
@@ -135,19 +136,37 @@ async function endRefused(
   return "ended";
 }
 
-// The move planned again now, or why it ends: the venue's refusal with its facts, or another move
-// than the card's; `undefined` while the venue does not answer or the engine does not run it.
+/** Why a staking move planned again ends: the venue's refusal or the host's, with its facts. */
+interface Refused {
+  readonly ok: false;
+  readonly refused: {
+    readonly reason: StakeRefusal | "decode_mismatch";
+    readonly named?: ReasonNamed;
+  };
+}
+
+// The move planned again now, or why it ends: the venue's refusal with the facts its words name,
+// or another move than the card's; `undefined` while the venue does not answer or the engine does
+// not run it.
 async function replanOf(
   run: ExecutionRun,
   quote: StakeIntentQuote,
-): Promise<HostPlanned | undefined> {
+): Promise<Ok<StakePlan> | Refused | undefined> {
   const { staking } = run.parts;
   const venue = staking?.venueOn(quote.venue, run.plan.chain.ref);
   if (staking === undefined || venue === undefined) {
     return undefined;
   }
   const planned = await staking.plan(venue, requestOf(quote), { signal: run.signal });
-  return !planned.ok && planned.error === "venue_down" ? undefined : planned;
+  if (planned.ok) {
+    return planned;
+  }
+  if (planned.error === "venue_down") {
+    return undefined;
+  }
+  const reason = planned.error;
+  const { facts } = planned;
+  return { ok: false, refused: facts === undefined ? { reason } : { reason, named: facts } };
 }
 
 /**
@@ -172,7 +191,7 @@ export async function takeStake(run: ExecutionRun, snapshot: IntentSnapshot): Pr
     return "unread";
   }
   if (!planned.ok) {
-    return endRefused(run, snapshot, refusalOf(planned));
+    return endRefused(run, snapshot, planned.refused);
   }
   if (mintsFewer(quote.plan, planned.value)) {
     return endRefused(run, snapshot, { reason: "decode_mismatch" });
@@ -212,13 +231,6 @@ async function cardPartsGone(
 function mintsFewer(confirmed: StakePlan, now: StakePlan): boolean {
   const least = confirmed.minShares?.base;
   return least !== undefined && (now.shares?.base ?? 0n) < least;
-}
-
-// The reason and facts a refused plan ends with; a venue that went down mid-plan is no reason, so
-// it reads as a plan that left the card's.
-function refusalOf(planned: Exclude<HostPlanned, { readonly ok: true }>) {
-  const reason = planned.error === "venue_down" ? "decode_mismatch" : planned.error;
-  return planned.facts === undefined ? { reason } : { reason, named: planned.facts };
 }
 
 // Whether the card's unstake burns more receipt units than the wallet holds by the new plan.
