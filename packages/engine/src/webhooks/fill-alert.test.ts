@@ -1,17 +1,19 @@
 import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { requestDocument } from "../intents/intent-documents.schema.js";
 import { testLimits, testNowMs } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
-import { fillIntentsOf, noticesOf, startFillEngine } from "../orders/test-fills.js";
+import { fillIntentsOf, noticesOf, startFillEngine, wholeToken } from "../orders/test-fills.js";
 import { tapCard } from "../orders/test-orders.js";
 import type { AgentStore } from "../ports.js";
+import { present } from "../surfaces/test-venues.js";
 import { alertTo, createdRule, type CreatedRule, testRuleRequest } from "./test-webhook-rules.js";
 
 const live = { signal: new AbortController().signal };
 const other = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
 
-async function activeRule(test: TestEngine): Promise<CreatedRule> {
-  const created = await createdRule(test, testRuleRequest());
+async function activeRule(test: TestEngine, request = testRuleRequest()): Promise<CreatedRule> {
+  const created = await createdRule(test, request);
   await tapCard(test, created.intent, "confirm");
   return created;
 }
@@ -74,5 +76,34 @@ describe("an accepted alert at the head of its agent's line", () => {
       { outcome: "skipped", reason: "daily_cap", intentId: filled?.id },
     ]);
     expect(JSON.stringify(noticesOf(test))).toContain("$5,000.00");
+  });
+
+  it("skips, and tells, an alert whose sale comes to nothing the wallet holds", async () => {
+    const test = await startFillEngine({ tokens: 0n });
+    const created = await activeRule(test);
+    await alertTo(test, created.url);
+
+    await test.engine.fillWebhookAlerts(live);
+
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+    expect(await alertsOf(test, created)).toMatchObject([
+      { outcome: "skipped", reason: "nothing_to_sell" },
+    ]);
+    expect(JSON.stringify(noticesOf(test))).toContain("notice.webhookSkipped");
+  });
+
+  it("sizes a sale in dollars at the token's price now", async () => {
+    const test = await startFillEngine();
+    const created = await activeRule(test, testRuleRequest({ size: { usdMicros: 400_000n } }));
+    await alertTo(test, created.url);
+
+    await test.engine.fillWebhookAlerts(live);
+
+    const [filled] = await fillIntentsOf(test);
+    expect(filled?.state).toBe("paper_filled");
+    expect(requestDocument.decode(present(filled).request)).toMatchObject({
+      kind: "sell",
+      amount: { base: wholeToken / 2n },
+    });
   });
 });

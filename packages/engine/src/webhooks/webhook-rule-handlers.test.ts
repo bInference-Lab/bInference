@@ -294,6 +294,37 @@ describe("webhook rule operations, further", () => {
     expect((await ruleOf(test, created.rule))?.state).toBe("deleted");
   });
 
+  it("ends a rule whose card was confirmed after the rule expired", async () => {
+    const test = await startOrderEngine();
+    const created = await createdRule(
+      test,
+      testRuleRequest({ expiresAt: test.clock.now() + 60_000 }),
+    );
+    await test.clock.advance(120_000);
+
+    await tapCard(test, created.intent, "confirm");
+
+    expect((await ruleOf(test, created.rule))?.state).toBe("deleted");
+    expect(await alertTo(test, created.url)).toBe("not_found");
+  });
+
+  it("ends at the card timer a waiting rule whose card's intent was never stored", async () => {
+    const test = await startOrderEngine();
+    const created = await createdRule(test);
+    const stored = await ruleOf(test, created.rule);
+    const orphan = idSchema("whr").parse("whr_0190f1c2-3a4b-7c5d-8e6f-0000000000ee");
+    const lost = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-0000000000ee");
+    test.stores.webhookRules.plant(
+      { ...(stored as NonNullable<typeof stored>), id: orphan, intentId: lost },
+      sha256Hex("o".repeat(43)),
+    );
+
+    await test.engine.tickOrders(live);
+
+    expect((await ruleOf(test, orphan))?.state).toBe("deleted");
+    expect((await ruleOf(test, created.rule))?.state).toBe("awaiting_confirmation");
+  });
+
   it("refuses a change of a rule it never stored", async () => {
     const test = await startOrderEngine();
     const unknown = { rule: idSchema("whr").parse("whr_0190f1c2-3a4b-7c5d-8e6f-0000000000ff") };
