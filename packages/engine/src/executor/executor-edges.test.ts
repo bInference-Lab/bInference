@@ -146,6 +146,33 @@ describe("the executor when another writer moved the intent first", () => {
     expect(eventsOf(bench)).toContain("executor.move_stale:steps_included");
     expect(eventsOf(bench)).not.toContain("executor.reconciled:");
   });
+
+  it("tells the owner nothing of a lapse it did not write, and signs nothing", async () => {
+    const bench = await startExecutorBench({ hold: true, intents: racedTo("expired") });
+    const intent = await tapped(bench);
+    await bench.test.clock.advance(61_000);
+    await bench.release();
+    await flush();
+    expect(await stateOf(bench, intent)).toBe("confirmed");
+    expect(eventsOf(bench)).not.toContain("executor.lapsed:");
+    expect(noticeKeysOf(bench)).toStrictEqual([]);
+    expect(bench.signed).toStrictEqual([]);
+  });
+
+  it("gives no new card for a fee wait whose reopening another writer beat", async () => {
+    const bench = await startExecutorBench({
+      hold: true,
+      intents: racedTo("awaiting_confirmation"),
+    });
+    const intent = await tapped(bench);
+    bench.network.setFeePerGas(2_000_000_000n);
+    await bench.release();
+    await driveUntil(bench, intent, { states: [], blocks: 80 });
+    expect(await stateOf(bench, intent)).toBe("confirmed");
+    expect(eventsOf(bench)).not.toContain("executor.fee_wait_lapsed:");
+    expect(noticeKeysOf(bench)).toStrictEqual([]);
+    expect(bench.signed).toStrictEqual([]);
+  });
 });
 
 describe("the executor on what it cannot run", () => {

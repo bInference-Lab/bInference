@@ -3,7 +3,7 @@ import type { FakeNetwork } from "@binference/chain/testing";
 import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
-import type { IntentStore } from "../ports.js";
+import type { IntentStore, TransactionStore } from "../ports.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
   type BenchOptions,
@@ -151,6 +151,86 @@ describe("a stuck step every relay refuses", () => {
     await driveUntil(bench, intent, { states: [], blocks: 18 });
     expect(eventsOf(bench)).toContain("executor.step_stopped:over_fee_cap");
     expect((await transactionsOf(bench)).map(({ state }) => state)).toStrictEqual(["sent"]);
+  });
+});
+
+// A node that cannot say an account's nonce at the tags `isBlind` names while armed: its pool's
+// at "pending", the chain's at a block number.
+function blindNonces(isBlind: (tag: bigint | "pending") => boolean) {
+  const state = { isArmed: false };
+  return {
+    disarm: () => {
+      state.isArmed = false;
+    },
+    arm: () => {
+      state.isArmed = true;
+    },
+    wrap: (network: FakeNetwork): ReceiptReader => ({
+      ...network,
+      nonceAt: async (account, tag, options) =>
+        state.isArmed && isBlind(tag)
+          ? Promise.reject(new Error("The node did not answer."))
+          : network.nonceAt(account, tag, options),
+    }),
+  };
+}
+
+// A transaction store that turns away the first drop it is asked to record.
+function refusingFirstDrop(store: TransactionStore): TransactionStore {
+  const state = { refused: false };
+  return {
+    ...store,
+    recordDropped: async (mark, options) => {
+      if (state.refused) {
+        return store.recordDropped(mark, options);
+      }
+      state.refused = true;
+      return Promise.resolve(err("wrong_state"));
+    },
+  };
+}
+
+describe("a stuck step whose drop cannot be settled yet", () => {
+  it("is not dropped while no node can say what its pool holds, and is once one can", async () => {
+    const pool = blindNonces((tag) => tag === "pending");
+    const bench = await startExecutorBench({ limits, receipts: pool.wrap });
+    refuseAll(bench);
+    const intent = await tapped(bench);
+    await flush();
+    pool.arm();
+    await driveUntil(bench, intent, { states: [], blocks: 20 });
+    const states = (await ofIntent(bench, intent)).map(({ state }) => state);
+    expect(states).not.toContain("dropped");
+    expect(await reasonOf(bench, intent)).toBeUndefined();
+    pool.disarm();
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    expect(await reasonOf(bench, intent)).toBe("stuck_dropped");
+  });
+
+  it("is not dropped while no node can say whether its nonce was used, and is once one can", async () => {
+    const chain = blindNonces((tag) => tag !== "pending");
+    const bench = await startExecutorBench({ limits, receipts: chain.wrap });
+    refuseAll(bench);
+    const intent = await tapped(bench);
+    await flush();
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    chain.arm();
+    await driveUntil(bench, intent, { states: [], blocks: 3 });
+    const states = (await ofIntent(bench, intent)).map(({ state }) => state);
+    expect(states).not.toContain("dropped");
+    chain.disarm();
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    expect(await reasonOf(bench, intent)).toBe("stuck_dropped");
+  });
+
+  it("drops the step a block later when the store did not record the drop", async () => {
+    const bench = await startExecutorBench({ limits, transactions: refusingFirstDrop });
+    refuseAll(bench);
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    expect(await reasonOf(bench, intent)).toBe("stuck_dropped");
+    expect(noticeKeysOf(bench)).toStrictEqual(["notice.stepDropped"]);
+    expect(bench.signed).toHaveLength(2);
   });
 });
 

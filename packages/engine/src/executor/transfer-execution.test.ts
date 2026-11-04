@@ -5,6 +5,7 @@ import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { planDocument } from "../intents/intent-documents.schema.js";
 import { testCoin, testToken, testWallet } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import { testAccount, testCall, testChains } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
@@ -34,9 +35,13 @@ const later = accountRefSchema.parse("fake:1:0x000000f2");
 const tokenContract = accountRefSchema.parse("fake:1:0x0000000a");
 const done = ["reconciled", "failed_check", "failed_onchain", "expired", "cancelled"] as const;
 
-async function benchWith(names: FakeNameResolver = testNames()): Promise<ExecutorBench> {
+async function benchWith(
+  names: FakeNameResolver = testNames(),
+  intents?: (store: IntentStore) => IntentStore,
+): Promise<ExecutorBench> {
   const bench = await startExecutorBench({
     hold: true,
+    ...(intents === undefined ? {} : { intents }),
     engine: {
       nameResolvers: [names],
       chainSimulator: transferSimulator(
@@ -220,6 +225,19 @@ describe("a send by name on its wallet's queue", () => {
         },
       },
     ]);
+  });
+
+  it("tells the owner nothing of a name move another writer ended first, signing nothing", async () => {
+    const names = testNames();
+    names.set("alice.bnb", { address: testSaved.account });
+    const bench = await benchWith(names, racedTo("failed_check"));
+    const intent = await tapped(bench, testSend({ name: "alice.bnb" }));
+    names.set("alice.bnb", { address: later });
+    await bench.release();
+    await driveUntil(bench, intent, { states: done, blocks: 3 });
+    expect(await stateOf(bench, intent)).toBe("confirmed");
+    expect(notices(bench)).toStrictEqual([]);
+    expect(bench.signed).toHaveLength(0);
   });
 
   it("ends name_moved when the name points nowhere", async () => {

@@ -167,8 +167,12 @@ describe("a bridge whose dropped deposit lands after all", () => {
 
 // A tapped bridge, then a change of the world before the queue takes it: the queue keeps it
 // confirmed and signs nothing.
-async function heldAfter(change: (bench: BridgeBench) => Promise<unknown>, request = testBridge()) {
-  const bench = await bridgeBench();
+async function heldAfter(
+  change: (bench: BridgeBench) => Promise<unknown>,
+  request = testBridge(),
+  options: Parameters<typeof bridgeBench>[0] = {},
+) {
+  const bench = await bridgeBench(options);
   const intent = await tapped(bench, request);
   await change(bench);
   await bench.release();
@@ -227,6 +231,13 @@ describe("a confirmed bridge the queue checks again", () => {
       },
       testBridge({ rescue: true }),
     );
+    expect(held).toStrictEqual({ state: "confirmed", signed: [] });
+  });
+
+  it("stays unsigned while nothing can read code on the rescue address's own chain", async () => {
+    const held = await heldAfter(async () => Promise.resolve(), testBridge({ rescue: true }), {
+      withoutHomeCodes: true,
+    });
     expect(held).toStrictEqual({ state: "confirmed", signed: [] });
   });
 
