@@ -1,4 +1,4 @@
-import { checkAutoModeGrant } from "@binference/chain";
+import { checkAutoModeGrant, type SignAuthorization } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import type { LaunchReadFailure } from "../intents/intent-reason.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -14,17 +14,19 @@ import { isRescueAddressInEffect } from "./rescue-queue-check.js";
  */
 export type SignatureKind = "step" | "speedUp" | "cancel" | "revoke";
 
+type AuthorizationOf<K extends SignAuthorization["kind"]> = Extract<SignAuthorization, { kind: K }>;
+
 // An auto grant holds while the agent's mode, read now, keeps the version that authorized the
 // intent: a switch to manual fails every grant made before it.
 async function autoTermsNow(
   run: ExecutionRun,
   terms: SigningTerms,
-  record: IntentRecord,
+  signing: {
+    readonly record: IntentRecord;
+    readonly authorization: AuthorizationOf<"approvalMode">;
+  },
 ): Promise<SigningTerms | undefined> {
-  const { authorization } = terms;
-  if (authorization.kind !== "approvalMode") {
-    return terms;
-  }
+  const { record, authorization } = signing;
   const { parts, signal } = run;
   const snapshot = await parts.stored.snapshot(record.id, { signal });
   if (snapshot === undefined) {
@@ -44,14 +46,14 @@ async function autoTermsNow(
 async function fillTermsNow(
   run: ExecutionRun,
   terms: SigningTerms,
-  signing: { readonly record: IntentRecord; readonly stepIndex: number },
+  signing: {
+    readonly record: IntentRecord;
+    readonly authorization: AuthorizationOf<"fill">;
+    readonly stepIndex: number;
+  },
 ): Promise<SigningTerms | undefined> {
-  const { authorization } = terms;
-  if (authorization.kind !== "fill") {
-    return terms;
-  }
   const { parts, signal } = run;
-  const { stepIndex } = signing;
+  const { stepIndex, authorization } = signing;
   const current = await sourceNowFor(parts, signing.record, signal);
   const held =
     current === undefined
@@ -76,13 +78,13 @@ async function undoTermsNow(
   terms: SigningTerms,
   signing: { readonly record: IntentRecord; readonly kind: "cancel" | "revoke" },
 ): Promise<SigningTerms | undefined> {
-  const { kind } = terms.authorization;
+  const { authorization } = terms;
   if (signing.kind === "revoke") {
-    return kind === "fill" ? terms : undefined;
+    return authorization.kind === "fill" ? terms : undefined;
   }
-  return kind === "confirmation" || kind === "fill"
+  return authorization.kind === "confirmation" || authorization.kind === "fill"
     ? terms
-    : autoTermsNow(run, terms, signing.record);
+    : autoTermsNow(run, terms, { record: signing.record, authorization });
 }
 
 /**
@@ -118,9 +120,10 @@ export async function termsNow(
   if (authorization.kind === "confirmation") {
     return run.parts.clock.now() < authorization.expiresAtMs ? terms : undefined;
   }
+  const { record } = signing;
   return authorization.kind === "fill"
-    ? fillTermsNow(run, terms, { record: signing.record, stepIndex: signing.index ?? 0 })
-    : autoTermsNow(run, terms, signing.record);
+    ? fillTermsNow(run, terms, { record, authorization, stepIndex: signing.index ?? 0 })
+    : autoTermsNow(run, terms, { record, authorization });
 }
 
 /**
