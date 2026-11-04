@@ -16,12 +16,13 @@ function sourcesOf(
   config: BinferenceConfig,
 ): readonly (readonly [string, SecretSource | undefined])[] {
   const { privy } = config.custody;
-  const { telegram } = config;
+  const { telegram, network } = config;
   return [
     ["custody.privy.appSecret", privy.appSecret],
     ["telegram.botToken", telegram.botToken],
     ["telegram.confirmBotToken", telegram.confirmBotToken],
     ["telegram.webhookSecret", telegram.webhookSecret],
+    ["network.proxy", network.proxy],
   ];
 }
 

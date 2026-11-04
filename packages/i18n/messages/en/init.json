@@ -180,6 +180,8 @@
   "refused.badAnswer": "{name} holds a value binference init does not take. Run `binference init --help` to see what it takes.",
   "refused.badSource": "{flag} is no secret source. Write it as config.json5 writes one, with fromEnv, fromFile, fromKeychain or fromCommand.",
   "refused.sourceUnavailable": "binference cannot read the secret that {flag} names: {reason, select, not_set {the variable is not set} not_found {nothing is there} empty {it is empty} timeout {the program printed nothing within 10 seconds} other {the program failed}}. Fix it, then run `binference init` again.",
+  "refused.badProxy": "{flag} names no http:// or https:// proxy URL. Give the proxy as a secret source, such as {example}, or as http://host:port, then run `binference init` again.",
+  "refused.proxyOnCommandLine": "{flag} takes the proxy only as a secret source, such as {example}, so its address stays out of your shell's history. Give a URL in the variable BINFERENCE_INIT_PROXY or as the answers file's proxy key instead, then run `binference init` again.",
   "refused.badAppId": "{flag} is no Privy app ID. Copy it from App settings in the Privy dashboard.",
   "refused.privyRejected": "Privy did not accept this app ID and app secret. Copy both again from App settings in the Privy dashboard.",
   "refused.ownerKeyUnconfirmed": "You did not confirm your owner key, so binference made nothing and the key is gone. Run `binference init` again for a new owner key.",

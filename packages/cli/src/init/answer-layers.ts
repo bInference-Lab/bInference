@@ -31,6 +31,7 @@ const answerSchema = z.strictObject({
   modelBaseUrl: text.exactOptional(),
   model: text.exactOptional(),
   modelKey: text.exactOptional(),
+  proxy: text.exactOptional(),
   privyAppId: text.exactOptional(),
   privyAppSecret: text.exactOptional(),
   ownerKeyPublic: text.exactOptional(),

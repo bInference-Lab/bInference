@@ -134,6 +134,7 @@ function addInit(program: Command, options: ProgramOptions): void {
     .option("--model-base-url <url>", message("option.modelBaseUrl"))
     .option("--model <id>", message("option.model"))
     .option("--model-key <source>", message("option.modelKey"))
+    .option("--proxy <url-or-source>", message("option.proxy"))
     .option("--accept-disclaimer", message("option.acceptDisclaimer"))
     .option("--answers <file>", message("option.answers"))
     .option("--set <key=value>", message("option.setInit"), addSet, [])

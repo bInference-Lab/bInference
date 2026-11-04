@@ -1,7 +1,6 @@
 #!/usr/bin/env -S node --disable-sigusr1
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { directRoute } from "@binference/core";
 import { programFolders, readSystemFacts, readTextFile } from "@binference/platform";
 import { z } from "zod";
 import { runCli } from "./program/run-cli.js";
@@ -37,7 +36,7 @@ const version = read.ok
 const consoleIndex = import.meta.resolve("@binference/console/dist/index.html");
 const consoleFolder = fileURLToPath(new URL(".", consoleIndex));
 
-const http = createSystemHttp({ version, route: directRoute });
+const http = createSystemHttp({ version });
 // A person answers questions only when both ends of the terminal are one.
 const hasTerminal = process.stdin.isTTY && process.stdout.isTTY;
 // The terminal `binference chat` runs in: raw keys from standard input, its size from the output.

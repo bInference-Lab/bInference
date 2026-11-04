@@ -352,6 +352,7 @@
   "option.modelBaseUrl": "With a compatible provider: its API address",
   "option.model": "The model's ID at the provider",
   "option.modelKey": "The provider key's source, written as in config.json5",
+  "option.proxy": "Your proxy, as a secret source written as in config.json5; init's checks go through it, and init writes it to config.json5",
   "option.acceptDisclaimer": "With nobody at the terminal: print the disclaimer and the privacy statement in full, and accept them",
   "option.answers": "A JSON5 file of answers by flag name in camel case, each secret as a secret source",
   "help.initAnswers": "Each answer comes from its flag first, then its BINFERENCE_INIT_ variable (the flag's name in capitals, such as BINFERENCE_INIT_PRIVY_APP_ID), then the --answers file (the flag's name in camel case, such as privyAppId). --set flags win over the file's set keys. A secret is always a secret source, such as {example}, never the secret itself.",

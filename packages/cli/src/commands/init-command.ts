@@ -21,6 +21,7 @@ import type { InitContext, InitRefusal } from "../init/init-context.js";
 import { initFaultOf } from "../init/init-faults.js";
 import type { InitStores } from "../init/install-step.js";
 import { takeLanguage } from "../init/language-step.js";
+import { routeInitProxy } from "../init/proxy-step.js";
 import { runInit } from "../init/run-init.js";
 import { unattendedRefusal } from "../init/unattended-refusal.js";
 import type { InitFlags } from "../program/cli-flags.schema.js";
@@ -311,6 +312,11 @@ export async function runInitCommand(
   }
   first.prompter.intro(first.words("title"));
   return refusingFaults(first, firstReport, async () => {
+    // Before any check reaches out: init's model and bot token checks go through the proxy.
+    const routed = await routeInitProxy(first);
+    if (!routed.ok) {
+      return refuse(first, firstReport, routed.refusal);
+    }
     const start = await startOf(first);
     const { context, report } = inLanguage(first, firstReport, start.locale);
     const code = await refusingFaults(context, report, async () =>

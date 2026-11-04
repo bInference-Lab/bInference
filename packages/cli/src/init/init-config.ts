@@ -34,6 +34,8 @@ export interface InitSettings {
   readonly appSecret: SecretSource;
   readonly ownerKeyPublic: string;
   readonly botToken: SecretSource;
+  /** The owner's proxy, when `--proxy` gave one (decision 0347). */
+  readonly proxy?: SecretSource;
   /** The model, when one was linked; it then sets `models.main` and `models.fast`. */
   readonly model?: ModelSettings;
   /** What a person answered at init besides these, such as the limits, as entries. */
@@ -52,8 +54,9 @@ const modelPaths = ["models.providers", "models.main", "models.fast", "models.im
 
 function ownedBy(set: string, settings: InitSettings): string | undefined {
   const path = set.split("=")[0] ?? "";
+  const proxy = settings.proxy === undefined ? [] : ["network.proxy"];
   const owned = settings.model === undefined ? ownedPaths : [...ownedPaths, ...modelPaths];
-  return owned.find((item) => path === item || path.startsWith(`${item}.`));
+  return [...owned, ...proxy].find((item) => path === item || path.startsWith(`${item}.`));
 }
 
 function modelsValue(model: ModelSettings): JsonObject {
@@ -81,6 +84,7 @@ function settingsValue(settings: InitSettings): JsonObject {
       },
     },
     telegram: { botToken: { ...settings.botToken } },
+    ...(settings.proxy === undefined ? {} : { network: { proxy: { ...settings.proxy } } }),
     ...(settings.model === undefined ? {} : { models: modelsValue(settings.model) }),
   };
 }

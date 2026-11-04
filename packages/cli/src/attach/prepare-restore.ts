@@ -6,6 +6,7 @@ import { parseOwnerKeyCode } from "@binference/signer";
 import { createSqliteInstallStore, engineWorker, openDatabase } from "@binference/store";
 import { loadConfig } from "../config/load-config.js";
 import { type InitContext, type InitStep, refused } from "../init/init-context.js";
+import { routeInitProxy } from "../init/proxy-step.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import { takeAttachApp } from "./attach-app.js";
 import { type Unpacked, unpackRestore } from "./restore-backup.js";
@@ -56,6 +57,10 @@ async function checkOnPrivy(
     return refused("backup.restore_other_app", "refused.restoreOtherApp", {
       appId: custody.appId,
     });
+  }
+  const routed = await routeInitProxy(context, config.config.network);
+  if (!routed.ok) {
+    return routed;
   }
   const app = await takeAttachApp(context, config.config, custody);
   if (!app.ok) {

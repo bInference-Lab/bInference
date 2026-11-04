@@ -8,6 +8,7 @@ import type { UnlockConfig, UnlockMode } from "../config/schema/engine.schema.js
 import { deriveSealingKey } from "../hpke/sealing-key.js";
 import { type AgentKey, takeAgentKey } from "../init/agent-key-step.js";
 import { type InitContext, type InitStep, type Refused, refused } from "../init/init-context.js";
+import { routeInitProxy } from "../init/proxy-step.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import { type AttachApp, takeAttachApp } from "./attach-app.js";
 import { takeAttachBot } from "./attach-bot.js";
@@ -47,6 +48,16 @@ async function configOf(context: InitContext): Promise<InitStep<BinferenceConfig
   }
   const moved = await moveSources(context, moves);
   return moved.ok ? loadedConfig(context) : moved;
+}
+
+// The install's config, with its proxy put in force before attach reaches Privy (decision 0347).
+async function routedConfigOf(context: InitContext): Promise<InitStep<BinferenceConfig>> {
+  const config = await configOf(context);
+  if (!config.ok) {
+    return config;
+  }
+  const routed = await routeInitProxy(context, config.value.network);
+  return routed.ok ? config : routed;
 }
 
 async function loadedConfig(context: InitContext): Promise<InitStep<BinferenceConfig>> {
@@ -111,7 +122,7 @@ function heldCurrentKey(context: InitContext, unlock: UnlockConfig): Refused {
 }
 
 async function check(context: InitContext, found: AttachFound): Promise<InitStep<Checked>> {
-  const config = await configOf(context);
+  const config = await routedConfigOf(context);
   if (!config.ok) {
     return config;
   }

@@ -114,6 +114,12 @@ export interface InitFlags extends CommonOptions {
   /** The provider key's source, such as `{ fromEnv: "OPENROUTER_API_KEY" }`. */
   readonly modelKey?: string;
   /**
+   * The owner's proxy, which init's checks and an attach or rebuild go through, and which init
+   * writes as `network.proxy` (decision 0347): a secret source on the command line; its variable
+   * or the answers file may also give an `http://` or `https://` URL with no password.
+   */
+  readonly proxy?: string;
+  /**
    * With nobody at the terminal: accept the disclaimer and the privacy statement, which init
    * prints in full first (decision 0223). A person at the terminal types the phrase instead.
    */
@@ -255,6 +261,7 @@ export const initFlagsSchema: z.ZodType<InitFlags> = z
     modelBaseUrl: z.string().min(1).exactOptional(),
     model: z.string().min(1).exactOptional(),
     modelKey: z.string().min(1).exactOptional(),
+    proxy: z.string().min(1).exactOptional(),
     acceptDisclaimer: z.boolean().default(false),
     answers: z.string().min(1).exactOptional(),
     set: z.array(z.string()).default([]),

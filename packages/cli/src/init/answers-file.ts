@@ -26,6 +26,7 @@ const fileSchema = z.strictObject({
   modelBaseUrl: textSchema.exactOptional(),
   model: textSchema.exactOptional(),
   modelKey: sourceSchema.exactOptional(),
+  proxy: sourceSchema.exactOptional(),
   privyAppId: textSchema.exactOptional(),
   privyAppSecret: sourceSchema.exactOptional(),
   ownerKeyPublic: textSchema.exactOptional(),

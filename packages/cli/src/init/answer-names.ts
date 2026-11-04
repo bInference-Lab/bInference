@@ -13,13 +13,14 @@ export type AnswerKey =
   | "modelBaseUrl"
   | "model"
   | "modelKey"
+  | "proxy"
   | "acceptDisclaimer";
 
 /**
- * What an answer holds: plain text, a secret source (never the secret itself), the program that
- * prints the agent key, or a yes or no.
+ * What an answer holds: plain text, a secret source (never the secret itself), a secret source or
+ * a URL with no password (the proxy), the program that prints the agent key, or a yes or no.
  */
-type AnswerKind = "text" | "secret" | "command" | "switch";
+type AnswerKind = "text" | "secret" | "sourceOrUrl" | "command" | "switch";
 
 /** One answer's three names: its key in the answers file, its flag and its variable. */
 export interface AnswerName {
@@ -50,6 +51,7 @@ function named(key: AnswerKey, kind: AnswerKind): AnswerName {
 /** Every answer init takes without a person, in the order of the onboarding. */
 export const answerNames: readonly AnswerName[] = [
   named("acceptDisclaimer", "switch"),
+  named("proxy", "sourceOrUrl"),
   named("modelProvider", "text"),
   named("modelBaseUrl", "text"),
   named("model", "text"),

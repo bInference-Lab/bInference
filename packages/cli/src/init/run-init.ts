@@ -26,11 +26,12 @@ import {
   takeFirstAnswers,
 } from "./first-answers.js";
 import { type Answers, takeAnswers } from "./init-answers.js";
-import { type InitConfig, initConfig } from "./init-config.js";
+import { type InitConfig, initConfig, type InitSettings } from "./init-config.js";
 import type { InitContext, InitStep } from "./init-context.js";
 import { ensureFirstAgent, type InitStores, issuePairing, recordInstall } from "./install-step.js";
 import { takeLimits } from "./limits-step.js";
 import type { ModelLink } from "./model-link.js";
+import { proxyEntry, proxySourceOf, proxyToStore } from "./proxy-step.js";
 import { appSecretEntry, botTokenEntry } from "./secret-places.js";
 import { type FirstWallet, makeFirstWallet } from "./wallet-step.js";
 
@@ -58,6 +59,20 @@ export interface InitOutcome {
   readonly telemetry: boolean;
 }
 
+// The proxy `--proxy` gave and the model the first answers linked, each when there is one.
+function optionalSettings(
+  context: InitContext,
+  place: Answers["place"],
+  first: FirstAnswers | undefined,
+): Pick<InitSettings, "proxy" | "model"> {
+  const proxy = proxySourceOf(context, place);
+  const model = first?.model;
+  return {
+    ...(proxy === undefined ? {} : { proxy }),
+    ...(model === undefined ? {} : { model: modelSettingsOf(model, place) }),
+  };
+}
+
 /**
  * The config init writes from its answers, with the first answers of a new set-up (the language,
  * telemetry and the model) and the limits a person sets, built and loaded.
@@ -68,7 +83,6 @@ export async function configOf(
   first?: FirstAnswers,
 ): Promise<InitStep<InitConfig>> {
   const { app, bot, place, unlock } = answers;
-  const model = first?.model;
   const settings = {
     unlockMode: unlock.mode,
     ...(unlock.command === undefined ? {} : { unlockCommand: unlock.command }),
@@ -76,7 +90,7 @@ export async function configOf(
     appSecret: app.secret.source ?? place.sourceOf(appSecretEntry),
     ownerKeyPublic: answers.ownerKey.publicKey,
     botToken: bot.token.source ?? place.sourceOf(botTokenEntry),
-    ...(model === undefined ? {} : { model: modelSettingsOf(model, place) }),
+    ...optionalSettings(context, place, first),
     asked: [...(first?.telemetry ?? []), ...(await takeLimits(context))],
   };
   const system = systemDefaults(context.host.env, context.platform);
@@ -84,7 +98,10 @@ export async function configOf(
   return initConfig(context, settings, { ...system, locale });
 }
 
-/** Stores each secret a person typed where the unlock mode keeps it; a flag's source stays put. */
+/**
+ * Stores each secret a person typed, and a proxy URL `--proxy` gave as text, where the unlock mode
+ * keeps them; a flag's source stays put.
+ */
 export async function storeTyped(
   context: InitContext,
   answers: Answers,
@@ -98,7 +115,11 @@ export async function storeTyped(
     [botTokenEntry, answers.bot.token],
     ...modelKey,
   ] as const;
-  const writes = typed.filter(([, secret]) => secret.source === undefined);
+  const proxy = proxyToStore(context);
+  const writes = [
+    ...typed.filter(([, secret]) => secret.source === undefined),
+    ...(proxy === undefined ? [] : [[proxyEntry, { value: proxy }] as const]),
+  ];
   await Promise.all(
     writes.map(async ([entry, secret]) =>
       answers.place.store.write(entry, secret.value, context.signal),

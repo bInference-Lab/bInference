@@ -180,6 +180,8 @@
   "refused.badAnswer": "{name} 的值 binference init 不接受。运行 `binference init --help` 查看它接受的值。",
   "refused.badSource": "{flag} 不是密钥来源。请按 config.json5 的写法，使用 fromEnv、fromFile、fromKeychain 或 fromCommand。",
   "refused.sourceUnavailable": "无法读取 {flag} 指定的密钥：{reason, select, not_set {该环境变量未设置} not_found {那里没有内容} empty {内容为空} timeout {程序在 10 秒内没有输出} other {程序运行失败}}。请修复后再次运行 `binference init`。",
+  "refused.badProxy": "{flag} 指定的不是 http:// 或 https:// 代理 URL。请以密钥来源（如 {example}）或 http://host:port 的形式给出代理，然后再次运行 `binference init`。",
+  "refused.proxyOnCommandLine": "{flag} 只接受密钥来源形式的代理（如 {example}），这样代理地址不会留在 shell 历史中。请改用环境变量 BINFERENCE_INIT_PROXY 或应答文件的 proxy 键给出 URL，然后再次运行 `binference init`。",
   "refused.badAppId": "{flag} 不是 Privy 应用 ID。请从 Privy 控制面板的 App settings 中复制。",
   "refused.privyRejected": "Privy 没有接受此应用 ID 和应用密钥。请从 Privy 控制面板的 App settings 中重新复制两者。",
   "refused.ownerKeyUnconfirmed": "你没有确认所有者密钥，因此 binference 没有创建任何内容，该密钥也已作废。请再次运行 `binference init` 获取新的所有者密钥。",

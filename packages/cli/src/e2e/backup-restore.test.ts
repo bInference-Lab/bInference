@@ -7,6 +7,7 @@ import {
   ensurePrivateFolder,
   fileSize,
   listFolderFiles,
+  readTextFile,
   writePrivateFile,
 } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
@@ -15,6 +16,7 @@ import { createSqliteBackupStore, engineWorker, openDatabase } from "@binference
 import { afterEach, describe, expect, it } from "vitest";
 import { dayOfBackup, headerOfBackup } from "../backups/backup-fixtures.js";
 import { runCli } from "../program/run-cli.js";
+import type { OutboundSwitch } from "../runtime/system-http.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import { setUpWithOwnerKey } from "./attach-fixtures.js";
 import { type InitMachine, machineOf, newOwnerKey, runOn, secretEnv } from "./init-fixtures.js";
@@ -30,6 +32,8 @@ const english = createFormatter({ locale: "en", timeZone: "UTC" });
 const init = (key: string, values: Readonly<Record<string, string>> = {}): string =>
   english.message(`init.${key}`, values);
 const marker = join("workspace", "after-backup.md");
+// The owner's proxy, as the variable a test's network.proxy names holds it.
+const proxyUrl = "http://proxy.owner.test:3128";
 
 afterEach(async () => {
   await engines.stopAll();
@@ -80,6 +84,7 @@ async function restoreOn(
     readonly file: string;
     readonly ownerKeys: readonly string[];
     readonly genuine?: readonly string[];
+    readonly outbound?: OutboundSwitch;
   },
   port: number,
 ) {
@@ -91,14 +96,38 @@ async function restoreOn(
     restoreConfirm: [day],
   });
   const argv = ["backup", "restore", file, "--set", `engine.port=${String(port)}`];
+  const outbound = restore.outbound === undefined ? {} : { outbound: restore.outbound };
   const host = hostWith(machine, argv, {
-    env: secretEnv(machine),
-    parts: { http: machine.world, startSigner: createTestSigner().start, prompter },
+    env: { ...secretEnv(machine), TEST_PROXY: proxyUrl },
+    parts: { http: machine.world, startSigner: createTestSigner().start, prompter, ...outbound },
   });
   return { host, prompter, exit: runCli(host) };
 }
 
 // Holds a loopback port, so an engine told to listen there refuses to start.
+// Adds `network.proxy` to the install's config.json5, from the variable TEST_PROXY.
+async function proxyInConfig(machine: InitMachine): Promise<void> {
+  const text = await readTextFile(join(machine.folder, "config.json5"), signal());
+  const network = `  network: { proxy: { fromEnv: "TEST_PROXY" } },\n}`;
+  const edited = text.ok ? text.value.replace(/\}\s*$/, network) : "";
+  const files = { permissions: noPermissions, signal: signal() };
+  await writePrivateFile(join(machine.folder, "config.json5"), edited, files);
+}
+
+// The proxy of each route a command put in force, or the route's kind, oldest first.
+function recordedOutbound(): { readonly routes: string[]; readonly outbound: OutboundSwitch } {
+  const routes: string[] = [];
+  const outbound: OutboundSwitch = {
+    use: (route) => {
+      routes.push(route.kind === "proxy" ? route.proxy.reveal() : route.kind);
+    },
+    openSocket: () => {
+      throw new Error("A restore opens no socket.");
+    },
+  };
+  return { routes, outbound };
+}
+
 async function holdPort(): Promise<{ readonly port: number; readonly close: () => Promise<void> }> {
   const port = await freePort();
   const server: Server = createServer();
@@ -319,6 +348,29 @@ describe("binference backup restore", () => {
     expect((await fileSize(join(machine.folder, marker), signal())).ok).toBe(false);
     expect((await runOn(machine, ["health"])).code).toBe(1);
   });
+
+  it(
+    "checks the backup with Privy through the proxy the install's config names",
+    slow,
+    async () => {
+      const { machine, ownerKey } = await setUpWithOwnerKey(folders);
+      const engine = await startHere(machine);
+      const file = await backupOf(machine);
+      machine.signals.emit("SIGINT", "SIGINT");
+      await expect(engine.exit).resolves.toBe(0);
+      await proxyInConfig(machine);
+      const { routes, outbound } = recordedOutbound();
+
+      const restore = await restoreOn(
+        machine,
+        { file, ownerKeys: [ownerKey], outbound },
+        await freePort(),
+      );
+
+      await expect(restore.exit).resolves.toBe(0);
+      expect(routes).toStrictEqual([proxyUrl]);
+    },
+  );
 
   it("refuses a wrong owner key three times and leaves the engine running", slow, async () => {
     const { machine } = await setUpWithOwnerKey(folders);
