@@ -29,10 +29,19 @@ pnpm release:dry v2026.11.0-beta.1
 
 It refuses a tag outside calver, a tree with changes, a tag that names another commit and a
 version that is not newer. It builds, packs the four public packages, runs the style guard over
-each packed README, writes `SHA256SUMS`, installs the packed files into an empty project and
-checks `binference --version` there, writes npm's CycloneDX SBOM of that install and the notes
-from the commit subjects, and runs `npm publish --dry-run` on each tarball. It publishes nothing.
-Read `reports/release/<version>/notes.md`. A breaking change must have its `Breaking:` paragraph.
+each packed README, writes `SHA256SUMS`, installs the packed files into an empty project outside
+the repository, checks that every file their manifests name is there and `binference --version`,
+writes npm's CycloneDX SBOM of that install and the notes from the commit subjects, and runs
+`npm publish --dry-run` on each tarball. It publishes nothing. Read
+`reports/release/<version>/notes.md`. A breaking change must have its `Breaking:` paragraph.
+
+Then run the built-package smoke on the same files, which the workflow runs on Linux, macOS and
+Windows (decision 0354): the installed `binference` sets up, starts, trades on paper by chat and
+stops, in about half a minute. It needs the network for BNB Smart Chain's RPCs and KyberSwap.
+
+```sh
+pnpm release:smoke reports/release/2026.11.0-beta.1
+```
 
 Then run `vet-release`'s checklist (decision 0063) for this commit: the fork and crash suites, the
 install smoke test, the update from the previous stable and the agent evaluation. A `no` stops
@@ -70,6 +79,8 @@ release. The version it uses is gone for good.
 - Move, delete or reuse a pushed release tag, or unpublish a version.
 - Push a tag, run the publish or turn on a workflow without the owner's word.
 - Edit `release.json` or a tarball between the dry run and the publish.
+- Publish a nightly pack (`-nightly.N`). Its manifests are private, and the npm job's publish check
+  refuses it (decision 0354).
 
 ## 6. Report
 

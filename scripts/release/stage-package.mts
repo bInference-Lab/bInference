@@ -13,6 +13,11 @@ import {
 export interface ReleaseBuild {
   readonly workspace: Workspace;
   readonly version: string;
+  /**
+   * A nightly pack (decision 0354): each published manifest says `"private": true`, so npm
+   * refuses to publish its tarball from anywhere.
+   */
+  readonly isNightly?: boolean;
 }
 
 // The workspace's own build condition points at sources the tarball does not hold.
@@ -158,6 +163,7 @@ export function stagePackage(build: ReleaseBuild, name: string, into: string): v
     ...manifestFor(entry.manifest, build.version, dependenciesOf(build, [name, ...bundled])),
     files: entry.manifest.files,
     ...(bundled.length === 0 ? {} : { bundleDependencies: bundled }),
+    ...(build.isNightly === true ? { private: true } : {}),
   };
   writeFileSync(join(into, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 }

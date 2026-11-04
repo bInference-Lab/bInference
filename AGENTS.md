@@ -139,6 +139,7 @@ Node 26.1 or later. pnpm switches itself to the version in `package.json`.
 | `pnpm privy:sweep [--dry-run]`     | Deletes what live Privy suite runs left on the Privy test app        |
 | `pnpm build`                       | tsdown for each package, ESM and `.d.ts`                             |
 | `pnpm release:dry <tag>`           | Builds, packs and checks a release; publishes nothing                |
+| `pnpm release:dry --pack-only <v>` | Packs a `-nightly.N` build that nothing publishes, for the smoke     |
 | `pnpm release:smoke <folder>`      | Installs a dry run's packed files and trades on paper by chat there  |
 | `pnpm gen:package <name>`          | A new package with its files and its row in the package graph        |
 | `pnpm check:package-graph --write` | Regenerates the import rules after a change to the package graph     |

@@ -57,13 +57,46 @@ const lackingFileCase: GateCase = {
   ],
 };
 
+// The release workflow's publish check on the manifest a dry run or a nightly pack wrote: a
+// release from its tag passes; a nightly pack fails, by its channel and by its version alone.
+const manifestOf = (version: string, channel: string): string =>
+  `${JSON.stringify({ version, channel, packages: [] }, null, 2)}\n`;
+const nightlyPublishCase: GateCase = {
+  name: "a nightly pack fails the release workflow's publish check",
+  files: {
+    ".gates/stable/release.json": manifestOf("2026.11.0", "stable"),
+    ".gates/nightly/release.json": manifestOf("2026.11.0-nightly.3", "nightly"),
+    ".gates/relabelled/release.json": manifestOf("2026.11.0-nightly.3", "beta"),
+  },
+  steps: [
+    { command: ["node", "scripts/release-publish-check.mts", ".gates/stable"], expect: "pass" },
+    ...[".gates/nightly", ".gates/relabelled"].map((folder) => ({
+      command: ["node", "scripts/release-publish-check.mts", folder],
+      expect: "fail" as const,
+      output: [/2026\.11\.0-nightly\.3 on the (nightly|beta) channel never publishes/],
+    })),
+  ],
+};
+
+// A nightly pack takes only a nightly version, before it builds anything.
+const notNightlyCase: GateCase = {
+  name: "a version that is not a nightly fails release:dry --pack-only",
+  steps: ["2026.11.0", "2026.11.0-beta.1", "v2026.11.0-nightly.1"].map((version) => ({
+    command: ["pnpm", "release:dry", "--pack-only", version],
+    expect: "fail" as const,
+    output: [/is not a nightly version/],
+  })),
+};
+
 /**
- * Cases for the release's own checks: the calver tag, a clean tree, a version that grows, and a
- * packed package that names a file it lacks.
+ * Cases for the release's own checks: the calver tag, a clean tree, a version that grows, a
+ * packed package that names a file it lacks, and a nightly pack that must never publish.
  */
 export function releaseCases(): readonly GateCase[] {
   return [
     lackingFileCase,
+    nightlyPublishCase,
+    notNightlyCase,
     {
       name: "a tag outside calver fails release:dry",
       steps: [

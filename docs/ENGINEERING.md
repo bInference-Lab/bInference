@@ -1223,7 +1223,11 @@ commander tree for `--json` and `--yes`, and exit code tests; an image smoke tes
 - Each published tarball carries the private workspace packages it needs, and npm fetches only
   outside packages ([decision 0352](DECISIONS.md#d0352)). Enforcer: `pnpm release:dry` (a
   published manifest without `repository`, public access with provenance, `engines` or the
-  notices is refused; the packed files install into an empty project and load).
+  notices is refused; the packed files install into an empty project outside the repository,
+  hold every file their manifests name, and load); the built-package smoke, `pnpm release:smoke`,
+  nightly and before each publish on Linux, macOS and Windows: the installed `binference` sets
+  up, starts, trades on paper by chat and stops ([decision 0354](DECISIONS.md#d0354)). A new
+  entry point, process file or plugin is checked there.
 - All published packages share one calver version. `plugin-sdk` also declares a semver API version
   that plugins state in their manifest. Enforcer: `check:package-graph` (versions equal); a manifest
   test.

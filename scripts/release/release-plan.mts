@@ -32,23 +32,31 @@ export interface ReleaseManifest {
   readonly notes: string;
 }
 
-const manifestSchema = z.object({
-  tag: z.string(),
+/**
+ * What a nightly pack wrote (decision 0354): its version and tarballs, on the `nightly` channel,
+ * which no publish takes.
+ */
+export interface NightlyManifest {
+  readonly version: string;
+  readonly channel: "nightly";
+  readonly packages: ReleaseManifest["packages"];
+}
+
+/** What the built-package smoke reads from a dry run's or a nightly pack's manifest. */
+export interface PackedManifest {
+  readonly version: string;
+  readonly packages: readonly { readonly name: string; readonly file: string }[];
+}
+
+const packedManifestSchema = z.looseObject({
   version: z.string(),
-  channel: z.enum(["stable", "beta"]),
-  npmTag: z.string(),
-  imageTags: z.array(z.string()),
-  packages: z.array(
-    z.object({ name: z.string(), file: z.string(), bytes: z.number(), sha256: z.string() }),
-  ),
-  sbom: z.string(),
-  notes: z.string(),
-}) satisfies z.ZodType<ReleaseManifest>;
+  packages: z.array(z.looseObject({ name: z.string(), file: z.string() })),
+}) satisfies z.ZodType<PackedManifest>;
 
 /** The file a dry run writes beside its artifacts. */
 export const manifestFile = "release.json";
 
-/** Reads the manifest a dry run wrote in `folder`. */
-export function readReleaseManifest(folder: string): ReleaseManifest {
-  return manifestSchema.parse(JSON.parse(readFileSync(join(folder, manifestFile), "utf8")));
+/** Reads the version and tarballs of the manifest a dry run or a nightly pack wrote in `folder`. */
+export function readPackedManifest(folder: string): PackedManifest {
+  return packedManifestSchema.parse(JSON.parse(readFileSync(join(folder, manifestFile), "utf8")));
 }

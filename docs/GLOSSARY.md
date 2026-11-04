@@ -503,7 +503,9 @@ check` tries it as `network.proxy`.
 - **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed
   files** into an empty project outside the repository, checks that every file their manifests
   name is there, then sets the installed `binference` up with `init --yes`, starts it, makes a
-  paper trade by chat on the synthetic Bot API with a scripted model, and stops it.
+  paper trade by chat on the synthetic Bot API with a scripted model, and stops it. Each night it
+  runs on a **nightly pack**, `pnpm release:dry --pack-only YYYY.M.PATCH-nightly.N`: private
+  manifests on the `nightly` channel, which the release workflow's **publish check** refuses.
 - **crash suite**: the tests in each package's `src/crash/`, run by `pnpm test:crash` and nightly
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was

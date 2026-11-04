@@ -78,6 +78,20 @@ function compareReleaseTags(a: string, b: string): number {
   return compareParts(left, right);
 }
 
+// YYYY.M.PATCH-nightly.N: a prerelease no release tag names, so no release publishes it.
+const nightlyPattern = /^(20\d\d)\.([1-9]|1[0-2])\.(0|[1-9]\d*)-nightly\.(0|[1-9]\d*)$/;
+
+/**
+ * Checks a nightly pack's version (decision 0354), `YYYY.M.PATCH-nightly.N` such as
+ * `2026.11.0-nightly.42`. Returns why it is not one, or nothing.
+ */
+export function nightlyVersionProblem(version: string): string | undefined {
+  return nightlyPattern.test(version)
+    ? undefined
+    : `${version} is not a nightly version. A nightly pack takes YYYY.M.PATCH-nightly.N, such ` +
+        "as 2026.11.0-nightly.42, which no release publishes.";
+}
+
 /** The release tags among `tags`, other than `tag`, whose version is not older than its own. */
 export function tagsNotOlder(tag: string, tags: readonly string[]): readonly string[] {
   return tags.filter(

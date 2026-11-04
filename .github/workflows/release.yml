@@ -1,9 +1,10 @@
 name: Release
 
 # A release from its tag (decision 0353). A pushed tag runs it dry: the build, the packed npm
-# tarballs with their checksums, SBOM and notes, the smoke job and the two-platform image, with
-# nothing published and every artifact kept on the run. Publishing runs only by hand, with
-# `publish` on, from a tag signed by a key in .github/release-signers that master holds.
+# tarballs with their checksums, SBOM and notes, the smoke jobs on three OSes (decision 0354) and
+# the two-platform image, with nothing published and every artifact kept on the run. Publishing
+# runs only by hand, with `publish` on, from a tag signed by a key in .github/release-signers that
+# master holds.
 on:
   push:
     tags: ["v*"]
@@ -105,17 +106,25 @@ jobs:
           path: |
             reports/release/${{ steps.version.outputs.version }}
             !reports/release/${{ steps.version.outputs.version }}/stage
-            !reports/release/${{ steps.version.outputs.version }}/smoke
           if-no-files-found: error
           retention-days: 30
 
-  # The packed tarballs, downloaded as the publish job gets them, installed on a runner of their
-  # own. The built-package smoke test grows inside pnpm release:smoke.
+  # The built-package smoke test (decision 0354) on the tarballs the publish job gets, on Linux,
+  # macOS and Windows: they install into an empty project, then the installed binference sets up,
+  # starts, trades on paper by chat with the e2e fakes and stops. npm publishes only when all three
+  # pass.
   smoke:
-    name: Packed install
+    name: Packed install (${{ matrix.os }})
     needs: prepare
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Check out the tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -144,7 +153,9 @@ jobs:
       - name: Smoke
         run: |
           set -euo pipefail
-          (cd release-files && sha256sum --check SHA256SUMS)
+          # macOS has shasum where Linux and Git Bash have sha256sum.
+          if command -v sha256sum > /dev/null; then sums=(sha256sum); else sums=(shasum -a 256); fi
+          (cd release-files && "${sums[@]}" --check SHA256SUMS)
           pnpm release:smoke release-files
 
   npm:
@@ -162,6 +173,15 @@ jobs:
       contents: read
       id-token: write
     steps:
+      # The publish check alone: this job installs nothing.
+      - name: Check out the publish check
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/${{ env.TAG }}
+          persist-credentials: false
+          sparse-checkout: scripts/release-publish-check.mts
+          sparse-checkout-cone-mode: false
+
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -173,6 +193,11 @@ jobs:
         with:
           name: release-${{ needs.prepare.outputs.version }}
           path: release-files
+
+      # Only a stable or beta release from its tag publishes, never a nightly pack (decision
+      # 0354); a refusal here stops the image and the GitHub release too.
+      - name: Check the release may publish
+        run: node scripts/release-publish-check.mts release-files
 
       # The same bytes the dry run packed and summed. A version npm already holds is left as it
       # is, so a run that stopped halfway can run again.

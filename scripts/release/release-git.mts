@@ -15,14 +15,22 @@ function tagsInHistory(root: string): readonly string[] {
   return (git(root, ["tag", "--list", "v*", "--merged", "HEAD"]) ?? "").split("\n").filter(Boolean);
 }
 
+/** The problem when the working tree has changes, which a release or a nightly pack refuses. */
+export function dirtyTreeProblem(root: string): string | undefined {
+  return (git(root, ["status", "--porcelain"]) ?? "x").length > 0
+    ? "The working tree has changes. A release builds from a clean tree: commit or drop them."
+    : undefined;
+}
+
 /**
  * Checks that a release may be cut from HEAD: the tree is clean, the tag (when it exists) names
  * HEAD, and no release tag in the repository is as new as this one. Returns the problem, or the
  * point the release is cut from.
  */
 export function releasePoint(root: string, release: ReleaseTag): ReleasePoint | string {
-  if ((git(root, ["status", "--porcelain"]) ?? "x").length > 0) {
-    return "The working tree has changes. A release builds from a clean tree: commit or drop them.";
+  const dirty = dirtyTreeProblem(root);
+  if (dirty !== undefined) {
+    return dirty;
   }
   const head = commitOf(root, "HEAD") ?? "";
   const tagged = commitOf(root, `refs/tags/${release.tag}`);

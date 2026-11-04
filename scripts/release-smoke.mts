@@ -4,7 +4,7 @@ import {
   installPackedRelease,
   type PackedRelease,
 } from "./release/packed-install.mjs";
-import { readReleaseManifest } from "./release/release-plan.mjs";
+import { readPackedManifest } from "./release/release-plan.mjs";
 import { runCommandShown } from "./run-command.mjs";
 
 // The built-package smoke test (decision 0354) on the folder a release:dry run wrote: the
@@ -20,7 +20,7 @@ if (folder === undefined) {
   process.exit(1);
 }
 const started = performance.now();
-const manifest = readReleaseManifest(folder);
+const manifest = readPackedManifest(folder);
 const release: PackedRelease = {
   folder,
   version: manifest.version,
