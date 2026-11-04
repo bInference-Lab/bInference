@@ -40,12 +40,16 @@ function run(command: readonly string[], cwd: string, env: Record<string, string
  * Node never finds a package the tarballs lack in the repository's own `node_modules`.
  */
 export function installPackedRelease(release: PackedRelease): PackedInstall {
-  const folder = mkdtempSync(join(tmpdir(), "binference-packed-"));
+  const parent = mkdtempSync(join(tmpdir(), "binference-packed-"));
+  // npm's SBOM names its root component after the project's folder, the same on every machine.
+  const name = "binference-release-check";
+  const folder = join(parent, name);
   const remove = (): void => {
-    rmSync(folder, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    rmSync(parent, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
   };
   try {
-    const project = { name: "binference-release-check", version: release.version, private: true };
+    mkdirSync(folder);
+    const project = { name, version: release.version, private: true };
     writeFileSync(join(folder, "package.json"), `${JSON.stringify(project, null, 2)}\n`);
     cpSync(join(release.root, ".npmrc"), join(folder, ".npmrc"));
     // Copied in, so the project names each tarball by its file name.
@@ -102,10 +106,18 @@ export function checkPackedInstall(release: PackedRelease, install: PackedInstal
   }
 }
 
-/** npm's CycloneDX SBOM of what the install holds, without development packages. */
+// npm names a tarball's distribution by its absolute path on the machine that ran the install,
+// which would publish that machine's folders with the release.
+const tarballPath = /"file:[^"]*[\\/]([^"\\/]+\.tgz)"/g;
+
+/**
+ * npm's CycloneDX SBOM of what the install holds, without development packages, each packed
+ * tarball named by its file name alone.
+ */
 export function readInstallSbom(install: PackedInstall): string {
-  return run(
+  const sbom = run(
     ["npm", "sbom", "--sbom-format", "cyclonedx", "--omit", "dev", "--loglevel=error"],
     install.folder,
   );
+  return sbom.replaceAll(tarballPath, '"file:$1"');
 }
