@@ -1,4 +1,4 @@
-import { ipv4Bytes, ipv6Bytes } from "./ip-address.js";
+import { type AddressBlock, inBlock, ipv4Bytes, ipv6Bytes } from "./ip-address.js";
 
 // Which addresses may belong to a service on the internet. From the IANA special-purpose address
 // registries (RFC 6890 and its updates): no private, loopback, link-local, carrier-grade NAT,
@@ -8,9 +8,7 @@ import { ipv4Bytes, ipv6Bytes } from "./ip-address.js";
 // as the IPv4 address it carries, and every other form that carries an IPv4 address (NAT64, 6to4,
 // Teredo, the deprecated compatible form) is not public.
 
-type Block = readonly [prefix: readonly number[], bits: number];
-
-const ipv4Blocks: readonly Block[] = [
+const ipv4Blocks: readonly AddressBlock[] = [
   [[0], 8],
   [[10], 8],
   [[100, 64], 10],
@@ -28,9 +26,9 @@ const ipv4Blocks: readonly Block[] = [
   [[240], 4],
 ];
 
-const ipv6GlobalUnicast: Block = [[0x20], 3];
+const ipv6GlobalUnicast: AddressBlock = [[0x20], 3];
 
-const ipv6Blocks: readonly Block[] = [
+const ipv6Blocks: readonly AddressBlock[] = [
   // IETF protocol assignments, Teredo among them.
   [[0x20, 0x01, 0x00, 0x00], 23],
   [[0x20, 0x01, 0x0d, 0xb8], 32],
@@ -42,18 +40,6 @@ const ipv6Blocks: readonly Block[] = [
 
 // ::ffff:0:0/96: the IPv4-mapped form, judged by the IPv4 address in its last 4 bytes.
 const mappedPrefix: readonly number[] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff];
-
-function inBlock(bytes: Readonly<Uint8Array>, [prefix, bits]: Block): boolean {
-  for (let bit = 0; bit < bits; bit += 8) {
-    const width = Math.min(8, bits - bit);
-    const mask = (0xff << (8 - width)) & 0xff;
-    const index = bit / 8;
-    if (((bytes[index] ?? 0) & mask) !== ((prefix[index] ?? 0) & mask)) {
-      return false;
-    }
-  }
-  return true;
-}
 
 function isPublicIpv4(bytes: Readonly<Uint8Array>): boolean {
   return !ipv4Blocks.some((block) => inBlock(bytes, block));

@@ -67,3 +67,19 @@ export function ipv6Bytes(text: string): Uint8Array | undefined {
     halves.length === 2 ? joinedGroups(halves[0] ?? "", halves[1] ?? "") : tailGroups(bare);
   return halves.length <= 2 && groups?.length === 8 ? bytesOfGroups(groups) : undefined;
 }
+
+/** A block of addresses: the bytes it starts with and how many of their leading bits count. */
+export type AddressBlock = readonly [prefix: readonly number[], bits: number];
+
+/** Whether an address's bytes fall in the block: its first `bits` bits match the prefix's. */
+export function inBlock(bytes: Readonly<Uint8Array>, [prefix, bits]: AddressBlock): boolean {
+  for (let bit = 0; bit < bits; bit += 8) {
+    const width = Math.min(8, bits - bit);
+    const mask = (0xff << (8 - width)) & 0xff;
+    const index = bit / 8;
+    if (((bytes[index] ?? 0) & mask) !== ((prefix[index] ?? 0) & mask)) {
+      return false;
+    }
+  }
+  return true;
+}
