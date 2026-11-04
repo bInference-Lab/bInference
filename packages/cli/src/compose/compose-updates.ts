@@ -79,6 +79,8 @@ function countsLineOf(opening: Opening, opened: Opened): CountsLine {
  * `update/check` (protocol spec, section 7.9; decision 0355): the newest release on
  * `updates.channel` from npm at once, whatever `updates.check` says, with its notes; it records
  * and announces nothing. A registry that gives nothing to use is `update.registry_unreachable`.
+ * `update/apply` is unserved in v1 (decision 0356): it answers `update.terminal_only`, since only
+ * `binference update` in the terminal updates.
  */
 function createUpdateOperations(parts: {
   readonly feed: ReleaseFeed;
@@ -94,6 +96,7 @@ function createUpdateOperations(parts: {
         ? ok(updateViewOf(found.value, config.owner.locale))
         : err("update.registry_unreachable");
     },
+    "update/apply": async () => err("update.terminal_only"),
   };
 }
 

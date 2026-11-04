@@ -39,7 +39,7 @@ function worldWith(machine: InitMachine, registry: FakeReleaseRegistry): Http {
   };
 }
 
-describe("update/check end to end", () => {
+describe("update/check and update/apply end to end", () => {
   it("answers the newest release on the channel with its notes, read from npm", slow, async () => {
     const machine = await engines.setUp();
     const registry = createFakeReleaseRegistry();
@@ -62,6 +62,9 @@ describe("update/check end to end", () => {
       releaseNotes: notes,
     });
     await expect(unread).rejects.toMatchObject({ code: "update.registry_unreachable" });
+    await expect(client.call("update/apply", {}, live())).rejects.toMatchObject({
+      code: "update.terminal_only",
+    });
     const agents = new Set(registry.requests().map((request) => request.headers["user-agent"]));
     expect(agents).toStrictEqual(new Set(["binference/2026.10.0-test node/v26.10.0 linux x64"]));
   });

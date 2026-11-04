@@ -55,10 +55,13 @@ already reads `https://registry.npmjs.org` through the outbound `Http` port, wit
   comes at its time; it never raises a notice.
 - **The notice.** The first check that sees a version on a channel raises `notice.update` with the
   notes in `owner.locale` as `{summary}`, one line each, or `notice.updateBare` when the release
-  has none in that language. `updates/announced.json` in the state folder, owner-only, keeps the
+  has none in that language, and the step that installs it: `binference update`, or on Windows,
+  where decision 0356 refuses it, `binference stop`, `npm install --global binference@<version>`
+  and `binference start`. `updates/announced.json` in the state folder, owner-only, keeps the
   channel and version announced last, so a restart does not announce it again.
 - **`update/check`** (`read`) reads npm at once, whatever `updates.check` says, since the owner
-  asked; it changes no record and raises no notice. `notes` is the lines in `owner.locale` joined
+  asked; it changes no record and raises no notice. One read of the dist-tags answers every call
+  for a minute, so a client that asks often reaches npm at most once a minute. `notes` is the lines in `owner.locale` joined
   by line feeds, and `releaseNotes` both lists. The protocol's result gains the optional
   `releaseNotes` field spec 1 already names. A registry it cannot read is
   `update.registry_unreachable`, retryable.
@@ -87,6 +90,10 @@ already reads `https://registry.npmjs.org` through the outbound `Http` port, wit
 - npm, not binference, sees each check's IP address and user agent, so binference learns nothing
   of the versions in use until the counts' endpoint exists.
 - Every stable or beta release needs its notes file in both languages before its dry run.
+- The notes in `notice.update` come from the version's npm document before its provenance is
+  checked, which only `binference update` does: someone who takes over the npm account can write
+  up to 5 lines of 200 characters into the owner's chat. The owner installs nothing from them, and
+  `binference update` installs only a verified release.
 - `disclaimer.privacy` already says the update check sends the version and OS.
 
 ## Alternatives
