@@ -269,6 +269,18 @@ describe("the chat relay", () => {
     expect(test.turns.runningOf(testAgent)).toBeUndefined();
   });
 
+  it("carries a status line's values to the agent's chat topic with its key", async () => {
+    const test = await startTestEngine();
+    expectOk(await startTurn(test));
+    const values = { tool: "quote", count: 2 };
+    const status = { agent: testAgent, turn, statusKey: "turn.toolRuns", values };
+    expectOk(await test.engine.handlers["turn/status"](testCall(status, runtime)));
+    const pushed = test.pushes.filter((push) => push.kind === "chat/status");
+    expect(pushed.map((push) => push.data)).toStrictEqual([
+      { agent: testAgent, turn, statusKey: "turn.toolRuns", values },
+    ]);
+  });
+
   it("refuses a mark of a turn that does not run", async () => {
     const test = await startTestEngine();
     const marked = await test.engine.handlers["turn/mark"](

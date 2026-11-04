@@ -209,7 +209,7 @@ describe("the build checks of a token launch", () => {
       error: "step_order",
     });
   });
-  it("refuse an approval to a contract the launchpad does not declare, and a plan of three steps", () => {
+  it("refuse an approval to a contract the launchpad does not declare, and plans out of order", () => {
     const usdBuy = { asset: usd, base: 7n };
     const launch = { ...create, pair: usd, firstBuy: { ...buy, spend: usdBuy } };
     const tokenBounds = { ...bounds, pair: usd, firstBuy: usdBuy };
@@ -229,6 +229,10 @@ describe("the build checks of a token launch", () => {
       checkDrafts([approve("0x0000000d"), approve("0x0000000d"), createCall], tokenBounds),
     ).toStrictEqual({ ok: false, error: "step_order" });
     expect(checkDrafts([createCall, approve("0x0000000d")], tokenBounds)).toStrictEqual({
+      ok: false,
+      error: "step_order",
+    });
+    expect(checkDrafts([approve("0x0000000d")], tokenBounds)).toStrictEqual({
       ok: false,
       error: "step_order",
     });

@@ -1,7 +1,7 @@
 import type { OrderRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { testAgent, testNowMs } from "../intents/test-intents.js";
-import { testChains, type TestEngine } from "../operations/test-engine.js";
+import { testCall, testChains, type TestEngine } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import {
   endEmptyExit,
@@ -89,7 +89,7 @@ describe("exit orders on one position", () => {
   });
 
   it("ends an exit order whose position a sale outside the exits emptied, once", async () => {
-    const { stopLoss, buy, parts, notices } = await threeOrders();
+    const { test, stopLoss, buy, parts, notices } = await threeOrders();
 
     const ended = await endEmptyExit(parts, { order: stopLoss, nowMs: testNowMs + 5, ...live });
     const again = await endEmptyExit(parts, { order: stopLoss, nowMs: testNowMs + 6, ...live });
@@ -102,5 +102,10 @@ describe("exit orders on one position", () => {
       undefined,
     ]);
     expect(notices()).toMatchObject([{ key: "notice.exitEnded", values: { token: "TKN" } }]);
+    const view = await test.engine.handlers["order/get"](testCall({ order: stopLoss.id }));
+    expect(view).toMatchObject({
+      ok: true,
+      value: { state: "ended", endReason: "position_closed" },
+    });
   });
 });

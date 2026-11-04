@@ -116,6 +116,20 @@ describe("a bridge's receipt read from its rows", () => {
     });
   });
 
+  it("names no payee label for a delivery to an address the owner never saved", async () => {
+    const record = bridgeIntent("reconciled", quote);
+    const row = bridgeRow({ state: "delivered", fillTx, received: delivered });
+    const receipt = await receiptOf(record, row);
+    expect(receipt?.outcome).toStrictEqual({
+      kind: "bridgeDelivered",
+      chain: "Base",
+      recipient: payee,
+      payee: {},
+      received: delivered,
+      tx: { hash: fillTx },
+    });
+  });
+
   it("names the source chain by its reference when the registry lacks it", async () => {
     const elsewhere = { asset: assetRefSchema.parse("fake:9/slip44:1"), base: 1_000n };
     const record = bridgeIntent("finalized", { ...quote, amount: elsewhere });

@@ -58,4 +58,14 @@ describe("the owner's presses of question buttons", () => {
     const press = { ref, choice: 0, presserId: ownerId };
     expect(await presses.answer(press, live)).toStrictEqual({ status: "answered" });
   });
+
+  it("says the engine refused a press of a choice the question does not offer", async () => {
+    const { test, presses, ref } = await askedEngine();
+    const press = { ref, choice: 3, presserId: ownerId };
+    expect(await presses.answer(press, live)).toStrictEqual({
+      status: "refused",
+      error: "protocol.bad_args",
+    });
+    expect(answers(test)).toStrictEqual([]);
+  });
 });

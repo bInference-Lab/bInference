@@ -24,6 +24,10 @@ const display: CardDisplay = {
 const rendered = (facts: PnlCardFacts): readonly string[] =>
   drawPnlCard(facts).map((line) => cardLineText(line, display));
 
+// The card's line that says since when the position is held, if any.
+const sinceLines = (facts: PnlCardFacts) =>
+  drawPnlCard(facts).filter(({ key }) => key === "pnl.since");
+
 const known = (figures: PositionFigures): PnlCardFacts => ({
   figures,
   agentName: "main",
@@ -88,6 +92,14 @@ describe("a P&L card", () => {
       "P&L realized +$298.23 (+32.31%)",
       "Fees venue $5.36 · network $1.14",
       "Held Oct 2, 2026, 14:05:00 → Oct 9, 2026, 09:12:00 (6 days)",
+    ]);
+  });
+
+  it("tells since when a position is held only when a trade or arrival names its opening", async () => {
+    const open = await tokenFigures(handWorked.slice(0, 3), pricesNow);
+    const { openedAtMs: _opened, ...unopened } = open;
+    expect([sinceLines(known(open)).length, sinceLines(known(unopened)).length]).toStrictEqual([
+      1, 0,
     ]);
   });
 

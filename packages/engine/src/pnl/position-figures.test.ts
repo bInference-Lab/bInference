@@ -95,6 +95,7 @@ describe("a position's figures", () => {
     expect(figures).not.toHaveProperty("openedAtMs");
     expect(figures).not.toHaveProperty("valueUsdMicros");
     expect(figures.realizedUsdMicros).toBe(5_000_000n);
+    expect(addFigures(figures, figures)).not.toHaveProperty("openedAtMs");
   });
 
   it("adds two wallets' positions, with no value when one of them has no price", () => {
