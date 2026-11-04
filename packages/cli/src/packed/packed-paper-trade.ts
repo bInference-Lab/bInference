@@ -1,12 +1,11 @@
 import { join } from "node:path";
 import process from "node:process";
-import { bsc } from "@binference/chains";
 import { BinferenceError } from "@binference/core";
 import { readTextFile } from "@binference/platform";
 import { z } from "zod";
-import { ownerText } from "../e2e/runtime-machine.js";
 import type { SourceProgram } from "../e2e/source-program.js";
 import { openSmokeParts, type SmokeParts, type SmokeScript } from "./packed-smoke-parts.js";
+import { lastJsonLine, pairOwner, paperTradeScript, tradeByChat } from "./smoke-chat.js";
 import { startPaperPortfolio } from "./smoke-paper-start.js";
 
 // The built-package smoke's paper trade by chat, which `pnpm release:smoke` runs with the folder
@@ -20,32 +19,13 @@ import { startPaperPortfolio } from "./smoke-paper-start.js";
 // KyberSwap's API through the same proxy. Like `src/main.ts`, it reads `process`. It prints one
 // JSON line with each step's time in milliseconds, or the failure and the engine log's end.
 
-const ownerId = 7_012_345_678;
 const minute = 60_000;
-const usdt = bsc.tokens.find((token) => token.symbol === "USDT")?.address ?? "";
-const { assetNamespace, assetReference } = bsc.nativeAsset;
-const script: SmokeScript = {
-  call: {
-    name: "swap",
-    args: {
-      from: `${bsc.id}/${assetNamespace}:${assetReference}`,
-      to: `${bsc.id}/erc20:${usdt}`,
-      amount: { base: (10n ** 15n).toString() },
-      reason: "You asked for USDT.",
-    },
-  },
-  report: "Bought USDT for 0.001 BNB on paper.",
-};
+const script: SmokeScript = paperTradeScript;
 const stateSchema = z.looseObject({ state: z.string() });
 const initSchema = z.looseObject({ state: z.string(), pairing: z.object({ link: z.url() }) });
 
 function fault(code: string, message: string): BinferenceError {
   return new BinferenceError({ code: `smoke.${code}`, message });
-}
-
-// The last JSON line a `--json` command printed.
-function lastJsonLine(stdout: string): string {
-  return stdout.split("\n").findLast((line) => line.startsWith("{")) ?? "null";
 }
 
 // `init --yes`, and the start code of the pairing link it printed.
@@ -80,41 +60,6 @@ async function startEngine(parts: SmokeParts, signal: AbortSignal): Promise<Sour
   return engine;
 }
 
-async function pairOwner(parts: SmokeParts, code: string): Promise<void> {
-  parts.bot.api.push(ownerText(`/start ${code}`, 1));
-  const paired = (api: typeof parts.bot.api) =>
-    api.sent().some((sent) => sent.text.includes("You are now the owner"));
-  await parts.bot.until("pairing answer", paired, minute);
-}
-
-// The owner asks in Telegram, taps Confirm on the card, and waits for the fill and the report.
-async function tradeByChat(parts: SmokeParts): Promise<void> {
-  const { bot } = parts;
-  bot.api.push(ownerText("Buy USDT for 0.001 BNB", 2));
-  const confirmOf = (api: typeof bot.api) =>
-    api
-      .messages()
-      .flatMap((message) =>
-        message.buttons
-          .flat()
-          .flatMap((button) => (button.data === undefined ? [] : [button.data]))
-          .filter((data) => data.startsWith("bnf1:c:y:"))
-          .map((data) => ({ data, messageId: message.messageId })),
-      )
-      .at(0);
-  await bot.until("card with Confirm", (api) => confirmOf(api) !== undefined, 4 * minute);
-  const confirm = confirmOf(bot.api);
-  if (confirm !== undefined) {
-    bot.api.press({ from: ownerId, ...confirm });
-  }
-  const filled = (api: typeof bot.api) =>
-    api.messages().some((message) => message.text.includes("Paper fill"));
-  await bot.until("paper fill", filled, 2 * minute);
-  const reported = (api: typeof bot.api) =>
-    api.sent().some((sent) => sent.text.includes(script.report));
-  await bot.until("agent's report", reported, 2 * minute);
-}
-
 // `binference stop`, then the foreground engine's own end: exit code 0 and its stopped line.
 async function stopEngine(parts: SmokeParts, engine: SourceProgram): Promise<void> {
   const stop = await parts.binference.run(["stop", "--json"], minute);
@@ -147,11 +92,11 @@ async function smoke(parts: SmokeParts, engineStop: AbortSignal): Promise<Record
   };
   const code = await timed("init", async () => setUp(parts));
   const engine = await timed("start", async () => startEngine(parts, engineStop));
-  await timed("pair", async () => pairOwner(parts, code));
+  await timed("pair", async () => pairOwner(parts.bot, code));
   await timed("paperStart", async () =>
     startPaperPortfolio(parts.home, AbortSignal.timeout(minute)),
   );
-  await timed("trade", async () => tradeByChat(parts));
+  await timed("trade", async () => tradeByChat(parts.bot, script.report));
   await timed("stop", async () => stopEngine(parts, engine));
   return Object.fromEntries(times);
 }

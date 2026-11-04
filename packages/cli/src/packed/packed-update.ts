@@ -1,7 +1,5 @@
-import { EventEmitter } from "node:events";
 import { join, resolve } from "node:path";
 import process from "node:process";
-import type { Http, HttpDownload } from "@binference/core";
 import { createFakePrivy } from "@binference/custody-privy/testing";
 import {
   ensureReadableFolder,
@@ -17,10 +15,9 @@ import { z } from "zod";
 import { newOwnerKey, rescueAddress } from "../e2e/init-fixtures.js";
 import { testModelId, testModelKey } from "../e2e/model-fixtures.js";
 import { freePort } from "../e2e/test-host.js";
-import type { CliHost } from "../program/cli-host.js";
 import { runCli } from "../program/run-cli.js";
 import { createSystemClock } from "../runtime/system-clock.js";
-import { createSystemHttp, type SystemHttp } from "../runtime/system-http.js";
+import { createSystemHttp } from "../runtime/system-http.js";
 import { createSystemRandom } from "../runtime/system-random.js";
 import {
   createFakeReleaseRegistry,
@@ -36,6 +33,7 @@ import {
 } from "./script-install.js";
 import { createSmokeBot } from "./smoke-bot.js";
 import { startSmokeEdge } from "./smoke-edge.js";
+import { type SmokeHostWorld, smokeHostOf } from "./smoke-host.js";
 import { startSmokeModel } from "./smoke-model.js";
 
 // The update smoke, which `pnpm update:smoke` runs with the folder it packed three releases in:
@@ -59,17 +57,11 @@ type Manifest = z.infer<typeof manifestSchema>;
 const statusSchema = z.looseObject({ state: z.string(), version: z.string() });
 
 /** The smoke's world: the scratch folders, the installed program, and what each command gets. */
-interface World {
+interface World extends SmokeHostWorld {
   readonly scratch: TempFolder;
-  readonly home: string;
-  readonly script: string;
   /** The install script's prefix and the launcher it wrote, which outlasts every update. */
   readonly install: ScriptInstall;
-  readonly env: Readonly<Record<string, string>>;
   readonly binference: PackedBinference;
-  readonly registry: FakeReleaseRegistry;
-  readonly http: SystemHttp;
-  readonly services: ReturnType<typeof createChildServices>;
   readonly initArgs: readonly string[];
   close(): Promise<void>;
 }
@@ -100,64 +92,6 @@ function scriptOf(prefix: string): string {
   return join(...modules, "node_modules", "binference", "dist", "main.mjs");
 }
 
-// Routes the stand-in registry's origin to it, and every other request out by the route in force.
-function routed(
-  registry: FakeReleaseRegistry,
-  http: SystemHttp,
-): { http: Http; download: HttpDownload } {
-  const isRegistry = (url: string) => new URL(url).origin === registry.registry;
-  return {
-    http: {
-      request: async (request) => (isRegistry(request.url) ? registry.http : http).request(request),
-    },
-    download: {
-      download: async (request) =>
-        (isRegistry(request.url) ? registry.download : http).download(request),
-    },
-  };
-}
-
-// The programs the update runs, npm and the installed program, run as they are; only the installed
-// program's own `start` runs here with the smoke's child services, since a smoke never touches the
-// OS's login service. The service still runs the installed program's `start --foreground`.
-function programsOf(world: World, version: string): NonNullable<CliHost["runProgram"]> {
-  return async (file, args, options) => {
-    const command = args.slice(args.indexOf(world.script) + 1);
-    if (file !== process.execPath || command[0] !== "start") {
-      return runCommandWithin(file, args, options);
-    }
-    const exitCode = await runCli(hostFor(world, command, version));
-    return { exitCode, stdout: "", stderr: "" };
-  };
-}
-
-/** A host for one command line of the update's sources, on the smoke's world. */
-function hostFor(world: World, argv: readonly string[], version: string): CliHost {
-  const { http, download } = routed(world.registry, world.http);
-  return {
-    argv,
-    env: world.env,
-    out: (text) => process.stdout.write(text),
-    err: (text) => process.stderr.write(text),
-    clock: createSystemClock(),
-    random: createSystemRandom(),
-    http,
-    download,
-    outbound: world.http,
-    signals: new EventEmitter(),
-    version,
-    system: readSystemFacts(),
-    homeDir: world.home,
-    workerExecArgv: process.execArgv,
-    entry: { node: process.execPath, nodeOptions: [], script: world.script },
-    serviceManager: world.services,
-    runProgram: programsOf(world, version),
-    npmRegistry: world.registry.registry,
-    bundleVerifier: world.registry.verifier,
-    programFolders: [],
-  };
-}
-
 async function statusOf(world: World): Promise<z.infer<typeof statusSchema>> {
   const status = await world.binference.run(["status", "--json"], minute);
   const line = status.stdout.split("\n").findLast((text) => text.startsWith("{")) ?? "null";
@@ -175,7 +109,7 @@ async function expectRunning(world: World, version: string): Promise<void> {
 // Runs `binference update --to` and answers its exit code and what it printed.
 async function update(world: World, version: string, to: string) {
   const said: string[] = [];
-  const host = hostFor(world, ["update", "--to", to, "--json"], version);
+  const host = smokeHostOf(world, ["update", "--to", to, "--json"], version);
   const out = (text: string) => {
     said.push(text);
     process.stdout.write(text);
@@ -275,6 +209,7 @@ async function openWorld(manifest: Manifest, folder: string): Promise<World> {
   return {
     scratch,
     home: join(scratch.path, "h"),
+    node: process.execPath,
     script,
     install,
     env,
@@ -299,7 +234,7 @@ async function installOld(world: World, manifest: Manifest, folder: string): Pro
   if (init.exitCode !== 0) {
     fail(`init ended with ${String(init.exitCode)}:\n${init.stdout}`);
   }
-  const started = await runCli(hostFor(world, ["start", "--json"], manifest.versions.from));
+  const started = await runCli(smokeHostOf(world, ["start", "--json"], manifest.versions.from));
   if (started !== 0) {
     fail(`start ended with ${String(started)}.`);
   }
@@ -321,7 +256,7 @@ async function smoke(world: World, manifest: Manifest, folder: string): Promise<
   }
   await expectRunning(world, to);
   await expectLauncher(world.install, world.env, to);
-  await runCli(hostFor(world, ["stop", "--json"], to));
+  await runCli(smokeHostOf(world, ["stop", "--json"], to));
 }
 
 async function logTail(home: string): Promise<string> {
