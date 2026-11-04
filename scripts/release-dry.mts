@@ -4,7 +4,12 @@ import process from "node:process";
 import { parseArgs } from "node:util";
 import { packedReadmeFindings } from "./release/check-readmes.mjs";
 import { checksums, packPackage, type PackedFile } from "./release/pack-release.mjs";
-import { checkPackedRelease } from "./release/packed-install.mjs";
+import {
+  checkPackedInstall,
+  installPackedRelease,
+  readInstallSbom,
+  type PackedRelease,
+} from "./release/packed-install.mjs";
 import { commitsSince, releasePoint } from "./release/release-git.mjs";
 import { releaseNotes } from "./release/release-notes.mjs";
 import { manifestFile, publishedPackages, type ReleaseManifest } from "./release/release-plan.mjs";
@@ -68,6 +73,21 @@ function publishDryRun(out: string, release: ReleaseTag, files: readonly PackedF
   }
 }
 
+// Installs the packed files into an empty project, checks them there, writes the install's SBOM
+// beside them and answers its file name; the built-package smoke goes on to trade on paper there
+// (pnpm release:smoke).
+function writeCheckedSbom(packed: PackedRelease): string {
+  const install = installPackedRelease(packed);
+  try {
+    checkPackedInstall(packed, install);
+    const sbomFile = `binference-${packed.version}.cdx.json`;
+    writeFileSync(join(packed.folder, sbomFile), readInstallSbom(install).trim() + "\n");
+    return sbomFile;
+  } finally {
+    install.remove();
+  }
+}
+
 function kib(bytes: number): string {
   return `${(bytes / 1024).toFixed(1)} KiB`;
 }
@@ -116,9 +136,12 @@ function main(): void {
   const start = since ?? point.previous;
   const notes = releaseNotes({ release, since: start, commits: commitsSince(root, start) });
   writeFileSync(join(out, "notes.md"), notes);
-  const sbom = checkPackedRelease({ folder: out, version: release.version, packages: files, root });
-  const sbomFile = `binference-${release.version}.cdx.json`;
-  writeFileSync(join(out, sbomFile), sbom.trim() + "\n");
+  const sbomFile = writeCheckedSbom({
+    folder: out,
+    version: release.version,
+    packages: files,
+    root,
+  });
   publishDryRun(out, release, files);
   const manifest: ReleaseManifest = {
     tag: release.tag,
