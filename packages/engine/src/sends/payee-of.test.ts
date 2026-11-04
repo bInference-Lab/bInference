@@ -24,7 +24,7 @@ const intentId = (n: number): Id<"int"> =>
   idSchema("int").parse(`int_0190f1c2-3a4b-7c5d-8e6f-${n.toString(16).padStart(12, "0")}`);
 
 interface Planted {
-  readonly kind: Extract<IntentKind, "send" | "rescue">;
+  readonly kind: Extract<IntentKind, "send" | "rescue" | "buy">;
   readonly paid: AccountRef;
   readonly state?: IntentState;
   readonly isPaper?: boolean;
@@ -41,6 +41,11 @@ function quoteOf({ kind, paid }: Planted) {
       });
 }
 
+// Settled trades that paid no one, as many as `count`.
+function trades(count: number): readonly Planted[] {
+  return Array.from({ length: count }, () => ({ kind: "buy", paid: other }));
+}
+
 async function payeeAfter(planted: readonly Planted[], account: AccountRef = testSaved.account) {
   const { intents, agents } = createMemoryEngineStores();
   await agents.create(testAgentDraft({ mode: "live" }), live);
@@ -54,7 +59,7 @@ async function payeeAfter(planted: readonly Planted[], account: AccountRef = tes
           kind: item.kind,
           state: item.state ?? "reconciled",
           request: {},
-          quote: quoteOf(item),
+          ...(item.kind === "buy" ? {} : { quote: quoteOf(item) }),
           hasOutsideContent: false,
           isPaper: item.isPaper ?? false,
           proposer: "engine",
@@ -90,5 +95,13 @@ describe("who a send pays", () => {
       { kind: "send", paid: testSaved.account, isPaper: true },
     ];
     await expect(payeeAfter(planted)).resolves.toStrictEqual({ isNewRecipient: true });
+  });
+
+  it("reads past a full page of settled intents to an older send, and no further than 20", async () => {
+    const sent: Planted = { kind: "send", paid: testSaved.account };
+    await expect(payeeAfter([...trades(500), sent])).resolves.toStrictEqual({});
+    await expect(payeeAfter([...trades(10_000), sent])).resolves.toStrictEqual({
+      isNewRecipient: true,
+    });
   });
 });

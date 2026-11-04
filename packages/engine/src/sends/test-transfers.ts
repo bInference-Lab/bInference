@@ -66,23 +66,32 @@ function payloadOf(
 
 /**
  * A simulator under which each send from the test wallet to one of `to` moves its amount there,
- * and each approval of `spenders` back to 0 sets that allowance; any other draft reverts.
+ * or to `landsAt` when a send names one, and each approval of `spenders` back to 0 sets that
+ * allowance, or to `leaves` when a revoke names it; any other draft reverts.
  */
 export function transferSimulator(
-  sends: readonly { readonly to: AccountRef; readonly amount: Amount }[],
-  revokes: readonly { readonly token: AssetRef; readonly spender: AccountRef }[] = [],
+  sends: readonly {
+    readonly to: AccountRef;
+    readonly amount: Amount;
+    readonly landsAt?: AccountRef;
+  }[],
+  revokes: readonly {
+    readonly token: AssetRef;
+    readonly spender: AccountRef;
+    readonly leaves?: bigint;
+  }[] = [],
 ): Pick<TxSimulator, "simulate"> {
   const family = createFakeFamily();
-  const sent = sends.map(({ to, amount }): readonly [string, SimulatedStep] => [
+  const sent = sends.map(({ to, amount, landsAt = to }): readonly [string, SimulatedStep] => [
     payloadOf(family.transferDraft({ from: testAccount, to, amount })),
     {
       status: "success",
       gasUsed: 21_000n,
-      transfers: [{ from: testAccount, to, amount }],
+      transfers: [{ from: testAccount, to: landsAt, amount }],
       approvals: [],
     },
   ]);
-  const freed = revokes.map(({ token, spender }): readonly [string, SimulatedStep] => {
+  const freed = revokes.map(({ token, spender, leaves = 0n }): readonly [string, SimulatedStep] => {
     const contract = accountRefSchema.parse(`fake:1:${assetRefParts(token).assetReference}`);
     const draft = family.approvalDraft({
       from: testAccount,
@@ -90,7 +99,7 @@ export function transferSimulator(
       spender,
       amountBase: 0n,
     });
-    const approval = { owner: testAccount, spender, amount: { asset: token, base: 0n } };
+    const approval = { owner: testAccount, spender, amount: { asset: token, base: leaves } };
     return [
       payloadOf(draft),
       { status: "success", gasUsed: 30_000n, transfers: [], approvals: [approval] },

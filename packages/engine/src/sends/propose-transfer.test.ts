@@ -1,5 +1,5 @@
-import { accountRefSchema, type Amount, assetRefSchema } from "@binference/chain";
-import type { FakeNameResolver } from "@binference/chain/testing";
+import { accountRefSchema, type Amount, assetRefSchema, chainRefSchema } from "@binference/chain";
+import { createFakeNameResolver, type FakeNameResolver } from "@binference/chain/testing";
 import type { JsonValue } from "@binference/core";
 import type { IntentRequest, IntentView, ProtocolErrorCode } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -8,7 +8,7 @@ import { testWalletRecord } from "../install/test-wallet-record.js";
 import { intentStates } from "../intents/intent-state.js";
 import { revokeQuoteDocument } from "../intents/revoke-quote.js";
 import { sendQuoteDocument } from "../intents/send-quote.js";
-import { testCoin, testNowMs, testToken } from "../intents/test-intents.js";
+import { testAgent, testCoin, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
@@ -174,6 +174,20 @@ describe("a send", () => {
     expect(ending(view)).toStrictEqual(["failed_check", "simulation_reverted"]);
   });
 
+  it("ends failed_check when its simulation lands the amount elsewhere, or a revoke leaves an allowance", async () => {
+    const chainSimulator = transferSimulator(
+      [{ to: testSaved.account, amount: coin, landsAt: stranger }],
+      [{ token: testToken, spender: testRouter, leaves: 1n }],
+    );
+    const test = await startSends({ chainSimulator });
+    const send = await propose(test, testSend());
+    const revoke = await propose(test, testRevoke(testToken));
+    expect([ending(send), ending(revoke)]).toStrictEqual([
+      ["failed_check", "effects_differ"],
+      ["failed_check", "effects_differ"],
+    ]);
+  });
+
   it("is refused in paper mode before its name is read", async () => {
     const names = testNames();
     const test = await startSends({ agent: { mode: "paper" } }, names);
@@ -186,6 +200,59 @@ describe("a send", () => {
     const test = await startSends({ agent: { mode: "live", approvalMode: "auto" } });
     const view = await propose(test, testSend());
     expect(view.state).toBe("awaiting_confirmation");
+  });
+
+  it("runs from the agent's default wallet when the request names none", async () => {
+    const test = await startSends();
+    const { wallet: _named, ...unnamed } = testSend() as Extract<IntentRequest, { kind: "send" }>;
+    const view = await propose(test, unnamed);
+    expect(view.state).toBe("awaiting_confirmation");
+    const record = await test.stores.intents.get(view.intent, live);
+    expect(record?.walletId).toBe(testWallet);
+  });
+
+  it("refuses a wallet that is not the agent's, or that custody holds no account of", async () => {
+    const other = fixtureId("wal", 0x05);
+    const notOwned = await startSends();
+    await expect(refusal(notOwned, { ...testSend(), wallet: other })).resolves.toBe(
+      "wallet.not_found",
+    );
+    const unheld = await startSends({ wallets: [testWallet, other] });
+    await expect(refusal(unheld, { ...testSend(), wallet: other })).resolves.toBe(
+      "wallet.not_found",
+    );
+  });
+
+  it("refuses a request that names no wallet when the agent has none to run from", async () => {
+    const test = await startSends({ wallets: [] });
+    const { wallet: _named, ...unnamed } = testSend() as Extract<IntentRequest, { kind: "send" }>;
+    await expect(refusal(test, unnamed)).resolves.toBe("wallet.not_found");
+  });
+
+  it("refuses a send from the agent's bridge wallet, which only makes bridge deposits", async () => {
+    const bridge = fixtureId("wal", 0xd2);
+    const test = await startSends({ wallets: [testWallet, bridge] });
+    test.stores.install.addWallet({
+      ...testWalletRecord({ id: bridge, agentId: testAgent, label: "bridge", createdAtMs: 1 }),
+      address: "0x000000d2",
+      role: "bridge",
+    });
+    await expect(refusal(test, { ...testSend(), wallet: bridge })).resolves.toBe(
+      "intent.bridge_wallet_only",
+    );
+  });
+
+  it("refuses a send to a contract the registry lists for a venue (decision 0307)", async () => {
+    await expect(refusal(await startSends(), testSend({ address: testRouter }))).resolves.toBe(
+      "address.venue_contract",
+    );
+  });
+
+  it("refuses an asset on a chain the registry does not hold", async () => {
+    const elsewhere = { asset: assetRefSchema.parse("fake:9/slip44:1"), base: 1n };
+    await expect(refusal(await startSends(), testSend(undefined, elsewhere))).resolves.toBe(
+      "protocol.bad_args",
+    );
   });
 
   it("refuses an unknown address from an outside-content turn for its outside content first", async () => {
@@ -245,6 +312,20 @@ describe("a send by name", () => {
       ["failed_check", "name_contract"],
     ]);
     expect(await storedQuote(test, contract)).toBeUndefined();
+  });
+
+  it("refuses a name that does not normalize, and one another chain's naming service answers", async () => {
+    const test = await startSends();
+    await expect(refusal(test, testSend({ name: "-alice-.bnb" }))).resolves.toBe(
+      "protocol.bad_args",
+    );
+    const elsewhere = createFakeNameResolver({
+      chain: chainRefSchema.parse("fake:2"),
+      suffix: ".bnb",
+    });
+    elsewhere.set("alice.bnb", { address: accountRefSchema.parse("fake:2:0x000000f1") });
+    const far = await startSends({}, elsewhere);
+    await expect(refusal(far, testSend({ name: "alice.bnb" }))).resolves.toBe("protocol.bad_args");
   });
 
   it("refuses a name that resolves to an unsaved address like any other", async () => {
@@ -315,6 +396,13 @@ describe("an approval revoke", () => {
       ["awaiting_confirmation", undefined],
       ["rejected_policy", "frozen"],
     ]);
+  });
+
+  it("refuses a spender on another chain than the token's", async () => {
+    const elsewhere = accountRefSchema.parse("fake:2:0x0000000b");
+    await expect(refusal(await startSends(), testRevoke(testToken, elsewhere))).resolves.toBe(
+      "protocol.bad_args",
+    );
   });
 
   it("refuses the chain's coin, which has no allowance", async () => {
