@@ -97,7 +97,7 @@ Run one agent or several, each with its own wallets and limits, in English or Ch
 ## Safe by design <img src=".github/assets/logos/safe.png" width="20" height="20" alt="">
 
 - In manual mode, the default, every transaction arrives as a card with exact amounts, fees and a simulated result. One tap sends it; no answer means no.
-- Auto mode trades within your caps and sends a receipt after each trade. Sends, bridges, token launches and anything over a cap still ask.
+- Auto mode trades within your caps and sends a receipt after each trade. Sends, bridges, token launches, buys of unverified or warned tokens and anything over a cap still ask.
 - Limits hold even after a tap: per-trade and 24-hour caps, slippage and tax limits, and send levels that decide where funds may go.
 - Sends go only to your rescue address or addresses you saved. Even with its keys stolen, a machine can only call the trading contracts you enabled, and can lose at most a 24-hour cap through them.
 - Every new agent starts in paper mode, with virtual money and real quotes.

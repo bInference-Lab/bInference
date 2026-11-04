@@ -8,6 +8,7 @@
   "plugin": "a community plugin is on, and its words reach every turn",
   "mcp": "proposed from {client}",
   "deniedToken": "it sells a token on your deny list",
+  "riskWarn": "it buys a token that is not verified or has a risk warning",
   "overFeeCap": "the network fee is above your cap",
   "locked": "binference is locked; run `binference unlock` on the machine"
 }

@@ -22,6 +22,7 @@ const facts: AutoModeFacts = {
   feePerGasNativeBase: 50_000_000n,
   networkFeeCapNativeBase: 1_000_000_000n,
   hasUnlistedSpender: false,
+  hasTokenRiskWarning: false,
 };
 
 const swap: AutoModeSubject = { kind: "swap", proposer: "agent_runtime", hasOutsideContent: false };
@@ -66,6 +67,12 @@ describe("the auto test", () => {
   it("asks for a sale out of a token on the deny list", () => {
     expect(refusalOf(swap, { sellsDeniedToken: true })).toBe("deniedToken");
     expect(refusalOf({ ...swap, kind: "sell" }, { sellsDeniedToken: true })).toBe("deniedToken");
+  });
+
+  it("asks for a trade whose token has a risk warning, and runs one without (decision 0363)", () => {
+    expect(refusalOf(swap, { hasTokenRiskWarning: true })).toBe("riskWarn");
+    expect(refusalOf({ ...swap, kind: "buy" }, { hasTokenRiskWarning: true })).toBe("riskWarn");
+    expect(refusalOf({ ...swap, kind: "buy" }, { hasTokenRiskWarning: false })).toBe("passes");
   });
 
   it("asks when the value passes the per-trade or rolling-day cap", () => {
@@ -121,6 +128,12 @@ describe("the auto test", () => {
     expect(refusalOf(swap, { sellsDeniedToken: true, valueUsdMicros: 10n ** 12n })).toBe(
       "deniedToken",
     );
+    expect(refusalOf(swap, { sellsDeniedToken: true, hasTokenRiskWarning: true })).toBe(
+      "deniedToken",
+    );
+    expect(refusalOf(swap, { hasTokenRiskWarning: true, valueUsdMicros: 10n ** 12n })).toBe(
+      "riskWarn",
+    );
     const pricey = { feePerGasNativeBase: 10n ** 12n };
     expect(refusalOf(swap, { ...pricey, valueUsdMicros: 10n ** 12n })).toBe("overCap");
     expect(refusalOf(swap, { ...pricey, hasUnlistedSpender: true })).toBe("overFeeCap");
@@ -174,6 +187,7 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
     feePerGasNativeBase: usd,
     feeHeadroom: headroom,
     hasUnlistedSpender: mostly(false, true),
+    hasTokenRiskWarning: mostly(false, true),
   })
   .map((generated): AutoModeFacts => ({
     approvalMode: generated.approvalMode,
@@ -190,6 +204,7 @@ const factSets: fc.Arbitrary<AutoModeFacts> = fc
     feePerGasNativeBase: generated.feePerGasNativeBase,
     networkFeeCapNativeBase: atLeastZero(generated.feePerGasNativeBase + generated.feeHeadroom),
     hasUnlistedSpender: generated.hasUnlistedSpender,
+    hasTokenRiskWarning: generated.hasTokenRiskWarning,
   }));
 
 // The money conditions of the auto test: the caps, which an intent worth nothing always fits, and
@@ -202,6 +217,12 @@ function fitsEveryCap(given: AutoModeFacts): boolean {
   return fitsCaps && given.feePerGasNativeBase <= given.networkFeeCapNativeBase;
 }
 
+// The token and spender marks of the auto test: a denied token sold, a warned token bought, an
+// unlisted spender.
+function isUnmarked(given: AutoModeFacts): boolean {
+  return !given.sellsDeniedToken && !given.hasTokenRiskWarning && !given.hasUnlistedSpender;
+}
+
 // Spec 6, section 5, written out independently of the module under test.
 function isAllowedBySpec(subject: AutoModeSubject, given: AutoModeFacts): boolean {
   const isAutoKind =
@@ -211,9 +232,8 @@ function isAllowedBySpec(subject: AutoModeSubject, given: AutoModeFacts): boolea
     given.approvalMode === "auto" &&
     !given.isLocked &&
     isAutoKind &&
-    !given.sellsDeniedToken &&
+    isUnmarked(given) &&
     fitsEveryCap(given) &&
-    !given.hasUnlistedSpender &&
     !subject.hasOutsideContent &&
     subject.proposer === "agent_runtime"
   );
@@ -232,6 +252,14 @@ describe("the auto test as a property", () => {
     fc.assert(
       fc.property(subjects, factSets, (subject, generated) => {
         expect(checkAutoMode(subject, { ...generated, sellsDeniedToken: true }).ok).toBe(false);
+      }),
+    );
+  });
+
+  it("never authorizes a trade whose token has a risk warning (decision 0363)", () => {
+    fc.assert(
+      fc.property(subjects, factSets, (subject, generated) => {
+        expect(checkAutoMode(subject, { ...generated, hasTokenRiskWarning: true }).ok).toBe(false);
       }),
     );
   });

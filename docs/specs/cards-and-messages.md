@@ -259,7 +259,9 @@ paper fill uses the quote. A live trade always needs its simulation.
 "proposed from {client}" / 「由 {client} 提出」, `autoAsks.kind` "this kind always asks"
 / 「此类操作总是需要确认」, `autoAsks.spender` "it approves a contract that is not verified"
 / 「需要向未验证的合约授权」, `autoAsks.deniedToken` "it sells a token on your deny list"
-/ 「卖出的是你禁止列表中的代币」 ([decision 0101](../DECISIONS.md#d0101)), `autoAsks.overFeeCap`
+/ 「卖出的是你禁止列表中的代币」 ([decision 0101](../DECISIONS.md#d0101)), `autoAsks.riskWarn`
+"it buys a token that is not verified or has a risk warning" / 「买入的代币未经验证或有风险提示」
+([decision 0363](../DECISIONS.md#d0363)), `autoAsks.overFeeCap`
 "the network fee is above your cap" / 「网络费高于你设定的上限」
 ([decision 0102](../DECISIONS.md#d0102)), `autoAsks.locked` "binference is locked; run
 `binference unlock` on the machine" / 「binference 已锁定；请在本机运行 `binference unlock`」

@@ -131,10 +131,16 @@ const passing: RiskCheck = {
 
 // An auto agent buys the token with the registry's token on a curve against it, from a clean turn
 // under its caps: the plan approves the curve, a launch's own or the launchpad's router, then buys.
-// The auto test passes it unless the spender is one no registry lists.
-async function autoBuy(launch: { readonly launchCurve?: typeof launchCurve }) {
-  const pad = createFakeLaunchpad({ onCurve: [unlisted], quoteAsset: testToken, ...launch });
+// Unless told otherwise, the registry lists the launch's token, so it carries no risk warning
+// (decision 0363) and the auto test passes it unless the spender is one no registry lists.
+async function autoBuy(launch: {
+  readonly launchCurve?: typeof launchCurve;
+  readonly isListed?: boolean;
+}) {
+  const { isListed = true, ...curveOf } = launch;
+  const pad = createFakeLaunchpad({ onCurve: [unlisted], quoteAsset: testToken, ...curveOf });
   const test = await engineOver({
+    chains: testChains([curve], isListed ? ["0x0000000f"] : []),
     venues: [createFakeVenue(), pad],
     risk: passing,
     paper: [
@@ -149,6 +155,10 @@ async function autoBuy(launch: { readonly launchCurve?: typeof launchCurve }) {
 }
 
 describe("the auto test of a trade on a launch's own curve", () => {
+  it("asks for a launch's token the registry does not list (decision 0363)", async () => {
+    await expect(autoBuy({ isListed: false })).resolves.toBe("awaiting_confirmation");
+  });
+
   it("asks for an approval of the launch's curve, which no registry lists", async () => {
     await expect(autoBuy({ launchCurve })).resolves.toBe("awaiting_confirmation");
   });

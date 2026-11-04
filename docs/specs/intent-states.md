@@ -358,8 +358,10 @@ and `step_unsent` (a step never signed after an earlier one landed,
   intent is a paper one ([decision 0103](../DECISIONS.md#d0103)); the kind is `swap`,
   `buy`, `sell`, or a `stake` that stakes within the caps or claims, inside the agent's own
   positions ([decision 0296](../DECISIONS.md#d0296)); it sells no token on
-  the deny list ([decision 0101](../DECISIONS.md#d0101)); it fits the per-trade and rolling-day
-  caps; its fee per gas is at most the chain's network fee cap
+  the deny list ([decision 0101](../DECISIONS.md#d0101)); it buys no token with a risk warning
+  ([decision 0363](../DECISIONS.md#d0363)): one the chain registry does not list, one the risk
+  step measured a tax on, or one it passed with the verdict `warn`; it fits the per-trade and
+  rolling-day caps; its fee per gas is at most the chain's network fee cap
   ([decision 0102](../DECISIONS.md#d0102)); any approval goes to a registry spender; the proposing
   turn carries no outside-content mark; and the proposer is the agent runtime, not an MCP client.
   Only the agent runtime the engine started, signed in with the token the engine made at that
@@ -369,7 +371,7 @@ and `step_unsent` (a step never signed after an earlier one landed,
   Anything else opens a card. A receipt is sent when it settles. The test checks these conditions in
   this order and names the first that fails: `manual` (the agent is in manual mode), `locked` (the
   engine is locked and the intent is live), `send`, `kind`, `unstake` (an unstake), `deniedToken`
-  (it sells a token on the deny list), `overCap`, `overFeeCap` (its fee per gas is above the network
+  (it sells a token on the deny list), `riskWarn` (it buys a token with a risk warning), `overCap`, `overFeeCap` (its fee per gas is above the network
   fee cap), `spender` (an approval to a spender outside the registry), `outside` or `mcp`. The card
   shows each code but `manual` with its `autoAsks` message (spec 4, section 3.4).
 - **A token on the deny list** ([decision 0101](../DECISIONS.md#d0101)) may leave the wallet, by a
@@ -809,8 +811,9 @@ Property tests (fast-check) hold these for every generated history:
    `superseded` predecessor.
 7. Every terminal state has exactly one ledger entry, and the ledger's hash chain verifies.
 8. An auto-authorized intent is never a send, withdrawal, unstake, bridge, launch or new-spender
-   approval, never exceeds a cap, never sells a token on the deny list, never pays a fee per gas
-   above the network fee cap, and never comes from an outside-content turn or an MCP client. A fill
+   approval, never exceeds a cap, never sells a token on the deny list, never buys a token with a
+   risk warning ([decision 0363](../DECISIONS.md#d0363)), never pays a fee per gas above the
+   network fee cap, and never comes from an outside-content turn or an MCP client. A fill
    is held to the same, but for the outside-content mark its order's confirmed card carried: it is a
    buy or a sell of its order's token in its order's wallet and mode, inside its order's bounds, and
    is confirmed only on a fill check that names no breach ([decision 0195](../DECISIONS.md#d0195)).

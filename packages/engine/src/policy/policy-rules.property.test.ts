@@ -338,6 +338,7 @@ const allowingAuto: AutoModeFacts = {
   feePerGasNativeBase: 0n,
   networkFeeCapNativeBase: 0n,
   hasUnlistedSpender: false,
+  hasTokenRiskWarning: false,
 };
 
 const trades: fc.Arbitrary<AutoModeSubject> = fc.record({

@@ -50,6 +50,7 @@ export function cardOnlyAuthorization(
     feePerGasNativeBase: 0n,
     networkFeeCapNativeBase: 0n,
     hasUnlistedSpender: false,
+    hasTokenRiskWarning: false,
   };
   return {
     type: "authorization_checked",

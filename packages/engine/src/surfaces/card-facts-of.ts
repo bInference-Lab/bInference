@@ -1,5 +1,5 @@
 import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
-import type { Bps, JsonValue } from "@binference/core";
+import type { JsonValue } from "@binference/core";
 import type {
   BuyRequest,
   QuoteView,
@@ -24,7 +24,6 @@ import { identityQuoteDocument } from "../intents/identity-quote.js";
 import {
   quoteDocument,
   requestDocument,
-  riskDocument,
   simulationDocument,
 } from "../intents/intent-documents.schema.js";
 import type { IntentKind } from "../intents/intent-kind.js";
@@ -37,6 +36,7 @@ import { type UnfreezeQuote, unfreezeQuoteDocument } from "../intents/unfreeze-q
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { tradeSlippageBps } from "../money-path/swap-trade.js";
+import { measuredTaxOf } from "../money-path/token-risk-warning.js";
 import { type AutoOrderQuote, autoOrderQuoteDocument } from "../orders/auto-order-quote.js";
 import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
@@ -121,16 +121,6 @@ function checkOf(
     : { received, token, isTokenVerified: assetInfoOf(chains, token) !== undefined };
 }
 
-// The highest tax the risk step measured on the token the swap buys, for the card's tax line.
-function taxOf(record: IntentRecord): Bps | undefined {
-  const risk = record.risk === undefined ? undefined : riskDocument.decode(record.risk);
-  const taxes = [risk?.buyTaxBps, risk?.sellTaxBps].filter((tax) => tax !== undefined);
-  return taxes.reduce<Bps | undefined>(
-    (max, tax) => (max === undefined || tax > max ? tax : max),
-    undefined,
-  );
-}
-
 // Where a buy or a sell runs: the launchpad's curve its quote names, or the pools of the venue
 // that quoted.
 function placeOf(quote: QuoteView): TradePlace {
@@ -204,7 +194,7 @@ function tradeFacts(request: TradeRequest, quote: QuoteView, source: CardSource)
   const simulation =
     record.simulation === undefined ? undefined : simulationDocument.decode(record.simulation);
   const check = checkOf(simulation, quote.minOut.asset, chains);
-  const taxBps = taxOf(record);
+  const taxBps = measuredTaxOf(record);
   const { roleWallet } = source;
   return {
     agentName: settings.agent.name,

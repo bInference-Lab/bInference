@@ -31,6 +31,7 @@ const auto: AutoModeFacts = {
   feePerGasNativeBase: 0n,
   networkFeeCapNativeBase: 1n,
   hasUnlistedSpender: false,
+  hasTokenRiskWarning: false,
 };
 
 // Every trigger a launch's path meets on its way to `executing`, with its pin's report and

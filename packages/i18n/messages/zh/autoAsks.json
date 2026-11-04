@@ -8,6 +8,7 @@
   "plugin": "社区插件已启用，其内容会进入每一轮",
   "mcp": "由 {client} 提出",
   "deniedToken": "卖出的是你禁止列表中的代币",
+  "riskWarn": "买入的代币未经验证或有风险提示",
   "overFeeCap": "网络费高于你设定的上限",
   "locked": "binference 已锁定；请在本机运行 `binference unlock`"
 }

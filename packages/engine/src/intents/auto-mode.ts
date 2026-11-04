@@ -41,6 +41,11 @@ export interface AutoModeFacts {
   /** A step approves a spender outside the registry. */
   readonly hasUnlistedSpender: boolean;
   /**
+   * The trade buys a token with a risk warning: one the chain registry does not list, one with a
+   * measured tax, or one the risk step passed with a warning (decision 0363).
+   */
+  readonly hasTokenRiskWarning: boolean;
+  /**
    * A community plugin is on: its tools' words reach every turn of the agent, so auto mode
    * proposes nothing on its own (decision 0350). Absent when none is.
    */
@@ -108,6 +113,9 @@ function autoModeRefusal(
   if (facts.sellsDeniedToken) {
     return "deniedToken";
   }
+  if (facts.hasTokenRiskWarning) {
+    return "riskWarn";
+  }
   if (!fitsCaps(facts)) {
     return "overCap";
   }
@@ -120,7 +128,8 @@ function autoModeRefusal(
 /**
  * The auto test of spec 6, section 5. It passes only when the agent is in auto mode, the engine is
  * not locked for the intent, the kind is a swap, buy or sell or a stake move inside the agent's
- * own positions other than an unstake, it sells no token on the deny list, the value fits the
+ * own positions other than an unstake, it sells no token on the deny list, it buys no token with
+ * a risk warning (decision 0363), the value fits the
  * per-trade and rolling-day caps, the fee per gas is at most the network fee cap, every approval
  * goes to a registry spender, no community plugin is on, the turn read no outside content, and
  * the agent runtime proposed it. Anything else opens a card.

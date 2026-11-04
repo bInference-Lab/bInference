@@ -178,6 +178,7 @@ const autoFacts: fc.Arbitrary<AutoModeFacts> = fc.record({
   feePerGasNativeBase: fc.bigInt({ min: 0n, max: 2_000_000_000n }),
   networkFeeCapNativeBase: fc.constant(1_000_000_000n),
   hasUnlistedSpender: mostly(false, true),
+  hasTokenRiskWarning: mostly(false, true),
 });
 
 const facts: fc.Arbitrary<Facts> = fc.record({
@@ -412,16 +413,21 @@ function isAutoKind(status: IntentStatus, auto: AutoModeFacts): boolean {
   );
 }
 
+// The token and spender marks of the auto test: a denied token sold, a warned token bought, an
+// unlisted spender.
+function isUnmarked(auto: AutoModeFacts): boolean {
+  return !auto.sellsDeniedToken && !auto.hasTokenRiskWarning && !auto.hasUnlistedSpender;
+}
+
 function isAutoAllowed(status: IntentStatus, auto: AutoModeFacts | undefined): boolean {
   return (
     auto !== undefined &&
     auto.approvalMode === "auto" &&
     !auto.isLocked &&
     isAutoKind(status, auto) &&
-    !auto.sellsDeniedToken &&
+    isUnmarked(auto) &&
     fitsAutoCaps(auto) &&
     auto.feePerGasNativeBase <= auto.networkFeeCapNativeBase &&
-    !auto.hasUnlistedSpender &&
     !status.hasOutsideContent &&
     status.proposer === "agent_runtime"
   );
@@ -433,8 +439,8 @@ function autoFactsOf(trigger: IntentTrigger): AutoModeFacts | undefined {
 }
 
 // Invariant 8: an auto-authorized intent is a trade or an own-position move, inside the caps and
-// the network fee cap, selling no denied token, with no new spender, no outside content and no
-// proposer but the agent runtime.
+// the network fee cap, selling no denied token, buying no token with a risk warning, with no new
+// spender, no outside content and no proposer but the agent runtime.
 function autoViolations({ before, trigger, result }: Outcome): readonly string[] {
   if (!result.ok || isAuto(before.authorizedBy) || !isAuto(result.value.status.authorizedBy)) {
     return [];

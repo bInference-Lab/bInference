@@ -28,6 +28,7 @@ const autoFacts: AutoModeFacts = {
   feePerGasNativeBase: 50_000_000n,
   networkFeeCapNativeBase: 1_000_000_000n,
   hasUnlistedSpender: false,
+  hasTokenRiskWarning: false,
 };
 
 const manualFacts: AutoModeFacts = { ...autoFacts, approvalMode: "manual" };

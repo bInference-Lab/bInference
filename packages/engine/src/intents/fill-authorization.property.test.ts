@@ -39,6 +39,7 @@ const autoFacts: fc.Arbitrary<AutoModeFacts> = fc.record({
   feePerGasNativeBase: fc.bigInt({ min: 0n, max: 10n ** 9n }),
   networkFeeCapNativeBase: fc.bigInt({ min: 0n, max: 10n ** 9n }),
   hasUnlistedSpender: fc.boolean(),
+  hasTokenRiskWarning: fc.boolean(),
 });
 
 const checks: fc.Arbitrary<AuthorizationCheck> = fc.oneof(

@@ -304,8 +304,9 @@ async function authorizeAndExecute(
   const { stored, gate, isLocked, execute, liveFills = false, communityPluginsOn } = run.options;
   const { machine, signal, fill } = run;
   const { facts: wallet, chain } = run.resolved;
+  const { chains } = run.options;
   const family = chain.family;
-  const parts = { stored, machine, signal, gate, isLocked, liveFills, wallet, family };
+  const parts = { stored, machine, signal, gate, isLocked, liveFills, wallet, family, chains };
   const plugins = communityPluginsOn === undefined ? {} : { communityPluginsOn };
   const authorized = await authorizeSimulated(
     { ...parts, ...plugins, ...(fill === undefined ? {} : { fill }) },

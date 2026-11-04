@@ -232,16 +232,25 @@ const testPaperBalances: readonly Amount[] = [{ asset: testCoin, base: 10n ** 18
 export const testAccount: AccountRef = accountRefSchema.parse("fake:1:0x0000000c");
 
 /**
- * The chain registry of the fake chain, with its family and signing scheme, and a router at
- * `0x0000000d` for each venue of `otherVenues` beside the fake venue's.
+ * The chain registry of the fake chain, with its family and signing scheme, a router at
+ * `0x0000000d` for each venue of `otherVenues` beside the fake venue's, and a token listed at each
+ * address of `listedTokens` beside the fake chain's own.
  */
-export function testChains(otherVenues: readonly string[] = []): ChainRegistry {
+export function testChains(
+  otherVenues: readonly string[] = [],
+  listedTokens: readonly string[] = [],
+): ChainRegistry {
   const fake = createFakeChainDefinition();
   const routers = fake.contracts.flatMap((router) =>
     otherVenues.map((venue) => ({ ...router, venue, address: "0x0000000d" })),
   );
+  const tokens = fake.tokens.flatMap((token) =>
+    listedTokens.map((address, n) => ({ ...token, symbol: `LST${String(n)}`, address })),
+  );
   return createChainRegistry({
-    chains: [{ ...fake, contracts: [...fake.contracts, ...routers] }],
+    chains: [
+      { ...fake, tokens: [...fake.tokens, ...tokens], contracts: [...fake.contracts, ...routers] },
+    ],
     families: [createFakeFamily()],
     signingSchemes: [createFakeSigningScheme()],
   });

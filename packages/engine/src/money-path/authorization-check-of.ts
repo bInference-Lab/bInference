@@ -24,6 +24,11 @@ export interface AuthorizationInput {
    */
   readonly hasUnlistedSpender: boolean;
   /**
+   * The trade buys a token that is not verified or has a risk warning, so the auto test asks
+   * (decision 0363). Always false for a move that buys no token, such as a stake or a send.
+   */
+  readonly hasTokenRiskWarning: boolean;
+  /**
    * The intent is a staking move, which credits only the agent's own wallet, so it stays inside
    * its positions; an unstake still asks (decision 0296). Absent for any other kind.
    */
@@ -41,7 +46,8 @@ export interface AuthorizationInput {
 export function authorizationCheckOf(
   input: AuthorizationInput,
 ): IntentTrigger<"authorization_checked"> {
-  const { settings, pass, wallet, isLocked, hasUnlistedSpender, stake } = input;
+  const { settings, pass, wallet, isLocked, hasUnlistedSpender, hasTokenRiskWarning, stake } =
+    input;
   const plugins = input.communityPluginsOn === true ? { communityPluginsOn: true } : {};
   const { limits, approvalMode } = settings;
   const facts: AutoModeFacts = {
@@ -58,6 +64,7 @@ export function authorizationCheckOf(
     feePerGasNativeBase: wallet.feePerGasNativeBase,
     networkFeeCapNativeBase: wallet.networkFeeCapNativeBase,
     hasUnlistedSpender,
+    hasTokenRiskWarning,
     ...plugins,
   };
   return {

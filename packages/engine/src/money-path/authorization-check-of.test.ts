@@ -13,7 +13,7 @@ const wallet = {
   recentOutflows: [],
 };
 const figures = { valueUsdMicros: 7n, rollingDaySpentUsdMicros: 11n };
-const base = { settings, wallet, hasUnlistedSpender: false };
+const base = { settings, wallet, hasUnlistedSpender: false, hasTokenRiskWarning: false };
 
 describe("the authorization check of a swap", () => {
   it("hands the auto test the mode, the caps, the policy's figures and marks and the fees", () => {
@@ -35,6 +35,7 @@ describe("the authorization check of a swap", () => {
           feePerGasNativeBase: 3n,
           networkFeeCapNativeBase: 5n,
           hasUnlistedSpender: false,
+          hasTokenRiskWarning: false,
         },
       },
       cards: cardRulesOf(testLimits),
@@ -59,6 +60,17 @@ describe("the authorization check of a swap", () => {
       hasUnlistedSpender: true,
     });
     expect(trigger.check).toMatchObject({ by: "auto_mode", facts: { hasUnlistedSpender: true } });
+  });
+
+  it("tells the auto test that the trade buys a token with a risk warning (decision 0363)", () => {
+    const pass = { figures, sellsDeniedToken: false };
+    const trigger = authorizationCheckOf({
+      ...base,
+      pass,
+      isLocked: false,
+      hasTokenRiskWarning: true,
+    });
+    expect(trigger.check).toMatchObject({ by: "auto_mode", facts: { hasTokenRiskWarning: true } });
   });
 
   it("tells the auto test that the engine is locked for the swap", () => {

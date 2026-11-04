@@ -1,4 +1,4 @@
-import type { ChainFamily } from "@binference/chain";
+import type { ChainFamily, ChainRegistry } from "@binference/chain";
 import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { FillAuthorization } from "../intents/authorization.js";
@@ -10,6 +10,7 @@ import { approvesLaunchContract } from "../venues/launch-contracts.js";
 import type { TradePlan } from "../venues/venue-host.js";
 import { type AdvanceParts, advanceIntent } from "./advance-intent.js";
 import { authorizationCheckOf } from "./authorization-check-of.js";
+import { hasTokenRiskWarning } from "./token-risk-warning.js";
 import type { WalletFacts } from "./wallet-facts.js";
 
 /**
@@ -52,6 +53,8 @@ export interface AuthorizeParts extends AdvanceParts {
   readonly wallet: WalletFacts;
   /** The family of the wallet's chain, which reads the spenders of the plan's approvals. */
   readonly family: ChainFamily;
+  /** The chain registry, whose token lists say whether the token a trade buys is verified. */
+  readonly chains: ChainRegistry;
   /** Whether a live fill of an auto order or a webhook rule may be confirmed (decision 0342). */
   readonly liveFills: boolean;
   readonly fill?: FillProposal;
@@ -85,7 +88,8 @@ async function fillTrigger(
 
 // The auto test reads the agent as the move to `simulated` read it back, so a switch to manual
 // during the run asks at once, and reads what the agent spent at the gate, as every earlier
-// confirmation of the agent left it (decision 0136).
+// confirmation of the agent left it (decision 0136). It reads the token's risk warnings from what
+// the quote and the risk steps stored, as the card shows them (decision 0363).
 async function autoTrigger(
   parts: AuthorizeParts,
   simulated: IntentSnapshot,
@@ -102,6 +106,7 @@ async function autoTrigger(
     wallet: parts.wallet,
     isLocked: parts.isLocked() && !simulated.record.isPaper,
     hasUnlistedSpender: approvesLaunchContract(chosen.plan, parts.family),
+    hasTokenRiskWarning: hasTokenRiskWarning(simulated.record, parts.chains),
     communityPluginsOn: parts.communityPluginsOn?.() === true,
   });
 }

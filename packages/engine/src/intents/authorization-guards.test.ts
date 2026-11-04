@@ -27,6 +27,7 @@ const autoFacts: AutoModeFacts = {
   feePerGasNativeBase: 50_000_000n,
   networkFeeCapNativeBase: 1_000_000_000n,
   hasUnlistedSpender: false,
+  hasTokenRiskWarning: false,
 };
 
 const order = "ord_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"ord">;
@@ -157,6 +158,7 @@ describe("opening the first card", () => {
     expect([
       asks({ hasUnlistedSpender: true }),
       asks({ sellsDeniedToken: true }),
+      asks({ hasTokenRiskWarning: true }),
       asks({ feePerGasNativeBase: 1_000_000_001n }),
       asks({ valueUsdMicros: 100_000_001n }),
       asks({ isLocked: true }),
@@ -168,6 +170,7 @@ describe("opening the first card", () => {
     ]).toStrictEqual([
       "spender",
       "deniedToken",
+      "riskWarn",
       "overFeeCap",
       "overCap",
       "locked",

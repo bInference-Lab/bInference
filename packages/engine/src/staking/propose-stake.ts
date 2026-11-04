@@ -106,6 +106,7 @@ async function authorize(
       wallet: resolved.facts,
       isLocked: isLocked() && !simulated.record.isPaper,
       hasUnlistedSpender: false,
+      hasTokenRiskWarning: false,
       stake: { isUnstake: resolved.ask.action === "unstake" },
       communityPluginsOn: options.communityPluginsOn?.() === true,
     });

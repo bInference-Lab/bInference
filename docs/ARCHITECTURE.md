@@ -606,7 +606,8 @@ default) or `auto` mode.
 - **Always a tap, in both modes:** sends, withdrawals, unstakes (the funds stay locked while they
   unbond), bridges, token launches, approvals to a spender outside the registry, anything over a
   cap, a sale of a token on the deny list
-  ([decision 0101](DECISIONS.md#d0101)), a fee per gas above the chain's network fee cap
+  ([decision 0101](DECISIONS.md#d0101)), a buy of a token that is not verified or has a risk
+  warning ([decision 0363](DECISIONS.md#d0363)), a fee per gas above the chain's network fee cap
   ([decision 0102](DECISIONS.md#d0102)), any intent from an outside-content turn
   ([rule 13](#rule-13)), and every proposal from an MCP client.
 - Switching to auto is a loosening ([decision 0089](DECISIONS.md#d0089)); switching back to manual

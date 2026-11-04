@@ -76,6 +76,7 @@ export async function runToCard(
     wallet: steps.wallet,
     isLocked: steps.isLocked(),
     hasUnlistedSpender: false,
+    hasTokenRiskWarning: false,
   });
   return advanceIntent(advance, simulated, { trigger });
 }

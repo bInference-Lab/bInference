@@ -50,6 +50,7 @@ Auto mode runs an action without a card only when every one of these holds:
 - it fits the per-trade cap and the 24-hour cap
 - the network fee is at most the network fee cap
 - it sells no token on the deny list
+- it buys no token that is not verified, and none with a risk warning such as a tax
 - every approval it sets goes to a spender the registry lists
 - the agent proposed it, not an MCP client
 - the chat that led to it read no outside content, and no community plugin is enabled

@@ -1,4 +1,4 @@
-import { type Id, ok } from "@binference/core";
+import { bpsSchema, type Id, ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { testSnapshot } from "../approval/test-snapshot.js";
@@ -9,6 +9,7 @@ import { testWalletRecord } from "../install/test-wallet-record.js";
 import type { Authorization } from "../intents/authorization.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
+import { riskDocument } from "../intents/intent-documents.schema.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
 import { testAgent, testNowMs, testWallet } from "../intents/test-intents.js";
 import { eightyCents, fillPrices } from "../orders/test-fills.js";
@@ -141,6 +142,22 @@ describe("the authorization of an auto order's fill", () => {
     };
 
     await expect(authorized(paper, { liveFills: false })).resolves.toMatchObject({
+      states: [["confirmed", undefined]],
+    });
+  });
+
+  it("confirms a fill whose token has a risk warning: fills never meet the auto test (decision 0363)", async () => {
+    const simulated = await simulatedLiveFill();
+    const warned = riskDocument.encode({
+      verdict: "warn",
+      flags: [{ code: "mintable", source: "first" }],
+      buyTaxBps: bpsSchema.parse(300),
+      onCurve: false,
+      checkedAt: testNowMs,
+    });
+    const risky = { ...simulated, record: { ...simulated.record, risk: warned } };
+
+    await expect(authorized(risky, { liveFills: true })).resolves.toMatchObject({
       states: [["confirmed", undefined]],
     });
   });

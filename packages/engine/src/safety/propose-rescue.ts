@@ -231,6 +231,7 @@ async function runRescue(
     wallet: run.wallet,
     isLocked: parts.isLocked(),
     hasUnlistedSpender: false,
+    hasTokenRiskWarning: false,
   });
   return advanceIntent(run.advance, simulated, { trigger });
 }

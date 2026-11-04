@@ -237,7 +237,7 @@
   "approval.current": "{agent} is in {mode, select, auto {auto} other {manual}} mode, since {changedAt}.",
   "approval.unchanged": "{agent} is in {mode, select, auto {auto} other {manual}} mode already, since {changedAt}.",
   "approval.set": "{agent} is in {mode, select, auto {auto} other {manual}} mode now, since {changedAt}.",
-  "approval.autoNote": "In auto mode, the agent's buys, sells and swaps within its per-trade cap and its 24-hour cap run without a tap, each with a receipt. Sends and anything over a cap still ask you. Run `binference approval manual` to switch back.",
+  "approval.autoNote": "In auto mode, the agent's buys, sells and swaps within its per-trade cap and its 24-hour cap run without a tap, each with a receipt. Sends, buys of a token that is not verified or has a risk warning, and anything over a cap still ask you. Run `binference approval manual` to switch back.",
   "approval.pluginAsks": "A community plugin is on, so auto mode asks you for every proposal: the words of its tools reach every turn. Disable it with `binference plugin disable` and its name to let auto mode run.",
   "mode.live": "{name} ({agent}) is live now. Its trades use real money from its wallet, and its first live card says so.",
   "mode.alreadyLive": "{name} ({agent}) is live already.",
