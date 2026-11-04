@@ -112,4 +112,27 @@ describe("the downtime re-check's state", () => {
     check.close();
     expect(check.holds(skipRow(dca, { reason: "missed", atMs: testNowMs, n: 3 }))).toBe(false);
   });
+
+  it("joins a later resume into the open re-check: spans add up, the stronger cause names it", () => {
+    const check = createDowntimeCheck();
+    const minute = 60_000;
+    const sleep = { offFromMs: testNowMs - hourMs, offMs: hourMs, atMs: testNowMs };
+    check.begin({ cause: "wake", ...sleep, orders: [stop] });
+    const clock = { offFromMs: testNowMs, offMs: minute, atMs: testNowMs + minute };
+    check.begin({ cause: "clock", ...clock, orders: [stop, dca] });
+    check.begin({ cause: "wake", ...clock, offMs: -minute, orders: [] });
+    const open = check.open();
+    expect([open?.cause, open?.offMs, open?.offFromMs, open?.sinceMs]).toStrictEqual([
+      "clock",
+      hourMs + minute,
+      testNowMs - hourMs,
+      testNowMs,
+    ]);
+    expect(open?.orders).toStrictEqual(
+      new Map([
+        [stop.id, { agentId: testAgent, kind: "stopLoss", standing: { state: "pending" } }],
+        [dca.id, { agentId: testAgent, kind: "dca", standing: { state: "pending" } }],
+      ]),
+    );
+  });
 });

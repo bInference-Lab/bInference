@@ -35,4 +35,17 @@ describe("a token launch's setting lines", () => {
       },
     ]);
   });
+
+  it("names a picture by its upload until it is read, and says nothing is public yet", () => {
+    const lines = launchDetailLines({
+      venue: "flap",
+      pair: bnb,
+      links: [],
+      picture: { upload: "upl_abc" },
+      settings: [],
+    });
+    expect(lines).toStrictEqual([
+      { key: "card.launch.upload", values: { upload: { type: "text", text: "upl_abc" } } },
+    ]);
+  });
 });
