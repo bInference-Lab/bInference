@@ -43,3 +43,26 @@ export async function unlistedAssetInfos(
   });
   return infos.length === unlisted.length ? ok(Object.fromEntries(infos)) : err("asset.unreadable");
 }
+
+/**
+ * What a trade's tokens the registry does not list answer on chain, for its card: the asset it
+ * spends and the one it buys, when there is one. A fill opens no card, so it reads none.
+ */
+export async function tradeAssetInfos(
+  parts: { readonly chains: ChainRegistry; readonly readTokenFacts: ReadTokenFacts },
+  trade: {
+    readonly ask: { readonly assetIn: AssetRef; readonly assetOut?: AssetRef | undefined };
+    readonly fill: object | undefined;
+  },
+  signal: AbortSignal,
+): Promise<Result<AssetInfos, "asset.unreadable">> {
+  const { assetIn, assetOut } = trade.ask;
+  if (trade.fill !== undefined) {
+    return ok({});
+  }
+  return unlistedAssetInfos(
+    parts,
+    assetOut === undefined ? [assetIn] : [assetIn, assetOut],
+    signal,
+  );
+}

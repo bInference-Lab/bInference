@@ -1,6 +1,6 @@
 import type { PriceSource } from "@binference/chain";
 import { type Clock, err, type IdSource, ok, type Result } from "@binference/core";
-import type { AssetInfos, IntentRequest, ProtocolErrorCode } from "@binference/protocol";
+import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -26,7 +26,7 @@ import { type ResolvedProposal, type ResolveOptions, resolveProposal } from "./r
 import { assessRisk, storeSimulation } from "./risk-and-simulation.js";
 import { startProposal, storeProposed } from "./store-proposed.js";
 import { type SwapTrade, swapSubjectOf } from "./swap-trade.js";
-import { type ReadTokenFacts, unlistedAssetInfos } from "./token-facts.js";
+import { type ReadTokenFacts, tradeAssetInfos } from "./token-facts.js";
 import type { Holdings } from "./wallet-facts.js";
 
 /** Who proposes: their role for the state machine, and their id for the intents table. */
@@ -312,21 +312,6 @@ async function authorizeAndExecute(
   return execute(authorized, fill === undefined ? { signal } : { signal, fill });
 }
 
-// What the trade's tokens the registry does not list answer on chain, for its card. A fill opens
-// no card, so it reads none.
-async function assetsOf(
-  options: MoneyPathOptions,
-  proposal: { readonly resolved: ResolvedProposal; readonly fill: FillProposal | undefined },
-  signal: AbortSignal,
-): Promise<Result<AssetInfos, "asset.unreadable">> {
-  const { assetIn, assetOut } = proposal.resolved.ask;
-  if (proposal.fill !== undefined) {
-    return ok({});
-  }
-  const assets = assetOut === undefined ? [assetIn] : [assetIn, assetOut];
-  return unlistedAssetInfos(options, assets, signal);
-}
-
 async function propose(
   options: MoneyPathOptions,
   call: {
@@ -353,7 +338,7 @@ async function propose(
   if (!isPaper) {
     options.lowGas.check(gasReadingOf(resolved.value));
   }
-  const assets = await assetsOf(options, { resolved: resolved.value, fill }, signal);
+  const assets = await tradeAssetInfos(options, { ask: resolved.value.ask, fill }, signal);
   if (!assets.ok) {
     return assets;
   }
