@@ -3,9 +3,15 @@ import type { JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { testToken } from "../intents/test-intents.js";
+import { testCoin, testToken } from "../intents/test-intents.js";
 import type { WatchedOrderPrice } from "./order-triggers.js";
-import { activeOrder, fillIntentsOf, startFillEngine, wholeToken } from "./test-fills.js";
+import {
+  activeOrder,
+  fillIntentsOf,
+  fillPrices,
+  startFillEngine,
+  wholeToken,
+} from "./test-fills.js";
 import { testStopLoss } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
@@ -38,5 +44,22 @@ describe("a sale sized in dollars", () => {
     const quote = quoteDocument.decode(quoteOf(sold));
     expect(outcomes.map(({ outcome }) => outcome)).toStrictEqual(["filled"]);
     expect(quote.amountIn.base).toBe(333_333n);
+  });
+
+  it("ends as fill_bounds, sized again at no price, while nothing prices the coin it gets", async () => {
+    const prices = new Map(fillPrices);
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testStopLoss({ size: { usdMicros: 400_000n } }));
+    prices.delete(testCoin);
+
+    const outcome = await test.engine.fillOrder(
+      { order: order.id, price: { usdPerBaseUnit: eightyCents.usdPerBaseUnit, decimals: 6 } },
+      live,
+    );
+
+    expect(outcome).toBe("skipped");
+    expect(await fillIntentsOf(test)).toMatchObject([
+      { kind: "sell", state: "failed_check", reason: "fill_bounds" },
+    ]);
   });
 });

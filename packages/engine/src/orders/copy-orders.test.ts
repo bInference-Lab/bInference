@@ -31,7 +31,7 @@ import {
   noticesOf,
   startFillEngine,
 } from "./test-fills.js";
-import { tapCard, testCopy, testLeader } from "./test-orders.js";
+import { contendedOrders, storedOrder, tapCard, testCopy, testLeader } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 const unlisted = assetRefSchema.parse("fake:1/token:0x0000000f");
@@ -384,6 +384,31 @@ describe("the copy orders' runner", () => {
     expect(await fillIntentsOf(test)).toStrictEqual([]);
   });
 
+  it("ends a cut-off take on the next run when another write beat its end, recording it once", async () => {
+    // The skip's notice hour is the run's first write of the order; its end is the second.
+    const armed = { writes: 0 };
+    const race = contendedOrders(1, () => {
+      armed.writes -= 1;
+      return armed.writes === 0;
+    });
+    const test = await startFillEngine({ prices, orders: race.orders });
+    const order = await activeOrder(test, testCopy());
+    const [stored] = await storeTrades(test, [
+      leaderTrade(1, { side: "buy", atMs: test.clock.now() }),
+    ]);
+    await takeTrade(test, order.id, takingOf(stored));
+    armed.writes = 2;
+
+    await test.engine.runCopies(live);
+    const raced = (await copyStateNow(test, order.id)).taking;
+    await test.engine.runCopies(live);
+
+    expect([race.raced(), raced?.id]).toStrictEqual([1, stored?.id]);
+    expect((await copyStateNow(test, order.id)).taking).toBeUndefined();
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:missed"]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
   it("copies the leader's next buy in the same run that records a cut-off one as missed", async () => {
     const test = await startFillEngine({ prices });
     const order = await activeOrder(test, testCopy());
@@ -531,6 +556,19 @@ describe("the copy orders' runner", () => {
     expect(outcomes(await fillRowsOf(test, first.id))).toStrictEqual(["filled", "filled"]);
     const rows = await fillRowsOf(test, second.id);
     expect(outcomes(rows)).toStrictEqual(["skipped:copy_daily_cap"]);
+  });
+
+  it("copies no trade past its last fill, and stops reading once the order filled", async () => {
+    const test = await startFillEngine({ prices });
+    const order = await activeOrder(test, testCopy({ maxFills: 1 }));
+    const buys = [1, 2].map((n) => leaderTrade(n, { side: "buy", atMs: test.clock.now() }));
+    await storeTrades(test, buys);
+
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["filled"]);
+    expect(await fillIntentsOf(test)).toHaveLength(1);
+    expect((await storedOrder(test, order.id)).state).toBe("filled");
   });
 
   it("passes over a leader trade of an asset on a chain the registry does not hold", async () => {

@@ -10,7 +10,7 @@ import {
   fillRowsOf,
   startFillEngine,
 } from "./test-fills.js";
-import { contendedOrders, testCopy } from "./test-orders.js";
+import { contendedOrders, storedOrder, testCopy } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 // The fake venue pays two base units for one, so the token's price keeps a copy's sale small.
@@ -24,10 +24,10 @@ function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
 }
 
 // A paper engine whose lock a test turns, with an active copy order that bought the token.
-async function bought(options: Pick<TestEngineOptions, "orders"> = {}) {
+async function bought(options: Pick<TestEngineOptions, "orders"> = {}, request = testCopy()) {
   const lock = { isLocked: false };
   const test = await startFillEngine({ ...options, prices, isLocked: () => lock.isLocked });
-  const order = await activeOrder(test, testCopy());
+  const order = await activeOrder(test, request);
   await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
   await test.engine.runCopies(live);
   return { test, order, lock };
@@ -56,6 +56,22 @@ describe("a copy order's mirrored sale that fails for a passing reason", () => {
     const sales = (await fillIntentsOf(test)).filter(({ kind }) => kind === "sell");
     expect(sales).toHaveLength(1);
     expect((await copyStateNow(test, order.id)).retries).toStrictEqual([]);
+  });
+
+  it("fills the order when the sale sold again uses its last fill, and reads nothing after", async () => {
+    const { test, order, lock } = await bought({}, testCopy({ maxFills: 2 }));
+    lock.isLocked = true;
+    const atMs = test.clock.now();
+    await storeTrades(test, [leaderTrade(2, { side: "sell", atMs, shareSoldBps: share })]);
+    await test.engine.runCopies(live);
+    lock.isLocked = false;
+
+    await test.clock.advance(60_000);
+    await test.engine.runCopies(live);
+
+    const rows = await fillRowsOf(test, order.id);
+    expect(outcomes(rows)).toStrictEqual(["filled", "skipped:engine_locked", "filled"]);
+    expect((await storedOrder(test, order.id)).state).toBe("filled");
   });
 
   it("is given up an hour after the leader's sale, with a notice", async () => {

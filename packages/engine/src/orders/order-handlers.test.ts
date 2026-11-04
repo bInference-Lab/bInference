@@ -33,6 +33,25 @@ const testDca: OrderRequest = {
   trigger: { cron: "0 9 * * *" },
 };
 
+// An order store whose first move of an order into `active` finds it moved by another write.
+function losingFirstActivation(): {
+  readonly orders: (store: OrderStore) => OrderStore;
+  readonly isLost: () => boolean;
+} {
+  const lost = { isLost: false };
+  const orders = (store: OrderStore): OrderStore => ({
+    ...store,
+    move: async (moves, call) => {
+      if (lost.isLost || !moves.some(({ state }) => state === "active")) {
+        return store.move(moves, call);
+      }
+      lost.isLost = true;
+      return err("stale");
+    },
+  });
+  return { orders, isLost: () => lost.isLost };
+}
+
 // The order store, freezing the test agent from the CLI right before it stores a new order, as
 // a freeze that lands between the order's checks and its write.
 function freezingAtCreate(store: OrderStore, holder: { readonly test?: TestEngine }): OrderStore {
@@ -135,6 +154,22 @@ describe("an auto order's card", () => {
     expect(await test.stores.orders.list({ states: ["cancelled"], limit: 5 }, live)).toMatchObject([
       { id: left?.id },
     ]);
+  });
+
+  it("activates at the next tick an order whose Confirm lost its write to another", async () => {
+    const race = losingFirstActivation();
+    const test = await startOrderEngine({ orders: race.orders });
+    const view = await createdOrder(test);
+
+    await tapCard(test, view.intent, "confirm");
+    const first = (await storedOrder(test, view.order)).state;
+    await test.engine.tickOrders(live);
+
+    expect([race.isLost(), first]).toStrictEqual([true, "awaiting_confirmation"]);
+    expect(await storedOrder(test, view.order)).toMatchObject({
+      state: "active",
+      cardId: view.card,
+    });
   });
 
   it("takes the tap on an order's card while the engine is locked: it signs nothing", async () => {
