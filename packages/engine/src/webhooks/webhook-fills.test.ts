@@ -81,6 +81,25 @@ describe("a webhook rule's fills", () => {
     ]);
   });
 
+  it("handles, filling nothing, an inbox entry that names no alert it can read", async () => {
+    const test = await startFillEngine();
+    const entry = { source: "webhook", receivedAtMs: test.clock.now() } as const;
+    await test.stores.inbox.admit(
+      { ...entry, sourceKey: "wh:unread", payload: { body: "no rule here" } },
+      live,
+    );
+    await test.stores.inbox.admit(
+      { ...entry, sourceKey: "wh:pruned", payload: { rule: "whr_gone", event: 999 } },
+      live,
+    );
+
+    await test.engine.fillWebhookAlerts(live);
+
+    const waiting = await test.stores.inbox.unhandled({ keyPrefix: "wh:", limit: 5 }, live);
+    expect(waiting).toStrictEqual([]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
   it("fills nothing for a replayed alert: the same body is a repeat, and a run takes each alert once", async () => {
     const test = await startFillEngine();
     const created = await activeRule(test);

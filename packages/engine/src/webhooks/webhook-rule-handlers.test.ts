@@ -22,6 +22,28 @@ async function ruleOf(
   return test.stores.webhookRules.get(rule, live);
 }
 
+// A rule store that, once armed, freezes the test agent right before the next move of a rule into
+// `active`, as a freeze that lands between a card's Confirm and its rule's move.
+function freezingAtActivation() {
+  let engine: TestEngine | undefined;
+  return {
+    arm: (test: TestEngine) => {
+      engine = test;
+    },
+    wrap: (store: WebhookRuleStore): WebhookRuleStore => ({
+      ...store,
+      move: async (move, call) => {
+        const armed = engine;
+        if (armed !== undefined && move.state === "active") {
+          engine = undefined;
+          await freeze(armed);
+        }
+        return store.move(move, call);
+      },
+    }),
+  };
+}
+
 describe("webhook rule operations", () => {
   it("answers a rule's URL once, which works only after its card's Confirm", async () => {
     const test = await startOrderEngine();
@@ -306,6 +328,19 @@ describe("webhook rule operations, further", () => {
     await tapCard(test, created.intent, "confirm");
 
     expect((await ruleOf(test, created.rule))?.state).toBe("deleted");
+    expect(await alertTo(test, created.url)).toBe("not_found");
+  });
+
+  it("ends a rule whose agent was frozen between its card's Confirm and the rule's move", async () => {
+    const freezing = freezingAtActivation();
+    const test = await startOrderEngine({ webhookRules: freezing.wrap });
+    const created = await createdRule(test);
+    freezing.arm(test);
+
+    await tapCard(test, created.intent, "confirm");
+
+    expect((await ruleOf(test, created.rule))?.state).toBe("deleted");
+    expect((await test.stores.intents.get(created.intent, live))?.state).toBe("cancelled");
     expect(await alertTo(test, created.url)).toBe("not_found");
   });
 
