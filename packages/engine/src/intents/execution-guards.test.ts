@@ -5,6 +5,7 @@ import {
   cancelUnsent,
   failIdentityAtQueue,
   failMovedName,
+  failStakeAtQueue,
   failOnchain,
   failUnsent,
   fillOnPaper,
@@ -313,6 +314,32 @@ describe("an identity registration the queue read again", () => {
     });
     const paper = { ...confirmed, kind: "registerIdentity", isPaper: true } as const;
     expect(failIdentityAtQueue(refusedIdentity(paper))).toStrictEqual({
+      ok: false,
+      error: "paper_intent",
+    });
+  });
+});
+
+function refusedStake(status: IntentStatus): GuardInput<"stake_refused"> {
+  return { status, trigger: { type: "stake_refused", reason: "validator_jailed" }, nowMs: 0 };
+}
+
+describe("a staking move the queue planned again", () => {
+  it("ends a live stake with the venue's reason and nothing signed", () => {
+    const status = { ...confirmed, kind: "stake" } as const;
+    expect(failStakeAtQueue(refusedStake(status))).toStrictEqual({
+      ok: true,
+      value: { reason: "validator_jailed" },
+    });
+  });
+
+  it("refuses any other kind, and a paper stake, which never reaches a queue", () => {
+    expect(failStakeAtQueue(refusedStake(confirmed))).toStrictEqual({
+      ok: false,
+      error: "not_stake",
+    });
+    const paper = { ...confirmed, kind: "stake", isPaper: true } as const;
+    expect(failStakeAtQueue(refusedStake(paper))).toStrictEqual({
       ok: false,
       error: "paper_intent",
     });

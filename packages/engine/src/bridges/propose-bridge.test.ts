@@ -6,7 +6,7 @@ import {
   chainRefSchema,
 } from "@binference/chain";
 import { createFakeAccountCodeReader, fakeDepositAbi } from "@binference/chain/testing";
-import { err, type Id, idSchema } from "@binference/core";
+import { err, type Id, idSchema, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testSnapshot } from "../approval/test-snapshot.js";
 import { readOf } from "../fakes/fake-ceiling-read.js";
@@ -73,6 +73,17 @@ function unreadBalances(source: WalletFactsSource): WalletFactsSource {
   return { ...source, balances: async () => Promise.resolve([]) };
 }
 
+// The fake bridge with every quote saying a fill may pay the destination's coin of what arrives.
+function paysCoin(fake: Bridge): Bridge {
+  return {
+    ...fake,
+    quote: async (request, options) => {
+      const quoted = await fake.quote(request, options);
+      return quoted.ok ? ok({ ...quoted.value, deliveredAsCoin: testArrives }) : quoted;
+    },
+  };
+}
+
 async function propose(
   test: Awaited<ReturnType<typeof bridgeEngine>>["test"],
   request = testBridge(),
@@ -130,6 +141,19 @@ describe("proposing a bridge", () => {
     expect(await testCardText(test, view, "en")).toContain(
       "⚠️ TKN arrives on Fake Two as TKG, a different token",
     );
+  });
+
+  it("warns of no other token when a fill may pay the destination's coin of the token sent", async () => {
+    const route = { ...testRoute, arrives: testOtherArrives, coin: testArrives };
+    const base = await bridgeEngine({ routes: [route] });
+    const { test } = await bridgeEngine({ routes: [route], bridge: paysCoin(base.bridge) });
+
+    const view = expectOk(await propose(test));
+
+    expect(await testCardText(test, view, "en")).not.toContain(
+      "⚠️ TKN arrives on Fake Two as TKG, a different token",
+    );
+    expect(Object.keys(view.assets)).toContain(testArrives);
   });
 
   it("pays the rescue address there only while it holds no code on either chain", async () => {

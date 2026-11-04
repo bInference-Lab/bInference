@@ -43,6 +43,40 @@ describe("an auto order's summary line", () => {
     });
   });
 
+  it("says a limit sale sells an amount of its token when its price is met", () => {
+    const sale: LimitOrderRequest = {
+      ...limitBuy,
+      side: "sell",
+      size: { base: 7_000_000n },
+      trigger: { price: 1_200_000n, direction: "above" },
+    };
+    expect(orderSummaryLine(sale)).toStrictEqual({
+      key: "card.order.summary.limitSell",
+      values: {
+        sell: {
+          type: "line",
+          line: {
+            key: "card.order.sell",
+            values: {
+              size: { type: "choice", choice: "other" },
+              amount: { type: "amount", amount: { asset: testToken, base: 7_000_000n } },
+            },
+          },
+        },
+        condition: {
+          type: "line",
+          line: {
+            key: "card.order.condition",
+            values: {
+              direction: { type: "choice", choice: "above" },
+              price: { type: "usd", usdMicros: 1_200_000n },
+            },
+          },
+        },
+      },
+    });
+  });
+
   it("says a buy stored before it named what it spends spends its dollars alone", () => {
     expect(lineOf(orderSummaryLine(limitBuy), "spend")).toStrictEqual({
       type: "line",

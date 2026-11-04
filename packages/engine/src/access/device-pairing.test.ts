@@ -49,6 +49,14 @@ describe("console pairing codes", () => {
     expect(await access.usePairCode(use, live)).toMatchObject({ ok: true });
   });
 
+  it("refuses a new code whose hash is already kept, so another is asked for", async () => {
+    const options = { access: createMemoryAccessStore(), clock: createManualClock(testNowMs) };
+    await issueConsolePairCode({ ...options, random: createSeededRandom(1) }, live);
+    await expect(
+      issueConsolePairCode({ ...options, random: createSeededRandom(1) }, live),
+    ).rejects.toMatchObject({ code: "engine.pair_code_taken" });
+  });
+
   it("hashes a console code apart from the same text as a Telegram start code", () => {
     expect(consolePairCodeHash("abc")).not.toBe(consolePairCodeHash("abd"));
     expect(consolePairCodeHash("abc")).toMatch(/^[0-9a-f]{64}$/);
@@ -106,6 +114,27 @@ describe("device pairing", () => {
     const request = { code, publicKey: spkiOf("p256"), alg: "ed25519", label: "Tab" } as const;
     await expect(devices.pair(request, live)).resolves.toStrictEqual(err("protocol.bad_args"));
     expectOk(await devices.pair({ ...request, alg: "p256" }, live));
+    expect(pushes).toHaveLength(1);
+  });
+
+  it("refuses a device whose new id collides with a stored one, telling no surface", async () => {
+    const clock = createManualClock(testNowMs);
+    const access = createMemoryAccessStore();
+    const pushes: EnginePush[] = [];
+    const devicesWith = (seed: number) =>
+      createDevicePairing({
+        access,
+        clock,
+        ids: createIdSource({ clock, random: createSeededRandom(seed) }),
+        publish: (push) => pushes.push(push),
+      });
+    const codeOf = async (seed: number) =>
+      (await issueConsolePairCode({ access, clock, random: createSeededRandom(seed) }, live)).code;
+    const request = { publicKey: spkiOf("ed25519"), alg: "ed25519", label: "Laptop" } as const;
+    expectOk(await devicesWith(9).pair({ ...request, code: await codeOf(1) }, live));
+    await expect(
+      devicesWith(9).pair({ ...request, code: await codeOf(2) }, live),
+    ).rejects.toMatchObject({ code: "engine.device_taken" });
     expect(pushes).toHaveLength(1);
   });
 

@@ -82,12 +82,15 @@ describe("an agent's notice settings", () => {
     expect(set).toStrictEqual(err("protocol.bad_args"));
   });
 
-  it("refuses an agent it does not hold", async () => {
+  it("refuses an agent it does not hold, to read or to set", async () => {
     const test = await startTestEngine();
     const call = testCall({ agent: unknownAgent, muted: ["fill"] });
     await expect(test.engine.handlers["notice/setSettings"](call)).resolves.toStrictEqual(
       err("agent.not_found"),
     );
+    await expect(
+      test.engine.handlers["notice/getSettings"](testCall({ agent: unknownAgent })),
+    ).resolves.toStrictEqual(err("agent.not_found"));
   });
 
   it("reads the row again after another write moved it, and sets the muted kinds", async () => {
