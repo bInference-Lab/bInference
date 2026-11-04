@@ -209,6 +209,31 @@ describe("the build checks of a token launch", () => {
       error: "step_order",
     });
   });
+  it("refuse an approval to a contract the launchpad does not declare, and a plan of three steps", () => {
+    const usdBuy = { asset: usd, base: 7n };
+    const launch = { ...create, pair: usd, firstBuy: { ...buy, spend: usdBuy } };
+    const tokenBounds = { ...bounds, pair: usd, firstBuy: usdBuy };
+    const approve = (spender: string) =>
+      fakeDraft(wallet, { to: "0x0000000a", value: 0n, data: `approve,${spender},7` });
+    const createCall = fakeDraft(wallet, {
+      to: "0x0000000d",
+      value: 2_000n,
+      data: fakeLaunchData(launch),
+    });
+
+    expect(checkDrafts([approve("0x000000ee"), createCall], tokenBounds)).toStrictEqual({
+      ok: false,
+      error: "undeclared_contract",
+    });
+    expect(
+      checkDrafts([approve("0x0000000d"), approve("0x0000000d"), createCall], tokenBounds),
+    ).toStrictEqual({ ok: false, error: "step_order" });
+    expect(checkDrafts([createCall, approve("0x0000000d")], tokenBounds)).toStrictEqual({
+      ok: false,
+      error: "step_order",
+    });
+  });
+
   it("pass a first buy with no minimum when the launcher declares it carries none", () => {
     const unbound = { ...create, firstBuy: { ...buy, minOut: 0n } };
     const drafts = [

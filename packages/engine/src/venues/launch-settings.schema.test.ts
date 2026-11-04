@@ -95,6 +95,18 @@ describe("a launch's launchpad settings", () => {
     });
   });
 
+  it("holds a share with no bounds to 0 to 10,000 and a count with none to 0 and up", () => {
+    const open: readonly LaunchOption[] = [
+      { name: "taxBps", type: "bps" },
+      { name: "supply", type: "count" },
+    ];
+    const take = (taxBps: number, supply: number) =>
+      launchSettingsOf(open, { taxBps, supply }, chain).ok;
+
+    expect([take(0, 0), take(10_000, 9_007_199_254_740_991)]).toStrictEqual([true, true]);
+    expect([take(-1, 0), take(10_001, 0), take(0, -1)]).toStrictEqual([false, false, false]);
+  });
+
   it("takes no settings when the launchpad declares none", () => {
     expect(launchSettingsOf([], undefined, chain)).toStrictEqual({ ok: true, value: [] });
   });

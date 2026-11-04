@@ -104,6 +104,65 @@ describe("a launchpad's settings in the launch host", () => {
   });
 });
 
+describe("a launchpad's pin in the launch host", () => {
+  it("refuses to host a launchpad with a pin and no pin status, or a pin status and no pin", () => {
+    const { pin: _pin, ...noPin } = createFakeLauncher();
+    const { pinStatus: _status, ...noStatus } = createFakeLauncher();
+
+    expect(() => hostOf(noPin)).toThrow(expect.objectContaining({ code: "venue.bad_declaration" }));
+    expect(() => hostOf(noStatus)).toThrow(
+      expect.objectContaining({ code: "venue.bad_declaration" }),
+    );
+  });
+
+  it("reads a pin of a launchpad that pins nothing, or of a venue it does not host, as no report yet", async () => {
+    const host = hostOf(
+      createFakeLinkLauncher({ launchOptions: [{ name: "pictureLink", type: "link" }] }),
+    );
+
+    await expect(host.pinStatus(pad, null, live)).resolves.toBe("pending");
+    await expect(host.pinStatus("other-pad", null, live)).resolves.toBe("pending");
+  });
+});
+
+describe("a venue the launch host does not host", () => {
+  it("has no settings, warnings, picture place or launch wallet calls, and fits no words", () => {
+    const host = fake({ launchOptions: settings });
+
+    expect([
+      host.launchOptions("other-pad"),
+      host.cardWarnings("other-pad"),
+      host.outsideOnlySettings("other-pad"),
+      host.launchWalletCalls("other-pad"),
+    ]).toStrictEqual([[], [], [], []]);
+    expect(host.picturePlace("other-pad")).toBeUndefined();
+    expect(host.fitsWords("other-pad", launch)).toBe(false);
+  });
+});
+
+describe("a launch the launch host cannot place", () => {
+  const away = { ...launch, pair: assetRefSchema.parse("fake:9/slip44:1") };
+  const elsewhere = { ...launch, venue: "other-pad" };
+
+  it("has no route to quote or build, and its launchpad is down for a pin", async () => {
+    const host = fake();
+
+    await expect(host.quote(away, live)).resolves.toMatchObject({ ok: false, error: "no_route" });
+    await expect(host.quote(elsewhere, live)).resolves.toMatchObject({
+      ok: false,
+      error: "no_route",
+    });
+    await expect(host.build(away, upload, live)).resolves.toMatchObject({
+      ok: false,
+      error: "no_route",
+    });
+    await expect(host.pin(elsewhere, picture, live)).resolves.toMatchObject({
+      ok: false,
+      error: "venue_down",
+    });
+  });
+});
+
 describe("a launchpad that uploads nothing", () => {
   const link: LaunchOption = { name: "pictureLink", type: "link" };
 
