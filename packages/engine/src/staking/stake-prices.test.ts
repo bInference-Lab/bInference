@@ -86,6 +86,13 @@ describe("pricing receipt tokens by their pool", () => {
     expect(await prices.usdPrice(unlisted, live)).toStrictEqual({ ok: false, error: "no_price" });
   });
 
+  it("leaves a receipt unpriced while its coin's price is no usable price", async () => {
+    const zero = { numerator: 0n, denominator: 1n };
+    const { parts } = partsOf(async () => Promise.resolve([pool]), new Map([[testCoin, zero]]));
+    const { prices } = await stakePricesOf(parts, [receipt], live);
+    expect(await prices.usdPrice(receipt, live)).toStrictEqual({ ok: false, error: "no_price" });
+  });
+
   it("leaves a receipt unpriced when its venue does not answer", async () => {
     const { parts } = partsOf(async () => Promise.reject(new Error("down")));
     const { pools, prices } = await stakePricesOf(parts, [receipt], live);

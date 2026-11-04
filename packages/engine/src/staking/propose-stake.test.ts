@@ -4,8 +4,10 @@ import type { FakeStakingVenue } from "@binference/chain/testing";
 import { err, idSchema } from "@binference/core";
 import { intentStates, type IntentView, type StakeRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakeTokenFacts, fakeTokenFacts } from "../fakes/fake-token-facts.js";
-import { expectOk, testCoin } from "../intents/test-intents.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
+import { expectOk, testAgent, testCoin, testWallet } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
@@ -211,6 +213,22 @@ describe("resolving a staking request", () => {
     ];
 
     expect(answers).toStrictEqual(["protocol.bad_args", "wallet.not_found"]);
+    const stored = await test.stores.intents.list({ states: [...intentStates], limit: 10 }, live);
+    expect(stored).toStrictEqual([]);
+  });
+
+  it("refuses a stake from the agent's bridge wallet, which only makes bridge deposits", async () => {
+    const bridge = fixtureId("wal", 0xd2);
+    const test = await startStakeEngine(testStakingFake(), { wallets: [testWallet, bridge] });
+    test.stores.install.addWallet({
+      ...testWalletRecord({ id: bridge, agentId: testAgent, label: "bridge", createdAtMs: 1 }),
+      address: "0x000000d2",
+      role: "bridge",
+    });
+
+    await expect(answerOf(test, stakeRequest("stake", { wallet: bridge }))).resolves.toBe(
+      "intent.bridge_wallet_only",
+    );
     const stored = await test.stores.intents.list({ states: [...intentStates], limit: 10 }, live);
     expect(stored).toStrictEqual([]);
   });

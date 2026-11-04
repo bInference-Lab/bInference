@@ -1,4 +1,5 @@
 import { accountRefSchema, chainRefSchema } from "@binference/chain";
+import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { setCeiling } from "../ceilings/set-ceiling.js";
 import { fixtureId } from "../contracts/store-fixtures.js";
@@ -114,6 +115,38 @@ describe("an agent's opt-in to an identity", () => {
       error: "agent.not_found",
     });
     expect(await allowed(test)).toStrictEqual({ ok: false, error: "wallet.not_found" });
+  });
+
+  it("answers custody's refusal of the write, telling the owner of no change", async () => {
+    const test = await started();
+    const ceilings = {
+      ...test.ceilings,
+      setCalls: async () => Promise.resolve(err("too_large" as const)),
+    };
+    const call = testCall({ agent: testAgent, ownerKey: fakeOwnerKeyCode });
+
+    const answer = await allowIdentity({ ...partsOf(test), ceilings }, call);
+
+    expect(answer).toStrictEqual({ ok: false, error: "wallet.ceiling_too_large" });
+    expect(await contractsOf(test)).toStrictEqual([router]);
+    expect(test.pushes.filter((push) => push.topic === "notice")).toStrictEqual([]);
+  });
+
+  it("refuses an agent with no main wallet, whose registration would sign from none", async () => {
+    const test = await started();
+    const install = {
+      ...test.stores.install,
+      read: async (call: { readonly signal: AbortSignal }) => ({
+        ...(await test.stores.install.read(call)),
+        wallets: [],
+      }),
+    };
+    const call = testCall({ agent: testAgent, ownerKey: fakeOwnerKeyCode });
+
+    await expect(allowIdentity({ ...partsOf(test), install }, call)).resolves.toStrictEqual({
+      ok: false,
+      error: "wallet.not_found",
+    });
   });
 
   it("is kind_unavailable on an engine that runs no identity registry", async () => {
