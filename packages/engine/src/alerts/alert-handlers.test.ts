@@ -1,4 +1,4 @@
-import { accountRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema } from "@binference/chain";
 import { type Id, idSchema } from "@binference/core";
 import type { AlertCondition } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -115,6 +115,23 @@ describe("alert/create", () => {
     expect(active).toStrictEqual([]);
   });
 
+  it("refuses an asset or a wallet on a chain it does not hold, and keeps a wallet alert's asset", async () => {
+    const test = await startTestEngine();
+    const elsewhere = assetRefSchema.parse("fake:9/token:0x0000000a");
+    const stranger = accountRefSchema.parse("fake:9:0x0000000c");
+    const asked: readonly AlertArgs[] = [
+      { condition: { ...price, asset: elsewhere } },
+      { condition: { kind: "wallet", account: testAccount, asset: elsewhere } },
+      { condition: { kind: "wallet", account: stranger } },
+    ];
+    const refused = await inOrder(asked, async (args) => setAlert(test, args));
+    const tokenOnly = { kind: "wallet", account: testAccount, asset: testToken } as const;
+    const kept = expectOk(await setAlert(test, { condition: tokenOnly }));
+
+    expect(refused).toStrictEqual(asked.map(() => refusal("protocol.bad_args")));
+    expect(kept.condition).toStrictEqual(tokenOnly);
+  });
+
   it("refuses a price alert on a token the price watcher cannot price", async () => {
     const test = await startTestEngine({ unpriceable: [testToken] });
 
@@ -168,6 +185,27 @@ describe("alert/list and alert/delete", () => {
     expect(deleted.items.map(({ alert, state }) => [alert, state])).toStrictEqual([
       [first.alert, "deleted"],
     ]);
+  });
+
+  it("refuses a cursor it did not give", async () => {
+    const test = await startTestEngine();
+    const list = test.engine.handlers["alert/list"];
+    expect(await list(testCall({ cursor: "not-a-cursor" }))).toStrictEqual(
+      refusal("protocol.bad_args"),
+    );
+  });
+
+  it("lets the owner's Telegram sign-in set or delete no alert without confirm", async () => {
+    const test = await startTestEngine();
+    const set = expectOk(await setAlert(test, { condition: price }));
+    const mini: EngineCaller = {
+      credential: "tg:7012345678",
+      client: { kind: "mini", version: "test" },
+      scopes: ["read", "propose"],
+    };
+    expect(await setAlert(test, { condition: price }, mini)).toStrictEqual(refusal("auth.scope"));
+    const remove = test.engine.handlers["alert/delete"];
+    expect(await remove(testCall({ alert: set.alert }, mini))).toStrictEqual(refusal("auth.scope"));
   });
 
   it("lets a client with propose alone delete only the alerts it set", async () => {
