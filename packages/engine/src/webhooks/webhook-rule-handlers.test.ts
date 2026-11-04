@@ -309,6 +309,18 @@ describe("webhook rule operations, further", () => {
     expect(await alertTo(test, created.url)).toBe("not_found");
   });
 
+  it("ends at the card timer a rule whose card ran out unanswered, its card expired", async () => {
+    const test = await startOrderEngine();
+    const created = await createdRule(test);
+    await test.clock.advance(3_600_000);
+
+    await test.engine.expireCards(live);
+
+    expect((await ruleOf(test, created.rule))?.state).toBe("deleted");
+    expect((await test.stores.intents.get(created.intent, live))?.state).toBe("expired");
+    expect(await alertTo(test, created.url)).toBe("not_found");
+  });
+
   it("ends at the card timer a waiting rule whose card's intent was never stored", async () => {
     const test = await startOrderEngine();
     const created = await createdRule(test);

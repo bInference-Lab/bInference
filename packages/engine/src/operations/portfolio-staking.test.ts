@@ -16,6 +16,7 @@ import {
   testAgent,
   testCoin,
   testNowMs,
+  testSwap,
   testToken,
   testWallet,
 } from "../intents/test-intents.js";
@@ -317,6 +318,44 @@ describe("a portfolio with stakes, unbonding coin and a bridge in transit", () =
       { wallet: testWallet, amount: { asset: testToken, base: 3_000_000n }, paper: false },
     ]);
     expect(view.totalUsdMicros).toBe(600_000_000n);
+  });
+
+  it("lists unbonding coin with no receipt units and no value while the venue and the coin's price are silent", async () => {
+    const venue = {
+      ...pooledVenue(105n),
+      receipt: async () => Promise.reject(new Error("The venue is down.")),
+    };
+    const test = await startStakeEngine(venue, {
+      held: new Map([[testAccount, [{ asset: testToken, base: 3_000_000n }]]]),
+      prices: new Map([[testToken, tokenPrice]]),
+    });
+    holdStakeWallet(test);
+    const pending = expectOk(await test.engine.handlers["intent/propose"](testCall(testSwap())));
+    await test.stores.unbondings.open(
+      {
+        intentId: pending.intent,
+        walletId: testWallet,
+        venue: "fake-staking",
+        validator: testValidator,
+        requestRef: "live-3",
+        amount: coin(oneCoin / 10n),
+        readyAtMs: 1,
+        isPaper: false,
+      },
+      live,
+    );
+    const view = await portfolioOf(test);
+    expect(stakesOf(view, { paper: false })).toStrictEqual([
+      {
+        wallet: testWallet,
+        venue: "fake-staking",
+        validator: testValidator,
+        unbonding: [],
+        claimable: coin(oneCoin / 10n),
+        paper: false,
+      },
+    ]);
+    expect(view.totalUsdMicros).toBe(1_872_000_000n);
   });
 
   it("lists unbonding coin of a validator no units are held with, by the venue's receipt", async () => {
