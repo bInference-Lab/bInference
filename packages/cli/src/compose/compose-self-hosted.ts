@@ -14,8 +14,9 @@ import { type ComposedCustody, composeCustody } from "./compose-custody.js";
 import { composeEngine } from "./compose-engine.js";
 import { composeExecutor } from "./compose-executor.js";
 import { type ComposedLock, composeLock } from "./compose-lock.js";
+import { type ComposedPlugins, composeRuntimeWithPlugins } from "./compose-plugins.js";
 import type { ComposedPriceWatchers } from "./compose-price-watchers.js";
-import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
+import type { ComposedRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
 import { composeTrading, type TradingParts } from "./compose-trading.js";
 import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
@@ -153,6 +154,8 @@ interface Wiring extends ComposedWatching {
   readonly sealKey: SealKeyKeeper;
   /** The agent runtime, its routed operations and its health signal. */
   readonly runtime: ComposedRuntime;
+  /** The community plugins and their operations. */
+  readonly plugins: ComposedPlugins;
 }
 
 function composeParts(opening: Opening, opened: Opened): Wiring {
@@ -202,7 +205,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     signerStopped,
     signerRefused,
     sealKey,
-    runtime: composeRuntime(opening, opened),
+    ...composeRuntimeWithPlugins(opening, opened, jobs),
   };
 }
 
@@ -217,6 +220,7 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
   const { parts, custody, sending, locked, runtime } = wiring;
   return {
     ...runtime.handlers,
+    ...wiring.plugins.handlers,
     ...engineHandlers(opening, opened, {
       rpc: () => rpcHealthOf(parts.reads, opening.host.clock),
       executor: sending.health,

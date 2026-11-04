@@ -33,6 +33,7 @@ export { movePath, removePath } from "./move-path.js";
 export { readFilePieces } from "./read-file-pieces.js";
 export type { ReadPiecesOptions } from "./read-file-pieces.js";
 export { readTextFile } from "./read-text-file.js";
+export { ensureReadableFolder, writeReadableFile } from "./readable-files.js";
 export { realFilePath } from "./real-file-path.js";
 export { runCommand, runCommandToExit, runCommandWithin } from "./run-command.js";
 export { holdsRunningFiles, readSystemFacts } from "./system-facts.js";

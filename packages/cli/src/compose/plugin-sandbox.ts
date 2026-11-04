@@ -17,6 +17,7 @@ import {
   type PluginFolders,
   type PluginStarter,
   probeId,
+  type SandboxCheckParts,
   type SandboxFailure,
   type SandboxPass,
   startDebugDecoy,
@@ -59,11 +60,13 @@ export async function builtPluginPrograms(
   };
 }
 
-// What the probe runs under: the image's launcher when its variable names a socket, as the image
-// sets, else the direct starter; its folders, and a file and folder it must not reach. Under the
-// launcher the probe runs as the plugin user, so they are ones that user could reach without the
-// sandbox: the engine's own program and the shared temporary folder.
-interface ProbeSetting {
+/**
+ * What community plugins and the probe run under: the image's launcher when its variable names a
+ * socket, as the image sets, else the direct starter; the probe's folders, and a file and folder it
+ * must not reach. Under the launcher the probe runs as the plugin user, so they are ones that user
+ * could reach without the sandbox: the engine's own program and the shared temporary folder.
+ */
+export interface ProbeSetting {
   readonly starter: PluginStarter;
   readonly folders: PluginFolders;
   readonly outside: { readonly file: string; readonly folder: string };
@@ -100,35 +103,48 @@ async function directSetting(
 }
 
 /**
- * Runs the sandbox check of decision 0300 on this machine for `binference check`: the probe
- * plugin under the image's launcher when `BINFERENCE_PLUGIN_LAUNCHER` names its socket, else
- * under the direct starter with its folders in the state folder's `plugins/sandbox-probe/`, and
- * `engineArgs` the Node options the engine runs with, as its `engine/status` says.
+ * The setting community plugins and the probe run under on this machine: the image's launcher
+ * when `BINFERENCE_PLUGIN_LAUNCHER` names its socket, else the direct starter with the probe's
+ * folders in the state folder's `plugins/sandbox-probe/`.
+ */
+export async function probeSettingOf(
+  run: { readonly host: CliHost; readonly platform: Platform; readonly signal: AbortSignal },
+  programs: PluginPrograms,
+): Promise<ProbeSetting> {
+  const socket = run.host.env[launcherVariable];
+  return socket === undefined || socket === ""
+    ? directSetting(run, programs)
+    : {
+        starter: createLauncherStarter({ socket }),
+        folders: imageFolders(probeId, programs.probeFolder),
+        outside: { file: run.host.entry.script, folder: tmpdir() },
+      };
+}
+
+/** A process started as the engine is, which the probe signals, for the sandbox check. */
+export function decoyOf(host: CliHost): SandboxCheckParts["startDecoy"] {
+  return async (decoySignal) => startDebugDecoy({ parentEnv: host.env, signal: decoySignal });
+}
+
+/**
+ * Runs the sandbox check of decision 0300 on this machine for `binference check`, in the setting
+ * of `probeSettingOf`, with `engineArgs` the Node options the engine runs with, as its
+ * `engine/status` says.
  */
 export async function checkPluginSandbox(
   run: { readonly host: CliHost; readonly platform: Platform; readonly signal: AbortSignal },
   probe: { readonly programs: PluginPrograms; readonly engineArgs: readonly string[] },
 ): Promise<Result<SandboxPass, SandboxFailure>> {
-  const { programs, engineArgs } = probe;
   const { host, signal } = run;
-  const socket = host.env[launcherVariable];
-  const setting: ProbeSetting =
-    socket === undefined || socket === ""
-      ? await directSetting(run, programs)
-      : {
-          starter: createLauncherStarter({ socket }),
-          folders: imageFolders(probeId, programs.probeFolder),
-          outside: { file: host.entry.script, folder: tmpdir() },
-        };
+  const setting = await probeSettingOf(run, probe.programs);
   return checkSandbox(
     {
       ...setting,
       http: host.http,
       clock: host.clock,
       logger: quiet,
-      engineArgs,
-      startDecoy: async (decoySignal) =>
-        startDebugDecoy({ parentEnv: host.env, signal: decoySignal }),
+      engineArgs: probe.engineArgs,
+      startDecoy: decoyOf(host),
     },
     signal,
   );

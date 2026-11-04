@@ -1,7 +1,12 @@
 import { BinferenceError, type Id, idSchema } from "@binference/core";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
-import type { AgentModelPicks, RuntimeModels, RuntimeSettings } from "@binference/runtime";
+import type {
+  AgentModelPicks,
+  RuntimeModels,
+  RuntimePlugin,
+  RuntimeSettings,
+} from "@binference/runtime";
 import type { ProtocolServer } from "@binference/server";
 import { createRoutedHandlers } from "../agent-runtime/routed-handlers.js";
 import { runtimeKeys, runtimeSettingsOf } from "../agent-runtime/runtime-settings-of.js";
@@ -26,12 +31,16 @@ function runtimePicks(picks: AgentPicks): AgentModelPicks {
   };
 }
 
-// The settings with every agent's picks in force.
+// The settings with every agent's picks and the enabled plugins' tools in force.
 function settingsWith(
   settings: RuntimeSettings,
-  picks: ReadonlyMap<string, AgentModelPicks>,
+  held: {
+    readonly picks: ReadonlyMap<string, AgentModelPicks>;
+    readonly plugins: readonly RuntimePlugin[];
+  },
 ): RuntimeSettings {
-  return { ...settings, models: { ...settings.models, picked: Object.fromEntries(picks) } };
+  const models = { ...settings.models, picked: Object.fromEntries(held.picks) };
+  return { ...settings, models, plugins: held.plugins };
 }
 
 /** The agent runtime as the engine holds it. */
@@ -50,6 +59,11 @@ export interface ComposedRuntime {
   /** The models the runtime runs with now: the config's, keys resolved. */
   models(): RuntimeModels;
   /**
+   * Puts the tools of the enabled community plugins in force: the runtime gets them as new
+   * settings, taken from each agent's next turn (decision 0349).
+   */
+  offerPlugins(plugins: readonly RuntimePlugin[]): Promise<void>;
+  /**
    * Follows a reload of `config.json5` (decision 0230): when a changed key is one the runtime's
    * settings hold, reads them again from the config cell, provider and search keys from their
    * secret sources, and sends them to the runtime, which applies them from its next model call.
@@ -66,6 +80,7 @@ export interface ComposedRuntime {
 interface HeldSettings {
   readonly pick: ComposedRuntime["pick"];
   readonly models: ComposedRuntime["models"];
+  readonly offerPlugins: ComposedRuntime["offerPlugins"];
   /** Puts settings read again from the config in force, with the picks kept. */
   readonly follow: (settings: RuntimeSettings) => Promise<void>;
   /** Reads the picks the store kept from before this start and puts them in force; logs a fault. */
@@ -77,8 +92,12 @@ function heldSettingsOf(
   supervisor: Pick<RuntimeSupervisor, "apply">,
 ): HeldSettings {
   const picks = new Map<string, AgentModelPicks>();
-  const state = { config: opened.runtime };
-  const apply = async (): Promise<void> => supervisor.apply(settingsWith(state.config, picks));
+  const state: { config: RuntimeSettings; plugins: readonly RuntimePlugin[] } = {
+    config: opened.runtime,
+    plugins: [],
+  };
+  const apply = async (): Promise<void> =>
+    supervisor.apply(settingsWith(state.config, { picks, plugins: state.plugins }));
   const logger = opened.log.logger.child("runtime");
   return {
     async pick(agent, picked) {
@@ -86,6 +105,10 @@ function heldSettingsOf(
       await apply();
     },
     models: () => state.config.models,
+    async offerPlugins(plugins) {
+      state.plugins = plugins;
+      await apply();
+    },
     async follow(settings) {
       state.config = settings;
       await apply();
@@ -165,6 +188,7 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
     health: () => supervisor.health(),
     pick: held.pick,
     models: held.models,
+    offerPlugins: held.offerPlugins,
     followReload: followReloadOf(opened, held),
     begin(server) {
       ended.endSessions = (credential) => server.endSessions(credential, "auth.revoked");

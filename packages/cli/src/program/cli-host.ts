@@ -86,6 +86,11 @@ export interface CliHost {
    * out. Tests pass a build of their own.
    */
   readonly pluginPrograms?: PluginPrograms;
+  /**
+   * The npm registry community plugins install from; npm's public one when left out, as the entry
+   * file leaves it. Only tests set it, to a stand-in on loopback (decision 0348).
+   */
+  readonly npmRegistry?: string;
   /** Starts the agent runtime's process; the built runtime when left out. */
   readonly startRuntime?: StartRuntime;
   /** How this binference was started, which the background service runs again. */

@@ -846,8 +846,10 @@ Installs (`binference plugin add`, `list`, `enable`, `disable`, `remove`) are pr
   refuses to start a plugin whose files no longer match. Symlinks in a plugin are refused.
 - **Reviewed.** The permission review shows the plugin's kinds, declared hosts, tools and config
   keys, its publisher and whether npm provenance backs it ([spec 4, section 3.10](specs/cards-and-messages.md#section-3-10));
-  a plugin without provenance installs only after the owner types its name. An update that
-  declares more waits for a new review, the old version running meanwhile.
+  a plugin without provenance installs only after the owner types its name. The review shows
+  every entry whole: a manifest may declare only what fits. An update that declares more, loses
+  provenance, comes from another publisher or is older waits for a new review, the old version
+  running meanwhile.
 - **Braking at once.** `plugin disable` takes the plugin's tools out of the agent's index at once;
   `plugin enable` and `plugin add` need the CLI. Publisher signatures arrive with the Verified tier
   and its registry in v2.

@@ -931,25 +931,38 @@ refuses) is `image.unreadable`; Telegram out of reach is `telegram.unreachable`
 [decision 0348](../DECISIONS.md#d0348)). `source` is `npm:<name>@<version>`, an exact version, and
 `hash` its npm integrity, `sha512-` and the base64 digest. A `plugin/add` without `accepted`
 fetches the version, checks its integrity and npm provenance, reads its manifest and ends its job
-with `plugin.review_needed`, whose `details.review` is
-`{ plugin, version, source, hash, publisher?, provenance: verified | none, kinds, hosts, tools, configKeys, digest, widens?: { from, added } }`:
-the plugin's id, what it declares, `hash` the SHA-256 of its files that pins it, and `digest` the
-SHA-256 of its declarations. The same call with `accepted` set to that `digest` installs it, and
-for a plugin without provenance only with `typedName` set to its id; a `digest` or name that no
-longer matches is `plugin.review_needed` again. An update of an installed plugin is a `plugin/add`
-of a newer version of the same package: one that declares nothing more and keeps its provenance
-installs with the old acceptance, and one that declares more (`widens`: the kinds, hosts, tools
-and config keys it adds, each a list) or loses its provenance waits for its own `accepted`, the
-old version running meanwhile. A version the registry does not serve, or one it is too busy to
-serve, is `plugin.fetch_failed` with `details.reason` (`not_published`, `rate_limited`,
-`registry_unreachable`, `bad_answer`); another integrity is `plugin.hash_mismatch`; an
-attestation that does not verify is `plugin.provenance_failed`; a package, file or manifest it
-cannot install is `plugin.invalid`; an id another package holds is `plugin.id_taken`.
+with `plugin.review_needed`, whose `details.review` is the JSON text of
+`{ plugin, version, source, hash, publisher?, workflow?, provenance: verified | none, kinds, hosts, tools, configKeys, digest, widens?: { from, added, publisher?: { from?, to? }, lostProvenance?, older? } }`:
+the plugin's id, what it declares, every entry of every list, `hash` the SHA-256 of its files that
+pins it, `publisher` the source repository its provenance names or else npm's account,
+`workflow` the build workflow when it lives in another repository, and `digest` the SHA-256 of
+the package, version, integrity, pin and declarations. A manifest declares at most 16 hosts of up
+to 100 characters, 32 tools and 64 config keys of up to 64 characters, so the review always fits
+the terminal whole; only `binference plugin add` shows it. The same call with `accepted` set to
+that `digest` installs it, and for a plugin without provenance only with `typedName` set to its
+id; a `digest` or name that no longer matches is `plugin.review_needed` again. An update of an
+installed plugin is a `plugin/add` of another version of the same package: one that is newer,
+declares nothing more, keeps its provenance and comes from the same publisher installs with the
+old acceptance; any other waits for its own `accepted`, the old version running meanwhile, its
+`widens` naming what it adds (`added`, each a list), another publisher (`publisher`, either side
+absent when npm names none), lost provenance (`lostProvenance`) or an older version (`older`).
+A version the registry does not serve, or one it is too busy to serve, is `plugin.fetch_failed`
+with `details.reason` (`not_published`, `rate_limited`, `registry_unreachable`, `bad_answer`);
+another integrity is `plugin.hash_mismatch`; an attestation that does not verify, or one signed
+by an issuer other than GitHub Actions or GitLab, is `plugin.provenance_failed`; a package, file
+or manifest it cannot install is `plugin.invalid`; an id another package holds is
+`plugin.id_taken`; a new plugin past 64 installed is `plugin.too_many`; files it cannot write
+are `plugin.install_failed`, the installed version running on. While an install runs, the same
+`plugin/add` gets its job, and any other `protocol.busy` with its id in `details.job`. A plugin
+lock that does not read answers every plugin operation `plugin.lock_unreadable` and is never
+written over.
 
 `plugin/enable`, `plugin/disable` and `plugin/remove` name a plugin by its `plg_` id. A disable
 stops the plugin at once and takes its tools out of the agent's index (`disabledReason: owner`);
 the host turns a plugin off after 5 crashes in 10 minutes (`crashes`) or when its files no longer
-match its pin (`changed`). `plugin/call` answers `plugin.not_found`, `plugin.disabled`, or
+match its pin (`changed`). An enable answers the plugin as it stands once its start settled. A
+remove takes the data folder first: one that stays is `plugin.data_not_removed`, and the plugin
+stays installed. `plugin/call` answers `plugin.not_found`, `plugin.disabled`, or
 `plugin.call_failed` with the host's reason in `details.reason`.
 
 <a id="section-7-9"></a>
