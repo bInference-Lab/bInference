@@ -11,6 +11,7 @@ import {
   testStopLoss,
 } from "../orders/test-orders.js";
 import { setUpRescue } from "../safety/test-rescue.js";
+import { createdRule } from "../webhooks/test-webhook-rules.js";
 import { createCardPresses } from "./create-card-presses.js";
 import { createCardShowings } from "./create-card-showings.js";
 import { present } from "./test-venues.js";
@@ -137,6 +138,42 @@ describe("the receipt of a confirmed card that sends nothing on chain", () => {
       why: "cancelled",
     });
     expect(await endedAs(undefined)).toStrictEqual({ kind: "orderUnstarted", why: "cancelled" });
+  });
+
+  it("says a webhook rule did not start when the tap came after its end", async () => {
+    const test = await startOrderEngine();
+    const { rule, intent } = await createdRule(test);
+    await tapCard(test, intent, "confirm");
+    const record = present(await test.stores.intents.get(intent, live));
+    const { cardId: _card, ...stored } = present(await test.stores.webhookRules.get(rule, live));
+    const source = {
+      record,
+      orders: test.stores.orders,
+      agents: test.stores.agents,
+      chains: testChains(),
+    };
+    const endedAs = async (ended: Readonly<typeof stored> | undefined) => {
+      const webhookRules = { byIntent: async () => Promise.resolve(ended) };
+      return (await writtenReceiptOf({ ...source, webhookRules }, live))?.outcome;
+    };
+
+    const atEnd = { ...stored, changedAtMs: stored.expiresAtMs };
+    const beforeEnd = { ...stored, changedAtMs: stored.expiresAtMs - 1 };
+    expect(await endedAs(atEnd)).toStrictEqual({ kind: "orderUnstarted", why: "expired" });
+    expect(await endedAs(beforeEnd)).toStrictEqual({ kind: "orderUnstarted", why: "cancelled" });
+    expect(await endedAs(undefined)).toStrictEqual({ kind: "orderUnstarted", why: "cancelled" });
+  });
+
+  it("gives no receipt for an auto order whose agent is no longer stored", async () => {
+    const test = await startOrderEngine();
+    const view = await createdOrder(test);
+    await tapCard(test, view.intent, "confirm");
+    const record = present(await test.stores.intents.get(view.intent, live));
+    const { orders, webhookRules } = test.stores;
+    const agents = { get: async () => Promise.resolve(undefined) };
+    const source = { record, orders, webhookRules, agents, chains: testChains() };
+
+    expect(await writtenReceiptOf(source, live)).toBeUndefined();
   });
 
   it("leaves a card that sent something, or is not reconciled yet, to the other receipts", async () => {

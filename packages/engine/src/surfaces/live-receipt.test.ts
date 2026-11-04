@@ -1,6 +1,6 @@
 import type { ChainRegistry, RegisteredChain } from "@binference/chain";
 import { fakeApprovalData, fakeDraft } from "@binference/chain/testing";
-import { ok } from "@binference/core";
+import { idSchema, type JsonValue, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import {
   driveUntil,
@@ -11,9 +11,24 @@ import {
   tapped,
   transactionsOf,
 } from "../executor/test-executor.js";
-import { testAgent, testCoin, testSwap, testToken } from "../intents/test-intents.js";
+import { requestDocument } from "../intents/intent-documents.schema.js";
+import type { IntentHistory } from "../intents/intent-history.js";
+import type { IntentRecord } from "../intents/intent-record.js";
+import {
+  testAgent,
+  testCoin,
+  testNowMs,
+  testSwap,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
+import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
+import { testLaunch } from "../money-path/test-launches.js";
 import { testAccount, testCall, testCallers, testChains } from "../operations/test-engine.js";
+import { stakeRequest } from "../staking/test-stakes.js";
+import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { createCardShowings } from "./create-card-showings.js";
+import { liveReceiptOf } from "./live-receipt.js";
 
 const live = () => ({ signal: new AbortController().signal });
 const tokenSale = testSwap({ from: testToken, to: testCoin, amount: { base: 1_000_000n } });
@@ -123,5 +138,131 @@ describe("the receipt of a confirmed live intent", () => {
     await flush();
     const ended = await showingsOf(bench).settled(intent, live());
     expect([frozen.ok, ended?.live?.outcome]).toStrictEqual([true, { kind: "unsent" }]);
+  });
+});
+
+const launchHash = "0xlaunch";
+const intentId = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-000000000009");
+
+// A live intent as the store keeps it, in the state given.
+function liveRecord(change: Partial<IntentRecord>): IntentRecord {
+  return {
+    id: intentId,
+    agentId: testAgent,
+    walletId: testWallet,
+    kind: "launchToken",
+    state: "reconciled",
+    request: requestDocument.encode(testLaunch),
+    hasOutsideContent: false,
+    isPaper: false,
+    proposer: "telegram",
+    createdAtMs: testNowMs,
+    changedAtMs: testNowMs,
+    version: 5,
+    ...change,
+  };
+}
+
+// The history of an intent whose last move's cause is the one given.
+function endedWith(cause: JsonValue): IntentHistory {
+  return {
+    events: [{ id: 1, intentId, toState: "reconciled", cause, atMs: testNowMs }],
+    cards: [],
+  };
+}
+
+// The launch's trade as it reconciled: the coin it spent and what it got back.
+const launchSettled = (got: { readonly asset: string; readonly base: string }) =>
+  endedWith({
+    settled: {
+      amountIn: { asset: testCoin, base: "1500000" },
+      amountOut: got,
+      gas: { asset: testCoin, base: "1" },
+      txHashes: [launchHash],
+      atMs: testNowMs,
+    },
+  });
+
+const launchQuote = tokenLaunchQuoteDocument.encode({
+  venue: testLaunch.venue,
+  settings: [],
+  token: testToken,
+  tokenDecimals: 18,
+  fee: { asset: testCoin, base: 0n },
+  pinWaitUntilMs: testNowMs,
+  quotedAtMs: testNowMs,
+});
+
+// The receipt of the record with its history, on the test chains, with the transactions given.
+async function receiptOf(
+  record: IntentRecord,
+  history: IntentHistory,
+  sent: readonly TransactionRecord[] = [],
+) {
+  return liveReceiptOf(
+    {
+      record,
+      history,
+      transactions: { ofIntent: async () => sent },
+      chains: testChains(),
+      install: { read: async () => Promise.reject(new Error("The receipt read the install.")) },
+    },
+    live(),
+  );
+}
+
+const launchLink = { explorerLink: `https://scan.example.invalid/tx/${launchHash}` };
+
+describe("the receipt of a live intent read from its record", () => {
+  it("names the launched token and a first buy that bought none of it", async () => {
+    const record = liveRecord({ quote: launchQuote });
+    const receipt = await receiptOf(record, launchSettled({ asset: testCoin, base: "0" }));
+    expect(receipt?.outcome).toStrictEqual({
+      kind: "launched",
+      token: testToken,
+      fill: { amountIn: testLaunch.firstBuy, amountOut: { asset: testToken, base: 0n } },
+      tx: launchLink,
+    });
+  });
+
+  it("names the token a launch got when no quote was kept, with no buy for a launch without one", async () => {
+    const { firstBuy: _firstBuy, ...noBuy } = testLaunch;
+    const record = liveRecord({ request: requestDocument.encode(noBuy) });
+    const receipt = await receiptOf(record, launchSettled({ asset: testToken, base: "7" }));
+    expect(receipt?.outcome).toStrictEqual({ kind: "launched", token: testToken, tx: launchLink });
+  });
+
+  it("says done for an intent that reconciled with no trade and no transaction", async () => {
+    const record = liveRecord({ kind: "swap", request: requestDocument.encode(testSwap()) });
+    const receipt = await receiptOf(record, endedWith({}));
+    expect(receipt).toStrictEqual({ outcome: { kind: "done" }, assets: {} });
+  });
+
+  it("names the last transaction of an intent that reconciled with no trade to show", async () => {
+    const record = liveRecord({ kind: "swap", request: requestDocument.encode(testSwap()) });
+    const sent = { account: testAccount, hash: "0xlast" } as TransactionRecord;
+    const receipt = await receiptOf(record, endedWith({}), [sent]);
+    expect(receipt?.outcome).toStrictEqual({
+      kind: "landed",
+      tx: { explorerLink: "https://scan.example.invalid/tx/0xlast" },
+    });
+  });
+
+  it("gives the asset of an amount a refusal names, so its words can show it", async () => {
+    const record = liveRecord({
+      kind: "stake",
+      state: "failed_check",
+      reason: "below_min_stake",
+      request: requestDocument.encode(stakeRequest("stake")),
+    });
+    const history = endedWith({ named: { minStake: { asset: testCoin, base: "100" } } });
+    const receipt = await receiptOf(record, history);
+    expect(receipt?.outcome).toMatchObject({ kind: "refused", reason: "below_min_stake" });
+    expect(receipt?.assets).toMatchObject({ [testCoin]: { symbol: "FAKE" } });
+  });
+
+  it("says nothing yet for a live intent still on its way", async () => {
+    const record = liveRecord({ kind: "swap", state: "executing" });
+    await expect(receiptOf(record, endedWith({}))).resolves.toBeUndefined();
   });
 });
