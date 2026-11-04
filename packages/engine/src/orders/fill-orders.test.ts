@@ -1,3 +1,4 @@
+import type { AssetRef, UsdPrice } from "@binference/chain";
 import { createFakeVenue } from "@binference/chain/testing";
 import { bpsSchema, type Id, idSchema, type JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
@@ -9,11 +10,12 @@ import {
   eightyCents,
   eightyCentsUsd,
   fillIntentsOf,
+  fillPrices,
   fillRowsOf,
   noticesOf,
   startFillEngine,
 } from "./test-fills.js";
-import { storedOrder, testStopLoss } from "./test-orders.js";
+import { keepOrderAgain, storedOrder, testStopLoss } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 // Another intent of the agent, confirmed by a tap the fill's policy step did not see.
@@ -54,6 +56,47 @@ function passingExpiryAtFill(
       return moved;
     },
   };
+}
+
+// An intent store whose confirmation of a fill takes every price away, as a feed that stops
+// answering between the fill's check and its paper fill.
+function pricesGoneAtFill(store: IntentStore, prices: Map<AssetRef, UsdPrice>): IntentStore {
+  return {
+    ...store,
+    transition: async (change, call) => {
+      const moved = await store.transition(change, call);
+      if (change.state === "confirmed" && change.confirmation === undefined) {
+        prices.clear();
+      }
+      return moved;
+    },
+  };
+}
+
+interface FillRace {
+  readonly intents: (store: IntentStore) => IntentStore;
+  readonly holder: { test?: TestEngine };
+  readonly raced: () => number;
+}
+
+// An intent store where another write keeps a fill's order again right before each of the first
+// `times` writes that carry the order's move, so each of those finds its order at a newer version.
+function orderMovedAtFill(times: number): FillRace {
+  const holder: { test?: TestEngine } = {};
+  let raced = 0;
+  const intents = (store: IntentStore): IntentStore => ({
+    ...store,
+    transition: async (change, call) => {
+      const [move] = change.order?.moves ?? [];
+      const orders = holder.test?.stores.orders;
+      const races = move !== undefined && orders !== undefined && raced < times;
+      if (races && (await keepOrderAgain(orders, move.id, call))) {
+        raced += 1;
+      }
+      return store.transition(change, call);
+    },
+  });
+  return { intents, holder, raced: () => raced };
 }
 
 const takeProfit = { ...testStopLoss(), kind: "takeProfit", trigger: { price: 700_000n } } as const;
@@ -237,6 +280,51 @@ describe("an auto order's fill", () => {
     expect(await fillIntentsOf(test)).toMatchObject([{ state: "cancelled" }]);
     expect(await storedOrder(test, order.id)).toMatchObject({ fills: 0 });
     expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+  });
+
+  it("cancels a paper sale nothing prices as it fills after three tries, as a no price skip", async () => {
+    const prices = new Map(fillPrices);
+    const test = await startFillEngine({
+      prices,
+      intents: (store) => pricesGoneAtFill(store, prices),
+    });
+    const order = await activeOrder(test, testStopLoss());
+
+    const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    expect(outcome).toBe("skipped");
+    expect(await fillIntentsOf(test)).toMatchObject([{ kind: "sell", state: "cancelled" }]);
+    expect(await fillRowsOf(test, order.id)).toMatchObject([
+      { outcome: "skipped", reason: "no_price" },
+    ]);
+    expect(await storedOrder(test, order.id)).toMatchObject({ state: "active", fills: 0 });
+  });
+
+  it("fills on paper once when another write of its order beat its first two tries", async () => {
+    const race = orderMovedAtFill(2);
+    const test = await startFillEngine({ intents: race.intents });
+    race.holder.test = test;
+    const order = await activeOrder(test, testStopLoss());
+
+    const outcome = await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    expect(race.raced()).toBe(2);
+    expect(outcome).toBe("filled");
+    expect(await fillIntentsOf(test)).toMatchObject([{ kind: "sell", state: "paper_filled" }]);
+    expect(await storedOrder(test, order.id)).toMatchObject({ state: "filled", fills: 1 });
+  });
+
+  it("cancels a paper fill unsigned when another write of its order beat all three tries", async () => {
+    const race = orderMovedAtFill(3);
+    const test = await startFillEngine({ intents: race.intents });
+    race.holder.test = test;
+    const order = await activeOrder(test, testStopLoss());
+
+    await test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    expect(race.raced()).toBe(3);
+    expect(await fillIntentsOf(test)).toMatchObject([{ kind: "sell", state: "cancelled" }]);
+    expect(await storedOrder(test, order.id)).toMatchObject({ state: "active", fills: 0 });
   });
 
   it("fills nothing for an order that is not active, or past its expiry", async () => {

@@ -134,9 +134,11 @@ export function contendedOrders(
   return { orders, raced: () => raced };
 }
 
-// Another write of an active order: its trigger state kept again as it stands, which raises its
-// version. Answers whether the order moved; one that is not active does not.
-async function keepOrderAgain(
+/**
+ * Another write of an active order: its trigger state kept again as it stands, which raises its
+ * version. Answers whether the order moved; one that is not active does not.
+ */
+export async function keepOrderAgain(
   orders: Pick<OrderStore, "get" | "move">,
   order: Id<"ord">,
   call: { readonly signal: AbortSignal },
