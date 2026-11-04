@@ -16,6 +16,7 @@ import {
   imageLayout,
   launcherVariable,
   type PluginFolders,
+  removeLauncherData,
 } from "@binference/plugin-host";
 import type { RuntimePlugin } from "@binference/runtime";
 import { createNpmRegistry, npmRegistry } from "../plugins/npm-registry.js";
@@ -71,7 +72,8 @@ interface PluginPlaces {
 }
 
 // In the image the plugins' volume holds each package for the plugin user to read, and the
-// launcher makes and owns each data folder (decision 0344); elsewhere both sit in `plugins/`.
+// launcher makes, owns and removes each data folder (decisions 0344 and 0351); elsewhere both sit
+// in `plugins/`.
 function placesOf(opening: Opening): PluginPlaces {
   const { platform, host } = opening;
   const socket = host.env[launcherVariable];
@@ -81,7 +83,9 @@ function placesOf(opening: Opening): PluginPlaces {
       shelf: { packages: join(root, "packages"), work: join(root, "work") },
       foldersOf: async (id, programs) => imageFolders(id, programs.probeFolder),
       makeData: async () => Promise.resolve(),
-      removeData: async () => Promise.resolve(),
+      // Only the plugin user may change a data folder, so the launcher removes it (decision 0351).
+      removeData: async (id, signal) =>
+        removeLauncherData({ socket }, id, AbortSignal.any([signal, AbortSignal.timeout(30_000)])),
     };
   }
   const root = join(platform.stateFolder.root, "plugins");

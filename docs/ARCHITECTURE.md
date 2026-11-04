@@ -815,7 +815,8 @@ Also:
 - the Docker image and the hardened setup run plugins as their own OS user, the only thing that
   stops a plugin from signalling the engine. The image's root entry starts the engine as
   `binference` and a plugin launcher as `binference-plugin`, which starts each plugin the engine
-  names by its id ([decision 0344](DECISIONS.md#d0344)).
+  names by its id ([decision 0344](DECISIONS.md#d0344)), and removes the data folder of a plugin
+  the engine removes ([decision 0351](DECISIONS.md#d0351)).
 
 **The plugin host ([decision 0300](DECISIONS.md#d0300)).** The engine part that runs community
 plugins starts each in a Node process of its own, with the grants above, a heap of at most

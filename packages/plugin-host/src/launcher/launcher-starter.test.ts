@@ -1,6 +1,6 @@
 // oxlint-disable-next-line eslint/no-restricted-imports -- the test makes the launcher's run folder
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
-import { connect, type Server } from "node:net";
+import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { connect, createServer, type Server, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import process from "node:process";
@@ -13,6 +13,7 @@ import { type FixturePlugin, writeFixturePlugin } from "../testing/fixture-plugi
 import { testMemoryWatch } from "../testing/memory-watch.js";
 import { buildPluginBundles, type PluginBundles } from "../testing/plugin-bundles.js";
 import { createLauncherStarter } from "./launcher-starter.js";
+import { removeLauncherData } from "./remove-launcher-data.js";
 import { serveLauncher } from "./serve-launcher.js";
 
 let bundles: PluginBundles;
@@ -36,7 +37,9 @@ beforeAll(async () => {
       program: bundles.program,
       folders: (id): PluginFolders => {
         const plugin = plugins.get(id);
-        return plugin?.folders ?? { packageFolder: bundles.folder, dataFolder: bundles.folder };
+        // An id no test wrote gets folders that do not exist, so a removal of it removes nothing.
+        const none = join(home, "none", id);
+        return plugin?.folders ?? { packageFolder: none, dataFolder: none };
       },
       // Windows loads its system libraries from SystemRoot; the image's Linux needs nothing.
       env: Object.fromEntries(
@@ -88,6 +91,50 @@ describe("createLauncherStarter over the plugin launcher", { timeout: 60_000 }, 
     });
 
     expect(closed).toBe(true);
+  });
+
+  it("removes a plugin's data folder by its id alone, and only that folder", async () => {
+    const plugin = await writeFixturePlugin(bundles.folder, { id: "keeps-data", tools: ["echo"] });
+    plugins.set(plugin.manifest.id, plugin);
+    await writeFile(join(plugin.folders.dataFolder, "notes.json"), "{}");
+
+    await removeLauncherData({ socket }, "keeps-data", AbortSignal.timeout(5_000));
+    const left = await readdir(join(bundles.folder, "keeps-data"));
+
+    expect(left).toStrictEqual(["package"]);
+  });
+
+  it("refuses a removal when no launcher listens, or the launcher does not say it removed", async () => {
+    const none = removeLauncherData({ socket: `${socket}-none` }, "x1", AbortSignal.timeout(5_000));
+    const aborted = removeLauncherData({ socket }, "keeps-data", AbortSignal.abort());
+
+    await expect(none).rejects.toMatchObject({ code: "plugin.launcher_unreachable" });
+    await expect(aborted).rejects.toMatchObject({ code: "plugin.data_not_removed" });
+  });
+
+  it("refuses an answer longer than the launcher's line, ending the connection", async () => {
+    const held: Socket[] = [];
+    const loud = createServer((connection) => {
+      held.push(connection);
+      connection.write("x".repeat(4_096));
+    });
+    // A socket path has a short limit on macOS, so it sits in the test's own short folder.
+    const address = join(home, "loud.sock");
+    await new Promise<void>((resolve) => {
+      loud.listen(address, () => resolve());
+    });
+
+    // A signal that never aborts: only the cap on the answer ends the call.
+    const removed = removeLauncherData(
+      { socket: address },
+      "keeps-data",
+      new AbortController().signal,
+    );
+    await expect(removed).rejects.toMatchObject({ code: "plugin.data_not_removed" });
+    held.forEach((connection) => connection.destroy());
+    await new Promise((resolve) => {
+      loud.close(resolve);
+    });
   });
 
   it("refuses to start when no launcher listens", async () => {

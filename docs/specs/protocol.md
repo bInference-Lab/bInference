@@ -961,8 +961,9 @@ written over.
 stops the plugin at once and takes its tools out of the agent's index (`disabledReason: owner`);
 the host turns a plugin off after 5 crashes in 10 minutes (`crashes`) or when its files no longer
 match its pin (`changed`). An enable answers the plugin as it stands once its start settled. A
-remove takes the data folder first: one that stays is `plugin.data_not_removed`, and the plugin
-stays installed. `plugin/call` answers `plugin.not_found`, `plugin.disabled`, or
+remove takes the data folder first: one that stays is `plugin.data_not_removed`, or
+`plugin.launcher_unreachable` in the image ([decision 0351](../DECISIONS.md#d0351)), and the
+plugin stays installed. `plugin/call` answers `plugin.not_found`, `plugin.disabled`, or
 `plugin.call_failed` with the host's reason in `details.reason`.
 
 <a id="section-7-9"></a>

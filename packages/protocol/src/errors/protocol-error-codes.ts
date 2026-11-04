@@ -138,6 +138,7 @@ export const protocolErrorCodes = [
   "plugin.lock_unreadable",
   "plugin.too_many",
   "plugin.data_not_removed",
+  "plugin.launcher_unreachable",
   "skill.not_found",
   "skill.hash_mismatch",
   "skill.refused",

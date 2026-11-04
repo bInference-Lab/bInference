@@ -34,6 +34,7 @@ const names = {
 };
 const stateFolder = "/var/lib/binference/.binference";
 const pluginsFolder = "/var/lib/binference-plugins";
+const imageSocket = `${pluginsFolder}/run/launcher.sock`;
 const buildMs = 900_000;
 const commandMs = 120_000;
 const privy = createFakePrivy({ clock: createSystemClock(), random: createSystemRandom() });
@@ -247,6 +248,29 @@ async function plantAndEndLauncher(): Promise<void> {
   await dockerOk([...asPlugin, "node", "-e", end]);
 }
 
+// The engine's user asks the launcher to remove a plugin's data folder by its id, as
+// `plugin remove` does (decision 0351), and answers what the launcher said.
+const removeDataProgram = [
+  'const socket = require("node:net").connect(process.argv[1]);',
+  'let said = "";',
+  "socket.on('data', (chunk) => { said += chunk; });",
+  "socket.on('close', () => process.stdout.write(said));",
+  'socket.write(JSON.stringify({ plugin: "old-feed", removeData: true }) + "\\n");',
+].join("\n");
+
+// A plugin's data folder the launcher's user wrote, which the engine's user cannot remove itself
+// and the launcher removes when the engine names its id.
+async function removeDataThroughLauncher(): Promise<readonly [number, string, number]> {
+  const data = `${pluginsFolder}/data/old-feed`;
+  const asPlugin = ["exec", "-u", "binference-plugin", names.engine];
+  const asEngine = ["exec", "-u", "binference", names.engine];
+  await dockerOk([...asPlugin, "sh", "-c", `mkdir -m 700 ${data} && echo {} > ${data}/notes.json`]);
+  const byEngine = await docker([...asEngine, "rm", "-rf", data]);
+  const said = await dockerOk([...asEngine, "node", "-e", removeDataProgram, imageSocket]);
+  const left = await docker([...asPlugin, "test", "-e", data]);
+  return [byEngine.exitCode, said, left.exitCode];
+}
+
 async function launcherRuns(): Promise<boolean> {
   const running = await processes();
   return running.some(({ uid, cmd }) => uid === 10_002 && cmd.endsWith("plugin-launcher.mjs"));
@@ -373,6 +397,9 @@ describe("the Docker image", () => {
     expect(await waitFor(launcherRuns, Date.now() + 30_000)).toBe(true);
     expect(await stateOwner()).toBe("10001 700");
     expect(await sandboxFinding()).toMatchObject({ check: "plugins.sandbox", level: "ok" });
+
+    // A removed plugin's data goes through the launcher: the engine's user cannot remove it.
+    expect(await removeDataThroughLauncher()).toStrictEqual([1, "removed", 1]);
 
     const stopped = Date.now();
     await dockerOk(["stop", names.engine], 60_000);

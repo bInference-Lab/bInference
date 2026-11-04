@@ -1,6 +1,6 @@
 # 0344. The image runs community plugins under an OS user of their own through a plugin launcher
 
-Status: Accepted
+Status: Amended by 0351
 
 Accepted by the owner on 2026-11-03.
 

@@ -131,6 +131,7 @@
   "plugin.disabled": "该插件已关闭。请用 binference plugin enable 启用后重试。",
   "plugin.call_failed": "该插件没有回复此次调用。它可能正在启动、响应缓慢或已损坏；请查看 binference plugin list。",
   "plugin.data_not_removed": "无法删除该插件的数据文件夹，因此插件未被移除。请再次运行 binference plugin remove；如果仍然失败，请运行 binference check。",
+  "plugin.launcher_unreachable": "binference 无法连接插件启动器，因此未删除该插件的数据文件夹，插件也未被移除。请重启容器，然后再次运行 binference plugin remove。",
   "plugin.too_many": "已安装 64 个社区插件，这是 binference 允许的上限。请先用 binference plugin remove 移除一个，再添加此插件。",
   "plugin.lock_unreadable": "binference 无法读取已安装插件列表（plugins/lock.json），因此不会更改或运行任何插件。请从备份恢复该文件，或删除它后重新添加你的插件。",
   "plugin.install_failed": "插件已获取并通过核验，但无法在本机写入其文件。请检查状态文件夹的剩余空间和权限，然后重新添加。",

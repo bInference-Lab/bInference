@@ -16,6 +16,7 @@ export { engineDebugSwitch, startDebugDecoy } from "./probe/debug-decoy.js";
 export type { DebugDecoy } from "./probe/debug-decoy.js";
 export { imageFolders, imageLayout, launcherVariable } from "./launcher/image-layout.js";
 export { createLauncherStarter } from "./launcher/launcher-starter.js";
+export { removeLauncherData } from "./launcher/remove-launcher-data.js";
 export { serveLauncher } from "./launcher/serve-launcher.js";
 export type { LauncherOptions } from "./launcher/serve-launcher.js";
 export type { PluginProgram, PluginStarter } from "./ports.js";
