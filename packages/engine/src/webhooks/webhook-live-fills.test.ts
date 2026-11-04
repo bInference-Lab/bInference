@@ -1,5 +1,5 @@
 import { checkFillGrant, type SignRequest } from "@binference/chain";
-import { createIdSource, type Id } from "@binference/core";
+import { createIdSource, err, type Id } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { testSnapshot } from "../approval/test-snapshot.js";
@@ -16,6 +16,7 @@ import {
   startLiveFills,
 } from "../orders/test-live-fills.js";
 import { freeze, tapCard } from "../orders/test-orders.js";
+import type { WebhookRuleStore } from "./ports.js";
 import { createRuleFillEnd } from "./rule-fill-end.js";
 import { alertTo, createdRule, type CreatedRule, testRuleRequest } from "./test-webhook-rules.js";
 
@@ -61,6 +62,25 @@ async function ownerCancels(bench: ExecutorBench, intent: Id<"int">): Promise<vo
   expectOk(
     await stored.move({ intent, version: snapshot.stored.version, step, by: "tok_owner" }, live),
   );
+}
+
+// A rule store whose every count of a fill loses its rule's version to another write, counting
+// the tries; a skip writes as it would.
+function losingFills() {
+  const state = { tries: 0 };
+  return {
+    tries: () => state.tries,
+    wrap: (store: WebhookRuleStore): WebhookRuleStore => ({
+      ...store,
+      endAlert: async (write, call) => {
+        if (write.outcome !== "filled") {
+          return store.endAlert(write, call);
+        }
+        state.tries += 1;
+        return Promise.resolve(err("stale"));
+      },
+    }),
+  };
 }
 
 // Each signing request's fill grant, held to the check the signer's rule 5 runs.
@@ -259,6 +279,30 @@ describe("a live webhook rule's fill", () => {
         },
       },
     ]);
+  });
+
+  it("tells no unvalued fill its rule's alert would not count, after reading it again", async () => {
+    const silent = silentTransfers();
+    const losing = losingFills();
+    const bench = await startLiveFills({
+      receipts: silent.wrap,
+      limits: { settleAfterBlocks: 3 },
+      webhookRules: losing.wrap,
+    });
+    const created = await activeLiveRule(bench);
+    await alertAndFill(bench, created, "unvalued");
+    const [fill] = await liveFillsOf(bench);
+    const id = fill?.id as Id<"int">;
+
+    await driveUntil(bench, id, { states: ["finalized"] });
+    await driveUntil(bench, id, { states: [], blocks: 5 });
+    await flush();
+
+    expect(losing.tries()).toBe(3);
+    expect(bench.logger.records().map(({ event }) => event)).toContain("executor.fill_uncounted");
+    expect(executorNotices(bench)).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "notice.fillUnvalued" })]),
+    );
   });
 
   it("counts on its rule after the settle wait when its trade cannot be valued, freeing the line", async () => {

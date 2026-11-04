@@ -1,13 +1,13 @@
 import { accountRefSchema, type Amount } from "@binference/chain";
 import type { FakeNameResolver } from "@binference/chain/testing";
 import { createFakeFamily } from "@binference/chain/testing";
-import type { Id } from "@binference/core";
+import { err, type Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { planDocument } from "../intents/intent-documents.schema.js";
 import { testCoin, testToken, testWallet } from "../intents/test-intents.js";
 import { racedTo } from "../intents/test-raced-store.js";
 import { testAccount, testCall, testChains } from "../operations/test-engine.js";
-import type { IntentStore } from "../ports.js";
+import type { IntentStore, PositionStore } from "../ports.js";
 import { saveTestAddress, testSaved } from "../send-levels/test-sends.js";
 import {
   holdTestWallet,
@@ -22,6 +22,7 @@ import { coinAfter, holdCoin } from "./test-coin.js";
 import {
   benchChain,
   driveUntil,
+  eventsOf,
   type ExecutorBench,
   startExecutorBench,
   stateOf,
@@ -176,6 +177,57 @@ describe("a send whose dropped step lands after all", () => {
       "failed_onchain",
       10n ** 18n - coin.base - gas,
     ]);
+  });
+});
+
+// A position store that turns away every departure, as one another write keeps beating.
+function refusingDepartures(store: PositionStore): PositionStore {
+  return { ...store, recordDepartures: async () => Promise.resolve(err("stale")) };
+}
+
+describe("a send whose departures the positions cannot store", () => {
+  it("tries each block up to the settle wait, then leaves the send finalized for recovery", async () => {
+    const bench = await startExecutorBench({
+      hold: true,
+      positions: refusingDepartures,
+      limits: { settleAfterBlocks: 3 },
+      engine: { chainSimulator: transferSimulator([{ to: testSaved.account, amount: coin }]) },
+    });
+    await saveTestAddress(bench.test);
+    holdTestWallet(bench.test);
+    const intent = await tapped(bench, testSend());
+    await bench.release();
+    await driveUntil(bench, intent, { states: done, blocks: 12 });
+    expect(await stateOf(bench, intent)).toBe("finalized");
+    expect(eventsOf(bench)).toEqual(
+      expect.arrayContaining(["executor.settle_waits:", "executor.settle_late:"]),
+    );
+  });
+
+  it("books nothing of a dropped send that lands late while the positions refuse it", async () => {
+    const bench = await startExecutorBench({
+      hold: true,
+      positions: refusingDepartures,
+      limits: { stuckAfterBlocks: 3, replaceAfterBlocks: 6, droppedAfterBlocks: 9 },
+      engine: { chainSimulator: transferSimulator([{ to: testSaved.account, amount: coin }]) },
+    });
+    await saveTestAddress(bench.test);
+    holdTestWallet(bench.test);
+    const refusing = { kind: "refuse", reason: "insufficient_funds" } as const;
+    bench.network.script("relay-a", refusing);
+    bench.network.script("relay-b", refusing);
+    const intent = await tapped(bench, testSend());
+    await bench.release();
+    const settled = { states: ["reconciled", "failed_onchain"] } as const;
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    const raw = await speedUpRaw(bench, intent);
+    bench.network.script("relay-a", { kind: "accept" });
+    bench.network.script("relay-b", { kind: "accept" });
+    await bench.network.send({ chain: benchChain, raw }, live);
+    await driveUntil(bench, intent, { states: [], blocks: 8 });
+    expect(eventsOf(bench)).toContain("executor.settle_waits:");
+    expect(eventsOf(bench)).not.toContain("executor.landed_late_booked:");
+    expect(await stateOf(bench, intent)).toBe("failed_onchain");
   });
 });
 

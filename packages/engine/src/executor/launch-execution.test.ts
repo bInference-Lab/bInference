@@ -35,16 +35,18 @@ import {
   testPad,
 } from "../money-path/test-launches.js";
 import { testCallers, testChains } from "../operations/test-engine.js";
-import type { TransactionStore } from "../ports.js";
+import type { PositionStore, TransactionStore } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import {
   type BenchOptions,
   driveUntil,
+  eventsOf,
   type ExecutorBench,
   hashOf,
   startExecutorBench,
+  stateOf,
   tapped,
 } from "./test-executor.js";
 
@@ -122,6 +124,7 @@ async function benchOf(
     readonly noFirstBuyMin?: boolean;
     readonly transfers?: (sent: FakeSent) => readonly AssetTransfer[];
     readonly transactions?: BenchOptions["transactions"];
+    readonly positions?: BenchOptions["positions"];
   } = {},
 ): Promise<ExecutorBench> {
   const { venues, launcher } =
@@ -148,6 +151,7 @@ async function benchOf(
     },
     launch: { venues, chains, wallets, curves: curvesOf(venues) },
     ...(pad.transactions === undefined ? {} : { transactions: pad.transactions }),
+    ...(pad.positions === undefined ? {} : { positions: pad.positions }),
   });
   const record = {
     id: testLaunchWallet,
@@ -163,6 +167,12 @@ async function benchOf(
 const nonceTaken = (store: TransactionStore): TransactionStore => ({
   ...store,
   saveSigned: async () => Promise.resolve(err("nonce_taken")),
+});
+
+// A position store that turns away every departure, as one another write keeps beating.
+const refusingDepartures = (store: PositionStore): PositionStore => ({
+  ...store,
+  recordDepartures: async () => Promise.resolve(err("stale")),
 });
 
 // What the transactions paid for gas, from their receipts.
@@ -294,6 +304,24 @@ describe("a token launch in the wallet queue", () => {
     );
     expect(held.map(({ asset, quantityBase }) => [asset, quantityBase])).toStrictEqual([
       [testCoin, 10n ** 18n - 2_000n - gas],
+    ]);
+  });
+
+  it("leaves a launch that bought nothing finalized while the positions refuse its fee and gas", async () => {
+    const bench = await benchOf({ positions: refusingDepartures });
+    await holdCoin(bench, 10n ** 18n);
+    const { firstBuy: _buy, ...feeOnly } = launch;
+    const intent = await tapped(bench, feeOnly);
+
+    await driveUntil(bench, intent, { states: ["reconciled"], blocks: 20 });
+    expect(await stateOf(bench, intent)).toBe("finalized");
+    expect(eventsOf(bench)).toContain("executor.settle_waits:");
+    const held = await bench.test.positions.positions(
+      { walletId: testLaunchWallet, isPaper: false },
+      live,
+    );
+    expect(held.map(({ asset, quantityBase }) => [asset, quantityBase])).toStrictEqual([
+      [testCoin, 10n ** 18n],
     ]);
   });
 

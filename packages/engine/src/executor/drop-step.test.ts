@@ -261,6 +261,22 @@ describe("recovery of a dropped step", () => {
     expect(await reasonOf(bench, intent)).toBeUndefined();
   });
 
+  it("watches no dropped step after a restart that cannot reach its chain, and signs nothing", async () => {
+    const bench = await startExecutorBench({ limits });
+    refuseAll(bench);
+    const intent = await tapped(bench);
+    await expect(driveUntil(bench, intent, settled)).resolves.toBe("failed_onchain");
+    const restarted = await restartBench(bench, { limits, withoutRelays: true });
+    acceptAll(bench);
+    const [, speedUp] = await ofIntent(bench, intent);
+    await bench.network.send({ chain: benchChain, raw: rawOf(speedUp) }, live());
+    await driveUntil(bench, intent, { states: [], blocks: 4 });
+    expect(restarted.recovered).toBe(0);
+    expect(restartEvents(restarted)).not.toContain("executor.dropped_landed:");
+    expect(restarted.signed).toStrictEqual([]);
+    expect(await stateOf(bench, intent)).toBe("failed_onchain");
+  });
+
   it("ends an intent whose step was dropped before the stop, and signs nothing", async () => {
     const bench = await startExecutorBench({ limits });
     bench.network.holdBelow(10n ** 18n);

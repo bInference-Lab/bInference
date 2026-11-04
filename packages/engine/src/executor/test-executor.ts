@@ -38,7 +38,7 @@ import {
   testCall,
 } from "../operations/test-engine.js";
 import type { OrderStore } from "../orders/ports.js";
-import type { Executor, IntentStore, TransactionStore } from "../ports.js";
+import type { Executor, IntentStore, PositionStore, TransactionStore } from "../ports.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
 import { createWalletQueue } from "../wallet-queue/wallet-queue.js";
@@ -94,6 +94,8 @@ export interface BenchOptions {
   readonly webhookRules?: (store: WebhookRuleStore) => WebhookRuleStore;
   /** Wraps the order store the executor reads and writes through, not the engine's. */
   readonly orders?: (store: OrderStore) => OrderStore;
+  /** Wraps the position store the executor books through, not the engine's. */
+  readonly positions?: (store: PositionStore) => PositionStore;
   /** What a swap's output comes to on chain; the fake venue's quote, twice the input, if absent. */
   readonly fillOut?: (amountInBase: bigint) => bigint;
   /** Wraps what the executor reads receipts, transfers and nonces through. */
@@ -209,7 +211,7 @@ export function executorOf(
   const custody = countingSigner(options.custody?.(test.custody) ?? test.custody, notes.signed);
   return createExecutor({
     stores,
-    positions: test.positions,
+    positions: options.positions?.(test.positions) ?? test.positions,
     queue: createWalletQueue({ transactions, nonces: network, clock: test.clock }),
     custody,
     prices: createFakePriceSource(options.prices ?? new Map([[testCoin, coinPrice]])),
