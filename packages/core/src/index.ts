@@ -42,6 +42,17 @@ export type {
 } from "./ports.js";
 export { err, ok } from "./result.js";
 export type { Err, Ok, Result } from "./result.js";
+export { isBypassEntry } from "./proxy/bypass-list.js";
+export type { BypassList } from "./proxy/bypass-list.js";
+export {
+  directRoute,
+  isProxyUrl,
+  outboundRouteOf,
+  proxyUnusable,
+  routeChoiceOf,
+} from "./proxy/outbound-route.js";
+export type { OutboundRoute, ProxySetting, RouteChoice } from "./proxy/outbound-route.js";
+export { throwProxiedFailure } from "./proxy/proxied-failure.js";
 export { retry } from "./retry/retry.js";
 export type { RetryAttempt, RetryOptions, RetryPolicy } from "./retry/retry.js";
 export { checkSecretName } from "./secret/secret-name.js";
