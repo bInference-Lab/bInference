@@ -99,6 +99,32 @@ function bodyCases(repo: string): readonly GateCase[] {
   ];
 }
 
+// The size warning counts every changed line but tests and generated files.
+function sizeCases(): readonly GateCase[] {
+  return [
+    prCase({
+      name: "a PR over 400 lines gets a warning from check:pr",
+      files: { "notes.md": `# Notes\n\n${"A line of notes.\n\n".repeat(230)}` },
+      commit: "docs: add notes about the gates",
+      body: filled,
+      expect: "pass",
+      output: /the branch changes \d+ lines/,
+    }),
+    prCase({
+      name: "a page a pnpm command generates counts no lines in check:pr",
+      files: {
+        "notes.md":
+          "---\ntitle: Notes\n---\n\n<!-- Generated from the code by pnpm docs:gen. -->\n\n" +
+          "A line of notes.\n\n".repeat(230),
+      },
+      commit: "docs: add notes about the gates",
+      body: filled,
+      expect: "pass",
+      output: /ready to merge \(0 lines counted\)/,
+    }),
+  ];
+}
+
 /** Cases for check:pr, which the merger runs on a branch's range, commits and PR body. */
 export function prCases(repo: string): readonly GateCase[] {
   return [
@@ -140,13 +166,6 @@ export function prCases(repo: string): readonly GateCase[] {
       expect: "fail",
       output: /Dependencies changed/,
     }),
-    prCase({
-      name: "a PR over 400 lines gets a warning from check:pr",
-      files: { "notes.md": `# Notes\n\n${"A line of notes.\n\n".repeat(230)}` },
-      commit: "docs: add notes about the gates",
-      body: filled,
-      expect: "pass",
-      output: /the branch changes \d+ lines/,
-    }),
+    ...sizeCases(),
   ];
 }

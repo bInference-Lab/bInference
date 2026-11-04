@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 import { parse } from "yaml";
 import { z } from "zod";
 import { loadGraph } from "./package-graph/graph.mjs";
+import { hasGeneratedHeader } from "./pr/generated-header.mjs";
 import {
   dependencyProblems,
   moneyPathProblems,
@@ -105,12 +106,20 @@ function commandProblems(root: string, pr: PullRequest): string[] {
   });
 }
 
+// A file a pnpm command generates, by its header at the head, or at the base for a deleted one.
+function isGenerated(root: string, pr: PullRequest, file: string): boolean {
+  return hasGeneratedHeader(fileAt(root, pr.head, file) || fileAt(root, pr.base, file));
+}
+
 function changedLines(root: string, pr: PullRequest): number {
   return git(root, ["diff", "--numstat", `${pr.base}...${pr.head}`])
     .split("\n")
     .map((line) => line.split("\t"))
     .filter(
-      ([, , file = ""]) => file.length > 0 && !uncounted.some((pattern) => pattern.test(file)),
+      ([, , file = ""]) =>
+        file.length > 0 &&
+        !uncounted.some((pattern) => pattern.test(file)) &&
+        !isGenerated(root, pr, file),
     )
     .reduce(
       (total, [added = "0", removed = "0"]) =>
