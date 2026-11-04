@@ -2,7 +2,6 @@ import { join } from "node:path";
 import {
   BinferenceError,
   type Clock,
-  createIdSource,
   err,
   idSchema,
   jsonValueSchema,
@@ -29,6 +28,7 @@ import { createSkillShelf } from "../skills/skill-shelf.js";
 import { readSkillSource } from "../skills/skill-source.js";
 import type { Closers } from "./closers.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
+import { createSingleJob } from "./single-job.js";
 
 type SkillView = ResultOf<"skill/list">["items"][number];
 
@@ -118,12 +118,6 @@ function installParts(options: SkillOperationsOptions): InstallParts {
   return options.pack === undefined ? parts : { ...parts, pack: options.pack };
 }
 
-/** The install under way, if any, and the promise that settles when it ends. */
-interface Running {
-  job: ProtocolId<"longJob"> | undefined;
-  ended: Promise<void>;
-}
-
 // Installs one skill and publishes how it ended; a stop of the engine ends it unannounced.
 async function runInstall(
   options: SkillOperationsOptions,
@@ -183,13 +177,7 @@ async function removeInstalled(
  */
 export function createSkillOperations(options: SkillOperationsOptions): EngineHandlerTable {
   const { shelf } = options;
-  const ids = createIdSource({ clock: options.clock, random: options.random });
-  const stop = new AbortController();
-  const running: Running = { job: undefined, ended: Promise.resolve() };
-  options.closers.add("skill installs", async () => {
-    stop.abort();
-    await running.ended;
-  });
+  const installs = createSingleJob({ ...options, name: "skill installs" });
   return {
     "skill/list": async ({ args, signal }) => {
       const agent = args.agent === undefined ? undefined : idSchema("agt").parse(args.agent);
@@ -214,15 +202,10 @@ export function createSkillOperations(options: SkillOperationsOptions): EngineHa
       if (!from.ok) {
         return err("protocol.bad_args");
       }
-      if (running.job !== undefined) {
-        return ok({ job: running.job });
-      }
-      const job = ids.next("job");
-      running.job = job;
       const request = { source: args.source, hash: args.hash, from: from.value };
-      running.ended = runInstall(options, { job, request }, stop.signal).finally(() => {
-        running.job = undefined;
-      });
+      const job = installs.start(async (started, stop) =>
+        runInstall(options, { job: started, request }, stop),
+      );
       return ok({ job });
     },
     "skill/remove": async ({ args, signal }) =>
