@@ -33,8 +33,13 @@ const isAfter = (record: IntentRecord, after: IntentQuery["after"]): boolean =>
   (record.changedAtMs === after.changedAtMs && record.id > after.id);
 
 /** A store of intents that answers pages as the intent store does, and counts what is read. */
-function storeOf(records: readonly IntentRecord[], throwsFor: ReadonlySet<Id<"int">>) {
+function storeOf(
+  records: readonly IntentRecord[],
+  throwsFor: ReadonlySet<Id<"int">>,
+  movedTo?: IntentRecord["state"],
+) {
   const read: Id<"int">[] = [];
+  const now = (id: Id<"int">) => records.find((record) => record.id === id);
   const stored = {
     list: async (query: IntentQuery) =>
       Promise.resolve(
@@ -42,7 +47,8 @@ function storeOf(records: readonly IntentRecord[], throwsFor: ReadonlySet<Id<"in
       ),
     snapshot: async (id: Id<"int">) => {
       read.push(id);
-      return throwsFor.has(id) ? Promise.reject(new Error("The node went away.")) : undefined;
+      const moved = movedTo === undefined ? undefined : { record: { ...now(id), state: movedTo } };
+      return throwsFor.has(id) ? Promise.reject(new Error("The node went away.")) : moved;
     },
   };
   const options = { stored } as unknown as LaunchPathOptions;
@@ -66,5 +72,12 @@ describe("the pin follow of every token launch", () => {
       details: { intents: fixtureId("int", 1), count: 1 },
     });
     expect(read).toStrictEqual([1, 2, 3].map((n) => fixtureId("int", n)));
+  });
+
+  it("answers a launch another write moved on since the list as it is, following nothing", async () => {
+    const launch = recordOf(1, "launchToken");
+    const { options, read } = storeOf([launch], new Set(), "cancelled");
+    await expect(followLaunchPins(options, live)).resolves.toBe(1);
+    expect(read).toStrictEqual([launch.id]);
   });
 });

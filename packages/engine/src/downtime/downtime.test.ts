@@ -418,4 +418,27 @@ describe("the downtime re-check", () => {
     expect(report?.orders).toStrictEqual([]);
     expect(resumedOf(test)).toStrictEqual([]);
   });
+
+  it("keeps the span and its held skips for the next start when a stop cuts its report", async () => {
+    const test = await startFillEngine();
+    await activeOrder(test, testStopLoss({ worstPrice: 1n }));
+    await test.engine.downtime.alive(live);
+    const markedMs = test.clock.now();
+    await test.clock.advance(hourMs);
+
+    const stop = new AbortController();
+    const restarted = test.restart();
+    const run = await restarted.downtime.started({ signal: stop.signal });
+    await restarted.seePrice(at(700_000n, test.clock.now()), live);
+    stop.abort(new Error("The engine stopped."));
+    await expect(run?.reported).rejects.toThrow("The engine stopped.");
+
+    expect(keysOf(noticesOf(test))).not.toContain("notice.skipped");
+    await expect(test.stores.alive.lastAlive(live)).resolves.toBe(markedMs);
+    const again = await test.restart().downtime.started(live);
+    await test.clock.advance(2 * minuteMs);
+    const second = await again?.reported;
+    expect(second?.offFromMs).toBe(markedMs);
+    expect(second?.orders).toMatchObject([{ outcome: "skipped" }]);
+  });
 });

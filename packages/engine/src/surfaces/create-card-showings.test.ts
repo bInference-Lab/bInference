@@ -23,6 +23,7 @@ import {
   testCallers,
   testChains,
 } from "../operations/test-engine.js";
+import { createdOrder, startOrderEngine, testStopLoss } from "../orders/test-orders.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import type { AgentStore, IntentStore, RiskCheck } from "../ports.js";
 import { sha256Hex } from "../records/sha256-hex.js";
@@ -117,6 +118,23 @@ describe("the card showings", () => {
       verified: { type: "choice", choice: "yes" },
     });
     expect(Object.keys(showing.assets)).toStrictEqual([testCoin, testToken]);
+  });
+
+  it("draw an owner's auto order with no reason line when the owner gave none", async () => {
+    const test = await startOrderEngine();
+    const { reason: _reason, ...unreasoned } = testStopLoss();
+    const given = await createdOrder(test, testStopLoss());
+    const bare = await createdOrder(test, unreasoned);
+    const keysOf = async (intent: Id<"int">) => {
+      const [card] = await test.stores.intents.cards(intent, live);
+      const shown = await showingsOf(test).opened({ intent, card: present(card).id }, live);
+      return present(shown).card.lines.map(({ key }) => key);
+    };
+    const withReason = await keysOf(given.intent);
+    expect(withReason).toContain("card.reason");
+    expect(await keysOf(bare.intent)).toStrictEqual(
+      withReason.filter((key) => key !== "card.reason"),
+    );
   });
 
   it("say a trade has no time limit when a venue on its route declares no deadline", async () => {
