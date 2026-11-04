@@ -67,37 +67,37 @@ Model providers and the models the agent uses.
 - `models.maxToolCallsPerTurn`: Tool calls allowed per turn. Takes a whole number of at least 1. Default: `25`. Variable: `BINFERENCE_MODELS__MAX_TOOL_CALLS_PER_TURN`.
 - `models.loopDetection`: Stops a turn that repeats its tool calls. Takes true or false. Default: `true`. Variable: `BINFERENCE_MODELS__LOOP_DETECTION`.
 - `models.prices`: Model prices that replace the built-in table. Takes an object. Default: `{}`. Variable: `BINFERENCE_MODELS__PRICES`. Keys: a model written as provider/model.
-- `models.prices.<model>.inputPerMTokUsd`: US dollars per million input tokens. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Required. Variable: `BINFERENCE_MODELS__PRICES__<MODEL>__INPUT_PER_MTOK_USD`.
-- `models.prices.<model>.outputPerMTokUsd`: US dollars per million output tokens. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Required. Variable: `BINFERENCE_MODELS__PRICES__<MODEL>__OUTPUT_PER_MTOK_USD`.
-- `models.prices.<model>.cachedPerMTokUsd`: US dollars per million cached input tokens. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Required. Variable: `BINFERENCE_MODELS__PRICES__<MODEL>__CACHED_PER_MTOK_USD`.
+- `models.prices.<model>.inputPerMTokUsd`: US dollars per million input tokens. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Required. Variable: `BINFERENCE_MODELS__PRICES__<MODEL>__INPUT_PER_MTOK_USD`.
+- `models.prices.<model>.outputPerMTokUsd`: US dollars per million output tokens. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Required. Variable: `BINFERENCE_MODELS__PRICES__<MODEL>__OUTPUT_PER_MTOK_USD`.
+- `models.prices.<model>.cachedPerMTokUsd`: US dollars per million cached input tokens. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Required. Variable: `BINFERENCE_MODELS__PRICES__<MODEL>__CACHED_PER_MTOK_USD`.
 
 ## `defaults`
 
 What each new agent starts with; copied into its rows once, at creation.
 
-- `defaults.limits.perTradeUsd`: The most one trade may move, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"100"`. Variable: `BINFERENCE_DEFAULTS__LIMITS__PER_TRADE_USD`.
-- `defaults.limits.rollingDayUsd`: The most trades and sends may move in 24 hours, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"500"`. Variable: `BINFERENCE_DEFAULTS__LIMITS__ROLLING_DAY_USD`.
+- `defaults.limits.perTradeUsd`: The most one trade may move, in US dollars. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Default: `"100"`. Variable: `BINFERENCE_DEFAULTS__LIMITS__PER_TRADE_USD`.
+- `defaults.limits.rollingDayUsd`: The most trades and sends may move in 24 hours, in US dollars. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Default: `"500"`. Variable: `BINFERENCE_DEFAULTS__LIMITS__ROLLING_DAY_USD`.
 - `defaults.limits.slippageBps.registry`: Slippage allowed on registry tokens, in basis points. Takes a number from 0 to 10000. Default: `100`. Variable: `BINFERENCE_DEFAULTS__LIMITS__SLIPPAGE_BPS__REGISTRY`.
 - `defaults.limits.slippageBps.other`: Slippage allowed on every other token, in basis points. Takes a number from 0 to 10000. Default: `500`. Variable: `BINFERENCE_DEFAULTS__LIMITS__SLIPPAGE_BPS__OTHER`.
 - `defaults.limits.priceImpactBps`: The largest price impact allowed, in basis points. Takes a number from 0 to 10000. Default: `300`. Variable: `BINFERENCE_DEFAULTS__LIMITS__PRICE_IMPACT_BPS`.
 - `defaults.limits.taxBps`: The largest token tax allowed, in basis points. Takes a number from 0 to 10000. Default: `1000`. Variable: `BINFERENCE_DEFAULTS__LIMITS__TAX_BPS`.
-- `defaults.limits.liquidityFloorUsd`: The least pool liquidity a trade needs, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"10000"`. Variable: `BINFERENCE_DEFAULTS__LIMITS__LIQUIDITY_FLOOR_USD`.
-- `defaults.limits.gasReserve.<chain>`: The native coin kept for gas, per chain. Takes a decimal number in quotes, such as "0.002". Default: `{"eip155:56":"0.002"}`. Variable: `BINFERENCE_DEFAULTS__LIMITS__GAS_RESERVE__<CHAIN>`. Keys: a chain id such as eip155:56.
+- `defaults.limits.liquidityFloorUsd`: The least pool liquidity a trade needs, in US dollars. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Default: `"10000"`. Variable: `BINFERENCE_DEFAULTS__LIMITS__LIQUIDITY_FLOOR_USD`.
+- `defaults.limits.gasReserve.<chain>`: The native coin kept for gas, per chain. Takes a decimal number written as text, such as "0.002". Default: `{"eip155:56":"0.002"}`. Variable: `BINFERENCE_DEFAULTS__LIMITS__GAS_RESERVE__<CHAIN>`. Keys: a chain id such as eip155:56.
 - `defaults.limits.venues`: The venues allowed. Takes a list in which each item is text. Default: every installed core venue. Variable: `BINFERENCE_DEFAULTS__LIMITS__VENUES`.
 - `defaults.limits.allowTokens`: Tokens allowed; empty allows every token that passes the risk check. Takes a list in which each item is text. Default: `[]`. Variable: `BINFERENCE_DEFAULTS__LIMITS__ALLOW_TOKENS`.
 - `defaults.limits.denyTokens`: Tokens refused. Takes a list in which each item is text. Default: `[]`. Variable: `BINFERENCE_DEFAULTS__LIMITS__DENY_TOKENS`.
 - `defaults.sendLevel`: The send level, 0 to 3. Takes a number from 0 to 3. Default: `0`. Variable: `BINFERENCE_DEFAULTS__SEND_LEVEL`.
 - `defaults.approvalMode`: Whether trades within the caps wait for a tap. Takes one of "manual", "auto". Default: `"manual"`. Variable: `BINFERENCE_DEFAULTS__APPROVAL_MODE`.
-- `defaults.ceiling.perTxBnb`: The Privy policy's per-transaction cap, in BNB. Takes a decimal number in quotes, such as "0.002". Default: `"1"`. Variable: `BINFERENCE_DEFAULTS__CEILING__PER_TX_BNB`.
+- `defaults.ceiling.perTxBnb`: The Privy policy's per-transaction cap, in BNB. Takes a decimal number written as text, such as "0.002". Default: `"1"`. Variable: `BINFERENCE_DEFAULTS__CEILING__PER_TX_BNB`.
 - `defaults.cards.tradeExpirySec`: A trade card expires after this many seconds. Takes a whole number of at least 1. Default: `60`. Variable: `BINFERENCE_DEFAULTS__CARDS__TRADE_EXPIRY_SEC`.
 - `defaults.cards.otherExpirySec`: Other cards expire after this many seconds. Takes a whole number of at least 1. Default: `600`. Variable: `BINFERENCE_DEFAULTS__CARDS__OTHER_EXPIRY_SEC`.
 - `defaults.cards.requoteAfterSec`: A quote older than this many seconds is taken again. Takes a whole number of at least 1. Default: `10`. Variable: `BINFERENCE_DEFAULTS__CARDS__REQUOTE_AFTER_SEC`.
 - `defaults.cards.requoteToleranceBps`: A new quote this much worse asks again, in basis points. Takes a number from 0 to 10000. Default: `50`. Variable: `BINFERENCE_DEFAULTS__CARDS__REQUOTE_TOLERANCE_BPS`.
 - `defaults.orders.expiryDays`: An auto order expires after this many days. Takes a whole number of at least 1. Default: `30`. Variable: `BINFERENCE_DEFAULTS__ORDERS__EXPIRY_DAYS`.
-- `defaults.copy.perBuyUsd`: The most one copied buy may spend, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"20"`. Variable: `BINFERENCE_DEFAULTS__COPY__PER_BUY_USD`.
-- `defaults.copy.perLeaderDayUsd`: The most copies of one leader may spend a day, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"200"`. Variable: `BINFERENCE_DEFAULTS__COPY__PER_LEADER_DAY_USD`.
-- `defaults.paper.balances.<symbol>`: Paper-mode starting balances. Takes a decimal number in quotes, such as "0.002". Default: `{"BNB":"1","USDT":"500"}`. Variable: `BINFERENCE_DEFAULTS__PAPER__BALANCES__<SYMBOL>`. Keys: text.
-- `defaults.modelBudgetUsdPerDay`: The most model calls may cost a day, in US dollars. Takes US dollars in quotes, such as "100" or "0.25", with at most six decimals. Default: `"3"`. Variable: `BINFERENCE_DEFAULTS__MODEL_BUDGET_USD_PER_DAY`.
+- `defaults.copy.perBuyUsd`: The most one copied buy may spend, in US dollars. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Default: `"20"`. Variable: `BINFERENCE_DEFAULTS__COPY__PER_BUY_USD`.
+- `defaults.copy.perLeaderDayUsd`: The most copies of one leader may spend a day, in US dollars. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Default: `"200"`. Variable: `BINFERENCE_DEFAULTS__COPY__PER_LEADER_DAY_USD`.
+- `defaults.paper.balances.<symbol>`: Paper-mode starting balances. Takes a decimal number written as text, such as "0.002". Default: `{"BNB":"1","USDT":"500"}`. Variable: `BINFERENCE_DEFAULTS__PAPER__BALANCES__<SYMBOL>`. Keys: text.
+- `defaults.modelBudgetUsdPerDay`: The most model calls may cost a day, in US dollars. Takes US dollars written as text, such as "100" or "0.25", with at most six decimals. Default: `"3"`. Variable: `BINFERENCE_DEFAULTS__MODEL_BUDGET_USD_PER_DAY`.
 - `defaults.notifications.muted`: Notice kinds muted; security notices cannot be muted. Takes a list in which each item is one of "fill", "skipped", "lowGas", "orderExpiring", "daily", "claimReady", "alertPrice", "alertWallet", "alertLaunch", "alertHeld", "ordersEnded", "exitEnded", "update", "updateBare", "updated", "updatedBare". Default: `[]`. Variable: `BINFERENCE_DEFAULTS__NOTIFICATIONS__MUTED`.
 - `defaults.notifications.dailySummaryTime`: When the daily summary goes, in the owner's time, as HH:mm. Takes text. Default: `"09:00"`. Variable: `BINFERENCE_DEFAULTS__NOTIFICATIONS__DAILY_SUMMARY_TIME`.
 
@@ -112,7 +112,7 @@ Chains.
 - `chains.rpc.<chain>.tracer`: The URL of your RPC that answers debug_traceTransaction, such as a paid node's. binference asks it what a trade received once the public RPCs dropped an old block. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__TRACER`.
 - `chains.rpc.<chain>.ws`: The wss:// URL of your RPC that pushes new blocks, such as a paid node's. The price watcher follows each new block through it, and polls the RPCs while it is down. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__WS`.
 - `chains.relays.<chain>`: Private relays for sends, per chain. Takes a list in which each item is text. Default: the two fastest, by measurement. Variable: `BINFERENCE_CHAINS__RELAYS__<CHAIN>`. Keys: a chain id such as eip155:56.
-- `chains.maxFeePerGasGwei.<chain>`: The network fee cap per chain, in gwei: a higher fee per gas asks the owner. Takes a decimal number in quotes, such as "0.002". Default: `{"eip155:56":"1"}`. Variable: `BINFERENCE_CHAINS__MAX_FEE_PER_GAS_GWEI__<CHAIN>`. Keys: a chain id such as eip155:56.
+- `chains.maxFeePerGasGwei.<chain>`: The network fee cap per chain, in gwei: a higher fee per gas asks the owner. Takes a decimal number written as text, such as "0.002". Default: `{"eip155:56":"1"}`. Variable: `BINFERENCE_CHAINS__MAX_FEE_PER_GAS_GWEI__<CHAIN>`. Keys: a chain id such as eip155:56.
 
 ## `venues`
 
