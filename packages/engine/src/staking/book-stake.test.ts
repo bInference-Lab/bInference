@@ -1,13 +1,19 @@
-import { accountRefSchema, assetRefSchema, type UsdPrice } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, type TxHash, type UsdPrice } from "@binference/chain";
 import type { StakePlan } from "@binference/chain/staking";
-import { bpsSchema } from "@binference/core";
+import { bpsSchema, err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId, live } from "../contracts/store-fixtures.js";
 import { createFakePriceSource } from "../fakes/fake-price-source.js";
 import { createMemoryPositionStore } from "../fakes/memory-position-store.js";
 import { createMemoryUnbondingStore } from "../fakes/memory-unbonding-store.js";
 import { createPositions, type Positions } from "../positions/create-positions.js";
-import { bookStake, type StakeBooking, type StakeBookParts } from "./book-stake.js";
+import {
+  bookStake,
+  claimArrivalsOf,
+  type StakeBooking,
+  type StakeBookParts,
+} from "./book-stake.js";
+import type { UnbondingRecord } from "./unbonding-record.js";
 
 const coin = assetRefSchema.parse("fake:1/slip44:1");
 const receipt = assetRefSchema.parse("fake:1/token:0x000000c1");
@@ -186,5 +192,119 @@ describe("booking a staking move (decision 0327)", () => {
     ]);
     const taken = await parts.unbondings.claimedBy(fixtureId("int", 7), live());
     expect(taken.map((row) => row.requestRef)).toStrictEqual([request.ref]);
+  });
+});
+
+// Positions whose stake writes lose their race to another write the first `times` tries.
+function staleFor(positions: Positions, times: number): Positions {
+  let left = times;
+  return {
+    ...positions,
+    record: async (trade, call) => {
+      if (left > 0) {
+        left -= 1;
+        return err("stale" as const);
+      }
+      return positions.record(trade, call);
+    },
+  };
+}
+
+describe("booking a staking move it cannot book whole", () => {
+  it("books nothing of a stake that read back no units, or with no coin price", async () => {
+    const parts = await walletOf();
+    const noUnits = bookingOf(8, planOf("stake"));
+    const { coinPrice: _price, ...unpriced } = bookingOf(9, planOf("stake"), {
+      shares: { asset: receipt, base: whole },
+    });
+
+    await expect(bookStake(parts, noUnits, live())).resolves.toBe(false);
+    await expect(bookStake(parts, unpriced, live())).resolves.toBe(false);
+    expect(await executionsOf(parts)).toStrictEqual([]);
+  });
+
+  it("books nothing of an unstake with no units, no request, or that burned none", async () => {
+    const parts = await walletOf();
+    const shares = { asset: receipt, base: whole };
+    const bookings = [
+      bookingOf(10, unstake, { request }),
+      bookingOf(11, unstake, { shares }),
+      bookingOf(12, unstake, { shares: { ...shares, base: 0n }, request }),
+    ];
+
+    for (const booking of bookings) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- each books against the same wallet
+      await expect(bookStake(parts, booking, live())).resolves.toBe(false);
+    }
+    const query = { walletId, isPaper: false, venue: "fake-staking", validator };
+    expect(await parts.unbondings.listOpen(query, live())).toStrictEqual([]);
+  });
+
+  it("tries a stake's write another write beat again, and gives up after three", async () => {
+    const parts = await walletOf();
+    const booking = bookingOf(13, planOf("stake"), { shares: { asset: receipt, base: whole } });
+    const twice = { ...parts, positions: staleFor(parts.positions, 2) };
+    const always = { ...parts, positions: staleFor(parts.positions, 3) };
+
+    await expect(bookStake(always, booking, live())).resolves.toBe(false);
+    await expect(bookStake(twice, booking, live())).resolves.toBe(true);
+    expect(await executionsOf(parts)).toHaveLength(1);
+  });
+
+  it("books a claim that names no part as its coin arriving with no value", async () => {
+    const parts = await walletOf();
+    const claim = planOf("claim", { moved: { asset: coin, base: whole } });
+
+    await expect(bookStake(parts, bookingOf(14, claim), live())).resolves.toBe(true);
+    const arrivals = await arrivalsOf(parts);
+    expect(
+      arrivals.map(({ received, valueUsdMicros }) => [received.base, valueUsdMicros]),
+    ).toStrictEqual([[whole, undefined]]);
+  });
+});
+
+// An unbonding row of the coin, with what its unstake recorded it worth when given.
+function rowOf(base: bigint, valueUsdMicros?: bigint): UnbondingRecord {
+  return {
+    amount: { asset: coin, base },
+    ...(valueUsdMicros === undefined ? {} : { valueUsdMicros }),
+  } as UnbondingRecord;
+}
+
+// A claim's transaction hash.
+const hash = `0x${"ab".repeat(32)}` as TxHash;
+
+describe("a claim's arrivals", () => {
+  const record = { id: fixtureId("int", 15), walletId, isPaper: false };
+
+  it("is one arrival at what the unstakes recorded when they cover the whole claim", () => {
+    const arrivals = claimArrivalsOf([rowOf(whole, 600_000_000n)], {
+      record,
+      moved: { asset: coin, base: whole },
+      atMs: 1,
+    });
+
+    expect(
+      arrivals.map(({ received, valueUsdMicros }) => [received.base, valueUsdMicros]),
+    ).toStrictEqual([[whole, 600_000_000n]]);
+  });
+
+  it("is the whole claim with no value when its rows recorded more than it moved", () => {
+    const arrivals = claimArrivalsOf([rowOf(2n * whole, 1_200_000_000n)], {
+      record,
+      moved: { asset: coin, base: whole },
+      atMs: 1,
+      txHash: hash,
+    });
+
+    expect(arrivals).toStrictEqual([
+      {
+        walletId,
+        isPaper: false,
+        atMs: 1,
+        txHash: hash,
+        received: { asset: coin, base: whole },
+      },
+    ]);
   });
 });

@@ -1,4 +1,6 @@
 import { accountRefSchema, assetRefSchema, type PriceSource } from "@binference/chain";
+import type { StakePlan, StakingVenue } from "@binference/chain/staking";
+import type { FakeStakingVenue } from "@binference/chain/testing";
 import { err, idSchema } from "@binference/core";
 import { intentStates, type IntentView, type StakeRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -6,6 +8,7 @@ import { createFakeTokenFacts, fakeTokenFacts } from "../fakes/fake-token-facts.
 import { expectOk, testCoin } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
+import type { IntentStore } from "../ports.js";
 import {
   halfCoin,
   holdStakeWallet,
@@ -213,6 +216,61 @@ describe("resolving a staking request", () => {
   });
 });
 
+// The fake venue answering each plan as `change` rewrites it.
+function rewritingPlans(
+  change: (plan: StakePlan) => StakePlan,
+  fake: FakeStakingVenue = testStakingFake(),
+): StakingVenue {
+  return {
+    ...fake,
+    plan: async (request, call) => {
+      const planned = await fake.plan(request, call);
+      return planned.ok ? { ...planned, value: change(planned.value) } : planned;
+    },
+  };
+}
+
+// A claim's plan that takes a part of another wallet; any other plan as it is.
+function claimingOther(plan: StakePlan): StakePlan {
+  return plan.action === "claim" ? { ...plan, parts: ["someone-else:0"] } : plan;
+}
+
+async function outcomeOf(test: StakeTest, request = stakeRequest("stake")) {
+  const view = await propose(test, request);
+  return [view.state, view.outcome?.reason];
+}
+
+describe("the engine's own checks of a paper staking plan", () => {
+  it("ends a paper stake whose venue cannot name its receipt token with venue_down", async () => {
+    const venue = { ...testStakingFake(), receipt: async () => Promise.reject(new Error("down")) };
+    const test = await startStakeEngine(venue);
+
+    expect(await outcomeOf(test)).toStrictEqual(["failed_check", "venue_down"]);
+  });
+
+  it("ends a paper stake whose plan mints another token than the validator's receipt", async () => {
+    const other = assetRefSchema.parse("fake:1/token:0x000000c9");
+    const test = await startStakeEngine(
+      rewritingPlans((plan) => ({ ...plan, shares: { asset: other, base: plan.value.base } })),
+    );
+
+    expect(await outcomeOf(test)).toStrictEqual(["failed_check", "decode_mismatch"]);
+  });
+
+  it("ends a paper claim of a part the paper position does not hold", async () => {
+    const fake = testStakingFake();
+    const test = await startStakeEngine(rewritingPlans(claimingOther, fake));
+    await confirm(test, await propose(test));
+    await confirm(test, await propose(test, wholeUnstake()));
+    fake.wait(testUnbondingSeconds + 1);
+
+    expect(await outcomeOf(test, stakeRequest("claim"))).toStrictEqual([
+      "failed_check",
+      "decode_mismatch",
+    ]);
+  });
+});
+
 describe("staking in auto mode", () => {
   it("opens a card for a stake while a community plugin is on, and says why (decision 0350)", async () => {
     const test = await startStakeEngine(withOwnCap(testStakingFake()), {
@@ -290,6 +348,40 @@ async function stateOf(test: StakeTest, view: IntentView) {
   return [read.state, read.outcome?.reason];
 }
 
+// An intent store that stops the run, as a crash does, right after it writes a paper fill.
+function stoppingAtPaperFill(store: IntentStore, controller: AbortController): IntentStore {
+  return {
+    ...store,
+    transition: async (change, call) => {
+      const moved = await store.transition(change, call);
+      if (change.state === "paper_filled") {
+        controller.abort();
+      }
+      return moved;
+    },
+  };
+}
+
+// The owner's tap on the intent's card, under the signal given; answers whether it ran to its end.
+async function confirmUnder(test: StakeTest, view: IntentView, signal: AbortSignal) {
+  const card = view.card?.card;
+  if (card === undefined) {
+    throw new Error("The intent has no card to confirm.");
+  }
+  const args = { intent: view.intent, card, cardVersion: view.card?.version ?? 1 };
+  const call = { ...testCall(args), signal };
+  return test.engine.handlers["intent/confirm"](call).then(
+    () => "ran",
+    () => "stopped",
+  );
+}
+
+// The paper units the wallet holds of each asset, as its positions keep them.
+async function paperUnits(test: StakeTest, view: IntentView) {
+  const positions = await test.positions.positions({ walletId: view.wallet, isPaper: true }, live);
+  return positions.map(({ asset, quantityBase }) => [asset, quantityBase]);
+}
+
 describe("filling a staking move on paper", () => {
   it("ends a stake the paper coin no longer covers with nothing_to_sell", async () => {
     const test = await startStakeEngine(testStakingFake(), {
@@ -326,6 +418,25 @@ describe("filling a staking move on paper", () => {
 
     expect(await stateOf(test, first)).toStrictEqual(["paper_filled", undefined]);
     expect(await stateOf(test, second)).toStrictEqual(["failed_check", "nothing_to_sell"]);
+  });
+
+  it("books at the start, once, a paper stake a stop cut off right after its fill", async () => {
+    const controller = new AbortController();
+    const test = await startStakeEngine(testStakingFake(), {
+      intents: (store) => stoppingAtPaperFill(store, controller),
+    });
+    const view = await propose(test);
+    const whole = await startStakeEngine(testStakingFake());
+    const booked = await propose(whole);
+    await confirm(whole, booked);
+
+    expect(await confirmUnder(test, view, controller.signal)).toBe("stopped");
+    const cutOff = await paperUnits(test, view);
+    await test.restart().repairPaperFills(live);
+    await test.restart().repairPaperFills(live);
+
+    expect(cutOff).not.toStrictEqual(await paperUnits(whole, booked));
+    expect(await paperUnits(test, view)).toStrictEqual(await paperUnits(whole, booked));
   });
 
   it("stays confirmed, with nothing booked, while the coin has no usable price", async () => {
