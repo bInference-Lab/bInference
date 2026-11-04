@@ -4,6 +4,11 @@ import process from "node:process";
 import { parseArgs } from "node:util";
 import type { ReleaseNotes } from "@binference/protocol";
 import { packedReadmeFindings } from "./release/check-readmes.mjs";
+import {
+  installScriptType,
+  type StagedInstallScript,
+  stageInstallScripts,
+} from "./release/install-scripts.mjs";
 import { readOwnerNotes } from "./release/owner-notes.mjs";
 import { checksums, packPackage, type PackedFile } from "./release/pack-release.mjs";
 import {
@@ -81,8 +86,16 @@ function readyWorkspace(root: string, published: readonly string[]): Workspace {
   return problems.length === 0 ? workspace : fail(problems.join("\n"));
 }
 
+/** What a dry run wrote: its folder, the packed tarballs and the install scripts beside them. */
+interface PackedOut {
+  readonly out: string;
+  readonly files: readonly PackedFile[];
+  readonly scripts: readonly StagedInstallScript[];
+}
+
 // Builds and packs the published packages at the version into reports/release/<version>/, checks
-// each packed README with the style guard and writes SHA256SUMS.
+// each packed README with the style guard, stages the install scripts and writes SHA256SUMS over
+// the tarballs and the scripts.
 function packAll(
   root: string,
   pack: {
@@ -90,7 +103,7 @@ function packAll(
     readonly isNightly: boolean;
     readonly releaseNotes?: ReleaseNotes;
   },
-): { readonly out: string; readonly files: readonly PackedFile[] } {
+): PackedOut {
   const published = publishedPackages(root);
   const workspace = readyWorkspace(root, published);
   build(root, published);
@@ -102,8 +115,10 @@ function packAll(
   if (readmeFindings.length > 0) {
     return fail(`a packed README breaks the style guard:\n${readmeFindings.join("\n")}`);
   }
-  writeFileSync(join(out, "SHA256SUMS"), checksums(files));
-  return { out, files };
+  // The scripts are staged first, so SHA256SUMS, which the signed release carries, covers them.
+  const scripts = stageInstallScripts(root, out);
+  writeFileSync(join(out, "SHA256SUMS"), checksums([...files, ...scripts]));
+  return { out, files, scripts };
 }
 
 // npm's own dry run of each publish, with the dist-tag the channel publishes to.
@@ -138,18 +153,24 @@ function kib(bytes: number): string {
   return `${(bytes / 1024).toFixed(1)} KiB`;
 }
 
-function listFiles(out: string, files: readonly PackedFile[]): void {
+function listFiles({ out, files, scripts }: PackedOut): void {
   console.log(`Artifacts in ${out}:`);
   for (const packed of files) {
     console.log(`  ${packed.file}  ${kib(packed.bytes)}  sha256 ${packed.sha256}`);
   }
+  for (const script of scripts) {
+    console.log(`  ${script.file} and ${script.file}.sha256, to host  sha256 ${script.sha256}`);
+  }
+  if (scripts.length > 0) {
+    console.log(`  Host the install scripts as ${installScriptType}, or PowerShell misreads them.`);
+  }
 }
 
-function report(out: string, manifest: ReleaseManifest, files: readonly PackedFile[]): void {
+function report(packed: PackedOut, manifest: ReleaseManifest): void {
   console.log(
     `\nrelease:dry: ${manifest.tag} on the ${manifest.channel} channel, nothing published.`,
   );
-  listFiles(out, files);
+  listFiles(packed);
   console.log(`  SHA256SUMS, ${manifest.sbom}, ${manifest.notes}, ${manifestFile}`);
   console.log(`npm: each package at ${manifest.version}, dist-tag ${manifest.npmTag}.`);
   console.log(
@@ -176,11 +197,12 @@ function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }
   if (!ownerNotes.ok) {
     return fail(`the release's notes for owners are not ready:\n${ownerNotes.problems.join("\n")}`);
   }
-  const { out, files } = packAll(root, {
+  const packed = packAll(root, {
     version: release.version,
     isNightly: false,
     releaseNotes: ownerNotes.notes,
   });
+  const { out, files } = packed;
   const start = ask.since ?? point.previous;
   const notes = releaseNotes({ release, since: start, commits: commitsSince(root, start) });
   writeFileSync(join(out, "notes.md"), notes);
@@ -198,7 +220,7 @@ function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }
     notes: "notes.md",
   };
   writeFileSync(join(out, manifestFile), `${JSON.stringify(manifest, null, 2)}\n`);
-  report(out, manifest, files);
+  report(packed, manifest);
 }
 
 // A nightly pack (decision 0354): no tag, channel or version order to check and no notes; every
@@ -208,12 +230,13 @@ function packNightly(root: string, version: string): void {
   if (dirty !== undefined) {
     return fail(dirty);
   }
-  const { out, files } = packAll(root, { version, isNightly: true });
+  const packed = packAll(root, { version, isNightly: true });
+  const { out, files } = packed;
   checkInstall({ folder: out, version, packages: files, root });
   const manifest: NightlyManifest = { version, channel: "nightly", packages: packedOf(files) };
   writeFileSync(join(out, manifestFile), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(`\nrelease:dry: the nightly ${version}, packed for the smoke; nothing publishes it.`);
-  listFiles(out, files);
+  listFiles(packed);
 }
 
 const root = process.cwd();

@@ -42,7 +42,8 @@ pnpm release:dry v2026.11.0-beta.1
 It refuses a tag outside calver, a tree with changes, a tag that names another commit, a release
 without its notes for owners and a
 version that is not newer. It builds, packs the four public packages, runs the style guard over
-each packed README, writes `SHA256SUMS`, installs the packed files into an empty project outside
+each packed README, stages the two install scripts with a `.sha256` beside each, writes
+`SHA256SUMS` over the tarballs and the scripts, installs the packed files into an empty project outside
 the repository, checks that every file their manifests name is there and `binference --version`,
 writes npm's CycloneDX SBOM of that install and the notes from the commit subjects, and runs
 `npm publish --dry-run` on each tarball. It publishes nothing. Read
@@ -82,6 +83,13 @@ stops halfway runs again: the npm job skips a version npm holds already.
 
 `scratch` on is a test: npm's `scratch` dist-tag, only the version's image tag, a draft GitHub
 release. The version it uses is gone for good.
+
+Then host the install scripts (decision 0357), only with the owner's word: copy `install.sh`,
+`install.ps1` and their `.sha256` files from the dry run's folder to binference.io, unchanged.
+Serve all four as `text/plain; charset=utf-8`: Windows PowerShell reads a script with no charset
+as ISO-8859-1 and garbles its Chinese lines. `SHA256SUMS`, which the release carries, lists both
+scripts too. `install.ps1` is not hosted until the nightly one-liner job has passed once on
+Windows; until then, host `install.sh` alone.
 
 ## 6. Never
 

@@ -76,7 +76,7 @@ export function packPackage(build: ReleaseBuild, name: string, out: string): Pac
   };
 }
 
-/** The `SHA256SUMS` text over the tarballs, in the form `sha256sum --check` reads. */
-export function checksums(files: readonly PackedFile[]): string {
+/** The `SHA256SUMS` text over the given files, in the form `sha256sum --check` reads. */
+export function checksums(files: readonly Pick<PackedFile, "file" | "sha256">[]): string {
   return files.map((packed) => `${packed.sha256}  ${packed.file}\n`).join("");
 }

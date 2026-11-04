@@ -497,7 +497,8 @@ check` tries it as `network.proxy`.
 - **release**: one calver version of the four public npm packages and the Docker image, cut from a
   **release tag**, `vYYYY.M.PATCH` on the **stable** channel or `vYYYY.M.PATCH-beta.N` on the
   **beta** channel. `pnpm release:dry <tag>` is its **dry run**: it builds, packs, sums, writes the
-  notes and the SBOM, installs the **packed files** into an empty project, and publishes nothing.
+  notes and the SBOM, installs the **packed files** into an empty project, stages the two
+  **install scripts** with a `.sha256` beside each for hosting, and publishes nothing.
   Its **notes for owners**, `release/notes/<version>.en.json` and `.zh.json`, are what the update
   notice shows; the dry run packs them into the `binference` package.
   The release workflow publishes only a tag signed by a **release key** that
