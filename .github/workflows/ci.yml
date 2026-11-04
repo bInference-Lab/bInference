@@ -281,7 +281,7 @@ jobs:
           pnpm check:style --commits "$BASE..HEAD"
 
   security:
-    name: audit, OpenGrep, actionlint and zizmor
+    name: audit, OpenGrep, actionlint, zizmor and shellcheck
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -314,6 +314,8 @@ jobs:
           ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
           ZIZMOR_VERSION: 1.31.1
           ZIZMOR_SHA256: d185f726bdaf92df78273217dfdd24ebcd6b0ef48cf3ce776ff5762b6e138c99
+          SHELLCHECK_VERSION: 0.11.0
+          SHELLCHECK_SHA256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
         run: |
           set -euo pipefail
           tools="$RUNNER_TEMP/tools"
@@ -330,6 +332,11 @@ jobs:
             "https://github.com/zizmorcore/zizmor/releases/download/v${ZIZMOR_VERSION}/zizmor-x86_64-unknown-linux-gnu.tar.gz"
           echo "${ZIZMOR_SHA256}  $tools/zizmor.tar.gz" | sha256sum --check
           tar -xzf "$tools/zizmor.tar.gz" -C "$tools" zizmor
+          curl -fsSL --retry 3 -o "$tools/shellcheck.tar.xz" \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          echo "${SHELLCHECK_SHA256}  $tools/shellcheck.tar.xz" | sha256sum --check
+          tar -xJf "$tools/shellcheck.tar.xz" -C "$tools" --strip-components=1 \
+            "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
           echo "$tools" >> "$GITHUB_PATH"
 
       - name: OpenGrep rules fire
@@ -340,6 +347,10 @@ jobs:
 
       - name: actionlint
         run: actionlint
+
+      # The pinned shellcheck above, not the runner's; pnpm check skips the check where none is.
+      - name: shellcheck
+        run: pnpm check:shell --require
 
       # Offline: the audits that read the repository's own files, with no token. Settings and
       # the reason for each disabled audit are in .github/zizmor.yml.

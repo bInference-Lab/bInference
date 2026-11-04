@@ -32,6 +32,9 @@
     "//#check:style": {
       "outputs": []
     },
+    "//#check:shell": {
+      "outputs": []
+    },
     "//#check:layout": {
       "outputs": []
     },

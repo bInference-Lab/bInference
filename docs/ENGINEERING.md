@@ -827,7 +827,7 @@ Decided in [decision 0033](DECISIONS.md#d0033).
 | Duplicates  | jscpd                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Style       | `check:style` (section 16)                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Languages   | `check:i18n` (section 14)                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Repo checks | `.mts` scripts in `scripts/`: `check:package-graph`, `check:tsconfig`, `check:layout`, `check:suppressions`, `check:deps-policy`, `check:tsdoc`, `check:adr`, `check:docs`, `check:contract-suites`, `check:chain-literals`, `check:model-clients`, `check:protocol-compat`, `check:config-schema`, `check:store`; `check:pr` runs on a branch's range before the merge, outside `pnpm check`                                                               |
+| Repo checks | `.mts` scripts in `scripts/`: `check:package-graph`, `check:tsconfig`, `check:layout`, `check:shell`, `check:suppressions`, `check:deps-policy`, `check:tsdoc`, `check:adr`, `check:docs`, `check:contract-suites`, `check:chain-literals`, `check:model-clients`, `check:protocol-compat`, `check:config-schema`, `check:store`; `check:pr` runs on a branch's range before the merge, outside `pnpm check`                                                |
 | Commits     | commitlint on commit messages and the PR title (section 19.1)                                                                                                                                                                                                                                                                                                                                                                                               |
 | Docs        | markdownlint                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Security    | OpenGrep, `pnpm audit`                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -848,11 +848,13 @@ stops the line, and nothing else is pushed until it is green.
 - **Rule:** the install scripts are the one named exception to OS-3: `install/install.sh` (POSIX
   `sh`, for macOS and Linux) and `install/install.ps1` (Windows PowerShell). They run on a machine
   that may have no Node yet, so they cannot be `.mts` files. They do only what Node cannot do
-  there: install Node, run `npm i -g binference`, then hand over to `binference init`. Every other
-  step belongs in `binference` itself. Each line they print is in English and Chinese, chosen by
-  the locale. `install.sh` passes `shellcheck`. Their Node pins come only from `pnpm node:pins`,
-  which checks Node's signed sums ([decision 0357](DECISIONS.md#d0357)). Enforcer: `check:layout` allows those two paths
-  and no other shell file, and `check:gates` plants a third one that must fail; `review-diff`.
+  there: install Node, run `npm i -g binference`, write the `binference` launcher, then hand over
+  to `binference init`. Every other step belongs in `binference` itself. Each line they print is in
+  English and Chinese, chosen by the locale. `install.sh` passes `shellcheck`. Their Node pins come
+  only from `pnpm node:pins`, which checks Node's signed sums
+  ([decision 0357](DECISIONS.md#d0357)). Enforcer: `check:layout` allows those two paths and no
+  other shell file, and `check:gates` plants a third one that must fail; `check:shell` runs
+  shellcheck where it is installed, and CI's security job with a pinned one; `review-diff`.
 
 <a id="section-19"></a>
 

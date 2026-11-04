@@ -48,6 +48,7 @@ const tools: Readonly<Record<string, () => readonly string[]>> = {
   pnpm: pnpmCommand,
   git: () => ["git"],
   gpgv: () => ["gpgv"],
+  shellcheck: () => ["shellcheck"],
   opengrep: () => ["opengrep"],
 };
 
@@ -60,7 +61,7 @@ function resolveCommand(command: readonly string[]): readonly string[] {
   return [...resolve(), ...args];
 }
 
-/** Runs node, npm, pnpm, git, gpgv or opengrep without a shell; captures stdout and stderr together. */
+/** Runs node, npm, pnpm, git, gpgv, shellcheck or opengrep without a shell; captures its output. */
 export function runCommand(command: readonly string[], options: CommandOptions): CommandResult {
   const [file, ...args] = resolveCommand(command);
   if (file === undefined) {
