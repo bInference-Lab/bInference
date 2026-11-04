@@ -143,6 +143,26 @@ describe.each(skeletonCompositions)(
       },
     );
 
+    it(
+      "refuses a rule asking more slippage than the agent's limit, naming the next step",
+      slow,
+      async () => {
+        const { machine, skeleton } = await servedMachine();
+        const greedy = [...sized, "--slippage", "50", "--yes"];
+        const refused = await runOn(machine, greedy);
+        const inChinese = await runOn(machine, greedy, { LANG: "zh_CN.UTF-8" });
+        const asJson = await runOn(machine, [...sized, "--slippage", "50", "--json"]);
+        const key = "error.order.slippage_limit";
+        expect([refused.code, refused.stdout]).toStrictEqual([1, ""]);
+        expect(refused.stderr).toBe(`${english.message(key)}\n`);
+        expect(refused.stderr).toContain("binference limit set limits.slippageBps.other=");
+        expect(inChinese.stderr).toBe(`${inZh.message(key)}\n`);
+        expect(asJson.stdout).toBe(`${JSON.stringify({ error: { code: key.slice(6) } })}\n`);
+        const { items } = await skeleton.client.call("webhookRule/list", {}, live());
+        expect(items).toStrictEqual([]);
+      },
+    );
+
     it("speaks Chinese to an owner who reads it", slow, async () => {
       const { machine } = await servedMachine();
       const made = await runOn(machine, [...sized, "--yes"], { LANG: "zh_CN.UTF-8" });

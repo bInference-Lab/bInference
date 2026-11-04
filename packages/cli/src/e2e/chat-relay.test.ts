@@ -378,6 +378,29 @@ describe.each(skeletonCompositions)("the chat relay on the $name composition", (
     expect(items).toMatchObject([{ state: "paper_filled", outsideContent: false }]);
   });
 
+  it(
+    "answers an auto order asking more slippage than the agent's limit as refused",
+    slow,
+    async () => {
+      const relay = await startRelay(composition);
+      const stopLoss = {
+        kind: "stopLoss",
+        token: testToken,
+        side: "sell",
+        size: { percentBps: 10_000 },
+        trigger: { price: "800000" },
+        maxSlippageBps: 5_000,
+        reason: "Cut the loss below the last low.",
+      };
+      const replies = [callsReply([{ name: "order_create", args: { order: stopLoss } }])];
+      const { recorder } = await runChatTurn(relay, { replies });
+      const [refusal] = resultsOf(recorder);
+      expect(refusal?.text).toMatch(/^order_create failed with order\.slippage_limit: /);
+      const listed = await relay.skeleton.client.call("order/list", {}, live());
+      expect(listed.items).toStrictEqual([]);
+    },
+  );
+
   it.each([
     [
       "after reading outside content",

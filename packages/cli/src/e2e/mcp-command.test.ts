@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import type { Id } from "@binference/core";
-import { testAgent, testNowMs } from "@binference/engine/testing";
+import { testAgent, testNowMs, testToken } from "@binference/engine/testing";
 import { ensurePrivateFolder, writePrivateFile } from "@binference/platform";
 import { Client } from "@modelcontextprotocol/client";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
@@ -122,6 +122,43 @@ describe("binference mcp", () => {
     await expect(mcp.exit).resolves.toBe(0);
     await client.close();
   });
+
+  it(
+    "answers an auto order asking more slippage than the agent's limit as refused",
+    slow,
+    async () => {
+      const machine = await machines.create(testNowMs);
+      const skeleton = await serveSkeleton(machine, selfHosted());
+      served.push(skeleton);
+      await writeToken(machine, "mcp-codex.token", skeletonSecrets.mcp);
+      const mcp = startMcp(machine, ["mcp", "--client", "codex"]);
+      const client = new Client({ name: "codex", version: "1.0.0" });
+      await client.connect(new StdioServerTransport(mcp.fromServer, mcp.toServer));
+      const stopLoss = {
+        agent: testAgent,
+        kind: "stopLoss",
+        token: testToken,
+        side: "sell",
+        size: { percentBps: 10_000 },
+        trigger: { price: "800000" },
+        maxSlippageBps: 5_000,
+        reason: "Cut the loss below the last low.",
+      };
+      const answer = await client.callTool({
+        name: "binference_order_create",
+        arguments: stopLoss,
+      });
+      expect(answer.isError).toBe(true);
+      expect(JSON.stringify(answer.content)).toContain(
+        "binference_order_create failed with order.slippage_limit",
+      );
+      const live = { signal: AbortSignal.timeout(5_000) };
+      expect((await skeleton.client.call("order/list", {}, live)).items).toStrictEqual([]);
+      mcp.toServer.end();
+      await expect(mcp.exit).resolves.toBe(0);
+      await client.close();
+    },
+  );
 
   it("exits 1 and names the token file when the client has none", async () => {
     const machine = await machines.create(testNowMs);
