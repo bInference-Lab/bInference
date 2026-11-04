@@ -45,6 +45,7 @@ type AddressSource = "engine" | "note";
 /** A declared tool: what the model sees of it, and each call to it checked. */
 export interface AgentTool {
   readonly name: string;
+  readonly kind: ToolKind;
   readonly declaration: ToolDeclaration;
   readonly addressSource?: AddressSource;
   /** Checks a call's arguments; a call that passes is ready to run with them. */
@@ -147,6 +148,7 @@ export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
   const parallel = spec.kind === "read" && spec.parallel === true;
   return {
     name: spec.name,
+    kind: spec.kind,
     declaration,
     ...(spec.addressSource === undefined ? {} : { addressSource: spec.addressSource }),
     prepare(argumentsText) {

@@ -77,8 +77,21 @@
         "packages/*/src/**",
         "!packages/*/src/**/*.test.ts",
         "packages/cli/snapshots/**",
-        "packages/cli/docs/**",
         "scripts/check-config-schema.mts",
+        "package.json",
+        "pnpm-lock.yaml"
+      ]
+    },
+    "//#check:references": {
+      "outputs": [],
+      "inputs": [
+        "packages/*/src/**",
+        "!packages/*/src/**/*.test.ts",
+        "packages/i18n/messages/**",
+        "apps/docs/src/content/docs/reference/**",
+        "apps/docs/src/content/docs/zh-cn/reference/**",
+        "scripts/check-references.mts",
+        "scripts/references/**",
         "package.json",
         "pnpm-lock.yaml"
       ]

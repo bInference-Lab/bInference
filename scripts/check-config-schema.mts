@@ -1,11 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import process from "node:process";
-import { describeConfigSchema, renderConfigReference } from "binference";
+import { describeConfigSchema } from "binference";
 import { z } from "zod";
 
 const snapshotFile = "packages/cli/snapshots/config-schema.generated.json";
-const referenceFile = "packages/cli/docs/config-keys.generated.md";
 const migrationsFile = "packages/cli/src/config/migrations/config-migrations.ts";
 
 const snapshotSchema = z.strictObject({
@@ -44,7 +43,6 @@ const isWrite = process.argv.includes("--write");
 const current = describeConfigSchema();
 const generated: Readonly<Record<string, string>> = {
   [snapshotFile]: `${JSON.stringify(current, null, 2)}\n`,
-  [referenceFile]: renderConfigReference(),
 };
 
 function read(file: string): string | undefined {

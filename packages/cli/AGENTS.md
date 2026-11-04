@@ -129,8 +129,8 @@ Rules for this package:
   `secretSourceSchema` or `commandSourceSchema`, never text.
 - A change to the config's shape ships a config migration in
   `src/config/migrations/config-migrations.ts` in the same commit. Run
-  `pnpm check:config-schema --write` after any schema change and commit
-  `snapshots/config-schema.generated.json` and `docs/config-keys.generated.md`; never edit them
+  `pnpm check:config-schema --write` and `pnpm docs:gen` after any schema change and commit
+  `snapshots/config-schema.generated.json` and the docs site's reference pages; never edit them
   by hand.
 - A config issue is data: a path, a problem, a fix and the layer the value came from. People see
   it through i18n messages chosen by the problem and the fix; `formatConfigIssue` is the

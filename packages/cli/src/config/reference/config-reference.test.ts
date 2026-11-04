@@ -1,6 +1,9 @@
+import { createFormatter } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import { currentConfigVersion } from "../migrations/config-migrations.js";
 import { describeConfigSchema, renderConfigReference } from "./config-reference.js";
+
+const english = createFormatter({ locale: "en", timeZone: "UTC" });
 
 describe("config reference", () => {
   it("records the version and a strict JSON Schema with the secret shapes", () => {
@@ -14,13 +17,15 @@ describe("config reference", () => {
   });
 
   it("lists every key with what it takes, its default and its variable", () => {
-    const reference = renderConfigReference();
+    const reference = renderConfigReference(english);
     expect(reference).toContain(
       "- `engine.port`: The console, Mini App and WebSocket port. Takes a number from 1024 to " +
         "65535. Default: `7456`. Variable: `BINFERENCE_ENGINE__PORT`.",
     );
     expect(reference).toContain(
-      "- `telegram.botToken`: The owner's BotFather token. Takes a secret source",
+      "- `telegram.botToken`: The owner's BotFather token. Takes a secret source: " +
+        '{ fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or ' +
+        '{ fromCommand: ["program", "argument"] }. Required.',
     );
     expect(reference).toContain("`chains.rpc.<chain>.urls`");
     expect(reference).toContain("`BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__API_KEY`");

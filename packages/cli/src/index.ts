@@ -19,10 +19,13 @@ export type {
   MigrationOutcome,
   MigrationStep,
 } from "./config/migrations/migrate-config.js";
+export { configKeyTexts } from "./config/reference/config-key-texts.js";
 export {
   describeConfigSchema,
   renderConfigReference,
 } from "./config/reference/config-reference.js";
+export { commandReference } from "./program/command-reference.js";
+export type { ReferenceCommand, ReferenceTerm } from "./program/command-reference.js";
 export type { ConfigSchemaSnapshot } from "./config/reference/config-reference.js";
 export type {
   ChainsConfig,

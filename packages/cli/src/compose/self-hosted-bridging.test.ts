@@ -3,9 +3,11 @@ import { chainRefSchema, type TxHash } from "@binference/chain";
 import { arbitrum, baseMainnet, bsc, ethereum, robinhood, solana } from "@binference/chains";
 import { createSecret, type HttpRequest } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
+import { createFormatter } from "@binference/i18n";
 import { readTextFile } from "@binference/platform";
 import { recordedFillCheck } from "@binference/relay/testing";
 import { describe, expect, it } from "vitest";
+import { renderConfigReference } from "../config/reference/config-reference.js";
 import type { ChainsConfig } from "../config/schema/chains-venues.schema.js";
 import { composeChainReads } from "./chain-reads.js";
 import { selfHostedChains } from "./open-engine-parts.js";
@@ -104,12 +106,10 @@ describe("this binference's bridging parts", () => {
 
   it("names no other Relay solver in the entry file, a config key or a variable", async () => {
     const signal = AbortSignal.timeout(5_000);
-    const files = ["../main.ts", "../../docs/config-keys.generated.md"].map((path) =>
-      fileURLToPath(new URL(path, import.meta.url)),
-    );
-    const texts = await Promise.all(files.map(async (file) => textOf(file, signal)));
+    const entry = await textOf(fileURLToPath(new URL("../main.ts", import.meta.url)), signal);
+    const keys = renderConfigReference(createFormatter({ locale: "en", timeZone: "UTC" }));
 
-    expect(texts.map((text) => /solver/iu.test(text))).toStrictEqual([false, false]);
+    expect([entry, keys].map((text) => /solver/iu.test(text))).toStrictEqual([false, false]);
   });
   it("runs no bridge while BNB Smart Chain is off, and still reads the destinations", () => {
     const bridging = selfHostedBridging({ http: refusing, clock, reads: readsOn([]) });

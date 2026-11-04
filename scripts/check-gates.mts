@@ -18,6 +18,7 @@ import { lintCases } from "./gates/lint-cases.mjs";
 import { modelClientCases } from "./gates/model-client-cases.mjs";
 import { prCases } from "./gates/pr-cases.mjs";
 import { protocolCases } from "./gates/protocol-cases.mjs";
+import { referenceCases } from "./gates/reference-cases.mjs";
 import { releaseCases } from "./gates/release-cases.mjs";
 import { openSandbox } from "./gates/sandbox.mjs";
 import { storeCases } from "./gates/store-cases.mjs";
@@ -45,6 +46,7 @@ function allCases(repo: string): readonly GateCase[] {
     ...protocolCases(repo),
     ...i18nCases(repo),
     ...configSchemaCases(repo),
+    ...referenceCases(repo),
     ...storeCases(repo),
     ...commitCases(),
     ...checkCases(),

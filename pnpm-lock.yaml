@@ -397,15 +397,24 @@ importers:
       '@binference/custody-privy':
         specifier: workspace:*
         version: link:packages/custody-privy
+      '@binference/engine':
+        specifier: workspace:*
+        version: link:packages/engine
       '@binference/i18n':
         specifier: workspace:*
         version: link:packages/i18n
+      '@binference/mcp':
+        specifier: workspace:*
+        version: link:packages/mcp
       '@binference/platform':
         specifier: workspace:*
         version: link:packages/platform
       '@binference/protocol':
         specifier: workspace:*
         version: link:packages/protocol
+      '@binference/runtime':
+        specifier: workspace:*
+        version: link:packages/runtime
       '@commitlint/cli':
         specifier: 'catalog:'
         version: 21.2.3(@types/node@26.6.3)(conventional-commits-parser@7.1.2)(typescript@7.0.2)

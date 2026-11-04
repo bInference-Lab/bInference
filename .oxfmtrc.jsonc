@@ -20,10 +20,13 @@
   "tabWidth": 2,
   "trailingComma": "all",
   "useTabs": false,
-  // The console's shadcn components stay as the shadcn CLI writes them.
+  // The console's shadcn components stay as the shadcn CLI writes them, and the docs reference
+  // pages as pnpm docs:gen writes them.
   "ignorePatterns": [
     "pnpm-lock.yaml",
     "**/*.generated.json",
+    "apps/docs/src/content/docs/reference/**",
+    "apps/docs/src/content/docs/zh-cn/reference/**",
     "packages/console/src/components/ui/**",
   ],
 }

@@ -183,23 +183,25 @@ runs a paper swap from an MCP client to a Telegram tap: the client proposes a sw
 with the same request id, the card reaches the synthetic Bot API, the owner's tap fills it on
 paper, and the client reads the fill and the ledger.
 
-The reference of every key, generated from the schema, is
-[docs/config-keys.generated.md](docs/config-keys.generated.md).
+The reference of every key, generated from the schema in English and Chinese, is the docs site's
+[config page](../../apps/docs/src/content/docs/reference/config.md).
 
 ## API
 
-| Export                                          | What it does                                                                   |
-| ----------------------------------------------- | ------------------------------------------------------------------------------ |
-| `loadConfig`                                    | Reads the config in its layers and validates it                                |
-| `configSchema`, `BinferenceConfig`              | The strict schema of `config.json5` and the config it gives                    |
-| `ConfigIssue`, `ConfigProblem`, `ConfigFix`     | One problem as data: the key's path, what is wrong, the next step              |
-| `formatConfigIssue`                             | An issue as one English line for logs and developers                           |
-| `createSecretReader`, `SecretReader`            | Reads `fromEnv`, `fromKeychain`, `fromFile` and `fromCommand` sources          |
-| `SecretSource`, `secretSourceSchema`            | Where a secret lives; the file never holds the secret itself                   |
-| `migrateConfig`, `configMigrations`             | Moves an older file to the current shape, one named step at a time             |
-| `applyEdits`, `ConfigEdit`                      | The set, remove and move edits a migration makes                               |
-| `currentConfigVersion`                          | The `version` this binference reads and writes                                 |
-| `describeConfigSchema`, `renderConfigReference` | The JSON Schema and the key reference that `check:config-schema` keeps current |
+| Export                                      | What it does                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `loadConfig`                                | Reads the config in its layers and validates it                                       |
+| `configSchema`, `BinferenceConfig`          | The strict schema of `config.json5` and the config it gives                           |
+| `ConfigIssue`, `ConfigProblem`, `ConfigFix` | One problem as data: the key's path, what is wrong, the next step                     |
+| `formatConfigIssue`                         | An issue as one English line for logs and developers                                  |
+| `createSecretReader`, `SecretReader`        | Reads `fromEnv`, `fromKeychain`, `fromFile` and `fromCommand` sources                 |
+| `SecretSource`, `secretSourceSchema`        | Where a secret lives; the file never holds the secret itself                          |
+| `migrateConfig`, `configMigrations`         | Moves an older file to the current shape, one named step at a time                    |
+| `applyEdits`, `ConfigEdit`                  | The set, remove and move edits a migration makes                                      |
+| `currentConfigVersion`                      | The `version` this binference reads and writes                                        |
+| `describeConfigSchema`                      | The JSON Schema that `check:config-schema` keeps current                              |
+| `renderConfigReference`, `configKeyTexts`   | The key reference in one language, and the schema texts its `configKeys` messages say |
+| `commandReference`, `ReferenceCommand`      | Every command with its arguments and options, as its help shows them                  |
 
 ## Commands
 
