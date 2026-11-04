@@ -30,9 +30,14 @@ function sha256Of(file: string): string {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
 }
 
+const mebibyte = 1024 * 1024;
+// The most of a tarball the CLI reads from npm (`tarballBound` in packages/cli's npm registry).
+const maxTarballBytes = 8 * mebibyte;
+
 /**
  * Stages one published package in `<out>/stage/<name>` and packs it into `out` with npm, its
- * own lifecycle scripts off. Throws when npm fails or the tarball lacks a required file.
+ * own lifecycle scripts off. Throws when npm fails, the tarball lacks a required file, or it is
+ * larger than the 8 MiB the CLI reads of a tarball, so no install could update to it.
  */
 export function packPackage(build: ReleaseBuild, name: string, out: string): PackedFile {
   const staged = join(out, "stage", name);
@@ -54,10 +59,18 @@ export function packPackage(build: ReleaseBuild, name: string, out: string): Pac
     throw new Error(`${packed.filename} lacks ${missing.join(", ")}.`);
   }
   const file = join(out, packed.filename);
+  const bytes = statSync(file).size;
+  if (bytes > maxTarballBytes) {
+    const mib = (bytes / mebibyte).toFixed(1);
+    throw new Error(
+      `${packed.filename} is ${mib} MiB; binference update and plugin installs read at most 8 MiB ` +
+        "of a tarball, so no install could update to it. Make the package smaller first.",
+    );
+  }
   return {
     name,
     file: packed.filename,
-    bytes: statSync(file).size,
+    bytes,
     sha256: sha256Of(file),
     bundled: packed.bundled,
   };
