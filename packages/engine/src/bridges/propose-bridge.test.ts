@@ -13,6 +13,7 @@ import { readOf } from "../fakes/fake-ceiling-read.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { type BridgeIntentQuote, bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import { expectOk, testAgent, testToken, testWallet } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { startTestEngine, testAccount, testCall, testCallers } from "../operations/test-engine.js";
 import type { WalletFactsSource } from "../ports.js";
@@ -324,5 +325,23 @@ describe("the wallet of a bridge venue's route", () => {
       undefined,
       bridgeWalletId,
     ]);
+  });
+});
+
+describe("a bridge another write moved first", () => {
+  it.each([
+    ["quoted", "checked"],
+    ["assessed", "quoted"],
+  ] as const)("ends where that write left it when its move to %s loses", async (lost, left) => {
+    const { test } = await bridgeEngine({ intents: racedTo(lost) });
+    expect(expectOk(await propose(test)).state).toBe(left);
+  });
+
+  it("refuses an agent the install does not hold, storing nothing", async () => {
+    const { test } = await bridgeEngine();
+    const unknown = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000f9");
+    expect(await propose(test, { ...testBridge(), agent: unknown })).toStrictEqual(
+      err("agent.not_found"),
+    );
   });
 });

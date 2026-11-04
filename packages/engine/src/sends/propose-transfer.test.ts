@@ -9,6 +9,7 @@ import { intentStates } from "../intents/intent-state.js";
 import { revokeQuoteDocument } from "../intents/revoke-quote.js";
 import { sendQuoteDocument } from "../intents/send-quote.js";
 import { testAgent, testCoin, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
   startTestEngine,
@@ -417,5 +418,33 @@ describe("an approval revoke", () => {
       testRevoke(testToken),
     );
     expect(ending(view)).toStrictEqual(["rejected_policy", "paper_only"]);
+  });
+});
+
+describe("a send or revoke before anything is stored, or after another write", () => {
+  it.each([
+    ["quoted", "checked"],
+    ["assessed", "quoted"],
+  ] as const)("ends where that write left it when its move to %s loses", async (lost, left) => {
+    const test = await startSends({ intents: racedTo(lost) });
+    const send = await propose(test, testSend());
+    const revoke = await propose(test, testRevoke(testToken));
+    expect([send.state, revoke.state]).toStrictEqual([left, left]);
+  });
+
+  it("refuses an agent the install does not hold", async () => {
+    const unknown = fixtureId("agt", 0x09);
+    await expect(refusal(await startSends(), { ...testSend(), agent: unknown })).resolves.toBe(
+      "agent.not_found",
+    );
+  });
+
+  it("refuses a token the registry does not list that answers no symbol or decimals", async () => {
+    const unlisted = assetRefSchema.parse("fake:1/token:0x000000f9");
+    const test = await startSends({ tokenFacts: async () => Promise.resolve(new Map()) });
+    await expect(refusal(test, testSend(undefined, { asset: unlisted, base: 5n }))).resolves.toBe(
+      "asset.unreadable",
+    );
+    await expect(refusal(test, testRevoke(unlisted))).resolves.toBe("asset.unreadable");
   });
 });
