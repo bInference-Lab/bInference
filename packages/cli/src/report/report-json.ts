@@ -36,7 +36,17 @@ function urlKindMark(path: readonly string[]): string {
   return kind === undefined ? urlMark : `[url:${kind}]`;
 }
 
+/** What stands in for each host of the no-proxy list, which names the owner's own network. */
+export const hostMark = "[host]";
+
+function isNoProxyList(path: readonly string[]): boolean {
+  return path.at(-2) === "network" && path.at(-1) === "noProxy";
+}
+
 function valueText(text: string, path: readonly string[], places: ReportPlaces): string {
+  if (isNoProxyList(path)) {
+    return hostMark;
+  }
   if (urlStart.test(text)) {
     return urlKindMark(path);
   }
@@ -66,6 +76,7 @@ function redactAt(value: JsonValue, path: readonly string[], places: ReportPlace
  * A JSON value as the support bundle may hold it: each string that is a URL replaced by its kind
  * alone (`[url:rpc]`, `[url:relay]`, `[url:public_address]`, `[url:model_provider]`,
  * `[url:webhook]`, by the keys above it, else `[url]`), so no host, path or credential stays; each
+ * host of `network.noProxy` replaced by `[host]`, so the list keeps only its length; each
  * local path replaced by `[path]`; and every other string and every key passed through
  * {@link redactReportText}. Numbers, booleans and nulls stay as they are.
  */

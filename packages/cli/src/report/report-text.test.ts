@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pathMark, redactReportJson } from "./report-json.js";
+import { hostMark, pathMark, redactReportJson } from "./report-json.js";
 import { redactReportText, urlMark } from "./report-text.js";
 
 const places = { home: "/srv/ana" };
@@ -71,6 +71,21 @@ describe("redactReportJson", () => {
       deny: ["eip155:56/erc20:0x3043…DBcB"],
       "0x3043…DBcB": true,
       port: 7456,
+    });
+  });
+
+  it("keeps only how many hosts the no-proxy list names, and the proxy's source by kind", () => {
+    const redacted = redactReportJson(
+      {
+        network: {
+          proxy: "fromEnv",
+          noProxy: ["nas.ana-home.example", "192.168.1.0/24", "localhost"],
+        },
+      },
+      places,
+    );
+    expect(redacted).toStrictEqual({
+      network: { proxy: "fromEnv", noProxy: [hostMark, hostMark, hostMark] },
     });
   });
 });
