@@ -24,3 +24,14 @@ export function readAtBase(root: string, path: string): string | undefined {
   const before = runCommand(["git", "show", `${base}:${path}`], { cwd: root });
   return before.status === 0 ? before.output : undefined;
 }
+
+/** What a git command printed, trimmed, or undefined when it failed. */
+export function gitOutput(root: string, args: readonly string[]): string | undefined {
+  const result = runCommand(["git", ...args], { cwd: root });
+  return result.status === 0 ? result.output.trim() : undefined;
+}
+
+/** The full id of the commit `ref` names, or undefined when it names none. */
+export function commitOf(root: string, ref: string): string | undefined {
+  return gitOutput(root, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+}

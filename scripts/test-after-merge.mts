@@ -8,6 +8,7 @@ import {
   planAfterMerge,
   type WorkspacePackage,
 } from "./after-merge/after-merge-plan.mjs";
+import { commitOf, gitOutput } from "./git-base.mjs";
 import { runCommand, runCommandShown } from "./run-command.mjs";
 
 const usage =
@@ -20,23 +21,16 @@ interface Range {
   readonly commits: string;
 }
 
-function git(root: string, args: readonly string[]): string | undefined {
-  const result = runCommand(["git", ...args], { cwd: root });
-  return result.status === 0 ? result.output.trim() : undefined;
-}
-
 function readRange(root: string, given: string | undefined): Range | string {
   const [base = "", head = ""] = (given ?? "ORIG_HEAD..HEAD").split("..");
   if (base.length === 0 || head.length === 0 || head.startsWith(".")) {
     return usage;
   }
-  const unknown = [base, head].find(
-    (ref) => git(root, ["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]) === undefined,
-  );
+  const unknown = [base, head].find((ref) => commitOf(root, ref) === undefined);
   if (unknown !== undefined) {
     return `${unknown} is not a commit here. ${usage}`;
   }
-  const commits = git(root, ["rev-list", "--count", `${base}..${head}`]) ?? "0";
+  const commits = gitOutput(root, ["rev-list", "--count", `${base}..${head}`]) ?? "0";
   return commits === "0" ? `${base}..${head} holds no commit. ${usage}` : { base, head, commits };
 }
 
@@ -126,7 +120,7 @@ if (typeof range === "string") {
   console.error(`test:after-merge: ${range}`);
   process.exit(2);
 }
-const changed = (git(root, ["diff", "--name-only", `${range.base}...${range.head}`]) ?? "")
+const changed = (gitOutput(root, ["diff", "--name-only", `${range.base}...${range.head}`]) ?? "")
   .split("\n")
   .filter((file) => file.length > 0);
 const plan = planAfterMerge(changed, workspacePackages(root));
