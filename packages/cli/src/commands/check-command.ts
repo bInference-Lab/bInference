@@ -11,6 +11,7 @@ import { modelImagesFinding } from "./model-images-finding.js";
 import { modelPriceFinding } from "./model-price-finding.js";
 import { modelReachFinding } from "./model-reach-finding.js";
 import { pluginSandboxFinding } from "./plugin-sandbox-finding.js";
+import { proxyFindings } from "./proxy-findings.js";
 import { remoteFindings } from "./remote-findings.js";
 import { roleWalletFindings } from "./role-wallet-findings.js";
 import { rpcFindings } from "./rpc-keyed-finding.js";
@@ -80,6 +81,8 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
   const access = await accessFindings({ platform, fix, signal });
   const unlock = config.config === undefined ? [] : [unlockFinding(config.config, platform)];
   const prices = config.config === undefined ? [] : [modelPriceFinding(config.config)];
+  // Before every check that reaches out, which then goes by the owner's proxy as the engine does.
+  const proxy = await proxyFindings({ host, platform, signal }, config.config);
   const reach = await modelReachFinding({ host, platform, signal }, config.config);
   const images = modelImagesFinding(config.config);
   const engine = await engineFinding({ host, platform, signal });
@@ -92,6 +95,7 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
     ...access,
     ...unlock,
     ...prices,
+    ...proxy,
     reach,
     images,
     engine,
@@ -107,7 +111,9 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
  * under a stable check id: `config.valid` (config.json5 loads and passes its schema),
  * `permissions.*` (the state folder and the files the specs keep owner-only), `unlock.mode` (a
  * warning in `file` mode, spec 5 section 3), `models.priced` (a warning naming each configured
- * model with no price, runtime spec section 8.3), `models.reachable` (one small live call to the
+ * model with no price, runtime spec section 8.3), `network.proxy` (the owner's proxy reaches
+ * Telegram, and every check after it goes by the proxy), `network.cleartext` (what the proxy could
+ * read in the clear), `models.reachable` (one small live call to the
  * main model, decision 0221), `models.images` (where the owner's images go, decision 0228; its
  * notes print after the warnings), `engine.reachable`, `rpc.keyed` (a warning while live auto orders
  * watch prices over public RPCs only), `rpc.pushed` (a warning while they wait on blocks polled

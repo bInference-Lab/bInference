@@ -620,6 +620,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | config key                                  | 配置项                 |                              |
 | value (of a config key)                     | 值                     |                              |
 | secret source                               | 密钥来源               |                              |
+| proxy, outbound proxy                       | 代理                   | `network.proxy`              |
 | answers file (of `binference init`)         | 应答文件               |                              |
 | keychain                                    | 钥匙串                 |                              |
 | unlock mode                                 | 解锁方式               | `engine.unlock.mode`         |

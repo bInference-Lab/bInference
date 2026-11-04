@@ -2,7 +2,7 @@ import { subscribe, unsubscribe } from "node:diagnostics_channel";
 import { BinferenceError, type Http } from "@binference/core";
 
 /** Why a request through the owner's proxy got no answer from its host. */
-type ProxyProblem = "auth" | "refused" | "unreachable" | "noAnswer";
+export type ProxyProblem = "auth" | "refused" | "unreachable" | "noAnswer";
 
 /** How one request through the proxy went: fine, or its problem and the proxy's status. */
 export interface ProxyProbe {
