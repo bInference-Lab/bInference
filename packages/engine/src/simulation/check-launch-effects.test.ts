@@ -64,6 +64,7 @@ describe("the simulation check of a token launch", () => {
       "reverted",
     ],
     ["a bigger spend", [stepOf([out(coin, 2_051n), got()])], "other_amount"],
+    ["a launch whose fee never left the wallet", [stepOf([got()])], "other_amount"],
     ["less of the token than its minimum", [stepOf([out(), got(49_499n)])], "low_out"],
     ["another token in the wallet", [stepOf([out(), got(), got(1n, usd)])], "other_asset"],
   ])("refuses %s", (_case, steps, error) => {
@@ -81,6 +82,46 @@ describe("the simulation check of a token launch", () => {
     expect(checkLaunchEffects([stepOf([out(coin, 2_000n)])], noBuy)).toStrictEqual({
       ok: true,
       value: { spent: [{ asset: coin, base: 2_000n }], received: [] },
+    });
+  });
+
+  describe("with a token first buy and its planned approval", () => {
+    const granted = {
+      ...bounds,
+      firstBuy: { asset: usd, base: 7n },
+      approvals: [{ asset: usd, spender: pad, amountBase: 7n }],
+    };
+    const steps = (spender = pad, base = 7n): SimulatedStep[] => [
+      {
+        ...stepOf([out(coin, 2_000n), out(usd, 7n), got()]),
+        approvals: [{ owner: wallet, spender, amount: { asset: usd, base } }],
+      },
+    ];
+
+    it("passes an allowance on the buy's spend, up to it, for the spender the plan names", () => {
+      expect(checkLaunchEffects(steps(), granted)).toMatchObject({ ok: true });
+    });
+
+    it("refuses an allowance above the buy's spend", () => {
+      expect(checkLaunchEffects(steps(pad, 8n), granted)).toStrictEqual({
+        ok: false,
+        error: "other_approval",
+      });
+    });
+
+    it("refuses an allowance on the buy's spend for a spender the plan does not name", () => {
+      expect(checkLaunchEffects(steps(wallet), granted)).toStrictEqual({
+        ok: false,
+        error: "other_approval",
+      });
+    });
+  });
+
+  it("passes a first buy with no minimum that got none of the token, and says so", () => {
+    const { minOutBase: _min, ...noMin } = bounds;
+    expect(checkLaunchEffects([stepOf([out()])], noMin)).toStrictEqual({
+      ok: true,
+      value: { spent: [{ asset: coin, base: 2_050n }], received: [{ asset: token, base: 0n }] },
     });
   });
 });

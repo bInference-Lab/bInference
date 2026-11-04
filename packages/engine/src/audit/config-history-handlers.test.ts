@@ -48,4 +48,12 @@ describe("the config history", () => {
       error: "protocol.bad_args",
     });
   });
+
+  it("answers 50 changes a page when no limit is asked", async () => {
+    const history = await journalOf(Array.from({ length: 51 }, (_, index) => index + 1));
+    const first = await history(testCall({}));
+    expect(first).toMatchObject({ ok: true, value: { next: "50" } });
+    const second = await history(testCall({ cursor: "50" }));
+    expect(second).toStrictEqual({ ok: true, value: { items: [{ ...change, at: 51 }] } });
+  });
 });

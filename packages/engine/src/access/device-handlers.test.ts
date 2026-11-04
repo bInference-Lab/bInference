@@ -73,4 +73,13 @@ describe("the device handlers", () => {
       handlers["device/revoke"](testCall({ device: fixtureId("dev", 9) })),
     ).resolves.toStrictEqual(err("protocol.bad_args"));
   });
+
+  it("lists when a device last proved itself, and no revoke time for one in use", async () => {
+    const { access, handlers } = devices();
+    await access.addDevice(laptop, testCall({}));
+    await access.markDeviceSeen({ id: laptop.id, atMs: 9 }, testCall({}));
+    expect(expectOk(await handlers["device/list"](testCall({})))).toStrictEqual({
+      items: [{ device: laptop.id, label: "Laptop", alg: "ed25519", createdAt: 5, lastSeenAt: 9 }],
+    });
+  });
 });

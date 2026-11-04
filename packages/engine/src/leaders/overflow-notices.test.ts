@@ -2,9 +2,11 @@ import { type AccountRef, accountRefParts } from "@binference/chain";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { alertOf, walletCondition } from "../contracts/alert-fire-checks.js";
+import { orderDraft } from "../contracts/order-fixtures.js";
 import { fixtureId, inOrder, live } from "../contracts/store-fixtures.js";
 import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
-import { testAgent, testAgentDraft } from "../intents/test-intents.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
+import { testAgent, testAgentDraft, testWallet } from "../intents/test-intents.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { tellOverflows } from "./overflow-notices.js";
 
@@ -73,5 +75,23 @@ describe("the notices of cut blocks", () => {
     await expect(tellOverflows(parts, live())).resolves.toBe(0);
     await clock.advance(dayMs);
     await expect(tellOverflows(parts, live())).resolves.toBe(0);
+  });
+
+  it("names a wallet by the alerts that track it, never by an order that follows no leader", async () => {
+    const stores = await cutWallets();
+    const pair = { agentId: testAgent, walletId: testWallet };
+    stores.install.addWallet(
+      testWalletRecord({ id: testWallet, ...pair, label: "main", createdAtMs: 1 }),
+    );
+    const limit = orderDraft(pair, 1);
+    expect((await stores.orders.create(limit, live())).ok).toBe(true);
+    const pushes: EnginePush[] = [];
+    const clock = createManualClock(10_000);
+    const parts = { ...stores, clock, publish: (push: EnginePush) => pushes.push(push) };
+    await expect(tellOverflows(parts, live())).resolves.toBe(2);
+    expect(pushes.map(({ data }) => data)).toStrictEqual([
+      { key: "notice.walletOverflow", values: { wallet: "Whale", blocks: "2" } },
+      { key: "notice.walletOverflow", values: { wallet: "0x0000…0002", blocks: "1" } },
+    ]);
   });
 });

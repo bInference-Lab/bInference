@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fixtureId, inOrder } from "../contracts/store-fixtures.js";
 import { createMemoryAgentStore } from "../fakes/memory-agent-store.js";
 import { createMemoryNoticeStore } from "../fakes/memory-notice-store.js";
-import { testAgent, testAgentDraft, testCoin } from "../intents/test-intents.js";
+import { testAgent, testAgentDraft, testCoin, testToken } from "../intents/test-intents.js";
 import { testCall } from "../operations/test-engine.js";
 import type { Notice } from "../pushes/notice-push.js";
 import { createNoticeHandlers } from "./notice-handlers.js";
@@ -105,6 +105,22 @@ describe("the notice list", () => {
           },
         ],
       },
+    });
+  });
+
+  it("keeps the info of an unlisted token a notice names in its view", async () => {
+    const info = { symbol: "TKN", name: "Token", decimals: 6, verified: false };
+    const assets = { [testToken]: info };
+    const sold: Notice = {
+      key: "notice.lowGas",
+      values: {},
+      amounts: { balance: { asset: testToken, base: 12n } },
+      assets,
+    };
+    const list = await handlerOf([1], sold);
+    await expect(list(testCall({}))).resolves.toMatchObject({
+      ok: true,
+      value: { items: [{ key: "notice.lowGas", assets }] },
     });
   });
 });

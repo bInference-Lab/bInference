@@ -96,4 +96,12 @@ describe("the token handlers", () => {
       handlers["token/revoke"](testCall({ token: fixtureId("tok", 9) })),
     ).resolves.toStrictEqual(err("token.not_found"));
   });
+
+  it("lists when a token was last used, never its hash", async () => {
+    const { access, handlers } = tokens();
+    const view = expectOk(await handlers["token/register"](testCall(register)));
+    await access.markTokenUsed({ id: view.token, atMs: testNowMs + 7 }, testCall({}));
+    const { items } = expectOk(await handlers["token/list"](testCall({})));
+    expect(items).toStrictEqual([{ ...view, lastUsedAt: testNowMs + 7 }]);
+  });
 });
