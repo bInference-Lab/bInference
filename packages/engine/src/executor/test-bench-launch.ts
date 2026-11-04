@@ -30,10 +30,11 @@ const facts: Omit<WalletFacts, "recentOutflows"> = {
 export function launchPartsOf(options: {
   readonly launch?: BenchLaunch;
   readonly recentOutflows?: WalletFacts["recentOutflows"];
+  readonly facts?: Partial<Omit<WalletFacts, "recentOutflows">>;
 }): Pick<ExecutorOptions, "wallets" | "chains" | "venues" | "curves"> {
   const { launch, recentOutflows = [] } = options;
   const held = new Map([[testAgent, launch?.wallets ?? [testWallet]]]);
-  const wallets = createFakeWalletFacts(held, { ...facts, recentOutflows });
+  const wallets = createFakeWalletFacts(held, { ...facts, ...options.facts, recentOutflows });
   return launch === undefined
     ? { wallets, chains: testChains(), venues: [createFakeVenue()] }
     : { wallets, chains: launch.chains, venues: launch.venues, curves: launch.curves };

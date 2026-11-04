@@ -105,6 +105,8 @@ export interface BenchOptions {
   readonly liveOrderFills?: boolean;
   /** The agent's outflows of the last 24 hours as the executor's wallet facts read them; none. */
   readonly recentOutflows?: WalletFacts["recentOutflows"];
+  /** The rest of the wallet facts the executor reads; one coin held and a one-coin cap if absent. */
+  readonly facts?: Partial<Omit<WalletFacts, "recentOutflows">>;
   /** How the bench's test engine differs from the default, beside its agent and executor. */
   readonly engine?: Omit<TestEngineOptions, "agent" | "executor">;
   /**

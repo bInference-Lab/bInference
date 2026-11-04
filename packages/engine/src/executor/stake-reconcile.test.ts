@@ -11,8 +11,15 @@ import {
   testUnbondingSeconds,
   testValidator,
 } from "../staking/test-stakes.js";
-import { benchChain, driveUntil, stateOf, type ExecutorBench, tapped } from "./test-executor.js";
-import { landing, stakeBench, stakeEnds, stakeReceiptOf } from "./test-stake-bench.js";
+import {
+  benchChain,
+  driveUntil,
+  eventsOf,
+  stateOf,
+  type ExecutorBench,
+  tapped,
+} from "./test-executor.js";
+import { landing, refusable, stakeBench, stakeEnds, stakeReceiptOf } from "./test-stake-bench.js";
 
 const live = { signal: new AbortController().signal };
 const mine = { isPaper: false, walletId: testWallet, after: 0, limit: 10 };
@@ -99,6 +106,54 @@ describe("a landed staking move, booked from its venue's read-back (decision 032
     await driveUntil(bench, intent, { states: [], blocks: 3 });
     expect(await arrivalsOf(bench)).toStrictEqual([
       { received: { asset: testCoin, base: 10n ** 18n }, valueUsdMicros: undefined },
+    ]);
+  });
+
+  it("leaves a landed stake finalized and unbooked while its venue cannot read it back", async () => {
+    const { answer, venue } = refusable(landing(testStakingFake()));
+    const bench = await stakeBench(venue, { limits: { settleAfterBlocks: 3 } });
+    const intent = await tapped(bench, stakeRequest("stake"));
+    answer.isLandedDown = true;
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: stakeEnds, blocks: 12 })).resolves.toBe(
+      "finalized",
+    );
+    expect(await executionsOf(bench)).toStrictEqual([]);
+    expect(eventsOf(bench)).toContain("executor.settle_late:");
+  });
+
+  it("never books a read-back of another coin than the plan and logs the check it failed", async () => {
+    const { answer, venue } = refusable(landing(testStakingFake()));
+    const bench = await stakeBench(venue, { limits: { settleAfterBlocks: 3 } });
+    const intent = await tapped(bench, stakeRequest("stake"));
+    answer.mangleLanded = (landed) => ({
+      ...landed,
+      moved: { ...landed.moved, base: landed.moved.base + 1n },
+    });
+    await bench.release();
+    await expect(driveUntil(bench, intent, { states: stakeEnds, blocks: 12 })).resolves.toBe(
+      "finalized",
+    );
+    expect(await executionsOf(bench)).toStrictEqual([]);
+    expect(eventsOf(bench)).toContain("executor.stake_landed_mismatch:other_coin");
+  });
+
+  it("waits to book a landed stake while the coin has no price, and books it once one is back", async () => {
+    const price = { numerator: 600n, denominator: 10n ** 12n };
+    const prices = new Map([[testCoin, price]]);
+    const bench = await stakeBench(landing(testStakingFake()), { prices });
+    const intent = await tapped(bench, stakeRequest("stake"));
+    await bench.release();
+    await driveUntil(bench, intent, { states: ["included", "finalized"] });
+    prices.clear();
+    await expect(driveUntil(bench, intent, { states: stakeEnds, blocks: 4 })).resolves.toBe(
+      "finalized",
+    );
+    expect(await executionsOf(bench)).toStrictEqual([]);
+    prices.set(testCoin, price);
+    await expect(driveUntil(bench, intent, { states: stakeEnds })).resolves.toBe("reconciled");
+    expect(await executionsOf(bench)).toMatchObject([
+      { sold: halfCoin, valueUsdMicros: 300_000_000n },
     ]);
   });
 

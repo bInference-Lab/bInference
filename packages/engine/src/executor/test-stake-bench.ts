@@ -1,10 +1,17 @@
 import type { ChainRegistry, TxDraft, TxHash } from "@binference/chain";
-import type { StakePlan, StakeRefusal, StakingVenue } from "@binference/chain/staking";
+import type {
+  LandedStake,
+  StakePlan,
+  StakeRefusal,
+  StakeRefusalFacts,
+  StakingVenue,
+} from "@binference/chain/staking";
 import type { FakeStakingVenue } from "@binference/chain/testing";
 import { err, type Id, ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { cardLineText, createFormatter } from "@binference/i18n";
 import { receiptLine } from "../confirmations/card-closing.js";
+import type { CallCap } from "../install/ceiling-change.js";
 import { testCoin, testLimits, testNowMs } from "../intents/test-intents.js";
 import { testAccount } from "../operations/test-engine.js";
 import {
@@ -32,9 +39,17 @@ export const stakeEnds = [
 export interface RefusableVenue {
   readonly answer: {
     refusal?: StakeRefusal;
+    /** The facts the refusal names, such as when the wallet's next part is ready. */
+    facts?: StakeRefusalFacts;
     isDown?: boolean;
+    /** Whether the venue stops reading the wallet's holdings. */
+    isHoldingsDown?: boolean;
+    /** Whether the venue stops reading landed moves back. */
+    isLandedDown?: boolean;
     /** Changes each plan the venue answers, as a venue that plans another move than asked. */
     mangle?: (plan: StakePlan) => StakePlan;
+    /** Changes each read-back of a landed move, as a venue that reads another move back. */
+    mangleLanded?: (landed: LandedStake) => LandedStake;
   };
   readonly venue: StakingVenue;
 }
@@ -49,10 +64,27 @@ export function refusable(venue: StakingVenue): RefusableVenue {
         throw new Error("The venue does not answer.");
       }
       if (answer.refusal !== undefined) {
-        return err(answer.refusal);
+        return {
+          ...err(answer.refusal),
+          ...(answer.facts === undefined ? {} : { facts: answer.facts }),
+        };
       }
       const planned = await venue.plan(request, call);
       return planned.ok && answer.mangle !== undefined ? ok(answer.mangle(planned.value)) : planned;
+    },
+    holdings: async (wallet, call) => {
+      if (answer.isHoldingsDown === true) {
+        throw new Error("The venue does not read holdings.");
+      }
+      return venue.holdings(wallet, call);
+    },
+    landed: async (move, call) => {
+      if (answer.isLandedDown === true) {
+        throw new Error("The venue does not read the move back.");
+      }
+      const read = await venue.landed(move, call);
+      const { mangleLanded } = answer;
+      return read.ok && mangleLanded !== undefined ? ok(mangleLanded(read.value)) : read;
     },
   };
   return { answer, venue: wrapped };
@@ -104,13 +136,17 @@ export function landing(
 
 /**
  * A live agent that may stake on the venue, its wallet under a ceiling, its moves held at the
- * queue; on the fake staking venue's chain unless `chains` gives one that lists the venue.
+ * queue; on the fake staking venue's chain unless `chains` gives one that lists the venue. Its
+ * ceiling holds `ownCaps`, the calls a venue may make above the chain's cap, when given.
  */
 export async function stakeBench(
   venue: StakingVenue,
-  options: Pick<BenchOptions, "limits" | "network"> & { readonly chains?: ChainRegistry } = {},
+  options: Pick<BenchOptions, "limits" | "network" | "prices" | "facts"> & {
+    readonly chains?: ChainRegistry;
+    readonly ownCaps?: readonly CallCap[];
+  } = {},
 ): Promise<ExecutorBench> {
-  const { chains = stakingChains(), ...rest } = options;
+  const { chains = stakingChains(), ownCaps, facts = {}, ...rest } = options;
   const staking = createStakingHost({
     venues: [venue],
     chains,
@@ -119,12 +155,13 @@ export async function stakeBench(
   const failing = { simulate: async () => Promise.reject(new Error("Only staking calls run.")) };
   const bench = await startExecutorBench({
     ...rest,
+    facts,
     hold: true,
     agent: { limits: { ...testLimits, venues: [...testLimits.venues, venue.id] } },
-    engine: { chains, stakingVenues: [venue], chainSimulator: stakingSimulator(failing) },
+    engine: { chains, stakingVenues: [venue], chainSimulator: stakingSimulator(failing), facts },
     routing: { chains, staking },
   });
-  holdStakeWallet(bench.test);
+  holdStakeWallet(bench.test, ownCaps);
   return bench;
 }
 
