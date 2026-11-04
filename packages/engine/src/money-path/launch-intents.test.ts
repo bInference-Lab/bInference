@@ -1,12 +1,11 @@
 import { type AssetTransfer, assetRefSchema, type TxSimulator } from "@binference/chain";
-import { err } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { expectOk, testCoin, testNowMs, testWallet } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
-import type { IntentStore } from "../ports.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import {
   proposeIntent as propose,
@@ -321,21 +320,6 @@ describe("a token launch refused before any upload", () => {
     });
   });
 });
-
-// An intent store that loses the next move into `state` to another writer, or every such move.
-function racedTo(state: string, times?: number) {
-  let lost = 0;
-  return (store: IntentStore): IntentStore => ({
-    ...store,
-    transition: async (change, options) => {
-      if (change.state !== state || (times !== undefined && lost >= times)) {
-        return store.transition(change, options);
-      }
-      lost += 1;
-      return err("stale");
-    },
-  });
-}
 
 describe("a token launch another write moved first", () => {
   it("uploads nothing when its policy pass loses, and stays where that write left it", async () => {

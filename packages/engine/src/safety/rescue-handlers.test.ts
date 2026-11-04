@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { planDocument } from "../intents/intent-documents.schema.js";
 import { rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { expectOk, testAgent, testCoin, testNowMs, testToken } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import {
   listedArchived,
   startTestEngine,
@@ -14,7 +15,6 @@ import {
   type TestEngine,
   type TestEngineOptions,
 } from "../operations/test-engine.js";
-import type { IntentStore } from "../ports.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
 import {
   payloadOf,
@@ -231,15 +231,6 @@ describe("safety/rescue", () => {
     expect(card?.lines.map(({ key }) => key)).not.toContain("card.reason");
   });
 });
-
-// An intent store that loses every move into `state` to another writer, such as a cancel.
-function racedTo(state: string): (store: IntentStore) => IntentStore {
-  return (store) => ({
-    ...store,
-    transition: async (change, options) =>
-      change.state === state ? err("stale") : store.transition(change, options),
-  });
-}
 
 describe("a rescue another write moved first", () => {
   it.each([
