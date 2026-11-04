@@ -65,11 +65,7 @@ async function answerTyped(
   const surface = answererOf(call.caller).surface;
   const typed = { typed: text, surface, ...(images === undefined ? {} : { images }) };
   const answered = await answerQuestion(options, open, { answer: typed, signal: call.signal });
-  if (!answered.ok) {
-    return answered.error === "question.closed" ? undefined : answered;
-  }
-  const { sessionId, turnId } = answered.value;
-  return turnId === undefined ? undefined : ok({ session: sessionId, turn: turnId });
+  return !answered.ok && answered.error === "question.closed" ? undefined : answered;
 }
 
 // `chat/post`: the owner's message, or the answer to the agent's open question written instead.
@@ -112,12 +108,7 @@ function answerHandler(options: ChatRelayOptions): EngineHandler<"chat/answer"> 
       return err("question.not_found");
     }
     const answer = { choice, surface: answererOf(call.caller).surface };
-    const answered = await answerQuestion(options, asked, { answer, signal: call.signal });
-    if (!answered.ok) {
-      return answered;
-    }
-    const { sessionId, turnId } = answered.value;
-    return turnId === undefined ? err("question.closed") : ok({ session: sessionId, turn: turnId });
+    return answerQuestion(options, asked, { answer, signal: call.signal });
   };
 }
 

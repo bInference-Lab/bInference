@@ -1,4 +1,4 @@
-import { err, type JsonValue, jsonValueSchema, ok, type Result } from "@binference/core";
+import { err, type Id, type JsonValue, jsonValueSchema, ok, type Result } from "@binference/core";
 import {
   type ChatSurface,
   type ProtocolErrorCode,
@@ -7,7 +7,6 @@ import {
 } from "@binference/protocol";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall } from "../operations/engine-call.js";
-import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, chatTopic, pushInbox } from "./chat-relay-parts.js";
 import { isAnswerable, questionOpenMs, type QuestionRecord } from "./question-record.js";
 
@@ -142,13 +141,13 @@ function payloadOf(question: QuestionRecord, answer: OwnerAnswer) {
  * Answers an open question and stores the answer's `inbox/message` in one write, then tells every
  * surface and pushes the message to the runtime, which so gets it once. A question that has
  * expired closes now and is `question.closed`, as is one answered or closed before; a choice the
- * question lacks is `protocol.bad_args`.
+ * question lacks is `protocol.bad_args`. Answers the session and the turn the answer starts.
  */
 export async function answerQuestion(
   options: ChatRelayOptions,
   question: QuestionRecord,
   call: { readonly answer: OwnerAnswer; readonly signal: AbortSignal },
-): Promise<Result<AgentInboxMessage, ProtocolErrorCode>> {
+): Promise<Result<{ readonly session: Id<"ses">; readonly turn: Id<"trn"> }, ProtocolErrorCode>> {
   const { answer, signal } = call;
   const now = options.clock.now();
   if (!isAnswerable(question, now)) {
@@ -161,6 +160,7 @@ export async function answerQuestion(
     return err("protocol.bad_args");
   }
   const { ids } = options;
+  const turn = ids.next("trn");
   const answered = await options.questions.answer(
     {
       questionId: question.id,
@@ -170,7 +170,7 @@ export async function answerQuestion(
           : { typed: answer.typed, surface: answer.surface, atMs: now },
       message: {
         id: ids.next("msg"),
-        turnId: ids.next("trn"),
+        turnId: turn,
         opens: ids.next("ses"),
         payload: payloadOf(question, answer),
       },
@@ -187,5 +187,5 @@ export async function answerQuestion(
   }
   pushClosed(options, answered.value.question);
   await pushInbox(options, answered.value.message, signal);
-  return ok(answered.value.message);
+  return ok({ session: answered.value.message.sessionId, turn });
 }
