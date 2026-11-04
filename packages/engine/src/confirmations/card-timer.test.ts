@@ -1,5 +1,7 @@
+import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { testNowMs, testSwap } from "../intents/test-intents.js";
+import type { IntentRecord } from "../intents/intent-record.js";
+import { testAgent, testNowMs, testSwap, testWallet } from "../intents/test-intents.js";
 import { startTestEngine, type TestEngine, testCall } from "../operations/test-engine.js";
 import {
   createdOrder,
@@ -7,6 +9,8 @@ import {
   storedOrder,
   testStopLoss,
 } from "../orders/test-orders.js";
+import { sha256Hex } from "../records/sha256-hex.js";
+import { type CardTimerParts, expireDueCards } from "./card-timer.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -22,7 +26,69 @@ function closedCards(test: TestEngine) {
   return test.pushes.filter(({ kind }) => kind === "card/closed").map(({ data }) => data);
 }
 
+const idOf = (n: number) => `0190f1c2-3a4b-7c5d-8e6f-${String(n).padStart(12, "0")}`;
+
+// A swap that waits for the owner, the n-th oldest.
+function waitingIntent(n: number): IntentRecord {
+  return {
+    id: idSchema("int").parse(`int_${idOf(n)}`),
+    agentId: testAgent,
+    walletId: testWallet,
+    kind: "swap",
+    state: "awaiting_confirmation",
+    request: {},
+    hasOutsideContent: false,
+    isPaper: true,
+    proposer: "telegram",
+    createdAtMs: testNowMs,
+    changedAtMs: testNowMs + n,
+    version: 2,
+  };
+}
+
+// 501 waiting intents as the store lists them, oldest first, a page at a time; each card is due
+// now, except the fourth intent's, which the store holds no card of.
+function waitingStore() {
+  const records = Array.from({ length: 501 }, (_, n) => waitingIntent(n));
+  const unseen = records[3]?.id;
+  const intents: CardTimerParts["intents"] = {
+    list: async (query) => {
+      const after = records.findIndex((record) => record.id === query.after?.id);
+      return Promise.resolve(records.slice(after + 1, after + 1 + query.limit));
+    },
+    cards: async (intent) => {
+      const card = {
+        id: idSchema("crd").parse(`crd_${idOf(1)}`),
+        intentId: intent,
+        version: 1,
+        termsHash: sha256Hex("terms"),
+        openedAtMs: testNowMs - 60_000,
+        expiresAtMs: testNowMs,
+      };
+      return Promise.resolve(intent === unseen ? [] : [card]);
+    },
+  };
+  return { records, intents };
+}
+
 describe("the card timer", () => {
+  it("expires every due card past the first page of waiting intents, and skips one with no card", async () => {
+    const { records, intents } = waitingStore();
+    const expired: string[] = [];
+    const parts: CardTimerParts = {
+      intents,
+      now: () => testNowMs,
+      expire: async (intent) => {
+        expired.push(intent.id);
+        return Promise.resolve();
+      },
+    };
+    expect(await expireDueCards(parts, live.signal)).toBeUndefined();
+    expect(expired).toHaveLength(500);
+    expect(expired).toContain(records[500]?.id);
+    expect(expired).not.toContain(records[3]?.id);
+  });
+
   it("answers when the open card's time is up, and leaves the card open before it", async () => {
     const test = await startTestEngine();
     const { intent } = await proposedSwap(test);
