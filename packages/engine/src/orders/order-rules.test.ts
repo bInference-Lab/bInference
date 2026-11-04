@@ -50,6 +50,7 @@ function check(request: OrderRequest) {
     nowMs: testNowMs,
     chains: chainsWithStable(),
     ownerZone: "UTC",
+    expiryDays: 30,
   });
 }
 
@@ -88,7 +89,8 @@ describe("a buy order's size and what it spends", () => {
 });
 
 function inShanghai(request: OrderRequest) {
-  const context = { nowMs: testNowMs, chains: chainsWithStable(), ownerZone: "Asia/Shanghai" };
+  const zone = "Asia/Shanghai";
+  const context = { nowMs: testNowMs, chains: chainsWithStable(), ownerZone: zone, expiryDays: 30 };
   return checkOrderRequest(request, context);
 }
 

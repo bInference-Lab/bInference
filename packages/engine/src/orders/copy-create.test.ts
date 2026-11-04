@@ -3,9 +3,8 @@ import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { testAgent, testNowMs, testToken } from "../intents/test-intents.js";
+import { testAgent, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
-import { defaultOrderLifetimeMs } from "./order-rules.js";
 import {
   createdOrder,
   startOrderEngine,
@@ -17,6 +16,7 @@ import {
 
 const live = { signal: new AbortController().signal };
 const chain = assetRefParts(testToken).chain;
+const dayMs = 86_400_000;
 
 describe("a copy order's creation", () => {
   it("stores the order with no fill limit, tracks its leader and starts its state on the tap", async () => {
@@ -30,7 +30,7 @@ describe("a copy order's creation", () => {
 
     expect(order).toMatchObject({ kind: "copy", state: "active", fills: 0 });
     expect(order).not.toHaveProperty("maxFills");
-    expect(order.expiresAtMs).toBe(testNowMs + defaultOrderLifetimeMs);
+    expect(order.expiresAtMs).toBe(testNowMs + testLimits.orderExpiryDays * dayMs);
     expect(order.triggerState).toStrictEqual({
       sinceMs: testNowMs,
       through: 0,

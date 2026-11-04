@@ -5,9 +5,11 @@ import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { testAgent, testCoin, testNowMs, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
-import { checkOrderRequest, defaultOrderLifetimeMs } from "./order-rules.js";
+import { checkOrderRequest } from "./order-rules.js";
 
 const chains = testChains();
+const dayMs = 86_400_000;
+const rules = { nowMs: testNowMs, chains, ownerZone: "UTC", expiryDays: 30 };
 
 const sizes = fc.oneof(
   fc.bigInt({ min: 0n, max: 2n ** 70n }).map((base) => ({ base })),
@@ -82,21 +84,22 @@ describe("the rules of a new auto order, for every request", () => {
   it("accepts exactly the requests every rule allows, and never a size, price or expiry of zero", () => {
     fc.assert(
       fc.property(requests, (request) => {
-        const checked = checkOrderRequest(request, { nowMs: testNowMs, chains, ownerZone: "UTC" });
+        const checked = checkOrderRequest(request, rules);
         expect(checked.ok).toBe(isAllowed(request));
       }),
       { numRuns: 2_000 },
     );
   });
 
-  it("fills one fill and a 30-day expiry when the request names neither", () => {
+  it("fills one fill and the agent's expiry days when the request names neither", () => {
+    const expiryDays = fc.integer({ min: 1, max: 3_650 });
     fc.assert(
-      fc.property(requests.filter(isAllowed), (request) => {
+      fc.property(requests.filter(isAllowed), expiryDays, (request, days) => {
         const { expiresAt: _expiresAt, ...open } = request;
-        const checked = checkOrderRequest(open, { nowMs: testNowMs, chains, ownerZone: "UTC" });
+        const checked = checkOrderRequest(open, { ...rules, expiryDays: days });
         expect(checked).toMatchObject({
           ok: true,
-          value: { expiresAtMs: testNowMs + defaultOrderLifetimeMs, maxFills: 1 },
+          value: { expiresAtMs: testNowMs + days * dayMs, maxFills: 1 },
         });
         expect(filledSpendOf(checked)).toBe(defaultSpendOf(request));
       }),

@@ -1185,7 +1185,9 @@ webhook rule.
 
 `reason?` is the agent's words on why, as an intent request's `reason`: the order's card shows it
 as what the agent says, escaped ([decision 0177](../DECISIONS.md#d0177)). The agent runtime always
-sends one; another client may leave it out.
+sends one; another client may leave it out. An order that names no `expiresAt` ends its agent's
+`orderExpiryDays` after it is made: `defaults.orders.expiryDays` (spec 2), 30 days, until
+`limit/set` changes it.
 
 | `kind`       | `trigger`                                                                                                                                                                                        |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

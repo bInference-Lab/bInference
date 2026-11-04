@@ -1,18 +1,34 @@
 import { type Bps, bpsSchema, err, idSchema } from "@binference/core";
+import type { OrderRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { expectOk, testAgent, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testLimits,
+  testNowMs,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
-import { defaultOrderLifetimeMs } from "./order-rules.js";
 import {
   createdOrder,
   startOrderEngine,
   storedOrder,
   tapCard,
+  testCopy,
   testStopLoss,
 } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 const tenMinutesMs = 600_000;
+const dayMs = 86_400_000;
+const testDca: OrderRequest = {
+  ...testStopLoss(),
+  kind: "dca",
+  side: "buy",
+  size: { usdMicros: 1_000_000n },
+  trigger: { cron: "0 9 * * *" },
+};
 
 describe("an auto order's card", () => {
   it("opens one card, and the order is active only once that card is confirmed", async () => {
@@ -29,7 +45,7 @@ describe("an auto order's card", () => {
       outsideContent: false,
       fills: 0,
       maxFills: 1,
-      expiresAt: testNowMs + defaultOrderLifetimeMs,
+      expiresAt: testNowMs + testLimits.orderExpiryDays * dayMs,
     });
     expect([intent?.kind, intent?.state]).toStrictEqual(["autoOrder", "awaiting_confirmation"]);
     expect((await storedOrder(test, view.order)).state).toBe("awaiting_confirmation");
@@ -123,11 +139,31 @@ describe("the rules of a new auto order", () => {
 
     expect([trailing.maxFills, trailing.expiresAt]).toStrictEqual([
       1,
-      testNowMs + defaultOrderLifetimeMs,
+      testNowMs + testLimits.orderExpiryDays * dayMs,
     ]);
     expect([limit.maxFills, limit.expiresAt]).toStrictEqual([3, testNowMs + 60_000]);
     expect(trailing.request).toMatchObject({ wallet: testWallet, token: testToken });
   });
+
+  it.each<[string, OrderRequest]>([
+    ["stop-loss", testStopLoss()],
+    ["DCA", testDca],
+    ["copy", testCopy()],
+  ])(
+    "ends a %s order after the agent's order expiry days, unless the request names its end",
+    async (_kind, request) => {
+      const limits = { ...testLimits, orderExpiryDays: 7 };
+      const test = await startOrderEngine({ agent: { limits } });
+
+      const lasting = await createdOrder(test, request);
+      const named = await createdOrder(test, { ...request, expiresAt: testNowMs + 60_000 });
+
+      expect([lasting.expiresAt, named.expiresAt]).toStrictEqual([
+        testNowMs + 7 * dayMs,
+        testNowMs + 60_000,
+      ]);
+    },
+  );
 
   it("refuses a live price or DCA order while live fills are off, and takes a paper one", async () => {
     const liveEngine = await startOrderEngine({ agent: { mode: "live" } });

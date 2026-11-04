@@ -15,7 +15,7 @@ import {
   type OrderRecord,
   positionOf,
 } from "./order-record.js";
-import { checkOrderRequest, type CheckedOrder } from "./order-rules.js";
+import { checkOrderRequest, type CheckedOrder, type OrderRulesContext } from "./order-rules.js";
 import { orderPush } from "./order-view-of.js";
 import { orderWalletOf } from "./order-wallet-of.js";
 import type { OrderStore } from "./ports.js";
@@ -207,9 +207,18 @@ async function openOrderCard(
   return openOneCard(parts, card, signal);
 }
 
-// What the order rules read: the time, the registry and the owner's zone now.
-function rulesContextOf(parts: Pick<OrderParts, "clock" | "chains" | "ownerTimeZone">) {
-  return { nowMs: parts.clock.now(), chains: parts.chains, ownerZone: parts.ownerTimeZone() };
+// What the order rules read: the time, the registry, the owner's zone now and the agent's order
+// expiry days.
+function rulesContextOf(
+  parts: Pick<OrderParts, "clock" | "chains" | "ownerTimeZone">,
+  settings: AgentSettings,
+): OrderRulesContext {
+  return {
+    nowMs: parts.clock.now(),
+    chains: parts.chains,
+    ownerZone: parts.ownerTimeZone(),
+    expiryDays: settings.limits.orderExpiryDays,
+  };
 }
 
 // A stored order, or why the store refused it: a frozen agent, or a 51st tracked wallet. An id in
@@ -250,14 +259,14 @@ export async function createOrder(
   },
 ): Promise<Result<CreatedOrder, ProtocolErrorCode>> {
   const { request, proposer, signal } = call;
-  const checked = checkOrderRequest(request, rulesContextOf(parts));
-  if (!checked.ok) {
-    return checked;
-  }
   const settings = await parts.agents.get(request.agent, { signal });
   const refusal = agentRefusal(settings);
   if (refusal !== undefined || settings === undefined) {
     return err(refusal ?? "agent.not_found");
+  }
+  const checked = checkOrderRequest(request, rulesContextOf(parts, settings));
+  if (!checked.ok) {
+    return checked;
   }
   const neverFills = neverFillsRefusal(parts, { settings, checked: checked.value });
   if (neverFills !== undefined) {

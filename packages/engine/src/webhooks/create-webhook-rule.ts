@@ -8,7 +8,7 @@ import { openOneCard, storedUnlessTaken } from "../orders/open-one-card.js";
 import {
   type CheckedBounds,
   checkFillBounds,
-  defaultOrderLifetimeMs,
+  defaultRuleLifetimeMs,
 } from "../orders/order-rules.js";
 import { orderWalletOf } from "../orders/order-wallet-of.js";
 import { slippageRefusal } from "../orders/slippage-refusal.js";
@@ -99,7 +99,7 @@ function draftOf(
   placed: Placed,
 ): Omit<WebhookRuleDraft, "secretHash"> {
   const atMs = parts.clock.now();
-  const expiresAtMs = request.expiresAt ?? atMs + defaultOrderLifetimeMs;
+  const expiresAtMs = request.expiresAt ?? atMs + defaultRuleLifetimeMs;
   const ratePerMinute = request.ratePerMinute ?? defaultRatePerMinute;
   const { wallet, token, spend } = placed;
   const filled = {

@@ -12,8 +12,19 @@ import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { nextRunOf } from "../schedules/schedule-times.js";
 import { checkCopyRequest } from "./copy-rules.js";
 
-/** How long an order lasts when its request names no expiry: 30 days (spec 1, section 8.2). */
-export const defaultOrderLifetimeMs = 2_592_000_000;
+/** How long a webhook rule lasts when its request names no expiry: 30 days (spec 1, section 7.5). */
+export const defaultRuleLifetimeMs = 2_592_000_000;
+
+const dayMs = 86_400_000;
+
+/** What the order rules read: the time, the registry, the owner's zone and the agent's limits. */
+export interface OrderRulesContext {
+  readonly nowMs: number;
+  readonly chains: ChainRegistry;
+  readonly ownerZone: string;
+  /** The agent's `orderExpiryDays`: how many days an order that names no expiry lasts. */
+  readonly expiryDays: number;
+}
 
 /** An order request that passed its rules, with every default filled and its token canonical. */
 export interface CheckedOrder {
@@ -152,7 +163,8 @@ function dcaOf(request: DcaOrderRequest, context: DcaContext): Checked<DcaOrderR
     : err("schedule.bad_when");
 }
 
-// The order with every default filled, its token and what it spends in their canonical forms.
+// The order with every default filled, its token and what it spends in their canonical forms; one
+// that names no expiry ends the agent's expiry days after `nowMs`.
 function filledOrder(
   request: OrderRequest,
   found: {
@@ -160,9 +172,9 @@ function filledOrder(
     readonly spend: AssetRef | undefined;
     readonly chain: RegisteredChain;
   },
-  nowMs: number,
+  context: Pick<OrderRulesContext, "nowMs" | "expiryDays">,
 ): CheckedOrder {
-  const expiresAtMs = request.expiresAt ?? nowMs + defaultOrderLifetimeMs;
+  const expiresAtMs = request.expiresAt ?? context.nowMs + context.expiryDays * dayMs;
   const most = maxFillsOf(request);
   const limit = most === undefined ? {} : { maxFills: most };
   const spend = found.spend === undefined ? {} : { spend: found.spend };
@@ -180,34 +192,30 @@ function filledOrder(
 }
 
 // A copy order's terms (decision 0261), with its expiry and most fills filled as any order's.
-function copyOf(
-  request: CopyOrderRequest,
-  nowMs: number,
-  chains: ChainRegistry,
-): Checked<CheckedOrder> {
-  const copy = checkCopyRequest(request, chains);
-  if (!copy.ok || (request.expiresAt !== undefined && request.expiresAt <= nowMs)) {
+function copyOf(request: CopyOrderRequest, context: OrderRulesContext): Checked<CheckedOrder> {
+  const copy = checkCopyRequest(request, context.chains);
+  if (!copy.ok || (request.expiresAt !== undefined && request.expiresAt <= context.nowMs)) {
     return badArgs;
   }
   const { token, spend } = copy.value.request;
-  return ok(filledOrder(copy.value.request, { token, spend, chain: copy.value.chain }, nowMs));
+  return ok(filledOrder(copy.value.request, { token, spend, chain: copy.value.chain }, context));
 }
 
 /**
  * Checks an `order/create` request against the rules of decisions 0189, 0190, 0246 and 0261 and
- * fills its defaults: an expiry 30 days after `nowMs`, one fill for a price order that names no
- * more, a limit or take-profit order's trigger price as its worst price (decision 0197), the
- * chain's coin as what a buy spends, a DCA order's zone, `ownerZone` (`owner.timezone` now),
- * unless it names one, and a copy order's leader in its canonical form.
+ * fills its defaults: an expiry `expiryDays` after `nowMs`, the agent's `orderExpiryDays`, one fill
+ * for a price order that names no more, a limit or take-profit order's trigger price as its worst
+ * price (decision 0197), the chain's coin as what a buy spends, a DCA order's zone, `ownerZone`
+ * (`owner.timezone` now), unless it names one, and a copy order's leader in its canonical form.
  * A DCA period binference cannot read, or with no run ahead, is `schedule.bad_when`; any other
  * broken rule `protocol.bad_args`, a DCA sale among them.
  */
 export function checkOrderRequest(
   given: OrderRequest,
-  context: { readonly nowMs: number; readonly chains: ChainRegistry; readonly ownerZone: string },
+  context: OrderRulesContext,
 ): Checked<CheckedOrder> {
   if (given.kind === "copy") {
-    return copyOf(given, context.nowMs, context.chains);
+    return copyOf(given, context);
   }
   const dca =
     given.kind === "dca"
@@ -225,7 +233,7 @@ export function checkOrderRequest(
   }
   const spend = spendOf(request, found.value, context.chains);
   return spend.ok
-    ? ok(filledOrder(request, { ...found.value, spend: spend.value }, context.nowMs))
+    ? ok(filledOrder(request, { ...found.value, spend: spend.value }, context))
     : spend;
 }
 
