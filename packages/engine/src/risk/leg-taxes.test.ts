@@ -1,7 +1,7 @@
 import { accountRefSchema, type AssetTransfer, assetRefSchema } from "@binference/chain";
 import { createFakeFamily } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
-import { buyTaxBps, lostBps, netIn } from "./leg-taxes.js";
+import { buyLegOf, buyTaxBps, lostBps, netIn } from "./leg-taxes.js";
 
 const account = (address: string) => accountRefSchema.parse(`fake:1:${address}`);
 const coin = assetRefSchema.parse("fake:1/slip44:1");
@@ -72,5 +72,18 @@ describe("leg taxes", () => {
   it("reads no buy tax from a pool that pays out what the buyer receives", () => {
     const transfers = [move([trader, pool], coin, 100n), move([pool, trader], tokenAsset, 1_000n)];
     expect(buyTaxBps(transfers, trader, token)).toBe(0);
+  });
+
+  it("reads a hook that took all the pool paid out as a whole fee, and the buyer's loss as no tax", () => {
+    const hook = account("0x000000c1");
+    const transfers = [
+      move([trader, pool], coin, 100n),
+      move([pool, hook], tokenAsset, 1_000n),
+      move([router, hook], tokenAsset, 5n),
+    ];
+    expect(buyLegOf(transfers, trader, { ...token, hooks: [hook] })).toStrictEqual({
+      taxBps: 0,
+      hookFeeBps: 10_000,
+    });
   });
 });

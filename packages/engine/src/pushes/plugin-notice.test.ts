@@ -69,4 +69,19 @@ describe("createPluginNotices", () => {
       },
     ]);
   });
+
+  it("keeps the hours of at most 1,000 plugins, forgetting the oldest first", () => {
+    const { tell, data } = notices();
+    Array.from({ length: 6 }, () => tell(refused("a.example.net")));
+    Array.from({ length: 1_000 }, (_, n) =>
+      tell({ kind: "hostRefused", plugin: `plugin-${String(n)}`, host: "b.example.net" }),
+    );
+    tell(refused("c.example.net"));
+
+    expect(data().at(-1)).toStrictEqual({
+      key: "notice.pluginHostRefused",
+      values: { plugin: "fear-index", host: "c.example.net" },
+    });
+    expect(data()).not.toContainEqual(expect.objectContaining({ key: "notice.pluginHostsHeld" }));
+  });
 });
