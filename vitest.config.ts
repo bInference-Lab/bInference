@@ -34,8 +34,9 @@ const forkFolders = "**/src/fork/**";
 const crashFolders = "**/src/crash/**";
 // Image tests build and run the Docker image: they run in the image suite (vitest.image.config.ts).
 const imageFolders = "**/src/image/**";
-// The console's smoke test and its engine run in Playwright (`pnpm test:console`), never here.
-const smokeFolders = ["**/src/smoke/**", "**/src/console-smoke/**"];
+// The console's smoke test and its engine run in Playwright (`pnpm test:console`), never here; the
+// built-package smoke's paper trade runs in `pnpm release:smoke` (its certificate's test runs here).
+const smokeFolders = ["**/src/smoke/**", "**/src/console-smoke/**", "**/src/packed/**"];
 
 // Platform tests mock native modules and its native suites need the real ones, so each of its
 // files gets a fresh module graph.

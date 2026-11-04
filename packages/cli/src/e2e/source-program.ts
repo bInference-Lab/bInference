@@ -27,9 +27,11 @@ interface Waiter {
   readonly resolve: (line: string) => void;
 }
 
-// Collects the program's output as lines, and answers each waiter with the first line that holds
-// its text, or with the whole output once it ends.
-function watchLines(program: NodeProgram): Omit<SourceProgram, "program"> {
+/**
+ * Collects a program's standard output as lines, and answers each waiter with the first line that
+ * holds its text, or with the whole output once it ends.
+ */
+export function watchProgramLines(program: NodeProgram): Omit<SourceProgram, "program"> {
   const lines: string[] = [];
   const waiters = new Set<Waiter>();
   const state = { rest: "", hasEnded: false };
@@ -86,5 +88,5 @@ export function startSourceProgram(options: SourceProgramOptions): SourceProgram
     env: { ...loaderEnv(options.parentEnv), ...options.env },
     signal: options.signal,
   });
-  return { program, ...watchLines(program) };
+  return { program, ...watchProgramLines(program) };
 }

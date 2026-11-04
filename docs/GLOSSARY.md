@@ -500,6 +500,10 @@ check` tries it as `network.proxy`.
   notes and the SBOM, installs the **packed files** into an empty project, and publishes nothing.
   The release workflow publishes only a tag signed by a **release key** that
   `.github/release-signers` lists; a **scratch** run publishes to npm's `scratch` dist-tag.
+- **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed
+  files** into an empty project outside the repository, checks that every file their manifests
+  name is there, then sets the installed `binference` up with `init --yes`, starts it, makes a
+  paper trade by chat on the synthetic Bot API with a scripted model, and stops it.
 - **crash suite**: the tests in each package's `src/crash/`, run by `pnpm test:crash` and nightly
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was

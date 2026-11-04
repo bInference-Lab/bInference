@@ -1,6 +1,6 @@
 # 0353. A signed calver tag runs the release dry, and only a run by hand publishes it
 
-Status: Accepted
+Status: Amended by 0354
 
 Accepted by the tech lead on 2026-11-04.
 

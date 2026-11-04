@@ -76,6 +76,15 @@ Rules for this package:
   which the test's network names after their hosts; `image-paper-trade.ts` runs in a container of
   the image beside the installed package and trades on paper over the engine's IPC socket. It
   runs in `pnpm test:image`, never in `pnpm check`.
+- The built-package smoke's paper trade lives in `src/packed/` (decision 0354):
+  `packed-paper-trade.ts`, which `pnpm release:smoke` runs from source with the folder the packed
+  tarballs were installed in. It drives that install's own `binference`, each command a process of
+  this Node with only the variables it names: `init --yes`, `start --foreground`, a paper trade by
+  chat, `stop`. The fake Privy and the synthetic Bot API serve TLS on the loopback behind a
+  stand-in proxy the install names in `network.proxy`, with a certificate Node's crypto makes
+  (`smoke-certificate.ts`) and `NODE_EXTRA_CA_CERTS` trusts; the model is a scripted Chat
+  Completions stand-in on the loopback. A new entry point, process file or plugin is checked
+  there. It never runs in `pnpm check`; its certificate's test does.
 - `composeEngine` is the one place that joins the engine to its protocol server, and to the
   owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
   handlers: the engine's and the root's own, such as `engine/status`. The bot alone also gets
