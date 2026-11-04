@@ -2,7 +2,7 @@ import { type AssetTransfer, type TokenRiskReport, accountRefSchema } from "@bin
 import { createEvmTxSimulator, erc20AssetRef } from "@binference/chain-evm";
 import { bscContract, type Fork, withFork } from "@binference/chain-evm/fork";
 import { createFakeRiskSource } from "@binference/chain/testing";
-import { BinferenceError, bpsSchema, type Http } from "@binference/core";
+import { BinferenceError, bpsSchema, type Http, directRoute } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
 import { createVenueHost, type VenueTrade } from "@binference/engine";
 import { createRiskCheck } from "@binference/engine/risk";
@@ -21,7 +21,7 @@ import { createSystemHttp } from "../runtime/system-http.js";
 // 2% of the token side of a buy by sending it out of the pool's vault, so the round trip measures
 // it apart from the token's own tax. KyberSwap's public API quotes; nothing else is reached.
 const kyberswapOrigin = "https://aggregator-api.kyberswap.com";
-const network = createSystemHttp({ version: "test" });
+const network = createSystemHttp({ version: "test", route: directRoute });
 // A token whose launch graduated into its m4.1 pool, read on 2026-10-14; it takes no tax of its own.
 const graduated = getAddress("0xc458f88CB2618dC66C959e3e3f56383A1bfBEE74");
 const hook = bscContract("geniusfun", "hook-m4-1");

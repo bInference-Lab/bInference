@@ -1,4 +1,5 @@
 import { EventEmitter } from "node:events";
+import { directRoute } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
@@ -52,7 +53,7 @@ async function startOn(sets: readonly string[], options: { readonly isConfigPort
   return { machine, exit, ready: readySchema.parse(JSON.parse(line)) };
 }
 
-const http = createSystemHttp({ version: "test" });
+const http = createSystemHttp({ version: "test", route: directRoute });
 
 // Sends one request to 127.0.0.1 and answers its status and body.
 async function send(port: number, method: "GET" | "POST", path: string) {

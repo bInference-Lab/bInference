@@ -1,4 +1,4 @@
-import type { HttpRequest, HttpResponse } from "@binference/core";
+import { type HttpRequest, type HttpResponse, directRoute } from "@binference/core";
 import { createManualClock, createScriptedHttp, httpContract } from "@binference/core/testing";
 import { endpointModelChain } from "@binference/runtime";
 import { startStandInModelServer } from "@binference/runtime/testing";
@@ -97,7 +97,7 @@ describe("createEvaluationHttp", () => {
 
   it("reaches a model server on the loopback for a scenario's run", async ({ signal }) => {
     const server = await startStandInModelServer([answer]);
-    const http = createSystemHttp({ version: "test" });
+    const http = createSystemHttp({ version: "test", route: directRoute });
     try {
       const endpoint = { baseUrl: `${server.origin}/v1`, model: "local" };
       const chain = () =>
@@ -127,7 +127,7 @@ describe("createEvaluationHttp", () => {
     signal,
   }) => {
     const server = await startStandInModelServer([answer]);
-    const system = createSystemHttp({ version: "test" });
+    const system = createSystemHttp({ version: "test", route: directRoute });
     const evaluation = createEvaluationHttp(system);
     try {
       await expect(

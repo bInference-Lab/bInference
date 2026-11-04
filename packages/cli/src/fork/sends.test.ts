@@ -7,7 +7,7 @@ import {
 import { erc20AssetRef, evmAccountRef } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
 import { baseMainnet } from "@binference/chains";
-import { BinferenceError, type Http, type Id, idSchema } from "@binference/core";
+import { BinferenceError, type Http, type Id, idSchema, directRoute } from "@binference/core";
 import type { IntentRequest } from "@binference/protocol";
 import { pointStep } from "@binference/spaceid/testing";
 import {
@@ -187,7 +187,7 @@ const baseUsdc = accountRefSchema.parse(
   `${baseMainnet.id}:${baseMainnet.tokens.find((token) => token.symbol === "USDC")?.address ?? ""}`,
 );
 const baseHolder = evmAccountRefOn(baseRef, holder);
-const network = createSystemHttp({ version: "test" });
+const network = createSystemHttp({ version: "test", route: directRoute });
 const depositEvents = parseAbi([
   "event FundsDeposited(bytes32 inputToken, bytes32 outputToken, uint256 inputAmount, uint256 outputAmount, uint256 indexed destinationChainId, uint256 indexed depositId, uint32 quoteTimestamp, uint32 fillDeadline, uint32 exclusivityDeadline, bytes32 indexed depositor, bytes32 recipient, bytes32 exclusiveRelayer, bytes message)",
 ]);

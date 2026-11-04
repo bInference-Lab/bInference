@@ -2,7 +2,7 @@ import { setTimeout as wait } from "node:timers/promises";
 import { type AccountRef, accountRefParts } from "@binference/chain";
 import { erc20AssetRef } from "@binference/chain-evm";
 import { bscContract, type Fork } from "@binference/chain-evm/fork";
-import { BinferenceError, bpsSchema, type Http } from "@binference/core";
+import { BinferenceError, bpsSchema, type Http, directRoute } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
 import { createVenueHost, type VenueTrade } from "@binference/engine";
 import type { StoredActivity } from "@binference/engine/orders";
@@ -35,7 +35,7 @@ import { cliCaller, fillAgent, type FillRig, onFillFork, xvs } from "./order-fil
 // leader is the recorded wallet, impersonated. KyberSwap's public API quotes; nothing else is
 // reached but the fork.
 const kyberswapOrigin = "https://aggregator-api.kyberswap.com";
-const network = createSystemHttp({ version: "test" });
+const network = createSystemHttp({ version: "test", route: directRoute });
 const kyberswapHttp: Http = {
   async request(request) {
     if (new URL(request.url).origin !== kyberswapOrigin) {

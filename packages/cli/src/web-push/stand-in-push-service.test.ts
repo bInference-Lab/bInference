@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 // oxlint-disable-next-line eslint/no-restricted-imports -- the test serves a push service of its own on loopback
 import { createServer, type IncomingMessage, type Server } from "node:http";
-import type { Http } from "@binference/core";
+import { type Http, directRoute } from "@binference/core";
 import {
   createManualClock,
   createMemorySecretStore,
@@ -23,7 +23,7 @@ interface Taken {
 }
 
 const held: { server?: Server; origin: string; taken: Taken[] } = { origin: "", taken: [] };
-const system: SystemHttp = createSystemHttp({ version: "2026.10.0" });
+const system: SystemHttp = createSystemHttp({ version: "2026.10.0", route: directRoute });
 // The stand-in serves on loopback, which a real push request may never reach: this line lets it.
 const http: Http = {
   request: async (request) => system.request({ ...request, publicOnly: false }),

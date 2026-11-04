@@ -11,7 +11,7 @@ import {
 } from "@binference/chain-evm/fork";
 import { bsc } from "@binference/chains";
 import type { ProtocolClient } from "@binference/client";
-import { BinferenceError, type Http, type Id } from "@binference/core";
+import { BinferenceError, type Http, type Id, directRoute } from "@binference/core";
 import { disclaimerVersion } from "@binference/i18n";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import type { TempFolder } from "@binference/platform/testing";
@@ -41,7 +41,7 @@ const feedAbi = parseAbi([
 const terminal = new Set(["paper_filled", "reconciled", "failed_onchain", "failed_check"]);
 const folders: TempFolder[] = [];
 const engines = createRunningEngines();
-const network = createSystemHttp({ version: "test" });
+const network = createSystemHttp({ version: "test", route: directRoute });
 
 afterEach(async () => {
   await engines.stopAll();

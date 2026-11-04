@@ -1,7 +1,7 @@
 import { accountRefSchema, type SimulatedStep } from "@binference/chain";
 import { createEvmTxSimulator, erc20AssetRef } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork, withFork } from "@binference/chain-evm/fork";
-import { BinferenceError, bpsSchema, type Http } from "@binference/core";
+import { BinferenceError, bpsSchema, type Http, directRoute } from "@binference/core";
 import { createVenueHost, type TradePlan, type VenueTrade } from "@binference/engine";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { recordedWallet } from "@binference/kyberswap/testing";
@@ -18,7 +18,7 @@ import { brewOn } from "./launch-wallet-parts.js";
 // and a token BrewFactory never recorded, here one launched by a Brew factory binference does not
 // list, is no Brew token at all. KyberSwap's public API quotes; nothing else is reached.
 const kyberswapOrigin = "https://aggregator-api.kyberswap.com";
-const network = createSystemHttp({ version: "test" });
+const network = createSystemHttp({ version: "test", route: directRoute });
 const factory = bscContract("brew", "factory");
 // BREW, a BrewToken BrewFactory launched against WBNB, read on 2026-10-20.
 const brewToken = getAddress("0xfa6D9B504848606Eb9aeC04CCc161D169B3f2159");

@@ -1,4 +1,4 @@
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, directRoute } from "@binference/core";
 import { createRunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testPng, testToken } from "@binference/engine/testing";
 import { maxImageBytes } from "@binference/protocol";
@@ -94,7 +94,7 @@ async function uploadAndPost(machine: Machine, text: string): Promise<void> {
   const address = await skeleton.composed.server.start(AbortSignal.timeout(5_000));
   const plan = { contentType: "image/png", bytes: testPng.byteLength } as const;
   const { url } = await skeleton.client.call("upload/start", plan, live());
-  const http = createSystemHttp({ version: "test" });
+  const http = createSystemHttp({ version: "test", route: directRoute });
   stops.push(async () => http.close());
   const posted = await http.request({
     method: "POST",

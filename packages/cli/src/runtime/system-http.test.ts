@@ -1,5 +1,6 @@
 // oxlint-disable-next-line eslint/no-restricted-imports -- the test serves the adapter's answers from a loopback server
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import { directRoute } from "@binference/core";
 import { httpContract, httpDownloadContract } from "@binference/core/testing";
 import { createBotApiFetch } from "@binference/telegram";
 import { fakeBotToken } from "@binference/telegram/testing";
@@ -85,7 +86,7 @@ afterAll(async () => {
 });
 
 function adapter(): SystemHttp {
-  const created = createSystemHttp({ version: "1.2.3" });
+  const created = createSystemHttp({ version: "1.2.3", route: directRoute });
   adapters.push(created);
   return created;
 }

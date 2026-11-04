@@ -1,5 +1,5 @@
 import { setTimeout as wait } from "node:timers/promises";
-import { BinferenceError, type Id, idSchema } from "@binference/core";
+import { BinferenceError, type Id, idSchema, directRoute } from "@binference/core";
 import { intentStates } from "@binference/engine";
 import { protocolIdSchema } from "@binference/protocol";
 import { connectClient } from "../e2e/test-host.js";
@@ -9,7 +9,7 @@ import { withStore } from "./crash-reads.js";
 import { type CrashInstall, goneLive } from "./crash-runs.js";
 
 const call = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(30_000) });
-const http = createSystemHttp({ version: "crash" });
+const http = createSystemHttp({ version: "crash", route: directRoute });
 
 /** A run's rule: its id and its URL. */
 export interface CrashRule {

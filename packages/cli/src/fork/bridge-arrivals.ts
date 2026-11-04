@@ -1,7 +1,13 @@
 import { notFoundAnswer } from "@binference/across/testing";
 import type { Fork } from "@binference/chain-evm/fork";
 import { baseMainnet, solana } from "@binference/chains";
-import { BinferenceError, type Http, type HttpResponse, jsonValueSchema } from "@binference/core";
+import {
+  BinferenceError,
+  type Http,
+  type HttpResponse,
+  jsonValueSchema,
+  directRoute,
+} from "@binference/core";
 import { type Address, getAddress, type Hex } from "viem";
 import { z } from "zod";
 import recordedSolanaFill from "../compose/recorded/solana-usdc-fill.json" with { type: "json" };
@@ -43,7 +49,7 @@ export interface BridgeArrivals {
 const acrossStatus = "https://app.across.to/api/deposit/status?";
 const relayRequests = "https://api.relay.link/requests/v2?";
 const liveApis = new Set(["https://app.across.to", "https://api.relay.link"]);
-const network = createSystemHttp({ version: "test" });
+const network = createSystemHttp({ version: "test", route: directRoute });
 // The order Relay's recorded fill on Solana named in its memo, which the fills here take for this
 // test's deposits.
 const recordedOrder = "0xe74b2e9ec4a759b595bb17cf1211d490a31a0a61788d9710fc5c19de055a5f2e";

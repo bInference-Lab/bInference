@@ -1,3 +1,4 @@
+import { directRoute } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
 import { createWebhookIntake } from "@binference/engine/orders";
 import { createWebhookListener } from "@binference/server";
@@ -38,7 +39,7 @@ export async function startSmokeAlerts(skeleton: Skeleton): Promise<SmokeAlerts>
     logger: createMemoryLogger({ subsystem: "webhook" }),
   });
   const address = await listener.start(new AbortController().signal);
-  const http = createSystemHttp({ version: "smoke" });
+  const http = createSystemHttp({ version: "smoke", route: directRoute });
   return {
     async post(url, body) {
       const { pathname } = new URL(url);

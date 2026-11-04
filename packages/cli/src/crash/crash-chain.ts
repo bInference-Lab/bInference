@@ -3,7 +3,7 @@ import { once } from "node:events";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { text as readBody } from "node:stream/consumers";
 import { setTimeout as wait } from "node:timers/promises";
-import { BinferenceError, type JsonValue } from "@binference/core";
+import { BinferenceError, type JsonValue, directRoute } from "@binference/core";
 import {
   type Address,
   type Hex,
@@ -278,7 +278,7 @@ async function listen(server: Server): Promise<string> {
  * with anvil's own, is what a run counts; nothing the engine says about itself counts.
  */
 export async function serveCrashChain(anvilUrl: string): Promise<CrashChain> {
-  const http = createSystemHttp({ version: "crash" });
+  const http = createSystemHttp({ version: "crash", route: directRoute });
   const upstream = upstreamOf(anvilUrl, http);
   const book = createChainBook();
   const handlers = handlersOf(book, upstream);

@@ -1,7 +1,7 @@
 import { setTimeout as wait } from "node:timers/promises";
 import { type AccountRef, accountRefParts } from "@binference/chain";
 import type { ProtocolClient } from "@binference/client";
-import { BinferenceError, type Id } from "@binference/core";
+import { BinferenceError, type Id, directRoute } from "@binference/core";
 import { isTerminalState } from "@binference/engine";
 import type { IntentView, ProtocolId } from "@binference/protocol";
 import { type Address, getAddress, toHex } from "viem";
@@ -63,7 +63,7 @@ const uploadAnswerSchema = z.object({ upload: z.string() });
 async function uploadPicture(client: ProtocolClient, install: CrashInstall): Promise<string> {
   const plan = { contentType: "image/png", bytes: onePixelPng.byteLength } as const;
   const { url } = await client.call("upload/start", plan, call());
-  const http = createSystemHttp({ version: "crash" });
+  const http = createSystemHttp({ version: "crash", route: directRoute });
   try {
     const posted = await http.request({
       method: "POST",

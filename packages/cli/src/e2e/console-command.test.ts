@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import type { webcrypto } from "node:crypto";
 import { createProtocolClient, type ProtocolClient } from "@binference/client";
-import { createSecret } from "@binference/core";
+import { createSecret, directRoute } from "@binference/core";
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import { issueLaunchTicket } from "@binference/engine/access";
 import {
@@ -35,7 +35,7 @@ const tenMinutes = 10 * 60 * 1000;
 const ownerId = 7_012_345_678;
 const paperIcon = String.fromCodePoint(0x1f9ea);
 // The browser's requests go out as the engine's own outbound requests do, over a real socket.
-const http = createSystemHttp({ version: "test" });
+const http = createSystemHttp({ version: "test", route: directRoute });
 
 afterAll(async () => http.close());
 

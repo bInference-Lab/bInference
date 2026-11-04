@@ -1,6 +1,6 @@
 import process from "node:process";
 import { parseArgs } from "node:util";
-import { createSecret } from "@binference/core";
+import { createSecret, directRoute } from "@binference/core";
 import { endpointModelChain } from "@binference/runtime";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { createSystemHttp } from "../runtime/system-http.js";
@@ -82,7 +82,7 @@ function endpointModels(): {
   }
   const key = env.data?.BINFERENCE_EVAL_API_KEY;
   const apiKey = key === undefined ? {} : { apiKey: createSecret(key) };
-  const http = createSystemHttp({ version: "evaluation" });
+  const http = createSystemHttp({ version: "evaluation", route: directRoute });
   const clock = createSystemClock();
   const models = names
     .split(",")

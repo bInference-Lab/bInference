@@ -1,5 +1,6 @@
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { directRoute } from "@binference/core";
 import { readSystemFacts, startNodeProgram } from "@binference/platform";
 import type { CliHost } from "../program/cli-host.js";
 import { runCli } from "../program/run-cli.js";
@@ -21,7 +22,8 @@ import { startCrashSigner } from "./crash-signer.js";
 // on a scripted model. Like `main.ts`, it alone reads `process`.
 const env = crashEnvSchema.parse(process.env);
 const version = "crash";
-const http = createSystemHttp({ version });
+// The engine puts its own route in force at start; this one serves until it does.
+const http = createSystemHttp({ version, route: directRoute });
 const endpoints = { relays: env.CRASH_RELAYS, services: env.CRASH_SERVICES };
 const runtimeFile = fileURLToPath(new URL("./crash-runtime.ts", import.meta.url));
 const host: CliHost = {

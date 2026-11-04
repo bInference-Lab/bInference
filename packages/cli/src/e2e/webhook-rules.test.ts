@@ -1,3 +1,4 @@
+import { directRoute } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
 import { createWebhookIntake } from "@binference/engine/orders";
 import { testAgent as agent, testNowMs, testToken as token } from "@binference/engine/testing";
@@ -14,7 +15,7 @@ const machines = createTestMachines();
 const served: ServedSkeleton[] = [];
 const listeners: WebhookListener[] = [];
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
-const http = createSystemHttp({ version: "test" });
+const http = createSystemHttp({ version: "test", route: directRoute });
 
 afterEach(async () => {
   await Promise.all(listeners.splice(0).map(async (listener) => listener.close()));

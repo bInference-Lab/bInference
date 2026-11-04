@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { bsc } from "@binference/chains";
-import { createSecret, type Http } from "@binference/core";
+import { createSecret, type Http, directRoute } from "@binference/core";
 import {
   buildCeiling,
   type Ceiling,
@@ -253,7 +253,7 @@ describe.runIf(liveTests)("binference init against the Privy test app", () => {
     { timeout: 120_000 },
     async () => {
       const machine = await newInitMachine(folders);
-      const http = createSystemHttp({ version: "test" });
+      const http = createSystemHttp({ version: "test", route: directRoute });
       try {
         const parts = { http };
         const answer = await initOn(machine, ["--privy-app-id", liveAppId], {
