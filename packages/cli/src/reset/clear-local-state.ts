@@ -1,26 +1,24 @@
 import type { Logger } from "@binference/core";
 import type { BackupFailure, BackupRecord } from "@binference/engine/backups";
-import { acquireFileLock, ensurePrivateFolder, fileSize, openLogFile } from "@binference/platform";
+import { acquireFileLock } from "@binference/platform";
 import {
   type AgentStateCleared,
   agentWorker,
   createAgentStateReset,
   createEngineStateReset,
-  createSqliteBackupStore,
   createSqliteConfigJournal,
-  createSqliteInstallStore,
   type DatabaseHandle,
   type EngineStateCleared,
   engineWorker,
-  openDatabase,
 } from "@binference/store";
-import { takeBackup } from "../backups/take-backup.js";
-import { backupRunOf } from "../compose/compose-backups.js";
-import { engineLogFile, platformOf } from "../compose/engine-locations.js";
-import type { BinferenceConfig } from "../config/schema/config.schema.js";
-import { createFileLogger, type EngineLogger } from "../logging/file-logger.js";
-import type { CliHost } from "../program/cli-host.js";
+import { platformOf } from "../compose/engine-locations.js";
 import { liveTradeStored } from "../state/live-trade.js";
+import {
+  backUpStoppedState,
+  openCurrentDatabase,
+  openStateLog,
+  type StoppedStateRun,
+} from "../state/stopped-state.js";
 
 /** How a reset of the local state ended. */
 export type ResetOutcome =
@@ -39,61 +37,9 @@ export type ResetOutcome =
   | { readonly kind: "backup_failed"; readonly failure: BackupFailure };
 
 /** What one reset runs with: the host, the config it loaded, and the reset's deadline. */
-export interface ResetRun {
-  readonly host: CliHost;
-  readonly config: BinferenceConfig;
-  readonly signal: AbortSignal;
-}
+export type ResetRun = StoppedStateRun;
 
 const noAgentChats: AgentStateCleared = { sessions: 0, turns: 0, events: 0, queued: 0, notes: 0 };
-const mebibyte = 1024 * 1024;
-const dayMs = 86_400_000;
-
-// The engine log, so the reset's backup and its end are in it beside the engine's own lines.
-async function openResetLog(run: ResetRun): Promise<EngineLogger> {
-  const { host, config, signal } = run;
-  const platform = platformOf(host);
-  await ensurePrivateFolder(platform.stateFolder.logs, {
-    permissions: platform.permissions,
-    signal,
-  });
-  const file = openLogFile({
-    file: engineLogFile(platform),
-    maxBytes: () => config.logging.maxFileMb * mebibyte,
-    keepMs: () => config.logging.keepDays * dayMs,
-    clock: host.clock,
-    onError: () => undefined,
-  });
-  return createFileLogger({
-    file,
-    level: () => config.logging.level,
-    clock: host.clock,
-    subsystem: "cli",
-  });
-}
-
-// A database of this binference's schema, or `undefined` when it is missing or another schema.
-async function openCurrent(
-  run: ResetRun,
-  file: string,
-  worker: URL,
-): Promise<DatabaseHandle | undefined> {
-  if (!(await fileSize(file, run.signal)).ok) {
-    return undefined;
-  }
-  const database = await openDatabase({
-    file,
-    worker,
-    readers: 0,
-    execArgv: run.host.workerExecArgv ?? [],
-    signal: run.signal,
-  });
-  if (database.schemaVersion === database.latestVersion) {
-    return database;
-  }
-  await database.close();
-  return undefined;
-}
 
 // Takes the sealed backup, then clears both databases and journals what went.
 async function backUpAndClear(
@@ -101,27 +47,9 @@ async function backUpAndClear(
   databases: { readonly engine: DatabaseHandle; readonly agent: DatabaseHandle | undefined },
   logger: Logger,
 ): Promise<ResetOutcome> {
-  const { host, config, signal } = run;
+  const { host, signal } = run;
   const { engine, agent } = databases;
-  const platform = platformOf(host);
-  const parts = {
-    stateFolder: platform.stateFolder,
-    engineDatabase: engine,
-    install: createSqliteInstallStore(engine),
-    backups: createSqliteBackupStore(engine),
-    permissions: platform.permissions,
-    clock: host.clock,
-    random: host.random,
-    logger: logger.child("backups"),
-    binferenceVersion: host.version,
-    workerExecArgv: host.workerExecArgv ?? [],
-  };
-  const backupRun = backupRunOf(
-    config,
-    { kind: "manual", engineSchemaVersion: engine.schemaVersion },
-    signal,
-  );
-  const backup = await takeBackup(parts, backupRun);
+  const backup = await backUpStoppedState(run, { engine, kind: "manual" }, logger);
   if (!backup.ok) {
     return { kind: "backup_failed", failure: backup.error };
   }
@@ -137,11 +65,11 @@ async function backUpAndClear(
 
 async function clearOpened(run: ResetRun, logger: Logger): Promise<ResetOutcome> {
   const { stateFolder } = platformOf(run.host);
-  const engine = await openCurrent(run, stateFolder.engineDatabase, engineWorker);
+  const engine = await openCurrentDatabase(run, stateFolder.engineDatabase, engineWorker);
   if (engine === undefined) {
     return { kind: "unreadable" };
   }
-  const agent = await openCurrent(run, stateFolder.agentDatabase, agentWorker).catch(
+  const agent = await openCurrentDatabase(run, stateFolder.agentDatabase, agentWorker).catch(
     () => undefined,
   );
   try {
@@ -169,7 +97,7 @@ export async function clearLocalState(run: ResetRun): Promise<ResetOutcome> {
     if (trade !== "none") {
       return { kind: trade };
     }
-    const logger = await openResetLog(run);
+    const logger = await openStateLog(run);
     try {
       return await clearOpened(run, logger);
     } finally {
