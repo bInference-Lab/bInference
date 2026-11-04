@@ -1,10 +1,12 @@
 import { type AssetTransfer, assetRefSchema, type TxSimulator } from "@binference/chain";
+import { err } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { expectOk, testCoin, testNowMs, testWallet } from "../intents/test-intents.js";
 import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
+import type { IntentStore } from "../ports.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import {
   proposeIntent as propose,
@@ -318,6 +320,57 @@ describe("a token launch refused before any upload", () => {
       error: "quote.no_route",
     });
   });
+});
+
+// An intent store that loses the next move into `state` to another writer, or every such move.
+function racedTo(state: string, times?: number) {
+  let lost = 0;
+  return (store: IntentStore): IntentStore => ({
+    ...store,
+    transition: async (change, options) => {
+      if (change.state !== state || (times !== undefined && lost >= times)) {
+        return store.transition(change, options);
+      }
+      lost += 1;
+      return err("stale");
+    },
+  });
+}
+
+describe("a token launch another write moved first", () => {
+  it("uploads nothing when its policy pass loses, and stays where that write left it", async () => {
+    const { test, launcher } = await engineOver({ options: { intents: racedTo("checked") } });
+    await expect(propose(test)).resolves.toMatchObject({ state: "proposed" });
+    expect(launcher.uploads()).toStrictEqual([]);
+  });
+
+  it("opens no card when its quote's move loses after the upload", async () => {
+    const { test, launcher } = await engineOver({ options: { intents: racedTo("quoted") } });
+    await expect(propose(test)).resolves.toMatchObject({ state: "checked" });
+    expect(launcher.uploads()).toHaveLength(1);
+    expect(cardsOpened(test)).toStrictEqual([]);
+  });
+
+  it("waits in quoted when its pin's move loses, and opens no card", async () => {
+    const { test } = await engineOver({ options: { intents: racedTo("assessed") } });
+    await expect(propose(test)).resolves.toMatchObject({ state: "quoted" });
+    expect(cardsOpened(test)).toStrictEqual([]);
+  });
+
+  it.each([
+    ["simulated", "assessed"],
+    ["awaiting_confirmation", "simulated"],
+  ] as const)(
+    "goes on to its card from %s at the next pin check, as from a stop",
+    async (lost, left) => {
+      const { test } = await engineOver({ options: { intents: racedTo(lost, 1) } });
+      const view = await propose(test);
+      expect(view.state).toBe(left);
+      await test.engine.checkPins(signal);
+      await expect(stateOf(test, view)).resolves.toMatchObject({ state: "awaiting_confirmation" });
+      expect(cardsOpened(test)).toHaveLength(1);
+    },
+  );
 });
 
 describe("how many token launches an agent runs at once", () => {
