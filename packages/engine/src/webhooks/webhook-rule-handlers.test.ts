@@ -5,12 +5,13 @@ import type { AssetInfos, CardLineView, WebhookRuleView } from "@binference/prot
 import { describe, expect, it } from "vitest";
 import { createFakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { expectOk, testAgent, testCoin, testToken } from "../intents/test-intents.js";
-import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
+import { testCall, testCallers, testChains, type TestEngine } from "../operations/test-engine.js";
 import { fillIntentsOf, startFillEngine } from "../orders/test-fills.js";
 import { freeze, startOrderEngine, tapCard } from "../orders/test-orders.js";
 import { sha256Hex } from "../records/sha256-hex.js";
 import type { WebhookRuleStore } from "./ports.js";
 import { alertTo, createdRule, routeOf, testRuleRequest } from "./test-webhook-rules.js";
+import { webhookRuleViewOf } from "./webhook-rule-view-of.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -323,6 +324,23 @@ describe("webhook rule operations, further", () => {
 
     expect((await ruleOf(test, orphan))?.state).toBe("deleted");
     expect((await ruleOf(test, created.rule))?.state).toBe("awaiting_confirmation");
+  });
+
+  it("shows a rule's last alert, and no summary once its token's chain left the registry", async () => {
+    const test = await startOrderEngine();
+    const created = await createdRule(test);
+    const stored = await ruleOf(test, created.rule);
+    const gone = assetRefSchema.parse("fake:9/token:0x0000000a");
+    const rule = stored as NonNullable<typeof stored>;
+
+    const view = webhookRuleViewOf(
+      { ...rule, lastAlertAtMs: 5, request: { ...rule.request, token: gone } },
+      testChains(),
+    );
+
+    expect(view.lastAlertAt).toBe(5);
+    expect(view.summary).toBeUndefined();
+    expect(webhookRuleViewOf(rule, testChains()).summary).toBeDefined();
   });
 
   it("refuses a change of a rule it never stored", async () => {
