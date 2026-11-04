@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { createIdSource, ok, type Result } from "@binference/core";
+import { createIdSource, err, ok, type Result } from "@binference/core";
 import type { EnginePush, EngineStores } from "@binference/engine";
 import type { Platform } from "@binference/platform";
 import type { EngineState } from "@binference/protocol";
@@ -9,6 +9,7 @@ import type { CliHost } from "../program/cli-host.js";
 import { createEngineLock, type EngineLock } from "../unlock/engine-lock.js";
 import { openInstallKeys } from "../unlock/install-keys.js";
 import type { LockReason, UnlockedKeys } from "../unlock/unlock-keys.js";
+import { isUpdateChecking } from "../updates/update-state.js";
 
 /** What the install's wallets need from this machine, as `binference init` stored it. */
 export interface SetUpInstall {
@@ -70,7 +71,11 @@ function lockOf(
     env: host.env,
   };
   return createEngineLock({
-    open: async (call) => openInstallKeys({ ...install, unlock }, call),
+    // While an update is checked, any version's engine opens no key (decision 0356).
+    open: async (call) =>
+      (await isUpdateChecking(platform.stateFolder.root, call.signal))
+        ? err("update_checking")
+        : openInstallKeys({ ...install, unlock }, call),
     // The signer and custody start with the keys, at the signer's place in the startup order of
     // ARCHITECTURE.md section 24; an unlock after start announces itself and resumes what waited.
     onUnlocked: async (keys, signal) => {
@@ -88,7 +93,8 @@ function lockOf(
  * Builds the self-hosted engine's lock over the install's keys (decision 0103): the unlock mode
  * opens them at start and through `engine/unlock`, and the key must be the one the wallets name as
  * their signer. The engine unlocks only once the signer and custody start with them (decision
- * 0117). An unlock after start is announced on topic `engine` and takes the confirmed intents
+ * 0117). While `updates/state.json` says an update is `checking`, or does not read, it opens no
+ * key and stays locked with `update_checking`, whatever its version (decision 0356). An unlock after start is announced on topic `engine` and takes the confirmed intents
  * the lock held.
  */
 export function composeLock(options: ComposeLockOptions): ComposedLock {

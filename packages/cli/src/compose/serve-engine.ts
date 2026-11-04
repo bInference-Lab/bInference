@@ -1,5 +1,5 @@
 import type { Result } from "@binference/core";
-import { lockedNotice } from "@binference/engine";
+import { lockedNotice, type PublishPush } from "@binference/engine";
 import { privyUnreachableNotice } from "@binference/engine/install";
 import { createShutdown, type ShutdownReport, watchFile } from "@binference/platform";
 import type { LockReason } from "../unlock/unlock-keys.js";
@@ -9,7 +9,7 @@ import { startCardTimer } from "./card-timer.js";
 import { startClaimReadyTimer } from "./claim-ready-timer.js";
 import { backupPartsOf, startNightlyBackups } from "./compose-backups.js";
 import { type ComposedSelfHosted, composeSelfHosted } from "./compose-self-hosted.js";
-import { startUpdateChecks } from "./compose-updates.js";
+import { startUpdateChecks, tellUpdateOutcome } from "./compose-updates.js";
 import { startConfigReload } from "./config-reload.js";
 import { startCopyTimer } from "./copy-timer.js";
 import { startDowntimeTimer } from "./downtime-timer.js";
@@ -69,6 +69,23 @@ async function repairAfterStop(composed: ComposedSelfHosted, signal: AbortSignal
   await composed.repairPaperFills({ signal });
   await composed.repairOrderFills({ signal });
   await composed.checkPins({ signal, isRepair: true });
+}
+
+// What the owner hears once the engine serves: that it is locked, but while `binference update`
+// holds it locked to judge it (decision 0356), and how the last update ended.
+async function tellServing(
+  opening: Opening,
+  opened: Opened,
+  started: { readonly publish: PublishPush; readonly unlocked: Result<void, LockReason> },
+): Promise<void> {
+  const { publish, unlocked } = started;
+  if (!unlocked.ok) {
+    opened.log.logger.warn("engine.locked", { errorCode: `unlock.${unlocked.error}` });
+  }
+  if (!unlocked.ok && unlocked.error !== "update_checking") {
+    publish(lockedNotice());
+  }
+  await tellUpdateOutcome(opening, opened, publish);
 }
 
 function isUnreachable(unlocked: Result<void, LockReason>): boolean {
@@ -216,10 +233,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   server.publish({ topic: "engine", kind: "engine/state", data: { state: locked.state() } });
   log.logger.info("engine.ready");
   channel?.begin();
-  if (!unlocked.ok) {
-    log.logger.warn("engine.locked", { errorCode: `unlock.${unlocked.error}` });
-    publish(lockedNotice());
-  }
+  await tellServing(opening, opened, { publish, unlocked });
   const engine: RunningEngine = {
     ...listening.value,
     ...(webhooks === undefined ? {} : { webhooks }),

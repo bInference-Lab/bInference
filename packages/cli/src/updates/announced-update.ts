@@ -20,7 +20,7 @@ const announcedSchema: z.ZodType<AnnouncedUpdate> = z.object({
 });
 
 /** The state folder's `updates/`, owner-only: what the update check and `update` keep. */
-function updatesFolderOf(stateRoot: string): string {
+export function updatesFolderOf(stateRoot: string): string {
   return join(stateRoot, "updates");
 }
 

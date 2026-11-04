@@ -50,7 +50,8 @@ export type LockReason =
   | "app_secret_rejected"
   | "custody_unreachable"
   | "signer_failed"
-  | "signer_revoked";
+  | "signer_revoked"
+  | "update_checking";
 
 /** What the unlock reads: config, the platform's stores, and the manual mode's passphrase. */
 export interface UnlockOptions {

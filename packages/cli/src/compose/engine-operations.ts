@@ -39,6 +39,7 @@ const finalReasons: ReadonlySet<LockReason> = new Set([
   "wrong_passphrase",
   "app_secret_missing",
   "signer_revoked",
+  "update_checking",
 ]);
 
 // The handler's answer carries no details, so the refusal travels as the protocol code it is.

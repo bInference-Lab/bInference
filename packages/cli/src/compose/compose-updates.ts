@@ -1,6 +1,7 @@
 import { join } from "node:path";
-import { err, ok } from "@binference/core";
+import { BinferenceError, err, ok } from "@binference/core";
 import type { PublishPush } from "@binference/engine";
+import { updatedNotice, updateRolledBackNotice } from "@binference/engine/notices";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { npmRegistry } from "../plugins/npm-registry.js";
@@ -13,6 +14,7 @@ import {
 import { findUpdate, updateUserAgent, updateViewOf } from "../updates/find-update.js";
 import { createReleaseFeed, type ReleaseFeed } from "../updates/release-feed.js";
 import { countsOf, countsUrl, sendCounts } from "../updates/update-counts.js";
+import { clearUpdateState, readUpdateState } from "../updates/update-state.js";
 import type { ConfigCell } from "./config-cell.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { startUpdateTimer } from "./update-timer.js";
@@ -130,4 +132,40 @@ export function startUpdateChecks(opening: Opening, opened: Opened, publish: Pub
     closers,
     logger: opened.log.logger,
   });
+}
+
+// The outcome the record holds for this version: the update it finished, or the rollback to it.
+async function tellOutcome(opening: Opening, opened: Opened, publish: PublishPush): Promise<void> {
+  const { signal } = opening;
+  const root = opening.platform.stateFolder.root;
+  const running = opening.host.version;
+  const state = await readUpdateState(root, signal);
+  if (state?.state === "updated" && state.to === running) {
+    const notes = state.notes?.[opened.settings.current().owner.locale] ?? [];
+    await clearUpdateState(root, signal);
+    publish(updatedNotice(state.to, notes));
+  } else if (state?.state === "rolled_back" && state.from === running) {
+    await clearUpdateState(root, signal);
+    publish(updateRolledBackNotice(state.to, state.from));
+  }
+}
+
+/**
+ * Tells the owner, once the engine serves, how the last `binference update` ended (decision
+ * 0356): `notice.updated`, with the release's notes in the owner's language, when this version is
+ * the one it installed, or `notice.updateRolledBack` when it put this version back. The record
+ * goes before the notice, so a restart never tells it twice. A record that cannot be read or
+ * removed is logged as `update.outcome_unread`, and nothing is told.
+ */
+export async function tellUpdateOutcome(
+  opening: Opening,
+  opened: Opened,
+  publish: PublishPush,
+): Promise<void> {
+  try {
+    await tellOutcome(opening, opened, publish);
+  } catch (error) {
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    opened.log.logger.warn("update.outcome_unread", { errorCode });
+  }
 }
