@@ -869,9 +869,11 @@ Decided in decisions [0035](DECISIONS.md#d0035) and [0036](DECISIONS.md#d0036).
 - Releases are calver `YYYY.M.PATCH` on `stable` and `beta`. The release notes are written from the
   commit subjects on `master`, so every subject must read as a line of release notes. A release
   tag is `vYYYY.M.PATCH` or `vYYYY.M.PATCH-beta.N`, and only a run by hand of `release.yml`
-  publishes it ([decision 0353](DECISIONS.md#d0353)). Enforcer: `pnpm release:dry`, which the
-  release workflow runs (the tag's form, a clean tree, a version newer than every release tag);
-  commitlint keeps the subjects usable.
+  publishes it ([decision 0353](DECISIONS.md#d0353)). Each stable and beta release also has notes
+  for owners, `release/notes/<version>.en.json` and `.zh.json`, which the update notice shows
+  ([decision 0355](DECISIONS.md#d0355)). Enforcer: `pnpm release:dry`, which the release workflow
+  runs (the tag's form, a clean tree, a version newer than every release tag, the notes for
+  owners); commitlint keeps the subjects usable.
 
 <a id="section-19-1"></a>
 

@@ -2,7 +2,9 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
+import type { ReleaseNotes } from "@binference/protocol";
 import { packedReadmeFindings } from "./release/check-readmes.mjs";
+import { readOwnerNotes } from "./release/owner-notes.mjs";
 import { checksums, packPackage, type PackedFile } from "./release/pack-release.mjs";
 import {
   checkPackedInstall,
@@ -83,7 +85,11 @@ function readyWorkspace(root: string, published: readonly string[]): Workspace {
 // each packed README with the style guard and writes SHA256SUMS.
 function packAll(
   root: string,
-  pack: { readonly version: string; readonly isNightly: boolean },
+  pack: {
+    readonly version: string;
+    readonly isNightly: boolean;
+    readonly releaseNotes?: ReleaseNotes;
+  },
 ): { readonly out: string; readonly files: readonly PackedFile[] } {
   const published = publishedPackages(root);
   const workspace = readyWorkspace(root, published);
@@ -166,7 +172,15 @@ function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }
       ? `release:dry: ${release.tag} names HEAD ${point.commit}.`
       : `release:dry: ${release.tag} does not exist yet; the dry run cuts it from HEAD ${point.commit}.`,
   );
-  const { out, files } = packAll(root, { version: release.version, isNightly: false });
+  const ownerNotes = readOwnerNotes(root, release.version);
+  if (!ownerNotes.ok) {
+    return fail(`the release's notes for owners are not ready:\n${ownerNotes.problems.join("\n")}`);
+  }
+  const { out, files } = packAll(root, {
+    version: release.version,
+    isNightly: false,
+    releaseNotes: ownerNotes.notes,
+  });
   const start = ask.since ?? point.previous;
   const notes = releaseNotes({ release, since: start, commits: commitsSince(root, start) });
   writeFileSync(join(out, "notes.md"), notes);

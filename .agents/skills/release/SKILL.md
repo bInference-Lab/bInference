@@ -19,7 +19,19 @@ them. Publishing needs the owner's word every time.
   beta comes before the stable release it leads to. A mistake ships as the next patch, never as a
   second try at the same version.
 
-## 2. Dry-run it from master
+## 2. Write the notes for owners
+
+Every stable and beta release has notes for owners (decision 0355), which `binference` shows in
+the update notice: `release/notes/<version>.en.json` and `release/notes/<version>.zh.json`, each a
+JSON list of 1 to 5 lines of at most 200 characters, saying what changed for an owner in plain
+words, never commit subjects. Commit them on `master` before the tag; the dry run refuses a
+release without them, and packs them into the `binference` package as `binference.releaseNotes`.
+
+```json
+["Stop-loss orders fill within one block of their price."]
+```
+
+## 3. Dry-run it from master
 
 On a clean checkout of the `master` commit you will tag:
 
@@ -27,7 +39,8 @@ On a clean checkout of the `master` commit you will tag:
 pnpm release:dry v2026.11.0-beta.1
 ```
 
-It refuses a tag outside calver, a tree with changes, a tag that names another commit and a
+It refuses a tag outside calver, a tree with changes, a tag that names another commit, a release
+without its notes for owners and a
 version that is not newer. It builds, packs the four public packages, runs the style guard over
 each packed README, writes `SHA256SUMS`, installs the packed files into an empty project outside
 the repository, checks that every file their manifests name is there and `binference --version`,
@@ -47,7 +60,7 @@ Then run `vet-release`'s checklist (decision 0063) for this commit: the fork and
 install smoke test, the update from the previous stable and the agent evaluation. A `no` stops
 the release.
 
-## 3. Sign and push the tag
+## 4. Sign and push the tag
 
 ```sh
 git tag -s v2026.11.0-beta.1 -m "binference 2026.11.0-beta.1"
@@ -59,7 +72,7 @@ and `gpg.ssh.allowedSignersFile` pointing at that file for the check. Push the t
 the push starts `release.yml` as a dry run, which builds the image for both platforms too. Read
 its summary and its checksums: they must match your local dry run's.
 
-## 4. Publish by hand
+## 5. Publish by hand
 
 Only with the owner's word: run `release.yml` by hand with `tag` and `publish` on. The run checks
 the tag's signature and that `master` holds it, then waits for the `release` environment's
@@ -70,7 +83,7 @@ stops halfway runs again: the npm job skips a version npm holds already.
 `scratch` on is a test: npm's `scratch` dist-tag, only the version's image tag, a draft GitHub
 release. The version it uses is gone for good.
 
-## 5. Never
+## 6. Never
 
 - Publish from a laptop, or with an npm token or a registry login. Only `release.yml` publishes,
   through trusted publishing and provenance.
@@ -82,7 +95,7 @@ release. The version it uses is gone for good.
 - Publish a nightly pack (`-nightly.N`). Its manifests are private, and the npm job's publish check
   refuses it (decision 0354).
 
-## 6. Report
+## 7. Report
 
 The tag, the commit, the channel, each tarball with its size and SHA-256, the run's link, what was
 published where, and `vet-release`'s answer. Name anything you could not check.

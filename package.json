@@ -40,7 +40,7 @@
     "mutation": "stryker run",
     "mutation:summary": "node --import tsx scripts/mutation-summary.mts",
     "privy:sweep": "node --conditions=@binference/source --import tsx scripts/privy-sweep.mts",
-    "release:dry": "node --import tsx scripts/release-dry.mts",
+    "release:dry": "node --conditions=@binference/source --import tsx scripts/release-dry.mts",
     "release:smoke": "node --import tsx scripts/release-smoke.mts",
     "replay:record": "node --conditions=@binference/source --import tsx scripts/record-replay-day.mts",
     "security:audit": "pnpm audit --audit-level=high",

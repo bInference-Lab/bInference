@@ -498,6 +498,8 @@ check` tries it as `network.proxy`.
   **release tag**, `vYYYY.M.PATCH` on the **stable** channel or `vYYYY.M.PATCH-beta.N` on the
   **beta** channel. `pnpm release:dry <tag>` is its **dry run**: it builds, packs, sums, writes the
   notes and the SBOM, installs the **packed files** into an empty project, and publishes nothing.
+  Its **notes for owners**, `release/notes/<version>.en.json` and `.zh.json`, are what the update
+  notice shows; the dry run packs them into the `binference` package.
   The release workflow publishes only a tag signed by a **release key** that
   `.github/release-signers` lists; a **scratch** run publishes to npm's `scratch` dist-tag.
 - **built-package smoke**: `pnpm release:smoke <folder>`: it installs a dry run's **packed

@@ -1,5 +1,6 @@
 import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ReleaseNotes } from "@binference/protocol";
 import { z } from "zod";
 import {
   outsideDependencies,
@@ -18,7 +19,15 @@ export interface ReleaseBuild {
    * refuses to publish its tarball from anywhere.
    */
   readonly isNightly?: boolean;
+  /**
+   * A stable or beta release's notes for owners (decision 0355), which the `binference` package's
+   * manifest carries as `binference.releaseNotes` for the update check to read from npm.
+   */
+  readonly releaseNotes?: ReleaseNotes;
 }
+
+// The package whose manifest carries the release's notes: the one owners install.
+const notesPackage = "binference";
 
 // The workspace's own build condition points at sources the tarball does not hold.
 const sourceCondition = "@binference/source";
@@ -147,7 +156,8 @@ function stageBundled(build: ReleaseBuild, name: string, into: string): void {
  * Lays out a published package for `npm pack` in `into` (decision 0352): its own files, every
  * workspace package it needs at run time copied under `node_modules` and named in
  * `bundleDependencies`, and every outside package any of them needs as a dependency at the
- * catalog's exact version, so npm fetches those and nothing else.
+ * catalog's exact version, so npm fetches those and nothing else. The `binference` package's
+ * manifest also carries the release's notes for owners, when the build has them.
  */
 export function stagePackage(build: ReleaseBuild, name: string, into: string): void {
   const entry = entryOf(build, name);
@@ -164,6 +174,9 @@ export function stagePackage(build: ReleaseBuild, name: string, into: string): v
     files: entry.manifest.files,
     ...(bundled.length === 0 ? {} : { bundleDependencies: bundled }),
     ...(build.isNightly === true ? { private: true } : {}),
+    ...(name === notesPackage && build.releaseNotes !== undefined
+      ? { binference: { releaseNotes: build.releaseNotes } }
+      : {}),
   };
   writeFileSync(join(into, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 }
