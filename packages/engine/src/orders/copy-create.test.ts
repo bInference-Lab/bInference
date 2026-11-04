@@ -1,9 +1,9 @@
-import { accountRefSchema, assetRefParts } from "@binference/chain";
+import { accountRefSchema, assetRefParts, assetRefSchema } from "@binference/chain";
 import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { testAgent, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
+import { testAgent, testCoin, testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import { testAccount, testCall } from "../operations/test-engine.js";
 import {
   createdOrder,
@@ -60,6 +60,8 @@ describe("a copy order's creation", () => {
       { trigger: { ...trigger, leader: accountRefSchema.parse("fake:2:0x00000009") } },
       { trigger: { ...trigger, leader: testAccount } },
       { expiresAt: testNowMs },
+      { spend: assetRefSchema.parse("fake:1/token:0x0000000f") },
+      { spend: assetRefSchema.parse("fake:2/token:0x0000000a") },
     ];
 
     const answers = await Promise.all(refusals.map(async (changes) => create(changes)));
@@ -70,6 +72,24 @@ describe("a copy order's creation", () => {
       live,
     );
     expect(waiting).toStrictEqual([]);
+  });
+
+  it("spends the chain's coin, named or not, or a token the registry lists on its chain", async () => {
+    const test = await startOrderEngine();
+    const requests = [testCopy(), testCopy({ spend: testCoin }), testCopy({ spend: testToken })];
+
+    const orders = await Promise.all(
+      requests.map(async (request) => {
+        const created = await createdOrder(test, request);
+        return storedOrder(test, created.order);
+      }),
+    );
+
+    expect(orders.map(({ request }) => request.spend)).toStrictEqual([
+      testCoin,
+      testCoin,
+      testToken,
+    ]);
   });
 
   it("refuses a leader that is a wallet of another agent of the install", async () => {

@@ -23,7 +23,9 @@ import {
   type TestEngine,
   type TestEngineOptions,
 } from "../operations/test-engine.js";
-import type { OrderRecord } from "./order-record.js";
+import { moveOrder } from "./order-machine.js";
+import type { OrderMove, OrderRecord } from "./order-record.js";
+import type { OrderStore } from "./ports.js";
 
 /** A stop-loss of the test agent: sell all its test token once the price falls to $0.80. */
 export function testStopLoss(
@@ -102,6 +104,51 @@ export async function storedOrder(test: TestEngine, order: Id<"ord">): Promise<O
     throw new Error(`Expected order ${order} to be stored.`);
   }
   return found;
+}
+
+/**
+ * A `TestEngineOptions.orders` wrapper where another write moves an active order first: right
+ * before each of the first `times` writes that `when` picks, the order's trigger state is kept
+ * again as it stands, so that write finds the order at a newer version.
+ */
+export function contendedOrders(
+  times: number,
+  when: (moves: readonly OrderMove[]) => boolean = () => true,
+): {
+  readonly orders: NonNullable<TestEngineOptions["orders"]>;
+  /** How many writes found their order moved first so far. */
+  readonly raced: () => number;
+} {
+  let raced = 0;
+  const orders: NonNullable<TestEngineOptions["orders"]> = (store) => ({
+    ...store,
+    async move(moves, call) {
+      const [first] = moves;
+      const picked = first !== undefined && raced < times && when(moves);
+      if (picked && (await keepOrderAgain(store, first.id, call))) {
+        raced += 1;
+      }
+      return store.move(moves, call);
+    },
+  });
+  return { orders, raced: () => raced };
+}
+
+// Another write of an active order: its trigger state kept again as it stands, which raises its
+// version. Answers whether the order moved; one that is not active does not.
+async function keepOrderAgain(
+  orders: Pick<OrderStore, "get" | "move">,
+  order: Id<"ord">,
+  call: { readonly signal: AbortSignal },
+): Promise<boolean> {
+  const read = await orders.get(order, call);
+  const triggerState = read?.triggerState ?? null;
+  const kept =
+    read === undefined
+      ? undefined
+      : moveOrder(read, { type: "trigger_kept", triggerState }, read.changedAtMs);
+  const moved = kept?.ok === true ? await orders.move([kept.value], call) : undefined;
+  return moved?.ok === true;
 }
 
 /** Freezes the test agent from the CLI. */

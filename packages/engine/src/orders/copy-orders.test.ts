@@ -220,6 +220,35 @@ describe("the copy orders' runner", () => {
     );
   });
 
+  it("takes a leader's buy of a token that answers no decimals once, and skips it unread", async () => {
+    const test = await startFillEngine({ prices, tokenFacts: async () => new Map() });
+    const order = await activeOrder(test, testCopy());
+    const now = test.clock.now();
+    await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: now, asset: unlisted })]);
+
+    await test.engine.runCopies(live);
+    await test.engine.runCopies(live);
+
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual(["skipped:token_unreadable"]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
+  it("reads the leader's trades fifty at a time, going on from the last until none is left", async () => {
+    const test = await startFillEngine({ prices, tokens: 0n });
+    const order = await activeOrder(test, testCopy());
+    const now = test.clock.now();
+    const share = bpsSchema.parse(5_000);
+    const sales = Array.from({ length: 120 }, (_, n) =>
+      leaderTrade(n + 1, { side: "sell", atMs: now, shareSoldBps: share }),
+    );
+    const stored = await storeTrades(test, sales);
+
+    await test.engine.runCopies(live);
+
+    expect((await copyStateNow(test, order.id)).through).toBe(stored.at(-1)?.id);
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+  });
+
   it("never copies a buy read after an outage, and tells the owner it came late", async () => {
     const test = await startFillEngine({ prices });
     const order = await activeOrder(test, testCopy());
