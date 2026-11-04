@@ -292,6 +292,42 @@ describe("following a bridge's delivery", () => {
     ).toStrictEqual([{ asset: testToken, base: 100_000_000n }]);
   });
 
+  it("marks a bridge late and tells it once when two passes read it together", async () => {
+    const bench = await bridgeBench();
+    const { intent } = await inTransit(bench);
+    await bench.test.clock.advance(bridgeLateAfterMs);
+
+    await Promise.all([follow(bench), follow(bench)]);
+
+    expect(await stateOf(bench, intent)).toStrictEqual(["finalized", "late"]);
+    expect(noticesOf(bench, "notice.bridgeLate")).toHaveLength(1);
+  });
+
+  it("settles a delivery and books a refund once when two passes read it together", async () => {
+    const bench = await bridgeBench();
+    const delivered = await inTransit(bench);
+    const refunded = await inTransit(bench);
+    filled(bench, delivered.bridge, { received: { asset: testArrives, base: 99_000_000n } });
+    const refund = { chain: sourceChain, hash: hashOf("e3") };
+    bench.fakes.bridge.settle(refunded.bridge.depositTx, { kind: "refunded", refund });
+    bench.fakes.landsHere.land(refund.hash, {
+      recipient: testAccount,
+      received: [{ asset: testToken, base: 100_000_000n }],
+      events: settling(refunded.bridge.depositTx),
+    });
+
+    await Promise.all([follow(bench), follow(bench)]);
+
+    expect(await stateOf(bench, delivered.intent)).toStrictEqual(["reconciled", "delivered"]);
+    expect(await stateOf(bench, refunded.intent)).toStrictEqual(["reconciled", "refunded"]);
+    const arrivals = await bench.test.positions.arrivals(
+      { after: 0, limit: 10, isPaper: false, walletId: testWallet },
+      live,
+    );
+    expect(arrivals.filter((arrival) => arrival.txHash === refund.hash)).toHaveLength(1);
+    expect(noticesOf(bench, "notice.bridgeRefunded")).toHaveLength(1);
+  });
+
   it("tells a late bridge's arrival once from recovery, after a stop between its row and intent", async () => {
     const bench = await bridgeBench();
     const { intent, bridge } = await inTransit(bench);
