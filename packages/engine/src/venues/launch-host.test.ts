@@ -172,6 +172,14 @@ describe("a launchpad that uploads nothing", () => {
     expect(host.picturePlace("other-pad")).toBeUndefined();
   });
 
+  it("counts an upload asked of it as a launchpad that is down", async () => {
+    const host = hostOf(createFakeLinkLauncher({ launchOptions: [link] }));
+    await expect(host.pin(launch, picture, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+  });
+
   it.each<[string, readonly LaunchOption[]]>([
     ["no picture link", []],
     ["a picture link with a default", [{ ...link, default: "https://pictures.example/cat.png" }]],
@@ -386,6 +394,26 @@ describe("the launch host's quote, pin and pin status", () => {
       }),
     });
     await expect(host.quote(launch, live)).resolves.toMatchObject({ error: "decode_mismatch" });
+  });
+
+  it("counts a quote that throws, or one it cannot read, as a launchpad that is down", async () => {
+    const base = createFakeLauncher();
+    const throwing = hostOf({
+      ...base,
+      quoteLaunch: async () => Promise.reject(new Error("down")),
+    });
+    const garbled = hostOf({
+      ...base,
+      quoteLaunch: async () => ({ ok: true, value: { fee: "a lot" } }) as never,
+    });
+    await expect(throwing.quote(launch, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+    await expect(garbled.quote(launch, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
   });
 
   it("counts a launchpad that throws as down, and its pin read as no report yet", async () => {
@@ -608,6 +636,17 @@ describe("the launch host's build", () => {
       ok: false,
       error: "decode_mismatch",
       mismatch: "other_settings",
+    });
+  });
+
+  it("refuses a build whose step it cannot read as the launchpad's call, naming the check", async () => {
+    const base = createFakeLauncher();
+    const steps = [fakeDraft(wallet, { to: "0x0000000d", value: 2_050n, data: "mint" })];
+    const host = hostOf({ ...base, buildLaunch: async () => ({ token, steps }) });
+    await expect(host.build(launch, upload, live)).resolves.toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "unreadable_step",
     });
   });
 

@@ -13,7 +13,7 @@ import {
   createFakeVenue,
 } from "@binference/chain/testing";
 import { describe, expect, it } from "vitest";
-import { hostVenues, launchReadersOf } from "./hosted-venue.js";
+import { hostVenues, launchCallsOf, launchReadersOf } from "./hosted-venue.js";
 
 const fakeChain: ChainDefinition = createFakeChainDefinition();
 const chains = createChainRegistry({
@@ -58,6 +58,32 @@ describe("hosted venues", () => {
     expect(hostVenues([createFakeVenue()], chains).get("fake-swap")?.launchNames).toStrictEqual(
       new Map(),
     );
+  });
+
+  it("names one venue's calls on a launch's contracts, every venue's with none named, none for a venue not hosted", () => {
+    const launchpad = createFakeLaunchpad({
+      onCurve: [],
+      launchCurve: accountRefSchema.parse("fake:1:0x00000010"),
+    });
+    const registry = createChainRegistry({
+      chains: [
+        {
+          ...fakeChain,
+          contracts: [
+            ...fakeChain.contracts,
+            { venue: "fake-curve", name: "router", address: "0x0000000d", verification },
+          ],
+        },
+      ],
+      families: [createFakeFamily()],
+      signingSchemes: [createFakeSigningScheme()],
+    });
+    const hosted = hostVenues([createFakeVenue(), launchpad], registry);
+    const curveCalls = launchCallsOf(hosted, "fake-curve");
+    expect(curveCalls).toHaveLength(1);
+    expect(launchCallsOf(hosted, "fake-swap")).toStrictEqual([]);
+    expect(launchCallsOf(hosted, undefined)).toStrictEqual(curveCalls);
+    expect(launchCallsOf(hosted, "other-pad")).toStrictEqual([]);
   });
 
   it.each<[string, Partial<Venue>]>([
