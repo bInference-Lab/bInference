@@ -227,6 +227,23 @@ describe("a DCA order", () => {
     ]);
   });
 
+  it("ends an order whose zone no longer reads on the next run when a write beat its end", async () => {
+    const race = contendedOrders(1, (moves) => moves[0]?.state === "cancelled");
+    const test = await startFillEngine({ orders: (store) => race.orders(zonesGone(store)) });
+    const order = await activeOrder(test, dca);
+
+    await test.engine.runSchedules(live);
+    const first = (await storedOrder(test, order.id)).state;
+    await test.engine.runSchedules(live);
+
+    expect([race.raced(), first]).toStrictEqual([1, "active"]);
+    expect((await storedOrder(test, order.id)).state).toBe("cancelled");
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual([
+      "skipped:period_unreadable",
+      "skipped:period_unreadable",
+    ]);
+  });
+
   it("records a period a stop cut off between keeping it and its buy as missed, once", async () => {
     const test = await startFillEngine();
     const order = await activeOrder(test, dca);

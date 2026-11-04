@@ -1,6 +1,7 @@
 import { bpsSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testToken } from "../intents/test-intents.js";
+import type { TestEngineOptions } from "../operations/test-engine.js";
 import { copyStateNow, leaderTrade, storeTrades } from "./test-copies.js";
 import {
   activeOrder,
@@ -9,7 +10,7 @@ import {
   fillRowsOf,
   startFillEngine,
 } from "./test-fills.js";
-import { testCopy } from "./test-orders.js";
+import { contendedOrders, testCopy } from "./test-orders.js";
 
 const live = { signal: new AbortController().signal };
 // The fake venue pays two base units for one, so the token's price keeps a copy's sale small.
@@ -23,9 +24,9 @@ function outcomes(rows: Awaited<ReturnType<typeof fillRowsOf>>) {
 }
 
 // A paper engine whose lock a test turns, with an active copy order that bought the token.
-async function bought() {
+async function bought(options: Pick<TestEngineOptions, "orders"> = {}) {
   const lock = { isLocked: false };
-  const test = await startFillEngine({ prices, isLocked: () => lock.isLocked });
+  const test = await startFillEngine({ ...options, prices, isLocked: () => lock.isLocked });
   const order = await activeOrder(test, testCopy());
   await storeTrades(test, [leaderTrade(1, { side: "buy", atMs: test.clock.now() })]);
   await test.engine.runCopies(live);
@@ -68,6 +69,28 @@ describe("a copy order's mirrored sale that fails for a passing reason", () => {
     await test.engine.runCopies(live);
     await test.engine.runCopies(live);
 
+    expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual([
+      "skipped:copy_sale_lapsed",
+      "skipped:engine_locked",
+      "filled",
+    ]);
+    expect((await copyStateNow(test, order.id)).retries).toStrictEqual([]);
+  });
+
+  it("is given up once when another write beat the write that gave it up", async () => {
+    const armed = { isOn: false };
+    const race = contendedOrders(1, () => armed.isOn);
+    const { test, order, lock } = await bought({ orders: race.orders });
+    lock.isLocked = true;
+    const atMs = test.clock.now();
+    await storeTrades(test, [leaderTrade(2, { side: "sell", atMs, shareSoldBps: share })]);
+    await test.engine.runCopies(live);
+    await test.clock.advance(3_600_001);
+    armed.isOn = true;
+
+    await test.engine.runCopies(live);
+
+    expect(race.raced()).toBe(1);
     expect(outcomes(await fillRowsOf(test, order.id))).toStrictEqual([
       "skipped:copy_sale_lapsed",
       "skipped:engine_locked",

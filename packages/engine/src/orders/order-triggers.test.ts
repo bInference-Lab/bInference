@@ -118,6 +118,22 @@ describe("price triggers", () => {
     expect(peakMicros((await storedOrder(test, order.id)).triggerState)).toBe(1_200_000n);
   });
 
+  it("leave a price to the next one when another write beat a trailing stop's write twice", async () => {
+    const armed = { isOn: false };
+    const race = contendedOrders(2, () => armed.isOn);
+    const test = await startFillEngine({ orders: race.orders });
+    const order = await activeOrder(test, trailingStop);
+    await test.engine.seePrice(at(1_000_000n), live);
+    armed.isOn = true;
+
+    await test.engine.seePrice(at(1_200_000n), live);
+    const left = peakMicros((await storedOrder(test, order.id)).triggerState);
+    await test.engine.seePrice(at(1_200_000n), live);
+
+    expect([race.raced(), left]).toStrictEqual([2, 1_000_000n]);
+    expect(peakMicros((await storedOrder(test, order.id)).triggerState)).toBe(1_200_000n);
+  });
+
   it("keep a trailing stop's highest price across a restart", async () => {
     const test = await startFillEngine();
     const order = await activeOrder(test, trailingStop);
