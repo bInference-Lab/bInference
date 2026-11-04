@@ -15,32 +15,30 @@
     "build": "vite build && vite build --config vite.push-worker.config.ts",
     "test:smoke": "playwright test -c src/smoke/playwright.config.ts"
   },
-  "dependencies": {
+  "devDependencies": {
     "@base-ui/react": "catalog:",
     "@binference/client": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@fontsource-variable/hanken-grotesk": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/react-router": "catalog:",
-    "class-variance-authority": "catalog:",
-    "cn": "catalog:",
-    "lucide-react": "catalog:",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
     "@playwright/test": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
     "@testing-library/dom": "catalog:",
     "@testing-library/react": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "class-variance-authority": "catalog:",
+    "cn": "catalog:",
     "fake-indexeddb": "catalog:",
     "jsdom": "catalog:",
+    "lucide-react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "zod": "catalog:"
   }
 }

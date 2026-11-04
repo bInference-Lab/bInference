@@ -9,7 +9,9 @@ the built files from memory at `/`, and at `/mini` for the Telegram Mini App.
 
 ## API
 
-The package exports its build only.
+The package exports its build only. Vite puts every package the console uses into that build, so
+they are all build dependencies: the built files import nothing, and an install of `binference`
+fetches none of them.
 
 | Path                     | What it holds                                                    |
 | ------------------------ | ---------------------------------------------------------------- |
