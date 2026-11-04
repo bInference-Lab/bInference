@@ -289,6 +289,30 @@ describe("an identity registration", () => {
     });
   });
 
+  it("ends one whose registration would revert with simulation_reverted, before its card", async () => {
+    const registry = testRegistry();
+    const test = await startIdentityEngine(registry, {
+      chainSimulator: {
+        simulate: async (drafts) =>
+          Promise.resolve(
+            drafts.map((draft) => ({ ...registry.simulate(draft), status: "reverted" as const })),
+          ),
+      },
+    });
+    await expect(registered(test)).resolves.toMatchObject({
+      state: "failed_check",
+      outcome: { reason: "simulation_reverted" },
+    });
+  });
+
+  it("refuses an agent with no main wallet, before anything is stored", async () => {
+    const test = await startIdentityEngine(testRegistry(), { wallets: [] });
+    await expect(
+      test.engine.handlers["identity/register"](testCall({ agent: testAgent })),
+    ).resolves.toStrictEqual({ ok: false, error: "wallet.not_found" });
+    expect(await test.stores.intents.list(allStates, live)).toStrictEqual([]);
+  });
+
   it("answers identity/get with nothing before a registration, and an unknown agent as such", async () => {
     const test = await startIdentityEngine(testRegistry());
     await expect(

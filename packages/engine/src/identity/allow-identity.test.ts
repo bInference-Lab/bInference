@@ -1,6 +1,7 @@
 import { accountRefSchema, chainRefSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { setCeiling } from "../ceilings/set-ceiling.js";
+import { fixtureId } from "../contracts/store-fixtures.js";
 import { fakeOwnerKeyCode } from "../fakes/fake-ceiling-editor.js";
 import { expectOk, testAgent, testWallet } from "../intents/test-intents.js";
 import { testCall, type TestEngine } from "../operations/test-engine.js";
@@ -101,6 +102,18 @@ describe("an agent's opt-in to an identity", () => {
 
     expect(answer).toStrictEqual({ ok: false, error: "intent.identity_exists" });
     expect(await contractsOf(test)).toStrictEqual([router]);
+  });
+
+  it("refuses an unknown agent, and a main wallet whose ceiling custody does not hold", async () => {
+    const test = await startIdentityEngine(testRegistry(), {}, "none");
+    const stranger = fixtureId("agt", 9);
+    const handler = test.engine.handlers["identity/allow"];
+
+    expect(await handler(testCall({ agent: stranger, ownerKey: fakeOwnerKeyCode }))).toStrictEqual({
+      ok: false,
+      error: "agent.not_found",
+    });
+    expect(await allowed(test)).toStrictEqual({ ok: false, error: "wallet.not_found" });
   });
 
   it("is kind_unavailable on an engine that runs no identity registry", async () => {
