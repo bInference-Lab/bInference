@@ -1,7 +1,8 @@
-import { idSchema } from "@binference/core";
+import type { PriceSource } from "@binference/chain";
+import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { requestDocument } from "../intents/intent-documents.schema.js";
-import { testLimits, testNowMs } from "../intents/test-intents.js";
+import { testLimits, testNowMs, testToken } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
 import { fillIntentsOf, noticesOf, startFillEngine, wholeToken } from "../orders/test-fills.js";
 import { tapCard } from "../orders/test-orders.js";
@@ -29,6 +30,15 @@ function archivedOnce(store: AgentStore, isArchived: () => boolean): AgentStore 
         ? settings
         : { ...settings, agent: { ...settings.agent, archivedAtMs: 1 } };
     },
+  };
+}
+
+// A price source that answers no price of the test token once `isQuiet` holds.
+function quietToken(source: PriceSource, isQuiet: () => boolean): PriceSource {
+  return {
+    ...source,
+    usdPrice: async (asset, call) =>
+      isQuiet() && asset === testToken ? err("no_price" as const) : source.usdPrice(asset, call),
   };
 }
 
@@ -105,5 +115,21 @@ describe("an accepted alert at the head of its agent's line", () => {
       kind: "sell",
       amount: { base: wholeToken / 2n },
     });
+  });
+
+  it("skips a sale sized in dollars while the token has no usable price", async () => {
+    let isQuiet = false;
+    const test = await startFillEngine({
+      priceSource: (source) => quietToken(source, () => isQuiet),
+    });
+    const created = await activeRule(test, testRuleRequest({ size: { usdMicros: 400_000n } }));
+    await alertTo(test, created.url);
+    isQuiet = true;
+
+    await test.engine.fillWebhookAlerts(live);
+
+    expect(await alertsOf(test, created)).toMatchObject([
+      { outcome: "skipped", reason: "no_price" },
+    ]);
   });
 });

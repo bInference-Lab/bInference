@@ -176,3 +176,24 @@ describe("staking on a liquid pool (decision 0331)", () => {
     ]);
   });
 });
+
+describe("a liquid pool that cannot answer", () => {
+  it("refuses an unstake before anything is stored while the pool cannot name its receipt token", async () => {
+    const venue = { ...testLiquidFake(), receipt: async () => Promise.reject(new Error("down")) };
+    const test = await startLiquidEngine(venue);
+
+    expect(await answerOf(test, liquidRequest("unstake", { amount: units(1n) }))).toBe(
+      "quote.venue_down",
+    );
+  });
+
+  it("names the pool by its account alone in a refusal while its options cannot be read", async () => {
+    const venue = { ...testLiquidFake(), options: async () => Promise.reject(new Error("down")) };
+    const test = await startLiquidEngine(venue);
+
+    const view = await propose(test, liquidRequest("unstake", { amount: units(10n ** 17n) }));
+
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "nothing_staked"]);
+    expect(view.outcome?.validator).toStrictEqual({ account: testPool.account });
+  });
+});

@@ -305,6 +305,45 @@ describe("an identity registration", () => {
     });
   });
 
+  it("ends one whose registry cannot build its call, or builds one for another wallet, with decode_mismatch", async () => {
+    const registry = testRegistry();
+    const throwing = {
+      ...registry,
+      build: () => {
+        throw new Error("The registry could not encode the call.");
+      },
+    };
+    const elsewhereBuilt = {
+      ...registry,
+      build: (request: Parameters<typeof registry.build>[0]) =>
+        registry.build({ ...request, wallet: elsewhere }),
+    };
+    const answers = [];
+    for (const built of [throwing, elsewhereBuilt]) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- each engine runs on its own
+      answers.push(await registered(await startIdentityEngine(built)));
+    }
+
+    expect(answers.map((view) => [view.state, view.outcome?.reason])).toStrictEqual([
+      ["failed_check", "decode_mismatch"],
+      ["failed_check", "decode_mismatch"],
+    ]);
+  });
+
+  it("refuses a Mini App caller that may not confirm, before anything is stored", async () => {
+    const test = await startIdentityEngine(testRegistry());
+    const mini = {
+      credential: "tg:42",
+      client: { kind: "mini", version: "test" },
+      scopes: ["read", "propose"],
+    } as const;
+
+    await expect(
+      test.engine.handlers["identity/register"](testCall({ agent: testAgent }, mini)),
+    ).resolves.toStrictEqual({ ok: false, error: "auth.scope" });
+    expect(await test.stores.intents.list(allStates, live)).toStrictEqual([]);
+  });
+
   it("refuses an agent with no main wallet, before anything is stored", async () => {
     const test = await startIdentityEngine(testRegistry(), { wallets: [] });
     await expect(

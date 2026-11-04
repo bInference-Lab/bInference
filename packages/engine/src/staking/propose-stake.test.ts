@@ -248,6 +248,13 @@ describe("the engine's own checks of a paper staking plan", () => {
     expect(await outcomeOf(test)).toStrictEqual(["failed_check", "venue_down"]);
   });
 
+  it("ends a stake whose venue cannot build its planned call with venue_down", async () => {
+    const venue = { ...testStakingFake(), build: async () => Promise.reject(new Error("down")) };
+    const test = await startStakeEngine(venue);
+
+    expect(await outcomeOf(test)).toStrictEqual(["failed_check", "venue_down"]);
+  });
+
   it("ends a paper stake whose plan mints another token than the validator's receipt", async () => {
     const other = assetRefSchema.parse("fake:1/token:0x000000c9");
     const test = await startStakeEngine(
