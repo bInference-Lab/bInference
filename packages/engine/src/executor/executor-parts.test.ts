@@ -12,20 +12,31 @@ import { identityChains, testRegistry } from "../identity/test-identities.js";
 import { createStoredIntents, type IntentSnapshot } from "../intents/create-stored-intents.js";
 import { planDocument, quoteDocument } from "../intents/intent-documents.schema.js";
 import type { IntentRecord } from "../intents/intent-record.js";
-import { expectOk, testAgent, testCoin, testSwap, testWallet } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testSwap,
+  testToken,
+  testWallet,
+} from "../intents/test-intents.js";
 import { recentOutflowsOf } from "../money-path/recent-outflows.js";
 import { testAccount, testCall, testChains } from "../operations/test-engine.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { IntentStore, WalletFactsSource } from "../ports.js";
+import { stakeRequest, stakingChains, testStakingFake } from "../staking/test-stakes.js";
+import { createStakingHost } from "../venues/staking-host.js";
 import { intentPlanOf } from "./intent-plan.js";
 import { checkForQueue } from "./queue-check.js";
 import { signRequestOf } from "./step-request.js";
 import { benchChain, type ExecutorBench, startExecutorBench } from "./test-executor.js";
+import { stakeBench } from "./test-stake-bench.js";
 
 const live = () => ({ signal: new AbortController().signal });
 const chains = testChains();
 const fakeChain = expectOk(chains.get(benchChain));
 const otherAccount = "fake:2:0x0000000c" as typeof testAccount;
+const tokenSale = testSwap({ from: testToken, to: testCoin, amount: { base: 1_000_000n } });
 
 async function tappedSnapshot(
   bench: ExecutorBench,
@@ -261,6 +272,62 @@ describe("the queue check", () => {
       check.facts.isAuthorizationValid,
       check.terms,
     ]).toStrictEqual([false, false, undefined]);
+  });
+
+  it("fails the policy for an auto sale of a token denied since, and passes the tapped one (decision 0101)", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const tapped = await tappedSnapshot(bench, tokenSale);
+    const limits = { ...tapped.settings.limits, denyTokens: [testToken] };
+    const denied = { ...tapped, settings: { ...tapped.settings, limits } };
+    const auto = withStatus(denied, { approvalMode: "auto", modeVersion: 0 });
+    const parts = checkPartsOf(bench);
+    const check = async (snapshot: IntentSnapshot) =>
+      checkForQueue(snapshot, { parts, chain: fakeChain }, live().signal);
+    expect((await check(auto)).facts.hasPolicyPassed).toBe(false);
+    expect((await check(denied)).facts.hasPolicyPassed).toBe(true);
+  });
+
+  it("names no contract of a route venue that declares a name the registry does not list", async () => {
+    const bench = await startExecutorBench({ hold: true });
+    const snapshot = await tappedSnapshot(bench);
+    const parts = checkPartsOf(bench);
+    const venues = parts.venues.map((venue) =>
+      Object.assign({}, venue, {
+        contracts: venue.contracts.map((entry) => Object.assign({}, entry, { names: ["gone"] })),
+      }),
+    );
+    const check = await checkForQueue(
+      snapshot,
+      { parts: { ...parts, venues }, chain: fakeChain },
+      live().signal,
+    );
+    expect(check.terms?.allowed.contracts).toStrictEqual([]);
+  });
+
+  it("lets a staking move reach its venue's contract only while the executor runs the venue", async () => {
+    const venue = testStakingFake();
+    const bench = await stakeBench(venue);
+    const snapshot = await tappedSnapshot(bench, stakeRequest("stake"));
+    const stakingChain = expectOk(stakingChains().get(benchChain));
+    const without = { ...checkPartsOf(bench), chains: stakingChains() };
+    const clock = bench.test.clock;
+    const staking = createStakingHost({ venues: [venue], chains: stakingChains(), clock });
+    const running = await checkForQueue(
+      snapshot,
+      { parts: { ...without, staking }, chain: stakingChain },
+      live().signal,
+    );
+    const stopped = await checkForQueue(
+      snapshot,
+      { parts: without, chain: stakingChain },
+      live().signal,
+    );
+    expect(running.terms?.allowed).toMatchObject({
+      contracts: ["fake:1:0x000000d1"],
+      spenders: [],
+      recipients: [],
+    });
+    expect(stopped.terms?.allowed.contracts).toStrictEqual([]);
   });
 
   it("judges the intent on its own wallet after the agent's default wallet changed", async () => {
