@@ -91,6 +91,11 @@ export interface CliHost {
    * file leaves it. Only tests set it, to a stand-in on loopback (decision 0348).
    */
   readonly npmRegistry?: string;
+  /**
+   * Where the update check sends the opt-in counts; binference.io's when left out, as the entry
+   * file leaves it. Only tests set it (decision 0355).
+   */
+  readonly countsUrl?: string;
   /** Starts the agent runtime's process; the built runtime when left out. */
   readonly startRuntime?: StartRuntime;
   /** How this binference was started, which the background service runs again. */

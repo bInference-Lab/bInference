@@ -25,6 +25,8 @@ export interface FakeReleaseRegistry {
   answerAll(status: number): void;
   /** Every request made, in order. */
   requests(): readonly MadeRequest[];
+  /** Resolves with the first request of the method made from now on. */
+  next(method: string): Promise<MadeRequest>;
 }
 
 const registry = "https://registry.test";
@@ -39,43 +41,62 @@ function answerOf(status: number, body: string): HttpResponse {
   return { status, headers: { "content-type": "application/json" }, body };
 }
 
+/** What the fake holds: its dist-tags, its manifests and a status that answers everything. */
+interface Held {
+  readonly tags: Map<string, string>;
+  readonly manifests: Map<string, string>;
+  status?: number;
+}
+
+// The answer of the registry, or of binference.io for the counts, to one request.
+function answerTo(held: Held, request: HttpRequest): HttpResponse {
+  if (held.status !== undefined) {
+    return answerOf(held.status, "{}");
+  }
+  if (request.url === countsUrl && request.method === "POST") {
+    return answerOf(202, "{}");
+  }
+  const path = new URL(request.url).pathname;
+  if (path === "/-/package/binference/dist-tags") {
+    return answerOf(200, JSON.stringify(Object.fromEntries(held.tags)));
+  }
+  const manifest = held.manifests.get(path.replace(/^\/binference\//, ""));
+  return manifest === undefined ? answerOf(404, "{}") : answerOf(200, manifest);
+}
+
 /** A fresh {@link FakeReleaseRegistry} with no tag and no version. */
 export function createFakeReleaseRegistry(): FakeReleaseRegistry {
-  const tags = new Map<string, string>();
-  const manifests = new Map<string, string>();
+  const held: Held = { tags: new Map(), manifests: new Map() };
   const made: MadeRequest[] = [];
-  const held: { status?: number } = {};
-  const answer = (request: HttpRequest): HttpResponse => {
-    if (held.status !== undefined) {
-      return answerOf(held.status, "{}");
-    }
-    if (request.url === countsUrl && request.method === "POST") {
-      return answerOf(202, "{}");
-    }
-    const path = new URL(request.url).pathname;
-    if (path === "/-/package/binference/dist-tags") {
-      return answerOf(200, JSON.stringify(Object.fromEntries(tags)));
-    }
-    const manifest = manifests.get(path.replace(/^\/binference\//, ""));
-    return manifest === undefined ? answerOf(404, "{}") : answerOf(200, manifest);
-  };
+  const waiting: { readonly method: string; readonly take: (request: MadeRequest) => void }[] = [];
   return {
     registry,
     countsUrl,
     http: {
       request: async (request) => {
-        made.push(madeOf(request));
-        return answer(request);
+        const taken = madeOf(request);
+        made.push(taken);
+        const answered = answerTo(held, request);
+        const due = waiting.filter((wait) => wait.method === request.method);
+        due.forEach((wait) => {
+          waiting.splice(waiting.indexOf(wait), 1);
+          wait.take(taken);
+        });
+        return answered;
       },
     },
-    tag: (tag, version) => tags.set(tag, version),
+    tag: (tag, version) => held.tags.set(tag, version),
     publish: (version, notes) => {
       const extra = notes === undefined ? {} : { binference: { releaseNotes: notes } };
-      manifests.set(version, JSON.stringify({ name: "binference", version, ...extra }));
+      held.manifests.set(version, JSON.stringify({ name: "binference", version, ...extra }));
     },
     answerAll: (status) => {
       held.status = status;
     },
     requests: () => made,
+    next: async (method) =>
+      new Promise((resolve) => {
+        waiting.push({ method, take: resolve });
+      }),
   };
 }

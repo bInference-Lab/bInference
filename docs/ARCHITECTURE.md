@@ -1146,7 +1146,8 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
   itself.
 - **Telemetry ([decision 0048](DECISIONS.md#d0048)).** Off by default; onboarding asks once. When
   on, it adds counts to the daily check: version, OS, enabled venues and plugins, paper or live,
-  number of agents. Never addresses, balances, amounts, tokens, chats or keys. The totals are
+  number of agents, posted to binference.io with community plugins counted, never named
+  ([decision 0355](DECISIONS.md#d0355)). Never addresses, balances, amounts, tokens, chats or keys. The totals are
   published.
 - **Proxy ([decision 0347](DECISIONS.md#d0347)).** `network.proxy`, a secret source, for owners
   who need a proxy to reach Telegram, the model providers or Privy. `core/src/proxy/` gives each

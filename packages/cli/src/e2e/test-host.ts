@@ -135,6 +135,7 @@ export type HostParts = Partial<
     | "pluginPrograms"
     | "download"
     | "npmRegistry"
+    | "countsUrl"
     | "serviceManager"
     | "keychain"
     | "runProgram"

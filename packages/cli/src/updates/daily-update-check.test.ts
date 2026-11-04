@@ -11,10 +11,22 @@ import {
 } from "./daily-update-check.js";
 import { createFakeReleaseRegistry } from "./fake-release-registry.js";
 import { createReleaseFeed } from "./release-feed.js";
+import { countsOf, sendCounts } from "./update-counts.js";
 
 const live = (): AbortSignal => new AbortController().signal;
 const folders: TempFolder[] = [];
 const notes = { en: ["Stop-loss orders fill faster.", "Fewer RPC calls."], zh: [] };
+const userAgent = "binference/2026.11.0 node/v26.10.0 linux x64";
+const counts = countsOf({
+  version: "2026.11.0",
+  os: "linux",
+  agents: [
+    { mode: "paper", venues: ["kyberswap", "flap"] },
+    { mode: "live", venues: ["kyberswap"] },
+  ],
+  binanceOn: false,
+  communityPluginsOn: 2,
+});
 
 afterEach(async () => {
   await Promise.all(folders.splice(0).map(async (folder) => folder.remove()));
@@ -27,15 +39,20 @@ async function checkOn(settings: Partial<UpdateCheckSettings> = {}) {
   const pushes: EnginePush[] = [];
   const logger = createMemoryLogger({ subsystem: "engine" });
   const ask: { current: UpdateCheckSettings } = {
-    current: { isOn: true, channel: "stable", locale: "en", ...settings },
+    current: { isOn: true, channel: "stable", locale: "en", countsOn: false, ...settings },
   };
+  const send = { http: registry.http, url: registry.countsUrl, userAgent };
   const parts: DailyUpdateCheckParts = {
-    feed: createReleaseFeed({ http: registry.http, registry: registry.registry, userAgent: "b" }),
+    feed: createReleaseFeed({ http: registry.http, registry: registry.registry, userAgent }),
     version: "2026.11.0",
     settings: () => ask.current,
     stateRoot: folder.path,
     permissions: noPermissions,
     publish: (push) => pushes.push(push),
+    counts: {
+      read: async () => counts,
+      send: async (taken, signal) => sendCounts(send, taken, signal),
+    },
     logger,
   };
   return {
@@ -127,5 +144,57 @@ describe("the daily update check", () => {
         fields: { errorCode: "update.registry_unreachable" },
       },
     ]);
+  });
+});
+
+describe("the opt-in counts", () => {
+  it("go with the daily check only while telemetry is on, and hold only their fields", async () => {
+    const off = await checkOn();
+    off.registry.tag("latest", "2026.12.0");
+    await off.run();
+    const on = await checkOn({ countsOn: true });
+    on.registry.tag("latest", "2026.12.0");
+    await on.run();
+    const sent = on.registry.requests().filter((request) => request.method === "POST");
+
+    expect(off.registry.requests().map((request) => request.method)).toStrictEqual(["GET", "GET"]);
+    expect(sent).toStrictEqual([
+      {
+        method: "POST",
+        url: on.registry.countsUrl,
+        headers: { "content-type": "application/json", "user-agent": userAgent },
+        body: JSON.stringify({
+          version: "2026.11.0",
+          os: "linux",
+          venues: ["flap", "kyberswap"],
+          plugins: [],
+          communityPlugins: 2,
+          mode: "both",
+          agents: 2,
+        }),
+      },
+    ]);
+  });
+
+  it("go even when npm cannot be read, and fail soft", async () => {
+    const check = await checkOn({ countsOn: true });
+    check.registry.answerAll(503);
+    await check.run();
+
+    expect(check.registry.requests().map((request) => request.method)).toStrictEqual([
+      "GET",
+      "POST",
+    ]);
+    expect(check.logger.records().map((record) => record.event)).toStrictEqual([
+      "update.check_failed",
+      "update.counts_failed",
+    ]);
+  });
+
+  it("go with no check while updates are not checked", async () => {
+    const check = await checkOn({ isOn: false, countsOn: true });
+    await check.run();
+
+    expect(check.registry.requests()).toStrictEqual([]);
   });
 });
