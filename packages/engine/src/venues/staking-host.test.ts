@@ -1,5 +1,6 @@
-import { chainRefSchema } from "@binference/chain";
+import { accountRefSchema, assetRefSchema, chainRefSchema, type TxHash } from "@binference/chain";
 import type { StakePlan, StakeRequest, StakingVenue } from "@binference/chain/staking";
+import type { FakeStakingVenue } from "@binference/chain/testing";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { testCoin } from "../intents/test-intents.js";
@@ -37,6 +38,32 @@ async function plannedStake(): Promise<StakePlan> {
     throw new Error("The fake venue refused the test stake.");
   }
   return planned.value;
+}
+
+// Plans and runs the move on the fake venue as the chain would, answering its transaction hash.
+async function runMove(venue: FakeStakingVenue, request: StakeRequest): Promise<TxHash> {
+  const planned = await venue.plan(request, live);
+  if (!planned.ok) {
+    throw new Error(`The fake venue refused the test ${request.action}.`);
+  }
+  const [hash] = venue.run(await venue.build(planned.value, live));
+  if (hash === undefined) {
+    throw new Error("The fake venue landed nothing.");
+  }
+  return hash;
+}
+
+// A stake that landed on the fake venue, with its plan and the move the host reads back.
+async function landedStake() {
+  const venue = testStakingFake();
+  const plan = await plannedStake();
+  const hash = await runMove(venue, stake);
+  const move = { action: "stake", wallet: testAccount, validator: testValidator, hash } as const;
+  const read = await venue.landed(move, live);
+  if (!read.ok) {
+    throw new Error("The fake venue read no landed stake.");
+  }
+  return { venue, plan, move, read: read.value };
 }
 
 const down = async (): Promise<never> => Promise.reject(new Error("down"));
@@ -185,5 +212,124 @@ describe("the staking host's build", () => {
     const other = { ...venue, build: async () => venue.build(smaller, live) };
     const built = await hostOf(other).build(other, plan, live);
     expect(built).toStrictEqual({ ok: false, error: "decode_mismatch", mismatch: "other_stake" });
+  });
+});
+
+describe("the staking host's reads", () => {
+  it("answers the receipt token the venue names, or its refusal", async () => {
+    const venue = testStakingFake();
+    const host = hostOf(venue);
+    const unknown = accountRefSchema.parse("fake:1:0x000000c9");
+    expect(await host.receipt(venue, testValidator, live)).toStrictEqual({
+      ok: true,
+      value: assetRefSchema.parse("fake:1/token:0x000000c1"),
+    });
+    expect(await host.receipt(venue, unknown, live)).toStrictEqual({
+      ok: false,
+      error: "validator_unknown",
+    });
+  });
+
+  it("is venue_down for a receipt the venue throws on or names in no asset form", async () => {
+    const throwing = { ...testStakingFake(), receipt: down };
+    const garbled = {
+      ...testStakingFake(),
+      receipt: async () => Promise.resolve({ ok: true, value: "not an asset" } as never),
+    };
+    expect(await hostOf(throwing).receipt(throwing, testValidator, live)).toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+    expect(await hostOf(garbled).receipt(garbled, testValidator, live)).toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+  });
+
+  it("answers the wallet's unbonding parts with the validator, and none with another", async () => {
+    const venue = testStakingFake();
+    await runMove(venue, stake);
+    await runMove(venue, { ...stake, action: "unstake", amount: "whole" });
+    const host = hostOf(venue);
+    const held = await host.parts(venue, { wallet: testAccount, validator: testValidator }, live);
+    const none = await host.parts(venue, { wallet: testAccount, validator: jailedValidator }, live);
+    expect(held).toMatchObject({ ok: true, value: [{ amount: two }] });
+    expect(none).toStrictEqual({ ok: true, value: [] });
+  });
+
+  it("is venue_down for parts the venue throws on, or on a chain the registry does not hold", async () => {
+    const throwing = { ...testStakingFake(), holdings: down };
+    const away = { ...testStakingFake(), chain: elsewhere };
+    const held = { wallet: testAccount, validator: testValidator };
+    expect(await hostOf(throwing).parts(throwing, held, live)).toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+    expect(await hostOf(away).parts(away, held, live)).toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+  });
+
+  it("finds a venue by its id, on a chain or on every chain", () => {
+    const venue = testStakingFake();
+    const host = hostOf(venue);
+    expect(host.venueOn(venue.id, venue.chain)).toBe(venue);
+    expect(host.venueOn(venue.id, elsewhere)).toBeUndefined();
+    expect(host.venuesWith(venue.id)).toStrictEqual([venue]);
+    expect(host.venuesWith("other")).toStrictEqual([]);
+  });
+});
+
+describe("the staking host's read-back of a landed move", () => {
+  it("answers a copy of what the stake did, held to its plan", async () => {
+    const { venue, plan, move } = await landedStake();
+    expect(await hostOf(venue).landed(venue, { move, plan }, live)).toStrictEqual({
+      ok: true,
+      value: { action: "stake", validator: testValidator, moved: two, shares: plan.shares },
+    });
+  });
+
+  it("is venue_down for a venue that throws, and passes not_found on", async () => {
+    const { plan, move } = await landedStake();
+    const throwing = { ...testStakingFake(), landed: down };
+    const missing = {
+      ...testStakingFake(),
+      landed: async () => Promise.resolve({ ok: false, error: "not_found" } as const),
+    };
+    expect(await hostOf(throwing).landed(throwing, { move, plan }, live)).toStrictEqual({
+      ok: false,
+      error: "venue_down",
+    });
+    expect(await hostOf(missing).landed(missing, { move, plan }, live)).toStrictEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+
+  it("refuses a read-back of another validator as other_move", async () => {
+    const { venue, plan, move, read } = await landedStake();
+    const other = {
+      ...venue,
+      landed: async () =>
+        Promise.resolve({ ok: true, value: { ...read, validator: jailedValidator } } as const),
+    };
+    expect(await hostOf(other).landed(other, { move, plan }, live)).toStrictEqual({
+      ok: false,
+      error: "decode_mismatch",
+      mismatch: "other_move",
+    });
+  });
+
+  it("refuses a read-back its schema cannot read, or of a chain the registry does not hold", async () => {
+    const { venue, plan, move } = await landedStake();
+    const garbled = {
+      ...venue,
+      landed: async () => Promise.resolve({ ok: true, value: { action: "stake" } } as never),
+    };
+    const away = { ...venue, chain: elsewhere };
+    const mismatch = { ok: false, error: "decode_mismatch", mismatch: "other_move" };
+    expect(await hostOf(garbled).landed(garbled, { move, plan }, live)).toStrictEqual(mismatch);
+    expect(await hostOf(away).landed(away, { move, plan }, live)).toStrictEqual(mismatch);
   });
 });
