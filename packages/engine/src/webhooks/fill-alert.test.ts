@@ -1,4 +1,5 @@
 import type { PriceSource } from "@binference/chain";
+import { createFakeVenue } from "@binference/chain/testing";
 import { err, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { requestDocument } from "../intents/intent-documents.schema.js";
@@ -8,9 +9,12 @@ import { fillIntentsOf, noticesOf, startFillEngine, wholeToken } from "../orders
 import { tapCard } from "../orders/test-orders.js";
 import type { AgentStore } from "../ports.js";
 import { present } from "../surfaces/test-venues.js";
+import type { WebhookRuleStore } from "./ports.js";
 import { alertTo, createdRule, type CreatedRule, testRuleRequest } from "./test-webhook-rules.js";
 
 const live = { signal: new AbortController().signal };
+// A venue that pays $1.20 a token, so a sale of $0.40 at the $0.80 price breaks its size.
+const dollarTwenty = createFakeVenue({ rate: { numerator: 2n * 10n ** 9n, denominator: 1n } });
 const other = idSchema("int").parse("int_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
 
 async function activeRule(test: TestEngine, request = testRuleRequest()): Promise<CreatedRule> {
@@ -39,6 +43,40 @@ function quietToken(source: PriceSource, isQuiet: () => boolean): PriceSource {
     ...source,
     usdPrice: async (asset, call) =>
       isQuiet() && asset === testToken ? err("no_price" as const) : source.usdPrice(asset, call),
+  };
+}
+
+/** A rule store that can stop keeping its rules, and the switches that tell it when. */
+interface GoingRules {
+  readonly wrap: (store: WebhookRuleStore) => WebhookRuleStore;
+  /** Answers rules for this many more reads, then none. */
+  readonly goAfter: (reads: number) => void;
+  /** Answers every rule again. */
+  readonly keep: () => void;
+}
+
+// A rule store that answers its rules until told to go, then no rule, as one that no longer keeps
+// them.
+function goingRules(): GoingRules {
+  const left: { reads?: number } = {};
+  return {
+    wrap: (store) => ({
+      ...store,
+      get: async (id, call) => {
+        const reads = left.reads;
+        if (reads === undefined) {
+          return store.get(id, call);
+        }
+        left.reads = reads - 1;
+        return reads > 0 ? store.get(id, call) : undefined;
+      },
+    }),
+    goAfter: (reads) => {
+      left.reads = reads;
+    },
+    keep: () => {
+      delete left.reads;
+    },
   };
 }
 
@@ -131,5 +169,56 @@ describe("an accepted alert at the head of its agent's line", () => {
     expect(await alertsOf(test, created)).toMatchObject([
       { outcome: "skipped", reason: "no_price" },
     ]);
+  });
+
+  it("sells its dollars again at its own quote once the first quote broke its size", async () => {
+    const test = await startFillEngine({ venues: [dollarTwenty] });
+    const created = await activeRule(test, testRuleRequest({ size: { usdMicros: 400_000n } }));
+    await alertTo(test, created.url);
+
+    await test.engine.fillWebhookAlerts(live);
+
+    const filled = (await fillIntentsOf(test)).find(({ state }) => state === "paper_filled");
+    expect(requestDocument.decode(present(filled).request)).toMatchObject({
+      kind: "sell",
+      amount: { base: 333_333n },
+    });
+    expect(await alertsOf(test, created)).toMatchObject([{ outcome: "filled" }]);
+  });
+});
+
+describe("an accepted alert whose rule is gone", () => {
+  it("ends order_inactive, untold, before its agent's line", async () => {
+    const rules = goingRules();
+    const test = await startFillEngine({ webhookRules: rules.wrap });
+    const created = await activeRule(test);
+    await alertTo(test, created.url);
+    rules.goAfter(0);
+
+    await test.engine.fillWebhookAlerts(live);
+
+    rules.keep();
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+    expect(await alertsOf(test, created)).toMatchObject([
+      { outcome: "skipped", reason: "order_inactive" },
+    ]);
+    expect(JSON.stringify(noticesOf(test))).not.toContain("notice.webhookSkipped");
+  });
+
+  it("ends order_inactive, untold, when its rule goes while it waits in its agent's line", async () => {
+    const rules = goingRules();
+    const test = await startFillEngine({ webhookRules: rules.wrap });
+    const created = await activeRule(test);
+    await alertTo(test, created.url);
+    rules.goAfter(1);
+
+    await test.engine.fillWebhookAlerts(live);
+
+    rules.keep();
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+    expect(await alertsOf(test, created)).toMatchObject([
+      { outcome: "skipped", reason: "order_inactive" },
+    ]);
+    expect(JSON.stringify(noticesOf(test))).not.toContain("notice.webhookSkipped");
   });
 });

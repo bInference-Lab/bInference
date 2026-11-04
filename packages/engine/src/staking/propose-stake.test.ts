@@ -8,6 +8,7 @@ import { fixtureId } from "../contracts/store-fixtures.js";
 import { createFakeTokenFacts, fakeTokenFacts } from "../fakes/fake-token-facts.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testCoin, testWallet } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
@@ -477,5 +478,31 @@ describe("filling a staking move on paper", () => {
       live,
     );
     expect(positions.map((position) => position.asset)).toStrictEqual([testCoin]);
+  });
+
+  it("books nothing for a paper stake whose fill another write beat", async () => {
+    const test = await startStakeEngine(testStakingFake(), { intents: racedTo("paper_filled") });
+    const view = await propose(test);
+    await confirm(test, view);
+
+    expect(await stateOf(test, view)).toStrictEqual(["confirmed", undefined]);
+    const positions = await test.positions.positions(
+      { walletId: view.wallet, isPaper: true },
+      live,
+    );
+    expect(positions.map((position) => position.asset)).toStrictEqual([testCoin]);
+  });
+
+  it("leaves a short paper stake as it stands when another write beat its end", async () => {
+    const test = await startStakeEngine(testStakingFake(), {
+      paper: [{ asset: testCoin, base: 9n * 10n ** 17n }],
+      intents: racedTo("failed_check"),
+    });
+    const [first, second] = await twoCards(test, stakeRequest("stake"));
+    await confirm(test, first);
+    await confirm(test, second);
+
+    expect(await stateOf(test, first)).toStrictEqual(["paper_filled", undefined]);
+    expect(await stateOf(test, second)).toStrictEqual(["confirmed", undefined]);
   });
 });
