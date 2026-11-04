@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 13 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 14 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -47,8 +47,6 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `telegram.botToken`: 所有者从 BotFather 得到的机器人 Token。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。必填。变量：`BINFERENCE_TELEGRAM__BOT_TOKEN`。
 - `telegram.mode`: 接收更新的方式。取值：以下之一："polling", "webhook"。默认：`"polling"`。变量：`BINFERENCE_TELEGRAM__MODE`。
 - `telegram.webhookSecret`: 用于校验 Webhook 调用；使用 webhook 方式时必填。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_TELEGRAM__WEBHOOK_SECRET`。
-- `telegram.confirmBotToken`: 只发送确认卡片的第二个机器人。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_TELEGRAM__CONFIRM_BOT_TOKEN`。
-- `telegram.groups`: 机器人是否在群组对话中回答。取值：true 或 false。默认：`false`。变量：`BINFERENCE_TELEGRAM__GROUPS`。
 - `telegram.topicsPerAgent`: 机器人开启话题后，每个 Agent 使用一个私聊话题。取值：true 或 false。默认：`false`。变量：`BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`。
 
 ## `models`

@@ -1,5 +1,5 @@
 {
-  "version": 13,
+  "version": 14,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -154,15 +154,6 @@
           "webhookSecret": {
             "description": "Checks webhook calls; required with the webhook mode.",
             "$ref": "#/$defs/Secret"
-          },
-          "confirmBotToken": {
-            "description": "A second bot that only sends confirmations.",
-            "$ref": "#/$defs/Secret"
-          },
-          "groups": {
-            "description": "Whether the bot answers in group chats.",
-            "default": false,
-            "type": "boolean"
           },
           "topicsPerAgent": {
             "description": "One direct-message topic per agent, once the bot has topics turned on.",

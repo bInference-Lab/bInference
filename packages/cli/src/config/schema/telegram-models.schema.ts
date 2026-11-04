@@ -8,8 +8,6 @@ export interface TelegramConfig {
   readonly mode: "polling" | "webhook";
   /** Required with the `webhook` mode. */
   readonly webhookSecret?: SecretSource;
-  readonly confirmBotToken?: SecretSource;
-  readonly groups: boolean;
   readonly topicsPerAgent: boolean;
 }
 
@@ -61,10 +59,6 @@ export const telegramSchema: z.ZodType<TelegramConfig> = z
     webhookSecret: secretSourceSchema
       .exactOptional()
       .describe("Checks webhook calls; required with the webhook mode."),
-    confirmBotToken: secretSourceSchema
-      .exactOptional()
-      .describe("A second bot that only sends confirmations."),
-    groups: z.boolean().prefault(false).describe("Whether the bot answers in group chats."),
     topicsPerAgent: z
       .boolean()
       .prefault(false)

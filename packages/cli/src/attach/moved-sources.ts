@@ -20,7 +20,6 @@ function sourcesOf(
   return [
     ["custody.privy.appSecret", privy.appSecret],
     ["telegram.botToken", telegram.botToken],
-    ["telegram.confirmBotToken", telegram.confirmBotToken],
     ["telegram.webhookSecret", telegram.webhookSecret],
     ["network.proxy", network.proxy],
   ];

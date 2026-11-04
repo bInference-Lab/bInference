@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 13. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 14. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -47,8 +47,6 @@ The owner's Telegram bot.
 - `telegram.botToken`: The owner's BotFather token. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Required. Variable: `BINFERENCE_TELEGRAM__BOT_TOKEN`.
 - `telegram.mode`: How updates arrive. Takes one of "polling", "webhook". Default: `"polling"`. Variable: `BINFERENCE_TELEGRAM__MODE`.
 - `telegram.webhookSecret`: Checks webhook calls; required with the webhook mode. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_TELEGRAM__WEBHOOK_SECRET`.
-- `telegram.confirmBotToken`: A second bot that only sends confirmations. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_TELEGRAM__CONFIRM_BOT_TOKEN`.
-- `telegram.groups`: Whether the bot answers in group chats. Takes true or false. Default: `false`. Variable: `BINFERENCE_TELEGRAM__GROUPS`.
 - `telegram.topicsPerAgent`: One direct-message topic per agent, once the bot has topics turned on. Takes true or false. Default: `false`. Variable: `BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`.
 
 ## `models`

@@ -22,8 +22,6 @@
   "telegram.botToken": "所有者从 BotFather 得到的机器人 Token。",
   "telegram.mode": "接收更新的方式。",
   "telegram.webhookSecret": "用于校验 Webhook 调用；使用 webhook 方式时必填。",
-  "telegram.confirmBotToken": "只发送确认卡片的第二个机器人。",
-  "telegram.groups": "机器人是否在群组对话中回答。",
   "telegram.topicsPerAgent": "机器人开启话题后，每个 Agent 使用一个私聊话题。",
   "models": "模型服务商和 Agent 使用的模型。",
   "models.providers": "模型服务商，按名称列出。",

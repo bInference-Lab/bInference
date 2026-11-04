@@ -137,14 +137,16 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 
 ### 6.2 `telegram`
 
-| Key                        | Type                       | Default     | Applies | Meaning                                                                                                      |
-| -------------------------- | -------------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------ |
-| `telegram.botToken`        | Secret                     | required    | restart | The owner's BotFather token                                                                                  |
-| `telegram.mode`            | `"polling"` \| `"webhook"` | `"polling"` | restart | How updates arrive                                                                                           |
-| `telegram.webhookSecret`   | Secret                     | none        | restart | Required with `"webhook"`, or the engine refuses to start                                                    |
-| `telegram.confirmBotToken` | Secret                     | none        | restart | A second bot for confirmations only ([ARCHITECTURE.md section 1](../ARCHITECTURE.md#section-1))              |
-| `telegram.groups`          | boolean                    | `false`     | live    | Group chats ([ARCHITECTURE.md section 12](../ARCHITECTURE.md#section-12))                                    |
-| `telegram.topicsPerAgent`  | boolean                    | `false`     | live    | One DM topic per agent, once the bot has topics in private chats on ([decision 0186](../DECISIONS.md#d0186)) |
+| Key                       | Type                       | Default     | Applies | Meaning                                                                                                      |
+| ------------------------- | -------------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------ |
+| `telegram.botToken`       | Secret                     | required    | restart | The owner's BotFather token                                                                                  |
+| `telegram.mode`           | `"polling"` \| `"webhook"` | `"polling"` | restart | How updates arrive                                                                                           |
+| `telegram.webhookSecret`  | Secret                     | none        | restart | Required with `"webhook"`, or the engine refuses to start                                                    |
+| `telegram.topicsPerAgent` | boolean                    | `false`     | live    | One DM topic per agent, once the bot has topics in private chats on ([decision 0186](../DECISIONS.md#d0186)) |
+
+Version 14 removed `telegram.groups` and `telegram.confirmBotToken`, which no part read: the bot
+answers only the owner's private chat, and confirmations come from the owner's one bot, the CLI and
+the console. Each key returns, with its config migration, in the task that builds what it sets.
 
 <a id="section-6-3"></a>
 
@@ -260,7 +262,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 13,
+  version: 14,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

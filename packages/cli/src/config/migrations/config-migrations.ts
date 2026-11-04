@@ -4,6 +4,10 @@ import { usdAsText } from "./usd-as-text.js";
 
 const searchProvider: readonly string[] = ["search", "provider"];
 const minHealthFactor: readonly string[] = ["defaults", "limits", "minHealthFactor"];
+const unbuiltTelegramKeys: readonly (readonly string[])[] = [
+  ["telegram", "groups"],
+  ["telegram", "confirmBotToken"],
+];
 
 /**
  * Every config migration, oldest first: the one at index `n` reads version `n + 1`. A change to
@@ -84,6 +88,16 @@ export const configMigrations: readonly ConfigMigration[] = [
       "Lets defaults.notifications mute claimReady, the notice that an unstake's coin can be " +
       "claimed; no file names it yet.",
     edits: () => [],
+  },
+  {
+    from: 13,
+    summary:
+      "Removes telegram.groups and telegram.confirmBotToken, which no part of binference read: " +
+      "the bot answers only the owner's private chat. They return with the work that builds them.",
+    edits: (file) =>
+      unbuiltTelegramKeys
+        .filter((path) => valueAt(file, path) !== undefined)
+        .map((path) => ({ kind: "remove", path })),
   },
 ];
 

@@ -320,7 +320,6 @@ const appliedRows: readonly (readonly [string, Patch])[] = [
   ["backups.keepWeekly", { backups: { keepWeekly: 2 } }],
   ["telegram.topicsPerAgent", { telegram: { topicsPerAgent: true } }],
   ["risk.cacheTtlSec", { risk: { cacheTtlSec: 60 } }],
-  ["telegram.groups", { telegram: { groups: true } }],
   ["remote.mini", { remote: { mini: true } }],
   ["updates.channel", { updates: { channel: "beta" } }],
   ["telemetry.enabled", { telemetry: { enabled: true } }],

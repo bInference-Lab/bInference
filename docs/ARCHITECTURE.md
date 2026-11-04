@@ -138,8 +138,9 @@ Each section below is numbered; other pages cite it as "ARCHITECTURE.md section 
   installs it as the background service, whose launchd, systemd or Task Scheduler entry runs that
   command at each login ([decision 0138](DECISIONS.md#d0138)); Docker runs it too.
 - **When the owner chats through another agent product over MCP** and that product runs its own
-  Telegram bot, the engine needs a second, confirmations-only bot from BotFather (one bot token can
-  be polled by only one process), or the owner confirms in the console.
+  Telegram bot, one bot token can be polled by only one process, so the owner confirms in the
+  console or the CLI. A second, confirmations-only bot (`telegram.confirmBotToken`) returns with
+  the task that builds it.
 
 <a id="section-2"></a>
 
@@ -717,8 +718,9 @@ a hijacked Telegram account cannot redirect it.
   - A message that looks like a private key or a 12- or 24-word seed phrase is deleted at once,
     never stored, and answered with a warning. A transaction hash looks like a private key, so it
     is deleted too, and the warning suggests pasting the block explorer link instead.
-  - Groups are off by default. When they are on, group messages, forwards, `via_bot` and
+  - The bot answers only the owner's private chat: group messages, forwards, `via_bot` and
     anonymous-admin posts are never treated as the owner, and account details never go to a group.
+    Group chats (`telegram.groups`) return with the task that builds them.
 - **Language** comes from the owner's choice, otherwise Telegram's `language_code` (`zh*` means
   Chinese).
 

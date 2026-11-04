@@ -205,7 +205,7 @@ describe("migrate config", () => {
   it("moves a version 12 file to version 13 unchanged, naming the notice it lets be muted", () => {
     const muted = { notifications: { muted: ["alertHeld"] } };
     const twelfth: JsonObject = { version: 12, defaults: muted };
-    expect(migrateConfig(twelfth, configMigrations)).toStrictEqual({
+    expect(migrateConfig(twelfth, configMigrations.slice(0, 12))).toStrictEqual({
       ok: true,
       file: { version: 13, defaults: muted },
       steps: [
@@ -218,6 +218,38 @@ describe("migrate config", () => {
           edits: [],
         },
       ],
+    });
+  });
+
+  it("moves a version 13 file to version 14 without the Telegram keys no part read", () => {
+    const telegram = {
+      botToken: { fromEnv: "BOT" },
+      groups: true,
+      confirmBotToken: { fromKeychain: "confirm-bot" },
+    };
+    const thirteenth: JsonObject = { version: 13, telegram };
+    expect(migrateConfig(thirteenth, configMigrations)).toStrictEqual({
+      ok: true,
+      file: { version: 14, telegram: { botToken: { fromEnv: "BOT" } } },
+      steps: [
+        {
+          from: 13,
+          to: 14,
+          summary:
+            "Removes telegram.groups and telegram.confirmBotToken, which no part of binference " +
+            "read: the bot answers only the owner's private chat. They return with the work that " +
+            "builds them.",
+          edits: [
+            { kind: "remove", path: ["telegram", "groups"] },
+            { kind: "remove", path: ["telegram", "confirmBotToken"] },
+          ],
+        },
+      ],
+    });
+    const without: JsonObject = { version: 13, telegram: { botToken: { fromEnv: "BOT" } } };
+    expect(migrateConfig(without, configMigrations)).toMatchObject({
+      ok: true,
+      steps: [{ from: 13, to: 14, edits: [] }],
     });
   });
 

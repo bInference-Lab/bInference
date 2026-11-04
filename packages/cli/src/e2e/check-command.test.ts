@@ -59,10 +59,12 @@ function reachable(stdout: string): Finding | undefined {
   return parsed.findings.find((finding) => finding.check === "models.reachable");
 }
 
-// A config.json5 of version 10, which still names the health factor version 11 removed.
+// A config.json5 of version 10, which still names the health factor version 11 removed and the
+// Telegram keys version 14 removed.
 const olderConfig =
   "{\n  // The owner's note stays.\n  version: 10,\n" +
-  '  telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },\n' +
+  '  telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" }, groups: true,\n' +
+  '    confirmBotToken: { fromEnv: "TEST_CONFIRM_BOT" } },\n' +
   "  defaults: { limits: { minHealthFactor: 1.5 } },\n}\n";
 
 async function writeOlderConfig(machine: TestMachine): Promise<string> {
@@ -309,6 +311,8 @@ describe("binference check", () => {
       expect(moved).toContain("// The owner's note stays.");
       expect(moved).toContain(`version: ${String(currentConfigVersion)},`);
       expect(moved).not.toContain("minHealthFactor");
+      expect(moved).not.toContain("groups");
+      expect(moved).not.toContain("confirmBotToken");
     },
   );
 

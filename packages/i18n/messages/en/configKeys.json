@@ -22,8 +22,6 @@
   "telegram.botToken": "The owner's BotFather token.",
   "telegram.mode": "How updates arrive.",
   "telegram.webhookSecret": "Checks webhook calls; required with the webhook mode.",
-  "telegram.confirmBotToken": "A second bot that only sends confirmations.",
-  "telegram.groups": "Whether the bot answers in group chats.",
   "telegram.topicsPerAgent": "One direct-message topic per agent, once the bot has topics turned on.",
   "models": "Model providers and the models the agent uses.",
   "models.providers": "The model providers, by name.",

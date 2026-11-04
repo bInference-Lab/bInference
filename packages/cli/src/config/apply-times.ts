@@ -29,7 +29,6 @@ const restartOnlyKeys: readonly string[] = [
   "telegram.botToken",
   "telegram.mode",
   "telegram.webhookSecret",
-  "telegram.confirmBotToken",
   // Paper balances and new wallets' ceilings are read from them at start.
   "defaults",
   "chains.enabled",
@@ -73,7 +72,6 @@ const keysReadOnUse: readonly string[] = [
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the
 // part that comes for one reads it on each use.
 const keysNoPartReads: readonly string[] = [
-  "telegram.groups",
   "chains.rpc.*.key",
   "venues.keys.oneinch",
   "venues.keys.zerox",
