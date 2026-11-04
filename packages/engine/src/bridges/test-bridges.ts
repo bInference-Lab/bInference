@@ -119,23 +119,24 @@ export function testDestinationChain(codes: FakeAccountCodeReader): DestinationC
   };
 }
 
-// A fake approval sets the allowance of the token it calls for the spender its words name.
-function approvalStep(to: string, words: readonly string[]): SimulatedStep {
+// A fake approval sets the signing wallet's allowance of the token it calls for the spender its
+// words name.
+function approvalStep(from: AccountRef, to: string, words: readonly string[]): SimulatedStep {
   const [, spender = "", base = "0"] = words;
   const amount = { asset: assetRefSchema.parse(`fake:1/token:${to}`), base: BigInt(base) };
   const approval = {
-    owner: testAccount,
+    owner: from,
     spender: accountRefSchema.parse(`fake:1:${spender}`),
     amount,
   };
   return { status: "success", gasUsed: 40_000n, transfers: [], approvals: [approval] };
 }
 
-// A fake bridge deposit moves its amount in from the test wallet to the contract it calls.
-function depositStep(to: string, words: readonly string[]): SimulatedStep {
+// A fake bridge deposit moves its amount in from the signing wallet to the contract it calls.
+function depositStep(from: AccountRef, to: string, words: readonly string[]): SimulatedStep {
   const [, , base = "0", asset = ""] = words;
   const amount: Amount = { asset: assetRefSchema.parse(asset), base: BigInt(base) };
-  const transfer = { from: testAccount, to: accountRefSchema.parse(`fake:1:${to}`), amount };
+  const transfer = { from, to: accountRefSchema.parse(`fake:1:${to}`), amount };
   return { status: "success", gasUsed: 90_000n, transfers: [transfer], approvals: [] };
 }
 
@@ -150,12 +151,14 @@ const revertedStep: SimulatedStep = {
 function stepOf(draft: Parameters<TxSimulator["simulate"]>[0][number]): SimulatedStep {
   const call = fakeCallOf(draft);
   const words = call?.data.split(",") ?? [];
-  const steps: Readonly<Record<string, (to: string, words: readonly string[]) => SimulatedStep>> = {
+  const steps: Readonly<
+    Record<string, (from: AccountRef, to: string, words: readonly string[]) => SimulatedStep>
+  > = {
     approve: approvalStep,
     deposit: depositStep,
   };
   const step = steps[words[0] ?? ""];
-  return call === undefined || step === undefined ? revertedStep : step(call.to, words);
+  return call === undefined || step === undefined ? revertedStep : step(draft.from, call.to, words);
 }
 
 /** A simulator that runs fake approvals and fake bridge deposits from the test wallet. */

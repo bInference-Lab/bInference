@@ -191,4 +191,16 @@ describe("quoting and building a bridge", () => {
     const view = expectOk(await proposeWith(() => ({ destinations: [] })));
     expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "decode_mismatch"]);
   });
+
+  it.each<readonly [string, number, readonly [string, string | undefined]]>([
+    ["fewer", 4, ["awaiting_confirmation", undefined]],
+    ["more", 8, ["failed_check", "price_impact"]],
+  ])(
+    "floors a route delivering %s decimals at the input's own price in those decimals",
+    async (_, arrives, ending) => {
+      const routes = [{ ...testRoute, decimals: { leaves: 6, arrives } }];
+      const view = expectOk(await proposeWith(() => ({}), { routes }));
+      expect([view.state, view.outcome?.reason]).toStrictEqual(ending);
+    },
+  );
 });

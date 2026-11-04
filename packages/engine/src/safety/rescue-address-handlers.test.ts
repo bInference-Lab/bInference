@@ -1,7 +1,13 @@
 import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { createFakeVenue } from "@binference/chain/testing";
 import { err, idSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
-import { fakeOwnerKeyCode } from "../fakes/fake-ceiling-editor.js";
+import {
+  createFakeCeilingEditor,
+  type FakeCeilingEditor,
+  fakeOwnerKeyCode,
+} from "../fakes/fake-ceiling-editor.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
@@ -10,6 +16,8 @@ import {
   type TestEngine,
   testCall,
   testCallers,
+  testChains,
+  type TestEngineOptions,
 } from "../operations/test-engine.js";
 import { rescueAt } from "../policy/rescue-change.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
@@ -54,8 +62,8 @@ function cancelChange(test: TestEngine) {
 
 // The test engine with the owner's rescue address in effect since a day before the test, and one
 // live wallet whose ceiling lists it.
-async function withRescue(): Promise<TestEngine> {
-  const test = await startTestEngine();
+async function withRescue(options: TestEngineOptions = {}): Promise<TestEngine> {
+  const test = await startTestEngine(options);
   await test.stores.install.changeRescue(
     { address: owner, atMs: testNowMs - 2 * looseningWaitMs },
     live,
@@ -65,6 +73,25 @@ async function withRescue(): Promise<TestEngine> {
   test.ceilings.put(wallet.policyId, [owner]);
   test.ceilings.put(archived.policyId, [owner]);
   return test;
+}
+
+// Custody that refuses the `nth` change of recipients it is asked to sign ahead as too large.
+function refusingNthSign(nth: number): FakeCeilingEditor {
+  const held = createFakeCeilingEditor({
+    clock: createManualClock(testNowMs),
+    chains: testChains(),
+    venues: [createFakeVenue()],
+  });
+  const asked = { count: 0 };
+  return {
+    ...held,
+    signRecipients: async (request, call) => {
+      asked.count += 1;
+      return asked.count === nth
+        ? Promise.resolve(err("too_large" as const))
+        : held.signRecipients(request, call);
+    },
+  };
 }
 
 // Another wallet of the agent, its launch wallet, which no ceiling may list (decision 0218).
@@ -169,6 +196,18 @@ describe("a change of the rescue address", () => {
     expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
     expect(test.ceilings.recipients(wallet.policyId)).toStrictEqual([owner]);
     expect(test.pushes).toStrictEqual([]);
+  });
+
+  it.each([
+    ["the change it signs ahead for the new address's time", 1],
+    ["the change it signs ahead for a cancel", 2],
+  ])("refuses a new address when custody will not sign %s, and changes nothing", async (_, nth) => {
+    const ceilings = refusingNthSign(nth);
+    const test = await withRescue({ ceilings });
+    ceilings.put(wallet.policyId, [owner]);
+
+    expect(await setRescue(test, thief)).toStrictEqual(err("wallet.ceiling_too_large"));
+    expect(await rescueNow(test)).toStrictEqual({ rescueAddress: owner });
   });
 
   it("is cancelled from any surface that brakes, and the owner's address stays", async () => {

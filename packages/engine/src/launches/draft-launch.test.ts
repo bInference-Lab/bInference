@@ -1,5 +1,6 @@
 import { idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { createMemoryOwnerImages } from "../fakes/memory-owner-images.js";
 import { expectOk, testAgent } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import { launchDraftOpenMs } from "./launch-draft-shelf.js";
@@ -183,5 +184,28 @@ describe("launch/draft", () => {
       test.engine.launchDrafts.showing(first.draft),
       second.draft === first.draft,
     ]).toStrictEqual([undefined, false]);
+  });
+
+  it("refuses a photo the bot cannot read, or one that is no PNG, JPEG or WebP", async () => {
+    const unread = await testDraftEngine({
+      options: { botImages: createMemoryOwnerImages(new Map()) },
+    });
+    const text = new TextEncoder().encode("not a picture");
+    const plain = await testDraftEngine({
+      options: { botImages: createMemoryOwnerImages(new Map([[photoName, text]])) },
+    });
+    expect([await draftOf(unread.test), await draftOf(plain.test)]).toStrictEqual([
+      refused("image.unreadable"),
+      refused("image.format"),
+    ]);
+  });
+
+  it("refuses a picture for the create call whose header does not tell its size", async () => {
+    const cut = photoPng.slice(0, 20);
+    const { test } = await testDraftEngine({
+      writesPicture: { mostBytes: 900 },
+      options: { botImages: createMemoryOwnerImages(new Map([[photoName, cut]])) },
+    });
+    expect(await draftOf(test)).toStrictEqual(refused("image.unreadable"));
   });
 });

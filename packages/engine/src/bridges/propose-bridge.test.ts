@@ -5,14 +5,17 @@ import {
   type Bridge,
   chainRefSchema,
 } from "@binference/chain";
-import { fakeDepositAbi } from "@binference/chain/testing";
+import { createFakeAccountCodeReader, fakeDepositAbi } from "@binference/chain/testing";
 import { err, type Id, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { testSnapshot } from "../approval/test-snapshot.js";
+import { readOf } from "../fakes/fake-ceiling-read.js";
+import { testWalletRecord } from "../install/test-wallet-record.js";
 import { type BridgeIntentQuote, bridgeQuoteDocument } from "../intents/bridge-quote.js";
-import { expectOk, testToken } from "../intents/test-intents.js";
+import { expectOk, testAgent, testToken, testWallet } from "../intents/test-intents.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { startTestEngine, testAccount, testCall, testCallers } from "../operations/test-engine.js";
+import type { WalletFactsSource } from "../ports.js";
 import { saveTestAddress } from "../send-levels/test-sends.js";
 import {
   type BridgeTest,
@@ -22,6 +25,8 @@ import {
   bridgeLimits,
   testArrives,
   testBridge,
+  testDestination,
+  testDestinationChain,
   testFarEntry,
   testOtherArrives,
   testRescue,
@@ -31,6 +36,8 @@ import {
 } from "./test-bridges.js";
 
 const live = { signal: new AbortController().signal };
+const bridgeWalletId = idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c2");
+const bridgeAccount = accountRefSchema.parse("fake:1:0x000000c2");
 
 // The bridge quote the intent stored.
 async function storedQuote(
@@ -58,6 +65,11 @@ function onlyBridgeWallets(fake: BridgeTest["bridge"]): Bridge {
       ],
     })),
   };
+}
+
+// The wallet facts with a node whose balance answers name no asset, which is no data, never zero.
+function unreadBalances(source: WalletFactsSource): WalletFactsSource {
+  return { ...source, balances: async () => Promise.resolve([]) };
 }
 
 async function propose(
@@ -137,6 +149,15 @@ describe("proposing a bridge", () => {
     expect(unread.outcome?.reason).toBe("recipient_unread");
   });
 
+  it("counts a chain with no code reader as code, so the rescue address is not paid there", async () => {
+    const { codes: _codes, ...unread } = testDestinationChain(
+      createFakeAccountCodeReader({ chain: testDestination }),
+    );
+    const { test } = await bridgeEngine({ destinations: [unread] });
+    const view = expectOk(await propose(test, testBridge({ rescue: true })));
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "rescue_not_plain"]);
+  });
+
   it("refuses the rescue address on its own chain's code too", async () => {
     const { test, codesHere } = await bridgeEngine();
     codesHere.place(testRescue, "contract");
@@ -187,6 +208,12 @@ describe("proposing a bridge", () => {
     const { test } = await bridgeEngine({ held });
     const view = expectOk(await propose(test));
     expect(view.outcome?.reason).toBe("nothing_to_sell");
+  });
+
+  it("ends a bridge whose wallet's balance cannot be read", async () => {
+    const { test } = await bridgeEngine({ walletFacts: unreadBalances });
+    const view = expectOk(await propose(test));
+    expect([view.state, view.outcome?.reason]).toStrictEqual(["failed_check", "balance_unread"]);
   });
 
   it("refuses a bridge in paper mode by policy", async () => {
@@ -257,5 +284,45 @@ describe("the wallet of a bridge venue's route", () => {
     expect(await test.stores.intents.list({ states: ["proposed"], limit: 10 }, live)).toStrictEqual(
       [],
     );
+  });
+
+  it("takes a bridge venue's route from the bridge wallet, which needs no bridge rule", async () => {
+    const base = await bridgeEngine();
+    const { test } = await bridgeEngine({
+      bridge: onlyBridgeWallets(base.bridge),
+      wallets: [testWallet, bridgeWalletId],
+      custodyWallets: new Map([[bridgeWalletId, bridgeAccount]]),
+      held: new Map([
+        [testAccount, [{ asset: testToken, base: 1_000_000_000n }]],
+        [bridgeAccount, [{ asset: testToken, base: 1_000_000_000n }]],
+      ]),
+    });
+    const record = testWalletRecord({
+      id: bridgeWalletId,
+      agentId: testAgent,
+      label: "bridge",
+      createdAtMs: 1,
+    });
+    const dayCaps = [
+      { asset: testToken, limit: 10n ** 12n, windowSeconds: 86_400, floorUsdMicros: 0n },
+    ];
+    const read = readOf([testRescue], [chainRefSchema.parse("fake:1")], {
+      calls: { contracts: [testSpoke], perTxNativeBase: 0n, dayCaps },
+      bridges: {},
+    });
+    test.stores.install.addWallet({
+      ...record,
+      address: accountRefParts(bridgeAccount).address,
+      role: "bridge",
+      ceiling: { ...record.ceiling, policy: read.policy },
+    });
+    const { wallet: _named, ...unnamed } = testBridge();
+    const view = expectOk(await propose(test, unnamed));
+    const stored = await test.stores.intents.get(view.intent, live);
+    expect([view.state, view.outcome?.reason, stored?.walletId]).toStrictEqual([
+      "awaiting_confirmation",
+      undefined,
+      bridgeWalletId,
+    ]);
   });
 });

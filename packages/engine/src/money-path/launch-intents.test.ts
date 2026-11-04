@@ -3,6 +3,7 @@ import { createManualClock, createSeededRandom } from "@binference/core/testing"
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { expectOk, testCoin, testNowMs, testWallet } from "../intents/test-intents.js";
+import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import {
@@ -34,6 +35,12 @@ async function stateOf(test: TestEngine, view: IntentView): Promise<IntentView> 
 }
 
 const signal = { signal: new AbortController().signal };
+
+// The launch quote the intent stored.
+async function launchQuoteOf(test: TestEngine, view: IntentView): Promise<TokenLaunchQuote> {
+  const stored = await test.stores.intents.get(view.intent, signal);
+  return tokenLaunchQuoteDocument.decode(stored?.quote ?? null);
+}
 
 // A transfer of a token at half its amount; the coin's as it is.
 const halved = (transfer: AssetTransfer): AssetTransfer =>
@@ -85,6 +92,21 @@ describe("a token launch before its pin", () => {
   it("goes straight to its card when the pin is reported at once", async () => {
     const { test } = await engineOver();
     await expect(propose(test)).resolves.toMatchObject({ state: "awaiting_confirmation" });
+  });
+
+  it("goes to its card with no first buy, whose simulation spends only the launch fee", async () => {
+    const { test } = await engineOver();
+    const { firstBuy: _firstBuy, ...noBuy } = launch;
+    const view = await propose(test, noBuy);
+    expect(view.state).toBe("awaiting_confirmation");
+    await expect(launchQuoteOf(test, view)).resolves.not.toHaveProperty("firstBuy");
+  });
+
+  it("goes to its card with no description or links, which the launch leaves out", async () => {
+    const { test } = await engineOver();
+    const { description: _description, links: _links, ...bare } = launch;
+    const view = await propose(test, bare);
+    expect(view.state).toBe("awaiting_confirmation");
   });
 
   it("ends with pin_timeout and a notice when no pin comes within 5 minutes", async () => {

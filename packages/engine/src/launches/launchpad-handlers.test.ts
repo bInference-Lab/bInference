@@ -2,7 +2,8 @@ import { chainRefSchema } from "@binference/chain";
 import { describe, expect, it } from "vitest";
 import { expectOk } from "../intents/test-intents.js";
 import { testLaunchEngine } from "../money-path/test-launches.js";
-import { startTestEngine, testCall } from "../operations/test-engine.js";
+import { startTestEngine, testCall, testChains } from "../operations/test-engine.js";
+import { createLaunchpadHandlers } from "./launchpad-handlers.js";
 
 const chain = chainRefSchema.parse("fake:1");
 const declared = [
@@ -55,6 +56,11 @@ describe("launchpad/list", () => {
     const plain = await startTestEngine();
     const answer = await plain.engine.handlers["launchpad/list"](testCall({ chain }));
     expect(expectOk(answer).items).toStrictEqual([]);
+  });
+
+  it("answers no launchpad for an engine with no launch host", async () => {
+    const handlers = createLaunchpadHandlers({ chains: testChains() });
+    expect(expectOk(await handlers["launchpad/list"](testCall({ chain }))).items).toStrictEqual([]);
   });
 
   it("refuses a chain the registry does not hold", async () => {

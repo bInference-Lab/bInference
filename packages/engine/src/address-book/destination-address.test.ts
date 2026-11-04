@@ -306,4 +306,36 @@ describe("saving an address on a chain a bridge delivers to", () => {
       err("chain.rpc_down"),
     );
   });
+
+  it("saves nothing under a wrong owner key", async () => {
+    const test = await engineWithDestinations({ ceilings: editorReaching([destination]) });
+    const args = {
+      agent: testAgent,
+      chain: destination,
+      address: "0x000000f3",
+      label: "far",
+      ownerKey: "not-the-owner-key",
+    };
+    expect(await test.engine.handlers["address/add"](testCall(args))).toStrictEqual(
+      err("wallet.bad_owner_key"),
+    );
+    expect((await test.stores.agents.get(testAgent, live))?.addressBook).toStrictEqual([]);
+  });
+
+  it("writes nothing while custody holds no ceiling of one of the agent's wallets", async () => {
+    const ceilings = editorReaching([destination]);
+    const test = await engineWithDestinations({ ceilings });
+    test.stores.install.addWallet(
+      testWalletRecord({
+        id: idSchema("wal").parse("wal_0190f1c2-3a4b-7c5d-8e6f-0000000000c2"),
+        agentId: testAgent,
+        label: "second",
+        createdAtMs: testNowMs - 1,
+      }),
+    );
+    expect(await add(test, { chain: "fake:2", address: "0x000000f3" })).toStrictEqual(
+      err("wallet.not_found"),
+    );
+    expect((await test.stores.agents.get(testAgent, live))?.addressBook).toStrictEqual([]);
+  });
 });

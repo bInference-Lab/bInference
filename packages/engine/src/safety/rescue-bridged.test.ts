@@ -7,6 +7,7 @@ import {
   testDestination,
   testDestinationChain,
   testFarEntry,
+  testHexCodec,
   testRescue,
   testRescueThere,
   testSpoke,
@@ -33,6 +34,23 @@ import {
 const live = { signal: new AbortController().signal };
 
 describe("the rescue address in the bridge rules", () => {
+  it.each([
+    ["of another family", testHexCodec("wide", 4)],
+    ["whose codec cannot read the address", testHexCodec("fake", 8)],
+  ])("tells a destination %s as one the rescue address cannot be paid on", async (_, codec) => {
+    const fakes = bridgeFakes();
+    const other = { ...testDestinationChain(fakes.codesThere), codec };
+    const bench = await bridgeEngine({ bridged: [testFarEntry.account], destinations: [other] });
+    const policy = await holdTestCeiling(bench);
+
+    expectOk(await setTestRescue(bench, nextRescue));
+    expect(bench.test.ceilings.bridged(policy)).toStrictEqual([testFarEntry.account]);
+    expect(noticesNamed(bench, "notice.rescueNotBridged")).toStrictEqual([
+      { agent: "main", address: "0x000000d9", chains: "Fake Two", why: "kind" },
+      { agent: "main", address: "0x000000d8", chains: "Fake Two", why: "kind" },
+    ]);
+  });
+
   it("keeps the old rescue address on the destination until its change takes effect", async () => {
     const bench = await bridgeEngine({ bridged: [testFarEntry.account] });
     const { test } = bench;
