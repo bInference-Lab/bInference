@@ -116,6 +116,8 @@ export interface Launching {
   readonly simulator?: (real: Pick<TxSimulator, "simulate">) => Pick<TxSimulator, "simulate">;
   readonly options?: TestEngineOptions;
   readonly hasLaunchWallet?: boolean;
+  /** The launchpad's upload of the picture fails, as a launchpad whose API is down; it uploads. */
+  readonly failsUpload?: boolean;
   /** The launchpad's create call carries no first-buy minimum, as it declares (decision 0270). */
   readonly noFirstBuyMin?: boolean;
   /**
@@ -178,6 +180,7 @@ export interface TestLaunchEngine {
 }
 
 const never = async (): Promise<never> => new Promise<never>(() => undefined);
+const downUpload = async (): Promise<never> => Promise.reject(new Error("The upload is down."));
 
 // The fake launchpad's build as the script says.
 function buildOf(script: BuildScript): PadLauncher["buildLaunch"] {
@@ -271,7 +274,8 @@ function launchersOf(launching: Launching) {
   };
   const counting = scripted(createFakeLauncher(fakeOptions), launching.launcher);
   if (!isLink && launching.writesPicture === undefined) {
-    return { ...counting, pad: counting.launcher };
+    const pin = launching.failsUpload === true ? { pin: downUpload } : {};
+    return { ...counting, pad: { ...counting.launcher, ...pin } };
   }
   const used = scripted(uploadlessOf(launching, fakeOptions), launching.launcher);
   return { launcher: counting.launcher, built: used.built, pad: used.launcher };

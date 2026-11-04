@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { type IdentityQuote, identityQuoteDocument } from "../intents/identity-quote.js";
 import { expectOk, testAgent, testCoin } from "../intents/test-intents.js";
+import { racedTo } from "../intents/test-raced-store.js";
 import { testCardText } from "../money-path/test-launches.js";
 import { testAccount, testCall, testCallers, type TestEngine } from "../operations/test-engine.js";
 import {
@@ -328,6 +329,17 @@ describe("an identity registration", () => {
       ["failed_check", "decode_mismatch"],
       ["failed_check", "decode_mismatch"],
     ]);
+  });
+
+  it.each([
+    ["quoted", "checked"],
+    ["assessed", "quoted"],
+    ["simulated", "assessed"],
+  ] as const)("ends where that write left it when its move to %s loses", async (lost, left) => {
+    const test = await startIdentityEngine(testRegistry(), { intents: racedTo(lost) });
+    const view = await registered(test);
+    expect(view.state).toBe(left);
+    expect(view.card).toBeUndefined();
   });
 
   it("refuses a Mini App caller that may not confirm, before anything is stored", async () => {

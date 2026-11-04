@@ -201,6 +201,22 @@ describe("a token launch a fault or a stop cut short once its upload began", () 
     );
   });
 
+  it("ends venue_down with a notice when the launchpad's upload fails, building nothing", async () => {
+    const { test, built } = await engineOver({ failsUpload: true });
+    const asked = { isBuilt: false };
+    void built.then(() => Object.assign(asked, { isBuilt: true }));
+    const view = await propose(test);
+    expect(view).toMatchObject({ state: "failed_check", outcome: { reason: "venue_down" } });
+    expect(asked.isBuilt).toBe(false);
+    expect(cardsOpened(test)).toStrictEqual([]);
+    expect(notices(test)).toContainEqual(
+      expect.objectContaining({
+        key: "notice.launchStopped",
+        values: { symbol: "MCAT", venue: pad, reason: "venue_down", private: "no" },
+      }),
+    );
+  });
+
   it("ends upload_lost with a notice at once when the proposal stops during its build", async () => {
     const stop = new AbortController();
     const { test } = await engineOver({ launcher: { onBuild: "stop", stop } });

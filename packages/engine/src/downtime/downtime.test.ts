@@ -1,7 +1,7 @@
 import { bpsSchema, type JsonValue } from "@binference/core";
 import { describe, expect, it } from "vitest";
-import { testAgent, testToken } from "../intents/test-intents.js";
-import type { TestEngine } from "../operations/test-engine.js";
+import { expectOk, testAgent, testToken } from "../intents/test-intents.js";
+import { testCall, type TestEngine } from "../operations/test-engine.js";
 import type { WatchedOrderPrice } from "../orders/order-triggers.js";
 import type { OrderStore } from "../orders/ports.js";
 import {
@@ -376,5 +376,46 @@ describe("the downtime re-check", () => {
 
     expect(during).toBe(markedMs);
     await expect(test.stores.alive.lastAlive(live)).resolves.toBe(test.clock.now());
+  });
+
+  it("leaves out of its report a price order cancelled before any fresh price", async () => {
+    const test = await startFillEngine();
+    const stop = await activeOrder(test, testStopLoss());
+    await test.engine.downtime.alive(live);
+    await test.clock.advance(hourMs);
+
+    const restarted = test.restart();
+    const run = await restarted.downtime.started(live);
+    expectOk(await restarted.handlers["order/cancel"](testCall({ order: stop.id })));
+    await test.clock.advance(2 * minuteMs);
+    const report = await run?.reported;
+
+    expect(report?.orders).toStrictEqual([]);
+    expect(resumedOf(test)).toStrictEqual([]);
+    expect(await reportsOf(test)).toStrictEqual([]);
+  });
+
+  it("names no DCA order whose period the downtime did not cross", async () => {
+    const test = await startFillEngine();
+    await activeOrder(test, {
+      kind: "dca",
+      agent: testAgent,
+      token: testToken,
+      side: "buy",
+      size: { usdMicros: 10_000_000n },
+      trigger: { cron: "0 0 1 1 *" },
+      reason: "Buy once a year",
+    });
+    await test.engine.downtime.alive(live);
+    await test.clock.advance(minuteMs);
+
+    const restarted = test.restart();
+    const run = await restarted.downtime.started(live);
+    await restarted.runSchedules(live);
+    await test.clock.advance(20_000);
+    const report = await run?.reported;
+
+    expect(report?.orders).toStrictEqual([]);
+    expect(resumedOf(test)).toStrictEqual([]);
   });
 });
