@@ -29,7 +29,11 @@ Rules for this package:
   is filled in as plain text by the engine's `cardLineText`, where every value from outside (token
   symbols and names, the agent's reason, venue and client names) goes through `displayOutsideText`
   of `@binference/i18n`, and then escaped whole with `escapeHtml`.
-  Never build HTML from a value.
+  Never build HTML from a value. The one other source of HTML is the agent's chat text (decision
+  0370): `src/format/rich-html.ts` writes it from the fixed tags of `RichMark` and `RichBlock`
+  (`b`, `i`, `s`, `code`, `pre` with a letters-and-digits `language-` class, `a` with an `http:`
+  or `https:` address, `blockquote`) around text it escapes itself. The Markdown readers in
+  `src/format/` make runs and lines, never HTML; a tag the model writes stays text.
 - A fast command (`src/commands/`) runs the engine's operations only through the `OwnerCalls`
   port, never a store or a model: the engine runs each for the owner's numeric Telegram id, as the
   owner on Telegram. A command is a message the owner typed: an edit or a forward runs nothing,
@@ -59,7 +63,11 @@ Rules for this package:
 - The agent's replies come from the engine's pushes on its chat topic through `createChatReplies`:
   one status message per turn, refreshed about once a second, then the answer as new messages and
   the status message deleted. Model text goes out as Telegram HTML only through
-  `src/chat/chat-html.ts`, every line through `displayOutsideText` and the whole escaped.
+  `src/chat/chat-html.ts`: every line through `displayOutsideText`, then its Markdown drawn by
+  `src/format/rich-html.ts` and split by `src/split/split-rich-lines.ts`, a paragraph break
+  preferred, each message rendering its own tags. A message Telegram answers with a 400 it cannot
+  parse (`isEntitiesUnparsed`) goes once more as its plain text, no parse mode, and the log names
+  its message id, never its words. The status message's preview stays plain text.
 - A status message's edit is a preview: it goes with a `previewSignal`, and the throttler drops it
   rather than queue it behind another call or a wait. Nothing else is sent as a preview.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or

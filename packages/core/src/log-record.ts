@@ -18,6 +18,8 @@ export interface LogFields {
   readonly durationMs?: number;
   /** A gap between two prices, in basis points. */
   readonly gapBps?: number;
+  /** A message's id in the owner's chat, such as one a reply went out as. */
+  readonly messageId?: number;
 }
 
 /** One record as a logger writes it. */

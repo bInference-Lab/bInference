@@ -8,7 +8,7 @@ Status: accepted on 2026-10-06 ([decision 0096](../DECISIONS.md#d0096)), amended
 [0177](../DECISIONS.md#d0177), [0178](../DECISIONS.md#d0178), [0185](../DECISIONS.md#d0185),
 [0186](../DECISIONS.md#d0186), [0189](../DECISIONS.md#d0189), [0190](../DECISIONS.md#d0190),
 [0243](../DECISIONS.md#d0243), [0296](../DECISIONS.md#d0296), [0297](../DECISIONS.md#d0297),
-[0298](../DECISIONS.md#d0298) and [0299](../DECISIONS.md#d0299).
+[0298](../DECISIONS.md#d0298), [0299](../DECISIONS.md#d0299) and [0370](../DECISIONS.md#d0370).
 Accepted by the owner on 2026-10-12: callback kind `q` (section 2); sales by share, the paper
 launch refusal, the P&L card and the auto order summaries (sections 3.6 to 3.8); the new notices on
 by default (section 4); update notes (section 4.2); the alert, launch feed, fill and exit messages
@@ -43,6 +43,17 @@ names the keys and fixes the wording.
   below a cent.
 - **Telegram** messages use HTML formatting, at most 4,096 characters; a longer message splits at a
   line break (`telegram/src/split/`). Buttons are inline keyboards.
+- **The agent's chat text in Telegram** is the one place model words carry formatting
+  ([decision 0370](../DECISIONS.md#d0370)). Each line goes through the same escaping of hidden
+  characters, then its Markdown is drawn from a fixed set of tags over HTML-escaped text: `b`,
+  `i`, `s`, `code`, `pre` (with a `language-` class only when the language is letters and digits),
+  `a` only for an `http:` or `https:` address, and `blockquote`. A heading is a bold line, a
+  bullet item a `•` line, a numbered item keeps its number. A link to any other address, a mark
+  that never closes and HTML the model writes all show as text, and every message's tags balance.
+  A long answer splits at a paragraph break where it can, a style or block closing at the end of
+  one message and opening again in the next. When Telegram cannot parse a message, it goes again
+  as plain text with no tags. Cards, receipts, notices and fast-command replies keep their own
+  rendering.
 - **Status icons** are allowed only where this spec names them
   ([ENGINEERING.md section 16](../ENGINEERING.md#section-16)): 🟡 waiting, ✅ done or passed, ❌
   refused or failed, ⚠️ warning, 🧪 paper, 🔴 live. Telegram shows them as emoji; the console
@@ -1351,8 +1362,9 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 - **The reply.** When the agent's turn starts, one status message shows how long it has worked,
   or the text it has written so far, edited about once a second. The final answer goes as new
   messages, split at 4,096 characters, and the status message is deleted. A status line of
-  section 8.1 follows in italics. The agent's words are always shown as text: escaped, with every
-  character a reader cannot see written as `\u{…}`.
+  section 8.1 follows in italics. The agent's words show their Markdown as Telegram's rich text by
+  the rules of section 1, with every character a reader cannot see written as `\u{…}`; markup the
+  model writes in HTML shows as text.
 - **Rate limits.** An edit of the status message is a preview: when Telegram asks the bot to wait,
   or another message waits for the chat, the edit is dropped and the next one carries its text.
   Answers, status lines and cards wait and go.

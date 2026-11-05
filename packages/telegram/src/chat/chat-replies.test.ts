@@ -116,6 +116,62 @@ describe("the agent's replies in Telegram", () => {
     ]);
   });
 
+  it("shows the agent's Markdown as Telegram's rich text", async () => {
+    const { botApi, replies } = await setUp();
+    await replies.show(
+      answer("You trade in **paper mode**. See [the guide](https://binference.io)."),
+      live,
+    );
+    expect(botApi.messages()).toMatchObject([
+      {
+        text: "You trade in paper mode. See the guide.",
+        entities: [
+          { type: "bold", offset: 13, length: 10 },
+          { type: "text_link", offset: 29, length: 9 },
+        ],
+      },
+    ]);
+  });
+
+  it("sends a piece again as plain text when Telegram cannot parse its HTML, logging its id only", async () => {
+    const { botApi, clock, logger, replies } = await setUp();
+    botApi.failNext(
+      "sendMessage",
+      { status: 400, description: "Bad Request: can't parse entities: unsupported start tag" },
+      { chatId: ownerId },
+    );
+    const shown = replies.show(
+      answer("**Sold** at [DEX Screener](https://dexscreener.com) & done"),
+      live,
+    );
+    await clock.advance(1_000);
+    await shown;
+    expect(botApi.messages()).toMatchObject([
+      { text: "Sold at DEX Screener (https://dexscreener.com) & done", entities: [] },
+    ]);
+    expect(logger.records()).toStrictEqual([
+      {
+        level: "info",
+        subsystem: "telegram",
+        event: "telegram.chat_sent_plain",
+        fields: { messageId: 1001 },
+      },
+    ]);
+  });
+
+  it("does not send a piece again when Telegram refuses it for another reason", async () => {
+    const { botApi, replies } = await setUp();
+    botApi.failNext(
+      "sendMessage",
+      { status: 400, description: "Bad Request: chat not found" },
+      { chatId: ownerId },
+    );
+    await expect(replies.show(answer("**Done.**"), live)).rejects.toMatchObject({
+      code: "telegram.api_refused",
+    });
+    expect(botApi.messages()).toStrictEqual([]);
+  });
+
   it("splits a long answer at line breaks into messages of 4,096 characters at most", async () => {
     const { botApi, clock, replies } = await setUp();
     const line = "x".repeat(99);

@@ -3,11 +3,12 @@ import type { OwnerStore } from "@binference/engine/surfaces";
 import { displayOutsideText, type Formatter, type MessageLocale } from "@binference/i18n";
 import { type ChatPush, chatPushOf } from "@binference/protocol";
 import type { Api } from "grammy";
+import { isEntitiesUnparsed } from "../api/bot-api-error.schema.js";
 import { callBotApi } from "../api/call-bot-api.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import { previewSignal } from "../throttle/preview-signal.js";
-import { chatHtmlOf, statusHtmlOf } from "./chat-html.js";
+import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
 export interface ChatReplies {
@@ -128,6 +129,32 @@ async function sendHtml(parts: Parts, message: Html, call: Call): Promise<number
   return sent.message_id;
 }
 
+// A piece whose HTML Telegram cannot read goes again as plain text, so the owner still gets the
+// answer; the log names the message, never its words.
+async function sendPiece(
+  parts: Parts,
+  message: { readonly chatId: number; readonly piece: ChatHtml },
+  call: Call,
+): Promise<void> {
+  const { chatId, piece } = message;
+  try {
+    await sendHtml(parts, { chatId, html: piece.html }, call);
+  } catch (error) {
+    if (!isEntitiesUnparsed(error)) {
+      throw error;
+    }
+    const sent = await callBotApi("sendMessage", call.signal, async (signal) =>
+      parts.options.api.sendMessage(
+        chatId,
+        piece.plain,
+        { link_preview_options: { is_disabled: true } },
+        signal,
+      ),
+    );
+    parts.options.logger.info("telegram.chat_sent_plain", { messageId: sent.message_id });
+  }
+}
+
 function codeOf(error: ErrorOptions["cause"]): string {
   return error instanceof BinferenceError ? error.code : "unexpected";
 }
@@ -238,9 +265,9 @@ async function answered(parts: Parts, push: MessagePush, call: Call): Promise<vo
   if (chatId === undefined) {
     return;
   }
-  for (const html of chatHtmlOf(await named(parts, push, call))) {
+  for (const piece of chatHtmlOf(await named(parts, push, call))) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- the pieces reach the chat in order
-    await sendHtml(parts, { chatId, html }, call);
+    await sendPiece(parts, { chatId, piece }, call);
   }
   await removeStatus(parts, key, call);
 }
@@ -293,8 +320,9 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
  * gets one status message, edited about once a second while the agent works: how long it has
  * worked, or the text it has written so far. Its answer goes as new messages, which notify the
  * owner where an edit does not, and then the status message is deleted. A status line follows in
- * italics. Model text is always shown as text: escaped, with characters a reader cannot see
- * written out, split at 4,096 characters. Each edit of a status message is a preview: the bot's
+ * italics. Model text shows its Markdown as Telegram's rich text from a fixed set of tags over
+ * escaped text, with characters a reader cannot see written out, split at 4,096 characters; a
+ * message Telegram cannot parse goes again as plain text. Each edit of a status message is a preview: the bot's
  * throttler drops it rather than delay an answer or a card.
  */
 export function createChatReplies(options: ChatRepliesOptions): ChatReplies {

@@ -2,7 +2,7 @@ import { BinferenceError } from "@binference/core";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
-import { botApiFault } from "./bot-api-error.schema.js";
+import { botApiFault, isEntitiesUnparsed } from "./bot-api-error.schema.js";
 
 async function failedCall(refusal: Parameters<ReturnType<typeof createFakeBotApi>["failNext"]>[1]) {
   const botApi = createFakeBotApi();
@@ -34,6 +34,20 @@ describe("botApiFault", () => {
     const other = await failedCall({ status: 400, description: "Bad Request: chat not found" });
     expect(gone.details).toStrictEqual({ method: "sendMessage", status: 400, isTopicGone: true });
     expect(other.details).toStrictEqual({ method: "sendMessage", status: 400 });
+  });
+
+  it("marks a 400 about HTML Telegram cannot parse, and no other refusal", async () => {
+    const unparsed = await failedCall({
+      status: 400,
+      description: "Bad Request: can't parse entities: Unmatched end tag at byte offset 4",
+    });
+    const other = await failedCall({ status: 400, description: "Bad Request: chat not found" });
+    expect(unparsed.details).toStrictEqual({
+      method: "sendMessage",
+      status: 400,
+      isEntitiesUnparsed: true,
+    });
+    expect([isEntitiesUnparsed(unparsed), isEntitiesUnparsed(other)]).toStrictEqual([true, false]);
   });
 
   it("keeps a fault the bot's throttler raised as it is", () => {

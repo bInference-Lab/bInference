@@ -702,7 +702,9 @@ a hijacked Telegram account cannot redirect it.
   - The presser is authorized against the owner inside the engine.
   - `answerCallbackQuery` is sent right after the durable write.
 - **Formatting.** Messages use Telegram's HTML formatting; every value from outside (token names,
-  model text) is escaped ([rule 3](#rule-3)).
+  model text) is escaped ([rule 3](#rule-3)). The agent's chat text shows its Markdown in a fixed
+  set of tags over that escaped text, and never passes HTML of its own
+  ([decision 0370](DECISIONS.md#d0370)).
 - **Chat.** The engine relays the owner's messages to the agent runtime and sends its replies.
   Streaming is one status message edited in place (about once a second), then the final answer as a
   new message, because edits do not notify and results must.

@@ -6,6 +6,8 @@ const secondMs = 1000;
 const badRequestStatus = 400;
 // Telegram's words for a 400 about a topic the owner deleted: the message's thread is gone.
 const topicGone = /message thread not found|TOPIC_DELETED/iu;
+// Telegram's words for a 400 about a message's HTML it could not read.
+const entitiesUnparsed = /can't parse entities/iu;
 
 function refusal(method: string, error: GrammyError): BinferenceError {
   const status = error.error_code;
@@ -34,11 +36,16 @@ function refusal(method: string, error: GrammyError): BinferenceError {
     });
   }
   const gone = status === badRequestStatus && topicGone.test(error.description);
+  const unparsed = status === badRequestStatus && entitiesUnparsed.test(error.description);
   return new BinferenceError({
     code: "telegram.api_refused",
     message: "Telegram refused a Bot API call.",
     retryable: status >= 500,
-    details: gone ? { ...details, isTopicGone: true } : details,
+    details: {
+      ...details,
+      ...(gone && { isTopicGone: true }),
+      ...(unparsed && { isEntitiesUnparsed: true }),
+    },
   });
 }
 
@@ -87,7 +94,8 @@ export function isUnsentRequest(error: unknown): boolean {
 /**
  * Maps a failed Bot API call to a `BinferenceError`: `telegram.bad_token`, `telegram.poll_conflict`,
  * `telegram.flood` (with `retryAfterMs`), `telegram.api_refused` (with `isTopicGone` for a 400 about
- * a topic that no longer exists) or `telegram.unreachable`. A
+ * a topic that no longer exists, `isEntitiesUnparsed` for a 400 about HTML Telegram could not
+ * read) or `telegram.unreachable`. A
  * `BinferenceError` the bot's throttler raised, such as `telegram.preview_dropped`, stays as it is.
  * `telegram.unreachable` carries `isUnsent: true` only when no connection opened, so the request
  * never reached Telegram; any other network failure may have reached it. The Bot API's own error
@@ -115,6 +123,11 @@ export function botApiFault(error: unknown, method: string): BinferenceError {
     message: `The Bot API call ${method} got no answer.`,
     details: { method },
   });
+}
+
+/** Whether a fault is Telegram's 400 for a message whose HTML it could not read. */
+export function isEntitiesUnparsed(error: unknown): boolean {
+  return error instanceof BinferenceError && error.details["isEntitiesUnparsed"] === true;
 }
 
 /**
