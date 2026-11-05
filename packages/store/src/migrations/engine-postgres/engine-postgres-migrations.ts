@@ -29,6 +29,16 @@ import { migration as sealKey } from "./0027_seal_key.js";
 import { migration as agentInbox } from "./0028_agent_inbox.js";
 import { migration as cardPlaces } from "./0029_card_places.js";
 import { migration as telegramTopics } from "./0030_telegram_topics.js";
+import { migration as orderCards } from "./0031_order_cards.js";
+import { migration as fillNotices } from "./0032_fill_notices.js";
+import { migration as modelBudget } from "./0033_model_budget.js";
+import { migration as intentAssets } from "./0034_intent_assets.js";
+import { migration as questions } from "./0035_questions.js";
+import { migration as ownerAgent } from "./0036_owner_agent.js";
+import { migration as cardAutoAsks } from "./0037_card_auto_asks.js";
+import { migration as walletRoles } from "./0038_wallet_roles.js";
+import { migration as extraLaunchWallets } from "./0039_extra_launch_wallets.js";
+import { migration as scheduleRuns } from "./0040_schedule_runs.js";
 
 /** The engine schema's Postgres migrations, oldest first. Released files never change. */
 export const enginePostgresMigrations: readonly PostgresMigration[] = [
@@ -62,4 +72,14 @@ export const enginePostgresMigrations: readonly PostgresMigration[] = [
   agentInbox,
   cardPlaces,
   telegramTopics,
+  orderCards,
+  fillNotices,
+  modelBudget,
+  intentAssets,
+  questions,
+  ownerAgent,
+  cardAutoAsks,
+  walletRoles,
+  extraLaunchWallets,
+  scheduleRuns,
 ];
