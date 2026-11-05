@@ -58,3 +58,9 @@ Rules for this package:
   delete a file: Windows refuses to delete a file a connection holds.
 - `src/dialect/` runs Kysely's compiled SQL synchronously on `node:sqlite`, with a cache of
   prepared statements per connection that `openConnection` turns on.
+- A task takes a `StoreConnection` and reaches it only through `createSyncKysely` (decision 0369).
+  On Postgres the same task runs on a task thread, the database's worker entry started by
+  `startPostgresTaskThread`: each statement runs in the transaction `postgresWrite` or
+  `postgresRead` holds on the thread that started it, and `createPostgresStoreHost` binds the
+  adapters to one install's schema. Postgres reports no `insertId`: a task that runs there reads
+  a new key with `returning`.

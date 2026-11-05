@@ -19,6 +19,11 @@
       "types": "./dist/testing.d.mts",
       "default": "./dist/testing.mjs"
     },
+    "./postgres": {
+      "@binference/source": "./src/postgres.ts",
+      "types": "./dist/postgres.d.mts",
+      "default": "./dist/postgres.mjs"
+    },
     "./agent-worker": {
       "@binference/source": "./src/databases/agent.worker.ts",
       "default": "./dist/databases/agent.worker.mjs"
@@ -28,7 +33,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/databases/engine.worker.ts src/databases/agent.worker.ts --unbundle --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/postgres.ts src/databases/engine.worker.ts src/databases/agent.worker.ts --unbundle --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

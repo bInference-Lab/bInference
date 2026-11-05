@@ -134,12 +134,64 @@ export const summarize: StoreTask<null, ProbeSummary> = defineTask({
   },
 });
 
+const seconds = z.number().nonnegative();
+
+/** Postgres only: holds a statement on the server for the given seconds, in a read. */
+export const sleepOnServer: StoreTask<number, null> = defineTask({
+  name: "probe.sleep",
+  access: "read",
+  input: seconds,
+  output: z.null(),
+  run(database, input) {
+    const { kysely, execute } = createSyncKysely<ProbeTables>(database);
+    execute(
+      kysely.selectNoFrom((expression) =>
+        expression.fn("pg_sleep", [expression.val(input)]).as("slept"),
+      ),
+    );
+    return null;
+  },
+});
+
+/** Postgres only: records a write, then holds a statement on the server for a second. */
+export const recordThenSleep: StoreTask<ProbeWrite, number> = defineTask({
+  name: "probe.record_then_sleep",
+  access: "write",
+  input: probeWriteSchema,
+  output: z.number().int(),
+  run(database, input) {
+    const value = recordWrite.handle(database, input);
+    sleepOnServer.handle(database, 1);
+    return z.number().int().parse(value);
+  },
+});
+
+/**
+ * Postgres only: takes the transaction's advisory lock 7 as its first statement, so a test sees
+ * when the task's snapshot is taken, then records a write.
+ */
+export const recordAfterLock: StoreTask<ProbeWrite, number> = defineTask({
+  name: "probe.record_after_lock",
+  access: "write",
+  input: probeWriteSchema,
+  output: z.number().int(),
+  run(database, input) {
+    const { kysely, execute } = createSyncKysely<ProbeTables>(database);
+    execute(
+      kysely.selectNoFrom((expression) =>
+        expression.fn("pg_advisory_xact_lock", [expression.val(7)]).as("locked"),
+      ),
+    );
+    return z.number().int().parse(recordWrite.handle(database, input));
+  },
+});
+
 /** The probe database: the engine's `meta` migration, the probe tables and the probe tasks. */
 export const probeDatabase: DatabaseDefinition = {
   name: "probe",
   synchronous: "normal",
   migrations: [meta, probeTables],
-  tasks: [recordWrite, failAfterWrite, summarize],
+  tasks: [recordWrite, failAfterWrite, summarize, sleepOnServer, recordThenSleep, recordAfterLock],
 };
 
 /** The probe database's worker entry. */

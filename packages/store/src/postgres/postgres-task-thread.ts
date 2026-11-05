@@ -16,7 +16,7 @@ import { type RunControl, startTaskRun, type TaskRun } from "./task-run.js";
  * How long a task waits for one statement's answer by default: a second past the server's
  * `statement_timeout`, so a statement the server ends is answered before the task gives up.
  */
-const taskWaitMs: number = postgresLimits.statementTimeoutMs + 1_000;
+export const taskWaitMs: number = postgresLimits.statementTimeoutMs + 1_000;
 
 const startTimeoutMs = 30_000;
 const maxWaitingRuns = 10_000;
@@ -33,7 +33,7 @@ export interface PostgresTaskThreadOptions {
 }
 
 /** One task to run: its name, the install's schema and its encoded input. */
-interface TaskJob {
+export interface TaskJob {
   readonly task: string;
   readonly schema: string;
   readonly input: WorkerValue;
