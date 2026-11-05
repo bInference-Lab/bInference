@@ -7,9 +7,10 @@ const faultKeys: Readonly<Record<string, string>> = {
   "custody.privy_unreachable": "fault.privyUnreachable",
   "custody.privy_busy": "fault.privyBusy",
   "custody.privy_failed": "fault.privyFailed",
-  "custody.privy_refused": "fault.privyFailed",
   "custody.privy_malformed": "fault.privyFailed",
-  "custody.privy_credentials": "fault.privyFailed",
+  "custody.privy_refused": "fault.privyRefused",
+  "custody.privy_credentials": "fault.privyRefused",
+  "custody.privy_aggregations_full": "fault.privyAggregationsFull",
   "custody.signers_read_back": "fault.signersReadBack",
   "telegram.unreachable": "fault.telegramUnreachable",
   "telegram.flood": "fault.telegramBusy",
@@ -23,12 +24,19 @@ const faultKeys: Readonly<Record<string, string>> = {
   "signer.agent_key_not_stored": "fault.agentKeyNotStored",
 };
 
+// A refusal names the call Privy refused and its status, which a report needs; no retry clears it.
+function detailOf(error: BinferenceError, name: "path" | "status"): string {
+  const value = error.details[name];
+  return value === undefined ? "?" : String(value);
+}
+
 /**
  * What init tells the owner about a fault one of its steps threw: the message of its code, with
- * the code in it for the faults that share one message, or the unexpected-fault message. The
- * fault's own text never reaches the owner.
+ * the code, the call's path and Privy's status in it for the faults that share one message, or the
+ * unexpected-fault message. The fault's own text never reaches the owner.
  */
 export function initFaultOf(error: BinferenceError): InitRefusal {
   const { code } = error;
-  return { code, key: faultKeys[code] ?? "fault.unexpected", values: { code } };
+  const values = { code, path: detailOf(error, "path"), status: detailOf(error, "status") };
+  return { code, key: faultKeys[code] ?? "fault.unexpected", values };
 }

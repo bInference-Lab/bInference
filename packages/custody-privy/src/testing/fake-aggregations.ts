@@ -38,7 +38,7 @@ export function createAggregation(state: FakePrivyState, body: JsonValue): HttpR
     return failure(400, "invalid_data", "The request body does not match the schema.");
   }
   if (state.aggregations.size >= maxAggregations) {
-    return failure(400, "invalid_data", "An app holds at most 10 aggregations.");
+    return failure(400, "invalid_data", "App has reached the maximum number of aggregations");
   }
   const made = {
     id: newFakeId(state),

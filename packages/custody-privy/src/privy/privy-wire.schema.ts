@@ -116,22 +116,32 @@ function jsonOf(text: string): unknown {
   }
 }
 
+// Privy names a full app only in its error text, under the generic code `invalid_data`.
+const appFullText = /maximum number of aggregations/i;
+
 /**
  * Reads Privy's answer to `POST /v1/aggregations` from its body text: the aggregation, when the
- * body is one, and the documented error code the body names, when it names one.
+ * body is one, the documented error code the body names, when it names one, and whether Privy
+ * says the app already holds the most aggregations it keeps.
  */
 export function readAggregationAnswer(body: string): {
   readonly record?: AggregationRecord;
   readonly code?: PrivyErrorCode;
+  readonly isAppFull: boolean;
 } {
   const json = jsonOf(body);
   const wire = parsed(aggregationWire, json);
   const code = readPrivyErrorCode(json);
+  const isAppFull = appFullText.test(parsed(failureWire, json)?.error ?? "");
   const record =
     wire === undefined
       ? undefined
       : { id: wire.id, ownerId: wire.owner_id, windowSeconds: wire.window.seconds };
-  return { ...(record === undefined ? {} : { record }), ...(code === undefined ? {} : { code }) };
+  return {
+    ...(record === undefined ? {} : { record }),
+    ...(code === undefined ? {} : { code }),
+    isAppFull,
+  };
 }
 
 const ruleRefWire = z.object({ id: privyId, name: z.string() });

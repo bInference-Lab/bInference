@@ -119,8 +119,9 @@ async function within<T>(
  * Node SDK has no call for it, so the package writes this request by hand, as Privy's
  * stateful-policy recipe does: `POST /v1/aggregations` with the app's Basic auth, through the
  * `Http` port, within the call's timeout. Answers the aggregation's id once Privy's answer names
- * the owner and the window asked. Faults as every write: busy, refused credentials, refused,
- * failed, unreachable, malformed.
+ * the owner and the window asked. An app that already holds the most aggregations Privy keeps
+ * throws `custody.privy_aggregations_full`, which no retry clears. Other faults as every write:
+ * busy, refused credentials, refused, failed, unreachable, malformed.
  */
 export async function createAggregation(
   settings: PrivySettings,
@@ -131,12 +132,12 @@ export async function createAggregation(
   return within(settings, post, {
     signal,
     read: (response) => {
-      const { record: made, code } = readAggregationAnswer(response.body);
+      const { record: made, code, isAppFull } = readAggregationAnswer(response.body);
       if (response.status < 200 || response.status > 299) {
-        throw statusFault(call, {
-          status: response.status,
-          ...(code === undefined ? {} : { code }),
-        });
+        const answer = { status: response.status, ...(code === undefined ? {} : { code }) };
+        throw response.status === 400 && isAppFull
+          ? privyFault("custody.privy_aggregations_full", call, answer)
+          : statusFault(call, answer);
       }
       const { owner, definition } = request;
       if (made?.ownerId !== owner || made.windowSeconds !== definition.windowSeconds) {

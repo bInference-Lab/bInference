@@ -72,6 +72,13 @@ describe("createAggregation", () => {
     ["custody.privy_busy", answer(429, { error: "Too many requests" })],
     ["custody.privy_credentials", answer(401, { error: "Invalid app ID or app secret." })],
     ["custody.privy_refused", answer(400, { error: "Invalid body." })],
+    [
+      "custody.privy_aggregations_full",
+      answer(400, {
+        error: "App has reached the maximum number of aggregations",
+        code: "invalid_data",
+      }),
+    ],
     ["custody.privy_failed", answer(500, { error: "Internal error." })],
     ["custody.privy_malformed", answer(200, { ...made, owner_id: "anotherquorum00000000000" })],
     ["custody.privy_malformed", answer(200, { id: made.id })],
