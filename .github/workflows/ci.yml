@@ -65,11 +65,54 @@ jobs:
         uses: ./.github/actions/pushed-base
 
       # The checks that compare with a base (the decision lock, the migration lock, the size
-      # baseline) compare with master before this push; without one, with the parent commit.
+      # baseline) compare with master before this push; without one, with the parent commit. The
+      # Postgres tests run in their own job, on a Postgres service only Linux runners offer.
       - name: pnpm check
         env:
           BASE_REF: ${{ steps.base.outputs.base || 'HEAD~1' }}
+          BINFERENCE_TEST_POSTGRES: "off"
         run: pnpm check
+
+  # The store's Postgres tests (*.postgres.test.ts) against the oldest Postgres it supports, in a
+  # service container pinned by digest. The server trusts connections from the runner only.
+  postgres:
+    name: Postgres store
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: docker.io/library/postgres:17.11@sha256:653186fe15006c099d2fb3bc1d8461c1dee9d036c43f2e5fdaf4f22e5e601876
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.10.0"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Postgres tests
+        env:
+          BINFERENCE_TEST_POSTGRES_URL: postgres://postgres@127.0.0.1:5432/postgres
+        run: pnpm vitest run --project postgres --maxWorkers=50%
 
   # The platform's contracts on the runner's own keychain and login items. They change the
   # machine, so only CI turns them on.

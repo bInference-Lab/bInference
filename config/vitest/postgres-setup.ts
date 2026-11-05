@@ -9,6 +9,7 @@ export const testPostgresImage =
   "docker.io/library/postgres:17.11@sha256:653186fe15006c099d2fb3bc1d8461c1dee9d036c43f2e5fdaf4f22e5e601876";
 
 const urlVariable = "BINFERENCE_TEST_POSTGRES_URL";
+const switchVariable = "BINFERENCE_TEST_POSTGRES";
 const container = "binference-test-postgres";
 const dockerTimeoutMs = 60_000;
 
@@ -52,20 +53,29 @@ async function startContainer(): Promise<string> {
 /**
  * The Postgres project's global setup. It gives the tests `inject("postgres")`: the server that
  * BINFERENCE_TEST_POSTGRES_URL names, or else one container it starts on Docker and removes at the
- * end. With neither, it gives an empty URL and says why the Postgres tests skip.
+ * end. With neither, or with BINFERENCE_TEST_POSTGRES set to `off`, it gives an empty URL and says
+ * why the Postgres tests skip.
  */
+function skip(project: TestProject, why: string): () => Promise<void> {
+  project.provide("postgres", "");
+  project.vitest.logger.warn(`Skipping the Postgres tests: ${why}`);
+  return async () => undefined;
+}
+
 export async function setup(project: TestProject): Promise<() => Promise<void>> {
   const named = process.env[urlVariable] ?? "";
   if (named !== "") {
     project.provide("postgres", named);
     return async () => undefined;
   }
+  if (process.env[switchVariable] === "off") {
+    return skip(project, `${switchVariable} is off; a CI job of their own runs them.`);
+  }
   if (!(await dockerAnswers())) {
-    project.provide("postgres", "");
-    project.vitest.logger.warn(
-      `Skipping the Postgres tests: set ${urlVariable} to a Postgres 17 server, or start Docker so they run on ${testPostgresImage}.`,
+    return skip(
+      project,
+      `set ${urlVariable} to a Postgres 17 server, or start Docker so they run on ${testPostgresImage}.`,
     );
-    return async () => undefined;
   }
   project.provide("postgres", await startContainer());
   project.vitest.logger.log(`Postgres tests: ${testPostgresImage} in container ${container}.`);

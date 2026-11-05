@@ -130,7 +130,8 @@
       "outputs": []
     },
     "//#test": {
-      "outputs": ["coverage/**"]
+      "outputs": ["coverage/**"],
+      "env": ["BINFERENCE_TEST_POSTGRES", "BINFERENCE_TEST_POSTGRES_URL"]
     },
     "//#check:gates": {
       "outputs": [],
