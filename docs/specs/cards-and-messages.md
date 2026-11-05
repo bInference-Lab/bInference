@@ -1388,6 +1388,13 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   it has shown for 4 seconds. A status line of section 8.1 follows in italics. The agent's words
   show their Markdown as Telegram's rich text by the rules of section 1, with every character a
   reader cannot see written as `\u{…}`; markup the model writes in HTML shows as text.
+- **The partial reply mode** ([decision 0376](../DECISIONS.md#d0376)). With
+  `telegram.replies.stream` set to `"partial"`, the answer grows in one message instead: first sent
+  once it holds 30 characters, edited at most once a second, its first 4,000 characters shown;
+  while a tool runs and no text is being written, it shows what the status message would. At the
+  end it is edited into the answer's first message in place, and the rest of a long answer goes as
+  new messages; when that edit fails, the whole answer goes as new messages and the preview is
+  deleted once it has shown for 4 seconds.
 - **While the agent works** ([decision 0372](../DECISIONS.md#d0372)). The bot shows Telegram's
   typing indicator in the chat from the turn's start, renewed every 4 seconds, until the turn
   ends; after 5 failures in a row it stops for the turn.

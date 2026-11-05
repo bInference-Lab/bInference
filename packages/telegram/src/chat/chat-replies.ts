@@ -4,14 +4,13 @@ import type { Formatter, MessageLocale } from "@binference/i18n";
 import { type ChatPush, chatPushOf } from "@binference/protocol";
 import type { Api } from "grammy";
 import { z } from "zod";
-import { isEntitiesUnparsed } from "../api/bot-api-error.schema.js";
-import { callBotApi } from "../api/call-bot-api.js";
 import { escapeHtml } from "../format/escape-html.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
+import { createAnswerPreview } from "./answer-preview.js";
+import { sendHtml, sendPiece } from "./answer-sends.js";
 import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 import { type ChatTyping, startTyping } from "./chat-typing.js";
-import { resendUnsent } from "./resend-unsent.js";
 import { createStatusMessage, type StatusMessage } from "./status-message.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
@@ -46,6 +45,17 @@ export interface ChatRepliesOptions {
    * and status line starts with its agent's name (decision 0204); left out, none does.
    */
   readonly agentNames?: (call: Call) => Promise<ReadonlyMap<string, string>>;
+  /** How replies show as config.json5 holds it now, read as each turn starts; left out, `progress`. */
+  readonly replies?: () => ReplySettings;
+}
+
+/**
+ * How the agent's replies show while a turn runs (decision 0376): `progress` shows a status
+ * message once work starts and the answer as new messages; `partial` grows the answer in one
+ * message that becomes the answer in place.
+ */
+export interface ReplySettings {
+  readonly stream: "progress" | "partial";
 }
 
 /** One running turn in the owner's chat: its chat and its status message. */
@@ -92,47 +102,6 @@ function words(parts: Parts, key: string, values?: Readonly<Record<string, strin
   return parts.formatter().message(key, values);
 }
 
-// One message of the answer, sent again while it provably never left.
-async function sendText(
-  parts: Parts,
-  message: { readonly chatId: number; readonly text: string; readonly mode: "html" | "plain" },
-  call: Call,
-): Promise<{ readonly message_id: number }> {
-  const format = message.mode === "html" ? { parse_mode: "HTML" as const } : {};
-  const options = { ...format, link_preview_options: { is_disabled: true } };
-  const { clock } = parts.options;
-  return resendUnsent(
-    async () =>
-      callBotApi("sendMessage", call.signal, async (signal) =>
-        parts.options.api.sendMessage(message.chatId, message.text, options, signal),
-      ),
-    { clock, signal: call.signal },
-  );
-}
-
-async function sendHtml(parts: Parts, message: { chatId: number; html: string }, call: Call) {
-  await sendText(parts, { chatId: message.chatId, text: message.html, mode: "html" }, call);
-}
-
-// A piece whose HTML Telegram cannot read goes again as plain text, so the owner still gets the
-// answer; the log names the message, never its words.
-async function sendPiece(
-  parts: Parts,
-  message: { readonly chatId: number; readonly piece: ChatHtml },
-  call: Call,
-): Promise<void> {
-  const { chatId, piece } = message;
-  try {
-    await sendHtml(parts, { chatId, html: piece.html }, call);
-  } catch (error) {
-    if (!isEntitiesUnparsed(error)) {
-      throw error;
-    }
-    const sent = await sendText(parts, { chatId, text: piece.plain, mode: "plain" }, call);
-    parts.options.logger.info("telegram.chat_sent_plain", { messageId: sent.message_id });
-  }
-}
-
 // The status message goes once it showed long enough; the replies keep the wait until it is done.
 function removeStatus(parts: Parts, showing: TurnShowing | undefined): void {
   if (showing === undefined) {
@@ -177,7 +146,9 @@ async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> 
   forgetEarlier(parts, push.agent);
   const { api, clock, logger } = parts.options;
   const label = (): string => words(parts, "telegram.chat.working");
-  const message = createStatusMessage({ api, bot: parts.bot, clock, logger, label }, chatId);
+  const statusParts = { api, bot: parts.bot, clock, logger, label };
+  const isPartial = parts.options.replies?.().stream === "partial";
+  const message = (isPartial ? createAnswerPreview : createStatusMessage)(statusParts, chatId);
   const typing = startTyping({ api, clock, logger }, chatId);
   const reply = { isGiven: false };
   parts.turns.set(key, { agent: push.agent, chatId, status: message, typing, reply });
@@ -218,6 +189,20 @@ async function notDelivered(
 }
 
 // The answer goes as new messages, which notify where an edit does not; then the status goes.
+// The answer's messages still to send. In the partial mode the preview becomes the first one in
+// place, which notifies nobody; any other way, every one goes as a new message.
+async function piecesLeft(
+  parts: Parts,
+  at: { readonly push: MessagePush; readonly showing: TurnShowing | undefined },
+  call: Call,
+): Promise<{ readonly pieces: readonly ChatHtml[]; readonly isInPlace: boolean }> {
+  const pieces = chatHtmlOf(await named(parts, at.push, call));
+  const [first, ...rest] = pieces;
+  const isInPlace =
+    first !== undefined && (await at.showing?.status.finishInPlace(first, call.signal)) === true;
+  return { pieces: isInPlace ? rest : pieces, isInPlace };
+}
+
 async function answered(parts: Parts, push: MessagePush, call: Call): Promise<void> {
   const showing = parts.turns.get(keyOf(push));
   await showing?.status.freeze();
@@ -225,14 +210,16 @@ async function answered(parts: Parts, push: MessagePush, call: Call): Promise<vo
   if (chatId === undefined) {
     return;
   }
+  const { pieces, isInPlace } = await piecesLeft(parts, { push, showing }, call);
   try {
-    for (const piece of chatHtmlOf(await named(parts, push, call))) {
+    for (const piece of pieces) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- the pieces reach the chat in order
-      await sendPiece(parts, { chatId, piece }, call);
+      await sendPiece(parts.options, { chatId, piece }, call);
     }
   } catch (error) {
     call.signal.throwIfAborted();
-    await notDelivered(parts, { chatId, ...(showing === undefined ? {} : { showing }) }, call);
+    const at = showing === undefined || isInPlace ? {} : { showing };
+    await notDelivered(parts, { chatId, ...at }, call);
     showing?.typing.stop();
     parts.turns.delete(keyOf(push));
     throw error;
@@ -259,7 +246,7 @@ async function status(parts: Parts, push: StatusPush, call: Call): Promise<void>
   }
   if (chatId !== undefined) {
     const line = await named(parts, { agent: push.agent, text: statusLine(parts, push) }, call);
-    await sendHtml(parts, { chatId, html: statusHtmlOf(line) }, call);
+    await sendHtml(parts.options, { chatId, html: statusHtmlOf(line) }, call);
   }
 }
 
@@ -304,7 +291,7 @@ async function ended(parts: Parts, push: EndedPush, call: Call): Promise<void> {
     { agent: push.agent, text: words(parts, "telegram.chat.noAnswer") },
     call,
   );
-  await sendHtml(parts, { chatId: showing.chatId, html: escapeHtml(text) }, call);
+  await sendHtml(parts.options, { chatId: showing.chatId, html: escapeHtml(text) }, call);
 }
 
 // An agent's question, or its launch draft, is a reply of its running turn, which another part of

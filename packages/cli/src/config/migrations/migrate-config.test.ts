@@ -228,7 +228,7 @@ describe("migrate config", () => {
       confirmBotToken: { fromKeychain: "confirm-bot" },
     };
     const thirteenth: JsonObject = { version: 13, telegram };
-    expect(migrateConfig(thirteenth, configMigrations)).toStrictEqual({
+    expect(migrateConfig(thirteenth, configMigrations.slice(0, 13))).toStrictEqual({
       ok: true,
       file: { version: 14, telegram: { botToken: { fromEnv: "BOT" } } },
       steps: [
@@ -247,9 +247,27 @@ describe("migrate config", () => {
       ],
     });
     const without: JsonObject = { version: 13, telegram: { botToken: { fromEnv: "BOT" } } };
-    expect(migrateConfig(without, configMigrations)).toMatchObject({
+    expect(migrateConfig(without, configMigrations.slice(0, 13))).toMatchObject({
       ok: true,
       steps: [{ from: 13, to: 14, edits: [] }],
+    });
+  });
+
+  it("moves a version 14 file to version 15 unchanged, naming the reply mode it adds", () => {
+    const fourteenth: JsonObject = { version: 14, telegram: { botToken: { fromEnv: "BOT" } } };
+    expect(migrateConfig(fourteenth, configMigrations.slice(0, 14))).toStrictEqual({
+      ok: true,
+      file: { version: 15, telegram: { botToken: { fromEnv: "BOT" } } },
+      steps: [
+        {
+          from: 14,
+          to: 15,
+          summary:
+            'Adds telegram.replies.stream, how the agent\'s replies show while it works, at "progress": ' +
+            "a status message once the agent works, then the answer as a new message.",
+          edits: [],
+        },
+      ],
     });
   });
 

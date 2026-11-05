@@ -47,6 +47,8 @@ const keysReadOnUse: readonly string[] = [
   "logging",
   "backups",
   "telegram.topicsPerAgent",
+  // Each turn in the owner's chat reads how its replies show when it starts.
+  "telegram.replies",
   // The runtime gets them again in its settings, applied from its next model call.
   "models",
   "search",

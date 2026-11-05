@@ -32,6 +32,7 @@ import {
   type OwnerCalls,
   type OwnerUpdateSink,
   type QuestionAnswers,
+  type ReplySettings,
   type TelegramCards,
   type TelegramLaunchDrafts,
   type TelegramIngress,
@@ -57,6 +58,8 @@ export interface TelegramParts {
    * on now, and where each agent's topic is kept. Left out, every notice goes to the chat itself.
    */
   readonly topics?: NoticeTopics;
+  /** How the agent's replies show as `telegram.replies` holds it now; left out, `progress`. */
+  readonly replies?: () => ReplySettings;
   /** The bot's token, which also checks the signature of each Mini App launch. */
   readonly botToken: Secret;
   /** The Mini App's HTTPS address, which `/console` opens; none without `remote.publicUrl`. */

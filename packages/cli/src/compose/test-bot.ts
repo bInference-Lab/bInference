@@ -14,6 +14,7 @@ import {
   unknownToken,
 } from "@binference/engine/testing";
 import type { IntentRequest, OrderRequest, OwnerInfo } from "@binference/protocol";
+import type { ReplySettings } from "@binference/telegram";
 import { createFakeBotApi, type FakeBotApi, fakeBotToken } from "@binference/telegram/testing";
 import { Api } from "grammy";
 import type { ComposedTelegram } from "./compose-telegram.js";
@@ -87,6 +88,8 @@ export interface BotOptions {
   readonly turns?: RunningTurns;
   /** The engine reads the unlisted token's facts on chain and the risk source finds it clean. */
   readonly knowsUnlisted?: boolean;
+  /** How the agent's replies show, read as each turn starts; left out, `progress`. */
+  readonly replies?: () => ReplySettings;
 }
 
 /** Fails a test whose fixture lacks what it needs. */
@@ -127,6 +130,7 @@ export async function bot(options: BotOptions = {}): Promise<Bot> {
     owners,
     copies: createMemoryCardCopyStore(),
     botToken: createSecret(fakeBotToken),
+    ...(options.replies === undefined ? {} : { replies: options.replies }),
   };
   const owner = options.owner === undefined ? {} : { owner: options.owner };
   const turns = options.turns === undefined ? {} : { turns: options.turns };

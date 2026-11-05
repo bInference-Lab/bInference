@@ -9,6 +9,16 @@ export interface TelegramConfig {
   /** Required with the `webhook` mode. */
   readonly webhookSecret?: SecretSource;
   readonly topicsPerAgent: boolean;
+  readonly replies: TelegramRepliesConfig;
+}
+
+/** How the agent's replies show in the owner's chat while a turn runs (decision 0376). */
+interface TelegramRepliesConfig {
+  /**
+   * `progress`: a status message once work starts, then the answer as a new message. `partial`:
+   * the answer grows in one message that becomes the final answer in place.
+   */
+  readonly stream: "progress" | "partial";
 }
 
 /** The wire format a model provider speaks. */
@@ -51,6 +61,19 @@ export interface ModelsConfig {
   readonly prices: Readonly<Record<string, ModelPriceConfig>>;
 }
 
+const telegramRepliesSchema: z.ZodType<TelegramRepliesConfig> = z
+  .strictObject({
+    stream: z
+      .enum(["progress", "partial"])
+      .prefault("progress")
+      .describe(
+        "progress shows a status message once the agent works, then the answer as a new message; " +
+          "partial grows the answer in one message that becomes the answer itself.",
+      ),
+  })
+  .prefault({})
+  .describe("How the agent's replies show in Telegram while it works.");
+
 /** Parses `telegram`. */
 export const telegramSchema: z.ZodType<TelegramConfig> = z
   .strictObject({
@@ -63,6 +86,7 @@ export const telegramSchema: z.ZodType<TelegramConfig> = z
       .boolean()
       .prefault(false)
       .describe("One direct-message topic per agent, once the bot has topics turned on."),
+    replies: telegramRepliesSchema,
   })
   .describe("The owner's Telegram bot.");
 

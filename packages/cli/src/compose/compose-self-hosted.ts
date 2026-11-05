@@ -245,9 +245,10 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const { host } = opening;
   const { log, stores } = opened;
   const { parts, custody, sending, locked } = wiring;
-  // `telegram.topicsPerAgent` is read for each notice, so a change in config.json5 applies to the next.
-  const topicsOn = () => opened.settings.current().telegram.topicsPerAgent;
-  const bot = opened.bot === undefined ? undefined : botParts(opened.bot, stores, topicsOn);
+  // `telegram.topicsPerAgent` is read for each notice and `telegram.replies` for each turn, so a
+  // change in config.json5 applies to the next.
+  const telegram = () => opened.settings.current().telegram;
+  const bot = opened.bot === undefined ? undefined : botParts(opened.bot, stores, telegram);
   return composeEngine(
     {
       ...custodyPartsOf(custody),

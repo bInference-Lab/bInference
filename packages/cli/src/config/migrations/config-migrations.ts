@@ -99,6 +99,13 @@ export const configMigrations: readonly ConfigMigration[] = [
         .filter((path) => valueAt(file, path) !== undefined)
         .map((path) => ({ kind: "remove", path })),
   },
+  {
+    from: 14,
+    summary:
+      'Adds telegram.replies.stream, how the agent\'s replies show while it works, at "progress": ' +
+      "a status message once the agent works, then the answer as a new message.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

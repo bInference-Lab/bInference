@@ -67,7 +67,10 @@ Rules for this package:
   `src/chat/preview-message.ts`) shows only once a `chat/progress` line arrives, with a fixed
   label or the text written before the latest tool as its headline, and is edited at most once a
   second when that changes; then the answer goes as new messages and the status message is
-  deleted once it has shown for 4 seconds. Model text goes out as Telegram HTML
+  deleted once it has shown for 4 seconds. With `telegram.replies.stream` at `partial`
+  (`ChatRepliesOptions.replies`, read as each turn starts, decision 0376), the turn's message is
+  `src/chat/answer-preview.ts` instead: the answer grows in it from 30 characters and it is edited
+  into the answer's first message in place. Model text goes out as Telegram HTML
   only through `src/chat/chat-html.ts`: every line through `displayOutsideText`, then its Markdown
   drawn by `src/format/rich-html.ts` and split by `src/split/split-rich-lines.ts`, a paragraph
   break preferred, at most 4,000 characters each, tables as fixed-width grids (decision 0374), each

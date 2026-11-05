@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225), [0230](../DECISIONS.md#d0230), [0296](../DECISIONS.md#d0296) and [0347](../DECISIONS.md#d0347);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225), [0230](../DECISIONS.md#d0230), [0296](../DECISIONS.md#d0296), [0347](../DECISIONS.md#d0347) and [0376](../DECISIONS.md#d0376);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -137,12 +137,13 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 
 ### 6.2 `telegram`
 
-| Key                       | Type                       | Default     | Applies | Meaning                                                                                                      |
-| ------------------------- | -------------------------- | ----------- | ------- | ------------------------------------------------------------------------------------------------------------ |
-| `telegram.botToken`       | Secret                     | required    | restart | The owner's BotFather token                                                                                  |
-| `telegram.mode`           | `"polling"` \| `"webhook"` | `"polling"` | restart | How updates arrive                                                                                           |
-| `telegram.webhookSecret`  | Secret                     | none        | restart | Required with `"webhook"`, or the engine refuses to start                                                    |
-| `telegram.topicsPerAgent` | boolean                    | `false`     | live    | One DM topic per agent, once the bot has topics in private chats on ([decision 0186](../DECISIONS.md#d0186)) |
+| Key                       | Type                        | Default      | Applies | Meaning                                                                                                                                                                                                                                                                                    |
+| ------------------------- | --------------------------- | ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `telegram.botToken`       | Secret                      | required     | restart | The owner's BotFather token                                                                                                                                                                                                                                                                |
+| `telegram.mode`           | `"polling"` \| `"webhook"`  | `"polling"`  | restart | How updates arrive                                                                                                                                                                                                                                                                         |
+| `telegram.webhookSecret`  | Secret                      | none         | restart | Required with `"webhook"`, or the engine refuses to start                                                                                                                                                                                                                                  |
+| `telegram.topicsPerAgent` | boolean                     | `false`      | live    | One DM topic per agent, once the bot has topics in private chats on ([decision 0186](../DECISIONS.md#d0186))                                                                                                                                                                               |
+| `telegram.replies.stream` | `"progress"` \| `"partial"` | `"progress"` | live    | How the agent's replies show while it works, read as each turn starts ([decision 0376](../DECISIONS.md#d0376)): `progress` shows a status message once the agent works, then the answer as new messages; `partial` grows the answer in one message that becomes its first message in place |
 
 Version 14 removed `telegram.groups` and `telegram.confirmBotToken`, which no part read: the bot
 answers only the owner's private chat, and confirmations come from the owner's one bot, the CLI and
@@ -262,7 +263,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 14,
+  version: 15,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

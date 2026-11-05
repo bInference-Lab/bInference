@@ -239,6 +239,35 @@ describe("the bot joined to the engine", () => {
     ]);
   });
 
+  it("grows the answer in one message in the partial mode, read as the turn starts", async () => {
+    const turns = createRunningTurns();
+    const setting = { stream: "progress" as "progress" | "partial" };
+    const test = await bot({ turns, replies: () => setting });
+    const { handlers } = test.composed.engine;
+    await ownerWrites(test);
+    turns.startRuntime(runtimeToken);
+    const taken = await takenMessage(test);
+    const turn = { agent, session: taken.session, turn: taken.turn };
+    const start = { ...turn, messages: [taken.message], outsideContent: false };
+    setting.stream = "partial";
+    await handlers["turn/start"]({ args: start, caller: runtime, ...live });
+    const draft = { ...turn, text: "The chart is calm today, with no big moves", final: false };
+    await handlers["turn/say"]({ args: draft, caller: runtime, ...live });
+    await test.telegram.idle();
+    await test.clock.advance(1_000);
+    await test.telegram.idle();
+    const say = { ...turn, text: "The chart is calm today, with no big moves.", final: true };
+    await handlers["turn/say"]({ args: say, caller: runtime, ...live });
+    const end = { agent, turn: taken.turn, outcome: "ok" } as const;
+    await handlers["turn/end"]({ args: end, caller: runtime, ...live });
+    await test.clock.advance(5_000);
+    await test.telegram.idle();
+    expect(test.botApi.sent()).toHaveLength(1);
+    expect(test.botApi.messages().map(({ text }) => text)).toStrictEqual([
+      "The chart is calm today, with no big moves.",
+    ]);
+  });
+
   it("shows an order card for a token the registry does not list by what it answered", async () => {
     const test = await bot({ knowsUnlisted: true });
     await createOrder(test, stopLossUnlisted);

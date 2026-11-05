@@ -1,5 +1,5 @@
 {
-  "version": 14,
+  "version": 15,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -159,6 +159,23 @@
             "description": "One direct-message topic per agent, once the bot has topics turned on.",
             "default": false,
             "type": "boolean"
+          },
+          "replies": {
+            "description": "How the agent's replies show in Telegram while it works.",
+            "default": {},
+            "type": "object",
+            "properties": {
+              "stream": {
+                "description": "progress shows a status message once the agent works, then the answer as a new message; partial grows the answer in one message that becomes the answer itself.",
+                "default": "progress",
+                "type": "string",
+                "enum": [
+                  "progress",
+                  "partial"
+                ]
+              }
+            },
+            "additionalProperties": false
           }
         },
         "required": [

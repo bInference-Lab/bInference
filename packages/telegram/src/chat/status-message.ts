@@ -1,3 +1,4 @@
+import type { ChatHtml } from "./chat-html.js";
 import {
   createPreviewMessage,
   type PreviewMessage,
@@ -23,6 +24,11 @@ export interface StatusMessage extends Omit<PreviewMessage, "wake" | "wakeIn" | 
   draft(text: string): void;
   /** A tool of the turn starts: the message shows now, the text written before it as headline. */
   work(): void;
+  /**
+   * Makes the message the answer's first message, when its reply mode does: answers whether it
+   * now shows `first` and stays. A status message never does.
+   */
+  finishInPlace(first: ChatHtml, signal: AbortSignal): Promise<boolean>;
 }
 
 /** Creates the status message of a turn, for the owner's chat. */
@@ -37,6 +43,7 @@ export function createStatusMessage(parts: StatusParts, chatId: number): StatusM
     remove: async () => message.remove(),
     idle: async () => message.idle(),
     close: () => message.close(),
+    finishInPlace: async () => Promise.resolve(false),
     draft(text) {
       draft = text;
     },

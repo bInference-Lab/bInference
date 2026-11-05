@@ -23,6 +23,7 @@
   "telegram.mode": "接收更新的方式。",
   "telegram.webhookSecret": "用于校验 Webhook 调用；使用 webhook 方式时必填。",
   "telegram.topicsPerAgent": "机器人开启话题后，每个 Agent 使用一个私聊话题。",
+  "telegram.replies.stream": "progress 在 Agent 开始工作时显示一条状态消息，然后以新消息发送回答；partial 让回答在同一条消息中逐步生成，这条消息就是回答本身。",
   "models": "模型服务商和 Agent 使用的模型。",
   "models.providers": "模型服务商，按名称列出。",
   "models.providers.<provider>.kind": "服务商的接口格式。",

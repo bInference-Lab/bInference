@@ -11,6 +11,7 @@ import type { OwnerImageSource } from "@binference/engine/chat";
 import { createBotApiFetch, createBotThrottlers, createTelegramImages } from "@binference/telegram";
 import { Api } from "grammy";
 import type { SecretSource } from "../config/schema/secret-source.schema.js";
+import type { TelegramConfig } from "../config/schema/telegram-models.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
 import type { TelegramParts } from "./compose-telegram.js";
 
@@ -68,19 +69,20 @@ export async function openBot(options: OpenBotOptions): Promise<OpenedBot | unde
 /**
  * The bot as the engine serves it: its `Api` and token, and the owner, the card copies and the
  * agents' topics `engine.sqlite` keeps, so a pairing, the cards' copies and each agent's topic
- * outlast a restart (decisions 0139 and 0186). `topicsOn` reads `telegram.topicsPerAgent` as it
- * is now.
+ * outlast a restart (decisions 0139 and 0186). `telegram` reads the `telegram` config as it is
+ * now, so `topicsPerAgent` and `replies` apply from their next use.
  */
 export function botParts(
   bot: OpenedBot,
   stores: Pick<EngineStores, "owners" | "cardCopies" | "agentTopics">,
-  topicsOn: () => boolean,
+  telegram: () => TelegramConfig,
 ): TelegramParts {
   return {
     api: bot.api,
     owners: stores.owners,
     copies: stores.cardCopies,
-    topics: { isOn: topicsOn, store: stores.agentTopics },
+    topics: { isOn: () => telegram().topicsPerAgent, store: stores.agentTopics },
+    replies: () => telegram().replies,
     botToken: bot.token,
     ...(bot.images === undefined ? {} : { images: bot.images }),
   };
