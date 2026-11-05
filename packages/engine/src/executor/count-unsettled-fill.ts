@@ -1,7 +1,9 @@
+import { err, type Result } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import { announceOrder, fillOrderOf, fillRuleOf } from "../orders/fill-ends.js";
 import { landedFillWrite, type LandedTrade } from "../orders/fill-landed.js";
+import type { OrderRecord } from "../orders/order-record.js";
 import { orderPush } from "../orders/order-view-of.js";
 import { type NoticePart, noticePush } from "../pushes/notice-push.js";
 import { ruleOrderKind } from "../webhooks/alert-fill-notices.js";
@@ -12,12 +14,22 @@ import type { ExecutionRun } from "./executor-run.js";
 // The owner's notice of a fill counted on its order before its trade could be valued.
 const unvaluedNoticeKey = "notice.fillUnvalued";
 
-// Counts an order's fill as its quote said it would trade, in one write on its order; answers the
-// order's kind as its notice names it, or `undefined` when the order cannot take it.
-async function countOnOrder(
+// How many times a count that lost its order's or rule's version to another write, such as another
+// fill or a skip told in the rule's notice hour, is read and written again.
+const countTries = 3;
+
+// The count's write on the order as read now, and what the order store answered it; `undefined`
+// when the intent fills no stored order, `order_refused` when the order cannot take the fill.
+async function countOnce(
   run: ExecutionRun,
   call: { readonly finalized: IntentSnapshot; readonly settled: LandedTrade },
-): Promise<NoticePart | undefined> {
+): Promise<
+  | {
+      readonly order: OrderRecord;
+      readonly counted: Result<readonly OrderRecord[], "counted" | "stale" | "order_refused">;
+    }
+  | undefined
+> {
   const { parts, signal } = run;
   const { finalized, settled } = call;
   const orderId = fillOrderOf(finalized);
@@ -29,10 +41,32 @@ async function countOnOrder(
   const landing = { order, snapshot: finalized, settled, isBooked: false, atMs, signal };
   const write = await landedFillWrite(parts, landing);
   const counted =
-    write === undefined ? undefined : await parts.orders.recordLandedFill(write, { signal });
-  if (counted?.ok !== true) {
-    const errorCode = counted?.ok === false ? counted.error : "order_refused";
-    parts.log.warn("executor.fill_uncounted", { intentId: finalized.record.id, errorCode });
+    write === undefined
+      ? err("order_refused" as const)
+      : await parts.orders.recordLandedFill(write, { signal });
+  return { order, counted };
+}
+
+// Counts an order's fill as its quote said it would trade, in one write on its order; answers the
+// order's kind as its notice names it, or `undefined` when the order cannot take it. A count that
+// lost its order's version to another write, such as another fill, is tried again on a fresh read.
+async function countOnOrder(
+  run: ExecutionRun,
+  call: { readonly finalized: IntentSnapshot; readonly settled: LandedTrade },
+  tries: number = countTries,
+): Promise<NoticePart | undefined> {
+  const { parts, signal } = run;
+  const once = await countOnce(run, call);
+  if (once === undefined) {
+    return undefined;
+  }
+  const { order, counted } = once;
+  if (!counted.ok && counted.error === "stale" && tries > 1) {
+    return countOnOrder(run, call, tries - 1);
+  }
+  if (!counted.ok) {
+    const errorCode = counted.error;
+    parts.log.warn("executor.fill_uncounted", { intentId: call.finalized.record.id, errorCode });
     return undefined;
   }
   counted.value.forEach((moved) => parts.publish(orderPush(moved, "order/changed")));
@@ -40,10 +74,6 @@ async function countOnOrder(
   await announceOrder({ orders, clock, publish }, order.id, signal);
   return { key: "order.kind", values: { kind: order.kind } };
 }
-
-// How many times a rule's count that lost its rule's version to another write, such as a skip told
-// in the rule's notice hour, is read and written again.
-const countTries = 3;
 
 // Counts a rule's fill as its quote said it would trade, ending its alert `filled` alone (decision
 // 0342); answers the rule as its notice names it, or `undefined` when the alert cannot take it. A

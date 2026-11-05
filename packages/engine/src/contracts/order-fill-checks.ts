@@ -132,6 +132,12 @@ export async function countsALandedFillOnce(subject: OrderStoreSubject): Promise
     landed.value.map(({ fills, version }) => ({ fills, version })),
     [{ fills: 1, version: 2 }],
   );
+  assert.ok((await intents.create(intentDraft(subject, 4), live())).ok);
+  const late = {
+    moves: [counted],
+    fill: { ...fill, id: fixtureId("fil", 11), intentId: fixtureId("int", 4) },
+  };
+  assert.deepEqual(await store.recordLandedFill(late, live()), { ok: false, error: "stale" });
   const again = {
     moves: [{ ...counted, expectedVersion: 2, fills: 2 }],
     fill: { ...fill, id: fixtureId("fil", 9) },

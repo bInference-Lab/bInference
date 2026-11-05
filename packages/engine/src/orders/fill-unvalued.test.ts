@@ -1,4 +1,4 @@
-import { err, type Id } from "@binference/core";
+import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { driveUntil, eventsOf, flush } from "../executor/test-executor.js";
 import type { OrderStore } from "./ports.js";
@@ -47,12 +47,13 @@ describe("a live fill whose trade cannot be valued", () => {
     expect(settled?.state).toBe("reconciled");
   });
 
-  it("tells nothing and stays uncounted when its order moved before the count", async () => {
+  it("counts on a fresh read when another write moved its order before the first count", async () => {
     const silent = silentTransfers();
+    const moved = movedBeforeCounts(1);
     const bench = await startLiveFills({
       receipts: silent.wrap,
       limits: { settleAfterBlocks: 3 },
-      executorOrders: movedBeforeCount,
+      executorOrders: moved.wrap,
     });
     const order = await activeOrderOf(bench);
     await fillOnce(bench, order.id);
@@ -63,6 +64,32 @@ describe("a live fill whose trade cannot be valued", () => {
     await driveUntil(bench, id, { states: [], blocks: 5 });
     await flush();
 
+    expect(moved.tries()).toBe(2);
+    expect(await storedOrder(bench.test, order.id)).toMatchObject({ state: "filled", fills: 1 });
+    expect(eventsOf(bench)).not.toContain("executor.fill_uncounted:stale");
+    expect(executorNotices(bench)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: "notice.fillUnvalued" })]),
+    );
+  });
+
+  it("tells nothing and stays uncounted when its order moved before each of three counts", async () => {
+    const silent = silentTransfers();
+    const moved = movedBeforeCounts(100);
+    const bench = await startLiveFills({
+      receipts: silent.wrap,
+      limits: { settleAfterBlocks: 3 },
+      executorOrders: moved.wrap,
+    });
+    const order = await activeOrderOf(bench);
+    await fillOnce(bench, order.id);
+    const [fill] = await liveFillsOf(bench);
+    const id = fill?.id as Id<"int">;
+
+    await driveUntil(bench, id, { states: ["finalized"] });
+    await driveUntil(bench, id, { states: [], blocks: 5 });
+    await flush();
+
+    expect(moved.tries()).toBe(3);
     expect(await storedOrder(bench.test, order.id)).toMatchObject({ state: "active", fills: 0 });
     expect(eventsOf(bench)).toContain("executor.fill_uncounted:stale");
     expect(executorNotices(bench)).not.toEqual(
@@ -71,7 +98,38 @@ describe("a live fill whose trade cannot be valued", () => {
   });
 });
 
-// An order store whose order another write moved before each landed fill's count.
-function movedBeforeCount(store: OrderStore): OrderStore {
-  return { ...store, recordLandedFill: async () => err("stale") };
+// An order store where another write moves the order between each of the first `times` landed
+// fills' reads and their counts, so each of those counts is stale; it counts the tries.
+function movedBeforeCounts(times: number) {
+  const state = { tries: 0 };
+  return {
+    tries: () => state.tries,
+    wrap: (store: OrderStore): OrderStore => ({
+      ...store,
+      recordLandedFill: async (write, call) => {
+        state.tries += 1;
+        if (state.tries <= times) {
+          await moveAside(store, write.fill.orderId, call);
+        }
+        return store.recordLandedFill(write, call);
+      },
+    }),
+  };
+}
+
+// A move that changes nothing a fill reads but the order's version.
+async function moveAside(
+  store: OrderStore,
+  id: Id<"ord">,
+  call: { readonly signal: AbortSignal },
+): Promise<void> {
+  const order = await store.get(id, call);
+  const move = {
+    id,
+    expectedVersion: order?.version ?? 0,
+    state: order?.state ?? "active",
+    atMs: order?.changedAtMs ?? 0,
+    expiryNoticedAtMs: order?.changedAtMs ?? 0,
+  };
+  expect(await store.move([move], call)).toMatchObject({ ok: true });
 }

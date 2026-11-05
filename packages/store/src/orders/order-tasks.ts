@@ -29,7 +29,7 @@ import { copyBuysTask } from "./copy-buy-rows.js";
 import { fillCountsTask } from "./fill-count-rows.js";
 import {
   checkOrderFill,
-  checkOwnFill,
+  checkOrderFillWrite,
   insertOrderFill,
   countedFillOf,
   isCounted,
@@ -168,9 +168,7 @@ export const recordLandedFillTask: StoreTask<
     if (isCounted(database, fill.intentId)) {
       return err("counted");
     }
-    checkOrderFill(database, fill);
-    checkOwnFill(database, write);
-    if (!checkOrderMoves(database, write.moves).ok) {
+    if (!checkOrderFillWrite(database, write).ok) {
       return err("stale");
     }
     const orders = writeOrderMoves(database, write.moves);

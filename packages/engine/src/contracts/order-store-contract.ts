@@ -5,6 +5,10 @@ import type { FillSize } from "@binference/protocol";
 import { testCoin } from "../intents/test-intents.js";
 import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
 import {
+  answersALandingBehindAnotherFillAsStale,
+  answersAMoveBehindAnotherFillAsStale,
+} from "./fill-version-checks.js";
+import {
   holdsTrackedWalletSlots,
   listsCopyBuys,
   pagesCopyBuysInWriteOrder,
@@ -211,6 +215,16 @@ function liveFillChecks(create: () => Promise<OrderStoreSubject>): readonly Cont
       "links a late landing with its fill on its order",
       create,
       linksALateLandingWithItsFill,
+    ),
+    checkOn(
+      "answers a move's fill behind another fill's order move as stale",
+      create,
+      answersAMoveBehindAnotherFillAsStale,
+    ),
+    checkOn(
+      "answers a late landing's fill behind another fill's order move as stale",
+      create,
+      answersALandingBehindAnotherFillAsStale,
     ),
     checkOn("lists every live fill that holds its agent's line", create, listsTheFillsInFlight),
   ];

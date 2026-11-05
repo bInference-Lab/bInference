@@ -18,8 +18,8 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
-import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
-import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
+import { checkOrderFillWrite, insertOrderFill } from "../orders/order-fill-writes.js";
+import { writeOrderMoves } from "../orders/order-writes.js";
 import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
 import { checkAlertEnd, isRuleDeleted, writeAlertEnd } from "../webhooks/webhook-rule-writes.js";
 import { writeCardChanges } from "./card-writes.js";
@@ -192,8 +192,8 @@ export function checkRuleFill(
   return checked.ok ? ok(undefined) : err("stale");
 }
 
-// A fill's order write, checked before anything is written: an order a move may not take, or one
-// at another version, is the move's `stale`.
+// A fill's order write, checked before anything is written: an alert or rule another write moved,
+// or an order at another version or one a move may not take, is the move's `stale`.
 function checkFillWrite(
   database: StoreConnection,
   change: IntentChange,
@@ -206,9 +206,7 @@ function checkFillWrite(
   if (order === undefined) {
     return ok(undefined);
   }
-  checkOrderFill(database, order.fill);
-  checkOwnFill(database, order);
-  return checkOrderMoves(database, order.moves).ok ? ok(undefined) : err("stale");
+  return checkOrderFillWrite(database, order);
 }
 
 /**

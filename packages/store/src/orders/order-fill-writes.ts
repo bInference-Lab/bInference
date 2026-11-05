@@ -1,6 +1,6 @@
 // The order fill rows: written beside a skip, or inside the move of the intent that filled.
 
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, err, ok, type Result } from "@binference/core";
 import {
   type FillAnnouncement,
   type OrderFillQuery,
@@ -16,6 +16,7 @@ import type { OrderFillsTable } from "../databases/order-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonField, optionalJsonText, orNull } from "../rows/column-values.js";
+import { checkOrderMoves } from "./order-writes.js";
 
 function toOrderFillRecord(row: Selectable<OrderFillsTable>): OrderFillRecord {
   return orderFillRecordSchema.parse({
@@ -79,11 +80,9 @@ export function checkOrderFill(database: StoreConnection, fill: OrderFillRecord)
   }
 }
 
-/**
- * Checks that a `filled` row comes with its own order's move to one fill more than the order has
- * stored (decision 0197); one without it throws `store.constraint`, which rolls the write back.
- */
-export function checkOwnFill(database: StoreConnection, write: OrderFillWrite): void {
+// A `filled` row comes with its own order's move to one fill more than the order has stored
+// (decision 0197); one without it throws `store.constraint`, which rolls the write back.
+function checkOwnFill(database: StoreConnection, write: OrderFillWrite): void {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const stored = takeFirst(
     kysely.selectFrom("orders").select("fills").where("id", "=", write.fill.orderId),
@@ -95,6 +94,25 @@ export function checkOwnFill(database: StoreConnection, write: OrderFillWrite): 
       details: { fill: write.fill.id },
     });
   }
+}
+
+/**
+ * Checks a fill's write on its order before anything of it is written, for each write that counts
+ * one (a landed fill, the intent move that carries one, a late landing): its row, then its moves
+ * under their versions, then its order's own move to one fill more. A move behind its order's
+ * version is `stale`, so a writer that lost the order to another fill reads it again; only a write
+ * that read the order as it stands is judged by its count. A broken rule throws `store.constraint`.
+ */
+export function checkOrderFillWrite(
+  database: StoreConnection,
+  write: OrderFillWrite,
+): Result<undefined, "stale"> {
+  checkOrderFill(database, write.fill);
+  if (!checkOrderMoves(database, write.moves).ok) {
+    return err("stale");
+  }
+  checkOwnFill(database, write);
+  return ok(undefined);
 }
 
 /** Writes a fill row `checkOrderFill` passed, and answers it as stored. */

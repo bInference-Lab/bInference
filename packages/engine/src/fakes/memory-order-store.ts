@@ -35,8 +35,9 @@ export interface MemoryOrderStore extends OrderStore, MemoryOrderFills {
   /** Writes orders `checkNow` answered, once the rest of the write has passed its checks. */
   saveNow(orders: readonly OrderRecord[]): void;
   /**
-   * Checks a fill's write on its order inside an intent's move: its moves as `checkNow` does,
-   * answering a refusal as `stale`, and its row. A broken rule throws.
+   * Checks a fill's write on its order inside an intent's move or a late landing, as a landed fill
+   * is checked: its row, then its moves as `checkNow` does, answering a refusal as `stale`, then
+   * its order's own move to one fill more. A broken rule throws.
    */
   checkWriteNow(write: OrderFillWrite): Result<readonly OrderRecord[], "stale">;
 }
@@ -185,16 +186,39 @@ function moveAll(
   return checked;
 }
 
+interface FillParts {
+  readonly orders: Orders;
+  readonly options: MemoryOrderStoreOptions;
+  readonly fills: MemoryOrderFills;
+}
+
+// A fill's write on its order, as each write that counts one checks it: its row, its moves under
+// their versions, `stale` when one moved on, then its order's own move to one fill more.
+function checkFillWrite(
+  store: FillParts,
+  write: OrderFillWrite,
+): Result<readonly OrderRecord[], "stale"> {
+  const { orders, options, fills } = store;
+  fills.checkFillNow(write.fill);
+  const checked = checkNow(orders, options, {
+    moves: structuredClone(write.moves),
+    unfrozen: new Set(),
+  });
+  if (!checked.ok) {
+    return err("stale");
+  }
+  if (!recordsOwnFill(write, orders.get(write.fill.orderId)?.fills ?? 0)) {
+    throw constraintFault(`fill ${write.fill.id} lands without its order's own move`);
+  }
+  return checked;
+}
+
 // A landed live fill counted apart from its intent's move: once per intent, all or nothing.
 function landFill(
-  store: {
-    readonly orders: Orders;
-    readonly options: MemoryOrderStoreOptions;
-    readonly fills: MemoryOrderFills;
-  },
+  store: FillParts,
   write: OrderFillWrite,
 ): Result<readonly OrderRecord[], "counted" | "stale"> {
-  const { orders, options, fills } = store;
+  const { orders, fills } = store;
   const { fill } = write;
   if (fill.outcome !== "filled" || fill.intentId === undefined) {
     throw constraintFault(`fill ${fill.id} is no filled row naming its intent`);
@@ -202,13 +226,9 @@ function landFill(
   if (fills.isCountedNow(fill.intentId)) {
     return err("counted");
   }
-  fills.checkFillNow(fill);
-  if (!recordsOwnFill(write, orders.get(fill.orderId)?.fills ?? 0)) {
-    throw constraintFault(`fill ${fill.id} lands without its order's own move`);
-  }
-  const checked = checkNow(orders, options, { moves: write.moves, unfrozen: new Set() });
+  const checked = checkFillWrite(store, write);
   if (!checked.ok) {
-    return err("stale");
+    return checked;
   }
   saveNow(orders, checked.value);
   fills.saveFillNow(fill);
@@ -295,17 +315,7 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
   return {
     ...fills,
     ...rowReadsOf({ orders, rowsNow: () => fills.rowsNow(), intentNow: options.intentNow }),
-    checkWriteNow: (write) => {
-      const checked = checkNow(orders, options, {
-        moves: structuredClone(write.moves),
-        unfrozen: new Set(),
-      });
-      fills.checkFillNow(write.fill);
-      if (!recordsOwnFill(write, orders.get(write.fill.orderId)?.fills ?? 0)) {
-        throw constraintFault(`fill ${write.fill.id} lands without its order's own move`);
-      }
-      return checked.ok ? checked : err("stale");
-    },
+    checkWriteNow: (write) => checkFillWrite({ orders, options, fills }, write),
     checkNow: (moves, unfrozen) =>
       checkNow(orders, options, { moves: structuredClone(moves), unfrozen }),
     saveNow: (moved) => {

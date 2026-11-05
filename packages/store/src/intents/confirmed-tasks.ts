@@ -1,5 +1,4 @@
 import { err, ok, type Result } from "@binference/core";
-import type { OrderFillWrite } from "@binference/engine/orders";
 import {
   type ConfirmedIntent,
   confirmedIntentSchema,
@@ -12,8 +11,8 @@ import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
-import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
-import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
+import { checkOrderFillWrite, insertOrderFill } from "../orders/order-fill-writes.js";
+import { writeOrderMoves } from "../orders/order-writes.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -110,14 +109,6 @@ export const confirmedSinceTask: StoreTask<ConfirmedQuery, readonly ConfirmedInt
   },
 );
 
-// An order write a late landing carries, checked before anything is written: its row and its
-// order's own move, which throw on a broken rule, and its moves, `false` when one is stale.
-function checkLandedOrder(database: StoreConnection, order: OrderFillWrite): boolean {
-  checkOrderFill(database, order.fill);
-  checkOwnFill(database, order);
-  return checkOrderMoves(database, order.moves).ok;
-}
-
 /**
  * Links a late landing to its intent (decision 0147), leaving the intent as it is, with its order's
  * write (decision 0211) or its rule fill's alert end (decision 0342): an intent with one already is
@@ -151,7 +142,7 @@ export const recordLandedLateTask: StoreTask<
     const { order, alert } = landing;
     const ruleFill = { intent: landing.intentId, isLanding: true };
     const isAlertStale = alert !== undefined && !checkRuleFill(database, { alert, ...ruleFill }).ok;
-    if (isAlertStale || (order !== undefined && !checkLandedOrder(database, order))) {
+    if (isAlertStale || (order !== undefined && !checkOrderFillWrite(database, order).ok)) {
       return err("stale");
     }
     if (order !== undefined) {
