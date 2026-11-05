@@ -16,6 +16,10 @@ permissions (section 2.8); and their retention (section 4). Binance agents and t
 their tables from spec 7, which waits on the owner's Binance account; this spec adds none for
 them until then.
 
+Proposed on 2026-11-05: the Postgres form of both databases, with the agent leases and the
+database roles of bInference Cloud (section 6, decisions [0365](../DECISIONS.md#d0365) to
+[0367](../DECISIONS.md#d0367)). It waits for the owner's approval.
+
 <a id="section-1"></a>
 
 ## 1. Files and settings
@@ -419,3 +423,320 @@ the engine stopped ([decision 0265](../DECISIONS.md#d0265)).
 ledger chain walk, the unique-nonce index check, and a comparison of `schema_version` with the
 binary's expected version. `check --fix` runs `VACUUM` and `ANALYZE` after a backup when free pages
 exceed 20%.
+
+<a id="section-6"></a>
+
+## 6. Postgres
+
+Proposed on 2026-11-05 for the owner's approval, with decisions [0365](../DECISIONS.md#d0365),
+[0366](../DECISIONS.md#d0366) and [0367](../DECISIONS.md#d0367). Sections 1 to 5 stay the SQLite
+databases as they are. This section adds their Postgres form, which the public Postgres store
+adapter implements, passing the same contract suites. Self-hosted runs SQLite only in v1. A part
+marked **Cloud only** exists only in bInference Cloud.
+
+<a id="section-6-1"></a>
+
+### 6.1 Server and driver
+
+Postgres 17 or later, through Kysely's built-in `PostgresDialect` on `pg`
+([decision 0365](../DECISIONS.md#d0365)). Every connection uses TLS with the server's CA checked,
+except to the loopback address or a Unix socket. Each session sets `statement_timeout` 5 s,
+`lock_timeout` 2 s, `idle_in_transaction_session_timeout` 2 s, `TimeZone` UTC, an empty
+`search_path` and an `application_name` that names the service. The one extension the store needs
+is `pg_trgm`, for note search.
+
+Every write task runs at `SERIALIZABLE`, read write; every read task at `REPEATABLE READ`, read only.
+A write that fails with SQLSTATE `40001` or `40P01` runs again from its first read, at most three
+times more; then it fails `store.write_conflict`. A connection lost while `COMMIT` is in flight
+fails `store.commit_unknown` and is never retried. The worker keeps one writer per database: an
+install's write tasks run one at a time, in arrival order ([decision 0366](../DECISIONS.md#d0366)).
+
+<a id="section-6-2"></a>
+
+### 6.2 Schemas
+
+Each install keeps its engine tables in schema `engine_<install>` and its agent tables in
+`agent_<install>`, where `<install>` is the 32 lowercase hex digits of `meta.install_id`
+([decision 0367](../DECISIONS.md#d0367)). Each schema holds every table of its SQLite database, by
+the same name, with its own `meta` and `schema_version`, and the `counters` table of section 6.3.
+Every query names its schema. The same numbered migrations run on each install's schemas, each in
+one transaction with its version bump, and a build refuses an install whose schema version is newer
+than it knows ([decision 0062](../DECISIONS.md#d0062)).
+
+**Cloud only:** one Cloud database holds every user's install, each in its own pair of schemas, and
+the shared schema `cloud`, which holds `agent_leases` (section 6.5) and no install's data.
+
+<a id="section-6-3"></a>
+
+### 6.3 Types and checks
+
+Every column reads back as the value SQLite gives, so the store's row types and zod schemas serve
+both adapters.
+
+| SQLite                                                                          | Postgres                                                                                  |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `INTEGER` time, epoch milliseconds (`_at` and the other times)                  | `bigint`                                                                                  |
+| `INTEGER` flag, `CHECK (x IN (0, 1))`                                           | `smallint CHECK (x IN (0, 1))`                                                            |
+| Any other `INTEGER`: counts, basis points, nonces, versions, Telegram ids       | `bigint`, with the same `CHECK`                                                           |
+| `TEXT` decimal base units, USD micros and block numbers (the digits-only check) | `numeric(78,0) CHECK (x >= 0)`; a `realized_usd_micros` may be below zero                 |
+| `TEXT` JSON, `CHECK (json_valid(x))`                                            | `text COLLATE "C" CHECK (x IS JSON)`; `IS JSON ARRAY` where SQLite checks an array        |
+| Any other `TEXT`                                                                | `text COLLATE "C"`; a `GLOB` check becomes the same pattern as a regular expression (`~`) |
+| `INTEGER PRIMARY KEY` or `AUTOINCREMENT`, a write-order key                     | `bigint` primary key, set by an insert trigger from `counters` (below)                    |
+| A singleton row, `id INTEGER PRIMARY KEY CHECK (id = 1)`                        | `bigint PRIMARY KEY CHECK (id = 1)`                                                       |
+| A unique or partial index                                                       | The same index, with the same `WHERE`                                                     |
+| A trigger that raises (the ledger, the transcript)                              | A PL/pgSQL trigger that raises the same message                                           |
+| `notes_fts`, FTS5 with the trigram tokenizer                                    | A `pg_trgm` GIN index on `notes.text`                                                     |
+| `json_extract(x, '$.a.b')` in a query                                           | `x::jsonb #>> '{a,b}'`                                                                    |
+
+`numeric(78,0)` reads back as the decimal text SQLite stores. Text compares byte by byte under
+`COLLATE "C"`, as on SQLite, so a sort, an equality and a prefix range match the same rows.
+
+`counters` holds `name text COLLATE "C" PRIMARY KEY` and `last bigint NOT NULL`, one row per
+write-order key. An insert into a table with such a key takes `last + 1` from its row in the same
+transaction, so keys follow the order transactions commit and are never reused. No table uses an
+identity column or a sequence ([decision 0366](../DECISIONS.md#d0366)).
+
+The ledger's insert trigger checks that `seq` is the next key and `prev_hash` the hash of the entry
+before it; its update and delete triggers refuse, and no role holds `UPDATE` or `DELETE` on it. The
+transcript's triggers refuse an update, and a removal at or after `meta.prune_before`, as on SQLite.
+
+Section 5's checks become, on Postgres: the ledger chain walk, the unique-nonce index check and the
+schema version. Page checks, `VACUUM` and backups are the database service's; on Cloud the managed
+database keeps backups and restores to a point in time
+([ARCHITECTURE.md section 30](../ARCHITECTURE.md#section-30)).
+
+<a id="section-6-4"></a>
+
+### 6.4 Tables
+
+Every table of the migrated schema, which also holds `tx_sends` (each relay's answer to a send),
+`cards.callback_ref` and `safety.rescue_ceiling`. A column not named here maps by section 6.3. A
+write-order key is set from `counters`. The `seq` columns marked new come with an engine migration
+and an agent migration on SQLite as well, which fill existing rows in their current read order
+([decision 0366](../DECISIONS.md#d0366)).
+
+In the engine schema:
+
+| Table                    | Write-order key | `numeric(78,0)`                                                                                                                                                        | JSON text                                                                   | Also                                                                  |
+| ------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `address_book`           |                 |                                                                                                                                                                        |                                                                             | Partial unique `(agent_id, chain, address)` while not removed         |
+| `agent_inbox`            | `seq` (new)     |                                                                                                                                                                        | `payload`                                                                   |                                                                       |
+| `agents`                 |                 |                                                                                                                                                                        | `models`, `notifications`                                                   | Cloud: a trigger keeps `mode` from `paper` to `live` to the ingress   |
+| `alert_fires`            |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `alerts`                 |                 |                                                                                                                                                                        | `condition`                                                                 |                                                                       |
+| `approval_modes`         |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `arrivals`               | `id`            | `amount`, `value_usd_micros`                                                                                                                                           |                                                                             |                                                                       |
+| `backups`                |                 |                                                                                                                                                                        |                                                                             | Unused on Cloud                                                       |
+| `bridges`                |                 | `sent_amount`, `min_out`, `value_usd_micros`, `received`                                                                                                               |                                                                             | Partial uniques on `(to_chain, fill_tx)` and `refund_tx`              |
+| `budget_notices`         |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `card_messages`          |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `cards`                  |                 |                                                                                                                                                                        | `place`                                                                     |                                                                       |
+| `carried_outflows`       |                 | `value_usd_micros`                                                                                                                                                     |                                                                             |                                                                       |
+| `ceilings`               |                 | `per_tx_native`                                                                                                                                                        | `policy`                                                                    |                                                                       |
+| `cex_connections`        |                 |                                                                                                                                                                        | `scopes`                                                                    |                                                                       |
+| `config_journal`         | `id`            |                                                                                                                                                                        | `before`, `after`                                                           |                                                                       |
+| `confirmations`          |                 |                                                                                                                                                                        |                                                                             | Foreign key `(intent_id, card_version)` to `cards`                    |
+| `counters`               |                 |                                                                                                                                                                        |                                                                             | Postgres only (section 6.3)                                           |
+| `custody`                |                 |                                                                                                                                                                        |                                                                             | Singleton                                                             |
+| `daily_summaries`        |                 | `live_usd_micros`, `paper_usd_micros`                                                                                                                                  |                                                                             |                                                                       |
+| `departures`             | `id`            | `amount`, `gas_amount`                                                                                                                                                 |                                                                             |                                                                       |
+| `devices`                |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `engine_alive`           |                 |                                                                                                                                                                        |                                                                             | Singleton                                                             |
+| `executions`             | `id`            | `amount_in`, `fee_amount`, `amount_out`, `gas_amount`, `value_usd_micros`, `fee_usd_micros`, `gas_usd_micros`, `realized_usd_micros` (signed)                          |                                                                             |                                                                       |
+| `idempotency`            |                 |                                                                                                                                                                        | `result`                                                                    |                                                                       |
+| `identities`             |                 | `onchain_id`                                                                                                                                                           |                                                                             |                                                                       |
+| `inbox`                  | `id`            |                                                                                                                                                                        | `payload`                                                                   | Partial index on `handled_at`                                         |
+| `intent_events`          | `id`            |                                                                                                                                                                        | `cause`                                                                     |                                                                       |
+| `intents`                |                 | `value_usd_micros`                                                                                                                                                     | `request`, `plan`, `quote`, `risk`, `simulation`, `authorized_by`, `assets` | Partial unique on `draft_ref`                                         |
+| `jobs`                   |                 |                                                                                                                                                                        | `progress`, `result`, `error`                                               |                                                                       |
+| `late_landings`          |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `launches`               |                 | `block`                                                                                                                                                                | `insiders` (an array)                                                       |                                                                       |
+| `ledger`                 | `seq`           |                                                                                                                                                                        | `data`                                                                      | Append-only triggers (section 6.3)                                    |
+| `limits`                 |                 | `per_trade_usd_micros`, `rolling_day_usd_micros`, `liquidity_floor_usd_micros`, `model_budget_usd_micros`, `copy_per_buy_usd_micros`, `copy_per_leader_day_usd_micros` | `gas_reserve`, `venues`, `allow_tokens`, `deny_tokens`, `pending`           |                                                                       |
+| `meta`                   |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `mini_app_launches`      |                 |                                                                                                                                                                        |                                                                             | Unused on Cloud                                                       |
+| `mini_app_tickets`       |                 |                                                                                                                                                                        |                                                                             | Unused on Cloud                                                       |
+| `model_usage`            | `id`            | `usd_micros`                                                                                                                                                           |                                                                             |                                                                       |
+| `nonces`                 |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `notices`                | `seq` (new)     |                                                                                                                                                                        | `values`, `delivered`                                                       |                                                                       |
+| `order_fills`            | `seq` (new)     |                                                                                                                                                                        | `notices`                                                                   | Partial index on unannounced rows                                     |
+| `orders`                 |                 |                                                                                                                                                                        | `request`, `trigger_state`                                                  | Unique `intent_id`                                                    |
+| `outbox`                 | `id`            |                                                                                                                                                                        | `target`, `payload`                                                         |                                                                       |
+| `pair_codes`             |                 |                                                                                                                                                                        |                                                                             | Unused on Cloud                                                       |
+| `plugins`                |                 |                                                                                                                                                                        | `permissions`                                                               |                                                                       |
+| `positions`              |                 | `quantity`, `cost_usd_micros`, `realized_usd_micros` (signed)                                                                                                          |                                                                             |                                                                       |
+| `prices`                 |                 | `usd_micros`                                                                                                                                                           |                                                                             |                                                                       |
+| `question_messages`      |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `questions`              |                 |                                                                                                                                                                        | `choices`, `answer`                                                         | Partial unique on `agent_id` while open                               |
+| `risk_cache`             |                 |                                                                                                                                                                        | `result`                                                                    |                                                                       |
+| `safety`                 |                 |                                                                                                                                                                        | `rescue_ceiling`, `rescue_reach` (an array)                                 | Singleton                                                             |
+| `schedule_runs`          |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `schedules`              |                 |                                                                                                                                                                        | `when`                                                                      |                                                                       |
+| `send_levels`            |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `skills`                 | `id`            |                                                                                                                                                                        |                                                                             |                                                                       |
+| `stake_unbondings`       | `id`            | `amount`, `value_usd_micros`                                                                                                                                           |                                                                             | Partial indexes as on SQLite                                          |
+| `telegram_owner`         |                 |                                                                                                                                                                        |                                                                             | Singleton; unused on Cloud                                            |
+| `telegram_topics`        |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `tokens`                 |                 |                                                                                                                                                                        | `scopes`                                                                    |                                                                       |
+| `tracked_wallets`        |                 | `since_block`, `last_block`                                                                                                                                            |                                                                             |                                                                       |
+| `tx_sends`               |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `txs`                    |                 | `gas_price`                                                                                                                                                            | `relays`, `receipt`                                                         | Partial unique `(account, nonce)` while signed, sent, included, final |
+| `wallet_activity`        | `id`            | `block`, `amount`, `counter_amount`, `value_usd_micros`                                                                                                                |                                                                             |                                                                       |
+| `wallets`                |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `watch_cursors`          |                 | `block`                                                                                                                                                                |                                                                             |                                                                       |
+| `web_push_subscriptions` |                 |                                                                                                                                                                        |                                                                             |                                                                       |
+| `webhook_events`         | `id`            |                                                                                                                                                                        | `notices`                                                                   | Partial unique on `intent_id`                                         |
+| `webhook_rules`          |                 |                                                                                                                                                                        | `action`                                                                    | Partial unique on `intent_id`                                         |
+
+In the agent schema:
+
+| Table               | Write-order key | JSON text | Also                                                   |
+| ------------------- | --------------- | --------- | ------------------------------------------------------ |
+| `chat_queue`        | `seq` (new)     | `payload` |                                                        |
+| `counters`          |                 |           | Postgres only (section 6.3)                            |
+| `meta`              |                 |           | Holds `writer_fence` and `prune_before`, as on SQLite  |
+| `notes`             | `id`            |           | `pg_trgm` GIN index on `text`, in place of `notes_fts` |
+| `sessions`          |                 |           |                                                        |
+| `transcript_events` | `id`            | `content` | Refuse-change triggers (section 6.3)                   |
+| `turns`             |                 |           |                                                        |
+
+<a id="section-6-5"></a>
+
+### 6.5 Agent leases
+
+**Cloud only.** A worker holds an install's agents through `cloud.agent_leases`, and every write in
+the install's schemas carries the lease's fence, so a worker that lost the lease writes nothing
+([ARCHITECTURE.md section 30](../ARCHITECTURE.md#section-30)).
+
+| Column       | Type               | Holds                                                         |
+| ------------ | ------------------ | ------------------------------------------------------------- |
+| `install_id` | `text COLLATE "C"` | The install's `ins_` id                                       |
+| `agent_id`   | `text COLLATE "C"` | The agent's `agt_` id                                         |
+| `worker_id`  | `text COLLATE "C"` | The worker process holding it, unique per start; NULL if free |
+| `fence`      | `bigint`, `>= 1`   | Raised by one at every take                                   |
+| `taken_at`   | `bigint`           | When the holder took it                                       |
+| `renewed_at` | `bigint`           | The holder's last renewal                                     |
+| `expires_at` | `bigint`           | When it frees unless renewed                                  |
+
+Primary key `(install_id, agent_id)`; an index on `expires_at` for the take scan.
+
+- **The database's clock.** Every time in a lease rule is the database's `clock_timestamp()` in
+  epoch milliseconds, never a worker's clock.
+- **One install, one holder.** One engine and one agent runtime serve an install, so a worker takes
+  every lease of an install in one transaction, and all its rows carry the same fence. A take sets
+  `worker_id`, `fence = fence + 1`, `taken_at`, `renewed_at` and `expires_at`, and succeeds only
+  while every row of the install has expired. The service that makes an install's schemas inserts
+  its first rows free, with fence 1 and `expires_at` 0. The holder inserts the row of a new agent
+  with the install's fence, and deletes the row of a deleted agent.
+- **Renewal.** The holder renews every 2 seconds, setting `expires_at` 6 seconds ahead, only where
+  `worker_id` and `fence` are its own. A renewal that changes no row means the lease is lost: the
+  worker stops the install's engine and runtime at once and writes nothing more. A clean stop sets
+  `expires_at` to now. 2 and 6 seconds are starting values the failover suite tunes, so that a dead
+  worker's agents move within 10 seconds.
+- **The fence on every write.** A worker's write task's first statement, in its own transaction,
+  reads the install's rows `FOR SHARE`. Unless there are rows and each names this worker and its fence and has
+  not expired, the task fails `store.lease_lost` and changes nothing. A take updates the rows, so it
+  waits until every write that passed the check has ended; no write that passed commits after
+  another worker holds the install.
+- **A paused worker.** A worker paused inside a transaction loses it to
+  `idle_in_transaction_session_timeout`, which frees its locks; its next write fails the fence check.
+- **The writer fence stays.** `meta.writer_fence` in the agent schema still guards the runtime
+  within a worker ([spec 8, section 2.3](runtime.md#section-2-3)); the lease fence guards both
+  schemas across workers.
+- **Self-hosted** keeps no lease row: the engine lock holds the state folder. The lease port's
+  in-memory fake holds one lease for the self-hosted root.
+
+<a id="section-6-6"></a>
+
+### 6.6 Database roles
+
+**Cloud only.** Each Cloud service connects with its own role, and no role holds another's grants
+([ARCHITECTURE.md section 30](../ARCHITECTURE.md#section-30)). Secrets never live in the database:
+keys stay in KMS and the platform's secret store.
+
+| Role                  | Used by                          | On each install's schemas                                                                                                                                                                                                                                                                                                                                     | On `cloud`                                |
+| --------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `binference_migrator` | Deploys and new installs only    | Owns every schema and table; runs the migrations                                                                                                                                                                                                                                                                                                              | Owns `agent_leases`                       |
+| `binference_worker`   | The workers                      | `SELECT`, `INSERT`, `UPDATE` and `DELETE` on every table but these: `confirmations`, `ceilings`, `custody`, `wallets`, `address_book` and `meta` read only; `ledger` read and insert only; on `safety` it updates only `frozen_at`, `rescue_reach` and `version`                                                                                              | Reads and writes `agent_leases`           |
+| `binference_ingress`  | The official bot and the console | Inserts and replaces `confirmations` from a user's tap; inserts `inbox` and `webhook_events` and sets `webhook_rules.last_alert_at`; writes the owner-key records (`wallets`, `ceilings`, `custody`, `address_book`, and on `safety` the rescue address, its pending change, `rescue_ceiling` and the disclaimer); sets `agents.mode`; reads what these check | Reads `agent_leases`, to reach the holder |
+| `binference_signer`   | The signer service               | Reads `intents`, `cards`, `confirmations`, `orders`, `wallets`, `ceilings`, `limits`, `agents`, `safety` and `txs`; writes nothing                                                                                                                                                                                                                            | None                                      |
+| `binference_catalog`  | The listing catalog              | None                                                                                                                                                                                                                                                                                                                                                          | None                                      |
+
+- No role holds `UPDATE` or `DELETE` on `ledger`.
+- A worker cannot insert a confirmation, change a ceiling record, sign or read a key. The ingress
+  cannot sign: it holds no key and cannot write `txs`.
+- Two moves a worker makes on rows it may not write run as functions the migrator owns, each
+  checking its own rule: `apply_due_rescue()` moves a pending rescue address into
+  `safety.rescue_address` once `pending_rescue_at` has passed, and `raise_writer_fence()` raises
+  `meta.writer_fence`.
+- A trigger on `agents` refuses `mode` from `paper` to `live` for any role but the ingress, since
+  going live happens on binference.io.
+- `counters` takes `UPDATE` from every role that inserts into a table with a write-order key.
+- The signer service's own tables and the listing catalog's tables are specified with them, in their
+  own schemas; no other role reads them.
+
+<a id="section-6-7"></a>
+
+### 6.7 The order of each ordered read
+
+Every ordered read sorts on columns the schema holds and ends unique among the rows it reads
+([decision 0366](../DECISIONS.md#d0366)). A UUIDv7 id at the end gives the same order on both
+databases, but rows of one millisecond read in the order of its random bits, not the order they were
+written; "id tie" marks such a read. Each order here gets a contract case on both adapters.
+
+In the engine schema:
+
+| Table                              | Read                                       | Order                                                                  | Today                                                                |
+| ---------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `address_book`                     | An agent's saved addresses                 | `created_at`, `id`                                                     | Id tie                                                               |
+| `agent_inbox`                      | Untaken messages, paged                    | `seq`                                                                  | `created_at`, `id`: id tie in an arrival order                       |
+| `agents`                           | Every agent; the restore guards            | `created_at`, `id`; `id`                                               | Id tie                                                               |
+| `alert_fires`                      | An agent's rows past the newest 1,000      | `at` descending                                                        | Deletes by the time it finds, so a tie keeps the same rows           |
+| `alerts`                           | Pages, an agent's, the expiring            | `created_at`, `id`; `expires_at`, `id`                                 | Id tie                                                               |
+| `backups`                          | Every backup                               | `created_at`, `id`                                                     | Id tie                                                               |
+| `bridges`                          | Open bridges, paged                        | `sent_at`, `intent_id`                                                 | Id tie                                                               |
+| `card_messages`                    | A card's copies; an intent's copies        | (`cards.version`), `sent_at`, `message_id`, `surface`                  | Not unique without `surface`                                         |
+| `cards`                            | An intent's cards                          | `version`                                                              | Unique                                                               |
+| `config_journal`                   | Entries after a number                     | `id`                                                                   | Write-order key                                                      |
+| `confirmations`, `intents`         | Confirmed outflows of a day                | `at`, `intents.id`                                                     | Id tie                                                               |
+| `daily_summaries`                  | An agent's last summary                    | `date` descending                                                      | Unique for the agent                                                 |
+| `departures`                       | An intent's departures                     | `id`                                                                   | Write-order key                                                      |
+| `devices`                          | Every device                               | `created_at`, `id`                                                     | Id tie                                                               |
+| `executions`, `arrivals`           | A position's rows                          | `id`                                                                   | Write-order key                                                      |
+| `inbox`                            | Unhandled entries of a key prefix          | `id`                                                                   | Write-order key; the prefix range needs byte order                   |
+| `intent_events`                    | An intent's events; its first cause        | `id`                                                                   | Write-order key                                                      |
+| `intents`                          | Pages; the newest; fills in flight         | `changed_at`, `id`; `created_at`, `id` descending                      | Id tie                                                               |
+| `launches`                         | The launch feed                            | `launched_at`, `block`, `log_index`, `chain`, `token`, each descending | Not unique across chains; `block` cast to an integer                 |
+| `ledger`                           | The chain walk; the head                   | `seq`                                                                  | Write-order key                                                      |
+| `mini_app_tickets`                 | The oldest past 16                         | `issued_at`, `ticket_hash`, descending                                 | Unique                                                               |
+| `model_usage`                      | Spend by agent and model                   | `agent_id`, `model`                                                    | Unique per group                                                     |
+| `notices`                          | Notices after a cursor                     | `seq`                                                                  | `id`: a cursor can skip a notice of the same millisecond             |
+| `order_fills`                      | An order's fills, the newest written first | `at`, `seq`, descending                                                | `at`, `rowid`: no `rowid` on Postgres, and a restore may renumber it |
+| `order_fills`                      | Fills whose notices wait                   | `at`, `seq`                                                            | `at`, `id`: id tie                                                   |
+| `order_fills`, `orders`, `intents` | A leader's copy buys, paged                | `fill.at`, `fill.seq`                                                  | `fill.at`, `fill.id`: a page can skip a row of the same millisecond  |
+| `order_fills`                      | Skip counts by reason                      | count descending, `reason`                                             | Unique per group                                                     |
+| `orders`                           | Pages                                      | `created_at`, `id`                                                     | Id tie                                                               |
+| `outbox`                           | Queued deliveries                          | `id`                                                                   | Write-order key                                                      |
+| `positions`                        | A wallet's positions in one mode           | `asset`                                                                | Unique for the wallet and mode                                       |
+| `question_messages`                | A question's copies                        | `sent_at`, `chat_id`, `surface`                                        | Not unique without `surface`                                         |
+| `schedules`                        | An agent's; the due                        | `created_at`, `id`; `next_at`, `id`                                    | Id tie                                                               |
+| `stake_unbondings`                 | Open unbondings                            | `ready_at`, `id`                                                       | Write-order key                                                      |
+| `tokens`                           | Every token                                | `created_at`, `id`                                                     | Id tie                                                               |
+| `tracked_wallets`                  | Tracked accounts                           | `account`                                                              | Unique                                                               |
+| `tx_sends`                         | A transaction's sends                      | `attempt`, `place`                                                     | Unique                                                               |
+| `txs`                              | An account's by nonce; an intent's by step | `nonce`, `id`; `step`, `id`                                            | Id tie                                                               |
+| `wallet_activity`                  | A wallet's trades: pages, the newest       | `at`, `id`, descending; `id`                                           | Write-order key                                                      |
+| `wallets`                          | The install's wallets                      | `created_at`, `id`                                                     | Id tie, where the first wallet of a role is the one its agent uses   |
+| `web_push_subscriptions`           | A device's newest 4; its oldest            | `created_at`, `endpoint`                                               | Unique                                                               |
+| `webhook_events`                   | A rule's events, paged; the unannounced    | `id` descending; `id`                                                  | Write-order key                                                      |
+| `webhook_rules`                    | Pages                                      | `created_at`, `id`                                                     | Id tie                                                               |
+
+In the agent schema:
+
+| Table               | Read               | Order                | Today                                                |
+| ------------------- | ------------------ | -------------------- | ---------------------------------------------------- |
+| `chat_queue`        | A session's queue  | `seq`                | `received_at`, `message`: id tie in an arrival order |
+| `notes`             | An agent's notes   | `id`                 | Write-order key                                      |
+| `notes`             | A search           | relevance, then `id` | The relevance is each adapter's own (decision 0366)  |
+| `transcript_events` | A session's events | `seq`                | Unique per session                                   |
+| `turns`             | A session's turns  | `started_at`, `id`   | Id tie                                               |
