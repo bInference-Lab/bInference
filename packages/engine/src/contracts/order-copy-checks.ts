@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import type { AccountRef } from "@binference/chain";
 import type { OrderRequest } from "@binference/protocol";
 import { maxTrackedWallets } from "../alerts/alert-record.js";
+import type { OrderFillRecord } from "../orders/order-fill.js";
 import type { OrderDraft } from "../orders/order-record.js";
 import { walletCondition } from "./alert-fire-checks.js";
 import { intentDraft, intentMove } from "./intent-fixtures.js";
@@ -108,4 +109,23 @@ export async function listsCopyBuys(subject: OrderStoreSubject): Promise<void> {
   const after = { atMs: first?.atMs ?? 0, id: first?.id ?? fixtureId("fil", 0) };
   assert.deepEqual(await store.copyBuys({ ...query, limit: 1, after }, live()), all.slice(1));
   assert.deepEqual(await store.copyBuys({ ...query, fromMs: 21_001 }, live()), all.slice(1));
+}
+
+// Skip row `n` of order 1, at the one instant every such row shares.
+function rowOf(n: number): OrderFillRecord {
+  return { ...fillRow(1, n, "skipped"), atMs: 5_000 };
+}
+
+/**
+ * An order's rows written in one millisecond come back newest written first, whatever their ids
+ * say, so a copy take finds its own row among the newest (decision 0260).
+ */
+export async function listsRowsOfOneInstantAsWritten(subject: OrderStoreSubject): Promise<void> {
+  const { store } = subject;
+  await activeCopy(subject, 1, 1);
+  // Each row's id falls below the one written before it.
+  const numbers = Array.from({ length: 14 }, (_, index) => 20 - index);
+  await inOrder(numbers, async (n) => store.recordFill(rowOf(n), live()));
+  const newest = await store.fills({ orderId: fixtureId("ord", 1), limit: 12 }, live());
+  assert.deepEqual(newest, numbers.toReversed().slice(0, 12).map(rowOf));
 }

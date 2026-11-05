@@ -113,18 +113,20 @@ export function insertOrderFill(database: DatabaseSync, fill: OrderFillRecord): 
   return fill;
 }
 
-/** One order's fill rows, the newest first, then by id from the last. */
+/** One order's fill rows, the newest first, then the last written first. */
 export function listOrderFills(
   database: DatabaseSync,
   query: OrderFillQuery,
 ): readonly OrderFillRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  // Rows of one instant follow the row number, not their ids, whose bits after the millisecond
+  // are random (decision 0260).
   const select = kysely
     .selectFrom("order_fills")
     .selectAll()
     .where("order_id", "=", query.orderId)
     .orderBy("at", "desc")
-    .orderBy("id", "desc")
+    .orderBy("rowid", "desc")
     .limit(query.limit);
   return execute(select).rows.map(toOrderFillRecord);
 }

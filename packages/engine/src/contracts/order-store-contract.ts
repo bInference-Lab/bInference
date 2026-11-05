@@ -4,7 +4,11 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { FillSize } from "@binference/protocol";
 import { testCoin } from "../intents/test-intents.js";
 import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
-import { holdsTrackedWalletSlots, listsCopyBuys } from "./order-copy-checks.js";
+import {
+  holdsTrackedWalletSlots,
+  listsCopyBuys,
+  listsRowsOfOneInstantAsWritten,
+} from "./order-copy-checks.js";
 import { countsFillsAndSkips } from "./order-count-checks.js";
 import {
   announcesFillNotices,
@@ -210,6 +214,23 @@ function liveFillChecks(create: () => Promise<OrderStoreSubject>): readonly Cont
   ];
 }
 
+// A copy order's leader slot, its copy buys, and the rows its takes read (decision 0260).
+function copyChecks(create: () => Promise<OrderStoreSubject>): readonly ContractCheck[] {
+  return [
+    checkOn(
+      "holds a copy order's leader among 50 tracked wallets",
+      create,
+      holdsTrackedWalletSlots,
+    ),
+    checkOn("lists an agent's copy buys of a leader in any order state", create, listsCopyBuys),
+    checkOn(
+      "lists an order's rows of one instant newest written first",
+      create,
+      listsRowsOfOneInstantAsWritten,
+    ),
+  ];
+}
+
 /**
  * The checks every {@link OrderStore} adapter passes: orders created once and kept exact past 64
  * bits, a buy's spent asset and size among them, moves all or nothing under their versions, the rules no move may break, an order active
@@ -223,12 +244,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     checkOn("creates an order awaiting its card, once, its amounts exact", create, createsOrders),
     checkOn("keeps what a buy order spends and its size, exact", create, keepsBuySizes),
     checkOn("refuses an unknown agent or another agent's wallet", create, refusesStrangers),
-    checkOn(
-      "holds a copy order's leader among 50 tracked wallets",
-      create,
-      holdsTrackedWalletSlots,
-    ),
-    checkOn("lists an agent's copy buys of a leader in any order state", create, listsCopyBuys),
+    ...copyChecks(create),
     checkOn("moves orders under their versions, all or nothing", create, movesUnderVersion),
     checkOn(
       "refuses a move that breaks an order rule and writes nothing",

@@ -70,17 +70,18 @@ function checkFill(fills: Fills, options: MemoryOrderFillsOptions, fill: OrderFi
   }
 }
 
-// Newest first, then by id from the last, as the SQLite store pages them.
-function byNewest(left: OrderFillRecord, right: OrderFillRecord): number {
-  if (left.atMs !== right.atMs) {
-    return right.atMs - left.atMs;
-  }
-  return left.id < right.id ? 1 : -1;
+// Newest first, then the last written first, as the SQLite store pages them by row number: the
+// map keeps the order rows were written in, and the sort keeps it among rows of one instant.
+function newestWrittenFirst(rows: readonly OrderFillRecord[]): readonly OrderFillRecord[] {
+  return rows.toReversed().toSorted((left, right) => right.atMs - left.atMs);
 }
 
 // Oldest first, then by id, as the SQLite store pages the rows to announce.
 function byOldest(left: OrderFillRecord, right: OrderFillRecord): number {
-  return -byNewest(left, right);
+  if (left.atMs !== right.atMs) {
+    return left.atMs - right.atMs;
+  }
+  return left.id < right.id ? -1 : 1;
 }
 
 // Marks rows announced, keeping an earlier time; an unknown row, or one with no notices, throws
@@ -141,10 +142,9 @@ export function createMemoryOrderFills(options: MemoryOrderFillsOptions): Memory
     fills: async (query, call) =>
       memoryCall(call, () =>
         structuredClone(
-          [...fills.values()]
-            .filter((fill) => fill.orderId === query.orderId)
-            .toSorted(byNewest)
-            .slice(0, query.limit),
+          newestWrittenFirst(
+            [...fills.values()].filter((fill) => fill.orderId === query.orderId),
+          ).slice(0, query.limit),
         ),
       ),
   };

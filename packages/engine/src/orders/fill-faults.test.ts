@@ -49,10 +49,15 @@ describe("an auto order's fill that throws", () => {
     const intents = await fillIntentsOf(test);
     expect(outcomes).toStrictEqual(["skipped", "skipped"]);
     expect(intents.map(({ state }) => state)).toStrictEqual(["cancelled", "cancelled"]);
-    expect(await fillRowsOf(test, order.id)).toMatchObject([
-      { outcome: "skipped", reason: "fill_failed", intentId: intents[1]?.id },
-      { outcome: "skipped", reason: "fill_failed", intentId: intents[0]?.id },
+    const rows = await fillRowsOf(test, order.id);
+    expect(rows).toMatchObject([
+      { outcome: "skipped", reason: "fill_failed" },
+      { outcome: "skipped", reason: "fill_failed" },
     ]);
+    // Both fills ran in one instant, where the intents list by id and the rows as written.
+    expect(new Set(rows.map(({ intentId }) => intentId))).toStrictEqual(
+      new Set(intents.map(({ id }) => id)),
+    );
     expect(noticesOf(test)).toMatchObject([
       { key: "notice.skipped", parts: { reason: { key: "reason.fill_failed" } } },
     ]);

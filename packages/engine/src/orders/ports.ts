@@ -81,7 +81,10 @@ export interface OrderStore {
    * at its intent's judged value, else its order's dollars per buy.
    */
   copyBuys(query: CopyBuyQuery, options: StoreCall): Promise<readonly CopyBuyRecord[]>;
-  /** One order's fill rows, the newest first, then by id from the last. */
+  /**
+   * One order's fill rows, the newest first, then the last written first, so rows of one instant
+   * read in the order they were written, whatever their ids.
+   */
   fills(query: OrderFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
   /**
    * How many rows of the agent's orders, of any state or mode, filled and skipped in the range,
