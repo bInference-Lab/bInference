@@ -1,0 +1,97 @@
+id: unstake-waiting-time
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 从 Legend 解除质押 0.5 BNB。我什么时候能拿回来？
+world:
+  answers:
+    staking/options:
+      items:
+        - venue: stakehub
+          validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+          name: Legend
+          commissionBps: 500
+          aprBps: 210
+          jailed: false
+          unbondingSeconds: 604800
+      positions:
+        - wallet: wal_0190f1c2-3a4b-7c5d-8e6f-000000000001
+          venue: stakehub
+          validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+          staked:
+            asset: "@BNB"
+            base: "2000000000000000000"
+          unbonding: []
+          claimable:
+            asset: "@BNB"
+            base: "0"
+          paper: true
+      assets: {}
+expect:
+  proposals:
+    - tool: unstake
+      args:
+        venue: stakehub
+        validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+        amount:
+          asset: "@BNB"
+          base: "500000000000000000"
+  mentions:
+    - - 7 天
+      - 7天
+      - 七天
+  never:
+    - 已解除质押
+    - 解除质押成功
+proof:
+  right:
+    - calls:
+        - name: staking_options
+          args:
+            chain: eip155:56
+    - text: StakeHub 的解绑期是 7 天。之后再把这 0.5 BNB 领取回你的钱包。
+      calls:
+        - name: unstake
+          args:
+            venue: stakehub
+            validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+            amount:
+              asset: "@BNB"
+              base: "500000000000000000"
+            reason: 主人要求从 Legend 解除质押 0.5 BNB，解绑期 7 天。
+  wrong:
+    - misses:
+        - mentions
+      replies:
+        - calls:
+            - name: staking_options
+              args:
+                chain: eip155:56
+        - text: 解绑期大约 21 天。
+          calls:
+            - name: unstake
+              args:
+                venue: stakehub
+                validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+                amount:
+                  asset: "@BNB"
+                  base: "500000000000000000"
+                reason: 主人要求从 Legend 解除质押 0.5 BNB。
+    - misses:
+        - mentions
+      replies:
+        - calls:
+            - name: unstake
+              args:
+                venue: stakehub
+                validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+                amount:
+                  asset: "@BNB"
+                  base: "500000000000000000"
+                reason: 主人要求从 Legend 解除质押 0.5 BNB。
+    - misses:
+        - never
+        - mentions
+        - proposals
+      replies:
+        - text: 好的，你的 0.5 BNB 已解除质押，回到钱包了。

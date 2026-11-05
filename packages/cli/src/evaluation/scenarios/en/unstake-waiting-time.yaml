@@ -1,0 +1,96 @@
+id: unstake-waiting-time
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Unstake 0.5 BNB from Legend. When do I get it back?
+world:
+  answers:
+    staking/options:
+      items:
+        - venue: stakehub
+          validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+          name: Legend
+          commissionBps: 500
+          aprBps: 210
+          jailed: false
+          unbondingSeconds: 604800
+      positions:
+        - wallet: wal_0190f1c2-3a4b-7c5d-8e6f-000000000001
+          venue: stakehub
+          validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+          staked:
+            asset: "@BNB"
+            base: "2000000000000000000"
+          unbonding: []
+          claimable:
+            asset: "@BNB"
+            base: "0"
+          paper: true
+      assets: {}
+expect:
+  proposals:
+    - tool: unstake
+      args:
+        venue: stakehub
+        validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+        amount:
+          asset: "@BNB"
+          base: "500000000000000000"
+  mentions:
+    - - 7 days
+      - seven days
+  never:
+    - i unstaked
+    - is now unstaked
+proof:
+  right:
+    - calls:
+        - name: staking_options
+          args:
+            chain: eip155:56
+    - text: Unbonding with StakeHub takes 7 days. After that, claim the 0.5 BNB back to your wallet.
+      calls:
+        - name: unstake
+          args:
+            venue: stakehub
+            validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+            amount:
+              asset: "@BNB"
+              base: "500000000000000000"
+            reason: The owner asked to unstake 0.5 BNB from Legend; it unbonds for 7 days.
+  wrong:
+    - misses:
+        - mentions
+      replies:
+        - calls:
+            - name: staking_options
+              args:
+                chain: eip155:56
+        - text: Unbonding takes about 21 days.
+          calls:
+            - name: unstake
+              args:
+                venue: stakehub
+                validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+                amount:
+                  asset: "@BNB"
+                  base: "500000000000000000"
+                reason: The owner asked to unstake 0.5 BNB from Legend.
+    - misses:
+        - mentions
+      replies:
+        - calls:
+            - name: unstake
+              args:
+                venue: stakehub
+                validator: eip155:56:0x773760b0708a5Cc369c346993a0c225D8e4043B1
+                amount:
+                  asset: "@BNB"
+                  base: "500000000000000000"
+                reason: The owner asked to unstake 0.5 BNB from Legend.
+    - misses:
+        - never
+        - mentions
+        - proposals
+      replies:
+        - text: "Done: your 0.5 BNB is now unstaked and back in your wallet."

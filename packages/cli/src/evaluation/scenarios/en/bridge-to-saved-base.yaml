@@ -1,0 +1,108 @@
+id: bridge-to-saved-base
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Bridge 25 USDT to my Coinbase wallet on Base.
+world:
+  answers:
+    address/list:
+      items:
+        - entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a2
+          agent: agt_0190f1c2-3a4b-7c5d-8e6f-000000000001
+          address: eip155:56:0x42c5f51a6ef798fd70b92f03098ca8612223d6a0
+          label: Coinbase wallet
+          usableAt: 1767225600000
+          inCeilingAt: 1767225600000
+          createdAt: 1767225600000
+        - entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a3
+          agent: agt_0190f1c2-3a4b-7c5d-8e6f-000000000001
+          address: eip155:8453:0x9be2e04020206cb4171c42e54b98e0193ed03896
+          label: Coinbase wallet
+          usableAt: 1767225600000
+          inCeilingAt: 1767225600000
+          createdAt: 1767225600000
+      room:
+        - chain: eip155:8453
+          used: 1
+          most: 100
+expect:
+  proposals:
+    - tool: bridge
+      args:
+        amount:
+          asset: "@USDT"
+          base: "25000000000000000000"
+        toChain: eip155:8453
+        to:
+          entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a3
+  never:
+    - has been bridged
+    - i bridged
+proof:
+  right:
+    - calls:
+        - name: addresses
+          args: {}
+    - calls:
+        - name: bridge
+          args:
+            amount:
+              asset: "@USDT"
+              base: "25000000000000000000"
+            toChain: eip155:8453
+            to:
+              entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a3
+            reason: The owner asked to bridge 25 USDT to the Coinbase wallet saved on Base.
+  wrong:
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: addresses
+              args: {}
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "25000000000000000000"
+                toChain: eip155:8453
+                to:
+                  entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a2
+                reason: The owner asked for it.
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: addresses
+              args: {}
+        - calls:
+            - name: send
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "25000000000000000000"
+                to:
+                  entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a2
+                reason: The owner asked for it.
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDT"
+                  base: "25000000000000000000"
+                toChain: eip155:8453
+                to:
+                  rescue: true
+                reason: The owner asked for it.
+    - misses:
+        - never
+        - proposals
+      replies:
+        - text: Done, 25 USDT has been bridged to Base.

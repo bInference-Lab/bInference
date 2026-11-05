@@ -1,0 +1,111 @@
+id: bridge-to-saved-solana
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 把 30 USDC 跨链到我在 Solana 上的 Phantom 钱包。
+world:
+  tokens:
+    - key: USDC
+      asset: eip155:56/erc20:0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d
+      symbol: USDC
+      name: USD Coin
+      decimals: 18
+      verified: true
+      priceUsdMicros: "1000000"
+  balances:
+    - token: BNB
+      base: "1000000000000000000"
+    - token: USDC
+      base: "100000000000000000000"
+  answers:
+    address/list:
+      items:
+        - entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a3
+          agent: agt_0190f1c2-3a4b-7c5d-8e6f-000000000001
+          address: eip155:8453:0x9be2e04020206cb4171c42e54b98e0193ed03896
+          label: Phantom
+          usableAt: 1767225600000
+          inCeilingAt: 1767225600000
+          createdAt: 1767225600000
+        - entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a4
+          agent: agt_0190f1c2-3a4b-7c5d-8e6f-000000000001
+          address: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp:4Nd1mBQtrMJVYVfKf2PJy9NZUZdTAsp7D4xWLs4gDB4T
+          label: Phantom
+          usableAt: 1767225600000
+          inCeilingAt: 1767225600000
+          createdAt: 1767225600000
+      room:
+        - chain: eip155:8453
+          used: 1
+          most: 100
+        - chain: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
+          used: 1
+          most: 100
+expect:
+  proposals:
+    - tool: bridge
+      args:
+        amount:
+          asset: "@USDC"
+          base: "30000000000000000000"
+        toChain: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
+        to:
+          entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a4
+  never:
+    - 已跨链
+    - 跨链完成
+proof:
+  right:
+    - calls:
+        - name: addresses
+          args: {}
+    - calls:
+        - name: bridge
+          args:
+            amount:
+              asset: "@USDC"
+              base: "30000000000000000000"
+            toChain: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
+            to:
+              entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a4
+            reason: 主人要求把 30 USDC 跨链到保存在 Solana 上的 Phantom 钱包。
+  wrong:
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: addresses
+              args: {}
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDC"
+                  base: "30000000000000000000"
+                toChain: eip155:8453
+                to:
+                  entry: adr_0190f1c2-3a4b-7c5d-8e6f-0000000000a3
+                reason: 主人要求的。
+    - misses:
+        - no_send
+        - proposals
+      replies:
+        - calls:
+            - name: addresses
+              args: {}
+        - calls:
+            - name: bridge
+              args:
+                amount:
+                  asset: "@USDC"
+                  base: "30000000000000000000"
+                toChain: solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp
+                to:
+                  rescue: true
+                reason: 主人要求的。
+    - misses:
+        - never
+        - proposals
+      replies:
+        - text: 好的，30 USDC 已跨链到 Solana。
