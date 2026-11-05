@@ -737,6 +737,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | engine schema, agent schema                 | 引擎模式, Agent 模式   | `engine_<install>`           |
 | write-order key                             | 写入顺序键             | `seq`                        |
 | worker (on Cloud)                           | 工作进程               | Runs engine and runtime      |
+| worker thread                               | 工作线程               | A Node thread, not a worker  |
 | agent lease                                 | Agent 租约             | `cloud.agent_leases`         |
 | lease fence                                 | 租约令牌               | Checked by every write       |
 | database role                               | 数据库角色             | One per Cloud service        |
