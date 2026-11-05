@@ -1,6 +1,8 @@
 # 0365. The Postgres store runs on node-postgres through Kysely's built-in dialect
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-11-05.
 
 ## Context
 

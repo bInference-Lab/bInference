@@ -1455,6 +1455,18 @@
     "0364": {
       "status": "Accepted",
       "sha256": "55e4dffcfb271ce16fd8416f052539f69e80cc013b38019bd65743f2a2db9840"
+    },
+    "0365": {
+      "status": "Accepted",
+      "sha256": "e521e1f8f94dcdb06460a917e446ebc75f871e3a81c43eef1c8370c594da25c9"
+    },
+    "0366": {
+      "status": "Accepted",
+      "sha256": "3cfb18967a318ad059bed17c907ff5e1316f6de3b8d0164dd7f4c34199d8dc57"
+    },
+    "0367": {
+      "status": "Accepted",
+      "sha256": "828593d84e2adbc5d093a4bda3b4c6cbe265b91e09f201fc3cc8384988c4eaa3"
     }
   }
 }

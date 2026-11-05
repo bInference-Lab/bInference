@@ -1,6 +1,8 @@
 # 0367. Each install keeps its own pair of Postgres schemas with SQLite's row shapes
 
-Status: Proposed
+Status: Accepted
+
+Accepted by the owner on 2026-11-05.
 
 ## Context
 
