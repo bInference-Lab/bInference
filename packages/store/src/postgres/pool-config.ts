@@ -4,7 +4,7 @@ import type { PostgresSettings } from "./postgres-settings.js";
 import { rowTypes } from "./row-types.js";
 
 /** The session and pool limits of decision 0365, starting values a load test tunes. */
-const postgresLimits = {
+export const postgresLimits = {
   statementTimeoutMs: 5_000,
   lockTimeoutMs: 2_000,
   idleInTransactionMs: 2_000,
