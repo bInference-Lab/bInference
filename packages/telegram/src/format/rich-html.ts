@@ -14,6 +14,7 @@ const simpleTags = {
   italic: ["<i>", "</i>"],
   strike: ["<s>", "</s>"],
   code: ["<code>", "</code>"],
+  spoiler: ["<tg-spoiler>", "</tg-spoiler>"],
 } as const satisfies Record<string, readonly [string, string]>;
 
 function openTag(mark: RichMark): string {
@@ -85,7 +86,7 @@ function blocksOf(lines: readonly RichLine[]): readonly (readonly RichLine[])[] 
 }
 
 /**
- * Renders lines as Telegram HTML from a fixed set of tags: `b`, `i`, `s`, `code`, `pre` with an
+ * Renders lines as Telegram HTML from a fixed set of tags: `b`, `i`, `s`, `code`, `tg-spoiler`, `pre` with an
  * optional `language-` class of letters and digits, `a` with an `http:` or `https:` address, and
  * `blockquote`. Every text is escaped and every tag closes inside the lines given.
  */

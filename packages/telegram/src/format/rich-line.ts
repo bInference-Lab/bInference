@@ -1,10 +1,10 @@
 /**
  * A style on a run of the agent's text, outermost first. Each kind maps to one tag of Telegram's
- * HTML: `bold` to `b`, `italic` to `i`, `strike` to `s`, `code` to `code`, and `link` to `a` with
- * an `http:` or `https:` address only.
+ * HTML: `bold` to `b`, `italic` to `i`, `strike` to `s`, `code` to `code`, `spoiler` to
+ * `tg-spoiler`, and `link` to `a` with an `http:` or `https:` address only.
  */
 export type RichMark =
-  | { readonly kind: "bold" | "italic" | "strike" | "code" }
+  | { readonly kind: "bold" | "italic" | "strike" | "code" | "spoiler" }
   | { readonly kind: "link"; readonly href: string };
 
 /** A run of plain text with the styles it shows in. The text is not escaped yet. */

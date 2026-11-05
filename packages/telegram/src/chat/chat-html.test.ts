@@ -68,10 +68,46 @@ describe("the agent's Markdown as Telegram HTML", () => {
     });
   });
 
-  it("draws headings as bold lines and quotes as one quote", () => {
+  it("draws headings as plain lines and quotes as one quote", () => {
     expect(htmlOf("# Plan\n## Step **one**\n> Stay\n> calm")).toBe(
-      "<b>Plan</b>\n<b>Step one</b>\n<blockquote>Stay\ncalm</blockquote>",
+      "Plan\nStep <b>one</b>\n<blockquote>Stay\ncalm</blockquote>",
     );
+  });
+
+  it("hides a spoiler until it is tapped, and leaves single pipes as text", () => {
+    expect(htmlOf("The answer is ||42||, a | b, ||| c")).toBe(
+      "The answer is <tg-spoiler>42</tg-spoiler>, a | b, ||| c",
+    );
+  });
+
+  it("draws a table as a fixed-width grid in a code block", () => {
+    const table =
+      "Prices:\n| Token | **Price** |\n|:--|--:|\n| BNB | $600 |\n| CAKE \\| v2 | $2 |\nDone.";
+    expect(htmlOf(table)).toBe(
+      [
+        "Prices:",
+        "<pre>| Token     | Price |",
+        "| --------- | ----- |",
+        "| BNB       | $600  |",
+        "| CAKE | v2 | $2    |</pre>",
+        "Done.",
+      ].join("\n"),
+    );
+  });
+
+  it("pads wide letters by two cells in a table, and keeps a row of pipes without a delimiter as text", () => {
+    const wide = String.fromCodePoint(0x4e2d, 0x6587);
+    expect(htmlOf(`| a | b |\n| - | - |\n| ${wide} | x |`)).toBe(
+      `<pre>| a    | b   |\n| ---- | --- |\n| ${wide} | x   |</pre>`,
+    );
+    expect(htmlOf("| a | b |\n| c | d |")).toBe("| a | b |\n| c | d |");
+  });
+
+  it("splits a long answer into messages of 4,000 characters at most", () => {
+    const pieces = chatHtmlOf(`${"a".repeat(3_000)}\n${"b".repeat(3_000)}`);
+    expect(pieces.map((piece) => piece.html.length)).toStrictEqual([3_000, 3_000]);
+    const long = chatHtmlOf("c".repeat(4_050));
+    expect(long.map((piece) => piece.html.length)).toStrictEqual([4_000, 50]);
   });
 
   it("draws bullet items as dots and numbered items with their numbers, nested two spaces in", () => {

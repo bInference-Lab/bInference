@@ -8,7 +8,7 @@ type Step =
 const asciiPunctuation = /[!-/:-@[-`{-~]/u;
 const wordCharacter = /[\p{L}\p{N}]/u;
 const blank = /\s/u;
-const special = /[\\`[*_~]/gu;
+const special = /[\\`[*_~|]/gu;
 // A closing mark or bracket further than this is not looked for, so a text full of unmatched
 // marks costs a bounded scan per mark.
 const maxSpan = 4_000;
@@ -85,8 +85,8 @@ function skipOver(text: string, at: number): number {
 }
 
 function stylesOf(character: string, length: number): readonly RichMark[] {
-  if (character === "~") {
-    return length === 2 ? [{ kind: "strike" }] : [];
+  if (character === "~" || character === "|") {
+    return length === 2 ? [{ kind: character === "~" ? "strike" : "spoiler" }] : [];
   }
   const styles: readonly (readonly RichMark[])[] = [
     [{ kind: "italic" }],
@@ -191,7 +191,7 @@ function stepAt(text: string, at: number, marks: readonly RichMark[]): Step {
   if (character === "[" && !marks.some((mark) => mark.kind === "link")) {
     return link(text, at, marks);
   }
-  if (character === "*" || character === "_" || character === "~") {
+  if (character === "*" || character === "_" || character === "~" || character === "|") {
     return emphasis(text, at, marks);
   }
   return plainUntilSpecial(text, at);
@@ -199,7 +199,7 @@ function stepAt(text: string, at: number, marks: readonly RichMark[]): Step {
 
 /**
  * Reads the inline Markdown of one paragraph into runs: `**bold**`, `__bold__`, `*italic*`,
- * `_italic_`, `~~struck~~`, `` `code` ``, `[label](https://…)` and backslash escapes. A mark that
+ * `_italic_`, `~~struck~~`, `||spoiler||`, `` `code` ``, `[label](https://…)` and backslash escapes. A mark that
  * never closes, a link to any address but `http:` or `https:`, and anything else stay as the text
  * they are. Every run's text is plain and still to be escaped.
  */

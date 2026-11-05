@@ -1,5 +1,6 @@
 import { inlineRunsOf } from "./markdown-inline.js";
 import type { RichBlock, RichLine, RichRun } from "./rich-line.js";
+import { isTableDelimiter, tableCellsOf, tableGridOf } from "./table-grid.js";
 
 /** A fence that opens a code block: its character, its length and the language it names. */
 interface Fence {
@@ -91,7 +92,7 @@ function singleLine(line: string): readonly RichRun[] | undefined {
   }
   const title = heading.exec(line)?.[1];
   if (title !== undefined && title !== "") {
-    return inlineRunsOf(title, [{ kind: "bold" }]);
+    return inlineRunsOf(title);
   }
   return listLine(line);
 }
@@ -143,13 +144,38 @@ function readQuote(source: readonly string[], at: number, reading: Reading): num
   return next;
 }
 
-function isText(line: string): boolean {
-  return fenceOf(line) === undefined && !quoteMark.test(line);
+// A table starts at a row with a `|`, right above a delimiter row of as many cells.
+function isTableStart(source: readonly string[], at: number): boolean {
+  const [head = "", delimiter = ""] = source.slice(at, at + 2);
+  return (
+    head.includes("|") &&
+    isTableDelimiter(delimiter) &&
+    tableCellsOf(head).length === tableCellsOf(delimiter).length
+  );
+}
+
+// Reads a table up to the first line without a `|`, drawn as a code block's fixed-width grid.
+function readTable(source: readonly string[], at: number, reading: Reading): number {
+  let next = at + 2;
+  while (next < source.length && (source[next] ?? "").includes("|")) {
+    next += 1;
+  }
+  const rows = source.slice(at + 2, next).map(tableCellsOf);
+  const block: RichBlock = { kind: "code", block: reading.nextBlock() };
+  for (const text of tableGridOf(tableCellsOf(source[at] ?? ""), rows)) {
+    reading.lines.push({ block, runs: [{ text, marks: [] }] });
+  }
+  return next;
+}
+
+function isText(source: readonly string[], at: number): boolean {
+  const line = source[at] ?? "";
+  return fenceOf(line) === undefined && !quoteMark.test(line) && !isTableStart(source, at);
 }
 
 function readText(source: readonly string[], at: number, reading: Reading): number {
   let next = at;
-  while (next < source.length && isText(source[next] ?? "")) {
+  while (next < source.length && isText(source, next)) {
     next += 1;
   }
   readFlow(source.slice(at, next), { kind: "text" }, reading);
@@ -157,10 +183,10 @@ function readText(source: readonly string[], at: number, reading: Reading): numb
 }
 
 /**
- * Reads the agent's Markdown into lines for Telegram: fenced code blocks, quotes, headings as
- * bold lines, bullet items as `•` lines and numbered items with their numbers, nested items two
- * spaces in per level, and paragraphs with their inline styles. A fence left open runs to the
- * end; anything that is no Markdown stays as its text.
+ * Reads the agent's Markdown into lines for Telegram: fenced code blocks, quotes, tables as a code
+ * block's fixed-width grid, headings as plain lines, bullet items as `•` lines and numbered items
+ * with their numbers, nested items two spaces in per level, and paragraphs with their inline
+ * styles. A fence left open runs to the end; anything that is no Markdown stays as its text.
  */
 export function richLinesOf(text: string): readonly RichLine[] {
   const source = text.split("\n");
@@ -173,6 +199,8 @@ export function richLinesOf(text: string): readonly RichLine[] {
       at = readCode(source, at, reading);
     } else if (quoteMark.test(line)) {
       at = readQuote(source, at, reading);
+    } else if (isTableStart(source, at)) {
+      at = readTable(source, at, reading);
     } else {
       at = readText(source, at, reading);
     }

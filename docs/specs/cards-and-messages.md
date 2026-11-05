@@ -44,14 +44,16 @@ names the keys and fixes the wording.
 - **Telegram** messages use HTML formatting, at most 4,096 characters; a longer message splits at a
   line break (`telegram/src/split/`). Buttons are inline keyboards.
 - **The agent's chat text in Telegram** is the one place model words carry formatting
-  ([decision 0370](../DECISIONS.md#d0370)). Each line goes through the same escaping of hidden
-  characters, then its Markdown is drawn from a fixed set of tags over HTML-escaped text: `b`,
-  `i`, `s`, `code`, `pre` (with a `language-` class only when the language is letters and digits),
-  `a` only for an `http:` or `https:` address, and `blockquote`. A heading is a bold line, a
-  bullet item a `•` line, a numbered item keeps its number. A link to any other address, a mark
-  that never closes and HTML the model writes all show as text, and every message's tags balance.
-  A long answer splits at a paragraph break where it can, a style or block closing at the end of
-  one message and opening again in the next. When Telegram cannot parse a message, it goes again
+  ([decisions 0370](../DECISIONS.md#d0370) and [0374](../DECISIONS.md#d0374)). Each line goes
+  through the same escaping of hidden characters, then its Markdown is drawn from a fixed set of
+  tags over HTML-escaped text: `b`, `i`, `s`, `code`, `tg-spoiler` for `||spoiler||`, `pre` (with
+  a `language-` class only when the language is letters and digits), `a` only for an `http:` or
+  `https:` address, and `blockquote`. A heading is a plain line, a bullet item a `•` line, a
+  numbered item keeps its number, and a table is a fixed-width grid in a `pre` block, each column
+  padded to its widest cell, its cells as plain text. A link to any other address, a mark that
+  never closes and HTML the model writes all show as text, and every message's tags balance. A
+  long answer splits into messages of at most 4,000 characters, at a paragraph break where it can,
+  a style or block closing at the end of one message and opening again in the next. When Telegram cannot parse a message, it goes again
   as plain text with no tags. Cards, receipts, notices and fast-command replies keep their own
   rendering.
 - **Status icons** are allowed only where this spec names them
@@ -1380,10 +1382,10 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   runs a tool sooner, gets one status message: how long the agent has worked, a work line for each
   tool it ran (the newest 8, each cut to 120 characters, a line repeated in a row once), the text
   it wrote before a tool as one line of at most 280 characters, and the text it writes now, drawn
-  as an answer is and cut from its start with `…` to stay within 4,096 characters. It is edited at
+  as an answer is and cut from its start with `…` to stay within 4,000 characters. It is edited at
   most once a second; a tool's line shows a message that has not shown yet at once. A turn that
   answers within 1.5 seconds shows no status message. The final answer goes as new messages, which
-  notify where an edit does not, split at 4,096 characters, and the status message is deleted once
+  notify where an edit does not, split at 4,000 characters, and the status message is deleted once
   it has shown for 4 seconds. A status line of section 8.1 follows in italics. The agent's words
   show their Markdown as Telegram's rich text by the rules of section 1, with every character a
   reader cannot see written as `\u{…}`; markup the model writes in HTML shows as text.

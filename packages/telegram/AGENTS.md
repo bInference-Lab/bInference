@@ -31,7 +31,7 @@ Rules for this package:
   of `@binference/i18n`, and then escaped whole with `escapeHtml`.
   Never build HTML from a value. The one other source of HTML is the agent's chat text (decision
   0370): `src/format/rich-html.ts` writes it from the fixed tags of `RichMark` and `RichBlock`
-  (`b`, `i`, `s`, `code`, `pre` with a letters-and-digits `language-` class, `a` with an `http:`
+  (`b`, `i`, `s`, `code`, `tg-spoiler`, `pre` with a letters-and-digits `language-` class, `a` with an `http:`
   or `https:` address, `blockquote`) around text it escapes itself. The Markdown readers in
   `src/format/` make runs and lines, never HTML; a tag the model writes stays text.
 - A fast command (`src/commands/`) runs the engine's operations only through the `OwnerCalls`
@@ -69,8 +69,9 @@ Rules for this package:
   status message is deleted once it has shown for 4 seconds. Model text goes out as Telegram HTML
   only through `src/chat/chat-html.ts`: every line through `displayOutsideText`, then its Markdown
   drawn by `src/format/rich-html.ts` and split by `src/split/split-rich-lines.ts`, a paragraph
-  break preferred, each message rendering its own tags; the status message draws its draft the
-  same way (`status-preview.ts`), cut from its start to fit 4,096 characters. A message Telegram
+  break preferred, at most 4,000 characters each, tables as fixed-width grids (decision 0374), each
+  message rendering its own tags; the status message draws its draft the
+  same way (`status-preview.ts`), cut from its start to fit 4,000 characters. A message Telegram
   answers with a 400 it cannot parse (`isEntitiesUnparsed`) goes once more as its plain text, no
   parse mode, and the log names its message id, never its words.
 - A status message's send and edit are previews (`src/chat/preview-sends.ts`): each goes with a

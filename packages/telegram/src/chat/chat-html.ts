@@ -12,6 +12,12 @@ export interface ChatHtml {
   readonly plain: string;
 }
 
+/**
+ * The most characters of HTML one message of the agent's text holds: under Telegram's 4,096, so a
+ * message always fits after Telegram reads its entities.
+ */
+export const chatMessageLength = 4000;
+
 // A tab shows as spaces; every other character a reader cannot see shows as `\u{…}`.
 const tabSpaces = "    ";
 
@@ -36,11 +42,11 @@ export function chatHtmlOfLines(lines: readonly RichLine[]): ChatHtml {
 }
 
 /**
- * The agent's text as Telegram messages of at most 4,096 characters each (spec 4, section 1),
+ * The agent's text as Telegram messages of at most 4,000 characters each (spec 4, section 1),
  * drawn from {@link shownLinesOf}. A text with nothing to show gives no message.
  */
 export function chatHtmlOf(text: string): readonly ChatHtml[] {
-  return splitRichLines(shownLinesOf(text))
+  return splitRichLines(shownLinesOf(text), chatMessageLength)
     .map(chatHtmlOfLines)
     .filter((piece) => piece.plain.trim() !== "");
 }

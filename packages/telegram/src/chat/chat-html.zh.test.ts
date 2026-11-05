@@ -7,8 +7,17 @@ describe("the agent's Chinese Markdown as Telegram HTML", () => {
       "## 当前状态\n**模拟交易**模式下，*不会*动用真实资金。\n- 买入 `0.1 BNB`\n1. 设置止损";
     expect(chatHtmlOf(text)).toStrictEqual([
       {
-        html: "<b>当前状态</b>\n<b>模拟交易</b>模式下，<i>不会</i>动用真实资金。\n• 买入 <code>0.1 BNB</code>\n1. 设置止损",
+        html: "当前状态\n<b>模拟交易</b>模式下，<i>不会</i>动用真实资金。\n• 买入 <code>0.1 BNB</code>\n1. 设置止损",
         plain: "当前状态\n模拟交易模式下，不会动用真实资金。\n• 买入 0.1 BNB\n1. 设置止损",
+      },
+    ]);
+  });
+
+  it("lines up a Chinese table, each Chinese character two cells wide", () => {
+    expect(chatHtmlOf("| 代币 | 价格 |\n| --- | --- |\n| 币安币 | 600 |")).toStrictEqual([
+      {
+        html: "<pre>| 代币   | 价格 |\n| ------ | ---- |\n| 币安币 | 600  |</pre>",
+        plain: "| 代币   | 价格 |\n| ------ | ---- |\n| 币安币 | 600  |",
       },
     ]);
   });

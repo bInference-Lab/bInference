@@ -1,6 +1,6 @@
 # 0370. The agent's chat text shows its Markdown in a fixed set of Telegram tags
 
-Status: Accepted
+Status: Amended by 0374
 
 Accepted by the tech lead on 2026-11-05, on the owner's approval.
 

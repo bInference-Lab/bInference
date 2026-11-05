@@ -1,8 +1,7 @@
 import { richHtmlOf } from "../format/rich-html.js";
 import type { RichLine } from "../format/rich-line.js";
 import { splitRichLines } from "../split/split-rich-lines.js";
-import { maxMessageLength } from "../split/split-text.js";
-import { type ChatHtml, chatHtmlOfLines, shownLinesOf } from "./chat-html.js";
+import { type ChatHtml, chatHtmlOfLines, chatMessageLength, shownLinesOf } from "./chat-html.js";
 
 /**
  * One work line of a status message: a tool the turn runs, in the bot's own words and shown as
@@ -45,7 +44,7 @@ function draftTail(draft: string, room: number): readonly RichLine[] {
 
 /**
  * A status message as Telegram HTML and as plain text: the headline, the work lines, then the
- * draft drawn from its Markdown as an answer is (decision 0370). The whole stays within 4,096
+ * draft drawn from its Markdown as an answer is (decision 0370). The whole stays within 4,000
  * characters: a draft too long shows its end after `…`.
  */
 export function statusPreviewOf(view: StatusView): ChatHtml {
@@ -53,7 +52,7 @@ export function statusPreviewOf(view: StatusView): ChatHtml {
     line.kind === "tool" ? [plainLine(line.text)] : shownLinesOf(line.text),
   );
   const head = [plainLine(view.headline), ...work];
-  const room = maxMessageLength - richHtmlOf([...head, blank]).length - 1;
+  const room = chatMessageLength - richHtmlOf([...head, blank]).length - 1;
   const draft = view.draft === undefined ? [] : draftTail(view.draft, room);
   return chatHtmlOfLines(draft.length === 0 ? head : [...head, blank, ...draft]);
 }
