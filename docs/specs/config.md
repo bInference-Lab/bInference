@@ -58,9 +58,9 @@ From lowest to highest; a higher layer replaces a lower one key by key:
    `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`. `BINFERENCE_HOME`, `BINFERENCE_MCP_TOKEN` (an
    MCP session's secret, [decision 0159](../DECISIONS.md#d0159)), `BINFERENCE_PLUGIN_LAUNCHER`
    and `BINFERENCE_IMAGE_USER` (the image's plugin launcher and its own user,
-   [decision 0344](../DECISIONS.md#d0344)) and every `BINFERENCE_INIT_*`
-   variable (an answer of `binference init`, [decision 0224](../DECISIONS.md#d0224)) are not
-   config keys.
+   [decision 0344](../DECISIONS.md#d0344)), every `BINFERENCE_INIT_*` variable (an answer of
+   `binference init`, [decision 0224](../DECISIONS.md#d0224)), and the install script's
+   `BINFERENCE_INSTALL_*` variables and `BINFERENCE_NODE_MIRROR` are not config keys.
 4. CLI flags: `--set engine.port=7460`, repeatable.
 
 `binference config show` prints the merged result and the layer each value came from, with secrets

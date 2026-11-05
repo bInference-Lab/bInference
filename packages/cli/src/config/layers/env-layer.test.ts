@@ -22,6 +22,9 @@ describe("env layer", () => {
       BINFERENCE_IMAGE_USER: "10001",
       BINFERENCE_INIT_RESCUE: "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB",
       BINFERENCE_INIT_ANSWERS: "/srv/binference/answers.json5",
+      BINFERENCE_INSTALL_CHANNEL: "beta",
+      BINFERENCE_INSTALL_PACKAGE: "/tmp/binference-2026.11.0-beta.2.tgz",
+      BINFERENCE_NODE_MIRROR: "https://nodejs.example/dist",
       PATH: "/usr/bin",
     });
     expect(layer.issues).toStrictEqual([]);

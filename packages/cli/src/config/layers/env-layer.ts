@@ -6,14 +6,20 @@ import { type LayerEntry, readLayerText } from "./layer-entry.js";
 const prefix = "BINFERENCE_";
 
 // Variables with the prefix that are not config keys: BINFERENCE_HOME moves the state folder,
-// BINFERENCE_MCP_TOKEN carries an MCP session's secret, and BINFERENCE_PLUGIN_LAUNCHER and
-// BINFERENCE_IMAGE_USER name the image's plugin launcher and its own user (decision 0344).
+// BINFERENCE_MCP_TOKEN carries an MCP session's secret, BINFERENCE_PLUGIN_LAUNCHER and
+// BINFERENCE_IMAGE_USER name the image's plugin launcher and its own user (decision 0344), and
+// BINFERENCE_NODE_MIRROR is the install script's Node mirror.
 const reserved: ReadonlySet<string> = new Set([
   "BINFERENCE_HOME",
   "BINFERENCE_MCP_TOKEN",
   "BINFERENCE_PLUGIN_LAUNCHER",
   "BINFERENCE_IMAGE_USER",
+  "BINFERENCE_NODE_MIRROR",
 ]);
+
+// The install script's own variables, such as BINFERENCE_INSTALL_CHANNEL. The script runs init
+// with them still set, and the service init starts inherits them.
+const installVariablePrefix = `${prefix}INSTALL_`;
 
 /**
  * The prefix of the variables that answer `binference init` (decision 0224). None is a config
@@ -22,7 +28,12 @@ const reserved: ReadonlySet<string> = new Set([
 export const initVariablePrefix: string = `${prefix}INIT_`;
 
 function isConfigVariable(name: string): boolean {
-  return name.startsWith(prefix) && !reserved.has(name) && !name.startsWith(initVariablePrefix);
+  return (
+    name.startsWith(prefix) &&
+    !reserved.has(name) &&
+    !name.startsWith(initVariablePrefix) &&
+    !name.startsWith(installVariablePrefix)
+  );
 }
 
 /** The variable segment of a key: `webhookPort` is `WEBHOOK_PORT`. */
@@ -70,7 +81,8 @@ function walk(root: ConfigNode, segments: readonly string[]): Walk {
  * Reads the `BINFERENCE_*` variables as a layer: `BINFERENCE_ENGINE__PORT=7460` sets
  * `engine.port`, `__` between segments, and a map's key in lower case. Lists, objects and secret
  * sources take JSON. An empty variable counts as unset; one that names no key is an issue. The
- * `BINFERENCE_INIT_*` variables answer init and are no layer.
+ * `BINFERENCE_INIT_*` variables answer init and the install script's `BINFERENCE_INSTALL_*` and
+ * `BINFERENCE_NODE_MIRROR` set up the program; none is a layer.
  */
 export function readEnvLayer(
   root: ConfigNode,
