@@ -1370,19 +1370,19 @@ differs is which adapter fills each port, and only the composition root decides 
 ([rule 19](#rule-19)): `cli` builds the self-hosted profile; the Cloud worker's entry file builds
 the Cloud profile. A port with two adapters runs one contract test suite against both.
 
-| Part             | Self-hosted: the owner provides                                                        | Cloud: our systems provide                                                      |
-| ---------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| Custody          | Their own Privy app; the owner key offline; the agent key in the signer process        | Our Privy app; the wallet in the user's Privy account; our signer service (KMS) |
-| Telegram         | Their own BotFather bot, long polling                                                  | Our official bot, webhook ingress into Postgres; one DM topic per agent         |
-| Models           | A bInference Router link (default) or any compatible provider key                      | The user's bInference AI credit                                                 |
-| RPC              | Public BNB Chain RPCs (default) or their own provider keys                             | Our RPC pool                                                                    |
-| Store            | SQLite (`node:sqlite`)                                                                 | Postgres, the same store ports and contract suites; one lease per agent (below) |
-| Secrets          | OS keychain, owner-only file or a secret command ([decision 0065](DECISIONS.md#d0065)) | KMS and the platform's secret store                                             |
-| Process model    | Engine, runtime and signer processes on one machine                                    | Shared workers running `engine` and `runtime`; a separate signer service        |
-| Console          | The open-source console on localhost, and the Mini App over Tailscale                  | The binference.io console (closed source)                                       |
-| Remote access    | Tailscale `serve` and `funnel` ([decision 0051](DECISIONS.md#d0051))                   | Not needed: the console and webhooks live on binference.io                      |
-| Binance Agent OS | OAuth back to `127.0.0.1`                                                              | OAuth back to binference.io, one encrypted token per user                       |
-| Backups, updates | Local encrypted backups; `binference update`                                           | Managed database backups; we deploy                                             |
+| Part             | Self-hosted: the owner provides                                                        | Cloud: our systems provide                                                        |
+| ---------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Custody          | Their own Privy app; the owner key offline; the agent key in the signer process        | Our Privy app; the wallet in the user's Privy account; our signer service (KMS)   |
+| Telegram         | Their own BotFather bot, long polling                                                  | Our official bot, webhook ingress into Postgres; one DM topic per agent           |
+| Models           | A bInference Router link (default) or any compatible provider key                      | The user's bInference AI credit                                                   |
+| RPC              | Public BNB Chain RPCs (default) or their own provider keys                             | Our RPC pool                                                                      |
+| Store            | SQLite (`node:sqlite`)                                                                 | Postgres, the same store ports and contract suites; one lease per install (below) |
+| Secrets          | OS keychain, owner-only file or a secret command ([decision 0065](DECISIONS.md#d0065)) | KMS and the platform's secret store                                               |
+| Process model    | Engine, runtime and signer processes on one machine                                    | Shared workers running `engine` and `runtime`; a separate signer service          |
+| Console          | The open-source console on localhost, and the Mini App over Tailscale                  | The binference.io console (closed source)                                         |
+| Remote access    | Tailscale `serve` and `funnel` ([decision 0051](DECISIONS.md#d0051))                   | Not needed: the console and webhooks live on binference.io                        |
+| Binance Agent OS | OAuth back to `127.0.0.1`                                                              | OAuth back to binference.io, one encrypted token per user                         |
+| Backups, updates | Local encrypted backups; `binference update`                                           | Managed database backups; we deploy                                               |
 
 **Rules for both profiles:**
 
@@ -1401,9 +1401,11 @@ the Cloud profile. A port with two adapters runs one contract test suite against
 **What Cloud adds:**
 
 - **Workers.** Node workers run `@binference/engine` and `@binference/runtime` over the Postgres
-  store. Each agent is held by one worker through a lease row (agent, worker, fence, expiry),
-  renewed every few seconds; every write carries the fence, so a worker that lost its lease cannot
-  write. Cloud agents get no shell, file or browser tools.
+  store. Each install is held by one worker through one lease per install, covering its agents:
+  a row per agent (install, agent, worker, fence, expiry), taken and renewed every few seconds
+  together, since one engine and one runtime serve an install. Every write carries the fence, so
+  a worker that lost its lease cannot write ([spec 3, section 6.5](specs/database.md#section-6-5)).
+  Cloud agents get no shell, file or browser tools.
 - **Signer service.** The only holder of our Privy authorization key, in KMS. It runs the same hard
   rules as the self-hosted signer and signs with `eth_signTransaction`; the worker broadcasts through
   private relays. Owners can export their key or remove the bInference signer at any time.

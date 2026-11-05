@@ -432,15 +432,18 @@ check` tries it as `network.proxy`.
 - **worker**: on bInference Cloud, a long-lived Node process that runs `engine` and `runtime` for
   the installs whose agent leases it holds. Not a **store worker**.
 - **agent lease**: a row of `cloud.agent_leases` that names the worker holding an agent, with its
-  **lease fence** and when it expires. A worker holds every lease of an install together and renews
-  them every few seconds.
-- **lease fence**: the number an agent lease's take raises by one. Every write in an install's
-  schemas checks, in its own transaction, that its worker holds the lease with this fence, so a
-  worker that lost the lease writes nothing. Not the agent database's writer fence, which guards
-  one runtime start within a worker.
+  **lease fence** and when it expires. The lease unit is the install: a worker holds every lease of
+  an install together, since one engine and one runtime serve it, and renews them every few seconds.
+- **lease fence**: the number an agent lease's take raises by one. Every write a worker makes in an
+  install's schemas checks, in its own transaction, that the worker holds the lease with this
+  fence, so a worker that lost the lease writes nothing. Not the agent database's writer fence,
+  which guards one runtime start within a worker.
 - **database role**: the Postgres role each Cloud service connects with: `binference_migrator`
-  (deploys and new installs), `binference_worker`, `binference_ingress`, `binference_signer` and
-  `binference_catalog`. A worker's role cannot insert a confirmation or change a ceiling record.
+  (deploys), `binference_provisioner` (sign-up), `binference_worker`, `binference_ingress`,
+  `binference_signer` and `binference_catalog`. A worker's role cannot insert a confirmation or
+  change a ceiling record.
+- **provisioner**: the database role sign-up uses to create one new install's engine and agent
+  schemas and run the migrations in them. It owns those schemas and nothing else.
 - **ingress**: the Cloud service on binference.io that takes the official bot's updates, the
   console's frames and webhook alerts, stores a user's confirmations and owner actions, and
   forwards the rest to the worker holding the agent's lease.
@@ -737,6 +740,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | agent lease                                 | Agent 租约             | `cloud.agent_leases`         |
 | lease fence                                 | 租约令牌               | Checked by every write       |
 | database role                               | 数据库角色             | One per Cloud service        |
+| provisioner (database role)                 | 开通角色               | Creates a new install        |
 | ingress                                     | 入口服务               | On binference.io             |
 | official bot                                | 官方机器人             | bInference Cloud's bot       |
 | signer service                              | 签名服务               | Holds the Privy key in KMS   |
