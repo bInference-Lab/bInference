@@ -26,6 +26,7 @@ import {
   refusesStaleFreeze,
   unfreezesInOneWrite,
 } from "./intent-freeze-checks.js";
+import { intentOrderChecks } from "./intent-order-checks.js";
 import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 
 /** Makes a fresh, empty intent store for each check. */
@@ -295,6 +296,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     ),
     checkOn("lists an agent's confirmed intents since a time", create, listsConfirmedSince),
     checkOn("links one late landing to an intent it leaves as it is", create, recordsLateLandings),
+    ...intentOrderChecks(create),
     checkOn("opens, replaces and closes card versions with the moves", create, closesWithMoves),
     checkOn("finds a card version by its callback reference", create, findsCardsByRef),
     checkOn(

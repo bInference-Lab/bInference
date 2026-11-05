@@ -4,7 +4,7 @@ import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { UnbondingStore } from "../staking/ports.js";
 import type { UnbondingClaim, UnbondingDraft } from "../staking/unbonding-record.js";
-import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
+import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 
 /** A fresh, empty unbonding store, three intents it holds and their wallet. */
 export interface UnbondingStoreSubject {
@@ -86,6 +86,16 @@ async function listsOpenSoonestFirst(subject: UnbondingStoreSubject): Promise<vo
   assert.deepEqual(await store.listOpen(query, live()), [sooner, later]);
   const elsewhere = { ...query, validator: accountRefSchema.parse("fake:1:0x000000c2") };
   assert.deepEqual(await store.listOpen(elsewhere, live()), []);
+}
+
+// Unbondings ready at one instant list in the order they were opened (database spec, section 6.7).
+async function listsTiesInOpenOrder(subject: UnbondingStoreSubject): Promise<void> {
+  const { store, intentIds, walletId } = subject;
+  const opened = await inOrder([intentIds[2], intentIds[0], intentIds[1]], async (intentId) =>
+    store.open(draftOf(subject, intentId), live()),
+  );
+  const query = { walletId, isPaper: false, venue: "fake-staking", validator };
+  assert.deepEqual(await store.listOpen(query, live()), opened);
 }
 
 async function listsWalletOpen(subject: UnbondingStoreSubject): Promise<void> {
@@ -201,6 +211,11 @@ export function unbondingStoreContract(harness: UnbondingStoreHarness): readonly
       "lists one wallet's open unbondings of a validator in a mode, soonest ready first",
       create,
       listsOpenSoonestFirst,
+    ),
+    checkOn(
+      "lists unbondings ready at one instant in the order they were opened",
+      create,
+      listsTiesInOpenOrder,
     ),
     checkOn(
       "lists one wallet's open unbondings of every venue and validator in a mode, soonest ready first",
