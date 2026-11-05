@@ -1,8 +1,8 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { AgentTables, TranscriptEventsTable } from "../databases/agent-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -44,7 +44,7 @@ function toEvent(row: Selectable<TranscriptEventsTable>): TranscriptEvent {
   });
 }
 
-function lastSeq(database: DatabaseSync, sessionId: string): number {
+function lastSeq(database: StoreConnection, sessionId: string): number {
   const { kysely, takeFirst } = createSyncKysely<AgentTables>(database);
   const row = takeFirst(
     kysely
@@ -57,7 +57,7 @@ function lastSeq(database: DatabaseSync, sessionId: string): number {
 
 // Why the append may not be written, read before anything is: the fence, the session, and that
 // every turn it names is one of the session's.
-function refusalOf(database: DatabaseSync, append: Fenced<EventAppend>) {
+function refusalOf(database: StoreConnection, append: Fenced<EventAppend>) {
   if (!holdsFence(database, append.fence)) {
     return "fenced";
   }
@@ -70,7 +70,7 @@ function refusalOf(database: DatabaseSync, append: Fenced<EventAppend>) {
 }
 
 // Writes the events after the session's last, numbered in order, and answers them as stored.
-function insertEvents(database: DatabaseSync, append: EventAppend): readonly TranscriptEvent[] {
+function insertEvents(database: StoreConnection, append: EventAppend): readonly TranscriptEvent[] {
   const first = lastSeq(database, append.sessionId) + 1;
   const { kysely, execute } = createSyncKysely<AgentTables>(database);
   const rows = execute(

@@ -1,7 +1,7 @@
 // The order state machine's store adapter: the one file that writes orders.state. Every write
 // runs inside one store task's transaction: it reads every row it decides on first, answers an
 // expected refusal before it writes anything, and throws on a broken rule, which rolls it back.
-import type { DatabaseSync } from "node:sqlite";
+
 import { BinferenceError, err, type Id, ok, type Result } from "@binference/core";
 import {
   copyLeaderOf,
@@ -15,6 +15,7 @@ import {
 import type { Insertable, Selectable, Updateable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { OrdersTable } from "../databases/order-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { hasTrackRoom, syncTrackedWallets } from "../leaders/tracked-sync.js";
 import { optionalJsonText, orNull } from "../rows/column-values.js";
@@ -24,19 +25,19 @@ function refused(message: string, details: Readonly<Record<string, string>>): Bi
   return new BinferenceError({ code: "store.constraint", message, details });
 }
 
-function orderRow(database: DatabaseSync, id: string): Selectable<OrdersTable> | undefined {
+function orderRow(database: StoreConnection, id: string): Selectable<OrdersTable> | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   return takeFirst(kysely.selectFrom("orders").selectAll().where("id", "=", id));
 }
 
 /** Reads one order, or `undefined`. */
-export function readOrder(database: DatabaseSync, id: Id<"ord">): OrderRecord | undefined {
+export function readOrder(database: StoreConnection, id: Id<"ord">): OrderRecord | undefined {
   const row = orderRow(database, id);
   return row === undefined ? undefined : toOrderRecord(row);
 }
 
 /** Whether an agent is frozen now; `undefined` for an agent the database does not hold. */
-export function isAgentFrozen(database: DatabaseSync, agentId: string): boolean | undefined {
+export function isAgentFrozen(database: StoreConnection, agentId: string): boolean | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const agent = takeFirst(
     kysely.selectFrom("agents").select("frozen_at").where("id", "=", agentId),
@@ -76,7 +77,7 @@ function orderRowOf(draft: OrderDraft): Insertable<OrdersTable> {
  * agent's throws.
  */
 export function createOrder(
-  database: DatabaseSync,
+  database: StoreConnection,
   draft: OrderDraft,
 ): Result<OrderRecord, "exists" | "frozen" | "track_limit"> {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -106,7 +107,7 @@ export function createOrder(
   return ok(toOrderRecord(requireRow(database, draft.id)));
 }
 
-function requireRow(database: DatabaseSync, id: string): Selectable<OrdersTable> {
+function requireRow(database: StoreConnection, id: string): Selectable<OrdersTable> {
   const row = orderRow(database, id);
   if (row === undefined) {
     throw refused("An order did not read back after its write.", { order: id });
@@ -117,7 +118,7 @@ function requireRow(database: DatabaseSync, id: string): Selectable<OrdersTable>
 // A move into `active` needs the confirmation of the order's card on its `autoOrder` intent, and
 // an agent that is not frozen, or one the same write unfreezes.
 function activeRefusal(
-  database: DatabaseSync,
+  database: StoreConnection,
   check: {
     readonly row: Selectable<OrdersTable>;
     readonly move: OrderMove;
@@ -159,7 +160,7 @@ function checkRules(row: Selectable<OrdersTable>, move: OrderMove): void {
  * of one order throw.
  */
 export function checkOrderMoves(
-  database: DatabaseSync,
+  database: StoreConnection,
   moves: readonly OrderMove[],
   unfrozen: ReadonlySet<string> = new Set(),
 ): Result<readonly OrderMove[], OrderMoveRefusal> {
@@ -201,7 +202,7 @@ function changeOf(move: OrderMove): Updateable<OrdersTable> {
  * orders after them in the moves' order.
  */
 export function writeOrderMoves(
-  database: DatabaseSync,
+  database: StoreConnection,
   moves: readonly OrderMove[],
 ): readonly OrderRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);

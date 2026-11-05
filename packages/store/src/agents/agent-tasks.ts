@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type AgentDraft,
@@ -11,6 +10,7 @@ import {
 } from "@binference/engine";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -18,7 +18,10 @@ import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { readSettings, toAgentRecord } from "./agent-rows.js";
 import { limitsColumns } from "./limits-rows.js";
 
-function takenBy(database: DatabaseSync, draft: AgentDraft): "exists" | "name_taken" | undefined {
+function takenBy(
+  database: StoreConnection,
+  draft: AgentDraft,
+): "exists" | "name_taken" | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely
@@ -33,13 +36,13 @@ function takenBy(database: DatabaseSync, draft: AgentDraft): "exists" | "name_ta
 }
 
 // Whether the whole install is frozen, so a new agent starts frozen.
-function isInstallFrozen(database: DatabaseSync): boolean {
+function isInstallFrozen(database: StoreConnection): boolean {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const safety = takeFirst(kysely.selectFrom("safety").select("frozen_at").where("id", "=", 1));
   return (safety?.frozen_at ?? null) !== null;
 }
 
-function insertAgent(database: DatabaseSync, draft: AgentDraft, frozenAt: number | null): void {
+function insertAgent(database: StoreConnection, draft: AgentDraft, frozenAt: number | null): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const atMs = draft.atMs;
   execute(

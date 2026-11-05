@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type ArrivalRecord,
@@ -18,6 +17,7 @@ import type { Insertable, Selectable } from "kysely";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { DeparturesTable } from "../databases/position-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -52,7 +52,7 @@ function toDepartureRecord(row: Selectable<DeparturesTable>): DepartureRecord {
   });
 }
 
-function storedDepartures(database: DatabaseSync, write: DepartureWrite): DepartureRecord[] {
+function storedDepartures(database: StoreConnection, write: DepartureWrite): DepartureRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const query = kysely
     .selectFrom("departures")
@@ -91,7 +91,7 @@ export const recordDeparturesTask: StoreTask<DepartureWrite, DepartureOutcome> =
 
 // A reset writes only its wallet's paper rows, and every paper position the wallet holds: one it
 // leaves out moved since the reset read the positions.
-function isWhole(database: DatabaseSync, reset: PaperReset): boolean {
+function isWhole(database: StoreConnection, reset: PaperReset): boolean {
   const isOwn = (key: { readonly walletId: string; readonly isPaper: boolean }): boolean =>
     key.walletId === reset.walletId && key.isPaper;
   if (!reset.arrivals.every(isOwn) || !reset.positions.every(({ position }) => isOwn(position))) {

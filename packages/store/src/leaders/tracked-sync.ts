@@ -1,9 +1,10 @@
 // Keeps `tracked_wallets` with the writes that start and end a wallet's tracking (decision 0251).
 // Every function runs inside the caller's store task, in its transaction.
-import type { DatabaseSync } from "node:sqlite";
+
 import { type AccountRef, accountRefSchema } from "@binference/chain";
 import { copyLeaderOf, maxTrackedWallets, trackingOrderStates } from "@binference/engine/orders";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { toOrderRecord } from "../orders/order-rows.js";
 
@@ -11,7 +12,7 @@ import { toOrderRecord } from "../orders/order-rows.js";
  * The accounts the install tracks now: those of the active wallet alerts, and the leaders of the
  * copy orders awaiting their card, active or paused, of agents not archived.
  */
-export function namedAccounts(database: DatabaseSync): ReadonlySet<AccountRef> {
+export function namedAccounts(database: StoreConnection): ReadonlySet<AccountRef> {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const inUse = kysely.selectFrom("agents").select("id").where("archived_at", "is", null);
   const alerts = execute(
@@ -38,7 +39,7 @@ export function namedAccounts(database: DatabaseSync): ReadonlySet<AccountRef> {
  * Moves `tracked_wallets` to the accounts named now, at `atMs`: a newly named account is tracked,
  * one tracked again starts a new span with no blocks read, and one no longer named is untracked.
  */
-export function syncTrackedWallets(database: DatabaseSync, atMs: number): void {
+export function syncTrackedWallets(database: StoreConnection, atMs: number): void {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const named = namedAccounts(database);
   for (const account of named) {
@@ -82,7 +83,7 @@ export function syncTrackedWallets(database: DatabaseSync, atMs: number): void {
  * or fewer than 50 are. It reads what names each account now, so a slot an archived agent held is
  * free before any write.
  */
-export function hasTrackRoom(database: DatabaseSync, account: AccountRef): boolean {
+export function hasTrackRoom(database: StoreConnection, account: AccountRef): boolean {
   const named = namedAccounts(database);
   return named.has(account) || named.size < maxTrackedWallets;
 }

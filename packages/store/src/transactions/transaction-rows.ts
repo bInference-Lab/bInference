@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { accountRefParts, txReceiptSchema } from "@binference/chain";
 import {
   type AccountNonces,
@@ -12,6 +11,7 @@ import {
 import type { Insertable, Selectable } from "kysely";
 import { z } from "zod";
 import type { EngineTables, TxsTable } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, readJson } from "../rows/column-values.js";
 
@@ -76,7 +76,7 @@ export function replacementRow(replacement: SignedReplacement): Insertable<TxsTa
  * Reads what the lowest free nonce rule needs about one account, inside the task's transaction: the
  * block floor, the nonces of its signed and sent transactions, and one past the highest nonce given.
  */
-export function readAccountNonces(database: DatabaseSync, account: string): AccountNonces {
+export function readAccountNonces(database: StoreConnection, account: string): AccountNonces {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const own = kysely.selectFrom("txs").where("account", "=", account);
   const inBlock = takeFirst(

@@ -1,9 +1,9 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import type { AgentRecord } from "@binference/engine";
 import type { AgentFreeze } from "@binference/engine/safety";
 import type { Selectable } from "kysely";
 import type { AgentsTable, EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { toAgentRecord } from "./agent-rows.js";
 
@@ -12,7 +12,7 @@ import { toAgentRecord } from "./agent-rows.js";
  * `not_found`, and a row at another version than the freeze read is `stale`.
  */
 export function readAgentFreezes(
-  database: DatabaseSync,
+  database: StoreConnection,
   freezes: readonly AgentFreeze[],
 ): Result<readonly Selectable<AgentsTable>[], "not_found" | "stale"> {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -36,7 +36,7 @@ export function readAgentFreezes(
  * version rises by one.
  */
 export function writeAgentFreezes(
-  database: DatabaseSync,
+  database: StoreConnection,
   rows: readonly Selectable<AgentsTable>[],
   change: { readonly atMs: number; readonly isFrozen: boolean },
 ): readonly AgentRecord[] {

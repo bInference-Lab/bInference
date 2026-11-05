@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type InboxAdmission,
@@ -11,6 +10,7 @@ import {
 import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { EngineTables, InboxTable } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 import { changedRows, rowCountSchema, timeInputSchema } from "../tasks/count-schema.js";
@@ -28,7 +28,7 @@ function toInboxEntry(row: Selectable<InboxTable>): InboxEntry {
   });
 }
 
-function findEntry(database: DatabaseSync, sourceKey: string): InboxEntry | undefined {
+function findEntry(database: StoreConnection, sourceKey: string): InboxEntry | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("inbox").selectAll().where("source_key", "=", sourceKey));
   return row === undefined ? undefined : toInboxEntry(row);

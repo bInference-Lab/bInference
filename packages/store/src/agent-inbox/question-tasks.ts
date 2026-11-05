@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, idSchema, ok, type Result } from "@binference/core";
 import {
   type AgentInboxMessage,
@@ -19,6 +18,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { QuestionsTable } from "../databases/agent-inbox-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonField, jsonText, readJson } from "../rows/column-values.js";
 import { changedRows } from "../tasks/count-schema.js";
@@ -45,13 +45,13 @@ function toQuestion(row: Selectable<QuestionsTable>): QuestionRecord {
   });
 }
 
-function selectQuestions(database: DatabaseSync) {
+function selectQuestions(database: StoreConnection) {
   const sync = createSyncKysely<EngineTables>(database);
   return { sync, query: sync.kysely.selectFrom("questions").selectAll() };
 }
 
 function questionWhere(
-  database: DatabaseSync,
+  database: StoreConnection,
   column: "id" | "ref",
   value: string,
 ): QuestionRecord | undefined {
@@ -60,7 +60,7 @@ function questionWhere(
   return row === undefined ? undefined : toQuestion(row);
 }
 
-function openOf(database: DatabaseSync, agent: string): QuestionRecord | undefined {
+function openOf(database: StoreConnection, agent: string): QuestionRecord | undefined {
   const { sync, query } = selectQuestions(database);
   const row = sync.takeFirst(query.where("agent_id", "=", agent).where("state", "=", "open"));
   return row === undefined ? undefined : toQuestion(row);
@@ -68,7 +68,7 @@ function openOf(database: DatabaseSync, agent: string): QuestionRecord | undefin
 
 // Closes a question that is open now, and reads it back; `undefined` when it is not.
 function closeOpen(
-  database: DatabaseSync,
+  database: StoreConnection,
   closing: { readonly id: string; readonly reason: string; readonly atMs: number },
 ): QuestionRecord | undefined {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);

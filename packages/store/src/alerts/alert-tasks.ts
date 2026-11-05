@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type AlertDelete,
@@ -17,6 +16,7 @@ import {
 } from "@binference/engine/orders";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { hasTrackRoom, syncTrackedWallets } from "../leaders/tracked-sync.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -29,7 +29,7 @@ type CreateRefusal = "not_found" | "too_many" | "track_limit";
 
 // Why the alert cannot be stored, if it cannot: its agent unknown, holding 50 active alerts, or a
 // wallet alert on a 51st account tracked across the install.
-function refusalOf(database: DatabaseSync, alert: AlertRecord): CreateRefusal | undefined {
+function refusalOf(database: StoreConnection, alert: AlertRecord): CreateRefusal | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const agent = takeFirst(kysely.selectFrom("agents").select("id").where("id", "=", alert.agentId));
   if (agent === undefined) {
@@ -109,7 +109,7 @@ export const listAlertsTask: StoreTask<AlertQuery, readonly AlertRecord[]> = def
 });
 
 // Moves an active alert to `state`.
-function closeOne(database: DatabaseSync, change: AlertDelete, state: "deleted" | "ended") {
+function closeOne(database: StoreConnection, change: AlertDelete, state: "deleted" | "ended") {
   const stored = readAlert(database, change.id);
   if (stored?.state !== "active") {
     return undefined;

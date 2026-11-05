@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { Id } from "@binference/core";
 import {
   type AgentRecord,
@@ -15,6 +14,7 @@ import type {
   EngineTables,
   SendLevelsTable,
 } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, readJson } from "../rows/column-values.js";
 import { readAddressBook } from "./address-book-tasks.js";
@@ -67,7 +67,7 @@ export function toSendLevel(row: Selectable<SendLevelsTable>): SendLevelRecord {
  * Reads an agent with its limits, approval mode, send level and live address book entries, or
  * `undefined` when one of the first four is missing.
  */
-export function readSettings(database: DatabaseSync, id: Id<"agt">): AgentSettings | undefined {
+export function readSettings(database: StoreConnection, id: Id<"agt">): AgentSettings | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const agent = takeFirst(kysely.selectFrom("agents").selectAll().where("id", "=", id));
   const limits = takeFirst(kysely.selectFrom("limits").selectAll().where("agent_id", "=", id));

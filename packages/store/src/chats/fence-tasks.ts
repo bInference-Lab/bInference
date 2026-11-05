@@ -1,13 +1,13 @@
-import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import type { AgentTables } from "../databases/agent-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { fenceSchema } from "./fenced.js";
 
 const fenceKey = "writer_fence";
 
-function currentFence(database: DatabaseSync): number {
+function currentFence(database: StoreConnection): number {
   const { kysely, takeFirst } = createSyncKysely<AgentTables>(database);
   const row = takeFirst(kysely.selectFrom("meta").select("value").where("key", "=", fenceKey));
   return row === undefined ? 0 : Number(row.value);
@@ -17,7 +17,7 @@ function currentFence(database: DatabaseSync): number {
  * Whether a write made with `fence` may change the database, read inside the write's own
  * transaction: its fence is the one the latest start raised.
  */
-export function holdsFence(database: DatabaseSync, fence: number): boolean {
+export function holdsFence(database: StoreConnection, fence: number): boolean {
   return currentFence(database) === fence;
 }
 

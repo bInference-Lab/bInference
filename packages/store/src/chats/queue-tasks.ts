@@ -1,7 +1,7 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
 import type { AgentTables, QueueRow } from "../databases/agent-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText, readJson } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -37,7 +37,7 @@ function toQueued(row: QueueRow): QueuedMessage {
   });
 }
 
-function readQueued(database: DatabaseSync, message: string): QueuedMessage | undefined {
+function readQueued(database: StoreConnection, message: string): QueuedMessage | undefined {
   const { kysely, takeFirst } = createSyncKysely<AgentTables>(database);
   const row = takeFirst(kysely.selectFrom("chat_queue").selectAll().where("message", "=", message));
   return row === undefined ? undefined : toQueued(row);

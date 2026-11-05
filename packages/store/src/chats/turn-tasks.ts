@@ -1,8 +1,8 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import type { Selectable, Updateable } from "kysely";
 import { z } from "zod";
 import type { AgentTables, TurnsTable } from "../databases/agent-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -40,7 +40,7 @@ function toTurn(row: Selectable<TurnsTable>): TurnRecord {
 }
 
 /** One turn row, read inside the caller's transaction. */
-export function readTurn(database: DatabaseSync, id: string): TurnRecord | undefined {
+export function readTurn(database: StoreConnection, id: string): TurnRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<AgentTables>(database);
   const row = takeFirst(kysely.selectFrom("turns").selectAll().where("id", "=", id));
   return row === undefined ? undefined : toTurn(row);
@@ -48,7 +48,7 @@ export function readTurn(database: DatabaseSync, id: string): TurnRecord | undef
 
 // Changes a turn that has not ended, under the current fence, and answers it as it now stands.
 function changeTurn(
-  database: DatabaseSync,
+  database: StoreConnection,
   ref: Fenced<TurnRef>,
   change: Updateable<TurnsTable>,
 ): TurnChange {

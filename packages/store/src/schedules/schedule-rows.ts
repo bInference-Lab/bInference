@@ -1,9 +1,10 @@
 // A schedule's row and its record, both ways, and the reads every schedule task shares.
-import type { DatabaseSync } from "node:sqlite";
+
 import { type ScheduleRecord, scheduleRecordSchema } from "@binference/engine/chat";
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { SchedulesTable } from "../databases/schedule-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, orNull, readJson } from "../rows/column-values.js";
 
@@ -57,14 +58,14 @@ export function scheduleRowOf(record: ScheduleRecord): Selectable<SchedulesTable
 }
 
 /** One schedule in any state, or `undefined`. */
-export function readSchedule(database: DatabaseSync, id: string): ScheduleRecord | undefined {
+export function readSchedule(database: StoreConnection, id: string): ScheduleRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("schedules").selectAll().where("id", "=", id));
   return row === undefined ? undefined : toScheduleRecord(row);
 }
 
 /** Writes a schedule's row as its record now holds it, and reads it back. */
-export function writeSchedule(database: DatabaseSync, record: ScheduleRecord): ScheduleRecord {
+export function writeSchedule(database: StoreConnection, record: ScheduleRecord): ScheduleRecord {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { id: _id, ...row } = scheduleRowOf(record);
   execute(kysely.updateTable("schedules").set(row).where("id", "=", record.id));

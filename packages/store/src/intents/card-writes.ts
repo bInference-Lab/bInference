@@ -1,11 +1,11 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError } from "@binference/core";
 import type { IntentChange } from "@binference/engine";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { optionalJsonText, orNull } from "../rows/column-values.js";
 
-function closeCard(database: DatabaseSync, change: IntentChange): void {
+function closeCard(database: StoreConnection, change: IntentChange): void {
   const closing = change.closeCard;
   if (closing === undefined) {
     return;
@@ -34,7 +34,7 @@ function closeCard(database: DatabaseSync, change: IntentChange): void {
  * throws `store.card_not_open`; a taken card version, or a confirmation of a card version no later
  * than the stored one, fails SQLite's constraints. Either rolls the whole move back.
  */
-export function writeCardChanges(database: DatabaseSync, change: IntentChange): void {
+export function writeCardChanges(database: StoreConnection, change: IntentChange): void {
   closeCard(database, change);
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { openCard, confirmation } = change;
@@ -63,7 +63,7 @@ export function writeCardChanges(database: DatabaseSync, change: IntentChange): 
 // One confirmation per intent: a later card version's replaces the earlier one (decision 0143),
 // and a second one for the same or an older version fails like the unique key it stands in for.
 function writeConfirmation(
-  database: DatabaseSync,
+  database: StoreConnection,
   change: IntentChange,
   confirmation: NonNullable<IntentChange["confirmation"]>,
 ): void {

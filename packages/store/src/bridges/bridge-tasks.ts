@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { isTxHash, type TxHash } from "@binference/chain";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
@@ -17,6 +16,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { BridgesTable } from "../databases/bridge-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText, field, orNull } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -48,7 +48,7 @@ function recordOf(row: Selectable<BridgesTable>): BridgeRecord {
   });
 }
 
-function stored(database: DatabaseSync, intentId: Id<"int">): BridgeRecord | undefined {
+function stored(database: StoreConnection, intentId: Id<"int">): BridgeRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("bridges").selectAll().where("intent_id", "=", intentId));
   return row === undefined ? undefined : recordOf(row);
@@ -159,7 +159,7 @@ export const settledByTask: StoreTask<TxHash, BridgeRecord | undefined> = define
 
 // Whether another bridge holds the settlement the move writes: a fill to the same chain, or a
 // refund. The unique indexes refuse it too.
-function isTaken(database: DatabaseSync, moved: BridgeRecord): boolean {
+function isTaken(database: StoreConnection, moved: BridgeRecord): boolean {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const { fillTx, refundTx } = moved;
   const holder = takeFirst(
@@ -203,7 +203,7 @@ export const moveBridgeTask: StoreTask<
   },
 });
 
-function write(database: DatabaseSync, move: BridgeMove, moved: BridgeRecord): void {
+function write(database: StoreConnection, move: BridgeMove, moved: BridgeRecord): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely

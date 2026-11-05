@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError } from "@binference/core";
 import {
   type AlertFillRecord,
@@ -13,6 +12,7 @@ import {
 import type { Insertable, Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { WebhookEventsTable, WebhookRulesTable } from "../databases/webhook-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 
@@ -88,7 +88,7 @@ export function ruleRowOf(draft: WebhookRuleDraft): Insertable<WebhookRulesTable
 
 /** One rule's row, or `undefined`. */
 export function ruleRow(
-  database: DatabaseSync,
+  database: StoreConnection,
   id: string,
 ): Selectable<WebhookRulesTable> | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -127,7 +127,7 @@ export function toEventRecord(row: Selectable<WebhookEventsTable>): WebhookEvent
 
 /** One accepted alert's row, or `undefined` for a row that is no accepted alert. */
 export function acceptedRow(
-  database: DatabaseSync,
+  database: StoreConnection,
   event: number,
 ): Selectable<WebhookEventsTable> | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);

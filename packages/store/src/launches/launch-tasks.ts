@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { ChainRef } from "@binference/chain";
 import {
   creatorWindowMs,
@@ -14,6 +13,7 @@ import type { WatchCursorRecord } from "@binference/engine/orders";
 import type { Expression, ExpressionBuilder, Kysely, SqlBool } from "kysely";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText } from "../rows/column-values.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -137,7 +137,7 @@ function blocksOf(read: LaunchReadRecord): readonly string[] {
 }
 
 // Deletes the launches of the read's blocks it no longer holds, and the chain's past 90 days.
-function forget(database: DatabaseSync, read: LaunchReadRecord): void {
+function forget(database: StoreConnection, read: LaunchReadRecord): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const held = read.launches.map(({ token }) => token);
   const inSpan = kysely
@@ -154,7 +154,7 @@ function forget(database: DatabaseSync, read: LaunchReadRecord): void {
 }
 
 // Stores each launch new, or moves a stored one to where the read found it; answers the new.
-function store(database: DatabaseSync, read: LaunchReadRecord): readonly string[] {
+function store(database: StoreConnection, read: LaunchReadRecord): readonly string[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   return read.launches.flatMap((launch) => {
     const row = launchRowOf(read.chain, launch, read.atMs);
@@ -180,7 +180,7 @@ function store(database: DatabaseSync, read: LaunchReadRecord): readonly string[
   });
 }
 
-function change(database: DatabaseSync, read: LaunchReadRecord): void {
+function change(database: StoreConnection, read: LaunchReadRecord): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   for (const { token, curveProgressBps, graduated } of read.changes) {
     const set = {

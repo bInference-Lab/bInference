@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import {
   type DeliveryMove,
@@ -16,6 +15,7 @@ import type { Selectable, Updateable } from "kysely";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { OutboxTable } from "../databases/notice-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText, orNull } from "../rows/column-values.js";
 import { changedRows, rowCountSchema, timeInputSchema } from "../tasks/count-schema.js";
@@ -36,7 +36,7 @@ function refused(message: string, details: Readonly<Record<string, string>>): Bi
 }
 
 // The rows that decide a record: the notice's id is free and its agent is stored.
-function checkRecord(database: DatabaseSync, record: NoticeRecord): void {
+function checkRecord(database: StoreConnection, record: NoticeRecord): void {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   if (findNotice(database, record.id) !== undefined) {
     throw refused("A notice with this id is stored.", { notice: record.id });
@@ -148,7 +148,7 @@ function changeOf(move: DeliveryMove, row: Selectable<OutboxTable>): Updateable<
 }
 
 // The notice's `delivered` with the surface's new state, written in the same transaction.
-function deliveredAfter(database: DatabaseSync, row: Selectable<OutboxTable>, state: string) {
+function deliveredAfter(database: StoreConnection, row: Selectable<OutboxTable>, state: string) {
   const record = findNotice(database, noticeIdOf(row));
   return record === undefined
     ? undefined

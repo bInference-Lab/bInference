@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type RelayAnswer, relayAnswerSchema, txReceiptSchema } from "@binference/chain";
 import { BinferenceError, err, type Id, idSchema, jsonValueSchema, ok } from "@binference/core";
 import {
@@ -19,6 +18,7 @@ import {
 import type { Updateable } from "kysely";
 import { z } from "zod";
 import type { EngineTables, TxsTable } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -27,7 +27,7 @@ import { toTransactionRecord } from "./transaction-rows.js";
 
 const movedSchema = resultSchema(transactionRecordSchema, ["wrong_state"]);
 
-function readStored(database: DatabaseSync, id: Id<"tx">): TransactionRecord {
+function readStored(database: StoreConnection, id: Id<"tx">): TransactionRecord {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("txs").selectAll().where("id", "=", id));
   if (row === undefined) {
@@ -42,7 +42,7 @@ function readStored(database: DatabaseSync, id: Id<"tx">): TransactionRecord {
 
 // Reads the transaction, checks the move against the rule, and writes the row's new columns.
 function move(
-  database: DatabaseSync,
+  database: StoreConnection,
   id: Id<"tx">,
   change: {
     readonly progress: TransactionProgress;
@@ -64,7 +64,7 @@ function move(
   return ok(readStored(database, id));
 }
 
-function insertAnswers(database: DatabaseSync, send: TransactionSend): void {
+function insertAnswers(database: StoreConnection, send: TransactionSend): void {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const last = takeFirst(
     kysely
@@ -145,7 +145,7 @@ export const listSendsTask: StoreTask<Id<"tx">, readonly RelayAnswer[]> = define
 
 // A block holds one transaction of a nonce: its rivals still signed or sent are superseded first,
 // so the index of one holding transaction per nonce never sees two.
-function supersedeRivals(database: DatabaseSync, landing: TransactionRecord): void {
+function supersedeRivals(database: StoreConnection, landing: TransactionRecord): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely

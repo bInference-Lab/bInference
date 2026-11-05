@@ -1,5 +1,5 @@
-import type { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import type { WorkerValue } from "../worker/worker-messages.schema.js";
 
 /** Where a task runs: `read` on a reader, `write` in one transaction on the writer. */
@@ -16,7 +16,7 @@ export interface TaskSpec<Input, Output> {
    * The work, on the worker's connection, through Kysely. It is synchronous, never `async`: a
    * write task's queries all run inside one transaction, which nothing else can interleave.
    */
-  run(database: DatabaseSync, input: Input): Output;
+  run(database: StoreConnection, input: Input): Output;
 }
 
 /** A store task as a worker runs it, by name, without its types. */
@@ -24,7 +24,7 @@ export interface TaskRunner {
   readonly name: string;
   readonly access: TaskAccess;
   /** Parses the input, runs the task and checks its output, on a store worker. */
-  handle(database: DatabaseSync, input: WorkerValue): WorkerValue;
+  handle(database: StoreConnection, input: WorkerValue): WorkerValue;
 }
 
 /** A named, synchronous unit of database work that a store worker runs. */

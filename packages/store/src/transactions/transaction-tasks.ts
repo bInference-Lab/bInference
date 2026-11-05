@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   holdingStates,
@@ -19,6 +18,7 @@ import {
 } from "@binference/engine/wallet-queue";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -77,7 +77,10 @@ function constraint(message: string, transaction: Id<"tx">): BinferenceError {
 }
 
 // The stored transaction a replacement takes the nonce of: one of its own step, at its nonce.
-function readReplaced(database: DatabaseSync, replacement: SignedReplacement): TransactionRecord {
+function readReplaced(
+  database: StoreConnection,
+  replacement: SignedReplacement,
+): TransactionRecord {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const byId = (id: Id<"tx">) =>
     takeFirst(kysely.selectFrom("txs").selectAll().where("id", "=", id));

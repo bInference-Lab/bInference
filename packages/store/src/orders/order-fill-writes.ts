@@ -1,5 +1,5 @@
 // The order fill rows: written beside a skip, or inside the move of the intent that filled.
-import type { DatabaseSync } from "node:sqlite";
+
 import { BinferenceError } from "@binference/core";
 import {
   type FillAnnouncement,
@@ -13,6 +13,7 @@ import {
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { OrderFillsTable } from "../databases/order-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonField, optionalJsonText, orNull } from "../rows/column-values.js";
 
@@ -33,7 +34,10 @@ function toOrderFillRecord(row: Selectable<OrderFillsTable>): OrderFillRecord {
 }
 
 /** The `filled` row that counts an intent's fill, if any: a fill counts once (decision 0211). */
-export function countedFillOf(database: DatabaseSync, intent: string): OrderFillRecord | undefined {
+export function countedFillOf(
+  database: StoreConnection,
+  intent: string,
+): OrderFillRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely
@@ -46,7 +50,7 @@ export function countedFillOf(database: DatabaseSync, intent: string): OrderFill
 }
 
 /** Whether an intent has a `filled` row already. */
-export function isCounted(database: DatabaseSync, intent: string): boolean {
+export function isCounted(database: StoreConnection, intent: string): boolean {
   return countedFillOf(database, intent) !== undefined;
 }
 
@@ -55,7 +59,7 @@ export function isCounted(database: DatabaseSync, intent: string): boolean {
  * it names one, a stored intent, and no second `filled` row for one intent. A broken rule throws
  * `store.constraint`, which rolls the write back.
  */
-export function checkOrderFill(database: DatabaseSync, fill: OrderFillRecord): void {
+export function checkOrderFill(database: StoreConnection, fill: OrderFillRecord): void {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const taken = takeFirst(kysely.selectFrom("order_fills").select("id").where("id", "=", fill.id));
   const order = takeFirst(kysely.selectFrom("orders").select("id").where("id", "=", fill.orderId));
@@ -79,7 +83,7 @@ export function checkOrderFill(database: DatabaseSync, fill: OrderFillRecord): v
  * Checks that a `filled` row comes with its own order's move to one fill more than the order has
  * stored (decision 0197); one without it throws `store.constraint`, which rolls the write back.
  */
-export function checkOwnFill(database: DatabaseSync, write: OrderFillWrite): void {
+export function checkOwnFill(database: StoreConnection, write: OrderFillWrite): void {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const stored = takeFirst(
     kysely.selectFrom("orders").select("fills").where("id", "=", write.fill.orderId),
@@ -94,7 +98,7 @@ export function checkOwnFill(database: DatabaseSync, write: OrderFillWrite): voi
 }
 
 /** Writes a fill row `checkOrderFill` passed, and answers it as stored. */
-export function insertOrderFill(database: DatabaseSync, fill: OrderFillRecord): OrderFillRecord {
+export function insertOrderFill(database: StoreConnection, fill: OrderFillRecord): OrderFillRecord {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely.insertInto("order_fills").values({
@@ -115,7 +119,7 @@ export function insertOrderFill(database: DatabaseSync, fill: OrderFillRecord): 
 
 /** One order's fill rows, the newest first, then the last written first (decision 0366). */
 export function listOrderFills(
-  database: DatabaseSync,
+  database: StoreConnection,
   query: OrderFillQuery,
 ): readonly OrderFillRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
@@ -134,7 +138,7 @@ export function listOrderFills(
  * they were written (decision 0366).
  */
 export function listUnannounced(
-  database: DatabaseSync,
+  database: StoreConnection,
   query: UnannouncedFillQuery,
 ): readonly OrderFillRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
@@ -153,7 +157,7 @@ export function listUnannounced(
  * Marks rows' notices announced, keeping an earlier time. An unknown row, or one with no notices,
  * throws `store.constraint` before any row changes.
  */
-export function markAnnounced(database: DatabaseSync, announcement: FillAnnouncement): void {
+export function markAnnounced(database: StoreConnection, announcement: FillAnnouncement): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const ids = [...new Set(announcement.ids)];
   const known = execute(

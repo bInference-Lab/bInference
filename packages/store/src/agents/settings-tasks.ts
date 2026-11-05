@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type AgentModeChange,
@@ -26,6 +25,7 @@ import {
   sendLevelRecordSchema,
 } from "@binference/engine/sends";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -110,7 +110,7 @@ export const setLimitsTask: StoreTask<
 
 // Writes columns of the agent row under the version the changer read, and raises that version.
 function setAgentRow(
-  database: DatabaseSync,
+  database: StoreConnection,
   change: AgentModeChange | AgentNotificationsChange | AgentModelsChange,
   columns: { readonly mode?: string; readonly notifications?: string; readonly models?: string },
 ): Result<AgentRecord, "not_found" | "stale"> {

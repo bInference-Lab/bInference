@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import {
   type IdempotencyEntry,
   idempotencyEntrySchema,
@@ -8,12 +7,13 @@ import {
   idempotencyRecallSchema,
 } from "@binference/engine";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText, readJson } from "../rows/column-values.js";
 import { changedRows, rowCountSchema, timeInputSchema } from "../tasks/count-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
 
-function recall(database: DatabaseSync, lookup: IdempotencyLookup): IdempotencyRecall {
+function recall(database: StoreConnection, lookup: IdempotencyLookup): IdempotencyRecall {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely

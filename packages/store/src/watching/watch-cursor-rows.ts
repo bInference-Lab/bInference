@@ -1,7 +1,7 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type ChainRef, chainRefSchema } from "@binference/chain";
 import { type WatchCursorRecord, watchCursorRecordSchema } from "@binference/engine/orders";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText } from "../rows/column-values.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -11,7 +11,7 @@ export type CursorWatcher = "wallets" | "launches";
 
 // Where a log watcher of a chain stopped, if it stored a cursor.
 function readWatchCursor(
-  database: DatabaseSync,
+  database: StoreConnection,
   watcher: CursorWatcher,
   chain: ChainRef,
 ): WatchCursorRecord | undefined {
@@ -35,7 +35,7 @@ function readWatchCursor(
 
 /** Moves a log watcher's cursor on a chain to the last block of a read, inside its write. */
 export function writeWatchCursor(
-  database: DatabaseSync,
+  database: StoreConnection,
   watcher: CursorWatcher,
   read: {
     readonly chain: ChainRef;

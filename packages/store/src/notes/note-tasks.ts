@@ -1,9 +1,9 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import { z } from "zod";
 import { holdsFence } from "../chats/fence-tasks.js";
 import type { Fenced, FenceRefusal } from "../chats/fenced.js";
 import type { AgentTables, NoteRow } from "../databases/agent-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -36,7 +36,7 @@ function toNote(row: NoteRow): NoteRecord {
   });
 }
 
-function readNote(database: DatabaseSync, id: number): NoteRecord | undefined {
+function readNote(database: StoreConnection, id: number): NoteRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<AgentTables>(database);
   const row = takeFirst(kysely.selectFrom("notes").selectAll().where("id", "=", id));
   return row === undefined ? undefined : toNote(row);
@@ -130,7 +130,7 @@ export const listNotesTask: StoreTask<NoteList, readonly NoteRecord[]> = defineT
 // A query under three characters, which the trigram index cannot match: the notes whose text holds
 // it, in any ASCII letter case, oldest first. `instr` reads no wildcard, so `%` and `_` match
 // themselves.
-function searchShort(database: DatabaseSync, query: NoteSearch): readonly NoteRecord[] {
+function searchShort(database: StoreConnection, query: NoteSearch): readonly NoteRecord[] {
   const { kysely, execute } = createSyncKysely<AgentTables>(database);
   const found = kysely
     .selectFrom("notes")

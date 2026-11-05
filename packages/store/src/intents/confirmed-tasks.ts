@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import type { OrderFillWrite } from "@binference/engine/orders";
 import {
@@ -11,6 +10,7 @@ import {
 } from "@binference/engine/outflows";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
 import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
@@ -22,7 +22,10 @@ import { checkRuleFill } from "./intent-writes.js";
 
 // The outflows a restore carried for one agent and mode (keys spec, section 7.4), as confirmed
 // intents; each counts in the place of the database's own count of the same intent.
-function carriedSince(database: DatabaseSync, query: ConfirmedQuery): readonly ConfirmedIntent[] {
+function carriedSince(
+  database: StoreConnection,
+  query: ConfirmedQuery,
+): readonly ConfirmedIntent[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { rows } = execute(
     kysely
@@ -48,7 +51,7 @@ function carriedSince(database: DatabaseSync, query: ConfirmedQuery): readonly C
  * the place of the same intents' own rows; in the caller's transaction.
  */
 export function confirmedSince(
-  database: DatabaseSync,
+  database: StoreConnection,
   query: ConfirmedQuery,
 ): readonly ConfirmedIntent[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
@@ -109,7 +112,7 @@ export const confirmedSinceTask: StoreTask<ConfirmedQuery, readonly ConfirmedInt
 
 // An order write a late landing carries, checked before anything is written: its row and its
 // order's own move, which throw on a broken rule, and its moves, `false` when one is stale.
-function checkLandedOrder(database: DatabaseSync, order: OrderFillWrite): boolean {
+function checkLandedOrder(database: StoreConnection, order: OrderFillWrite): boolean {
   checkOrderFill(database, order.fill);
   checkOwnFill(database, order);
   return checkOrderMoves(database, order.moves).ok;

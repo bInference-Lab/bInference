@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { accountRefSchema } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
 import {
@@ -16,6 +15,7 @@ import {
 import type { Selectable } from "kysely";
 import type { CustodyTable, EngineTables } from "../databases/engine-tables.js";
 import type { CeilingsTable, WalletsTable } from "../databases/wallet-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, readDecimal, readJson } from "../rows/column-values.js";
 import { readDisclaimer } from "./disclaimer-task.js";
@@ -56,7 +56,7 @@ function toWallet(row: Selectable<WalletsTable>, ceiling: CeilingsTable): Wallet
   });
 }
 
-function readWallets(database: DatabaseSync): readonly WalletRecord[] {
+function readWallets(database: StoreConnection): readonly WalletRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const wallets = execute(
     kysely.selectFrom("wallets").selectAll().orderBy("created_at").orderBy("id"),
@@ -76,13 +76,13 @@ function readWallets(database: DatabaseSync): readonly WalletRecord[] {
 }
 
 /** Whether the install holds a custody row: it was set up. */
-export function hasCustody(database: DatabaseSync): boolean {
+export function hasCustody(database: StoreConnection): boolean {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   return takeFirst(kysely.selectFrom("custody").select("id").where("id", "=", 1)) !== undefined;
 }
 
 /** Reads the install's rescue address and the new one that waits, as the `safety` row holds. */
-export function readRescue(database: DatabaseSync): RescueState {
+export function readRescue(database: StoreConnection): RescueState {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const safety = takeFirst(
     kysely
@@ -102,7 +102,7 @@ export function readRescue(database: DatabaseSync): RescueState {
 }
 
 /** Reads the ceiling changes kept for the new rescue address that waits, if any. */
-export function readRescueCeiling(database: DatabaseSync): RescueCeiling | undefined {
+export function readRescueCeiling(database: StoreConnection): RescueCeiling | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const safety = takeFirst(
     kysely.selectFrom("safety").select("rescue_ceiling").where("id", "=", 1),
@@ -112,7 +112,9 @@ export function readRescueCeiling(database: DatabaseSync): RescueCeiling | undef
 }
 
 /** Reads where each rescue address stands in each agent's bridge rules, if anywhere. */
-export function readRescueReach(database: DatabaseSync): readonly RescueReachRecord[] | undefined {
+export function readRescueReach(
+  database: StoreConnection,
+): readonly RescueReachRecord[] | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const safety = takeFirst(kysely.selectFrom("safety").select("rescue_reach").where("id", "=", 1));
   const text = safety?.rescue_reach ?? null;
@@ -123,7 +125,7 @@ export function readRescueReach(database: DatabaseSync): readonly RescueReachRec
  * Reads the install's custody, freeze, rescue address, accepted disclaimer and wallets with
  * their ceilings, oldest first.
  */
-export function readInstall(database: DatabaseSync): InstallFacts {
+export function readInstall(database: StoreConnection): InstallFacts {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const custody = takeFirst(kysely.selectFrom("custody").selectAll().where("id", "=", 1));
   const safety = takeFirst(kysely.selectFrom("safety").select("frozen_at").where("id", "=", 1));

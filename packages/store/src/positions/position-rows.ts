@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError } from "@binference/core";
 import {
   type ArrivalDraft,
@@ -20,6 +19,7 @@ import type {
   ExecutionsTable,
   PositionsTable,
 } from "../databases/position-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText, field, orNull } from "../rows/column-values.js";
 
@@ -48,7 +48,7 @@ export function toPositionRecord(row: Selectable<PositionsTable>): PositionRecor
 
 const keyText = (key: PositionKey): string => `${key.walletId} ${key.asset} ${String(key.isPaper)}`;
 
-function readVersion(database: DatabaseSync, key: PositionKey): number | undefined {
+function readVersion(database: StoreConnection, key: PositionKey): number | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely
@@ -61,7 +61,7 @@ function readVersion(database: DatabaseSync, key: PositionKey): number | undefin
   return row?.version;
 }
 
-function writeOne(database: DatabaseSync, { position, readVersion: read }: PositionWrite): void {
+function writeOne(database: StoreConnection, { position, readVersion: read }: PositionWrite): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const columns = {
     quantity: decimalText(position.quantityBase),
@@ -94,7 +94,10 @@ function writeOne(database: DatabaseSync, { position, readVersion: read }: Posit
  * row), and answers `true`; or moves none and answers `false` when one row moved since. Two writes
  * to one position are a `store.constraint` fault. It runs inside the caller's write task.
  */
-export function movePositions(database: DatabaseSync, writes: readonly PositionWrite[]): boolean {
+export function movePositions(
+  database: StoreConnection,
+  writes: readonly PositionWrite[],
+): boolean {
   if (new Set(writes.map(({ position }) => keyText(position))).size < writes.length) {
     throw positionConstraint("One write moves the same position twice.");
   }
@@ -179,7 +182,7 @@ function toArrivalRecord(row: Selectable<ArrivalsTable>): ArrivalRecord {
 // The numbers of the rows of `executions` or `arrivals` a query names: numbered after `after`, in
 // the query's mode, of its wallet and time range when it names them, in the order recorded.
 function listedIds(
-  database: DatabaseSync,
+  database: StoreConnection,
   table: "executions" | "arrivals",
   query: ExecutionQuery,
 ): readonly number[] {
@@ -198,7 +201,7 @@ function listedIds(
 
 /** The executions a query names, in the order recorded. */
 export function listExecutions(
-  database: DatabaseSync,
+  database: StoreConnection,
   query: ExecutionQuery,
 ): readonly ExecutionRecord[] {
   const ids = listedIds(database, "executions", query);
@@ -213,7 +216,7 @@ export function listExecutions(
 
 /** The arrivals a query names, in the order recorded. */
 export function listArrivals(
-  database: DatabaseSync,
+  database: StoreConnection,
   query: ExecutionQuery,
 ): readonly ArrivalRecord[] {
   const ids = listedIds(database, "arrivals", query);

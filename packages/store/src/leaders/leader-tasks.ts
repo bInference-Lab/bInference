@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type ChainRef, chainRefSchema } from "@binference/chain";
 import {
   activityKeyOf,
@@ -20,6 +19,7 @@ import {
 } from "@binference/engine/orders";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText } from "../rows/column-values.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -64,7 +64,7 @@ export const watchCursorTask: StoreTask<ChainRef, WatchCursorRecord | undefined>
 const rereadRows = 2_000;
 
 // The accounts of `read` tracked now, by the rows themselves.
-function liveAccounts(database: DatabaseSync, read: LeaderReadRecord): ReadonlySet<string> {
+function liveAccounts(database: StoreConnection, read: LeaderReadRecord): ReadonlySet<string> {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const accounts = [
     ...new Set([
@@ -87,7 +87,7 @@ function liveAccounts(database: DatabaseSync, read: LeaderReadRecord): ReadonlyS
 }
 
 function storeTrades(
-  database: DatabaseSync,
+  database: StoreConnection,
   read: LeaderReadRecord,
   live: ReadonlySet<string>,
 ): readonly StoredActivity[] {
@@ -121,7 +121,7 @@ function storeTrades(
 
 // The rows of a block this read read again that its trades no longer hold: a reorganization
 // removed them (decision 0262). Blocks the read cut for a wallet keep their rows.
-function dropRemoved(database: DatabaseSync, read: LeaderReadRecord, live: ReadonlySet<string>) {
+function dropRemoved(database: StoreConnection, read: LeaderReadRecord, live: ReadonlySet<string>) {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const kept = new Set(read.trades.map(activityKeyOf));
   for (const { account, readFrom } of read.wallets) {
@@ -159,7 +159,7 @@ function dropRemoved(database: DatabaseSync, read: LeaderReadRecord, live: Reado
 }
 
 function moveWallets(
-  database: DatabaseSync,
+  database: StoreConnection,
   read: LeaderReadRecord,
   live: ReadonlySet<string>,
 ): void {

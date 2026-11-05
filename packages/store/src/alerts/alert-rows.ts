@@ -1,5 +1,5 @@
 // An alert's row and its record, both ways, and the reads every alert task shares.
-import type { DatabaseSync } from "node:sqlite";
+
 import {
   alertConditionDocument,
   type AlertRecord,
@@ -9,6 +9,7 @@ import {
 import type { Selectable } from "kysely";
 import type { AlertsTable } from "../databases/alert-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, orNull, readJson } from "../rows/column-values.js";
 
@@ -67,14 +68,14 @@ export function alertRowOf(record: AlertRecord): Selectable<AlertsTable> {
 }
 
 /** One alert in any state, or `undefined`. */
-export function readAlert(database: DatabaseSync, id: string): AlertRecord | undefined {
+export function readAlert(database: StoreConnection, id: string): AlertRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("alerts").selectAll().where("id", "=", id));
   return row === undefined ? undefined : toAlertRecord(row);
 }
 
 /** Writes an alert's row as its record now holds it, and reads it back. */
-export function writeAlert(database: DatabaseSync, record: AlertRecord): AlertRecord {
+export function writeAlert(database: StoreConnection, record: AlertRecord): AlertRecord {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { id: _id, ...row } = alertRowOf(record);
   execute(kysely.updateTable("alerts").set(row).where("id", "=", record.id));

@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { walletRoleSchema } from "@binference/chain";
 import { idSchema } from "@binference/core";
 import {
@@ -16,6 +15,7 @@ import type { Selectable } from "kysely";
 import { readSettings } from "../agents/agent-rows.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { WalletsTable } from "../databases/wallet-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { confirmedSince } from "../intents/confirmed-tasks.js";
 import { field } from "../rows/column-values.js";
@@ -27,7 +27,7 @@ const windowMs = 86_400_000;
 const agentId = idSchema("agt");
 const walletId = idSchema("wal");
 
-function accessOf(database: DatabaseSync): AccessRows {
+function accessOf(database: StoreConnection): AccessRows {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const rows = (table: AccessTable) => execute(kysely.selectFrom(table).selectAll()).rows;
   return {
@@ -40,7 +40,7 @@ function accessOf(database: DatabaseSync): AccessRows {
   };
 }
 
-function agentsOf(database: DatabaseSync): readonly AgentGuards[] {
+function agentsOf(database: StoreConnection): readonly AgentGuards[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const ids = execute(kysely.selectFrom("agents").select("id").orderBy("id")).rows;
   const removed = execute(
@@ -61,7 +61,7 @@ function agentsOf(database: DatabaseSync): readonly AgentGuards[] {
 }
 
 function outflowsOf(
-  database: DatabaseSync,
+  database: StoreConnection,
   agents: readonly AgentGuards[],
   nowMs: number,
 ): readonly CountedOutflow[] {
@@ -80,7 +80,7 @@ function outflowsOf(
   );
 }
 
-function safetyOf(database: DatabaseSync): SafetyGuards {
+function safetyOf(database: StoreConnection): SafetyGuards {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("safety").selectAll().where("id", "=", 1));
   if (row === undefined) {
@@ -116,7 +116,7 @@ type WalletRow = Pick<
 >;
 
 /** Reads what a restore must never loosen, and what it shows, from one `engine.sqlite`. */
-export function readGuards(database: DatabaseSync, nowMs: number): InstallGuards {
+export function readGuards(database: StoreConnection, nowMs: number): InstallGuards {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const owner = takeFirst(kysely.selectFrom("telegram_owner").selectAll().where("id", "=", 1));
   const agents = agentsOf(database);

@@ -1,6 +1,6 @@
 // The intent state machine's store adapter: the one file that writes intents.state. Every write
 // runs inside one store task's transaction, so a move is written whole or not at all.
-import type { DatabaseSync } from "node:sqlite";
+
 import { BinferenceError, err, type Id, type JsonValue, ok, type Result } from "@binference/core";
 import type {
   IntentChange,
@@ -15,6 +15,7 @@ import type {
 import type { AlertFillWrite } from "@binference/engine/orders";
 import { settleIntent } from "../agent-inbox/agent-inbox-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
 import { checkOrderFill, checkOwnFill, insertOrderFill } from "../orders/order-fill-writes.js";
@@ -33,13 +34,13 @@ interface EventDraft {
   readonly atMs: number;
 }
 
-function readIntent(database: DatabaseSync, id: Id<"int">): IntentRecord | undefined {
+function readIntent(database: StoreConnection, id: Id<"int">): IntentRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("intents").selectAll().where("id", "=", id));
   return row === undefined ? undefined : toIntentRecord(row);
 }
 
-function addEvent(database: DatabaseSync, event: EventDraft): IntentEventRecord {
+function addEvent(database: StoreConnection, event: EventDraft): IntentEventRecord {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const row = {
     intent_id: event.intentId,
@@ -53,7 +54,7 @@ function addEvent(database: DatabaseSync, event: EventDraft): IntentEventRecord 
 }
 
 function appendFor(
-  database: DatabaseSync,
+  database: StoreConnection,
   draft: LedgerDraft | undefined,
 ): LedgerEntry | undefined {
   return draft === undefined ? undefined : appendLedgerEntry(database, draft);
@@ -61,7 +62,7 @@ function appendFor(
 
 // The commit of a write, with the settle message it stores when it ends a runtime's intent.
 function commitOf(
-  database: DatabaseSync,
+  database: StoreConnection,
   written: { readonly intent: IntentRecord; readonly event: IntentEventRecord },
   ledgerEntry: LedgerEntry | undefined,
 ): IntentCommit {
@@ -105,7 +106,7 @@ function movedColumns(intent: IntentRecord): {
 
 /** Writes a new intent with its first event and ledger entry; an id in use is `exists`. */
 export function createIntent(
-  database: DatabaseSync,
+  database: StoreConnection,
   draft: IntentDraft,
 ): Result<IntentCommit, "exists"> {
   if (readIntent(database, draft.id) !== undefined) {
@@ -146,7 +147,7 @@ export function createIntent(
  * `stale` when its stored version is not the one the mover read.
  */
 export function readMoved(
-  database: DatabaseSync,
+  database: StoreConnection,
   change: IntentChange,
 ): Result<IntentRecord, "not_found" | "stale"> {
   const current = readIntent(database, change.id);
@@ -163,7 +164,7 @@ export function readMoved(
  * another write moved, is `stale`.
  */
 export function checkRuleFill(
-  database: DatabaseSync,
+  database: StoreConnection,
   fill: {
     readonly alert: AlertFillWrite;
     readonly intent: string;
@@ -193,7 +194,10 @@ export function checkRuleFill(
 
 // A fill's order write, checked before anything is written: an order a move may not take, or one
 // at another version, is the move's `stale`.
-function checkFillWrite(database: DatabaseSync, change: IntentChange): Result<undefined, "stale"> {
+function checkFillWrite(
+  database: StoreConnection,
+  change: IntentChange,
+): Result<undefined, "stale"> {
   const { order, alert } = change;
   const ruleFill = { intent: change.id, isLanding: false };
   if (alert !== undefined && !checkRuleFill(database, { alert, ...ruleFill }).ok) {
@@ -213,7 +217,7 @@ function checkFillWrite(database: DatabaseSync, change: IntentChange): Result<un
  * registration's identity, all in the caller's transaction.
  */
 export function moveIntent(
-  database: DatabaseSync,
+  database: StoreConnection,
   change: IntentChange,
 ): Result<IntentCommit, "not_found" | "stale"> {
   const read = readMoved(database, change);

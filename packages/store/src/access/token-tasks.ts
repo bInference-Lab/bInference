@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type Sha256Hex,
@@ -12,6 +11,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { TokensTable } from "../databases/access-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -31,7 +31,7 @@ function toToken(row: Selectable<TokensTable>): TokenRecord {
   });
 }
 
-function readToken(database: DatabaseSync, id: Id<"tok">): Selectable<TokensTable> | undefined {
+function readToken(database: StoreConnection, id: Id<"tok">): Selectable<TokensTable> | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   return takeFirst(kysely.selectFrom("tokens").selectAll().where("id", "=", id));
 }
@@ -40,7 +40,7 @@ type TokenStamp = Pick<TokensTable, "last_used_at" | "revoked_at">;
 
 // Reads the token, applies the stamp to its row and writes both stamp columns back.
 function stampToken(
-  database: DatabaseSync,
+  database: StoreConnection,
   id: Id<"tok">,
   stamp: (row: Selectable<TokensTable>) => TokenStamp,
 ): Result<TokenRecord, "not_found"> {
@@ -57,7 +57,7 @@ function stampToken(
 const tokenResult = resultSchema(tokenRecordSchema, ["not_found"]);
 
 // Inserts a new token, unless its id or secret hash is in use.
-function insertToken(database: DatabaseSync, token: TokenRecord): Result<TokenRecord, "exists"> {
+function insertToken(database: StoreConnection, token: TokenRecord): Result<TokenRecord, "exists"> {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const taken = takeFirst(
     kysely

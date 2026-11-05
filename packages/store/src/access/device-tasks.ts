@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type DeviceRecord,
@@ -10,6 +9,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { DevicesTable } from "../databases/access-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -28,7 +28,10 @@ function toDevice(row: Selectable<DevicesTable>): DeviceRecord {
   });
 }
 
-function readDevice(database: DatabaseSync, id: Id<"dev">): Selectable<DevicesTable> | undefined {
+function readDevice(
+  database: StoreConnection,
+  id: Id<"dev">,
+): Selectable<DevicesTable> | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   return takeFirst(kysely.selectFrom("devices").selectAll().where("id", "=", id));
 }
@@ -37,7 +40,7 @@ type DeviceStamp = Pick<DevicesTable, "last_seen_at" | "revoked_at">;
 
 // Reads the device, applies the stamp to its row and writes both stamp columns back.
 function stampDevice(
-  database: DatabaseSync,
+  database: StoreConnection,
   id: Id<"dev">,
   stamp: (row: Selectable<DevicesTable>) => DeviceStamp,
 ): Result<DeviceRecord, "not_found"> {

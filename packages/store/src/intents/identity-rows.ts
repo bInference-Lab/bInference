@@ -1,7 +1,7 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type Id, idSchema } from "@binference/core";
 import { type IdentityRecord, identityRecordSchema } from "@binference/engine/sends";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
@@ -13,7 +13,7 @@ import { defineTask, type StoreTask } from "../tasks/store-task.js";
  * holds one already breaks the table's key, which throws `store.constraint` and rolls the move
  * back.
  */
-export function insertIdentity(database: DatabaseSync, identity: IdentityRecord): void {
+export function insertIdentity(database: StoreConnection, identity: IdentityRecord): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely.insertInto("identities").values({

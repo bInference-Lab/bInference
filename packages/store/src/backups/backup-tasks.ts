@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type BackupRecord,
@@ -12,12 +11,13 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { BackupTables } from "../databases/backup-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
 
 /** Writes a backup's row in the caller's transaction; an id in use breaks the primary key. */
-export function insertBackup(database: DatabaseSync, backup: BackupRecord): void {
+export function insertBackup(database: StoreConnection, backup: BackupRecord): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely.insertInto("backups").values({
@@ -81,7 +81,7 @@ function recordOf(row: Selectable<BackupTables["backups"]>): BackupRecord {
 }
 
 /** Every backup, oldest first, then by id, in the caller's transaction. */
-export function listBackups(database: DatabaseSync): readonly BackupRecord[] {
+export function listBackups(database: StoreConnection): readonly BackupRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { rows } = execute(
     kysely.selectFrom("backups").selectAll().orderBy("created_at").orderBy("id"),

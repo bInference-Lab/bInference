@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type Id, idSchema } from "@binference/core";
 import {
   isAnswering,
@@ -16,6 +15,7 @@ import {
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { WebhookRulesTable } from "../databases/webhook-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText } from "../rows/column-values.js";
 import { changedRows, rowCountSchema, timeInputSchema } from "../tasks/count-schema.js";
@@ -36,7 +36,7 @@ function toRuleKey(row: RuleRow): WebhookRuleKey {
   });
 }
 
-function readRule(database: DatabaseSync, id: Id<"whr">): WebhookRuleKey | undefined {
+function readRule(database: StoreConnection, id: Id<"whr">): WebhookRuleKey | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely
@@ -61,7 +61,7 @@ type Outcome = "accepted" | "repeat" | "rate";
 // Judges an alert on the rule's accepted alerts of the windows before it, in the task's own
 // transaction.
 function outcomeOf(
-  database: DatabaseSync,
+  database: StoreConnection,
   rule: WebhookRuleKey,
   draft: WebhookAlertDraft,
 ): Outcome {
@@ -94,7 +94,7 @@ function outcomeOf(
 }
 
 // Writes an accepted alert's rule time and inbox entry, and answers the entry's id.
-function admit(database: DatabaseSync, draft: WebhookAlertDraft, event: number): number {
+function admit(database: StoreConnection, draft: WebhookAlertDraft, event: number): number {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely

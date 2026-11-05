@@ -1,6 +1,6 @@
 // The agent inbox's reads and writes, run inside the caller's transaction: the inbox store's own
 // tasks, and the intent writes that store a settle message with the move that ends an intent.
-import type { DatabaseSync } from "node:sqlite";
+
 import { type Id, idSchema } from "@binference/core";
 import { type IntentRecord, isTerminalState } from "@binference/engine";
 import {
@@ -13,6 +13,7 @@ import {
 import type { Selectable } from "kysely";
 import type { AgentInboxTable } from "../databases/agent-inbox-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 
@@ -31,7 +32,7 @@ export function toAgentInboxMessage(row: Selectable<AgentInboxTable>): AgentInbo
 }
 
 /** How many messages the agent holds that the runtime has not taken. */
-export function untakenCount(database: DatabaseSync, agent: string): number {
+export function untakenCount(database: StoreConnection, agent: string): number {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely
@@ -47,7 +48,7 @@ export function untakenCount(database: DatabaseSync, agent: string): number {
  * The agent's open session, opening `opens` when none is open. `undefined` for an unknown agent.
  */
 export function sessionFor(
-  database: DatabaseSync,
+  database: StoreConnection,
   agent: string,
   opens: Id<"ses">,
 ): Id<"ses"> | undefined {
@@ -67,7 +68,7 @@ export function sessionFor(
 
 /** Inserts one message and reads it back. */
 export function insertMessage(
-  database: DatabaseSync,
+  database: StoreConnection,
   message: AgentInboxMessage,
 ): AgentInboxMessage {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
@@ -87,7 +88,7 @@ export function insertMessage(
 }
 
 // The cause of the intent's first event, which names who proposed it.
-function firstCause(database: DatabaseSync, intent: Id<"int">): string | undefined {
+function firstCause(database: StoreConnection, intent: Id<"int">): string | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   return takeFirst(
     kysely
@@ -105,7 +106,7 @@ function firstCause(database: DatabaseSync, intent: Id<"int">): string | undefin
  * its agent holds 200 untaken messages (runtime spec, section 3.2).
  */
 export function settleIntent(
-  database: DatabaseSync,
+  database: StoreConnection,
   intent: IntentRecord,
 ): AgentInboxMessage | undefined {
   if (!isTerminalState(intent.state)) {

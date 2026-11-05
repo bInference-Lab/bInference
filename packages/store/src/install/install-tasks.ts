@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, jsonValueSchema, ok, type Result } from "@binference/core";
 import {
   type CeilingUpdate,
@@ -27,6 +26,7 @@ import {
 } from "@binference/engine/install";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText, jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -36,7 +36,7 @@ import { hasCustody, readInstall, readRescue, readRescueCeiling } from "./instal
 const installIdKey = "install_id";
 const createdAtKey = "created_at";
 
-function writeCustody(database: DatabaseSync, setup: InstallSetup): void {
+function writeCustody(database: StoreConnection, setup: InstallSetup): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { custody } = setup;
   const columns = {
@@ -61,7 +61,7 @@ function writeCustody(database: DatabaseSync, setup: InstallSetup): void {
   }
 }
 
-function writeRescue(database: DatabaseSync, setup: InstallSetup): void {
+function writeRescue(database: StoreConnection, setup: InstallSetup): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely
@@ -78,7 +78,7 @@ function writeRescue(database: DatabaseSync, setup: InstallSetup): void {
   );
 }
 
-function insertWallet(database: DatabaseSync, wallet: WalletDraft): void {
+function insertWallet(database: StoreConnection, wallet: WalletDraft): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely.insertInto("wallets").values({
@@ -108,7 +108,7 @@ function insertWallet(database: DatabaseSync, wallet: WalletDraft): void {
   );
 }
 
-function writeWallet(database: DatabaseSync, setup: InstallSetup): void {
+function writeWallet(database: StoreConnection, setup: InstallSetup): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely.updateTable("wallets").set({ archived_at: setup.atMs }).where("archived_at", "is", null),
@@ -175,7 +175,7 @@ interface RescueWrite {
 
 // Writes the rescue state a rule of the engine decides over the row it read, with the ceiling
 // changes `rescueCeilingAfter` keeps; a dropped address comes back with the changes kept for it.
-function moveRescue(database: DatabaseSync, { atMs, decide, asked }: RescueWrite): RescueCancel {
+function moveRescue(database: StoreConnection, { atMs, decide, asked }: RescueWrite): RescueCancel {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const stored = readRescue(database);
   const kept = readRescueCeiling(database);

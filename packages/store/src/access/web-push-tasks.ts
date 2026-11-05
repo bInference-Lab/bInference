@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   maxWebPushSubscriptionsPerDevice,
@@ -11,6 +10,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { WebPushSubscriptionsTable } from "../databases/access-tables.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -26,7 +26,7 @@ function toSubscription(row: Selectable<WebPushSubscriptionsTable>): WebPushSubs
   });
 }
 
-function isActiveDevice(database: DatabaseSync, id: string): boolean {
+function isActiveDevice(database: StoreConnection, id: string): boolean {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const device = takeFirst(
     kysely.selectFrom("devices").select("id").where("id", "=", id).where("revoked_at", "is", null),
@@ -38,7 +38,7 @@ function isActiveDevice(database: DatabaseSync, id: string): boolean {
  * Drops every browser push subscription of a device, inside the task that revokes it (decision
  * 0158).
  */
-export function dropDeviceSubscriptions(database: DatabaseSync, deviceId: string): void {
+export function dropDeviceSubscriptions(database: StoreConnection, deviceId: string): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(kysely.deleteFrom("web_push_subscriptions").where("device_id", "=", deviceId));
 }

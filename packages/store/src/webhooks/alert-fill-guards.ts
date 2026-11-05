@@ -1,9 +1,9 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { AlertFillWrite } from "@binference/engine/orders";
 import { inFlightStates, ruleFillOfAuthorization } from "@binference/engine/outflows";
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { WebhookEventsTable } from "../databases/webhook-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { readJson } from "../rows/column-values.js";
 import { ruleRow } from "./webhook-rule-rows.js";
@@ -14,7 +14,7 @@ import { ruleRow } from "./webhook-rule-rows.js";
  * authorization names this rule and row; `undefined` when there is none.
  */
 function heldFillOf(
-  database: DatabaseSync,
+  database: StoreConnection,
   row: Selectable<WebhookEventsTable>,
 ): string | undefined {
   const agent = ruleRow(database, row.rule_id)?.agent_id;
@@ -43,7 +43,7 @@ function heldFillOf(
  * itself: only the fill's own move may end the alert (decision 0342).
  */
 export function isHeldFromSkip(
-  database: DatabaseSync,
+  database: StoreConnection,
   end: { readonly row: Selectable<WebhookEventsTable>; readonly write: AlertFillWrite },
 ): boolean {
   const { row, write } = end;
@@ -55,7 +55,7 @@ export function isHeldFromSkip(
  * Whether a `filled` end written alone names the alert's own fill (decision 0342): an intent whose
  * stored authorization is this rule's fill of this row.
  */
-export function namesOwnFill(database: DatabaseSync, write: AlertFillWrite): boolean {
+export function namesOwnFill(database: StoreConnection, write: AlertFillWrite): boolean {
   if (write.intentId === undefined) {
     return false;
   }

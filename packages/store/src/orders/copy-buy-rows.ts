@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError } from "@binference/core";
 import {
   type CopyBuyQuery,
@@ -8,12 +7,13 @@ import {
 } from "@binference/engine/orders";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
 // The write-order number of the row a page starts after; a row the store does not hold throws, so
 // a cap never sums a page it cannot place.
-function seqAfter(database: DatabaseSync, after: CopyBuyQuery["after"]): number {
+function seqAfter(database: StoreConnection, after: CopyBuyQuery["after"]): number {
   if (after === undefined) {
     return 0;
   }

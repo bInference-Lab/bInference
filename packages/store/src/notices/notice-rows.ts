@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { AmountWire } from "@binference/chain";
 import { BinferenceError, jsonValueSchema } from "@binference/core";
 import {
@@ -12,6 +11,7 @@ import type { Selectable } from "kysely";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { NoticesTable, OutboxTable } from "../databases/notice-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field, jsonText, readJson } from "../rows/column-values.js";
 
@@ -73,20 +73,20 @@ export function toNoticeRecord(row: Selectable<NoticesTable>): NoticeRecord {
   return noticeRecordSchema.parse(recordFieldsOf(row));
 }
 
-function findNoticeRow(database: DatabaseSync, id: string) {
+function findNoticeRow(database: StoreConnection, id: string) {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   return takeFirst(kysely.selectFrom("notices").selectAll().where("id", "=", id));
 }
 
 /** Reads one notice by id, or nothing. */
-export function findNotice(database: DatabaseSync, id: string): NoticeRecord | undefined {
+export function findNotice(database: StoreConnection, id: string): NoticeRecord | undefined {
   const row = findNoticeRow(database, id);
   return row === undefined ? undefined : toNoticeRecord(row);
 }
 
 /** Reads an outbox row with its notice into a delivery; a row without its notice is a fault. */
 export function toNoticeDelivery(
-  database: DatabaseSync,
+  database: StoreConnection,
   row: Selectable<OutboxTable>,
 ): NoticeDelivery {
   const notice = findNoticeRow(database, noticeIdOf(row));

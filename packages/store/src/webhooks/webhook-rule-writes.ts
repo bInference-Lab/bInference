@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type AlertFillWrite,
@@ -12,6 +11,7 @@ import {
 import type { Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { WebhookEventsTable, WebhookRulesTable } from "../databases/webhook-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { isAgentFrozen } from "../orders/order-writes.js";
 import { jsonText } from "../rows/column-values.js";
@@ -24,7 +24,7 @@ import { acceptedRow, refused, ruleRow, ruleRowOf, toRuleRecord } from "./webhoo
  * that is not the agent's throws.
  */
 export function createRule(
-  database: DatabaseSync,
+  database: StoreConnection,
   draft: WebhookRuleDraft,
 ): Result<WebhookRuleRecord, WebhookRuleCreateRefusal> {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
@@ -63,7 +63,7 @@ export function createRule(
 // an agent that is not frozen; a rule already active keeps its state while its agent is frozen
 // (decision 0337).
 function activeRefusal(
-  database: DatabaseSync,
+  database: StoreConnection,
   row: Selectable<WebhookRulesTable>,
   move: WebhookRuleMove,
 ): WebhookRuleMoveRefusal | undefined {
@@ -93,7 +93,7 @@ function activeRefusal(
  * of a frozen agent's rule `frozen`. A move out of `deleted` throws.
  */
 export function checkRuleMove(
-  database: DatabaseSync,
+  database: StoreConnection,
   move: WebhookRuleMove,
 ): Result<undefined, WebhookRuleMoveRefusal> {
   const row = ruleRow(database, move.id);
@@ -113,7 +113,7 @@ export function checkRuleMove(
 // The last alert row the rule's URL took: a rotation keeps it, so every alert at or below it is
 // its old URL's, whatever its time (decision 0337). The listener's write checks the hash in its
 // own transaction, so no alert of the old URL lands after the rotation's write.
-function lastEventOf(database: DatabaseSync, rule: string): number {
+function lastEventOf(database: StoreConnection, rule: string): number {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const last = takeFirst(
     kysely
@@ -125,7 +125,7 @@ function lastEventOf(database: DatabaseSync, rule: string): number {
 }
 
 /** Writes a checked rule move and answers the rule after it. */
-export function writeRuleMove(database: DatabaseSync, move: WebhookRuleMove): WebhookRuleRecord {
+export function writeRuleMove(database: StoreConnection, move: WebhookRuleMove): WebhookRuleRecord {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { cardId, fills, noticeHour, secretHash } = move;
   const rotation =
@@ -165,7 +165,7 @@ export function writeRuleMove(database: DatabaseSync, move: WebhookRuleMove): We
 }
 
 /** Whether the rule of an accepted alert was deleted: a fill landing on it moves it no more. */
-export function isRuleDeleted(database: DatabaseSync, event: number): boolean {
+export function isRuleDeleted(database: StoreConnection, event: number): boolean {
   const row = acceptedRow(database, event);
   return row !== undefined && ruleRow(database, row.rule_id)?.state === "deleted";
 }
@@ -175,7 +175,7 @@ export function isRuleDeleted(database: DatabaseSync, event: number): boolean {
  * value (decision 0342): a fill naming this alert's own live fill at `finalized`, counted on its
  * rule or on a deleted one.
  */
-export function isUnvaluedFill(database: DatabaseSync, write: AlertFillWrite): boolean {
+export function isUnvaluedFill(database: StoreConnection, write: AlertFillWrite): boolean {
   if (
     write.outcome !== "filled" ||
     write.intentId === undefined ||
@@ -210,7 +210,7 @@ function isOwnDrop(row: Selectable<WebhookEventsTable>, intent: string | undefin
  * throws.
  */
 export function checkAlertEnd(
-  database: DatabaseSync,
+  database: StoreConnection,
   write: AlertFillWrite,
   options: { readonly overDropOf?: string } = {},
 ): Result<undefined, "ended" | "not_found" | "stale" | "held"> {
@@ -235,7 +235,7 @@ export function checkAlertEnd(
 }
 
 /** Writes a checked alert's end: its outcome, reason, intent and notices, then its rule's move. */
-export function writeAlertEnd(database: DatabaseSync, write: AlertFillWrite): void {
+export function writeAlertEnd(database: StoreConnection, write: AlertFillWrite): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   execute(
     kysely

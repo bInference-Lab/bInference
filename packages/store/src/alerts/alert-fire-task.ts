@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import { type AgentInboxMessage, maxUntakenMessages } from "@binference/engine/chat";
 import {
@@ -26,6 +25,7 @@ import {
   untakenCount,
 } from "../agent-inbox/agent-inbox-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -35,7 +35,7 @@ import { readAlert, writeAlert } from "./alert-rows.js";
 // Replaces the payload of the alert's last wake-up while it waits untaken, and reads it back; a
 // launch alert's never is.
 function replaceWaiting(
-  database: DatabaseSync,
+  database: StoreConnection,
   alert: AlertRecord,
   wake: AlertWake,
 ): AgentInboxMessage | undefined {
@@ -59,7 +59,7 @@ function replaceWaiting(
   return row === undefined ? undefined : toAgentInboxMessage(row);
 }
 
-function recentWakes(database: DatabaseSync, alert: AlertRecord, atMs: number): number {
+function recentWakes(database: StoreConnection, alert: AlertRecord, atMs: number): number {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely
@@ -74,7 +74,7 @@ function recentWakes(database: DatabaseSync, alert: AlertRecord, atMs: number): 
 
 // A new wake-up, unless the agent's alerts woke it 10 times in the last hour or its inbox is full.
 function newWake(
-  database: DatabaseSync,
+  database: StoreConnection,
   alert: AlertRecord,
   call: { readonly wake: AlertWake; readonly atMs: number },
 ): AlertWakeOutcome {
@@ -99,7 +99,7 @@ function newWake(
 }
 
 function wakeOf(
-  database: DatabaseSync,
+  database: StoreConnection,
   alert: AlertRecord,
   draft: AlertFireDraft,
 ): AlertWakeOutcome {
@@ -118,7 +118,7 @@ function wakeOf(
 
 // The wake-ups the hourly limit held back that no notice told yet, in the rows still kept; a fire
 // that tells them marks them told.
-function tellHeldBack(database: DatabaseSync, alert: AlertRecord): number {
+function tellHeldBack(database: StoreConnection, alert: AlertRecord): number {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const told = execute(
     kysely
@@ -133,7 +133,7 @@ function tellHeldBack(database: DatabaseSync, alert: AlertRecord): number {
 
 // Records the fire's row, and forgets the agent's rows older than a week or past its newest 1,000.
 function keep(
-  database: DatabaseSync,
+  database: StoreConnection,
   alert: AlertRecord,
   run: {
     readonly draft: AlertFireDraft;

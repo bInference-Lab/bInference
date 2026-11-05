@@ -1,7 +1,7 @@
-import type { DatabaseSync } from "node:sqlite";
 import type { AccessRows, AgentGuards, GuardsCarry } from "@binference/engine/backups";
 import { limitsColumns, pendingColumns } from "../agents/limits-rows.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { type AccessTable, accessRowOf, accessTables } from "./access-rows.schema.js";
 import { insertBackup } from "./backup-tasks.js";
@@ -16,7 +16,7 @@ const rowsNamed: { readonly [T in AccessTable]: keyof AccessRows } = {
 };
 
 // Replaces every access table with the carried rows: children go first, then come back last.
-function writeAccess(database: DatabaseSync, access: AccessRows): void {
+function writeAccess(database: StoreConnection, access: AccessRows): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   for (const table of accessTables.toReversed()) {
     execute(kysely.deleteFrom(table));
@@ -28,7 +28,7 @@ function writeAccess(database: DatabaseSync, access: AccessRows): void {
   }
 }
 
-function writeSafety(database: DatabaseSync, carry: GuardsCarry): void {
+function writeSafety(database: StoreConnection, carry: GuardsCarry): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { safety, telegramOwner } = carry;
   execute(
@@ -55,7 +55,7 @@ function writeSafety(database: DatabaseSync, carry: GuardsCarry): void {
 }
 
 // The agent's own row, its approval mode and its send level, each one version on.
-function writeAgentRows(database: DatabaseSync, agent: AgentGuards, nowMs: number): void {
+function writeAgentRows(database: StoreConnection, agent: AgentGuards, nowMs: number): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const id = agent.agentId;
   execute(
@@ -96,7 +96,7 @@ function writeAgentRows(database: DatabaseSync, agent: AgentGuards, nowMs: numbe
 }
 
 // The agent's limits, one version on, and the address book entries removed since the backup.
-function writeAgentLimits(database: DatabaseSync, agent: AgentGuards, nowMs: number): void {
+function writeAgentLimits(database: StoreConnection, agent: AgentGuards, nowMs: number): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const id = agent.agentId;
   execute(
@@ -122,7 +122,7 @@ function writeAgentLimits(database: DatabaseSync, agent: AgentGuards, nowMs: num
   }
 }
 
-function writeOutflows(database: DatabaseSync, carry: GuardsCarry, nowMs: number): void {
+function writeOutflows(database: StoreConnection, carry: GuardsCarry, nowMs: number): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const agents = new Set<string>(carry.agents.map((agent) => agent.agentId));
   for (const outflow of carry.outflows.filter((each) => agents.has(each.agentId))) {
@@ -148,7 +148,7 @@ function writeOutflows(database: DatabaseSync, carry: GuardsCarry, nowMs: number
  * access rows and the Telegram owner of the state it replaces, the install's safety, each agent's
  * merged guards, the outflows the cap counts, and the backup records it lacked.
  */
-export function writeCarry(database: DatabaseSync, carry: GuardsCarry, nowMs: number): void {
+export function writeCarry(database: StoreConnection, carry: GuardsCarry, nowMs: number): void {
   writeAccess(database, carry.access);
   writeSafety(database, carry);
   for (const agent of carry.agents) {

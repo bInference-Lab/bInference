@@ -1,15 +1,15 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { IntentCommit } from "@binference/engine";
 import type { FreezeCommit, FreezeWrite } from "@binference/engine/safety";
 import { readAgentFreezes, writeAgentFreezes } from "../agents/agent-freeze-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
 import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
 import { moveIntent, readMoved } from "./intent-writes.js";
 
-function moved(write: FreezeWrite["moves"][number], database: DatabaseSync): IntentCommit {
+function moved(write: FreezeWrite["moves"][number], database: StoreConnection): IntentCommit {
   const commit = moveIntent(database, write);
   if (!commit.ok) {
     throw new BinferenceError({
@@ -23,7 +23,7 @@ function moved(write: FreezeWrite["moves"][number], database: DatabaseSync): Int
 
 // Marks the install frozen at `atMs`, keeping the time of an earlier freeze, or clears its freeze.
 function freezeInstall(
-  database: DatabaseSync,
+  database: StoreConnection,
   change: { readonly atMs: number; readonly isFrozen: boolean },
 ): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
@@ -47,7 +47,7 @@ function freezeInstall(
  * moves' on the ledger. A card write that would fail throws, which rolls the whole freeze back.
  */
 export function writeFreeze(
-  database: DatabaseSync,
+  database: StoreConnection,
   write: FreezeWrite,
 ): Result<FreezeCommit, "not_found" | "stale"> {
   for (const change of write.moves) {

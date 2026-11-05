@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type AgentInboxMessage,
@@ -14,12 +13,13 @@ import {
 import { z } from "zod";
 import { insertMessage, sessionFor, untakenCount } from "../agent-inbox/agent-inbox-writes.js";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { readSchedule, writeSchedule } from "./schedule-rows.js";
 
-function isUntaken(database: DatabaseSync, id: string | undefined): boolean {
+function isUntaken(database: StoreConnection, id: string | undefined): boolean {
   if (id === undefined) {
     return false;
   }
@@ -37,7 +37,7 @@ function isUntaken(database: DatabaseSync, id: string | undefined): boolean {
 // Stores the run's wake-up in the agent's open session, unless the last one still waits or the
 // agent inbox is full.
 function wake(
-  database: DatabaseSync,
+  database: StoreConnection,
   schedule: ScheduleRecord,
   run: ScheduleRunDraft,
 ): Result<AgentInboxMessage, NonNullable<ScheduleRunDraft["skip"]>> {

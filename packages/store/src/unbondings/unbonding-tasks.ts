@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type UnbondingClaim,
@@ -22,6 +21,7 @@ import type { SelectQueryBuilder, Selectable } from "kysely";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { StakeUnbondingsTable } from "../databases/unbonding-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText, field, orNull } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -66,7 +66,7 @@ function openOnly(select: Rows): Rows {
 }
 
 function rowsOf(
-  database: DatabaseSync,
+  database: StoreConnection,
   narrow: (select: Rows) => Rows,
 ): readonly UnbondingRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);

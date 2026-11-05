@@ -1,8 +1,8 @@
-import type { DatabaseSync } from "node:sqlite";
 import { BinferenceError, type Id, idSchema } from "@binference/core";
 import { type CardCopy, cardCopySchema } from "@binference/engine/surfaces";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
@@ -32,7 +32,7 @@ const copyRowSchema = z
   );
 
 // Every Telegram copy with its card version, read through one join.
-function copiesQuery(database: DatabaseSync) {
+function copiesQuery(database: StoreConnection) {
   const sync = createSyncKysely<EngineTables>(database);
   const query = sync.kysely
     .selectFrom("card_messages")

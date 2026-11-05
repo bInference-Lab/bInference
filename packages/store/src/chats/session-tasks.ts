@@ -1,6 +1,6 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import type { AgentTables, SessionRow } from "../databases/agent-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -29,7 +29,7 @@ function toSession(row: SessionRow): SessionRecord {
 }
 
 /** One session row, read inside the caller's transaction. */
-export function readSession(database: DatabaseSync, id: string): SessionRecord | undefined {
+export function readSession(database: StoreConnection, id: string): SessionRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<AgentTables>(database);
   const row = takeFirst(kysely.selectFrom("sessions").selectAll().where("id", "=", id));
   return row === undefined ? undefined : toSession(row);

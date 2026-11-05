@@ -1,7 +1,7 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type DisclaimerAcceptance, disclaimerAcceptanceSchema } from "@binference/engine/install";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
@@ -11,7 +11,7 @@ function versionOf(text: string): number {
 }
 
 /** Reads the disclaimer the owner accepted from the `safety` row, if any. */
-export function readDisclaimer(database: DatabaseSync): DisclaimerAcceptance | undefined {
+export function readDisclaimer(database: StoreConnection): DisclaimerAcceptance | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(
     kysely

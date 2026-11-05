@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { err, ok, type Result } from "@binference/core";
 import {
   type AgentKeyAttachment,
@@ -9,6 +8,7 @@ import {
 import type { Updateable } from "kysely";
 import { z } from "zod";
 import type { CustodyTable, EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
@@ -17,7 +17,7 @@ import { hasCustody } from "./install-rows.js";
 // Updates the custody row with its version raised, in the caller's transaction; an install with
 // no custody row is `not_set_up` and changes nothing.
 function updateCustody(
-  database: DatabaseSync,
+  database: StoreConnection,
   columns: Omit<Updateable<CustodyTable>, "version">,
 ): Result<void, "not_set_up"> {
   if (!hasCustody(database)) {

@@ -1,4 +1,3 @@
-import type { DatabaseSync } from "node:sqlite";
 import { accountRefParts, accountRefSchema } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
 import {
@@ -9,6 +8,7 @@ import {
 } from "@binference/engine/sends";
 import type { Selectable } from "kysely";
 import type { AddressBookTable, EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { field } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
@@ -30,7 +30,7 @@ function toAddressEntry(row: Selectable<AddressBookTable>): AddressEntryRecord {
 
 /** Reads an agent's live address book entries, oldest first. */
 export function readAddressBook(
-  database: DatabaseSync,
+  database: StoreConnection,
   agent: Id<"agt">,
 ): readonly AddressEntryRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
@@ -46,7 +46,7 @@ export function readAddressBook(
 
 // The rows that refuse an entry: a taken id, a live entry of the same account, or no agent.
 function refusalOf(
-  database: DatabaseSync,
+  database: StoreConnection,
   entry: AddressEntryRecord,
 ): "not_found" | "exists" | "saved" | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
