@@ -442,8 +442,8 @@ check` tries it as `network.proxy`.
   (deploys), `binference_provisioner` (sign-up), `binference_worker`, `binference_ingress`,
   `binference_signer` and `binference_catalog`. A worker's role cannot insert a confirmation or
   change a ceiling record.
-- **provisioner**: the database role sign-up uses to create one new install's engine and agent
-  schemas and run the migrations in them. It owns those schemas and nothing else.
+- **provisioner**: the database role sign-up uses to make a new install. It owns nothing and may
+  only call `create_install()`, which the migrator owns and which refuses an install that exists.
 - **ingress**: the Cloud service on binference.io that takes the official bot's updates, the
   console's frames and webhook alerts, stores a user's confirmations and owner actions, and
   forwards the rest to the worker holding the agent's lease.

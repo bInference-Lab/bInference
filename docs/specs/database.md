@@ -16,10 +16,9 @@ permissions (section 2.8); and their retention (section 4). Binance agents and t
 their tables from spec 7, which waits on the owner's Binance account; this spec adds none for
 them until then.
 
-Proposed on 2026-11-05: the Postgres form of both databases, with the agent leases and the
-database roles of bInference Cloud (section 6). Its decisions, [0365](../DECISIONS.md#d0365) to
-[0367](../DECISIONS.md#d0367), were accepted by the owner on 2026-11-05; the section waits for the
-owner's approval.
+Approved by the owner on 2026-11-05: the Postgres form of both databases, with the agent leases
+and the database roles of bInference Cloud (section 6), on decisions
+[0365](../DECISIONS.md#d0365) to [0367](../DECISIONS.md#d0367).
 
 <a id="section-1"></a>
 
@@ -430,11 +429,11 @@ exceed 20%.
 
 ## 6. Postgres
 
-Proposed on 2026-11-05 for the owner's approval, on decisions [0365](../DECISIONS.md#d0365),
-[0366](../DECISIONS.md#d0366) and [0367](../DECISIONS.md#d0367), which the owner accepted that
-day. Sections 1 to 5 stay the SQLite databases as they are. This section adds their Postgres form,
-which the public Postgres store adapter implements, passing the same contract suites. Self-hosted
-runs SQLite only in v1. A part marked **Cloud only** exists only in bInference Cloud.
+Approved by the owner on 2026-11-05, on decisions [0365](../DECISIONS.md#d0365),
+[0366](../DECISIONS.md#d0366) and [0367](../DECISIONS.md#d0367). Sections 1 to 5 stay the SQLite
+databases as they are. This section adds their Postgres form, which the public Postgres store
+adapter implements, passing the same contract suites. Self-hosted runs SQLite only in v1. A part
+marked **Cloud only** exists only in bInference Cloud.
 
 <a id="section-6-1"></a>
 
@@ -447,11 +446,12 @@ except to the loopback address or a Unix socket. Each session sets `statement_ti
 `search_path` and an `application_name` that names the service. The one extension the store needs
 is `pg_trgm`, for note search.
 
-Every write task runs at `SERIALIZABLE`, read write; every read task at `REPEATABLE READ`, read only.
-A write that fails with SQLSTATE `40001` or `40P01` runs again from its first read, at most three
-times more; then it fails `store.write_conflict`. A connection lost while `COMMIT` is in flight
-fails `store.commit_unknown` and is never retried. The worker keeps one writer per database: an
-install's write tasks run one at a time, in arrival order ([decision 0366](../DECISIONS.md#d0366)).
+Every write task runs at `SERIALIZABLE`, read write; every read task at `REPEATABLE READ`, read
+only. A write that fails with SQLSTATE `40001` or `40P01` runs again from its first read, at most
+three times more; then it fails `store.write_conflict`. A connection lost while `COMMIT` is in
+flight fails `store.commit_unknown` and is never retried. The worker keeps one writer per
+database: an install's write tasks run one at a time, in arrival order
+([decision 0366](../DECISIONS.md#d0366)).
 
 <a id="section-6-2"></a>
 
@@ -628,8 +628,9 @@ Primary key `(install_id, agent_id)`; an index on `expires_at` for the take scan
 - **One install, one holder.** A worker takes every row of an install in one transaction, and all
   its rows carry the same fence. A take sets `worker_id`, `fence = fence + 1`, `taken_at`,
   `renewed_at` and `expires_at`, and succeeds only while every row of the install has expired.
-  `binference_provisioner` inserts a new install's first rows free, with fence 1 and `expires_at` 0. The holder inserts the row of a new agent with the install's fence, and deletes the row of a
-  deleted agent.
+  `create_install()` (section 6.6) inserts a new install's first rows free, with `expires_at` at
+  zero and fence 1. The holder inserts the row of a new agent with the install's fence, and
+  deletes the row of a deleted agent.
 - **Renewal.** The holder renews every 2 seconds, setting `expires_at` 6 seconds ahead, only where
   `worker_id` and `fence` are its own. A renewal that changes no row means the lease is lost: the
   worker stops the install's engine and runtime at once and writes nothing more. A clean stop sets
@@ -641,7 +642,8 @@ Primary key `(install_id, agent_id)`; an index on `expires_at` for the take scan
   the rows, so it waits until every write that passed the check has ended; no write that passed
   commits after another worker holds the install.
 - **A paused worker.** A worker paused inside a transaction loses it to
-  `idle_in_transaction_session_timeout`, which frees its locks; its next write fails the fence check.
+  `idle_in_transaction_session_timeout`, which frees its locks; its next write fails the fence
+  check.
 - **The writer fence stays.** `meta.writer_fence` in the agent schema still guards the runtime
   within a worker ([spec 8, section 2.3](runtime.md#section-2-3)); the lease fence guards both
   schemas across workers.
@@ -658,22 +660,25 @@ keys stay in KMS and the platform's secret store.
 
 | Role                     | Used by                          | On each install's schemas                                                                                                                                                                                                                                                                                                                                     | On `cloud`                                 |
 | ------------------------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `binference_migrator`    | Deploys only                     | Runs the migrations on every install's schemas                                                                                                                                                                                                                                                                                                                | Owns `agent_leases`                        |
-| `binference_provisioner` | Sign-up only                     | Creates one new install's two schemas and runs the migrations in them; owns those schemas and their tables, nothing else                                                                                                                                                                                                                                      | Inserts the new install's first lease rows |
+| `binference_migrator`    | Deploys only                     | Owns every install's schemas and tables; runs the migrations                                                                                                                                                                                                                                                                                                  | Owns `agent_leases` and `create_install()` |
+| `binference_provisioner` | Sign-up only                     | None: it owns nothing and holds only `EXECUTE` on `create_install()`                                                                                                                                                                                                                                                                                          | None                                       |
 | `binference_worker`      | The workers                      | `SELECT`, `INSERT`, `UPDATE` and `DELETE` on every table but these: `confirmations`, `ceilings`, `custody`, `wallets`, `address_book` and `meta` read only; `ledger` read and insert only; on `safety` it updates only `frozen_at`, `rescue_reach` and `version`                                                                                              | Reads and writes `agent_leases`            |
 | `binference_ingress`     | The official bot and the console | Inserts and replaces `confirmations` from a user's tap; inserts `inbox` and `webhook_events` and sets `webhook_rules.last_alert_at`; writes the owner-key records (`wallets`, `ceilings`, `custody`, `address_book`, and on `safety` the rescue address, its pending change, `rescue_ceiling` and the disclaimer); sets `agents.mode`; reads what these check | Reads `agent_leases`, to reach the holder  |
 | `binference_signer`      | The signer service               | Reads `intents`, `cards`, `confirmations`, `orders`, `wallets`, `ceilings`, `limits`, `agents`, `safety` and `txs`; writes nothing                                                                                                                                                                                                                            | None                                       |
 | `binference_catalog`     | The listing catalog              | None                                                                                                                                                                                                                                                                                                                                                          | None                                       |
 
-- `binference_migrator` is a member of `binference_provisioner`, so a deploy migrates every
-  install the provisioner made; no service but a deploy connects as the migrator.
+- `create_install(install_id)` is a `SECURITY DEFINER` function the migrator owns, in schema
+  `cloud`. It refuses when either of the install's schemas exists; otherwise it creates the pair,
+  owned by the migrator, runs the migrations in them and inserts the install's first lease rows.
+  A compromised sign-up path can therefore make a new install but cannot touch an existing one.
+- No service but a deploy connects as the migrator, and the migrator is a member of no other role.
 - No role holds `UPDATE` or `DELETE` on `ledger`.
 - A worker cannot insert a confirmation, change a ceiling record, sign or read a key. The ingress
   cannot sign: it holds no key and cannot write `txs`.
 - How a confirmation, a ceiling read-back and a rescue change reach these rows on Cloud is not
   this spec's: spec 5 and spec 1 specify them with the signer service and the Cloud surfaces.
-- Two moves a worker makes on rows it may not write run as `SECURITY DEFINER` functions of the
-  schema's owner, each checking its own rule: `apply_due_rescue()` moves a pending rescue address
+- Two moves a worker makes on rows it may not write run as `SECURITY DEFINER` functions the
+  migrator owns, each checking its own rule: `apply_due_rescue()` moves a pending rescue address
   into `safety.rescue_address` once `pending_rescue_at` has passed, and `raise_writer_fence()`
   raises `meta.writer_fence`.
 - A trigger on `agents` refuses `mode` from `paper` to `live` for any role but the ingress, since
