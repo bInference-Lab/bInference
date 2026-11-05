@@ -35,6 +35,10 @@
     "@binference/core": "workspace:*",
     "@binference/engine": "workspace:*",
     "kysely": "catalog:",
+    "pg": "catalog:",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/pg": "catalog:"
   }
 }

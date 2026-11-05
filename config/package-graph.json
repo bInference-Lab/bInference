@@ -31,7 +31,7 @@
       "fileSystem": true
     },
     "store": {
-      "imports": ["core", "chain", "engine", "kysely"],
+      "imports": ["core", "chain", "engine", "kysely", "pg"],
       "fileSystem": true
     },
     "protocol": {

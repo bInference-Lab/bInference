@@ -36,6 +36,9 @@ const crashFolders = "**/src/crash/**";
 const imageFolders = "**/src/image/**";
 // The console's smoke test and its engine run in Playwright (`pnpm test:console`), never here; the
 // built-package smoke's paper trade runs in `pnpm release:smoke` (its certificate's test runs here).
+// Postgres tests run against one server, which their project's global setup provides
+// (config/vitest/postgres-setup.ts).
+const postgresFiles = "**/*.postgres.test.ts";
 const smokeFolders = ["**/src/smoke/**", "**/src/console-smoke/**", "**/src/packed/**"];
 
 // Platform tests mock native modules and its native suites need the real ones, so each of its
@@ -70,8 +73,22 @@ function project(
     test: {
       name,
       include: members.map((folder) => `${folder}/src/**/*.test.ts`),
-      exclude: [...configDefaults.exclude, forkFolders, crashFolders, imageFolders],
+      exclude: [...configDefaults.exclude, forkFolders, crashFolders, imageFolders, postgresFiles],
       isolate: name === "isolated",
+    },
+  };
+}
+
+// The project's global setup runs only when the run holds one of its files, so a run without
+// them starts no server.
+function postgresProject(members: readonly string[]): TestProjectInlineConfiguration {
+  return {
+    extends: true,
+    test: {
+      name: "postgres",
+      include: members.map((folder) => `${folder}/src/${postgresFiles}`),
+      globalSetup: ["config/vitest/postgres-setup.ts"],
+      isolate: false,
     },
   };
 }
@@ -85,6 +102,7 @@ function projects(): readonly TestProjectInlineConfiguration[] {
     ...(shared.length === 0 ? [] : [project("shared", shared)]),
     ...(isolated.length === 0 ? [] : [project("isolated", isolated)]),
     ...(folders.includes(consoleFolder) ? [consoleProject()] : []),
+    postgresProject(folders.filter((folder) => folder !== consoleFolder)),
   ];
 }
 

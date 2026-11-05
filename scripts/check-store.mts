@@ -17,12 +17,13 @@ import {
   withCurrentHashes,
 } from "./store/migration-lock.mjs";
 
-// Raw SQL is legal in migrations, the connection layer (opening pragmas, transactions,
-// integrity checks, VACUUM INTO) and the dialect. The engine lock in platform takes an OS
+// Raw SQL is legal in migrations, the connection layers (SQLite's opening pragmas, transactions,
+// integrity checks, VACUUM INTO; Postgres's server check) and the dialect. The engine lock in platform takes an OS
 // file lock through one node:sqlite statement on the main thread (ENGINEERING.md 2.6).
 const rawSqlAllowed = [
   "packages/store/src/migrations/",
   "packages/store/src/sqlite/",
+  "packages/store/src/postgres/",
   "packages/store/src/dialect/",
   "packages/platform/src/file-lock.ts",
 ];
