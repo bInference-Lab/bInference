@@ -423,6 +423,32 @@ check` tries it as `network.proxy`.
   `agent.sqlite`: the database's one **writer**, or one of its **readers**.
 - **store task**: a named, synchronous unit of database work that a store worker runs; a write task
   runs in one transaction.
+- **Postgres store**: the store ports' Postgres adapter in `store`, public, which passes the same
+  contract suites as SQLite. Each install keeps its engine tables in its **engine schema**,
+  `engine_<install>`, and its agent tables in its **agent schema**, `agent_<install>`.
+- **write-order key**: an integer column, such as `ledger.seq` or `order_fills.seq`, that each
+  write sets to the next value inside its own transaction, so rows read in the order they were
+  committed on both databases.
+- **worker**: on bInference Cloud, a long-lived Node process that runs `engine` and `runtime` for
+  the installs whose agent leases it holds. Not a **store worker**.
+- **agent lease**: a row of `cloud.agent_leases` that names the worker holding an agent, with its
+  **lease fence** and when it expires. A worker holds every lease of an install together and renews
+  them every few seconds.
+- **lease fence**: the number an agent lease's take raises by one. Every write in an install's
+  schemas checks, in its own transaction, that its worker holds the lease with this fence, so a
+  worker that lost the lease writes nothing. Not the agent database's writer fence, which guards
+  one runtime start within a worker.
+- **database role**: the Postgres role each Cloud service connects with: `binference_migrator`
+  (deploys and new installs), `binference_worker`, `binference_ingress`, `binference_signer` and
+  `binference_catalog`. A worker's role cannot insert a confirmation or change a ceiling record.
+- **ingress**: the Cloud service on binference.io that takes the official bot's updates, the
+  console's frames and webhook alerts, stores a user's confirmations and owner actions, and
+  forwards the rest to the worker holding the agent's lease.
+- **official bot**: bInference Cloud's one Telegram bot, which every Cloud user links to their
+  agents; its updates arrive at the ingress by webhook.
+- **signer service**: the Cloud service that alone holds bInference's Privy authorization key, in
+  KMS, and signs a Cloud wallet's transaction only under the hard rules.
+- **listing catalog**: the Cloud service that writes the reviewed plugin and MCP server listings.
 - **store ports**: the engine's ports for the state it keeps: intents with their cards and
   confirmations, the ledger, the inbox, idempotency keys, access, agents, the install with its
   wallets, and the config journal. `store` holds their SQLite adapters; each port has one contract
@@ -704,6 +730,17 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | remote access                               | 远程访问               | `binference expose`          |
 | roll back (an update)                       | 回退                   | Not 回滚, which is a revert  |
 | key (on the keyboard), number key           | 按键, 数字键           | Terminal chat: Ctrl+Y, Esc   |
+| Postgres store                              | Postgres 存储          | The store's Postgres adapter |
+| engine schema, agent schema                 | 引擎模式, Agent 模式   | `engine_<install>`           |
+| write-order key                             | 写入顺序键             | `seq`                        |
+| worker (on Cloud)                           | 工作进程               | Runs engine and runtime      |
+| agent lease                                 | Agent 租约             | `cloud.agent_leases`         |
+| lease fence                                 | 租约令牌               | Checked by every write       |
+| database role                               | 数据库角色             | One per Cloud service        |
+| ingress                                     | 入口服务               | On binference.io             |
+| official bot                                | 官方机器人             | bInference Cloud's bot       |
+| signer service                              | 签名服务               | Holds the Privy key in KMS   |
+| listing catalog                             | 上架目录服务           | Writes the listings          |
 
 ### Trading
 
