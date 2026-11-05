@@ -24,6 +24,7 @@ const definition: ChainDefinition = {
       name: "x",
       url: "https://x.invalid",
       txUrl: "https://x.invalid/tx/{hash}",
+      addressUrl: "https://x.invalid/address/{address}",
       source: "https://x.invalid",
     },
   ],

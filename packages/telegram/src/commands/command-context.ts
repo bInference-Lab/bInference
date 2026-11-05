@@ -4,6 +4,7 @@ import type { OwnerChatOperation } from "@binference/engine/surfaces";
 import type { Formatter, MessageLocale, MessageValues } from "@binference/i18n";
 import type { ArgsOf, ResultOf } from "@binference/protocol";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
+import type { RichLine } from "../format/rich-line.js";
 import type { ButtonRows } from "../ingress/bot-calls.js";
 import type { OwnerCalls } from "../ports.js";
 
@@ -44,6 +45,11 @@ export interface CommandContext {
    * one carries the buttons.
    */
   readonly say: (text: string, options?: SayOptions) => Promise<void>;
+  /**
+   * Sends lines as Telegram HTML from the fixed tags of `rich-html.ts`, such as an address in
+   * `code` the owner taps to copy, split at line breaks; plain text if Telegram cannot parse it.
+   */
+  readonly sayRich: (lines: readonly RichLine[]) => Promise<void>;
 }
 
 /** How a reply goes out: the message it answers, and its buttons. */

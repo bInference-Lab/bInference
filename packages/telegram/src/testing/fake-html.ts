@@ -5,6 +5,8 @@ export interface FakeEntity {
   readonly type: string;
   readonly offset: number;
   readonly length: number;
+  /** A `text_link`'s address, from its tag's `href`. */
+  readonly url?: string;
 }
 
 /** A message's text as a reader sees it, with its formatting entities. */
@@ -16,6 +18,7 @@ export interface FormattedText {
 interface OpenTag {
   readonly name: string;
   readonly offset: number;
+  readonly url?: string;
 }
 
 /** The parse so far: the tags still open, the entities closed, the length of the text. */
@@ -53,6 +56,7 @@ const entityTypes: Readonly<Record<string, string>> = {
 
 const namedEntities: Readonly<Record<string, string>> = { lt: "<", gt: ">", amp: "&", quot: '"' };
 const tagPattern = /<(\/?)([a-zA-Z][\w-]*)((?:\s+[\w-]+(?:="[^"<>]*")?)*)\s*>/y;
+const hrefPattern = /\bhref="([^"]*)"/;
 const entityPattern = /&(?:([a-z]+)|#(\d{1,7})|#x([\da-fA-F]{1,6}));/y;
 
 function refusal(reason: string, at: number): Result<never, string> {
@@ -68,6 +72,24 @@ function decodeEntity(match: RegExpExecArray): string | undefined {
   return point <= 0x10_ffff ? String.fromCodePoint(point) : undefined;
 }
 
+// A start tag opens with the address its `href` names, its entities decoded, for a link.
+function openedTag(name: string, tag: RegExpExecArray, offset: number): OpenTag {
+  const href = hrefPattern.exec(tag[3] ?? "")?.[1];
+  if (href === undefined) {
+    return { name, offset };
+  }
+  const url = href.replaceAll(
+    /&(lt|gt|quot|amp);/g,
+    (_whole, entity: string) => namedEntities[entity] ?? "",
+  );
+  return { name, offset, url };
+}
+
+function closedEntity(type: string, opened: OpenTag, length: number): FakeEntity {
+  const { offset, url } = opened;
+  return url === undefined ? { type, offset, length } : { type, offset, length, url };
+}
+
 function readTag(html: string, at: number, state: ParseState): Result<Step, string> {
   tagPattern.lastIndex = at;
   const match = tagPattern.exec(html);
@@ -78,7 +100,7 @@ function readTag(html: string, at: number, state: ParseState): Result<Step, stri
   }
   const taken = { taken: match[0].length, text: "" };
   if (match[1] !== "/") {
-    state.open.push({ name, offset: state.textLength });
+    state.open.push(openedTag(name, match, state.textLength));
     return ok(taken);
   }
   const opened = state.open.pop();
@@ -87,7 +109,7 @@ function readTag(html: string, at: number, state: ParseState): Result<Step, stri
   }
   const length = state.textLength - opened.offset;
   if (length > 0) {
-    state.entities.push({ type, offset: opened.offset, length });
+    state.entities.push(closedEntity(type, opened, length));
   }
   return ok(taken);
 }

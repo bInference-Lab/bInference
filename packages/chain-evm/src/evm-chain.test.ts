@@ -23,6 +23,7 @@ const definition: ChainDefinition = {
       name: "explorer",
       url: "https://scan.invalid",
       txUrl: "https://scan.invalid/tx/{hash}",
+      addressUrl: "https://scan.invalid/address/{address}",
       source: "https://docs.invalid",
     },
   ],

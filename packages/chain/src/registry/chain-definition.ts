@@ -38,10 +38,12 @@ export interface EndpointDefinition {
   readonly source: string;
 }
 
-/** A block explorer, with the page of one transaction as its docs give it. */
+/** A block explorer, with the pages of one transaction and one address as its docs give them. */
 export interface ExplorerDefinition extends EndpointDefinition {
   /** A transaction's page, with `{hash}` where the transaction's hash goes. */
   readonly txUrl: string;
+  /** An address's page, with `{address}` where the address goes as its chain writes it. */
+  readonly addressUrl: string;
 }
 
 /** The chain's own coin, as a CAIP-19 asset namespace and reference. */
@@ -103,7 +105,10 @@ const verificationSchema = z.strictObject({
 });
 
 const endpointSchema = z.strictObject({ name: kebabCaseSchema, url: httpsUrl, source: httpsUrl });
-const explorerSchema = endpointSchema.extend({ txUrl: httpsUrl.regex(/\{hash\}/) });
+const explorerSchema = endpointSchema.extend({
+  txUrl: httpsUrl.regex(/\{hash\}/),
+  addressUrl: httpsUrl.regex(/\{address\}/),
+});
 
 const tokenSchema = z.strictObject({
   symbol: z.string().min(1),

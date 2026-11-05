@@ -11,7 +11,31 @@ function setUp() {
   return { botApi, calls };
 }
 
+const target = { chatId: 42 };
+const codeLine = {
+  block: { kind: "text" },
+  runs: [{ text: "0x00000010", marks: [{ kind: "code" }] }],
+} as const;
+
 describe("the bot's calls", () => {
+  it("send rich lines as Telegram HTML, the address as code", async () => {
+    const { botApi, calls } = setUp();
+    await calls.sayRich(target, [codeLine], live);
+    expect(botApi.messages()).toMatchObject([
+      { text: "0x00000010", entities: [{ type: "code", offset: 0, length: 10 }] },
+    ]);
+  });
+
+  it("send rich lines again as plain text when Telegram cannot parse their HTML", async () => {
+    const { botApi, calls } = setUp();
+    botApi.failNext("sendMessage", {
+      status: 400,
+      description: "Bad Request: can't parse entities: unsupported start tag",
+    });
+    await calls.sayRich(target, [codeLine], live);
+    expect(botApi.messages()).toMatchObject([{ text: "0x00000010", entities: [] }]);
+  });
+
   it("answer a press with a notice of Telegram's 200 characters whole", async () => {
     const { botApi, calls } = setUp();
     const notice = "a".repeat(200);

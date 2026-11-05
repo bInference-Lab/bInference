@@ -66,6 +66,7 @@ describe("the fast commands in Chinese", () => {
   it("register a Chinese menu line for every command, within Telegram's limits", () => {
     expect(menuOf("zh").map(({ command, description }) => [command, description])).toStrictEqual([
       ["balance", "每个钱包的美元总额和主要持仓"],
+      ["wallet", "Agent 的钱包：每个地址、所在链和模式"],
       ["positions", "每个持仓：数量、市值、平均成本和盈亏"],
       ["orders", "生效中的自动订单，及其触发条件和成交次数"],
       ["cancel", "取消一个等待你确认的操作"],

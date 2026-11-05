@@ -66,6 +66,7 @@ export const arbitrum: ChainDefinition = {
       name: "arbiscan",
       url: "https://arbiscan.io",
       txUrl: "https://arbiscan.io/tx/{hash}",
+      addressUrl: "https://arbiscan.io/address/{address}",
       source: chainInfo,
     },
   ],

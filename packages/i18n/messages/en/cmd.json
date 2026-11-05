@@ -1,5 +1,6 @@
 {
   "menu.balance": "Each wallet's total in USD and its top holdings",
+  "menu.wallet": "The agent's wallets: each address, its chain and its mode",
   "menu.positions": "Each position: amount, value, average cost and P&L",
   "menu.orders": "Active auto orders with their triggers and fills",
   "menu.cancel": "Cancel an action that waits for your confirmation",
@@ -29,6 +30,9 @@
   "balance.more": "{count, plural, one {and # more holding} other {and # more holdings}}; /positions lists every one",
   "balance.total": "{mode} total: {total}",
   "balance.empty": "No agent wallet holds anything yet.",
+  "wallet.item": "{wallet} · {role, select, launch {launch wallet} bridge {bridge wallet} extraLaunch {extra launch wallet} extraBridge {extra bridge wallet} other {agent wallet}} · {chain} · {mode}",
+  "wallet.explorer": "View on {explorer}",
+  "wallet.none": "This agent has no wallet yet.",
   "positions.section": "{mode, select, paper {🧪 Paper positions} other {🔴 Live positions}}",
   "positions.empty": "No positions yet.",
   "positions.staking": "Staking",

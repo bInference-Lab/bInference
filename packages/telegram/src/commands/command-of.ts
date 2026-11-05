@@ -3,6 +3,7 @@ import type { ChatPost } from "../updates/chat-update.schema.js";
 /** The fast commands, in the order the menu and `/help` list them (spec 4, section 5). */
 export const fastCommandNames = [
   "balance",
+  "wallet",
   "positions",
   "orders",
   "cancel",

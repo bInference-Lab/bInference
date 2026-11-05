@@ -67,6 +67,7 @@ export const robinhood: ChainDefinition = {
       name: "blockscout",
       url: "https://robinhoodchain.blockscout.com",
       txUrl: "https://robinhoodchain.blockscout.com/tx/{hash}",
+      addressUrl: "https://robinhoodchain.blockscout.com/address/{address}",
       source: connecting,
     },
   ],

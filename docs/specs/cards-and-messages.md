@@ -1000,6 +1000,7 @@ is never verified, so its short address always follows its symbol.
 | Command      | Reply key       | Reply                                                           |
 | ------------ | --------------- | --------------------------------------------------------------- |
 | `/balance`   | `cmd.balance`   | Each wallet's total in USD and its top holdings                 |
+| `/wallet`    | `cmd.wallet`    | Each wallet's role, chain, mode, address and explorer link      |
 | `/positions` | `cmd.positions` | Each position: amount, value, average cost, P&L                 |
 | `/orders`    | `cmd.orders`    | Active auto orders with their triggers and fills                |
 | `/cancel`    | `cmd.cancel`    | A list of orders with buttons to cancel one                     |
@@ -1024,6 +1025,22 @@ Command descriptions are registered with `setMyCommands` in both languages (`lan
 dollars per buy, `cmd.orders.copyItem` with `cmd.orders.copy`: "Copy trade · copying {leader} at up
 to {perBuy} a buy · {fills} · ends {expiry}", instead of a side and a token
 ([decision 0261](../DECISIONS.md#d0261)).
+
+`/wallet` shows the wallets of the agent the chat talks to, archived ones left out, each in three
+lines: `cmd.wallet.item`, its full address in `code`, which the owner taps to copy, and
+`cmd.wallet.explorer`, a link to the address's page on the first block explorer the chain registry
+lists, from that explorer's `addressUrl` page template. A blank line parts two wallets. It is the
+one fast command that goes as Telegram HTML, drawn from the fixed tags of the agent's chat text
+([decision 0370](../DECISIONS.md#d0370)), so the address shows as code.
+
+| Line     | Key                   | English                              | 中文                                 |
+| -------- | --------------------- | ------------------------------------ | ------------------------------------ |
+| Wallet   | `cmd.wallet.item`     | {wallet} · {role} · {chain} · {mode} | {wallet} · {role} · {chain} · {mode} |
+| Explorer | `cmd.wallet.explorer` | View on {explorer}                   | 在 {explorer} 查看                   |
+| None     | `cmd.wallet.none`     | This agent has no wallet yet.        | 这个 Agent 还没有钱包。              |
+
+`{role}` reads "agent wallet", "launch wallet", "bridge wallet", "extra launch wallet" or "extra
+bridge wallet" / 「Agent 钱包」「发射钱包」「跨链钱包」「额外的发射钱包」「额外的跨链钱包」.
 
 `/positions` shows each position as its P&L card ([section 3.7](#section-3-7)), open ones first,
 then the positions closed in the last 7 days, for every agent not archived. Live positions come

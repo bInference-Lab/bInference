@@ -69,6 +69,7 @@ export const baseMainnet: ChainDefinition = {
       name: "basescan",
       url: "https://basescan.org",
       txUrl: "https://basescan.org/tx/{hash}",
+      addressUrl: "https://basescan.org/address/{address}",
       source: docs,
     },
   ],

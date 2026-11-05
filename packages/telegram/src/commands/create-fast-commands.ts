@@ -24,6 +24,7 @@ import { registerCommands } from "./register-commands.js";
 import { runCancel, runFreeze, runRescue } from "./safety-commands.js";
 import { runSpend } from "./spend-command.js";
 import { runStatus } from "./status-command.js";
+import { runWallet } from "./wallet-command.js";
 
 /** The owner's fast commands in Telegram: answered by the engine's code, never by a model. */
 export interface FastCommands {
@@ -85,6 +86,7 @@ async function runHelp(context: CommandContext): Promise<void> {
 
 const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   balance: runBalance,
+  wallet: runWallet,
   positions: runPositions,
   orders: runOrders,
   cancel: runCancel,
@@ -167,6 +169,7 @@ function contextOf(parts: Parts, asker: Asker): CommandContext {
     issueLaunchTicket: async () => options.issueLaunchTicket({ userId: senderId, signal }),
     signal,
     say: async (text, sayOptions) => bot.say(target, text, { signal, ...sayOptions }),
+    sayRich: async (lines) => bot.sayRich(target, lines, { signal }),
   };
 }
 

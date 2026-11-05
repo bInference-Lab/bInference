@@ -1,6 +1,10 @@
 import type { Api } from "grammy";
+import { isEntitiesUnparsed } from "../api/bot-api-error.schema.js";
 import { callBotApi } from "../api/call-bot-api.js";
 import { unlessGone } from "../api/unless-gone.js";
+import { richHtmlOf, richPlainOf } from "../format/rich-html.js";
+import type { RichLine } from "../format/rich-line.js";
+import { splitRichLines } from "../split/split-rich-lines.js";
 import { splitText } from "../split/split-text.js";
 import type { ReplyTarget } from "./decide-update.js";
 
@@ -35,6 +39,16 @@ export interface BotCalls {
    * time so they reach the chat in order; each answers `replyTo`, and the last carries the buttons.
    */
   say(target: ReplyTarget, text: string, options: SendOptions): Promise<void>;
+  /**
+   * Sends lines as Telegram HTML drawn only from the fixed tags of `rich-html.ts`, in messages of
+   * at most 4,096 characters split at line breaks, one at a time, with no link preview. A message
+   * Telegram cannot parse goes once more as its plain text, with no parse mode.
+   */
+  sayRich(
+    target: ReplyTarget,
+    lines: readonly RichLine[],
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
   /**
    * Edits a plain-text message and its buttons. A message Telegram no longer has, or one that
    * shows the same already, counts as done.
@@ -106,6 +120,30 @@ function sayWith(reply: BotCalls["reply"]): BotCalls["say"] {
   };
 }
 
+// A message Telegram cannot parse as HTML goes again as its plain text, so the owner still gets it.
+function sayRichWith(api: Api, reply: BotCalls["reply"]): BotCalls["sayRich"] {
+  return async (target, lines, options) => {
+    await splitRichLines(lines).reduce(async (previous, piece) => {
+      await previous;
+      try {
+        await callBotApi("sendMessage", options.signal, async (signal) =>
+          api.sendMessage(
+            target.chatId,
+            richHtmlOf(piece),
+            { ...sendOptionsOf(target, options), parse_mode: "HTML" },
+            signal,
+          ),
+        );
+      } catch (error) {
+        if (!isEntitiesUnparsed(error)) {
+          throw error;
+        }
+        await reply(target, richPlainOf(piece), options);
+      }
+    }, Promise.resolve());
+  };
+}
+
 export function createBotCalls(api: Api): BotCalls {
   const reply: BotCalls["reply"] = async (target, text, options) => {
     await callBotApi("sendMessage", options.signal, async (signal) =>
@@ -115,6 +153,7 @@ export function createBotCalls(api: Api): BotCalls {
   return {
     reply,
     say: sayWith(reply),
+    sayRich: sayRichWith(api, reply),
     edit: async (at, text, options) =>
       unlessGone(
         callBotApi("editMessageText", options.signal, async (signal) =>

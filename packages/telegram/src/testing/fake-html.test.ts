@@ -24,7 +24,7 @@ describe("the fake Bot API's HTML parse mode", () => {
         entities: [
           { type: "bold", offset: 0, length: 9 },
           { type: "italic", offset: 5, length: 4 },
-          { type: "text_link", offset: 14, length: 6 },
+          { type: "text_link", offset: 14, length: 6, url: "https://t.me" },
         ],
       },
     });

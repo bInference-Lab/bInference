@@ -38,7 +38,13 @@ function chainOf(
     finality: { kind: "finalized_tag" },
     rpcs: [endpoint],
     relays: [],
-    explorers: [{ ...endpoint, txUrl: "https://scan.example.org/tx/{hash}" }],
+    explorers: [
+      {
+        ...endpoint,
+        txUrl: "https://scan.example.org/tx/{hash}",
+        addressUrl: "https://scan.example.org/address/{address}",
+      },
+    ],
   };
 }
 

@@ -63,6 +63,7 @@ export const ethereum: ChainDefinition = {
       name: "etherscan",
       url: "https://etherscan.io",
       txUrl: "https://etherscan.io/tx/{hash}",
+      addressUrl: "https://etherscan.io/address/{address}",
       source: "https://ethereum.org/developers/docs/data-and-analytics/block-explorers",
     },
   ],

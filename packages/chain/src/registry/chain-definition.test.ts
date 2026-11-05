@@ -34,6 +34,13 @@ describe("chain definition schema", () => {
         explorers: valid.explorers.map((explorer) => ({ ...explorer, txUrl: explorer.url })),
       },
     ],
+    [
+      "an explorer address page with no address",
+      {
+        ...valid,
+        explorers: valid.explorers.map((explorer) => ({ ...explorer, addressUrl: explorer.url })),
+      },
+    ],
     ["a token without a date", { ...valid, tokens: [undated] }],
     ["a token address twice", { ...valid, tokens: [token, { ...token, symbol: "TWO" }] }],
     ["a contract name twice", { ...valid, contracts: [contract, contract] }],
