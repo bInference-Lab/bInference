@@ -54,7 +54,10 @@ export const noticeRecordSchema: z.ZodType<NoticeRecord> = z.strictObject({
   delivered: deliveriesSchema,
 });
 
-/** Which notices to list: those recorded after the notice `after` (from the first when absent). */
+/**
+ * Which notices to list: those recorded after the notice `after`, in the order they were recorded
+ * (from the first when absent).
+ */
 export interface NoticePage {
   readonly after?: Id<"ntc">;
   readonly limit: number;

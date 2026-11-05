@@ -14,6 +14,8 @@ export interface NoticesTable {
   at: number;
   delivered: string;
   intent_id: string | null;
+  /** The notice's place in the order notices were recorded, from `counters` (migration 0061). */
+  seq: Generated<number>;
 }
 
 /** `outbox`: one delivery to a surface; `id` counts from 1 in the order deliveries were stored. */

@@ -33,8 +33,9 @@ function viewOf(record: NoticeRecord): NoticeView {
 
 /**
  * Creates the notice handler over the notice store. `notice/list` pages through the notices kept,
- * oldest first, each with its delivery to every surface; a cursor is a notice's id, and the page
- * holds the notices after it. `next` is present while a full page came back.
+ * in the order they were recorded, each with its delivery to every surface; a cursor is a notice's
+ * id, and the page holds the notices recorded after it. `next` is present while a full page came
+ * back.
  */
 export function createNoticeHandlers(store: NoticeStore): NoticeHandlers {
   return {

@@ -401,7 +401,11 @@ export interface NoticeStore {
    * with `store.constraint`.
    */
   record(record: NoticeRecord, options: StoreCall): Promise<void>;
-  /** Notices recorded after `page.after`, in id order, at most `page.limit`. */
+  /**
+   * Notices recorded after `page.after`, in the order they were recorded, at most `page.limit`
+   * (decision 0366): a notice recorded in the cursor's millisecond after it is listed whatever
+   * its id. A cursor the store no longer holds lists the notices whose ids sort after it.
+   */
   list(page: NoticePage, options: StoreCall): Promise<readonly NoticeRecord[]>;
   /** The `queued` deliveries to a surface, in the order their notices were recorded. */
   queued(query: QueuedQuery, options: StoreCall): Promise<readonly NoticeDelivery[]>;

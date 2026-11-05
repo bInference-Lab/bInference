@@ -11,13 +11,14 @@ import { noticeRecordOf } from "./notice-record-of.js";
 const live = () => ({ signal: new AbortController().signal });
 const notice = { key: "notice.locked", values: {} };
 
-// Notice n, stored at 1,000 + n with a Telegram delivery.
-async function handlerOf(numbers: readonly number[], kept: Notice = notice) {
+// Notice n, stored at 1,000 + n, or at `atMs` when given, with a Telegram delivery.
+async function handlerOf(numbers: readonly number[], kept: Notice = notice, atMs?: number) {
   const agents = createMemoryAgentStore();
   await agents.create(testAgentDraft(), live());
   const store = createMemoryNoticeStore({ agents });
   await inOrder(numbers, async (n) => {
-    const stamp = { id: fixtureId("ntc", n), atMs: 1_000 + n, surfaces: ["telegram"] as const };
+    const at = atMs ?? 1_000 + n;
+    const stamp = { id: fixtureId("ntc", n), atMs: at, surfaces: ["telegram"] as const };
     await store.record(noticeRecordOf(kept, stamp), live());
   });
   return createNoticeHandlers(store)["notice/list"];
@@ -45,6 +46,21 @@ describe("the notice list", () => {
       ok: true,
       value: { items: [] },
     });
+  });
+
+  it("reads on to a notice recorded in the cursor's millisecond, whatever its id", async () => {
+    // The second notice's id sorts below the first, as UUIDv7's random bits may.
+    const list = await handlerOf([9, 4], notice, 5_000);
+
+    const after = await list(testCall({ cursor: fixtureId("ntc", 9) }));
+
+    const missed = {
+      id: fixtureId("ntc", 4),
+      at: 5_000,
+      ...notice,
+      delivered: { telegram: "queued" },
+    };
+    expect(after).toStrictEqual({ ok: true, value: { items: [missed] } });
   });
 
   it("refuses a cursor that is no notice's id", async () => {

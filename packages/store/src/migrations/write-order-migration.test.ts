@@ -68,6 +68,40 @@ function insertFills(database: DatabaseSync, rows: readonly (readonly [number, n
 const seqs = (database: DatabaseSync, table: string, key: string) =>
   database.prepare(`SELECT ${key} AS key, seq FROM ${table} ORDER BY seq`).all();
 
+const noticeId = (n: number): string =>
+  `ntc_0190f1c2-3a4b-7c5d-8e6f-${n.toString(16).padStart(12, "0")}`;
+
+function insertNotices(database: DatabaseSync, rows: readonly (readonly [number, number])[]): void {
+  const insert = database.prepare(
+    `INSERT INTO notices (id, kind, i18n_key, "values", level, at, delivered)
+      VALUES (?, 'locked', 'notice.locked', '{}', 'critical', ?, '{}')`,
+  );
+  for (const [n, at] of rows) {
+    insert.run(noticeId(n), at);
+  }
+}
+
+describe("the notice write-order migration", () => {
+  it("numbers the notices in the id order the list read them in, then each new one after", () => {
+    const database = engineBefore("0061_notice_seq");
+    insertNotices(database, [
+      [3, 1],
+      [1, 2],
+      [2, 2],
+    ]);
+
+    runMigrations(database, { name: "engine", migrations: engineMigrations });
+    insertNotices(database, [[0, 3]]);
+
+    expect(seqs(database, "notices", "id")).toEqual([
+      { key: noticeId(1), seq: 1 },
+      { key: noticeId(2), seq: 2 },
+      { key: noticeId(3), seq: 3 },
+      { key: noticeId(0), seq: 4 },
+    ]);
+  });
+});
+
 describe("the order fill write-order migration", () => {
   it("numbers the rows as the store read them, then each new row after the last", () => {
     const database = engineBefore("0060_order_fill_seq");

@@ -91,17 +91,30 @@ export const recordNoticeTask: StoreTask<NoticeRecord, void> = defineTask({
   },
 });
 
-/** Lists the notices recorded after a cursor, in id order. */
+/**
+ * Lists the notices recorded after a cursor, in the order they were recorded (decision 0366): those
+ * after the cursor's notice, or, once a prune took it, those whose ids sort after it.
+ */
 export const listNoticesTask: StoreTask<NoticePage, readonly NoticeRecord[]> = defineTask({
   name: "notices.list",
   access: "read",
   input: noticePageSchema,
   output: z.array(noticeRecordSchema),
   run(database, page) {
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
     const all = kysely.selectFrom("notices").selectAll();
-    const after = page.after === undefined ? all : all.where("id", ">", page.after);
-    return execute(after.orderBy("id").limit(page.limit)).rows.map(toNoticeRecord);
+    const { after } = page;
+    const cursor =
+      after === undefined
+        ? undefined
+        : takeFirst(kysely.selectFrom("notices").select("seq").where("id", "=", after));
+    const paged = all.where((where) => {
+      if (after === undefined) {
+        return where.and([]);
+      }
+      return cursor === undefined ? where("id", ">", after) : where("seq", ">", cursor.seq);
+    });
+    return execute(paged.orderBy("seq").limit(page.limit)).rows.map(toNoticeRecord);
   },
 });
 

@@ -99,19 +99,22 @@ function withoutBefore(tables: Tables, beforeMs: number): Tables {
   };
 }
 
+// The notices after a cursor, in the order they were recorded, which the map keeps: those after
+// the cursor's notice, or those whose ids sort after a cursor a prune took.
 function listed(tables: Tables, after: string | undefined, limit: number): readonly NoticeRecord[] {
-  return structuredClone(
-    [...tables.notices.values()]
-      .filter((record) => after === undefined || record.id > after)
-      .toSorted((left, right) => (left.id < right.id ? -1 : 1))
-      .slice(0, limit),
-  );
+  const records = [...tables.notices.values()];
+  const at = records.findIndex((record) => record.id === after);
+  const paged =
+    at === -1
+      ? records.filter((record) => after === undefined || record.id > after)
+      : records.slice(at + 1);
+  return structuredClone(paged.slice(0, limit));
 }
 
 /**
  * Creates an empty in-memory {@link NoticeStore} for tests. Like the SQLite store, it refuses a
- * notice whose agent it does not hold, lists notices in the code-unit order of their ids, and
- * numbers deliveries in the order they were recorded.
+ * notice whose agent it does not hold, lists notices in the order they were recorded, and numbers
+ * deliveries in that order.
  */
 export function createMemoryNoticeStore(options: MemoryNoticeStoreOptions): NoticeStore {
   let tables: Tables = { notices: new Map(), rows: [] };

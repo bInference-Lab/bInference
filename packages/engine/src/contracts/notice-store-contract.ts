@@ -116,6 +116,25 @@ async function pagesAfterCursor(subject: NoticeStoreSubject): Promise<void> {
   );
 }
 
+// Notice `n`, recorded at the one instant every such notice shares.
+function lockedAtOneInstant(n: number): NoticeRecord {
+  return { ...locked(n), atMs: 5_000 };
+}
+
+// Notices of one millisecond list in the order they were recorded, whatever their ids, and a page
+// after one holds every notice recorded after it; a cursor no longer held lists the ids after it.
+async function pagesInRecordedOrder(subject: NoticeStoreSubject): Promise<void> {
+  const { notices } = subject;
+  // Each notice's id falls below the one recorded before it.
+  const records = [9, 8, 7].map(lockedAtOneInstant);
+  await inOrder(records, async (record) => notices.record(record, live()));
+  assert.deepEqual(await notices.list({ limit: 10 }, live()), records);
+  const after = fixtureId("ntc", 9);
+  assert.deepEqual(await notices.list({ after, limit: 10 }, live()), records.slice(1));
+  assert.deepEqual(await notices.list({ after: fixtureId("ntc", 1), limit: 10 }, live()), records);
+  assert.deepEqual(await notices.list({ after: fixtureId("ntc", 99), limit: 10 }, live()), []);
+}
+
 async function firstQueued(subject: NoticeStoreSubject): Promise<number> {
   const [delivery] = await subject.notices.queued({ surface: "telegram", limit: 1 }, live());
   assert.ok(delivery !== undefined);
@@ -226,9 +245,14 @@ export function noticeStoreContract(harness: NoticeStoreHarness): readonly Contr
     ),
     checkOn("keeps a notice's parts and the messages that follow it", create, keepsParts),
     checkOn(
-      "lists notices after a cursor in id order and deliveries in the order recorded",
+      "lists notices after a cursor and deliveries in the order recorded",
       create,
       pagesAfterCursor,
+    ),
+    checkOn(
+      "pages notices of one instant in the order recorded, whatever their ids",
+      create,
+      pagesInRecordedOrder,
     ),
     checkOn(
       "moves a delivery only from the state it was read in, the notice with it",
