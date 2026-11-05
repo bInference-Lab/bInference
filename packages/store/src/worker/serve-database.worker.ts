@@ -4,8 +4,10 @@ import { BinferenceError } from "@binference/core";
 import type { DatabaseDefinition } from "../databases/database-definition.js";
 import { assertKnownVersion } from "../migrations/run-migrations.js";
 import { readSchemaVersion } from "../migrations/schema-version.js";
+import { postgresTaskSetupSchema } from "../postgres/task-bridge-messages.js";
 import { openConnection } from "../sqlite/open-connection.worker.js";
 import { createWorkerContext, handleRequest, type WorkerContext } from "./handle-request.js";
+import { servePostgresTasks } from "./serve-postgres-tasks.js";
 import { toWorkerError } from "./worker-error.js";
 import {
   workerRequestSchema,
@@ -63,7 +65,8 @@ function serve(port: MessagePort, context: WorkerContext): void {
 /**
  * Serves one database on this store worker thread: opens the connection its `workerData` names,
  * refuses a schema newer than `definition` knows, then answers requests one at a time, in order.
- * Each database's worker entry calls it once.
+ * Given a Postgres task setup instead, it runs the database's tasks for the Postgres task thread
+ * that started it. Each database's worker entry calls it once.
  */
 export function serveDatabase(definition: DatabaseDefinition): void {
   const port = parentPort;
@@ -73,6 +76,11 @@ export function serveDatabase(definition: DatabaseDefinition): void {
       message:
         "serveDatabase runs only on a store worker thread; open the database with openDatabase.",
     });
+  }
+  const postgres = postgresTaskSetupSchema.safeParse(workerData);
+  if (postgres.success) {
+    servePostgresTasks(port, definition, postgres.data);
+    return;
   }
   const opened = open(definition, workerSetupSchema.parse(workerData));
   if ("kind" in opened) {

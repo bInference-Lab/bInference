@@ -76,7 +76,8 @@ export interface WorkerError {
   readonly details: ErrorDetails;
 }
 
-const workerErrorSchema: z.ZodType<WorkerError> = z.strictObject({
+/** Checks a fault that crossed from a worker. */
+export const workerErrorSchema: z.ZodType<WorkerError> = z.strictObject({
   code: z.string().refine(isErrorCode),
   message: z.string(),
   retryable: z.boolean(),

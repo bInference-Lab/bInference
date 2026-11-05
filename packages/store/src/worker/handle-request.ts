@@ -25,12 +25,8 @@ export interface WorkerContext {
   readonly latestVersion: number;
 }
 
-/** Builds a worker's context; refuses a definition that lists two tasks under one name. */
-export function createWorkerContext(
-  database: DatabaseSync,
-  role: ConnectionRole,
-  definition: DatabaseDefinition,
-): WorkerContext {
+/** A database's tasks by name; refuses a definition that lists two tasks under one name. */
+export function tasksByName(definition: DatabaseDefinition): ReadonlyMap<string, TaskRunner> {
   const tasks = new Map<string, TaskRunner>();
   for (const task of definition.tasks) {
     if (tasks.has(task.name)) {
@@ -42,6 +38,33 @@ export function createWorkerContext(
     }
     tasks.set(task.name, task);
   }
+  return tasks;
+}
+
+/** The task a request names, or `store.unknown_task`. */
+export function taskNamed(
+  tasks: ReadonlyMap<string, TaskRunner>,
+  definition: DatabaseDefinition,
+  name: string,
+): TaskRunner {
+  const task = tasks.get(name);
+  if (task === undefined) {
+    throw new BinferenceError({
+      code: "store.unknown_task",
+      message: `The ${definition.name} database has no task ${name}; list it in its definition.`,
+      details: { database: definition.name, task: name },
+    });
+  }
+  return task;
+}
+
+/** Builds a worker's context; refuses a definition that lists two tasks under one name. */
+export function createWorkerContext(
+  database: DatabaseSync,
+  role: ConnectionRole,
+  definition: DatabaseDefinition,
+): WorkerContext {
+  const tasks = tasksByName(definition);
   return { database, role, definition, tasks, latestVersion: latestVersion(definition.migrations) };
 }
 
@@ -56,14 +79,7 @@ function writerOnly(context: WorkerContext, what: string): void {
 }
 
 function runTask(context: WorkerContext, request: TaskRequest): WorkerValue {
-  const task = context.tasks.get(request.task);
-  if (task === undefined) {
-    throw new BinferenceError({
-      code: "store.unknown_task",
-      message: `The ${context.definition.name} database has no task ${request.task}; list it in its definition.`,
-      details: { database: context.definition.name, task: request.task },
-    });
-  }
+  const task = taskNamed(context.tasks, context.definition, request.task);
   const work = (): WorkerValue => task.handle(context.database, request.input);
   if (task.access === "write") {
     writerOnly(context, `run ${task.name}`);
