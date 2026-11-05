@@ -4,7 +4,6 @@ import { idSchema } from "@binference/core";
 // production uses this file.
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
 import { agentWorker } from "../databases/agent-database.js";
-import { engineWorker } from "../databases/engine-database.js";
 import { installSchemas } from "../migrations/install-schemas.js";
 import { createPostgresInstall } from "../migrations/postgres-install.js";
 import { prepareSharedSchema } from "../migrations/prepare-shared-schema.js";
@@ -16,6 +15,7 @@ import {
   startPostgresTaskThread,
 } from "../postgres/postgres-task-thread.js";
 import type { StoreHost } from "../tasks/store-host.js";
+import { testEngineWorker } from "./test-engine-database.js";
 import { createTestPostgresDatabase } from "./test-postgres.js";
 
 /** The databases an install holds, by the name their definitions give them. */
@@ -32,8 +32,9 @@ export interface TestPostgresStores {
   closeAll(): Promise<void>;
 }
 
+// The engine's task thread also serves the tasks the tests plant rows through.
 const workers: Readonly<Record<InstallDatabase, URL>> = {
-  engine: engineWorker,
+  engine: testEngineWorker,
   agent: agentWorker,
 };
 // Task threads run the TypeScript source, as the store's other worker tests do.

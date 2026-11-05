@@ -1,7 +1,10 @@
-import type { DatabaseSync } from "node:sqlite";
 import { type Id, idSchema } from "@binference/core";
+import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import type { StoreHost } from "../tasks/store-host.js";
+import { defineTask, type StoreTask } from "../tasks/store-task.js";
 
 /** An agent and its wallet that a test planted, for the rows that name them. */
 export interface PlantedAgent {
@@ -13,7 +16,7 @@ export interface PlantedAgent {
  * Writes agent `n` and one wallet of it with its ceiling straight into an engine database, for
  * adapter tests.
  */
-export function plantAgent(database: DatabaseSync, n: number): PlantedAgent {
+export function plantAgent(database: StoreConnection, n: number): PlantedAgent {
   const suffix = n.toString(16).padStart(12, "0");
   const agentId = idSchema("agt").parse(`agt_0190f1c2-3a4b-7c5d-8e6f-${suffix}`);
   const walletId = idSchema("wal").parse(`wal_0190f1c2-3a4b-7c5d-8e6f-${suffix}`);
@@ -59,4 +62,21 @@ export function plantAgent(database: DatabaseSync, n: number): PlantedAgent {
     }),
   );
   return { agentId, walletId };
+}
+
+/**
+ * {@link plantAgent} as a write task, so a test plants on either database through its host. The
+ * Postgres test stores' engine worker lists it.
+ */
+export const plantAgentTask: StoreTask<number, PlantedAgent> = defineTask({
+  name: "testing.plant_agent",
+  access: "write",
+  input: z.number().int().positive(),
+  output: z.strictObject({ agentId: idSchema("agt"), walletId: idSchema("wal") }),
+  run: plantAgent,
+});
+
+/** Plants agent `n` through `host`, on SQLite or Postgres alike. */
+export async function plantAgentOn(host: StoreHost, n: number): Promise<PlantedAgent> {
+  return host.run(plantAgentTask, n, { signal: AbortSignal.timeout(30_000) });
 }
