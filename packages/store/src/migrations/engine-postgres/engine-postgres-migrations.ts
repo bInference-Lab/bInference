@@ -39,6 +39,18 @@ import { migration as cardAutoAsks } from "./0037_card_auto_asks.js";
 import { migration as walletRoles } from "./0038_wallet_roles.js";
 import { migration as extraLaunchWallets } from "./0039_extra_launch_wallets.js";
 import { migration as scheduleRuns } from "./0040_schedule_runs.js";
+import { migration as alertFires } from "./0041_alert_fires.js";
+import { migration as trackedWallets } from "./0042_tracked_wallets.js";
+import { migration as overflowNotices } from "./0043_overflow_notices.js";
+import { migration as launches } from "./0044_launches.js";
+import { migration as copyFillLinks } from "./0045_copy_fill_links.js";
+import { migration as engineAlive } from "./0046_engine_alive.js";
+import { migration as dailySummaries } from "./0047_daily_summaries.js";
+import { migration as alertFiresTold } from "./0048_alert_fires_told.js";
+import { migration as intentDraftRefs } from "./0049_intent_draft_refs.js";
+import { migration as limitsWithoutHealthFactor } from "./0050_limits_without_health_factor.js";
+import { migration as bridgeWallets } from "./0051_bridge_wallets.js";
+import { migration as addressRecipientBytes } from "./0052_address_recipient_bytes.js";
 
 /** The engine schema's Postgres migrations, oldest first. Released files never change. */
 export const enginePostgresMigrations: readonly PostgresMigration[] = [
@@ -82,4 +94,16 @@ export const enginePostgresMigrations: readonly PostgresMigration[] = [
   walletRoles,
   extraLaunchWallets,
   scheduleRuns,
+  alertFires,
+  trackedWallets,
+  overflowNotices,
+  launches,
+  copyFillLinks,
+  engineAlive,
+  dailySummaries,
+  alertFiresTold,
+  intentDraftRefs,
+  limitsWithoutHealthFactor,
+  bridgeWallets,
+  addressRecipientBytes,
 ];
