@@ -63,10 +63,11 @@ Rules for this package:
   `tg:<file id>`, at most 4 of at most 5 MiB each. An edit, a forward and a post with neither
   text nor a photo are answered at once and go nowhere (decision 0178).
 - The agent's replies come from the engine's pushes on its chat topic through `createChatReplies`
-  (decision 0371): a turn's status message (`src/chat/status-message.ts`) first shows 1.5 seconds
-  into the turn, or at once for a `chat/progress` line, and is edited at most once a second with
-  the work lines of `progress-lines.ts` and the draft; then the answer goes as new messages and the
-  status message is deleted once it has shown for 4 seconds. Model text goes out as Telegram HTML
+  (decisions 0371 and 0375): a turn's status message (`src/chat/status-message.ts`, on the edited
+  `src/chat/preview-message.ts`) shows only once a `chat/progress` line arrives, with a fixed
+  label or the text written before the latest tool as its headline, and is edited at most once a
+  second when that changes; then the answer goes as new messages and the status message is
+  deleted once it has shown for 4 seconds. Model text goes out as Telegram HTML
   only through `src/chat/chat-html.ts`: every line through `displayOutsideText`, then its Markdown
   drawn by `src/format/rich-html.ts` and split by `src/split/split-rich-lines.ts`, a paragraph
   break preferred, at most 4,000 characters each, tables as fixed-width grids (decision 0374), each

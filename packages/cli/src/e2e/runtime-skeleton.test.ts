@@ -136,7 +136,7 @@ describe.each(skeletonCompositions)(
         const sent = botApi.sent().map(({ text }) => text.split("\n", 1).join(""));
         expect(sent.toSorted(byText)).toStrictEqual(
           [
-            "Working on it · 0 s",
+            "Working",
             `${icons.waiting} Confirm ${kind} · main · ${icons.paper} Paper`,
             `${icons.waiting} Waiting for your answer on its card`,
             report,

@@ -16,7 +16,7 @@ export interface ChatHtml {
  * The most characters of HTML one message of the agent's text holds: under Telegram's 4,096, so a
  * message always fits after Telegram reads its entities.
  */
-export const chatMessageLength = 4000;
+const chatMessageLength = 4000;
 
 // A tab shows as spaces; every other character a reader cannot see shows as `\u{…}`.
 const tabSpaces = "    ";

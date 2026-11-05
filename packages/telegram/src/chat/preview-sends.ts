@@ -9,25 +9,20 @@ import {
 import { callBotApi } from "../api/call-bot-api.js";
 import { previewSignal } from "../throttle/preview-signal.js";
 import type { ChatHtml } from "./chat-html.js";
-import { type StatusView, statusPreviewOf, type WorkLine } from "./status-preview.js";
 
-/** What a status message is sent, timed and logged with. */
+/** What a preview message is sent, timed and logged with. */
 export interface PreviewParts {
   /** The bot's grammY `Api`, with the token's throttler installed. */
   readonly api: Api;
   readonly clock: Clock;
   readonly logger: Logger;
-  /** The headline for a turn that has worked this many seconds, in the owner's language. */
-  readonly headline: (seconds: number) => string;
 }
 
-/** Where one status message stands. */
+/** Where one preview message stands. */
 export interface Showing {
   readonly messageId?: number;
   /** When Telegram first showed it. */
   readonly visibleAtMs?: number;
-  readonly draft?: string;
-  readonly lines: readonly WorkLine[];
   /** The HTML the message shows now. */
   readonly shownHtml?: string;
   /** Failures in a row that may pass. */
@@ -41,12 +36,13 @@ export type ShowingChange = Partial<
   Pick<Showing, "messageId" | "visibleAtMs" | "shownHtml" | "failures" | "isDone">
 >;
 
-/** One status message: where it stands, and what its sends and edits share. */
+/** One preview message: where it stands, what it would show now, and what its calls share. */
 export interface Preview {
   readonly parts: PreviewParts;
   readonly chatId: number;
-  readonly startedAtMs: number;
   readonly showing: Showing;
+  /** The message as it would show now; none while there is nothing to show yet. */
+  readonly view: () => ChatHtml | undefined;
   /** Ends only when the replies close: a send under way runs to its end through a freeze. */
   readonly life: AbortSignal;
 }
@@ -58,17 +54,6 @@ const maxFailures = 3;
 
 function codeOf(error: Fault): string {
   return error instanceof BinferenceError ? error.code : "unexpected";
-}
-
-function viewOf(preview: Preview): StatusView {
-  const { parts, showing, startedAtMs } = preview;
-  const seconds = Math.floor((parts.clock.now() - startedAtMs) / 1_000);
-  const { draft } = showing;
-  return {
-    headline: parts.headline(seconds),
-    lines: showing.lines,
-    ...(draft === undefined ? {} : { draft }),
-  };
 }
 
 // One send or edit of the preview: HTML, or its plain text with no parse mode.
@@ -135,7 +120,7 @@ function failedWith(preview: Preview, error: Fault): ShowingChange {
 }
 
 /**
- * Sends the status message, or edits it, when what it would show changed. A preview the throttler
+ * Sends a preview message, or edits it, when what it would show changed. A preview the throttler
  * dropped, an edit's network fault or 5xx, or a first send that never left waits for the next
  * refresh, which carries the newest view; after 3 such failures in a row, and at once after any
  * other, the preview stops for the turn and the message keeps what it showed. HTML Telegram
@@ -144,8 +129,8 @@ function failedWith(preview: Preview, error: Fault): ShowingChange {
  */
 export async function refreshPreview(preview: Preview): Promise<ShowingChange> {
   const { showing } = preview;
-  const html = statusPreviewOf(viewOf(preview));
-  if (showing.isDone || html.html === showing.shownHtml) {
+  const html = preview.view();
+  if (showing.isDone || html === undefined || html.html === showing.shownHtml) {
     return {};
   }
   try {

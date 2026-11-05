@@ -176,9 +176,8 @@ async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> 
   }
   forgetEarlier(parts, push.agent);
   const { api, clock, logger } = parts.options;
-  const headline = (seconds: number): string => words(parts, "telegram.chat.working", { seconds });
-  const statusParts = { api, bot: parts.bot, clock, logger, headline };
-  const message = createStatusMessage(statusParts, { chatId, startedAtMs: clock.now() });
+  const label = (): string => words(parts, "telegram.chat.working");
+  const message = createStatusMessage({ api, bot: parts.bot, clock, logger, label }, chatId);
   const typing = startTyping({ api, clock, logger }, chatId);
   const reply = { isGiven: false };
   parts.turns.set(key, { agent: push.agent, chatId, status: message, typing, reply });
@@ -267,7 +266,7 @@ async function status(parts: Parts, push: StatusPush, call: Call): Promise<void>
 type ProgressPush = Extract<ChatPush, { readonly kind: "chat/progress" }>;
 
 function progress(parts: Parts, push: ProgressPush): void {
-  parts.turns.get(keyOf(push))?.status.work(words(parts, push.progressKey, push.values));
+  parts.turns.get(keyOf(push))?.status.work();
 }
 
 async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void> {

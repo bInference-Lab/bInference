@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compactLine, maxLineChars, maxNarrationChars } from "./progress-lines.js";
+import { compactLine, maxLineChars } from "./progress-lines.js";
 
 describe("compactLine", () => {
   it("folds spaces and line breaks, and keeps a line that fits whole", () => {
@@ -15,8 +15,8 @@ describe("compactLine", () => {
 
   it("cuts one long word at the limit, counting characters by code point", () => {
     const face = String.fromCodePoint(0x1f600);
-    const cut = compactLine(face.repeat(400), maxNarrationChars);
-    expect(Array.from(cut)).toHaveLength(maxNarrationChars);
+    const cut = compactLine(face.repeat(400), maxLineChars);
+    expect(Array.from(cut)).toHaveLength(maxLineChars);
     expect(cut.endsWith(`${face}…`)).toBe(true);
   });
 });

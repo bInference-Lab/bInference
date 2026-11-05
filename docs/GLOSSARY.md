@@ -350,8 +350,9 @@ new name here first, in the change that uses it.
   `turn/say` and `final: false`; a surface shows it until the final text comes.
 - **progress line**: one line of a running turn's work, such as a tool it runs, sent with
   `turn/progress` and shown only while the turn runs.
-- **status message**: the one Telegram message that shows a running turn's work: how long it has
-  run, its progress lines and its draft. It goes once the answer arrives.
+- **status message**: the one Telegram message that shows a running turn is at work: a fixed label,
+  or the text the agent wrote before its latest tool. It shows once a tool starts and goes once the
+  answer arrives.
 - **read, propose and control tools**: tools that read data, tools that create an intent or an auto
   order and its card, and tools that change something without moving money or opening a card
   (cancel an order, set an alert or a schedule, write a note, ask the owner).

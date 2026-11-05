@@ -206,7 +206,7 @@ describe("the bot joined to the engine", () => {
     expect(test.botApi.calls()).toStrictEqual([]);
   });
 
-  it("shows the agent's work in one edited status message, then the answer", async () => {
+  it("shows the text written before a tool in the status message, then the answer", async () => {
     const turns = createRunningTurns();
     const test = await bot({ turns });
     const { handlers } = test.composed.engine;
@@ -230,10 +230,10 @@ describe("the bot joined to the engine", () => {
     await test.clock.advance(5_000);
     await test.telegram.idle();
     expect(test.botApi.sent().map(({ text }) => text)).toStrictEqual([
-      "Working on it · 0 s\nCalm: no\nReading a chart…",
+      "Calm: no",
       "Calm: <b>no</b> big moves.",
     ]);
-    expect(test.botApi.edits()).toHaveLength(1);
+    expect(test.botApi.edits()).toStrictEqual([]);
     expect(test.botApi.messages().map(({ text }) => text)).toStrictEqual([
       "Calm: <b>no</b> big moves.",
     ]);

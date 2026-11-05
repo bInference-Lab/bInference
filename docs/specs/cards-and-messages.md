@@ -1378,13 +1378,12 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   nor a photo go nowhere and are answered at once.
 - **Photos.** A message carries at most 4 photos of at most 5 MiB each; the others are left out
   and the owner is told how many. Each goes as `tg:<file_id>` of its largest size.
-- **The reply** ([decision 0371](../DECISIONS.md#d0371)). A turn that runs past 1.5 seconds, or
-  runs a tool sooner, gets one status message: how long the agent has worked, a work line for each
-  tool it ran (the newest 8, each cut to 120 characters, a line repeated in a row once), the text
-  it wrote before a tool as one line of at most 280 characters, and the text it writes now, drawn
-  as an answer is and cut from its start with `…` to stay within 4,000 characters. It is edited at
-  most once a second; a tool's line shows a message that has not shown yet at once. A turn that
-  answers within 1.5 seconds shows no status message. The final answer goes as new messages, which
+- **The reply** ([decisions 0371](../DECISIONS.md#d0371) and [0375](../DECISIONS.md#d0375)). A
+  turn that only writes its answer shows the typing indicator alone. The first tool a turn starts
+  shows one status message at once: `telegram.chat.working` in bold, or in its place the text the
+  agent wrote before its latest tool, as one bold headline of at most 120 characters, drawn as an
+  answer is. Tool lines and the answer's draft are not shown. It is edited only when what it shows
+  changes, at most once a second. The final answer goes as new messages, which
   notify where an edit does not, split at 4,000 characters, and the status message is deleted once
   it has shown for 4 seconds. A status line of section 8.1 follows in italics. The agent's words
   show their Markdown as Telegram's rich text by the rules of section 1, with every character a
@@ -1405,9 +1404,9 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 - **No answer.** A turn that ends with no answer, no status line, no question and no launch draft
   gets `telegram.chat.noAnswer` in the owner's chat, so the owner never waits on a reply that will
   not come.
-- **Work lines.** The runtime sends each tool's line with `turn/progress` (spec 1, section 7.7),
-  and the console and terminal chat show none: they show the answer so far. Asking the owner and
-  the first chat's end show no line.
+- **Work lines.** The runtime sends each tool's line with `turn/progress` (spec 1, section 7.7).
+  Telegram reads it only as a sign of work, and the console and terminal chat show none: they show
+  the answer so far. Asking the owner and the first chat's end send no line.
 
 | Tool                                                  | Key                                                                              | English                                                             | 中文                                                    |
 | ----------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
@@ -1439,7 +1438,7 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 
 | When                     | Key                           | English                                                                                                                                                                              | 中文                                                                                                    |
 | ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| The status message       | `telegram.chat.working`       | Working on it · {seconds} s                                                                                                                                                          | 处理中 · {seconds} 秒                                                                                   |
+| The status message       | `telegram.chat.working`       | Working                                                                                                                                                                              | 处理中                                                                                                  |
 | A turn with no answer    | `telegram.chat.noAnswer`      | No response generated. Please try again.                                                                                                                                             | 未生成回答，请再试一次。                                                                                |
 | An answer not delivered  | `telegram.chat.notDelivered`  | ⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.                                                                | ⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。                |
 | Photos past 4            | `telegram.chat.photosLeftOut` | The agent reads 4 photos of a message at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send {count, plural, one {it} other {them}} in another message. | Agent 每条消息最多读取 4 张图片，因此有 {count, plural, other {# 张图片}}未发送。请在另一条消息中发送。 |

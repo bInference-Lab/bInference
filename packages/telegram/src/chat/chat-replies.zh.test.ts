@@ -51,23 +51,24 @@ describe("the agent's Chinese replies in Telegram", () => {
     ]);
   });
 
-  it("shows the status message with each tool's line in Chinese", async () => {
+  it("shows the Chinese label when a tool starts, then the text written before a tool", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show({ kind: "chat/turnStarted", data: at }, live);
+    const progress = { agent, turn: at.turn, progressKey: "turn.tool.portfolio" };
+    await replies.show({ kind: "chat/progress", data: progress }, live);
+    await clock.advance(0);
+    await replies.idle();
+    expect(botApi.messages()).toMatchObject([{ text: "处理中", entities: [{ type: "bold" }] }]);
     const draft = {
       kind: "chat/message",
       data: { ...at, text: "我先看看**持仓**。", final: false },
     };
     await replies.show(draft, live);
-    const progress = { agent, turn: at.turn, progressKey: "turn.tool.portfolio" };
     await replies.show({ kind: "chat/progress", data: progress }, live);
-    await clock.advance(0);
+    await clock.advance(1_000);
     await replies.idle();
     expect(botApi.messages()).toMatchObject([
-      {
-        text: "处理中 · 0 秒\n我先看看持仓。\n正在读取投资组合…",
-        entities: [{ type: "bold", offset: 14, length: 2 }],
-      },
+      { text: "我先看看持仓。", entities: [{ type: "bold", offset: 0, length: 7 }] },
     ]);
   });
 

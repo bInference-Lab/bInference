@@ -77,46 +77,49 @@ async function triesEach100Ms(
 }
 
 describe("the agent's status message in Telegram", () => {
-  it("posts no status message for an answer within a second and a half", async () => {
+  it("posts no status message while the agent only writes its answer", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    await clock.advance(1_400);
-    await replies.show(answer("Done."), live);
+    await replies.show(answer("Hey! How can", false), live);
+    await clock.advance(5_000);
+    await replies.idle();
+    expect(botApi.sent()).toStrictEqual([]);
+    const shown = replies.show(answer("Hey! How can I help?"), live);
+    await clock.advance(0);
+    await shown;
     await replies.show(ended, live);
     await clock.advance(10_000);
     await replies.idle();
-    expect(botApi.sent().map(({ text }) => text)).toStrictEqual(["Done."]);
+    expect(botApi.sent().map(({ text }) => text)).toStrictEqual(["Hey! How can I help?"]);
     expect(botApi.edits()).toStrictEqual([]);
   });
 
-  it("shows after a second and a half, edits once a second, and goes 4 s after it showed", async () => {
+  it("shows a bold fixed label at once when a tool starts, never the tool's line", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    await clock.advance(1_499);
-    expect(botApi.sent()).toStrictEqual([]);
-    await clock.advance(1);
+    await replies.show(tool("turn.tool.portfolio"), live);
+    await clock.advance(0);
     await replies.idle();
-    await clock.advance(1_000);
-    await replies.idle();
-    expect(botApi.messages().map(({ text }) => text)).toStrictEqual(["Working on it · 2 s"]);
-    expect(botApi.edits()).toHaveLength(1);
+    expect(botApi.messages()).toMatchObject([
+      { text: "Working", entities: [{ type: "bold", offset: 0, length: 7 }] },
+    ]);
     const shown = replies.show(answer("Bought 0.1 BNB of FAKE on paper."), live);
     await clock.advance(1_000);
     await shown;
     await replies.show(ended, live);
-    await clock.advance(1_900);
+    await clock.advance(2_900);
     expect(botApi.deleted()).toStrictEqual([]);
     await clock.advance(100);
     await replies.idle();
     expect(botApi.sent().map(({ text }) => text)).toStrictEqual([
-      "Working on it · 1 s",
+      "Working",
       "Bought 0.1 BNB of FAKE on paper.",
     ]);
     expect(botApi.deleted()).toStrictEqual([{ chatId: ownerId, messageId: 1001 }]);
-    expect(botApi.edits()).toHaveLength(1);
+    expect(botApi.edits()).toStrictEqual([]);
   });
 
-  it("shows at once for a tool, with the text written before it as one line", async () => {
+  it("shows the text written before a tool as its bold headline, in place of the label", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
     await replies.show(answer("Let me look at **your**\nwallet.", false), live);
@@ -126,93 +129,77 @@ describe("the agent's status message in Telegram", () => {
     await replies.idle();
     expect(botApi.messages()).toMatchObject([
       {
-        text: "Working on it · 0 s\nLet me look at your wallet.\nReading the portfolio…",
-        entities: [{ type: "bold", offset: 35, length: 4 }],
+        text: "Let me look at your wallet.",
+        entities: [{ type: "bold", offset: 0, length: 27 }],
       },
     ]);
   });
 
-  it("edits for a later tool only a second after the last showing", async () => {
+  it("edits only when the headline changes, a second after the last showing", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
     await replies.show(tool("turn.tool.portfolio"), live);
     await clock.advance(0);
     await replies.idle();
-    await replies.show(tool("turn.tool.plugin", { plugin: "fear_index" }), live);
+    await replies.show(answer("Now the risk.", false), live);
+    await replies.show(tool("turn.tool.tokenRisk"), live);
     await clock.advance(900);
     expect(botApi.edits()).toStrictEqual([]);
     await clock.advance(100);
     await replies.idle();
-    expect(botApi.messages().map(({ text }) => text)).toStrictEqual([
-      "Working on it · 1 s\nReading the portfolio…\nAsking the plugin fear_index…",
-    ]);
+    await replies.show(answer("Your wallet holds", false), live);
+    await clock.advance(10_000);
+    await replies.idle();
+    expect(botApi.edits()).toHaveLength(1);
+    expect(botApi.messages().map(({ text }) => text)).toStrictEqual(["Now the risk."]);
   });
 
-  it("keeps the newest 8 work lines and a line repeated in a row once", async () => {
+  it("cuts a long headline to 120 characters", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    const keys = ["quote", "quote", "chart", "tokenInfo", "tokenRisk", "orders", "txStatus"];
-    for (const key of [...keys, "addresses", "portfolio", "marketScan"]) {
-      // oxlint-disable-next-line eslint/no-await-in-loop -- the lines come in order
-      await replies.show(tool(`turn.tool.${key}`), live);
-    }
-    await clock.advance(1_000);
+    const words = Array.from({ length: 60 }, (_, place) => `word${String(place)}`).join(" ");
+    await replies.show(answer(words, false), live);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(0);
     await replies.idle();
-    const [shown] = botApi.messages().map(({ text }) => text.split("\n"));
-    expect(shown).toStrictEqual([
-      "Working on it · 1 s",
-      "Reading a chart…",
-      "Reading the token…",
-      "Checking the token's risk…",
-      "Reading the auto orders…",
-      "Checking a transaction…",
-      "Reading the address book…",
-      "Reading the portfolio…",
-      "Scanning the market…",
-    ]);
-  });
-
-  it("draws the agent's text so far as rich text, its end alone when it is long", async () => {
-    const { botApi, clock, replies } = await setUp();
-    await replies.show(started, live);
-    const long = `${"x".repeat(99)}\n`.repeat(60);
-    await replies.show(answer(`${long}**Last** line`, false), live);
-    await clock.advance(1_500);
-    await replies.idle();
-    const [shown] = botApi.messages();
-    expect(shown?.text.length).toBeLessThanOrEqual(4_096);
-    expect(shown?.text.startsWith("Working on it · 1 s\n\n…\n")).toBe(true);
-    expect(shown?.text.endsWith("Last line")).toBe(true);
-    expect(shown?.entities.at(-1)).toMatchObject({ type: "bold", length: 4 });
+    const [shown] = botApi.messages().map(({ text }) => Array.from(text));
+    expect(shown).toHaveLength(116);
+    expect(shown?.at(-1)).toBe("…");
   });
 
   it("sends the status message as plain text when Telegram cannot parse its HTML", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    await replies.show(answer("**Checking**", false), live);
+    await replies.show(answer("Checking", false), live);
     const unparsed = { status: 400, description: "Bad Request: can't parse entities: at 3" };
     botApi.failNext("sendMessage", unparsed, { chatId: ownerId });
-    await clock.advance(2_500);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(1_000);
     await replies.idle();
-    expect(botApi.messages()).toMatchObject([
-      { text: "Working on it · 1 s\n\nChecking", entities: [] },
-    ]);
+    expect(botApi.messages()).toMatchObject([{ text: "Checking", entities: [] }]);
   });
 
   it("stops editing after Telegram refuses an edit, and still answers and cleans up", async () => {
     const { botApi, clock, logger, replies } = await setUp();
     await replies.show(started, live);
-    await clock.advance(1_500);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(0);
     await replies.idle();
     botApi.failNext("editMessageText", { status: 400, description: "Bad Request: no rights" });
-    await clock.advance(3_000);
+    for (const said of ["First", "Second"]) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the lines come in order
+      await replies.show(answer(said, false), live);
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the lines come in order
+      await replies.show(tool("turn.tool.quote"), live);
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one refresh a second
+      await clock.advance(1_000);
+    }
     await replies.idle();
     const shown = replies.show(answer("Done."), live);
     await clock.advance(5_000);
     await shown;
     await replies.idle();
-    const methods = messageCalls(botApi);
-    expect(methods).toStrictEqual([
+    expect(messageCalls(botApi)).toStrictEqual([
       "sendMessage",
       "editMessageText",
       "sendMessage",
@@ -228,16 +215,21 @@ describe("the agent's status message in Telegram", () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
     botApi.failNext("sendMessage", "lostAnswer", { chatId: ownerId });
+    await replies.show(tool("turn.tool.quote"), live);
     await clock.advance(5_000);
-    const methods = messageCalls(botApi);
-    expect(methods).toStrictEqual(["sendMessage"]);
+    expect(messageCalls(botApi)).toStrictEqual(["sendMessage"]);
   });
 
   it("tries a status message again whose send never left, and edits it", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
     botApi.failNext("sendMessage", "network", { chatId: ownerId });
-    await clock.advance(3_500);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(1_000);
+    await replies.idle();
+    await replies.show(answer("Next step.", false), live);
+    await replies.show(tool("turn.tool.chart"), live);
+    await clock.advance(1_000);
     replies.close();
     expect(messageCalls(botApi)).toStrictEqual(["sendMessage", "sendMessage", "editMessageText"]);
   });
@@ -245,18 +237,20 @@ describe("the agent's status message in Telegram", () => {
   it("drops a preview Telegram answers with a 429, and still delivers the answer", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    await clock.advance(1_500);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(0);
     await replies.idle();
     botApi.failNext("editMessageText", flood(3), { chatId: ownerId });
     botApi.failNext("sendMessage", flood(2), { chatId: ownerId });
+    await replies.show(answer("Next step.", false), live);
+    await replies.show(tool("turn.tool.chart"), live);
     await clock.advance(1_000);
     await replies.idle();
     const shown = replies.show(answer("Done."), live);
     await clock.advance(10_000);
     await shown;
     await replies.idle();
-    const methods = messageCalls(botApi);
-    expect(methods).toStrictEqual([
+    expect(messageCalls(botApi)).toStrictEqual([
       "sendMessage",
       "editMessageText",
       "sendMessage",
@@ -270,7 +264,8 @@ describe("the agent's status message in Telegram", () => {
   it("says in the status message that an answer Telegram refused did not arrive", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    await clock.advance(1_500);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(0);
     await replies.idle();
     botApi.failNext("sendMessage", { status: 400, description: "Bad Request: chat not found" });
     const refused = replies.show(answer("**Done.**"), live).catch((error: unknown) => error);
@@ -298,10 +293,12 @@ describe("the agent's status message in Telegram", () => {
   it("removes an earlier turn's status message when the agent's next turn starts", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    await clock.advance(1_500);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(0);
     await replies.idle();
     const next = { ...at, turn: "trn_0190f1c2-3a4b-7c5d-8e6f-0123456789ac" };
     await replies.show(push("chat/turnStarted", next), live);
+    await replies.show(push("chat/progress", { ...next, progressKey: "turn.tool.quote" }), live);
     await clock.advance(5_000);
     replies.close();
     expect(botApi.deleted()).toStrictEqual([{ chatId: ownerId, messageId: 1001 }]);
@@ -311,7 +308,8 @@ describe("the agent's status message in Telegram", () => {
   it("removes the status message of a turn that ends without an answer, and says so", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
-    await clock.advance(1_500);
+    await replies.show(tool("turn.tool.quote"), live);
+    await clock.advance(0);
     await replies.idle();
     const shown = replies.show(ended, live);
     await clock.advance(1_000);
