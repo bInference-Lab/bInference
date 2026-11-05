@@ -43,4 +43,25 @@ describe("a webhook alert whose entry cannot be read", () => {
     const waiting = await test.stores.inbox.unhandled({ keyPrefix: "webhook", limit: 5 }, live);
     expect(waiting).toStrictEqual([]);
   });
+
+  it("ends the alert fill_failed in the run that hands its entry off after the third failure", async () => {
+    const test = await startFillEngine({
+      webhookRules: (store) => alertReadsDown(store, () => true),
+    });
+    const created = await createdRule(test);
+    await tapCard(test, created.intent, "confirm");
+    await alertTo(test, created.url, "never read");
+
+    for (const run of [1, 2, 3]) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one run after another, as the timer runs them
+      await expect(test.engine.fillWebhookAlerts(live), `run ${String(run)}`).rejects.toThrow(
+        "webhook alerts failed to fill",
+      );
+    }
+
+    const waiting = await test.stores.inbox.unhandled({ keyPrefix: "webhook", limit: 5 }, live);
+    expect(waiting).toStrictEqual([]);
+    const alerts = await test.stores.webhookRules.alerts({ ruleId: created.rule, limit: 5 }, live);
+    expect(alerts).toMatchObject([{ outcome: "skipped", reason: "fill_failed" }]);
+  });
 });

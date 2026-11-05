@@ -92,6 +92,18 @@ const entryTries = 3;
 // How many agents' alerts fill at once: one slow agent holds only its own line (decision 0338).
 const agentsAtOnce = 4;
 
+// Ends `fill_failed` the alert of an entry whose reads failed, by the row its payload names, in one
+// write that reads nothing: the store keeps an alert that ended, or that its own live fill holds,
+// as it stands. Only an entry whose payload parsed reaches a read that can fail.
+async function endUnread(
+  parts: WebhookFillParts,
+  entry: InboxEntry,
+  signal: AbortSignal,
+): Promise<void> {
+  const { event } = payloadSchema.parse(entry.payload);
+  await parts.rules.endAlert({ event, outcome: "skipped", reason: "fill_failed" }, { signal });
+}
+
 /** What a run keeps of the entries that failed, and how it ends them. */
 interface EntryFailures {
   /** Marks an entry handled, and forgets its failures. */
@@ -122,8 +134,10 @@ function createEntryFailures(parts: WebhookFillParts): EntryFailures {
         counts.set(entry.id, count);
         return;
       }
-      // An alert its own live fill holds is the executor's to end (decision 0342).
-      if (alert !== undefined && !(await isLeftToItsFill(parts, { rule, alert, signal }))) {
+      if (alert === undefined) {
+        await endUnread(parts, entry, signal);
+      } else if (!(await isLeftToItsFill(parts, { rule, alert, signal }))) {
+        // An alert its own live fill holds is the executor's to end (decision 0342).
         const skip = { event: alert.event, reason: "fill_failed" as const, tells: true };
         await endAlertSkipped(parts, { ruleId: alert.ruleId, skip, signal });
       }
