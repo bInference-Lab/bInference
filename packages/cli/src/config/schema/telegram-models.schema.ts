@@ -19,6 +19,11 @@ interface TelegramRepliesConfig {
    * the answer grows in one message that becomes the final answer in place.
    */
   readonly stream: "progress" | "partial";
+  /**
+   * How the model's reasoning shows (decision 0377): `off` not at all, `streamed` while the agent
+   * works and gone with the answer, `kept` as a message of its own before the answer.
+   */
+  readonly reasoning: "off" | "streamed" | "kept";
 }
 
 /** The wire format a model provider speaks. */
@@ -69,6 +74,13 @@ const telegramRepliesSchema: z.ZodType<TelegramRepliesConfig> = z
       .describe(
         "progress shows a status message once the agent works, then the answer as a new message; " +
           "partial grows the answer in one message that becomes the answer itself.",
+      ),
+    reasoning: z
+      .enum(["off", "streamed", "kept"])
+      .prefault("off")
+      .describe(
+        "How the model's reasoning shows: off hides it, streamed shows it while the agent works, " +
+          "kept sends it as a message of its own before the answer.",
       ),
   })
   .prefault({})

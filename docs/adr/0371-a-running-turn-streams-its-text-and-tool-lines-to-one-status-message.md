@@ -1,6 +1,6 @@
 # 0371. A running turn streams its text and tool lines to one status message
 
-Status: Amended by 0376
+Status: Amended by 0377
 
 Accepted by the tech lead on 2026-11-05.
 

@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225), [0230](../DECISIONS.md#d0230), [0296](../DECISIONS.md#d0296), [0347](../DECISIONS.md#d0347) and [0376](../DECISIONS.md#d0376);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225), [0230](../DECISIONS.md#d0230), [0296](../DECISIONS.md#d0296), [0347](../DECISIONS.md#d0347), [0376](../DECISIONS.md#d0376) and [0377](../DECISIONS.md#d0377);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -137,13 +137,14 @@ The agent key is not in this file: the signer reads it through `engine.unlock` (
 
 ### 6.2 `telegram`
 
-| Key                       | Type                        | Default      | Applies | Meaning                                                                                                                                                                                                                                                                                    |
-| ------------------------- | --------------------------- | ------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `telegram.botToken`       | Secret                      | required     | restart | The owner's BotFather token                                                                                                                                                                                                                                                                |
-| `telegram.mode`           | `"polling"` \| `"webhook"`  | `"polling"`  | restart | How updates arrive                                                                                                                                                                                                                                                                         |
-| `telegram.webhookSecret`  | Secret                      | none         | restart | Required with `"webhook"`, or the engine refuses to start                                                                                                                                                                                                                                  |
-| `telegram.topicsPerAgent` | boolean                     | `false`      | live    | One DM topic per agent, once the bot has topics in private chats on ([decision 0186](../DECISIONS.md#d0186))                                                                                                                                                                               |
-| `telegram.replies.stream` | `"progress"` \| `"partial"` | `"progress"` | live    | How the agent's replies show while it works, read as each turn starts ([decision 0376](../DECISIONS.md#d0376)): `progress` shows a status message once the agent works, then the answer as new messages; `partial` grows the answer in one message that becomes its first message in place |
+| Key                          | Type                                | Default      | Applies | Meaning                                                                                                                                                                                                                                                                                                   |
+| ---------------------------- | ----------------------------------- | ------------ | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `telegram.botToken`          | Secret                              | required     | restart | The owner's BotFather token                                                                                                                                                                                                                                                                               |
+| `telegram.mode`              | `"polling"` \| `"webhook"`          | `"polling"`  | restart | How updates arrive                                                                                                                                                                                                                                                                                        |
+| `telegram.webhookSecret`     | Secret                              | none         | restart | Required with `"webhook"`, or the engine refuses to start                                                                                                                                                                                                                                                 |
+| `telegram.topicsPerAgent`    | boolean                             | `false`      | live    | One DM topic per agent, once the bot has topics in private chats on ([decision 0186](../DECISIONS.md#d0186))                                                                                                                                                                                              |
+| `telegram.replies.stream`    | `"progress"` \| `"partial"`         | `"progress"` | live    | How the agent's replies show while it works, read as each turn starts ([decision 0376](../DECISIONS.md#d0376)): `progress` shows a status message once the agent works, then the answer as new messages; `partial` grows the answer in one message that becomes its first message in place                |
+| `telegram.replies.reasoning` | `"off"` \| `"streamed"` \| `"kept"` | `"off"`      | live    | How the model's reasoning shows, read as each turn starts ([decision 0377](../DECISIONS.md#d0377)): `streamed` as one line of the status message, or a message of its own in the `partial` mode, gone with the answer; `kept` as a message of its own before the answer. `/replies` sets it from Telegram |
 
 Version 14 removed `telegram.groups` and `telegram.confirmBotToken`, which no part read: the bot
 answers only the owner's private chat, and confirmations come from the owner's one bot, the CLI and
@@ -263,7 +264,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 15,
+  version: 16,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

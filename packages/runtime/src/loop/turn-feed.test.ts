@@ -26,6 +26,8 @@ function recordingEngine(options: { readonly fails?: boolean; readonly hangs?: b
     engine: {
       draft: async (text: string, signal: AbortSignal) => note(`draft ${text}`, signal),
       progress: async (tool: string, signal: AbortSignal) => note(`tool ${tool}`, signal),
+      reasoning: async (said: { text: string; final: boolean }, signal: AbortSignal) =>
+        note(`${said.final ? "thought" : "thinking"} ${said.text}`, signal),
     },
   };
 }
@@ -58,6 +60,18 @@ describe("a turn's feed", () => {
     feed.text("You");
     await feed.settle();
     expect(sent).toStrictEqual(["draft I check", "tool portfolio", "draft You"]);
+  });
+
+  it("paces the reasoning so far, and a call's whole reasoning replaces one that waits", async () => {
+    const clock = createManualClock(1_000);
+    const { sent, engine } = recordingEngine();
+    const feed = createTurnFeed({ engine, clock, signal: live });
+    feed.reasoning("A");
+    await clock.advance(0);
+    feed.reasoning("AB");
+    feed.reasoningEnd("ABC");
+    await feed.settle();
+    expect(sent).toStrictEqual(["thinking A", "thought ABC"]);
   });
 
   it("drops a waiting draft and takes nothing once it settled", async () => {
@@ -126,6 +140,40 @@ describe("a turn's drafts and progress lines", () => {
     ]);
     expect(recorder.steps.filter(({ kind }) => kind === "say")).toStrictEqual([
       { kind: "say", text: "You hold 1 BNB." },
+    ]);
+  });
+
+  it("hands the engine the reasoning so far, then each call's whole reasoning before the answer", async () => {
+    const clock = createManualClock(1_000);
+    async function* answer(signal: AbortSignal): AsyncGenerator<ModelEvent> {
+      for (const event of [
+        { type: "reasoning", delta: "The owner " },
+        { type: "reasoning", delta: "says hey." },
+        { type: "text", delta: "<think>Be kind.</think>Hey!" },
+      ] as const) {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- the pieces come one after another
+        await clock.sleep(1_000, signal);
+        yield event;
+      }
+      yield {
+        type: "done",
+        stop: "end",
+        usage: { inputTokens: 1, outputTokens: 1, cachedTokens: 0 },
+      };
+    }
+    const { turn, recorder } = createTestTurn({ clock, replies: [answer] });
+    const report = turn.run();
+    await clock.advance(5_000);
+    await expect(report).resolves.toMatchObject({ outcome: "ok" });
+    expect(recorder.feed).toStrictEqual([
+      { kind: "reasoning", text: "The owner ", final: false },
+      { kind: "reasoning", text: "The owner says hey.", final: false },
+      { kind: "draft", text: "Hey!" },
+      { kind: "reasoning", text: "The owner says hey.\n\nBe kind.", final: false },
+      { kind: "reasoning", text: "The owner says hey.\n\nBe kind.", final: true },
+    ]);
+    expect(recorder.steps.filter(({ kind }) => kind === "say")).toStrictEqual([
+      { kind: "say", text: "Hey!" },
     ]);
   });
 

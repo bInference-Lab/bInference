@@ -10,7 +10,7 @@ import { currentConfigVersion } from "../config/migrations/config-migrations.js"
 import { createClosers } from "./closers.js";
 import { createConfigCell } from "./config-cell.js";
 import { startConfigReload } from "./config-reload.js";
-import { createOwnerLocaleChange } from "./owner-locale-change.js";
+import { createOwnerChatConfigChange } from "./owner-chat-config-change.js";
 
 const live = () => ({ signal: new AbortController().signal });
 const file = "/state/config.json5";
@@ -54,7 +54,7 @@ async function machine(start: string | undefined = text) {
     throw new Error("Expected the fixture config to load.");
   }
   const settings = createConfigCell(loaded.config);
-  const change = createOwnerLocaleChange({ file, permissions, settings, readFile, writeFile });
+  const change = createOwnerChatConfigChange({ file, permissions, settings, readFile, writeFile });
   return { disk, writes, settings, change, readConfig };
 }
 
@@ -65,7 +65,7 @@ async function setLocale(
   return change({ args: { patch }, caller: telegram, ...live() });
 }
 
-describe("the owner's language changed from Telegram", () => {
+describe("the owner's settings changed from Telegram", () => {
   it("sets the owner's language in the config file, keeps the rest, and shows secrets by kind", async () => {
     const test = await machine();
     const answered = await setLocale(test.change, { owner: { locale: "zh" } });
@@ -119,10 +119,27 @@ describe("the owner's language changed from Telegram", () => {
     await closers.closeAll(live().signal);
   });
 
+  it("sets how the model's reasoning shows, adding the replies group the file lacks", async () => {
+    const test = await machine();
+    const answered = await setLocale(test.change, { telegram: { replies: { reasoning: "kept" } } });
+    expect(test.disk.get(file)).toContain('replies: { reasoning: "kept" }');
+    expect(answered).toMatchObject({
+      ok: true,
+      value: { config: { telegram: { replies: { stream: "progress", reasoning: "kept" } } } },
+    });
+    await setLocale(test.change, { telegram: { replies: { stream: "partial" } } });
+    expect(test.disk.get(file)).toContain('stream: "partial"');
+  });
+
   it.each([
     ["a language binference does not speak", { owner: { locale: "fr" } }],
     ["another setting", { owner: { locale: "zh", timezone: "UTC" } }],
     ["a setting outside the owner", { logging: { level: "debug" } }],
+    [
+      "two reply settings at once",
+      { telegram: { replies: { stream: "partial", reasoning: "kept" } } },
+    ],
+    ["another Telegram setting", { telegram: { topicsPerAgent: true } }],
   ])("refuses %s and writes nothing", async (_name, patch) => {
     const test = await machine();
     await expect(setLocale(test.change, patch)).resolves.toStrictEqual({

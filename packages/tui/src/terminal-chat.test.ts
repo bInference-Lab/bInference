@@ -188,7 +188,7 @@ describe("terminal chat", () => {
     ]);
   });
 
-  it("prints the final answer once after drafts and a progress line, and no draft at all", async () => {
+  it("prints the final answer once after drafts, a progress line and reasoning, and none of them", async () => {
     const chat = await opened();
     const topic = `chat:${harnessAgent}` as const;
     const draft = (text: string) => ({ agent: harnessAgent, turn, text, final: false });
@@ -200,6 +200,8 @@ describe("terminal chat", () => {
       progressKey: "turn.tool.portfolio",
     });
     chat.push(topic, "chat/message", draft("You hold"));
+    const reasoning = { agent: harnessAgent, turn, text: "Weighing", final: true };
+    chat.push(topic, "chat/reasoning", reasoning);
     await chat.settle();
     expect(chat.rows().slice(-2)).toStrictEqual(["main: You hold", "› "]);
     chat.push(topic, "chat/message", { ...draft("You hold 1 BNB."), final: true });
@@ -207,7 +209,7 @@ describe("terminal chat", () => {
     await chat.settle();
     const rows = chat.rows();
     expect(rows.filter((row) => row.includes("You hold"))).toStrictEqual(["main: You hold 1 BNB."]);
-    expect(rows.filter((row) => row.includes("Reading"))).toStrictEqual([]);
+    expect(rows.filter((row) => /Reading|Weighing/u.test(row))).toStrictEqual([]);
   });
 
   it("writes out the characters of a model's words that would steer the terminal", async () => {

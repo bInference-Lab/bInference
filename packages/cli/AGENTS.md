@@ -89,7 +89,8 @@ Rules for this package:
   owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
   handlers: the engine's and the root's own, such as `engine/status`. The bot alone also gets
   `ownerChat`: the `config/change` that sets `owner.locale` in config.json5 in place
-  (`src/compose/owner-locale-change.ts`, decision 0134), which the live reload then applies. Every push, a notice too,
+  (`src/compose/owner-chat-config-change.ts`, decisions 0134 and 0377), or how replies and the
+  model's reasoning show in the chat (`telegram.replies`), which the live reload then applies. Every push, a notice too,
   goes through the engine's one `publish`, so the server and the bot both get it; `publish` stores
   each notice first through the notice log (`src/compose/notice-log.ts`, decision 0133), and the
   push carries its id. Cards and notices reach the owner's chat in one line

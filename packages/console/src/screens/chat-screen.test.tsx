@@ -84,6 +84,9 @@ describe("the chat screen", () => {
       engine.push(topic, "chat/message", { agent, session, turn, text: "Checking", final: false }),
     );
     expect(screen.getByText("Checking")).toBeDefined();
+    act(() => engine.push(topic, "chat/reasoning", { agent, turn, text: "Weighing", final: true }));
+    expect(screen.getByText("Checking")).toBeDefined();
+    expect(screen.queryByText("Weighing")).toBeNull();
     act(() =>
       engine.push(topic, "chat/message", {
         agent,

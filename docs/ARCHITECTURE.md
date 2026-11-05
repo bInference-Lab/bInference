@@ -695,7 +695,7 @@ a hijacked Telegram account cannot redirect it.
   in private chats). `/use <agent>` is the fallback.
 - **Fast commands** (no LLM): `/balance`, `/positions`, `/orders`, `/cancel`, `/freeze`, `/rescue`,
   `/paper`, `/agents`, `/use`, `/limits`, `/status`, `/spend`, `/ai`, `/clear`, `/schedules`,
-  `/console` (opens the Mini App, [section 25](#section-25)), `/lang`, `/help`. They are registered
+  `/console` (opens the Mini App, [section 25](#section-25)), `/replies`, `/lang`, `/help`. They are registered
   with `setMyCommands` in English and Chinese (`language_code`).
 - **Cards and buttons.**
   - Typed actions are rendered as inline keyboards.

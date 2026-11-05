@@ -79,7 +79,10 @@ names the keys and fixes the wording.
 - A `/limits` button carries `bnf1:t:h:<limit>`: it halves the limit its field names
   (`perTradeUsdMicros`, `rollingDayUsdMicros`, `slippageRegistryBps` or `slippageOtherBps`) for the
   only agent. It names no id: a press can only make the owner's own limit stricter. A `/lang`
-  button carries `bnf1:l:s:<en|zh>`: it sets the owner's language. An `/ai` button carries
+  button carries `bnf1:l:s:<en|zh>`: it sets the owner's language. A `/replies` button carries
+  `bnf1:r:m:<progress|partial>` or `bnf1:r:t:<off|streamed|kept>`: it sets
+  `telegram.replies.stream` or `telegram.replies.reasoning` ([decision 0377](../DECISIONS.md#d0377)).
+  An `/ai` button carries
   `bnf1:m:s:<digest>`, the first 16 base64url characters of the SHA-256 of a configured model's
   reference: it sets that model for the agent's `main` role ([decision 0204](../DECISIONS.md#d0204)).
 - A button of the agent's question ([section 8.2](#section-8-2)) carries `bnf1:q:<choice>:<ref>`:
@@ -1018,6 +1021,7 @@ is never verified, so its short address always follows its symbol.
 | `/clear`     | `cmd.clear`     | Starts a new chat session                                       |
 | `/schedules` | `cmd.schedules` | Schedules with buttons to cancel                                |
 | `/console`   | `cmd.console`   | A button that opens the Mini App                                |
+| `/replies`   | `cmd.replies`   | How replies and reasoning show here, a button for each choice   |
 | `/lang`      | `cmd.lang`      | Buttons: English, 中文                                          |
 | `/help`      | `cmd.help`      | The commands, one line each                                     |
 
@@ -1072,10 +1076,17 @@ so it applies at once through `limit/set` and is announced like any limit change
 button. Nothing in Telegram loosens a limit.
 
 A `/lang` button names its language in that language, the same in every language: `English`,
-`中文`. A tap sets `owner.locale` in config.json5 through `config/change`, the one setting the
-owner's chat changes ([decision 0134](../DECISIONS.md#d0134)), and answers in the new language:
+`中文`. A tap sets `owner.locale` in config.json5 through `config/change`, one of the settings the
+owner's chat changes ([decisions 0134](../DECISIONS.md#d0134) and [0377](../DECISIONS.md#d0377)), and answers in the new language:
 "binference uses Chinese with you now." / 「binference 现在与你沟通使用中文。」 The live reload journals
 the change and announces it on every surface.
+
+`/replies` names how the agent's replies grow and how the model's reasoning shows in this chat
+([decision 0377](../DECISIONS.md#d0377)), with one row of buttons for `telegram.replies.stream`
+("Status message", "Growing answer") and one for `telegram.replies.reasoning` ("Hide reasoning",
+"Show reasoning as it comes", "Keep reasoning"), the choice in use followed by "(now)". A tap sets
+that one key in config.json5 through `config/change`, which the live reload applies from the next
+turn, and answers "Saved. It applies from the next answer." / 「已保存，从下一个回答起生效。」
 
 Topics stay off ([decision 0186](../DECISIONS.md#d0186)), so one chat serves every agent. With one
 agent not archived the chat talks to it; `/use <name or id>` picks another, and the pick outlasts a
@@ -1395,6 +1406,15 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   end it is edited into the answer's first message in place, and the rest of a long answer goes as
   new messages; when that edit fails, the whole answer goes as new messages and the preview is
   deleted once it has shown for 4 seconds.
+- **The model's reasoning** ([decision 0377](../DECISIONS.md#d0377)), as
+  `telegram.replies.reasoning` says, read as each turn starts. `off`, the default, shows none.
+  `streamed` shows it while the agent works: in the `progress` mode as one italic line under the
+  status message's label, `telegram.chat.reasoningLine`, cut to 120 characters and replaced as it
+  grows, the status message showing 1.5 seconds after the first reasoning and a headline taking
+  the line's place; in the `partial` mode as a message of its own, `telegram.chat.reasoning` in
+  bold then the reasoning in italics, first sent once it holds 30 characters, deleted once the
+  answer came and it has shown for 4 seconds. `kept` sends each model call's whole reasoning as
+  that message before the answer, and keeps it.
 - **While the agent works** ([decision 0372](../DECISIONS.md#d0372)). The bot shows Telegram's
   typing indicator in the chat from the turn's start, renewed every 4 seconds, until the turn
   ends; after 5 failures in a row it stops for the turn.
@@ -1446,6 +1466,8 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 | When                     | Key                           | English                                                                                                                                                                              | 中文                                                                                                    |
 | ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | The status message       | `telegram.chat.working`       | Working                                                                                                                                                                              | 处理中                                                                                                  |
+| Reasoning's title        | `telegram.chat.reasoning`     | Reasoning                                                                                                                                                                            | 推理                                                                                                    |
+| A line of reasoning      | `telegram.chat.reasoningLine` | Reasoning: {text}                                                                                                                                                                    | 推理：{text}                                                                                            |
 | A turn with no answer    | `telegram.chat.noAnswer`      | No response generated. Please try again.                                                                                                                                             | 未生成回答，请再试一次。                                                                                |
 | An answer not delivered  | `telegram.chat.notDelivered`  | ⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.                                                                | ⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。                |
 | Photos past 4            | `telegram.chat.photosLeftOut` | The agent reads 4 photos of a message at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send {count, plural, one {it} other {them}} in another message. | Agent 每条消息最多读取 4 张图片，因此有 {count, plural, other {# 张图片}}未发送。请在另一条消息中发送。 |

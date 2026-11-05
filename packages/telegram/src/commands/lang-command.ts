@@ -21,8 +21,8 @@ export async function runLang(context: CommandContext): Promise<void> {
 }
 
 /**
- * A press of a `/lang` button: sets `owner.locale` through `config/change`, the one setting the
- * owner's chat changes (decision 0134), and answers in the new language; the live reload of
+ * A press of a `/lang` button: sets `owner.locale` through `config/change`, one of the settings the
+ * owner's chat changes (decisions 0134 and 0377), and answers in the new language; the live reload of
  * config.json5 then applies it, journals it and announces it. The language in use changes
  * nothing.
  */

@@ -296,6 +296,20 @@ describe("the chat relay", () => {
     expect(pushed.map((push) => push.data)).toStrictEqual([progress]);
   });
 
+  it("carries the runtime's reasoning to the agent's chat topic, and no one else's", async () => {
+    const test = await startTestEngine();
+    expectOk(await startTurn(test));
+    const reasoning = { agent: testAgent, turn, text: "The owner asks for a price.", final: true };
+    const { handlers } = test.engine;
+    expect(await handlers["turn/reasoning"](testCall(reasoning, otherAgentClient))).toStrictEqual({
+      ok: false,
+      error: "auth.scope",
+    });
+    expectOk(await handlers["turn/reasoning"](testCall(reasoning, runtime)));
+    const pushed = test.pushes.filter((push) => push.kind === "chat/reasoning");
+    expect(pushed.map((push) => push.data)).toStrictEqual([reasoning]);
+  });
+
   it("refuses a mark of a turn that does not run", async () => {
     const test = await startTestEngine();
     const marked = await test.engine.handlers["turn/mark"](

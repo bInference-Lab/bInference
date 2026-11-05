@@ -63,6 +63,15 @@ export interface EngineProgress extends EngineTurn {
   readonly values?: Readonly<Record<string, string>>;
 }
 
+/**
+ * `turn/reasoning`: the reasoning of the turn's current model call so far, or with `final` the
+ * whole reasoning of a call that ended.
+ */
+export interface EngineReasoning extends EngineTurn {
+  readonly text: string;
+  readonly final: boolean;
+}
+
 /** `usage/record`: one model call attempt's tokens and cost, under the record's own key. */
 export interface EngineUsage extends EngineTurn {
   readonly model: string;

@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+/**
+ * The most characters of reasoning one `turn/reasoning`, and so one `chat/reasoning`, carries;
+ * the runtime cuts a longer one there (decision 0377).
+ */
+export const maxReasoningChars: number = 50_000;
+
 /** A line's values, as `chat/status` and `chat/progress` carry them. */
 type LineValues = Readonly<Record<string, string | number>>;
 
@@ -27,6 +33,13 @@ export type ChatPush =
       readonly progressKey: string;
       readonly values?: LineValues;
     }
+  | {
+      readonly kind: "chat/reasoning";
+      readonly agent: string;
+      readonly turn: string;
+      readonly text: string;
+      readonly final: boolean;
+    }
   | { readonly kind: "chat/turnEnded"; readonly agent: string; readonly turn: string };
 
 const at = { agent: z.string().min(1), turn: z.string().min(1) };
@@ -46,6 +59,10 @@ const pushSchema = z.discriminatedUnion("kind", [
     kind: z.literal("chat/progress"),
     data: z.looseObject({ ...at, progressKey: z.string().min(1), values }),
   }),
+  z.looseObject({
+    kind: z.literal("chat/reasoning"),
+    data: z.looseObject({ ...at, text: z.string(), final: z.boolean() }),
+  }),
   z.looseObject({ kind: z.literal("chat/turnEnded"), data: z.looseObject(at) }),
 ]);
 
@@ -62,7 +79,7 @@ export function chatPushOf(push: {
     return undefined;
   }
   const read = parsed.data;
-  if (read.kind === "chat/message") {
+  if (read.kind === "chat/message" || read.kind === "chat/reasoning") {
     const { agent, turn, text, final } = read.data;
     return { kind: read.kind, agent, turn, text, final };
   }

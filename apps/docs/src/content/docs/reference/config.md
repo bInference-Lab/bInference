@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 15. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 16. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -49,6 +49,7 @@ The owner's Telegram bot.
 - `telegram.webhookSecret`: Checks webhook calls; required with the webhook mode. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_TELEGRAM__WEBHOOK_SECRET`.
 - `telegram.topicsPerAgent`: One direct-message topic per agent, once the bot has topics turned on. Takes true or false. Default: `false`. Variable: `BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`.
 - `telegram.replies.stream`: progress shows a status message once the agent works, then the answer as a new message; partial grows the answer in one message that becomes the answer itself. Takes one of "progress", "partial". Default: `"progress"`. Variable: `BINFERENCE_TELEGRAM__REPLIES__STREAM`.
+- `telegram.replies.reasoning`: How the model's reasoning shows: off hides it, streamed shows it while the agent works, kept sends it as a message of its own before the answer. Takes one of "off", "streamed", "kept". Default: `"off"`. Variable: `BINFERENCE_TELEGRAM__REPLIES__REASONING`.
 
 ## `models`
 

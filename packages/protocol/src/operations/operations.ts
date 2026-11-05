@@ -24,6 +24,10 @@ import type { OperationTable } from "./operation.schema.js";
 import { type OrderOperationShapes, orderOperations } from "./order-operations.schema.js";
 import { type PluginOperationShapes, pluginOperations } from "./plugin-operations.schema.js";
 import { type QuestionOperationShapes, questionOperations } from "./question-operations.schema.js";
+import {
+  type ReasoningOperationShapes,
+  reasoningOperations,
+} from "./reasoning-operations.schema.js";
 import { type SettingsOperationShapes, settingsOperations } from "./settings-operations.schema.js";
 import { type StakingOperationShapes, stakingOperations } from "./staking-operations.schema.js";
 import { type StreamOperationShapes, streamOperations } from "./stream-operations.schema.js";
@@ -49,6 +53,7 @@ export interface OperationShapes
     LimitOperationShapes,
     ChatOperationShapes,
     ImageOperationShapes,
+    ReasoningOperationShapes,
     QuestionOperationShapes,
     NoteOperationShapes,
     PluginOperationShapes,
@@ -82,6 +87,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...limitOperations,
   ...chatOperations,
   ...imageOperations,
+  ...reasoningOperations,
   ...questionOperations,
   ...noteOperations,
   ...pluginOperations,

@@ -60,3 +60,13 @@ export type { OwnerBinding } from "./surfaces/owner-binding.js";
 export type { AgentTopicStore, CardCopyStore, OwnerStore } from "./surfaces/ports.js";
 export { agentTopicKeySchema, agentTopicSchema } from "./surfaces/agent-topic.js";
 export type { AgentTopic, AgentTopicKey } from "./surfaces/agent-topic.js";
+export {
+  ownerChatPatchSchema,
+  reasoningShownSchema,
+  replyStreamSchema,
+} from "./surfaces/owner-chat-patch.schema.js";
+export type {
+  OwnerChatPatch,
+  ReasoningShown,
+  ReplyStream,
+} from "./surfaces/owner-chat-patch.schema.js";

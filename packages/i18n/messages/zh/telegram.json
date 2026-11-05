@@ -16,6 +16,8 @@
   "chat.agent": "{agent} · {text}",
   "chat.notDelivered": "⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。",
   "chat.noAnswer": "未生成回答，请再试一次。",
+  "chat.reasoning": "推理",
+  "chat.reasoningLine": "推理：{text}",
   "draft.header": "{agent} 起草了这次代币发射。在你点按“开始发射”之前，不会上传或公开任何内容。",
   "draft.footer": "点按“开始发射”后，发射确认卡片会显示发射手续费、新代币和首笔买入的最少所得，你在卡片上确认。此草稿在 {time} 失效。",
   "draft.start": "开始发射",

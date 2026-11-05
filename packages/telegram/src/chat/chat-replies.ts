@@ -3,7 +3,6 @@ import type { OwnerStore } from "@binference/engine/surfaces";
 import type { Formatter, MessageLocale } from "@binference/i18n";
 import { type ChatPush, chatPushOf } from "@binference/protocol";
 import type { Api } from "grammy";
-import { z } from "zod";
 import { escapeHtml } from "../format/escape-html.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
@@ -11,7 +10,9 @@ import { createAnswerPreview } from "./answer-preview.js";
 import { sendHtml, sendPiece } from "./answer-sends.js";
 import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 import { type ChatTyping, startTyping } from "./chat-typing.js";
-import { createStatusMessage, type StatusMessage } from "./status-message.js";
+import { otherReplyOf } from "./other-reply.js";
+import { reasoningHtmlOf } from "./reasoning-html.js";
+import { createStatusMessage, type StatusMessage, type StatusParts } from "./status-message.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
 export interface ChatReplies {
@@ -56,6 +57,11 @@ export interface ChatRepliesOptions {
  */
 export interface ReplySettings {
   readonly stream: "progress" | "partial";
+  /**
+   * How the model's reasoning shows (decision 0377): not at all, `streamed` while the agent works,
+   * or `kept` as a message of its own before the answer; left out, `off`.
+   */
+  readonly reasoning?: "off" | "streamed" | "kept";
 }
 
 /** One running turn in the owner's chat: its chat and its status message. */
@@ -66,6 +72,8 @@ interface TurnShowing {
   readonly typing: ChatTyping;
   /** Whether the owner got something of the turn: its answer, a status line, a question. */
   readonly reply: { isGiven: boolean };
+  /** How the model's reasoning shows in this turn, as the turn started. */
+  readonly reasoning: NonNullable<ReplySettings["reasoning"]>;
 }
 
 interface Call {
@@ -82,13 +90,6 @@ interface Parts {
   /** The status messages that wait for their time to go, by their removal. */
   readonly removals: Map<Promise<void>, StatusMessage>;
 }
-
-// The pushes another part of the bot shows as a reply of a running turn: a question names its
-// turn, a launch draft only its agent.
-const otherReplySchema = z.looseObject({
-  kind: z.enum(["chat/question", "chat/launchDraft"]),
-  data: z.looseObject({ agent: z.string(), turn: z.string().optional() }),
-});
 
 // The most turns the replies follow at once; past it, the oldest one's status message goes.
 const maxTurns = 32;
@@ -137,6 +138,20 @@ function forgetEarlier(parts: Parts, agent: string): void {
   }
 }
 
+// A turn's preview parts, its words in the owner's language as they are when each shows.
+function statusPartsOf(parts: Parts): StatusParts {
+  const { api, clock, logger } = parts.options;
+  return {
+    api,
+    bot: parts.bot,
+    clock,
+    logger,
+    label: () => words(parts, "telegram.chat.working"),
+    reasoningLine: (text) => words(parts, "telegram.chat.reasoningLine", { text }),
+    reasoningTitle: () => words(parts, "telegram.chat.reasoning"),
+  };
+}
+
 async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> {
   const chatId = await ownerChat(parts, call);
   const key = keyOf(push);
@@ -145,13 +160,15 @@ async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> 
   }
   forgetEarlier(parts, push.agent);
   const { api, clock, logger } = parts.options;
-  const label = (): string => words(parts, "telegram.chat.working");
-  const statusParts = { api, bot: parts.bot, clock, logger, label };
-  const isPartial = parts.options.replies?.().stream === "partial";
-  const message = (isPartial ? createAnswerPreview : createStatusMessage)(statusParts, chatId);
+  const settings: ReplySettings = parts.options.replies?.() ?? { stream: "progress" };
+  const isPartial = settings.stream === "partial";
+  const message = (isPartial ? createAnswerPreview : createStatusMessage)(
+    statusPartsOf(parts),
+    chatId,
+  );
   const typing = startTyping({ api, clock, logger }, chatId);
-  const reply = { isGiven: false };
-  parts.turns.set(key, { agent: push.agent, chatId, status: message, typing, reply });
+  const [reply, reasoning] = [{ isGiven: false }, settings.reasoning ?? "off"];
+  parts.turns.set(key, { agent: push.agent, chatId, status: message, typing, reply, reasoning });
 }
 
 type MessagePush = Extract<ChatPush, { readonly kind: "chat/message" }>;
@@ -271,8 +288,33 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
       return Promise.resolve();
     case "chat/status":
       return status(parts, push, call);
+    case "chat/reasoning":
+      return reasoned(parts, push, call);
     case "chat/turnEnded":
       return ended(parts, push, call);
+  }
+}
+
+type ReasoningPush = Extract<ChatPush, { readonly kind: "chat/reasoning" }>;
+
+// The model's reasoning as the turn's owner chose (decision 0377): streamed into the turn's
+// preview, or kept as a message of its own once a model call ended, before the answer.
+async function reasoned(parts: Parts, push: ReasoningPush, call: Call): Promise<void> {
+  const showing = parts.turns.get(keyOf(push));
+  if (showing?.reasoning === "streamed") {
+    showing.status.think(push.text);
+  }
+  if (showing?.reasoning !== "kept" || !push.final) {
+    return;
+  }
+  const title = await named(
+    parts,
+    { agent: push.agent, text: words(parts, "telegram.chat.reasoning") },
+    call,
+  );
+  for (const piece of reasoningHtmlOf(title, push.text)) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the pieces reach the chat in order
+    await sendPiece(parts.options, { chatId: showing.chatId, piece }, call);
   }
 }
 
@@ -297,12 +339,9 @@ async function ended(parts: Parts, push: EndedPush, call: Call): Promise<void> {
 // An agent's question, or its launch draft, is a reply of its running turn, which another part of
 // the bot shows.
 function noteOtherReply(parts: Parts, push: { readonly kind: string; readonly data: JsonValue }) {
-  const reply = otherReplySchema.safeParse(push);
-  if (!reply.success) {
-    return;
-  }
-  for (const [key, showing] of parts.turns) {
-    const { agent, turn } = reply.data.data;
+  const reply = otherReplyOf(push);
+  for (const [key, showing] of reply === undefined ? [] : parts.turns) {
+    const { agent, turn } = reply ?? { agent: "" };
     if (showing.agent === agent && (turn === undefined || key === `${agent} ${turn}`)) {
       showing.reply.isGiven = true;
     }
@@ -310,17 +349,15 @@ function noteOtherReply(parts: Parts, push: { readonly kind: string; readonly da
 }
 
 /**
- * Creates the agent's replies in the owner's chat (ARCHITECTURE.md section 12, decision 0371). A
- * turn that runs past 1.5 seconds, or runs a tool sooner, gets one status message, edited at most
- * once a second while the agent works: how long it has worked, a line for each tool it ran and
- * the text it wrote before it, and the text it writes now, drawn as an answer is. Each edit is a
- * preview the bot's throttler drops rather than delay an answer or a card. The answer goes as new
- * messages, which notify the owner where an edit does not, and the status message is deleted once
- * it has shown for 4 seconds; an answer Telegram refuses leaves the status message saying so. A
- * status line follows in italics. Telegram's typing indicator shows while the turn runs (decision
- * 0372). Model text shows its Markdown as Telegram's rich text from a fixed set of tags over
- * escaped text, split at 4,096 characters; a message Telegram cannot parse goes again as plain
- * text.
+ * Creates the agent's replies in the owner's chat (ARCHITECTURE.md section 12, decisions 0371 and
+ * 0373 to 0377). The typing indicator shows while a turn runs. In the `progress` reply mode a
+ * status message shows once work starts, a fixed label or the text written before the latest
+ * tool, and the answer goes as new messages, which notify the owner where an edit does not; in the
+ * `partial` mode the answer grows in one message that becomes it. Each preview's send and edit is
+ * one the bot's throttler drops rather than delay an answer or a card; an answer Telegram refuses
+ * leaves the status message saying so, and a turn that ends with nothing says so. The model's
+ * reasoning shows as the owner chose. Model text shows its Markdown as Telegram's rich text from
+ * a fixed set of tags over escaped text, split at 4,000 characters.
  */
 export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
   const formatters = createOwnerFormatters();

@@ -4,6 +4,7 @@ import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale, MessageValues } from "@binference/i18n";
 import type { Api } from "grammy";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
+import type { ReplySettings } from "../chat/chat-replies.js";
 import { createOwnerFormatters, type OwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import type { ReplyTarget } from "../ingress/decide-update.js";
@@ -21,6 +22,7 @@ import { runOrders } from "./orders-command.js";
 import { runBalance } from "./portfolio-commands.js";
 import { runPositions } from "./positions-command.js";
 import { registerCommands } from "./register-commands.js";
+import { runReplies, runReplyChoice } from "./replies-command.js";
 import { runCancel, runFreeze, runRescue } from "./safety-commands.js";
 import { runSpend } from "./spend-command.js";
 import { runStatus } from "./status-command.js";
@@ -75,6 +77,8 @@ export interface FastCommandsOptions {
   /** The time now, which `/spend` counts the owner's day and month from. */
   readonly clock: Clock;
   readonly logger: Logger;
+  /** How replies show in the chat now, which `/replies` names; left out, the defaults. */
+  readonly replies?: () => ReplySettings;
 }
 
 async function runHelp(context: CommandContext): Promise<void> {
@@ -102,6 +106,7 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   clear: runClear,
   schedules: runSchedules,
   console: runConsole,
+  replies: runReplies,
   lang: runLang,
   help: runHelp,
 };
@@ -167,6 +172,7 @@ function contextOf(parts: Parts, asker: Asker): CommandContext {
     useAgent: async (agent) => owners.useAgent(agent, { signal }),
     ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
     issueLaunchTicket: async () => options.issueLaunchTicket({ userId: senderId, signal }),
+    replies: () => options.replies?.() ?? { stream: "progress" },
     signal,
     say: async (text, sayOptions) => bot.say(target, text, { signal, ...sayOptions }),
     sayRich: async (lines) => bot.sayRich(target, lines, { signal }),
@@ -224,6 +230,9 @@ export function createFastCommands(options: FastCommandsOptions): FastCommands {
       const run = async (): Promise<void> => {
         if (data.kind === "model") {
           return runPickModel(context, data.digest);
+        }
+        if (data.kind === "replies") {
+          return runReplyChoice(context, data.choice);
         }
         return data.kind === "halve"
           ? runHalve(context, data.limit)

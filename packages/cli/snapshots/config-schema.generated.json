@@ -1,5 +1,5 @@
 {
-  "version": 15,
+  "version": 16,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -172,6 +172,16 @@
                 "enum": [
                   "progress",
                   "partial"
+                ]
+              },
+              "reasoning": {
+                "description": "How the model's reasoning shows: off hides it, streamed shows it while the agent works, kept sends it as a message of its own before the answer.",
+                "default": "off",
+                "type": "string",
+                "enum": [
+                  "off",
+                  "streamed",
+                  "kept"
                 ]
               }
             },

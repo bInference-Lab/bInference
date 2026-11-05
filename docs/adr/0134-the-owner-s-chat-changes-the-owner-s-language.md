@@ -1,6 +1,6 @@
 # 0134. The owner's chat changes the owner's language
 
-Status: Accepted
+Status: Amended by 0377
 
 ## Context
 

@@ -36,15 +36,40 @@ function turnCalls(
   client: ChatClient,
 ): Pick<
   EngineChat,
-  "markTurn" | "sayTurn" | "turnStatus" | "turnProgress" | "recordUsage" | "endTurn"
+  | "markTurn"
+  | "sayTurn"
+  | "turnStatus"
+  | "turnProgress"
+  | "turnReasoning"
+  | "recordUsage"
+  | "endTurn"
 > {
   return {
+    ...lineCalls(client),
     async markTurn({ agent, turn }, signal) {
       await client.call("turn/mark", { agent, turn }, { signal });
     },
     async sayTurn(say, signal) {
       await client.call("turn/say", { ...say }, { signal });
     },
+    async recordUsage({ key, ...usage }, signal) {
+      const { budgetLeftMicros, resumesAt } = await client.call("usage/record", usage, {
+        signal,
+        key,
+      });
+      return { budgetLeftMicros, ...(resumesAt === undefined ? {} : { resumesAt }) };
+    },
+    async endTurn(end, signal) {
+      await client.call("turn/end", { ...end }, { signal });
+    },
+  };
+}
+
+// The lines a turn shows: its status line, its progress lines and its model's reasoning.
+function lineCalls(
+  client: ChatClient,
+): Pick<EngineChat, "turnStatus" | "turnProgress" | "turnReasoning"> {
+  return {
     async turnStatus({ agent, turn, statusKey, values }, signal) {
       const args = {
         agent,
@@ -63,15 +88,8 @@ function turnCalls(
       };
       await client.call("turn/progress", args, { signal });
     },
-    async recordUsage({ key, ...usage }, signal) {
-      const { budgetLeftMicros, resumesAt } = await client.call("usage/record", usage, {
-        signal,
-        key,
-      });
-      return { budgetLeftMicros, ...(resumesAt === undefined ? {} : { resumesAt }) };
-    },
-    async endTurn(end, signal) {
-      await client.call("turn/end", { ...end }, { signal });
+    async turnReasoning({ agent, turn, text, final }, signal) {
+      await client.call("turn/reasoning", { agent, turn, text, final }, { signal });
     },
   };
 }

@@ -106,6 +106,13 @@ export const configMigrations: readonly ConfigMigration[] = [
       "a status message once the agent works, then the answer as a new message.",
     edits: () => [],
   },
+  {
+    from: 15,
+    summary:
+      'Adds telegram.replies.reasoning, how the model\'s reasoning shows in Telegram, at "off": ' +
+      "the owner sees no reasoning until they choose to.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

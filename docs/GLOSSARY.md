@@ -351,8 +351,14 @@ new name here first, in the change that uses it.
 - **progress line**: one line of a running turn's work, such as a tool it runs, sent with
   `turn/progress` and shown only while the turn runs.
 - **status message**: the one Telegram message that shows a running turn is at work: a fixed label,
-  or the text the agent wrote before its latest tool. It shows once a tool starts and goes once the
-  answer arrives.
+  or the text the agent wrote before its latest tool. It shows once a tool starts, or once the
+  agent's streamed reasoning has run for 1.5 seconds, and goes once the answer arrives.
+- **reply mode**: `telegram.replies.stream`, how the agent's answer shows in Telegram while it
+  works: `progress`, a status message then the answer as new messages, or `partial`, the answer
+  growing in one message that becomes it.
+- **reasoning (shown)**: `telegram.replies.reasoning`, whether the model's reasoning shows in
+  Telegram: `off`, `streamed` while the agent works, or `kept` as a message before the answer;
+  `/replies` sets both from the chat, and `turn/reasoning` carries the reasoning.
 - **read, propose and control tools**: tools that read data, tools that create an intent or an auto
   order and its card, and tools that change something without moving money or opening a card
   (cancel an order, set an alert or a schedule, write a note, ask the owner).
@@ -694,6 +700,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | closed (a question)                     | 已关闭                  | A question no longer open   |
 | status line                             | 状态行                  |                             |
 | progress line, status message           | 进度行, 状态消息        | While a turn runs           |
+| reply mode                              | 回复方式                | `telegram.replies.stream`   |
 | workspace file                          | 工作区文件              | `STRATEGY.md`, `PERSONA.md` |
 | first chat                              | 初次对话                |                             |
 | disclaimer, privacy statement           | 免责声明, 隐私声明      |                             |

@@ -231,6 +231,7 @@ function commandsOf(
     chains: wiring.chains,
     display,
     ...(parts.miniAppUrl === undefined ? {} : { miniAppUrl: parts.miniAppUrl }),
+    ...(parts.replies === undefined ? {} : { replies: parts.replies }),
     issueLaunchTicket: launchTicketsOf(wiring),
     clock: wiring.clock,
     logger: wiring.logger,

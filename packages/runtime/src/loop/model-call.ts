@@ -105,8 +105,19 @@ async function attempt(
   try {
     const events = restartingOn(model.transport.stream(request, signal), timer);
     const reading = { signal, clock: run.parts.clock };
-    const shown = line.isShown === true ? { onText: (soFar: string) => run.feed.text(soFar) } : {};
+    const { feed } = run;
+    const shown =
+      line.isShown === true
+        ? {
+            onText: (soFar: string) => feed.text(soFar),
+            onReasoning: (soFar: string) => feed.reasoning(soFar),
+          }
+        : {};
     const response = await readModelResponse(events, { ...reading, ...shown });
+    // The reasoning of the attempt that answered, whole, before its tools run or its text ends.
+    if (line.isShown === true && response.ok) {
+      feed.reasoningEnd(response.reasoning);
+    }
     const wasSilent = !response.ok && idle.signal.aborted && !run.halted.aborted;
     return wasSilent ? silent(run, response) : response;
   } finally {

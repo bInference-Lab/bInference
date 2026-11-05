@@ -1,4 +1,5 @@
 import { type Clock, err, idSchema, ok } from "@binference/core";
+import { maxReasoningChars } from "@binference/protocol";
 import type { OwnerMessage } from "../loop/model-message.js";
 import type { TurnEngine } from "../loop/ports.js";
 import type { TurnStartRequest } from "../loop/turn-records.js";
@@ -70,6 +71,7 @@ function progressOf(chat: EngineChat, at: EngineTurn): TurnEngine["progress"] {
  * The engine's side of one turn over the runtime's link to the engine (runtime spec, section 4.3):
  * `turn/start`, then the turn's row in `agent.sqlite`; `turn/mark`; `turn/say` with the final text
  * and, before it, with each draft; `turn/progress` with the line of spec 4 a tool shows;
+ * `turn/reasoning` with the reasoning of each model call, as it grows and once it ended;
  * `turn/status` with the line's keys of spec 4; `usage/record` after each model call attempt;
  * `turn/end`. A start the engine refuses answers the refusal, after the paused status line for a
  * spent budget; one it cannot answer, or whose row is not written, rejects.
@@ -114,6 +116,8 @@ export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
     draft: async (text, signal) =>
       chat.sayTurn({ ...at, session: place.session, text, final: false }, signal),
     progress: progressOf(chat, at),
+    reasoning: async ({ text, final }, signal) =>
+      chat.turnReasoning({ ...at, text: text.slice(0, maxReasoningChars), final }, signal),
     status,
     recordUsage: async (usage, signal) => chat.recordUsage({ ...at, ...usage }, signal),
     end: async (outcome, signal) => chat.endTurn({ ...at, outcome }, signal),

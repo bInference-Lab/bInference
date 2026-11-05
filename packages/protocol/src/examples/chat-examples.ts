@@ -3,6 +3,7 @@ import type { ImageOperationShapes } from "../operations/image-operations.schema
 import type { LimitOperationShapes } from "../operations/limit-operations.schema.js";
 import type { NoteOperationShapes } from "../operations/note-operations.schema.js";
 import type { QuestionOperationShapes } from "../operations/question-operations.schema.js";
+import type { ReasoningOperationShapes } from "../operations/reasoning-operations.schema.js";
 import { alertView, at, ids, pageOf, refs, type WireExample } from "./wire-values.js";
 
 const empty = {};
@@ -226,6 +227,16 @@ export const imageExamples: { readonly [N in keyof ImageOperationShapes]: WireEx
   "inbox/readImage": {
     args: { agent: ids.agent, message: ids.message, image: "tg:AgACAgIAAxkBAAIB" },
     result: { contentType: "image/png", bytes: 8, offset: 0, data: "iVBORw0KGgo=" },
+  },
+};
+
+/** An example call of the operation the runtime sends its model's reasoning with. */
+export const reasoningExamples: {
+  readonly [N in keyof ReasoningOperationShapes]: WireExample;
+} = {
+  "turn/reasoning": {
+    args: { agent: ids.agent, turn: ids.turn, text: "The owner asks for the price.", final: false },
+    result: empty,
   },
 };
 

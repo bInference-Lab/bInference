@@ -16,6 +16,8 @@
   "chat.agent": "{agent} · {text}",
   "chat.notDelivered": "⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.",
   "chat.noAnswer": "No response generated. Please try again.",
+  "chat.reasoning": "Reasoning",
+  "chat.reasoningLine": "Reasoning: {text}",
   "draft.header": "{agent} drafted this token launch. Nothing is uploaded or public until you tap Start launch.",
   "draft.footer": "After Start launch, the launch card shows the launch fee, the new token and the least the first buy gets, and you confirm there. This draft ends at {time}.",
   "draft.start": "Start launch",

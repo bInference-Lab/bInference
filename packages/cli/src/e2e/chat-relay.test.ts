@@ -155,6 +155,9 @@ function engineOver(runtime: ProtocolClient, place: TurnPlace): TurnEngine {
       const progressKey = tool === "swap" ? "turn.tool.swap" : "turn.tool.searchWeb";
       await runtime.call("turn/progress", { ...at, progressKey }, { signal });
     },
+    async reasoning({ text, final }, signal) {
+      await runtime.call("turn/reasoning", { ...at, text, final }, { signal });
+    },
     async status(line, signal) {
       await runtime.call("turn/status", { ...at, statusKey: statusKeyOf(line) }, { signal });
     },

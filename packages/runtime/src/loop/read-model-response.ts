@@ -7,6 +7,7 @@ import type {
 } from "./model-event.js";
 import type { ToolCall } from "./model-message.js";
 import { splitReasoningTags } from "./reasoning-tags.js";
+import { createResponseSoFar } from "./response-so-far.js";
 import { type SettleOptions, settleBy } from "./settle-by.js";
 
 /** A model response that ended with `done`. */
@@ -166,34 +167,12 @@ function close(iterator: AsyncIterator<ModelEvent>): void {
   iterator.return?.().catch(() => undefined);
 }
 
-/** What a response is read with: its signal and clock, and who hears its text as it grows. */
+/** What a response is read with: its signal and clock, and who hears its text and reasoning grow. */
 export interface ReadOptions extends SettleOptions {
   /** Hears the text so far the owner may read, outside reasoning tags, each time it changes. */
   readonly onText?: (soFar: string) => void;
-}
-
-/** The text of a response so far as the owner may read it, outside its reasoning tags. */
-interface ShownText {
-  /** Adds a piece of the text; answers the text so far when what shows changed. */
-  add(delta: string): string | undefined;
-}
-
-// A piece with no `<` or backtick, while no section or tag is open, only adds to what shows; any
-// other piece reads the whole text again, since it may open, close or quote a section.
-function createShownText(): ShownText {
-  let [raw, shown, isOpen] = ["", "", false];
-  return {
-    add(delta) {
-      raw += delta;
-      const before = shown;
-      if (!isOpen && !/[<`]/u.test(delta)) {
-        shown += delta;
-      } else {
-        ({ text: shown, isOpen } = splitReasoningTags(raw, { isFinal: false }));
-      }
-      return shown === before ? undefined : shown;
-    },
-  };
+  /** Hears the reasoning so far, its own and what the text holds in tags, each time it grows. */
+  readonly onReasoning?: (soFar: string) => void;
 }
 
 // Each event is awaited only until the signal aborts, so a transport that ignores its signal
@@ -204,7 +183,7 @@ async function readEvents(
   options: ReadOptions,
 ): Promise<ModelResponse | string> {
   const iterator = events[Symbol.asyncIterator]();
-  const soFar = createShownText();
+  const soFar = createResponseSoFar();
   for (;;) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- each event follows the one before
     const next = await settleBy(async () => iterator.next(), options);
@@ -216,9 +195,12 @@ async function readEvents(
     }
     const event = next.value.value;
     const step = apply(draft, event);
-    const shown = event.type === "text" ? soFar.add(event.delta) : undefined;
-    if (shown !== undefined) {
-      options.onText?.(shown);
+    const heard = soFar.take(event);
+    if (heard.text !== undefined) {
+      options.onText?.(heard.text);
+    }
+    if (heard.reasoning !== undefined) {
+      options.onReasoning?.(heard.reasoning);
     }
     if (step !== undefined) {
       close(iterator);

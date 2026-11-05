@@ -26,7 +26,7 @@ import { describe, expect, it } from "vitest";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { configSchema } from "../config/schema/config.schema.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
-import { createOwnerLocaleChange } from "./owner-locale-change.js";
+import { createOwnerChatConfigChange } from "./owner-chat-config-change.js";
 import {
   type ComposedSkeleton,
   composeSkeleton,
@@ -268,7 +268,7 @@ describe("the owner's fast commands on the engine", () => {
   it("sets the owner's language in the config file at a tap of /lang, and nothing else", async () => {
     const disk = { text: '{\n  // Mine.\n  owner: { locale: "en" },\n}\n' };
     const test = await bot({
-      "config/change": createOwnerLocaleChange({
+      "config/change": createOwnerChatConfigChange({
         file: "config.json5",
         permissions: {} as never,
         settings: { current: () => skeletonConfig() },
@@ -283,6 +283,30 @@ describe("the owner's fast commands on the engine", () => {
     const press = { from: ownerId, data: "bnf1:l:s:zh", messageId: langMessageOf(test.botApi) };
     await test.telegram.ingress.receive(test.botApi.press(press), live);
     expect(disk.text).toBe('{\n  // Mine.\n  owner: { locale: "zh" },\n}\n');
+  });
+
+  it("sets how the model's reasoning shows in the config file at a tap of /replies", async () => {
+    const disk = { text: '{\n  // Mine.\n  owner: { locale: "en" },\n}\n' };
+    const test = await bot({
+      "config/change": createOwnerChatConfigChange({
+        file: "config.json5",
+        permissions: {} as never,
+        settings: { current: () => skeletonConfig() },
+        readFile: async () => Promise.resolve(ok(disk.text)),
+        writeFile: async (_path, data) => {
+          disk.text = String(data);
+          await Promise.resolve();
+        },
+      }),
+    });
+    await test.send("/replies");
+    const [messageId = 0] = test.botApi
+      .messages()
+      .filter(({ text }) => text.startsWith("In this chat"))
+      .map((message) => message.messageId);
+    const press = { from: ownerId, data: "bnf1:r:t:kept", messageId };
+    await test.telegram.ingress.receive(test.botApi.press(press), live);
+    expect(disk.text).toContain('telegram: { replies: { reasoning: "kept" } }');
   });
 
   it.each([

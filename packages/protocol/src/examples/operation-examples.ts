@@ -5,6 +5,7 @@ import {
   limitExamples,
   noteExamples,
   questionExamples,
+  reasoningExamples,
 } from "./chat-examples.js";
 import { agentExamples, engineExamples, walletExamples } from "./engine-examples.js";
 import {
@@ -39,6 +40,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...limitExamples,
   ...chatExamples,
   ...imageExamples,
+  ...reasoningExamples,
   ...questionExamples,
   ...noteExamples,
   ...pluginExamples,

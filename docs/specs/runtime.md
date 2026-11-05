@@ -269,8 +269,13 @@ The operations are in [spec 1, section 7.7](protocol.md#section-7-7).
    first chat's end send none. Drafts and progress lines go one at a time, in order, each given up
    after 5 seconds or a failure, so they never hold the turn; nothing keeps them. They settle
    before the final text, so no draft follows it.
-5. `usage/record` after each model call (section 8.3).
-6. `turn/end` `{ agent, turn, outcome }`: the engine clears the running turn and pushes
+5. `turn/reasoning` `{ agent, turn, text, final }`: while a model call of the turn's own chain
+   streams, its reasoning so far, at most every 250 ms, in the same line of sends as the drafts;
+   once the call answered, its whole reasoning with `final: true`, before its tools run or its
+   final text goes. Each holds at most its first 50,000 characters
+   ([decision 0377](../DECISIONS.md#d0377)).
+6. `usage/record` after each model call (section 8.3).
+7. `turn/end` `{ agent, turn, outcome }`: the engine clears the running turn and pushes
    `chat/turnEnded`. The runtime's exit clears every running turn as `failed`.
 
 **The mark in the engine.** A proposal from the agent runtime takes the mark of its agent's
@@ -289,8 +294,9 @@ schedule starts its turn marked.
 
 - **The final text** is the text of the turn's last model response, sent with `turn/say` and
   `final: true`. A committed turn's final text is the text of the response that proposed; the card
-  speaks for the proposal. The model's reasoning stays in the transcript and never reaches a
-  surface.
+  speaks for the proposal. The model's reasoning stays in the transcript and is never part of
+  the final text; it reaches a surface only through `turn/reasoning`, which each surface shows as
+  its owner chose.
 - **Stop.** `inbox/stop` aborts the running model call and every tool call that can stop. A propose
   call already sent finishes, up to 5 seconds. Calls not started get "not run: the owner stopped
   the agent". The turn ends `stopped`, and the messages that waited before the stop are dropped.

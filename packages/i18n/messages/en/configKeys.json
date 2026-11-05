@@ -24,6 +24,7 @@
   "telegram.webhookSecret": "Checks webhook calls; required with the webhook mode.",
   "telegram.topicsPerAgent": "One direct-message topic per agent, once the bot has topics turned on.",
   "telegram.replies.stream": "progress shows a status message once the agent works, then the answer as a new message; partial grows the answer in one message that becomes the answer itself.",
+  "telegram.replies.reasoning": "How the model's reasoning shows: off hides it, streamed shows it while the agent works, kept sends it as a message of its own before the answer.",
   "models": "Model providers and the models the agent uses.",
   "models.providers": "The model providers, by name.",
   "models.providers.<provider>.kind": "The provider's wire format.",

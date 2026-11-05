@@ -1,3 +1,9 @@
+import {
+  type ReasoningShown,
+  reasoningShownSchema,
+  type ReplyStream,
+  replyStreamSchema,
+} from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import { z } from "zod";
 
@@ -17,16 +23,32 @@ export type HalvableLimit = (typeof halvableLimits)[number];
 
 /**
  * What a fast command's button asks for (spec 4, section 2): halve a limit of `/limits`, or set
- * the owner's language from `/lang`, or pick a model from `/ai`.
+ * the owner's language from `/lang`, pick a model from `/ai`, or set how replies show from
+ * `/replies`.
  */
 export type CommandCallback =
   | { readonly kind: "halve"; readonly limit: HalvableLimit }
   | { readonly kind: "language"; readonly locale: MessageLocale }
-  | { readonly kind: "model"; readonly digest: string };
+  | { readonly kind: "model"; readonly digest: string }
+  | { readonly kind: "replies"; readonly choice: ReplyChoice };
+
+/** A `/replies` button's one setting: how replies grow, or how reasoning shows (decision 0377). */
+export type ReplyChoice = { readonly stream: ReplyStream } | { readonly reasoning: ReasoningShown };
 
 const halvePattern = /^bnf1:t:h:(\w{1,32})$/;
 const languagePattern = /^bnf1:l:s:(en|zh)$/;
 const modelPattern = /^bnf1:m:s:([\w-]{16})$/;
+const streamPattern = /^bnf1:r:m:(progress|partial)$/;
+const reasoningPattern = /^bnf1:r:t:(off|streamed|kept)$/;
+
+function replyChoiceOf(data: string): ReplyChoice | undefined {
+  const stream = replyStreamSchema.safeParse(streamPattern.exec(data)?.[1]);
+  if (stream.success) {
+    return { stream: stream.data };
+  }
+  const reasoning = reasoningShownSchema.safeParse(reasoningPattern.exec(data)?.[1]);
+  return reasoning.success ? { reasoning: reasoning.data } : undefined;
+}
 const limits: ReadonlySet<string> = new Set(halvableLimits);
 
 function isHalvable(name: string): name is HalvableLimit {
@@ -36,16 +58,25 @@ function isHalvable(name: string): name is HalvableLimit {
 /**
  * The callback data of a fast command's button, within Telegram's 64 bytes: `bnf1:t:h:<limit>`
  * for a `/limits` button, the limit named by its field, `bnf1:l:s:<en|zh>` for a `/lang` button,
+ * `bnf1:r:m:<progress|partial>` and `bnf1:r:t:<off|streamed|kept>` for a `/replies` button,
  * and `bnf1:m:s:<digest>` for an `/ai` button. It names no agent: a press acts on the chat's.
  */
 export function commandCallbackData(callback: CommandCallback): string {
   if (callback.kind === "model") {
     return `bnf1:m:s:${callback.digest}`;
   }
+  if (callback.kind === "replies") {
+    const { choice } = callback;
+    return "stream" in choice ? `bnf1:r:m:${choice.stream}` : `bnf1:r:t:${choice.reasoning}`;
+  }
   return callback.kind === "halve" ? `bnf1:t:h:${callback.limit}` : `bnf1:l:s:${callback.locale}`;
 }
 
 function callbackOf(data: string): CommandCallback | undefined {
+  const choice = replyChoiceOf(data);
+  if (choice !== undefined) {
+    return { kind: "replies", choice };
+  }
   const digest = modelPattern.exec(data)?.[1];
   if (digest !== undefined) {
     return { kind: "model", digest };

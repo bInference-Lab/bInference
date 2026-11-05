@@ -271,6 +271,24 @@ describe("migrate config", () => {
     });
   });
 
+  it("moves a version 15 file to version 16 unchanged, the reasoning hidden", () => {
+    const fifteenth: JsonObject = { version: 15, telegram: { replies: { stream: "partial" } } };
+    expect(migrateConfig(fifteenth, configMigrations.slice(0, 15))).toStrictEqual({
+      ok: true,
+      file: { version: 16, telegram: { replies: { stream: "partial" } } },
+      steps: [
+        {
+          from: 15,
+          to: 16,
+          summary:
+            "Adds telegram.replies.reasoning, how the model's reasoning shows in Telegram, at " +
+            '"off": the owner sees no reasoning until they choose to.',
+          edits: [],
+        },
+      ],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);

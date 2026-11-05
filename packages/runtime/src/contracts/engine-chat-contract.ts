@@ -22,7 +22,8 @@ export interface EngineChatSubject {
   readonly chatSeen: () => Promise<readonly string[]>;
   /**
    * What the turns pushed that a surface shows only while a turn runs, once their end was seen:
-   * `draft <text>` for `chat/message` with `final: false`, `progress <key>` for `chat/progress`.
+   * `draft <text>` for `chat/message` with `final: false`, `progress <key>` for `chat/progress`,
+   * `reasoning <text>` and `reasoningEnd <text>` for `chat/reasoning` before and at a call's end.
    */
   readonly feedSeen: () => Promise<readonly string[]>;
 }
@@ -147,8 +148,15 @@ async function carriesTheFeed(harness: EngineChatHarness): Promise<void> {
   await chat.sayTurn({ ...at, session: posted.session, text: "Check", final: false }, live());
   const values = { plugin: "fear_index" };
   await chat.turnProgress({ ...at, progressKey: "turn.tool.plugin", values }, live());
+  await chat.turnReasoning({ ...at, text: "Weigh", final: false }, live());
+  await chat.turnReasoning({ ...at, text: "Weigh it.", final: true }, live());
   await chat.endTurn({ ...at, outcome: "ok" }, live());
-  assert.deepEqual(await subject.feedSeen(), ["draft Check", "progress turn.tool.plugin"]);
+  assert.deepEqual(await subject.feedSeen(), [
+    "draft Check",
+    "progress turn.tool.plugin",
+    "reasoning Weigh",
+    "reasoningEnd Weigh it.",
+  ]);
 }
 
 async function listsStopAndClear(harness: EngineChatHarness): Promise<void> {
@@ -186,7 +194,7 @@ export function engineChatContract(harness: EngineChatHarness): readonly Contrac
       run: async () => runsATurn(harness),
     },
     {
-      name: "carries a turn's draft and progress line",
+      name: "carries a turn's draft, progress line and reasoning",
       run: async () => carriesTheFeed(harness),
     },
     {

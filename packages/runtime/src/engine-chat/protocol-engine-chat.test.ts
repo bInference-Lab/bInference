@@ -46,6 +46,7 @@ function clientOver(engine: MemoryEngineChat, topics: Map<string, TopicHandlers>
       "turn/say": async (given, at) => engine.sayTurn(given, at),
       "turn/status": async (given, at) => engine.turnStatus(given, at),
       "turn/progress": async (given, at) => engine.turnProgress(given, at),
+      "turn/reasoning": async (given, at) => engine.turnReasoning(given, at),
     };
     const call = calls[op] ?? (async (given: never, at: AbortSignal) => engine.endTurn(given, at));
     return call(args as never, signal).then(() => ({}));

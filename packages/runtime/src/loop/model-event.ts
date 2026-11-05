@@ -46,7 +46,7 @@ interface TextEvent {
   readonly delta: string;
 }
 
-/** A piece of the model's reasoning, which stays in the transcript and reaches no surface. */
+/** A piece of the model's reasoning, kept in the transcript and never part of the answer. */
 interface ReasoningEvent {
   readonly type: "reasoning";
   readonly delta: string;

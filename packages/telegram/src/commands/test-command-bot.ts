@@ -24,6 +24,7 @@ import type { MessageLocale } from "@binference/i18n";
 import { Api } from "grammy";
 import type { CardShowing } from "../cards/create-telegram-cards.js";
 import { createTelegramCards } from "../cards/create-telegram-cards.js";
+import type { ReplySettings } from "../chat/chat-replies.js";
 import { createFakeCardAnswers, type FakeCardAnswers } from "../fakes/fake-card-answers.js";
 import { createTelegramIngress } from "../ingress/create-telegram-ingress.js";
 import type { OwnerUpdate } from "../ingress/decide-update.js";
@@ -57,6 +58,8 @@ export interface CommandBotOptions {
   readonly waiting?: readonly CardShowing[];
   /** The Mini App's address `/console` opens; none when left out. */
   readonly miniAppUrl?: string;
+  /** How replies show now, which `/replies` names; the defaults when left out. */
+  readonly replies?: () => ReplySettings;
 }
 
 /** The owner's bot with fast commands over the fake Bot API, and what a test drives it by. */
@@ -112,6 +115,7 @@ function commandsOf(
     chains: testChains(),
     display,
     ...(options.miniAppUrl === undefined ? {} : { miniAppUrl: options.miniAppUrl }),
+    ...(options.replies === undefined ? {} : { replies: options.replies }),
     issueLaunchTicket: async (request) =>
       issueLaunchTicket({ access, clock, random: createSeededRandom(9) }, request),
     clock,

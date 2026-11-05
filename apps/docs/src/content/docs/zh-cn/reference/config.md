@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 15 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 16 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -49,6 +49,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `telegram.webhookSecret`: 用于校验 Webhook 调用；使用 webhook 方式时必填。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_TELEGRAM__WEBHOOK_SECRET`。
 - `telegram.topicsPerAgent`: 机器人开启话题后，每个 Agent 使用一个私聊话题。取值：true 或 false。默认：`false`。变量：`BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`。
 - `telegram.replies.stream`: progress 在 Agent 开始工作时显示一条状态消息，然后以新消息发送回答；partial 让回答在同一条消息中逐步生成，这条消息就是回答本身。取值：以下之一："progress", "partial"。默认：`"progress"`。变量：`BINFERENCE_TELEGRAM__REPLIES__STREAM`。
+- `telegram.replies.reasoning`: 模型推理的显示方式：off 不显示，streamed 在 Agent 工作时显示，kept 在回答之前作为单独的一条消息发送。取值：以下之一："off", "streamed", "kept"。默认：`"off"`。变量：`BINFERENCE_TELEGRAM__REPLIES__REASONING`。
 
 ## `models`
 

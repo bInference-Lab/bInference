@@ -199,7 +199,13 @@ function turnCalls(
   state: FakeState,
 ): Pick<
   EngineChat,
-  "markTurn" | "sayTurn" | "turnStatus" | "turnProgress" | "recordUsage" | "endTurn"
+  | "markTurn"
+  | "sayTurn"
+  | "turnStatus"
+  | "turnProgress"
+  | "turnReasoning"
+  | "recordUsage"
+  | "endTurn"
 > {
   return {
     async recordUsage(usage, signal) {

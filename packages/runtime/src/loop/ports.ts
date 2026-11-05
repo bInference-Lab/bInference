@@ -96,6 +96,14 @@ export interface TurnEngine {
    * show, such as asking the owner, sends nothing.
    */
   progress(tool: string, signal: AbortSignal): Promise<void>;
+  /**
+   * `turn/reasoning`: the reasoning of the turn's model call so far, or with `final` the whole
+   * reasoning of a call that ended.
+   */
+  reasoning(
+    said: { readonly text: string; readonly final: boolean },
+    signal: AbortSignal,
+  ): Promise<void>;
   status(line: TurnStatusLine, signal: AbortSignal): Promise<void>;
   /**
    * `usage/record`: one attempt's usage, and what is left of the agent's budget after it, 0 or

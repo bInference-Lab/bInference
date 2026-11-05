@@ -32,7 +32,7 @@ import {
   selfHostedRatePrices,
 } from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
-import { ownerChatHandlers } from "./owner-locale-change.js";
+import { ownerChatHandlers } from "./owner-chat-config-change.js";
 import { publishedParts } from "./published-parts.js";
 import { webhookPartsOf } from "./remote-reading.js";
 import { selfHostedRiskSources } from "./risk-sources.js";

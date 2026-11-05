@@ -4,6 +4,7 @@ import { callBotApi } from "../api/call-bot-api.js";
 import { type ChatHtml, chatHtmlOf } from "./chat-html.js";
 import { createPreviewMessage, type PreviewMessage } from "./preview-message.js";
 import { compactLine, maxLineChars } from "./progress-lines.js";
+import { createReasoningLane } from "./reasoning-lane.js";
 import { resendUnsent } from "./resend-unsent.js";
 import type { StatusMessage, StatusParts } from "./status-message.js";
 import { statusPreviewOf } from "./status-preview.js";
@@ -85,12 +86,21 @@ export function createAnswerPreview(parts: StatusParts, chatId: number): StatusM
       return hasWork ? statusPreviewOf(status) : undefined;
     },
   });
+  const lane = createReasoningLane(parts, chatId);
   return {
-    freeze: async () => message.freeze(),
+    freeze: async () => Promise.all([message.freeze(), lane.freeze()]).then(() => undefined),
     replaceWith: async (text, signal) => message.replaceWith(text, signal),
-    remove: async () => (isKept ? Promise.resolve() : message.remove()),
-    idle: async () => message.idle(),
-    close: () => message.close(),
+    remove: async () => {
+      await Promise.all([isKept ? Promise.resolve() : message.remove(), lane.remove()]);
+    },
+    idle: async () => {
+      await Promise.all([message.idle(), lane.idle()]);
+    },
+    close: () => {
+      message.close();
+      lane.close();
+    },
+    think: (text) => lane.take(text),
     draft(text) {
       draft = text;
       if ((chatHtmlOf(text)[0]?.plain.length ?? 0) >= leastFirstChars) {

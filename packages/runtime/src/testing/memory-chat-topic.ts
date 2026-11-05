@@ -13,15 +13,16 @@ export interface ChatPush {
 }
 
 /**
- * A draft of the turn's text or a progress line the fake engine pushed: `chat/message` with
- * `final: false`, or `chat/progress`. They stay apart from {@link ChatPush}, as a surface shows
- * them only while the turn runs.
+ * A draft of the turn's text, a progress line or the model's reasoning the fake engine pushed:
+ * `chat/message` with `final: false`, `chat/progress` or `chat/reasoning` (`reasoning` while it
+ * grows, `reasoningEnd` once a call ended). They stay apart from {@link ChatPush}, as a surface
+ * shows them only while the turn runs, or keeps them as it chooses.
  */
 export interface FeedPush {
-  readonly kind: "draft" | "progress";
+  readonly kind: "draft" | "progress" | "reasoning" | "reasoningEnd";
   readonly agent: Id<"agt">;
   readonly turn: Id<"trn">;
-  /** The draft's text, or the progress line's key. */
+  /** The draft's text, the progress line's key, or the reasoning. */
   readonly detail: string;
   readonly values?: Readonly<Record<string, string>>;
 }
@@ -42,14 +43,14 @@ export function pushChat(log: ChatTopicLog, push: ChatPush): void {
 }
 
 /**
- * The fake engine's `turn/say`, `turn/status` and `turn/progress`: a final text and a status line
+ * The fake engine's `turn/say`, `turn/status`, `turn/progress` and `turn/reasoning`: a final text and a status line
  * go on the chat topic, a draft and a progress line on the feed. `reach` throws while the engine
  * cannot be reached.
  */
 export function topicCalls(
   log: ChatTopicLog,
   reach: (signal: AbortSignal) => void,
-): Pick<EngineChat, "sayTurn" | "turnStatus" | "turnProgress"> {
+): Pick<EngineChat, "sayTurn" | "turnStatus" | "turnProgress" | "turnReasoning"> {
   return {
     async sayTurn({ agent, turn, text, final }, signal) {
       reach(signal);
@@ -70,6 +71,11 @@ export function topicCalls(
       reach(signal);
       const shown = values === undefined ? {} : { values };
       log.feed.push({ kind: "progress", agent, turn, detail: progressKey, ...shown });
+      return Promise.resolve();
+    },
+    async turnReasoning({ agent, turn, text, final }, signal) {
+      reach(signal);
+      log.feed.push({ kind: final ? "reasoningEnd" : "reasoning", agent, turn, detail: text });
       return Promise.resolve();
     },
   };

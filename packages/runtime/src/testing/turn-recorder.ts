@@ -42,7 +42,8 @@ export type RecordedStep =
 /** A draft of the turn's text, or a tool the turn runs, as the turn told the engine. */
 export type RecordedFeed =
   | { readonly kind: "draft"; readonly text: string }
-  | { readonly kind: "progress"; readonly tool: string };
+  | { readonly kind: "progress"; readonly tool: string }
+  | { readonly kind: "reasoning"; readonly text: string; readonly final: boolean };
 
 /** How the recorder's engine answers. */
 export interface TurnRecorderOptions {
@@ -109,6 +110,7 @@ function createEngine(note: Write, options: TurnRecorderOptions, feed: RecordedF
   return {
     draft: async (text, signal) => fed({ kind: "draft", text }, signal),
     progress: async (tool, signal) => fed({ kind: "progress", tool }, signal),
+    reasoning: async ({ text, final }, signal) => fed({ kind: "reasoning", text, final }, signal),
     start: async ({ messages, outsideContent }, signal) => {
       if (options.failStart === true) {
         throw new Error("The engine cannot be reached.");

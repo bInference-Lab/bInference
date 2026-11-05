@@ -70,7 +70,10 @@ Rules for this package:
   deleted once it has shown for 4 seconds. With `telegram.replies.stream` at `partial`
   (`ChatRepliesOptions.replies`, read as each turn starts, decision 0376), the turn's message is
   `src/chat/answer-preview.ts` instead: the answer grows in it from 30 characters and it is edited
-  into the answer's first message in place. Model text goes out as Telegram HTML
+  into the answer's first message in place. A `chat/reasoning` push shows as
+  `telegram.replies.reasoning` says (decision 0377): a line of the status message, a lane of its
+  own in the partial mode (`reasoning-lane.ts`), or a kept message (`reasoning-html.ts`) before
+  the answer. Model text goes out as Telegram HTML
   only through `src/chat/chat-html.ts`: every line through `displayOutsideText`, then its Markdown
   drawn by `src/format/rich-html.ts` and split by `src/split/split-rich-lines.ts`, a paragraph
   break preferred, at most 4,000 characters each, tables as fixed-width grids (decision 0374), each
@@ -88,8 +91,8 @@ Rules for this package:
   `resendUnsent`, 3 tries at most (decision 0373); an answer Telegram refuses leaves the status
   message saying so, and a turn that ends with nothing for the owner gets `telegram.chat.noAnswer`.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
-  `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, the one
-  setting the chat changes, decision 0134), and only `commandCallbackSchema` reads it. A press
+  `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, decision 0134) or `bnf1:r:<m|t>:<choice>` (a `/replies` button sets one key of `telegram.replies`,
+  decision 0377), the only settings the chat changes, and only `commandCallbackSchema` reads it. A press
   goes to the fast commands first, then to the cards. A button never loosens anything.
 - A launch draft's buttons carry `bnf1:s:<y|n>:<ref>`, and only `launchDraftCallbackSchema` reads
   it. A press goes to the engine through `LaunchDraftAnswers`, which acts only for the owner's

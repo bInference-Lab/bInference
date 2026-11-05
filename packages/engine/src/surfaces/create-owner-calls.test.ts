@@ -97,6 +97,30 @@ describe("the owner's calls from Telegram", () => {
     ]);
   });
 
+  it("changes how replies and reasoning show past the admin scope, one key at a time", async () => {
+    const seen: unknown[] = [];
+    const handlers: OwnerChatHandlers = {
+      "config/change": async ({ args }) => {
+        seen.push(args.patch);
+        return Promise.resolve(ok({ config: {}, restartNeeded: false }));
+      },
+    };
+    const change = async (patch: Readonly<ArgsOf<"config/change">["patch"]>) =>
+      callsOf(handlers).call({ op: "config/change", args: { patch }, senderId: ownerId }, live);
+    const allowed = [
+      { telegram: { replies: { reasoning: "streamed" } } },
+      { telegram: { replies: { stream: "partial" } } },
+    ];
+    const refused = [
+      { telegram: { replies: { reasoning: "loud" } } },
+      { telegram: { replies: { stream: "partial", reasoning: "kept" } } },
+      { telegram: { topicsPerAgent: true } },
+    ];
+    const answers = await Promise.all([...allowed, ...refused].map(change));
+    expect(answers.map((answer) => answer.ok)).toStrictEqual([true, true, false, false, false]);
+    expect(seen).toStrictEqual(allowed);
+  });
+
   it("changes the owner's language past the admin scope, and no other setting", async () => {
     const seen: unknown[] = [];
     const handlers: OwnerChatHandlers = {

@@ -3,6 +3,7 @@ import type { LiveFactsView } from "@binference/protocol";
 import type { ImageReadRefusal } from "../loop/turn-records.js";
 import type {
   EngineProgress,
+  EngineReasoning,
   EngineSay,
   EngineStatus,
   EngineTurn,
@@ -41,6 +42,8 @@ export interface EngineChat {
   turnStatus(status: EngineStatus, signal: AbortSignal): Promise<void>;
   /** `turn/progress`. */
   turnProgress(progress: EngineProgress, signal: AbortSignal): Promise<void>;
+  /** `turn/reasoning`. */
+  turnReasoning(reasoning: EngineReasoning, signal: AbortSignal): Promise<void>;
   /**
    * `usage/record`: answers what is left of the agent's model budget after the record, and when it
    * resumes once spent.

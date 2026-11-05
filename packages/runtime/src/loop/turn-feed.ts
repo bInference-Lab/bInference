@@ -11,6 +11,10 @@ export interface TurnFeed {
   text(soFar: string): void;
   /** The turn runs the tool of this name now: a draft that waits goes first. */
   tool(name: string): void;
+  /** The reasoning the turn's current model call has given so far. */
+  reasoning(soFar: string): void;
+  /** A model call ended with this reasoning: a reasoning draft that waits gives way to it. */
+  reasoningEnd(whole: string): void;
   /**
    * Drops a draft that waits, takes nothing more, and resolves once the sends already handed on
    * are done, so the final text never reaches the engine before a draft.
@@ -20,7 +24,7 @@ export interface TurnFeed {
 
 /** What {@link createTurnFeed} sends through and paces by. */
 export interface TurnFeedOptions {
-  readonly engine: Pick<TurnEngine, "draft" | "progress">;
+  readonly engine: Pick<TurnEngine, "draft" | "progress" | "reasoning">;
   readonly clock: Clock;
   /** The signal of the turn's writes. */
   readonly signal: AbortSignal;
@@ -68,9 +72,14 @@ function createSendLine(options: TurnFeedOptions): SendLine {
   };
 }
 
+/** What one pacer paces by, and how it sends a draft. */
+interface PacerOptions extends TurnFeedOptions {
+  readonly sendDraft: (text: string, signal: AbortSignal) => Promise<void>;
+}
+
 // A draft in line takes the newer text until it goes, so at most one draft waits in the line.
-function createDraftPacer(options: TurnFeedOptions, line: SendLine): DraftPacer {
-  const { clock, engine } = options;
+function createDraftPacer(options: PacerOptions, line: SendLine): DraftPacer {
+  const { clock, sendDraft } = options;
   let pending: string | undefined;
   let slot: { text: string } | undefined;
   let timer: AbortController | undefined;
@@ -90,7 +99,7 @@ function createDraftPacer(options: TurnFeedOptions, line: SendLine): DraftPacer 
     }
     line.send(async (signal) => {
       slot = slot === draft ? undefined : slot;
-      await engine.draft(draft.text, signal);
+      await sendDraft(draft.text, signal);
     });
   };
   const arm = (): void => {
@@ -127,13 +136,36 @@ function createDraftPacer(options: TurnFeedOptions, line: SendLine): DraftPacer 
  * bounded by 5 seconds and its failure is dropped.
  */
 export function createTurnFeed(options: TurnFeedOptions): TurnFeed {
+  const { engine } = options;
   const line = createSendLine(options);
-  const drafts = createDraftPacer(options, line);
+  const drafts = createDraftPacer(
+    { ...options, sendDraft: async (text, signal) => engine.draft(text, signal) },
+    line,
+  );
+  const thoughts = createDraftPacer(
+    {
+      ...options,
+      sendDraft: async (text, signal) => engine.reasoning({ text, final: false }, signal),
+    },
+    line,
+  );
   let isSettled = false;
   return {
     text(soFar) {
       if (!isSettled) {
         drafts.take(soFar);
+      }
+    },
+    reasoning(soFar) {
+      if (!isSettled && soFar !== "") {
+        thoughts.take(soFar);
+      }
+    },
+    reasoningEnd(whole) {
+      thoughts.stop();
+      thoughts.cut();
+      if (!isSettled && whole !== "") {
+        line.send(async (signal) => engine.reasoning({ text: whole, final: true }, signal));
       }
     },
     tool(name) {
@@ -147,6 +179,7 @@ export function createTurnFeed(options: TurnFeedOptions): TurnFeed {
     async settle() {
       isSettled = true;
       drafts.stop();
+      thoughts.stop();
       await line.done();
     },
   };

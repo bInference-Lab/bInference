@@ -50,6 +50,7 @@ describe("when a config change applies", () => {
     ["backups.copyTo", "/backups", "now"],
     ["telegram.topicsPerAgent", true, "now"],
     ["telegram.replies.stream", "partial", "now"],
+    ["telegram.replies.reasoning", "kept", "now"],
     ["models.main", "test/main", "now"],
     ["models.imageInput", ["test/main"], "now"],
     ["search.keys.brave", "fromEnv", "now"],

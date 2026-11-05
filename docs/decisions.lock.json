@@ -1503,6 +1503,10 @@
     "0376": {
       "status": "Accepted",
       "sha256": "52dc4d51e9dced579766092e39f211c825a1d8bd2cf1b9fe3dac02f4d6cabe6d"
+    },
+    "0377": {
+      "status": "Accepted",
+      "sha256": "28380e1cf3aa9ea4e0bd1eed14f339f485fc04df1b3a7c50f532a29dc0c5ab39"
     }
   }
 }

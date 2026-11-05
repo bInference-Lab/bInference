@@ -261,6 +261,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `turn/status` | `agent` | 读取 | 任何连接 | 引擎 |
 | `turn/progress` | `agent` | 读取 | 任何连接 | 引擎 |
 | `turn/end` | `agent` | 写入 | 任何连接 | 引擎 |
+| `turn/reasoning` | `agent` | 读取 | 任何连接 | 引擎 |
 | `turn/ask` | `agent` | 写入 | 任何连接 | 引擎 |
 
 ## `usage`
