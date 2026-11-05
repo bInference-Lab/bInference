@@ -9,6 +9,26 @@ import { migration as marketData } from "./0007_market_data.js";
 import { migration as surfacesAndDelivery } from "./0008_surfaces_and_delivery.js";
 import { migration as accessAndOperations } from "./0009_access_and_operations.js";
 import { migration as transactionSends } from "./0010_transaction_sends.js";
+import { migration as sendLevelRows } from "./0011_send_level_rows.js";
+import { migration as rescueCeiling } from "./0012_rescue_ceiling.js";
+import { migration as pendingLimits } from "./0013_pending_limits.js";
+import { migration as transactionReplacements } from "./0014_transaction_replacements.js";
+import { migration as positionsAndDepartures } from "./0015_positions_and_departures.js";
+import { migration as intentValues } from "./0016_intent_values.js";
+import { migration as executionRealized } from "./0017_execution_realized.js";
+import { migration as noticeIntents } from "./0018_notice_intents.js";
+import { migration as telegramOwner } from "./0019_telegram_owner.js";
+import { migration as lateLandings } from "./0020_late_landings.js";
+import { migration as webPushSubscriptions } from "./0021_web_push_subscriptions.js";
+import { migration as tokenExpiry } from "./0022_token_expiry.js";
+import { migration as miniAppLaunches } from "./0023_mini_app_launches.js";
+import { migration as miniAppTickets } from "./0024_mini_app_tickets.js";
+import { migration as carriedOutflows } from "./0025_carried_outflows.js";
+import { migration as backupDigests } from "./0026_backup_digests.js";
+import { migration as sealKey } from "./0027_seal_key.js";
+import { migration as agentInbox } from "./0028_agent_inbox.js";
+import { migration as cardPlaces } from "./0029_card_places.js";
+import { migration as telegramTopics } from "./0030_telegram_topics.js";
 
 /** The engine schema's Postgres migrations, oldest first. Released files never change. */
 export const enginePostgresMigrations: readonly PostgresMigration[] = [
@@ -22,4 +42,24 @@ export const enginePostgresMigrations: readonly PostgresMigration[] = [
   surfacesAndDelivery,
   accessAndOperations,
   transactionSends,
+  sendLevelRows,
+  rescueCeiling,
+  pendingLimits,
+  transactionReplacements,
+  positionsAndDepartures,
+  intentValues,
+  executionRealized,
+  noticeIntents,
+  telegramOwner,
+  lateLandings,
+  webPushSubscriptions,
+  tokenExpiry,
+  miniAppLaunches,
+  miniAppTickets,
+  carriedOutflows,
+  backupDigests,
+  sealKey,
+  agentInbox,
+  cardPlaces,
+  telegramTopics,
 ];
