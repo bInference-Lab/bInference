@@ -568,7 +568,14 @@ nothing after the history carries one.
   own `fetch` with allowlisted headers ([ENGINEERING.md section 17](../ENGINEERING.md#section-17)).
 - Each transport reduces its client's stream into one event list: text, reasoning, tool call start,
   delta and end, done, and error. A failure ends the stream as a classified error event; nothing
-  throws.
+  throws. A Chat Completions stream's reasoning is its `reasoning_details` items of type
+  `reasoning.text`, else the first of `reasoning_content`, `reasoning` and `reasoning_text` that
+  holds text.
+- Reasoning a model writes inside its text, in `<think>`, `<thinking>`, `<thought>`,
+  `<reasoning>` or `<antthinking>` tags and their namespaced forms, any case, is moved out of the
+  text into the response's reasoning, while the text streams and at its end; `<internal>` sections
+  are dropped, a `final` tag goes and its words stay, and a tag inside a code block or a code span
+  stays text. A draft never shows a tag or its words.
 - Each call asks for at most 4,096 output tokens, because the gateway reserves them.
 - A call with no event for `models.idleTimeoutMs` (120 seconds) is aborted.
 - Images go to `main` when it reads images; otherwise `models.vision` describes them, and `main`

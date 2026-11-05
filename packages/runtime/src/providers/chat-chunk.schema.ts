@@ -2,7 +2,8 @@ import { z } from "zod";
 import type { ModelUsage } from "../loop/model-event.js";
 
 // One chunk of a streamed Chat Completions answer, as the API reference documents it, read with
-// the fields compatible gateways add: a reasoning text (`reasoning`, or `reasoning_content`) and
+// the fields compatible gateways add: a reasoning text (`reasoning_details` items of type
+// `reasoning.text`, else `reasoning_content`, `reasoning` or `reasoning_text`) and
 // the call's cost in US dollars on the usage (`usage.cost`). Unknown fields are kept and ignored.
 
 /** A piece of one tool call: its first piece names it, the next ones add to its arguments. */
@@ -19,12 +20,20 @@ export interface ChatToolCallPiece {
     | undefined;
 }
 
+/** One item of a gateway's structured reasoning; only `reasoning.text` items carry readable text. */
+interface ChatReasoningDetail {
+  readonly type?: string | null | undefined;
+  readonly text?: string | null | undefined;
+}
+
 /** What one chunk adds to the answer. */
 export interface ChatDelta {
   readonly content?: string | null | undefined;
   readonly refusal?: string | null | undefined;
   readonly reasoning?: string | null | undefined;
   readonly reasoning_content?: string | null | undefined;
+  readonly reasoning_text?: string | null | undefined;
+  readonly reasoning_details?: readonly ChatReasoningDetail[] | null | undefined;
   readonly tool_calls?: readonly ChatToolCallPiece[] | null | undefined;
 }
 
@@ -62,11 +71,24 @@ const toolCallPieceSchema = z.looseObject({
   function: z.looseObject({ name: text, arguments: text }).nullish(),
 });
 
+const reasoningDetailSchema = z.looseObject({ type: text, text });
+
 const deltaSchema = z.looseObject({
   content: text,
   refusal: text,
   reasoning: text,
   reasoning_content: text,
+  reasoning_text: text,
+  // An item of another shape is dropped, so a gateway's new kind never breaks the stream.
+  reasoning_details: z
+    .array(z.unknown())
+    .transform((items) =>
+      items.flatMap((item) => {
+        const detail = reasoningDetailSchema.safeParse(item);
+        return detail.success ? [detail.data] : [];
+      }),
+    )
+    .nullish(),
   tool_calls: z.array(toolCallPieceSchema).nullish(),
 });
 

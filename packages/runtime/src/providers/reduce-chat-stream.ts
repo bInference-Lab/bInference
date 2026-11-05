@@ -49,8 +49,19 @@ function startOf(piece: ChatToolCallPiece, index: number, answerId: string): Mod
   return { type: "toolCallStart", index, id, name };
 }
 
+// A gateway's structured reasoning items win; else the first reasoning field that holds text.
+function reasoningOf(delta: ChatDelta): string {
+  const details = (delta.reasoning_details ?? [])
+    .filter((detail) => detail.type === "reasoning.text")
+    .map((detail) => detail.text ?? "")
+    .join("");
+  const fields = [delta.reasoning_content, delta.reasoning, delta.reasoning_text];
+  const field = fields.find((given) => typeof given === "string" && given !== "");
+  return details === "" ? (field ?? "") : details;
+}
+
 function textEvents(delta: ChatDelta): ModelEvent[] {
-  const reasoning = delta.reasoning ?? delta.reasoning_content ?? "";
+  const reasoning = reasoningOf(delta);
   // A model's own refusal is its answer, which the owner reads like any text.
   const said = `${delta.content ?? ""}${delta.refusal ?? ""}`;
   return [

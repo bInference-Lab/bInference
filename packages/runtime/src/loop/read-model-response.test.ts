@@ -143,4 +143,44 @@ describe("readModelResponse", () => {
     );
     expect(response).toMatchObject({ ok: false, failure: "aborted", text: "Hi" });
   });
+
+  it("moves reasoning the model wrote in tags out of its text, after its own reasoning", async () => {
+    const response = await read([
+      { type: "reasoning", delta: "Field." },
+      { type: "text", delta: "<thi" },
+      { type: "text", delta: "nk>The owner says hey.</th" },
+      { type: "text", delta: "ink>Hey! How can I help?" },
+      { type: "done", stop: "end", usage },
+    ]);
+    expect(response).toMatchObject({
+      ok: true,
+      text: "Hey! How can I help?",
+      reasoning: "Field.\n\nThe owner says hey.",
+    });
+  });
+
+  it("never hands on a reasoning tag or its words while the text streams", async () => {
+    const heard: string[] = [];
+    const pieces = [
+      "Sure",
+      ". <thi",
+      "nk>check the pool",
+      "</think>",
+      " Done",
+      ", `<think>` is a tag.",
+    ];
+    await readModelResponse(
+      events([
+        ...pieces.map((delta): ModelEvent => ({ type: "text", delta })),
+        { type: "done", stop: "end", usage },
+      ]),
+      { signal: new AbortController().signal, clock, onText: (soFar) => heard.push(soFar) },
+    );
+    expect(heard).toStrictEqual([
+      "Sure",
+      "Sure. ",
+      "Sure.  Done",
+      "Sure.  Done, `<think>` is a tag.",
+    ]);
+  });
 });

@@ -6,6 +6,7 @@ import type {
   ResponseReplay,
 } from "./model-event.js";
 import type { ToolCall } from "./model-message.js";
+import { splitReasoningTags } from "./reasoning-tags.js";
 import { type SettleOptions, settleBy } from "./settle-by.js";
 
 /** A model response that ended with `done`. */
@@ -98,6 +99,14 @@ function toolCallsOf(draft: ResponseDraft): readonly ToolCall[] {
     }));
 }
 
+// The text the owner reads and every reasoning the response gave: its own field, then what the
+// model wrote inside reasoning tags.
+function saidOf(draft: ResponseDraft): { readonly text: string; readonly reasoning: string } {
+  const split = splitReasoningTags(draft.textParts.join(""), { isFinal: true });
+  const reasoning = [draft.reasoningParts.join(""), split.reasoning].filter((part) => part !== "");
+  return { text: split.text, reasoning: reasoning.join("\n\n") };
+}
+
 function fault(
   draft: ResponseDraft,
   said: {
@@ -107,12 +116,7 @@ function fault(
     readonly usage?: ModelUsage;
   },
 ): ModelFault {
-  return {
-    ok: false,
-    ...said,
-    text: draft.textParts.join(""),
-    reasoning: draft.reasoningParts.join(""),
-  };
+  return { ok: false, ...said, ...saidOf(draft) };
 }
 
 // A response cut off at its output limit may leave a call open; any other must close each call.
@@ -123,8 +127,7 @@ function finish(draft: ResponseDraft, event: Extract<ModelEvent, { type: "done" 
   }
   return {
     ok: true,
-    text: draft.textParts.join(""),
-    reasoning: draft.reasoningParts.join(""),
+    ...saidOf(draft),
     toolCalls: toolCallsOf(draft),
     stop: event.stop,
     usage: event.usage,
@@ -165,8 +168,32 @@ function close(iterator: AsyncIterator<ModelEvent>): void {
 
 /** What a response is read with: its signal and clock, and who hears its text as it grows. */
 export interface ReadOptions extends SettleOptions {
-  /** Hears the response's text so far with each piece of it. */
+  /** Hears the text so far the owner may read, outside reasoning tags, each time it changes. */
   readonly onText?: (soFar: string) => void;
+}
+
+/** The text of a response so far as the owner may read it, outside its reasoning tags. */
+interface ShownText {
+  /** Adds a piece of the text; answers the text so far when what shows changed. */
+  add(delta: string): string | undefined;
+}
+
+// A piece with no `<` or backtick, while no section or tag is open, only adds to what shows; any
+// other piece reads the whole text again, since it may open, close or quote a section.
+function createShownText(): ShownText {
+  let [raw, shown, isOpen] = ["", "", false];
+  return {
+    add(delta) {
+      raw += delta;
+      const before = shown;
+      if (!isOpen && !/[<`]/u.test(delta)) {
+        shown += delta;
+      } else {
+        ({ text: shown, isOpen } = splitReasoningTags(raw, { isFinal: false }));
+      }
+      return shown === before ? undefined : shown;
+    },
+  };
 }
 
 // Each event is awaited only until the signal aborts, so a transport that ignores its signal
@@ -177,7 +204,7 @@ async function readEvents(
   options: ReadOptions,
 ): Promise<ModelResponse | string> {
   const iterator = events[Symbol.asyncIterator]();
-  let soFar = "";
+  const soFar = createShownText();
   for (;;) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- each event follows the one before
     const next = await settleBy(async () => iterator.next(), options);
@@ -189,9 +216,9 @@ async function readEvents(
     }
     const event = next.value.value;
     const step = apply(draft, event);
-    if (event.type === "text" && event.delta !== "" && options.onText !== undefined) {
-      soFar += event.delta;
-      options.onText(soFar);
+    const shown = event.type === "text" ? soFar.add(event.delta) : undefined;
+    if (shown !== undefined) {
+      options.onText?.(shown);
     }
     if (step !== undefined) {
       close(iterator);
