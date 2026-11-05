@@ -64,3 +64,5 @@ Rules for this package:
   `postgresRead` holds on the thread that started it, and `createPostgresStoreHost` binds the
   adapters to one install's schema. Postgres reports no `insertId`: a task that runs there reads
   a new key with `returning`.
+- A store's Postgres test, `<store>.postgres.test.ts`, runs the port's contract suite on
+  `createTestPostgresStores`, a fresh install's schemas per check, beside its SQLite test.
