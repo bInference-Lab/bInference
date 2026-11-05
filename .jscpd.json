@@ -10,6 +10,7 @@
     "**/*.test.tsx",
     "packages/console/src/components/ui/**",
     "**/*.generated.json",
+    "packages/store/src/migrations/*-postgres/*-postgres-migrations.ts",
     "coverage/**",
     "reports/**",
     ".stryker-tmp/**"
