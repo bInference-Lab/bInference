@@ -2,11 +2,13 @@ import { type Bridge, chainRefSchema } from "@binference/chain";
 import { err, idSchema, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testNowMs, testToken, testWallet } from "../intents/test-intents.js";
-import { testCall } from "../operations/test-engine.js";
+import { startTestEngine, testCall } from "../operations/test-engine.js";
 import { saveTestAddress } from "../send-levels/test-sends.js";
 import {
   type BridgeTest,
   bridgeEngine,
+  bridgeEngineOptions,
+  bridgeFakes,
   testArrives,
   testDestination,
   testFarEntry,
@@ -94,6 +96,19 @@ describe("a bridge quote", () => {
 
   it("asks for a saved address when no recipient is named and the rescue address cannot be paid there", async () => {
     const bench = await bridgeEngine();
+    expect(await quoteOf(bench)).toStrictEqual({ ok: false, error: "address.no_recipient" });
+  });
+
+  it("asks for a saved address when no recipient is named and no rescue address is set", async () => {
+    const fakes = bridgeFakes();
+    const test = await startTestEngine(bridgeEngineOptions(fakes));
+    await saveTestAddress(test, testFarEntry);
+    const bench = {
+      test,
+      bridge: fakes.bridge,
+      codesHere: fakes.codesHere,
+      codesThere: fakes.codesThere,
+    };
     expect(await quoteOf(bench)).toStrictEqual({ ok: false, error: "address.no_recipient" });
   });
 

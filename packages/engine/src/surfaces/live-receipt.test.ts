@@ -265,4 +265,20 @@ describe("the receipt of a live intent read from its record", () => {
     const record = liveRecord({ kind: "swap", state: "executing" });
     await expect(receiptOf(record, endedWith({}))).resolves.toBeUndefined();
   });
+
+  it("says the chain is being read while a sent step's fate is unknown", async () => {
+    const record = liveRecord({ kind: "swap", state: "unknown_after_send" });
+    await expect(receiptOf(record, endedWith({}))).resolves.toStrictEqual({
+      outcome: { kind: "unknown" },
+      assets: {},
+    });
+  });
+
+  it("draws no failure receipt for a failed intent with no transaction or no reason on record", async () => {
+    const sent = { account: testAccount, hash: "0xlast" } as TransactionRecord;
+    const failed = liveRecord({ kind: "swap", state: "failed_onchain", reason: "reverted" });
+    const unreasoned = liveRecord({ kind: "swap", state: "failed_onchain" });
+    await expect(receiptOf(failed, endedWith({}))).resolves.toBeUndefined();
+    await expect(receiptOf(unreasoned, endedWith({}), [sent])).resolves.toBeUndefined();
+  });
 });

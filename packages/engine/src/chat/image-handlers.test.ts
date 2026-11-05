@@ -167,4 +167,13 @@ describe("inbox/readImage", () => {
     });
     expect(await read({}, testCallers.cli)).toStrictEqual({ ok: false, error: "auth.scope" });
   });
+
+  it("answers unreadable for an image its own message names when no image source is set", async () => {
+    const turns = createRunningTurns();
+    turns.startRuntime(idSchema("tok").parse(testCallers.runtime.credential));
+    const agentInbox = { get: async () => Promise.resolve(stored) };
+    const handler = createImageHandlers({ agentInbox, turns })["inbox/readImage"];
+    const call = testCall({ agent: testAgent, message, image: photo }, testCallers.runtime);
+    expect(await handler(call)).toStrictEqual({ ok: false, error: "image.unreadable" });
+  });
 });

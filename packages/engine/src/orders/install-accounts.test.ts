@@ -1,5 +1,5 @@
 import { accountRefSchema } from "@binference/chain";
-import { err } from "@binference/core";
+import { err, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import type { InstallFacts } from "../install/install-record.js";
@@ -29,5 +29,21 @@ describe("whether an account is a wallet of the install", () => {
 
     expect(await isInstallAccount(locked, kept, live)).toBe(true);
     expect(await isInstallAccount(locked, other, live)).toBe(false);
+  });
+
+  it("knows a wallet by the account custody holds on a chain the registry does not list", async () => {
+    const elsewhere = accountRefSchema.parse("fake:9:0x000000a9");
+    const held = { ...locked, custody: { account: async () => Promise.resolve(ok(elsewhere)) } };
+    expect(await isInstallAccount(held, elsewhere, live)).toBe(true);
+    expect(await isInstallAccount(locked, elsewhere, live)).toBe(false);
+  });
+
+  it("reads no kept address of a wallet of another family", async () => {
+    const other = { ...wallet, family: "other" };
+    const install = {
+      read: async () => Promise.resolve({ wallets: [other] } as unknown as InstallFacts),
+    };
+    const kept = accountRefSchema.parse(`fake:1:${wallet.address}`);
+    expect(await isInstallAccount({ ...locked, install }, kept, live)).toBe(false);
   });
 });

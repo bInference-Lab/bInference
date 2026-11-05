@@ -348,6 +348,20 @@ describe("a re-quote of a buy or a sell at the tap", () => {
     });
   });
 
+  it("warns on a sale's new card version that the token it sells graduated", async () => {
+    const launchpad = createFakeLaunchpad({ onCurve: [testToken] });
+    const test = await engineWith([createFakeVenue(), launchpad]);
+    const view = await propose(test, testSell());
+    launchpad.graduate(testToken);
+    await tapLate(test, view);
+    const drawn = await cardOf(test, view.intent);
+    expect(drawn.version).toBe(2);
+    expect(drawn.lines).toContainEqual({
+      key: "card.warn.placeChanged",
+      values: { token: { type: "asset", asset: testToken } },
+    });
+  });
+
   it("confirms on the card's place when the token is still on its curve", async () => {
     const launchpad = createFakeLaunchpad({ onCurve: [testToken] });
     const test = await engineWith([createFakeVenue(), launchpad]);

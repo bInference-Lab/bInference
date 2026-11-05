@@ -158,6 +158,13 @@ describe("launch/draft", () => {
     expect(await draftOf(busy.test)).toStrictEqual(refused("intent.launch_waiting"));
   });
 
+  it("refuses a frozen agent's draft before anything is kept", async () => {
+    const { test } = await testDraftEngine();
+    expectOk(await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));
+    expect(await draftOf(test)).toStrictEqual(refused("agent.frozen"));
+    expect(chatPushes(test, "chat/launchDraft")).toStrictEqual([]);
+  });
+
   it("takes no photo on a launchpad that takes a picture link, and needs the link", async () => {
     const { test } = await testDraftEngine({ takesPictureLink: true });
     const linked = {
