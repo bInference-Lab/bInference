@@ -51,6 +51,16 @@ import { migration as intentDraftRefs } from "./0049_intent_draft_refs.js";
 import { migration as limitsWithoutHealthFactor } from "./0050_limits_without_health_factor.js";
 import { migration as bridgeWallets } from "./0051_bridge_wallets.js";
 import { migration as addressRecipientBytes } from "./0052_address_recipient_bytes.js";
+import { migration as bridges } from "./0053_bridges.js";
+import { migration as rescueReach } from "./0054_rescue_reach.js";
+import { migration as stakeUnbondings } from "./0055_stake_unbondings.js";
+import { migration as unbondingsClosedOutside } from "./0056_unbondings_closed_outside.js";
+import { migration as webhookAlerts } from "./0057_webhook_alerts.js";
+import { migration as identities } from "./0058_identities.js";
+import { migration as webhookRuleFills } from "./0059_webhook_rule_fills.js";
+import { migration as orderFillSeq } from "./0060_order_fill_seq.js";
+import { migration as noticeSeq } from "./0061_notice_seq.js";
+import { migration as agentInboxSeq } from "./0062_agent_inbox_seq.js";
 
 /** The engine schema's Postgres migrations, oldest first. Released files never change. */
 export const enginePostgresMigrations: readonly PostgresMigration[] = [
@@ -106,4 +116,14 @@ export const enginePostgresMigrations: readonly PostgresMigration[] = [
   limitsWithoutHealthFactor,
   bridgeWallets,
   addressRecipientBytes,
+  bridges,
+  rescueReach,
+  stakeUnbondings,
+  unbondingsClosedOutside,
+  webhookAlerts,
+  identities,
+  webhookRuleFills,
+  orderFillSeq,
+  noticeSeq,
+  agentInboxSeq,
 ];
