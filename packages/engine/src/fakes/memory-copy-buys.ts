@@ -3,10 +3,12 @@ import type { CopyOrderRequest } from "@binference/protocol";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { CopyBuyQuery, CopyBuyRecord, OrderFillRecord } from "../orders/order-fill.js";
 import type { OrderRecord } from "../orders/order-record.js";
+import { constraintFault } from "./memory-call.js";
 
 /** What the in-memory copy buys read: the orders, their fill rows and the intents beside them. */
 export interface CopyBuySources {
   readonly orders: ReadonlyMap<Id<"ord">, OrderRecord>;
+  /** Every fill row, in the order they were written. */
   readonly rows: readonly OrderFillRecord[];
   readonly intentNow: ((intent: Id<"int">) => IntentRecord | undefined) | undefined;
 }
@@ -38,18 +40,24 @@ function copyBuyOf(
   return { id: row.id, atMs: row.atMs, usdMicros };
 }
 
-// Whether a buy comes after the page before's last.
-function isAfter(buy: CopyBuyRecord, after: CopyBuyQuery["after"]): boolean {
-  return (
-    after === undefined || buy.atMs > after.atMs || (buy.atMs === after.atMs && buy.id > after.id)
-  );
+// The rows written after the page before's last, which must be a stored row.
+function rowsAfter(
+  rows: readonly OrderFillRecord[],
+  after: CopyBuyQuery["after"],
+): readonly OrderFillRecord[] {
+  if (after === undefined) {
+    return rows;
+  }
+  const at = rows.findIndex((row) => row.id === after);
+  if (at === -1) {
+    throw constraintFault(`a page of copy buys starts after ${after}, which is not stored`);
+  }
+  return rows.slice(at + 1);
 }
 
-/** An agent's copy buys of one leader from a time on, oldest first, then by id, paged. */
+/** An agent's copy buys of one leader from a time on, in the order they were written, paged. */
 export function copyBuysOf(sources: CopyBuySources, query: CopyBuyQuery): readonly CopyBuyRecord[] {
-  return sources.rows
+  return rowsAfter(sources.rows, query.after)
     .flatMap((row) => copyBuyOf(sources, query, row) ?? [])
-    .filter((buy) => isAfter(buy, query.after))
-    .toSorted((left, right) => left.atMs - right.atMs || (left.id < right.id ? -1 : 1))
     .slice(0, query.limit);
 }

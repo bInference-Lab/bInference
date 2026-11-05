@@ -148,14 +148,15 @@ export const orderFillQuerySchema: z.ZodType<OrderFillQuery> = z.strictObject({
 
 /**
  * Which copy buys of an agent to list (decision 0260): the `filled` rows of its copy orders of one
- * leader whose intents bought, in any order state, from `fromMs` on, oldest first, then by id.
+ * leader whose intents bought, in any order state, from `fromMs` on, in the order they were
+ * written (decision 0366), so a page read after another holds every row written since.
  */
 export interface CopyBuyQuery {
   readonly agentId: Id<"agt">;
   readonly leader: AccountRef;
   readonly fromMs: number;
-  /** The last row of the page before: the page starts after it. */
-  readonly after?: { readonly atMs: number; readonly id: Id<"fil"> };
+  /** The last row of the page before, a stored row: the page holds the rows written after it. */
+  readonly after?: Id<"fil">;
   readonly limit: number;
 }
 
@@ -164,7 +165,7 @@ export const copyBuyQuerySchema: z.ZodType<CopyBuyQuery> = z.strictObject({
   agentId: idSchema("agt"),
   leader: accountRefSchema,
   fromMs: epochMsSchema,
-  after: z.strictObject({ atMs: epochMsSchema, id: idSchema("fil") }).exactOptional(),
+  after: idSchema("fil").exactOptional(),
   limit: pageLimitSchema,
 });
 

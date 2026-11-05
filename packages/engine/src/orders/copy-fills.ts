@@ -72,7 +72,7 @@ async function agentUsedOf(
   call: {
     readonly nowMs: number;
     readonly signal: AbortSignal;
-    readonly after?: { readonly atMs: number; readonly id: Id<"fil"> };
+    readonly after?: Id<"fil">;
   },
 ): Promise<bigint> {
   const { nowMs, signal, after } = call;
@@ -89,8 +89,7 @@ async function agentUsedOf(
   if (page.length < buysPerPage || last === undefined) {
     return sum;
   }
-  const next = { atMs: last.atMs, id: last.id };
-  return sum + (await agentUsedOf(parts, order, { nowMs, signal, after: next }));
+  return sum + (await agentUsedOf(parts, order, { nowMs, signal, after: last.id }));
 }
 
 // The cap a buy of `perBuy` would pass: the order's daily dollars, then the agent's per leader.

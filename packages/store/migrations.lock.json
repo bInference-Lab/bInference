@@ -62,6 +62,7 @@
     "engine/0056_unbondings_closed_outside.ts": "301d53a6c3db43cec6b3d352a2d8a4b12a0a86187630298a5bf736881b662e65",
     "engine/0057_webhook_alerts.ts": "cc4b2b79f60a0895fa5153e150d3906bb07391618a2694ed5dc2d36daf3a5357",
     "engine/0058_identities.ts": "2b6af55dcf796366f5bd6288e6a2656346ce79d478dad83d5e6fe8b3da3d3c54",
-    "engine/0059_webhook_rule_fills.ts": "23583eb18cf76bf2ec8f55eb60e47d33f27a6baa876e0090682756c47912e298"
+    "engine/0059_webhook_rule_fills.ts": "23583eb18cf76bf2ec8f55eb60e47d33f27a6baa876e0090682756c47912e298",
+    "engine/0060_order_fill_seq.ts": "bf8ec352458a6b2e1cf5bea98a3b1a79b5060756c9102368481bf150fab81ab0"
   }
 }

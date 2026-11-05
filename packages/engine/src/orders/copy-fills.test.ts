@@ -74,15 +74,14 @@ function boughtFor(state: CopyState, usdMicros: bigint): CopyState {
   return copyStateAfterFill(state, traded);
 }
 
-// The stored buys a page at a time, by id after the last of the page before, as the store pages.
+// The stored buys a page at a time, those written after the last of the page before, as the store
+// pages.
 function pagedBuys(
   buys: readonly CopyBuyRecord[],
 ): (query: CopyBuyQuery) => Promise<readonly CopyBuyRecord[]> {
   return async (query) =>
     Promise.resolve(
-      buys
-        .filter(({ id }) => query.after === undefined || id > query.after.id)
-        .slice(0, query.limit),
+      buys.slice(buys.findIndex(({ id }) => id === query.after) + 1).slice(0, query.limit),
     );
 }
 

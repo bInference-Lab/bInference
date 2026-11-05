@@ -135,7 +135,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
       "card_id paper outside_content end_reason expiry_noticed_at created_at changed_at version",
   ),
   order_fills: names(
-    "id order_id intent_id outcome reason at notices announced_at copy_trade copy_take",
+    "id order_id intent_id outcome reason at notices announced_at copy_trade copy_take seq",
   ),
   alerts: names(
     "id agent_id condition kind account asset state wake fires outside_content created_by " +
@@ -211,12 +211,14 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   jobs: names("id kind state progress result error started_at ended_at"),
   backups: names("id path bytes kind created_at verified_at file_sha256 header_sha256"),
   cex_connections: names("provider state secret_ref scopes connected_at"),
+  counters: names("name last"),
 };
 
 // The keys of section 2: a composite key where it names one, and `id` (or the one key it
 // names) everywhere else.
 const compositeKeys: Readonly<Record<string, readonly string[]>> = {
   meta: ["key"],
+  counters: ["name"],
   limits: ["agent_id"],
   approval_modes: ["agent_id"],
   late_landings: ["intent_id"],
@@ -274,7 +276,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   arrivals: ["index|wallet_id,at"],
   departures: ["index|intent_id", "index|wallet_id,at"],
   orders: ["index|state,agent_id", "index|wallet_id,paper,state", "unique|intent_id"],
-  order_fills: ["index|at|partial", "index|order_id,at"],
+  order_fills: ["index|at|partial", "index|order_id,at", "unique|seq"],
   alerts: [
     "index|state,account",
     "index|state,agent_id",

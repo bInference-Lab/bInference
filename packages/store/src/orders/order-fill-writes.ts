@@ -113,25 +113,26 @@ export function insertOrderFill(database: DatabaseSync, fill: OrderFillRecord): 
   return fill;
 }
 
-/** One order's fill rows, the newest first, then the last written first. */
+/** One order's fill rows, the newest first, then the last written first (decision 0366). */
 export function listOrderFills(
   database: DatabaseSync,
   query: OrderFillQuery,
 ): readonly OrderFillRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
-  // Rows of one instant follow the row number, not their ids, whose bits after the millisecond
-  // are random (decision 0260).
   const select = kysely
     .selectFrom("order_fills")
     .selectAll()
     .where("order_id", "=", query.orderId)
     .orderBy("at", "desc")
-    .orderBy("rowid", "desc")
+    .orderBy("seq", "desc")
     .limit(query.limit);
   return execute(select).rows.map(toOrderFillRecord);
 }
 
-/** The rows of every order whose notices were never announced, the oldest first, then by id. */
+/**
+ * The rows of every order whose notices were never announced, the oldest first, then in the order
+ * they were written (decision 0366).
+ */
 export function listUnannounced(
   database: DatabaseSync,
   query: UnannouncedFillQuery,
@@ -143,7 +144,7 @@ export function listUnannounced(
     .where("notices", "is not", null)
     .where("announced_at", "is", null)
     .orderBy("at")
-    .orderBy("id")
+    .orderBy("seq")
     .limit(query.limit);
   return execute(select).rows.map(toOrderFillRecord);
 }

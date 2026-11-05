@@ -76,9 +76,11 @@ export interface OrderStore {
   /** The `filled` row that counts an intent's fill, or `undefined` while none does. */
   countedFill(intent: Id<"int">, options: StoreCall): Promise<OrderFillRecord | undefined>;
   /**
-   * An agent's copy buys of one leader from a time on, in any order state, oldest first, then by
-   * id (decision 0260): each `filled` row of its copy orders of that leader whose intent bought,
-   * at its intent's judged value, else its order's dollars per buy.
+   * An agent's copy buys of one leader from a time on, in any order state, in the order they were
+   * written (decisions 0260 and 0366): each `filled` row of its copy orders of that leader whose
+   * intent bought, at its intent's judged value, else its order's dollars per buy. A page after
+   * `after` holds every such row written after it, so a row written between two pages counts. An
+   * `after` the store does not hold throws `store.constraint`.
    */
   copyBuys(query: CopyBuyQuery, options: StoreCall): Promise<readonly CopyBuyRecord[]>;
   /**
@@ -92,8 +94,8 @@ export interface OrderStore {
    */
   fillCounts(query: FillCountQuery, options: StoreCall): Promise<FillCounts>;
   /**
-   * The fill rows of every order whose notices were never announced, the oldest first, then by
-   * id (decision 0197).
+   * The fill rows of every order whose notices were never announced, the oldest first, then in
+   * the order they were written (decisions 0197 and 0366).
    */
   unannounced(query: UnannouncedFillQuery, options: StoreCall): Promise<readonly OrderFillRecord[]>;
   /**

@@ -29,7 +29,7 @@ export interface MemoryOrderFills {
     announcement: FillAnnouncement,
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
-  /** Every fill row now, unordered, for the order store's own reads. */
+  /** Every fill row now, in the order they were written, for the order store's own reads. */
   rowsNow(): readonly OrderFillRecord[];
   /** Checks a fill row inside another in-memory store's write; a broken rule throws. */
   checkFillNow(fill: OrderFillRecord): void;
@@ -70,18 +70,16 @@ function checkFill(fills: Fills, options: MemoryOrderFillsOptions, fill: OrderFi
   }
 }
 
-// Newest first, then the last written first, as the SQLite store pages them by row number: the
+// Newest first, then the last written first, as the SQLite store pages them by write order: the
 // map keeps the order rows were written in, and the sort keeps it among rows of one instant.
 function newestWrittenFirst(rows: readonly OrderFillRecord[]): readonly OrderFillRecord[] {
   return rows.toReversed().toSorted((left, right) => right.atMs - left.atMs);
 }
 
-// Oldest first, then by id, as the SQLite store pages the rows to announce.
+// Oldest first, as the SQLite store pages the rows to announce: the sort is stable, so rows of
+// one instant keep the order the map holds them in, the order they were written.
 function byOldest(left: OrderFillRecord, right: OrderFillRecord): number {
-  if (left.atMs !== right.atMs) {
-    return left.atMs - right.atMs;
-  }
-  return left.id < right.id ? -1 : 1;
+  return left.atMs - right.atMs;
 }
 
 // Marks rows announced, keeping an earlier time; an unknown row, or one with no notices, throws

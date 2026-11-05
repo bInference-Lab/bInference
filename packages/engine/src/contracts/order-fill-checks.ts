@@ -3,7 +3,7 @@ import type { IntentDraft } from "../intents/intent-record.js";
 import type { OrderFillRecord } from "../orders/order-fill.js";
 import { intentDraft, intentMove } from "./intent-fixtures.js";
 import { confirmedCard, orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.js";
-import { assertRefusesAborted, fixtureId, live } from "./store-fixtures.js";
+import { assertRefusesAborted, fixtureId, inOrder, live } from "./store-fixtures.js";
 
 /** Fill row `n` of order `order`: a skip with the policy's reason at `1000 * n`, or a fill. */
 export function fillRow(
@@ -270,6 +270,31 @@ export async function announcesFillNotices(subject: OrderStoreSubject): Promise<
   await assertRefusesAborted(async (options) =>
     store.markAnnounced({ ids: [late.id], atMs: 11 }, options),
   );
+}
+
+// Skip row `n` of order 1 with a notice that waits, at the one instant every such row shares.
+function waitingRowOf(n: number): OrderFillRecord {
+  return {
+    ...fillRow(1, n, "skipped"),
+    atMs: 4_000,
+    notices: [{ key: "notice.skipped", values: {} }],
+  };
+}
+
+/**
+ * Checks that rows of one millisecond whose notices wait come back in the order they were
+ * written, whatever their ids, so the owner hears them in that order (decision 0366).
+ */
+export async function announcesRowsOfOneInstantAsWritten(
+  subject: OrderStoreSubject,
+): Promise<void> {
+  const { store } = subject;
+  assert.ok((await store.create(orderDraft(subject, 1), live())).ok);
+  // Each row's id falls below the one written before it.
+  const rows = [9, 8, 7].map(waitingRowOf);
+  await inOrder(rows, async (row) => store.recordFill(row, live()));
+
+  assert.deepEqual(await store.unannounced({ limit: 10 }, live()), rows);
 }
 
 /** Checks that the fill calls refuse an aborted signal and write nothing. */

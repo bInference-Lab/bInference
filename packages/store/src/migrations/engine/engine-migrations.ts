@@ -58,6 +58,7 @@ import { migration as unbondingsClosedOutside } from "./0056_unbondings_closed_o
 import { migration as webhookAlerts } from "./0057_webhook_alerts.js";
 import { migration as identities } from "./0058_identities.js";
 import { migration as webhookRuleFills } from "./0059_webhook_rule_fills.js";
+import { migration as orderFillSeq } from "./0060_order_fill_seq.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -120,4 +121,5 @@ export const engineMigrations: readonly Migration[] = [
   webhookAlerts,
   identities,
   webhookRuleFills,
+  orderFillSeq,
 ];

@@ -1,5 +1,5 @@
 // The tables of the order store, as SQLite returns them: migration 0031 makes `orders` again.
-import type { ColumnType } from "kysely";
+import type { Generated } from "kysely";
 
 /** `orders`: one auto order (migration 0031); JSON documents as text, flags as 0 or 1. */
 export interface OrdersTable {
@@ -38,11 +38,8 @@ export interface OrderFillsTable {
   /** A copy order's row: the leader trade it copied and the take it ran under (migration 0045). */
   copy_trade: number | null;
   copy_take: number | null;
-  /**
-   * SQLite's own row number, which only orders rows: it rises with each row written, so rows of
-   * one instant read in the order they were written. Never selected, inserted or updated.
-   */
-  rowid: ColumnType<never, never, never>;
+  /** The row's place in write order, which the insert trigger takes from `counters` (0060). */
+  seq: Generated<number>;
 }
 
 /** The order store's tables, by name. */

@@ -60,7 +60,7 @@ async function activeCopy(subject: OrderStoreSubject, n: number, leader: number)
 }
 
 // A fill of order `order` at version `version`, its intent `intent` of `kind` judged at `value`,
-// its row `row` at `1000 * row`.
+// its row `row` at `atMs`, else at `1000 * row`.
 async function landed(
   subject: OrderStoreSubject,
   call: {
@@ -70,17 +70,19 @@ async function landed(
     readonly row: number;
     readonly kind: "buy" | "sell";
     readonly value?: bigint;
+    readonly atMs?: number;
   },
 ): Promise<void> {
   const { store, intents } = subject;
-  const { order, version, intent, row, kind, value } = call;
+  const { order, version, intent, row, kind, value, atMs } = call;
   assert.ok((await intents.create({ ...intentDraft(subject, intent), kind }, live())).ok);
   const fields = value === undefined ? {} : { fields: { valueUsdMicros: value } };
   assert.ok(
     (await intents.transition({ ...intentMove(intent, 0, "checked"), ...fields }, live())).ok,
   );
   const move = { ...orderMove(order, version, "active"), fills: version };
-  const fill = { ...fillRow(order, row, "filled"), intentId: fixtureId("int", intent) };
+  const at = atMs === undefined ? {} : { atMs };
+  const fill = { ...fillRow(order, row, "filled"), intentId: fixtureId("int", intent), ...at };
   assert.ok((await store.recordLandedFill({ moves: [move], fill }, live())).ok);
 }
 
@@ -105,10 +107,33 @@ export async function listsCopyBuys(subject: OrderStoreSubject): Promise<void> {
     { id: fixtureId("fil", 21), atMs: 21_000, usdMicros: 7n },
     { id: fixtureId("fil", 22), atMs: 22_000, usdMicros: 2n ** 64n + 1n },
   ]);
-  const [first] = all;
-  const after = { atMs: first?.atMs ?? 0, id: first?.id ?? fixtureId("fil", 0) };
+  const after = fixtureId("fil", 21);
   assert.deepEqual(await store.copyBuys({ ...query, limit: 1, after }, live()), all.slice(1));
   assert.deepEqual(await store.copyBuys({ ...query, fromMs: 21_001 }, live()), all.slice(1));
+  await assert.rejects(store.copyBuys({ ...query, after: fixtureId("fil", 99) }, live()), {
+    code: "store.constraint",
+  });
+}
+
+/**
+ * A copy buy written after a page of the per-leader daily cap was read, in that page's last
+ * millisecond and with an id that sorts first, is on the next page, so the cap counts it
+ * (decisions 0262 and 0366): a page holds the rows written after the one it starts after.
+ */
+export async function pagesCopyBuysInWriteOrder(subject: OrderStoreSubject): Promise<void> {
+  const { store, agentId } = subject;
+  await activeCopy(subject, 1, 1);
+  await activeCopy(subject, 2, 1);
+  const atMs = 30_000;
+  await landed(subject, { order: 1, version: 1, intent: 11, row: 40, kind: "buy", atMs });
+  const query = { agentId, leader: leaderOf(1), fromMs: 0, limit: 1 };
+  const [first] = await store.copyBuys(query, live());
+  await landed(subject, { order: 2, version: 1, intent: 12, row: 39, kind: "buy", atMs });
+  const after = first?.id ?? assert.fail("Expected the first copy buy.");
+
+  const next = await store.copyBuys({ ...query, after }, live());
+
+  assert.deepEqual(next, [{ id: fixtureId("fil", 39), atMs, usdMicros: 2n ** 64n + 1n }]);
 }
 
 // Skip row `n` of order 1, at the one instant every such row shares.

@@ -7,11 +7,13 @@ import type { OrderDraft, OrderQuery } from "../orders/order-record.js";
 import {
   holdsTrackedWalletSlots,
   listsCopyBuys,
+  pagesCopyBuysInWriteOrder,
   listsRowsOfOneInstantAsWritten,
 } from "./order-copy-checks.js";
 import { countsFillsAndSkips } from "./order-count-checks.js";
 import {
   announcesFillNotices,
+  announcesRowsOfOneInstantAsWritten,
   countsALandedFillOnce,
   linksALateLandingWithItsFill,
   listsTheFillsInFlight,
@@ -224,6 +226,11 @@ function copyChecks(create: () => Promise<OrderStoreSubject>): readonly Contract
     ),
     checkOn("lists an agent's copy buys of a leader in any order state", create, listsCopyBuys),
     checkOn(
+      "pages an agent's copy buys in the order they were written",
+      create,
+      pagesCopyBuysInWriteOrder,
+    ),
+    checkOn(
       "lists an order's rows of one instant newest written first",
       create,
       listsRowsOfOneInstantAsWritten,
@@ -276,6 +283,11 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     checkOn("refuses fill calls on an aborted signal", create, refusesAbortedFills),
     checkOn("writes a frozen fill's row with the freeze's cancel", create, writesAFrozenFillsRow),
     checkOn("keeps a row's notices until they are announced", create, announcesFillNotices),
+    checkOn(
+      "lists rows of one instant to announce in the order they were written",
+      create,
+      announcesRowsOfOneInstantAsWritten,
+    ),
     checkOn(
       "refuses a fill row without its order's own move",
       create,
