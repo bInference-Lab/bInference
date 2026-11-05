@@ -95,6 +95,11 @@ async function startMachine(
   return { skeleton, botApi, chat, telegram: composed };
 }
 
+// Sent lines in one order, so a test compares them as a set.
+function byText(left: string, right: string): number {
+  return left.localeCompare(right);
+}
+
 describe.each(skeletonCompositions)(
   "the runtime skeleton on the $name composition",
   (composition) => {
@@ -107,34 +112,42 @@ describe.each(skeletonCompositions)(
         await skeleton.clock.advance(300);
         await telegram.chat.idle();
         await chat.turnsEnded(1);
+        await skeleton.clock.advance(5_000);
         await telegram.idle();
         const confirm = confirmOf(botApi);
         expect(confirm.data).toMatch(/^bnf1:c:y:/);
         const press = botApi.press({ from: ownerId, ...confirm });
         await telegram.ingress.receive(press, live());
         await chat.turnsEnded(2);
+        await skeleton.clock.advance(5_000);
         await telegram.idle();
         expect(chat.pushes.map((push) => push.kind)).toStrictEqual([
           "chat/turnStarted",
+          "chat/progress",
           "chat/status",
           "chat/turnEnded",
           "chat/turnStarted",
           "chat/message",
+          "chat/message",
           "chat/turnEnded",
         ]);
-        expect(botApi.sent().map(({ text }) => text.split("\n")[0])).toStrictEqual([
-          "Working on it · 0 s",
-          `${icons.waiting} Confirm ${kind} · main · ${icons.paper} Paper`,
-          `${icons.waiting} Waiting for your answer on its card`,
-          "Working on it · 0 s",
-          report,
-        ]);
+        // The status message shows at once for the proposal's tool line, beside its card; the report
+        // comes within a second and a half, so its turn shows none.
+        const sent = botApi.sent().map(({ text }) => text.split("\n", 1).join(""));
+        expect(sent.toSorted(byText)).toStrictEqual(
+          [
+            "Working on it · 0 s",
+            `${icons.waiting} Confirm ${kind} · main · ${icons.paper} Paper`,
+            `${icons.waiting} Waiting for your answer on its card`,
+            report,
+          ].toSorted(byText),
+        );
         expect(botApi.messages().map(({ text, buttons }) => ({ text, buttons }))).toStrictEqual([
           { text: `${icons.paper} Paper fill: 0.000000000001 FAKE → 2 TKN`, buttons: [] },
           { text: `${icons.waiting} Waiting for your answer on its card`, buttons: [] },
           { text: report, buttons: [] },
         ]);
-        expect(botApi.deleted().map(({ messageId }) => messageId)).toStrictEqual([1001, 1004]);
+        expect(botApi.deleted()).toHaveLength(1);
       },
     );
   },

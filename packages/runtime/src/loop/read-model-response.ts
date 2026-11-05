@@ -163,14 +163,21 @@ function close(iterator: AsyncIterator<ModelEvent>): void {
   iterator.return?.().catch(() => undefined);
 }
 
+/** What a response is read with: its signal and clock, and who hears its text as it grows. */
+export interface ReadOptions extends SettleOptions {
+  /** Hears the response's text so far with each piece of it. */
+  readonly onText?: (soFar: string) => void;
+}
+
 // Each event is awaited only until the signal aborts, so a transport that ignores its signal
 // never holds the turn past a stop or its time limit.
 async function readEvents(
   events: AsyncIterable<ModelEvent>,
   draft: ResponseDraft,
-  options: SettleOptions,
+  options: ReadOptions,
 ): Promise<ModelResponse | string> {
   const iterator = events[Symbol.asyncIterator]();
+  let soFar = "";
   for (;;) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- each event follows the one before
     const next = await settleBy(async () => iterator.next(), options);
@@ -180,7 +187,12 @@ async function readEvents(
         ? "the stream failed"
         : "the stream ended without its last event";
     }
-    const step = apply(draft, next.value.value);
+    const event = next.value.value;
+    const step = apply(draft, event);
+    if (event.type === "text" && event.delta !== "" && options.onText !== undefined) {
+      soFar += event.delta;
+      options.onText(soFar);
+    }
     if (step !== undefined) {
       close(iterator);
       return step;
@@ -196,7 +208,7 @@ async function readEvents(
  */
 export async function readModelResponse(
   events: AsyncIterable<ModelEvent>,
-  options: SettleOptions,
+  options: ReadOptions,
 ): Promise<ModelResponse> {
   const draft: ResponseDraft = { textParts: [], reasoningParts: [], calls: new Map() };
   const step = await readEvents(events, draft, options);

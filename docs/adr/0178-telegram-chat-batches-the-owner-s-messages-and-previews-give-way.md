@@ -1,6 +1,6 @@
 # 0178. Telegram chat batches the owner's messages, and previews give way
 
-Status: Amended by 0370
+Status: Amended by 0371
 
 Accepted by the owner on 2026-10-12.
 

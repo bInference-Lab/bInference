@@ -60,16 +60,22 @@ Rules for this package:
   posts within 300 ms of each other become one `chat/post` for the only agent, photos as
   `tg:<file id>`, at most 4 of at most 5 MiB each. An edit, a forward and a post with neither
   text nor a photo are answered at once and go nowhere (decision 0178).
-- The agent's replies come from the engine's pushes on its chat topic through `createChatReplies`:
-  one status message per turn, refreshed about once a second, then the answer as new messages and
-  the status message deleted. Model text goes out as Telegram HTML only through
-  `src/chat/chat-html.ts`: every line through `displayOutsideText`, then its Markdown drawn by
-  `src/format/rich-html.ts` and split by `src/split/split-rich-lines.ts`, a paragraph break
-  preferred, each message rendering its own tags. A message Telegram answers with a 400 it cannot
-  parse (`isEntitiesUnparsed`) goes once more as its plain text, no parse mode, and the log names
-  its message id, never its words. The status message's preview stays plain text.
-- A status message's edit is a preview: it goes with a `previewSignal`, and the throttler drops it
-  rather than queue it behind another call or a wait. Nothing else is sent as a preview.
+- The agent's replies come from the engine's pushes on its chat topic through `createChatReplies`
+  (decision 0371): a turn's status message (`src/chat/status-message.ts`) first shows 1.5 seconds
+  into the turn, or at once for a `chat/progress` line, and is edited at most once a second with
+  the work lines of `progress-lines.ts` and the draft; then the answer goes as new messages and the
+  status message is deleted once it has shown for 4 seconds. Model text goes out as Telegram HTML
+  only through `src/chat/chat-html.ts`: every line through `displayOutsideText`, then its Markdown
+  drawn by `src/format/rich-html.ts` and split by `src/split/split-rich-lines.ts`, a paragraph
+  break preferred, each message rendering its own tags; the status message draws its draft the
+  same way (`status-preview.ts`), cut from its start to fit 4,096 characters. A message Telegram
+  answers with a 400 it cannot parse (`isEntitiesUnparsed`) goes once more as its plain text, no
+  parse mode, and the log names its message id, never its words.
+- A status message's send and edit are previews (`src/chat/preview-sends.ts`): each goes with a
+  `previewSignal`, and the throttler drops it rather than queue it behind another call or a wait.
+  A dropped preview waits for the next refresh. A first send that may have reached Telegram is
+  never sent again, and any failure but a passing one stops the edits for the turn. Nothing else
+  is sent as a preview. An answer Telegram refuses leaves the status message saying so.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, the one
   setting the chat changes, decision 0134), and only `commandCallbackSchema` reads it. A press

@@ -57,6 +57,12 @@ export interface EngineStatus extends EngineTurn {
   readonly values?: Readonly<Record<string, number>>;
 }
 
+/** `turn/progress`: a line of spec 4 for the work the turn does now, and its values. */
+export interface EngineProgress extends EngineTurn {
+  readonly progressKey: string;
+  readonly values?: Readonly<Record<string, string>>;
+}
+
 /** `usage/record`: one model call attempt's tokens and cost, under the record's own key. */
 export interface EngineUsage extends EngineTurn {
   readonly model: string;

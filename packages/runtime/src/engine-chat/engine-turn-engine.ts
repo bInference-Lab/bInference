@@ -5,8 +5,9 @@ import type { TurnStartRequest } from "../loop/turn-records.js";
 import { type AgentStores, written } from "../sessions/agent-stores.js";
 import { ownerEvents } from "../sessions/session-journal.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
-import type { TurnStartAnswer } from "./engine-chat-records.js";
+import type { EngineTurn, TurnStartAnswer } from "./engine-chat-records.js";
 import type { EngineChat } from "./ports.js";
+import { progressKeyOf } from "./progress-keys.js";
 import { statusKeysOf } from "./status-keys.js";
 
 /** What the engine's side of one turn works with. */
@@ -53,9 +54,22 @@ async function recordStart(
   }
 }
 
+// A tool's progress line of spec 4; a tool that shows none sends nothing.
+function progressOf(chat: EngineChat, at: EngineTurn): TurnEngine["progress"] {
+  return async (tool, signal) => {
+    const line = progressKeyOf(tool);
+    if (line !== undefined) {
+      const { key: progressKey, values } = line;
+      const progress = { ...at, progressKey, ...(values === undefined ? {} : { values }) };
+      await chat.turnProgress(progress, signal);
+    }
+  };
+}
+
 /**
  * The engine's side of one turn over the runtime's link to the engine (runtime spec, section 4.3):
- * `turn/start`, then the turn's row in `agent.sqlite`; `turn/mark`; `turn/say` with the final text;
+ * `turn/start`, then the turn's row in `agent.sqlite`; `turn/mark`; `turn/say` with the final text
+ * and, before it, with each draft; `turn/progress` with the line of spec 4 a tool shows;
  * `turn/status` with the line's keys of spec 4; `usage/record` after each model call attempt;
  * `turn/end`. A start the engine refuses answers the refusal, after the paused status line for a
  * spent budget; one it cannot answer, or whose row is not written, rejects.
@@ -97,6 +111,9 @@ export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
     mark: async (signal) => chat.markTurn(at, signal),
     say: async (text, signal) =>
       chat.sayTurn({ ...at, session: place.session, text, final: true }, signal),
+    draft: async (text, signal) =>
+      chat.sayTurn({ ...at, session: place.session, text, final: false }, signal),
+    progress: progressOf(chat, at),
     status,
     recordUsage: async (usage, signal) => chat.recordUsage({ ...at, ...usage }, signal),
     end: async (outcome, signal) => chat.endTurn({ ...at, outcome }, signal),

@@ -39,6 +39,11 @@ export type RecordedStep =
   | { readonly kind: "end"; readonly outcome: TurnOutcome }
   | { readonly kind: "tool"; readonly name: string; readonly key: string };
 
+/** A draft of the turn's text, or a tool the turn runs, as the turn told the engine. */
+export type RecordedFeed =
+  | { readonly kind: "draft"; readonly text: string }
+  | { readonly kind: "progress"; readonly tool: string };
+
 /** How the recorder's engine answers. */
 export interface TurnRecorderOptions {
   /** `turn/start` fails with this refusal. */
@@ -65,6 +70,8 @@ export interface TurnRecorder {
   readonly engine: TurnEngine;
   readonly merge: MergeSource;
   readonly steps: readonly RecordedStep[];
+  /** The drafts and tool lines the turn handed the engine, apart from the steps, in order. */
+  readonly feed: readonly RecordedFeed[];
   /** Adds messages that join the turn at its next merge point. */
   queue(...messages: readonly OwnerMessage[]): void;
   /** Records a step of the test's own, such as a tool's run. */
@@ -92,9 +99,16 @@ function createJournal(note: Write): TurnJournal {
   };
 }
 
-function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
+function createEngine(note: Write, options: TurnRecorderOptions, feed: RecordedFeed[]): TurnEngine {
   const budget = { leftMicros: options.budgetMicros ?? 1_000_000n };
+  const fed = async (entry: RecordedFeed, signal: AbortSignal): Promise<void> => {
+    signal.throwIfAborted();
+    feed.push(entry);
+    return Promise.resolve();
+  };
   return {
+    draft: async (text, signal) => fed({ kind: "draft", text }, signal),
+    progress: async (tool, signal) => fed({ kind: "progress", tool }, signal),
     start: async ({ messages, outsideContent }, signal) => {
       if (options.failStart === true) {
         throw new Error("The engine cannot be reached.");
@@ -129,6 +143,7 @@ function createEngine(note: Write, options: TurnRecorderOptions): TurnEngine {
 /** Creates a recorder whose engine starts every turn and takes every mark, unless told not to. */
 export function createTurnRecorder(options: TurnRecorderOptions = {}): TurnRecorder {
   const steps: RecordedStep[] = [];
+  const feed: RecordedFeed[] = [];
   const waiting: OwnerMessage[] = [];
   const note = (step: RecordedStep): void => {
     steps.push(step);
@@ -141,7 +156,7 @@ export function createTurnRecorder(options: TurnRecorderOptions = {}): TurnRecor
   };
   return {
     journal: createJournal(write),
-    engine: createEngine(write, options),
+    engine: createEngine(write, options, feed),
     merge: {
       take: async () => {
         if (options.failTake === true) {
@@ -151,6 +166,7 @@ export function createTurnRecorder(options: TurnRecorderOptions = {}): TurnRecor
       },
     },
     steps,
+    feed,
     queue: (...messages) => {
       waiting.push(...messages);
     },

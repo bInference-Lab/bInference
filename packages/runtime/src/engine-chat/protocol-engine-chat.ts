@@ -34,7 +34,10 @@ function refusalOf(error: Error): TurnStartAnswer | undefined {
 
 function turnCalls(
   client: ChatClient,
-): Pick<EngineChat, "markTurn" | "sayTurn" | "turnStatus" | "recordUsage" | "endTurn"> {
+): Pick<
+  EngineChat,
+  "markTurn" | "sayTurn" | "turnStatus" | "turnProgress" | "recordUsage" | "endTurn"
+> {
   return {
     async markTurn({ agent, turn }, signal) {
       await client.call("turn/mark", { agent, turn }, { signal });
@@ -50,6 +53,15 @@ function turnCalls(
         ...(values === undefined ? {} : { values: { ...values } }),
       };
       await client.call("turn/status", args, { signal });
+    },
+    async turnProgress({ agent, turn, progressKey, values }, signal) {
+      const args = {
+        agent,
+        turn,
+        progressKey,
+        ...(values === undefined ? {} : { values: { ...values } }),
+      };
+      await client.call("turn/progress", args, { signal });
     },
     async recordUsage({ key, ...usage }, signal) {
       const { budgetLeftMicros, resumesAt } = await client.call("usage/record", usage, {

@@ -105,6 +105,15 @@ export const chatExamples: { readonly [N in keyof ChatOperationShapes]: WireExam
     },
     result: empty,
   },
+  "turn/progress": {
+    args: {
+      agent: ids.agent,
+      turn: ids.turn,
+      progressKey: "turn.tool.plugin",
+      values: { plugin: "fear_index" },
+    },
+    result: empty,
+  },
   "turn/end": { args: { agent: ids.agent, turn: ids.turn, outcome: "budget" }, result: empty },
   "usage/record": {
     args: {

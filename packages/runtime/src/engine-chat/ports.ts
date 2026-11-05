@@ -2,6 +2,7 @@ import type { Id, Result } from "@binference/core";
 import type { LiveFactsView } from "@binference/protocol";
 import type { ImageReadRefusal } from "../loop/turn-records.js";
 import type {
+  EngineProgress,
   EngineSay,
   EngineStatus,
   EngineTurn,
@@ -38,6 +39,8 @@ export interface EngineChat {
   sayTurn(say: EngineSay, signal: AbortSignal): Promise<void>;
   /** `turn/status`. */
   turnStatus(status: EngineStatus, signal: AbortSignal): Promise<void>;
+  /** `turn/progress`. */
+  turnProgress(progress: EngineProgress, signal: AbortSignal): Promise<void>;
   /**
    * `usage/record`: answers what is left of the agent's model budget after the record, and when it
    * resumes once spent.

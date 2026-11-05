@@ -61,6 +61,9 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
     case "chat/status":
       print([statusLine(context.formatter, push.statusKey, push.values)]);
       return;
+    // The live area shows the answer so far; a progress line prints nothing.
+    case "chat/progress":
+      return;
     case "chat/turnEnded":
       store.update((state) => ended(state, push.turn));
       return;

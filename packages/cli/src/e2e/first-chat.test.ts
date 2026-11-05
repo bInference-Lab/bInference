@@ -6,8 +6,8 @@ import {
   type Interview,
   interviewReplies,
   ownerTexts,
-  pushed,
   runInterview,
+  saidTexts,
   say,
   startFirstChat,
 } from "./first-chat-machine.js";
@@ -92,6 +92,6 @@ describe("the first chat", () => {
     const offered = script.requests.flatMap(({ tools }) => tools.map(({ name }) => name));
     expect(offered.filter((name) => name.includes("limit"))).toStrictEqual([]);
     expect(after).toStrictEqual(before);
-    expect(pushed(machine.chat, "chat/message", "text")).toStrictEqual([pointer]);
+    expect(saidTexts(machine.chat)).toStrictEqual([pointer]);
   });
 });

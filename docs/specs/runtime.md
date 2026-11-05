@@ -261,9 +261,16 @@ The operations are in [spec 1, section 7.7](protocol.md#section-7-7).
 2. `turn/mark` `{ agent, turn }`: the turn now holds outside content. The mark never clears. The
    runtime waits for the answer before its next model call.
 3. `turn/say`, `turn/status`: the agent's text, edited in place until `final`, and its status
-   line, onto the `chat:<agt>` topic.
-4. `usage/record` after each model call (section 8.3).
-5. `turn/end` `{ agent, turn, outcome }`: the engine clears the running turn and pushes
+   line, onto the `chat:<agt>` topic. While a model call of the turn streams, its text so far goes
+   as a draft, `final: false`, at most every 250 ms, the newest replacing one not yet sent
+   ([decision 0371](../DECISIONS.md#d0371)). A summary or a vision model's call sends none.
+4. `turn/progress` `{ agent, turn, progressKey, values? }`: as each tool call of the turn starts,
+   its line of spec 4, section 8.4, after the draft written before it; asking the owner and the
+   first chat's end send none. Drafts and progress lines go one at a time, in order, each given up
+   after 5 seconds or a failure, so they never hold the turn; nothing keeps them. They settle
+   before the final text, so no draft follows it.
+5. `usage/record` after each model call (section 8.3).
+6. `turn/end` `{ agent, turn, outcome }`: the engine clears the running turn and pushes
    `chat/turnEnded`. The runtime's exit clears every running turn as `failed`.
 
 **The mark in the engine.** A proposal from the agent runtime takes the mark of its agent's

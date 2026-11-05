@@ -14,6 +14,7 @@ export interface RuntimeChatHandlers {
   readonly "turn/mark": EngineHandler<"turn/mark">;
   readonly "turn/say": EngineHandler<"turn/say">;
   readonly "turn/status": EngineHandler<"turn/status">;
+  readonly "turn/progress": EngineHandler<"turn/progress">;
   readonly "turn/ask": EngineHandler<"turn/ask">;
   readonly "turn/end": EngineHandler<"turn/end">;
   readonly "usage/record": EngineHandler<"usage/record">;
@@ -128,6 +129,16 @@ function turnHandlers(
   };
 }
 
+// A line of the turn's work in progress reaches the agent's chat topic and nothing keeps it.
+function progressHandler(options: ChatRelayOptions): EngineHandler<"turn/progress"> {
+  return async (call) => {
+    const { agent, turn, progressKey, values } = call.args;
+    const data = { agent, turn, progressKey, ...(values === undefined ? {} : { values }) };
+    options.publish({ topic: chatTopic(agent), kind: "chat/progress", data });
+    return Promise.resolve(ok({}));
+  };
+}
+
 // Each model call attempt's usage is taken whatever the agent's state now, since it was spent, and
 // charged once by the key the runtime sent it under (decision 0198).
 function usageHandler(options: ChatRelayOptions): EngineHandler<"usage/record"> {
@@ -186,7 +197,7 @@ function inboxHandlers(
 /**
  * Creates the agent's side of chat, which only the token of the runtime's current start may call
  * (runtime spec, section 4.3): `turn/start` records the agent's running turn with the mark its
- * context holds, `turn/mark` marks it for good, `turn/say`, `turn/status` and `turn/end` reach the
+ * context holds, `turn/mark` marks it for good, `turn/say`, `turn/status`, `turn/progress` and `turn/end` reach the
  * agent's chat topic, the loop guard's status line also sends `notice.loop`, `turn/start` refuses
  * a turn once the agent's model budget of the day is spent, `turn/ask` asks the owner the agent's
  * question, `usage/record` charges each model call attempt once, and `inbox/list` and `inbox/take` hand the runtime its stored messages.
@@ -199,6 +210,7 @@ export function createRuntimeChatHandlers(options: ChatRelayOptions): RuntimeCha
     "turn/mark": runtimeOnly(options, turn["turn/mark"]),
     "turn/say": runtimeOnly(options, turn["turn/say"]),
     "turn/status": runtimeOnly(options, turn["turn/status"]),
+    "turn/progress": runtimeOnly(options, progressHandler(options)),
     "turn/ask": runtimeOnly(options, async (call) => askOwner(options, call)),
     "turn/end": runtimeOnly(options, turn["turn/end"]),
     "usage/record": runtimeOnly(options, usageHandler(options)),

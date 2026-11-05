@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** A line's values, as `chat/status` and `chat/progress` carry them. */
+type LineValues = Readonly<Record<string, string | number>>;
+
 /** A push of an agent's chat topic, in the shapes of protocol spec section 7.7. */
 export type ChatPush =
   | { readonly kind: "chat/turnStarted"; readonly agent: string; readonly turn: string }
@@ -15,11 +18,19 @@ export type ChatPush =
       readonly agent: string;
       readonly turn: string;
       readonly statusKey: string;
-      readonly values?: Readonly<Record<string, string | number>>;
+      readonly values?: LineValues;
+    }
+  | {
+      readonly kind: "chat/progress";
+      readonly agent: string;
+      readonly turn: string;
+      readonly progressKey: string;
+      readonly values?: LineValues;
     }
   | { readonly kind: "chat/turnEnded"; readonly agent: string; readonly turn: string };
 
 const at = { agent: z.string().min(1), turn: z.string().min(1) };
+const values = z.record(z.string(), z.union([z.string(), z.number()])).optional();
 
 const pushSchema = z.discriminatedUnion("kind", [
   z.looseObject({ kind: z.literal("chat/turnStarted"), data: z.looseObject(at) }),
@@ -29,11 +40,11 @@ const pushSchema = z.discriminatedUnion("kind", [
   }),
   z.looseObject({
     kind: z.literal("chat/status"),
-    data: z.looseObject({
-      ...at,
-      statusKey: z.string().min(1),
-      values: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
-    }),
+    data: z.looseObject({ ...at, statusKey: z.string().min(1), values }),
+  }),
+  z.looseObject({
+    kind: z.literal("chat/progress"),
+    data: z.looseObject({ ...at, progressKey: z.string().min(1), values }),
   }),
   z.looseObject({ kind: z.literal("chat/turnEnded"), data: z.looseObject(at) }),
 ]);
@@ -56,8 +67,24 @@ export function chatPushOf(push: {
     return { kind: read.kind, agent, turn, text, final };
   }
   if (read.kind === "chat/status") {
-    const { agent, turn, statusKey, values } = read.data;
-    return { kind: read.kind, agent, turn, statusKey, ...(values === undefined ? {} : { values }) };
+    const { agent, turn, statusKey, values: shown } = read.data;
+    return {
+      kind: read.kind,
+      agent,
+      turn,
+      statusKey,
+      ...(shown === undefined ? {} : { values: shown }),
+    };
+  }
+  if (read.kind === "chat/progress") {
+    const { agent, turn, progressKey, values: shown } = read.data;
+    return {
+      kind: read.kind,
+      agent,
+      turn,
+      progressKey,
+      ...(shown === undefined ? {} : { values: shown }),
+    };
   }
   return { kind: read.kind, agent: read.data.agent, turn: read.data.turn };
 }

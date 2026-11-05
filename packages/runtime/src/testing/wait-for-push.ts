@@ -1,4 +1,4 @@
-import type { ChatPush } from "./memory-engine-chat.js";
+import type { ChatPush } from "./memory-chat-topic.js";
 
 /** The pushes a fake engine made, and those that wait for the next. */
 interface PushLog {

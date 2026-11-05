@@ -36,15 +36,19 @@ function clientOver(engine: MemoryEngineChat, topics: Map<string, TopicHandlers>
         }
         return { budgetLeftMicros: started.budgetLeftMicros };
       }
-      case "turn/mark":
-        return engine.markTurn(args as never, signal).then(() => ({}));
-      case "turn/say":
-        return engine.sayTurn(args as never, signal).then(() => ({}));
-      case "turn/status":
-        return engine.turnStatus(args as never, signal).then(() => ({}));
       default:
-        return engine.endTurn(args as never, signal).then(() => ({}));
+        return answerTurn(op, args, signal);
     }
+  };
+  const answerTurn = async (op: string, args: Record<string, unknown>, signal: AbortSignal) => {
+    const calls: Readonly<Record<string, (args: never, signal: AbortSignal) => Promise<void>>> = {
+      "turn/mark": async (given, at) => engine.markTurn(given, at),
+      "turn/say": async (given, at) => engine.sayTurn(given, at),
+      "turn/status": async (given, at) => engine.turnStatus(given, at),
+      "turn/progress": async (given, at) => engine.turnProgress(given, at),
+    };
+    const call = calls[op] ?? (async (given: never, at: AbortSignal) => engine.endTurn(given, at));
+    return call(args as never, signal).then(() => ({}));
   };
   return {
     call: async (
@@ -97,6 +101,7 @@ describe("createProtocolEngineChat", () => {
           },
           clear: async () => engine.clear(agent),
           chatSeen: async () => engine.pushes.map((push) => push.kind),
+          feedSeen: async () => engine.feed.map((push) => `${push.kind} ${push.detail}`),
         };
       },
     }),

@@ -60,9 +60,10 @@ function isFilled(api: SmokeBot["api"]): boolean {
   return api.messages().some((message) => message.text.includes("Paper fill"));
 }
 
-// How many messages the bot sent that carry `text`.
+// How many messages the bot sent that begin with `text`: the answer goes as its own message, while
+// the status message that shows the draft begins with its work line.
 function sentWith(api: SmokeBot["api"], text: string): number {
-  return api.sent().filter((sent) => sent.text.includes(text)).length;
+  return api.sent().filter((sent) => sent.text.startsWith(text)).length;
 }
 
 /**

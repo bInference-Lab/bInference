@@ -89,6 +89,13 @@ export interface TurnEngine {
   /** `turn/mark`: the turn holds outside content. Throws when the engine did not take the mark. */
   mark(signal: AbortSignal): Promise<void>;
   say(text: string, signal: AbortSignal): Promise<void>;
+  /** `turn/say` with `final: false`: the text the turn's model call has written so far. */
+  draft(text: string, signal: AbortSignal): Promise<void>;
+  /**
+   * `turn/progress`: the turn runs the tool of this name now. A tool that is no work of its own to
+   * show, such as asking the owner, sends nothing.
+   */
+  progress(tool: string, signal: AbortSignal): Promise<void>;
   status(line: TurnStatusLine, signal: AbortSignal): Promise<void>;
   /**
    * `usage/record`: one attempt's usage, and what is left of the agent's budget after it, 0 or

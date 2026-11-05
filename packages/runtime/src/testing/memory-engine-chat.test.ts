@@ -20,6 +20,7 @@ describe("createMemoryEngineChat", () => {
           },
           clear: async () => chat.clear(agent),
           chatSeen: async () => chat.pushes.map((push) => push.kind),
+          feedSeen: async () => chat.feed.map((push) => `${push.kind} ${push.detail}`),
         };
       },
     }),

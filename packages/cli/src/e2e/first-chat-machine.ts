@@ -160,6 +160,14 @@ export function pushed(chat: ChatWatch, kind: string, field: string): readonly s
     .map((value) => z.string().parse(value));
 }
 
+/** The agent's final texts on its chat topic, in order: drafts left out. */
+export function saidTexts(chat: ChatWatch): readonly string[] {
+  return chat.pushes
+    .filter((push) => push.kind === "chat/message")
+    .map(({ data }) => z.object({ text: z.string(), final: z.boolean() }).parse(data))
+    .flatMap((message) => (message.final ? [message.text] : []));
+}
+
 /** The owner's messages the model saw in a request, in order. */
 export function ownerTexts(request: ModelRequest | undefined): readonly string[] {
   return (request?.messages ?? []).flatMap((message) =>

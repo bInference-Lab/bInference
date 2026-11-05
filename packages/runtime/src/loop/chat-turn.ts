@@ -7,6 +7,7 @@ import { answerOpenCalls, endTurn, portFailure } from "./end-turn.js";
 import { createLoopGuard } from "./loop-guard.js";
 import type { ModelMessage, OwnerMessage } from "./model-message.js";
 import { trackOpenCalls } from "./open-calls.js";
+import { createTurnFeed } from "./turn-feed.js";
 import { type TurnHalt, type TurnStop } from "./turn-halt.js";
 import type { TurnRefusal } from "./turn-records.js";
 import {
@@ -183,6 +184,11 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
           }),
         }),
     tally,
+    feed: createTurnFeed({
+      engine: options.parts.engine,
+      clock: options.parts.clock,
+      signal: options.lifetime,
+    }),
     loopGuard: createLoopGuard({ enabled: limits.loopGuard }),
     halted: halt.signal,
     halt: (reason: TurnHalt) => halt.abort(reason),

@@ -2,6 +2,7 @@ import { displayOutsideText } from "@binference/i18n";
 import { escapeHtml } from "../format/escape-html.js";
 import { richLinesOf } from "../format/markdown-lines.js";
 import { richHtmlOf, richPlainOf } from "../format/rich-html.js";
+import type { RichLine } from "../format/rich-line.js";
 import { splitRichLines } from "../split/split-rich-lines.js";
 
 /** One message of the agent's text: as Telegram HTML, and as plain text if Telegram refuses it. */
@@ -15,21 +16,32 @@ export interface ChatHtml {
 const tabSpaces = "    ";
 
 /**
- * The agent's text as Telegram messages of at most 4,096 characters each (spec 4, section 1).
- * Each line first goes through `displayOutsideText`, then its Markdown is drawn in Telegram's
- * HTML from a fixed set of tags over escaped text (decision 0370), so markup the model writes,
- * a `<b>` among it, reads as text. A text with nothing to show gives no message.
+ * The agent's text as rich lines: each line first goes through `displayOutsideText`, then its
+ * Markdown is read into runs of the fixed set of tags (decision 0370), so markup the model writes,
+ * a `<b>` among it, reads as text.
  */
-export function chatHtmlOf(text: string): readonly ChatHtml[] {
+export function shownLinesOf(text: string): readonly RichLine[] {
   const lines = text
     .replaceAll("\r\n", "\n")
     .replaceAll("\r", "\n")
     .replaceAll("\t", tabSpaces)
     .split("\n")
     .map((line) => displayOutsideText(line, Number.POSITIVE_INFINITY));
-  const shown = lines.join("\n").trim();
-  return splitRichLines(richLinesOf(shown))
-    .map((piece) => ({ html: richHtmlOf(piece), plain: richPlainOf(piece) }))
+  return richLinesOf(lines.join("\n").trim());
+}
+
+/** Lines as one message of Telegram HTML and the same words as plain text. */
+export function chatHtmlOfLines(lines: readonly RichLine[]): ChatHtml {
+  return { html: richHtmlOf(lines), plain: richPlainOf(lines) };
+}
+
+/**
+ * The agent's text as Telegram messages of at most 4,096 characters each (spec 4, section 1),
+ * drawn from {@link shownLinesOf}. A text with nothing to show gives no message.
+ */
+export function chatHtmlOf(text: string): readonly ChatHtml[] {
+  return splitRichLines(shownLinesOf(text))
+    .map(chatHtmlOfLines)
     .filter((piece) => piece.plain.trim() !== "");
 }
 

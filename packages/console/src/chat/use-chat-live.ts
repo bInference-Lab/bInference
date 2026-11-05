@@ -72,6 +72,10 @@ function stepOf(push: ChatPush, id: string): PushStep {
     };
     return { lines: (lines) => [...lines, line] };
   }
+  // The page shows the answer so far while the turn runs; a progress line adds nothing to it.
+  if (push.kind === "chat/progress") {
+    return {};
+  }
   return { running: (running) => (running?.turn === push.turn ? undefined : running) };
 }
 

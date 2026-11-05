@@ -193,6 +193,16 @@ describe("the chat relay to the agent runtime process", () => {
             session: posted.session,
             turn: posted.turn,
             text: "Hello from the agent.",
+            final: false,
+          },
+        ],
+        [
+          "chat/message",
+          {
+            agent: id,
+            session: posted.session,
+            turn: posted.turn,
+            text: "Hello from the agent.",
             final: true,
           },
         ],
@@ -230,6 +240,16 @@ describe("the chat relay to the agent runtime process", () => {
       const posted = await client.call("chat/post", { agent: id, text: "hi" }, live());
       await ended;
       expect(pushes.map(({ kind, data }) => [kind, data]).slice(1)).toStrictEqual([
+        [
+          "chat/message",
+          {
+            agent: id,
+            session: posted.session,
+            turn: posted.turn,
+            text: "Hello from the model.",
+            final: false,
+          },
+        ],
         [
           "chat/message",
           {

@@ -76,6 +76,8 @@ async function sendPhoto(machine: Machine, caption: string): Promise<void> {
   await skeleton.clock.advance(300);
   await telegram.chat.idle();
   await chat.turnsEnded(1);
+  // A status message that showed goes 4 seconds after it did.
+  await skeleton.clock.advance(5_000);
   await telegram.idle();
 }
 

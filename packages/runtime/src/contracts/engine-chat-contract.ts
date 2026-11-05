@@ -20,6 +20,11 @@ export interface EngineChatSubject {
   readonly clear: () => Promise<Id<"ses">>;
   /** The kinds pushed on the agent's chat topic, once the push of a turn's end was seen. */
   readonly chatSeen: () => Promise<readonly string[]>;
+  /**
+   * What the turns pushed that a surface shows only while a turn runs, once their end was seen:
+   * `draft <text>` for `chat/message` with `final: false`, `progress <key>` for `chat/progress`.
+   */
+  readonly feedSeen: () => Promise<readonly string[]>;
 }
 
 /** Makes a fresh subject for each check. */
@@ -132,6 +137,20 @@ async function refusesUnknownAgent(harness: EngineChatHarness): Promise<void> {
   });
 }
 
+async function carriesTheFeed(harness: EngineChatHarness): Promise<void> {
+  const subject = await harness.create();
+  const { chat, agent } = subject;
+  const { posted, message } = await postedMessage(subject, "show your work");
+  const at = { agent, turn: posted.turn };
+  const start = { ...at, session: posted.session, messages: [message.message] };
+  await chat.startTurn({ ...start, outsideContent: false }, live());
+  await chat.sayTurn({ ...at, session: posted.session, text: "Check", final: false }, live());
+  const values = { plugin: "fear_index" };
+  await chat.turnProgress({ ...at, progressKey: "turn.tool.plugin", values }, live());
+  await chat.endTurn({ ...at, outcome: "ok" }, live());
+  assert.deepEqual(await subject.feedSeen(), ["draft Check", "progress turn.tool.plugin"]);
+}
+
 async function listsStopAndClear(harness: EngineChatHarness): Promise<void> {
   const subject = await harness.create();
   await subject.stop();
@@ -165,6 +184,10 @@ export function engineChatContract(harness: EngineChatHarness): readonly Contrac
     {
       name: "starts, marks, records the usage of, says, sets the status of and ends a turn",
       run: async () => runsATurn(harness),
+    },
+    {
+      name: "carries a turn's draft and progress line",
+      run: async () => carriesTheFeed(harness),
     },
     {
       name: "refuses to start a turn of an unknown agent",

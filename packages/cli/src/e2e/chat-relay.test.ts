@@ -147,6 +147,14 @@ function engineOver(runtime: ProtocolClient, place: TurnPlace): TurnEngine {
         { signal },
       );
     },
+    async draft(text, signal) {
+      const draft = { ...at, session: place.session, text, final: false };
+      await runtime.call("turn/say", draft, { signal });
+    },
+    async progress(tool, signal) {
+      const progressKey = tool === "swap" ? "turn.tool.swap" : "turn.tool.searchWeb";
+      await runtime.call("turn/progress", { ...at, progressKey }, { signal });
+    },
     async status(line, signal) {
       await runtime.call("turn/status", { ...at, statusKey: statusKeyOf(line) }, { signal });
     },

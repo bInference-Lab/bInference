@@ -78,6 +78,16 @@ interface StatusArgs extends AgentArgs {
   readonly values?: Readonly<Record<string, string | number>>;
 }
 
+/**
+ * The args of `turn/progress`: an i18n key for one line of the turn's work in progress, such as a
+ * tool it runs, and its values. A surface shows it while the turn runs and keeps none of it.
+ */
+interface ProgressArgs extends AgentArgs {
+  readonly turn: ProtocolId<"chatTurn">;
+  readonly progressKey: string;
+  readonly values?: Readonly<Record<string, string | number>>;
+}
+
 /** The args of `turn/end`. */
 interface EndTurnArgs extends AgentArgs {
   readonly turn: ProtocolId<"chatTurn">;
@@ -151,6 +161,7 @@ export interface ChatOperationShapes {
   readonly "turn/mark": { readonly args: MarkTurnArgs; readonly result: Empty };
   readonly "turn/say": { readonly args: SayArgs; readonly result: Empty };
   readonly "turn/status": { readonly args: StatusArgs; readonly result: Empty };
+  readonly "turn/progress": { readonly args: ProgressArgs; readonly result: Empty };
   readonly "turn/end": { readonly args: EndTurnArgs; readonly result: Empty };
   readonly "usage/record": {
     readonly args: RecordUsageArgs;
@@ -170,6 +181,9 @@ const session = protocolIdSchema("chatSession");
 const tokens = z.int().nonnegative();
 const model = z.string().min(1).max(128);
 const message = protocolIdSchema("inboxMessage");
+// A status or progress line's i18n key, such as `turn.stopped`, and the values it takes.
+const lineKey = z.string().regex(/^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*)+$/);
+const lineValues = z.record(z.string(), z.union([z.string(), z.number()])).exactOptional();
 
 /** The chat, turn and usage operations, by name. */
 export const chatOperations: OperationTable<ChatOperationShapes> = {
@@ -249,9 +263,16 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
     args: z.strictObject({
       agent,
       turn,
-      statusKey: z.string().regex(/^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*)+$/),
-      values: z.record(z.string(), z.union([z.string(), z.number()])).exactOptional(),
+      statusKey: lineKey,
+      values: lineValues,
     }),
+    result: emptyResultSchema,
+  },
+  "turn/progress": {
+    ...readFlags,
+    name: "turn/progress",
+    scope: "agent",
+    args: z.strictObject({ agent, turn, progressKey: lineKey, values: lineValues }),
     result: emptyResultSchema,
   },
   "turn/end": {

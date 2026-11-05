@@ -9,18 +9,14 @@ import type {
 } from "../engine-chat/engine-chat-records.js";
 import type { EngineChat } from "../engine-chat/ports.js";
 import { nthTestId } from "./memory-agent-stores.js";
+import {
+  type ChatPush,
+  type ChatTopicLog,
+  type FeedPush,
+  pushChat,
+  topicCalls,
+} from "./memory-chat-topic.js";
 import { waitForPush } from "./wait-for-push.js";
-
-/** One thing the fake engine pushed on an agent's chat topic, as the engine names its kind. */
-export interface ChatPush {
-  readonly kind: "chat/turnStarted" | "chat/message" | "chat/status" | "chat/turnEnded";
-  readonly agent: Id<"agt">;
-  readonly turn: Id<"trn">;
-  /** The text of `chat/message`, the key of `chat/status`, the outcome of `chat/turnEnded`. */
-  readonly detail?: string;
-  /** The values of `chat/status`, when it has any. */
-  readonly values?: Readonly<Record<string, number>>;
-}
 
 /** A refusal of `turn/start`. */
 type Refusal = Extract<TurnStartAnswer, { readonly started: false }>;
@@ -77,6 +73,8 @@ export interface MemoryEngineChat extends EngineChat {
   link(state: "up" | "down"): void;
   running(agent: Id<"agt">): Running | undefined;
   readonly pushes: readonly ChatPush[];
+  /** The drafts and progress lines the turns pushed, in order. */
+  readonly feed: readonly FeedPush[];
   /** Each `usage/record` the engine took, once per key, in order. */
   readonly usage: readonly EngineUsage[];
   /** Settles with the first push `match` accepts, made already or to come. */
@@ -85,7 +83,7 @@ export interface MemoryEngineChat extends EngineChat {
   untaken(): readonly Id<"msg">[];
 }
 
-interface FakeState {
+interface FakeState extends ChatTopicLog {
   readonly agents: ReadonlySet<string>;
   readonly inbox: InboxMessageView[];
   readonly taken: Set<string>;
@@ -93,8 +91,6 @@ interface FakeState {
   readonly running: Map<string, Running>;
   readonly refusals: Map<string, Refusal>;
   readonly watchers: Set<InboxWatch>;
-  readonly pushes: ChatPush[];
-  readonly waiters: Set<(push: ChatPush) => void>;
   readonly ids: () => number;
   readonly down: Set<"link">;
   readonly usage: EngineUsage[];
@@ -104,13 +100,6 @@ interface FakeState {
 const dailyBudgetMicros = 1_000_000n;
 
 const pageSize = 50;
-
-function pushChat(state: FakeState, push: ChatPush): void {
-  state.pushes.push(push);
-  for (const waiter of state.waiters) {
-    waiter(push);
-  }
-}
 
 // Answers 1 past the last number at each call.
 function counterFrom(start: number): () => number {
@@ -208,7 +197,10 @@ function engineSide(state: FakeState): EngineChat {
 
 function turnCalls(
   state: FakeState,
-): Pick<EngineChat, "markTurn" | "sayTurn" | "turnStatus" | "recordUsage" | "endTurn"> {
+): Pick<
+  EngineChat,
+  "markTurn" | "sayTurn" | "turnStatus" | "turnProgress" | "recordUsage" | "endTurn"
+> {
   return {
     async recordUsage(usage, signal) {
       reach(state, signal);
@@ -223,17 +215,9 @@ function turnCalls(
       state.running.set(agent, { ...running, marked: true });
       return Promise.resolve();
     },
-    async sayTurn({ agent, turn, text }, signal) {
+    ...topicCalls(state, (signal) => {
       reach(state, signal);
-      pushChat(state, { kind: "chat/message", agent, turn, detail: text });
-      return Promise.resolve();
-    },
-    async turnStatus({ agent, turn, statusKey, values }, signal) {
-      reach(state, signal);
-      const shown = values === undefined ? {} : { values };
-      pushChat(state, { kind: "chat/status", agent, turn, detail: statusKey, ...shown });
-      return Promise.resolve();
-    },
+    }),
     async endTurn({ agent, turn, outcome }, signal) {
       reach(state, signal);
       if (state.running.get(agent)?.turn === turn) {
@@ -317,6 +301,7 @@ export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngi
     refusals: new Map(),
     watchers: new Set(),
     pushes: [],
+    feed: [],
     waiters: new Set(),
     ids: counterFrom(1_000),
     down: new Set(),
@@ -342,6 +327,7 @@ export function createMemoryEngineChat(agents: readonly Id<"agt">[]): MemoryEngi
     },
     running: (agent) => state.running.get(agent),
     pushes: state.pushes,
+    feed: state.feed,
     usage: state.usage,
     waitForPush: async (match) => waitForPush(state, match),
     untaken: () =>

@@ -1,7 +1,8 @@
 import type { EngineView } from "../contracts/turn-engine-contract.js";
 import type { JournalEntry, JournalView } from "../contracts/turn-journal-contract.js";
+import { progressKeyOf } from "../engine-chat/progress-keys.js";
 import { statusKeysOf } from "../engine-chat/status-keys.js";
-import type { RecordedStep } from "./turn-recorder.js";
+import type { RecordedFeed, RecordedStep } from "./turn-recorder.js";
 
 function entryOf(step: RecordedStep): readonly JournalEntry[] {
   if (step.kind === "response") {
@@ -41,8 +42,9 @@ export function recordedJournal(steps: readonly RecordedStep[]): JournalView {
 /** What a recorder's engine holds of its turn, as the engine contract reads an engine back. */
 export function recordedEngine(
   steps: readonly RecordedStep[],
-  options: { readonly refused: boolean },
+  options: { readonly refused: boolean; readonly feed?: readonly RecordedFeed[] },
 ): EngineView {
+  const feed = options.feed ?? [];
   const start = steps.find((step) => step.kind === "start");
   const end = steps.find((step) => step.kind === "end");
   const started = start === undefined || options.refused ? undefined : start;
@@ -56,6 +58,11 @@ export function recordedEngine(
     statusKeys: steps.flatMap((step) =>
       step.kind === "status" ? statusKeysOf(step.line).map(({ key }) => key) : [],
     ),
+    drafts: feed.flatMap((entry) => (entry.kind === "draft" ? [entry.text] : [])),
+    progressKeys: feed.flatMap((entry) => {
+      const line = entry.kind === "progress" ? progressKeyOf(entry.tool) : undefined;
+      return line === undefined ? [] : [line.key];
+    }),
     ...(end === undefined ? {} : { ended: end.outcome }),
   };
 }

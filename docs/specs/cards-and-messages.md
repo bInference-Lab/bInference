@@ -1359,19 +1359,59 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   nor a photo go nowhere and are answered at once.
 - **Photos.** A message carries at most 4 photos of at most 5 MiB each; the others are left out
   and the owner is told how many. Each goes as `tg:<file_id>` of its largest size.
-- **The reply.** When the agent's turn starts, one status message shows how long it has worked,
-  or the text it has written so far, edited about once a second. The final answer goes as new
-  messages, split at 4,096 characters, and the status message is deleted. A status line of
-  section 8.1 follows in italics. The agent's words show their Markdown as Telegram's rich text by
-  the rules of section 1, with every character a reader cannot see written as `\u{…}`; markup the
-  model writes in HTML shows as text.
-- **Rate limits.** An edit of the status message is a preview: when Telegram asks the bot to wait,
-  or another message waits for the chat, the edit is dropped and the next one carries its text.
-  Answers, status lines and cards wait and go.
+- **The reply** ([decision 0371](../DECISIONS.md#d0371)). A turn that runs past 1.5 seconds, or
+  runs a tool sooner, gets one status message: how long the agent has worked, a work line for each
+  tool it ran (the newest 8, each cut to 120 characters, a line repeated in a row once), the text
+  it wrote before a tool as one line of at most 280 characters, and the text it writes now, drawn
+  as an answer is and cut from its start with `…` to stay within 4,096 characters. It is edited at
+  most once a second; a tool's line shows a message that has not shown yet at once. A turn that
+  answers within 1.5 seconds shows no status message. The final answer goes as new messages, which
+  notify where an edit does not, split at 4,096 characters, and the status message is deleted once
+  it has shown for 4 seconds. A status line of section 8.1 follows in italics. The agent's words
+  show their Markdown as Telegram's rich text by the rules of section 1, with every character a
+  reader cannot see written as `\u{…}`; markup the model writes in HTML shows as text.
+- **Rate limits.** A send or edit of the status message is a preview: when Telegram asks the bot
+  to wait, or another message waits for the chat, it is dropped and the next one carries the
+  newest text. Answers, status lines and cards wait and go.
+- **Failures.** A status message whose HTML Telegram cannot read goes as plain text. An edit
+  Telegram refuses, and three passing failures in a row, stop the edits for the turn; a first send
+  that may have reached Telegram is never sent again. An answer Telegram refuses turns the status
+  message into `telegram.chat.notDelivered`, or sends that line when no status message showed.
+- **Work lines.** The runtime sends each tool's line with `turn/progress` (spec 1, section 7.7),
+  and the console and terminal chat show none: they show the answer so far. Asking the owner and
+  the first chat's end show no line.
+
+| Tool                                                  | Key                                                                              | English                                                             | 中文                                                    |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------- |
+| `token_search`                                        | `turn.tool.tokenSearch`                                                          | Searching tokens…                                                   | 正在搜索代币…                                           |
+| `addresses`                                           | `turn.tool.addresses`                                                            | Reading the address book…                                           | 正在读取地址簿…                                         |
+| `portfolio`                                           | `turn.tool.portfolio`                                                            | Reading the portfolio…                                              | 正在读取投资组合…                                       |
+| `token_info`                                          | `turn.tool.tokenInfo`                                                            | Reading the token…                                                  | 正在读取代币信息…                                       |
+| `token_risk`                                          | `turn.tool.tokenRisk`                                                            | Checking the token's risk…                                          | 正在检查代币风险…                                       |
+| `quote`                                               | `turn.tool.quote`                                                                | Getting a quote…                                                    | 正在获取报价…                                           |
+| `orders`                                              | `turn.tool.orders`                                                               | Reading the auto orders…                                            | 正在读取自动订单…                                       |
+| `tx_status`                                           | `turn.tool.txStatus`                                                             | Checking a transaction…                                             | 正在查询交易…                                           |
+| `market_scan`                                         | `turn.tool.marketScan`                                                           | Scanning the market…                                                | 正在扫描市场…                                           |
+| `chart`                                               | `turn.tool.chart`                                                                | Reading a chart…                                                    | 正在读取 K 线图…                                        |
+| `wallet_activity`                                     | `turn.tool.walletActivity`                                                       | Reading a wallet's trades…                                          | 正在读取钱包的交易…                                     |
+| `swap`, `buy`, `sell`, `send`                         | `turn.tool.<tool>`                                                               | Preparing the swap… (the buy…, the sale…, the send…)                | 正在准备兑换… (买入…，卖出…，转账…)                     |
+| `approval_revoke`                                     | `turn.tool.approvalRevoke`                                                       | Preparing the revoke…                                               | 正在准备撤销授权…                                       |
+| `order_create`, `order_cancel`                        | `turn.tool.orderCreate`, `turn.tool.orderCancel`                                 | Preparing the auto order…, Cancelling an auto order…                | 正在准备自动订单…，正在取消自动订单…                    |
+| `stake`, `unstake`, `claim`                           | `turn.tool.<tool>`                                                               | Preparing the stake… (the unstake…, the claim…)                     | 正在准备质押… (解除质押…，领取…)                        |
+| `bridge`, `bridge_quote`                              | `turn.tool.bridge`, `turn.tool.bridgeQuote`                                      | Preparing the bridge…, Getting a bridge quote…                      | 正在准备跨链…，正在获取跨链报价…                        |
+| `staking_options`                                     | `turn.tool.stakingOptions`                                                       | Reading the staking options…                                        | 正在读取质押选项…                                       |
+| `alert_create`                                        | `turn.tool.alertCreate`                                                          | Setting an alert…                                                   | 正在设置提醒…                                           |
+| `schedule_list`, `schedule_create`, `schedule_cancel` | `turn.tool.scheduleList`, `turn.tool.scheduleCreate`, `turn.tool.scheduleCancel` | Reading the schedules…, Setting a schedule…, Cancelling a schedule… | 正在读取定时任务…，正在设置定时任务…，正在取消定时任务… |
+| `search_web`, `read_page`, `search_x`                 | `turn.tool.searchWeb`, `turn.tool.readPage`, `turn.tool.searchX`                 | Searching the web…, Reading a web page…, Searching X…               | 正在联网搜索…，正在读取网页…，正在搜索 X…               |
+| `notes_search`, `notes_write`                         | `turn.tool.notesSearch`, `turn.tool.notesWrite`                                  | Searching the notes…, Writing a note…                               | 正在搜索笔记…，正在写笔记…                              |
+| `open_skill`, `workspace_write`                       | `turn.tool.openSkill`, `turn.tool.workspaceWrite`                                | Opening a skill…, Saving a workspace file…                          | 正在打开技能…，正在保存工作区文件…                      |
+| `launchpads`, `launch_draft`                          | `turn.tool.launchpads`, `turn.tool.launchDraft`                                  | Reading the launchpads…, Drafting a launch…                         | 正在读取发射台…，正在起草发射…                          |
+| A plugin's tool `<id>__<tool>`                        | `turn.tool.plugin`                                                               | Asking the plugin {plugin}…                                         | 正在询问插件 {plugin}…                                  |
 
 | When                     | Key                           | English                                                                                                                                                                              | 中文                                                                                                    |
 | ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | The status message       | `telegram.chat.working`       | Working on it · {seconds} s                                                                                                                                                          | 处理中 · {seconds} 秒                                                                                   |
+| An answer not delivered  | `telegram.chat.notDelivered`  | ⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.                                                                | ⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。                |
 | Photos past 4            | `telegram.chat.photosLeftOut` | The agent reads 4 photos of a message at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send {count, plural, one {it} other {them}} in another message. | Agent 每条消息最多读取 4 张图片，因此有 {count, plural, other {# 张图片}}未发送。请在另一条消息中发送。 |
 | A photo over 5 MiB       | `telegram.chat.photoTooLarge` | The agent reads photos of 5 MiB at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send a smaller copy.                                                  | Agent 只读取不超过 5 MiB 的图片，因此有 {count, plural, other {# 张图片}}未发送。请发送更小的图片。     |
 | A forwarded message      | `telegram.chat.forwarded`     | A forwarded message does not reach the agent. Write what you want it to read in a message of your own.                                                                               | 转发的消息不会发送给 Agent。请把你想让它读取的内容写在你自己的消息中。                                  |

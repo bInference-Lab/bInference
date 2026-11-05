@@ -188,6 +188,28 @@ describe("terminal chat", () => {
     ]);
   });
 
+  it("prints the final answer once after drafts and a progress line, and no draft at all", async () => {
+    const chat = await opened();
+    const topic = `chat:${harnessAgent}` as const;
+    const draft = (text: string) => ({ agent: harnessAgent, turn, text, final: false });
+    chat.push(topic, "chat/turnStarted", { agent: harnessAgent, turn });
+    chat.push(topic, "chat/message", draft("Reading"));
+    chat.push(topic, "chat/progress", {
+      agent: harnessAgent,
+      turn,
+      progressKey: "turn.tool.portfolio",
+    });
+    chat.push(topic, "chat/message", draft("You hold"));
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual(["main: You hold", "› "]);
+    chat.push(topic, "chat/message", { ...draft("You hold 1 BNB."), final: true });
+    chat.push(topic, "chat/turnEnded", { agent: harnessAgent, turn });
+    await chat.settle();
+    const rows = chat.rows();
+    expect(rows.filter((row) => row.includes("You hold"))).toStrictEqual(["main: You hold 1 BNB."]);
+    expect(rows.filter((row) => row.includes("Reading"))).toStrictEqual([]);
+  });
+
   it("writes out the characters of a model's words that would steer the terminal", async () => {
     const chat = await opened();
     const text = "Red \u001b[31mtext\u0007";

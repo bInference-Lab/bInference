@@ -69,6 +69,7 @@ export async function executeCall(
   });
   const idempotencyKey = callKeyOf(run.turnId, numbered.ordinal);
   const context = { signal: deadline.signal, idempotencyKey };
+  run.feed.tool(numbered.call.name);
   const settled = await settleBy(async () => ready.run(context), {
     signal: deadline.signal,
     clock: run.parts.clock,
@@ -155,5 +156,6 @@ export async function runProposal(
   if (await stoppedBeforeStart(run, call)) {
     return;
   }
+  run.feed.tool(call.name);
   await recordResult(run, call, await sendProposal(run, ready, idempotencyKey));
 }

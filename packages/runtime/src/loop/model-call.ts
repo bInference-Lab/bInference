@@ -10,6 +10,8 @@ import type { ModelRoute, TurnRun } from "./turn-run.js";
 interface ModelLine {
   readonly chain: ModelChain;
   readonly route: ModelRoute;
+  /** The turn's own answer: its text goes to the turn's feed as the model writes it. */
+  readonly isShown?: boolean;
 }
 
 /** Where a call stands among its attempts. */
@@ -85,8 +87,9 @@ function silent(run: TurnRun, fault: ModelFault): ModelFault {
 async function attempt(
   run: TurnRun,
   model: ChainModel | undefined,
-  request: ModelRequest,
+  call: { readonly line: ModelLine; readonly request: ModelRequest },
 ): Promise<ModelResponse> {
+  const { line, request } = call;
   if (model === undefined) {
     return {
       ok: false,
@@ -101,7 +104,9 @@ async function attempt(
   const timer = idleTimer(run, () => idle.abort());
   try {
     const events = restartingOn(model.transport.stream(request, signal), timer);
-    const response = await readModelResponse(events, { signal, clock: run.parts.clock });
+    const reading = { signal, clock: run.parts.clock };
+    const shown = line.isShown === true ? { onText: (soFar: string) => run.feed.text(soFar) } : {};
+    const response = await readModelResponse(events, { ...reading, ...shown });
     const wasSilent = !response.ok && idle.signal.aborted && !run.halted.aborted;
     return wasSilent ? silent(run, response) : response;
   } finally {
@@ -133,7 +138,7 @@ async function attemptFrom(
 ): Promise<ModelResponse> {
   const { line, request } = call;
   const model = line.chain.models[state.at];
-  const response = await attempt(run, model, request);
+  const response = await attempt(run, model, call);
   await recordAttempt(run, model, response);
   if (response.ok || run.tally.now().budgetSpent) {
     return response;
@@ -168,7 +173,7 @@ async function attemptFrom(
 export async function callModel(
   run: TurnRun,
   request: ModelRequest,
-  line: ModelLine = { chain: run.parts.models, route: run.route },
+  line: ModelLine = { chain: run.parts.models, route: run.route, isShown: true },
 ): Promise<ModelResponse> {
   const at = firstAwake(line.chain, line.route.at(), request) ?? line.route.at();
   line.route.moveTo(at);

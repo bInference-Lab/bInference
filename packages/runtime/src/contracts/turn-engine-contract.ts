@@ -14,6 +14,9 @@ export interface EngineView {
   readonly said: readonly string[];
   /** The status keys of spec 4 the turn sent, in order. */
   readonly statusKeys: readonly string[];
+  /** The drafts of the turn's text, then the progress keys, each in the order it was sent. */
+  readonly drafts: readonly string[];
+  readonly progressKeys: readonly string[];
   readonly ended?: TurnOutcome;
 }
 
@@ -56,6 +59,21 @@ async function runsATurn(harness: TurnEngineHarness): Promise<void> {
   assert.equal(view.ended, "ok");
 }
 
+async function carriesDraftsAndProgress(harness: TurnEngineHarness): Promise<void> {
+  const { engine, messages, read } = await harness.create({});
+  await engine.start({ messages, outsideContent: false }, live());
+  await engine.draft("Check", live());
+  await engine.draft("Checking the portfolio", live());
+  await engine.progress("portfolio", live());
+  await engine.progress("ask_owner", live());
+  await engine.progress("fear_index__index", live());
+  await engine.end("ok", live());
+  const view = await read();
+  assert.deepEqual(view.drafts, ["Check", "Checking the portfolio"]);
+  assert.deepEqual(view.progressKeys, ["turn.tool.portfolio", "turn.tool.plugin"]);
+  assert.deepEqual(view.said, []);
+}
+
 async function marksTheTurn(harness: TurnEngineHarness): Promise<void> {
   const { engine, messages, read } = await harness.create({});
   await engine.start({ messages, outsideContent: false }, live());
@@ -95,6 +113,10 @@ export function turnEngineContract(harness: TurnEngineHarness): readonly Contrac
     {
       name: "starts a turn, carries its text and status keys, and ends it",
       run: async () => runsATurn(harness),
+    },
+    {
+      name: "carries the turn's drafts and the progress line each work tool shows",
+      run: async () => carriesDraftsAndProgress(harness),
     },
     {
       name: "marks the running turn as holding outside content",

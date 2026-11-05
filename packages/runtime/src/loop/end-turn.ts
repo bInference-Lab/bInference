@@ -51,13 +51,15 @@ async function sayAndStatus(run: TurnRun, status: TurnStatusLine | undefined): P
 }
 
 /**
- * Ends a turn in the order the runtime spec gives (section 11): its final text, its status line,
- * its end in the journal, then `turn/end`. A turn that ends well with no line of its own ends with
- * the closing line a tool gave it. Each write is best effort with its own time limit, so a
+ * Ends a turn in the order the runtime spec gives (section 11): its feed settles, so no draft
+ * follows the answer, then its final text, its status line, its end in the journal, then
+ * `turn/end`. A turn that ends well with no line of its own ends with the closing line a tool
+ * gave it. Each write is best effort with its own time limit, so a
  * port that fails or never answers still lets the turn end; any such failure ends it `failed`.
  */
 export async function endTurn(run: TurnRun, end: LoopEnd): Promise<TurnReport> {
   run.tally.enter("ending");
+  await run.feed.settle();
   const { closingLine } = run.tally.now();
   const closing = end.outcome === "ok" && closingLine !== undefined;
   const status = end.status ?? (closing ? { line: closingLine } : undefined);

@@ -11,6 +11,7 @@ import type {
   TurnEngine,
   TurnJournal,
 } from "./ports.js";
+import type { TurnFeed } from "./turn-feed.js";
 import type { TurnHalt } from "./turn-halt.js";
 import type { ReadImage } from "./turn-records.js";
 import type { TurnTail } from "./turn-tail.js";
@@ -104,6 +105,8 @@ export interface TurnRun {
   /** The history as compaction reads and replaces it; absent, the turn never compacts. */
   readonly history?: TurnHistory;
   readonly tally: TurnTally;
+  /** What the turn shows while it works: its text so far and each tool it runs. */
+  readonly feed: TurnFeed;
   /** Watches the turn's calls for the same call with the same result three times. */
   readonly loopGuard: LoopGuard;
   /** Aborts, with its {@link TurnHalt}, when the turn halts. */

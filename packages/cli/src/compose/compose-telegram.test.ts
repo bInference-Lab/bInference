@@ -206,7 +206,7 @@ describe("the bot joined to the engine", () => {
     expect(test.botApi.calls()).toStrictEqual([]);
   });
 
-  it("shows the agent's reply as one edited status message, then the answer", async () => {
+  it("shows the agent's work in one edited status message, then the answer", async () => {
     const turns = createRunningTurns();
     const test = await bot({ turns });
     const { handlers } = test.composed.engine;
@@ -216,6 +216,10 @@ describe("the bot joined to the engine", () => {
     const turn = { agent, session: taken.session, turn: taken.turn };
     const start = { ...turn, messages: [taken.message], outsideContent: false };
     await handlers["turn/start"]({ args: start, caller: runtime, ...live });
+    const draft = { ...turn, text: "Calm: **no**", final: false };
+    await handlers["turn/say"]({ args: draft, caller: runtime, ...live });
+    const progress = { agent, turn: taken.turn, progressKey: "turn.tool.chart" };
+    await handlers["turn/progress"]({ args: progress, caller: runtime, ...live });
     await test.telegram.idle();
     await test.clock.advance(1_000);
     await test.telegram.idle();
@@ -223,9 +227,10 @@ describe("the bot joined to the engine", () => {
     await handlers["turn/say"]({ args: say, caller: runtime, ...live });
     const end = { agent, turn: taken.turn, outcome: "ok" } as const;
     await handlers["turn/end"]({ args: end, caller: runtime, ...live });
+    await test.clock.advance(5_000);
     await test.telegram.idle();
     expect(test.botApi.sent().map(({ text }) => text)).toStrictEqual([
-      "Working on it · 0 s",
+      "Working on it · 0 s\nCalm: no\nReading a chart…",
       "Calm: <b>no</b> big moves.",
     ]);
     expect(test.botApi.edits()).toHaveLength(1);

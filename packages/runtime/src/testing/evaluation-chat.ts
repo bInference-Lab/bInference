@@ -11,11 +11,8 @@ import { agentToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { WebToolParts } from "../tools/web-tools.js";
 import { createMemoryAgentStores, nthTestId } from "./memory-agent-stores.js";
-import {
-  type ChatPush,
-  createMemoryEngineChat,
-  type MemoryEngineChat,
-} from "./memory-engine-chat.js";
+import type { ChatPush } from "./memory-chat-topic.js";
+import { createMemoryEngineChat, type MemoryEngineChat } from "./memory-engine-chat.js";
 
 /** What an evaluation chat runs the agent's turns on, in place of a running engine. */
 export interface EvaluationChatOptions {

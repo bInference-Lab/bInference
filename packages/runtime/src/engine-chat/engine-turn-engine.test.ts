@@ -34,6 +34,8 @@ function viewOf(engine: MemoryEngineChat): EngineView {
     marked: running?.marked === true,
     said: details("chat/message"),
     statusKeys: details("chat/status"),
+    drafts: engine.feed.filter(({ kind }) => kind === "draft").map(({ detail }) => detail),
+    progressKeys: engine.feed.filter(({ kind }) => kind === "progress").map(({ detail }) => detail),
     ...(outcome === undefined ? {} : { ended: outcome }),
   };
 }

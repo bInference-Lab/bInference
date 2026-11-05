@@ -8,6 +8,18 @@ const badRequestStatus = 400;
 const topicGone = /message thread not found|TOPIC_DELETED/iu;
 // Telegram's words for a 400 about a message's HTML it could not read.
 const entitiesUnparsed = /can't parse entities/iu;
+// Telegram's words for an edit that would show what the message shows already.
+const notModified = /message is not modified/iu;
+
+// What a 400's words say: a deleted topic, HTML Telegram could not read, an edit that changes
+// nothing.
+function badRequestOf(description: string): Readonly<Record<string, true>> {
+  return {
+    ...(topicGone.test(description) && { isTopicGone: true }),
+    ...(entitiesUnparsed.test(description) && { isEntitiesUnparsed: true }),
+    ...(notModified.test(description) && { isNotModified: true }),
+  };
+}
 
 function refusal(method: string, error: GrammyError): BinferenceError {
   const status = error.error_code;
@@ -35,16 +47,13 @@ function refusal(method: string, error: GrammyError): BinferenceError {
       details: { ...details, retryAfterMs },
     });
   }
-  const gone = status === badRequestStatus && topicGone.test(error.description);
-  const unparsed = status === badRequestStatus && entitiesUnparsed.test(error.description);
   return new BinferenceError({
     code: "telegram.api_refused",
     message: "Telegram refused a Bot API call.",
     retryable: status >= 500,
     details: {
       ...details,
-      ...(gone && { isTopicGone: true }),
-      ...(unparsed && { isEntitiesUnparsed: true }),
+      ...(status === badRequestStatus ? badRequestOf(error.description) : {}),
     },
   });
 }
@@ -128,6 +137,11 @@ export function botApiFault(error: unknown, method: string): BinferenceError {
 /** Whether a fault is Telegram's 400 for a message whose HTML it could not read. */
 export function isEntitiesUnparsed(error: unknown): boolean {
   return error instanceof BinferenceError && error.details["isEntitiesUnparsed"] === true;
+}
+
+/** Whether a fault is Telegram's 400 for an edit that changes nothing: the message shows it. */
+export function isNotModified(error: unknown): boolean {
+  return error instanceof BinferenceError && error.details["isNotModified"] === true;
 }
 
 /**

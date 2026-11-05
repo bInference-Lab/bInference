@@ -281,6 +281,21 @@ describe("the chat relay", () => {
     ]);
   });
 
+  it("carries a progress line of the runtime's to the agent's chat topic, and no one else's", async () => {
+    const test = await startTestEngine();
+    expectOk(await startTurn(test));
+    const values = { plugin: "fear_index" };
+    const progress = { agent: testAgent, turn, progressKey: "turn.tool.plugin", values };
+    const { handlers } = test.engine;
+    expect(await handlers["turn/progress"](testCall(progress, otherAgentClient))).toStrictEqual({
+      ok: false,
+      error: "auth.scope",
+    });
+    expectOk(await handlers["turn/progress"](testCall(progress, runtime)));
+    const pushed = test.pushes.filter((push) => push.kind === "chat/progress");
+    expect(pushed.map((push) => push.data)).toStrictEqual([progress]);
+  });
+
   it("refuses a mark of a turn that does not run", async () => {
     const test = await startTestEngine();
     const marked = await test.engine.handlers["turn/mark"](

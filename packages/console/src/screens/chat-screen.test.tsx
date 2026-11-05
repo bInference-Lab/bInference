@@ -104,6 +104,26 @@ describe("the chat screen", () => {
     expect(engine.calls.filter((call) => call.op === "chat/messages").length).toBeGreaterThan(1);
   });
 
+  it("shows the latest draft alone, keeps the turn on a progress line, and the answer once", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    const topic = `chat:${agent}` as const;
+    const draft = (text: string) => ({ agent, session, turn, text, final: false });
+    act(() => engine.push(topic, "chat/turnStarted", { agent, session, turn }));
+    act(() => engine.push(topic, "chat/message", draft("Reading")));
+    act(() => engine.push(topic, "chat/message", draft("Reading the portfolio")));
+    const progress = { agent, turn, progressKey: "turn.tool.portfolio" };
+    act(() => engine.push(topic, "chat/progress", progress));
+    const log = screen.getByRole("log", { name: "Chat with main" });
+    expect(screen.getByText("Reading the portfolio")).toBeDefined();
+    expect(screen.queryByText("Reading")).toBeNull();
+    const answer = { agent, session, turn, text: "You hold 1 BNB.", final: true };
+    act(() => engine.push(topic, "chat/message", answer));
+    expect(log.textContent?.split("You hold 1 BNB.").length).toBe(2);
+    expect(log.textContent).not.toContain("Reading the portfolio");
+  });
+
   it("sends the owner's message and shows it until the transcript holds it", async () => {
     const engine = fakeClient(chatAnswers());
     renderSignedIn(<ChatScreen />, { client: engine.client });

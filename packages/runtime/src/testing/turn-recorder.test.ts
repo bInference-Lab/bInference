@@ -10,7 +10,8 @@ function engineSubject(refuse: TurnRefusal | undefined): TurnEngineSubject {
   return {
     engine: recorder.engine,
     messages: ["msg_1"],
-    read: async () => recordedEngine(recorder.steps, { refused: refuse !== undefined }),
+    read: async () =>
+      recordedEngine(recorder.steps, { refused: refuse !== undefined, feed: recorder.feed }),
   };
 }
 

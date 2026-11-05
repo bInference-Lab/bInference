@@ -51,6 +51,37 @@ describe("the agent's Chinese replies in Telegram", () => {
     ]);
   });
 
+  it("shows the status message with each tool's line in Chinese", async () => {
+    const { botApi, clock, replies } = await setUp();
+    await replies.show({ kind: "chat/turnStarted", data: at }, live);
+    const draft = {
+      kind: "chat/message",
+      data: { ...at, text: "我先看看**持仓**。", final: false },
+    };
+    await replies.show(draft, live);
+    const progress = { agent, turn: at.turn, progressKey: "turn.tool.portfolio" };
+    await replies.show({ kind: "chat/progress", data: progress }, live);
+    await clock.advance(0);
+    await replies.idle();
+    expect(botApi.messages()).toMatchObject([
+      {
+        text: "处理中 · 0 秒\n我先看看持仓。\n正在读取投资组合…",
+        entities: [{ type: "bold", offset: 14, length: 2 }],
+      },
+    ]);
+  });
+
+  it("says in Chinese that an answer Telegram refused did not arrive", async () => {
+    const { botApi, clock, replies } = await setUp();
+    botApi.failNext("sendMessage", { status: 400, description: "Bad Request: chat not found" });
+    const refused = replies.show(answer("完成。"), live).catch((error: unknown) => error);
+    await clock.advance(2_000);
+    expect(await refused).toMatchObject({ code: "telegram.api_refused" });
+    expect(botApi.sent().map(({ text }) => text)).toStrictEqual([
+      "⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。",
+    ]);
+  });
+
   it("sends Chinese text again as plain text when Telegram cannot parse its HTML", async () => {
     const { botApi, clock, replies } = await setUp();
     botApi.failNext(
