@@ -75,10 +75,10 @@ bridge rules on each destination chain: `joined`, `waiting`, `room`, `code`, `un
 last told the owner; NULL while there is none ([decision 0321](../DECISIONS.md#d0321)).
 
 `counters` holds one row per write-order key that is not the table's own `INTEGER PRIMARY KEY`
-([decision 0366](../DECISIONS.md#d0366)): `order_fills.seq` and `notices.seq`. An insert trigger
-takes `last + 1` in the insert's own transaction and writes it to the new row, so the keys follow
-the order rows were written and are never taken twice, even after a prune. A migration that adds
-such a key numbers the rows written before it in the order the store read them.
+([decision 0366](../DECISIONS.md#d0366)): `order_fills.seq`, `notices.seq` and `agent_inbox.seq`.
+An insert trigger takes `last + 1` in the insert's own transaction and writes it to the new row, so
+the keys follow the order rows were written and are never taken twice, even after a prune. A
+migration that adds such a key numbers the rows written before it in the order the store read them.
 
 `safety.disclaimer_version` holds the version of the disclaimer and privacy statement the owner
 accepted (spec 4, section 9), as decimal text, and `disclaimer_accepted_at` when: `1` for the text
@@ -292,7 +292,7 @@ and its `fill_outcome` is written once, a fill in the same write as its intent's
 | `outbox`            | `id`, `surface`, `target JSON`, `payload JSON`, `state` (`queued`, `sent`, `unknown_after_send`, `failed`), `attempts`, `next_at`, `ref`, `created_at`, `sent_at`                                                                                                                                                                                                                  | `(state, next_at)`                                       |
 | `notices`           | `id`, `agent_id`, `kind` (the notice's name), `i18n_key`, `values JSON` (the message's values, times, amounts, parts and the messages that follow it), `level` (`info`, `warning`, `critical`), `at`, `delivered JSON` (each surface's delivery state), `intent_id` (the intent it is about, [decision 0133](../DECISIONS.md#d0133)), `seq` (its write-order key, from `counters`) | `(at)`, unique `seq`                                     |
 | `idempotency`       | `credential`, `op`, `key`, `args_hash`, `result JSON`, `at`                                                                                                                                                                                                                                                                                                                        | PK `(credential, op, key)`                               |
-| `agent_inbox`       | `id` (`msg_…`), `agent_id`, `session_id`, `kind` (the `inbox` push kind), `turn_id` (the turn reserved for it), `payload JSON`, `created_at`, `taken_at`                                                                                                                                                                                                                           | `(agent_id, taken_at)`                                   |
+| `agent_inbox`       | `id` (`msg_…`), `agent_id`, `session_id`, `kind` (the `inbox` push kind), `turn_id` (the turn reserved for it), `payload JSON`, `created_at`, `taken_at`, `seq` (its write-order key, from `counters`)                                                                                                                                                                             | `(agent_id, taken_at)`, unique `seq`                     |
 | `model_usage`       | `id`, `key` (each attempt's own, `<turn>.usage.<n>`), `agent_id`, `turn_id`, `model`, `input_tokens`, `output_tokens`, `cached_tokens`, `usd_micros`, `at`                                                                                                                                                                                                                         | unique `key`; `(agent_id, at)`                           |
 | `budget_notices`    | `agent_id`, `day_at` (the start of the owner's day on which the agent's model budget was spent), `at`                                                                                                                                                                                                                                                                              | PK `(agent_id, day_at)`                                  |
 | `daily_summaries`   | `agent_id`, `date` (the owner's date it is for, `YYYY-MM-DD`), `at`, `outcome` (`sent`, `idle`), `live_usd_micros`, `paper_usd_micros` (the totals it read; NULL when unread)                                                                                                                                                                                                      | PK `(agent_id, date)`                                    |
@@ -370,15 +370,16 @@ deletes its ticket in the transaction that claims its launch
 
 ## 3. Agent database
 
-| Table               | Columns                                                                                                                                                                                                                     | Keys and indexes                          |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `meta`              | `key`, `value`                                                                                                                                                                                                              | PK `key`                                  |
-| `sessions`          | `id`, `agent_id`, `surface`, `conversation` (for example `telegram:<chat>:<topic>`), `started_at`, `cleared_at`, `summary`, `version`                                                                                       | `(agent_id, conversation)`                |
-| `turns`             | `id`, `session_id`, `started_at`, `ended_at`, `outcome` (`ok`, `stopped`, `failed`, `budget`, `loop`), `committed`, `outside_content`, `held_back` (propose calls not run, [decision 0167](../DECISIONS.md#d0167)), `model` | `(session_id, started_at)`                |
-| `chat_queue`        | `message` (`msg_…`), `agent_id`, `session_id`, `kind`, `payload JSON`, `received_at`, `turn_id` (the turn that took it), `dropped_at`, `drop_reason`                                                                        | PK `message`, `(session_id, received_at)` |
-| `transcript_events` | `id`, `session_id`, `turn_id`, `seq`, `role` (`owner`, `agent`, `tool`, `system`), `kind` (`text`, `tool_call`, `tool_result`, `image`, `summary`), `content JSON`, `outside` (outside content, spec 8 section 5.4), `at`   | unique `(session_id, seq)`                |
-| `notes`             | `id`, `agent_id`, `text`, `origin` (`owner`, `agent`, `untrusted`, `system`), `created_at`, `changed_at`, `deleted_at`                                                                                                      | `(agent_id)`                              |
-| `notes_fts`         | FTS5 over `notes.text`, kept in step by triggers                                                                                                                                                                            |                                           |
+| Table               | Columns                                                                                                                                                                                                                     | Keys and indexes                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `meta`              | `key`, `value`                                                                                                                                                                                                              | PK `key`                                                |
+| `sessions`          | `id`, `agent_id`, `surface`, `conversation` (for example `telegram:<chat>:<topic>`), `started_at`, `cleared_at`, `summary`, `version`                                                                                       | `(agent_id, conversation)`                              |
+| `turns`             | `id`, `session_id`, `started_at`, `ended_at`, `outcome` (`ok`, `stopped`, `failed`, `budget`, `loop`), `committed`, `outside_content`, `held_back` (propose calls not run, [decision 0167](../DECISIONS.md#d0167)), `model` | `(session_id, started_at)`                              |
+| `chat_queue`        | `message` (`msg_…`), `agent_id`, `session_id`, `kind`, `payload JSON`, `received_at`, `turn_id` (the turn that took it), `dropped_at`, `drop_reason`, `seq` (its write-order key, from `counters`)                          | PK `message`, `(session_id, received_at)`, unique `seq` |
+| `transcript_events` | `id`, `session_id`, `turn_id`, `seq`, `role` (`owner`, `agent`, `tool`, `system`), `kind` (`text`, `tool_call`, `tool_result`, `image`, `summary`), `content JSON`, `outside` (outside content, spec 8 section 5.4), `at`   | unique `(session_id, seq)`                              |
+| `notes`             | `id`, `agent_id`, `text`, `origin` (`owner`, `agent`, `untrusted`, `system`), `created_at`, `changed_at`, `deleted_at`                                                                                                      | `(agent_id)`                                            |
+| `notes_fts`         | FTS5 over `notes.text`, kept in step by triggers                                                                                                                                                                            |                                                         |
+| `counters`          | `name`, `last` (the last write-order key it gave)                                                                                                                                                                           | PK `name`                                               |
 
 `meta` holds the writer fence (`writer_fence`), raised at each runtime start and checked by every
 transcript write ([spec 8, section 2.3](runtime.md#section-2-3)). Triggers refuse every change of
@@ -395,6 +396,9 @@ address ([decision 0206](../DECISIONS.md#d0206)). A query under three characters
 whose text holds it.
 
 <a id="section-4"></a>
+
+`counters` counts, as in the engine database, the write-order key `chat_queue.seq`, which an
+insert trigger sets ([decision 0366](../DECISIONS.md#d0366)).
 
 ## 4. Retention
 
@@ -529,7 +533,7 @@ In the engine schema:
 | Table                    | Write-order key     | `numeric(78,0)`                                                                                                                                                        | JSON text                                                                   | Also                                                                  |
 | ------------------------ | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `address_book`           |                     |                                                                                                                                                                        |                                                                             | Partial unique `(agent_id, chain, address)` while not removed         |
-| `agent_inbox`            | `seq` (new)         |                                                                                                                                                                        | `payload`                                                                   |                                                                       |
+| `agent_inbox`            | `seq` (engine 0062) |                                                                                                                                                                        | `payload`                                                                   |                                                                       |
 | `agents`                 |                     |                                                                                                                                                                        | `models`, `notifications`                                                   | Cloud: a trigger keeps `mode` from `paper` to `live` to the ingress   |
 | `alert_fires`            |                     |                                                                                                                                                                        |                                                                             |                                                                       |
 | `alerts`                 |                     |                                                                                                                                                                        | `condition`                                                                 |                                                                       |
@@ -599,15 +603,15 @@ In the engine schema:
 
 In the agent schema:
 
-| Table               | Write-order key | JSON text | Also                                                   |
-| ------------------- | --------------- | --------- | ------------------------------------------------------ |
-| `chat_queue`        | `seq` (new)     | `payload` |                                                        |
-| `counters`          |                 |           | Postgres only (section 6.3)                            |
-| `meta`              |                 |           | Holds `writer_fence` and `prune_before`, as on SQLite  |
-| `notes`             | `id`            |           | `pg_trgm` GIN index on `text`, in place of `notes_fts` |
-| `sessions`          |                 |           |                                                        |
-| `transcript_events` | `id`            | `content` | Refuse-change triggers (section 6.3)                   |
-| `turns`             |                 |           |                                                        |
+| Table               | Write-order key    | JSON text | Also                                                   |
+| ------------------- | ------------------ | --------- | ------------------------------------------------------ |
+| `chat_queue`        | `seq` (agent 0005) | `payload` |                                                        |
+| `counters`          |                    |           |                                                        |
+| `meta`              |                    |           | Holds `writer_fence` and `prune_before`, as on SQLite  |
+| `notes`             | `id`               |           | `pg_trgm` GIN index on `text`, in place of `notes_fts` |
+| `sessions`          |                    |           |                                                        |
+| `transcript_events` | `id`               | `content` | Refuse-change triggers (section 6.3)                   |
+| `turns`             |                    |           |                                                        |
 
 <a id="section-6-5"></a>
 
@@ -709,7 +713,7 @@ In the engine schema:
 | Table                              | Read                                       | Order                                                                  | Today                                                                                        |
 | ---------------------------------- | ------------------------------------------ | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `address_book`                     | An agent's saved addresses                 | `created_at`, `id`                                                     | Id tie                                                                                       |
-| `agent_inbox`                      | Untaken messages, paged                    | `seq`                                                                  | `created_at`, `id`: id tie in an arrival order                                               |
+| `agent_inbox`                      | Untaken messages, paged                    | `seq`                                                                  | Write-order key since engine 0062                                                            |
 | `agents`                           | Every agent; the restore guards            | `created_at`, `id`; `id`                                               | Id tie                                                                                       |
 | `alert_fires`                      | An agent's rows past the newest 1,000      | `at` descending                                                        | Deletes by the time it finds, so a tie keeps the same rows                                   |
 | `alerts`                           | Pages, an agent's, the expiring            | `created_at`, `id`; `expires_at`, `id`                                 | Id tie                                                                                       |
@@ -753,10 +757,10 @@ In the engine schema:
 
 In the agent schema:
 
-| Table               | Read               | Order                | Today                                                |
-| ------------------- | ------------------ | -------------------- | ---------------------------------------------------- |
-| `chat_queue`        | A session's queue  | `seq`                | `received_at`, `message`: id tie in an arrival order |
-| `notes`             | An agent's notes   | `id`                 | Write-order key                                      |
-| `notes`             | A search           | relevance, then `id` | The relevance is each adapter's own (decision 0366)  |
-| `transcript_events` | A session's events | `seq`                | Unique per session                                   |
-| `turns`             | A session's turns  | `started_at`, `id`   | Id tie                                               |
+| Table               | Read               | Order                | Today                                               |
+| ------------------- | ------------------ | -------------------- | --------------------------------------------------- |
+| `chat_queue`        | A session's queue  | `seq`                | Write-order key since agent 0005                    |
+| `notes`             | An agent's notes   | `id`                 | Write-order key                                     |
+| `notes`             | A search           | relevance, then `id` | The relevance is each adapter's own (decision 0366) |
+| `transcript_events` | A session's events | `seq`                | Unique per session                                  |
+| `turns`             | A session's turns  | `started_at`, `id`   | Id tie                                              |

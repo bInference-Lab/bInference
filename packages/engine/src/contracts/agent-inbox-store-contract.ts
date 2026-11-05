@@ -76,20 +76,23 @@ async function opensAndClears(subject: AgentInboxSubject): Promise<void> {
 
 async function listsAndTakes(subject: AgentInboxSubject): Promise<void> {
   const { agentInbox, agentId } = subject;
-  // Two messages at one time list by id; the later time comes after both.
+  // Messages list in the order they arrived, whatever their ids, two of them in one millisecond.
   await added(subject, message(subject, 3, 1_000));
-  await added(subject, message(subject, 1, 2_000));
   await added(subject, message(subject, 2, 1_000));
-  const ids = async (after?: { readonly createdAtMs: number; readonly id: Id<"msg"> }) =>
+  await added(subject, message(subject, 1, 2_000));
+  const ids = async (after?: Id<"msg">) =>
     (
       await agentInbox.untaken(
         { agentId, limit: 10, ...(after === undefined ? {} : { after }) },
         live(),
       )
     ).map((stored) => stored.id);
-  assert.deepEqual(await ids(), [fixtureId("msg", 2), fixtureId("msg", 3), fixtureId("msg", 1)]);
-  assert.deepEqual(await ids({ createdAtMs: 1_000, id: fixtureId("msg", 2) }), [
+  assert.deepEqual(await ids(), [fixtureId("msg", 3), fixtureId("msg", 2), fixtureId("msg", 1)]);
+  assert.deepEqual(await ids(fixtureId("msg", 3)), [fixtureId("msg", 2), fixtureId("msg", 1)]);
+  // A cursor the inbox does not hold lists the messages whose ids sort after it.
+  assert.deepEqual(await ids(fixtureId("msg", 0)), [
     fixtureId("msg", 3),
+    fixtureId("msg", 2),
     fixtureId("msg", 1),
   ]);
   const taken = { ids: [fixtureId("msg", 3), fixtureId("msg", 9)], atMs: 3_000 };

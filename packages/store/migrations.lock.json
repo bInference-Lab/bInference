@@ -4,6 +4,7 @@
     "agent/0002_chats.ts": "d8d550d197496e311699f5db3624fa14184b10c8694726ffbc7899f26fa38ce7",
     "agent/0003_notes.ts": "d56a385170d47f966721fb6b7d0f755c49fc9d20392ec8012aaf1aa769366c11",
     "agent/0004_runtime_chats.ts": "f63ee65af89a8b29fe75299370f3d3554143d72548691ae1c59f455a9c96f94d",
+    "agent/0005_chat_queue_seq.ts": "71724c3b7bd4cc9627aba2ac116473566de52dc42db2476434fec19faa54b8b1",
     "engine/0001_meta.ts": "ff52469aa4c5e12bd332e4029c3b50983710099dbd6b418dc19c870d35e867f3",
     "engine/0002_install_and_safety.ts": "574b3d91d4a66922c1df23b35f6db1b73e31f7aaf96b0d76f8e37c1330766bd0",
     "engine/0003_agents_and_wallets.ts": "9d33d682768b49a7f43062570580fbdb2961d0b0c7b77d77c6abc161773ec548",
@@ -64,6 +65,7 @@
     "engine/0058_identities.ts": "2b6af55dcf796366f5bd6288e6a2656346ce79d478dad83d5e6fe8b3da3d3c54",
     "engine/0059_webhook_rule_fills.ts": "23583eb18cf76bf2ec8f55eb60e47d33f27a6baa876e0090682756c47912e298",
     "engine/0060_order_fill_seq.ts": "bf8ec352458a6b2e1cf5bea98a3b1a79b5060756c9102368481bf150fab81ab0",
-    "engine/0061_notice_seq.ts": "6b1be0c58e17eea722b7243321e806f5db4aa19fa7a54dc76a3335b229574d26"
+    "engine/0061_notice_seq.ts": "6b1be0c58e17eea722b7243321e806f5db4aa19fa7a54dc76a3335b229574d26",
+    "engine/0062_agent_inbox_seq.ts": "c55bf434bfd297f58f7d235ef24aafdb726a6c6ea2f35e6f9d2a70f4a2963516"
   }
 }

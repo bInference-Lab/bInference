@@ -301,6 +301,22 @@ describe("the chat relay", () => {
     });
   });
 
+  it("hands the runtime the owner's messages of one millisecond in the order sent", async () => {
+    const test = await startTestEngine();
+    const { handlers } = test.engine;
+    const texts = ["first", "second", "third", "fourth", "fifth", "sixth"];
+    for (const text of texts) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- messages keep their order
+      expectOk(await handlers["chat/post"](testCall({ agent: testAgent, text })));
+    }
+
+    const first = expectOk(await handlers["inbox/list"](testCall({ limit: 3 }, runtime)));
+    const cursor = String(first.next);
+    const rest = expectOk(await handlers["inbox/list"](testCall({ cursor }, runtime)));
+
+    expect([...first.items, ...rest.items]).toMatchObject(texts.map((text) => ({ text })));
+  });
+
   it("pages the untaken messages and refuses a cursor it did not give", async () => {
     const test = await startTestEngine();
     const { handlers } = test.engine;

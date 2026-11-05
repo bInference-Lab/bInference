@@ -81,7 +81,10 @@ export const addQueuedTask: StoreTask<
   },
 });
 
-/** Lists the waiting messages of a session, or of every session, oldest first. */
+/**
+ * Lists the waiting messages of a session, or of every session, in the order they arrived
+ * (decision 0366), whatever their ids.
+ */
 export const waitingTask: StoreTask<WaitingQuery, readonly QueuedMessage[]> = defineTask({
   name: "chats.waiting",
   access: "read",
@@ -95,8 +98,7 @@ export const waitingTask: StoreTask<WaitingQuery, readonly QueuedMessage[]> = de
     const waiting = scoped
       .where("turn_id", "is", null)
       .where("dropped_at", "is", null)
-      .orderBy("received_at")
-      .orderBy("message")
+      .orderBy("seq")
       .limit(query.limit);
     return execute(waiting).rows.map(toQueued);
   },

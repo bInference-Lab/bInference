@@ -177,7 +177,7 @@ const columns: Readonly<Record<string, readonly string[]>> = {
   inbox: names("id source source_key payload received_at handled_at"),
   outbox: names("id surface target payload state attempts next_at ref created_at sent_at"),
   notices: names("id agent_id kind i18n_key values level at delivered intent_id seq"),
-  agent_inbox: names("id agent_id session_id kind turn_id payload created_at taken_at"),
+  agent_inbox: names("id agent_id session_id kind turn_id payload created_at taken_at seq"),
   telegram_owner: names("id user_id paired_at agent_id"),
   engine_alive: names("id alive_at"),
   telegram_topics: names("agent_id chat_id thread_id created_at"),
@@ -301,7 +301,7 @@ const indexes: Readonly<Record<string, readonly string[]>> = {
   inbox: ["index|handled_at|partial", "unique|source_key"],
   outbox: ["index|state,next_at"],
   notices: ["index|at", "unique|seq"],
-  agent_inbox: ["index|agent_id,taken_at"],
+  agent_inbox: ["index|agent_id,taken_at", "unique|seq"],
   model_usage: ["index|agent_id,at", "unique|key"],
   questions: ["unique|agent_id|partial", "unique|ref"],
   tokens: ["unique|secret_hash"],
@@ -376,9 +376,10 @@ describe("the agent database", () => {
       chat_queue: {
         strict: true,
         columns: names(
-          "message agent_id session_id kind payload received_at turn_id dropped_at drop_reason",
+          "message agent_id session_id kind payload received_at turn_id dropped_at drop_reason seq",
         ),
       },
+      counters: { strict: true, columns: ["name", "last"] },
       notes: {
         strict: true,
         columns: names("id agent_id text origin created_at changed_at deleted_at"),
@@ -393,7 +394,10 @@ describe("the agent database", () => {
     expect(describeIndexes(database, "turns")).toStrictEqual(["index|session_id,started_at"]);
     expect(describeIndexes(database, "transcript_events")).toStrictEqual(["unique|session_id,seq"]);
     expect(describeIndexes(database, "notes")).toStrictEqual(["index|agent_id"]);
-    expect(describeIndexes(database, "chat_queue")).toStrictEqual(["index|session_id,received_at"]);
+    expect(describeIndexes(database, "chat_queue")).toStrictEqual([
+      "index|session_id,received_at",
+      "unique|seq",
+    ]);
     expect(primaryKeys(database, "chat_queue")).toStrictEqual(["message"]);
   });
 });

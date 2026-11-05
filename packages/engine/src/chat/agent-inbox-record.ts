@@ -100,19 +100,19 @@ export const agentInboxMessageSchema: z.ZodType<AgentInboxMessage> = z.strictObj
 });
 
 /**
- * Which untaken messages to list: one agent's or every agent's, the oldest first, after `after`
- * when given, so the runtime pages through them.
+ * Which untaken messages to list: one agent's or every agent's, in the order they arrived, those
+ * that arrived after the message `after` when given, so the runtime pages through them.
  */
 export interface UntakenQuery {
   readonly agentId?: Id<"agt">;
-  readonly after?: { readonly createdAtMs: number; readonly id: Id<"msg"> };
+  readonly after?: Id<"msg">;
   readonly limit: number;
 }
 
 /** Parses an untaken query. */
 export const untakenQuerySchema: z.ZodType<UntakenQuery> = z.strictObject({
   agentId: idSchema("agt").exactOptional(),
-  after: z.strictObject({ createdAtMs: epochMsSchema, id: idSchema("msg") }).exactOptional(),
+  after: idSchema("msg").exactOptional(),
   limit: pageLimitSchema,
 });
 

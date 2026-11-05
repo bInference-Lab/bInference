@@ -1,3 +1,5 @@
+import type { Generated } from "kysely";
+
 // The tables of the agent inbox and the agent's questions, as SQLite returns them: migration 0028
 // defines `agent_inbox`, with `agents.chat_session_id`, and migration 0035 the questions.
 
@@ -11,6 +13,8 @@ export interface AgentInboxTable {
   payload: string;
   created_at: number;
   taken_at: number | null;
+  /** The message's place in the order messages arrived, from `counters` (migration 0062). */
+  seq: Generated<number>;
 }
 
 /** `questions`: one question of the agent to the owner (migration 0035). */

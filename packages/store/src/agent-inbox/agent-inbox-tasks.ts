@@ -99,7 +99,10 @@ export const openSessionTask: StoreTask<Id<"agt">, Id<"ses"> | undefined> = defi
   },
 });
 
-/** Lists untaken messages, the oldest first, then by id. */
+/**
+ * Lists untaken messages in the order they arrived (decision 0366): those after the cursor's
+ * message, taken or not, or, once a prune took it, those whose ids sort after it.
+ */
 export const untakenMessagesTask: StoreTask<UntakenQuery, readonly AgentInboxMessage[]> =
   defineTask({
     name: "agentInbox.untaken",
@@ -107,25 +110,21 @@ export const untakenMessagesTask: StoreTask<UntakenQuery, readonly AgentInboxMes
     input: untakenQuerySchema,
     output: z.array(agentInboxMessageSchema),
     run(database, query) {
-      const { kysely, execute } = createSyncKysely<EngineTables>(database);
+      const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
       const { agentId, after, limit } = query;
       const untaken = kysely.selectFrom("agent_inbox").selectAll().where("taken_at", "is", null);
       const ofAgent = agentId === undefined ? untaken : untaken.where("agent_id", "=", agentId);
-      const paged =
+      const cursor =
         after === undefined
-          ? ofAgent
-          : ofAgent.where((builder) =>
-              builder.or([
-                builder("created_at", ">", after.createdAtMs),
-                builder.and([
-                  builder("created_at", "=", after.createdAtMs),
-                  builder("id", ">", after.id),
-                ]),
-              ]),
-            );
-      return execute(paged.orderBy("created_at").orderBy("id").limit(limit)).rows.map(
-        toAgentInboxMessage,
-      );
+          ? undefined
+          : takeFirst(kysely.selectFrom("agent_inbox").select("seq").where("id", "=", after));
+      const paged = ofAgent.where((where) => {
+        if (after === undefined) {
+          return where.and([]);
+        }
+        return cursor === undefined ? where("id", ">", after) : where("seq", ">", cursor.seq);
+      });
+      return execute(paged.orderBy("seq").limit(limit)).rows.map(toAgentInboxMessage);
     },
   });
 

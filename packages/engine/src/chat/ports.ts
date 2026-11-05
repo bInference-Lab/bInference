@@ -41,7 +41,11 @@ export interface AgentInboxStore {
     agent: Id<"agt">,
     options: { readonly signal: AbortSignal },
   ): Promise<Id<"ses"> | undefined>;
-  /** Untaken messages, the oldest first, then by id. */
+  /**
+   * Untaken messages in the order they arrived (decision 0366): after `query.after`, those that
+   * arrived after it, whatever their ids; a cursor the inbox no longer holds lists the messages
+   * whose ids sort after it.
+   */
   untaken(
     query: UntakenQuery,
     options: { readonly signal: AbortSignal },

@@ -5,6 +5,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { afterEach, describe, expect, it } from "vitest";
 import { openConnection } from "../sqlite/open-connection.worker.js";
 import { plantAgent } from "../testing/plant-agent.js";
+import { agentMigrations } from "./agent/agent-migrations.js";
 import { engineMigrations } from "./engine/engine-migrations.js";
 import { runMigrations } from "./run-migrations.js";
 
@@ -102,6 +103,42 @@ describe("the notice write-order migration", () => {
   });
 });
 
+const messageId = (n: number): string =>
+  `msg_0190f1c2-3a4b-7c5d-8e6f-${n.toString(16).padStart(12, "0")}`;
+
+function insertMessages(database: DatabaseSync, rows: readonly (readonly [number, number])[]) {
+  const insert = database.prepare(
+    `INSERT INTO agent_inbox (id, agent_id, session_id, kind, payload, created_at)
+      VALUES (?, 'agt_0190f1c2-3a4b-7c5d-8e6f-000000000001',
+        'ses_0190f1c2-3a4b-7c5d-8e6f-000000000001', 'inbox/message', '{}', ?)`,
+  );
+  for (const [n, at] of rows) {
+    insert.run(messageId(n), at);
+  }
+}
+
+describe("the agent inbox write-order migration", () => {
+  it("numbers the messages by time then id, as the list read them, then each new one after", () => {
+    const database = engineBefore("0062_agent_inbox_seq");
+    plantAgent(database, 1);
+    insertMessages(database, [
+      [3, 1],
+      [2, 2],
+      [1, 2],
+    ]);
+
+    runMigrations(database, { name: "engine", migrations: engineMigrations });
+    insertMessages(database, [[0, 1]]);
+
+    expect(seqs(database, "agent_inbox", "id")).toEqual([
+      { key: messageId(3), seq: 1 },
+      { key: messageId(1), seq: 2 },
+      { key: messageId(2), seq: 3 },
+      { key: messageId(0), seq: 4 },
+    ]);
+  });
+});
+
 describe("the order fill write-order migration", () => {
   it("numbers the rows as the store read them, then each new row after the last", () => {
     const database = engineBefore("0060_order_fill_seq");
@@ -134,5 +171,39 @@ describe("the order fill write-order migration", () => {
     insertFills(database, [[2, 4]]);
 
     expect(seqs(database, "order_fills", "id")).toEqual([{ key: fillId(2), seq: 2 }]);
+  });
+});
+
+function insertQueued(database: DatabaseSync, rows: readonly (readonly [number, number])[]) {
+  const insert = database.prepare(
+    `INSERT INTO chat_queue (message, agent_id, session_id, kind, payload, received_at)
+      VALUES (?, 'agt_0190f1c2-3a4b-7c5d-8e6f-000000000001',
+        'ses_0190f1c2-3a4b-7c5d-8e6f-000000000001', 'inbox/message', '{}', ?)`,
+  );
+  for (const [n, at] of rows) {
+    insert.run(messageId(n), at);
+  }
+}
+
+describe("the chat queue write-order migration", () => {
+  it("numbers the messages by arrival then id, as the queue read them, then each new one after", () => {
+    const database = connect();
+    const index = agentMigrations.findIndex(({ name }) => name === "0005_chat_queue_seq");
+    runMigrations(database, { name: "agent", migrations: agentMigrations.slice(0, index) });
+    insertQueued(database, [
+      [3, 1],
+      [2, 2],
+      [1, 2],
+    ]);
+
+    runMigrations(database, { name: "agent", migrations: agentMigrations });
+    insertQueued(database, [[0, 1]]);
+
+    expect(seqs(database, "chat_queue", "message")).toEqual([
+      { key: messageId(3), seq: 1 },
+      { key: messageId(1), seq: 2 },
+      { key: messageId(2), seq: 3 },
+      { key: messageId(0), seq: 4 },
+    ]);
   });
 });

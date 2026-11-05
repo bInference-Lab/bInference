@@ -58,6 +58,8 @@ interface ChatQueueTable {
   turn_id: string | null;
   dropped_at: number | null;
   drop_reason: string | null;
+  /** The message's place in the order messages arrived, from `counters` (agent migration 0005). */
+  seq: Generated<number>;
 }
 
 /** `notes`; `notes_fts` indexes its text. */

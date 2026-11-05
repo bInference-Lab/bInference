@@ -14,7 +14,7 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { isTerminalState } from "../intents/intent-state.js";
 import type { AgentStore } from "../ports.js";
 import type { ScheduleWake } from "../schedules/schedule-record.js";
-import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
+import { constraintFault, memoryCall } from "./memory-call.js";
 
 /** An in-memory agent inbox that the in-memory intent store also writes settle messages to. */
 export interface MemoryAgentInboxStore extends AgentInboxStore {
@@ -186,26 +186,21 @@ function wake(rows: InboxRows, waking: MemoryWake): Result<AgentInboxMessage, "w
   return ok(store(rows, { ...message, createdAtMs: atMs }));
 }
 
-function isAfter(message: AgentInboxMessage, after: UntakenQuery["after"]): boolean {
-  return (
-    after === undefined ||
-    message.createdAtMs > after.createdAtMs ||
-    (message.createdAtMs === after.createdAtMs && message.id > after.id)
-  );
+// The messages that arrived after the cursor's, in the order they arrived, which the rows keep;
+// those whose ids sort after a cursor the inbox no longer holds.
+function arrivedAfter(rows: InboxRows, after: UntakenQuery["after"]): readonly AgentInboxMessage[] {
+  const all = rows.all();
+  const at = all.findIndex((stored) => stored.id === after);
+  return at === -1
+    ? all.filter((stored) => after === undefined || stored.id > after)
+    : all.slice(at + 1);
 }
 
 function untaken(rows: InboxRows, query: UntakenQuery): readonly AgentInboxMessage[] {
   const { agentId, after, limit } = query;
   return structuredClone(
-    rows
-      .all()
-      .filter(
-        (stored) =>
-          !isTaken(stored) &&
-          (agentId === undefined || stored.agentId === agentId) &&
-          isAfter(stored, after),
-      )
-      .toSorted(byCreation)
+    arrivedAfter(rows, after)
+      .filter((stored) => !isTaken(stored) && (agentId === undefined || stored.agentId === agentId))
       .slice(0, limit),
   );
 }

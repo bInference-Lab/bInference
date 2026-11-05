@@ -60,6 +60,7 @@ import { migration as identities } from "./0058_identities.js";
 import { migration as webhookRuleFills } from "./0059_webhook_rule_fills.js";
 import { migration as orderFillSeq } from "./0060_order_fill_seq.js";
 import { migration as noticeSeq } from "./0061_notice_seq.js";
+import { migration as agentInboxSeq } from "./0062_agent_inbox_seq.js";
 
 /** The engine database's migrations, oldest first. Released files never change. */
 export const engineMigrations: readonly Migration[] = [
@@ -124,4 +125,5 @@ export const engineMigrations: readonly Migration[] = [
   webhookRuleFills,
   orderFillSeq,
   noticeSeq,
+  agentInboxSeq,
 ];

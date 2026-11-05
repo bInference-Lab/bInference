@@ -6,9 +6,6 @@ import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-d
 const isWaiting = (message: QueuedMessage | undefined): message is QueuedMessage =>
   message !== undefined && message.turnId === undefined && message.droppedAtMs === undefined;
 
-const byArrival = (left: QueuedMessage, right: QueuedMessage): number =>
-  left.receivedAtMs - right.receivedAtMs || (left.message < right.message ? -1 : 1);
-
 // Adding a message once, and reading those that wait.
 function arrivals(database: MemoryAgentDatabase): Pick<ChatQueueStore, "add" | "waiting"> {
   const { queue } = database;
@@ -24,6 +21,7 @@ function arrivals(database: MemoryAgentDatabase): Pick<ChatQueueStore, "add" | "
         queue.set(draft.message, structuredClone(draft));
         return ok(structuredClone(draft));
       }),
+    // The map keeps the order messages arrived in, which the SQLite store reads by `seq`.
     waiting: async ({ sessionId, limit }, options) =>
       inMemory(options, () =>
         [...queue.values()]
@@ -31,7 +29,6 @@ function arrivals(database: MemoryAgentDatabase): Pick<ChatQueueStore, "add" | "
             (message) =>
               (sessionId === undefined || message.sessionId === sessionId) && isWaiting(message),
           )
-          .toSorted(byArrival)
           .slice(0, limit)
           .map((message) => structuredClone(message)),
       ),

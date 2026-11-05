@@ -1,11 +1,10 @@
-import { err, ok } from "@binference/core";
+import { err, idSchema, ok } from "@binference/core";
 import type { ProtocolId } from "@binference/protocol";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { noticePush } from "../pushes/notice-push.js";
 import { isWakeUp } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
-import { inboxCursorOf, parseInboxCursor } from "./inbox-cursor.schema.js";
 import { inboxViewOf } from "./inbox-views.js";
 import { askOwner } from "./question-flow.js";
 
@@ -154,10 +153,12 @@ function inboxHandlers(
   return {
     async "inbox/list"(call) {
       const { agent, cursor, limit = defaultPageSize } = call.args;
-      const after = cursor === undefined ? undefined : parseInboxCursor(cursor);
-      if (cursor !== undefined && after === undefined) {
+      // A cursor is the id of the last message of the page before.
+      const parsed = cursor === undefined ? undefined : idSchema("msg").safeParse(cursor);
+      if (parsed?.success === false) {
         return err("protocol.bad_args");
       }
+      const after = parsed?.data;
       const messages = await options.agentInbox.untaken(
         {
           ...(agent === undefined ? {} : { agentId: agent }),
@@ -172,7 +173,7 @@ function inboxHandlers(
       );
       const last = page.at(-1);
       const more = messages.length > limit && last !== undefined;
-      return ok({ items, ...(more ? { next: inboxCursorOf(last) } : {}) });
+      return ok({ items, ...(more ? { next: last.id } : {}) });
     },
     async "inbox/take"(call) {
       const taken = { ids: call.args.messages, atMs: options.clock.now() };

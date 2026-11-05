@@ -43,15 +43,28 @@ async function addsOnce({ store }: ChatQueueStoreSubject, fence: number): Promis
 }
 
 async function listsEverySession({ store }: ChatQueueStoreSubject, fence: number): Promise<void> {
-  await store.add({ ...nthMessage(1, 30), fence }, go());
+  await store.add({ ...nthMessage(1, 10), fence }, go());
   await store.add({ ...nthMessage(2, 20, 2), fence }, go());
-  await store.add({ ...nthMessage(3, 10, 3), fence }, go());
-  await store.take({ messages: [nthId("msg", 3)], turn: nthId("trn", 1), fence }, go());
+  await store.add({ ...nthMessage(3, 30, 3), fence }, go());
+  await store.take({ messages: [nthId("msg", 1)], turn: nthId("trn", 1), fence }, go());
   assert.deepEqual(await store.waiting({ limit: 1_000 }, go()), [
     nthMessage(2, 20, 2),
-    nthMessage(1, 30),
+    nthMessage(3, 30, 3),
   ]);
   assert.deepEqual(await store.waiting({ limit: 1 }, go()), [nthMessage(2, 20, 2)]);
+}
+
+// Messages of one millisecond wait in the order they arrived, whatever their ids, so a turn reads
+// the owner's messages in the order they were sent (decision 0366).
+async function listsInArrivalOrder({ store }: ChatQueueStoreSubject, fence: number): Promise<void> {
+  // Each message's id falls below the one added before it.
+  const drafts = [9, 8, 7].map((n) => nthMessage(n, 50));
+  for (const draft of drafts) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the messages arrive one after another
+    await store.add({ ...draft, fence }, go());
+  }
+
+  assert.deepEqual(await store.waiting(sessionOne, go()), drafts);
 }
 
 async function takesAllOrNone({ store }: ChatQueueStoreSubject, fence: number): Promise<void> {
@@ -117,9 +130,14 @@ export function chatQueueStoreContract(harness: ChatQueueStoreHarness): readonly
   return [
     fencedCheck("adds each message once and lists those that wait, oldest first", create, addsOnce),
     fencedCheck(
-      "lists the waiting messages of every session, oldest first",
+      "lists the waiting messages of every session in the order they arrived",
       create,
       listsEverySession,
+    ),
+    fencedCheck(
+      "lists messages of one instant in the order they arrived, whatever their ids",
+      create,
+      listsInArrivalOrder,
     ),
     fencedCheck("gives waiting messages to a turn, all or none", create, takesAllOrNone),
     fencedCheck("drops a waiting message with its reason, once", create, dropsWithReason),

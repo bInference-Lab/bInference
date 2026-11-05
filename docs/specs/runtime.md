@@ -143,8 +143,8 @@ untaken ones come back from `inbox/list`.
 - The runtime writes each message it receives into its chat queue, then calls `inbox/take` with
   its id; the engine sets `taken_at`. A message already in the queue is ignored, so a message
   pushed twice or read again from `inbox/list` is taken once.
-- On start and after a `resync`, the runtime reads every untaken message with `inbox/list`, oldest
-  first.
+- On start and after a `resync`, the runtime reads every untaken message with `inbox/list`, in the
+  order they arrived.
 - The engine keeps at most 200 untaken messages per agent. Past that, `chat/post` fails
   `protocol.busy`, and a message the engine makes is dropped and logged; its facts still reach the
   owner as cards and notices.
