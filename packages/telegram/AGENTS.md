@@ -14,7 +14,8 @@ Rules for this package:
   only, and the owner's message is deleted with a warning.
 - Only the owner's numeric Telegram id, in the owner's private chat, counts. Groups, channels,
   bots, posts on behalf of a chat and every other person are ignored. Before an owner is bound,
-  only a typed `/start <code>` does anything.
+  only a typed `/start <code>` pairs anyone, and a typed `/start` alone is answered with how to
+  pair; once an owner is bound, nobody else hears from the bot.
 - The bot token is a `Secret`. It reaches grammY and the poll worker only. A grammY error never
   becomes an error's cause: its request URL holds the token and its payload holds chat text.
 - Telegram names an update's chat message `message`, which the lint rule against reading error

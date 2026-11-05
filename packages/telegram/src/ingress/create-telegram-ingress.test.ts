@@ -103,6 +103,25 @@ describe("the Telegram ingress", () => {
     ).toStrictEqual([]);
   });
 
+  it("tells a person how to pair when they tap Start on a bot with no owner yet", async () => {
+    const context = await setUp();
+    await context.receive(
+      textUpdate({ updateId: 6, from: strangerId, text: "/start" }),
+      textUpdate({ updateId: 7, from: strangerId, text: "hello" }),
+    );
+    expect(context.botApi.sent()).toStrictEqual([
+      { chatId: strangerId, text: messages.en["telegram.howToPair"] },
+    ]);
+    expect(await context.stores.owners.get(live)).toBeUndefined();
+    expect(context.delivered).toStrictEqual([]);
+  });
+
+  it("stays silent to a bare Start from anyone once the bot has an owner", async () => {
+    const context = await setUp({ owner: ownerId });
+    await context.receive(textUpdate({ updateId: 8, from: strangerId, text: "/start" }));
+    expect(context.botApi.sent()).toStrictEqual([]);
+  });
+
   it("deletes a 24-word message from the owner unseen and answers with the warning", async () => {
     const context = await setUp({ owner: ownerId });
     const update = textUpdate({ updateId: 5, from: ownerId, text: twentyFourWords, messageId: 77 });

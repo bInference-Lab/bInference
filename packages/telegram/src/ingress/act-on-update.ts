@@ -8,6 +8,7 @@ import type { OwnerUpdate, ReplyTarget, UpdateAction } from "./decide-update.js"
 /** The words the ingress sends, each under its message key. */
 export type IngressWords =
   | "telegram.paired"
+  | "telegram.howToPair"
   | "telegram.pairRefused"
   | "telegram.pairingEnded"
   | "telegram.secretDeleted";
@@ -106,7 +107,10 @@ async function deleteSecret(action: SecretAction, context: ActionContext, call: 
   await say(context, { key: "telegram.secretDeleted", target: action.target }, call);
 }
 
-/** Carries out one decided action: pairs, deletes a secret, welcomes or hands an update on. */
+/**
+ * Carries out one decided action: pairs, tells how to pair, deletes a secret, welcomes or hands an
+ * update on.
+ */
 export async function actOnUpdate(
   action: UpdateAction,
   context: ActionContext,
@@ -120,6 +124,9 @@ export async function actOnUpdate(
       return;
     case "welcome":
       await say(context, { key: "telegram.paired", target: action.target }, call);
+      return;
+    case "howToPair":
+      await say(context, { key: "telegram.howToPair", target: action.target }, call);
       return;
     case "deleteSecret":
       await deleteSecret(action, context, call);

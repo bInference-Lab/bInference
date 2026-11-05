@@ -15,6 +15,8 @@ const botUsername = /^[A-Za-z][A-Za-z0-9_]{3,31}$/;
 // Telegram passes a deep link's start parameter as "/start <parameter>": 1 to 64 of A-Z, a-z,
 // 0-9, _ and -. A bot name after the command is allowed, as in a group.
 const startCommand = /^\/start(?:@[A-Za-z0-9_]{1,64})?\s+([A-Za-z0-9_-]{1,64})\s*$/;
+// The command alone, as Telegram's Start button sends it.
+const bareStartCommand = /^\/start(?:@[A-Za-z0-9_]{1,64})?\s*$/;
 
 /** What {@link issueStartCode} needs. */
 export interface StartCodeOptions {
@@ -41,6 +43,11 @@ export interface StartCode {
  */
 export function startCodeHash(code: string): Sha256Hex {
   return sha256Hex(`telegram-start:${code}`);
+}
+
+/** Whether the text is `/start` with no start parameter, as Telegram's Start button sends it. */
+export function isBareStart(text: string): boolean {
+  return bareStartCommand.test(text);
 }
 
 /** The start parameter of a `/start <code>` message, if the text is one. */

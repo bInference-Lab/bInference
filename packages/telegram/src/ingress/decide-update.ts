@@ -1,5 +1,5 @@
 import type { OwnerBinding } from "@binference/engine/surfaces";
-import { startCodeIn } from "../pairing/start-code.js";
+import { isBareStart, startCodeIn } from "../pairing/start-code.js";
 import type {
   BotSender,
   ButtonPress,
@@ -27,6 +27,7 @@ export type UpdateAction =
       readonly target: ReplyTarget;
     }
   | { readonly kind: "welcome"; readonly target: ReplyTarget }
+  | { readonly kind: "howToPair"; readonly target: ReplyTarget }
   | { readonly kind: "deleteSecret"; readonly messageId: number; readonly target: ReplyTarget }
   | { readonly kind: "deliver"; readonly update: OwnerUpdate };
 
@@ -56,10 +57,27 @@ function targetOf(post: ChatPost, sender: BotSender): ReplyTarget {
   };
 }
 
-// The /start message a deep link sends: typed by the person, never forwarded or edited.
+// A message's text as the person typed it, never forwarded or edited.
+function typedTextOf(post: ChatPost): string | undefined {
+  return post.kind === "message" && !post.isForwarded ? post.text : undefined;
+}
+
+// The /start message a deep link sends.
 function startCodeOf(post: ChatPost): string | undefined {
-  const isTyped = post.kind === "message" && !post.isForwarded;
-  return isTyped && post.text !== undefined ? startCodeIn(post.text) : undefined;
+  const text = typedTextOf(post);
+  return text === undefined ? undefined : startCodeIn(text);
+}
+
+// A person who opens a bot that has no owner yet and taps Start learns how to pair; once a bot has
+// an owner, nobody else hears from it.
+function strangerAction(post: ChatPost, person: BotSender, facts: UpdateFacts): UpdateAction {
+  const code = facts.isRedacted ? undefined : startCodeOf(post);
+  if (code !== undefined) {
+    return { kind: "pair", code, userId: person.id, target: targetOf(post, person) };
+  }
+  const text = facts.isRedacted ? undefined : typedTextOf(post);
+  const asksToStart = facts.owner === undefined && text !== undefined && isBareStart(text);
+  return asksToStart ? { kind: "howToPair", target: targetOf(post, person) } : ignore;
 }
 
 function decidePost(post: ChatPost, facts: UpdateFacts): UpdateAction {
@@ -67,18 +85,15 @@ function decidePost(post: ChatPost, facts: UpdateFacts): UpdateAction {
   if (person === undefined) {
     return ignore;
   }
-  const code = facts.isRedacted ? undefined : startCodeOf(post);
   // Anyone but the owner pairs with a start code: the first, or a new one from
   // `binference telegram pair` that pairs them in the owner's place (decision 0139).
   if (person.id !== facts.owner?.userId) {
-    return code === undefined
-      ? ignore
-      : { kind: "pair", code, userId: person.id, target: targetOf(post, person) };
+    return strangerAction(post, person, facts);
   }
   if (facts.isRedacted) {
     return { kind: "deleteSecret", messageId: post.messageId, target: targetOf(post, person) };
   }
-  return code === undefined
+  return startCodeOf(post) === undefined
     ? { kind: "deliver", update: post }
     : { kind: "welcome", target: targetOf(post, person) };
 }
@@ -97,9 +112,9 @@ function decidePress(press: ButtonPress, facts: UpdateFacts): UpdateAction {
 /**
  * Decides what to do with a stored update. Only the owner's numeric id counts, only in the owner's
  * private chat: groups, channels, bots and every other person are ignored, except that a typed
- * `/start <code>` from them is a pairing, which a valid code wins in the owner's place. The owner's
- * message that held a secret is
- * deleted with a warning and never handed on.
+ * `/start <code>` from them is a pairing, which a valid code wins in the owner's place, and a typed
+ * `/start` alone, while the bot has no owner, is answered with how to pair. The owner's message
+ * that held a secret is deleted with a warning and never handed on.
  */
 export function decideUpdate(facts: UpdateFacts): UpdateAction {
   const { update } = facts;
