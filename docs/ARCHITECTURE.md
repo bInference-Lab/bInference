@@ -932,7 +932,9 @@ Decided in [decision 0007](DECISIONS.md#d0007).
 - **One backend in v1, one contract ([decision 0031](DECISIONS.md#d0031)).** The store is a set of
   ports. v1 ships SQLite only, on `node:sqlite` (built into Node, nothing to compile) with Kysely
   through a synchronous dialect. Database work runs on worker threads. A Postgres adapter comes with
-  the cloud plan and must pass the same contract test suites.
+  the cloud plan and must pass the same contract test suites. Its store tasks are the same
+  synchronous code: a task thread waits on each statement while the thread that holds the
+  transaction runs it on Postgres ([decision 0369](DECISIONS.md#d0369)).
 - **Two databases.** The engine and the agent runtime keep separate ones ([section 3](#section-3)).
 - **Short transactions for money.** Plan first, re-read the authoritative rows, write and commit. No
   network call happens inside a transaction.

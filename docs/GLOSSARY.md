@@ -426,6 +426,9 @@ check` tries it as `network.proxy`.
 - **Postgres store**: the store ports' Postgres adapter in `store`, public, which passes the same
   contract suites as SQLite. Each install keeps its engine tables in its **engine schema**,
   `engine_<install>`, and its agent tables in its **agent schema**, `agent_<install>`.
+- **task thread**: a store worker started for the Postgres store. It runs store tasks
+  synchronously and waits on each statement, while the thread that holds the task's transaction,
+  its **statement side**, runs the statement on Postgres.
 - **write-order key**: an integer column, such as `ledger.seq` or `order_fills.seq`, that each
   write sets to the next value inside its own transaction, so rows read in the order they were
   committed on both databases.
@@ -735,6 +738,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | key (on the keyboard), number key           | 按键, 数字键           | Terminal chat: Ctrl+Y, Esc   |
 | Postgres store                              | Postgres 存储          | The store's Postgres adapter |
 | engine schema, agent schema                 | 引擎模式, Agent 模式   | `engine_<install>`           |
+| task thread, statement side                 | 任务线程, 语句端       | Store tasks on Postgres      |
 | write-order key                             | 写入顺序键             | `seq`                        |
 | worker (on Cloud)                           | 工作进程               | Runs engine and runtime      |
 | worker thread                               | 工作线程               | A Node thread, not a worker  |
