@@ -51,8 +51,9 @@ describe("the typing indicator in Telegram", () => {
     const { clock, replies, typedAt } = await setUp();
     await replies.show(started, live);
     await clock.advance(12_500);
-    await replies.show(ended, live);
+    const shown = replies.show(ended, live);
     await clock.advance(20_000);
+    await shown;
     expect(typedAt()).toStrictEqual([0, 4_000, 8_000, 12_000]);
   });
 

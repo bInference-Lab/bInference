@@ -96,4 +96,16 @@ describe("the agent's Chinese replies in Telegram", () => {
       { text: "侦察 · 已卖出，详见 行情 (https://dexscreener.com)", entities: [] },
     ]);
   });
+
+  it("says in Chinese that a turn ended with no answer", async () => {
+    const { botApi, clock, replies } = await setUp();
+    const turn = { agent, turn: at.turn };
+    await replies.show({ kind: "chat/turnStarted", data: turn }, live);
+    const shown = replies.show({ kind: "chat/turnEnded", data: turn }, live);
+    await clock.advance(1_000);
+    await shown;
+    expect(botApi.messages().map(({ text }) => text)).toStrictEqual([
+      "侦察 · 未生成回答，请再试一次。",
+    ]);
+  });
 });

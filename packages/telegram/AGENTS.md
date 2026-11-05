@@ -79,7 +79,9 @@ Rules for this package:
   never sent again, and any failure but a passing one stops the edits for the turn. The typing
   indicator (`src/chat/chat-typing.ts`, decision 0372) goes the same way, every 4 seconds while a
   turn runs; `sendChatAction` also takes no place in its chat's pace. Nothing else is sent as a
-  preview. An answer Telegram refuses leaves the status message saying so.
+  preview. A message of the answer whose send provably never left goes again through
+  `resendUnsent`, 3 tries at most (decision 0373); an answer Telegram refuses leaves the status
+  message saying so, and a turn that ends with nothing for the owner gets `telegram.chat.noAnswer`.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, the one
   setting the chat changes, decision 0134), and only `commandCallbackSchema` reads it. A press

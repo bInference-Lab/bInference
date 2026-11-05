@@ -46,6 +46,7 @@ const ended = push("chat/turnEnded", { agent, turn, outcome: "ok" });
 const answer = (text: string, final = true) => push("chat/message", { ...at, text, final });
 const tool = (progressKey: string, values?: Readonly<Record<string, string>>) =>
   push("chat/progress", { agent, turn, progressKey, ...(values === undefined ? {} : { values }) });
+const noAnswer = "No response generated. Please try again.";
 const flood = (retryAfterS: number) => ({
   status: 429,
   description: "Too Many Requests",
@@ -58,6 +59,21 @@ function messageCalls(botApi: ReturnType<typeof createFakeBotApi>): readonly str
     .calls()
     .map(({ method }) => method)
     .filter((method) => method !== "sendChatAction");
+}
+
+// Moves time 100 ms at a time; answers how many `sendMessage` calls were made after each step.
+async function triesEach100Ms(
+  botApi: ReturnType<typeof createFakeBotApi>,
+  clock: ReturnType<typeof createManualClock>,
+  steps: number,
+): Promise<readonly number[]> {
+  const tries: number[] = [];
+  for (let step = 0; step < steps; step += 1) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- time moves one step at a time
+    await clock.advance(100);
+    tries.push(botApi.calls().filter(({ method }) => method === "sendMessage").length);
+  }
+  return tries;
 }
 
 describe("the agent's status message in Telegram", () => {
@@ -292,15 +308,45 @@ describe("the agent's status message in Telegram", () => {
     expect(botApi.messages().map(({ messageId }) => messageId)).toStrictEqual([1002]);
   });
 
-  it("removes the status message of a turn that ends without an answer", async () => {
+  it("removes the status message of a turn that ends without an answer, and says so", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);
     await clock.advance(1_500);
     await replies.idle();
-    await replies.show(ended, live);
+    const shown = replies.show(ended, live);
+    await clock.advance(1_000);
+    await shown;
     await clock.advance(4_000);
     await replies.idle();
-    expect(botApi.messages()).toStrictEqual([]);
+    expect(botApi.messages().map(({ text }) => text)).toStrictEqual([noAnswer]);
+  });
+
+  it("tells the owner when a turn ends with no answer, no status line and no question", async () => {
+    const { botApi, clock, replies } = await setUp();
+    await replies.show(started, live);
+    await clock.advance(500);
+    await replies.show(ended, live);
+    await clock.advance(10_000);
+    await replies.idle();
+    expect(botApi.sent().map(({ text }) => text)).toStrictEqual([noAnswer]);
+  });
+
+  it("adds no such line after a status line or a question of the turn", async () => {
+    const { botApi, clock, replies } = await setUp();
+    await replies.show(started, live);
+    const line = replies.show(push("chat/status", { ...at, statusKey: "turn.stopped" }), live);
+    await clock.advance(1_000);
+    await line;
+    await replies.show(ended, live);
+    const next = "trn_0190f1c2-3a4b-7c5d-8e6f-0123456789ac";
+    await replies.show(push("chat/turnStarted", { agent, turn: next }), live);
+    await replies.show(push("chat/question", { agent, turn: next, question: "qst_1" }), live);
+    await replies.show(push("chat/turnEnded", { agent, turn: next, outcome: "ok" }), live);
+    await clock.advance(10_000);
+    await replies.idle();
+    expect(botApi.sent().map(({ text }) => text)).toStrictEqual([
+      "Stopped. Anything you already confirmed still goes through.",
+    ]);
   });
 
   it("sends nothing before the owner pairs, and reads no other push", async () => {
@@ -415,6 +461,41 @@ describe("the agent's answers in Telegram", () => {
       "scout · Bought <b>it</b>.",
       "scout · Stopped. Anything you already confirmed still goes through.",
     ]);
+  });
+
+  it("sends an answer again whose send never left, no sooner than 400 ms later", async () => {
+    const { botApi, clock, replies } = await setUp();
+    botApi.failNext("sendMessage", "network", { chatId: ownerId });
+    botApi.failNext("sendMessage", "network", { chatId: ownerId });
+    const shown = replies.show(answer("Done."), live);
+    const tries = await triesEach100Ms(botApi, clock, 30);
+    await shown;
+    expect(botApi.sent().map(({ text }) => text)).toStrictEqual(["Done."]);
+    expect(tries.slice(0, 3)).toStrictEqual([1, 1, 1]);
+    expect(tries.at(-1)).toBe(3);
+  });
+
+  it("stops after 3 tries and says the answer did not arrive", async () => {
+    const { botApi, clock, replies } = await setUp();
+    for (const failure of ["network", "network", "network"] as const) {
+      botApi.failNext("sendMessage", failure, { chatId: ownerId });
+    }
+    const shown = replies.show(answer("Done."), live).catch((error: unknown) => error);
+    await triesEach100Ms(botApi, clock, 40);
+    await expect(shown).resolves.toMatchObject({ code: "telegram.unreachable" });
+    expect(botApi.sent().map(({ text }) => text)).toStrictEqual([
+      "⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.",
+    ]);
+  });
+
+  it("never sends again an answer that may have landed", async () => {
+    const { botApi, clock, replies } = await setUp();
+    botApi.failNext("sendMessage", "lostAnswer", { chatId: ownerId });
+    const shown = replies.show(answer("Done."), live).catch((error: unknown) => error);
+    const tries = await triesEach100Ms(botApi, clock, 40);
+    await expect(shown).resolves.toBeDefined();
+    expect(tries.at(-1)).toBe(2);
+    expect(botApi.sent().map(({ text }) => text)).toHaveLength(2);
   });
 
   it("names no agent while there is one", async () => {

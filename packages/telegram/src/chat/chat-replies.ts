@@ -3,12 +3,15 @@ import type { OwnerStore } from "@binference/engine/surfaces";
 import type { Formatter, MessageLocale } from "@binference/i18n";
 import { type ChatPush, chatPushOf } from "@binference/protocol";
 import type { Api } from "grammy";
+import { z } from "zod";
 import { isEntitiesUnparsed } from "../api/bot-api-error.schema.js";
 import { callBotApi } from "../api/call-bot-api.js";
+import { escapeHtml } from "../format/escape-html.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 import { type ChatTyping, startTyping } from "./chat-typing.js";
+import { resendUnsent } from "./resend-unsent.js";
 import { createStatusMessage, type StatusMessage } from "./status-message.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
@@ -51,6 +54,8 @@ interface TurnShowing {
   readonly chatId: number;
   readonly status: StatusMessage;
   readonly typing: ChatTyping;
+  /** Whether the owner got something of the turn: its answer, a status line, a question. */
+  readonly reply: { isGiven: boolean };
 }
 
 interface Call {
@@ -68,6 +73,13 @@ interface Parts {
   readonly removals: Map<Promise<void>, StatusMessage>;
 }
 
+// The pushes another part of the bot shows as a reply of a running turn: a question names its
+// turn, a launch draft only its agent.
+const otherReplySchema = z.looseObject({
+  kind: z.enum(["chat/question", "chat/launchDraft"]),
+  data: z.looseObject({ agent: z.string(), turn: z.string().optional() }),
+});
+
 // The most turns the replies follow at once; past it, the oldest one's status message goes.
 const maxTurns = 32;
 
@@ -80,15 +92,26 @@ function words(parts: Parts, key: string, values?: Readonly<Record<string, strin
   return parts.formatter().message(key, values);
 }
 
-async function sendHtml(parts: Parts, message: { chatId: number; html: string }, call: Call) {
-  await callBotApi("sendMessage", call.signal, async (signal) =>
-    parts.options.api.sendMessage(
-      message.chatId,
-      message.html,
-      { parse_mode: "HTML", link_preview_options: { is_disabled: true } },
-      signal,
-    ),
+// One message of the answer, sent again while it provably never left.
+async function sendText(
+  parts: Parts,
+  message: { readonly chatId: number; readonly text: string; readonly mode: "html" | "plain" },
+  call: Call,
+): Promise<{ readonly message_id: number }> {
+  const format = message.mode === "html" ? { parse_mode: "HTML" as const } : {};
+  const options = { ...format, link_preview_options: { is_disabled: true } };
+  const { clock } = parts.options;
+  return resendUnsent(
+    async () =>
+      callBotApi("sendMessage", call.signal, async (signal) =>
+        parts.options.api.sendMessage(message.chatId, message.text, options, signal),
+      ),
+    { clock, signal: call.signal },
   );
+}
+
+async function sendHtml(parts: Parts, message: { chatId: number; html: string }, call: Call) {
+  await sendText(parts, { chatId: message.chatId, text: message.html, mode: "html" }, call);
 }
 
 // A piece whose HTML Telegram cannot read goes again as plain text, so the owner still gets the
@@ -105,14 +128,7 @@ async function sendPiece(
     if (!isEntitiesUnparsed(error)) {
       throw error;
     }
-    const sent = await callBotApi("sendMessage", call.signal, async (signal) =>
-      parts.options.api.sendMessage(
-        chatId,
-        piece.plain,
-        { link_preview_options: { is_disabled: true } },
-        signal,
-      ),
-    );
+    const sent = await sendText(parts, { chatId, text: piece.plain, mode: "plain" }, call);
     parts.options.logger.info("telegram.chat_sent_plain", { messageId: sent.message_id });
   }
 }
@@ -164,7 +180,8 @@ async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> 
   const statusParts = { api, bot: parts.bot, clock, logger, headline };
   const message = createStatusMessage(statusParts, { chatId, startedAtMs: clock.now() });
   const typing = startTyping({ api, clock, logger }, chatId);
-  parts.turns.set(key, { agent: push.agent, chatId, status: message, typing });
+  const reply = { isGiven: false };
+  parts.turns.set(key, { agent: push.agent, chatId, status: message, typing, reply });
 }
 
 type MessagePush = Extract<ChatPush, { readonly kind: "chat/message" }>;
@@ -236,7 +253,11 @@ function statusLine(parts: Parts, push: StatusPush): string {
 }
 
 async function status(parts: Parts, push: StatusPush, call: Call): Promise<void> {
-  const chatId = parts.turns.get(keyOf(push))?.chatId ?? (await ownerChat(parts, call));
+  const showing = parts.turns.get(keyOf(push));
+  const chatId = showing?.chatId ?? (await ownerChat(parts, call));
+  if (showing !== undefined) {
+    showing.reply.isGiven = true;
+  }
   if (chatId !== undefined) {
     const line = await named(parts, { agent: push.agent, text: statusLine(parts, push) }, call);
     await sendHtml(parts, { chatId, html: statusHtmlOf(line) }, call);
@@ -265,8 +286,40 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
     case "chat/status":
       return status(parts, push, call);
     case "chat/turnEnded":
-      forget(parts, keyOf(push));
-      return Promise.resolve();
+      return ended(parts, push, call);
+  }
+}
+
+type EndedPush = Extract<ChatPush, { readonly kind: "chat/turnEnded" }>;
+
+// A turn that ends with nothing for the owner, no answer, no status line and no question, gets a
+// line that says so, so the owner never waits on a reply that will not come.
+async function ended(parts: Parts, push: EndedPush, call: Call): Promise<void> {
+  const showing = parts.turns.get(keyOf(push));
+  forget(parts, keyOf(push));
+  if (showing === undefined || showing.reply.isGiven) {
+    return;
+  }
+  const text = await named(
+    parts,
+    { agent: push.agent, text: words(parts, "telegram.chat.noAnswer") },
+    call,
+  );
+  await sendHtml(parts, { chatId: showing.chatId, html: escapeHtml(text) }, call);
+}
+
+// An agent's question, or its launch draft, is a reply of its running turn, which another part of
+// the bot shows.
+function noteOtherReply(parts: Parts, push: { readonly kind: string; readonly data: JsonValue }) {
+  const reply = otherReplySchema.safeParse(push);
+  if (!reply.success) {
+    return;
+  }
+  for (const [key, showing] of parts.turns) {
+    const { agent, turn } = reply.data.data;
+    if (showing.agent === agent && (turn === undefined || key === `${agent} ${turn}`)) {
+      showing.reply.isGiven = true;
+    }
   }
 }
 
@@ -298,6 +351,7 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
       if (push !== undefined) {
         await showPush(parts, push, call);
       }
+      noteOtherReply(parts, given);
     },
     async idle() {
       const turns = [...parts.turns.values()].map(async (showing) => showing.status.idle());

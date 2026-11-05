@@ -1396,8 +1396,13 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   Answers, status lines and cards wait and go.
 - **Failures.** A status message whose HTML Telegram cannot read goes as plain text. An edit
   Telegram refuses, and three passing failures in a row, stop the edits for the turn; a first send
-  that may have reached Telegram is never sent again. An answer Telegram refuses turns the status
-  message into `telegram.chat.notDelivered`, or sends that line when no status message showed.
+  that may have reached Telegram is never sent again. A message of the answer whose send provably
+  never left (no connection opened) goes again, up to 3 tries in all, after 400 ms and then 800 ms
+  ([decision 0373](../DECISIONS.md#d0373)). An answer Telegram refuses turns the status message
+  into `telegram.chat.notDelivered`, or sends that line when no status message showed.
+- **No answer.** A turn that ends with no answer, no status line, no question and no launch draft
+  gets `telegram.chat.noAnswer` in the owner's chat, so the owner never waits on a reply that will
+  not come.
 - **Work lines.** The runtime sends each tool's line with `turn/progress` (spec 1, section 7.7),
   and the console and terminal chat show none: they show the answer so far. Asking the owner and
   the first chat's end show no line.
@@ -1433,6 +1438,7 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 | When                     | Key                           | English                                                                                                                                                                              | 中文                                                                                                    |
 | ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
 | The status message       | `telegram.chat.working`       | Working on it · {seconds} s                                                                                                                                                          | 处理中 · {seconds} 秒                                                                                   |
+| A turn with no answer    | `telegram.chat.noAnswer`      | No response generated. Please try again.                                                                                                                                             | 未生成回答，请再试一次。                                                                                |
 | An answer not delivered  | `telegram.chat.notDelivered`  | ⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.                                                                | ⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。                |
 | Photos past 4            | `telegram.chat.photosLeftOut` | The agent reads 4 photos of a message at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send {count, plural, one {it} other {them}} in another message. | Agent 每条消息最多读取 4 张图片，因此有 {count, plural, other {# 张图片}}未发送。请在另一条消息中发送。 |
 | A photo over 5 MiB       | `telegram.chat.photoTooLarge` | The agent reads photos of 5 MiB at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send a smaller copy.                                                  | Agent 只读取不超过 5 MiB 的图片，因此有 {count, plural, other {# 张图片}}未发送。请发送更小的图片。     |
