@@ -19,7 +19,7 @@ function orderFault(name: string, expected: number): BinferenceError {
  * The version of the newest migration in `migrations`, after checking that they are named
  * `NNNN_name` and numbered 1, 2, 3 in order with no gap. Throws `store.migration_order`.
  */
-export function latestVersion(migrations: readonly Migration[]): number {
+export function latestVersion(migrations: readonly Pick<Migration, "name">[]): number {
   migrations.forEach((migration, index) => {
     const match = migrationName.exec(migration.name);
     if (match === null || Number(match[1]) !== index + 1) {
