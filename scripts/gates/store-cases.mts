@@ -32,6 +32,17 @@ const downStep = [
   "};",
 ];
 
+const upOnly = [
+  'import type { Migration } from "../migration.js";',
+  "",
+  "export const migration: Migration = {",
+  '  name: "0099_seeded",',
+  "  up(database) {",
+  '    database.exec("CREATE TABLE seeded (id INTEGER PRIMARY KEY)");',
+  "  },",
+  "};",
+];
+
 const syncTask = [
   'import { z } from "zod";',
   'import { createSyncKysely } from "./dialect/sync-kysely.js";',
@@ -127,6 +138,14 @@ function migrationCases(repo: string): readonly GateCase[] {
         },
       ],
     },
+    failingCase(
+      "a migration without its Postgres form fails check:store",
+      { "packages/store/src/migrations/agent/0099_seeded.ts": `${upOnly.join("\n")}\n` },
+      [
+        "check:store",
+        /agent\/0099_seeded\.ts: write its Postgres form, packages\/store\/src\/migrations\/agent-postgres\/0099_seeded\.ts/,
+      ],
+    ),
     {
       name: "a task that writes the ledger synchronously passes check:store",
       files: seeded(syncTask),

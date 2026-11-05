@@ -33,6 +33,11 @@ on worker threads, so no query blocks the main thread:
   it. Their contract suites and in-memory fakes are in `@binference/store/testing`.
 - **Maintenance.** SQLite's integrity and foreign key checks, and compact copies with
   `VACUUM INTO`.
+- **Postgres.** The same two databases on Postgres 17 or later, each install in its own pair of
+  schemas (spec section 6): a pool with the server's CA checked, the store's session timeouts and
+  row parsers that read back what SQLite gives; serializable writes run again on a conflict; every
+  migration in its Postgres form, and `create_install` in the shared schema. The store tasks run on
+  SQLite only so far.
 
 ## API
 

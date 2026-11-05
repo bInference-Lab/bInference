@@ -23,6 +23,9 @@ Rules for this package:
   transaction with its version bump. `pnpm check:store --write` locks a new file's hash in
   `migrations.lock.json`; a migration in the lock on `master` never changes again. The
   `add-migration` skill has the steps.
+- Every migration has its Postgres form in the same change: `src/migrations/<database>-postgres/`
+  under the same file name, its SQL mapped by spec 3, section 6.3, with no schema named in it.
+  `postgres-forms.postgres.test.ts` compares both databases after each version.
 - Every table is `STRICT`. A column whose values the spec lists gets a `CHECK` with that list;
   amounts are decimal text with a digits-only check, flags `IN (0, 1)`, JSON columns `json_valid`.
   A migration keeps its helpers in its own file: a released file never changes, and a shared

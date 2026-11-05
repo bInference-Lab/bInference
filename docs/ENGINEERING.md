@@ -539,6 +539,10 @@ Decided in [decision 0031](DECISIONS.md#d0031).
 - **Rule:** migrations are numbered and forward-only, never edited after a release, and run by
   `binference check --fix` after a backup. Enforcer: `check:store` (`NNNN_name.ts` in order, no
   `down`, released files hash-locked); a test that `check --fix` backs up first.
+- **Rule:** every migration has its Postgres form under the same name, mapped by
+  [spec 3, section 6.3](specs/database.md#section-6-3), so both databases hold the same tables at
+  each version. Enforcer: `check:store` (a migration without its form); a test that compares both
+  schemas after each version.
 - **Rule:** amounts are stored as decimal strings of base units (SQLite integers stop at 64 bits);
   timestamps are epoch milliseconds in UTC. Enforcer: the store contract test (a 2^64 + 1 round
   trip); the `add-migration` skill for new columns.

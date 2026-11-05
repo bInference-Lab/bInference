@@ -89,14 +89,50 @@ function registryProblems(root: string, folder: MigrationFolder): StoreProblem[]
       ];
 }
 
-/** Names, numbering, each file's declared name and each registry's order. */
+// The suffix of the folder that holds a database's migrations in their Postgres form.
+const postgresForm = "-postgres";
+
+// Every SQLite migration has its Postgres form under the same file name, and every Postgres form
+// mirrors a SQLite migration; a folder of Postgres forms with no SQLite twin, such as the shared
+// schema's, stands alone.
+function postgresFormProblems(folders: readonly MigrationFolder[]): StoreProblem[] {
+  const byName = new Map(folders.map((folder) => [folder.database, folder.files]));
+  return folders
+    .filter((folder) => !folder.database.endsWith(postgresForm))
+    .flatMap((folder) => {
+      const twin = `${folder.database}${postgresForm}`;
+      const forms = new Set(byName.get(twin) ?? []);
+      const sqlite = new Set(folder.files);
+      const missing = folder.files
+        .filter((file) => !forms.has(file))
+        .map((file) => ({
+          where: posix.join(migrationsRoot, folder.database, file),
+          message: `write its Postgres form, ${posix.join(migrationsRoot, twin, file)}, in the same change.`,
+        }));
+      const extra = [...forms]
+        .filter((file) => !sqlite.has(file))
+        .map((file) => ({
+          where: posix.join(migrationsRoot, twin, file),
+          message: `no SQLite migration ${posix.join(migrationsRoot, folder.database, file)} has this form; give it the same number and name.`,
+        }));
+      return missing.concat(extra);
+    });
+}
+
+/**
+ * Names, numbering, each file's declared name, each registry's order, and a Postgres form for every
+ * SQLite migration.
+ */
 export function migrationProblems(
   root: string,
   folders: readonly MigrationFolder[],
 ): readonly StoreProblem[] {
-  return folders.flatMap((folder) => [
-    ...nameProblems(folder),
-    ...contentProblems(root, folder),
-    ...registryProblems(root, folder),
-  ]);
+  return [
+    ...folders.flatMap((folder) => [
+      ...nameProblems(folder),
+      ...contentProblems(root, folder),
+      ...registryProblems(root, folder),
+    ]),
+    ...postgresFormProblems(folders),
+  ];
 }

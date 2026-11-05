@@ -24,6 +24,11 @@ runs them after it takes a backup.
 - Amounts are decimal strings of base units, never integers: SQLite integers stop at 64 bits.
 - The ledger is append-only. A migration never updates or deletes ledger rows.
 - Raw SQL belongs in migrations and the schema bootstrap only. Queries elsewhere use Kysely.
+- Write its Postgres form under the same file name in `src/migrations/<database>-postgres/`
+  (database spec, section 6.3): times and integers `bigint`, flags `smallint` checked to 0 or 1,
+  amounts `numeric(78,0)`, JSON `text` checked `IS JSON`, other text `COLLATE "C"`, a `GLOB` as a
+  regular expression, a trigger as PL/pgSQL with `SET search_path FROM CURRENT`, no schema named.
+  A write-order key takes its value from `counters`. `check:store` fails a migration without it.
 
 ## 3. Move the code with it
 
@@ -36,6 +41,8 @@ runs them after it takes a backup.
 
 - The migrated-schema test sees the new table or column.
 - Run the store's contract suite and the migration runner test.
+- Run `postgres-forms.postgres.test.ts`, which compares both databases after each version, on
+  `BINFERENCE_TEST_POSTGRES_URL` or Docker.
 - Run `pnpm check`.
 
 ## 5. Report

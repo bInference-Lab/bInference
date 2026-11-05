@@ -1,6 +1,10 @@
 {
   "migrations": {
     "agent-postgres/0001_meta.ts": "bc9b18c25ea5e8c38ff454f628f9880ce8a3f5b45088c7608eea109e2baf2623",
+    "agent-postgres/0002_chats.ts": "10c74c45649bb0bf5c6b3a407d1a4b4e82fd982eda057c2c334757bcca792384",
+    "agent-postgres/0003_notes.ts": "3becd93bd941bdd4c10e787fb29f9a3db948426e1b3338b013fe092e7fb8daa9",
+    "agent-postgres/0004_runtime_chats.ts": "bb452aec382fbe6badea3f37f7e8608e1f790186720a5f8dfb5d2361f6cbb676",
+    "agent-postgres/0005_chat_queue_seq.ts": "7ea0dfd3f4c1468cab87804dbec2c8fee0a6917455f134cd3455d1ccdd080d4d",
     "agent/0001_meta.ts": "8767354b7591ef951a8524267d2fe16d41c16fd296214364f8af591afb60bf4c",
     "agent/0002_chats.ts": "d8d550d197496e311699f5db3624fa14184b10c8694726ffbc7899f26fa38ce7",
     "agent/0003_notes.ts": "d56a385170d47f966721fb6b7d0f755c49fc9d20392ec8012aaf1aa769366c11",
