@@ -218,6 +218,9 @@ export function openSandbox(repo: string): Sandbox {
     rmSync(root, { recursive: true, force: true });
     create(repo, root, repoFiles);
   }
+  // A commit of the whole repo leaves thousands of loose objects, so git's automatic gc would pack
+  // them in a detached process while the next step (Stryker's scan, say) walks `.git`.
+  git(root, ["config", "gc.auto", "0"]);
   const base = git(root, ["rev-parse", baseRef]).trim();
   const installs = installsOf(repoFiles);
   const reset = (): void => {
