@@ -1,0 +1,7 @@
+[
+  "First beta of binference: an AI agent that trades on BNB Smart Chain for you from Telegram, a web console or the terminal, and asks before every transaction.",
+  "Swaps, limit orders, take-profit, stop-loss, DCA, copy trades, alerts and webhook rules. You start on paper; live trading needs binference live and its typed disclaimer.",
+  "Send to your address book and .bnb names, bridge to Ethereum, Base, Arbitrum, Solana and Robinhood Chain, and stake BNB with StakeHub or Lista.",
+  "Your wallets stay in Privy under a ceiling only your owner key can change. Freeze, rescue and limits work from the terminal and Telegram at any time.",
+  "In this beta, auto orders and webhook rules fill on paper only. Live fills stay off until they are proven."
+]

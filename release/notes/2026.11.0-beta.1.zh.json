@@ -1,0 +1,7 @@
+[
+  "binference 首个测试版：一个替你在 BNB Smart Chain 上交易的 AI Agent，可在 Telegram、网页控制台或终端中使用，每笔交易前都会先问你。",
+  "支持兑换、限价单、止盈、止损、定投、跟单、提醒和 webhook 规则。默认从模拟模式开始；切换到实盘需运行 binference live 并输入免责声明。",
+  "可向地址簿和 .bnb 名称转账，跨链到 Ethereum、Base、Arbitrum、Solana 和 Robinhood Chain，并通过 StakeHub 或 Lista 质押 BNB。",
+  "你的钱包保存在 Privy 中，受上限约束，只有你的所有者密钥能修改。冻结、紧急转出和限额随时可在终端和 Telegram 中操作。",
+  "本测试版中，自动订单和 webhook 规则只在模拟模式下成交。实盘成交在验证完成前保持关闭。"
+]
