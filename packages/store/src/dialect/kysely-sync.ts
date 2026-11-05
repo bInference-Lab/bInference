@@ -1,11 +1,15 @@
 // Kysely builds and compiles the store's SQL; these helpers run the compiled SQL synchronously on a
-// `node:sqlite` connection, which Kysely's own asynchronous drivers cannot do inside a transaction.
+// `node:sqlite` connection or a Postgres task connection, which Kysely's own asynchronous drivers
+// cannot do inside a synchronous task.
 
 import type { DatabaseSync, SQLInputValue, StatementSync } from "node:sqlite";
 import { BinferenceError } from "@binference/core";
 import {
   InsertQueryNode,
   Kysely,
+  PostgresAdapter,
+  PostgresIntrospector,
+  PostgresQueryCompiler,
   SqliteAdapter,
   SqliteIntrospector,
   SqliteQueryCompiler,
@@ -20,6 +24,7 @@ import { assertQueryRows, type SqliteRow } from "./assert-query-rows.js";
 import { isNodeReleaseAtLeast, parseNodeRelease } from "./node-release.js";
 import { sqlParameters } from "./sql-parameters.js";
 import { executeWithCachedStatement } from "./statement-cache.js";
+import type { PostgresTaskConnection } from "./store-connection.js";
 
 /**
  * Before Node 26.6.0, `StatementSync.all()` counted a statement's columns before its first step,
@@ -65,12 +70,30 @@ const compileOnlyDialect: Dialect = {
   createQueryCompiler: () => new SqliteQueryCompiler(),
 };
 
+/** Postgres's compiler, adapter and introspector, with the same driver. */
+const compileOnlyPostgresDialect: Dialect = {
+  createAdapter: () => new PostgresAdapter(),
+  createDriver: compileOnlyDriver,
+  createIntrospector: (kysely) => new PostgresIntrospector(kysely),
+  createQueryCompiler: () => new PostgresQueryCompiler(),
+};
+
 /**
  * A Kysely instance that builds and compiles SQLite queries. Its own `execute()` rejects with
  * `store.compile_only`: run its queries with {@link executeSqliteQuerySync}.
  */
 export function getNodeSqliteKysely<Schema>(): Kysely<Schema> {
   return new Kysely<Schema>({ dialect: compileOnlyDialect });
+}
+
+/**
+ * A Kysely instance that compiles Postgres queries with every table in `schema`, since a store
+ * session's `search_path` is empty (decision 0365). Kysely's `withSchema` names the schema on
+ * each table a query reads or writes, in subqueries too, and leaves an alias as it is. Its own
+ * `execute()` rejects with `store.compile_only`.
+ */
+export function getPostgresKysely<Schema>(schema: string): Kysely<Schema> {
+  return new Kysely<Schema>({ dialect: compileOnlyPostgresDialect }).withSchema(schema);
 }
 
 /**
@@ -140,4 +163,18 @@ export function executeSqliteQueryTakeFirstSync<Row>(
   query: Compilable<Row>,
 ): Row | undefined {
   return runCompiled(database, query.compile()).rows[0];
+}
+
+/**
+ * Runs a Kysely query compiled for Postgres in the task's transaction and returns its result.
+ * Its values pass the same check as on SQLite, so a boolean or an object a task binds is refused
+ * on both databases alike.
+ */
+export function executePostgresQuerySync<Row>(
+  connection: PostgresTaskConnection,
+  query: Compilable<Row>,
+): QueryResult<Row> {
+  const compiled = query.compile();
+  sqlParameters(compiled.parameters);
+  return connection.run(compiled);
 }
