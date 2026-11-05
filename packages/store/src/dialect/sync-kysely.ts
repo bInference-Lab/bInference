@@ -1,5 +1,5 @@
 import { BinferenceError } from "@binference/core";
-import type { Compilable, Kysely, QueryResult } from "kysely";
+import { type Compilable, type Kysely, type QueryResult, type RawBuilder, sql } from "kysely";
 import {
   executePostgresQuerySync,
   executeSqliteQuerySync,
@@ -22,6 +22,48 @@ export interface SyncKysely<Schema> {
    * No row throws `store.no_row`, which rolls the task back.
    */
   readonly takeOne: <Row>(query: Compilable<Row>) => Row;
+  /**
+   * The value at `path` inside the JSON text column `reference` names, such as `order.request` at
+   * `["trigger", "leader"]`, or null where the path holds nothing. Only a JSON string reads the
+   * same on both databases: Postgres gives every value as text, while SQLite gives a number as a
+   * number, `true` as 1, and an object as its JSON without spaces. A query reads and compares
+   * only fields stored as JSON strings, and a path names object keys, never array places.
+   */
+  readonly jsonField: (
+    reference: string,
+    path: readonly string[],
+  ) => RawBuilder<string | number | null>;
+}
+
+// A key of letters and digits with a letter in it: never quoted inside either form's path, and
+// never read as an array place, which only Postgres would take from a key of digits.
+const jsonKey = /^[A-Za-z0-9]*[A-Za-z][A-Za-z0-9]*$/;
+
+function checkedPath(path: readonly string[]): readonly string[] {
+  if (path.length === 0 || !path.every((key) => jsonKey.test(key))) {
+    throw new BinferenceError({
+      code: "store.bad_json_path",
+      message: `A JSON path names object keys of letters and digits, with a letter in each, not ${JSON.stringify(path)}.`,
+    });
+  }
+  return path;
+}
+
+function sqliteJsonField(
+  reference: string,
+  path: readonly string[],
+): RawBuilder<string | number | null> {
+  const at = `$.${checkedPath(path).join(".")}`;
+  return sql<string | number | null>`json_extract(${sql.ref(reference)}, ${at})`;
+}
+
+// Database spec, section 6.3: the text read as jsonb, and `#>>` for the text at the path.
+function postgresJsonField(
+  reference: string,
+  path: readonly string[],
+): RawBuilder<string | number | null> {
+  const at = `{${checkedPath(path).join(",")}}`;
+  return sql<string | null>`(${sql.ref(reference)}::jsonb #>> ${at})`;
 }
 
 function takeOneOf(
@@ -56,6 +98,7 @@ export function createSyncKysely<Schema>(connection: StoreConnection): SyncKysel
       execute,
       takeFirst,
       takeOne: takeOneOf(takeFirst),
+      jsonField: postgresJsonField,
     };
   }
   const takeFirst = <Row>(query: Compilable<Row>): Row | undefined =>
@@ -65,5 +108,6 @@ export function createSyncKysely<Schema>(connection: StoreConnection): SyncKysel
     execute: (query) => executeSqliteQuerySync(connection, query),
     takeFirst,
     takeOne: takeOneOf(takeFirst),
+    jsonField: sqliteJsonField,
   };
 }

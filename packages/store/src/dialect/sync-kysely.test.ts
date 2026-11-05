@@ -101,6 +101,50 @@ describe("createSyncKysely on a Postgres task connection", () => {
     expect(() => insert(empty)).toThrow(expect.objectContaining({ code: "store.no_row" }));
   });
 
+  it("reads a JSON field as text through jsonb, with the alias bare and the path bound", () => {
+    const { connection, sent } = recording({ rows: [] });
+    const { kysely, execute, jsonField } = createSyncKysely<Tables>(connection);
+
+    execute(
+      kysely
+        .selectFrom("orders as order")
+        .select(jsonField("order.state", ["trigger", "leader"]).as("leader"))
+        .where(jsonField("order.state", ["kind"]), "=", "copy"),
+    );
+
+    expect(sent).toStrictEqual([
+      {
+        sql:
+          'select ("order"."state"::jsonb #>> $1) as "leader" ' +
+          'from "engine_0190f1c23a4b7c5d8e6f000000000001"."orders" as "order" ' +
+          'where ("order"."state"::jsonb #>> $2) = $3',
+        parameters: ["{trigger,leader}", "{kind}", "copy"],
+      },
+    ]);
+  });
+
+  it("refuses a JSON path key that would need quoting", () => {
+    const { connection } = recording({ rows: [] });
+    const { jsonField } = createSyncKysely<Tables>(connection);
+
+    expect(() => jsonField("order.state", ["a,b"])).toThrow(
+      expect.objectContaining({ code: "store.bad_json_path" }),
+    );
+    expect(() => jsonField("order.state", [])).toThrow(
+      expect.objectContaining({ code: "store.bad_json_path" }),
+    );
+  });
+
+  it("refuses a JSON path key of digits, which Postgres would read as an array place", () => {
+    const { connection } = recording({ rows: [] });
+    const { jsonField } = createSyncKysely<Tables>(connection);
+
+    expect(() => jsonField("order.state", ["trigger", "0"])).toThrow(
+      expect.objectContaining({ code: "store.bad_json_path" }),
+    );
+    expect(jsonField("order.state", ["leg2"])).toBeDefined();
+  });
+
   it("refuses a value SQLite cannot bind before it sends anything", () => {
     const { connection, sent } = recording({ rows: [] });
     const { kysely, execute } = createSyncKysely<Tables>(connection);

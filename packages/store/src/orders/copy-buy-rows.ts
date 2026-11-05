@@ -40,28 +40,21 @@ export const copyBuysTask: StoreTask<CopyBuyQuery, readonly CopyBuyRecord[]> = d
   input: copyBuyQuerySchema,
   output: z.array(copyBuyRecordSchema),
   run(database, query) {
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const { kysely, execute, jsonField } = createSyncKysely<EngineTables>(database);
     const after = seqAfter(database, query.after);
     const rows = kysely
       .selectFrom("order_fills as fill")
       .innerJoin("orders as order", "order.id", "fill.order_id")
       .innerJoin("intents as intent", "intent.id", "fill.intent_id")
-      .select((select) => [
+      .select([
         "fill.id as id",
         "fill.at as at",
         "intent.value_usd_micros as value",
-        select
-          .fn<string>("json_extract", ["order.request", select.val("$.trigger.perBuyUsdMicros")])
-          .as("perBuy"),
+        jsonField("order.request", ["trigger", "perBuyUsdMicros"]).as("perBuy"),
       ])
       .where("order.agent_id", "=", query.agentId)
       .where("order.kind", "=", "copy")
-      .where(
-        (where) =>
-          where.fn<string>("json_extract", ["order.request", where.val("$.trigger.leader")]),
-        "=",
-        query.leader,
-      )
+      .where(jsonField("order.request", ["trigger", "leader"]), "=", query.leader)
       .where("fill.outcome", "=", "filled")
       .where("intent.kind", "=", "buy")
       .where("fill.at", ">=", query.fromMs)
