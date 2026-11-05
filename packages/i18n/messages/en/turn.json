@@ -25,6 +25,7 @@
   "firstChatDone": "Saved your answers to STRATEGY.md and PERSONA.md. Ask the agent to change them any time.",
   "tool.tokenSearch": "Searching tokens…",
   "tool.addresses": "Reading the address book…",
+  "tool.wallets": "Reading the agent's wallets…",
   "tool.portfolio": "Reading the portfolio…",
   "tool.tokenInfo": "Reading the token…",
   "tool.tokenRisk": "Checking the token's risk…",

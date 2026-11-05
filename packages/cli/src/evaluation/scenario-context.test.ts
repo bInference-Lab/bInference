@@ -25,6 +25,7 @@ const facts = {
   balances: [{ token: "BNB", base: "1000000000000000000" }],
   skills: [{ ...skill, text: "---\nname: safe-swap\n---\n# Safe swap\n" }],
   wallet: "wal_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  account: "eip155:56:0x8f3e5a1c9b7d2e4f6a0c8b1d3e5f7a9c2b4d6e8f",
   now: 1_767_261_600_000,
 };
 

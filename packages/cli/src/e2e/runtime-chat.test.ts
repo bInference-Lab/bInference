@@ -304,6 +304,7 @@ describe("the chat relay to the agent runtime process", () => {
       expect(sent?.tools.map((tool) => tool.function.name)).toStrictEqual([
         "token_search",
         "addresses",
+        "wallets",
         "portfolio",
         "token_info",
         "token_risk",

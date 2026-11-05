@@ -125,6 +125,17 @@ describe("the recorded run's MCP server", () => {
     expect(jsonOf(usdt)).toMatchObject({ items: [{ asset: skillRunIds.usdt, symbol: "USDT" }] });
   }, 30_000);
 
+  it("reads the agent's own wallets with each one's address and chain", async () => {
+    served = await serve();
+    const agent = skillRunIds.agent;
+    await served.mcp.callTool({ name: "binference_wallets", arguments: { agent } });
+    const [wallets] = served.calls();
+    expect(wallets?.answer?.isError).toBe(false);
+    expect(jsonOf(wallets)).toMatchObject({
+      items: [{ wallet: skillRunIds.wallet, agent, chainName: "Fake One" }],
+    });
+  }, 30_000);
+
   it("reads the agent's saved addresses and the staking options on its chain", async () => {
     served = await serve();
     const agent = skillRunIds.agent;

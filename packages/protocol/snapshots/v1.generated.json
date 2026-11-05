@@ -2502,6 +2502,11 @@
                       "address": {
                         "type": "string"
                       },
+                      "chainName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
                       "label": {
                         "type": "string"
                       },
@@ -2556,6 +2561,11 @@
                       "address": {
                         "type": "string"
                       },
+                      "chainName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
                       "label": {
                         "type": "string"
                       },
@@ -2609,6 +2619,11 @@
                       },
                       "address": {
                         "type": "string"
+                      },
+                      "chainName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
                       },
                       "label": {
                         "type": "string"
@@ -2796,6 +2811,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -2850,6 +2870,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -2903,6 +2928,11 @@
                 },
                 "address": {
                   "type": "string"
+                },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
                 },
                 "label": {
                   "type": "string"
@@ -3089,6 +3119,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -3143,6 +3178,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -3196,6 +3236,11 @@
                 },
                 "address": {
                   "type": "string"
+                },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
                 },
                 "label": {
                   "type": "string"
@@ -3380,6 +3425,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -3434,6 +3484,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -3487,6 +3542,11 @@
                 },
                 "address": {
                   "type": "string"
+                },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
                 },
                 "label": {
                   "type": "string"
@@ -3743,6 +3803,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -3797,6 +3862,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -3850,6 +3920,11 @@
                 },
                 "address": {
                   "type": "string"
+                },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
                 },
                 "label": {
                   "type": "string"
@@ -4028,6 +4103,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -4082,6 +4162,11 @@
                 "address": {
                   "type": "string"
                 },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
                 "label": {
                   "type": "string"
                 },
@@ -4135,6 +4220,11 @@
                 },
                 "address": {
                   "type": "string"
+                },
+                "chainName": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
                 },
                 "label": {
                   "type": "string"
@@ -7765,6 +7855,11 @@
                   "address": {
                     "type": "string"
                   },
+                  "chainName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
                   "label": {
                     "type": "string"
                   },
@@ -7917,6 +8012,11 @@
             "address": {
               "type": "string"
             },
+            "chainName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
             "label": {
               "type": "string"
             },
@@ -8045,6 +8145,11 @@
             },
             "address": {
               "type": "string"
+            },
+            "chainName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
             },
             "label": {
               "type": "string"

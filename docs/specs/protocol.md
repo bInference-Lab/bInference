@@ -1319,7 +1319,8 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   card, `paper?` its mode and `outsideContent?` the proposing turn's mark; `state` may be `paused`
   while its agent is frozen ([decision 0189](../DECISIONS.md#d0189)). `AlertView` carries `wake`, `fires` and `expiresAt?` (section 8.4).
 - `OrderView`, `AlertView`, `ScheduleView`, `WalletView`, `AgentView`, `LimitsView`: the stored
-  fields of spec 3 with ids and times as section 1 sets. `WalletView.role` is `launch` for a launch
+  fields of spec 3 with ids and times as section 1 sets. `WalletView.chainName` names the chain
+  its `address` is on, such as BNB Smart Chain. `WalletView.role` is `launch` for a launch
   wallet, `WalletView.bridge` is `true` for a bridge wallet ([decision 0307](../DECISIONS.md#d0307)),
   and `wallet/list` sets `WalletView.extra` on a live launch or bridge wallet beyond the agent's
   first, as a rebuild may adopt ([decision 0218](../DECISIONS.md#d0218)). `agent/list` adds each agent's `defaultWallet`, `launchWallet` and `bridgeWallet` to its `AgentView`.
@@ -1421,7 +1422,7 @@ launches.
     meets a kind it does not know shows the card's lines from `intent/card`.
   - `IntentView.resolvedName`, `IntentView.delivery` and `IntentView.bridgeReceipt`, `PortfolioView.staking` and
     `PortfolioView.inTransit` with its `chainName`, `WebhookRuleView.ratePerMinute`, `lastAlertAt`, `intent` and
-    `summary`, `webhookRule/list`'s `assets`, `address/list`'s `room`, `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet`, `engine/status`'s `debugSignalOff`, and the `autoAsks` of `engine/status`'s agents, `approval/get` and `approval/set` are new optional
+    `summary`, `webhookRule/list`'s `assets`, `address/list`'s `room`, `WalletView.chainName`, `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet`, `engine/status`'s `debugSignalOff`, and the `autoAsks` of `engine/status`'s agents, `approval/get` and `approval/set` are new optional
     fields.
   - `AlertView.state` has a new value, `ended`, beside `active`, `fired` and `deleted`: an alert
     whose `expiresAt` passed (section 8.4). It is a new value of an existing field, which this
@@ -1496,7 +1497,7 @@ carry the `binference_` prefix and map one to one onto operations:
 | `binference_quote`           | `quote/get`       | `binference_ledger`        | `ledger/list`    |
 | `binference_orders`          | `order/list`      | `binference_resolve_name`  | `name/resolve`   |
 | `binference_staking_options` | `staking/options` | `binference_bridge_quote`  | `bridge/quote`   |
-| `binference_addresses`       | `address/list`    |                            |                  |
+| `binference_addresses`       | `address/list`    | `binference_wallets`       | `wallet/list`    |
 
 Each tool's input schema is the operation's args schema from `engine/describe`. A proposal answers
 with the intent and "waiting for the owner's confirmation in Telegram or the console". A client

@@ -26,17 +26,17 @@ engine's read and propose tools over stdio. The spec is section 11 of
 - **Without the engine.** Tools list while the engine is down; a call waits for the connection
   until the protocol client's call timeout.
 
-| Tool                         | Operation         | Tool                       | Operation        |
-| ---------------------------- | ----------------- | -------------------------- | ---------------- |
-| `binference_agents`          | `agent/list`      | `binference_propose`       | `intent/propose` |
-| `binference_token_search`    | `asset/search`    | `binference_intent_status` | `intent/get`     |
-| `binference_addresses`       | `address/list`    | `binference_order_create`  | `order/create`   |
-| `binference_portfolio`       | `portfolio/get`   | `binference_order_cancel`  | `order/cancel`   |
-| `binference_token_info`      | `asset/get`       | `binference_alert_create`  | `alert/create`   |
-| `binference_token_risk`      | `risk/check`      | `binference_ledger`        | `ledger/list`    |
-| `binference_quote`           | `quote/get`       | `binference_resolve_name`  | `name/resolve`   |
-| `binference_bridge_quote`    | `bridge/quote`    | `binference_orders`        | `order/list`     |
-| `binference_staking_options` | `staking/options` |                            |                  |
+| Tool                      | Operation       | Tool                         | Operation         |
+| ------------------------- | --------------- | ---------------------------- | ----------------- |
+| `binference_agents`       | `agent/list`    | `binference_propose`         | `intent/propose`  |
+| `binference_token_search` | `asset/search`  | `binference_intent_status`   | `intent/get`      |
+| `binference_addresses`    | `address/list`  | `binference_order_create`    | `order/create`    |
+| `binference_wallets`      | `wallet/list`   | `binference_order_cancel`    | `order/cancel`    |
+| `binference_portfolio`    | `portfolio/get` | `binference_alert_create`    | `alert/create`    |
+| `binference_token_info`   | `asset/get`     | `binference_ledger`          | `ledger/list`     |
+| `binference_token_risk`   | `risk/check`    | `binference_resolve_name`    | `name/resolve`    |
+| `binference_quote`        | `quote/get`     | `binference_orders`          | `order/list`      |
+| `binference_bridge_quote` | `bridge/quote`  | `binference_staking_options` | `staking/options` |
 
 `binference_propose` takes every kind of intent a client may propose: a send to a `.bnb` name as
 the user wrote it, which the engine reads, or to a saved address by its entry id from

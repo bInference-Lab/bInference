@@ -111,15 +111,23 @@ const everyAccount = new Map([
 ]);
 
 describe("the wallet list", () => {
-  it("lists an agent's wallets, default first, each with its account from custody", async () => {
+  it("lists an agent's wallets, default first, each with its account and chain from custody", async () => {
     const list = await walletList(everyAccount);
     expect(expectOk(await list(testCall({ agent: testAgent })))).toStrictEqual({
       items: [
-        { wallet: main.id, agent: testAgent, address: accounts.main, label: "Main", createdAt: 10 },
+        {
+          wallet: main.id,
+          agent: testAgent,
+          address: accounts.main,
+          chainName: "Fake One",
+          label: "Main",
+          createdAt: 10,
+        },
         {
           wallet: spare.id,
           agent: testAgent,
           address: accounts.spare,
+          chainName: "Fake Two",
           label: "Spare",
           createdAt: 20,
           archivedAt: 30,

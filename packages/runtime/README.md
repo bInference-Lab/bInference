@@ -176,7 +176,8 @@ fails a check never runs, and the model reads why.
 
 `agentTools` are the agent's first tools, each mapped onto one operation of the engine and called
 over the runtime's connection: the reads `addresses` (`address/list`), the address book whose
-entry ids a send or a bridge names, `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
+entry ids a send or a bridge names, `wallets` (`wallet/list` and `agent/get`), the agent's own
+wallets with each one's role, chain and address and the agent's mode, `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
 `token_risk` (`risk/check`), `quote` (`quote/get`), `bridge_quote` (`bridge/quote`),
 `staking_options` (`staking/options`), whose answer is outside content once it lists a validator,
 since the validator's operator wrote its name, `orders` (`order/list`) and `tx_status`

@@ -11,6 +11,7 @@ export interface ProgressKey {
 const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   token_search: "turn.tool.tokenSearch",
   addresses: "turn.tool.addresses",
+  wallets: "turn.tool.wallets",
   portfolio: "turn.tool.portfolio",
   token_info: "turn.tool.tokenInfo",
   token_risk: "turn.tool.tokenRisk",

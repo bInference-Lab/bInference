@@ -15,6 +15,7 @@ import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
 import { answerOrFailure, answerOrRefusal, jsonOf, withUnlistedHidden } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
+import { walletsTool } from "./wallets-tool.js";
 
 // The agent's read tools (runtime spec, section 5.1). Each maps onto one read operation, named for
 // the agent of its turn, and answers the engine's JSON. Every read may run beside the others.
@@ -242,6 +243,7 @@ export function readTools(parts: AgentToolParts): readonly AgentTool[] {
   return [
     tokenSearchTool(parts),
     addressesTool(parts),
+    walletsTool(parts),
     portfolioTool(parts),
     tokenInfoTool(parts),
     tokenRiskTool(parts),

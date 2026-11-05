@@ -31,6 +31,11 @@ export const toolTexts: Readonly<Record<string, ToolText>> = {
     description:
       "Lists an agent's address book: each saved address's entry id, its label in the owner's own words, its CAIP-10 address, whose chain is the one it is paid on, and usableAt, when a send to it may start. A send or a bridge names a saved address by its entry id, as to.entry: binference pays only these and the owner's rescue address. When the user names a payee by a label, find it here, and ask when no label or several match. Only the owner saves or removes an address, in binference's CLI or console.",
   },
+  binference_wallets: {
+    title: "Wallets",
+    description:
+      "Lists an agent's own wallets, oldest first: each wallet's id, the owner's label for it, its CAIP-10 address and chainName, the name of the chain the address is on; role launch marks its launch wallet, which trades on a launch's own curve, bridge: true its bridge wallet, which makes the bridge deposits that name no recipient, and extra a launch or bridge wallet nothing runs from; archivedAt marks one no longer used. The agent's mode, paper or live, is in binference_agents. Read it when the user asks for the agent's address, and give the address exactly as it answers; balances come from binference_portfolio. These are the agent's own wallets, never a payee.",
+  },
   binference_portfolio: {
     title: "Portfolio",
     description: `Reads an agent's portfolio: the balance of each wallet, open positions with their profit and loss, and whether they are paper. ${units}`,

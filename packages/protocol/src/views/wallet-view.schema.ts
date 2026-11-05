@@ -11,6 +11,11 @@ export interface WalletView {
   readonly wallet: ProtocolId<"wallet">;
   readonly agent: ProtocolId<"agent">;
   readonly address: AccountRef;
+  /**
+   * The name of the chain the address is on, as binference's chain list writes it, such as BNB
+   * Smart Chain. An older engine leaves it out; a surface then names the chain by `address`.
+   */
+  readonly chainName?: string;
   readonly label: string;
   readonly createdAt: number;
   readonly archivedAt?: number;
@@ -46,6 +51,7 @@ export const walletViewSchema: z.ZodType<WalletView> = z.object({
   wallet: protocolIdSchema("wallet"),
   agent: protocolIdSchema("agent"),
   address: accountRefSchema,
+  chainName: z.string().min(1).max(200).exactOptional(),
   label: z.string(),
   createdAt: epochMsSchema,
   archivedAt: epochMsSchema.exactOptional(),

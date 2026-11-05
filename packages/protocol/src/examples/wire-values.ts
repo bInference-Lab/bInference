@@ -201,6 +201,7 @@ export const walletView: WireObject = {
   wallet: ids.wallet,
   agent: ids.agent,
   address: refs.account,
+  chainName: "Fake One",
   label: "Main",
   createdAt: at,
 };

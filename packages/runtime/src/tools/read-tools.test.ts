@@ -111,6 +111,52 @@ describe("the read tools", () => {
     });
   });
 
+  it("read the agent's own wallets clean, with its mode, each role and address, archived ones left out", async () => {
+    const view = { wallet, agent, chainName: "Fake One", createdAt: 1 };
+    const answers = {
+      "agent/get": { agent, name: "main", mode: "live", locale: "en", createdAt: 1, changedAt: 1 },
+      "wallet/list": {
+        items: [
+          { ...view, address: "fake:1:0x0000000a", label: "Main" },
+          { ...view, address: "fake:1:0x0000000b", label: "Launch", role: "launch" },
+          { ...view, address: "fake:1:0x0000000d", label: "Bridge", bridge: true, extra: true },
+          { ...view, address: "fake:1:0x0000000e", label: "Old", archivedAt: 2 },
+        ],
+      },
+    };
+    const outcome = await outcomeOf(callTool(answers, { name: "wallets", args: {} }));
+    expect(outcome).toMatchObject({ isError: false });
+    expect(outcome).not.toHaveProperty("outside");
+    const shown = { wallet, chainName: "Fake One" };
+    expect(JSON.parse(outcome.text)).toStrictEqual({
+      mode: "live",
+      wallets: [
+        {
+          ...shown,
+          label: "Main",
+          role: "agent",
+          address: "0x0000000a",
+          account: "fake:1:0x0000000a",
+        },
+        {
+          ...shown,
+          label: "Launch",
+          role: "launch",
+          address: "0x0000000b",
+          account: "fake:1:0x0000000b",
+        },
+        {
+          ...shown,
+          label: "Bridge",
+          role: "bridge",
+          extra: true,
+          address: "0x0000000d",
+          account: "fake:1:0x0000000d",
+        },
+      ],
+    });
+  });
+
   it("mark token_info of an unlisted token as outside content, names and all", async () => {
     const answers = { "asset/get": { asset: token, ...tokenInfo } };
     const outcome = await outcomeOf(

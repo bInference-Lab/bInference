@@ -202,6 +202,7 @@ const amount = { asset: token, base: "20000000" };
 
 const transferAnswers = {
   "address/list": operations["address/list"].result.parse({ items: [] }),
+  "wallet/list": operations["wallet/list"].result.parse({ items: [] }),
   "staking/options": operations["staking/options"].result.parse({ items: [], assets: {} }),
   "bridge/quote": operations["bridge/quote"].result.parse({ items: [], assets: {} }),
   "intent/propose": proposedIntent("awaiting_confirmation"),
@@ -209,6 +210,7 @@ const transferAnswers = {
 
 const transferReads = [
   ["binference_addresses", "address/list", { agent }],
+  ["binference_wallets", "wallet/list", { agent }],
   ["binference_staking_options", "staking/options", { chain: "fake:1", agent }],
   ["binference_bridge_quote", "bridge/quote", { agent, amount, toChain: "fake:2" }],
 ] as const;

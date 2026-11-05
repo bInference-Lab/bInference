@@ -29,6 +29,8 @@ export interface WorldFacts {
   /** The bundled skills the agent's index holds. */
   readonly skills: readonly EvaluationSkill[];
   readonly wallet: string;
+  /** The wallet's CAIP-10 account on BNB Smart Chain. */
+  readonly account: string;
   readonly now: number;
 }
 
@@ -89,6 +91,34 @@ export function searchOf(facts: WorldFacts, query: string): WireObject {
 /** The USD value of an amount of a token, in micro-dollars. */
 function usdOf(token: WorldToken, base: bigint): bigint {
   return (base * BigInt(token.priceUsdMicros)) / 10n ** BigInt(token.decimals);
+}
+
+/** The agent in paper mode, as `agent/get` answers it. */
+export function agentViewOf(facts: WorldFacts, agent: string): WireObject {
+  return {
+    agent,
+    name: "main",
+    mode: "paper",
+    locale: "en",
+    createdAt: facts.now,
+    changedAt: facts.now,
+  };
+}
+
+/** The agent's one wallet, as `wallet/list` answers it. */
+export function walletsOf(facts: WorldFacts, agent: string): WireObject {
+  return {
+    items: [
+      {
+        wallet: facts.wallet,
+        agent,
+        address: facts.account,
+        chainName: "BNB Smart Chain",
+        label: "Main",
+        createdAt: facts.now,
+      },
+    ],
+  };
 }
 
 /** The agent's paper portfolio: each balance with its USD value, and their total. */

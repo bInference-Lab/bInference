@@ -8,6 +8,7 @@ describe("mcpTools", () => {
       ["binference_agents", "agent/list"],
       ["binference_token_search", "asset/search"],
       ["binference_addresses", "address/list"],
+      ["binference_wallets", "wallet/list"],
       ["binference_portfolio", "portfolio/get"],
       ["binference_token_info", "asset/get"],
       ["binference_token_risk", "risk/check"],

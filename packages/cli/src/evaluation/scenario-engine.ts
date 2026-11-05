@@ -9,6 +9,7 @@ import type {
   SettledState,
 } from "./scenario.schema.js";
 import {
+  agentViewOf,
   amountInOf,
   assetInfosOf,
   assetViewOf,
@@ -18,6 +19,7 @@ import {
   riskOf,
   searchOf,
   tokenOf,
+  walletsOf,
   type WireObject,
   type WorldFacts,
 } from "./world-answers.js";
@@ -123,6 +125,8 @@ const answers: Partial<Readonly<Record<ToolOperation, Answer>>> = {
   "asset/get": (args, { facts }) => assetViewOf(tokenOf(facts, field(args, "asset")), facts.now),
   "risk/check": (args, { facts }) => riskOf(tokenOf(facts, field(args, "asset")), facts.now),
   "portfolio/get": (_args, { facts }) => portfolioOf(facts),
+  "agent/get": (_args, { facts, agent }) => agentViewOf(facts, agent),
+  "wallet/list": (_args, { facts, agent }) => walletsOf(facts, agent),
   "quote/get": (args, { facts }) => {
     const from = tokenOf(facts, field(args, "from"));
     const to = tokenOf(facts, field(args, "to"));

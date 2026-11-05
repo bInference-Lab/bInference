@@ -25,6 +25,7 @@
   "firstChatDone": "你的回答已保存到 STRATEGY.md 和 PERSONA.md。你可以随时让 Agent 修改。",
   "tool.tokenSearch": "正在搜索代币…",
   "tool.addresses": "正在读取地址簿…",
+  "tool.wallets": "正在读取 Agent 的钱包…",
   "tool.portfolio": "正在读取投资组合…",
   "tool.tokenInfo": "正在读取代币信息…",
   "tool.tokenRisk": "正在检查代币风险…",

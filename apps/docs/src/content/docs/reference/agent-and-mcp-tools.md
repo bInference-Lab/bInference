@@ -11,6 +11,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 
 - `token_search` (read): Finds a token's id by its symbol, name or contract address.
 - `addresses` (read): Reads the owner's address book for this agent.
+- `wallets` (read): Reads the agent's own wallets: each one's role, chain and address, and its mode.
 - `portfolio` (read): Reads the agent's balances, positions and profit and loss.
 - `token_info` (read): Reads a token's symbol, name, decimals and last risk check.
 - `token_risk` (read): Checks a token for a honeypot, its tax and its liquidity.
@@ -58,6 +59,7 @@ The tools `binference mcp` serves to MCP clients, each calling one engine operat
 | `binference_agents` | Lists the owner's agents and their wallets. | `agent/list` | no |
 | `binference_token_search` | Finds a token's id by its symbol, name or contract address. | `asset/search` | no |
 | `binference_addresses` | Reads an agent's address book. | `address/list` | no |
+| `binference_wallets` | Reads an agent's own wallets with their roles and addresses. | `wallet/list` | no |
 | `binference_portfolio` | Reads an agent's balances, positions and profit and loss. | `portfolio/get` | no |
 | `binference_token_info` | Reads a token's symbol, name, decimals and last risk check. | `asset/get` | no |
 | `binference_token_risk` | Checks a token for a honeypot, its tax and its liquidity. | `risk/check` | no |

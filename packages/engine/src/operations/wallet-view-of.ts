@@ -1,5 +1,4 @@
-import type { AccountRef, ChainRegistry, Signer, WalletRole } from "@binference/chain";
-import type { Ok, Result } from "@binference/core";
+import type { ChainRegistry, Signer, WalletRole } from "@binference/chain";
 import type { WalletView } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
 
@@ -21,32 +20,31 @@ export function roleMarksOf(role: WalletRole | undefined): Pick<WalletView, "rol
   return role === undefined ? {} : marks[role];
 }
 
-function isHeld(account: Result<AccountRef, "unknown_wallet">): account is Ok<AccountRef> {
-  return account.ok;
-}
-
 /**
  * A stored wallet as the protocol shows it, with its account on the first registered chain where
- * custody holds it and its role when it is a launch or bridge wallet; `undefined` when custody holds it on
- * none, so no wallet is ever shown without the address custody signs for.
+ * custody holds it, that chain's name, and its role when it is a launch or bridge wallet;
+ * `undefined` when custody holds it on none, so no wallet is ever shown without the address
+ * custody signs for.
  */
 export async function walletViewOf(
   parts: WalletViewParts,
   wallet: WalletRecord,
   signal: AbortSignal,
 ): Promise<WalletView | undefined> {
-  const accounts = await Promise.all(
-    parts.chains
-      .list()
-      .map(async (chain) => parts.custody.account(wallet.id, chain.ref, { signal })),
+  const held = await Promise.all(
+    parts.chains.list().map(async (chain) => {
+      const account = await parts.custody.account(wallet.id, chain.ref, { signal });
+      return account.ok ? [{ address: account.value, chainName: chain.definition.name }] : [];
+    }),
   );
-  const account = accounts.find(isHeld);
-  return account === undefined
+  const [first] = held.flat();
+  return first === undefined
     ? undefined
     : {
         wallet: wallet.id,
         agent: wallet.agentId,
-        address: account.value,
+        address: first.address,
+        chainName: first.chainName,
         label: wallet.label,
         createdAt: wallet.createdAtMs,
         ...(wallet.archivedAtMs === undefined ? {} : { archivedAt: wallet.archivedAtMs }),

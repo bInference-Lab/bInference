@@ -34,6 +34,7 @@ and nothing moves until the owner taps Confirm in binference's Telegram bot or c
 | `binference_agents`          | List the agents: id, name, paper or live, frozen, default wallet    |
 | `binference_token_search`    | Find a token's asset id by symbol, name or address                  |
 | `binference_addresses`       | List the saved addresses: entry id, label, address and its chain    |
+| `binference_wallets`         | List the agent's own wallets: role, address and its chain's name    |
 | `binference_portfolio`       | Read wallets, balances, positions, P&L, paper or live, asset ids    |
 | `binference_token_info`      | Read a token's symbol, name, decimals and verified mark             |
 | `binference_token_risk`      | Check a token: taxes, liquidity, flags and a verdict                |

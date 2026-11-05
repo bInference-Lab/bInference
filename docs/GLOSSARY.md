@@ -604,7 +604,8 @@ check` tries it as `network.proxy`.
   `alert_create`, `schedule_list`, `schedule_create`, `schedule_cancel`; for staking, bridges and
   sends the propose tools `send`, `approval_revoke`, `stake`, `unstake`, `claim` and `bridge`, and
   the read tools `staking_options`, `bridge_quote` and `addresses` (the address book, whose entry
-  ids a send or a bridge names).
+  ids a send or a bridge names), and `wallets` (the agent's own wallets: each one's role, chain
+  and address, and its paper or live mode).
 - **MCP tools**: the MCP server's read and propose tools, one per operation and named
   `binference_`, such as `binference_propose` for `intent/propose`, `binference_staking_options`
   for `staking/options` and `binference_bridge_quote` for `bridge/quote`.

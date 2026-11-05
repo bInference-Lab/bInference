@@ -56,6 +56,7 @@ export interface RunParts {
 // The scenarios' time: 1 January 2026, 10:00 UTC; and the agent's one wallet.
 const runAt = 1_767_261_600_000;
 const wallet = "wal_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+const account = "eip155:56:0x8f3e5a1c9b7d2e4f6a0c8b1d3e5f7a9c2b4d6e8f";
 const agent = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 // A 1x1 PNG, the image every owner's image of a run stands for.
 const tinyPng = Uint8Array.from(
@@ -71,6 +72,7 @@ function factsOf(scenario: Scenario, world: SharedWorld): WorldFacts {
     balances: scenario.world.balances ?? world.balances,
     skills: world.skills,
     wallet,
+    account,
     now: runAt,
   };
 }

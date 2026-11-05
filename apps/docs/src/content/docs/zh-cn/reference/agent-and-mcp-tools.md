@@ -11,6 +11,7 @@ Agent 的模型在一轮中可以调用的工具，按每轮提供的顺序排�
 
 - `token_search` (读取): 按代币符号、名称或合约地址查找代币的 id。
 - `addresses` (读取): 读取所有者为这个 Agent 保存的地址簿。
+- `wallets` (读取): 读取 Agent 自己的钱包：每个钱包的用途、所在链和地址，以及它的模式。
 - `portfolio` (读取): 读取 Agent 的余额、持仓和盈亏。
 - `token_info` (读取): 读取代币的符号、名称、精度和最近一次风险检查。
 - `token_risk` (读取): 检查代币是否为貔貅盘，以及它的交易税和流动性。
@@ -58,6 +59,7 @@ Agent 的模型在一轮中可以调用的工具，按每轮提供的顺序排�
 | `binference_agents` | 列出所有者的 Agent 及其钱包。 | `agent/list` | 否 |
 | `binference_token_search` | 按代币符号、名称或合约地址查找代币的 id。 | `asset/search` | 否 |
 | `binference_addresses` | 读取一个 Agent 的地址簿。 | `address/list` | 否 |
+| `binference_wallets` | 读取一个 Agent 自己的钱包，以及每个钱包的用途和地址。 | `wallet/list` | 否 |
 | `binference_portfolio` | 读取一个 Agent 的余额、持仓和盈亏。 | `portfolio/get` | 否 |
 | `binference_token_info` | 读取代币的符号、名称、精度和最近一次风险检查。 | `asset/get` | 否 |
 | `binference_token_risk` | 检查代币是否为貔貅盘，以及它的交易税和流动性。 | `risk/check` | 否 |

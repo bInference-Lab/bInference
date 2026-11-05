@@ -80,6 +80,7 @@ describe("the agent list", () => {
       wallet: main.id,
       agent: testAgent,
       address,
+      chainName: "Fake One",
       label: "Main",
       createdAt: 10,
     });
