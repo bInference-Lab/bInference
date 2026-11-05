@@ -122,11 +122,11 @@ export const resetPaperTask: StoreTask<
     if (!isWhole(database, reset) || !movePositions(database, reset.positions)) {
       return err("stale");
     }
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
     return ok(
       reset.arrivals.map((arrival) => {
-        const inserted = execute(kysely.insertInto("arrivals").values(arrivalRow(arrival)));
-        return { ...arrival, id: Number(inserted.insertId) };
+        const insert = kysely.insertInto("arrivals").values(arrivalRow(arrival));
+        return { ...arrival, id: takeOne(insert.returning("id")).id };
       }),
     );
   },

@@ -41,7 +41,7 @@ function readIntent(database: StoreConnection, id: Id<"int">): IntentRecord | un
 }
 
 function addEvent(database: StoreConnection, event: EventDraft): IntentEventRecord {
-  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
   const row = {
     intent_id: event.intentId,
     from_state: event.fromState,
@@ -49,8 +49,8 @@ function addEvent(database: StoreConnection, event: EventDraft): IntentEventReco
     cause: jsonText(event.cause),
     at: event.atMs,
   };
-  const inserted = execute(kysely.insertInto("intent_events").values(row));
-  return toIntentEvent({ ...row, id: Number(inserted.insertId) });
+  const { id } = takeOne(kysely.insertInto("intent_events").values(row).returning("id"));
+  return toIntentEvent({ ...row, id });
 }
 
 function appendFor(

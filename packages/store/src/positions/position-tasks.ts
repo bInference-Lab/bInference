@@ -62,10 +62,12 @@ export const recordExecutionTask: StoreTask<
     if (!movePositions(database, write.positions)) {
       return err("stale");
     }
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const inserted = execute(kysely.insertInto("executions").values(executionRow(write)));
+    const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
+    const { id } = takeOne(
+      kysely.insertInto("executions").values(executionRow(write)).returning("id"),
+    );
     const { realizedUsdMicros } = write;
-    return ok({ ...write.execution, id: Number(inserted.insertId), realizedUsdMicros });
+    return ok({ ...write.execution, id, realizedUsdMicros });
   },
 });
 
@@ -93,9 +95,11 @@ export const recordArrivalTask: StoreTask<
     if (!movePositions(database, write.positions)) {
       return err("stale");
     }
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const inserted = execute(kysely.insertInto("arrivals").values(arrivalRow(write.arrival)));
-    return ok({ ...write.arrival, id: Number(inserted.insertId) });
+    const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
+    const { id } = takeOne(
+      kysely.insertInto("arrivals").values(arrivalRow(write.arrival)).returning("id"),
+    );
+    return ok({ ...write.arrival, id });
   },
 });
 

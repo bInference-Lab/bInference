@@ -88,23 +88,26 @@ export const openUnbondingTask: StoreTask<UnbondingDraft, UnbondingRecord> = def
     if (held !== undefined) {
       return held;
     }
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const inserted = execute(
-      kysely.insertInto("stake_unbondings").values({
-        intent_id: draft.intentId,
-        wallet_id: draft.walletId,
-        venue: draft.venue,
-        validator: orNull(draft.validator),
-        request_ref: draft.requestRef,
-        asset: draft.amount.asset,
-        amount: decimalText(draft.amount.base),
-        value_usd_micros:
-          draft.valueUsdMicros === undefined ? null : decimalText(draft.valueUsdMicros),
-        ready_at: draft.readyAtMs,
-        paper: draft.isPaper ? 1 : 0,
-      }),
+    const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
+    const { id } = takeOne(
+      kysely
+        .insertInto("stake_unbondings")
+        .values({
+          intent_id: draft.intentId,
+          wallet_id: draft.walletId,
+          venue: draft.venue,
+          validator: orNull(draft.validator),
+          request_ref: draft.requestRef,
+          asset: draft.amount.asset,
+          amount: decimalText(draft.amount.base),
+          value_usd_micros:
+            draft.valueUsdMicros === undefined ? null : decimalText(draft.valueUsdMicros),
+          ready_at: draft.readyAtMs,
+          paper: draft.isPaper ? 1 : 0,
+        })
+        .returning("id"),
     );
-    return { ...draft, id: Number(inserted.insertId) };
+    return { ...draft, id };
   },
 });
 

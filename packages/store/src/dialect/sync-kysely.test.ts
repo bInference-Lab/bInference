@@ -27,6 +27,12 @@ function recording(answer: QueryResult<never>): Recorded {
   return { connection, sent };
 }
 
+// An insert of event 7 that reads its key back.
+function insert(into: PostgresTaskConnection): { id: number } {
+  const { kysely, takeOne } = createSyncKysely<{ events: { id: number; at: number } }>(into);
+  return takeOne(kysely.insertInto("events").values({ id: 7, at: 1 }).returning("id"));
+}
+
 describe("createSyncKysely on a Postgres task connection", () => {
   it("names the install's schema on every table and keeps aliases bare", () => {
     const { connection, sent } = recording({ rows: [] });
@@ -85,6 +91,14 @@ describe("createSyncKysely on a Postgres task connection", () => {
     expect(takeFirst(kysely.selectFrom("orders").select("state"))).toStrictEqual({
       state: "active",
     });
+  });
+
+  it("gives the row a statement must give, and fails one that gives none", () => {
+    const { connection } = recording({ rows: [{ id: 7 } as never] });
+    const empty = recording({ rows: [] }).connection;
+
+    expect(insert(connection)).toStrictEqual({ id: 7 });
+    expect(() => insert(empty)).toThrow(expect.objectContaining({ code: "store.no_row" }));
   });
 
   it("refuses a value SQLite cannot bind before it sends anything", () => {
