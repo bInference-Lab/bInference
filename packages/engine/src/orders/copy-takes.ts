@@ -1,9 +1,10 @@
 import type { ChainRegistry } from "@binference/chain";
-import type { Clock } from "@binference/core";
+import type { Clock, Id } from "@binference/core";
 import type { IntentStore } from "../ports.js";
 import type { CopyOrder } from "./copy-fills.js";
 import { type CopyRetry, type CopyState, type CopyTaking, maxRetries } from "./copy-state.js";
 import { isLineHeld } from "./fill-faults.js";
+import type { OrderFills } from "./fill-orders.js";
 import type { OrderFillReason } from "./order-fill.js";
 import type { OrderStore } from "./ports.js";
 
@@ -65,6 +66,28 @@ export async function takeEndOf(
   return own.outcome === "skipped" && isPassing && taking.side === "sell"
     ? { kind: "again", atMs: own.atMs }
     : { kind: "done" };
+}
+
+/**
+ * Records why a taken trade's fill did not run, so no take is lost in silence: `order_inactive`
+ * once the order is past its expiry, which its end has yet to write and which ends a sale for
+ * good, else `fill_waiting`, behind a fill still settling. An order no longer active records
+ * nothing.
+ */
+export async function recordUnrun(
+  parts: {
+    readonly orders: Pick<OrderStore, "get">;
+    readonly fills: Pick<OrderFills, "skip">;
+    readonly clock: Clock;
+  },
+  call: { readonly order: Id<"ord">; readonly signal: AbortSignal },
+): Promise<void> {
+  const { order, signal } = call;
+  const after = await parts.orders.get(order, { signal });
+  if (after?.state === "active") {
+    const reason = parts.clock.now() >= after.expiresAtMs ? "order_inactive" : "fill_waiting";
+    await parts.fills.skip({ order, reason }, { signal });
+  }
 }
 
 /** When a sale that ended so is tried again; none when it is done or out of room. */

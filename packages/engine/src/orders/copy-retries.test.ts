@@ -159,3 +159,23 @@ describe("a copy order's mirrored sale that fails for a passing reason", () => {
     ]);
   });
 });
+
+describe("a copy order past its expiry", () => {
+  it("records a leader sale it took as order_inactive, and never sells it again", async () => {
+    const { test, order } = await bought();
+    await test.clock.advance(order.expiresAtMs - test.clock.now());
+    const atMs = test.clock.now();
+    await storeTrades(test, [leaderTrade(2, { side: "sell", atMs, shareSoldBps: share })]);
+
+    await test.engine.runCopies(live);
+    await test.clock.advance(60_000);
+    await test.engine.runCopies(live);
+
+    const rows = await fillRowsOf(test, order.id);
+    expect(outcomes(rows)).toStrictEqual(["skipped:order_inactive", "filled"]);
+    expect(rows[0]?.notices).toMatchObject([
+      { key: "notice.skipped", parts: { reason: { key: "reason.order_inactive" } } },
+    ]);
+    expect((await copyStateNow(test, order.id)).retries).toStrictEqual([]);
+  });
+});

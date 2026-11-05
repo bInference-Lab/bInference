@@ -17,7 +17,7 @@ import {
   passedState,
   takenState,
 } from "./copy-state.js";
-import { isRetryLapsed, retryAtOf, type TakeEnd, takeEndOf } from "./copy-takes.js";
+import { isRetryLapsed, recordUnrun, retryAtOf, type TakeEnd, takeEndOf } from "./copy-takes.js";
 import { confirmedBlockOf, type CopyFilterParts, isCopied } from "./copy-trade-filter.js";
 import { isLineHeld } from "./fill-faults.js";
 import type { OrderFills } from "./fill-orders.js";
@@ -104,8 +104,7 @@ function paidOf(chains: ChainRegistry, trade: StoredActivity): Pick<CopyTaking, 
 }
 
 // Keeps the trade as taken and fills it; answers whether the order may go on to the next. A fill
-// that could not run, behind a fill still settling, records `fill_waiting`, so no taken trade is
-// lost in silence.
+// that could not run records why, so no taken trade is lost in silence.
 async function fillTaken(
   parts: CopyOrdersParts,
   reading: Reading,
@@ -124,10 +123,7 @@ async function fillTaken(
   }
   const outcome = await parts.fills.run({ order: order.id, price: { decimals: 0 } }, { signal });
   if (outcome === "waiting" || outcome === "inactive") {
-    const after = await parts.orders.get(order.id, { signal });
-    if (after?.state === "active") {
-      await parts.fills.skip({ order: order.id, reason: "fill_waiting" }, { signal });
-    }
+    await recordUnrun(parts, { order: order.id, signal });
   }
   return outcome !== "sent";
 }
