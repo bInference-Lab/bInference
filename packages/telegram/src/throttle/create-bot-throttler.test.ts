@@ -214,6 +214,41 @@ describe("the bot throttler", () => {
     expect(arrivals.map(({ method }) => method)).toStrictEqual(["sendMessage", "sendMessage"]);
   });
 
+  it("sends a chat action at once and takes no place in its chat's pace", async () => {
+    const { clock, api, arrivals } = setUp();
+    await api.sendChatAction(ownerId, "typing");
+    await api.sendMessage(ownerId, "the answer");
+    await api.sendChatAction(ownerId, "typing");
+    await clock.advance(0);
+    expect(arrivals.map(({ atMs, method }) => [atMs, method])).toStrictEqual([
+      [0, "sendChatAction"],
+      [0, "sendMessage"],
+      [0, "sendChatAction"],
+    ]);
+  });
+
+  it("drops a chat action behind a call of its chat, during a wait, and on its own 429", async () => {
+    const { botApi, clock, api, arrivals } = setUp();
+    const first = api.sendMessage(ownerId, "first");
+    const second = api.sendMessage(ownerId, "second");
+    const dropped = { code: "telegram.preview_dropped" };
+    await expect(api.sendChatAction(ownerId, "typing")).rejects.toMatchObject(dropped);
+    await clock.advance(1_000);
+    await Promise.all([first, second]);
+    botApi.failNext("sendChatAction", flood(2), { chatId: ownerId });
+    await expect(api.sendChatAction(ownerId, "typing")).rejects.toMatchObject(dropped);
+    await expect(api.sendChatAction(ownerId, "typing")).rejects.toMatchObject(dropped);
+    const answer = api.sendMessage(ownerId, "the answer");
+    await clock.advance(2_000);
+    await answer;
+    expect(arrivals.map(({ atMs, method }) => [atMs, method])).toStrictEqual([
+      [0, "sendMessage"],
+      [1_000, "sendMessage"],
+      [1_000, "sendChatAction"],
+      [3_000, "sendMessage"],
+    ]);
+  });
+
   it("lets the poller's getUpdates through untouched, 429 and all", async () => {
     const { botApi, api } = setUp();
     botApi.failNext("getUpdates", flood(5));

@@ -74,8 +74,10 @@ Rules for this package:
 - A status message's send and edit are previews (`src/chat/preview-sends.ts`): each goes with a
   `previewSignal`, and the throttler drops it rather than queue it behind another call or a wait.
   A dropped preview waits for the next refresh. A first send that may have reached Telegram is
-  never sent again, and any failure but a passing one stops the edits for the turn. Nothing else
-  is sent as a preview. An answer Telegram refuses leaves the status message saying so.
+  never sent again, and any failure but a passing one stops the edits for the turn. The typing
+  indicator (`src/chat/chat-typing.ts`, decision 0372) goes the same way, every 4 seconds while a
+  turn runs; `sendChatAction` also takes no place in its chat's pace. Nothing else is sent as a
+  preview. An answer Telegram refuses leaves the status message saying so.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, the one
   setting the chat changes, decision 0134), and only `commandCallbackSchema` reads it. A press

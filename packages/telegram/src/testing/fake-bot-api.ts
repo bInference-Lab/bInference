@@ -70,7 +70,7 @@ type Signal = AbortSignal | null | undefined;
 
 /**
  * A synthetic Telegram Bot API in memory for grammY's `fetch` option: no network. Updates come
- * in under Telegram's offset rules; messages, edits, deletes and button answers go out with the
+ * in under Telegram's offset rules; messages, edits, deletes, chat actions and button answers go out with the
  * Bot API's checks (HTML parse mode, 4,096 characters, 64-byte callback data, one answer per
  * press, no edit that changes nothing), and command menus with `setMyCommands`'s limits.
  */

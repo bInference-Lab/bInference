@@ -52,6 +52,14 @@ const flood = (retryAfterS: number) => ({
   retryAfterS,
 });
 
+// The Bot API methods called, the typing indicator's left out.
+function messageCalls(botApi: ReturnType<typeof createFakeBotApi>): readonly string[] {
+  return botApi
+    .calls()
+    .map(({ method }) => method)
+    .filter((method) => method !== "sendChatAction");
+}
+
 describe("the agent's status message in Telegram", () => {
   it("posts no status message for an answer within a second and a half", async () => {
     const { botApi, clock, replies } = await setUp();
@@ -187,7 +195,7 @@ describe("the agent's status message in Telegram", () => {
     await clock.advance(5_000);
     await shown;
     await replies.idle();
-    const methods = botApi.calls().map(({ method }) => method);
+    const methods = messageCalls(botApi);
     expect(methods).toStrictEqual([
       "sendMessage",
       "editMessageText",
@@ -205,7 +213,7 @@ describe("the agent's status message in Telegram", () => {
     await replies.show(started, live);
     botApi.failNext("sendMessage", "lostAnswer", { chatId: ownerId });
     await clock.advance(5_000);
-    const methods = botApi.calls().map(({ method }) => method);
+    const methods = messageCalls(botApi);
     expect(methods).toStrictEqual(["sendMessage"]);
   });
 
@@ -215,11 +223,7 @@ describe("the agent's status message in Telegram", () => {
     botApi.failNext("sendMessage", "network", { chatId: ownerId });
     await clock.advance(3_500);
     replies.close();
-    expect(botApi.calls().map(({ method }) => method)).toStrictEqual([
-      "sendMessage",
-      "sendMessage",
-      "editMessageText",
-    ]);
+    expect(messageCalls(botApi)).toStrictEqual(["sendMessage", "sendMessage", "editMessageText"]);
   });
 
   it("drops a preview Telegram answers with a 429, and still delivers the answer", async () => {
@@ -235,7 +239,7 @@ describe("the agent's status message in Telegram", () => {
     await clock.advance(10_000);
     await shown;
     await replies.idle();
-    const methods = botApi.calls().map(({ method }) => method);
+    const methods = messageCalls(botApi);
     expect(methods).toStrictEqual([
       "sendMessage",
       "editMessageText",

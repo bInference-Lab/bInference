@@ -1370,9 +1370,13 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   it has shown for 4 seconds. A status line of section 8.1 follows in italics. The agent's words
   show their Markdown as Telegram's rich text by the rules of section 1, with every character a
   reader cannot see written as `\u{…}`; markup the model writes in HTML shows as text.
-- **Rate limits.** A send or edit of the status message is a preview: when Telegram asks the bot
-  to wait, or another message waits for the chat, it is dropped and the next one carries the
-  newest text. Answers, status lines and cards wait and go.
+- **While the agent works** ([decision 0372](../DECISIONS.md#d0372)). The bot shows Telegram's
+  typing indicator in the chat from the turn's start, renewed every 4 seconds, until the turn
+  ends; after 5 failures in a row it stops for the turn.
+- **Rate limits.** A send or edit of the status message, and the typing indicator, are previews:
+  when Telegram asks the bot to wait, or another message waits for the chat, they are dropped and
+  the next one carries the newest text. The typing indicator takes no place in the chat's pace.
+  Answers, status lines and cards wait and go.
 - **Failures.** A status message whose HTML Telegram cannot read goes as plain text. An edit
   Telegram refuses, and three passing failures in a row, stop the edits for the turn; a first send
   that may have reached Telegram is never sent again. An answer Telegram refuses turns the status

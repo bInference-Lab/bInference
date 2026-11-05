@@ -8,6 +8,7 @@ import { callBotApi } from "../api/call-bot-api.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
+import { type ChatTyping, startTyping } from "./chat-typing.js";
 import { createStatusMessage, type StatusMessage } from "./status-message.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
@@ -49,6 +50,7 @@ interface TurnShowing {
   readonly agent: string;
   readonly chatId: number;
   readonly status: StatusMessage;
+  readonly typing: ChatTyping;
 }
 
 interface Call {
@@ -125,9 +127,11 @@ function removeStatus(parts: Parts, showing: TurnShowing | undefined): void {
   void removal.finally(() => parts.removals.delete(removal));
 }
 
-// Ends the turn's showing: its status message goes and the turn is forgotten.
+// Ends the turn's showing: its typing stops, its status message goes and the turn is forgotten.
 function forget(parts: Parts, key: string): void {
-  removeStatus(parts, parts.turns.get(key));
+  const showing = parts.turns.get(key);
+  showing?.typing.stop();
+  removeStatus(parts, showing);
   parts.turns.delete(key);
 }
 
@@ -159,7 +163,8 @@ async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> 
   const headline = (seconds: number): string => words(parts, "telegram.chat.working", { seconds });
   const statusParts = { api, bot: parts.bot, clock, logger, headline };
   const message = createStatusMessage(statusParts, { chatId, startedAtMs: clock.now() });
-  parts.turns.set(key, { agent: push.agent, chatId, status: message });
+  const typing = startTyping({ api, clock, logger }, chatId);
+  parts.turns.set(key, { agent: push.agent, chatId, status: message, typing });
 }
 
 type MessagePush = Extract<ChatPush, { readonly kind: "chat/message" }>;
@@ -212,6 +217,7 @@ async function answered(parts: Parts, push: MessagePush, call: Call): Promise<vo
   } catch (error) {
     call.signal.throwIfAborted();
     await notDelivered(parts, { chatId, ...(showing === undefined ? {} : { showing }) }, call);
+    showing?.typing.stop();
     parts.turns.delete(keyOf(push));
     throw error;
   }
@@ -272,9 +278,10 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
  * preview the bot's throttler drops rather than delay an answer or a card. The answer goes as new
  * messages, which notify the owner where an edit does not, and the status message is deleted once
  * it has shown for 4 seconds; an answer Telegram refuses leaves the status message saying so. A
- * status line follows in italics. Model text shows its Markdown as Telegram's rich text from a
- * fixed set of tags over escaped text, split at 4,096 characters; a message Telegram cannot parse
- * goes again as plain text.
+ * status line follows in italics. Telegram's typing indicator shows while the turn runs (decision
+ * 0372). Model text shows its Markdown as Telegram's rich text from a fixed set of tags over
+ * escaped text, split at 4,096 characters; a message Telegram cannot parse goes again as plain
+ * text.
  */
 export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
   const formatters = createOwnerFormatters();
@@ -297,8 +304,9 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
       await Promise.all([...turns, ...parts.removals.keys()]);
     },
     close() {
-      for (const message of [...parts.turns.values()].map(({ status: shown }) => shown)) {
-        message.close();
+      for (const showing of parts.turns.values()) {
+        showing.typing.stop();
+        showing.status.close();
       }
       for (const message of parts.removals.values()) {
         message.close();

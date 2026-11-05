@@ -107,6 +107,11 @@ const editTextSchema = z.looseObject({ ...targetShape, ...contentShape });
 const editMarkupSchema = z.looseObject({ ...targetShape, reply_markup: markupSchema });
 const deleteSchema = z.looseObject(targetShape);
 const threadGone = "Bad Request: message thread not found";
+// The chat actions the Bot API takes; each shows for 5 seconds or until the bot's next message.
+const actionSchema = z.looseObject({
+  chat_id: z.int(),
+  action: z.enum(["typing", "upload_photo", "upload_document", "choose_sticker"]),
+});
 const answerSchema = z.looseObject({
   callback_query_id: z.string().min(1),
   text: z.string().max(200).optional(),
@@ -277,6 +282,10 @@ const chatCalls = {
   editMessageReplyMarkup,
   deleteMessage,
   answerCallbackQuery,
+  sendChatAction: (_state: ChatsState, body: string) => {
+    const call = parsed(actionSchema, body);
+    return call.ok ? ok(true) : call;
+  },
 };
 
 /**

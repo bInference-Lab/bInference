@@ -196,6 +196,24 @@ async function inTurn<R>(throttle: Throttle, call: ThrottledCall<R>): Promise<R>
   }
 }
 
+// A chat action, such as the typing indicator, lasts a few seconds and the next one replaces it:
+// it goes at once while its chat has no call in line and no wait, takes no place in the chat's
+// pace, and gives way to everything else. A 429 still pauses the chat for every other call.
+async function sendAction<R>(throttle: Throttle, call: ThrottledCall<R>): Promise<R> {
+  const pace = paceOf(throttle, call.key);
+  if (pace.inLine > 0 || pace.floodUntilMs > throttle.clock.now()) {
+    throw previewDropped();
+  }
+  const timeout = AbortSignal.timeout(throttle.attemptTimeoutMs);
+  const answer = await call.send(AbortSignal.any([call.signal, timeout]));
+  const floodMs = floodWaitMsOf(answer);
+  if (floodMs !== undefined) {
+    pause(throttle, call.key, floodMs);
+    throw previewDropped();
+  }
+  return answer;
+}
+
 // grammY types its signals with an old polyfill; this follows one with a Node signal.
 function followed(signal: GrammySignal | undefined) {
   const controller = new AbortController();
@@ -218,7 +236,8 @@ function followed(signal: GrammySignal | undefined) {
  * `attemptTimeoutMs`, so a caller's signal only has to say when to stop. A call whose signal is a
  * `previewSignal` gives way instead: it rejects with `telegram.preview_dropped` when its chat has
  * a call in line or a wait running, and when Telegram answers it with a 429, which still pauses
- * the chat for every other call.
+ * the chat for every other call. `sendChatAction` always gives way so, and takes no place in its
+ * chat's pace, so the typing indicator never delays an answer or a card.
  */
 export function createBotThrottler(options: BotThrottlerOptions): Transformer {
   const throttle: Throttle = {
@@ -236,14 +255,17 @@ export function createBotThrottler(options: BotThrottlerOptions): Transformer {
     }
     const chatId = chatIdOf(payload);
     const caller = followed(signal);
+    const throttled = {
+      key: chatId === undefined ? "" : String(chatId),
+      spacingMs: spacingMsOf(chatId),
+      signal: caller.signal,
+      isPreview: isPreviewSignal(signal),
+      send: async (attempt: AbortSignal) => prev(method, payload, assertGrammySignal(attempt)),
+    };
     try {
-      return await inTurn(throttle, {
-        key: chatId === undefined ? "" : String(chatId),
-        spacingMs: spacingMsOf(chatId),
-        signal: caller.signal,
-        isPreview: isPreviewSignal(signal),
-        send: async (attempt) => prev(method, payload, assertGrammySignal(attempt)),
-      });
+      return await (method === "sendChatAction"
+        ? sendAction(throttle, throttled)
+        : inTurn(throttle, throttled));
     } finally {
       caller.release();
     }
