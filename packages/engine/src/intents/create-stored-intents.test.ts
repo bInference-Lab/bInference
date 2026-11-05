@@ -1,124 +1,51 @@
-import { createIdSource, type Id, type Random } from "@binference/core";
+import { createIdSource, type Random } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
-import type { QuoteView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import type { StoredIntent } from "../confirmations/stored-intent.js";
-import { confirmationStoreContract } from "../contracts/confirmation-store-contract.js";
-import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
-import type { ConfirmationStore } from "../ports.js";
-import type { EnginePush } from "../pushes/engine-push.js";
 import {
-  createStoredIntents,
-  type IntentSnapshot,
-  type StoredIntents,
-} from "./create-stored-intents.js";
+  confirmationStoreContract,
+  type ConfirmationStoreSubject,
+} from "../contracts/confirmation-store-contract.js";
+import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
+import { createStoredIntents, type IntentSnapshot } from "./create-stored-intents.js";
 import type { IntentMove } from "./intent-change-of.js";
 import { quoteDocument } from "./intent-documents.schema.js";
+import {
+  heldConfirmations,
+  heldIntent,
+  heldIntentId,
+  type HeldIntents,
+  holdIntent,
+  unknownIntentId,
+} from "./test-confirmations.js";
 import {
   expectOk,
   testAgent,
   testAgentDraft,
-  testCoin,
-  testNewIntent,
   testNowMs,
   testSwap,
-  testToken,
   testWallet,
 } from "./test-intents.js";
 
 const live = { signal: new AbortController().signal };
-const intent = "int_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"int">;
-const unknown = "int_0190f1c2-3a4b-7c5d-8e6f-000000000009" as Id<"int">;
-const quote: QuoteView = {
-  route: [],
-  amountIn: { asset: testCoin, base: 1_000_000n },
-  expectedOut: { asset: testToken, base: 1_010_000n },
-  minOut: { asset: testToken, base: 1_000_000n },
-  priceImpactBps: 10 as never,
-  gas: { asset: testCoin, base: 0n },
-  quotedAt: 9_000,
-  expiresAt: 69_000,
-};
+const intent = heldIntentId;
+const unknown = unknownIntentId;
+const held = heldIntent;
 
-/** The intent every check holds: awaiting its first card, on version 1. */
-const held: StoredIntent = {
-  intent,
-  status: {
-    state: "awaiting_confirmation",
-    kind: "swap",
-    proposer: "agent_runtime",
-    isPaper: true,
-    hasOutsideContent: false,
-    changedAtMs: 10_000,
-    quote: { quotedAtMs: 9_000, minOutBase: 1_000_000n },
-    card: { version: 1, openedAtMs: 10_000, expiresAtMs: 70_000 },
-  },
-  version: 1,
-  cards: {
-    tradeExpiryMs: 60_000,
-    otherExpiryMs: 600_000,
-    requoteAfterMs: 10_000,
-    requoteToleranceBps: 50 as never,
-  },
-};
-
-interface Held {
-  readonly stored: StoredIntents;
-  readonly pushes: readonly EnginePush[];
-  /** Resolves once the agent and the held intent are stored. */
-  readonly ready: Promise<void>;
-}
-
-async function seed(stored: StoredIntents, stores: ReturnType<typeof createMemoryEngineStores>) {
-  await stores.agents.create(testAgentDraft(), live);
-  await stored.create(testNewIntent(intent), live);
-  const toHeld: IntentMove = {
-    intent,
-    version: 0,
-    step: {
-      status: held.status,
-      event: {
-        from: "proposed",
-        to: "awaiting_confirmation",
-        trigger: "authorization_checked",
-        atMs: 10_000,
-        hasLedgerEntry: true,
-      },
-    },
-    fields: { quote: quoteDocument.encode(quote) },
-  };
-  await stored.move(toHeld, live);
-}
-
-function holding(random?: Random): Held {
+function holding(random?: Random): HeldIntents {
   const stores = createMemoryEngineStores();
-  const pushes: EnginePush[] = [];
-  const ids = createIdSource({
-    clock: createManualClock(testNowMs),
-    random: createSeededRandom(5),
-  });
-  const stored = createStoredIntents({
-    intents: stores.intents,
-    agents: stores.agents,
-    ids,
-    ...(random === undefined ? {} : { random }),
-    publish: (push) => pushes.push(push),
-  });
-  return { stored, pushes, ready: seed(stored, stores) };
+  const placeAgent = async (): Promise<void> => {
+    await stores.agents.create(testAgentDraft(), live);
+  };
+  return holdIntent({ intents: stores.intents, agents: stores.agents, placeAgent }, random);
 }
 
-// The contract's checks start at once; each call waits for the held intent to be stored.
-function afterSeeding({ stored, ready }: Held): ConfirmationStore {
-  return {
-    read: async (id, options) => {
-      await ready;
-      return stored.read(id, options);
-    },
-    write: async (write, options) => {
-      await ready;
-      return stored.write(write, options);
-    },
+function memoryConfirmations(): ConfirmationStoreSubject {
+  const stores = createMemoryEngineStores();
+  const placeAgent = async (): Promise<void> => {
+    await stores.agents.create(testAgentDraft(), live);
   };
+  return heldConfirmations({ intents: stores.intents, agents: stores.agents, placeAgent });
 }
 
 function moveTo(
@@ -146,7 +73,7 @@ function moveTo(
 describe("stored intents", () => {
   it.each(
     confirmationStoreContract({
-      create: () => ({ store: afterSeeding(holding()), held, unknown }),
+      create: memoryConfirmations,
     }),
   )("follow the confirmation store contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();

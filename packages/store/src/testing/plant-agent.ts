@@ -12,30 +12,23 @@ export interface PlantedAgent {
   readonly walletId: Id<"wal">;
 }
 
+function suffixOf(n: number): string {
+  return n.toString(16).padStart(12, "0");
+}
+
+function agentIdOf(n: number): Id<"agt"> {
+  return idSchema("agt").parse(`agt_0190f1c2-3a4b-7c5d-8e6f-${suffixOf(n)}`);
+}
+
 /**
- * Writes agent `n` and one wallet of it with its ceiling straight into an engine database, for
- * adapter tests.
+ * Writes one wallet of agent `n`, which the database already holds, with its ceiling, straight
+ * into an engine database, for adapter tests.
  */
-export function plantAgent(database: StoreConnection, n: number): PlantedAgent {
-  const suffix = n.toString(16).padStart(12, "0");
-  const agentId = idSchema("agt").parse(`agt_0190f1c2-3a4b-7c5d-8e6f-${suffix}`);
+function plantWallet(database: StoreConnection, n: number): PlantedAgent {
+  const suffix = suffixOf(n);
+  const agentId = agentIdOf(n);
   const walletId = idSchema("wal").parse(`wal_0190f1c2-3a4b-7c5d-8e6f-${suffix}`);
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
-  execute(
-    kysely.insertInto("agents").values({
-      id: agentId,
-      name: `planted ${String(n)}`,
-      mode: "paper",
-      locale: "en",
-      models: "{}",
-      notifications: "{}",
-      frozen_at: null,
-      archived_at: null,
-      created_at: 1,
-      changed_at: 1,
-      version: 0,
-    }),
-  );
   execute(
     kysely.insertInto("wallets").values({
       id: walletId,
@@ -65,6 +58,32 @@ export function plantAgent(database: StoreConnection, n: number): PlantedAgent {
 }
 
 /**
+ * Writes agent `n` and one wallet of it with its ceiling straight into an engine database, for
+ * adapter tests.
+ */
+export function plantAgent(database: StoreConnection, n: number): PlantedAgent {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  execute(
+    kysely.insertInto("agents").values({
+      id: agentIdOf(n),
+      name: `planted ${String(n)}`,
+      mode: "paper",
+      locale: "en",
+      models: "{}",
+      notifications: "{}",
+      frozen_at: null,
+      archived_at: null,
+      created_at: 1,
+      changed_at: 1,
+      version: 0,
+    }),
+  );
+  return plantWallet(database, n);
+}
+
+const plantedSchema = z.strictObject({ agentId: idSchema("agt"), walletId: idSchema("wal") });
+
+/**
  * {@link plantAgent} as a write task, so a test plants on either database through its host. The
  * Postgres test stores' engine worker lists it.
  */
@@ -72,11 +91,25 @@ export const plantAgentTask: StoreTask<number, PlantedAgent> = defineTask({
   name: "testing.plant_agent",
   access: "write",
   input: z.number().int().positive(),
-  output: z.strictObject({ agentId: idSchema("agt"), walletId: idSchema("wal") }),
+  output: plantedSchema,
   run: plantAgent,
+});
+
+/** {@link plantWallet} as a write task, listed beside {@link plantAgentTask}. */
+export const plantWalletTask: StoreTask<number, PlantedAgent> = defineTask({
+  name: "testing.plant_wallet",
+  access: "write",
+  input: z.number().int().positive(),
+  output: plantedSchema,
+  run: plantWallet,
 });
 
 /** Plants agent `n` through `host`, on SQLite or Postgres alike. */
 export async function plantAgentOn(host: StoreHost, n: number): Promise<PlantedAgent> {
   return host.run(plantAgentTask, n, { signal: AbortSignal.timeout(30_000) });
+}
+
+/** Plants a wallet of agent `n`, which the agent store created, through `host`. */
+export async function plantWalletOn(host: StoreHost, n: number): Promise<PlantedAgent> {
+  return host.run(plantWalletTask, n, { signal: AbortSignal.timeout(30_000) });
 }

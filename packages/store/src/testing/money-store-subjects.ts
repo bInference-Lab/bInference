@@ -2,14 +2,17 @@
 // tasks, so one setup serves each store's SQLite and Postgres tests. Nothing in production uses
 // this file.
 import { accountRefSchema } from "@binference/chain";
-import type {
-  IdentityStoreSubject,
-  IntentStoreSubject,
-  LedgerStoreSubject,
-  OrderStoreSubject,
-  PositionStoreSubject,
-  TransactionStoreSubject,
-  UnbondingStoreSubject,
+import {
+  type ConfirmationStoreSubject,
+  heldConfirmations,
+  type IdentityStoreSubject,
+  type IntentStoreSubject,
+  type LedgerStoreSubject,
+  type OrderStoreSubject,
+  type PositionStoreSubject,
+  testAgentDraft,
+  type TransactionStoreSubject,
+  type UnbondingStoreSubject,
 } from "@binference/engine/testing";
 import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
@@ -22,7 +25,7 @@ import type { StoreHost } from "../tasks/store-host.js";
 import { createSqliteTransactionStore } from "../transactions/sqlite-transaction-store.js";
 import { createSqliteUnbondingStore } from "../unbondings/sqlite-unbonding-store.js";
 import { createIntent } from "./create-intent.js";
-import { plantAgentOn } from "./plant-agent.js";
+import { plantAgentOn, plantWalletOn } from "./plant-agent.js";
 import { setTransactionState } from "./set-transaction-state.js";
 
 /** The intent store's subject: the store, the stores it writes beside, and agent 1. */
@@ -91,4 +94,20 @@ export async function unbondingSubject(host: StoreHost): Promise<UnbondingStoreS
     await createIntent(host, agent, 3),
   ] as const;
   return { store: createSqliteUnbondingStore(host), intentIds, walletId: agent.walletId };
+}
+
+/**
+ * The confirmation store's subject: the engine's stored intents over the intent and agent stores,
+ * holding one intent of the test agent, whose wallet is planted once the agent store made it.
+ */
+export function confirmationSubject(host: StoreHost): ConfirmationStoreSubject {
+  const agents = createSqliteAgentStore(host);
+  const placeAgent = async (): Promise<void> => {
+    const created = await agents.create(testAgentDraft(), { signal: AbortSignal.timeout(30_000) });
+    if (!created.ok) {
+      throw new Error(`The test agent was not created: ${created.error}.`);
+    }
+    await plantWalletOn(host, 1);
+  };
+  return heldConfirmations({ intents: createSqliteIntentStore(host), agents, placeAgent });
 }

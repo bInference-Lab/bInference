@@ -36,6 +36,7 @@ export type {
   ConfirmationStoreHarness,
   ConfirmationStoreSubject,
 } from "./contracts/confirmation-store-contract.js";
+export { heldConfirmations, type HoldingStores } from "./intents/test-confirmations.js";
 export { marketDataContract } from "./contracts/market-data-contract.js";
 export type { MarketDataHarness, MarketDataSubject } from "./contracts/market-data-contract.js";
 export { marketReadsContract } from "./contracts/market-reads-contract.js";
