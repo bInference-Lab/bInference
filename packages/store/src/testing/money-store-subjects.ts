@@ -8,6 +8,8 @@ import {
   type IdentityStoreSubject,
   type IntentStoreSubject,
   type LedgerStoreSubject,
+  type MoneyRaceSubject,
+  type MoneyWriter,
   type OrderStoreSubject,
   type PositionStoreSubject,
   testAgentDraft,
@@ -110,4 +112,37 @@ export function confirmationSubject(host: StoreHost): ConfirmationStoreSubject {
     await plantWalletOn(host, 1);
   };
   return heldConfirmations({ intents: createSqliteIntentStore(host), agents, placeAgent });
+}
+
+function moneyWriter(host: StoreHost): MoneyWriter {
+  return {
+    intents: createSqliteIntentStore(host),
+    ledger: createSqliteLedgerStore(host),
+    orders: createSqliteOrderStore(host),
+    positions: createSqlitePositionStore(host),
+    transactions: createSqliteTransactionStore(host),
+  };
+}
+
+/**
+ * The money stores' racing writers, one per host, all on one engine database, with agents 1 and 2
+ * planted through the first.
+ */
+export async function moneyRaceSubject(hosts: readonly StoreHost[]): Promise<MoneyRaceSubject> {
+  const [first] = hosts;
+  if (first === undefined) {
+    throw new Error("A race needs a writer.");
+  }
+  const mine = await plantAgentOn(first, 1);
+  const other = await plantAgentOn(first, 2);
+  return {
+    writers: hosts.map((host) => moneyWriter(host)),
+    agents: createSqliteAgentStore(first),
+    ...mine,
+    other,
+    accounts: [
+      accountRefSchema.parse("fake:1:0x0000000a"),
+      accountRefSchema.parse("fake:1:0x0000000b"),
+    ],
+  };
 }

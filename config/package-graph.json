@@ -1,6 +1,6 @@
 {
   "scope": "@binference",
-  "allowEverywhere": ["zod"],
+  "allowEverywhere": ["zod", "fast-check"],
   "packages": {
     "core": {
       "imports": [],

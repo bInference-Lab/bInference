@@ -1,4 +1,5 @@
-import { idSchema } from "@binference/core";
+import { setTimeout as delay } from "node:timers/promises";
+import { type Clock, idSchema } from "@binference/core";
 // Store adapter tests on Postgres run each port's contract suite on a fresh install's schemas,
 // with the tasks on a task thread, as the SQLite tests run it on a fresh file. Nothing in
 // production uses this file.
@@ -8,7 +9,8 @@ import { installSchemas } from "../migrations/install-schemas.js";
 import { createPostgresInstall } from "../migrations/postgres-install.js";
 import { prepareSharedSchema } from "../migrations/prepare-shared-schema.js";
 import type { MetaTables } from "../migrations/run-postgres-migrations.js";
-import { openPostgres } from "../postgres/open-postgres.js";
+import { openPostgres, type PostgresDatabase } from "../postgres/open-postgres.js";
+import type { PostgresSettings } from "../postgres/postgres-settings.js";
 import { createPostgresStoreHost } from "../postgres/postgres-store-host.js";
 import {
   type PostgresTaskThread,
@@ -28,6 +30,14 @@ export interface TestPostgresStores {
    * Postgres side of `createTestDatabases().open(definition).host`.
    */
   open(database: InstallDatabase): Promise<StoreHost>;
+  /**
+   * `count` store hosts on one new install's engine schema, each with its own pool, task thread
+   * and write queue: writers of one install whose writes interleave under `SERIALIZABLE`
+   * (decision 0366). A retry waits as it does in production.
+   */
+  writers(count: number): Promise<readonly StoreHost[]>;
+  /** How many writes the writers' pools ran again after a conflict, so far. */
+  retries(): number;
   /** Ends the task threads, closes the pool and drops the test database. */
   closeAll(): Promise<void>;
 }
@@ -41,9 +51,65 @@ const workers: Readonly<Record<InstallDatabase, URL>> = {
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
 const sharedSchema = "shared";
 
+// The writers' retries wait out decision 0366's backoff, so racing writes spread as they do live.
+const waitingClock: Clock = {
+  now: () => Date.now(),
+  sleep: async (delayMs, signal) => delay(delayMs, undefined, { signal }),
+};
+
 // Each call gets its own 30 s: one signal made once would bound the whole file.
 function call(): AbortSignal {
   return AbortSignal.timeout(30_000);
+}
+
+interface Writer {
+  readonly pool: PostgresDatabase<MetaTables>;
+  readonly thread: PostgresTaskThread;
+}
+
+/** The racing writers of a file: each its own pool and task thread, which serve every install. */
+interface Writers {
+  hostsOn(schema: string, count: number): Promise<readonly StoreHost[]>;
+  retries(): number;
+  close(): Promise<void>;
+}
+
+// A writer's pool and task thread start once and serve every install of the file, as a task
+// thread serves many installs' schemas; each `hostsOn` binds new hosts to the schema it names.
+function createWriters(settings: PostgresSettings): Writers {
+  const log = createMemoryLogger({ subsystem: "store", maxRecords: 100_000 });
+  const started: Promise<Writer>[] = [];
+  const start = async (n: number): Promise<Writer> => {
+    const ports = { clock: waitingClock, random: createSeededRandom(100 + n), logger: log };
+    const pool = await openPostgres<MetaTables>(settings, { ...ports, signal: call() });
+    const thread = await startPostgresTaskThread({
+      worker: workers.engine,
+      execArgv,
+      signal: call(),
+    });
+    return { pool, thread };
+  };
+  const hostOn = async (schema: string, n: number): Promise<StoreHost> => {
+    const writer = started[n] ?? start(n);
+    started[n] = writer;
+    const { pool, thread } = await writer;
+    return createPostgresStoreHost({ database: pool, thread, schema });
+  };
+  return {
+    hostsOn: async (schema, count) =>
+      Promise.all(Array.from({ length: count }, async (_, n) => hostOn(schema, n))),
+    retries: () => log.records().filter(({ event }) => event === "store.write_retried").length,
+    // Each writer's thread ends before its pool closes.
+    close: async () => {
+      await Promise.all(
+        started.splice(0).map(async (writer) => {
+          const { pool, thread } = await writer;
+          await thread.close();
+          await pool.close();
+        }),
+      );
+    },
+  };
 }
 
 /**
@@ -62,25 +128,32 @@ export async function createTestPostgresStores(url: string): Promise<TestPostgre
   await prepareSharedSchema(database, sharedSchema, call());
   const threads = new Map<InstallDatabase, Promise<PostgresTaskThread>>();
   const threadOf = async (name: InstallDatabase): Promise<PostgresTaskThread> => {
-    const started =
+    const thread =
       threads.get(name) ??
       startPostgresTaskThread({ worker: workers[name], execArgv, signal: call() });
-    threads.set(name, started);
-    return started;
+    threads.set(name, thread);
+    return thread;
   };
   let installs = 0;
+  const newSchema = async (name: InstallDatabase): Promise<string> => {
+    installs += 1;
+    const digits = String(installs).padStart(12, "0");
+    const installId = idSchema("ins").parse(`ins_0190f1c2-3a4b-7c5d-8e6f-${digits}`);
+    await createPostgresInstall(database, { installId, sharedSchema }, call());
+    return installSchemas(installId)[name];
+  };
+  const writers = createWriters(server.settings);
   return {
     async open(name) {
-      installs += 1;
-      const digits = String(installs).padStart(12, "0");
-      const installId = idSchema("ins").parse(`ins_0190f1c2-3a4b-7c5d-8e6f-${digits}`);
-      await createPostgresInstall(database, { installId, sharedSchema }, call());
-      const schema = installSchemas(installId)[name];
+      const schema = await newSchema(name);
       return createPostgresStoreHost({ database, thread: await threadOf(name), schema });
     },
+    writers: async (count) => writers.hostsOn(await newSchema("engine"), count),
+    retries: () => writers.retries(),
     async closeAll() {
       const started = await Promise.all(threads.values());
       await Promise.all(started.map(async (thread) => thread.close()));
+      await writers.close();
       await database.close();
       await server.drop();
     },

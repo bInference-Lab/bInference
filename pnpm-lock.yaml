@@ -911,6 +911,10 @@ importers:
       zod:
         specifier: 4.6.6
         version: 4.6.6
+    devDependencies:
+      fast-check:
+        specifier: 'catalog:'
+        version: 4.10.2
 
   packages/i18n:
     dependencies:

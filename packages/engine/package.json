@@ -129,5 +129,8 @@
     "@binference/i18n": "workspace:*",
     "@binference/protocol": "workspace:*",
     "zod": "catalog:"
+  },
+  "devDependencies": {
+    "fast-check": "catalog:"
   }
 }

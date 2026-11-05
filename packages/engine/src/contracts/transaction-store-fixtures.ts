@@ -32,7 +32,7 @@ export function hashOf(n: number): TxHash {
 
 /** Transaction `n` of the subject's first account, signed at `nonce`. */
 export function signed(
-  subject: TransactionStoreSubject,
+  subject: Pick<TransactionStoreSubject, "intentIds" | "accounts">,
   n: number,
   nonce: number,
 ): SignedTransaction {
