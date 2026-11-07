@@ -13,13 +13,14 @@ import { agentSaidLines, statusLine } from "./chat-lines.js";
 import type { ScreenLine } from "./chat-screen.js";
 import { type ChatState, withoutRunning } from "./chat-state.js";
 import type { ChatTranscript } from "./chat-transcript.js";
-import { credentialLines } from "./credential-lines.js";
+import type { CredentialEntry } from "./credential-entry.js";
 import { depositLines } from "./deposit-lines.js";
 
 /** The parts the agent's chat topic feeds. */
 export interface ChatFeedParts {
   readonly transcript: ChatTranscript;
   readonly question: AgentQuestion;
+  readonly credential: CredentialEntry;
   /** Runs a job after the jobs before it, so the chat prints in the order the pushes came. */
   readonly queue: (job: () => Promise<void>) => void;
 }
@@ -97,7 +98,8 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
 
 /**
  * Follows the agent's chat topic: the running turn and its answer so far in the live area, each
- * final answer and status line printed as it comes, and the agent's question. A turn that starts,
+ * final answer and status line printed as it comes, the agent's question, and its credential
+ * request, which opens the masked entry. A turn that starts,
  * and a gap in the topic, read the transcript on, so the owner's messages from other surfaces
  * show too. Answers how to stop following.
  */
@@ -110,15 +112,11 @@ export function followChat(context: ChatContext, parts: ChatFeedParts): () => vo
         return;
       }
       const credential = credentialPushes.credentialPushOf(push);
-      if (credential?.kind === "chat/credentialRequest") {
-        const lines = credentialLines(context.formatter, {
-          request: credential.request,
-          agentName: context.agentName,
-        });
-        parts.queue(async () => {
-          context.print(lines);
-          return Promise.resolve();
-        });
+      if (credential?.kind === "chat/credentialRequestClosed") {
+        parts.credential.closed(credential);
+      }
+      if (credential !== undefined) {
+        parts.queue(async () => parts.credential.reload());
         return;
       }
       const question = questionPushOf(push);
@@ -132,6 +130,7 @@ export function followChat(context: ChatContext, parts: ChatFeedParts): () => vo
     refetch: async () => {
       parts.queue(async () => parts.transcript.catchUp());
       parts.queue(async () => parts.question.reload());
+      parts.queue(async () => parts.credential.reload());
       return Promise.resolve();
     },
   });

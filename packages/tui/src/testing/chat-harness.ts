@@ -51,6 +51,7 @@ export const harnessNowMs: number = Date.UTC(2026, 9, 19, 9, 30, 0);
 const quiet: ChatAnswers = {
   "chat/messages": () => ({ items: [] }),
   "chat/openQuestion": () => ({}),
+  "chat/openCredentialRequest": () => ({}),
   "intent/list": () => ({ items: [] }),
 };
 

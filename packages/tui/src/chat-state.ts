@@ -1,4 +1,9 @@
-import type { CardLinesView, ProtocolId, QuestionView } from "@binference/protocol";
+import type {
+  CardLinesView,
+  credentialPushes,
+  ProtocolId,
+  QuestionView,
+} from "@binference/protocol";
 
 /** A card version that waits for the owner, as the chat shows it. */
 export interface OpenCard {
@@ -27,6 +32,14 @@ export interface ChatState {
   readonly running?: RunningTurn;
   /** The agent's open question. */
   readonly question?: QuestionView;
+  /**
+   * The agent's open credential request, and how many characters the owner typed into its masked
+   * entry; the characters themselves stay out of the state.
+   */
+  readonly credential?: {
+    readonly request: credentialPushes.CredentialRequestView;
+    readonly length: number;
+  };
   /** The cards that wait for the owner, oldest first; the keys answer the first. */
   readonly cards: readonly OpenCard[];
   /** The client has lost its connection and is making a new one. */
@@ -68,6 +81,12 @@ export function withoutRunning(state: ChatState): ChatState {
 /** The state without its question. */
 export function withoutQuestion(state: ChatState): ChatState {
   const { question: _closed, ...rest } = state;
+  return rest;
+}
+
+/** The state without its credential request. */
+export function withoutCredential(state: ChatState): ChatState {
+  const { credential: _closed, ...rest } = state;
   return rest;
 }
 

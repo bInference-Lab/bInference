@@ -73,6 +73,38 @@ function runtimeDown(): object {
   throw Object.assign(new Error("down"), { code: "runtime.unavailable" });
 }
 
+const credentialRequest = {
+  request: "crq_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  agent: harnessAgent,
+  session,
+  turn,
+  name: "DUNE_API_KEY",
+  reason: "Holder history.",
+  allowedHosts: ["api.dune.com"],
+  createdAt: harnessNowMs,
+  closesAt: harnessNowMs + 900_000,
+};
+
+// A chat whose agent asked for a credential, as the open request reads and its push says.
+async function credentialChat(): Promise<ChatHarness> {
+  const open: { request?: object } = { request: credentialRequest };
+  const chat = await opened({
+    "chat/openCredentialRequest": () =>
+      open.request === undefined ? {} : { request: open.request },
+    "credential/answer": () => {
+      delete open.request;
+      return { session, turn };
+    },
+    "credential/skip": () => {
+      delete open.request;
+      return { session, turn };
+    },
+  });
+  chat.push(`chat:${harnessAgent}`, "chat/credentialRequest", credentialRequest);
+  await chat.settle();
+  return chat;
+}
+
 /** An engine with one card that waits, and how the test ends the card from elsewhere. */
 interface CardEngine {
   readonly answers: ChatAnswers;
@@ -188,26 +220,57 @@ describe("terminal chat", () => {
     ]);
   });
 
-  it("prints a credential request and where to answer it, never asking for it in the chat", async () => {
-    const chat = await opened();
-    chat.push(`chat:${harnessAgent}`, "chat/credentialRequest", {
-      request: "crq_0190f1c2-3a4b-7c5d-8e6f-000000000001",
-      agent: harnessAgent,
-      session: "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001",
-      turn,
-      name: "DUNE_API_KEY",
-      reason: "Holder history.",
-      allowedHosts: ["api.dune.com"],
-      createdAt: 1,
-      closesAt: 2,
-    });
-    await chat.settle();
-    expect(chat.rows().slice(-5, -1)).toStrictEqual([
+  it("opens a masked entry for a credential request: dots on screen, stored for the hosts proposed", async () => {
+    const chat = await credentialChat();
+    expect(chat.rows().slice(-6)).toStrictEqual([
       "main asks for the credential DUNE_API_KEY",
       "Holder history.",
       "Hosts it may be sent to: api.dune.com",
-      "Never type it here. Enter it in the console's masked prompt, or run binference credential set DUNE_API_KEY in another terminal.",
+      "Type it below, where it shows as dots, or in the console. Enter stores it for these hosts; Esc skips. It never goes into the chat.",
+      "DUNE_API_KEY: type it, then Enter stores it · Esc skips",
+      "› ",
     ]);
+    chat.press("s3cr3t-42");
+    await chat.settle();
+    expect(lastRow(chat)).toBe(`› ${"•".repeat(9)}`);
+    chat.press("\r");
+    await chat.settle();
+    expect(opsOf(chat, "credential/answer")).toStrictEqual([
+      {
+        agent: harnessAgent,
+        request: credentialRequest.request,
+        value: "s3cr3t-42",
+        allowedHosts: ["api.dune.com"],
+      },
+    ]);
+    expect(opsOf(chat, "chat/post")).toStrictEqual([]);
+    expect(chat.rows().join("\n")).not.toContain("s3cr3t-42");
+    chat.push(`chat:${harnessAgent}`, "chat/credentialRequestClosed", {
+      agent: harnessAgent,
+      request: credentialRequest.request,
+      outcome: "stored",
+    });
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual([
+      "The credential is stored; the agent goes on without seeing it.",
+      "› ",
+    ]);
+  });
+
+  it("refuses a paste of more than one line into the masked entry, keeping what was typed", async () => {
+    const chat = await credentialChat();
+    chat.press("ab");
+    chat.press("\u001b[200~line one\rline two\u001b[201~");
+    await chat.settle();
+    expect(chat.rows().slice(-3)).toStrictEqual([
+      "That paste holds more than one line, so none of it was taken. Paste the credential on one line.",
+      "DUNE_API_KEY: type it, then Enter stores it · Esc skips",
+      "› ••",
+    ]);
+    chat.press("1\r");
+    await chat.settle();
+    expect(opsOf(chat, "credential/answer")).toMatchObject([{ value: "ab1" }]);
+    expect(opsOf(chat, "chat/answer")).toStrictEqual([]);
   });
 
   it("prints a chart the agent shows as its text", async () => {

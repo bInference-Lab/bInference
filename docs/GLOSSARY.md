@@ -375,7 +375,8 @@ new name here first, in the change that uses it.
   environment variable's, with the exact hosts it may be sent to; the agent never sees its value
   (`credentials`, [decision 0388](DECISIONS.md#d0388)).
 - **masked prompt**: where the owner types a credential the agent asked for, its characters hidden,
-  in the console or with `binference credential set`; never the chat.
+  in the console, in terminal chat's masked entry or with `binference credential set`; never a
+  chat message.
 - **shown chart**: a pie, bar, area or line chart the agent shows the owner in the chat
   (`show_chart`, [decision 0387](DECISIONS.md#d0387)); drawn in the console, as text elsewhere.
 - **shell host**: the process the engine starts to run the agent's commands, behind the wall.

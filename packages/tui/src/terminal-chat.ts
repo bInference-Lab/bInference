@@ -15,6 +15,7 @@ import { type ChatScreen, createChatScreen } from "./chat-screen.js";
 import { createChatStore } from "./chat-state.js";
 import type { ChatTerminal } from "./chat-terminal.js";
 import { createChatTranscript } from "./chat-transcript.js";
+import { createCredentialEntry, type CredentialEntry } from "./credential-entry.js";
 import { liveRows } from "./live-rows.js";
 
 /** What terminal chat runs with. */
@@ -80,6 +81,7 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
   const feed = createJobQueue(report);
   const transcript = createChatTranscript(context, context.words("tui.you"));
   const question = createAgentQuestion(context);
+  const credential = createCredentialEntry(context);
   const cards = createChatCards(context);
   const receipts = createChatReceipts(context);
   const notices = createChatNotices(context);
@@ -88,7 +90,7 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
     return Promise.resolve();
   };
   const unsubscribe = [
-    followChat(context, { transcript, question, queue: feed }),
+    followChat(context, { transcript, question, credential, queue: feed }),
     context.client.subscribe("intent", {
       onPush: (push) =>
         feed(async () => {
@@ -109,16 +111,35 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
     queue: createJobQueue(report),
     leave: () => session.end("left"),
   };
-  return { parts, unsubscribe: () => unsubscribe.forEach((stop) => stop()) };
+  return { parts, credential, unsubscribe: () => unsubscribe.forEach((stop) => stop()) };
 }
 
+// The keys that act on the chat while the masked entry is open: leaving, and the cards' own keys.
+const keysPastEntry: ReadonlySet<string> = new Set(["leave", "confirm", "cancel"]);
+
 // Reads the owner's keys in raw mode, with bracketed paste on; answers how to give them back.
-function takeKeys(terminal: ChatTerminal, session: Session, parts: ChatInputParts): () => void {
+// While a credential request is open, every other key goes to its masked entry.
+function takeKeys(
+  terminal: ChatTerminal,
+  session: Session,
+  keys: { readonly parts: ChatInputParts; readonly credential: CredentialEntry },
+): () => void {
   const { context } = session;
   const onKey = (text: string | undefined, key: PressedKey | undefined): void => {
-    const { input, isPasting, question } = context.store.get();
-    const choices = question?.choices.length ?? 0;
-    onAction(context, parts, keyAction(text, key ?? {}, { input, isPasting, choices }));
+    const { input, isPasting, question, credential } = context.store.get();
+    if (credential === undefined) {
+      const choices = question?.choices.length ?? 0;
+      onAction(context, keys.parts, keyAction(text, key ?? {}, { input, isPasting, choices }));
+      return;
+    }
+    // A digit is a character of the credential, never a question's choice.
+    const action = keyAction(text, key ?? {}, { input: "*", isPasting, choices: 0 });
+    if (keysPastEntry.has(action.kind)) {
+      onAction(context, keys.parts, action);
+    } else {
+      keys.credential.key(action);
+      paste(context, action);
+    }
   };
   emitKeypressEvents(terminal.input);
   terminal.enterRawMode();
@@ -133,6 +154,14 @@ function takeKeys(terminal: ChatTerminal, session: Session, parts: ChatInputPart
     terminal.output.write(pasteOff);
     terminal.leaveRawMode();
   };
+}
+
+// The chat follows a paste's start and end in the masked entry too, so Enter inside it types.
+function paste(context: ChatContext, action: { readonly kind: string }): void {
+  if (action.kind === "pasteStart" || action.kind === "pasteEnd") {
+    const isPasting = action.kind === "pasteStart";
+    context.store.update((state) => ({ ...state, isPasting }));
+  }
 }
 
 // Each second: the link's state, the running turn's time and each card's time left.
@@ -171,7 +200,7 @@ export async function runTerminalChat(options: TerminalChatOptions): Promise<Cha
     }
   });
   // Raw mode first: a key pressed once the first line shows never echoes.
-  const giveBack = takeKeys(options.terminal, session, followed.parts);
+  const giveBack = takeKeys(options.terminal, session, followed);
   session.screen.print([
     { text: words("tui.intro", { agent: session.context.agentName }), tone: "bold" },
     { text: words("tui.images"), tone: "dim" },

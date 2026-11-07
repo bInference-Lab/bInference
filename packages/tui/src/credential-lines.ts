@@ -7,9 +7,9 @@ import type { ScreenLine } from "./chat-screen.js";
 const shown = (text: string): string => displayOutsideText(text, Number.POSITIVE_INFINITY);
 
 /**
- * The agent's request for a credential (decision 0388), as the terminal prints it: who asks for
- * which name, the agent's reason and the hosts proposed, then where to answer it. The terminal
- * takes no credential in the chat: what the owner types there goes to the agent as a message.
+ * The agent's request for a credential (decisions 0388 and 0391), as the terminal prints it: who
+ * asks for which name, the agent's reason and the hosts proposed, then where to answer it: the
+ * masked entry below, never a chat message.
  */
 export function credentialLines(
   formatter: Formatter,

@@ -55,16 +55,26 @@ function cardRows(cards: readonly OpenCard[], context: LiveContext): readonly Sc
   return [{ text: `${title} · ${keys}`, tone: "yellow" }, ...more];
 }
 
-// The line the owner types, its newest characters kept; a new line of a paste shows as ↵.
-function promptRow(state: ChatState, columns: number): ScreenLine {
-  const typed = state.input.replaceAll("\n", " ↵ ");
-  return { text: `${promptMark}${tailWidth(typed, Math.max(1, columns - markColumns))}` };
+// The line the owner types, its newest characters kept; a new line of a paste shows as ↵. While a
+// credential request is open, its masked entry takes the line: a dot per character, after the
+// row that says its keys.
+function promptRows(state: ChatState, context: LiveContext): readonly ScreenLine[] {
+  const room = Math.max(1, context.columns - markColumns);
+  const { credential } = state;
+  if (credential === undefined) {
+    const typed = state.input.replaceAll("\n", " ↵ ");
+    return [{ text: `${promptMark}${tailWidth(typed, room)}` }];
+  }
+  const keys = context.words("tui.credential.keys", { name: credential.request.name });
+  const dots = "•".repeat(Math.min(credential.length, room));
+  return [{ text: keys, tone: "yellow" }, { text: `${promptMark}${dots}` }];
 }
 
 /**
  * The live area's rows, top to bottom: the link while it reconnects, the agent's running turn
  * (the newest line of its answer so far, else how long it has worked), the open question's keys,
- * the first waiting card with its time left and its keys, and the line the owner types.
+ * the first waiting card with its time left and its keys, and the line the owner types, or the
+ * masked entry of an open credential request.
  */
 export function liveRows(state: ChatState, context: LiveContext): readonly ScreenLine[] {
   const link = state.isReconnecting
@@ -75,6 +85,6 @@ export function liveRows(state: ChatState, context: LiveContext): readonly Scree
     ...runningRow(state, context),
     ...questionRow(state, context.words),
     ...cardRows(state.cards, context),
-    promptRow(state, context.columns),
+    ...promptRows(state, context),
   ];
 }
