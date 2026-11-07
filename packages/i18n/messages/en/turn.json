@@ -35,6 +35,8 @@
   "tool.marketScan": "Scanning the market…",
   "tool.chart": "Reading a chart…",
   "tool.credentials": "Asking for a credential…",
+  "tool.settingsRead": "Reading the settings…",
+  "tool.settingsChange": "Proposing a settings change…",
   "tool.walletActivity": "Reading a wallet's trades…",
   "tool.swap": "Preparing the swap…",
   "tool.buy": "Preparing the buy…",

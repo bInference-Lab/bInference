@@ -133,5 +133,7 @@
   "tools.summary.credentials": "列出所有者存储的凭据，在隐藏输入框中向所有者请求缺少的凭据，或删除凭据。",
   "tools.summary.notes_get": "完整读取 Agent 的一条笔记。",
   "tools.summary.notes_forget": "删除 Agent 的一条笔记。",
-  "tools.summary.make_image": "用所有者的图片模型生成图片，例如代币的标志；图片稍后出现在对话中。"
+  "tools.summary.make_image": "用所有者的图片模型生成图片，例如代币的标志；图片稍后出现在对话中。",
+  "tools.summary.settings_read": "读取所有者的设置或其中一个键，密钥只显示其来源类型，并附上每个键的规则。",
+  "tools.summary.settings_change": "在卡片中提出对所有者设置的更改，显示每项设置更改前后的值；所有者确认前不会有任何更改。"
 }

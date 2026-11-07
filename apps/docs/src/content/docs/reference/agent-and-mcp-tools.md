@@ -30,6 +30,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `look_at_image` (read): Looks at a picture at a public address or in a file on the owner's machine and describes it.
 - `notes_search` (read): Searches the agent's notes.
 - `notes_get` (read): Reads one of the agent's notes in full.
+- `settings_read` (read): Reads the owner's settings, or one key, with secrets shown only as their kind and the rules of each key.
 - `open_skill` (read): Opens one of the agent's skills.
 - `swap` (proposal): Proposes a swap of one token for another.
 - `buy` (proposal): Proposes a buy of a token.
@@ -41,6 +42,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `unstake` (proposal): Proposes an unstake.
 - `claim` (proposal): Proposes a claim of what the venue lets the wallet take back.
 - `bridge` (proposal): Proposes a bridge to another chain.
+- `settings_change` (proposal): Proposes a change to the owner's settings in a card that shows each setting before and after; nothing changes until the owner confirms.
 - `order_cancel` (control): Cancels an auto order at once.
 - `alert_create` (control): Sets a price, wallet or launch alert at once.
 - `schedule_create` (control): Sets a schedule that starts a turn at its time.

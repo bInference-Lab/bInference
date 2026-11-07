@@ -94,6 +94,12 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   },
   "wallet/activity": { items: [trade], assets: {} },
   "intent/propose": intentWire("awaiting_confirmation"),
+  "config/view": { value: "info", rules: [] },
+  "config/propose": {
+    ...intentWire("awaiting_confirmation"),
+    kind: "configChange",
+    request: { kind: "configChange", patch: { logging: { level: "debug" } } },
+  },
   "order/create": orderWire("awaiting_confirmation"),
   "order/get": orderWire("active"),
   "order/cancel": orderWire("cancelled"),
@@ -276,6 +282,11 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   ],
   ["notes_get", { note: "1" }, [{ op: "notes/get", args: { agent, note: "1" } }]],
   [
+    "settings_read",
+    { key: "logging.level" },
+    [{ op: "config/view", args: { path: "logging.level" } }],
+  ],
+  [
     "open_skill",
     { skill: "safe-swap" },
     [{ op: "skill/read", args: { agent, skill: "safe-swap" } }],
@@ -313,6 +324,17 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     "bridge",
     bridgeTerms,
     [{ op: "intent/propose", args: { ...bridgeTerms, agent, kind: "bridge" }, key }],
+  ],
+  [
+    "settings_change",
+    { changes: [{ key: "logging.level", value: "debug" }], reason: "The owner asked." },
+    [
+      {
+        op: "config/propose",
+        args: { patch: { logging: { level: "debug" } }, reason: "The owner asked.", agent },
+        key,
+      },
+    ],
   ],
   [
     "order_cancel",

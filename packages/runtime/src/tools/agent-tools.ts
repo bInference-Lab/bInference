@@ -17,6 +17,7 @@ import { orderCancelTool } from "./order-cancel-tool.js";
 import { pluginTools } from "./plugin-tools.js";
 import { readTools } from "./read-tools.js";
 import { scheduleTools } from "./schedule-tools.js";
+import { settingsChangeTool, settingsReadTool } from "./settings-tools.js";
 import { shellTools } from "./shell-tools.js";
 import { openSkillTool } from "./skill-tools.js";
 import type { AgentToolParts } from "./tool-client.js";
@@ -58,8 +59,10 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...pluginTools(parts, parts.plugins ?? []),
     notes.search,
     notes.get,
+    settingsReadTool(parts),
     openSkillTool(parts),
     ...tradeTools(parts),
+    settingsChangeTool(parts),
     orderCancelTool(parts),
     alertCreateTool(parts),
     schedules.create,
