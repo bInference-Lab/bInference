@@ -1,5 +1,6 @@
 import type { Socket } from "node:net";
 import type { Result } from "@binference/core";
+import type { CommandLaunch } from "./command-launch.js";
 import type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
 import type { ServiceDefinition, ServiceStatus } from "./service/service-definition.js";
 
@@ -85,4 +86,29 @@ export interface ServiceManager {
   uninstall(name: string, signal: AbortSignal): Promise<Result<void, "not_installed">>;
   /** Whether the service is installed, running, and set to start at login. */
   status(name: string, signal: AbortSignal): Promise<ServiceStatus>;
+}
+
+/**
+ * Whether this machine can keep a command away from binference's own secrets: `held` when it can,
+ * `none` with a reason when it has no mechanism to (decision 0378). A machine that answers `none`
+ * never runs a command, so the reason names why and the next step.
+ */
+export type CommandWallState =
+  | { readonly kind: "held" }
+  | { readonly kind: "none"; readonly reason: string };
+
+/**
+ * Keeps every command the agent runs away from the parts of the state folder that would let it act
+ * as the owner or the engine (`auth/`, `keys/`, the databases, the config and `run/`) and away
+ * from binference's keychain entries, while leaving the rest of the machine reachable
+ * ([decision 0378](../../../docs/DECISIONS.md)). It is the narrowest confinement each OS offers:
+ * a sandbox profile that denies those paths alone, not a general sandbox.
+ */
+export interface CommandWall {
+  readonly state: CommandWallState;
+  /**
+   * Wraps a launch so the walled paths are unreachable to the command and everything it starts.
+   * Throws `platform.no_wall` when {@link state} is `none`.
+   */
+  wrap(launch: CommandLaunch): CommandLaunch;
 }

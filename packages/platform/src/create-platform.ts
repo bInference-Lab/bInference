@@ -1,9 +1,18 @@
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { BinferenceError, type Clock, type SecretStore } from "@binference/core";
+import { walledPaths } from "./command-wall-paths.js";
 import { createKeychainSecretStore } from "./keychain/keychain-secret-store.js";
-import type { FileAccess, FilePermissions, IpcEndpoint, ServiceManager } from "./ports.js";
+import type {
+  CommandWall,
+  FileAccess,
+  FilePermissions,
+  IpcEndpoint,
+  ServiceManager,
+} from "./ports.js";
 import { createLaunchdServiceManager } from "./posix/launchd-service-manager.js";
+import { createLinuxCommandWall } from "./posix/linux-command-wall.js";
+import { createMacosCommandWall } from "./posix/macos-command-wall.js";
 import { createPosixFileAccess } from "./posix/posix-file-access.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
 import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
@@ -11,6 +20,7 @@ import { posixResidentBytes } from "./posix/posix-resident-memory.js";
 import { createSystemdServiceManager } from "./posix/systemd-service-manager.js";
 import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
 import { createSchtasksServiceManager } from "./win32/schtasks-service-manager.js";
+import { createWin32CommandWall } from "./win32/win32-command-wall.js";
 import { createWin32FileAccess } from "./win32/win32-file-access.js";
 import { createWin32FilePermissions } from "./win32/win32-file-permissions.js";
 import { createWin32IpcEndpoint } from "./win32/win32-ipc-endpoint.js";
@@ -56,6 +66,11 @@ export interface Platform {
    * `ps` on macOS, `tasklist` on Windows; `undefined` once it ended or when it cannot be read.
    */
   readonly residentBytes: (pid: number, signal: AbortSignal) => Promise<number | undefined>;
+  /**
+   * Keeps the agent's commands away from binference's own secrets (decision 0378): Seatbelt on
+   * macOS, bubblewrap on Linux, and `none` on Windows, where the shell is off outside the image.
+   */
+  readonly commandWall: CommandWall;
 }
 
 type ServiceManagerOf = Platform["serviceManager"];
@@ -91,6 +106,7 @@ function hasDisplay(options: PlatformOptions): boolean {
 export function createPlatform(options: PlatformOptions = {}): Platform {
   const stateFolder = resolveStateFolder(options);
   const keychain = createKeychainSecretStore();
+  const walled = walledPaths(stateFolder);
   if (process.platform === "win32") {
     return {
       stateFolder,
@@ -102,6 +118,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       hasDesktopSession: true,
       serviceManager: (clock) => createSchtasksServiceManager({ clock }),
       residentBytes: win32ResidentBytes,
+      commandWall: createWin32CommandWall(),
     };
   }
   if (process.platform === "darwin" || process.platform === "linux") {
@@ -117,6 +134,10 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       hasDesktopSession: process.platform === "darwin" || hasDisplay(options),
       serviceManager: posixServiceManager(options, permissions),
       residentBytes: posixResidentBytes,
+      commandWall:
+        process.platform === "darwin"
+          ? createMacosCommandWall(walled)
+          : createLinuxCommandWall(walled),
     };
   }
   throw new BinferenceError({

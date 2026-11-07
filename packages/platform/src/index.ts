@@ -16,12 +16,17 @@ export type { LogFile, LogFileOptions } from "./logs/log-file.js";
 export { readLogLines } from "./logs/read-log-lines.js";
 export type { LogLines, ReadLogLinesOptions } from "./logs/read-log-lines.js";
 export type {
+  CommandWall,
+  CommandWallState,
   FileAccess,
   FileAccessState,
   FilePermissions,
   IpcEndpoint,
   ServiceManager,
 } from "./ports.js";
+export type { CommandLaunch } from "./command-launch.js";
+export { walledPaths } from "./command-wall-paths.js";
+export type { WalledPaths } from "./command-wall-paths.js";
 export { startNodeProgram } from "./node-program.js";
 export type { NodeProgram, NodeProgramOptions } from "./node-program.js";
 export { ensurePrivateFolder, writePrivateFile, writePrivateStream } from "./private-files.js";

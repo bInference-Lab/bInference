@@ -15,6 +15,7 @@ describe("state folder", () => {
       engineDatabase: join(home, ".binference", "engine.sqlite"),
       agentDatabase: join(home, ".binference", "agent.sqlite"),
       keys: join(home, ".binference", "keys"),
+      auth: join(home, ".binference", "auth"),
       workspace: join(home, ".binference", "workspace"),
       logs: join(home, ".binference", "logs"),
       run: join(home, ".binference", "run"),

@@ -13,6 +13,8 @@ export interface StateFolder {
   readonly agentDatabase: string;
   /** `keys/`: the agent's signing key, owner-only. */
   readonly keys: string;
+  /** `auth/`: the client tokens, owner-only. */
+  readonly auth: string;
   /** `workspace/`: one folder of workspace files per agent. */
   readonly workspace: string;
   readonly logs: string;
@@ -50,6 +52,7 @@ export function resolveStateFolder(options: StateFolderOptions = {}): StateFolde
     engineDatabase: join(root, "engine.sqlite"),
     agentDatabase: join(root, "agent.sqlite"),
     keys: join(root, "keys"),
+    auth: join(root, "auth"),
     workspace: join(root, "workspace"),
     logs: join(root, "logs"),
     run: join(root, "run"),
