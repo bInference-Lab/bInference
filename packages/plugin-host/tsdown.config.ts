@@ -10,12 +10,14 @@ function program(name: string, source: string, outDir = "dist"): UserConfig {
     format: "esm",
     dts: false,
     tsconfig: "tsconfig.json",
-    clean: false,
+    clean: true,
     deps: { alwaysBundle: [/./], onlyBundle: false },
     outputOptions: { codeSplitting: false },
   };
 }
 
+// tsdown empties dist once, for every config, before any of them builds: only the first asks,
+// so no build removes another's files and no old chunk is left to ship.
 const config: UserConfig[] = defineConfig([
   // The testing entry builds with the bundler, so tests read it from its source alone.
   {
