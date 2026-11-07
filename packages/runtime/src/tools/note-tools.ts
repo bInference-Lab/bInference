@@ -77,8 +77,32 @@ function notesWriteTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
-const noteArgs: z.ZodType<{ readonly note: string }> = z.strictObject({
-  note: z.string().regex(/^[1-9]\d{0,15}$/u),
+const noteId = z.string().regex(/^[1-9]\d{0,15}$/u);
+
+/** The args of `notes_get`: a note, and the lines of it to read. */
+interface GetArgs {
+  readonly note: string;
+  readonly from?: number;
+  readonly lines?: number;
+}
+
+const maxGetLines = 500;
+
+const getArgs: z.ZodType<GetArgs> = z.strictObject({
+  note: noteId,
+  from: z.int().min(1).exactOptional(),
+  lines: z.int().min(1).max(maxGetLines).exactOptional(),
+});
+
+/** The args of `notes_forget`: a note by its id, or the words of the one to forget. */
+interface ForgetArgs {
+  readonly note?: string;
+  readonly query?: string;
+}
+
+const forgetArgs: z.ZodType<ForgetArgs> = z.strictObject({
+  note: noteId.exactOptional(),
+  query: z.string().trim().min(1).max(200).exactOptional(),
 });
 
 const noNote: Readonly<Record<string, string>> = {
@@ -86,12 +110,32 @@ const noNote: Readonly<Record<string, string>> = {
     "This agent has no note with that id: it was forgotten, or the id is not one notes_search gave.",
 };
 
-// A note in full, its line breaks kept; one labelled untrusted marks the turn.
-function noteOutcome(note: NoteView): ToolOutcome {
-  const head = `Note ${note.note} [${note.origin}], saved ${new Date(note.changedAt).toISOString()}:`;
+// A note's lines from `from`, as many as `lines`, its line breaks kept, with where to go on when
+// more follow; one labelled untrusted marks the turn.
+function noteOutcome(note: NoteView, args: GetArgs): ToolOutcome {
+  const all = note.text.split("\n");
+  const from = args.from ?? 1;
   const isOutside = note.origin === "untrusted";
-  const lines = [...(isOutside ? [untrustedLine] : []), head, note.text];
-  return { text: lines.join("\n"), isError: false, ...(isOutside ? { outside: true } : {}) };
+  const outside = isOutside ? ({ outside: true } as const) : {};
+  if (from > all.length) {
+    const total = String(all.length);
+    return {
+      text: `Note ${note.note} has ${total} lines; read again with from at ${total} or less.`,
+      isError: true,
+      ...outside,
+    };
+  }
+  const shown = all.slice(from - 1, from - 1 + (args.lines ?? maxGetLines));
+  const next = from + shown.length;
+  const more =
+    next <= all.length
+      ? [
+          `[${String(all.length - next + 1)} more lines in the note. Use from=${String(next)} to continue.]`,
+        ]
+      : [];
+  const head = `Note ${note.note} [${note.origin}], saved ${new Date(note.changedAt).toISOString()}:`;
+  const lines = [...(isOutside ? [untrustedLine] : []), head, shown.join("\n"), ...more];
+  return { text: lines.join("\n"), isError: false, ...outside };
 }
 
 function notesGetTool({ agent, client }: AgentToolParts): AgentTool {
@@ -101,28 +145,56 @@ function notesGetTool({ agent, client }: AgentToolParts): AgentTool {
     parallel: true,
     addressSource: "note",
     description: agentToolTexts.notes_get,
-    args: noteArgs,
+    args: getArgs,
     run: async (args, { signal }) =>
-      answerOrRefusal({ tool: "notes_get", refusals: noNote }, async () =>
-        noteOutcome(await client.call("notes/get", { agent, note: args.note }, { signal })),
-      ),
+      answerOrRefusal({ tool: "notes_get", refusals: noNote }, async () => {
+        const note = await client.call("notes/get", { agent, note: args.note }, { signal });
+        return noteOutcome(note, args);
+      }),
   });
 }
 
-function notesForgetTool({ agent, client }: AgentToolParts): AgentTool {
+// The note a query names: the one search finds whose text holds the query's words as written;
+// several, or none that holds them, are listed for the agent to pick by id.
+async function noteOfQuery(
+  { agent, client }: Pick<AgentToolParts, "agent" | "client">,
+  query: string,
+  signal: AbortSignal,
+): Promise<string | ToolOutcome> {
+  const page = await client.call("notes/search", { agent, query, limit: 5 }, { signal });
+  const holding = page.items.filter((note) =>
+    note.text.toLowerCase().includes(query.toLowerCase()),
+  );
+  const only = holding.length === 1 ? holding[0] : undefined;
+  if (only !== undefined) {
+    return only.note;
+  }
+  if (page.items.length === 0) {
+    return { text: "No note matches, so nothing was forgotten.", isError: false };
+  }
+  const found = foundNotes(page.items);
+  const text = `Nothing was forgotten: name the note to forget by its id.\n${found.text}`;
+  return { ...found, text };
+}
+
+function notesForgetTool(parts: AgentToolParts): AgentTool {
+  const { agent, client } = parts;
   return defineTool({
     name: "notes_forget",
     kind: "control",
     description: agentToolTexts.notes_forget,
-    args: noteArgs,
+    args: forgetArgs,
     run: async (args, { signal, idempotencyKey }) =>
       answerOrRefusal({ tool: "notes_forget", refusals: noNote }, async () => {
-        await client.call(
-          "notes/forget",
-          { agent, note: args.note },
-          { signal, key: idempotencyKey },
-        );
-        return { text: `Forgot note ${args.note}: no search finds it any more.`, isError: false };
+        if ((args.note === undefined) === (args.query === undefined)) {
+          return { text: "Name one note: its id in note, or its words in query.", isError: true };
+        }
+        const note = args.note ?? (await noteOfQuery(parts, args.query ?? "", signal));
+        if (typeof note !== "string") {
+          return note;
+        }
+        await client.call("notes/forget", { agent, note }, { signal, key: idempotencyKey });
+        return { text: `Forgot note ${note}: no search finds it any more.`, isError: false };
       }),
   });
 }
