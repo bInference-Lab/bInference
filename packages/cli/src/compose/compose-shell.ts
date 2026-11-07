@@ -4,6 +4,7 @@ import { err, ok } from "@binference/core";
 import {
   type CommandEnd,
   type CommandRunner,
+  type EngineFiles,
   type EngineShell,
   maskShellOutput,
 } from "@binference/engine/shell";
@@ -113,15 +114,25 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
     ...(host.homeDir === undefined ? {} : { homeDir: host.homeDir }),
     config,
   });
+  return {
+    runner,
+    settings: () => config().shell,
+    logger: opened.log.logger,
+    files: agentFilesOf(opening, opened),
+  };
+}
+
+/**
+ * The agent's files on this machine (decision 0386): relative paths in the workspace, the state
+ * folder walled off, and the settings `files` holds at each call. The file tools and the images
+ * the agent views read through it alike.
+ */
+export function agentFilesOf(opening: Opening, opened: Opened): EngineFiles {
+  const { host, platform } = opening;
   const files = machineFilesOf({
     walled: walledPaths(platform.stateFolder),
     workspace: platform.stateFolder.workspace,
     homeDir: host.homeDir ?? homedir(),
   });
-  return {
-    runner,
-    settings: () => config().shell,
-    logger: opened.log.logger,
-    files: { files, settings: () => config().files },
-  };
+  return { files, settings: () => opened.settings.current().files };
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
-import { lookAtPlace } from "./look-at-image-tool.js";
+import { lookAtPlaces } from "./look-at-image-tool.js";
 import { failedAnswer } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 
@@ -101,15 +101,11 @@ function fileReadTool(parts: AgentToolParts): AgentTool {
           { signal },
         );
         return read.kind === "image"
-          ? lookAtPlace(
-              parts,
-              { path: read.path },
-              {
-                signal,
-                look,
-                question: "What does it show?",
-              },
-            )
+          ? lookAtPlaces(parts, [{ path: read.path }], {
+              signal,
+              look,
+              question: "What does it show?",
+            })
           : { text: pageText(read), isError: false };
       }),
   });

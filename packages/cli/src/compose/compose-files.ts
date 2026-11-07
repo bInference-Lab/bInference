@@ -20,7 +20,7 @@ export interface FileParts {
 }
 
 /** Whether a path is under one of the folders, the folder itself included. */
-export function isInside(path: string, folders: readonly string[]): boolean {
+function isInside(path: string, folders: readonly string[]): boolean {
   return folders.some((folder) => path === folder || path.startsWith(`${folder}${sep}`));
 }
 

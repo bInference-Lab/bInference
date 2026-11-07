@@ -41,6 +41,7 @@ export const protocolErrorCodes = [
   "image.unreadable",
   "image.walled",
   "image.not_public",
+  "image.outside_workspace",
   "alert.not_found",
   "alert.too_many",
   "webhook.not_found",

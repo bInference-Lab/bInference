@@ -140,7 +140,13 @@ export interface OwnerImageSource {
  * Why an image the agent views cannot be read (decision 0385): over 5 MiB, unreadable, no file at
  * the path, a path inside binference's own folder, or an address on a private network.
  */
-export type ViewImageRefusal = "too_large" | "unreadable" | "not_found" | "walled" | "not_public";
+export type ViewImageRefusal =
+  | "too_large"
+  | "unreadable"
+  | "not_found"
+  | "walled"
+  | "outside_workspace"
+  | "not_public";
 
 /** Where an image the agent views is: a public web address, or a file on the engine's machine. */
 export type ViewedImagePlace = { readonly url: string } | { readonly path: string };

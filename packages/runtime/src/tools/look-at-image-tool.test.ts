@@ -18,8 +18,8 @@ function seeingContext(looked: Looked): ToolRunContext {
   return {
     signal: new AbortController().signal,
     idempotencyKey: "trn.1",
-    look: async (image, question) => {
-      looked.images.push(image);
+    look: async (images, question) => {
+      looked.images.push(...images);
       looked.questions.push(question);
       return Promise.resolve(ok("A rising price line."));
     },
@@ -28,7 +28,7 @@ function seeingContext(looked: Looked): ToolRunContext {
 
 async function view(
   answer: FakeAnswer,
-  args: Record<string, string>,
+  args: Record<string, unknown>,
   context?: ToolRunContext,
 ): Promise<{ readonly outcome: ToolOutcome; readonly calls: readonly unknown[] }> {
   const client = createFakeToolClient({ "image/view": answer });
@@ -64,12 +64,62 @@ describe("the look_at_image tool", () => {
     expect(calls).toStrictEqual([{ op: "image/view", args: { agent, path: "~/shot.png" } }]);
   });
 
-  it("takes exactly one of url and path", () => {
-    const client = createFakeToolClient({});
-    const tool = lookAtImageTool({ agent, client, turn: toolTurn });
-    const both = JSON.stringify({ url: "https://example.com/a.png", path: "/a.png" });
-    expect(tool.prepare(both).ready).toBe(false);
-    expect(tool.prepare("{}").ready).toBe(false);
+  it("reads several images in order and asks the model about them together", async () => {
+    const looked: Looked = { images: [], questions: [] };
+    const { calls } = await view(
+      part,
+      { url: "https://example.com/a.png", paths: ["/b.png", "/c.png"] },
+      seeingContext(looked),
+    );
+    expect(calls).toStrictEqual([
+      { op: "image/view", args: { agent, url: "https://example.com/a.png" } },
+      { op: "image/view", args: { agent, path: "/b.png" } },
+      { op: "image/view", args: { agent, path: "/c.png" } },
+    ]);
+    expect(looked.images).toHaveLength(3);
+    expect(looked.questions).toStrictEqual(["What does it show?"]);
+  });
+
+  it("reads a file named by a file:// address or a path written with a leading @", async () => {
+    const { calls } = await view(part, {
+      url: "file:///srv/shots/My%20shot.png",
+      paths: ["@/tmp/b.png"],
+    });
+    expect(calls).toStrictEqual([
+      { op: "image/view", args: { agent, path: "/srv/shots/My shot.png" } },
+      { op: "image/view", args: { agent, path: "/tmp/b.png" } },
+    ]);
+  });
+
+  it("reads an image written inside a data: address without asking the engine", async () => {
+    const pngBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00]);
+    const data = pngBytes.toString("base64");
+    const looked: Looked = { images: [], questions: [] };
+    const { calls } = await view(
+      part,
+      { url: `data:image/png;base64,${data}` },
+      seeingContext(looked),
+    );
+    expect(calls).toStrictEqual([]);
+    expect(looked.images).toStrictEqual([{ contentType: "image/png", data, bytes: 9 }]);
+  });
+
+  it.each([
+    ["data:image/png;base64,!!!", "could not be read"],
+    [`data:image/png;base64,${Buffer.from("plain text").toString("base64")}`, "PNG, JPEG or WebP"],
+  ])("refuses a data: address that holds no image it reads: %s", async (url, words) => {
+    const { outcome } = await view(part, { url });
+    expect(outcome.isError).toBe(true);
+    expect(outcome.text).toContain(words);
+  });
+
+  it("asks for 1 to 4 images", async () => {
+    const none = await view(part, {});
+    const five = await view(part, { path: "/a.png", paths: ["/b", "/c", "/d", "/e"] });
+    expect([none.outcome, five.outcome]).toStrictEqual([
+      { text: "Name 1 to 4 images: url, path or paths.", isError: true },
+      { text: "Name 1 to 4 images: url, path or paths.", isError: true },
+    ]);
   });
 
   it.each<[`${string}.${string}`, string]>([

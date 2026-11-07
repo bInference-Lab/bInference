@@ -59,7 +59,7 @@ function contextOf(run: TurnRun, signal: AbortSignal, idempotencyKey: string): T
   return {
     signal,
     idempotencyKey,
-    look: async (image, question) => lookAtImage(run, image, question),
+    look: async (images, question) => lookAtImage(run, images, question),
   };
 }
 

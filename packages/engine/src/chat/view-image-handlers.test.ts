@@ -96,4 +96,13 @@ describe("image/view", () => {
     const { view } = setUp();
     expect(await view({ url: chart }, testCallers.cli)).toStrictEqual(err("auth.scope"));
   });
+
+  it("refuses every image on an engine with no image source", async () => {
+    const turns = createRunningTurns();
+    turns.startRuntime(idSchema("tok").parse(testCallers.runtime.credential));
+    const handler = createViewImageHandlers({ turns, clock: createManualClock(0) })["image/view"];
+    expect(
+      await handler(testCall({ agent: testAgent, url: chart }, testCallers.runtime)),
+    ).toStrictEqual(err("image.unreadable"));
+  });
 });

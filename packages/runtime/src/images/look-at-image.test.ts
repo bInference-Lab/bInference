@@ -16,7 +16,7 @@ const looker: TestTool = {
   name: "look_at_image",
   kind: "read",
   run: async (context) => {
-    const seen = await context.look(chart, "Which way does it trend?");
+    const seen = await context.look([chart], "Which way does it trend?");
     return seen.ok ? { text: seen.value, isError: false } : { text: seen.error, isError: true };
   },
 };

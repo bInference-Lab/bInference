@@ -36,6 +36,7 @@
   "image.unreadable": "binference could not fetch this image. Send it again.",
   "image.walled": "That file is inside binference's own folder, which the agent can never read. Name another file.",
   "image.not_public": "That address is on a private network, which the agent never reads. Use a public address.",
+  "image.outside_workspace": "That file is outside the agent's workspace, and files.workspaceOnly keeps the agent's files inside it. Name a file in the workspace.",
   "agent.budget": "This agent used today's model budget. Chat resumes at midnight in your timezone; orders keep running.",
   "alert.not_found": "This alert does not exist or no longer watches. List the agent's alerts to see the active ones.",
   "alert.too_many": "This agent already has 50 active alerts. Delete one before you add another.",

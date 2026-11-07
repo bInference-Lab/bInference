@@ -17,24 +17,27 @@ function lineOf(run: TurnRun) {
 }
 
 /**
- * Describes an image a tool read, with the question the agent asked of it (decision 0385): one
+ * Describes the images a tool read, together, with the question the agent asked of them (decision
+ * 0385): one
  * call on the turn's model when it takes images, else on the vision model, its usage recorded on
  * the turn. Answers the description, cut to 4,000 characters, `no_model` when no model of the
  * turn takes images, or `failed` when the call failed.
  */
 export async function lookAtImage(
   run: TurnRun,
-  image: ModelImage,
+  images: readonly ModelImage[],
   question: string,
 ): Promise<Result<string, ImageLookRefusal>> {
   const line = lineOf(run);
   if (line === undefined) {
     return err("no_model");
   }
-  const text = `Describe this image. The agent wants to know: ${question}`;
+  const which =
+    images.length === 1 ? "this image" : `these ${String(images.length)} images, each by its place`;
+  const text = `Describe ${which}. The agent wants to know: ${question}`;
   const request = {
     prefix: describePrefix,
-    messages: [{ role: "owner" as const, text, images: [image] }],
+    messages: [{ role: "owner" as const, text, images: [...images] }],
     tools: [],
   };
   const response = await callModel(run, request, line);

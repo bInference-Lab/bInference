@@ -11,7 +11,7 @@ import type { RunningTurns, ViewImageSource } from "@binference/engine/chat";
 import { createPluginNotices } from "@binference/engine/notices";
 import type { EngineShell } from "@binference/engine/shell";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
-import { ensurePrivateFolder, realFilePath, removePath, walledPaths } from "@binference/platform";
+import { ensurePrivateFolder, realFilePath, removePath } from "@binference/platform";
 import {
   imageFolders,
   imageLayout,
@@ -27,7 +27,7 @@ import { createPluginRunner, type PluginRunner } from "../plugins/plugin-runner.
 import type { PluginShelf } from "../plugins/put-plugin.js";
 import { sigstoreVerifier } from "../plugins/sigstore-verifier.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
-import { shellOf } from "./compose-shell.js";
+import { agentFilesOf, shellOf } from "./compose-shell.js";
 import { viewImagesOf } from "./compose-view-images.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { createPluginOperations } from "./plugin-operations.js";
@@ -299,8 +299,7 @@ export function composeRuntimeWithPlugins(
   const communityPluginsOn = (): boolean => offered.isOn();
   const viewImages = viewImagesOf({
     ...(opening.host.download === undefined ? {} : { download: opening.host.download }),
-    walled: walledPaths(opening.platform.stateFolder),
-    ...(opening.host.homeDir === undefined ? {} : { homeDir: opening.host.homeDir }),
+    files: agentFilesOf(opening, opened),
   });
   const agentSide = {
     turns: runtime.turns,

@@ -4,6 +4,7 @@ import { viewImageSourceContract } from "@binference/engine/testing";
 import { ensurePrivateFolder, realFilePath, writePrivateFile } from "@binference/platform";
 import { createFileLink, createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { machineFilesOf } from "./compose-files.js";
 import { viewImagesOf } from "./compose-view-images.js";
 
 const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
@@ -42,12 +43,15 @@ async function machine() {
   await writePrivateFile(join(home, "shot.png"), png, files);
   await writePrivateFile(join(state, "keys", "agent-key"), "secret", files);
   await writePrivateFile(join(state, "workspace", "chart.png"), png, files);
-  const source = viewImagesOf({
-    download,
+  const kept = { workspaceOnly: false };
+  const settings = () => ({ workspaceOnly: kept.workspaceOnly, patchWorkspaceOnly: true });
+  const machineFiles = machineFilesOf({
     walled: { roots: [state], open: [join(state, "workspace")] },
+    workspace: join(state, "workspace"),
     homeDir: home,
   });
-  return { home, state, source };
+  const source = viewImagesOf({ download, files: { files: machineFiles, settings } });
+  return { home, state, source, kept };
 }
 
 const live = () => ({ signal: new AbortController().signal });
@@ -100,6 +104,18 @@ describe("the images the agent views on this machine", () => {
     ).resolves.toStrictEqual({
       ok: false,
       error: "not_found",
+    });
+  });
+
+  it("reads a relative path in the workspace, and keeps to it when the owner's setting says so", async () => {
+    const made = await machine();
+    await expect(made.source.read({ path: "chart.png" }, live())).resolves.toMatchObject({
+      ok: true,
+    });
+    made.kept.workspaceOnly = true;
+    await expect(made.source.read({ path: "~/shot.png" }, live())).resolves.toStrictEqual({
+      ok: false,
+      error: "outside_workspace",
     });
   });
 });

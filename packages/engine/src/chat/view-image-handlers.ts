@@ -26,6 +26,7 @@ const refusalCodes: Readonly<Record<HoldRefusal<ViewImageRefusal>, ProtocolError
   format: "image.format",
   not_found: "image.not_found",
   walled: "image.walled",
+  outside_workspace: "image.outside_workspace",
   not_public: "image.not_public",
 };
 

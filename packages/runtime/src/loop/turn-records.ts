@@ -77,10 +77,13 @@ export interface ToolRunContext {
    */
   readonly idempotencyKey: string;
   /**
-   * Describes an image the tool read, with the question asked of it, on a model of the turn that
-   * takes images (decision 0385).
+   * Describes the images the tool read, with the question asked of them, on a model of the turn
+   * that takes images (decision 0385).
    */
-  readonly look: (image: ModelImage, question: string) => Promise<Result<string, ImageLookRefusal>>;
+  readonly look: (
+    images: readonly ModelImage[],
+    question: string,
+  ) => Promise<Result<string, ImageLookRefusal>>;
 }
 
 /** Why a tool's image went undescribed: no model of the turn takes images, or the call failed. */
