@@ -9,6 +9,14 @@ describe("progressKeyOf", () => {
     expect(progressKeyOf("token_risk")).toStrictEqual({ key: "turn.tool.tokenRisk" });
   });
 
+  it("gives every agent tool a line of its own", () => {
+    const keys = Object.keys(agentToolTexts)
+      .map((tool) => progressKeyOf(tool))
+      .filter((line) => line !== undefined)
+      .map((line) => line.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
   it("names a plugin's tool by its plugin, and no tool that does not exist", () => {
     expect(progressKeyOf("fear_index__index")).toStrictEqual({
       key: "turn.tool.plugin",
