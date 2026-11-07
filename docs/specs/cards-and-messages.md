@@ -1024,6 +1024,7 @@ is never verified, so its short address always follows its symbol.
 | `/schedules` | `cmd.schedules` | Schedules with buttons to cancel                                |
 | `/console`   | `cmd.console`   | A button that opens the Mini App                                |
 | `/replies`   | `cmd.replies`   | How replies and reasoning show here, a button for each choice   |
+| `/config`    | `cmd.config`    | Settings; `/config <key>` one; `set` and `unset` open a card    |
 | `/lang`      | `cmd.lang`      | Buttons: English, 中文                                          |
 | `/help`      | `cmd.help`      | The commands, one line each                                     |
 

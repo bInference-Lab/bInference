@@ -18,6 +18,7 @@
   "menu.console": "Open the console inside Telegram",
   "menu.lang": "The language binference uses with you",
   "menu.replies": "How the agent's replies and reasoning show here",
+  "menu.config": "See or change a setting",
   "menu.help": "The commands, one line each",
   "help.heading": "These commands answer at once, without your agent's model:",
   "help.item": "/{command}: {description}",
@@ -109,5 +110,10 @@
   "ai.tapToPick": "Tap a model to use it as the main model from the next message on. A model you pick stays, with no fallback; tap the configured main model to bring its fallbacks back.",
   "ai.noModels": "No model is set in config.json5. Set models.main on the machine, then try /ai again.",
   "ai.gone": "That model is no longer in config.json5. Send /ai for the models it has now.",
-  "ai.set": "The main model is {model} from the next message on."
+  "ai.set": "The main model is {model} from the next message on.",
+  "config.value": "{path}:",
+  "config.rule": "{path} takes {takes}. {description}",
+  "config.more": "{count, plural, one {# more setting} other {# more settings}}: ask for one under this one to see them.",
+  "config.waiting": "The change waits on its card. Check each setting on it, then tap Confirm.",
+  "config.usage": "/config shows your settings, and /config logging.level one of them. /config set logging.level debug sets one and /config unset logging.level removes it, each through a card that applies the change when you tap Confirm. A secret never goes in a chat: store it with binference credential set, then name it in the config."
 }

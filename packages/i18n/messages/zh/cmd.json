@@ -18,6 +18,7 @@
   "menu.console": "在 Telegram 中打开控制台",
   "menu.lang": "binference 与你沟通使用的语言",
   "menu.replies": "Agent 回复和推理在此对话中的显示方式",
+  "menu.config": "查看或更改设置",
   "menu.help": "所有命令，每行一个",
   "help.heading": "以下命令会立即回答，不经过你的 Agent 的模型：",
   "help.item": "/{command}：{description}",
@@ -109,5 +110,10 @@
   "ai.tapToPick": "点按一个模型，从下一条消息起将它用作主模型。你选择的模型会一直使用，不切换备用模型；点按 config 中的主模型即可恢复备用模型。",
   "ai.noModels": "config.json5 中没有设置模型。请在本机设置 models.main，然后再试 /ai。",
   "ai.gone": "该模型已不在 config.json5 中。发送 /ai 查看现有模型。",
-  "ai.set": "从下一条消息起，主模型为 {model}。"
+  "ai.set": "从下一条消息起，主模型为 {model}。",
+  "config.value": "{path}：",
+  "config.rule": "{path} 接受 {takes}。{description}",
+  "config.more": "还有 {count, plural, other {# 项设置}}：查看其下的某一项即可看到。",
+  "config.waiting": "更改正在卡片上等待。核对卡片上的每项设置，然后点按确认。",
+  "config.usage": "/config 显示你的设置，/config logging.level 显示其中一项。/config set logging.level debug 设置一项，/config unset logging.level 删除一项，每次都会打开一张卡片，你点按确认后更改才会生效。密钥绝不放进对话：先用 binference credential set 存为凭据，再在配置中引用它的名称。"
 }

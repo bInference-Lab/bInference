@@ -103,7 +103,9 @@ Rules for this package:
   message saying so, and a turn that ends with nothing for the owner gets `telegram.chat.noAnswer`.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, decision 0134) or `bnf1:r:<m|t>:<choice>` (a `/replies` button sets one key of `telegram.replies`,
-  decision 0377), the only settings the chat changes, and only `commandCallbackSchema` reads it. A press
+  decision 0377), the only settings the chat changes at once, and only `commandCallbackSchema` reads it.
+  `/config` reads the settings through `config/view` and changes any other through
+  `config/propose`, whose card applies it on the owner's tap (decision 0393). A press
   goes to the fast commands first, then to the cards. A button never loosens anything.
 - A launch draft's buttons carry `bnf1:s:<y|n>:<ref>`, and only `launchDraftCallbackSchema` reads
   it. A press goes to the engine through `LaunchDraftAnswers`, which acts only for the owner's
