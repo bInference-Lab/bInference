@@ -28,6 +28,11 @@ interface WriteNoteArgs extends AgentArgs {
   readonly text: string;
 }
 
+/** The args of `notes/get` and `notes/forget`: the agent and one of its notes. */
+interface AgentNoteArgs extends AgentArgs {
+  readonly note: string;
+}
+
 /**
  * The notes operations of protocol spec section 7.7. The agent runtime answers them through the
  * engine; while it is down they fail with `runtime.unavailable`.
@@ -40,6 +45,8 @@ export interface NoteOperationShapes {
   };
   readonly "notes/write": { readonly args: WriteNoteArgs; readonly result: NoteView };
   readonly "notes/delete": { readonly args: { readonly note: string }; readonly result: Empty };
+  readonly "notes/get": { readonly args: AgentNoteArgs; readonly result: NoteView };
+  readonly "notes/forget": { readonly args: AgentNoteArgs; readonly result: Empty };
 }
 
 const agent = protocolIdSchema("agent");
@@ -85,6 +92,20 @@ export const noteOperations: OperationTable<NoteOperationShapes> = {
     name: "notes/delete",
     scope: "admin",
     args: z.strictObject({ note: plainIdSchema }),
+    result: emptyResultSchema,
+  },
+  "notes/get": {
+    ...routedReadFlags,
+    name: "notes/get",
+    scope: "read",
+    args: z.strictObject({ agent, note: plainIdSchema }),
+    result: noteView,
+  },
+  "notes/forget": {
+    ...routedWriteFlags,
+    name: "notes/forget",
+    scope: "agent",
+    args: z.strictObject({ agent, note: plainIdSchema }),
     result: emptyResultSchema,
   },
 };

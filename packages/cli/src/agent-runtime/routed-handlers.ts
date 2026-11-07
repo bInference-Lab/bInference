@@ -21,6 +21,8 @@ export const routedOperations = [
   "notes/list",
   "notes/write",
   "notes/delete",
+  "notes/get",
+  "notes/forget",
 ] as const;
 
 type RoutedName = (typeof routedOperations)[number];
@@ -115,5 +117,7 @@ export function createRoutedHandlers(
     "notes/list": routed("notes/list", parts),
     "notes/write": routed("notes/write", parts),
     "notes/delete": routed("notes/delete", parts),
+    "notes/get": routed("notes/get", parts),
+    "notes/forget": routed("notes/forget", parts),
   };
 }

@@ -28,6 +28,7 @@ Agent 的模型在一轮中可以调用的工具，按每轮提供的顺序排�
 - `read_page` (读取): 读取一个公开网页。
 - `search_x` (读取): 搜索 X 上的近期帖子。
 - `notes_search` (读取): 搜索 Agent 的笔记。
+- `notes_get` (读取): 完整读取 Agent 的一条笔记。
 - `open_skill` (读取): 打开 Agent 的一个技能。
 - `swap` (提议): 提议把一种代币兑换为另一种。
 - `buy` (提议): 提议买入一种代币。
@@ -44,6 +45,7 @@ Agent 的模型在一轮中可以调用的工具，按每轮提供的顺序排�
 - `schedule_create` (控制): 设置一个到时开始一轮的定时任务。
 - `schedule_cancel` (控制): 取消一个定时任务。
 - `notes_write` (控制): 把一条笔记存入 Agent 的记忆。
+- `notes_forget` (控制): 删除 Agent 的一条笔记。
 - `workspace_write` (控制): 保存所有者的交易策略或 Agent 的人设。
 - `first_chat_end` (控制): 保存所有者的回答后结束初次对话。
 - `launchpads` (读取): 列出一条链上的发射台及其设置。

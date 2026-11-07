@@ -17,7 +17,13 @@ export interface NoteRouteParts {
   readonly clock: Clock;
 }
 
-type NoteOp = "notes/search" | "notes/list" | "notes/write" | "notes/delete";
+type NoteOp =
+  | "notes/search"
+  | "notes/list"
+  | "notes/write"
+  | "notes/delete"
+  | "notes/get"
+  | "notes/forget";
 
 // The longest note, as `agent.sqlite` keeps it.
 const maxNoteChars = 12_000;
@@ -124,12 +130,68 @@ async function remove(args: ArgsOf<"notes/delete">, parts: NoteRouteParts, signa
   return removed.error === "fenced" ? fenced() : failed("note.not_found", "No note has this id.");
 }
 
+function notFound(): RouteAnswer {
+  return failed("note.not_found", "No note of this agent has this id.");
+}
+
+// The agent's note of this number that is not removed: the first of its notes after the one before.
+async function ownNote(
+  args: ArgsOf<"notes/get">,
+  parts: NoteRouteParts,
+  signal: AbortSignal,
+): Promise<NoteRecord | undefined> {
+  const note = Number(args.note);
+  if (!Number.isSafeInteger(note) || note <= 0) {
+    return undefined;
+  }
+  const agentId = idSchema("agt").parse(args.agent);
+  const [found] = await parts.notes.list({ agentId, afterId: note - 1, limit: 1 }, { signal });
+  return found?.id === note ? found : undefined;
+}
+
+async function get(args: ArgsOf<"notes/get">, parts: NoteRouteParts, signal: AbortSignal) {
+  const found = await ownNote(args, parts, signal);
+  return found === undefined ? notFound() : answered("notes/get", viewOf(found));
+}
+
+// Only the agent's own note is removed, so an agent never forgets another's.
+async function forget(args: ArgsOf<"notes/forget">, parts: NoteRouteParts, signal: AbortSignal) {
+  const found = await ownNote(args, parts, signal);
+  if (found === undefined) {
+    return notFound();
+  }
+  const removal = { note: found.id, atMs: parts.clock.now(), fence: parts.fence };
+  const removed = await parts.notes.delete(removal, { signal });
+  if (removed.ok) {
+    return answered("notes/forget", {});
+  }
+  return removed.error === "fenced" ? fenced() : notFound();
+}
+
+// The reads and removals that name one note of the agent.
+async function oneNote(
+  route: RouteLine & { readonly op: "notes/get" | "notes/forget" },
+  parts: NoteRouteParts,
+  signal: AbortSignal,
+): Promise<RouteAnswer> {
+  const parsed = operations[route.op].args.safeParse(route.args);
+  if (!parsed.success) {
+    return badArgs();
+  }
+  return route.op === "notes/get"
+    ? get(parsed.data, parts, signal)
+    : forget(parsed.data, parts, signal);
+}
+
 async function answerOf(
   route: RouteLine & { readonly op: NoteOp },
   parts: NoteRouteParts,
   signal: AbortSignal,
 ): Promise<RouteAnswer> {
   const { op, args, origin } = route;
+  if (op === "notes/get" || op === "notes/forget") {
+    return oneNote({ ...route, op }, parts, signal);
+  }
   if (op === "notes/search") {
     const parsed = operations[op].args.safeParse(args);
     return parsed.success ? search(parsed.data, parts, signal) : badArgs();
@@ -153,7 +215,8 @@ export function isNoteRoute(route: RouteLine): route is RouteLine & { readonly o
 
 /**
  * Answers a routed notes operation from `agent.sqlite` (runtime spec, section 10): a search, a
- * page of the list, a write with the origin the engine set from its caller, or a removal. Args
+ * page of the list, a write with the origin the engine set from its caller, a removal, or one of
+ * the agent's own notes read in full or forgotten (decision 0384). Args
  * that break the operation's schema fail `protocol.bad_args`, a note that is not there
  * `note.not_found`, and a write after a later start raised the fence `runtime.unavailable`.
  */

@@ -28,6 +28,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `read_page` (read): Reads one public web page.
 - `search_x` (read): Searches recent posts on X.
 - `notes_search` (read): Searches the agent's notes.
+- `notes_get` (read): Reads one of the agent's notes in full.
 - `open_skill` (read): Opens one of the agent's skills.
 - `swap` (proposal): Proposes a swap of one token for another.
 - `buy` (proposal): Proposes a buy of a token.
@@ -44,6 +45,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `schedule_create` (control): Sets a schedule that starts a turn at its time.
 - `schedule_cancel` (control): Cancels a schedule.
 - `notes_write` (control): Saves a note to the agent's memory.
+- `notes_forget` (control): Forgets one of the agent's notes.
 - `workspace_write` (control): Saves the owner's strategy or the agent's persona.
 - `first_chat_end` (control): Ends the first chat once the owner's answers are saved.
 - `launchpads` (read): Lists the launchpads on a chain and their settings.

@@ -138,6 +138,15 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
     file: "SKILL.md",
     text: "# Safe swap",
   },
+  "notes/forget": {},
+  "notes/get": {
+    note: "1",
+    agent,
+    text: "Likes stablecoins",
+    origin: "agent",
+    createdAt: 1,
+    changedAt: 1,
+  },
   "notes/write": {
     note: "1",
     agent,
@@ -250,6 +259,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     { query: "stable" },
     [{ op: "notes/search", args: { agent, query: "stable", limit: 10 } }],
   ],
+  ["notes_get", { note: "1" }, [{ op: "notes/get", args: { agent, note: "1" } }]],
   [
     "open_skill",
     { skill: "safe-swap" },
@@ -332,6 +342,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     { text: "Likes stablecoins" },
     [{ op: "notes/write", args: { agent, text: "Likes stablecoins" }, key }],
   ],
+  ["notes_forget", { note: "1" }, [{ op: "notes/forget", args: { agent, note: "1" }, key }]],
   [
     "workspace_write",
     { file: "STRATEGY.md", text: "Hold for days." },
@@ -390,6 +401,7 @@ const controlWrites = new Set([
   "schedule_create",
   "schedule_cancel",
   "notes_write",
+  "notes_forget",
   "workspace_write",
   "first_chat_end",
   "launch_draft",

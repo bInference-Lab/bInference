@@ -37,7 +37,13 @@ async function notesOn(): Promise<NoteRouteParts & { readonly raise: () => Promi
   };
 }
 
-type NoteOp = "notes/search" | "notes/list" | "notes/write" | "notes/delete";
+type NoteOp =
+  | "notes/search"
+  | "notes/list"
+  | "notes/write"
+  | "notes/delete"
+  | "notes/get"
+  | "notes/forget";
 
 async function route(parts: NoteRouteParts, op: NoteOp, args: JsonValue): Promise<RouteReplyLine> {
   return routeFrom(parts, { op, args, origin: "owner" });
@@ -113,6 +119,30 @@ describe("answerNoteRoute", () => {
     });
     await expect(route(parts, "notes/list", { agent })).resolves.toMatchObject({
       result: { items: [{ note: "2" }] },
+    });
+  });
+
+  it("reads one note in full and forgets it, only for the agent that holds it", async () => {
+    const parts = await notesOn();
+    const other = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000002";
+    await route(parts, "notes/write", { agent, text: "line one\nline two" });
+    await expect(route(parts, "notes/get", { agent, note: "1" })).resolves.toMatchObject({
+      result: { note: "1", text: "line one\nline two", origin: "owner" },
+    });
+    await expect(route(parts, "notes/get", { agent: other, note: "1" })).resolves.toMatchObject({
+      error: { code: "note.not_found" },
+    });
+    await expect(route(parts, "notes/forget", { agent: other, note: "1" })).resolves.toMatchObject({
+      error: { code: "note.not_found" },
+    });
+    await expect(route(parts, "notes/forget", { agent, note: "1" })).resolves.toMatchObject({
+      result: {},
+    });
+    await expect(route(parts, "notes/get", { agent, note: "1" })).resolves.toMatchObject({
+      error: { code: "note.not_found" },
+    });
+    await expect(route(parts, "notes/forget", { agent, note: "1" })).resolves.toMatchObject({
+      error: { code: "note.not_found" },
     });
   });
 

@@ -123,5 +123,7 @@
   "tools.summary.binference_ledger": "读取一个 Agent 的账本。",
   "tools.summary.shell": "在所有者的机器上运行一条命令，不触及 binference 自己的文件，并读取输出。",
   "tools.summary.shell_job": "读取运行中命令的新输出，或停止它。",
-  "tools.summary.deposit_address": "向所有者显示每个钱包的地址及其二维码，用于向 Agent 转账资金。"
+  "tools.summary.deposit_address": "向所有者显示每个钱包的地址及其二维码，用于向 Agent 转账资金。",
+  "tools.summary.notes_get": "完整读取 Agent 的一条笔记。",
+  "tools.summary.notes_forget": "删除 Agent 的一条笔记。"
 }

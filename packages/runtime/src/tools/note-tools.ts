@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
-import { answerOrFailure } from "./tool-answer.js";
+import { answerOrFailure, answerOrRefusal } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 
 // The agent's memory tools (runtime spec, section 5.1): notes in `agent.sqlite`, reached through
@@ -77,10 +77,70 @@ function notesWriteTool({ agent, client }: AgentToolParts): AgentTool {
   });
 }
 
-/** `notes_search`, a read, and `notes_write`, a control tool, for one agent. */
+const noteArgs: z.ZodType<{ readonly note: string }> = z.strictObject({
+  note: z.string().regex(/^[1-9]\d{0,15}$/u),
+});
+
+const noNote: Readonly<Record<string, string>> = {
+  "note.not_found":
+    "This agent has no note with that id: it was forgotten, or the id is not one notes_search gave.",
+};
+
+// A note in full, its line breaks kept; one labelled untrusted marks the turn.
+function noteOutcome(note: NoteView): ToolOutcome {
+  const head = `Note ${note.note} [${note.origin}], saved ${new Date(note.changedAt).toISOString()}:`;
+  const isOutside = note.origin === "untrusted";
+  const lines = [...(isOutside ? [untrustedLine] : []), head, note.text];
+  return { text: lines.join("\n"), isError: false, ...(isOutside ? { outside: true } : {}) };
+}
+
+function notesGetTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool({
+    name: "notes_get",
+    kind: "read",
+    parallel: true,
+    addressSource: "note",
+    description: agentToolTexts.notes_get,
+    args: noteArgs,
+    run: async (args, { signal }) =>
+      answerOrRefusal({ tool: "notes_get", refusals: noNote }, async () =>
+        noteOutcome(await client.call("notes/get", { agent, note: args.note }, { signal })),
+      ),
+  });
+}
+
+function notesForgetTool({ agent, client }: AgentToolParts): AgentTool {
+  return defineTool({
+    name: "notes_forget",
+    kind: "control",
+    description: agentToolTexts.notes_forget,
+    args: noteArgs,
+    run: async (args, { signal, idempotencyKey }) =>
+      answerOrRefusal({ tool: "notes_forget", refusals: noNote }, async () => {
+        await client.call(
+          "notes/forget",
+          { agent, note: args.note },
+          { signal, key: idempotencyKey },
+        );
+        return { text: `Forgot note ${args.note}: no search finds it any more.`, isError: false };
+      }),
+  });
+}
+
+/**
+ * The memory tools for one agent: `notes_search` and `notes_get`, reads, and `notes_write` and
+ * `notes_forget`, control tools; forgetting reaches only the agent's own notes (decision 0384).
+ */
 export function noteTools(parts: AgentToolParts): {
   readonly search: AgentTool;
+  readonly get: AgentTool;
   readonly write: AgentTool;
+  readonly forget: AgentTool;
 } {
-  return { search: notesSearchTool(parts), write: notesWriteTool(parts) };
+  return {
+    search: notesSearchTool(parts),
+    get: notesGetTool(parts),
+    write: notesWriteTool(parts),
+    forget: notesForgetTool(parts),
+  };
 }

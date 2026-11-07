@@ -295,6 +295,8 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `notes/list` | `read` | read | any connection | agent runtime |
 | `notes/write` | `agent`; `admin` when the owner writes the note | write | any connection | agent runtime |
 | `notes/delete` | `admin` | write | any connection | agent runtime |
+| `notes/get` | `read` | read | any connection | agent runtime |
+| `notes/forget` | `agent` | write | any connection | agent runtime |
 
 ## `model`
 

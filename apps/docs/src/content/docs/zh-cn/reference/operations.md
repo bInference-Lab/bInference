@@ -295,6 +295,8 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `notes/list` | `read` | 读取 | 任何连接 | Agent 运行时 |
 | `notes/write` | `agent`; 所有者写笔记时为 `admin` | 写入 | 任何连接 | Agent 运行时 |
 | `notes/delete` | `admin` | 写入 | 任何连接 | Agent 运行时 |
+| `notes/get` | `read` | 读取 | 任何连接 | Agent 运行时 |
+| `notes/forget` | `agent` | 写入 | 任何连接 | Agent 运行时 |
 
 ## `model`
 

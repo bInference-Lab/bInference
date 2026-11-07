@@ -277,4 +277,6 @@ export const noteExamples: { readonly [N in keyof NoteOperationShapes]: WireExam
   "notes/list": { args: { agent: ids.agent, cursor: "cursor-1" }, result: pageOf(note) },
   "notes/write": { args: { agent: ids.agent, text: note.text }, result: note },
   "notes/delete": { args: { note: "note-17" }, result: empty },
+  "notes/get": { args: { agent: ids.agent, note: "note-17" }, result: note },
+  "notes/forget": { args: { agent: ids.agent, note: "note-17" }, result: empty },
 };
