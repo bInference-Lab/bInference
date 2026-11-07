@@ -2,7 +2,6 @@ import type { OperationName } from "../operations/operations.js";
 import { chartExamples } from "./chart-examples.js";
 import {
   chatExamples,
-  imageExamples,
   limitExamples,
   noteExamples,
   questionExamples,
@@ -13,6 +12,7 @@ import { credentialExamples } from "./credential-examples.js";
 import { depositExamples } from "./deposit-examples.js";
 import { agentExamples, engineExamples, walletExamples } from "./engine-examples.js";
 import { fileExamples } from "./file-examples.js";
+import { imageExamples } from "./image-examples.js";
 import {
   bridgeExamples,
   launchDraftExamples,

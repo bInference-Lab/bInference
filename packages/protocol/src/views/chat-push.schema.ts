@@ -80,7 +80,10 @@ export type ChatPush =
       readonly kind: "chat/images";
       readonly agent: string;
       readonly turn: string;
-      /** What the agent asked the image model for. */
+      /**
+       * What the agent asked the image model for, or, for images it showed from the machine, the
+       * line it said they are (decision 0399).
+       */
       readonly prompt: string;
       readonly images: readonly MadeImageView[];
     }

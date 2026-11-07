@@ -291,6 +291,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `image/view` | `agent` | read | any connection | engine |
 | `image/store` | `agent` | read | any connection | engine |
 | `image/made` | `agent` | read | any connection | engine |
+| `image/show` | `agent` | read | any connection | engine |
 | `image/read` | `read` | read | any connection | engine |
 
 ## `config`

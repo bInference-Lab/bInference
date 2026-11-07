@@ -93,6 +93,24 @@ interface MadeImagesArgs {
   readonly failed?: string;
 }
 
+/**
+ * The args of `image/show`: images already on the engine's machine that the agent shows the owner
+ * in the chat of its turn, by their paths, with a line saying what they are (decision 0399).
+ */
+interface ShowImagesArgs {
+  readonly agent: ProtocolId<"agent">;
+  readonly turn: ProtocolId<"chatTurn">;
+  /** Absolute, or under the owner's home folder, as `image/view` reads a path. */
+  readonly paths: readonly string[];
+  /** What the images are, in a line. */
+  readonly caption: string;
+}
+
+/** The answer of `image/show`: each image shown, by the id surfaces read it with, and its path. */
+interface ShownImages {
+  readonly images: readonly { readonly image: string; readonly path: string }[];
+}
+
 /** The args of `image/read`: one part of an image the agent made, by its id, from `offset`. */
 interface ReadMadeImageArgs {
   readonly agent: ProtocolId<"agent">;
@@ -107,6 +125,7 @@ export interface ImageOperationShapes {
   readonly "image/store": { readonly args: StoreImageArgs; readonly result: StoredImagePart };
   readonly "image/made": { readonly args: MadeImagesArgs; readonly result: Empty };
   readonly "image/read": { readonly args: ReadMadeImageArgs; readonly result: ImagePart };
+  readonly "image/show": { readonly args: ShowImagesArgs; readonly result: ShownImages };
 }
 
 /** Parses an image format the agent reads. */
@@ -206,6 +225,22 @@ export const imageOperations: OperationTable<ImageOperationShapes> = {
       failed: z.string().trim().min(1).max(500).exactOptional(),
     }),
     result: emptyResultSchema,
+  },
+  "image/show": {
+    ...readFlags,
+    name: "image/show",
+    scope: "agent",
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      turn: protocolIdSchema("chatTurn"),
+      paths: z.array(z.string().min(1).max(4_096)).min(1).max(maxImagesPerMessage).readonly(),
+      caption: z.string().trim().min(1).max(500),
+    }),
+    result: z.object({
+      images: z
+        .array(z.object({ image: madeImageId, path: z.string().min(1).max(4_096) }))
+        .readonly(),
+    }),
   },
   "image/read": {
     ...readFlags,

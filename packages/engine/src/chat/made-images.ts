@@ -11,21 +11,23 @@ import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
 import { wakeWithMessage } from "./engine-message.js";
 import { imagePartOf } from "./image-part.js";
+import { showHandler } from "./shown-images.js";
 
-/** An image the agent made, as `chat/images` names it. */
-type MadeImageView = Extract<ChatPush, { readonly kind: "chat/images" }>["images"][number];
+/** An image the agent made or showed, as `chat/images` names it. */
+export type MadeImageView = Extract<ChatPush, { readonly kind: "chat/images" }>["images"][number];
 
 /** The operations of the images the agent makes (decision 0392). */
 export interface MadeImageHandlers {
   readonly "image/store": EngineHandler<"image/store">;
   readonly "image/made": EngineHandler<"image/made">;
   readonly "image/read": EngineHandler<"image/read">;
+  readonly "image/show": EngineHandler<"image/show">;
 }
 
 /** What the made images are kept and told through. */
 export type MadeImageOptions = Pick<
   ChatRelayOptions,
-  "agentInbox" | "turns" | "ids" | "clock" | "publish" | "intentView" | "random"
+  "agentInbox" | "turns" | "ids" | "clock" | "publish" | "intentView" | "random" | "viewImages"
 > & {
   /** The agent's files, where made images are saved; without them every store is refused. */
   readonly madeImageFiles?: Pick<MachineFiles, "read" | "write">;
@@ -35,6 +37,8 @@ export type MadeImageOptions = Pick<
 interface SavedImage {
   readonly agent: Id<"agt">;
   readonly view: MadeImageView;
+  /** Whether it was saved in the workspace, or shown from where it already was (decision 0399). */
+  readonly kept: "workspace" | "shown";
 }
 
 /** An image whose parts are arriving. */
@@ -138,7 +142,7 @@ async function saveImage(
     return err("image.unreadable");
   }
   const view = { image: id, contentType, bytes: image.bytes.byteLength, path: written.value };
-  keepBounded(state.saved, [id, { agent: image.agent, view }], mostSaved);
+  keepBounded(state.saved, [id, { agent: image.agent, view, kept: "workspace" }], mostSaved);
   return ok(view);
 }
 
@@ -182,23 +186,32 @@ function madeHandler(options: MadeImageOptions, state: MadeState): EngineHandler
   };
 }
 
+// A kept image's bytes, read again where it is: a shown one through the walls `image/view` keeps.
+async function bytesOf(
+  options: MadeImageOptions,
+  kept: SavedImage,
+  signal: AbortSignal,
+): Promise<Uint8Array | undefined> {
+  if (kept.kept === "shown") {
+    const read = await options.viewImages?.read({ path: kept.view.path }, { signal });
+    return read?.ok === true ? read.value : undefined;
+  }
+  const workspace = { signal, workspaceOnly: true, maxBytes: kept.view.bytes };
+  const read = await options.madeImageFiles?.read(kept.view.path, workspace);
+  return read?.ok === true ? read.value.bytes : undefined;
+}
+
 function readHandler(options: MadeImageOptions, state: MadeState): EngineHandler<"image/read"> {
   return async (call) => {
     const { agent, image, offset = 0 } = call.args;
     const kept = state.saved.get(image);
-    const files = options.madeImageFiles;
-    if (kept?.agent !== agent || files === undefined) {
+    if (kept?.agent !== agent) {
       return err("image.not_found");
     }
-    const read = await files.read(kept.view.path, {
-      signal: call.signal,
-      workspaceOnly: true,
-      maxBytes: kept.view.bytes,
-    });
-    if (!read.ok) {
+    const bytes = await bytesOf(options, kept, call.signal);
+    if (bytes === undefined) {
       return err("image.not_found");
     }
-    const { bytes } = read.value;
     if (offset >= bytes.byteLength) {
       return err("protocol.bad_args");
     }
@@ -211,8 +224,9 @@ function readHandler(options: MadeImageOptions, state: MadeState): EngineHandler
  * made image in parts, in order, from the current runtime only, and saves a whole one in the
  * agent's workspace under `media/made/<date>/`, its format read from its first bytes; `image/made`
  * pushes the job's images on the agent's chat topic as `chat/images` and wakes the agent with a
- * message saying they are ready or why none was made; `image/read` answers a saved image's parts by
- * its id to a surface. The ids of the last 64 saved images are kept in memory.
+ * message saying they are ready or why none was made; `image/show` pushes images already on the
+ * machine the same way (decision 0399); `image/read` answers a saved or shown image's parts by its
+ * id to a surface, read again where it is. The ids of the last 64 images are kept in memory.
  */
 export function createMadeImageHandlers(options: MadeImageOptions): MadeImageHandlers {
   const state: MadeState = { arriving: new Map(), saved: new Map() };
@@ -220,5 +234,8 @@ export function createMadeImageHandlers(options: MadeImageOptions): MadeImageHan
     "image/store": storeHandler(options, state),
     "image/made": madeHandler(options, state),
     "image/read": readHandler(options, state),
+    "image/show": showHandler(options, (agent, view) => {
+      keepBounded(state.saved, [view.image, { agent, view, kept: "shown" }], mostSaved);
+    }),
   };
 }
