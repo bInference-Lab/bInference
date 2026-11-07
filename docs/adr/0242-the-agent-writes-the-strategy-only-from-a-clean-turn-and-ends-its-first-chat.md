@@ -1,6 +1,6 @@
 # 0242. The agent writes the strategy only from a clean turn and ends its first chat
 
-Status: Accepted
+Status: Amended by 0382
 
 Accepted by the owner on 2026-10-16.
 

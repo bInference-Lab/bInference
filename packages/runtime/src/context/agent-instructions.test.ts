@@ -24,9 +24,12 @@ describe("the agent's instructions", () => {
 
   it("run the first chat on the owner's messages and end it with the agent's own tools", () => {
     const text = agentInstructions("zh");
-    expect(text).toContain("follow it in a turn that answers the owner's own message");
-    expect(text).toContain("only those this conversation has not answered yet");
-    expect(text).toContain("then call first_chat_end once");
+    expect(text).toContain("a short introduction, never a gate");
+    expect(text).toContain(
+      "do it completely and answer only that, with no first-chat question added",
+    );
+    expect(text).toContain("only one this conversation has not answered yet");
+    expect(text).toContain("call first_chat_end once, and ask none of its questions again");
     expect(text).toMatch(/Write to the owner in Simplified Chinese\.$/u);
   });
 });

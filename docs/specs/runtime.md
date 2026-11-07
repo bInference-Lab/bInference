@@ -518,7 +518,9 @@ The context of a model call is data with three parts, never one string with a ma
    1. binference's instructions for the agent, fixed per version, with the owner's language;
    2. the workspace files in this order: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`,
       `NOTES.md`, and `FIRST-CHAT.md` while it exists and the agent is in paper mode
-      ([decision 0242](../DECISIONS.md#d0242));
+      ([decision 0242](../DECISIONS.md#d0242)), whose questions never ride on an answer to the
+      owner's request: the next one comes only after an answer to the one before or a greeting,
+      and an owner who moves on ends them ([decision 0382](../DECISIONS.md#d0382));
    3. the skills index: each installed skill's name, description and location, by name, read
       from the engine with `skill/list` ([decision 0207](../DECISIONS.md#d0207));
    4. the tool declarations, by name.
