@@ -255,7 +255,7 @@
             "valueFormat": "model"
           },
           "imageMaking": {
-            "description": "The model that makes images, on a provider that speaks OpenAI's Images API.",
+            "description": "The model that makes images: on the bInference gateway, one whose output includes images; on an openai provider, an Images API model.",
             "type": "string",
             "pattern": "^[^\\s/]+\\/\\S+$",
             "valueFormat": "model"

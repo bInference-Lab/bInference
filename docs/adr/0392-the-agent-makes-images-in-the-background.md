@@ -1,6 +1,6 @@
 # 0392. The agent makes images in the background
 
-Status: Accepted
+Status: Amended by 0397
 
 Accepted by the lead on 2026-11-07.
 

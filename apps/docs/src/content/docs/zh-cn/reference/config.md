@@ -62,7 +62,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `models.main`: 负责对话和提议的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__MAIN`。
 - `models.fast`: 负责写摘要、压缩上下文和分类的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__FAST`。
 - `models.vision`: 主模型无法读取图片时，负责读取图片的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__VISION`。
-- `models.imageMaking`: 生成图片的模型，所在服务商须支持 OpenAI 的 Images API。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__IMAGE_MAKING`。
+- `models.imageMaking`: 生成图片的模型：在 bInference 网关上，选输出包含图片的模型；在 openai 服务商上，选支持 Images API 的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__IMAGE_MAKING`。
 - `models.imageInput`: 能以图片作为输入的模型；其他模型收到视觉模型写的图片描述。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__IMAGE_INPUT`。
 - `models.fallbacks.main`: 主模型失败时依次尝试的备用模型。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__FALLBACKS__MAIN`。
 - `models.fallbacks.fast`: 快速模型失败时依次尝试的备用模型。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__FALLBACKS__FAST`。

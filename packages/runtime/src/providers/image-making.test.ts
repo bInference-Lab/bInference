@@ -8,6 +8,11 @@ const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 
 const providers = {
   openai: { kind: "openai", baseUrl: "https://images.example.test/v1", apiKey: "sk-test" },
   claude: { kind: "anthropic" },
+  binference: {
+    kind: "binference",
+    baseUrl: "https://gateway.example.test/api/v1",
+    apiKey: "bk-test",
+  },
 } as const;
 const request: ImageMakingRequest = {
   prompt: "A frog logo.",
@@ -38,8 +43,11 @@ function formOf(sent: HttpRequest | undefined): string {
 }
 
 // The maker of the test's image model; a refusal fails the test that needed a maker.
-function makerOn(parts: ReturnType<typeof providerOf>["parts"]): ImageMaker {
-  const maker = imageMakerFor({ providers, imageMaking: "openai/gpt-image-1" }, parts);
+function makerOn(
+  parts: ReturnType<typeof providerOf>["parts"],
+  imageMaking = "openai/gpt-image-1",
+): ImageMaker {
+  const maker = imageMakerFor({ providers, imageMaking }, parts);
   if (typeof maker === "string") {
     throw new TypeError(maker);
   }
@@ -95,10 +103,46 @@ describe("the image model", () => {
     const parts = providerOf(200, answered).parts;
     expect(imageMakerFor({ providers }, parts)).toContain("models.imageMaking");
     expect(imageMakerFor({ providers, imageMaking: "claude/any" }, parts)).toContain(
-      "does not speak OpenAI's Images API",
+      "cannot make images",
     );
     expect(imageMakerFor({ providers, imageMaking: "none/x" }, parts)).toContain(
       "not in models.providers",
     );
+  });
+
+  it("asks the gateway's image model through chat completions and reads the images it sends back", async () => {
+    const dataUrl = `data:image/png;base64,${Buffer.from(png).toString("base64")}`;
+    const gateway = providerOf(200, {
+      choices: [{ message: { content: "Here it is.", images: [{ image_url: { url: dataUrl } }] } }],
+      usage: { prompt_tokens: 20, completion_tokens: 1_300 },
+    });
+    const maker = makerOn(gateway.parts, "binference/google/gemini-3.1-flash-image");
+    const made = await maker.make({ ...request, size: "1536x1024" }, new AbortController().signal);
+    expect(made).toStrictEqual({
+      ok: true,
+      images: [png],
+      usage: { inputTokens: 20, outputTokens: 1_300, cachedTokens: 0 },
+    });
+    expect(gateway.requests).toMatchObject([
+      { url: "https://gateway.example.test/api/v1/chat/completions" },
+    ]);
+    expect(JSON.parse(String(gateway.requests[0]?.body))).toStrictEqual({
+      model: "google/gemini-3.1-flash-image",
+      messages: [{ role: "user", content: "A frog logo." }],
+      modalities: ["image", "text"],
+      n: 1,
+      image_config: { aspect_ratio: "3:2" },
+    });
+  });
+
+  it("says a gateway model that answers with words alone likely makes no images", async () => {
+    const gateway = providerOf(200, { choices: [{ message: { content: "I cannot draw." } }] });
+    const maker = makerOn(gateway.parts, "binference/openai/gpt-6-luna");
+    const made = await maker.make(request, new AbortController().signal);
+    expect(made).toStrictEqual({
+      ok: false,
+      failure:
+        "the model answered with no image, so binference/openai/gpt-6-luna likely does not make images: the owner picks a model whose output includes images",
+    });
   });
 });

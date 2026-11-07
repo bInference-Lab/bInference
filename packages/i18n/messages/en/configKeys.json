@@ -33,7 +33,7 @@
   "models.main": "The model that talks and proposes.",
   "models.fast": "The model that writes summaries, compacts and classifies.",
   "models.vision": "The model that reads images when the main one cannot.",
-  "models.imageMaking": "The model that makes images, on a provider that speaks OpenAI's Images API.",
+  "models.imageMaking": "The model that makes images: on the bInference gateway, one whose output includes images; on an openai provider, an Images API model.",
   "models.imageInput": "The models that take images as input; any other model gets the vision model's description.",
   "models.fallbacks.main": "Models tried in order when the main one fails.",
   "models.fallbacks.fast": "Models tried in order when the fast one fails.",
