@@ -54,6 +54,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `launchpads` (read): Lists the launchpads on a chain and their settings.
 - `launch_draft` (control): Drafts a token launch that only the owner can start.
 - `deposit_address` (control): Shows the owner each wallet's address and its QR code, to send funds to the agent.
+- `show_images` (control): Shows the owner, in the chat, pictures already on the machine, such as images the agent made before.
 - `show_chart` (control): Shows the owner a pie, bar, area or line chart in the chat, or its text where no chart is drawn.
 - `make_image` (control): Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later.
 - `shell` (machine): Runs a command on the owner's machine, away from binference's own files, and reads its output.

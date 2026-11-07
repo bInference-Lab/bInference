@@ -19,6 +19,7 @@ import { readTools } from "./read-tools.js";
 import { scheduleTools } from "./schedule-tools.js";
 import { settingsChangeTool, settingsReadTool } from "./settings-tools.js";
 import { shellTools } from "./shell-tools.js";
+import { showImagesTool } from "./show-images-tool.js";
 import { openSkillTool } from "./skill-tools.js";
 import type { AgentToolParts } from "./tool-client.js";
 import { tradeTools } from "./trade-tools.js";
@@ -73,6 +74,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     launchpadsTool(parts),
     launchDraftTool(parts),
     depositTool(parts),
+    showImagesTool(parts),
     chartTool(parts),
     ...(parts.imageMaking === undefined ? [] : [makeImageTool(parts, parts.imageMaking)]),
     ...shellTools(parts),

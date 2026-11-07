@@ -74,6 +74,7 @@
   "tool.filePatch": "正在修改文件…",
   "tool.showChart": "正在绘制图表…",
   "tool.makeImage": "正在生成图片…",
+  "tool.showImages": "正在显示图片…",
   "tool.deposit": "正在显示充值地址…",
   "tool.notesGet": "正在读取笔记…",
   "tool.notesForget": "正在删除笔记…"

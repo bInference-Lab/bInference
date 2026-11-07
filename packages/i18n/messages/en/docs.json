@@ -134,6 +134,7 @@
   "tools.summary.notes_get": "Reads one of the agent's notes in full.",
   "tools.summary.notes_forget": "Forgets one of the agent's notes.",
   "tools.summary.make_image": "Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later.",
+  "tools.summary.show_images": "Shows the owner, in the chat, pictures already on the machine, such as images the agent made before.",
   "tools.summary.settings_read": "Reads the owner's settings, or one key, with secrets shown only as their kind and the rules of each key.",
   "tools.summary.settings_change": "Proposes a change to the owner's settings in a card that shows each setting before and after; nothing changes until the owner confirms."
 }

@@ -127,6 +127,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "launchpad/list": { items: [] },
   "launch/draft": { draft: "c2hvd24tb25jZS1h", expiresAt: 600_001 },
   "shell/run": shellView,
+  "image/show": { images: [{ image: "a1b2c3d4e5f60718", path: "a.png" }] },
   "turn/deposit": {
     wallets: [
       {
@@ -413,6 +414,16 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     ],
   ],
   ["deposit_address", {}, [{ op: "turn/deposit", args: { agent, turn: toolTurn.turn } }]],
+  [
+    "show_images",
+    { paths: ["a.png"], caption: "Made today." },
+    [
+      {
+        op: "image/show",
+        args: { agent, turn: toolTurn.turn, paths: ["a.png"], caption: "Made today." },
+      },
+    ],
+  ],
   [
     "show_chart",
     { chartType: "pie", title: "x", segments: [{ label: "a", value: 1 }] },
