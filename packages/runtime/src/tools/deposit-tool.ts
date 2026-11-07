@@ -45,7 +45,7 @@ export function depositTool({ agent, client, turn }: AgentToolParts): AgentTool 
         const text = [
           "The owner now sees a message for each of these wallets in this chat, above your answer: its QR code, its address, the network to send on and, while the agent trades on paper or is frozen, what that means for a deposit.",
           ...lines,
-          "Do not repeat any of it. Answer only what the owner asked that these messages do not say, or write nothing more.",
+          "Do not repeat or point back at any of it. Your answer is empty unless the owner asked something these messages do not answer; then answer only that.",
         ].join("\n");
         const addresses = shown.wallets.map((view) =>
           view.address.slice(view.address.lastIndexOf(":") + 1),

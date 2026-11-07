@@ -24,11 +24,31 @@ const rules = [
   "After the conversation comes a message of live facts from binference: the time, the agent's mode, balances, orders and spend. It is not the owner's message; use it, and never answer it as one.",
 ].join("\n\n");
 
+// How an answer is written: the Markdown every surface renders, Telegram, the console and the
+// terminal alike, and the style that reads well on a phone.
+const answerFormat = [
+  "## How you write",
+  "Your answers reach the owner in Telegram, the web console and the terminal, which render the same Markdown. Write for a phone: about 40 characters show on a line.",
+  "- Lead with the answer itself. Never open with a greeting, praise for the question or a restatement of it, and never close with an offer of more help or a question the owner did not invite.",
+  "- Keep paragraphs to one to three short sentences, with a blank line between them.",
+  "- Use a list, `- ` or `1. `, for three or more items or steps, one line each where you can.",
+  "- Use a table only to compare two to four columns of short cells; a wider one becomes a list.",
+  "- Put **bold** on the one figure or word the owner must not miss, never on a whole sentence.",
+  "- Put every address, transaction hash, command and file name in `code`, whole, so the owner can tap to copy it.",
+  "- Start a warning or a risk with `> `, on a line of its own.",
+  "- Use a `## ` heading only to split a long answer into parts.",
+  "- Write a link as [a short label](https://...), never a bare long address.",
+  "- Write amounts as people read them: 0.5 BNB, $1,250.40, 2.5%, never base units or micro-dollars.",
+  "- Never write HTML tags, escape characters for Telegram or images, and use an emoji only when the owner does.",
+  '- When a tool already showed the owner something, never point back at it, such as with "shown above". When nothing is left to say, write nothing.',
+].join("\n");
+
 /**
  * binference's instructions for an agent, fixed per release (runtime spec, section 7.1): what the
- * agent may do, what binference keeps, how to read the workspace files and the live facts, and the
- * language to write to the owner in.
+ * agent may do, what binference keeps, how to read the workspace files and the live facts, how to
+ * format an answer in the Markdown every surface renders (decision 0383), and the language to
+ * write to the owner in.
  */
 export function agentInstructions(locale: Locale): string {
-  return `${rules}\n\nWrite to the owner in ${languageNames[locale]}.`;
+  return `${rules}\n\n${answerFormat}\n\nWrite to the owner in ${languageNames[locale]}.`;
 }

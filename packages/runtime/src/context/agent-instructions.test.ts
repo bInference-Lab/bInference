@@ -22,6 +22,16 @@ describe("the agent's instructions", () => {
     );
   });
 
+  it("give the Markdown every surface renders and a style for a phone, before the language", () => {
+    const text = agentInstructions("en");
+    expect(text).toContain("## How you write");
+    expect(text).toContain("Put every address, transaction hash, command and file name in `code`");
+    expect(text).toContain("When nothing is left to say, write nothing.");
+    expect(text.indexOf("## How you write")).toBeLessThan(
+      text.indexOf("Write to the owner in English."),
+    );
+  });
+
   it("run the first chat on the owner's messages and end it with the agent's own tools", () => {
     const text = agentInstructions("zh");
     expect(text).toContain("a short introduction, never a gate");

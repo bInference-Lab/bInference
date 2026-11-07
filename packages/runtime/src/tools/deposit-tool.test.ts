@@ -35,7 +35,7 @@ describe("the deposit_address tool", () => {
       "Launch (launch wallet, eip155:56): 0x0000000000000000000000000000000000000b0b",
     ];
     expect(outcome.text.split("\n").slice(1, 3)).toStrictEqual(lines);
-    expect(outcome.text).toContain("Do not repeat any of it.");
+    expect(outcome.text).toContain("Do not repeat or point back at any of it.");
     expect(outcome.shown).toStrictEqual([
       ...lines,
       "0x52908400098527886E0F7030069857D2E4169EE7",

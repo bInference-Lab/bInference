@@ -515,7 +515,9 @@ launchpad takes a picture, and its settings.
 The context of a model call is data with three parts, never one string with a marker:
 
 1. **The stable prefix**, the same bytes from call to call while nothing in it changes:
-   1. binference's instructions for the agent, fixed per version, with the owner's language;
+   1. binference's instructions for the agent, fixed per version, with how to write an answer in
+      the Markdown every surface renders ([decision 0383](../DECISIONS.md#d0383)) and the owner's
+      language;
    2. the workspace files in this order: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`,
       `NOTES.md`, and `FIRST-CHAT.md` while it exists and the agent is in paper mode
       ([decision 0242](../DECISIONS.md#d0242)), whose questions never ride on an answer to the
