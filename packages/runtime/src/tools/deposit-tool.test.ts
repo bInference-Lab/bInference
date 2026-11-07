@@ -30,10 +30,16 @@ describe("the deposit_address tool", () => {
     expect(run.client.calls()).toStrictEqual([
       { op: "turn/deposit", args: { agent, turn: toolTurn.turn } },
     ]);
-    expect(outcome.text.split("\n")).toStrictEqual([
-      "The owner now sees each of these wallets in this chat, with its address and its QR code:",
+    const lines = [
       "Main (agent wallet, BNB Smart Chain): 0x52908400098527886E0F7030069857D2E4169EE7",
       "Launch (launch wallet, eip155:56): 0x0000000000000000000000000000000000000b0b",
+    ];
+    expect(outcome.text.split("\n").slice(1, 3)).toStrictEqual(lines);
+    expect(outcome.text).toContain("Do not repeat any of it.");
+    expect(outcome.shown).toStrictEqual([
+      ...lines,
+      "0x52908400098527886E0F7030069857D2E4169EE7",
+      "0x0000000000000000000000000000000000000b0b",
     ]);
     expect(outcome.isError).toBe(false);
   });

@@ -41,11 +41,16 @@ export function depositTool({ agent, client, turn }: AgentToolParts): AgentTool 
     run: async (_args, { signal }) =>
       answerOrRefusal({ tool: "deposit_address", refusals }, async () => {
         const shown = await client.call("turn/deposit", { agent, turn: turn.turn }, { signal });
+        const lines = shown.wallets.map(lineOf);
         const text = [
-          "The owner now sees each of these wallets in this chat, with its address and its QR code:",
-          ...shown.wallets.map(lineOf),
+          "The owner now sees a message for each of these wallets in this chat, above your answer: its QR code, its address, the network to send on and, while the agent trades on paper or is frozen, what that means for a deposit.",
+          ...lines,
+          "Do not repeat any of it. Answer only what the owner asked that these messages do not say, or write nothing more.",
         ].join("\n");
-        return { text, isError: false };
+        const addresses = shown.wallets.map((view) =>
+          view.address.slice(view.address.lastIndexOf(":") + 1),
+        );
+        return { text, isError: false, shown: [...lines, ...addresses] };
       }),
   });
 }

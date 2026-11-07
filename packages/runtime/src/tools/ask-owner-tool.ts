@@ -41,7 +41,7 @@ export function askOwnerTool({ agent, client, turn }: AgentToolParts): AgentTool
       answerOrRefusal({ tool: "ask_owner", refusals }, async () => {
         const asked = { agent, session: turn.session, turn: turn.turn, text, choices };
         await client.call("turn/ask", asked, { signal, key: idempotencyKey });
-        return { text: askedText, isError: false, endsTurn: true };
+        return { text: askedText, isError: false, endsTurn: true, shown: [text, ...choices] };
       }),
   });
 }

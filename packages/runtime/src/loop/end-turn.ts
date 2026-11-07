@@ -3,6 +3,7 @@ import type { TurnReport } from "./chat-turn.js";
 import { notRunText } from "./not-run.js";
 import { unknownProposal } from "./run-tool-call.js";
 import { settleBy } from "./settle-by.js";
+import { withoutShownText } from "./shown-text.js";
 import type { TurnStatusLine } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 import type { LoopEnd } from "./turn-step.js";
@@ -43,8 +44,9 @@ export async function answerOpenCalls(run: TurnRun): Promise<void> {
 
 async function sayAndStatus(run: TurnRun, status: TurnStatusLine | undefined): Promise<boolean> {
   const { engine } = run.parts;
-  const { lastText } = run.tally.now();
-  const said = lastText === "" || (await bestEffort(run, async (s) => engine.say(lastText, s)));
+  const { lastText, shown: toldOwner } = run.tally.now();
+  const text = withoutShownText(lastText, toldOwner);
+  const said = text === "" || (await bestEffort(run, async (s) => engine.say(text, s)));
   const line = said ? status : portFailure.status;
   const shown = line === undefined || (await bestEffort(run, async (s) => engine.status(line, s)));
   return said && shown;
@@ -52,7 +54,8 @@ async function sayAndStatus(run: TurnRun, status: TurnStatusLine | undefined): P
 
 /**
  * Ends a turn in the order the runtime spec gives (section 11): its feed settles, so no draft
- * follows the answer, then its final text, its status line, its end in the journal, then
+ * follows the answer, then its final text without a paragraph that repeats what a tool showed the
+ * owner (decision 0381), its status line, its end in the journal, then
  * `turn/end`. A turn that ends well with no line of its own ends with the closing line a tool
  * gave it. Each write is best effort with its own time limit, so a
  * port that fails or never answers still lets the turn end; any such failure ends it `failed`.

@@ -16,6 +16,12 @@ describe("the agent's instructions", () => {
     expect(text).toContain("never try to reach its keys, token or databases another way");
   });
 
+  it("tell the agent never to repeat what a tool showed the owner", () => {
+    expect(agentInstructions("en")).toContain(
+      "the owner already sees: never repeat it in your answer",
+    );
+  });
+
   it("run the first chat on the owner's messages and end it with the agent's own tools", () => {
     const text = agentInstructions("zh");
     expect(text).toContain("follow it in a turn that answers the owner's own message");

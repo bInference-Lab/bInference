@@ -3,6 +3,7 @@ import type { ModelEvent } from "./model-event.js";
 import type { ModelChain } from "./ports.js";
 import { type ModelFault, type ModelResponse, readModelResponse } from "./read-model-response.js";
 import { recordAttempt } from "./record-usage.js";
+import { withoutShownText } from "./shown-text.js";
 import type { ChainModel, ModelRequest } from "./turn-records.js";
 import type { ModelRoute, TurnRun } from "./turn-run.js";
 
@@ -109,7 +110,7 @@ async function attempt(
     const shown =
       line.isShown === true
         ? {
-            onText: (soFar: string) => feed.text(soFar),
+            onText: (soFar: string) => feed.text(withoutShownText(soFar, run.tally.now().shown)),
             onReasoning: (soFar: string) => feed.reasoning(soFar),
           }
         : {};

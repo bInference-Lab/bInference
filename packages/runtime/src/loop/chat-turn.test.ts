@@ -164,6 +164,39 @@ describe("createChatTurn", () => {
     ]);
   });
 
+  it("leaves out of the final text each paragraph that repeats what a tool showed the owner", async () => {
+    const address = "0xb97Bd0df3824c4572179d1BB7EBc995EDAf503e0";
+    const deposit: TestTool = {
+      name: "deposit_address",
+      kind: "control",
+      run: async () => Promise.resolve({ text: "Shown.", isError: false, shown: [address] }),
+    };
+    const answer = `Your QR code is above.\n\n\`${address}\`\n\nSend only on BNB Smart Chain.`;
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "deposit_address" }]), textReply(answer)],
+      tools: [deposit],
+    });
+    await turn.run();
+    expect(recorder.steps.filter((step) => step.kind === "say")).toStrictEqual([
+      { kind: "say", text: "Your QR code is above.\n\nSend only on BNB Smart Chain." },
+    ]);
+  });
+
+  it("says nothing when the final text only repeats what a tool showed", async () => {
+    const asked: TestTool = {
+      name: "ask_owner",
+      kind: "control",
+      run: async () =>
+        Promise.resolve({ text: "Asked.", isError: false, shown: ["Hold for hours or days?"] }),
+    };
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "ask_owner" }]), textReply("**Hold for hours or days?**")],
+      tools: [asked],
+    });
+    await turn.run();
+    expect(recorder.steps.filter((step) => step.kind === "say")).toStrictEqual([]);
+  });
+
   it("ends failed when the model call fails, naming the failure in its status line", async () => {
     const { turn, recorder } = createTestTurn({
       replies: [[{ type: "error", failure: "auth", message: "401" }]],

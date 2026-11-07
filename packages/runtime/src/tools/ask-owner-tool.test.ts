@@ -59,6 +59,7 @@ describe("ask_owner", () => {
       text: askedText,
       isError: false,
       endsTurn: true,
+      shown: [question.text, ...question.choices],
     });
     expect(run.client.calls()).toStrictEqual([
       {

@@ -1,3 +1,4 @@
+import { withShown } from "./shown-text.js";
 import type { ClosingLine } from "./turn-records.js";
 
 /** Where a turn is (runtime spec, section 4.1). */
@@ -36,6 +37,8 @@ interface TurnMarks {
   readonly proposal?: ProposalAnswer;
   /** The line a tool's work gives the turn when it ends well with no other. */
   readonly closingLine?: ClosingLine;
+  /** What the turn's tools showed the owner, which its answer does not repeat (decision 0381). */
+  readonly shown: readonly string[];
 }
 
 /** How the engine answered a proposal it heard: a card waits for the owner, or it was refused. */
@@ -59,6 +62,8 @@ export interface TurnTally {
   answerProposal(answer: ProposalAnswer): void;
   /** Keeps the line a tool's work gives the turn; a later one replaces it. */
   close(line: ClosingLine): void;
+  /** Keeps what a tool showed the owner, so the answer does not repeat it. */
+  show(texts: readonly string[]): void;
 }
 
 function entered(marks: TurnMarks, state: TurnState): TurnMarks {
@@ -82,6 +87,7 @@ const unstarted: TurnMarks = {
   budgetSpent: false,
   looped: false,
   lastText: "",
+  shown: [],
 };
 
 /** A new turn's tally: `starting`, marked when its context already holds outside content. */
@@ -122,6 +128,9 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     },
     close(closingLine) {
       marks = { ...marks, closingLine };
+    },
+    show(texts) {
+      marks = { ...marks, shown: withShown(marks.shown, texts) };
     },
   };
 }

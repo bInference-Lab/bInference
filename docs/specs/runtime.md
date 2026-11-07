@@ -378,6 +378,12 @@ engine holds these wallets for the agent, so its answer is never outside content
 - The runtime fills the agent and the wallet; the model gives the terms and its reason, shown on the
   card as "agent says". A wallet outside the agent's own is refused
   ([decision 0176](../DECISIONS.md#d0176)).
+- A tool that shows the owner something in the chat, such as a deposit address, a question or a
+  launch draft, also names what it showed. The turn keeps those texts, at most 200, and its drafts
+  and final text leave out each paragraph that repeats one: both lowercase, without pictographs or
+  Markdown marks and with runs of space as one, one holds the other and the shorter is at least
+  half of the longer; a text under 10 characters never counts. A final text that only repeats is
+  not said ([decision 0381](../DECISIONS.md#d0381)).
 - A result is text for the model, cut to 12,000 characters with a line saying how much was cut.
   A tool's error is a result too, never a turn failure.
 - A read or control call times out after 60 seconds and returns its timeout as its result. A

@@ -57,6 +57,11 @@ export interface ToolOutcome {
    * ends well and has no other line.
    */
   readonly closingLine?: ClosingLine;
+  /**
+   * What the tool showed the owner in the turn's chat, such as an address or a question: the
+   * agent's answer leaves out each paragraph that repeats one (decision 0381).
+   */
+  readonly shown?: readonly string[];
 }
 
 /** A status line a tool's work gives a turn that ends well: the first chat ended. */

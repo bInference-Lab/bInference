@@ -81,6 +81,7 @@ export async function executeCall(
   if (settled.value.closingLine !== undefined) {
     run.tally.close(settled.value.closingLine);
   }
+  run.tally.show(settled.value.shown ?? []);
   return { result: resultOf(ready, settled.value), endsTurn: settled.value.endsTurn === true };
 }
 

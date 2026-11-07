@@ -34,7 +34,11 @@ async function draftWith(args: object, answer: FakeAnswer = drafted) {
 describe("launch_draft", () => {
   it("drafts with the turn's nth photo, in the turn it serves", async () => {
     const { outcome, calls } = await draftWith({ launch, photo: 2 });
-    expect(outcome).toStrictEqual({ text: draftedText, isError: false });
+    expect(outcome).toStrictEqual({
+      text: draftedText,
+      isError: false,
+      shown: ["Moon Cat (MCAT)"],
+    });
     expect(calls).toStrictEqual([
       {
         op: "launch/draft",

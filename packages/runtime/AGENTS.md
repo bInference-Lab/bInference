@@ -21,3 +21,6 @@ this package:
 - The turn loop in `src/loop/` depends only on its ports (`ports.ts`, each with a contract suite)
   and reads a tool's kind, never its name. Keep each step a small function: a new rule of the turn
   is a new step or a new port method, never another branch in `takeStep`.
+- A tool that shows the owner something in the chat names it in its outcome's `shown`; the turn's
+  drafts and final text leave out each paragraph that repeats it (`loop/shown-text.ts`, decision
+  0381), so the owner never reads the same thing twice.

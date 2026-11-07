@@ -64,7 +64,11 @@ export function launchDraftTool({ agent, client, turn }: AgentToolParts): AgentT
           ...(picked === undefined ? {} : { photo: picked }),
         };
         await client.call("launch/draft", drafted, { signal, key: idempotencyKey });
-        return { text: draftedText, isError: false };
+        // The owner's draft shows every term; the answer need not say them again.
+        const shown = [launch.description, `${launch.name} (${launch.symbol})`].flatMap((text) =>
+          text === undefined ? [] : [text],
+        );
+        return { text: draftedText, isError: false, shown };
       });
     },
   });
