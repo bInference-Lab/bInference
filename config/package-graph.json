@@ -26,7 +26,9 @@
     },
     "platform": {
       "imports": ["core", "execa", "which-command", "@napi-rs/keyring", "undici"],
-      "only": { "undici": "src/outbound" },
+      "only": {
+        "undici": "src/outbound"
+      },
       "osLayer": true,
       "fileSystem": true
     },
@@ -177,6 +179,10 @@
     },
     "plugin-host": {
       "imports": ["core", "platform", "plugin-sdk"]
+    },
+    "qr": {
+      "imports": ["qr"],
+      "pure": true
     }
   },
   "plugins": {

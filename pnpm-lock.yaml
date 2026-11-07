@@ -326,6 +326,9 @@ catalogs:
     pg:
       specifier: 8.23.1
       version: 8.23.1
+    qr:
+      specifier: 0.7.2
+      version: 0.7.2
     react:
       specifier: 19.3.0
       version: 19.3.0
@@ -957,6 +960,12 @@ importers:
       zod:
         specifier: 4.6.6
         version: 4.6.6
+
+  packages/qr:
+    dependencies:
+      qr:
+        specifier: 'catalog:'
+        version: 0.7.2
 
   packages/runtime:
     dependencies:
@@ -6019,6 +6028,10 @@ packages:
 
   pure-rand@8.4.2:
     resolution: {integrity: sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng==}
+
+  qr@0.7.2:
+    resolution: {integrity: sha512-yovYRuacJBJkG9fWSwcB2bKZhr58c04DpOXguDU+rAAoJZdi6/J3DtlomkKqdd1MutIptIK+kigWmT7LKz8y7A==}
+    engines: {node: '>= 20.19.0'}
 
   qs@6.16.1:
     resolution: {integrity: sha512-5Px6J7rfHBAGUhNQ3es4YzcOdBBw0SDcVtThJml4RdnKw4tKs2epA0kPZ+K8X+WiHktT93RHVcQ/3ym5aTCgtg==}
@@ -11258,6 +11271,8 @@ snapshots:
   punycode@2.3.1: {}
 
   pure-rand@8.4.2: {}
+
+  qr@0.7.2: {}
 
   qs@6.16.1:
     dependencies:
