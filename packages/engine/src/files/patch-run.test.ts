@@ -1,6 +1,7 @@
 import { err } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { createMemoryFiles, memoryFilePlaces } from "../fakes/memory-files.js";
+import { byteOrderMark } from "./byte-order-mark.js";
 import { runPatch } from "./patch-run.js";
 import type { MachineFiles } from "./ports.js";
 
@@ -29,7 +30,7 @@ describe("runPatch", () => {
   it("adds, updates, moves and deletes files in the patch's order", async () => {
     const files = createMemoryFiles({
       [`${workspace}/a.md`]: "one\ntwo\n",
-      [`${workspace}/b.md`]: "﻿old\n",
+      [`${workspace}/b.md`]: byteOrderMark + "old\n",
       [`${workspace}/gone.md`]: "x\n",
     });
     const ran = await runPatch(
@@ -60,7 +61,7 @@ describe("runPatch", () => {
     });
     expect(await read(files, "new.md")).toBe("hello\n");
     expect(await read(files, "a.md")).toBe("one\n2\n");
-    expect(await read(files, "c.md")).toBe("﻿new\n");
+    expect(await read(files, "c.md")).toBe(byteOrderMark + "new\n");
     expect(await read(files, "b.md")).toBe("not_found");
     expect(await read(files, "gone.md")).toBe("not_found");
   });
@@ -74,7 +75,7 @@ describe("runPatch", () => {
     );
     expect(ran.files).toStrictEqual([]);
     expect(ran.problem).toBe(
-      "The patch changed nothing: change 1 of a.md: the lines it changes are not in the file; read the file again.",
+      "The patch changed nothing: change 1 of a.md: these lines are not in the file; read the file again:\nmissing.",
     );
     expect(await read(files, "b.md")).toBe("not_found");
   });
@@ -177,5 +178,11 @@ describe("runPatch", () => {
     );
     const overEmpty = await runPatch(files, patch("*** Add File: empty.md", "+z"), call);
     expect(overEmpty.problem).toMatch(/empty\.md: a file is already there/);
+  });
+
+  it("writes and names no file a change leaves as it was", async () => {
+    const files = createMemoryFiles({ [`${workspace}/a.md`]: "same\n" });
+    const ran = await runPatch(files, patch("*** Update File: a.md", "@@", "-same", "+same"), call);
+    expect(ran).toStrictEqual({ files: [] });
   });
 });

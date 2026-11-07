@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
+import { byteOrderMark } from "./byte-order-mark.js";
 import { planEdits } from "./edit-plan.js";
 
-const curlyQuote = String.fromCodePoint(0x201c, 0x201d);
+const curly = String.fromCodePoint(0x201c, 0x201d);
 const enDash = String.fromCodePoint(0x2013);
+const planned = (text: string, replaced: number, changed = true) => ({
+  kind: "planned",
+  plan: { text, replaced, changed },
+});
 
 describe("planEdits", () => {
   it("makes each exact replacement against the text as it was", () => {
@@ -10,62 +15,67 @@ describe("planEdits", () => {
       { oldText: "c = 3", newText: "c = 30" },
       { oldText: "a = 1", newText: "a = 10" },
     ]);
-    expect(plan).toStrictEqual({
-      ok: true,
-      value: { text: "a = 10\nb = 2\nc = 30\n", replaced: 2, changed: true },
-    });
+    expect(plan).toStrictEqual(planned("a = 10\nb = 2\nc = 30\n", 2));
   });
 
-  it("finds text by a loose match of trailing spaces, quotes and dashes, and replaces the file's own span", () => {
-    const text = `say ${curlyQuote.charAt(0)}hi${curlyQuote.charAt(1)}   \nrange 1${enDash}2\nend\n`;
-    const plan = planEdits(text, [{ oldText: 'say "hi"\nrange 1-2', newText: "gone" }]);
-    expect(plan).toStrictEqual({
-      ok: true,
-      value: { text: "gone\nend\n", replaced: 1, changed: true },
-    });
+  it("finds text by a loose match of spaces, quotes, dashes and compatible characters", () => {
+    const text = `say ${curly.charAt(0)}hi${curly.charAt(1)}   \nrange 1${enDash}2\n${String.fromCodePoint(0xff21)}\nend\n`;
+    const plan = planEdits(text, [{ oldText: 'say "hi"\nrange 1-2\nA', newText: "gone" }]);
+    expect(plan).toStrictEqual(planned("gone\nend\n", 1));
   });
 
-  it("keeps the file's line breaks and its byte order mark", () => {
-    const plan = planEdits("﻿one\r\ntwo\r\n", [{ oldText: "one\ntwo", newText: "1\n2" }]);
-    expect(plan).toStrictEqual({
-      ok: true,
-      value: { text: "﻿1\r\n2\r\n", replaced: 1, changed: true },
-    });
+  it("keeps each line's own line break and the byte order mark", () => {
+    const mixed = planEdits(`${byteOrderMark}one\r\ntwo\nthree\r\n`, [
+      { oldText: "two\nthree", newText: "2\n3" },
+    ]);
+    expect(mixed).toStrictEqual(planned(`${byteOrderMark}one\r\n2\n3\r\n`, 1));
+    const inLine = planEdits("a\r\nb\r\n", [{ oldText: "b", newText: "x\ny" }]);
+    expect(inLine).toStrictEqual(planned("a\r\nx\r\ny\r\n", 1));
   });
 
-  it("refuses text that is missing, repeated or overlapping, and an empty old text", () => {
+  it("names the edit whose text is missing, repeated or overlapping", () => {
     expect(planEdits("abc", [{ oldText: "x", newText: "y" }])).toStrictEqual({
-      ok: false,
-      error: "file.no_match",
+      kind: "refused",
+      problem: { kind: "no_match", index: 0 },
     });
-    expect(planEdits("ab ab", [{ oldText: "ab", newText: "y" }])).toStrictEqual({
-      ok: false,
-      error: "file.many_matches",
+    expect(
+      planEdits("ab ab", [
+        { oldText: "a", newText: "b" },
+        { oldText: "ab", newText: "y" },
+      ]),
+    ).toStrictEqual({
+      kind: "refused",
+      problem: { kind: "many_matches", index: 0, count: 2 },
     });
-    expect(planEdits("x  \nx \n", [{ oldText: "x", newText: "y" }])).toStrictEqual({
-      ok: false,
-      error: "file.many_matches",
+    expect(
+      planEdits("x  \nx \n", [
+        { oldText: "y", newText: "" },
+        { oldText: "x\t", newText: "z" },
+      ]),
+    ).toMatchObject({
+      problem: { kind: "no_match", index: 0 },
     });
     expect(planEdits("y  \ny \n", [{ oldText: "y\t", newText: "z" }])).toStrictEqual({
-      ok: false,
-      error: "file.many_matches",
+      kind: "refused",
+      problem: { kind: "many_matches", index: 0, count: 2 },
     });
     expect(
       planEdits("abcdef", [
         { oldText: "abcd", newText: "1" },
         { oldText: "cdef", newText: "2" },
       ]),
-    ).toStrictEqual({ ok: false, error: "file.overlap" });
-    expect(planEdits("abc", [{ oldText: "", newText: "y" }])).toStrictEqual({
-      ok: false,
-      error: "file.no_match",
+    ).toStrictEqual({
+      kind: "refused",
+      problem: { kind: "overlap", index: 0, other: 1 },
+    });
+    expect(planEdits("abc", [{ oldText: "", newText: "y" }])).toMatchObject({
+      problem: { kind: "no_match" },
     });
   });
 
   it("says when the replacements leave the text as it was", () => {
-    expect(planEdits("same", [{ oldText: "same", newText: "same" }])).toStrictEqual({
-      ok: true,
-      value: { text: "same", replaced: 0, changed: false },
-    });
+    expect(planEdits("same", [{ oldText: "same", newText: "same" }])).toStrictEqual(
+      planned("same", 0, false),
+    );
   });
 });

@@ -1,6 +1,6 @@
 # 0384. The agent reads a note whole and forgets its own notes
 
-Status: Accepted
+Status: Amended by 0389
 
 Accepted by the owner on 2026-11-07.
 

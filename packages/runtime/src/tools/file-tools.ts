@@ -25,11 +25,6 @@ const refusals: Readonly<Record<string, string>> = {
   "file.exists": "A file is already there.",
   "file.unreadable": "The file could not be read: check its permissions.",
   "file.unwritable": "The file could not be written: check that its folder is the owner's.",
-  "file.no_match":
-    "Could not find the exact text in the file. The old text must match exactly, including all whitespace and line breaks.",
-  "file.many_matches":
-    "The old text appears more than once in the file. It must be unique: add lines around it.",
-  "file.overlap": "Two edits overlap. Merge them into one edit or target separate parts.",
   "file.offset_past_end": "The file ends before that line. Read from an earlier line.",
 };
 
@@ -50,10 +45,21 @@ async function answerOrRefusal(
 
 type TextPage = Extract<ResultOf<"file/read">, { readonly kind: "text" }>;
 
+// Where the next page starts, as the model writes the call that reads it.
+function continueAt(next: NonNullable<TextPage["next"]>): string {
+  return next.cursor === undefined
+    ? `offset=${String(next.offset)}`
+    : `offset=${String(next.offset)} cursor=${String(next.cursor)}`;
+}
+
 // A page as the model reads it: its text, then where to go on when the file holds more.
 function pageText(page: TextPage): string {
   if (page.totalLines === 0) {
     return "The file is empty.";
+  }
+  if (page.startLine > page.totalLines) {
+    const total = String(page.totalLines);
+    return `Offset ${String(page.startLine)} is past the end of the file (${total} lines in all). Read again with an offset of ${total} or less.`;
   }
   const { next } = page;
   if (next === undefined) {
@@ -62,8 +68,8 @@ function pageText(page: TextPage): string {
   const more = page.totalLines - page.endLine;
   const note =
     next.cutBy === "bytes"
-      ? `[Read output capped at ${String(fileLimits.maxFileReadBytes / 1024)} KB for this call. Use offset=${String(next.offset)} to continue.]`
-      : `[${String(more)} more line${more === 1 ? "" : "s"} in file. Use offset=${String(next.offset)} to continue.]`;
+      ? `[Read output capped at ${String(fileLimits.maxFileReadBytes / 1024)} KB for this call. Use ${continueAt(next)} to continue.]`
+      : `[${String(more)} more line${more === 1 ? "" : "s"} in file. Use ${continueAt(next)} to continue.]`;
   return `${page.text}\n\n${note}`;
 }
 
@@ -71,8 +77,10 @@ const readArgs: z.ZodType<{
   readonly path: string;
   readonly offset?: number;
   readonly limit?: number;
+  readonly cursor?: number;
 }> = z.strictObject({
   path,
+  cursor: z.int().min(0).exactOptional(),
   offset: z.int().min(1).exactOptional(),
   limit: z.int().min(1).max(fileLimits.maxFileReadLines).exactOptional(),
 });
@@ -96,7 +104,11 @@ function fileReadTool(parts: AgentToolParts): AgentTool {
           ? lookAtPlace(
               parts,
               { path: read.path },
-              { signal, look, question: "What does it show?" },
+              {
+                signal,
+                look,
+                question: "What does it show?",
+              },
             )
           : { text: pageText(read), isError: false };
       }),
@@ -112,54 +124,79 @@ function fileWriteTool({ agent, client }: AgentToolParts): AgentTool {
     run: async (args, { signal }) =>
       answerOrRefusal("file_write", async () => {
         const written = await client.call("file/write", { agent, ...args }, { signal });
-        return {
-          text: `Successfully wrote ${String(written.bytes)} bytes to ${written.path}.`,
-          isError: false,
-        };
+        const said = written.changed
+          ? `Successfully wrote ${String(written.bytes)} bytes to ${written.path}.`
+          : `No changes made to ${written.path}; it already holds this content.`;
+        return { text: said, isError: false };
       }),
   });
 }
 
-/** The most characters of a file a failed edit shows the agent, to copy the text exactly. */
-const mismatchHintChars = 800;
+/** The args of `file_edit`: a list of edits, or one edit written as its two texts. */
+interface EditArgs {
+  readonly path: string;
+  readonly edits?: readonly { readonly oldText: string; readonly newText: string }[];
+  readonly oldText?: string;
+  readonly newText?: string;
+}
+
+const editArgs: z.ZodType<EditArgs> = z.strictObject({
+  path,
+  edits: z
+    .array(z.strictObject({ oldText: text.min(1), newText: text }))
+    .max(100)
+    .exactOptional(),
+  oldText: text.min(1).exactOptional(),
+  newText: text.exactOptional(),
+});
+
+// Every edit a call names: its list, then its one edit written as two texts, once.
+function editsOf(
+  args: EditArgs,
+): readonly { readonly oldText: string; readonly newText: string }[] {
+  const listed = args.edits ?? [];
+  const { oldText, newText } = args;
+  if (oldText === undefined || newText === undefined) {
+    return listed;
+  }
+  const isListed = listed.some((each) => each.oldText === oldText && each.newText === newText);
+  return isListed ? listed : [...listed, { oldText, newText }];
+}
+
+function editAnswer(edited: ResultOf<"file/edit">): ToolOutcome {
+  if (edited.problem !== undefined) {
+    // The problem may quote the file's lines, so it is outside content.
+    return { text: edited.problem, isError: true, outside: true };
+  }
+  return edited.changed
+    ? {
+        text: `Successfully replaced ${String(edited.replaced ?? 0)} block(s) in ${edited.path}.`,
+        isError: false,
+      }
+    : {
+        text: `No changes made to ${edited.path}. The replacement text is identical to the original.`,
+        isError: false,
+      };
+}
 
 function fileEditTool({ agent, client }: AgentToolParts): AgentTool {
   return defineTool({
     name: "file_edit",
     kind: "machine",
     description: agentToolTexts.file_edit,
-    args: z.strictObject({
-      path,
-      edits: z
-        .array(z.strictObject({ oldText: text.min(1), newText: text }))
-        .min(1)
-        .max(100),
-    }),
+    args: editArgs,
     run: async (args, { signal }) =>
       answerOrRefusal("file_edit", async () => {
-        try {
-          const edited = await client.call("file/edit", { agent, ...args }, { signal });
-          return edited.changed
-            ? {
-                text: `Successfully replaced ${String(edited.replaced ?? 0)} block(s) in ${edited.path}.`,
-                isError: false,
-              }
-            : {
-                text: `No changes made to ${edited.path}. The replacement text is identical to the original.`,
-                isError: false,
-              };
-        } catch (error) {
-          if (!(error instanceof BinferenceError) || error.code !== "file.no_match") {
-            throw error;
-          }
-          const read = await client.call("file/read", { agent, path: args.path }, { signal });
-          const shown = read.kind === "text" ? read.text.slice(0, mismatchHintChars) : "";
-          return {
-            text: `${refusals["file.no_match"] ?? ""}\nCurrent file contents:\n${shown}`,
-            isError: true,
-            outside: true,
-          };
+        const edits = editsOf(args);
+        if (edits.length === 0) {
+          return { text: "Name at least one edit: edits, or oldText with newText.", isError: true };
         }
+        const edited = await client.call(
+          "file/edit",
+          { agent, path: args.path, edits },
+          { signal },
+        );
+        return editAnswer(edited);
       }),
   });
 }
@@ -182,6 +219,12 @@ function filePatchTool({ agent, client }: AgentToolParts): AgentTool {
         const patched = await client.call("file/patch", { agent, ...args }, { signal });
         if (patched.problem !== undefined) {
           return { text: patched.problem, isError: true };
+        }
+        if (patched.files.length === 0) {
+          return {
+            text: "No changes made: the patch leaves every file as it was.",
+            isError: false,
+          };
         }
         const lines = patched.files.map(
           (file) =>

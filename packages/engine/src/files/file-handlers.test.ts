@@ -22,6 +22,7 @@ function setUp(files: MachineFiles, settings: FileSettings = open) {
       readonly path: string;
       readonly offset?: number;
       readonly limit?: number;
+      readonly cursor?: number;
     }) => handlers["file/read"](call(args)),
     write: async (path: string, content: string) => handlers["file/write"](call({ path, content })),
     edit: async (
@@ -92,9 +93,13 @@ describe("the file handlers", () => {
       ok: true,
       value: { path: `${home}/a.txt`, changed: false, bytes: 6, replaced: 0 },
     });
-    expect(await files.edit("~/a.txt", [{ oldText: "zz", newText: "y" }])).toStrictEqual({
-      ok: false,
-      error: "file.no_match",
+    expect(await files.edit("~/a.txt", [{ oldText: "zz", newText: "y" }])).toMatchObject({
+      ok: true,
+      value: {
+        path: `${home}/a.txt`,
+        changed: false,
+        problem: expect.stringContaining("its old text is not in the file") as string,
+      },
     });
   });
 
@@ -163,5 +168,60 @@ describe("the file handlers", () => {
       ok: false,
       error: "file.unwritable",
     });
+  });
+
+  it("read a UTF-16 file as text, and answer a write that changes nothing as unchanged", async () => {
+    const machine = createMemoryFiles();
+    const utf16 = new Uint8Array([0xff, 0xfe, 0x68, 0x00, 0x69, 0x00]);
+    await machine.write("~/w.txt", utf16, {
+      signal: new AbortController().signal,
+      workspaceOnly: false,
+    });
+    const files = setUp(machine);
+    expect(await files.read({ path: "~/w.txt" })).toMatchObject({
+      ok: true,
+      value: { text: "hi" },
+    });
+    await files.write("same.md", "x");
+    expect(await files.write("same.md", "x")).toStrictEqual({
+      ok: true,
+      value: { path: `${workspace}/same.md`, changed: false, bytes: 1 },
+    });
+  });
+
+  it("refuse a write the file does not hold when read back", async () => {
+    const memory = createMemoryFiles();
+    const files = setUp({
+      ...memory,
+      write: async (path, _bytes, options) => memory.write(path, new Uint8Array([0x2a]), options),
+    });
+    expect(await files.write("a.md", "abc")).toStrictEqual({ ok: false, error: "file.unwritable" });
+  });
+
+  it("keep a patch in the workspace when only workspaceOnly is on", async () => {
+    const files = setUp(createMemoryFiles({ [`${home}/n.md`]: "x\n" }), {
+      workspaceOnly: true,
+      patchWorkspaceOnly: false,
+    });
+    expect(
+      await files.patch("*** Begin Patch\n*** Delete File: ~/n.md\n*** End Patch"),
+    ).toMatchObject({
+      ok: true,
+      value: {
+        files: [],
+        problem: expect.stringContaining("outside the agent's workspace") as string,
+      },
+    });
+  });
+
+  it("go on inside a line longer than a page from the cursor the last page gave", async () => {
+    const files = setUp(createMemoryFiles());
+    await files.write("long.txt", `${"a".repeat(12_000)}\nend\n`);
+    expect(await files.read({ path: "long.txt" })).toMatchObject({
+      ok: true,
+      value: { next: { offset: 1, cursor: 10_240, cutBy: "bytes" } },
+    });
+    const second = await files.read({ path: "long.txt", offset: 1, cursor: 10_240 });
+    expect(second).toMatchObject({ ok: true, value: { startLine: 1 } });
   });
 });

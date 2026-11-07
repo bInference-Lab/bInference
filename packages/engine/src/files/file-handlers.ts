@@ -2,11 +2,13 @@ import { err, ok } from "@binference/core";
 import { imageTypeOf, type ProtocolErrorCode } from "@binference/protocol";
 import type { EngineHandler } from "../operations/engine-call.js";
 import { planEdits } from "./edit-plan.js";
+import { editProblemText } from "./edit-problems.js";
 import type { FileSettings } from "./file-records.js";
-import { isBinary, maxFileBytes, readText, textOf } from "./file-text.js";
+import { isBinary, maxFileBytes, readText, textOf, utf16TextOf } from "./file-text.js";
 import { runPatch } from "./patch-run.js";
 import type { FileRefusal, MachineFiles } from "./ports.js";
 import { readPage } from "./read-page.js";
+import { holdingAlready, writeChecked } from "./write-checked.js";
 
 /** The handlers of the agent's file tools (protocol spec, section 7.11). */
 export interface FileHandlers {
@@ -53,24 +55,29 @@ function readHandler({ files, settings }: EngineFiles): EngineHandler<"file/read
     if (imageTypeOf(bytes) !== undefined) {
       return ok({ kind: "image", path });
     }
-    if (isBinary(bytes)) {
+    const utf16 = utf16TextOf(bytes);
+    if (utf16 === undefined && isBinary(bytes)) {
       return err("file.binary");
     }
     const request = {
       ...(args.offset === undefined ? {} : { offset: args.offset }),
       ...(args.limit === undefined ? {} : { limit: args.limit }),
+      ...(args.cursor === undefined ? {} : { cursor: args.cursor }),
     };
-    return readPage({ path, text: textOf(bytes).text }, request);
+    return ok(readPage({ path, text: utf16 ?? textOf(bytes).text }, request));
   };
 }
 
 function writeHandler({ files, settings }: EngineFiles): EngineHandler<"file/write"> {
   return async ({ args, signal }) => {
     const bytes = encoder.encode(args.content);
-    const written = await files.write(args.path, bytes, {
-      signal,
-      workspaceOnly: settings().workspaceOnly,
-    });
+    const call = { signal, workspaceOnly: settings().workspaceOnly };
+    const file = { path: args.path, bytes };
+    const held = await holdingAlready(files, file, call);
+    if (held !== undefined) {
+      return ok({ path: held, changed: false, bytes: bytes.byteLength });
+    }
+    const written = await writeChecked(files, file, call);
     return written.ok
       ? ok({ path: written.value, changed: true, bytes: bytes.byteLength })
       : err(refusalCodes[written.error]);
@@ -85,24 +92,35 @@ function editHandler({ files, settings }: EngineFiles): EngineHandler<"file/edit
       return err(refusalCodes[read.error]);
     }
     const { path, text, bom } = read.value;
-    const plan = planEdits(bom + text, args.edits);
-    if (!plan.ok) {
-      return err(plan.error);
+    const outcome = planEdits(bom + text, args.edits);
+    if (outcome.kind === "refused") {
+      const oldTexts = args.edits.map((each) => each.oldText);
+      const problem = editProblemText(outcome.problem, { text, oldTexts });
+      return ok({ path, changed: false, bytes: encoder.encode(bom + text).byteLength, problem });
     }
-    const bytes = encoder.encode(plan.value.text);
-    if (!plan.value.changed) {
+    const { plan } = outcome;
+    const bytes = encoder.encode(plan.text);
+    if (!plan.changed) {
       return ok({ path, changed: false, bytes: bytes.byteLength, replaced: 0 });
     }
-    const written = await files.write(args.path, bytes, call);
+    const written = await writeChecked(files, { path: args.path, bytes }, call);
     return written.ok
-      ? ok({ path, changed: true, bytes: bytes.byteLength, replaced: plan.value.replaced })
+      ? ok({ path, changed: true, bytes: bytes.byteLength, replaced: plan.replaced })
       : err(refusalCodes[written.error]);
   };
 }
 
 function patchHandler({ files, settings }: EngineFiles): EngineHandler<"file/patch"> {
-  return async ({ args, signal }) =>
-    ok(await runPatch(files, args.input, { signal, workspaceOnly: settings().patchWorkspaceOnly }));
+  return async ({ args, signal }) => {
+    const { workspaceOnly, patchWorkspaceOnly } = settings();
+    // Either setting keeps a patch inside the workspace, the stricter one deciding.
+    return ok(
+      await runPatch(files, args.input, {
+        signal,
+        workspaceOnly: workspaceOnly || patchWorkspaceOnly,
+      }),
+    );
+  };
 }
 
 /**

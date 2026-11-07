@@ -12,6 +12,8 @@ interface FileReadArgs {
   readonly path: string;
   readonly offset?: number;
   readonly limit?: number;
+  /** Where to start inside line `offset`, in characters from 0, to go on in a long line. */
+  readonly cursor?: number;
 }
 
 /**
@@ -27,7 +29,12 @@ type FileReadResult =
       readonly startLine: number;
       readonly endLine: number;
       readonly totalLines: number;
-      readonly next?: { readonly offset: number; readonly cutBy: "lines" | "bytes" };
+      readonly next?: {
+        readonly offset: number;
+        /** Where to go on inside line `offset`, when a long line was cut. */
+        readonly cursor?: number;
+        readonly cutBy: "lines" | "bytes";
+      };
     }
   | { readonly kind: "image"; readonly path: string };
 
@@ -65,6 +72,8 @@ interface FileChange {
   readonly bytes: number;
   /** The replacements made; absent for a write. */
   readonly replaced?: number;
+  /** Why an edit changed nothing: which edit could not be placed, in the engine's words. */
+  readonly problem?: string;
 }
 
 /** One file a patch touched, by its absolute path. */
@@ -108,7 +117,13 @@ const fileReadResultSchema: z.ZodType<FileReadResult> = z.discriminatedUnion("ki
     startLine: line,
     endLine: z.int().min(0),
     totalLines: z.int().min(0),
-    next: z.object({ offset: line, cutBy: z.enum(["lines", "bytes"]) }).exactOptional(),
+    next: z
+      .object({
+        offset: line,
+        cursor: z.int().min(0).exactOptional(),
+        cutBy: z.enum(["lines", "bytes"]),
+      })
+      .exactOptional(),
   }),
   z.object({ kind: z.literal("image"), path }),
 ]);
@@ -118,6 +133,7 @@ const fileChangeSchema: z.ZodType<FileChange> = z.object({
   changed: z.boolean(),
   bytes: z.int().min(0),
   replaced: z.int().min(0).exactOptional(),
+  problem: z.string().min(1).max(4_000).exactOptional(),
 });
 
 const filePatchResultSchema: z.ZodType<FilePatchResult> = z.object({
@@ -144,6 +160,7 @@ export const fileOperations: OperationTable<FileOperationShapes> = {
       path,
       offset: line.exactOptional(),
       limit: z.int().min(1).max(maxFileReadLines).exactOptional(),
+      cursor: z.int().min(0).exactOptional(),
     }),
     result: fileReadResultSchema,
   },

@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "@binference/core";
+import { itemAt } from "./item-at.js";
 
 /** One change to a file's lines: the lines it expects and the lines that take their place. */
 export interface PatchHunk {
@@ -6,6 +7,11 @@ export interface PatchHunk {
   readonly anchor?: string;
   readonly oldLines: readonly string[];
   readonly newLines: readonly string[];
+  /**
+   * Each context line as a pair of its place in `newLines` and in `oldLines`, so a loose match
+   * keeps the file's own text of the lines the hunk does not change.
+   */
+  readonly kept: readonly (readonly [number, number])[];
   /** The change runs to the end of the file. */
   readonly atEnd: boolean;
 }
@@ -48,8 +54,8 @@ function pathAfter(line: string, prefix: string): Result<string, string> {
 function readAdd(lines: readonly string[], at: number, path: string): Reading<PatchOperation> {
   const added: string[] = [];
   let next = at;
-  while (next < lines.length && !isHeader(lines[next] ?? "")) {
-    const line = lines[next] ?? "";
+  while (next < lines.length && !isHeader(itemAt(lines, next, ""))) {
+    const line = itemAt(lines, next, "");
     if (!line.startsWith("+")) {
       return err(`line ${lineNumber(next)}, in the new file ${path}, does not start with +`);
     }
@@ -77,10 +83,11 @@ const endsHunk = (line: string | undefined): boolean =>
 function readHunk(lines: readonly string[], at: number, anchor?: string): Reading<PatchHunk> {
   const oldLines: string[] = [];
   const newLines: string[] = [];
+  const kept: (readonly [number, number])[] = [];
   const anchored = anchor === undefined ? {} : { anchor };
   let next = at;
   while (!endsHunk(lines[next])) {
-    const line = lines[next] ?? "";
+    const line = itemAt(lines, next, "");
     const sides = sidesOf(line);
     if (sides === undefined) {
       return err(`line ${lineNumber(next)} starts with none of " ", "-" and "+"`);
@@ -91,10 +98,14 @@ function readHunk(lines: readonly string[], at: number, anchor?: string): Readin
     if (sides.new) {
       newLines.push(line.slice(1));
     }
+    if (sides.old && sides.new) {
+      kept.push([newLines.length - 1, oldLines.length - 1]);
+    }
     next += 1;
   }
   const atEnd = lines[next] === endOfFile;
-  return ok({ value: { ...anchored, oldLines, newLines, atEnd }, next: atEnd ? next + 1 : next });
+  const value = { ...anchored, oldLines, newLines, kept, atEnd };
+  return ok({ value, next: atEnd ? next + 1 : next });
 }
 
 function readHunks(
@@ -104,8 +115,8 @@ function readHunks(
 ): Reading<readonly PatchHunk[]> {
   const hunks: PatchHunk[] = [];
   let next = at;
-  while (next < lines.length && !isHeader(lines[next] ?? "")) {
-    const line = lines[next] ?? "";
+  while (next < lines.length && !isHeader(itemAt(lines, next, ""))) {
+    const line = itemAt(lines, next, "");
     const anchor = line.startsWith("@@") ? line.slice(2).trim() : "";
     const hunk = readHunk(lines, line.startsWith("@@") ? next + 1 : next, anchor || undefined);
     if (!hunk.ok) {
@@ -149,7 +160,7 @@ const readers: readonly (readonly [string, OperationReader])[] = [
 ];
 
 function readOperation(lines: readonly string[], at: number): Reading<PatchOperation> {
-  const line = lines[at] ?? "";
+  const line = itemAt(lines, at, "");
   const reader = readers.find(([prefix]) => line.startsWith(prefix));
   if (reader === undefined) {
     return err(
@@ -158,6 +169,12 @@ function readOperation(lines: readonly string[], at: number): Reading<PatchOpera
   }
   const path = pathAfter(line, reader[0]);
   return path.ok ? reader[1](lines, at + 1, path.value) : path;
+}
+
+// A patch written as a shell heredoc, `<<'EOF'` to `EOF`, read as the patch inside it.
+function withoutHeredoc(lines: readonly string[]): readonly string[] {
+  const word = /^<<-?\s*['"]?([A-Za-z_]\w*)['"]?\s*$/.exec(itemAt(lines, 0, ""))?.[1];
+  return word !== undefined && lines.at(-1)?.trim() === word ? lines.slice(1, -1) : lines;
 }
 
 /**
@@ -169,7 +186,7 @@ function readOperation(lines: readonly string[], at: number): Reading<PatchOpera
  * answers why, in the engine's words.
  */
 export function parsePatch(input: string): Result<readonly PatchOperation[], string> {
-  const all = input.replaceAll("\r\n", "\n").trim().split("\n");
+  const all = withoutHeredoc(input.replaceAll("\r\n", "\n").trim().split("\n"));
   if (all[0]?.trim() !== begin || all.at(-1)?.trim() !== end) {
     return err(`a patch starts with "${begin}" and ends with "${end}"`);
   }

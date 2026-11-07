@@ -1,5 +1,5 @@
-import { err, ok, type Result } from "@binference/core";
 import { fileLimits, type ResultOf } from "@binference/protocol";
+import { itemAt } from "./item-at.js";
 
 type TextPage = Extract<ResultOf<"file/read">, { readonly kind: "text" }>;
 
@@ -7,6 +7,7 @@ type TextPage = Extract<ResultOf<"file/read">, { readonly kind: "text" }>;
 export interface PageRequest {
   readonly offset?: number;
   readonly limit?: number;
+  readonly cursor?: number;
 }
 
 const encoder = new TextEncoder();
@@ -56,23 +57,69 @@ function keptLines(wanted: readonly string[]): {
   return { kept, cutByBytes: false };
 }
 
+// Where the next page starts: inside the first line when only part of it fit, else at the line
+// after the last one kept, when the file holds more.
+function nextOf(page: {
+  readonly start: number;
+  readonly cursor: number;
+  readonly kept: readonly string[];
+  readonly inLine: readonly string[];
+  readonly cutByBytes: boolean;
+  readonly more: boolean;
+}): NonNullable<TextPage["next"]> | undefined {
+  const [firstKept, secondKept] = page.kept;
+  const isOneCut =
+    firstKept !== undefined &&
+    secondKept === undefined &&
+    firstKept.length < itemAt(page.inLine, 0, "").length;
+  if (isOneCut) {
+    // A line longer than a page goes on inside itself, never skipped.
+    return { offset: page.start, cursor: page.cursor + firstKept.length, cutBy: "bytes" };
+  }
+  const offset = page.start + page.kept.length;
+  if (page.cutByBytes) {
+    return { offset, cutBy: "bytes" };
+  }
+  return page.more ? { offset, cutBy: "lines" } : undefined;
+}
+
+// Where to start inside a line: never past its end, and never between the two halves of one
+// character.
+function cursorIn(line: string, cursor: number): number {
+  const at = Math.min(cursor, line.length);
+  const before = line.charCodeAt(at - 1);
+  return at > 0 && before >= 0xd800 && before <= 0xdbff ? at - 1 : at;
+}
+
 /**
  * One page of a text file from line `offset` (1-based, 1 when absent): at most `limit` lines and
- * 2,000, and at most 10 KiB of text; a first line longer than that is cut. The page names where
- * the next one starts. An offset past the last line is `file.offset_past_end`.
+ * 2,000, and at most 10 KiB of text, from character `cursor` of the first line. A first line longer
+ * than that is cut, and the page names the cursor to go on inside it; else it names the line the
+ * next page starts at. An offset past the last line gives no text, with the file's line count.
  */
 export function readPage(
   file: { readonly path: string; readonly text: string },
   request: PageRequest,
-): Result<TextPage, "file.offset_past_end"> {
+): TextPage {
   const lines = linesOf(file.text);
   const start = request.offset ?? 1;
   if (start > Math.max(lines.length, 1)) {
-    return err("file.offset_past_end");
+    // Past the last line: no text, and how many lines the file holds.
+    const total = lines.length;
+    return {
+      kind: "text",
+      path: file.path,
+      text: "",
+      startLine: start,
+      endLine: total,
+      totalLines: total,
+    };
   }
   const most = Math.min(request.limit ?? fileLimits.maxFileReadLines, fileLimits.maxFileReadLines);
+  const cursor = cursorIn(lines[start - 1] ?? "", request.cursor ?? 0);
   const wanted = lines.slice(start - 1, start - 1 + most);
-  const { kept, cutByBytes } = keptLines(wanted);
+  const inLine = wanted.map((line, index) => (index === 0 ? line.slice(cursor) : line));
+  const { kept, cutByBytes } = keptLines(inLine);
   const endLine = start - 1 + kept.length;
   const page: TextPage = {
     kind: "text",
@@ -82,11 +129,13 @@ export function readPage(
     endLine,
     totalLines: lines.length,
   };
-  const wantedEnd = start - 1 + wanted.length;
-  if (cutByBytes) {
-    return ok({ ...page, next: { offset: endLine + 1, cutBy: "bytes" } });
-  }
-  return wantedEnd < lines.length
-    ? ok({ ...page, next: { offset: endLine + 1, cutBy: "lines" } })
-    : ok(page);
+  const next = nextOf({
+    start,
+    cursor,
+    kept,
+    inLine,
+    cutByBytes,
+    more: start - 1 + wanted.length < lines.length,
+  });
+  return next === undefined ? page : { ...page, next };
 }

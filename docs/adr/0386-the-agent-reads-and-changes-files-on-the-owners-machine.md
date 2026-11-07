@@ -1,6 +1,6 @@
 # 0386. The agent reads and changes files on the owner's machine
 
-Status: Accepted
+Status: Amended by 0389
 
 Accepted by the owner on 2026-11-07.
 

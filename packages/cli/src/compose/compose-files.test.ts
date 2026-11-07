@@ -80,4 +80,19 @@ describe("the agent's files on this machine", () => {
     });
     expect(await files.read("~/notes.txt", { ...call, maxBytes: 100 })).toMatchObject({ ok: true });
   });
+
+  it("reads a screenshot named with macOS's narrow space when the name is typed with a plain one", async () => {
+    const { home, files } = await machine();
+    const named = `Screenshot 2026-11-07 at 4.02.11${String.fromCodePoint(0x202f)}PM.png`;
+    await writePrivateFile(join(home, named), "png", setUp);
+    const read = await files.read("~/Screenshot 2026-11-07 at 4.02.11 PM.png", {
+      ...call,
+      maxBytes: 100,
+    });
+    expect(read).toMatchObject({ ok: true, value: { path: join(home, named) } });
+    expect(await files.read("~/nothing.png", { ...call, maxBytes: 100 })).toStrictEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
 });

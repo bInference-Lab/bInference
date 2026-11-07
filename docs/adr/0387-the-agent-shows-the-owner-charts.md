@@ -1,6 +1,6 @@
 # 0387. The agent shows the owner charts
 
-Status: Accepted
+Status: Amended by 0389
 
 Accepted by the owner on 2026-11-07.
 

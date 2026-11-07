@@ -37,9 +37,10 @@ describe("parsePatch", () => {
               anchor: "function main",
               oldLines: ["context", "old"],
               newLines: ["context", "new"],
+              kept: [[0, 0]],
               atEnd: false,
             },
-            { oldLines: [], newLines: ["tail"], atEnd: true },
+            { oldLines: [], newLines: ["tail"], kept: [], atEnd: true },
           ],
         },
       ],
@@ -77,5 +78,12 @@ describe("parsePatch", () => {
     const read = parsePatch(input);
     expect(read).toMatchObject({ ok: false });
     expect(JSON.stringify(read)).toContain(why);
+  });
+
+  it("reads a patch written as a shell heredoc", () => {
+    const read = parsePatch(
+      ["<<'EOF'", "*** Begin Patch", "*** Delete File: a.md", "*** End Patch", "EOF"].join("\n"),
+    );
+    expect(read).toStrictEqual({ ok: true, value: [{ kind: "delete", path: "a.md" }] });
   });
 });

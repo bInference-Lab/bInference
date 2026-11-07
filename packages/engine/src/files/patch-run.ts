@@ -106,13 +106,16 @@ async function planUpdate(
   context: Context,
   update: Extract<PatchOperation, { readonly kind: "update" }> & { readonly current: string },
 ): Promise<Result<Plan, string>> {
-  const bom = update.current.startsWith("﻿") ? "﻿" : "";
-  const changed = applyHunks(update.current.slice(bom.length), update.hunks, update.path);
+  const changed = applyHunks(update.current, update.hunks, update.path);
   if (!changed.ok) {
     return changed;
   }
-  const text = bom + changed.value;
+  const text = changed.value;
   const to = update.moveTo;
+  if ((to === undefined || to === update.path) && text === update.current) {
+    // A change that leaves the file as it was writes nothing and is not named.
+    return ok({ actions: [], changes: [] });
+  }
   if (to === undefined || to === update.path) {
     context.seen.set(update.path, text);
     const action: Action = { kind: "write", path: update.path, text, createOnly: false };
