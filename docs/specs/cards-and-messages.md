@@ -1447,7 +1447,8 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   shows above what it follows ([decision 0381](../DECISIONS.md#d0381)).
 - **No answer.** A turn that ends with no answer, no status line, no question, no launch draft and
   no deposit gets `telegram.chat.noAnswer` in the owner's chat, so the owner never waits on a reply that will
-  not come.
+  not come; when the turn names a tool that failed, `telegram.chat.toolFailed` names it instead
+  ([decision 0394](../DECISIONS.md#d0394)).
 - **Work lines.** The runtime sends each tool's line with `turn/progress` (spec 1, section 7.7).
   Telegram reads it only as a sign of work, and the console and terminal chat show none: they show
   the answer so far. Asking the owner and the first chat's end send no line.
@@ -1493,6 +1494,7 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 | Reasoning's title        | `telegram.chat.reasoning`     | Reasoning                                                                                                                                                                            | 推理                                                                                                    |
 | A line of reasoning      | `telegram.chat.reasoningLine` | Reasoning: {text}                                                                                                                                                                    | 推理：{text}                                                                                            |
 | A turn with no answer    | `telegram.chat.noAnswer`      | No response generated. Please try again.                                                                                                                                             | 未生成回答，请再试一次。                                                                                |
+| A tool failed, no answer | `telegram.chat.toolFailed`    | {tool} failed, and the agent wrote no answer. Ask it again, or ask what went wrong.                                                                                                  | {tool} 执行失败，Agent 没有写出回答。请再问一次，或问它出了什么问题。                                   |
 | An answer not delivered  | `telegram.chat.notDelivered`  | ⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.                                                                | ⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。                |
 | Photos past 4            | `telegram.chat.photosLeftOut` | The agent reads 4 photos of a message at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send {count, plural, one {it} other {them}} in another message. | Agent 每条消息最多读取 4 张图片，因此有 {count, plural, other {# 张图片}}未发送。请在另一条消息中发送。 |
 | A photo over 5 MiB       | `telegram.chat.photoTooLarge` | The agent reads photos of 5 MiB at most, so {count, plural, one {# photo was} other {# photos were}} left out. Send a smaller copy.                                                  | Agent 只读取不超过 5 MiB 的图片，因此有 {count, plural, other {# 张图片}}未发送。请发送更小的图片。     |

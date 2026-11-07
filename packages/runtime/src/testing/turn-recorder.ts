@@ -36,7 +36,7 @@ export type RecordedStep =
       readonly key: string;
     }
   | { readonly kind: "journalEnd"; readonly outcome: TurnOutcome; readonly heldBack: number }
-  | { readonly kind: "end"; readonly outcome: TurnOutcome }
+  | { readonly kind: "end"; readonly outcome: TurnOutcome; readonly failedTool?: string }
   | { readonly kind: "tool"; readonly name: string; readonly key: string };
 
 /** A draft of the turn's text, or a tool the turn runs, as the turn told the engine. */
@@ -138,7 +138,8 @@ function createEngine(note: Write, options: TurnRecorderOptions, feed: RecordedF
       const resumes = budget.leftMicros > 0n || resumesAt === undefined ? {} : { resumesAt };
       return { budgetLeftMicros: budget.leftMicros, ...resumes };
     },
-    end: async (outcome, signal) => note({ kind: "end", outcome }, signal),
+    end: async (outcome, signal, failedTool) =>
+      note({ kind: "end", outcome, ...(failedTool === undefined ? {} : { failedTool }) }, signal),
   };
 }
 

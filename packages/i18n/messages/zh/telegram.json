@@ -17,6 +17,7 @@
   "chat.agent": "{agent} · {text}",
   "chat.notDelivered": "⚠️ Agent 的回答未能发送到此对话。再次提问之前，请先在控制台或用 `binference chat` 查看。",
   "chat.noAnswer": "未生成回答，请再试一次。",
+  "chat.toolFailed": "{tool} 执行失败，Agent 没有写出回答。请再问一次，或问它出了什么问题。",
   "chat.reasoning": "推理",
   "chat.reasoningLine": "推理：{text}",
   "draft.header": "{agent} 起草了这次代币发射。在你点按“开始发射”之前，不会上传或公开任何内容。",

@@ -286,7 +286,8 @@ async function reasoned(parts: Parts, push: ReasoningPush, call: Call): Promise<
 type EndedPush = Extract<ChatPush, { readonly kind: "chat/turnEnded" }>;
 
 // A turn that ends with nothing for the owner, no answer, no status line and no question, gets a
-// line that says so, so the owner never waits on a reply that will not come.
+// line that says so, so the owner never waits on a reply that will not come; when a tool's last
+// call failed, the line names that tool.
 async function ended(parts: Parts, push: EndedPush, call: Call): Promise<void> {
   const showing = parts.turns.get(keyOf(push));
   forget(parts, keyOf(push));
@@ -295,7 +296,13 @@ async function ended(parts: Parts, push: EndedPush, call: Call): Promise<void> {
   }
   const text = await named(
     parts,
-    { agent: push.agent, text: words(parts, "telegram.chat.noAnswer") },
+    {
+      agent: push.agent,
+      text:
+        push.failedTool === undefined
+          ? words(parts, "telegram.chat.noAnswer")
+          : words(parts, "telegram.chat.toolFailed", { tool: push.failedTool }),
+    },
     call,
   );
   await sendHtml(parts.options, { chatId: showing.chatId, html: escapeHtml(text) }, call);

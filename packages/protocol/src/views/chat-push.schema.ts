@@ -84,7 +84,13 @@ export type ChatPush =
       readonly prompt: string;
       readonly images: readonly MadeImageView[];
     }
-  | { readonly kind: "chat/turnEnded"; readonly agent: string; readonly turn: string };
+  | {
+      readonly kind: "chat/turnEnded";
+      readonly agent: string;
+      readonly turn: string;
+      /** The tool whose last call failed, when the turn gave the owner no answer to name it in. */
+      readonly failedTool?: string;
+    };
 
 const at = { agent: z.string().min(1), turn: z.string().min(1) };
 const values = z.record(z.string(), z.union([z.string(), z.number()])).optional();
@@ -138,8 +144,16 @@ const pushSchema = z.discriminatedUnion("kind", [
         .max(maxImagesPerMessage),
     }),
   }),
-  z.looseObject({ kind: z.literal("chat/turnEnded"), data: z.looseObject(at) }),
+  z.looseObject({
+    kind: z.literal("chat/turnEnded"),
+    data: z.looseObject({ ...at, failedTool: z.string().min(1).max(128).optional() }),
+  }),
 ]);
+
+// The tool a turn's end names as failed, when it names one, as an optional field.
+function failedOf(failedTool: unknown): { readonly failedTool?: string } {
+  return typeof failedTool === "string" ? { failedTool } : {};
+}
 
 // A line's values when it carries any, as an optional field.
 function valuesOf(shown: LineValues | undefined): { readonly values?: LineValues } {
@@ -183,5 +197,6 @@ export function chatPushOf(push: {
     const { agent, turn, prompt, images } = read.data;
     return { kind: read.kind, agent, turn, prompt, images };
   }
-  return { kind: read.kind, agent: read.data.agent, turn: read.data.turn };
+  const { agent, turn, failedTool } = read.data;
+  return { kind: read.kind, agent, turn, ...failedOf(failedTool) };
 }

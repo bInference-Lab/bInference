@@ -329,6 +329,21 @@ describe("the agent's status message in Telegram", () => {
     expect(botApi.sent().map(({ text }) => text)).toStrictEqual([noAnswer]);
   });
 
+  it("names the tool whose last call failed when a turn ends with no answer", async () => {
+    const { botApi, clock, replies } = await setUp();
+    await replies.show(started, live);
+    await clock.advance(500);
+    await replies.show(
+      push("chat/turnEnded", { agent, turn, outcome: "ok", failedTool: "make_image" }),
+      live,
+    );
+    await clock.advance(10_000);
+    await replies.idle();
+    expect(botApi.sent().map(({ text }) => text)).toStrictEqual([
+      "make_image failed, and the agent wrote no answer. Ask it again, or ask what went wrong.",
+    ]);
+  });
+
   it("adds no such line after a status line or a question of the turn", async () => {
     const { botApi, clock, replies } = await setUp();
     await replies.show(started, live);

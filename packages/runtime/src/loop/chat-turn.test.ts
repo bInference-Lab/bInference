@@ -164,6 +164,33 @@ describe("createChatTurn", () => {
     ]);
   });
 
+  it("names the tool whose last call failed when it ends, and not one that succeeded after", async () => {
+    const answers = [true, true, false];
+    const makeImage: TestTool = {
+      name: "make_image",
+      kind: "control",
+      run: async () => Promise.resolve({ text: "Made.", isError: answers.shift() === true }),
+    };
+    const failed = createTestTurn({
+      replies: [callsReply([{ name: "make_image" }]), textReply("")],
+      tools: [makeImage],
+    });
+    await failed.turn.run();
+    const recovered = createTestTurn({
+      replies: [
+        callsReply([{ name: "make_image" }]),
+        callsReply([{ name: "make_image" }]),
+        textReply(""),
+      ],
+      tools: [makeImage],
+    });
+    await recovered.turn.run();
+    expect([failed.recorder.steps.at(-1), recovered.recorder.steps.at(-1)]).toStrictEqual([
+      { kind: "end", outcome: "ok", failedTool: "make_image" },
+      { kind: "end", outcome: "ok" },
+    ]);
+  });
+
   it("leaves out of the final text each paragraph that repeats what a tool showed the owner", async () => {
     const address = "0xb97Bd0df3824c4572179d1BB7EBc995EDAf503e0";
     const deposit: TestTool = {

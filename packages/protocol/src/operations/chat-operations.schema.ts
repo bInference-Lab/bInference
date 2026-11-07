@@ -92,6 +92,11 @@ interface ProgressArgs extends AgentArgs {
 interface EndTurnArgs extends AgentArgs {
   readonly turn: ProtocolId<"chatTurn">;
   readonly outcome: "ok" | "stopped" | "failed" | "budget" | "loop";
+  /**
+   * The tool whose last call in the turn failed with no later success of it, which a surface names
+   * when the turn gives the owner no answer.
+   */
+  readonly failedTool?: string;
 }
 
 /** The args of `usage/record`: one model call's tokens and cost. */
@@ -283,6 +288,7 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
       agent,
       turn,
       outcome: z.enum(["ok", "stopped", "failed", "budget", "loop"]),
+      failedTool: z.string().min(1).max(128).exactOptional(),
     }),
     result: emptyResultSchema,
   },

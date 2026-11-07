@@ -92,6 +92,8 @@ export interface RecordedUsage {
 /** `turn/end`: how the turn ended. */
 export interface EngineTurnEnd extends EngineTurn {
   readonly outcome: TurnOutcome;
+  /** The tool whose last call in the turn failed, with no later success of it. */
+  readonly failedTool?: string;
 }
 
 /** One of an agent's workspace files. */

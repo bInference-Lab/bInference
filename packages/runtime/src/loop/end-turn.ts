@@ -68,12 +68,14 @@ export async function endTurn(run: TurnRun, end: LoopEnd): Promise<TurnReport> {
   const status = end.status ?? (closing ? { line: closingLine } : undefined);
   const shown = await sayAndStatus(run, status);
   const ended = shown ? end.outcome : portFailure.outcome;
-  const { heldBack, committed, toolCalls, modelCalls } = run.tally.now();
+  const { heldBack, committed, toolCalls, modelCalls, failedTool } = run.tally.now();
   const journaled = await bestEffort(run, async (signal) =>
     run.parts.journal.end({ outcome: ended, heldBack }, signal),
   );
   const outcome = journaled ? ended : portFailure.outcome;
-  const told = await bestEffort(run, async (signal) => run.parts.engine.end(outcome, signal));
+  const told = await bestEffort(run, async (signal) =>
+    run.parts.engine.end(outcome, signal, failedTool),
+  );
   run.tally.enter("ended");
   const final = told ? outcome : portFailure.outcome;
   return { state: "ended", outcome: final, committed, heldBack, toolCalls, modelCalls };

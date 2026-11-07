@@ -276,8 +276,9 @@ The operations are in [spec 1, section 7.7](protocol.md#section-7-7).
    final text goes. Each holds at most its first 50,000 characters
    ([decision 0377](../DECISIONS.md#d0377)).
 6. `usage/record` after each model call (section 8.3).
-7. `turn/end` `{ agent, turn, outcome }`: the engine clears the running turn and pushes
-   `chat/turnEnded`. The runtime's exit clears every running turn as `failed`.
+7. `turn/end` `{ agent, turn, outcome, failedTool? }`: the engine clears the running turn and
+   pushes `chat/turnEnded`. `failedTool` names the tool whose last call ran and failed, with no
+   later success of it ([decision 0394](../DECISIONS.md#d0394)). The runtime's exit clears every running turn as `failed`.
 
 **The mark in the engine.** A proposal from the agent runtime takes the mark of its agent's
 running turn: `intent/propose`, `order/create`, `alert/create` and `schedule/create` called with the

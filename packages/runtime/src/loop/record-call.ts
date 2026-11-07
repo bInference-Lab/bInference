@@ -41,6 +41,9 @@ export async function recordResult(
     text: result.text,
     isError: result.isError,
   });
+  if (result.ran) {
+    run.tally.noteResult({ tool: call.name, isError: result.isError });
+  }
   if (result.ran && run.loopGuard.see(call, result.text)) {
     run.tally.markLooped();
   }

@@ -1,6 +1,6 @@
 # 0373. An answer that never left goes again, and a turn with nothing to say says so
 
-Status: Accepted
+Status: Amended by 0394
 
 Accepted by the tech lead on 2026-11-05.
 

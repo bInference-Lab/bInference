@@ -120,6 +120,7 @@ export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
       chat.turnReasoning({ ...at, text: text.slice(0, maxReasoningChars), final }, signal),
     status,
     recordUsage: async (usage, signal) => chat.recordUsage({ ...at, ...usage }, signal),
-    end: async (outcome, signal) => chat.endTurn({ ...at, outcome }, signal),
+    end: async (outcome, signal, failedTool) =>
+      chat.endTurn({ ...at, outcome, ...(failedTool === undefined ? {} : { failedTool }) }, signal),
   };
 }

@@ -114,7 +114,11 @@ export interface TurnEngine {
     usage: UsageRecord,
     signal: AbortSignal,
   ): Promise<{ readonly budgetLeftMicros: bigint; readonly resumesAt?: number }>;
-  end(outcome: TurnOutcome, signal: AbortSignal): Promise<void>;
+  /**
+   * Ends the turn with its outcome and, when a tool's last call in the turn failed with no later
+   * success of it, that tool's name, which a surface names when the owner got no answer.
+   */
+  end(outcome: TurnOutcome, signal: AbortSignal, failedTool?: string): Promise<void>;
 }
 
 /** The chat queue's side of a running turn: the messages that join it at a merge point. */

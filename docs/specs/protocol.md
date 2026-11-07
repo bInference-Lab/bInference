@@ -1477,6 +1477,8 @@ launches.
     `configChange`, the card of a setting change. A client that meets a kind it does not know
     shows the card's lines from `intent/card`.
   - `config/view` and `config/propose` are new operations.
+  - `turn/end` takes an optional `failedTool`, and `chat/turnEnded` carries it
+    ([decision 0394](../DECISIONS.md#d0394)).
   - `IntentView.resolvedName`, `IntentView.delivery` and `IntentView.bridgeReceipt`, `PortfolioView.staking` and
     `PortfolioView.inTransit` with its `chainName`, `WebhookRuleView.ratePerMinute`, `lastAlertAt`, `intent` and
     `summary`, `webhookRule/list`'s `assets`, `address/list`'s `room`, `WalletView.chainName`, `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet`, `engine/status`'s `debugSignalOff`, and the `autoAsks` of `engine/status`'s agents, `approval/get` and `approval/set` are new optional

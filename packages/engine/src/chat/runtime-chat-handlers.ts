@@ -122,9 +122,11 @@ function turnHandlers(
       return ok({});
     },
     async "turn/end"(call) {
-      const { agent, turn, outcome } = call.args;
+      const { agent, turn, outcome, failedTool } = call.args;
       turns.end(agent, turn);
-      publish({ topic: chatTopic(agent), kind: "chat/turnEnded", data: { agent, turn, outcome } });
+      const failed = failedTool === undefined ? {} : { failedTool };
+      const data = { agent, turn, outcome, ...failed };
+      publish({ topic: chatTopic(agent), kind: "chat/turnEnded", data });
       return Promise.resolve(ok({}));
     },
   };

@@ -39,6 +39,8 @@ interface TurnMarks {
   readonly closingLine?: ClosingLine;
   /** What the turn's tools showed the owner, which its answer does not repeat (decision 0381). */
   readonly shown: readonly string[];
+  /** The tool whose last call failed, until a later call of it succeeds. */
+  readonly failedTool?: string;
 }
 
 /** How the engine answered a proposal it heard: a card waits for the owner, or it was refused. */
@@ -64,6 +66,26 @@ export interface TurnTally {
   close(line: ClosingLine): void;
   /** Keeps what a tool showed the owner, so the answer does not repeat it. */
   show(texts: readonly string[]): void;
+  /** Notes a call's result: a failure names its tool, a later success of that tool clears it. */
+  noteResult(result: NotedResult): void;
+}
+
+/** A call's result as the tally notes it: its tool, and whether it failed. */
+interface NotedResult {
+  readonly tool: string;
+  readonly isError: boolean;
+}
+
+// A failure names its tool; a later success of that tool clears it, as nothing failed then.
+function noted(marks: TurnMarks, { tool, isError }: NotedResult): TurnMarks {
+  if (isError) {
+    return { ...marks, failedTool: tool };
+  }
+  if (marks.failedTool !== tool) {
+    return marks;
+  }
+  const { failedTool: _cleared, ...rest } = marks;
+  return rest;
 }
 
 function entered(marks: TurnMarks, state: TurnState): TurnMarks {
@@ -131,6 +153,9 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     },
     show(texts) {
       marks = { ...marks, shown: withShown(marks.shown, texts) };
+    },
+    noteResult(result) {
+      marks = noted(marks, result);
     },
   };
 }

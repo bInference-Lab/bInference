@@ -17,6 +17,7 @@
   "chat.agent": "{agent} · {text}",
   "chat.notDelivered": "⚠️ The agent's answer did not reach this chat. Read it in the console or with `binference chat` before you ask again.",
   "chat.noAnswer": "No response generated. Please try again.",
+  "chat.toolFailed": "{tool} failed, and the agent wrote no answer. Ask it again, or ask what went wrong.",
   "chat.reasoning": "Reasoning",
   "chat.reasoningLine": "Reasoning: {text}",
   "draft.header": "{agent} drafted this token launch. Nothing is uploaded or public until you tap Start launch.",
