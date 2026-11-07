@@ -267,6 +267,7 @@ function turnPartsOf(
     engine,
     merge: mergeOf(context, place),
     facts: createEngineLiveFacts(context.turnContext, place.agent),
+    ...(setup.settings === undefined ? {} : { settings: setup.settings }),
     clock,
     ...imagePartsOf(context, { agent: place.agent, setup, taken }),
   };

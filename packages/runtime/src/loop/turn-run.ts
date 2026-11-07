@@ -1,5 +1,6 @@
 import type { Clock } from "@binference/core";
 import type { TurnHistory } from "../compaction/turn-history.js";
+import type { SettingsFacts } from "../context/live-facts-text.js";
 import type { LoopGuard } from "./loop-guard.js";
 import type { ModelMessage } from "./model-message.js";
 import type { OpenCall } from "./open-calls.js";
@@ -27,6 +28,8 @@ export interface TurnParts {
   readonly merge: MergeSource;
   /** The agent's live facts, which each model call sends after the history. */
   readonly facts: LiveFactsReader;
+  /** The settings in force as the turn starts, which the live facts name (decision 0395). */
+  readonly settings?: SettingsFacts;
   readonly clock: Clock;
   /** Reads the images of the messages the turn takes; without it, none can be read. */
   readonly readImage?: ReadImage;

@@ -69,6 +69,20 @@ describe("the live facts as the model reads them", () => {
     expect(text).not.toContain("XVS");
   });
 
+  it("name the models in force, so an earlier turn's failure is not taken as now", () => {
+    const named = liveFactsText({
+      settings: {
+        mainModel: "binference/openai/gpt-6-luna",
+        imageMakingModel: "binference/openai/gpt-6-luna",
+      },
+    });
+    const none = liveFactsText({ settings: {} });
+    expect([named.split("\n").at(-1), none.split("\n").at(-1)]).toStrictEqual([
+      "- Models in force now: talks with binference/openai/gpt-6-luna; makes images with binference/openai/gpt-6-luna. Settings may have changed since earlier turns, so an earlier failure does not hold now.",
+      "- Models in force now: talks with none set; makes images with none set. Settings may have changed since earlier turns, so an earlier failure does not hold now.",
+    ]);
+  });
+
   it("say they could not be read when the engine did not answer", () => {
     expect(liveFactsText({ budgetLeftMicros: 0n })).toBe(
       [

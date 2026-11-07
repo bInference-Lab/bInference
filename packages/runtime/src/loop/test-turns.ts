@@ -1,6 +1,7 @@
 import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
 import type { Locale } from "@binference/protocol";
+import type { SettingsFacts } from "../context/live-facts-text.js";
 import { createEngineLiveFacts } from "../engine-chat/engine-live-facts.js";
 import { messagesOf, type StoredHistory } from "../sessions/conversation.js";
 import { nthTestId } from "../testing/memory-agent-stores.js";
@@ -106,6 +107,8 @@ export interface TestTurnOptions {
   readonly clock?: ManualClock;
   /** The agent's live facts; a paper agent's, read at the turn's clock, when absent. */
   readonly facts?: LiveFactsReader;
+  /** The settings in force that the live facts name; none when absent. */
+  readonly settings?: SettingsFacts;
   /** Reads the images of the taken messages; none can be read when absent. */
   readonly readImage?: ReadImage;
   /** The vision model, made on the turn's clock; none when absent. */
@@ -160,6 +163,7 @@ function testParts(
       options.facts ??
       createEngineLiveFacts(createMemoryContextSource({ now: () => clock.now() }), testAgent),
     clock,
+    ...(options.settings === undefined ? {} : { settings: options.settings }),
     ...imagePartsOf(options, clock),
   };
 }

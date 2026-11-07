@@ -168,7 +168,7 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
     parts: { ...options.parts, journal },
     limits,
     prefix: options.prefix,
-    tail: createTurnTail(options.parts.facts),
+    tail: createTurnTail(options.parts.facts, options.parts.settings),
     messages: [
       ...options.history,
       ...options.taken.map((message) => ({ role: "owner" as const, text: message.text })),

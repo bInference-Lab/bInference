@@ -4,9 +4,19 @@ import type { AssetInfos, BalanceView, LiveFactsView, OrderView } from "@binfere
 type Amount = BalanceView["amount"];
 type AssetRef = Amount["asset"];
 
+/**
+ * The settings in force as a turn starts that the agent's work depends on, so a turn never acts on
+ * an earlier turn's settings: the model it talks with and the one that makes images.
+ */
+export interface SettingsFacts {
+  readonly mainModel?: string;
+  readonly imageMakingModel?: string;
+}
+
 /** What the volatile tail says: the live facts when they could be read, and the budget left. */
 export interface TailFacts {
   readonly facts?: LiveFactsView;
+  readonly settings?: SettingsFacts;
   /** What is left of today's model budget, in micro-dollars, as the engine last answered. */
   readonly budgetLeftMicros?: bigint;
 }
@@ -61,6 +71,13 @@ function factLines(facts: LiveFactsView): readonly string[] {
   ];
 }
 
+// The models in force now; an earlier turn may have run on others, so its failures may not hold.
+function settingsLine({ mainModel, imageMakingModel }: SettingsFacts): string {
+  const main = mainModel ?? "none set";
+  const images = imageMakingModel ?? "none set";
+  return `- Models in force now: talks with ${main}; makes images with ${images}. Settings may have changed since earlier turns, so an earlier failure does not hold now.`;
+}
+
 /**
  * The volatile tail as the model reads it after the history (runtime spec, section 7.1): the time
  * in the owner's timezone, the mode, the freeze, the approval mode and send level, the balances
@@ -76,5 +93,6 @@ export function liveFactsText(tail: TailFacts): string {
       : [`- Model budget left today: ${usd(tail.budgetLeftMicros)}.`];
   const facts =
     tail.facts === undefined ? ["- The live facts could not be read now."] : factLines(tail.facts);
-  return [heading, ...facts, ...budget].join("\n");
+  const settings = tail.settings === undefined ? [] : [settingsLine(tail.settings)];
+  return [heading, ...facts, ...settings, ...budget].join("\n");
 }

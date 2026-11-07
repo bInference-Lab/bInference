@@ -56,4 +56,21 @@ describe("the volatile tail of a turn", () => {
     await turn.run();
     expect(transport.requests[0]?.tail).toMatch(/\n- Model budget left today: \$[\d.,]+\.$/u);
   });
+
+  it("names the models in force on every call of the turn", async () => {
+    const settings = { imageMakingModel: "binference/openai/gpt-6-luna" };
+    const { turn, transport } = createTestTurn({
+      replies: [callsReply([{ name: "portfolio" }]), textReply("Done.")],
+      tools: [portfolio],
+      settings,
+    });
+    await turn.run();
+    const lines = transport.requests.map((request) =>
+      request.tail?.split("\n").find((line) => line.startsWith("- Models in force now")),
+    );
+    expect(lines).toStrictEqual([
+      expect.stringContaining("makes images with binference/openai/gpt-6-luna"),
+      expect.stringContaining("makes images with binference/openai/gpt-6-luna"),
+    ]);
+  });
 });

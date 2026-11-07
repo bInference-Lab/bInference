@@ -1,5 +1,5 @@
 import type { LiveFactsView } from "@binference/protocol";
-import { liveFactsText } from "../context/live-facts-text.js";
+import { liveFactsText, type SettingsFacts } from "../context/live-facts-text.js";
 import type { LiveFactsReader } from "./ports.js";
 
 /**
@@ -17,7 +17,7 @@ export interface TurnTail {
 }
 
 /** Creates a turn's {@link TurnTail} over its facts reader; nothing is read until the first call. */
-export function createTurnTail(reader: LiveFactsReader): TurnTail {
+export function createTurnTail(reader: LiveFactsReader, settings?: SettingsFacts): TurnTail {
   const state: { isStale: boolean; facts?: LiveFactsView; budgetLeftMicros?: bigint } = {
     isStale: true,
   };
@@ -35,6 +35,7 @@ export function createTurnTail(reader: LiveFactsReader): TurnTail {
       const { facts, budgetLeftMicros } = state;
       return liveFactsText({
         ...(facts === undefined ? {} : { facts }),
+        ...(settings === undefined ? {} : { settings }),
         ...(budgetLeftMicros === undefined ? {} : { budgetLeftMicros }),
       });
     },

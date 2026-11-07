@@ -1,5 +1,6 @@
 import type { Clock } from "@binference/core";
 import type { TurnCompaction } from "../compaction/turn-history.js";
+import type { SettingsFacts } from "../context/live-facts-text.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
 import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
@@ -24,6 +25,8 @@ export interface TurnSetup {
    * as outside content (decision 0350).
    */
   readonly hasOutsideTools?: boolean;
+  /** The settings in force, which each model call's live facts name (decision 0395). */
+  readonly settings?: SettingsFacts;
 }
 
 /** What the chat runner works with. */

@@ -55,8 +55,13 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
       random: processPorts.random,
       clock: parts.clock,
     };
+    const imageMakingModel = settings.models.imageMaking;
     return {
       models: main,
+      settings: {
+        ...(settings.models.main === undefined ? {} : { mainModel: settings.models.main }),
+        ...(imageMakingModel === undefined ? {} : { imageMakingModel }),
+      },
       ...(vision === undefined ? {} : { vision }),
       compaction: {
         summarizer,
