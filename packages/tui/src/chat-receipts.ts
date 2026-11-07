@@ -26,7 +26,12 @@ const receiptMoves: ReadonlySet<IntentState> = new Set([
 ]);
 
 // The kinds whose card took effect as it was answered, which the answer's own line says.
-const writtenKinds: ReadonlySet<IntentKind> = new Set(["unfreeze", "autoOrder", "webhookRule"]);
+const writtenKinds: ReadonlySet<IntentKind> = new Set([
+  "unfreeze",
+  "autoOrder",
+  "webhookRule",
+  "configChange",
+]);
 
 // The receipt line worth a line of its own: not the sending line the answer already printed.
 function newLineOf(view: IntentView): IntentView["receipt"] {
