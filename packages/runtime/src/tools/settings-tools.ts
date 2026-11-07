@@ -72,7 +72,7 @@ const readRefusals: Readonly<Record<string, string>> = {
 };
 
 const changeRefusals: Readonly<Record<string, string>> = {
-  "config.invalid": `${unproposed} the config would fail its checks with these values. Read the key with settings_read for what it takes, then propose values it accepts.`,
+  "config.invalid": `${unproposed} the config would fail its checks with these values, or a model names a provider that models.providers does not hold. Read the key and models with settings_read, then propose values it accepts.`,
   "config.secret_inline": `${unproposed} a secret's value never goes in the config or a chat. Ask the owner for it with credentials, then set the key to { "fromCredential": "<NAME>" }.`,
   "protocol.bad_args": `${unproposed} the change sets nothing new, or more than 20 keys. Read the keys first and propose only what differs.`,
   "auth.scope": `${unproposed} this caller may not propose a settings change.`,
