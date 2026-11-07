@@ -9,6 +9,12 @@ export type {
 } from "./contracts/file-permissions-contract.js";
 export { ipcEndpointContract } from "./contracts/ipc-endpoint-contract.js";
 export type { IpcEndpointHarness } from "./contracts/ipc-endpoint-contract.js";
+export { shellLauncherContract } from "./contracts/shell-launcher-contract.js";
+export type {
+  ShellCommands,
+  ShellLauncherHarness,
+  ShellLauncherSubject,
+} from "./contracts/shell-launcher-contract.js";
 export { serviceManagerContract } from "./contracts/service-manager-contract.js";
 export type {
   ServiceManagerHarness,

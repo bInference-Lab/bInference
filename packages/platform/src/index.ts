@@ -18,6 +18,7 @@ export type { LogLines, ReadLogLinesOptions } from "./logs/read-log-lines.js";
 export type {
   CommandWall,
   CommandWallState,
+  ShellLauncher,
   FileAccess,
   FileAccessState,
   FilePermissions,
@@ -25,6 +26,7 @@ export type {
   ServiceManager,
 } from "./ports.js";
 export type { CommandLaunch } from "./command-launch.js";
+export type { RunningShell, ShellEnd, ShellLaunch, ShellProgram } from "./shell-launch.js";
 export { walledPaths } from "./command-wall-paths.js";
 export type { WalledPaths } from "./command-wall-paths.js";
 export { startNodeProgram } from "./node-program.js";

@@ -5,6 +5,7 @@ import { walledPaths } from "./command-wall-paths.js";
 import { createKeychainSecretStore } from "./keychain/keychain-secret-store.js";
 import type {
   CommandWall,
+  ShellLauncher,
   FileAccess,
   FilePermissions,
   IpcEndpoint,
@@ -17,6 +18,7 @@ import { createPosixFileAccess } from "./posix/posix-file-access.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
 import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
 import { posixResidentBytes } from "./posix/posix-resident-memory.js";
+import { createPosixShellLauncher } from "./posix/posix-shell-launcher.js";
 import { createSystemdServiceManager } from "./posix/systemd-service-manager.js";
 import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
 import { createSchtasksServiceManager } from "./win32/schtasks-service-manager.js";
@@ -25,6 +27,7 @@ import { createWin32FileAccess } from "./win32/win32-file-access.js";
 import { createWin32FilePermissions } from "./win32/win32-file-permissions.js";
 import { createWin32IpcEndpoint } from "./win32/win32-ipc-endpoint.js";
 import { win32ResidentBytes } from "./win32/win32-resident-memory.js";
+import { createWin32ShellLauncher } from "./win32/win32-shell-launcher.js";
 
 /** What names an IPC endpoint. */
 export interface IpcEndpointOptions {
@@ -41,6 +44,8 @@ export interface PlatformOptions extends StateFolderOptions {
   /** The values of `DISPLAY` and `WAYLAND_DISPLAY`: on Linux, either one names a desktop session. */
   readonly display?: string | undefined;
   readonly waylandDisplay?: string | undefined;
+  /** The owner's login shell, `SHELL` on macOS and Linux, which the agent's commands run in. */
+  readonly loginShell?: string | undefined;
 }
 
 /** This OS's adapters, chosen once at startup. */
@@ -71,6 +76,11 @@ export interface Platform {
    * macOS, bubblewrap on Linux, and `none` on Windows, where the shell is off outside the image.
    */
   readonly commandWall: CommandWall;
+  /**
+   * Runs the agent's commands in this OS's shell behind {@link commandWall} (decision 0378); the
+   * clock times each command's limit.
+   */
+  readonly shellLauncher: (clock: Clock) => ShellLauncher;
 }
 
 type ServiceManagerOf = Platform["serviceManager"];
@@ -108,6 +118,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
   const keychain = createKeychainSecretStore();
   const walled = walledPaths(stateFolder);
   if (process.platform === "win32") {
+    const win32Wall = createWin32CommandWall();
     return {
       stateFolder,
       permissions: createWin32FilePermissions(),
@@ -118,11 +129,16 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       hasDesktopSession: true,
       serviceManager: (clock) => createSchtasksServiceManager({ clock }),
       residentBytes: win32ResidentBytes,
-      commandWall: createWin32CommandWall(),
+      commandWall: win32Wall,
+      shellLauncher: (clock) => createWin32ShellLauncher(win32Wall, clock),
     };
   }
   if (process.platform === "darwin" || process.platform === "linux") {
     const permissions = createPosixFilePermissions();
+    const posixWall =
+      process.platform === "darwin"
+        ? createMacosCommandWall(walled)
+        : createLinuxCommandWall(walled);
     return {
       stateFolder,
       permissions,
@@ -134,10 +150,9 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       hasDesktopSession: process.platform === "darwin" || hasDisplay(options),
       serviceManager: posixServiceManager(options, permissions),
       residentBytes: posixResidentBytes,
-      commandWall:
-        process.platform === "darwin"
-          ? createMacosCommandWall(walled)
-          : createLinuxCommandWall(walled),
+      commandWall: posixWall,
+      shellLauncher: (clock) =>
+        createPosixShellLauncher(posixWall, { loginShell: options.loginShell, clock }),
     };
   }
   throw new BinferenceError({

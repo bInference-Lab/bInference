@@ -3,6 +3,7 @@ import type { Result } from "@binference/core";
 import type { CommandLaunch } from "./command-launch.js";
 import type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
 import type { ServiceDefinition, ServiceStatus } from "./service/service-definition.js";
+import type { RunningShell, ShellLaunch } from "./shell-launch.js";
 
 /**
  * Makes a file or folder readable and writable by its owner only: POSIX modes `0600` and `0700` on
@@ -111,4 +112,19 @@ export interface CommandWall {
    * Throws `platform.no_wall` when {@link state} is `none`.
    */
   wrap(launch: CommandLaunch): CommandLaunch;
+}
+
+/**
+ * Runs the agent's commands in the machine's shell behind the {@link CommandWall} (decision 0378):
+ * the owner's login shell on macOS and Linux, PowerShell on Windows. A stop or a time limit ends a
+ * command with every process it started.
+ */
+export interface ShellLauncher {
+  /** Whether the wall holds here; a launcher whose wall answers `none` starts nothing. */
+  readonly wall: CommandWallState;
+  /**
+   * Starts a command and hands its output, standard output and error together, to `onOutput`.
+   * Throws `platform.no_wall` when the wall does not hold.
+   */
+  start(launch: ShellLaunch, onOutput: (text: string) => void): RunningShell;
 }
