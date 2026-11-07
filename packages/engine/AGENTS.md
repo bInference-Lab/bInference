@@ -344,6 +344,14 @@ Rules for this package:
   step writes it with the intent store's `freeze`, `isFrozen: false`, which moves it from
   `confirmed` to `reconciled` on `unfreeze_written`; the executor never takes one. Each unfreeze is
   announced with `notice.unfrozen`.
+- A config change (`src/config-changes/`, decision 0393) is one live `configChange` intent, from
+  `config/propose` of the owner or the agent runtime, never an MCP client: it runs to its card at
+  once with its `ConfigChangeQuote` (each key before and after, and whether a restart applies it)
+  in the `quote` column, and never passes the auto test. The engine holds no config: the
+  `ConfigChanges` the composition root hands previews a patch, reads the config for `config/view`
+  and applies a confirmed change, refusing it as `config_moved` or `config_invalid`, which end the
+  intent `failed_check` on `config_refused`; an applied one moves to `reconciled` on
+  `order_written`. A change a stop left `confirmed` is applied before the next proposal.
 - `safety/status` (`src/safety/safety-status-handlers.ts`) reads, for any surface with `read`:
   whether anything is frozen, the install's freeze, each frozen agent not archived with its time,
   the rescue that has not ended, and the rescue address in effect with a change that waits.
@@ -376,8 +384,9 @@ Rules for this package:
   through `createOwnerCalls`, only for the owner's numeric Telegram id, as the caller
   `{ kind: "telegram" }` with `read` and `confirm`: what they change is journaled, ledgered and
   announced as done from Telegram, and an operation joins `ownerChatOperations` only when its
-  scope is one of those two. The one exception is `config/change` with one patch of
-  `ownerChatPatchSchema`: `owner.locale` or one key of `telegram.replies` (decisions 0134 and 0377); any other patch from the chat is `auth.scope`. A card version is drawn from the stored intent, a press is
+  scope is one of those two. The exceptions are `config/change` with one patch of
+  `ownerChatPatchSchema`: `owner.locale` or one key of `telegram.replies` (decisions 0134 and 0377), any other patch from the chat `auth.scope`; and
+  `config/propose`, a `propose` operation whose change waits for the owner's tap on its card (decision 0393). A card version is drawn from the stored intent, a press is
   answered only for the owner and only through the answer step, and every card version carries a
   callback reference from the `Random` port, never an id.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

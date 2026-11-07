@@ -154,6 +154,7 @@ const builders: Builders = {
   fills_reconciled: ({ isDeliveryRead }) => ({ type: "fills_reconciled", isDeliveryRead }),
   unfreeze_written: () => ({ type: "unfreeze_written" }),
   order_written: () => ({ type: "order_written" }),
+  config_refused: () => ({ type: "config_refused", reason: "config_moved" }),
 };
 
 function mostly<T>(usual: T, rare: T): fc.Arbitrary<T> {
@@ -585,9 +586,9 @@ function missingTerminalStates(reached: ReadonlySet<IntentState>): readonly Inte
   return intentStates.filter((state) => isTerminalState(state) && !reached.has(state));
 }
 
-function nonTerminalAnswers(
-  results: readonly Result<IntentStep, TransitionProblem>[],
-): readonly Result<IntentStep, TransitionProblem>[] {
+type Answer = Result<IntentStep, TransitionProblem>;
+
+function nonTerminalAnswers(results: readonly Answer[]): readonly Answer[] {
   return results.filter((result) => result.ok || result.error !== "terminal");
 }
 

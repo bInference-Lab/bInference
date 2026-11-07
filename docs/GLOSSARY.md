@@ -382,6 +382,9 @@ new name here first, in the change that uses it.
   the chat.
 - **shown chart**: a pie, bar, area or line chart the agent shows the owner in the chat
   (`show_chart`, [decision 0387](DECISIONS.md#d0387)); drawn in the console, as text elsewhere.
+- **config change**: a change to keys of `config.json5` proposed from a chat, by the owner's
+  `/config` or the agent's `settings_change`, as a card the owner confirms; nothing changes before
+  the tap (intent kind `configChange`, [decision 0393](DECISIONS.md#d0393)).
 - **shell host**: the process the engine starts to run the agent's commands, behind the wall.
 - **wall**: what keeps every command from `auth/`, `keys/`, the databases, the config, the IPC
   socket and binference's keychain entries. A machine that cannot hold it refuses the shell.
@@ -748,6 +751,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | patch (of files)                            | 补丁                   | `file_patch`                 |
 | made image                                  | 生成的图片             | `make_image`                 |
 | shown chart, chart (the agent shows)        | 图表                   | `show_chart`                 |
+| config change                               | 设置更改               | `configChange`, `/config`    |
 | credential (the owner stores)               | 凭据                   | `credentials`                |
 | masked prompt (for a credential)            | 隐藏输入框             |                              |
 | shell request                               | 命令请求               |                              |

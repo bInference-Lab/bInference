@@ -1005,6 +1005,8 @@ plugin stays installed. `plugin/call` answers `plugin.not_found`, `plugin.disabl
 | `config/read`        | `admin`                    |       |       | → the config with every secret source shown as its kind only                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `config/change`      | `admin`                    | ✓     |       | `{ patch, reason? }` → `{ config, restartNeeded }`: a JSON merge patch over `config.json5`, edited in place and checked first; journaled and announced ([decision 0208](../DECISIONS.md#d0208))                                                                                                                                                                                                                                                                                                                         |
 | `config/history`     | `read`                     |       |       | paging → journal entries                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `config/view`        | `read`                     |       |       | `{ path? }` → `{ value?, rules }`: the config, or one dotted key, every secret source shown as its kind, and what each key under it takes ([decision 0393](../DECISIONS.md#d0393))                                                                                                                                                                                                                                                                                                                                      |
+| `config/propose`     | `propose`                  | ✓     |       | `{ patch, reason?, agent? }` → `IntentView`: a `configChange` card for a JSON merge patch, applied only on the owner's tap; refused to an MCP client ([decision 0393](../DECISIONS.md#d0393))                                                                                                                                                                                                                                                                                                                           |
 | `ledger/list`        | `read`                     |       |       | paging, `{ agent?, from?, to? }` → entries with their hashes                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `ledger/export`      | `read`                     | ✓     |       | `{ agent?, from?, to?, mode? }` → file (CSV) of `live` (default) or `paper` fills                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `device/pair`        | `admin`                    |       | ✓     | → `{ link, expiresAt }`: a new single-use console pairing link, valid 10 minutes, shown once ([decision 0155](../DECISIONS.md#d0155))                                                                                                                                                                                                                                                                                                                                                                                   |
@@ -1113,7 +1115,9 @@ The owner's Telegram chat may run `config/change` past its `admin` scope for thr
 one key each: `{ owner: { locale } }`, which a `/lang` button sends
 ([decision 0134](../DECISIONS.md#d0134)), and `{ telegram: { replies: { stream } } }` or
 `{ telegram: { replies: { reasoning } } }`, which a `/replies` button sends
-([decision 0377](../DECISIONS.md#d0377)).
+([decision 0377](../DECISIONS.md#d0377)). Any other setting changes from the chat through
+`config/view` and `config/propose`, which it runs as the owner: the change waits for the owner's
+tap on its card ([decision 0393](../DECISIONS.md#d0393)).
 
 <a id="section-7-10"></a>
 
@@ -1226,8 +1230,9 @@ read.
 (`{ kind: "unfreeze", agent? }`), `autoOrder` intents only by `order/create`
 (`{ kind: "autoOrder", order }`, [decision 0189](../DECISIONS.md#d0189)), `webhookRule` intents
 only by `webhookRule/create` (`{ kind: "webhookRule", rule }`,
-[decision 0299](../DECISIONS.md#d0299)), and fill intents only by the engine for an auto order or
-webhook rule.
+[decision 0299](../DECISIONS.md#d0299)), `configChange` intents only by `config/propose`
+(`{ kind: "configChange", patch, reason? }`, always live, [decision 0393](../DECISIONS.md#d0393)),
+and fill intents only by the engine for an auto order or webhook rule.
 
 <a id="section-8-2"></a>
 
@@ -1468,8 +1473,10 @@ launches.
     drops the field.
   - `IntentView.receipt` is a new optional field, the line every copy of a closed card ends with;
     `IntentView.bridgeReceipt` stays beside it for older clients, and the next version drops it.
-  - An intent's `kind` has a new value, `webhookRule`, the card of a webhook rule. A client that
-    meets a kind it does not know shows the card's lines from `intent/card`.
+  - An intent's `kind` has new values, `webhookRule`, the card of a webhook rule, and
+    `configChange`, the card of a setting change. A client that meets a kind it does not know
+    shows the card's lines from `intent/card`.
+  - `config/view` and `config/propose` are new operations.
   - `IntentView.resolvedName`, `IntentView.delivery` and `IntentView.bridgeReceipt`, `PortfolioView.staking` and
     `PortfolioView.inTransit` with its `chainName`, `WebhookRuleView.ratePerMinute`, `lastAlertAt`, `intent` and
     `summary`, `webhookRule/list`'s `assets`, `address/list`'s `room`, `WalletView.chainName`, `AgentView.bridgeWallet` with `engine/status`'s `bridgeWallet`, `engine/status`'s `debugSignalOff`, and the `autoAsks` of `engine/status`'s agents, `approval/get` and `approval/set` are new optional

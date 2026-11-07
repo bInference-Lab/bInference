@@ -1,5 +1,6 @@
 import type { AccountRef, Amount, AssetRef } from "@binference/chain";
 import { type Bps, bpsPerWhole } from "@binference/core";
+import type { ConfigKeyChange } from "../config-changes/config-change-quote.js";
 import { type BridgeAction, bridgeActionLine } from "./bridge-card-lines.js";
 import type { CardLine, CardValue } from "./card-line.js";
 import type { IdentityDetails } from "./identity-card-lines.js";
@@ -113,6 +114,11 @@ export interface CardActionFacts {
   };
   /** A webhook rule's terms with every default filled, which its alerts fill inside (0299). */
   readonly webhookRule: WebhookRuleAction;
+  /** Each key a config change changes, before and after, and whether a restart applies it (0393). */
+  readonly configChange: {
+    readonly changes: readonly ConfigKeyChange[];
+    readonly restartNeeded: boolean;
+  };
 }
 
 /** The kind of a card's action. */
@@ -260,6 +266,16 @@ const actionLines: ActionLines = {
     },
   }),
   webhookRule: webhookRuleActionLine,
+  configChange: (action) => ({
+    key: "card.configChange.action",
+    values: {
+      count: count(action.changes.length),
+      changes: text(
+        action.changes.map(({ path, before, after }) => `${path}: ${before} → ${after}`).join("; "),
+      ),
+      restart: { type: "choice", choice: action.restartNeeded ? "yes" : "no" },
+    },
+  }),
 };
 
 /**
@@ -301,6 +317,7 @@ const verbs: { readonly [K in Exclude<CardActionKind, "stake">]: string } = {
   unfreeze: "unfreeze",
   autoOrder: "autoOrder",
   webhookRule: "webhookRule",
+  configChange: "configChange",
 };
 
 /** The verb the card's header confirms: the kind, or a stake move such as `unstake`. */

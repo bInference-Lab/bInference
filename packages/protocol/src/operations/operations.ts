@@ -8,6 +8,10 @@ import { type BridgeOperationShapes, bridgeOperations } from "./bridge-operation
 import { type ChartOperationShapes, chartOperations } from "./chart-operations.schema.js";
 import { type ChatOperationShapes, chatOperations } from "./chat-operations.schema.js";
 import {
+  type ConfigProposalOperationShapes,
+  configProposalOperations,
+} from "./config-proposal-operations.schema.js";
+import {
   type CredentialOperationShapes,
   credentialOperations,
 } from "./credential-operations.schema.js";
@@ -61,6 +65,7 @@ export interface OperationShapes
     LimitOperationShapes,
     ChatOperationShapes,
     ImageOperationShapes,
+    ConfigProposalOperationShapes,
     ReasoningOperationShapes,
     ShellOperationShapes,
     FileOperationShapes,
@@ -100,6 +105,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...limitOperations,
   ...chatOperations,
   ...imageOperations,
+  ...configProposalOperations,
   ...reasoningOperations,
   ...shellOperations,
   ...fileOperations,

@@ -1,6 +1,6 @@
 # 0377. The owner chooses whether the model's reasoning shows in Telegram
 
-Status: Accepted
+Status: Amended by 0393
 
 Accepted by the tech lead on 2026-11-05, on the owner's decision.
 

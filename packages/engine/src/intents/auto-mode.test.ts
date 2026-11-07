@@ -56,6 +56,7 @@ describe("the auto test", () => {
       rescue: "send",
       unfreeze: "kind",
       webhookRule: "kind",
+      configChange: "kind",
       autoOrder: "kind",
     });
   });

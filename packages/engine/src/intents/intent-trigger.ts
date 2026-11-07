@@ -2,6 +2,7 @@ import type { StakeRefusal } from "@binference/chain/staking";
 import type { AutoModeFacts } from "./auto-mode.js";
 import type { CardRules } from "./card-rules.js";
 import type {
+  ConfigFailure,
   FillBreach,
   LaunchReadFailure,
   NameFailure,
@@ -57,6 +58,7 @@ export const triggerTypes = [
   "fills_reconciled",
   "unfreeze_written",
   "order_written",
+  "config_refused",
 ] as const;
 
 /** The type of a trigger. */
@@ -231,6 +233,13 @@ export interface TriggerFacts {
   readonly unfreeze_written: NoFacts;
   /** A confirmed auto order card is written: its order became active, or had ended. */
   readonly order_written: NoFacts;
+  /**
+   * A confirmed config change did not apply: a key its card named moved since, or the config no
+   * longer takes it (decision 0393). Nothing was written.
+   */
+  readonly config_refused: {
+    readonly reason: ConfigFailure;
+  };
 }
 
 /** Something that happened to an intent, with the facts the state machine's guards read. */

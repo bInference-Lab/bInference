@@ -174,6 +174,7 @@ Agent 说明  “按你的要求在 $625 止盈”
 | unfreeze           | `card.unfreeze.agent`, `card.unfreeze.all` | Unfreeze {agent}: it trades again within its limits; for every agent: Unfreeze every agent: {count} frozen now, and new agents start unfrozen | 对 {agent} 解除冻结：它可以在交易限额内再次交易；全部：对全部 Agent 解除冻结：目前有 {count} 个已冻结，新建的 Agent 也不再冻结 |
 | auto order         | `card.order.action`                        | Approve {orderKind}: {summary} · up to {maxFills} fills until {expiry}                                                                        | 批准{orderKind}：{summary} · 最多成交 {maxFills} 次，截至 {expiry}                                                             |
 | webhook rule       | `card.webhookRule.action`                  | Approve alert rule "{name}": {summary} · at most {rate} a minute                                                                              | 批准提醒规则“{name}”：{summary} · 每分钟最多 {rate} 次                                                                         |
+| config change      | `card.configChange.action`                 | Change {count} settings: {changes} · applies after a restart                                                                                  | 更改 {count} 项设置：{changes} · 重启后生效                                                                                    |
 
 A `launchToken` shows, right after its action line, each line below that has its facts
 ([decision 0235](../DECISIONS.md#d0235)), then `card.launchWallet`:
@@ -306,6 +307,7 @@ The card's message is edited into its receipt; the buttons go away.
 | Done, nothing sent     | `receipt.done`           | ✅ Done, with nothing to send on chain                                        | ✅ 已完成，无需在链上发送                                                 |
 | Unfrozen, one agent    | `receipt.unfrozenAgent`  | ✅ Unfrozen: {agent} trades again within its limits                           | ✅ 已解除冻结：{agent} 可以在交易限额内再次交易                           |
 | Unfrozen, every agent  | `receipt.unfrozenAll`    | ✅ Unfrozen: every agent ({count} were frozen), and new agents start unfrozen | ✅ 已对全部 Agent 解除冻结（{count} 个曾被冻结），新建的 Agent 也不再冻结 |
+| Settings changed       | `receipt.configChanged`  | ✅ Settings changed: {count} settings; some apply after binference restarts   | ✅ 设置已更改：{count} 项设置；部分设置在 binference 重启后生效           |
 | Auto order active      | `receipt.orderActive`    | ✅ Auto order active: {orderKind}, {summary} · until {expiry}                 | ✅ 自动订单已生效：{orderKind}，{summary}，截至 {expiry}                  |
 | Auto order not started | `receipt.orderUnstarted` | ❌ Auto order not started: {why}                                              | ❌ 自动订单未生效：{why}                                                  |
 | Not sent, no reason    | `receipt.unsent`         | ❌ Not sent: it ended before it was signed                                    | ❌ 未发送：在签名之前已结束                                               |

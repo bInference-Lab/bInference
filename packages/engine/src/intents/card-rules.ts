@@ -30,6 +30,7 @@ const longCardKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
   "unfreeze",
   "autoOrder",
   "webhookRule",
+  "configChange",
 ]);
 
 /** When a card of this kind, opened at `openedAtMs`, expires. */

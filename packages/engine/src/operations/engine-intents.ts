@@ -1,3 +1,4 @@
+import type { ConfigChangeHandlers } from "../config-changes/config-change-handlers.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
 import type { CardTimerParts } from "../confirmations/card-timer.js";
 import { createConfirmations } from "../confirmations/create-confirmations.js";
@@ -20,6 +21,7 @@ import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import { type AnswerCard, createAnswerCard } from "./answer-card.js";
 import type { Engine, EngineOptions } from "./create-engine.js";
 import {
+  configChangeHandlersOf,
   executeOf,
   launchRoutingOf,
   requoteOptions,
@@ -32,7 +34,10 @@ import { createIntentHandlers, type IntentHandlers } from "./intent-handlers.js"
 
 /** The intent and order parts of the engine. */
 export interface IntentParts {
-  readonly handlers: IntentHandlers & OrderHandlers & WebhookRuleHandlers;
+  readonly handlers: IntentHandlers &
+    OrderHandlers &
+    WebhookRuleHandlers &
+    Partial<ConfigChangeHandlers>;
   readonly answer: AnswerCard;
   readonly stored: StoredIntents;
   readonly orders: OrderParts;
@@ -83,6 +88,7 @@ export function intentParts(
     ...createIntentHandlers({ ...options, ...stores, stored, moneyPath, answer, showings }),
     ...createOrderHandlers(orders),
     ...ruleHandlers,
+    ...configChangeHandlersOf(options, stored),
   };
   const cardTimer = cardTimerOf(options, { confirmations, orders, rules });
   const fillParts = { stored, moneyPath, gate, holdings: paper.holdings, fence: check };

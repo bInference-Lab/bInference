@@ -13,6 +13,8 @@ import type {
   WebhookRuleCardRequest,
 } from "@binference/protocol";
 import type { DestinationChain } from "../address-book/destination-chain.js";
+import { configChangeRequestDocument } from "../config-changes/config-change-quote.js";
+import type { ConfigChangeRequest } from "../config-changes/config-change-quote.js";
 import type { CardLine } from "../confirmations/card-line.js";
 import { bridgeQuoteDocument } from "../intents/bridge-quote.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
@@ -46,7 +48,8 @@ type AnyRequest =
   | RescueRequest
   | UnfreezeRequest
   | AutoOrderRequest
-  | WebhookRuleCardRequest;
+  | WebhookRuleCardRequest
+  | ConfigChangeRequest;
 
 // A webhook rule's token, and what a buy spends when it names it.
 function webhookRuleAssetsOf({ request }: WebhookRuleQuote): readonly AssetRef[] {
@@ -112,6 +115,7 @@ const quotedAssets: Readonly<Partial<Record<string, (quote: JsonValue) => readon
   autoOrder: (quote) => [autoOrderQuoteDocument.decode(quote).request.token],
   webhookRule: (quote) => webhookRuleAssetsOf(webhookRuleQuoteDocument.decode(quote)),
   stake: (quote) => [stakeQuoteDocument.decode(quote).plan.value.asset],
+  configChange: () => [],
 };
 
 // A kind whose quote is a document of its own: a rescue, an auto order and a stake list theirs, and
@@ -164,6 +168,9 @@ function requestOf(record: IntentRecord): AnyRequest {
   if (record.kind === "webhookRule") {
     return webhookRuleCardRequestDocument.decode(record.request);
   }
+  if (record.kind === "configChange") {
+    return configChangeRequestDocument.decode(record.request);
+  }
   return record.kind === "rescue" ? rescueRequest : requestDocument.decode(record.request);
 }
 
@@ -179,6 +186,7 @@ const ownQuoteKinds: ReadonlySet<string> = new Set([
   "launchToken",
   "stake",
   "registerIdentity",
+  "configChange",
 ]);
 
 function cardViewOf(snapshot: IntentSnapshot): CardView | undefined {

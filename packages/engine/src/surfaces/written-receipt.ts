@@ -1,5 +1,6 @@
 import type { ChainRegistry } from "@binference/chain";
 import type { AssetInfos } from "@binference/protocol";
+import { configChangeQuoteDocument } from "../config-changes/config-change-quote.js";
 import { orderTermsOf } from "../confirmations/card-action.js";
 import { receiptAfterLine, type WrittenOutcome } from "../confirmations/card-closing.js";
 import { assetsOfLine } from "../confirmations/card-line.js";
@@ -88,7 +89,8 @@ async function ruleOutcomeOf(
 
 /**
  * What a confirmed intent with nothing to send took effect as, once it reconciled (spec 4, section
- * 3.5): an unfreeze, with the agents its card named (decision 0128), and an auto order's card,
+ * 3.5): an unfreeze, with the agents its card named (decision 0128), a config change with the keys
+ * it changed and whether a restart applies them (decision 0393), and an auto order's card,
  * with the order it made active or why the order did not start (decision 0189), in paper mode or
  * live. `undefined` for any other kind, before `reconciled`, and for an auto order whose agent is
  * no longer stored.
@@ -104,6 +106,15 @@ export async function writtenReceiptOf(
   if (record.kind === "unfreeze") {
     const action = unfreezeActionOf(unfreezeQuoteDocument.decode(record.quote));
     return { outcome: { ...action, kind: "unfrozen" }, assets: noAssets };
+  }
+  if (record.kind === "configChange") {
+    const { changes, restartNeeded } = configChangeQuoteDocument.decode(record.quote);
+    const outcome: WrittenOutcome = {
+      kind: "configChanged",
+      keyCount: changes.length,
+      restartNeeded,
+    };
+    return { outcome, assets: noAssets };
   }
   if (record.kind === "webhookRule") {
     return ruleOutcomeOf(source, webhookRuleQuoteDocument.decode(record.quote), call);

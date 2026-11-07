@@ -147,6 +147,8 @@ export const checkReasons = [
   "identity_exists",
   "registry_changed",
   "identity_ceiling",
+  "config_moved",
+  "config_invalid",
 ] as const;
 
 /** A reason a quote, build, decode or simulation failed. */
@@ -161,7 +163,14 @@ export type QuoteFailure = Exclude<
   | PinFailure
   | NameFailure
   | "name_moved"
+  | ConfigFailure
 >;
+
+/**
+ * Why a confirmed config change did not apply (decision 0393): `config_moved`, a key its card named
+ * moved since; `config_invalid`, the config no longer takes the patch.
+ */
+export type ConfigFailure = Extract<CheckReason, "config_moved" | "config_invalid">;
 
 /** Why a send's `.bnb` name ended it at the resolve step: no address, or a contract's. */
 export type NameFailure = Extract<CheckReason, "name_unresolved" | "name_contract">;

@@ -6034,7 +6034,8 @@
                 "rescue",
                 "unfreeze",
                 "autoOrder",
-                "webhookRule"
+                "webhookRule",
+                "configChange"
               ]
             },
             "state": {
@@ -6819,6 +6820,29 @@
                   "required": [
                     "kind",
                     "rule"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "configChange"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "patch"
                   ]
                 }
               ]
@@ -14772,7 +14796,8 @@
                 "rescue",
                 "unfreeze",
                 "autoOrder",
-                "webhookRule"
+                "webhookRule",
+                "configChange"
               ]
             },
             "state": {
@@ -15557,6 +15582,29 @@
                   "required": [
                     "kind",
                     "rule"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "configChange"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "patch"
                   ]
                 }
               ]
@@ -16635,7 +16683,8 @@
                 "rescue",
                 "unfreeze",
                 "autoOrder",
-                "webhookRule"
+                "webhookRule",
+                "configChange"
               ]
             },
             "state": {
@@ -17420,6 +17469,29 @@
                   "required": [
                     "kind",
                     "rule"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "configChange"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "patch"
                   ]
                 }
               ]
@@ -18960,7 +19032,8 @@
                 "rescue",
                 "unfreeze",
                 "autoOrder",
-                "webhookRule"
+                "webhookRule",
+                "configChange"
               ]
             }
           },
@@ -19034,7 +19107,8 @@
                       "rescue",
                       "unfreeze",
                       "autoOrder",
-                      "webhookRule"
+                      "webhookRule",
+                      "configChange"
                     ]
                   },
                   "state": {
@@ -19819,6 +19893,29 @@
                         "required": [
                           "kind",
                           "rule"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "const": "configChange"
+                          },
+                          "patch": {
+                            "type": "object",
+                            "propertyNames": {
+                              "type": "string"
+                            },
+                            "additionalProperties": {}
+                          },
+                          "reason": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "patch"
                         ]
                       }
                     ]
@@ -20919,7 +21016,8 @@
                 "rescue",
                 "unfreeze",
                 "autoOrder",
-                "webhookRule"
+                "webhookRule",
+                "configChange"
               ]
             },
             "state": {
@@ -21704,6 +21802,29 @@
                   "required": [
                     "kind",
                     "rule"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "configChange"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "patch"
                   ]
                 }
               ]
@@ -22788,7 +22909,8 @@
                 "rescue",
                 "unfreeze",
                 "autoOrder",
-                "webhookRule"
+                "webhookRule",
+                "configChange"
               ]
             },
             "state": {
@@ -23573,6 +23695,29 @@
                   "required": [
                     "kind",
                     "rule"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "configChange"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "patch"
                   ]
                 }
               ]
@@ -24656,7 +24801,8 @@
                 "rescue",
                 "unfreeze",
                 "autoOrder",
-                "webhookRule"
+                "webhookRule",
+                "configChange"
               ]
             },
             "state": {
@@ -25441,6 +25587,29 @@
                   "required": [
                     "kind",
                     "rule"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "configChange"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "patch"
                   ]
                 }
               ]
@@ -36270,7 +36439,8 @@
                               "rescue",
                               "unfreeze",
                               "autoOrder",
-                              "webhookRule"
+                              "webhookRule",
+                              "configChange"
                             ]
                           },
                           "state": {
@@ -37055,6 +37225,29 @@
                                 "required": [
                                   "kind",
                                   "rule"
+                                ]
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "const": "configChange"
+                                  },
+                                  "patch": {
+                                    "type": "object",
+                                    "propertyNames": {
+                                      "type": "string"
+                                    },
+                                    "additionalProperties": {}
+                                  },
+                                  "reason": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "patch"
                                 ]
                               }
                             ]
@@ -39422,6 +39615,2005 @@
         "id",
         "result"
       ]
+    },
+    "call/config/view": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "config/view"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/config/view": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "value": {},
+            "rules": {
+              "readOnly": true,
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "takes": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "path",
+                  "description",
+                  "takes"
+                ]
+              }
+            }
+          },
+          "required": [
+            "rules"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/config/propose": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "config/propose"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "patch": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
+          "required": [
+            "patch"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "propose",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/config/propose": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "intent": {
+              "type": "string",
+              "pattern": "^int_"
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "wallet": {
+              "type": "string",
+              "pattern": "^wal_"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "swap",
+                "buy",
+                "sell",
+                "send",
+                "revokeApproval",
+                "lend",
+                "stake",
+                "bridge",
+                "cexOrder",
+                "registerIdentity",
+                "launchToken",
+                "rescue",
+                "unfreeze",
+                "autoOrder",
+                "webhookRule",
+                "configChange"
+              ]
+            },
+            "state": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "checked",
+                "quoted",
+                "assessed",
+                "simulated",
+                "awaiting_confirmation",
+                "confirmed",
+                "executing",
+                "included",
+                "finalized",
+                "reconciled",
+                "paper_filled",
+                "rejected_policy",
+                "risk_blocked",
+                "failed_check",
+                "denied",
+                "expired",
+                "cancelled",
+                "failed_onchain",
+                "unknown_after_send"
+              ]
+            },
+            "request": {
+              "anyOf": [
+                {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "swap"
+                        },
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "amount": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "base": {
+                                  "type": "string",
+                                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                }
+                              },
+                              "required": [
+                                "base"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "percentBps": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "percentBps"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "maxSlippageBps": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "from",
+                        "to",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "buy"
+                        },
+                        "token": {
+                          "type": "string"
+                        },
+                        "spend": {
+                          "type": "object",
+                          "properties": {
+                            "asset": {
+                              "type": "string"
+                            },
+                            "base": {
+                              "type": "string",
+                              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                            }
+                          },
+                          "required": [
+                            "asset",
+                            "base"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxSlippageBps": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "token",
+                        "spend"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "sell"
+                        },
+                        "token": {
+                          "type": "string"
+                        },
+                        "amount": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "base": {
+                                  "type": "string",
+                                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                                }
+                              },
+                              "required": [
+                                "base"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "percentBps": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "percentBps"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "receive": {
+                          "type": "string"
+                        },
+                        "maxSlippageBps": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "token",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "send"
+                        },
+                        "amount": {
+                          "type": "object",
+                          "properties": {
+                            "asset": {
+                              "type": "string"
+                            },
+                            "base": {
+                              "type": "string",
+                              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                            }
+                          },
+                          "required": [
+                            "asset",
+                            "base"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "to": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "address": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "address"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 255
+                                }
+                              },
+                              "required": [
+                                "name"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "entry": {
+                                  "type": "string",
+                                  "pattern": "^adr_"
+                                }
+                              },
+                              "required": [
+                                "entry"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "amount",
+                        "to"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "revokeApproval"
+                        },
+                        "token": {
+                          "type": "string"
+                        },
+                        "spender": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "token",
+                        "spender"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "lend"
+                        },
+                        "action": {
+                          "type": "string",
+                          "enum": [
+                            "supply",
+                            "withdraw",
+                            "borrow",
+                            "repay"
+                          ]
+                        },
+                        "venue": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        },
+                        "amount": {
+                          "type": "object",
+                          "properties": {
+                            "asset": {
+                              "type": "string"
+                            },
+                            "base": {
+                              "type": "string",
+                              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                            }
+                          },
+                          "required": [
+                            "asset",
+                            "base"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "action",
+                        "venue",
+                        "amount"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "stake"
+                        },
+                        "action": {
+                          "type": "string",
+                          "enum": [
+                            "stake",
+                            "unstake",
+                            "claim"
+                          ]
+                        },
+                        "venue": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        },
+                        "validator": {
+                          "type": "string"
+                        },
+                        "amount": {
+                          "type": "object",
+                          "properties": {
+                            "asset": {
+                              "type": "string"
+                            },
+                            "base": {
+                              "type": "string",
+                              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                            }
+                          },
+                          "required": [
+                            "asset",
+                            "base"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "action",
+                        "venue"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "bridge"
+                        },
+                        "amount": {
+                          "type": "object",
+                          "properties": {
+                            "asset": {
+                              "type": "string"
+                            },
+                            "base": {
+                              "type": "string",
+                              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                            }
+                          },
+                          "required": [
+                            "asset",
+                            "base"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "toChain": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "entry": {
+                                  "type": "string",
+                                  "pattern": "^adr_"
+                                }
+                              },
+                              "required": [
+                                "entry"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "rescue": {
+                                  "type": "boolean",
+                                  "const": true
+                                }
+                              },
+                              "required": [
+                                "rescue"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "amount",
+                        "toChain",
+                        "to"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "cexOrder"
+                        },
+                        "market": {
+                          "type": "string",
+                          "pattern": "^[A-Z0-9][A-Z0-9_-]{0,31}$"
+                        },
+                        "side": {
+                          "type": "string",
+                          "enum": [
+                            "buy",
+                            "sell"
+                          ]
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "market",
+                            "limit"
+                          ]
+                        },
+                        "size": {
+                          "type": "string",
+                          "pattern": "^(?:0|[1-9]\\d{0,30})(?:\\.\\d{1,18})?$"
+                        },
+                        "price": {
+                          "type": "string",
+                          "pattern": "^(?:0|[1-9]\\d{0,30})(?:\\.\\d{1,18})?$"
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "market",
+                        "side",
+                        "type",
+                        "size"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "registerIdentity"
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 280
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "agent": {
+                          "type": "string",
+                          "pattern": "^agt_"
+                        },
+                        "wallet": {
+                          "type": "string",
+                          "pattern": "^wal_"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "kind": {
+                          "type": "string",
+                          "const": "launchToken"
+                        },
+                        "venue": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 64
+                        },
+                        "symbol": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 16
+                        },
+                        "image": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "links": {
+                          "type": "object",
+                          "properties": {
+                            "website": {
+                              "type": "string",
+                              "maxLength": 512,
+                              "format": "uri"
+                            },
+                            "x": {
+                              "type": "string",
+                              "maxLength": 512,
+                              "format": "uri"
+                            },
+                            "telegram": {
+                              "type": "string",
+                              "maxLength": 512,
+                              "format": "uri"
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "pairWith": {
+                          "type": "string"
+                        },
+                        "firstBuy": {
+                          "type": "object",
+                          "properties": {
+                            "asset": {
+                              "type": "string"
+                            },
+                            "base": {
+                              "type": "string",
+                              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                            }
+                          },
+                          "required": [
+                            "asset",
+                            "base"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "venueOptions": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {}
+                        }
+                      },
+                      "required": [
+                        "agent",
+                        "reason",
+                        "kind",
+                        "venue",
+                        "name",
+                        "symbol",
+                        "image",
+                        "pairWith"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "rescue"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "unfreeze"
+                    },
+                    "agent": {
+                      "type": "string",
+                      "pattern": "^agt_"
+                    }
+                  },
+                  "required": [
+                    "kind"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "autoOrder"
+                    },
+                    "order": {
+                      "type": "string",
+                      "pattern": "^ord_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "order"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "webhookRule"
+                    },
+                    "rule": {
+                      "type": "string",
+                      "pattern": "^whr_"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "rule"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "const": "configChange"
+                    },
+                    "patch": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "patch"
+                  ]
+                }
+              ]
+            },
+            "quote": {
+              "type": "object",
+              "properties": {
+                "route": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "venue": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                      },
+                      "shareBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "venue",
+                      "shareBps"
+                    ]
+                  }
+                },
+                "amountIn": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "expectedOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "priceImpactBps": {
+                  "type": "number"
+                },
+                "gas": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "quotedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "expiresAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "place": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "curve"
+                        },
+                        "launchpad": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "launchpad"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "const": "pools"
+                        }
+                      },
+                      "required": [
+                        "kind"
+                      ]
+                    }
+                  ]
+                },
+                "poolFees": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "maker": {
+                        "type": "string",
+                        "maxLength": 40,
+                        "pattern": "^[A-Za-z0-9][A-Za-z0-9 .-]*$"
+                      },
+                      "feeBps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "maker",
+                      "feeBps"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "route",
+                "amountIn",
+                "expectedOut",
+                "minOut",
+                "priceImpactBps",
+                "gas",
+                "quotedAt",
+                "expiresAt"
+              ]
+            },
+            "risk": {
+              "type": "object",
+              "properties": {
+                "verdict": {
+                  "type": "string",
+                  "enum": [
+                    "pass",
+                    "warn",
+                    "block"
+                  ]
+                },
+                "flags": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "code": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$"
+                      },
+                      "source": {
+                        "type": "string",
+                        "pattern": "^[a-z][a-z0-9_]*$"
+                      }
+                    },
+                    "required": [
+                      "code",
+                      "source"
+                    ]
+                  }
+                },
+                "buyTaxBps": {
+                  "type": "number"
+                },
+                "sellTaxBps": {
+                  "type": "number"
+                },
+                "liquidityUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "insiders": {
+                  "maxItems": 50,
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "onCurve": {
+                  "type": "boolean"
+                },
+                "checkedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "verdict",
+                "flags",
+                "onCurve",
+                "checkedAt"
+              ]
+            },
+            "simulation": {
+              "type": "object",
+              "properties": {
+                "spent": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "asset": {
+                        "type": "string"
+                      },
+                      "base": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "asset",
+                      "base"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "received": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "asset": {
+                        "type": "string"
+                      },
+                      "base": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "asset",
+                      "base"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "simulatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "estimated": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "spent",
+                "received",
+                "simulatedAt"
+              ]
+            },
+            "card": {
+              "type": "object",
+              "properties": {
+                "card": {
+                  "type": "string",
+                  "pattern": "^crd_"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "opensAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "expiresAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "paper": {
+                  "type": "boolean"
+                },
+                "outsideContent": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "card",
+                "version",
+                "opensAt",
+                "expiresAt",
+                "paper",
+                "outsideContent"
+              ]
+            },
+            "outcome": {
+              "type": "object",
+              "properties": {
+                "reason": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z_]*$"
+                },
+                "chain": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "validator": {
+                  "type": "object",
+                  "properties": {
+                    "account": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 64
+                    }
+                  },
+                  "required": [
+                    "account"
+                  ]
+                },
+                "minStake": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "readyAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "txHashes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "executions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "amountIn": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "amountOut": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "priceUsdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      },
+                      "feeUsdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      },
+                      "gasUsdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                      },
+                      "at": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "amountIn",
+                      "amountOut",
+                      "at"
+                    ]
+                  }
+                }
+              }
+            },
+            "paper": {
+              "type": "boolean"
+            },
+            "outsideContent": {
+              "type": "boolean"
+            },
+            "createdAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "changedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "assets": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "object",
+                "properties": {
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "decimals": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                  },
+                  "verified": {
+                    "type": "boolean"
+                  },
+                  "onCurve": {
+                    "type": "boolean"
+                  },
+                  "logo": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "symbol",
+                  "name",
+                  "decimals",
+                  "verified"
+                ]
+              }
+            },
+            "resolvedName": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "address": {
+                  "type": "string"
+                },
+                "resolvedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "name",
+                "address",
+                "resolvedAt"
+              ]
+            },
+            "delivery": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "in_transit",
+                    "late",
+                    "delivered",
+                    "refunded"
+                  ]
+                },
+                "toChain": {
+                  "type": "string"
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "minOut": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "received": {
+                  "type": "object",
+                  "properties": {
+                    "asset": {
+                      "type": "string"
+                    },
+                    "base": {
+                      "type": "string",
+                      "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                    }
+                  },
+                  "required": [
+                    "asset",
+                    "base"
+                  ],
+                  "additionalProperties": false
+                },
+                "fillTx": {
+                  "type": "string"
+                },
+                "refundTx": {
+                  "type": "string"
+                },
+                "statusUrl": {
+                  "type": "string"
+                },
+                "sentAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "lateAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "settledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "state",
+                "toChain",
+                "recipient",
+                "minOut",
+                "sentAt"
+              ]
+            },
+            "bridgeReceipt": {
+              "$ref": "#/$defs/__schema0"
+            },
+            "receipt": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          "required": [
+            "intent",
+            "agent",
+            "wallet",
+            "kind",
+            "state",
+            "request",
+            "paper",
+            "outsideContent",
+            "createdAt",
+            "changedAt",
+            "assets"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ],
+      "$defs": {
+        "__schema0": {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string",
+              "pattern": "^[a-zA-Z][\\w.]{0,63}$"
+            },
+            "values": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9]{0,31}$"
+              },
+              "additionalProperties": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "amount"
+                      },
+                      "amount": {
+                        "type": "object",
+                        "properties": {
+                          "asset": {
+                            "type": "string"
+                          },
+                          "base": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "asset",
+                          "base"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "amount"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "asset"
+                      },
+                      "asset": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "asset"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "account"
+                      },
+                      "account": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "account"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "chain"
+                      },
+                      "chain": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "chain"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usd"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percent"
+                      },
+                      "bps": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ratio"
+                      },
+                      "ratio": {
+                        "type": "object",
+                        "properties": {
+                          "numerator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          },
+                          "denominator": {
+                            "type": "string",
+                            "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                          }
+                        },
+                        "required": [
+                          "numerator",
+                          "denominator"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "ratio"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "time"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "count"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "count"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "choice"
+                      },
+                      "choice": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "choice"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "text"
+                      },
+                      "text": {
+                        "type": "string",
+                        "maxLength": 4096
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "text"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "route"
+                      },
+                      "venue": {
+                        "type": "string",
+                        "maxLength": 64
+                      },
+                      "legs": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "venue": {
+                              "type": "string",
+                              "pattern": "^[a-z][a-z0-9-]{0,31}$"
+                            },
+                            "shareBps": {
+                              "type": "number"
+                            }
+                          },
+                          "required": [
+                            "venue",
+                            "shareBps"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "venue",
+                      "legs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "line"
+                      },
+                      "line": {
+                        "$ref": "#/$defs/__schema0"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "line"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "dateTime"
+                      },
+                      "atMs": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "atMs"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "usdChange"
+                      },
+                      "usdMicros": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "usdMicros"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "percentChange"
+                      },
+                      "bps": {
+                        "type": "string",
+                        "pattern": "^(?:0|-?[1-9]\\d{0,77})$"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "bps"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          "required": [
+            "key",
+            "values"
+          ]
+        }
+      }
     },
     "call/turn/reasoning": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",

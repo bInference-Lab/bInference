@@ -20,13 +20,15 @@ const reachedCard: readonly IntentState[] = [
 ];
 // Rescues and unfreezes are rare, so a page this long reaches past them to any earlier live intent.
 const pageSize = 50;
-// The intents that trade nothing as they run: the rescue, the unfreeze, and an auto order's or a
-// webhook rule's card, whose fills come later, each its own trade. None counts as going live.
+// The intents that trade nothing as they run: the rescue, the unfreeze, a config change, and an
+// auto order's or a webhook rule's card, whose fills come later, each its own trade. None counts
+// as going live.
 const ownerKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([
   "rescue",
   "unfreeze",
   "autoOrder",
   "webhookRule",
+  "configChange",
 ]);
 
 type Proposed = Pick<IntentRecord, "id" | "agentId" | "kind" | "isPaper" | "createdAtMs">;

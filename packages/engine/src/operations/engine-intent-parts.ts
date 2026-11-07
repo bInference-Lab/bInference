@@ -1,4 +1,9 @@
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import {
+  type ConfigChangeHandlers,
+  createConfigChangeHandlers,
+} from "../config-changes/config-change-handlers.js";
+import { writeConfigChange } from "../config-changes/write-config-change.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { createStoredIntents, type StoredIntents } from "../intents/create-stored-intents.js";
 import { createExecuteConfirmed, type ExecuteConfirmed } from "../money-path/execute-confirmed.js";
@@ -29,6 +34,19 @@ export function requoteOptions(
   return { stored, custody, wallets, holdings, host, simulator, prices, chains, clock, install };
 }
 
+// A confirmed config change is applied to the config file; with none handed, it waits.
+function configChangeWriteOf(options: EngineOptions, stored: StoredIntents): ExecuteConfirmed {
+  const { configChanges, stores, clock } = options;
+  return async (snapshot, call) =>
+    configChanges === undefined
+      ? snapshot
+      : writeConfigChange(
+          { stored, intents: stores.intents, configChanges, clock },
+          snapshot,
+          call.signal,
+        );
+}
+
 /**
  * A confirmed paper intent fills in the paper portfolio, an unfreeze is written, and any other live
  * one goes to the executor.
@@ -55,6 +73,7 @@ export function executeOf(
     executor,
     publish,
     unfreeze: async (snapshot, call) => writeUnfreeze(written, snapshot, call.signal),
+    configChange: configChangeWriteOf(options, stored),
     autoOrder: followCardOf(parts.orders),
     webhookRule: followRuleCardOf(parts.rules),
     orderFill: fillOnPaperOf(options, { paper: fills, stored, portfolio }),
@@ -115,4 +134,27 @@ export function storedIntentsOf(
 export function launchRoutingOf(options: EngineOptions, paper: PaperParts): LaunchRouting {
   const { stores, host, custody, chains } = options;
   return { install: stores.install, host, custody, holdings: paper.holdings, chains };
+}
+
+/** The config change handlers (decision 0393), when the composition root hands the config file. */
+export function configChangeHandlersOf(
+  options: EngineOptions,
+  stored: StoredIntents,
+): Partial<ConfigChangeHandlers> {
+  const { configChanges, stores, wallets, isLocked, chains, clock, ids } = options;
+  if (configChanges === undefined) {
+    return {};
+  }
+  const { intents, agents } = stores;
+  return createConfigChangeHandlers({
+    stored,
+    intents,
+    agents,
+    wallets,
+    configChanges,
+    isLocked,
+    chains,
+    clock,
+    ids,
+  });
 }

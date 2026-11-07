@@ -35,6 +35,8 @@ export interface ExecuteConfirmedOptions {
   readonly paper: PaperFills;
   readonly executor: Executor;
   readonly unfreeze: ExecuteConfirmed;
+  /** Applies a confirmed config change and ends its intent (decision 0393). */
+  readonly configChange: ExecuteConfirmed;
   /** Follows an auto order's card, whatever its answer: its order becomes active or ends. */
   readonly autoOrder: ExecuteConfirmed;
   /** Follows a webhook rule's card, whatever its answer: its rule becomes active or ends. */
@@ -82,6 +84,9 @@ export function createExecuteConfirmed(options: ExecuteConfirmedOptions): Execut
     }
     if (record.state !== "confirmed") {
       return snapshot;
+    }
+    if (record.kind === "configChange") {
+      return options.configChange(snapshot, call);
     }
     if (record.isPaper) {
       return paperRouteOf(options, snapshot)(snapshot, call);

@@ -105,5 +105,7 @@
   "stake_over_ceiling": "this wallet's ceiling caps a stake below this, so nothing was staked; with your owner key, run `binference ceiling set --wallet {wallet} --venues VENUES` with every venue `binference ceiling --wallet {wallet}` lists, then stake again, or stake less",
   "identity_exists": "this agent's wallet holds an on-chain identity already, maybe one binference never recorded, so nothing was registered; check the identity registry for this wallet",
   "registry_changed": "the identity registry now reports a version binference was not tested with, so nothing was registered; update binference, then register again",
-  "identity_ceiling": "this agent's main wallet does not allow the identity registry's call yet, so nothing was registered; run `binference agent identity`, which adds it with your owner key"
+  "identity_ceiling": "this agent's main wallet does not allow the identity registry's call yet, so nothing was registered; run `binference agent identity`, which adds it with your owner key",
+  "config_moved": "the settings it changes moved after the card opened, so nothing changed; ask for the change again",
+  "config_invalid": "the change no longer passes the config checks, so nothing changed; ask for a change the checks accept"
 }

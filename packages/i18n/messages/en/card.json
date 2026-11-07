@@ -1,6 +1,6 @@
 {
-  "header": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} unfreeze {unfreeze} autoOrder {auto order} webhookRule {alert rule} other {action}} · {agent} · {mode, select, paper {🧪 Paper} other {🔴 Live}}",
-  "header.console": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} unfreeze {unfreeze} autoOrder {auto order} webhookRule {alert rule} other {action}} · {agent}{mode, select, paper {} other { · 🔴 Live}}",
+  "header": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} unfreeze {unfreeze} autoOrder {auto order} webhookRule {alert rule} configChange {config change} other {action}} · {agent} · {mode, select, paper {🧪 Paper} other {🔴 Live}}",
+  "header.console": "🟡 Confirm {action, select, swap {swap} buy {buy} sell {sell} send {send} revoke {approval revoke} stake {stake} unstake {unstake} claim {claim} bridge {bridge} order {Binance order} register {registration} launch {launch} rescue {rescue} unfreeze {unfreeze} autoOrder {auto order} webhookRule {alert rule} configChange {config change} other {action}} · {agent}{mode, select, paper {} other { · 🔴 Live}}",
   "swap.action": "Sell {in} → at least {minOut}",
   "buy.action": "Buy {token} with {spend} · on {place}",
   "sell.action": "Sell {amount} → at least {minOut} · on {place}",
@@ -49,6 +49,7 @@
   "launch.startPublishes": "⚠️ Start launch makes the picture and words public on {venue}'s storage at once, and they stay public if you cancel the card",
   "rescue.action": "Move everything to your rescue address {address}: {count, plural, one {# token} other {# tokens}} from {wallets, plural, one {# wallet} other {# wallets}}, about {usd}",
   "unfreeze.agent": "Unfreeze {agent}: it trades again within its limits",
+  "configChange.action": "Change {count, plural, one {# setting} other {# settings}}: {changes}{restart, select, yes { · applies after a restart} other {}}",
   "unfreeze.all": "Unfreeze every agent: {count, plural, one {# is frozen now} other {# are frozen now}}, and new agents start unfrozen",
   "order.action": "Approve {orderKind}: {summary} · {maxFills, plural, =0 {no fill limit} one {up to # fill} other {up to # fills}} until {expiry}",
   "order.sell": "sell {size, select, share {{share} of your {token}} usd {{usd} of {token}} all {all your {token}} other {{amount}}}",

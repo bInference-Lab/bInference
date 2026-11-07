@@ -21,6 +21,7 @@ import {
   shortOnPaper,
   reconcileFills,
   takeIntoQueue,
+  refuseConfig,
   writeOrder,
   writeUnfreeze,
 } from "./execution-guards.js";
@@ -167,6 +168,7 @@ export const transitionTable: TransitionTable = {
   fills_reconciled: [{ from: ["finalized"], to: "reconciled", guard: reconcileFills }],
   unfreeze_written: [{ from: ["confirmed"], to: "reconciled", guard: writeUnfreeze }],
   order_written: [{ from: ["confirmed"], to: "reconciled", guard: writeOrder }],
+  config_refused: [{ from: ["confirmed"], to: "failed_check", guard: refuseConfig }],
 };
 
 function rulesOf(trigger: TriggerType): readonly TransitionRule[] {

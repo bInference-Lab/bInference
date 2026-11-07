@@ -131,6 +131,7 @@ export type WrittenOutcome =
       readonly isPaper: boolean;
     }
   | { readonly kind: "ruleActive"; readonly rule: WebhookRuleAction }
+  | { readonly kind: "configChanged"; readonly keyCount: number; readonly restartNeeded: boolean }
   | { readonly kind: "orderUnstarted"; readonly why: "expired" | "cancelled" };
 
 /**
@@ -258,6 +259,13 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
     },
   }),
   orderUnstarted: ({ why }) => ({ key: "receipt.orderUnstarted", values: { why: choice(why) } }),
+  configChanged: ({ keyCount, restartNeeded }) => ({
+    key: "receipt.configChanged",
+    values: {
+      count: { type: "count", count: keyCount },
+      restart: choice(restartNeeded ? "yes" : "no"),
+    },
+  }),
 };
 
 /** The receipt line of what followed a confirmation, whichever surface answered the card. */

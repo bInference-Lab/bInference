@@ -16,7 +16,9 @@ import { ownerChatPatchSchema } from "./owner-chat-patch.schema.js";
  * names for the agent (decision 0204). None is local or takes the owner key.
  * `limit/set` runs with `confirm` alone, so its handler takes only a stricter limit
  * (decision 0111). `config/change` runs only to set `owner.locale` or `telegram.replies`, the
- * exceptions to its `admin` scope (decisions 0134 and 0377).
+ * exceptions to its `admin` scope (decisions 0134 and 0377). Any other setting changes through
+ * `config/propose`, a card the owner confirms like any other (decision 0393); `config/view` reads
+ * the config with every secret shown as its kind.
  */
 export const ownerChatOperations = [
   "engine/status",
@@ -32,6 +34,8 @@ export const ownerChatOperations = [
   "wallet/list",
   "usage/get",
   "config/change",
+  "config/view",
+  "config/propose",
   "chat/post",
   "chat/answer",
   "chat/clear",
@@ -47,8 +51,8 @@ export type OwnerChatOperation = (typeof ownerChatOperations)[number];
 
 /**
  * The scopes the owner holds in their Telegram chat: reading, braking, which also answers cards
- * (ARCHITECTURE.md rule 11), and chatting with the agent. Loosening and settings need the CLI,
- * the console or the Mini App, never a chat message.
+ * (ARCHITECTURE.md rule 11), and chatting with the agent. A loosening never applies from a chat
+ * message: a setting the chat proposes waits for the owner's tap on its card (decision 0393).
  */
 export const ownerChatScopes: readonly Scope[] = ["read", "confirm", "chat"];
 

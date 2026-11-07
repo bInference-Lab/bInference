@@ -2,6 +2,7 @@ import { createFakeTxSimulator } from "@binference/chain/testing";
 import { BinferenceError, ok } from "@binference/core";
 import { type ArgsOf, operations, takesOwnerKey } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import type { ConfigChanges } from "../config-changes/config-change-parts.js";
 import { expectOk, testAgent } from "../intents/test-intents.js";
 import { startTestEngine, type TestEngine } from "../operations/test-engine.js";
 import { rescueCustody, rescueSteps, setUpRescue, testHeld } from "../safety/test-rescue.js";
@@ -44,8 +45,11 @@ async function rescuing(): Promise<TestEngine> {
   return test;
 }
 
+// The two the chat runs past its scopes: a few settings at once, and any other through a card.
+const beyondScopes: ReadonlySet<string> = new Set(["config/change", "config/propose"]);
+
 describe("the owner's calls from Telegram", () => {
-  it.each(ownerChatOperations.filter((op) => op !== "config/change"))(
+  it.each(ownerChatOperations.filter((op) => !beyondScopes.has(op)))(
     "runs %s, a read, a brake or a message the owner sends in the chat",
     (op) => {
       const operation = operations[op];
@@ -56,6 +60,25 @@ describe("the owner's calls from Telegram", () => {
       ]).toStrictEqual([true, "any", false]);
     },
   );
+
+  it("proposes a setting change as the owner on Telegram, which waits for the owner's tap", async () => {
+    const change = { path: "owner.timezone", before: '"UTC"', after: '"Asia/Shanghai"' };
+    const configChanges: ConfigChanges = {
+      view: async () => Promise.resolve(ok({ rules: [] })),
+      preview: async () => Promise.resolve(ok({ changes: [change], restartNeeded: false })),
+      apply: async () => Promise.resolve(ok(undefined)),
+    };
+    const test = await startTestEngine({ configChanges });
+    const calls = callsOf(test.engine.handlers);
+    const patch = { owner: { timezone: "Asia/Shanghai" } };
+    const proposal = { op: "config/propose", args: { patch }, senderId: ownerId } as const;
+    const view = expectOk(await calls.call(proposal, live));
+    expect([view.kind, view.state, view.outsideContent]).toStrictEqual([
+      "configChange",
+      "awaiting_confirmation",
+      false,
+    ]);
+  });
 
   it("posts the owner's message to the agent as one written in Telegram", async () => {
     const test = await startTestEngine();

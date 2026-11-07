@@ -1,6 +1,7 @@
 import type { AddressBookHandlers } from "../address-book/address-book-handlers.js";
 import type { ApprovalHandlers } from "../approval/approval-handlers.js";
 import type { ConfigHistoryHandlers } from "../audit/config-history-handlers.js";
+import type { ConfigChangeHandlers } from "../config-changes/config-change-handlers.js";
 import type { IdentityHandlers } from "../identity/identity-handlers.js";
 import type { LimitHandlers } from "../limits/limit-handlers.js";
 import type { NameHandlers } from "../names/name-handlers.js";
@@ -37,4 +38,5 @@ export interface EngineHandlers
     IdentityHandlers,
     WebhookRuleHandlers,
     ShellHandlers,
-    TokenReadHandlers {}
+    TokenReadHandlers,
+    Partial<ConfigChangeHandlers> {}

@@ -42,6 +42,7 @@ import { isExitOrder } from "../orders/order-record.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { webhookRuleQuoteDocument } from "../webhooks/webhook-rule-quote.js";
 import { bridgeCardFacts } from "./bridge-card-facts.js";
+import { configChangeCardFacts } from "./config-change-card-facts.js";
 import { identityCardFacts } from "./identity-card-facts.js";
 import { launchCardFacts } from "./launch-card-facts.js";
 import { orderActionOf } from "./order-action-of.js";
@@ -297,6 +298,7 @@ const ownQuoteFacts: ReadonlyMap<
     (quote, source) =>
       webhookRuleCardFacts(webhookRuleQuoteDocument.decode(quote), source, baseWarnings(source)),
   ],
+  ["configChange", (quote, source) => configChangeCardFacts(quote, source, baseWarnings(source))],
   [
     "launchToken",
     (quote, source) =>

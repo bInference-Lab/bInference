@@ -292,6 +292,16 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `image/made` | `agent` | read | any connection | engine |
 | `image/read` | `read` | read | any connection | engine |
 
+## `config`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `config/view` | `read` | read | any connection | engine |
+| `config/propose` | `propose` | write | any connection | engine |
+| `config/read` | `admin` | read | any connection | engine |
+| `config/change` | `admin` | write | any connection | engine |
+| `config/history` | `read` | read | any connection | engine |
+
 ## `shell`
 
 | Operation | Scope | Kind | Accepted | Answered by |
@@ -355,14 +365,6 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `skill/read` | `read` | read | any connection | engine |
 | `skill/add` | `admin` | write | IPC only | engine |
 | `skill/remove` | `admin` | write | any connection | engine |
-
-## `config`
-
-| Operation | Scope | Kind | Accepted | Answered by |
-| --- | --- | --- | --- | --- |
-| `config/read` | `admin` | read | any connection | engine |
-| `config/change` | `admin` | write | any connection | engine |
-| `config/history` | `read` | read | any connection | engine |
 
 ## `ledger`
 

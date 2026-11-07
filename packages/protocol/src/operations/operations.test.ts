@@ -153,6 +153,8 @@ const specTable = [
   ["config/read", "admin", ""],
   ["config/change", "admin", "write"],
   ["config/history", "read", ""],
+  ["config/view", "read", ""],
+  ["config/propose", "propose", "write"],
   ["ledger/list", "read", ""],
   ["ledger/export", "read", "write"],
   ["backup/list", "read", ""],
@@ -225,7 +227,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(186);
+    expect(table).toHaveLength(188);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 
@@ -254,7 +256,7 @@ describe("operations", () => {
     const keyed = operationNames.filter((name) => operations[name].idempotency === "key");
     const writes = kinds.filter(([, kind]) => kind === "write").map(([name]) => name);
     expect(keyed).toStrictEqual(writes);
-    expect(writes).toHaveLength(90);
+    expect(writes).toHaveLength(91);
   });
 
   it("dates every operation to the first protocol version", () => {

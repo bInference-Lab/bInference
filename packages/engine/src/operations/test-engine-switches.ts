@@ -16,6 +16,7 @@ export function switchesOf(options: TestEngineOptions): Partial<EngineOptions> {
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
     ...(options.uploads === undefined ? {} : { uploads: options.uploads }),
     ...(options.botImages === undefined ? {} : { botImages: options.botImages }),
+    ...(options.configChanges === undefined ? {} : { configChanges: options.configChanges }),
     ...(options.communityPluginsOn === undefined
       ? {}
       : { communityPluginsOn: options.communityPluginsOn }),

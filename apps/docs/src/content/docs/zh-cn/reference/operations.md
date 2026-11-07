@@ -292,6 +292,16 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `image/made` | `agent` | 读取 | 任何连接 | 引擎 |
 | `image/read` | `read` | 读取 | 任何连接 | 引擎 |
 
+## `config`
+
+| 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
+| --- | --- | --- | --- | --- |
+| `config/view` | `read` | 读取 | 任何连接 | 引擎 |
+| `config/propose` | `propose` | 写入 | 任何连接 | 引擎 |
+| `config/read` | `admin` | 读取 | 任何连接 | 引擎 |
+| `config/change` | `admin` | 写入 | 任何连接 | 引擎 |
+| `config/history` | `read` | 读取 | 任何连接 | 引擎 |
+
 ## `shell`
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
@@ -355,14 +365,6 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `skill/read` | `read` | 读取 | 任何连接 | 引擎 |
 | `skill/add` | `admin` | 写入 | 仅 IPC | 引擎 |
 | `skill/remove` | `admin` | 写入 | 任何连接 | 引擎 |
-
-## `config`
-
-| 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
-| --- | --- | --- | --- | --- |
-| `config/read` | `admin` | 读取 | 任何连接 | 引擎 |
-| `config/change` | `admin` | 写入 | 任何连接 | 引擎 |
-| `config/history` | `read` | 读取 | 任何连接 | 引擎 |
 
 ## `ledger`
 

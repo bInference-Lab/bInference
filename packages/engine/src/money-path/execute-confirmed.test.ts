@@ -82,6 +82,7 @@ describe("the execute step", () => {
       executor,
       publish,
       unfreeze: async () => Promise.reject(new Error("A rescue is no unfreeze.")),
+      configChange: async () => Promise.reject(new Error("A rescue is no config change.")),
       autoOrder: async () => Promise.reject(new Error("A rescue is no auto order.")),
       webhookRule: async () => Promise.reject(new Error("A rescue is no webhook rule.")),
       ruleFill: async () => Promise.reject(new Error("A rescue is no rule's fill.")),

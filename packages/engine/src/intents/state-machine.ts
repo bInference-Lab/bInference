@@ -58,6 +58,8 @@ interface Passed {
 
 // Only the owner asks for these, and they always run live: the rescue and the unfreeze.
 const ownerKinds: ReadonlySet<IntentKind> = new Set<IntentKind>(["rescue", "unfreeze"]);
+// These run live whatever the agent's mode: a config change has no paper side (decision 0393).
+const liveKinds: ReadonlySet<IntentKind> = new Set<IntentKind>([...ownerKinds, "configChange"]);
 
 function proposalProblem(proposal: IntentProposal): ProposalProblem | undefined {
   if (proposal.agentStatus !== "active") {
@@ -87,7 +89,7 @@ function proposeIntent(
     proposer,
     // Paper mode fakes trades, never the rescue, which moves the real funds (decision 0100), nor
     // an unfreeze, which changes no portfolio (decision 0128).
-    isPaper: proposal.isPaper && !ownerKinds.has(kind),
+    isPaper: proposal.isPaper && !liveKinds.has(kind),
     hasOutsideContent,
     changedAtMs: nowMs,
     ...(fill === undefined ? {} : { authorizedBy: fill }),

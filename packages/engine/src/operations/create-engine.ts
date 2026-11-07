@@ -19,6 +19,7 @@ import { type BridgeWork, type BridgeOptions, bridgeWorkOf } from "../bridges/en
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
 import type { ChatSources } from "../chat/chat-sources.js";
 import type { RunningTurns } from "../chat/running-turns.js";
+import type { ConfigChanges } from "../config-changes/config-change-parts.js";
 import { createDowntimeCheck } from "../downtime/downtime-check.js";
 import type { Downtime } from "../downtime/downtime.js";
 import type { HeldWallet } from "../executor/held-wallets.js";
@@ -221,6 +222,8 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ChatSource
    * live intents to the owner; reads, paper intents and Cancel work as ever.
    */
   readonly isLocked: () => boolean;
+  /** The config file `config/view` reads and a confirmed config change writes (decision 0393). */
+  readonly configChanges?: ConfigChanges;
   /**
    * Whether a community plugin is on and offers the agent tools: every turn then starts marked as
    * outside content and auto mode asks for every proposal (decision 0350). None when absent.

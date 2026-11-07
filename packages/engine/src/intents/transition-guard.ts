@@ -37,6 +37,7 @@ export type TransitionProblem =
   | "delivery_pending"
   | "not_unfreeze"
   | "not_auto_order"
+  | "not_config_change"
   | "no_steps"
   | "pin_missing"
   | "not_launch"

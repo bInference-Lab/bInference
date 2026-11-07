@@ -204,6 +204,17 @@ export function writeUnfreeze({
 }
 
 /**
+ * `confirmed` to `failed_check` when a confirmed config change does not apply: a key its card
+ * named moved since, or the config no longer takes it (decision 0393). Nothing was written.
+ */
+export function refuseConfig({
+  status,
+  trigger,
+}: GuardInput<"config_refused">): Result<IntentChange, TransitionProblem> {
+  return status.kind === "configChange" ? ok({ reason: trigger.reason }) : err("not_config_change");
+}
+
+/**
  * `confirmed` to `reconciled` once an auto order's or a webhook rule's card is written (decisions
  * 0189 and 0299): its order or rule became active on the tap, or had ended before it. It has no
  * step, in paper mode or live.

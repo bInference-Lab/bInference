@@ -7,6 +7,8 @@ import type {
   UnfreezeRequest,
   WebhookRuleCardRequest,
 } from "@binference/protocol";
+import { configChangeRequestDocument } from "../config-changes/config-change-quote.js";
+import type { ConfigChangeRequest } from "../config-changes/config-change-quote.js";
 import { autoOrderRequestDocument } from "../orders/auto-order-quote.js";
 import { webhookRuleCardRequestDocument } from "../webhooks/webhook-rule-quote.js";
 import {
@@ -24,7 +26,8 @@ type CreatedRequest =
   | RescueRequest
   | UnfreezeRequest
   | AutoOrderRequest
-  | WebhookRuleCardRequest;
+  | WebhookRuleCardRequest
+  | ConfigChangeRequest;
 
 /** A new intent to store: the state machine's step into `proposed`, and what it was asked. */
 export interface NewIntent {
@@ -54,6 +57,9 @@ function requestOf(request: CreatedRequest): JsonValue {
   }
   if (request.kind === "webhookRule") {
     return webhookRuleCardRequestDocument.encode(request);
+  }
+  if (request.kind === "configChange") {
+    return configChangeRequestDocument.encode(request);
   }
   if (request.kind === "autoOrder") {
     return autoOrderRequestDocument.encode(request);

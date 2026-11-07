@@ -16,13 +16,15 @@ const kinds = [
   "unfreeze",
   "autoOrder",
   "webhookRule",
+  "configChange",
 ] as const;
 
 /**
  * What an intent does: a request kind of `intent/propose`, `rescue`, which only `safety/rescue`
  * creates, `unfreeze`, which only `safety/unfreeze` creates, or `autoOrder`, the card of an auto
  * order, which only `order/create` creates, or `webhookRule`, the card of a webhook rule, which
- * only `webhookRule/create` creates. An auto order or webhook rule fill is a `buy`, `sell`
+ * only `webhookRule/create` creates, or `configChange`, a change of the config, which only
+ * `config/propose` creates (decision 0393). An auto order or webhook rule fill is a `buy`, `sell`
  * or `swap`.
  */
 export type IntentKind = (typeof kinds)[number];

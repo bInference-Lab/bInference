@@ -61,6 +61,8 @@ Every part of binference follows these rules. A rule changes only through a new 
     - Unfreezing and other loosening need the terminal commands, never a chat message
       ([decision 0089](DECISIONS.md#d0089)); an unfreeze then waits for the owner's tap on its card,
       from any surface ([decision 0128](DECISIONS.md#d0128)).
+    - A setting changes from a chat only through its card and the owner's tap
+      ([decision 0393](DECISIONS.md#d0393)).
 12. <a id="rule-12"></a>**Third-party code never runs where keys are.**
     - Community plugins read data in a sandbox.
     - Only reviewed venue adapters, running inside the engine, may build transactions.

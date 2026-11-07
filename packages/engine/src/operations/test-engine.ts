@@ -182,6 +182,8 @@ export interface TestEngineOptions {
   readonly stakingVenues?: EngineOptions["stakingVenues"];
   /** The identity registries and the version a registration file names; none when absent. */
   readonly identity?: EngineOptions["identity"];
+  /** The config file a confirmed config change writes; none, so none is served, when absent. */
+  readonly configChanges?: EngineOptions["configChanges"];
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */

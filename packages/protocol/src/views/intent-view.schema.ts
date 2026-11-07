@@ -50,6 +50,16 @@ export interface WebhookRuleCardRequest {
   readonly rule: ProtocolId<"webhookRule">;
 }
 
+/**
+ * The request of a `configChange` intent, which only `config/propose` creates: a JSON merge patch
+ * over `config.json5`, and the reason the proposer gave (decision 0393).
+ */
+interface ConfigChangeRequest {
+  readonly kind: "configChange";
+  readonly patch: Readonly<Record<string, unknown>>;
+  readonly reason?: string;
+}
+
 /** The balance changes a simulation saw for the wallet. */
 export interface SimulationView {
   readonly spent: readonly Amount[];
@@ -123,7 +133,8 @@ export interface IntentView {
     | RescueRequest
     | UnfreezeRequest
     | AutoOrderRequest
-    | WebhookRuleCardRequest;
+    | WebhookRuleCardRequest
+    | ConfigChangeRequest;
   readonly quote?: QuoteView;
   readonly risk?: RiskView;
   readonly simulation?: SimulationView;
@@ -184,6 +195,11 @@ export const intentViewSchema: z.ZodType<IntentView> = z.object({
     z.object({ kind: z.literal("unfreeze"), agent: protocolIdSchema("agent").exactOptional() }),
     z.object({ kind: z.literal("autoOrder"), order: protocolIdSchema("autoOrder") }),
     z.object({ kind: z.literal("webhookRule"), rule: protocolIdSchema("webhookRule") }),
+    z.object({
+      kind: z.literal("configChange"),
+      patch: z.record(z.string(), z.unknown()),
+      reason: z.string().exactOptional(),
+    }),
   ]),
   quote: quoteViewSchema.exactOptional(),
   risk: riskViewSchema.exactOptional(),
