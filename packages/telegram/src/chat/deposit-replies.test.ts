@@ -24,7 +24,7 @@ const wallet = {
 
 const display = () => ({ locale: "en", timeZone: "UTC" }) as const;
 
-async function setUp() {
+async function setUp(stream: "progress" | "partial" = "progress") {
   const botApi = createFakeBotApi();
   const clock = createManualClock(1_760_000_000_000);
   const logger = createMemoryLogger({ subsystem: "telegram" });
@@ -32,8 +32,16 @@ async function setUp() {
   createBotThrottlers({ clock, logger }).install(api);
   const owners = createMemoryOwnerStore();
   await owners.bind({ userId: ownerId, pairedAtMs: 1 }, live);
-  const replies = createChatReplies({ api, owners, clock, logger, display, chains: testChains() });
-  return { botApi, replies };
+  const replies = createChatReplies({
+    api,
+    owners,
+    clock,
+    logger,
+    display,
+    chains: testChains(),
+    replies: () => ({ stream }),
+  });
+  return { botApi, clock, replies };
 }
 
 const deposit = ({ frozen }: { readonly frozen: boolean }) => ({
@@ -73,5 +81,28 @@ describe("the deposit the agent shows in Telegram", () => {
       live,
     );
     expect(botApi.messages()).toStrictEqual([]);
+  });
+
+  it("puts the deposit before the answer when a partial draft already showed, the draft gone", async () => {
+    const { botApi, clock, replies } = await setUp("partial");
+    await replies.show({ kind: "chat/turnStarted", data: at }, live);
+    const draft = "Let me get your deposit address and its QR code for you.";
+    await replies.show({ kind: "chat/message", data: { ...at, text: draft, final: false } }, live);
+    await clock.advance(1_000);
+    await replies.idle();
+    await replies.show(deposit({ frozen: false }), live);
+    const answer = "Tell me when the funds arrive.";
+    const shown = replies.show(
+      { kind: "chat/message", data: { ...at, text: answer, final: true } },
+      live,
+    );
+    await clock.advance(5_000);
+    await shown;
+    await replies.show({ kind: "chat/turnEnded", data: { agent, turn, outcome: "ok" } }, live);
+    await clock.advance(10_000);
+    await replies.idle();
+    const messages = botApi.messages();
+    expect(messages.map((message) => message.file?.kind)).toStrictEqual(["photo", undefined]);
+    expect(messages[1]?.text).toBe(answer);
   });
 });

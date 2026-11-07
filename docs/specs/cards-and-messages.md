@@ -1441,8 +1441,12 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
   never left (no connection opened) goes again, up to 3 tries in all, after 400 ms and then 800 ms
   ([decision 0373](../DECISIONS.md#d0373)). An answer Telegram refuses turns the status message
   into `telegram.chat.notDelivered`, or sends that line when no status message showed.
-- **No answer.** A turn that ends with no answer, no status line, no question and no launch draft
-  gets `telegram.chat.noAnswer` in the owner's chat, so the owner never waits on a reply that will
+- **Order.** A turn's pushes show one at a time, in the order they came. What a tool shows the
+  owner mid-turn, such as a deposit's QR codes, goes below the turn's message so far, which then
+  closes and goes; what the turn writes after it starts a new message below it, so an answer never
+  shows above what it follows ([decision 0381](../DECISIONS.md#d0381)).
+- **No answer.** A turn that ends with no answer, no status line, no question, no launch draft and
+  no deposit gets `telegram.chat.noAnswer` in the owner's chat, so the owner never waits on a reply that will
   not come.
 - **Work lines.** The runtime sends each tool's line with `turn/progress` (spec 1, section 7.7).
   Telegram reads it only as a sign of work, and the console and terminal chat show none: they show

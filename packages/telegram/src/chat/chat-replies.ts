@@ -9,7 +9,7 @@ import { sendHtml, sendPiece } from "./answer-sends.js";
 import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 import type { ChatRepliesOptions, ReplySettings } from "./chat-replies-options.js";
 import { type ChatTyping, startTyping } from "./chat-typing.js";
-import { showDeposit } from "./deposit-photos.js";
+import { type DepositPush, showDeposit } from "./deposit-photos.js";
 import { otherReplyOf } from "./other-reply.js";
 import { reasoningHtmlOf } from "./reasoning-html.js";
 import { createStatusMessage, type StatusMessage, type StatusParts } from "./status-message.js";
@@ -41,6 +41,8 @@ interface TurnShowing {
   readonly reply: { isGiven: boolean };
   /** How the model's reasoning shows in this turn, as the turn started. */
   readonly reasoning: NonNullable<ReplySettings["reasoning"]>;
+  /** A new message of the turn's kind, for what the turn writes after something it showed. */
+  readonly fresh: () => StatusMessage;
 }
 
 interface Call {
@@ -129,13 +131,13 @@ async function started(parts: Parts, push: ChatPush, call: Call): Promise<void> 
   const { api, clock, logger } = parts.options;
   const settings: ReplySettings = parts.options.replies?.() ?? { stream: "progress" };
   const isPartial = settings.stream === "partial";
-  const message = (isPartial ? createAnswerPreview : createStatusMessage)(
-    statusPartsOf(parts),
-    chatId,
-  );
+  const fresh = (): StatusMessage =>
+    (isPartial ? createAnswerPreview : createStatusMessage)(statusPartsOf(parts), chatId);
+  const message = fresh();
   const typing = startTyping({ api, clock, logger }, chatId);
   const [reply, reasoning] = [{ isGiven: false }, settings.reasoning ?? "off"];
-  parts.turns.set(key, { agent: push.agent, chatId, status: message, typing, reply, reasoning });
+  const showing = { agent: push.agent, chatId, status: message, typing, reply, reasoning, fresh };
+  parts.turns.set(key, showing);
 }
 
 type MessagePush = Extract<ChatPush, { readonly kind: "chat/message" }>;
@@ -240,6 +242,20 @@ function progress(parts: Parts, push: ProgressPush): void {
   parts.turns.get(keyOf(push))?.status.work();
 }
 
+// What a tool shows mid-turn goes below the turn's message so far, which closes and goes, so what
+// the turn writes after it starts a new message below it and nothing shows out of order.
+async function deposited(parts: Parts, push: DepositPush, call: Call): Promise<void> {
+  const key = keyOf(push);
+  const before = parts.turns.get(key);
+  if (before !== undefined) {
+    await before.status.freeze();
+    removeStatus(parts, before);
+    parts.turns.set(key, { ...before, status: before.fresh() });
+  }
+  const owner = async () => ownerChat(parts, call);
+  await showDeposit({ ...parts, showing: parts.turns.get(key), owner }, push, call.signal);
+}
+
 async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void> {
   switch (push.kind) {
     case "chat/turnStarted":
@@ -258,15 +274,7 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
     case "chat/reasoning":
       return reasoned(parts, push, call);
     case "chat/deposit":
-      return showDeposit(
-        {
-          ...parts,
-          showing: parts.turns.get(keyOf(push)),
-          owner: async () => ownerChat(parts, call),
-        },
-        push,
-        call.signal,
-      );
+      return deposited(parts, push, call);
     case "chat/turnEnded":
       return ended(parts, push, call);
   }
