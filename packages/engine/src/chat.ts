@@ -87,3 +87,10 @@ export type {
 } from "./schedules/schedule-record.js";
 export type { ScheduleStore } from "./schedules/ports.js";
 export { scheduleAfterRun } from "./schedules/schedule-after-run.js";
+export type { CredentialStore } from "./credentials/ports.js";
+export {
+  type CredentialEntry,
+  type CredentialPut,
+  credentialEntrySchema,
+  credentialPutSchema,
+} from "./credentials/credential-record.js";

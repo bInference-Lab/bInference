@@ -2,6 +2,7 @@ import type { AlertStore } from "../alerts/ports.js";
 import type { ModelUsageStore } from "../billing/ports.js";
 import type { BridgeStore } from "../bridges/ports.js";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
+import type { CredentialStore } from "../credentials/ports.js";
 import type { AliveStore } from "../downtime/ports.js";
 import type { IdentityStore } from "../identity/ports.js";
 import type { InboxStore } from "../ingress/ports.js";
@@ -78,4 +79,6 @@ export interface EngineStores {
   readonly identities: IdentityStore;
   /** The webhook rules, and what became of each alert they accepted (decision 0338). */
   readonly webhookRules: WebhookRuleStore;
+  /** The credentials the owner stores for the agents (decision 0388). */
+  readonly credentials: CredentialStore;
 }

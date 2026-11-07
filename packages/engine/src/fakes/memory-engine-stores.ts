@@ -9,6 +9,7 @@ import { createMemoryAliveStore } from "./memory-alive-store.js";
 import { createMemoryBridgeStore } from "./memory-bridge-store.js";
 import { createMemoryCardCopyStore } from "./memory-card-copy-store.js";
 import { createMemoryConfigJournal } from "./memory-config-journal.js";
+import { createMemoryCredentialStore } from "./memory-credential-store.js";
 import { createMemoryDailySummaryStore } from "./memory-daily-summary-store.js";
 import { createMemoryIdempotencyStore } from "./memory-idempotency-store.js";
 import { createMemoryIdentityStore } from "./memory-identity-store.js";
@@ -67,6 +68,7 @@ function sideStores(parts: {
     launches: createMemoryLaunchStore(),
     alive: createMemoryAliveStore(),
     dailySummaries: createMemoryDailySummaryStore({ agents }),
+    credentials: createMemoryCredentialStore(),
   };
 }
 

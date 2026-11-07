@@ -1,4 +1,12 @@
 import type { Id, JsonValue } from "@binference/core";
+import {
+  type CredentialRequestHandlers,
+  createCredentialRequestHandlers,
+} from "../credentials/credential-request-handlers.js";
+import {
+  type CredentialStoreHandlers,
+  createCredentialStoreHandlers,
+} from "../credentials/credential-store-handlers.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
@@ -10,7 +18,13 @@ import { createViewImageHandlers, type ViewImageHandlers } from "./view-image-ha
 
 /** The chat operations the engine answers itself; the routed ones reach the runtime. */
 export interface ChatHandlers
-  extends OwnerChatHandlers, RuntimeChatHandlers, ImageHandlers, ViewImageHandlers {}
+  extends
+    OwnerChatHandlers,
+    RuntimeChatHandlers,
+    ImageHandlers,
+    ViewImageHandlers,
+    CredentialRequestHandlers,
+    CredentialStoreHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -98,6 +112,8 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
         clock: options.clock,
         ...(options.viewImages === undefined ? {} : { source: options.viewImages }),
       }),
+      ...createCredentialRequestHandlers(options),
+      ...createCredentialStoreHandlers(options),
     },
     settled(message) {
       void pushInbox(options, message, new AbortController().signal).catch(() => undefined);

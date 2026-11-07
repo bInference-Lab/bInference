@@ -72,6 +72,7 @@
     "engine-postgres/0060_order_fill_seq.ts": "084efffb27f6de6f45fa8f118297b4f79c73e49996a7efc2bb76a83fe4ddfddb",
     "engine-postgres/0061_notice_seq.ts": "8935a1ede6610599446063bc01a74444f158ee7d309d53a080b54da5436134f2",
     "engine-postgres/0062_agent_inbox_seq.ts": "eb0c9111b4c14e499cf5c6f1b24e19554d4ec0c46524a47a31216015db24e278",
+    "engine-postgres/0063_credentials.ts": "49b1f7183d971bf3c9a290e5ad983628786be6a005fa93384fa5fa06c3e5cacb",
     "engine/0001_meta.ts": "ff52469aa4c5e12bd332e4029c3b50983710099dbd6b418dc19c870d35e867f3",
     "engine/0002_install_and_safety.ts": "574b3d91d4a66922c1df23b35f6db1b73e31f7aaf96b0d76f8e37c1330766bd0",
     "engine/0003_agents_and_wallets.ts": "9d33d682768b49a7f43062570580fbdb2961d0b0c7b77d77c6abc161773ec548",
@@ -134,6 +135,7 @@
     "engine/0060_order_fill_seq.ts": "bf8ec352458a6b2e1cf5bea98a3b1a79b5060756c9102368481bf150fab81ab0",
     "engine/0061_notice_seq.ts": "6b1be0c58e17eea722b7243321e806f5db4aa19fa7a54dc76a3335b229574d26",
     "engine/0062_agent_inbox_seq.ts": "c55bf434bfd297f58f7d235ef24aafdb726a6c6ea2f35e6f9d2a70f4a2963516",
+    "engine/0063_credentials.ts": "6f71e287c24df8ba8669e39afd0e754232750a903cac3b737d5fe246bb6fce36",
     "shared-postgres/0001_agent_leases.ts": "14d3eeef725373e60b5250d7607a8b017ad09db4897723a544ae95d485925e07"
   }
 }

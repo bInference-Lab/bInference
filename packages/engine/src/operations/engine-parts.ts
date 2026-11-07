@@ -115,6 +115,7 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     publish: options.publish,
     images,
     ...(options.viewImages === undefined ? {} : { viewImages: options.viewImages }),
+    credentials: stores.credentials,
     ...(options.communityPluginsOn === undefined
       ? {}
       : { communityPluginsOn: options.communityPluginsOn }),

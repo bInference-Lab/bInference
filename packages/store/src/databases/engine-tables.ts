@@ -4,6 +4,7 @@ import type { AgentInboxTables } from "./agent-inbox-tables.js";
 import type { AlertTables } from "./alert-tables.js";
 import type { BackupTables } from "./backup-tables.js";
 import type { BridgeTables } from "./bridge-tables.js";
+import type { CredentialTables } from "./credential-tables.js";
 import type { DowntimeTables } from "./downtime-tables.js";
 import type { LaunchTables } from "./launch-tables.js";
 import type { LeaderTables } from "./leader-tables.js";
@@ -11,6 +12,7 @@ import type { ModelUsageTables } from "./model-usage-tables.js";
 import type { NoticeTables } from "./notice-tables.js";
 import type { OrderTables } from "./order-tables.js";
 import type { PositionTables } from "./position-tables.js";
+import type { RiskCacheTables } from "./risk-cache-tables.js";
 import type { ScheduleTables } from "./schedule-tables.js";
 import type { SummaryTables } from "./summary-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
@@ -303,19 +305,13 @@ interface CarriedOutflowsTable {
   carried_at: number;
 }
 
-/** `risk_cache`: one source's report for one token, as JSON text. */
-interface RiskCacheTable {
-  asset: string;
-  source: string;
-  result: string;
-  fetched_at: number;
-}
-
 /** The engine tables the store adapters query, by name. */
 export interface EngineTables
   extends
     PositionTables,
     DowntimeTables,
+    CredentialTables,
+    RiskCacheTables,
     NoticeTables,
     OrderTables,
     TelegramTables,
@@ -350,7 +346,6 @@ export interface EngineTables
   idempotency: IdempotencyTable;
   inbox: InboxTable;
   config_journal: ConfigJournalTable;
-  risk_cache: RiskCacheTable;
   txs: TxsTable;
   tx_sends: TxSendsTable;
   nonces: NoncesTable;

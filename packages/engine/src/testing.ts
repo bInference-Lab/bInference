@@ -163,6 +163,9 @@ export { createMemoryViewImages } from "./fakes/memory-view-images.js";
 export { viewImageSourceContract } from "./contracts/view-image-source-contract.js";
 export { createMemoryFiles, memoryFilePlaces } from "./fakes/memory-files.js";
 export { machineFilesContract } from "./contracts/machine-files-contract.js";
+export { createMemoryCredentialStore } from "./fakes/memory-credential-store.js";
+export { credentialStoreContract } from "./contracts/credential-store-contract.js";
+export type { CredentialStoreHarness } from "./contracts/credential-store-contract.js";
 export type {
   MachineFilesHarness,
   MachineFilesSubject,

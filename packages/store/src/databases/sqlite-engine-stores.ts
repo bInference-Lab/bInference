@@ -6,6 +6,7 @@ import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { createSqliteAlertStore } from "../alerts/sqlite-alert-store.js";
 import { createSqliteConfigJournal } from "../audit/sqlite-config-journal.js";
 import { createSqliteBridgeStore } from "../bridges/sqlite-bridge-store.js";
+import { createSqliteCredentialStore } from "../credentials/sqlite-credential-store.js";
 import { createSqliteAliveStore } from "../downtime/sqlite-alive-store.js";
 import { createSqliteIdempotencyStore } from "../ingress/sqlite-idempotency-store.js";
 import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
@@ -63,5 +64,6 @@ export function createSqliteEngineStores(host: StoreHost): EngineStores {
     webhookAlerts: createSqliteWebhookAlertStore(host),
     identities: createSqliteIdentityStore(host),
     webhookRules: createSqliteWebhookRuleStore(host),
+    credentials: createSqliteCredentialStore(host),
   };
 }

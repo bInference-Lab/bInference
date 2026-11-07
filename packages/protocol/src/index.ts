@@ -73,6 +73,7 @@ export type { ImageContentType, ImagePart } from "./operations/image-operations.
 export { imageTypeOf } from "./values/image-type.js";
 export * as fileLimits from "./operations/file-limits.js";
 export type { PortableChart } from "./views/portable-chart.schema.js";
+export * as credentialPushes from "./views/credential-push.schema.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";
 export type { WebPushSubscription } from "./operations/web-push-operations.schema.js";
 export { repeatedResult, storableArgs, storableResult } from "./operations/storable-args.js";

@@ -17,6 +17,7 @@ import { createConfigHistoryHandlers } from "../audit/config-history-handlers.js
 import type { ModelBudgetParts } from "../billing/model-budget.js";
 import { type BridgeWork, type BridgeOptions, bridgeWorkOf } from "../bridges/engine-bridging.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import type { ChatSources } from "../chat/chat-sources.js";
 import type { RunningTurns } from "../chat/running-turns.js";
 import { createCapGate } from "../confirmations/cap-gate.js";
 import type { CardTimerParts } from "../confirmations/card-timer.js";
@@ -62,7 +63,6 @@ import type { EngineShell } from "../shell/engine-shell.js";
 import { type StakeWork, stakeWorkOf } from "../staking/engine-staking.js";
 import type { DailySummaries } from "../summaries/daily-summaries.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
-import type { ImageOptions } from "../uploads/image-options.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import type { WebhookFills } from "../webhooks/webhook-fills.js";
@@ -205,7 +205,7 @@ export interface Engine extends BridgeWork, StakeWork, PruneWork {
 }
 
 /** The ports and adapters the composition root builds the engine from. */
-export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptions, BridgeOptions {
+export interface EngineOptions extends MarketParts, ModelBudgetParts, ChatSources, BridgeOptions {
   readonly stores: EngineStores;
   /** Executions, arrivals and positions, live and paper; the paper portfolio lives here. */
   readonly positions: PositionStore;

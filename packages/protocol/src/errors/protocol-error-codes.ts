@@ -189,6 +189,9 @@ export const protocolErrorCodes = [
   "file.overlap",
   "file.offset_past_end",
   "file.bad_patch",
+  "credential.not_found",
+  "credential.closed",
+  "credential.unavailable",
   "internal.error",
 ] as const;
 

@@ -61,6 +61,7 @@ import { migration as webhookRuleFills } from "./0059_webhook_rule_fills.js";
 import { migration as orderFillSeq } from "./0060_order_fill_seq.js";
 import { migration as noticeSeq } from "./0061_notice_seq.js";
 import { migration as agentInboxSeq } from "./0062_agent_inbox_seq.js";
+import { migration as credentials } from "./0063_credentials.js";
 
 /** The engine schema's Postgres migrations, oldest first. Released files never change. */
 export const enginePostgresMigrations: readonly PostgresMigration[] = [
@@ -126,4 +127,5 @@ export const enginePostgresMigrations: readonly PostgresMigration[] = [
   orderFillSeq,
   noticeSeq,
   agentInboxSeq,
+  credentials,
 ];

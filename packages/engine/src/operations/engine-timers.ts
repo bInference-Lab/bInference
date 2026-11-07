@@ -69,7 +69,7 @@ interface TimedParts {
   readonly chat: { readonly alerts: AlertFiring; readonly schedules: ScheduleQueue };
   readonly drafts: Pick<LaunchDraftDesk, "expire">;
   readonly clock: Clock;
-  readonly stores: Pick<EngineStores, "webhookAlerts" | "inbox">;
+  readonly stores: Pick<EngineStores, "webhookAlerts" | "inbox" | "credentials">;
 }
 
 /** The next time of two, either of which may be none. */

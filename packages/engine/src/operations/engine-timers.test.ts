@@ -68,7 +68,7 @@ function workOf(parts: {
     chat: { alerts: {} as AlertFiring, schedules: parts.schedules ?? ({} as ScheduleQueue) },
     drafts: { expire: () => parts.nextDraft },
     clock: { now: () => 0 } as Clock,
-    stores: {} as Pick<EngineStores, "webhookAlerts" | "inbox">,
+    stores: {} as Pick<EngineStores, "webhookAlerts" | "inbox" | "credentials">,
   });
 }
 
@@ -130,7 +130,7 @@ describe("the engine's timed work", () => {
       chat: { alerts: {} as AlertFiring, schedules: {} as ScheduleQueue },
       drafts: { expire: () => (expired.push(1), undefined) },
       clock: {} as Clock,
-      stores: {} as Pick<EngineStores, "webhookAlerts" | "inbox">,
+      stores: {} as Pick<EngineStores, "webhookAlerts" | "inbox" | "credentials">,
     });
     const signal = new AbortController().signal;
     await expect(work.expireCards({ signal })).rejects.toThrow("The intent store is down.");

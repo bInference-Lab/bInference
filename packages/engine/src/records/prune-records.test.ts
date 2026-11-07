@@ -1,9 +1,15 @@
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { fixtureHash, fixtureId } from "../contracts/store-fixtures.js";
+import { createMemoryCredentialStore } from "../fakes/memory-credential-store.js";
 import { createMemoryInboxStore } from "../fakes/memory-inbox-store.js";
 import { createMemoryWebhookAlertStore } from "../fakes/memory-webhook-alert-store.js";
-import { handledInboxKeptMs, pruneWorkOf, webhookEventsKeptMs } from "./prune-records.js";
+import {
+  handledInboxKeptMs,
+  pruneWorkOf,
+  removedCredentialsKeptMs,
+  webhookEventsKeptMs,
+} from "./prune-records.js";
 
 const live = { signal: new AbortController().signal };
 const startMs = 1_760_000_000_000;
@@ -32,7 +38,8 @@ describe("the prune of records outside input grows", () => {
     expect(old).toMatchObject({ kind: "accepted" });
     const { entry } = old as { readonly entry: number };
     await inbox.markHandled({ id: entry, atMs: startMs }, live);
-    const prune = pruneWorkOf({ stores: { webhookAlerts, inbox }, clock });
+    const credentials = createMemoryCredentialStore();
+    const prune = pruneWorkOf({ stores: { webhookAlerts, inbox, credentials }, clock });
     await clock.advance(handledInboxKeptMs);
     await expect(prune.pruneRecords(live)).resolves.toBe(0);
     await clock.advance(1);
@@ -41,5 +48,19 @@ describe("the prune of records outside input grows", () => {
     await expect(prune.pruneRecords(live)).resolves.toBe(1);
     const page = { keyPrefix: "wh:", limit: 10 };
     expect(await inbox.unhandled(page, live)).toHaveLength(1);
+  });
+
+  it("drops credentials removed more than 30 days ago", async () => {
+    const clock = createManualClock(startMs);
+    const inbox = createMemoryInboxStore();
+    const credentials = createMemoryCredentialStore();
+    const stores = { webhookAlerts: createMemoryWebhookAlertStore({ inbox }), inbox, credentials };
+    await credentials.put({ name: "OLD_KEY", value: "v", allowedHosts: [], atMs: startMs }, live);
+    await credentials.remove("OLD_KEY", { ...live, atMs: startMs });
+    const prune = pruneWorkOf({ stores, clock });
+    await clock.advance(removedCredentialsKeptMs);
+    await expect(prune.pruneRecords(live)).resolves.toBe(0);
+    await clock.advance(1);
+    await expect(prune.pruneRecords(live)).resolves.toBe(1);
   });
 });

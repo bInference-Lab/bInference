@@ -7,6 +7,7 @@ import { configJournalTasks } from "../audit/config-journal-tasks.js";
 import { backupTasks } from "../backups/backup-tasks.js";
 import { installGuardsTasks } from "../backups/install-guards-tasks.js";
 import { bridgeTasks } from "../bridges/sqlite-bridge-store.js";
+import { credentialTasks } from "../credentials/sqlite-credential-store.js";
 import { aliveTasks } from "../downtime/sqlite-alive-store.js";
 import { idempotencyTasks } from "../ingress/idempotency-tasks.js";
 import { inboxTasks } from "../ingress/inbox-tasks.js";
@@ -73,6 +74,7 @@ export const engineDatabase: DatabaseDefinition = {
     ...launchTasks,
     clearEngineStateTask,
     ...aliveTasks,
+    ...credentialTasks,
   ],
 };
 

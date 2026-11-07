@@ -46,6 +46,7 @@ describe("protocolErrorCodes", () => {
       "token",
       "shell",
       "file",
+      "credential",
       "internal",
     ]);
   });

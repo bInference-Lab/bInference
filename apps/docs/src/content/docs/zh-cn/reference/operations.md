@@ -248,6 +248,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `chat/messages` | `read` | 读取 | 任何连接 | Agent 运行时 |
 | `chat/stop` | `chat` | 写入 | 任何连接 | 引擎 |
 | `chat/clear` | `chat` | 写入 | 任何连接 | 引擎 |
+| `chat/openCredentialRequest` | `read` | 读取 | 任何连接 | 引擎 |
 | `chat/answer` | `chat` | 写入 | 任何连接 | 引擎 |
 | `chat/openQuestion` | `read` | 读取 | 任何连接 | 引擎 |
 
@@ -263,6 +264,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `turn/end` | `agent` | 写入 | 任何连接 | 引擎 |
 | `turn/reasoning` | `agent` | 读取 | 任何连接 | 引擎 |
 | `turn/chart` | `agent` | 读取 | 任何连接 | 引擎 |
+| `turn/credential` | `agent` | 读取 | 任何连接 | 引擎 |
 | `turn/deposit` | `agent` | 读取 | 任何连接 | 引擎 |
 | `turn/ask` | `agent` | 写入 | 任何连接 | 引擎 |
 
@@ -302,6 +304,16 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `file/write` | `agent` | 读取 | 任何连接 | 引擎 |
 | `file/edit` | `agent` | 读取 | 任何连接 | 引擎 |
 | `file/patch` | `agent` | 读取 | 任何连接 | 引擎 |
+
+## `credential`
+
+| 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
+| --- | --- | --- | --- | --- |
+| `credential/answer` | `chat` | 读取 | 任何连接 | 引擎 |
+| `credential/skip` | `chat` | 读取 | 任何连接 | 引擎 |
+| `credential/list` | `read` | 读取 | 任何连接 | 引擎 |
+| `credential/delete` | `propose` | 读取 | 任何连接 | 引擎 |
+| `credential/set` | `admin` | 读取 | 任何连接 | 引擎 |
 
 ## `notes`
 

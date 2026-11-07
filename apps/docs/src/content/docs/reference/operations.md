@@ -248,6 +248,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `chat/messages` | `read` | read | any connection | agent runtime |
 | `chat/stop` | `chat` | write | any connection | engine |
 | `chat/clear` | `chat` | write | any connection | engine |
+| `chat/openCredentialRequest` | `read` | read | any connection | engine |
 | `chat/answer` | `chat` | write | any connection | engine |
 | `chat/openQuestion` | `read` | read | any connection | engine |
 
@@ -263,6 +264,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `turn/end` | `agent` | write | any connection | engine |
 | `turn/reasoning` | `agent` | read | any connection | engine |
 | `turn/chart` | `agent` | read | any connection | engine |
+| `turn/credential` | `agent` | read | any connection | engine |
 | `turn/deposit` | `agent` | read | any connection | engine |
 | `turn/ask` | `agent` | write | any connection | engine |
 
@@ -302,6 +304,16 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `file/write` | `agent` | read | any connection | engine |
 | `file/edit` | `agent` | read | any connection | engine |
 | `file/patch` | `agent` | read | any connection | engine |
+
+## `credential`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `credential/answer` | `chat` | read | any connection | engine |
+| `credential/skip` | `chat` | read | any connection | engine |
+| `credential/list` | `read` | read | any connection | engine |
+| `credential/delete` | `propose` | read | any connection | engine |
+| `credential/set` | `admin` | read | any connection | engine |
 
 ## `notes`
 
