@@ -1,6 +1,6 @@
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, err, ok, type Result } from "@binference/core";
-import { type ImageContentType, imagePartBytes, maxImageBytes } from "@binference/protocol";
+import { readPagedImage } from "../images/paged-image.js";
 import type { ImageReadRefusal } from "../loop/turn-records.js";
 import type { HeldOwnerImage, ImagePlace } from "./engine-chat-records.js";
 import type { OwnerImageReader } from "./ports.js";
@@ -18,14 +18,6 @@ const refusals: ReadonlyMap<string, ImageReadRefusal> = new Map([
   ["telegram.unreachable", "unreadable"],
   ["telegram.not_running", "unreadable"],
 ]);
-
-// The most parts a 5 MiB image comes in, and one more for an engine that answers less each time.
-const maxParts = Math.ceil(maxImageBytes / imagePartBytes) + 1;
-
-interface Received {
-  readonly contentType: ImageContentType;
-  readonly parts: readonly Uint8Array[];
-}
 
 async function partFrom(
   client: ImageClient,
@@ -45,31 +37,6 @@ async function partFrom(
   }
 }
 
-// Every part from the first, each starting where the one before said the next one does.
-async function partsOf(
-  client: ImageClient,
-  place: ImagePlace,
-  signal: AbortSignal,
-): Promise<Result<Received, ImageReadRefusal>> {
-  const parts: Uint8Array[] = [];
-  let next: number | undefined = 0;
-  let contentType: ImageContentType | undefined;
-  for (let count = 0; next !== undefined; count += 1) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- each part starts where the one before ended
-    const part = await partFrom(client, { place, offset: next }, signal);
-    if (!part.ok) {
-      return part;
-    }
-    if (part.value.offset !== next || part.value.bytes > maxImageBytes || count >= maxParts) {
-      return err(part.value.bytes > maxImageBytes ? "too_large" : "unreadable");
-    }
-    contentType = part.value.contentType;
-    parts.push(Buffer.from(part.value.data, "base64"));
-    next = part.value.next;
-  }
-  return contentType === undefined ? err("unreadable") : ok({ contentType, parts });
-}
-
 /**
  * The {@link OwnerImageReader} over the runtime's protocol client: `inbox/readImage` from offset 0
  * until the engine names no next part, the parts joined and checked against the size the engine
@@ -79,16 +46,11 @@ export function createProtocolImageReader(client: ImageClient): OwnerImageReader
   return {
     async read(place, signal): Promise<Result<HeldOwnerImage, ImageReadRefusal>> {
       signal.throwIfAborted();
-      const received = await partsOf(client, place, signal);
-      if (!received.ok) {
-        return received;
-      }
-      const whole = Buffer.concat(received.value.parts);
-      if (whole.byteLength > maxImageBytes) {
-        return err("too_large");
-      }
-      const { contentType } = received.value;
-      return ok({ contentType, data: whole.toString("base64"), bytes: whole.byteLength });
+      return readPagedImage({
+        part: async (offset) => partFrom(client, { place, offset }, signal),
+        unreadable: "unreadable",
+        tooLarge: "too_large",
+      });
     },
   };
 }

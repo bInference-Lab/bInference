@@ -54,6 +54,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   deposit_address: "turn.tool.deposit",
   shell: "turn.tool.shell",
   shell_job: "turn.tool.shellJob",
+  look_at_image: "turn.tool.lookAtImage",
 };
 
 // A plugin's tool is named `<id>__<tool>`, its id with `_` for `-`.

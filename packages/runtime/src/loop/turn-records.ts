@@ -76,7 +76,15 @@ export interface ToolRunContext {
    * idempotency key; it is written with the committed mark before the engine hears of the call.
    */
   readonly idempotencyKey: string;
+  /**
+   * Describes an image the tool read, with the question asked of it, on a model of the turn that
+   * takes images (decision 0385).
+   */
+  readonly look: (image: ModelImage, question: string) => Promise<Result<string, ImageLookRefusal>>;
 }
+
+/** Why a tool's image went undescribed: no model of the turn takes images, or the call failed. */
+export type ImageLookRefusal = "no_model" | "failed";
 
 /** A call the tool box accepted: its tool exists and its arguments passed the tool's schema. */
 export interface ReadyCall {

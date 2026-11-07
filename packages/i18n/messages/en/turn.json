@@ -64,6 +64,7 @@
   "tool.plugin": "Asking the plugin {plugin}…",
   "tool.shell": "Running a command…",
   "tool.shellJob": "Checking a command…",
+  "tool.lookAtImage": "Looking at an image…",
   "tool.deposit": "Showing where to deposit…",
   "tool.notesGet": "Reading a note…",
   "tool.notesForget": "Forgetting a note…"

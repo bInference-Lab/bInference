@@ -1,11 +1,12 @@
 import { createDeadline, type Deadline } from "@binference/core";
+import { lookAtImage } from "../images/look-at-image.js";
 import type { ToolCall } from "./model-message.js";
 import { notRunText } from "./not-run.js";
 import { type CallResult, recordResult } from "./record-call.js";
 import { settleBy } from "./settle-by.js";
 import { createStopGrace } from "./stop-grace.js";
 import { haltOf } from "./turn-halt.js";
-import type { ReadyCall, ToolOutcome } from "./turn-records.js";
+import type { ReadyCall, ToolOutcome, ToolRunContext } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
 /** A call of a batch with its number in the turn, from 1, which names its proposal's key. */
@@ -53,6 +54,15 @@ export interface CallEnd {
   readonly endsTurn: boolean;
 }
 
+// What a tool's run receives from its turn.
+function contextOf(run: TurnRun, signal: AbortSignal, idempotencyKey: string): ToolRunContext {
+  return {
+    signal,
+    idempotencyKey,
+    look: async (image, question) => lookAtImage(run, image, question),
+  };
+}
+
 /**
  * Runs a read or control call's tool, stopped by the turn's halt or its time limit. A tool that
  * throws gets an error result; nothing is written. A closing line its result gives is kept.
@@ -68,7 +78,7 @@ export async function executeCall(
     timeoutMs: run.limits.toolTimeoutMs,
   });
   const idempotencyKey = callKeyOf(run.turnId, numbered.ordinal);
-  const context = { signal: deadline.signal, idempotencyKey };
+  const context = contextOf(run, deadline.signal, idempotencyKey);
   run.feed.tool(numbered.call.name);
   const settled = await settleBy(async () => ready.run(context), {
     signal: deadline.signal,
@@ -123,7 +133,7 @@ async function sendProposal(
   const grace = createStopGrace(run.halted, clock, run.limits.stopGraceMs);
   const timeoutMs = run.limits.proposeTimeoutMs;
   const deadline = createDeadline({ clock, signal: grace.signal, timeoutMs });
-  const context = { signal: deadline.signal, idempotencyKey };
+  const context = contextOf(run, deadline.signal, idempotencyKey);
   const settled = await settleBy(async () => ready.run(context), {
     signal: deadline.signal,
     clock,

@@ -27,6 +27,7 @@ Agent 的模型在一轮中可以调用的工具，按每轮提供的顺序排�
 - `search_web` (读取): 联网搜索。
 - `read_page` (读取): 读取一个公开网页。
 - `search_x` (读取): 搜索 X 上的近期帖子。
+- `look_at_image` (读取): 查看公开网址或所有者机器上文件中的图片，并描述其内容。
 - `notes_search` (读取): 搜索 Agent 的笔记。
 - `notes_get` (读取): 完整读取 Agent 的一条笔记。
 - `open_skill` (读取): 打开 Agent 的一个技能。

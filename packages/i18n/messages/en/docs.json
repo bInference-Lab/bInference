@@ -124,6 +124,7 @@
   "tools.summary.shell": "Runs a command on the owner's machine, away from binference's own files, and reads its output.",
   "tools.summary.shell_job": "Reads a running command's new output, or stops it.",
   "tools.summary.deposit_address": "Shows the owner each wallet's address and its QR code, to send funds to the agent.",
+  "tools.summary.look_at_image": "Looks at a picture at a public address or in a file on the owner's machine and describes it.",
   "tools.summary.notes_get": "Reads one of the agent's notes in full.",
   "tools.summary.notes_forget": "Forgets one of the agent's notes."
 }

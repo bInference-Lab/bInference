@@ -1,4 +1,4 @@
-import { type Id, idSchema, type JsonValue } from "@binference/core";
+import { type Id, idSchema, type JsonValue, ok } from "@binference/core";
 import type { ToolOutcome, ToolRunContext } from "../loop/turn-records.js";
 import { agentToolBox } from "../tools/agent-tools.js";
 import type { AgentToolParts } from "../tools/tool-client.js";
@@ -75,6 +75,7 @@ export const toolTurn: AgentToolParts["turn"] = {
 export const context: ToolRunContext = {
   signal: new AbortController().signal,
   idempotencyKey: "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001.1",
+  look: async () => Promise.resolve(ok("A price chart.")),
 };
 
 /** An intent of `owner` in `state`, as the engine answers it. */

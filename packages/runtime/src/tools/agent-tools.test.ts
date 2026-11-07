@@ -100,6 +100,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "notes/search": { items: [] },
   "alert/create": alertWire(),
   "schedule/list": { items: [scheduleWire()] },
+  "image/view": { contentType: "image/png", bytes: 4, offset: 0, data: "iVBORw==" },
   "schedule/create": scheduleWire(),
   "schedule/cancel": {},
   "agent/editFile": { updatedAt: 1 },
@@ -254,6 +255,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     ],
   ],
   ["schedule_list", {}, [{ op: "schedule/list", args: { agent } }]],
+  ["look_at_image", { path: "/x.png" }, [{ op: "image/view", args: { agent, path: "/x.png" } }]],
   [
     "notes_search",
     { query: "stable" },

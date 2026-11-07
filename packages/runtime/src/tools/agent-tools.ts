@@ -6,6 +6,7 @@ import type { AgentTool } from "./define-tool.js";
 import { depositTool } from "./deposit-tool.js";
 import { launchDraftTool } from "./launch-draft-tool.js";
 import { launchpadsTool } from "./launchpads-tool.js";
+import { lookAtImageTool } from "./look-at-image-tool.js";
 import { marketTools } from "./market-tools.js";
 import { noteTools } from "./note-tools.js";
 import { orderCancelTool } from "./order-cancel-tool.js";
@@ -28,7 +29,7 @@ import { workspaceTools } from "./workspace-tools.js";
  * and `bridge`;
  * `order_cancel`, which brakes; and the control tools `alert_create`, `schedule_create` and `schedule_cancel` (decision 0247). Each
  * maps onto the engine's operations and names the given agent; no tool takes an agent or a wallet
- * from the model. With web parts, the web tools come after the reads, then the tools of the
+ * from the model. With web parts, the web tools come after the reads; `look_at_image` (decision 0385) follows, then the tools of the
  * enabled community plugins (decision 0349); `notes_search`, `notes_get` and `open_skill`
  * follow them, then `notes_write` and `notes_forget` (decision 0384), and last `workspace_write` and `first_chat_end`, which write
  * the owner's strategy and persona and end the first chat (decision 0242), then `launchpads` and
@@ -46,6 +47,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...marketTools(parts),
     schedules.list,
     ...web,
+    lookAtImageTool(parts),
     ...pluginTools(parts, parts.plugins ?? []),
     notes.search,
     notes.get,
